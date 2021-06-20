@@ -72,9 +72,9 @@ pub trait ThemeDst<DS: DrawableShared>: ThemeApi {
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        shared: &mut DrawShared<DS>,
-        draw: &mut DS::Draw,
-        window: &mut dyn WindowDst<DS>,
+        shared: &'static mut DrawShared<DS>,
+        draw: &'static mut DS::Draw,
+        window: &'static mut dyn WindowDst<DS>,
     ) -> StackDst<dyn DrawHandle>;
 
     /// Construct a [`DrawHandle`] object
@@ -141,9 +141,9 @@ where
 
     unsafe fn draw_handle(
         &self,
-        shared: &mut DrawShared<DS>,
-        draw: &mut DS::Draw,
-        window: &mut dyn WindowDst<DS>,
+        shared: &'static mut DrawShared<DS>,
+        draw: &'static mut DS::Draw,
+        window: &'static mut dyn WindowDst<DS>,
     ) -> StackDst<dyn DrawHandle> {
         let window = window.as_any_mut().downcast_mut().unwrap();
         let h = <T as Theme<DS>>::draw_handle(self, shared, draw, window);

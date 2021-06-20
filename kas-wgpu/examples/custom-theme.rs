@@ -81,9 +81,9 @@ where
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        shared: &mut DrawShared<DS>,
-        draw: &mut DS::Draw,
-        window: &mut Self::Window,
+        shared: &'static mut DrawShared<DS>,
+        draw: &'static mut DS::Draw,
+        window: &'static mut Self::Window,
     ) -> Self::DrawHandle {
         Theme::<DS>::draw_handle(&self.inner, shared, draw, window)
     }

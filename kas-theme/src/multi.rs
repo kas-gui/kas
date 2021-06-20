@@ -144,11 +144,11 @@ impl<DS: DrawableShared> Theme<DS> for MultiTheme<DS> {
     }
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle<'a>(
-        &'a self,
-        shared: &'a mut DrawShared<DS>,
-        draw: &'a mut DS::Draw,
-        window: &'a mut Self::Window,
+    unsafe fn draw_handle(
+        &self,
+        shared: &'static mut DrawShared<DS>,
+        draw: &'static mut DS::Draw,
+        window: &'static mut Self::Window,
     ) -> StackDst<dyn DrawHandle> {
         self.themes[self.active].draw_handle(shared, draw, window)
     }

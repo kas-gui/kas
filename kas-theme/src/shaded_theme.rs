@@ -102,22 +102,17 @@ where
     }
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle<'a>(
-        &'a self,
-        shared: &'a mut DrawShared<DS>,
-        draw: &'a mut DS::Draw,
-        window: &'a mut Self::Window,
+    unsafe fn draw_handle(
+        &self,
+        shared: &'static mut DrawShared<DS>,
+        draw: &'static mut DS::Draw,
+        window: &'static mut Self::Window,
     ) -> Self::DrawHandle {
-        // We extend lifetimes (unsafe) due to the lack of associated type generics.
-        unsafe fn extend_lifetime<'b, T>(r: &'b mut T) -> &'static mut T {
-            std::mem::transmute::<&'b mut T, &'static mut T>(r)
-        }
-
         DrawHandle {
-            shared: extend_lifetime(shared),
-            draw: extend_lifetime(draw),
-            window: extend_lifetime(window),
-            cols: std::mem::transmute::<&'a ColorsLinear, &'static ColorsLinear>(&self.flat.cols),
+            shared,
+            draw,
+            window,
+            cols: std::mem::transmute::<&ColorsLinear, &'static ColorsLinear>(&self.flat.cols),
             offset: Offset::ZERO,
             pass: Pass::new(0),
         }
