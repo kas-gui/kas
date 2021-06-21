@@ -187,10 +187,8 @@ impl<'a, D: DrawableShaded + ?Sized> Draw<'a, D> {
 
 /// Base abstraction over drawing
 ///
-/// Unlike [`DrawHandle`], coordinates are specified via a [`Vec2`] and
-/// rectangular regions via [`Quad`]. The same coordinate system is used, hence
-/// type conversions can be performed with `from` and `into`. Integral
-/// coordinates align with pixels, non-integral coordinates may also be used.
+/// Coordinates are specified via a [`Vec2`] and rectangular regions via
+/// [`Quad`] allowing fractional positions.
 ///
 /// All draw operations may be batched; when drawn primitives overlap, the
 /// results are only loosely defined. Draw operations involving transparency

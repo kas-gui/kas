@@ -15,16 +15,16 @@
 //!
 //! ### Medium-level drawing interfaces
 //!
-//! The [`Draw`] trait and its extensions are provided as the building-blocks
+//! The [`Drawable`] trait and its extensions are provided as the building-blocks
 //! used to implement themes, but may also be used directly (as in the `clock`
 //! example). These traits allow drawing of simple shapes, mostly in the form of
 //! an axis-aligned box or frame with several shading options.
 //!
-//! The [`Draw`] trait itself contains very little; extension traits
-//! [`DrawRounded`] and [`DrawShaded`] provide additional draw
-//! routines. Shells are only required to implement the base [`Draw`] trait,
+//! The [`Drawable`] trait itself contains very little; extension traits
+//! [`DrawableRounded`] and [`DrawableShaded`] provide additional draw
+//! routines. Shells are only required to implement the base [`Drawable`] trait,
 //! and may also provide their own extension traits. Themes may specify their
-//! own requirements, e.g. `D: Draw + DrawRounded + DrawText`.
+//! own requirements, e.g. `D: DrawableRounded`.
 //!
 //! The medium-level API will be extended in the future to support texturing
 //! (not yet supported) and potentially a more comprehensive path-based API

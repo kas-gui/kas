@@ -29,7 +29,7 @@ impl<DS: DrawableShared> DrawShared<DS> {
 impl<DS: DrawableShared> DrawShared<DS> {
     /// Allocate an image
     ///
-    /// Use [`DrawShared::upload`] to set contents of the new image.
+    /// Use [`DrawShared::image_upload`] to set contents of the new image.
     #[inline]
     pub fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, ImageError> {
         self.draw.image_alloc(size)
@@ -120,7 +120,7 @@ pub trait DrawableShared: 'static {
 
     /// Allocate an image
     ///
-    /// Use [`DrawableShared::upload`] to set contents of the new image.
+    /// Use [`DrawableShared::image_upload`] to set contents of the new image.
     fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, ImageError>;
 
     /// Upload an image to the GPU
