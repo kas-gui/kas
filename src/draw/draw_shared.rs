@@ -12,14 +12,20 @@ use crate::text::{Effect, TextDisplay};
 use std::path::Path;
 
 /// Interface over a shared draw object
+///
+/// A single [`DrawShared`] instance is shared by all windows and draw contexts.
+/// This struct is built over a [`DrawableShared`] object provided by the shell,
+/// which may be accessed directly for a lower-level API (though most methods
+/// are available through [`DrawShared`] directly).
 pub struct DrawShared<DS: DrawableShared> {
+    /// The shell's [`DrawableShared`] object
     pub draw: DS,
     images: images::Images,
 }
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 impl<DS: DrawableShared> DrawShared<DS> {
-    /// Construct
+    /// Construct (this is only called by the shell)
     pub fn new(draw: DS) -> Self {
         let images = images::Images::new();
         DrawShared { draw, images }

@@ -3,32 +3,34 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Drawing APIs
+//! # Draw APIs
 //!
 //! Multiple drawing APIs are available. Each has a slightly different purpose.
 //!
 //! ### High-level themeable interface
 //!
-//! The [`DrawHandle`] trait and companion [`SizeHandle`] trait provide the
-//! highest-level API over themeable widget components. These traits are
-//! implemented by a theme defined in `kas-theme` or another crate.
+//! When widgets are sized or drawn, they are provided a [`SizeHandle`] or a
+//! [`DrawHandle`] trait object. A [`SizeHandle`] may also be obtained through
+//! [`kas::event::Manager::size_handle`].
+//!
+//! These traits are implemented by the theme of choice, providing a high-level
+//! themed API over "widget features".
+//!
+//! [`SizeHandle`] is the only part of the API providing sizing data. If drawing
+//! via a lower-level API, it may still be necessary to query the scale factor
+//! or some feature size via [`SizeHandle`].
 //!
 //! ### Medium-level drawing interfaces
 //!
-//! The [`Drawable`] trait and its extensions are provided as the building-blocks
-//! used to implement themes, but may also be used directly (as in the `clock`
-//! example). These traits allow drawing of simple shapes, mostly in the form of
-//! an axis-aligned box or frame with several shading options.
+//! The theme draws widget components over a [`Draw`] object (unique to the
+//! current draw context) plus a reference to [`DrawShared`] (for shared data
+//! related to drawing, e.g. loaded images). Widgets may access this same API
+//! via [`DrawHandle::draw_device`].
 //!
-//! The [`Drawable`] trait itself contains very little; extension traits
-//! [`DrawableRounded`] and [`DrawableShaded`] provide additional draw
-//! routines. Shells are only required to implement the base [`Drawable`] trait,
-//! and may also provide their own extension traits. Themes may specify their
-//! own requirements, e.g. `D: DrawableRounded`.
-//!
-//! The medium-level API will be extended in the future to support texturing
-//! (not yet supported) and potentially a more comprehensive path-based API
-//! (e.g. Lyon).
+//! Both [`Draw`] and [`DrawShared`] are wrappers over types provided by the
+//! shell implementing [`Drawable`] and [`DrawableShared`] respectively.
+//! Extension traits to [`Drawable`] (which may be defined elsewhere) cover
+//! further functionality.
 //!
 //! ### Low-level interface
 //!
@@ -36,6 +38,23 @@
 //! Instead, shells may provide their own extensions allowing direct access
 //! to the host graphics API, for example
 //! [`kas-wgpu::draw::CustomPipe`](https://docs.rs/kas-wgpu/*/kas_wgpu/draw/trait.CustomPipe.html).
+//! The `mandlebrot` example demonstrates use of a custom draw pipe.
+//!
+//! ## Draw order
+//!
+//! All draw operations may be batched, thus where draw operations overlap the
+//! result depends on the order batches are executed. This is expected to be in
+//! the following order:
+//!
+//! 1.  Images
+//! 2.  Non-rounded primitives (e.g. [`Draw::rect`])
+//! 3.  Rounded primitives (e.g. [`Draw::rounded_line`])
+//! 4.  Custom draw routines (`CustomPipe`)
+//! 5.  Text
+//!
+//! Note that clip regions are always drawn after their parent region, thus
+//! one can use [`Draw::new_clip_region`] to control draw order. This is
+//! demonstrated in the `clock` example.
 
 pub mod color;
 

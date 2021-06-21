@@ -11,6 +11,25 @@ use crate::geom::{Quad, Rect, Vec2};
 use std::any::Any;
 
 /// Interface over a (local) draw object
+///
+/// A [`Draw`] object is local to a draw context and may be created by the shell
+/// or from another [`Draw`] object via upcast/downcast/reborrow.
+///
+/// Note that this object is little more than a mutable reference to the shell's
+/// per-window draw state. As such, it is normal to pass *a new copy* created
+/// via [`Draw::reborrow`] as a method argument. (Note that Rust automatically
+/// "reborrows" reference types passed as method arguments, but cannot do so
+/// (automatically) for methods containing references.)
+///
+/// This is created over a [`Drawable`] object created by the shell. The
+/// [`Drawable`] trait provides a very limited set of draw routines; the shell
+/// may implement extension traits such as [`DrawableRounded`],
+/// [`DrawableShaded`], or traits defined elsewhere.
+///
+/// The [`Draw`] object provides a "medium level" interface over known
+/// "drawable" traits, for example one may use [`Draw::circle`] when
+/// [`DrawableRounded`] is implemented. In other cases one may directly use
+/// [`Draw::draw`], passing the result of [`Draw::pass`] as a parameter.
 pub struct Draw<'a, D: Any + ?Sized> {
     pass: Pass,
     pub draw: &'a mut D,
@@ -18,7 +37,7 @@ pub struct Draw<'a, D: Any + ?Sized> {
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 impl<'a, D: Drawable + ?Sized> Draw<'a, D> {
-    /// Construct
+    /// Construct (this is only called by the shell)
     pub fn new(draw: &'a mut D, pass: Pass) -> Self {
         Draw { draw, pass }
     }
@@ -26,6 +45,10 @@ impl<'a, D: Drawable + ?Sized> Draw<'a, D> {
 
 impl<'a> Draw<'a, dyn Any> {
     /// Attempt to downcast to a derived type
+    ///
+    /// This method does not support casting to trait object types (e.g.
+    /// `dyn Drawable`); instead one must use the shell's implementing type,
+    /// e.g. `kas_wgpu::draw::DrawWindow<()>`.
     pub fn downcast<'b, D>(&'b mut self) -> Option<Draw<'b, D>>
     where
         'a: 'b,
@@ -40,6 +63,10 @@ impl<'a> Draw<'a, dyn Any> {
 
 impl<'a> Draw<'a, dyn Drawable> {
     /// Attempt to downcast to a derived type
+    ///
+    /// This method does not support casting to trait object types (e.g.
+    /// `dyn Drawable`); instead one must use the shell's implementing type,
+    /// e.g. `kas_wgpu::draw::DrawWindow<()>`.
     pub fn downcast<'b, D>(&'b mut self) -> Option<Draw<'b, D>>
     where
         'a: 'b,
@@ -187,6 +214,10 @@ impl<'a, D: DrawableShaded + ?Sized> Draw<'a, D> {
 
 /// Base abstraction over drawing
 ///
+/// This trait covers only the bare minimum of functionality which *must* be
+/// provided by the shell; extension traits such as [`DrawableRounded`] and
+/// [`DrawableShaded`] optionally provide more functionality.
+///
 /// Coordinates are specified via a [`Vec2`] and rectangular regions via
 /// [`Quad`] allowing fractional positions.
 ///
@@ -225,7 +256,7 @@ pub trait Drawable: Any {
 
 /// Drawing commands for rounded shapes
 ///
-/// This trait is an extension over [`Draw`] providing rounded shapes.
+/// This trait is an extension over [`Drawable`] providing rounded shapes.
 ///
 /// The primitives provided by this trait are partially transparent.
 /// If the implementation buffers draw commands, it should draw these
