@@ -1,6 +1,6 @@
 [package]
 name = "kas-wgpu"
-version = "0.8.0"
+version = "0.8.1"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -15,11 +15,11 @@ documentation = "https://docs.rs/kas-wgpu/"
 # NOTE: clipboard feature is causing build failures
 # https://github.com/kas-gui/kas/issues/83
 no-default-features = true
-features = ["stack_dst"]
+features = ["stack_dst", "raster"]
 
 [features]
 # WARNING: if "raster" is disabled, an alternative like "kas-text/fontdue" is required!
-default = ["clipboard", "stack_dst","shaping", "raster"]
+default = ["clipboard", "stack_dst", "shaping", "raster"]
 nightly = ["unsize", "kas/nightly", "kas-theme/nightly"]
 
 shaping = ["kas-text/shaping"]
