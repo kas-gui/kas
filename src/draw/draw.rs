@@ -46,9 +46,9 @@ impl<'a, D: Drawable + ?Sized> Draw<'a, D> {
 impl<'a> Draw<'a, dyn Any> {
     /// Attempt to downcast to a derived type
     ///
-    /// This method does not support casting to trait object types (e.g.
-    /// `dyn Drawable`); instead one must use the shell's implementing type,
-    /// e.g. `kas_wgpu::draw::DrawWindow<()>`.
+    /// Rust does not (yet) support casting to trait object types (e.g.
+    /// `dyn Drawable`); instead we can only downcast to the shell's
+    /// implementing type, e.g. `kas_wgpu::draw::DrawWindow<()>`.
     pub fn downcast<'b, D>(&'b mut self) -> Option<Draw<'b, D>>
     where
         'a: 'b,
@@ -57,16 +57,14 @@ impl<'a> Draw<'a, dyn Any> {
         let pass = self.pass;
         self.draw.downcast_mut().map(|draw| Draw { draw, pass })
     }
-
-    // TODO: support unsized (dyn trait) downcast to boxed value (unsafe)
 }
 
 impl<'a> Draw<'a, dyn Drawable> {
     /// Attempt to downcast to a derived type
     ///
-    /// This method does not support casting to trait object types (e.g.
-    /// `dyn Drawable`); instead one must use the shell's implementing type,
-    /// e.g. `kas_wgpu::draw::DrawWindow<()>`.
+    /// Rust does not (yet) support casting to trait object types (e.g.
+    /// `dyn Drawable`); instead we can only downcast to the shell's
+    /// implementing type, e.g. `kas_wgpu::draw::DrawWindow<()>`.
     pub fn downcast<'b, D>(&'b mut self) -> Option<Draw<'b, D>>
     where
         'a: 'b,
