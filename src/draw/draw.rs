@@ -228,7 +228,7 @@ impl<'a, D: DrawableShaded + ?Sized> Draw<'a, D> {
 /// into methods as required. [`Drawable::add_clip_region`] creates a new [`Pass`].
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 pub trait Drawable: Any {
-    /// Cast self to [`Any`] referfence
+    /// Cast self to [`Any`] reference
     ///
     /// A downcast on this value may be used to obtain a reference to a
     /// shell-specific API.

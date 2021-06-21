@@ -290,6 +290,11 @@ impl<C: CustomPipe> DrawableShared for DrawPipe<C> {
     type Draw = DrawWindow<C::Window>;
 
     #[inline]
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
+    #[inline]
     fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, ImageError> {
         self.images.alloc(size)
     }

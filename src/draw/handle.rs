@@ -5,6 +5,7 @@
 
 //! "Handle" types used by themes
 
+use std::any::Any;
 use std::convert::AsRef;
 use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 use std::path::Path;
@@ -276,11 +277,16 @@ pub trait DrawHandle {
 
     /// Access the low-level draw device
     ///
-    /// Returns `(offset, draw)`. All local coordinates must be adjusted by
-    /// `offset` (i.e. `new_pos = pos + offset`).
+    /// Returns `(offset, draw, shared)`.
     ///
-    /// [`Draw::downcast`] will likely be of use.
-    fn draw_device<'a>(&'a mut self) -> (Offset, Draw<'a, dyn Drawable>);
+    /// All local coordinates must be adjusted by `offset` (i.e. `new_pos = pos + offset`).
+    ///
+    /// The `draw` object is over the [`Drawable`] interface which exposes only
+    /// minimal functionality. [`Draw::downcast`] will likely be of use.
+    ///
+    /// The `shared` reference has type `dyn Any`; one must downcast to the
+    /// shell's type (e.g. `kas_wgpu::draw::DrawPipe<()>`).
+    fn draw_device<'a>(&'a mut self) -> (Offset, Draw<'a, dyn Drawable>, &'a mut dyn Any);
 
     /// Add a clip region
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -640,7 +646,7 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         self.deref_mut().size_handle_dyn(f)
     }
-    fn draw_device<'a>(&'a mut self) -> (Offset, Draw<'a, dyn Drawable>) {
+    fn draw_device<'a>(&'a mut self) -> (Offset, Draw<'a, dyn Drawable>, &'a mut dyn Any) {
         self.deref_mut().draw_device()
     }
     fn with_clip_region(
@@ -726,7 +732,7 @@ where
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         self.deref_mut().size_handle_dyn(f)
     }
-    fn draw_device<'b>(&'b mut self) -> (Offset, Draw<'b, dyn Drawable>) {
+    fn draw_device<'b>(&'b mut self) -> (Offset, Draw<'b, dyn Drawable>, &'b mut dyn Any) {
         self.deref_mut().draw_device()
     }
     fn with_clip_region(

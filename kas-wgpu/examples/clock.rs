@@ -75,7 +75,7 @@ impl Layout for Clock {
         //
         // Note: offset is used for scroll-regions, and should be zero here;
         // we add it anyway as is recommended.
-        let (offset, mut draw) = draw_handle.draw_device();
+        let (offset, mut draw, _shared) = draw_handle.draw_device();
         let mut draw = draw.downcast::<DrawWindow<()>>().unwrap();
 
         let rect = self.core.rect + offset;

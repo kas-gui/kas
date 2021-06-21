@@ -9,6 +9,7 @@ use super::color::Rgba;
 use super::{images, Draw, Drawable, ImageError, ImageFormat, ImageId};
 use crate::geom::{Quad, Size, Vec2};
 use crate::text::{Effect, TextDisplay};
+use std::any::Any;
 use std::path::Path;
 
 /// Interface over a shared draw object
@@ -121,8 +122,11 @@ impl<DS: DrawableShared> DrawShared<DS> {
 ///
 /// This is typically used via [`DrawShared`].
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-pub trait DrawableShared: 'static {
+pub trait DrawableShared: Any {
     type Draw: Drawable;
+
+    /// Cast self to [`Any`] reference
+    fn as_any_mut(&mut self) -> &mut dyn Any;
 
     /// Allocate an image
     ///
