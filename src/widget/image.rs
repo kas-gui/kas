@@ -85,14 +85,14 @@ impl Image {
         self.path = path.into();
         self.do_load = false;
         let mut img_size = Size::ZERO;
-        mgr.size_handle(|sh| {
+        mgr.draw_shared(|ds| {
             if let Some(id) = self.id {
-                sh.remove_image(id);
+                ds.remove_image(id);
             }
-            match sh.image_from_path(&self.path) {
+            match ds.image_from_path(&self.path) {
                 Ok(id) => {
                     self.id = Some(id);
-                    img_size = sh.image(id).unwrap_or(Size::ZERO);
+                    img_size = ds.image_size(id).unwrap_or(Size::ZERO);
                 }
                 Err(error) => self.handle_load_fail(&error),
             };
@@ -107,7 +107,7 @@ impl Image {
     pub fn clear(&mut self, mgr: &mut Manager) {
         if let Some(id) = self.id.take() {
             self.do_load = false;
-            mgr.size_handle(|sh| sh.remove_image(id));
+            mgr.draw_shared(|ds| ds.remove_image(id));
         }
     }
 
@@ -129,7 +129,7 @@ impl WidgetConfig for Image {
     fn configure(&mut self, mgr: &mut Manager) {
         if self.do_load {
             self.do_load = false;
-            match mgr.size_handle(|sh| sh.image_from_path(&self.path)) {
+            match mgr.draw_shared(|ds| ds.image_from_path(&self.path)) {
                 Ok(id) => self.id = Some(id),
                 Err(error) => self.handle_load_fail(&error),
             }
@@ -139,7 +139,10 @@ impl WidgetConfig for Image {
 
 impl Layout for Image {
     fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        self.img_size = self.id.and_then(|id| sh.image(id)).unwrap_or(Size::ZERO);
+        self.img_size = self
+            .id
+            .and_then(|id| sh.draw_shared().image_size(id))
+            .unwrap_or(Size::ZERO);
         let margins = sh.outer_margins();
         SizeRules::extract(axis, self.img_size, margins, self.stretch)
     }

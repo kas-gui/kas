@@ -7,10 +7,9 @@
 
 use std::convert::AsRef;
 use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
-use std::path::Path;
 
 use kas::dir::Direction;
-use kas::draw::{Draw, DrawSharedT, Drawable, ImageError, ImageId};
+use kas::draw::{Draw, DrawSharedT, Drawable, ImageId};
 use kas::geom::{Coord, Offset, Rect, Size};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules};
 use kas::text::{AccelString, Text, TextApi, TextDisplay};
@@ -115,6 +114,9 @@ pub enum RegionClass {
 /// The toolkit provides a `&dyn SizeHandle` value when resizing widgets. The
 /// handle may also be accessed via [`kas::event::Manager::size_handle`].
 pub trait SizeHandle {
+    /// Access [`DrawSharedT`] trait object
+    fn draw_shared(&mut self) -> &mut dyn DrawSharedT;
+
     /// Get the scale (DPI) factor
     ///
     /// "Traditional" PC screens have a scale factor of 1; high-DPI screens
@@ -232,29 +234,6 @@ pub trait SizeHandle {
     /// that the width is adjustable while the height is (preferably) not.
     /// For a vertical bar, the values are swapped.
     fn progress_bar(&self) -> Size;
-
-    /// Load an image (potentially async)
-    ///
-    /// The theme will attempt to load the given image. In case loading fails a
-    /// warning will be logged and a placeholder may be used.
-    ///
-    /// Image resources are deduplicated through the path lookup and have a
-    /// use count. This method increments the use-count.
-    fn image_from_path(&mut self, path: &Path) -> Result<ImageId, ImageError>;
-
-    /// Remove image usage
-    ///
-    /// Usage counting is used internally; this method reduces the count by one
-    /// and frees the resource if the count reaches zero.
-    fn remove_image(&mut self, id: ImageId);
-
-    /// Get image size
-    ///
-    /// If loading is in progress (see [`SizeHandle::image_from_path`]), this blocks
-    /// until done.
-    ///
-    /// Returns `None` if the resource is not found or failed to load.
-    fn image(&self, id: ImageId) -> Option<Size>;
 }
 
 /// Handle passed to objects during draw operations
@@ -479,6 +458,10 @@ pub trait DrawHandleExt: DrawHandle {
 impl<D: DrawHandle + ?Sized> DrawHandleExt for D {}
 
 impl<S: SizeHandle> SizeHandle for Box<S> {
+    fn draw_shared(&mut self) -> &mut dyn DrawSharedT {
+        self.deref_mut().draw_shared()
+    }
+
     fn scale_factor(&self) -> f32 {
         self.deref().scale_factor()
     }
@@ -544,15 +527,6 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     }
     fn progress_bar(&self) -> Size {
         self.deref().progress_bar()
-    }
-    fn image_from_path(&mut self, path: &Path) -> Result<ImageId, ImageError> {
-        self.deref_mut().image_from_path(path)
-    }
-    fn remove_image(&mut self, id: ImageId) {
-        self.deref_mut().remove_image(id);
-    }
-    fn image(&self, id: ImageId) -> Option<Size> {
-        self.deref().image(id)
     }
 }
 
@@ -561,6 +535,10 @@ impl<'a, S> SizeHandle for stack_dst::ValueA<dyn SizeHandle + 'a, S>
 where
     S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>,
 {
+    fn draw_shared(&mut self) -> &mut dyn DrawSharedT {
+        self.deref_mut().draw_shared()
+    }
+
     fn scale_factor(&self) -> f32 {
         self.deref().scale_factor()
     }
@@ -626,15 +604,6 @@ where
     }
     fn progress_bar(&self) -> Size {
         self.deref().progress_bar()
-    }
-    fn image_from_path(&mut self, path: &Path) -> Result<ImageId, ImageError> {
-        self.deref_mut().image_from_path(path)
-    }
-    fn remove_image(&mut self, id: ImageId) {
-        self.deref_mut().remove_image(id);
-    }
-    fn image(&self, id: ImageId) -> Option<Size> {
-        self.deref().image(id)
     }
 }
 
