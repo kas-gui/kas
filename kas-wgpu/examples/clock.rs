@@ -12,7 +12,7 @@ use log::info;
 use std::f32::consts::PI;
 use std::time::Duration;
 
-use kas::draw::{color, DrawRounded, TextClass};
+use kas::draw::{color, RegionClass, TextClass};
 use kas::geom::{Quad, Vec2};
 use kas::text::util::set_text_and_prepare;
 use kas::widget::Window;
@@ -75,27 +75,32 @@ impl Layout for Clock {
         //
         // Note: offset is used for scroll-regions, and should be zero here;
         // we add it anyway as is recommended.
-        let (pass, offset, draw) = draw_handle.draw_device();
-        let draw = draw.as_any_mut().downcast_mut::<DrawWindow<()>>().unwrap();
+        let (offset, mut draw, _shared) = draw_handle.draw_device();
+        let mut draw = draw.downcast::<DrawWindow<()>>().unwrap();
 
-        let rect = Quad::from(self.core.rect + offset);
-        draw.circle(pass, rect, 0.95, col_face);
+        let rect = self.core.rect + offset;
+        let quad = Quad::from(rect);
+        draw.circle(quad, 0.95, col_face);
 
-        let half = (rect.b.1 - rect.a.1) / 2.0;
-        let centre = rect.a + half;
-
-        let mut line_seg = |t: f32, r1: f32, r2: f32, w, col| {
-            let v = Vec2(t.sin(), -t.cos());
-            draw.rounded_line(pass, centre + v * r1, centre + v * r2, w, col);
-        };
+        let half = (quad.b.1 - quad.a.1) / 2.0;
+        let centre = quad.a + half;
 
         let w = half * 0.015625;
         let l = w * 5.0;
         let r = half - w;
         for d in 0..12 {
             let l = if d % 3 == 0 { 2.0 * l } else { l };
-            line_seg(d as f32 * (PI / 6.0), r - l, r, w, col_face);
+            let t = d as f32 * (PI / 6.0);
+            let v = Vec2(t.sin(), -t.cos());
+            draw.rounded_line(centre + v * r - l, centre + v * r, w, col_face);
         }
+
+        // We use a new clip region to control the draw order (force in front).
+        let mut draw = draw.new_clip_region(rect, RegionClass::ScrollRegion);
+        let mut line_seg = |t: f32, r1: f32, r2: f32, w, col| {
+            let v = Vec2(t.sin(), -t.cos());
+            draw.rounded_line(centre + v * r1, centre + v * r2, w, col);
+        };
 
         let secs = self.now.time().num_seconds_from_midnight();
         let a_sec = f32::conv(secs % 60) * (PI / 30.0);

@@ -5,7 +5,6 @@
 
 //! Drawing API for `kas_wgpu`
 
-use std::any::Any;
 use std::f32::consts::FRAC_PI_2;
 use wgpu::util::DeviceExt;
 
@@ -291,6 +290,11 @@ impl<C: CustomPipe> DrawableShared for DrawPipe<C> {
     type Draw = DrawWindow<C::Window>;
 
     #[inline]
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
+    #[inline]
     fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, ImageError> {
         self.images.alloc(size)
     }
@@ -312,61 +316,65 @@ impl<C: CustomPipe> DrawableShared for DrawPipe<C> {
     }
 
     #[inline]
-    fn draw_image(&self, window: &mut Self::Draw, pass: Pass, id: ImageId, rect: Quad) {
+    fn draw_image(&self, target: Draw<Self::Draw>, id: ImageId, rect: Quad) {
         if let Some((atlas, tex)) = self.images.get_im_atlas_coords(id) {
-            window.images.rect(pass, atlas, tex, rect);
+            target.draw.images.rect(target.pass(), atlas, tex, rect);
         };
     }
 
     #[inline]
-    fn draw_text(
-        &mut self,
-        window: &mut Self::Draw,
-        pass: Pass,
-        pos: Vec2,
-        text: &TextDisplay,
-        col: Rgba,
-    ) {
-        window.text.text(&mut self.text, pass, pos, text, col);
+    fn draw_text(&mut self, target: Draw<Self::Draw>, pos: Vec2, text: &TextDisplay, col: Rgba) {
+        target
+            .draw
+            .text
+            .text(&mut self.text, target.pass(), pos, text, col);
     }
 
     fn draw_text_col_effects(
         &mut self,
-        window: &mut Self::Draw,
-        pass: Pass,
+        target: Draw<Self::Draw>,
         pos: Vec2,
         text: &TextDisplay,
         col: Rgba,
         effects: &[Effect<()>],
     ) {
-        let rects = window
-            .text
-            .text_col_effects(&mut self.text, pass, pos, text, col, effects);
+        let pass = target.pass();
+        let rects =
+            target
+                .draw
+                .text
+                .text_col_effects(&mut self.text, pass, pos, text, col, effects);
         for rect in rects {
-            window.shaded_square.rect(pass, rect, col);
+            target.draw.shaded_square.rect(pass, rect, col);
         }
     }
 
     fn draw_text_effects(
         &mut self,
-        window: &mut Self::Draw,
-        pass: Pass,
+        target: Draw<Self::Draw>,
         pos: Vec2,
         text: &TextDisplay,
         effects: &[Effect<Rgba>],
     ) {
-        let rects = window
+        let pass = target.pass();
+        let rects = target
+            .draw
             .text
             .text_effects(&mut self.text, pass, pos, text, effects);
         for (rect, col) in rects {
-            window.shaded_square.rect(pass, rect, col);
+            target.draw.shaded_square.rect(pass, rect, col);
         }
     }
 }
 
-impl<CW: CustomWindow> Draw for DrawWindow<CW> {
+impl<CW: CustomWindow> Drawable for DrawWindow<CW> {
     #[inline]
-    fn as_any_mut(&mut self) -> &mut dyn Any {
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
+    #[inline]
+    fn as_drawable_mut(&mut self) -> &mut dyn Drawable {
         self
     }
 
@@ -398,7 +406,7 @@ impl<CW: CustomWindow> Draw for DrawWindow<CW> {
     }
 }
 
-impl<CW: CustomWindow> DrawRounded for DrawWindow<CW> {
+impl<CW: CustomWindow> DrawableRounded for DrawWindow<CW> {
     #[inline]
     fn rounded_line(&mut self, pass: Pass, p1: Vec2, p2: Vec2, radius: f32, col: Rgba) {
         self.flat_round.line(pass, p1, p2, radius, col);
@@ -423,7 +431,7 @@ impl<CW: CustomWindow> DrawRounded for DrawWindow<CW> {
     }
 }
 
-impl<CW: CustomWindow> DrawShaded for DrawWindow<CW> {
+impl<CW: CustomWindow> DrawableShaded for DrawWindow<CW> {
     #[inline]
     fn shaded_square(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Rgba) {
         self.shaded_square

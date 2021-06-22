@@ -3,32 +3,34 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Drawing APIs
+//! # Draw APIs
 //!
 //! Multiple drawing APIs are available. Each has a slightly different purpose.
 //!
 //! ### High-level themeable interface
 //!
-//! The [`DrawHandle`] trait and companion [`SizeHandle`] trait provide the
-//! highest-level API over themeable widget components. These traits are
-//! implemented by a theme defined in `kas-theme` or another crate.
+//! When widgets are sized or drawn, they are provided a [`SizeHandle`] or a
+//! [`DrawHandle`] trait object. A [`SizeHandle`] may also be obtained through
+//! [`kas::event::Manager::size_handle`].
+//!
+//! These traits are implemented by the theme of choice, providing a high-level
+//! themed API over "widget features".
+//!
+//! [`SizeHandle`] is the only part of the API providing sizing data. If drawing
+//! via a lower-level API, it may still be necessary to query the scale factor
+//! or some feature size via [`SizeHandle`].
 //!
 //! ### Medium-level drawing interfaces
 //!
-//! The [`Draw`] trait and its extensions are provided as the building-blocks
-//! used to implement themes, but may also be used directly (as in the `clock`
-//! example). These traits allow drawing of simple shapes, mostly in the form of
-//! an axis-aligned box or frame with several shading options.
+//! The theme draws widget components over a [`Draw`] object (unique to the
+//! current draw context) plus a reference to [`DrawShared`] (for shared data
+//! related to drawing, e.g. loaded images). Widgets may access this same API
+//! via [`DrawHandle::draw_device`].
 //!
-//! The [`Draw`] trait itself contains very little; extension traits
-//! [`DrawRounded`] and [`DrawShaded`] provide additional draw
-//! routines. Shells are only required to implement the base [`Draw`] trait,
-//! and may also provide their own extension traits. Themes may specify their
-//! own requirements, e.g. `D: Draw + DrawRounded + DrawText`.
-//!
-//! The medium-level API will be extended in the future to support texturing
-//! (not yet supported) and potentially a more comprehensive path-based API
-//! (e.g. Lyon).
+//! Both [`Draw`] and [`DrawShared`] are wrappers over types provided by the
+//! shell implementing [`Drawable`] and [`DrawableShared`] respectively.
+//! Extension traits to [`Drawable`] (which may be defined elsewhere) cover
+//! further functionality.
 //!
 //! ### Low-level interface
 //!
@@ -36,21 +38,36 @@
 //! Instead, shells may provide their own extensions allowing direct access
 //! to the host graphics API, for example
 //! [`kas-wgpu::draw::CustomPipe`](https://docs.rs/kas-wgpu/*/kas_wgpu/draw/trait.CustomPipe.html).
+//! The `mandlebrot` example demonstrates use of a custom draw pipe.
+//!
+//! ## Draw order
+//!
+//! All draw operations may be batched, thus where draw operations overlap the
+//! result depends on the order batches are executed. This is expected to be in
+//! the following order:
+//!
+//! 1.  Images
+//! 2.  Non-rounded primitives (e.g. [`Draw::rect`])
+//! 3.  Rounded primitives (e.g. [`Draw::rounded_line`])
+//! 4.  Custom draw routines (`CustomPipe`)
+//! 5.  Text
+//!
+//! Note that clip regions are always drawn after their parent region, thus
+//! one can use [`Draw::new_clip_region`] to control draw order. This is
+//! demonstrated in the `clock` example.
 
 pub mod color;
 
+mod draw;
+mod draw_shared;
 mod handle;
 mod images;
 mod theme;
 
-use std::any::Any;
-use std::path::Path;
-
 use crate::cast::Cast;
-use crate::geom::{Quad, Rect, Size, Vec2};
-use crate::text::{Effect, TextDisplay};
-use color::Rgba;
 
+pub use draw::*;
+pub use draw_shared::{DrawShared, DrawableShared};
 pub use handle::*;
 pub use images::{ImageError, ImageFormat, ImageId};
 pub use theme::*;
@@ -87,299 +104,4 @@ impl Pass {
     pub fn depth(self) -> f32 {
         0.0
     }
-}
-
-/// Interface over a shared draw object
-pub struct DrawShared<DS: DrawableShared> {
-    pub draw: DS,
-    images: images::Images,
-}
-
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-impl<DS: DrawableShared> DrawShared<DS> {
-    /// Construct
-    pub fn new(draw: DS) -> Self {
-        let images = images::Images::new();
-        DrawShared { draw, images }
-    }
-}
-
-impl<DS: DrawableShared> DrawShared<DS> {
-    /// Allocate an image
-    ///
-    /// Use [`DrawShared::upload`] to set contents of the new image.
-    pub fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, ImageError> {
-        self.draw.image_alloc(size)
-    }
-
-    /// Upload an image to the GPU
-    ///
-    /// This should be called at least once on each image before display. May be
-    /// called again to update the image contents.
-    pub fn image_upload(&mut self, id: ImageId, data: &[u8], format: ImageFormat) {
-        self.draw.image_upload(id, data, format);
-    }
-
-    /// Load an image from a path, autodetecting file type
-    ///
-    /// This deduplicates multiple loads of the same path, instead incrementing
-    /// a reference count.
-    pub fn image_from_path(&mut self, path: &Path) -> Result<ImageId, ImageError> {
-        self.images.load_path(&mut self.draw, path)
-    }
-
-    /// Remove a loaded image, by path
-    ///
-    /// This reduces the reference count and frees if zero.
-    pub fn remove_image_from_path(&mut self, path: &Path) {
-        self.images.remove_path(&mut self.draw, path);
-    }
-
-    /// Free an image
-    pub fn remove_image(&mut self, id: ImageId) {
-        self.images.remove_id(&mut self.draw, id);
-    }
-
-    /// Get the size of an image
-    pub fn image_size(&self, id: ImageId) -> Option<Size> {
-        self.draw.image_size(id).map(|size| size.into())
-    }
-
-    /// Draw the image in the given `rect`
-    pub fn draw_image(&self, window: &mut DS::Draw, pass: Pass, id: ImageId, rect: Quad) {
-        self.draw.draw_image(window, pass, id, rect)
-    }
-
-    /// Draw text with a colour
-    pub fn draw_text(
-        &mut self,
-        window: &mut DS::Draw,
-        pass: Pass,
-        pos: Vec2,
-        text: &TextDisplay,
-        col: Rgba,
-    ) {
-        self.draw.draw_text(window, pass, pos, text, col)
-    }
-
-    /// Draw text with a colour and effects
-    ///
-    /// The effects list does not contain colour information, but may contain
-    /// underlining/strikethrough information. It may be empty.
-    pub fn draw_text_col_effects(
-        &mut self,
-        window: &mut DS::Draw,
-        pass: Pass,
-        pos: Vec2,
-        text: &TextDisplay,
-        col: Rgba,
-        effects: &[Effect<()>],
-    ) {
-        self.draw
-            .draw_text_col_effects(window, pass, pos, text, col, effects)
-    }
-
-    /// Draw text with effects
-    ///
-    /// The `effects` list provides both underlining and colour information.
-    /// If the `effects` list is empty or the first entry has `start > 0`, a
-    /// default entity will be assumed.
-    pub fn draw_text_effects(
-        &mut self,
-        window: &mut DS::Draw,
-        pass: Pass,
-        pos: Vec2,
-        text: &TextDisplay,
-        effects: &[Effect<Rgba>],
-    ) {
-        self.draw
-            .draw_text_effects(window, pass, pos, text, effects)
-    }
-}
-
-/// Trait over shared data of draw object
-///
-/// This is typically used via [`DrawShared`].
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-pub trait DrawableShared: 'static {
-    type Draw: Draw;
-
-    /// Allocate an image
-    ///
-    /// Use [`DrawableShared::upload`] to set contents of the new image.
-    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, ImageError>;
-
-    /// Upload an image to the GPU
-    ///
-    /// This should be called at least once on each image before display. May be
-    /// called again to update the image contents.
-    fn image_upload(&mut self, id: ImageId, data: &[u8], format: ImageFormat);
-
-    /// Free an image allocation
-    fn image_free(&mut self, id: ImageId);
-
-    /// Query an image's size
-    fn image_size(&self, id: ImageId) -> Option<(u32, u32)>;
-
-    /// Draw the image in the given `rect`
-    fn draw_image(&self, window: &mut Self::Draw, pass: Pass, id: ImageId, rect: Quad);
-
-    /// Draw text with a colour
-    fn draw_text(
-        &mut self,
-        window: &mut Self::Draw,
-        pass: Pass,
-        pos: Vec2,
-        text: &TextDisplay,
-        col: Rgba,
-    );
-
-    /// Draw text with a colour and effects
-    ///
-    /// The effects list does not contain colour information, but may contain
-    /// underlining/strikethrough information. It may be empty.
-    fn draw_text_col_effects(
-        &mut self,
-        window: &mut Self::Draw,
-        pass: Pass,
-        pos: Vec2,
-        text: &TextDisplay,
-        col: Rgba,
-        effects: &[Effect<()>],
-    );
-
-    /// Draw text with effects
-    ///
-    /// The `effects` list provides both underlining and colour information.
-    /// If the `effects` list is empty or the first entry has `start > 0`, a
-    /// default entity will be assumed.
-    fn draw_text_effects(
-        &mut self,
-        window: &mut Self::Draw,
-        pass: Pass,
-        pos: Vec2,
-        text: &TextDisplay,
-        effects: &[Effect<Rgba>],
-    );
-}
-
-/// Base abstraction over drawing
-///
-/// Unlike [`DrawHandle`], coordinates are specified via a [`Vec2`] and
-/// rectangular regions via [`Quad`]. The same coordinate system is used, hence
-/// type conversions can be performed with `from` and `into`. Integral
-/// coordinates align with pixels, non-integral coordinates may also be used.
-///
-/// All draw operations may be batched; when drawn primitives overlap, the
-/// results are only loosely defined. Draw operations involving transparency
-/// should be ordered after those without transparency.
-///
-/// Draw operations take place over multiple render passes, identified by a
-/// handle of type [`Pass`]. In general the user only needs to pass this value
-/// into methods as required. [`Draw::add_clip_region`] creates a new [`Pass`].
-pub trait Draw: Any {
-    /// Cast self to [`std::any::Any`] reference.
-    ///
-    /// A downcast on this value may be used to obtain a reference to a
-    /// shell-specific API.
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-
-    /// Add a clip region
-    ///
-    /// Clip regions are cleared each frame and so must be recreated on demand.
-    fn add_clip_region(&mut self, pass: Pass, rect: Rect, class: RegionClass) -> Pass;
-
-    /// Get drawable rect for a clip region
-    ///
-    /// (This may be smaller than the rect passed to [`Draw::add_clip_region`].)
-    fn get_clip_rect(&self, pass: Pass) -> Rect;
-
-    /// Draw a rectangle of uniform colour
-    fn rect(&mut self, pass: Pass, rect: Quad, col: Rgba);
-
-    /// Draw a frame of uniform colour
-    ///
-    /// The frame is defined by the area inside `outer` and not inside `inner`.
-    fn frame(&mut self, pass: Pass, outer: Quad, inner: Quad, col: Rgba);
-}
-
-/// Drawing commands for rounded shapes
-///
-/// This trait is an extension over [`Draw`] providing rounded shapes.
-///
-/// The primitives provided by this trait are partially transparent.
-/// If the implementation buffers draw commands, it should draw these
-/// primitives after solid primitives.
-pub trait DrawRounded: Draw {
-    /// Draw a line with rounded ends and uniform colour
-    ///
-    /// This command draws a line segment between the points `p1` and `p2`.
-    /// Pixels within the given `radius` of this segment are drawn, resulting
-    /// in rounded ends and width `2 * radius`.
-    ///
-    /// Note that for rectangular, axis-aligned lines, [`Draw::rect`] should be
-    /// preferred.
-    fn rounded_line(&mut self, pass: Pass, p1: Vec2, p2: Vec2, radius: f32, col: Rgba);
-
-    /// Draw a circle or oval of uniform colour
-    ///
-    /// More generally, this shape is an axis-aligned oval which may be hollow.
-    ///
-    /// The `inner_radius` parameter gives the inner radius relative to the
-    /// outer radius: a value of `0.0` will result in the whole shape being
-    /// painted, while `1.0` will result in a zero-width line on the outer edge.
-    fn circle(&mut self, pass: Pass, rect: Quad, inner_radius: f32, col: Rgba);
-
-    /// Draw a frame with rounded corners and uniform colour
-    ///
-    /// All drawing occurs within the `outer` rect and outside of the `inner`
-    /// rect. Corners are circular (or more generally, ovular), centered on the
-    /// inner corners.
-    ///
-    /// The `inner_radius` parameter gives the inner radius relative to the
-    /// outer radius: a value of `0.0` will result in the whole shape being
-    /// painted, while `1.0` will result in a zero-width line on the outer edge.
-    /// When `inner_radius > 0`, the frame will be visually thinner than the
-    /// allocated area.
-    fn rounded_frame(&mut self, pass: Pass, outer: Quad, inner: Quad, inner_radius: f32, col: Rgba);
-}
-
-/// Drawing commands for shaded shapes
-///
-/// This trait is an extension over [`Draw`] providing solid shaded shapes.
-///
-/// Some drawing primitives (the "round" ones) are partially transparent.
-/// If the implementation buffers draw commands, it should draw these
-/// primitives after solid primitives.
-///
-/// These are parameterised via a pair of normals, `(inner, outer)`. These may
-/// have values from the closed range `[-1, 1]`, where -1 points inwards,
-/// 0 is perpendicular to the screen towards the viewer, and 1 points outwards.
-pub trait DrawShaded: Draw {
-    /// Add a shaded square to the draw buffer
-    fn shaded_square(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Rgba);
-
-    /// Add a shaded circle to the draw buffer
-    fn shaded_circle(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Rgba);
-
-    /// Add a square shaded frame to the draw buffer.
-    fn shaded_square_frame(
-        &mut self,
-        pass: Pass,
-        outer: Quad,
-        inner: Quad,
-        norm: (f32, f32),
-        outer_col: Rgba,
-        inner_col: Rgba,
-    );
-
-    /// Add a rounded shaded frame to the draw buffer.
-    fn shaded_round_frame(
-        &mut self,
-        pass: Pass,
-        outer: Quad,
-        inner: Quad,
-        norm: (f32, f32),
-        col: Rgba,
-    );
 }

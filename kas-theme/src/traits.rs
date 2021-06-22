@@ -5,7 +5,7 @@
 
 //! Theme traits
 
-use kas::draw::{color, DrawHandle, DrawShared, DrawableShared, SizeHandle, ThemeApi};
+use kas::draw::{color, Draw, DrawHandle, DrawShared, DrawableShared, SizeHandle, ThemeApi};
 use kas::TkAction;
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
@@ -99,21 +99,23 @@ pub trait Theme<DS: DrawableShared>: ThemeApi {
     /// [`Theme::new_window`] on `self`, and the `draw` reference is guaranteed
     /// to be identical to the one passed to [`Theme::new_window`].
     ///
-    /// This method is marked *unsafe* since a lifetime restriction is required
-    /// on the return value which can only be expressed with the unstable
-    /// feature Generic Associated Types (rust#44265).
+    /// Without the "gat" feature (Generic Associated Types; rust#44265), the
+    /// caller must unsafely extend the lifetime of references to `'static`.
+    /// These references shall not escape the lifetime of the return value.
+    /// The method is marked `unsafe` since sometimes it must extend the
+    /// lifetime of internal state.
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        shared: &mut DrawShared<DS>,
-        draw: &mut DS::Draw,
-        window: &mut Self::Window,
+        shared: &'static mut DrawShared<DS>,
+        draw: Draw<'static, DS::Draw>,
+        window: &'static mut Self::Window,
     ) -> Self::DrawHandle;
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
         shared: &'a mut DrawShared<DS>,
-        draw: &'a mut DS::Draw,
+        draw: Draw<'a, DS::Draw>,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a>;
 
@@ -177,9 +179,9 @@ impl<T: Theme<DS>, DS: DrawableShared> Theme<DS> for Box<T> {
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        shared: &mut DrawShared<DS>,
-        draw: &mut DS::Draw,
-        window: &mut Self::Window,
+        shared: &'static mut DrawShared<DS>,
+        draw: Draw<'static, DS::Draw>,
+        window: &'static mut Self::Window,
     ) -> Self::DrawHandle {
         self.deref().draw_handle(shared, draw, window)
     }
@@ -187,7 +189,7 @@ impl<T: Theme<DS>, DS: DrawableShared> Theme<DS> for Box<T> {
     fn draw_handle<'a>(
         &'a self,
         shared: &'a mut DrawShared<DS>,
-        draw: &'a mut DS::Draw,
+        draw: Draw<'a, DS::Draw>,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
         self.deref().draw_handle(shared, draw, window)

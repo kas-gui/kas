@@ -5,6 +5,7 @@
 
 //! Shaded theme
 
+use std::any::Any;
 use std::f32;
 use std::ops::Range;
 
@@ -61,16 +62,15 @@ const DIMS: DimensionsParams = DimensionsParams {
 
 pub struct DrawHandle<'a, DS: DrawableShared> {
     shared: &'a mut DrawShared<DS>,
-    draw: &'a mut DS::Draw,
+    draw: Draw<'a, DS::Draw>,
     window: &'a mut DimensionsWindow,
     cols: &'a ColorsLinear,
     offset: Offset,
-    pass: Pass,
 }
 
 impl<DS: DrawableShared> Theme<DS> for ShadedTheme
 where
-    DS::Draw: DrawRounded + DrawShaded,
+    DS::Draw: DrawableRounded + DrawableShaded,
 {
     type Config = Config;
     type Window = DimensionsWindow;
@@ -102,31 +102,25 @@ where
     }
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle<'a>(
-        &'a self,
-        shared: &'a mut DrawShared<DS>,
-        draw: &'a mut DS::Draw,
-        window: &'a mut Self::Window,
+    unsafe fn draw_handle(
+        &self,
+        shared: &'static mut DrawShared<DS>,
+        draw: Draw<'static, DS::Draw>,
+        window: &'static mut Self::Window,
     ) -> Self::DrawHandle {
-        // We extend lifetimes (unsafe) due to the lack of associated type generics.
-        unsafe fn extend_lifetime<'b, T>(r: &'b mut T) -> &'static mut T {
-            std::mem::transmute::<&'b mut T, &'static mut T>(r)
-        }
-
         DrawHandle {
-            shared: extend_lifetime(shared),
-            draw: extend_lifetime(draw),
-            window: extend_lifetime(window),
-            cols: std::mem::transmute::<&'a ColorsLinear, &'static ColorsLinear>(&self.flat.cols),
+            shared,
+            draw,
+            window,
+            cols: std::mem::transmute::<&ColorsLinear, &'static ColorsLinear>(&self.flat.cols),
             offset: Offset::ZERO,
-            pass: Pass::new(0),
         }
     }
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
         shared: &'a mut DrawShared<DS>,
-        draw: &'a mut DS::Draw,
+        draw: Draw<'a, DS::Draw>,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
         DrawHandle {
@@ -135,7 +129,6 @@ where
             window,
             cols: &self.flat.cols,
             offset: Offset::ZERO,
-            pass: Pass::new(0),
         }
     }
 
@@ -160,7 +153,7 @@ impl ThemeApi for ShadedTheme {
 
 impl<'a, DS: DrawableShared> DrawHandle<'a, DS>
 where
-    DS::Draw: DrawRounded + DrawShaded,
+    DS::Draw: DrawableRounded + DrawableShaded,
 {
     // Type-cast to flat_theme's DrawHandle. Should be equivalent to transmute.
     fn as_flat<'b, 'c>(&'b mut self) -> super::flat_theme::DrawHandle<'c, DS>
@@ -170,11 +163,10 @@ where
     {
         super::flat_theme::DrawHandle {
             shared: *&mut self.shared,
-            draw: *&mut self.draw,
+            draw: self.draw.reborrow(),
             window: *&mut self.window,
             cols: *&self.cols,
             offset: self.offset,
-            pass: self.pass,
         }
     }
 
@@ -190,15 +182,15 @@ where
 
         let col = self.cols.background;
         self.draw
-            .shaded_square_frame(self.pass, outer, inner, (-0.6, 0.0), col, col);
+            .shaded_square_frame(outer, inner, (-0.6, 0.0), col, col);
 
         if let Some(col) = nav_col {
             outer = inner;
             inner = outer.shrink(self.window.dims.inner_margin as f32);
-            self.draw.frame(self.pass, outer, inner, col);
+            self.draw.frame(outer, inner, col);
         }
 
-        self.draw.rect(self.pass, inner, bg_col);
+        self.draw.rect(inner, bg_col);
         inner
     }
 
@@ -208,19 +200,18 @@ where
         let thickness = outer.size().min_comp() / 2.0;
         let inner = outer.shrink(thickness);
         let col = self.cols.scrollbar_state(state);
-        self.draw
-            .shaded_round_frame(self.pass, outer, inner, (0.0, 0.6), col);
+        self.draw.shaded_round_frame(outer, inner, (0.0, 0.6), col);
 
         if let Some(col) = self.cols.nav_region(state) {
             let outer = outer.shrink(thickness / 4.0);
-            self.draw.rounded_frame(self.pass, outer, inner, 0.6, col);
+            self.draw.rounded_frame(outer, inner, 0.6, col);
         }
     }
 }
 
 impl<'a, DS: DrawableShared> draw::DrawHandle for DrawHandle<'a, DS>
 where
-    DS::Draw: DrawRounded + DrawShaded,
+    DS::Draw: DrawableRounded + DrawableShaded,
 {
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         unsafe {
@@ -229,11 +220,15 @@ where
         }
     }
 
-    fn draw_device(&mut self) -> (kas::draw::Pass, Offset, &mut dyn kas::draw::Draw) {
-        (self.pass, self.offset, self.draw)
+    fn draw_device<'b>(&'b mut self) -> (Offset, Draw<'b, dyn Drawable>, &mut dyn Any) {
+        (
+            self.offset,
+            self.draw.upcast_base(),
+            self.shared.draw.as_any_mut(),
+        )
     }
 
-    fn add_clip_region(
+    fn with_clip_region(
         &mut self,
         rect: Rect,
         offset: Offset,
@@ -245,31 +240,29 @@ where
             RegionClass::ScrollRegion => inner_rect,
             RegionClass::Overlay => inner_rect.expand(self.window.dims.frame),
         };
-        let pass = self.draw.add_clip_region(self.pass, outer_rect, class);
+        let mut draw = self.draw.new_clip_region(outer_rect, class);
 
         if class == RegionClass::Overlay {
             let outer = Quad::from(outer_rect);
             let inner = Quad::from(inner_rect);
             let norm = (0.0, 0.0);
-            self.draw
-                .shaded_square_frame(pass, outer, inner, norm, Rgba::TRANSPARENT, Rgba::BLACK);
-            self.draw.rect(pass, inner, self.cols.background);
+            draw.shaded_square_frame(outer, inner, norm, Rgba::TRANSPARENT, Rgba::BLACK);
+            draw.rect(inner, self.cols.background);
         }
 
         let mut handle = DrawHandle {
             shared: self.shared,
-            draw: self.draw,
+            draw,
             window: self.window,
             cols: self.cols,
             offset: self.offset - offset,
-            pass,
         };
         f(&mut handle);
     }
 
     fn target_rect(&self) -> Rect {
         // Translate to local coordinates
-        self.draw.get_clip_rect(self.pass) - self.offset
+        self.draw.clip_rect() - self.offset
     }
 
     fn outer_frame(&mut self, rect: Rect) {
@@ -277,8 +270,7 @@ where
         let inner = outer.shrink(self.window.dims.frame as f32);
         let norm = (0.7, -0.7);
         let col = self.cols.background;
-        self.draw
-            .shaded_round_frame(self.pass, outer, inner, norm, col);
+        self.draw.shaded_round_frame(outer, inner, norm, col);
     }
 
     fn separator(&mut self, rect: Rect) {
@@ -286,8 +278,7 @@ where
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
         let norm = (0.0, -0.7);
         let col = self.cols.background;
-        self.draw
-            .shaded_round_frame(self.pass, outer, inner, norm, col);
+        self.draw.shaded_round_frame(outer, inner, norm, col);
     }
 
     fn nav_frame(&mut self, rect: Rect, state: InputState) {
@@ -333,13 +324,12 @@ where
         let inner = outer.shrink(self.window.dims.button_frame as f32);
         let col = self.cols.button_state(state);
 
-        self.draw
-            .shaded_round_frame(self.pass, outer, inner, (0.0, 0.6), col);
-        self.draw.rect(self.pass, inner, col);
+        self.draw.shaded_round_frame(outer, inner, (0.0, 0.6), col);
+        self.draw.rect(inner, col);
 
         if let Some(col) = self.cols.nav_region(state) {
             let outer = outer.shrink(self.window.dims.inner_margin as f32);
-            self.draw.rounded_frame(self.pass, outer, inner, 0.6, col);
+            self.draw.rounded_frame(outer, inner, 0.6, col);
         }
     }
 
@@ -355,7 +345,7 @@ where
         let inner = self.draw_edit_box(rect + self.offset, bg_col, nav_col);
 
         if let Some(col) = self.cols.check_mark_state(state, checked) {
-            self.draw.shaded_square(self.pass, inner, (0.0, 0.4), col);
+            self.draw.shaded_square(inner, (0.0, 0.4), col);
         }
     }
 
@@ -366,7 +356,7 @@ where
         let inner = self.draw_edit_box(rect + self.offset, bg_col, nav_col);
 
         if let Some(col) = self.cols.check_mark_state(state, checked) {
-            self.draw.shaded_circle(self.pass, inner, (0.0, 1.0), col);
+            self.draw.shaded_circle(inner, (0.0, 1.0), col);
         }
     }
 
@@ -376,8 +366,7 @@ where
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
         let norm = (0.0, -0.7);
         let col = self.cols.background;
-        self.draw
-            .shaded_round_frame(self.pass, outer, inner, norm, col);
+        self.draw.shaded_round_frame(outer, inner, norm, col);
 
         // handle
         self.draw_handle(h_rect, state);
@@ -393,8 +382,7 @@ where
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
         let norm = (0.0, -0.7);
         let col = self.cols.background;
-        self.draw
-            .shaded_round_frame(self.pass, outer, inner, norm, col);
+        self.draw.shaded_round_frame(outer, inner, norm, col);
 
         // handle
         self.draw_handle(h_rect, state);
@@ -405,8 +393,7 @@ where
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
         let norm = (0.0, -0.7);
         let col = self.cols.frame;
-        self.draw
-            .shaded_round_frame(self.pass, outer, inner, norm, col);
+        self.draw.shaded_round_frame(outer, inner, norm, col);
 
         if dir.is_horizontal() {
             outer.b.0 = outer.a.0 + value * (outer.b.0 - outer.a.0);
@@ -416,8 +403,7 @@ where
         let thickness = outer.size().min_comp() / 2.0;
         let inner = outer.shrink(thickness);
         let col = self.cols.button;
-        self.draw
-            .shaded_round_frame(self.pass, outer, inner, (0.0, 0.6), col);
+        self.draw.shaded_round_frame(outer, inner, (0.0, 0.6), col);
     }
 
     fn image(&mut self, id: ImageId, rect: Rect) {

@@ -65,9 +65,9 @@ impl Layout for ColourSquare {
         SizeRules::fixed_scaled(100.0, 10.0, factor)
     }
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
-        let (pass, offset, draw) = draw_handle.draw_device();
+        let (offset, mut draw, _shared) = draw_handle.draw_device();
         let col = *self.colour.lock().unwrap();
-        draw.rect(pass, (self.rect() + offset).into(), col);
+        draw.rect((self.rect() + offset).into(), col);
     }
 }
 impl Handler for ColourSquare {

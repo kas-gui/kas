@@ -5,12 +5,13 @@
 
 //! "Handle" types used by themes
 
+use std::any::Any;
 use std::convert::AsRef;
 use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 use std::path::Path;
 
 use kas::dir::Direction;
-use kas::draw::{Draw, ImageError, ImageId, Pass};
+use kas::draw::{Draw, Drawable, ImageError, ImageId};
 use kas::geom::{Coord, Offset, Rect, Size};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules};
 use kas::text::{AccelString, Text, TextApi, TextDisplay};
@@ -276,26 +277,21 @@ pub trait DrawHandle {
 
     /// Access the low-level draw device
     ///
-    /// Returns `(pass, offset, draw)`.
+    /// Returns `(offset, draw, shared)`.
     ///
-    /// One may use [`Draw::as_any_mut`] to downcast the `draw` object when necessary.
+    /// All local coordinates must be adjusted by `offset` (i.e. `new_pos = pos + offset`).
     ///
-    /// **Important**: all positions ([`Rect`] and [`Coord`]) must be adjusted
-    /// (as below) by the `given` offset before being passed to the methods of
-    /// [`Draw`] and its extension traits. This offset is used by
-    /// [`kas::widget::ScrollRegion`] to adjust its contents.
-    /// ```
-    /// # use kas::geom::*;
-    /// # let offset = Offset::ZERO;
-    /// # let rect = Rect::new(Coord::ZERO, Size::ZERO);
-    /// let rect = rect + offset;
-    /// ```
-    fn draw_device(&mut self) -> (Pass, Offset, &mut dyn Draw);
+    /// The `draw` object is over the [`Drawable`] interface which exposes only
+    /// minimal functionality. [`Draw::downcast`] will likely be of use.
+    ///
+    /// The `shared` reference has type `dyn Any`; one must downcast to the
+    /// shell's type (e.g. `kas_wgpu::draw::DrawPipe<()>`).
+    fn draw_device<'a>(&'a mut self) -> (Offset, Draw<'a, dyn Drawable>, &'a mut dyn Any);
 
     /// Add a clip region
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn add_clip_region(
+    fn with_clip_region(
         &mut self,
         rect: Rect,
         offset: Offset,
@@ -440,7 +436,7 @@ pub trait DrawHandleExt: DrawHandle {
     /// All content drawn by the new region is clipped to the intersection of
     /// `rect` and the current target ([`DrawHandle::target_rect`]).
     fn clip_region(&mut self, rect: Rect, offset: Offset, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
-        self.add_clip_region(rect, offset, RegionClass::ScrollRegion, f);
+        self.with_clip_region(rect, offset, RegionClass::ScrollRegion, f);
     }
 
     /// Draw to an overlay (e.g. for pop-up menus)
@@ -454,7 +450,7 @@ pub trait DrawHandleExt: DrawHandle {
     /// beyond the bounds of the window, it will be silently reduced to that of
     /// the window.
     fn overlay(&mut self, rect: Rect, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
-        self.add_clip_region(rect, Offset::ZERO, RegionClass::Overlay, f);
+        self.with_clip_region(rect, Offset::ZERO, RegionClass::Overlay, f);
     }
 
     /// Draw some text using the standard font, with a subset selected
@@ -650,17 +646,17 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         self.deref_mut().size_handle_dyn(f)
     }
-    fn draw_device(&mut self) -> (Pass, Offset, &mut dyn Draw) {
+    fn draw_device<'a>(&'a mut self) -> (Offset, Draw<'a, dyn Drawable>, &'a mut dyn Any) {
         self.deref_mut().draw_device()
     }
-    fn add_clip_region(
+    fn with_clip_region(
         &mut self,
         rect: Rect,
         offset: Offset,
         class: RegionClass,
         f: &mut dyn FnMut(&mut dyn DrawHandle),
     ) {
-        self.deref_mut().add_clip_region(rect, offset, class, f);
+        self.deref_mut().with_clip_region(rect, offset, class, f);
     }
     fn target_rect(&self) -> Rect {
         self.deref().target_rect()
@@ -736,17 +732,17 @@ where
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         self.deref_mut().size_handle_dyn(f)
     }
-    fn draw_device(&mut self) -> (Pass, Offset, &mut dyn Draw) {
+    fn draw_device<'b>(&'b mut self) -> (Offset, Draw<'b, dyn Drawable>, &'b mut dyn Any) {
         self.deref_mut().draw_device()
     }
-    fn add_clip_region(
+    fn with_clip_region(
         &mut self,
         rect: Rect,
         offset: Offset,
         class: RegionClass,
         f: &mut dyn FnMut(&mut dyn DrawHandle),
     ) {
-        self.deref_mut().add_clip_region(rect, offset, class, f);
+        self.deref_mut().with_clip_region(rect, offset, class, f);
     }
     fn target_rect(&self) -> Rect {
         self.deref().target_rect()
