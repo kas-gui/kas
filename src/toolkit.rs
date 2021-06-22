@@ -136,7 +136,7 @@ pub trait ShellWindow {
     fn get_clipboard(&mut self) -> Option<String>;
 
     /// Attempt to set clipboard contents
-    fn set_clipboard<'c>(&mut self, content: String);
+    fn set_clipboard(&mut self, content: String);
 
     /// Adjust the theme
     ///

@@ -56,7 +56,7 @@ impl<W: Widget, D: Directional> WithLabel<W, D> {
 
     /// Get the accelerator keys
     pub fn keys(&self) -> &[event::VirtualKeyCode] {
-        &self.label.text().keys()
+        self.label.text().keys()
     }
 }
 

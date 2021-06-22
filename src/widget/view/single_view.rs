@@ -142,7 +142,7 @@ impl<T: SingleData + UpdatableAll<(), V::Msg> + 'static, V: Driver<T::Item>> Sen
             let r = self.child.send(mgr, id, event);
             match r {
                 Response::Msg(ref msg) => {
-                    if let Some(handle) = self.data.handle(&(), &msg) {
+                    if let Some(handle) = self.data.handle(&(), msg) {
                         mgr.trigger_update(handle, 0);
                     }
                 }

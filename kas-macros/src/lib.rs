@@ -219,7 +219,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             .params
             .into_pairs()
             .filter(|pair| match pair.value() {
-                &GenericParam::Type(TypeParam { ref ident, .. }) => !subs.contains_key(ident),
+                GenericParam::Type(TypeParam { ref ident, .. }) => !subs.contains_key(ident),
                 _ => true,
             })
             .collect();
@@ -429,7 +429,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
                 for item in body {
                     match item {
-                        &syn::ImplItem::Type(syn::ImplItemType {
+                        syn::ImplItem::Type(syn::ImplItemType {
                             ref ident, ref ty, ..
                         }) if *ident == msg_ident => {
                             msg = Some(ty.clone());
@@ -508,7 +508,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                                 return quote! {}.into(); // exit after emitting error
                             }
                         } else {
-                            name_buf.push_str("R");
+                            name_buf.push('R');
                             let tyr = Ident::new(&name_buf, Span::call_site());
                             handler
                                 .generics

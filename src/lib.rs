@@ -23,6 +23,7 @@
 //! -   [Examples](https://github.com/kas-gui/kas/tree/master/kas-wgpu/examples)
 //! -   [Discuss](https://github.com/kas-gui/kas/discussions)
 
+#![allow(clippy::or_fun_call, clippy::never_loop)]
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![cfg_attr(feature = "gat", feature(generic_associated_types))]
 #![cfg_attr(feature = "min_spec", feature(min_specialization))]

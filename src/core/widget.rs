@@ -235,12 +235,10 @@ pub trait WidgetChildren: WidgetCore {
     fn find_leaf(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
         if let Some(child) = self.find_child(id) {
             self.get_child(child).unwrap().find_leaf(id)
+        } else if id == self.id() {
+            return Some(self.as_widget());
         } else {
-            if id == self.id() {
-                return Some(self.as_widget());
-            } else {
-                return None;
-            }
+            None
         }
     }
 
@@ -251,12 +249,10 @@ pub trait WidgetChildren: WidgetCore {
     fn find_leaf_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
         if let Some(child) = self.find_child(id) {
             self.get_child_mut(child).unwrap().find_leaf_mut(id)
+        } else if id == self.id() {
+            return Some(self.as_widget_mut());
         } else {
-            if id == self.id() {
-                return Some(self.as_widget_mut());
-            } else {
-                return None;
-            }
+            None
         }
     }
 
@@ -342,7 +338,7 @@ pub trait WidgetConfig: Layout {
     /// In most cases one should not override the default implementation of this
     /// method but instead use [`WidgetConfig::configure`]; the exception is
     /// widgets with pop-ups.
-    fn configure_recurse<'a, 'b>(&mut self, mut cmgr: ConfigureManager<'a, 'b>) {
+    fn configure_recurse(&mut self, mut cmgr: ConfigureManager) {
         self.record_first_id(cmgr.peek_next());
         for i in 0..self.num_children() {
             if let Some(w) = self.get_child_mut(i) {

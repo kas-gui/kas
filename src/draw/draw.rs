@@ -39,7 +39,7 @@ pub struct Draw<'a, D: Any + ?Sized> {
 impl<'a, D: Drawable + ?Sized> Draw<'a, D> {
     /// Construct (this is only called by the shell)
     pub fn new(draw: &'a mut D, pass: Pass) -> Self {
-        Draw { draw, pass }
+        Draw { pass, draw }
     }
 }
 
@@ -55,7 +55,7 @@ impl<'a> Draw<'a, dyn Any> {
         D: Drawable,
     {
         let pass = self.pass;
-        self.draw.downcast_mut().map(|draw| Draw { draw, pass })
+        self.draw.downcast_mut().map(|draw| Draw { pass, draw })
     }
 }
 
@@ -74,7 +74,7 @@ impl<'a> Draw<'a, dyn Drawable> {
         self.draw
             .as_any_mut()
             .downcast_mut()
-            .map(|draw| Draw { draw, pass })
+            .map(|draw| Draw { pass, draw })
     }
 }
 
@@ -110,7 +110,7 @@ impl<'a, D: Drawable + ?Sized> Draw<'a, D> {
     ///
     /// A clip region is a draw target within the same window with a new scissor
     /// rect (i.e. draw operations will be clipped to this `rect`).
-    pub fn new_clip_region<'b>(&'b mut self, rect: Rect, class: RegionClass) -> Draw<'b, D> {
+    pub fn new_clip_region(&mut self, rect: Rect, class: RegionClass) -> Draw<D> {
         let pass = self.draw.add_clip_region(self.pass, rect, class);
         Draw {
             draw: &mut *self.draw,
