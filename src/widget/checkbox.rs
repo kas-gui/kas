@@ -137,7 +137,6 @@ impl<M: 'static> event::Handler for CheckBoxBare<M> {
 }
 
 /// A checkable box with optional label
-// TODO: use a generic wrapper for CheckBox and RadioBox?
 #[derive(Clone, Default, Widget)]
 #[layout(row, area=checkbox)]
 #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
