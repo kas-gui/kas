@@ -8,7 +8,6 @@
 //! Widget size and appearance can be modified through themes.
 
 use linear_map::LinearMap;
-use std::any::Any;
 use std::f32;
 use std::ops::Range;
 use std::rc::Rc;
@@ -248,12 +247,8 @@ where
         }
     }
 
-    fn draw_device<'b>(&'b mut self) -> (Offset, Draw<'b, dyn Drawable>, &mut dyn Any) {
-        (
-            self.offset,
-            self.draw.upcast_base(),
-            self.shared.draw.as_any_mut(),
-        )
+    fn draw_device<'b>(&'b mut self) -> (Offset, Draw<'b, dyn Drawable>, &mut dyn DrawSharedT) {
+        (self.offset, self.draw.upcast_base(), self.shared)
     }
 
     fn with_clip_region(

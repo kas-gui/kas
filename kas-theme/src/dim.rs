@@ -14,7 +14,7 @@ use std::path::Path;
 use std::rc::Rc;
 
 use kas::cast::{Cast, CastFloat, ConvFloat};
-use kas::draw::{self, DrawShared, DrawableShared, ImageError, ImageId, TextClass};
+use kas::draw::{self, DrawShared, DrawSharedT, DrawableShared, ImageError, ImageId, TextClass};
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, Stretch};
 use kas::text::{fonts::FontId, TextApi, TextApiExt};
