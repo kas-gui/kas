@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use std::u16;
 
 use super::*;
-use crate::draw::{SizeHandle, ThemeApi};
+use crate::draw::{DrawSharedT, SizeHandle, ThemeApi};
 use crate::geom::Coord;
 use crate::updatable::Updatable;
 #[allow(unused)]
@@ -335,6 +335,13 @@ impl<'a> Manager<'a> {
             result = Some(f(size_handle));
         });
         result.expect("ShellWindow::size_handle impl failed to call function argument")
+    }
+
+    /// Access a [`DrawSharedT`]
+    ///
+    /// This can be accessed through [`Self::size_handle`]; this method is merely a shortcut.
+    pub fn draw_shared<F: FnMut(&mut dyn DrawSharedT) -> T, T>(&mut self, mut f: F) -> T {
+        self.size_handle(|sh| f(sh.draw_shared()))
     }
 }
 

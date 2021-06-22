@@ -10,11 +10,10 @@
 use linear_map::LinearMap;
 use std::any::Any;
 use std::f32;
-use std::path::Path;
 use std::rc::Rc;
 
 use kas::cast::{Cast, CastFloat, ConvFloat};
-use kas::draw::{self, DrawShared, DrawableShared, ImageError, ImageId, TextClass};
+use kas::draw::{self, DrawShared, DrawSharedT, DrawableShared, TextClass};
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, Stretch};
 use kas::text::{fonts::FontId, TextApi, TextApiExt};
@@ -156,6 +155,10 @@ impl<'a, DS: DrawableShared> SizeHandle<'a, DS> {
 }
 
 impl<'a, DS: DrawableShared> draw::SizeHandle for SizeHandle<'a, DS> {
+    fn draw_shared(&mut self) -> &mut dyn DrawSharedT {
+        self.shared
+    }
+
     fn scale_factor(&self) -> f32 {
         self.w.dims.scale_factor
     }
@@ -298,16 +301,5 @@ impl<'a, DS: DrawableShared> draw::SizeHandle for SizeHandle<'a, DS> {
 
     fn progress_bar(&self) -> Size {
         self.w.dims.progress_bar
-    }
-
-    fn image_from_path(&mut self, path: &Path) -> Result<ImageId, ImageError> {
-        self.shared.image_from_path(path)
-    }
-    fn remove_image(&mut self, id: ImageId) {
-        self.shared.remove_image(id);
-    }
-
-    fn image(&self, id: ImageId) -> Option<Size> {
-        self.shared.image_size(id)
     }
 }
