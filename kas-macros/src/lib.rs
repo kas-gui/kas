@@ -359,6 +359,52 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 }
             });
         }
+
+        if args.derive.has_str {
+            let wc = extended_where_clause(parse_quote! { #ty: kas::class::HasStr });
+            toks.append_all(quote! {
+                impl #impl_generics kas::class::HasStr for #name #ty_generics #wc {
+                    #[inline]
+                    fn get_str(&self) -> &str {
+                        self.#member.get_str()
+                    }
+
+                    #[inline]
+                    fn get_string(&self) -> String {
+                        self.#member.get_string()
+                    }
+                }
+            });
+        }
+
+        if args.derive.has_string {
+            let wc = extended_where_clause(parse_quote! { #ty: kas::class::HasString });
+            toks.append_all(quote! {
+                impl #impl_generics kas::class::HasString for #name #ty_generics #wc {
+                    #[inline]
+                    fn set_str(&mut self, text: &str) -> kas::TkAction {
+                        self.#member.set_str(text)
+                    }
+
+                    #[inline]
+                    fn set_string(&mut self, text: String) -> kas::TkAction {
+                        self.#member.set_string(text)
+                    }
+                }
+            });
+        }
+
+        if args.derive.set_accel {
+            let wc = extended_where_clause(parse_quote! { #ty: kas::class::SetAccel });
+            toks.append_all(quote! {
+                impl #impl_generics kas::class::SetAccel for #name #ty_generics #wc {
+                    #[inline]
+                    fn set_accel_string(&mut self, accel: AccelString) -> kas::TkAction {
+                        self.#member.set_accel_string(accel)
+                    }
+                }
+            });
+        }
     }
 
     toks.into()

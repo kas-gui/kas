@@ -327,6 +327,7 @@ pub type ScrollBarRegion<W> = ScrollBars<ScrollRegion<W>>;
 #[derive(Clone, Debug, Default, Widget)]
 #[widget(config=noauto)]
 #[handler(send=noauto, msg = <W as event::Handler>::Msg)]
+#[widget_derive(class_traits)]
 pub struct ScrollBars<W: Scrollable> {
     #[widget_core]
     core: CoreData,
@@ -336,6 +337,7 @@ pub struct ScrollBars<W: Scrollable> {
     horiz_bar: ScrollBar<kas::dir::Right>,
     #[widget]
     vert_bar: ScrollBar<kas::dir::Down>,
+    #[inner_widget]
     #[widget]
     inner: W,
 }

@@ -244,6 +244,7 @@ impl ScrollComponent {
 #[derive(Clone, Debug, Default, Widget)]
 #[widget(config=noauto)]
 #[handler(send=noauto, msg = <W as event::Handler>::Msg)]
+#[widget_derive(class_traits)]
 pub struct ScrollRegion<W: Widget> {
     #[widget_core]
     core: CoreData,
@@ -251,6 +252,7 @@ pub struct ScrollRegion<W: Widget> {
     offset: Offset,
     frame_size: Size,
     scroll: ScrollComponent,
+    #[inner_widget]
     #[widget]
     inner: W,
 }
