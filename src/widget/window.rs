@@ -46,7 +46,7 @@ impl<W: Widget + Clone> Clone for Window<W> {
     fn clone(&self) -> Self {
         Window {
             core: self.core.clone(),
-            restrict_dimensions: self.restrict_dimensions.clone(),
+            restrict_dimensions: self.restrict_dimensions,
             title: self.title.clone(),
             w: self.w.clone(),
             popups: Default::default(), // these are temporary; don't clone

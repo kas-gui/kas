@@ -375,7 +375,7 @@ impl<D: Directional, W: Widget> List<D, W> {
     }
 
     /// Iterate over childern
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a W> {
+    pub fn iter(&self) -> impl Iterator<Item = &W> {
         ListIter {
             list: self,
             index: 0,

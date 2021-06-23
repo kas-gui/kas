@@ -118,7 +118,7 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
         if self.widgets.len() == 0 {
             return SizeRules::EMPTY;
         }
-        assert!(self.handles.len() + 1 == self.widgets.len());
+        assert_eq!(self.handles.len() + 1, self.widgets.len());
 
         let handle_size = size_handle.separator().extract(axis);
 
@@ -267,7 +267,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// Construct a new instance with explicit direction
     pub fn new_with_direction(direction: D, widgets: Vec<W>) -> Self {
         let mut handles = Vec::new();
-        handles.resize_with(widgets.len().saturating_sub(1), || DragHandle::new());
+        handles.resize_with(widgets.len().saturating_sub(1), DragHandle::new);
         Splitter {
             first_id: Default::default(),
             core: Default::default(),
@@ -422,7 +422,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         let len = self.widgets.len();
         self.widgets.extend(iter);
         self.handles
-            .resize_with(self.widgets.len().saturating_sub(1), || DragHandle::new());
+            .resize_with(self.widgets.len().saturating_sub(1), DragHandle::new);
         match len == self.widgets.len() {
             true => TkAction::empty(),
             false => TkAction::RECONFIGURE,
@@ -445,7 +445,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
             }
         }
         self.handles
-            .resize_with(self.widgets.len().saturating_sub(1), || DragHandle::new());
+            .resize_with(self.widgets.len().saturating_sub(1), DragHandle::new);
         TkAction::RECONFIGURE
     }
 
@@ -459,7 +459,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         let len = self.widgets.len();
         self.widgets.retain(f);
         self.handles
-            .resize_with(self.widgets.len().saturating_sub(1), || DragHandle::new());
+            .resize_with(self.widgets.len().saturating_sub(1), DragHandle::new);
         match len == self.widgets.len() {
             true => TkAction::empty(),
             false => TkAction::RECONFIGURE,

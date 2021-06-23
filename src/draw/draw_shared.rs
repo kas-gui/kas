@@ -186,9 +186,9 @@ impl<DS: DrawableShared> DrawSharedT for DrawShared<DS> {
     }
 
     fn draw_image(&self, mut target: Draw<dyn Drawable>, id: ImageId, rect: Quad) {
-        target
-            .downcast()
-            .map(|target| self.draw.draw_image(target, id, rect));
+        if let Some(target) = target.downcast() {
+            self.draw.draw_image(target, id, rect)
+        };
     }
 
     fn draw_text(
@@ -198,9 +198,9 @@ impl<DS: DrawableShared> DrawSharedT for DrawShared<DS> {
         text: &TextDisplay,
         col: Rgba,
     ) {
-        target
-            .downcast()
-            .map(|target| self.draw.draw_text(target, pos, text, col));
+        if let Some(target) = target.downcast() {
+            self.draw.draw_text(target, pos, text, col)
+        };
     }
 
     fn draw_text_col_effects(
@@ -211,10 +211,10 @@ impl<DS: DrawableShared> DrawSharedT for DrawShared<DS> {
         col: Rgba,
         effects: &[Effect<()>],
     ) {
-        target.downcast().map(|target| {
+        if let Some(target) = target.downcast() {
             self.draw
                 .draw_text_col_effects(target, pos, text, col, effects)
-        });
+        };
     }
 
     fn draw_text_effects(
@@ -224,9 +224,9 @@ impl<DS: DrawableShared> DrawSharedT for DrawShared<DS> {
         text: &TextDisplay,
         effects: &[Effect<Rgba>],
     ) {
-        target
-            .downcast()
-            .map(|target| self.draw.draw_text_effects(target, pos, text, effects));
+        if let Some(target) = target.downcast() {
+            self.draw.draw_text_effects(target, pos, text, effects)
+        };
     }
 }
 

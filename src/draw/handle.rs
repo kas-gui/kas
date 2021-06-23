@@ -697,7 +697,7 @@ where
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         self.deref_mut().size_handle_dyn(f)
     }
-    fn draw_device<'b>(&'b mut self) -> (Offset, Draw<'b, dyn Drawable>, &'b mut dyn DrawSharedT) {
+    fn draw_device(&'_ mut self) -> (Offset, Draw<'_, dyn Drawable>, &'_ mut dyn DrawSharedT) {
         self.deref_mut().draw_device()
     }
     fn with_clip_region(

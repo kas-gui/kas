@@ -178,7 +178,7 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
         let b = self.range.1 - self.range.0;
         let max_offset = self.handle.max_offset();
         let mut frac = a.div_as_f64(b);
-        assert!(0.0 <= frac && frac <= 1.0);
+        assert!((0.0..=1.0).contains(&frac));
         if self.direction.is_reversed() {
             frac = 1.0 - frac;
         }

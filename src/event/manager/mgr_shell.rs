@@ -330,7 +330,7 @@ impl ManagerState {
 
             if grab.mode == GrabMode::PanOnly || grab.n == 1 {
                 alpha = DVec2(1.0, 0.0);
-                delta = DVec2::from(q1 - p1);
+                delta = q1 - p1;
             } else {
                 // We don't use more than two touches: information would be
                 // redundant (although it could be averaged).
@@ -364,7 +364,7 @@ impl ManagerState {
         // make mgr const, but merely pretend it is in the public API.
         mgr.read_only = true;
 
-        for item in mgr.state.pending.pop() {
+        while let Some(item) = mgr.state.pending.pop() {
             let (id, event) = match item {
                 Pending::LostCharFocus(id) => (id, Event::LostCharFocus),
                 Pending::LostSelFocus(id) => (id, Event::LostSelFocus),
@@ -445,7 +445,7 @@ impl<'a> Manager<'a> {
                         // Filter out control codes (Unicode 5.11). These may be
                         // generated from combinations such as Ctrl+C by some other
                         // layer. We use our own shortcut system instead.
-                        if c >= '\u{20}' && (c < '\u{7f}' || c > '\u{9f}') {
+                        if c >= '\u{20}' && !('\u{7f}'..='\u{9f}').contains(&c) {
                             let event = Event::ReceivedCharacter(c);
                             self.send_event(widget, id, event);
                         }
@@ -553,20 +553,17 @@ impl<'a> Manager<'a> {
                 }
 
                 if let Some(grab) = self.mouse_grab() {
-                    match grab.mode {
-                        GrabMode::Grab => {
-                            // Mouse grab active: send events there
-                            debug_assert_eq!(state, ElementState::Released);
-                            let source = PressSource::Mouse(button, grab.repetitions);
-                            let event = Event::PressEnd {
-                                source,
-                                end_id: self.state.hover,
-                                coord,
-                            };
-                            self.send_event(widget, grab.start_id, event);
-                        }
+                    if grab.mode == GrabMode::Grab {
+                        // Mouse grab active: send events there
+                        debug_assert_eq!(state, ElementState::Released);
+                        let source = PressSource::Mouse(button, grab.repetitions);
+                        let event = Event::PressEnd {
+                            source,
+                            end_id: self.state.hover,
+                            coord,
+                        };
+                        self.send_event(widget, grab.start_id, event);
                         // Pan events do not receive Start/End notifications
-                        _ => (),
                     };
 
                     if state == ElementState::Released {

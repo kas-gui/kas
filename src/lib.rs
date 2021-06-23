@@ -23,7 +23,13 @@
 //! -   [Examples](https://github.com/kas-gui/kas/tree/master/kas-wgpu/examples)
 //! -   [Discuss](https://github.com/kas-gui/kas/discussions)
 
-#![allow(clippy::or_fun_call, clippy::never_loop)]
+// Use ``never_loop`` until: https://github.com/rust-lang/rust-clippy/issues/7397 is fixed
+#![allow(
+    clippy::or_fun_call,
+    clippy::never_loop,
+    clippy::module_inception,
+    clippy::len_zero
+)]
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![cfg_attr(feature = "gat", feature(generic_associated_types))]
 #![cfg_attr(feature = "min_spec", feature(min_specialization))]

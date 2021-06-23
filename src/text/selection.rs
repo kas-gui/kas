@@ -102,8 +102,7 @@ impl SelectionHelper {
         if repeats <= 2 {
             end = string[range.start..]
                 .char_indices()
-                .skip(1)
-                .next()
+                .nth(1)
                 .map(|(i, _)| range.start + i)
                 .unwrap_or(string.len());
             start = string[0..end]

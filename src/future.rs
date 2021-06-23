@@ -47,6 +47,6 @@ impl<T: 'static> Future<T> {
                 cell.into_inner()
                     .unwrap_or_else(|| panic!("Future finished without setting a value!"))
             })
-            .map_err(|target| Future(target))
+            .map_err(Future)
     }
 }

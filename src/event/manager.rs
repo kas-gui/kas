@@ -209,7 +209,7 @@ impl ManagerState {
             if grab.pan_grab.0 == g.0 && grab.pan_grab.1 > g.1 {
                 grab.pan_grab.1 -= 1;
                 if usize::from(grab.pan_grab.1) == MAX_PAN_GRABS - 1 {
-                    let v = grab.coord.into();
+                    let v = grab.coord;
                     self.pan_grab[usize::from(g.0)].coords[usize::from(grab.pan_grab.1)] = (v, v);
                 }
             }
@@ -293,12 +293,10 @@ impl<'a> Manager<'a> {
                 if let Some(cmd) = opt_command {
                     let event = Event::Command(cmd, shift);
                     trace!("Send to {}: {:?}", id, event);
-                    match widget.send(self, id, event) {
-                        Response::Unhandled => match cmd {
-                            Command::Escape => self.set_char_focus(None),
-                            _ => (),
-                        },
-                        _ => (),
+                    if let Response::Unhandled = widget.send(self, id, event) {
+                        if cmd == Command::Escape {
+                            self.set_char_focus(None)
+                        }
                     }
                 }
                 return;
