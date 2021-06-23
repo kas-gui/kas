@@ -327,6 +327,29 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     }
 
     if let Some((member, ty)) = args.inner {
+        if args.derive.deref {
+            toks.append_all(quote! {
+                impl #impl_generics std::ops::Deref for #name #ty_generics #where_clause {
+                    type Target = #ty;
+                    #[inline]
+                    fn deref(&self) -> &Self::Target {
+                        &self.#member
+                    }
+                }
+            });
+        }
+
+        if args.derive.deref_mut {
+            toks.append_all(quote! {
+                impl #impl_generics std::ops::DerefMut for #name #ty_generics #where_clause {
+                    #[inline]
+                    fn deref_mut(&mut self) -> &mut Self::Target {
+                        &mut self.#member
+                    }
+                }
+            });
+        }
+
         let extended_where_clause = move |pred: WherePredicate| {
             if let Some(ref clause) = where_clause {
                 let mut clauses: WhereClause = (*clause).clone();

@@ -327,7 +327,7 @@ pub type ScrollBarRegion<W> = ScrollBars<ScrollRegion<W>>;
 #[derive(Clone, Debug, Default, Widget)]
 #[widget(config=noauto)]
 #[handler(send=noauto, msg = <W as event::Handler>::Msg)]
-#[widget_derive(class_traits)]
+#[widget_derive(class_traits, Deref, DerefMut)]
 pub struct ScrollBars<W: Scrollable> {
     #[widget_core]
     core: CoreData,
@@ -557,18 +557,5 @@ impl<W: Scrollable> event::SendEvent for ScrollBars<W> {
             debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
             self.handle(mgr, event)
         }
-    }
-}
-
-impl<W: Scrollable> std::ops::Deref for ScrollBars<W> {
-    type Target = W;
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl<W: Scrollable> std::ops::DerefMut for ScrollBars<W> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
     }
 }

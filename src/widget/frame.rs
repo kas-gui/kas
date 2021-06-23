@@ -13,7 +13,7 @@ use kas::{event, prelude::*};
 /// contents.
 #[derive(Clone, Debug, Default, Widget)]
 #[handler(msg = <W as Handler>::Msg)]
-#[widget_derive(class_traits)]
+#[widget_derive(class_traits, Deref, DerefMut)]
 pub struct Frame<W: Widget> {
     #[widget_core]
     core: CoreData,
@@ -66,18 +66,5 @@ impl<W: Widget> Layout for Frame<W> {
         draw_handle.outer_frame(self.core_data().rect);
         let disabled = disabled || self.is_disabled();
         self.inner.draw(draw_handle, mgr, disabled);
-    }
-}
-
-impl<W: Widget> std::ops::Deref for Frame<W> {
-    type Target = W;
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl<W: Widget> std::ops::DerefMut for Frame<W> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
     }
 }

@@ -244,7 +244,7 @@ impl ScrollComponent {
 #[derive(Clone, Debug, Default, Widget)]
 #[widget(config=noauto)]
 #[handler(send=noauto, msg = <W as event::Handler>::Msg)]
-#[widget_derive(class_traits)]
+#[widget_derive(class_traits, Deref, DerefMut)]
 pub struct ScrollRegion<W: Widget> {
     #[widget_core]
     core: CoreData,
@@ -409,18 +409,5 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
         } else {
             response.void_into()
         }
-    }
-}
-
-impl<W: Widget> std::ops::Deref for ScrollRegion<W> {
-    type Target = W;
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl<W: Widget> std::ops::DerefMut for ScrollRegion<W> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
     }
 }

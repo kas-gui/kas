@@ -14,7 +14,7 @@ use kas::{event, prelude::*};
 #[derive(Clone, Debug, Default, Widget)]
 #[handler(handle=noauto)]
 #[widget(config(key_nav = true))]
-#[widget_derive(class_traits)]
+#[widget_derive(class_traits, Deref, DerefMut)]
 pub struct NavFrame<W: Widget> {
     #[widget_core]
     core: CoreData,
@@ -78,18 +78,5 @@ impl<W: Widget> event::Handler for NavFrame<W> {
             Event::Activate => Response::Select,
             _ => Response::Unhandled,
         }
-    }
-}
-
-impl<W: Widget> std::ops::Deref for NavFrame<W> {
-    type Target = W;
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl<W: Widget> std::ops::DerefMut for NavFrame<W> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
     }
 }
