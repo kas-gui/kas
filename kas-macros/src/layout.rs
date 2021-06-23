@@ -9,17 +9,15 @@ use quote::{quote, TokenStreamExt};
 use syn::parse::{Error, Result};
 use syn::Member;
 
-pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<TokenStream> {
-    if layout.layout == LayoutType::Single {
-        if children.len() != 1 {
-            return Err(Error::new(
-                layout.span,
-                format_args!(
-                    "expected 1 child marked #[widget] when using layout 'single'; found {}",
-                    children.len()
-                ),
-            ));
-        }
+pub(crate) fn data_type(children: &[Child], layout: &LayoutArgs) -> Result<TokenStream> {
+    if layout.layout == LayoutType::Single && children.len() != 1 {
+        return Err(Error::new(
+            layout.span,
+            format_args!(
+                "expected 1 child marked #[widget] when using layout 'single'; found {}",
+                children.len()
+            ),
+        ));
     }
 
     let mut cols: usize = 0;
@@ -111,7 +109,7 @@ pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<To
 }
 
 pub(crate) fn derive(
-    children: &Vec<Child>,
+    children: &[Child],
     layout: &LayoutArgs,
     data_field: &Option<Member>,
 ) -> Result<TokenStream> {

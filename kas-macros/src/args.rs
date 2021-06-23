@@ -146,7 +146,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
         }
     }
 
-    let widget = widget.unwrap_or(WidgetArgs::default());
+    let widget = widget.unwrap_or_default();
 
     if let Some(core_data) = core_data {
         Ok(Args {

@@ -39,7 +39,7 @@ impl<M: 'static> Debug for TextButton<M> {
 impl<M: 'static> WidgetConfig for TextButton<M> {
     fn configure(&mut self, mgr: &mut Manager) {
         mgr.add_accel_keys(self.id(), &self.keys1);
-        mgr.add_accel_keys(self.id(), &self.label.text().keys());
+        mgr.add_accel_keys(self.id(), self.label.text().keys());
     }
 
     fn key_nav(&self) -> bool {

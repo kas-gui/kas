@@ -123,16 +123,14 @@ where
             } else {
                 storage.width_rules()[usize::conv(child_info.col)].max_with(child_rules);
             }
+        } else if child_info.row_end > child_info.row + 1 {
+            let span = &mut self.row_spans.as_mut()[self.next_row_span];
+            span.0.max_with(child_rules);
+            span.1 = child_info.row;
+            span.2 = child_info.row_end;
+            self.next_row_span += 1;
         } else {
-            if child_info.row_end > child_info.row + 1 {
-                let span = &mut self.row_spans.as_mut()[self.next_row_span];
-                span.0.max_with(child_rules);
-                span.1 = child_info.row;
-                span.2 = child_info.row_end;
-                self.next_row_span += 1;
-            } else {
-                storage.height_rules()[usize::conv(child_info.row)].max_with(child_rules);
-            }
+            storage.height_rules()[usize::conv(child_info.row)].max_with(child_rules);
         };
     }
 
