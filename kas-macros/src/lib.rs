@@ -13,11 +13,12 @@ use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens, TokenStreamExt};
 use std::collections::HashMap;
 use std::fmt::Write;
+use syn::punctuated::Punctuated;
 #[cfg(nightly)]
 use syn::spanned::Spanned;
 use syn::Token;
 use syn::{parse_macro_input, parse_quote};
-use syn::{GenericParam, Ident, Type, TypeParam, TypePath};
+use syn::{GenericParam, Ident, Type, TypeParam, TypePath, WhereClause, WherePredicate};
 
 mod args;
 mod layout;
@@ -79,7 +80,18 @@ impl<'a> ToTokens for SubstTyGenerics<'a> {
 /// Macro to derive widget traits
 ///
 /// See the [`kas::macros`](../../kas/macros/index.html) module documentation.
-#[proc_macro_derive(Widget, attributes(widget_core, widget, layout, handler, layout_data))]
+#[proc_macro_derive(
+    Widget,
+    attributes(
+        handler,
+        inner_widget,
+        layout,
+        layout_data,
+        widget,
+        widget_core,
+        widget_derive
+    )
+)]
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut ast = parse_macro_input!(input as syn::DeriveInput);
 
@@ -312,6 +324,41 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         toks.append_all(quote! {
             impl #impl_generics kas::Widget for #name #ty_generics #where_clause {}
         });
+    }
+
+    if let Some((member, ty)) = args.inner {
+        let extended_where_clause = move |pred: WherePredicate| {
+            if let Some(ref clause) = where_clause {
+                let mut clauses: WhereClause = (*clause).clone();
+                clauses.predicates.push_punct(Default::default());
+                clauses.predicates.push_value(pred);
+                clauses
+            } else {
+                let mut predicates = Punctuated::new();
+                predicates.push_value(pred);
+                WhereClause {
+                    where_token: Default::default(),
+                    predicates,
+                }
+            }
+        };
+
+        if args.derive.has_bool {
+            let wc = extended_where_clause(parse_quote! { #ty: kas::class::HasBool });
+            toks.append_all(quote! {
+                impl #impl_generics kas::class::HasBool for #name #ty_generics #wc {
+                    #[inline]
+                    fn get_bool(&self) -> bool {
+                        self.#member.get_bool()
+                    }
+
+                    #[inline]
+                    fn set_bool(&mut self, state: bool) -> kas::TkAction {
+                        self.#member.set_bool(state)
+                    }
+                }
+            });
+        }
     }
 
     toks.into()

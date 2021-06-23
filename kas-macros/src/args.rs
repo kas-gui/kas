@@ -28,6 +28,8 @@ pub struct Child {
 pub struct Args {
     pub core_data: Member,
     pub layout_data: Option<Member>,
+    pub inner: Option<(Member, Type)>,
+    pub derive: WidgetDerive,
     pub widget: WidgetArgs,
     pub layout: Option<LayoutArgs>,
     pub handler: Vec<HandlerArgs>,
@@ -59,6 +61,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
 
     let mut core_data = None;
     let mut layout_data = None;
+    let mut inner = None;
     let mut children = vec![];
 
     for (i, field) in fields.iter_mut().enumerate() {
@@ -101,6 +104,16 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                         .error("multiple fields marked with #[layout_data]")
                         .emit();
                 }
+            } else if attr.path == parse_quote! { inner_widget } {
+                if inner.is_none() {
+                    inner = Some((member(i, field.ident.clone()), field.ty.clone()));
+                } else {
+                    #[cfg(nightly)]
+                    attr.span()
+                        .unwrap()
+                        .error("multiple fields marked with #[inner_widget]")
+                        .emit();
+                }
             } else if attr.path == parse_quote! { widget } {
                 let ident = member(i, field.ident.clone());
                 let args = syn::parse2(attr.tokens)?;
@@ -109,6 +122,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
         }
     }
 
+    let mut derive = None;
     let mut widget = None;
     let mut layout = None;
     let mut handler = vec![];
@@ -121,6 +135,25 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                 .unwrap()
                 .error("invalid attribute on Widget struct (applicable to fields only)")
                 .emit()
+        } else if attr.path == parse_quote! { widget_derive } {
+            if inner.is_none() {
+                #[cfg(nightly)]
+                attr.span()
+                    .unwrap()
+                    .error(
+                        "usage of #[widget_derive(..)] without a field marked with #[inner_widget]",
+                    )
+                    .emit();
+            }
+            if derive.is_none() {
+                derive = Some(syn::parse2(attr.tokens)?);
+            } else {
+                #[cfg(nightly)]
+                attr.span()
+                    .unwrap()
+                    .error("multiple #[widget_derive(..)] attributes on type")
+                    .emit()
+            }
         } else if attr.path == parse_quote! { widget } {
             if widget.is_none() {
                 widget = Some(syn::parse2(attr.tokens)?);
@@ -146,12 +179,22 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
         }
     }
 
+    if inner.is_some() && derive.is_none() {
+        return Err(Error::new(
+            *span,
+            "usage of #[inner_widget] without #[widget_derive(..)] has no effect",
+        ));
+    }
+
+    let derive = derive.unwrap_or(WidgetDerive::default());
     let widget = widget.unwrap_or(WidgetArgs::default());
 
     if let Some(core_data) = core_data {
         Ok(Args {
             core_data,
             layout_data,
+            inner,
+            derive,
             widget,
             layout,
             handler,
@@ -208,6 +251,38 @@ mod kw {
     custom_keyword!(children);
     custom_keyword!(column);
     custom_keyword!(draw);
+    custom_keyword!(HasBool);
+}
+
+#[derive(Debug, Default)]
+pub struct WidgetDerive {
+    pub has_bool: bool,
+}
+
+impl Parse for WidgetDerive {
+    fn parse(input: ParseStream) -> Result<Self> {
+        // Note: this parser deliberately cannot return WidgetDerive::default()
+        let mut derive = WidgetDerive::default();
+        let content;
+        let _ = parenthesized!(content in input);
+
+        loop {
+            let lookahead = content.lookahead1();
+            if !derive.has_bool && lookahead.peek(kw::HasBool) {
+                let _: kw::HasBool = content.parse()?;
+                derive.has_bool = true;
+            } else {
+                return Err(lookahead.error());
+            }
+
+            if content.is_empty() {
+                break;
+            }
+            let _: Comma = content.parse()?;
+        }
+
+        Ok(derive)
+    }
 }
 
 #[derive(Debug)]
