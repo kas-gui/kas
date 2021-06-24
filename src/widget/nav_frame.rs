@@ -14,9 +14,11 @@ use kas::{event, prelude::*};
 #[derive(Clone, Debug, Default, Widget)]
 #[handler(handle=noauto)]
 #[widget(config(key_nav = true))]
+#[widget_derive(class_traits, Deref, DerefMut)]
 pub struct NavFrame<W: Widget> {
     #[widget_core]
     core: CoreData,
+    #[widget_derive]
     #[widget]
     pub inner: W,
     offset: Offset,
@@ -76,48 +78,5 @@ impl<W: Widget> event::Handler for NavFrame<W> {
             Event::Activate => Response::Select,
             _ => Response::Unhandled,
         }
-    }
-}
-
-impl<W: HasBool + Widget> HasBool for NavFrame<W> {
-    fn get_bool(&self) -> bool {
-        self.inner.get_bool()
-    }
-
-    fn set_bool(&mut self, state: bool) -> TkAction {
-        self.inner.set_bool(state)
-    }
-}
-
-impl<W: HasStr + Widget> HasStr for NavFrame<W> {
-    fn get_str(&self) -> &str {
-        self.inner.get_str()
-    }
-}
-
-impl<W: HasString + Widget> HasString for NavFrame<W> {
-    fn set_string(&mut self, text: String) -> TkAction {
-        self.inner.set_string(text)
-    }
-}
-
-// TODO: HasFormatted
-
-impl<W: SetAccel + Widget> SetAccel for NavFrame<W> {
-    fn set_accel_string(&mut self, accel: AccelString) -> TkAction {
-        self.inner.set_accel_string(accel)
-    }
-}
-
-impl<W: Widget> std::ops::Deref for NavFrame<W> {
-    type Target = W;
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl<W: Widget> std::ops::DerefMut for NavFrame<W> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
     }
 }

@@ -13,9 +13,11 @@ use kas::{event, prelude::*};
 /// contents.
 #[derive(Clone, Debug, Default, Widget)]
 #[handler(msg = <W as Handler>::Msg)]
+#[widget_derive(class_traits, Deref, DerefMut)]
 pub struct Frame<W: Widget> {
     #[widget_core]
     core: CoreData,
+    #[widget_derive]
     #[widget]
     pub inner: W,
     offset: Offset,
@@ -64,48 +66,5 @@ impl<W: Widget> Layout for Frame<W> {
         draw_handle.outer_frame(self.core_data().rect);
         let disabled = disabled || self.is_disabled();
         self.inner.draw(draw_handle, mgr, disabled);
-    }
-}
-
-impl<W: HasBool + Widget> HasBool for Frame<W> {
-    fn get_bool(&self) -> bool {
-        self.inner.get_bool()
-    }
-
-    fn set_bool(&mut self, state: bool) -> TkAction {
-        self.inner.set_bool(state)
-    }
-}
-
-impl<W: HasStr + Widget> HasStr for Frame<W> {
-    fn get_str(&self) -> &str {
-        self.inner.get_str()
-    }
-}
-
-impl<W: HasString + Widget> HasString for Frame<W> {
-    fn set_string(&mut self, text: String) -> TkAction {
-        self.inner.set_string(text)
-    }
-}
-
-// TODO: HasFormatted
-
-impl<W: SetAccel + Widget> SetAccel for Frame<W> {
-    fn set_accel_string(&mut self, accel: AccelString) -> TkAction {
-        self.inner.set_accel_string(accel)
-    }
-}
-
-impl<W: Widget> std::ops::Deref for Frame<W> {
-    type Target = W;
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl<W: Widget> std::ops::DerefMut for Frame<W> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
     }
 }

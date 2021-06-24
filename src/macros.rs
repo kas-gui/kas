@@ -43,12 +43,13 @@
 //! The behaviour of this macro is controlled by attributes on struct fields and
 //! on the widget struct itself.
 //!
-//! These attributes may be used on the struct: `widget`, `layout`, `handler`.
+//! These attributes may be used on the struct: `widget`, `widget_derive`, `layout`, `handler`.
 //! These may each appear zero or once (except `handler`; see below).
 //! They support multiple parameters, e.g. `#[widget(config=noauto, children=noauto)]`.
 //!
 //! These attributes may be used on fields: `widget`, `widget_core`,
-//! `layout_data`. The `widget` attribute supports multiple parameters,
+//! `widget_derive`,  `layout_data`.
+//! The `widget` attribute supports multiple parameters,
 //! discussed below (e.g. `#[widget(row=1, handler=f)]`).
 //! Fields without attributes (plain data fields) are fine too.
 //!
@@ -245,6 +246,33 @@
 //! A handler is bound to a child via the `widget` attribute, for example
 //! `#[widget(handler = f)] child: ChildType`.
 //!
+//! ### widget_derive
+//!
+//! The `#[widget_derive]` attribute may optionally appear on a field, and may
+//! also appear on the struct. The attribute has two possible effects:
+//!
+//! 1.  If used on a field *instead of* a field marked with `#[widget_core]`,
+//!     this field must implement [`Widget`] and the widget traits are
+//!     implemented for the struct as wrappers around this field. This
+//!     may be useful to implement a wrapper struct as a widget, for example
+//!     [`kas::widget::ScrollBarRegion`] (shown below).
+//! 2.  If used on the struct *and* on a field, the attribute allows deriving
+//!     various traits: [`std::ops::Deref`], [`std::ops::DerefMut`], and the
+//!     "class traits": [`kas::class`]. The traits to derive must be specified
+//!     as parameters to the attribute applied to the struct. The parameter
+//!     `class_traits` may be used to imply all [`kas::class`] traits, where
+//!     available. These traits will be derived to refer to the marked field.
+//!
+//! An example showing both effects simultaneously to implement [`Widget`],
+//! [`std::ops::Deref`], [`std::ops::DerefMut`] and the [`kas::class`] traits:
+//! ```
+//! # use kas::prelude::*;
+//! # use kas::widget::{ScrollBars, ScrollRegion};
+//! #[derive(Clone, Debug, Default, Widget)]
+//! #[widget_derive(class_traits, Deref, DerefMut)]
+//! #[handler(msg = <W as Handler>::Msg)]
+//! pub struct ScrollBarRegion<W: Widget>(#[widget_derive] ScrollBars<ScrollRegion<W>>);
+//! ```
 //!
 //! ### Examples
 //!

@@ -140,7 +140,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 #[widget] display: StringLabel = Label::from("Entry #0"),
                 #[widget] _ = Separator::new(),
                 #[widget(handler = set_radio)] list: ScrollBarRegion<Column<ListEntry>> =
-                    ScrollBarRegion::new2(Column::new(entries)).with_bars(false, true),
+                    ScrollBarRegion::new(Column::new(entries)).with_bars(false, true),
                 #[widget] _ = Filler::maximize(),
                 active: usize = 0,
             }

@@ -26,8 +26,10 @@ pub struct Child {
 
 #[derive(Debug)]
 pub struct Args {
-    pub core_data: Member,
+    pub core_data: Option<Member>,
     pub layout_data: Option<Member>,
+    pub inner: Option<(Member, Type)>,
+    pub derive: WidgetDerive,
     pub widget: WidgetArgs,
     pub layout: Option<LayoutArgs>,
     pub handler: Vec<HandlerArgs>,
@@ -59,6 +61,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
 
     let mut core_data = None;
     let mut layout_data = None;
+    let mut inner = None;
     let mut children = vec![];
 
     for (i, field) in fields.iter_mut().enumerate() {
@@ -81,24 +84,33 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                         .emit();
                 }
             } else if attr.path == parse_quote! { layout_data } {
-                if layout_data.is_none() {
-                    if field.ty != parse_quote! { <Self as kas::LayoutData>::Data }
-                        && field.ty != parse_quote! { <Self as LayoutData>::Data }
-                    {
-                        #[cfg(nightly)]
-                        field
-                            .ty
-                            .span()
-                            .unwrap()
-                            .warning("expected type `<Self as kas::LayoutData>::Data`")
-                            .emit();
-                    }
-                    layout_data = Some(member(i, field.ident.clone()));
-                } else {
+                if layout_data.is_some() {
                     #[cfg(nightly)]
                     attr.span()
                         .unwrap()
                         .error("multiple fields marked with #[layout_data]")
+                        .emit();
+                } else if field.ty != parse_quote! { <Self as kas::LayoutData>::Data }
+                    && field.ty != parse_quote! { <Self as LayoutData>::Data }
+                {
+                    #[cfg(nightly)]
+                    field
+                        .ty
+                        .span()
+                        .unwrap()
+                        .warning("expected type `<Self as kas::LayoutData>::Data`")
+                        .emit();
+                } else {
+                    layout_data = Some(member(i, field.ident.clone()));
+                }
+            } else if attr.path == parse_quote! { widget_derive } {
+                if inner.is_none() {
+                    inner = Some((member(i, field.ident.clone()), field.ty.clone()));
+                } else {
+                    #[cfg(nightly)]
+                    attr.span()
+                        .unwrap()
+                        .error("multiple fields marked with #[widget_derive]")
                         .emit();
                 }
             } else if attr.path == parse_quote! { widget } {
@@ -109,6 +121,20 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
         }
     }
 
+    if core_data.is_none() && inner.is_none() {
+        return Err(Error::new(
+            *span,
+            "require a field with #[widget_core] or a field with #[widget_derive] or both",
+        ));
+    }
+    if core_data.is_none() && (layout_data.is_some() || !children.is_empty()) {
+        return Err(Error::new(
+            *span,
+            "require a field with #[widget_core] when using #[layout_data] or #[widget]",
+        ));
+    }
+
+    let mut derive = None;
     let mut widget = None;
     let mut layout = None;
     let mut handler = vec![];
@@ -121,9 +147,37 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                 .unwrap()
                 .error("invalid attribute on Widget struct (applicable to fields only)")
                 .emit()
+        } else if attr.path == parse_quote! { widget_derive } {
+            if inner.is_none() {
+                #[cfg(nightly)]
+                attr.span()
+                    .unwrap()
+                    .error(
+                        "usage of #[widget_derive(..)] on struct without a field marked with #[widget_derive]",
+                    )
+                    .emit();
+            }
+            if derive.is_none() {
+                derive = Some(syn::parse2(attr.tokens)?);
+            } else {
+                #[cfg(nightly)]
+                attr.span()
+                    .unwrap()
+                    .error("multiple #[widget_derive(..)] attributes on type")
+                    .emit()
+            }
         } else if attr.path == parse_quote! { widget } {
             if widget.is_none() {
-                widget = Some(syn::parse2(attr.tokens)?);
+                let span = attr.span();
+                let w: WidgetArgs = syn::parse2(attr.tokens)?;
+                if core_data.is_none() && !w.children {
+                    #[cfg(nightly)]
+                    span
+                        .unwrap()
+                        .error("it is required to derive WidgetChildren when deriving from an inner widget")
+                        .emit()
+                }
+                widget = Some(w);
             } else {
                 #[cfg(nightly)]
                 attr.span()
@@ -132,37 +186,46 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                     .emit()
             }
         } else if attr.path == parse_quote! { layout } {
-            if layout.is_none() {
-                layout = Some(syn::parse2(attr.tokens)?);
-            } else {
+            if layout.is_some() {
                 #[cfg(nightly)]
                 attr.span()
                     .unwrap()
                     .error("multiple #[layout(..)] attributes on type")
                     .emit()
+            } else if core_data.is_none() {
+                #[cfg(nightly)]
+                attr.span()
+                    .unwrap()
+                    .error("require a field with #[widget_core] when using #[layout(..)]")
+                    .emit()
+            } else {
+                layout = Some(syn::parse2(attr.tokens)?);
             }
         } else if attr.path == parse_quote! { handler } {
             handler.push(syn::parse2(attr.tokens)?);
         }
     }
 
-    let widget = widget.unwrap_or_default();
-
-    if let Some(core_data) = core_data {
-        Ok(Args {
-            core_data,
-            layout_data,
-            widget,
-            layout,
-            handler,
-            children,
-        })
-    } else {
-        Err(Error::new(
+    if core_data.is_some() && inner.is_some() && derive.is_none() {
+        return Err(Error::new(
             *span,
-            "one field must be marked with #[widget_core] when deriving Widget",
-        ))
+            "usage of #[widget_derive] field with #[widget_core] field and without #[widget_derive(..)] on struct has no effect",
+        ));
     }
+
+    let derive = derive.unwrap_or(WidgetDerive::default());
+    let widget = widget.unwrap_or(WidgetArgs::default());
+
+    Ok(Args {
+        core_data,
+        layout_data,
+        inner,
+        derive,
+        widget,
+        layout,
+        handler,
+        children,
+    })
 }
 
 fn member(index: usize, ident: Option<Ident>) -> Member {
@@ -208,6 +271,75 @@ mod kw {
     custom_keyword!(children);
     custom_keyword!(column);
     custom_keyword!(draw);
+    custom_keyword!(HasBool);
+    custom_keyword!(HasStr);
+    custom_keyword!(HasString);
+    custom_keyword!(SetAccel);
+    custom_keyword!(class_traits);
+    custom_keyword!(Deref);
+    custom_keyword!(DerefMut);
+}
+
+#[derive(Debug, Default)]
+pub struct WidgetDerive {
+    pub has_bool: bool,
+    pub has_str: bool,
+    pub has_string: bool,
+    pub set_accel: bool,
+    pub deref: bool,
+    pub deref_mut: bool,
+}
+
+impl Parse for WidgetDerive {
+    fn parse(input: ParseStream) -> Result<Self> {
+        // Note: this parser deliberately cannot return WidgetDerive::default()
+        let mut derive = WidgetDerive::default();
+        let content;
+        let _ = parenthesized!(content in input);
+
+        loop {
+            let lookahead = content.lookahead1();
+            if !derive.has_bool && lookahead.peek(kw::HasBool) {
+                let _: kw::HasBool = content.parse()?;
+                derive.has_bool = true;
+            } else if !derive.has_str && lookahead.peek(kw::HasStr) {
+                let _: kw::HasStr = content.parse()?;
+                derive.has_str = true;
+            } else if !derive.has_string && lookahead.peek(kw::HasString) {
+                let _: kw::HasString = content.parse()?;
+                derive.has_string = true;
+            } else if !derive.set_accel && lookahead.peek(kw::SetAccel) {
+                let _: kw::SetAccel = content.parse()?;
+                derive.set_accel = true;
+            } else if !derive.has_bool
+                && !derive.has_str
+                && !derive.has_string
+                && !derive.set_accel
+                && lookahead.peek(kw::class_traits)
+            {
+                let _: kw::class_traits = content.parse()?;
+                derive.has_bool = true;
+                derive.has_str = true;
+                derive.has_string = true;
+                derive.set_accel = true;
+            } else if !derive.deref && lookahead.peek(kw::Deref) {
+                let _: kw::Deref = content.parse()?;
+                derive.deref = true;
+            } else if !derive.deref_mut && lookahead.peek(kw::DerefMut) {
+                let _: kw::DerefMut = content.parse()?;
+                derive.deref_mut = true;
+            } else {
+                return Err(lookahead.error());
+            }
+
+            if content.is_empty() {
+                break;
+            }
+            let _: Comma = content.parse()?;
+        }
+
+        Ok(derive)
+    }
 }
 
 #[derive(Debug)]

@@ -137,16 +137,17 @@ impl<M: 'static> event::Handler for CheckBoxBare<M> {
 }
 
 /// A checkable box with optional label
-// TODO: use a generic wrapper for CheckBox and RadioBox?
 #[derive(Clone, Default, Widget)]
 #[layout(row, area=checkbox)]
 #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
 #[widget(config=noauto)]
+#[widget_derive(HasBool)]
 pub struct CheckBox<M: 'static> {
     #[widget_core]
     core: CoreData,
     #[layout_data]
     layout_data: <Self as kas::LayoutData>::Data,
+    #[widget_derive]
     #[widget]
     checkbox: CheckBoxBare<M>,
     #[widget]
@@ -227,17 +228,5 @@ impl<M: 'static> CheckBox<M> {
 impl<M: 'static> WidgetConfig for CheckBox<M> {
     fn configure(&mut self, mgr: &mut Manager) {
         mgr.add_accel_keys(self.checkbox.id(), self.label.keys());
-    }
-}
-
-impl<M: 'static> HasBool for CheckBox<M> {
-    #[inline]
-    fn get_bool(&self) -> bool {
-        self.checkbox.get_bool()
-    }
-
-    #[inline]
-    fn set_bool(&mut self, state: bool) -> TkAction {
-        self.checkbox.set_bool(state)
     }
 }

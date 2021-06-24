@@ -275,7 +275,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 #[widget(halign = centre)] _ = Frame::new(head),
                 #[widget(handler = activations)] gallery:
                     for<W: Widget<Msg = Item>> ScrollBarRegion<W> =
-                        ScrollBarRegion::new2(widgets),
+                        ScrollBarRegion::new(widgets),
             }
             impl {
                 fn menu(&mut self, mgr: &mut Manager, msg: Menu) -> VoidResponse {
