@@ -297,21 +297,21 @@ impl<'de> Visitor<'de> for ModifierStateVisitor {
             state |= ModifiersState::CTRL;
             v = &v[v.len().min(4)..];
         }
-        if v.starts_with("-") {
+        if v.starts_with('-') {
             v = &v[1..];
         }
         if v.starts_with("alt") {
             state |= ModifiersState::ALT;
             v = &v[v.len().min(3)..];
         }
-        if v.starts_with("-") {
+        if v.starts_with('-') {
             v = &v[1..];
         }
         if v.starts_with("shift") {
             state |= ModifiersState::SHIFT;
             v = &v[v.len().min(5)..];
         }
-        if v.starts_with("-") {
+        if v.starts_with('-') {
             v = &v[1..];
         }
         if v.starts_with("super") {

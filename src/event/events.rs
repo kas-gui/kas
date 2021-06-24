@@ -398,10 +398,7 @@ impl PressSource {
     /// Returns true if this represents a touch event
     #[inline]
     pub fn is_touch(self) -> bool {
-        match self {
-            PressSource::Touch(_) => true,
-            _ => false,
-        }
+        matches!(self, PressSource::Touch(_))
     }
 
     /// The `repetitions` value

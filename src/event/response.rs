@@ -75,28 +75,19 @@ impl<M> Response<M> {
     /// True if variant is `None`
     #[inline]
     pub fn is_none(&self) -> bool {
-        match self {
-            &Response::None => true,
-            _ => false,
-        }
+        matches!(self, Response::None)
     }
 
     /// True if variant is `Unhandled`
     #[inline]
     pub fn is_unhandled(&self) -> bool {
-        match self {
-            &Response::Unhandled => true,
-            _ => false,
-        }
+        matches!(self, Response::Unhandled)
     }
 
     /// True if variant is `Msg`
     #[inline]
     pub fn is_msg(&self) -> bool {
-        match self {
-            &Response::Msg(_) => true,
-            _ => false,
-        }
+        matches!(self, Response::Msg(_))
     }
 
     /// Map from one `Response` type to another

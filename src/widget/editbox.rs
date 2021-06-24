@@ -516,7 +516,7 @@ impl EditField<()> {
             editable: true,
             multi_line: false,
             ideal_height: 0,
-            text: Text::new(Default::default(), text.into()),
+            text: Text::new(Default::default(), text),
             required: Vec2::ZERO,
             selection: SelectionHelper::new(len, len),
             edit_x_coord: None,

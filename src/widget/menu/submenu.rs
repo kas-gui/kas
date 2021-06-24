@@ -94,7 +94,7 @@ impl<D: Directional, W: Menu> WidgetConfig for SubMenu<D, W> {
         self.core_data_mut().id = cmgr.next_id(self.id());
         let mgr = cmgr.mgr();
         mgr.pop_accel_layer(self.id());
-        mgr.add_accel_keys(self.id(), &self.label.text().keys());
+        mgr.add_accel_keys(self.id(), self.label.text().keys());
     }
 
     fn key_nav(&self) -> bool {

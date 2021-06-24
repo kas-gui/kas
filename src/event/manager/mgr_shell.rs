@@ -195,7 +195,7 @@ impl ManagerState {
             let new_ids = self
                 .handle_updates
                 .entry(handle)
-                .or_insert(Default::default());
+                .or_insert_with(Default::default);
             for id in ids.drain().filter_map(|id| renames.get(&id)).cloned() {
                 new_ids.insert(id);
             }

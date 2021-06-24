@@ -270,7 +270,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> MatrixVie
                 let ri = first_row + rn;
                 let i = (ci % cols.len()) + (ri % rows.len()) * cols.len();
                 let w = &mut self.widgets[i];
-                let key = T::make_key(&col, &row);
+                let key = T::make_key(col, row);
                 if w.key.as_ref() != Some(&key) {
                     if let Some(item) = self.data.get_cloned(&key) {
                         w.key = Some(key.clone());

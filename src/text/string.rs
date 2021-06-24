@@ -43,7 +43,7 @@ impl AccelString {
         let mut effects = SmallVec::<[Effect<()>; 2]>::default();
         let mut keys = VirtualKeyCodes::new();
 
-        while let Some(mut i) = s.find("&") {
+        while let Some(mut i) = s.find('&') {
             buf.push_str(&s[..i]);
             i += "&".len();
             s = &s[i..];
@@ -86,7 +86,7 @@ impl AccelString {
         }
         buf.push_str(s);
         AccelString {
-            label: buf.into(),
+            label: buf,
             effects,
             keys,
         }

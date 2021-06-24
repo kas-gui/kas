@@ -27,7 +27,7 @@ pub struct MenuEntry<M: Clone + Debug + 'static> {
 
 impl<M: Clone + Debug + 'static> WidgetConfig for MenuEntry<M> {
     fn configure(&mut self, mgr: &mut Manager) {
-        mgr.add_accel_keys(self.id(), &self.label.text().keys());
+        mgr.add_accel_keys(self.id(), self.label.text().keys());
     }
 
     fn key_nav(&self) -> bool {
