@@ -168,11 +168,11 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
             }
         } else if attr.path == parse_quote! { widget } {
             if widget.is_none() {
-                let span = attr.span();
+                let _span = attr.span();
                 let w: WidgetArgs = syn::parse2(attr.tokens)?;
                 if core_data.is_none() && !w.children {
                     #[cfg(nightly)]
-                    span
+                    _span
                         .unwrap()
                         .error("it is required to derive WidgetChildren when deriving from an inner widget")
                         .emit()
@@ -213,8 +213,8 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
         ));
     }
 
-    let derive = derive.unwrap_or(WidgetDerive::default());
-    let widget = widget.unwrap_or(WidgetArgs::default());
+    let derive = derive.unwrap_or_default();
+    let widget = widget.unwrap_or_default();
 
     Ok(Args {
         core_data,

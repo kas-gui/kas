@@ -140,11 +140,12 @@ pub struct MenuToggle<M: 'static> {
 
 impl<M: 'static> Debug for MenuToggle<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "MenuToggle {{ core: {:?}, layout_data: {:?}, checkbox: {:?}, label: {:?} }}",
-            self.core, self.layout_data, self.checkbox, self.label,
-        )
+        f.debug_struct("MenuToggle")
+            .field("core", &self.core)
+            .field("layout_data", &self.layout_data)
+            .field("checkbox", &self.checkbox)
+            .field("label", &self.label)
+            .finish()
     }
 }
 

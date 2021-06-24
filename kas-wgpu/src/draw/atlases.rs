@@ -19,9 +19,10 @@ fn to_vec2(p: guillotiere::Point) -> Vec2 {
     Vec2(p.x.cast(), p.y.cast())
 }
 
-/// Allocation failed: too large
+// TODO
+/// Allocation failed: too large or zero sized
 #[derive(Error, Debug)]
-#[error("failed to allocate texture space for image")]
+#[error("failed to allocate: size too large or zero-sized")]
 pub struct AllocError;
 
 impl From<AllocError> for ImageError {
@@ -38,8 +39,8 @@ pub struct Atlas {
 
 impl Atlas {
     /// Construct a new allocator
-    pub fn new_alloc(size: i32) -> AtlasAllocator {
-        AtlasAllocator::new((size, size).into())
+    pub fn new_alloc(size: (i32, i32)) -> AtlasAllocator {
+        AtlasAllocator::new(size.into())
     }
 
     /// Construct from an allocator
@@ -103,7 +104,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
     ///
     /// Configuration:
     ///
-    /// -   `tex_size`: side dimension of texture
+    /// -   `tex_size`: side length of square texture atlases
     /// -   `tex_format`: texture format
     pub fn new(
         device: &wgpu::Device,
@@ -181,32 +182,47 @@ impl<I: bytemuck::Pod> Pipeline<I> {
         }
     }
 
-    fn allocate_space(&mut self, size: (i32, i32)) -> (u32, Allocation) {
-        let size = size.into();
+    fn allocate_space(
+        &mut self,
+        size: (i32, i32),
+    ) -> Result<(u32, Allocation, (i32, i32)), AllocError> {
+        let mut tex_size = (self.tex_size, self.tex_size);
+        let size2d = size.into();
         let mut atlas = 0;
         while atlas < self.atlases.len() {
-            if let Some(alloc) = self.atlases[atlas].alloc.allocate(size) {
-                return (atlas.cast(), alloc);
+            if let Some(alloc) = self.atlases[atlas].alloc.allocate(size2d) {
+                return Ok((atlas.cast(), alloc, tex_size));
             }
             atlas += 1;
         }
 
         // New_aa are atlas allocators which haven't been assigned textures yet
         for new_aa in &mut self.new_aa {
-            if let Some(alloc) = new_aa.allocate(size) {
-                return (atlas.cast(), alloc);
+            if let Some(alloc) = new_aa.allocate(size2d) {
+                return Ok((atlas.cast(), alloc, tex_size));
             }
             atlas += 1;
         }
 
-        self.new_aa.push(Atlas::new_alloc(self.tex_size));
-        match self.new_aa.last_mut().unwrap().allocate(size) {
-            Some(alloc) => return (atlas.cast(), alloc),
+        if size.0 > self.tex_size || size.1 > self.tex_size {
+            // Too large to fit in a regular atlas: use a special allocation
+            let max_supported = i32::conv(wgpu::Limits::default().max_texture_dimension_2d);
+            if size.0 > max_supported || size.1 > max_supported {
+                return Err(AllocError);
+            }
+            tex_size = size;
+        }
+
+        self.new_aa.push(Atlas::new_alloc(tex_size));
+        match self.new_aa.last_mut().unwrap().allocate(size2d) {
+            Some(alloc) => return Ok((atlas.cast(), alloc, tex_size)),
             None => unreachable!(),
         }
     }
 
     /// Allocate space within a texture atlas
+    ///
+    /// Fails if `size` is zero in any dimension.
     ///
     /// On success, returns:
     ///
@@ -218,15 +234,15 @@ impl<I: bytemuck::Pod> Pipeline<I> {
         &mut self,
         size: (u32, u32),
     ) -> Result<(u32, AllocId, (u32, u32), Quad), AllocError> {
-        let tex_size_u32: u32 = self.tex_size.cast();
-        if size.0 > tex_size_u32 || size.1 > tex_size_u32 {
+        if size.0 == 0 || size.1 == 0 {
             return Err(AllocError);
         }
-        let (atlas, alloc) = self.allocate_space((size.0.cast(), size.1.cast()));
+
+        let (atlas, alloc, tex_size) = self.allocate_space((size.0.cast(), size.1.cast()))?;
 
         let origin = (alloc.rectangle.min.x.cast(), alloc.rectangle.min.y.cast());
 
-        let tex_size = Vec2::from(Size::splat(self.tex_size));
+        let tex_size = Vec2::from(Size::from(tex_size));
         let a = to_vec2(alloc.rectangle.min) / tex_size;
         let b = to_vec2(alloc.rectangle.max) / tex_size;
         debug_assert!(Vec2::ZERO.le(a) && a.le(b) && b.le(Vec2::splat(1.0)));

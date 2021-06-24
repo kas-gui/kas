@@ -28,7 +28,9 @@
     clippy::or_fun_call,
     clippy::never_loop,
     clippy::module_inception,
-    clippy::len_zero
+    clippy::len_zero,
+    clippy::needless_return,
+    clippy::neg_cmp_op_on_partial_ord
 )]
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![cfg_attr(feature = "gat", feature(generic_associated_types))]

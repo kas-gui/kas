@@ -5,6 +5,7 @@
 
 #![recursion_limit = "128"]
 #![cfg_attr(nightly, feature(proc_macro_diagnostic))]
+#![allow(clippy::let_and_return)]
 
 extern crate proc_macro;
 
@@ -334,6 +335,10 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 let inner = opt_inner.as_ref().unwrap();
                 quote! {
                     #[inline]
+                    fn activation_via_press(&self) -> bool {
+                        self.#inner.activation_via_press()
+                    }
+                    #[inline]
                     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
                         self.#inner.handle(mgr, event)
                     }
@@ -432,7 +437,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
 
         let extended_where_clause = move |pred: WherePredicate| {
-            if let Some(ref clause) = where_clause {
+            if let Some(clause) = where_clause {
                 let mut clauses: WhereClause = (*clause).clone();
                 clauses.predicates.push_punct(Default::default());
                 clauses.predicates.push_value(pred);

@@ -3,15 +3,16 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Image widget
+//! 2D pixmap widget
 
 use kas::geom::Vec2;
+use kas::layout::MarginSelector;
 use kas::{event, prelude::*};
 use std::path::PathBuf;
 
-/// Image scaling policies
-#[derive(Clone, Copy, Debug)]
-pub enum ImageScaling {
+/// Scaling policies
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub enum SpriteScaling {
     /// No scaling; align in available space
     None,
     /// Fixed aspect ratio scaling; align on other axis
@@ -20,26 +21,71 @@ pub enum ImageScaling {
     Stretch,
 }
 
-impl Default for ImageScaling {
+impl Default for SpriteScaling {
     fn default() -> Self {
-        ImageScaling::FixedAspect
+        SpriteScaling::FixedAspect
+    }
+}
+
+/// Widget component for displaying a sprite
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct SpriteDisplay {
+    /// Margins
+    pub margins: MarginSelector,
+    /// The native size of the sprite
+    pub size: Size,
+    /// Widget stretchiness
+    pub stretch: Stretch,
+    /// Sprite scaling mode
+    pub scaling: SpriteScaling,
+}
+
+impl SpriteDisplay {
+    /// Generates `size_rules` based on size
+    ///
+    /// Set [`Self::size`] before calling this.
+    pub fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        let margins = self.margins.select(sh);
+        SizeRules::extract(axis, self.size, margins, self.stretch)
+    }
+
+    /// Aligns `rect` according to stretch policy
+    ///
+    /// Assign the result to `self.core_data_mut().rect`.
+    pub fn align_rect(&mut self, rect: Rect, align: AlignHints) -> Rect {
+        let ideal = match self.scaling {
+            SpriteScaling::None => self.size,
+            SpriteScaling::FixedAspect => {
+                let size = Vec2::from(self.size);
+                let ratio = Vec2::from(rect.size) / size;
+                // Use smaller ratio, which must be finite
+                if ratio.0 < ratio.1 {
+                    Size(rect.size.0, i32::conv_nearest(ratio.0 * size.1))
+                } else if ratio.1 < ratio.0 {
+                    Size(i32::conv_nearest(ratio.1 * size.0), rect.size.1)
+                } else {
+                    // Non-finite ratio implies size is zero on at least one axis
+                    rect.size
+                }
+            }
+            SpriteScaling::Stretch => rect.size,
+        };
+        align
+            .complete(Default::default(), Default::default())
+            .aligned_rect(ideal, rect)
     }
 }
 
 /// An image with margins
-///
-/// TODO: `BareImage` variant without margins
 #[derive(Clone, Debug, Default, Widget)]
 #[widget(config = noauto)]
 pub struct Image {
     #[widget_core]
     core: CoreData,
+    sprite: SpriteDisplay,
     path: PathBuf,
     do_load: bool,
     id: Option<ImageId>,
-    img_size: Size,
-    scaling: ImageScaling,
-    stretch: Stretch,
 }
 
 impl Image {
@@ -49,42 +95,51 @@ impl Image {
     pub fn new<P: Into<PathBuf>>(path: P) -> Self {
         Image {
             core: Default::default(),
+            sprite: Default::default(),
             path: path.into(),
             do_load: true,
             id: None,
-            img_size: Size::ZERO,
-            scaling: Default::default(),
-            stretch: Stretch::None,
         }
     }
 
+    /// Set margins
+    pub fn with_margins(mut self, margins: MarginSelector) -> Self {
+        self.sprite.margins = margins;
+        self
+    }
+
     /// Set scaling mode
-    pub fn with_scaling(mut self, scaling: ImageScaling) -> Self {
-        self.scaling = scaling;
+    pub fn with_scaling(mut self, scaling: SpriteScaling) -> Self {
+        self.sprite.scaling = scaling;
         self
     }
 
     /// Set stretch policy
     pub fn with_stretch(mut self, stretch: Stretch) -> Self {
-        self.stretch = stretch;
+        self.sprite.stretch = stretch;
         self
     }
 
+    /// Set margins
+    pub fn margins(&mut self, margins: MarginSelector) {
+        self.sprite.margins = margins;
+    }
+
     /// Set scaling mode
-    pub fn set_scaling(&mut self, scaling: ImageScaling) {
-        self.scaling = scaling;
+    pub fn set_scaling(&mut self, scaling: SpriteScaling) {
+        self.sprite.scaling = scaling;
     }
 
     /// Set stretch policy
     pub fn set_stretch(&mut self, stretch: Stretch) {
-        self.stretch = stretch;
+        self.sprite.stretch = stretch;
     }
 
     /// Set image path
     pub fn set_path<P: Into<PathBuf>>(&mut self, mgr: &mut Manager, path: P) {
         self.path = path.into();
         self.do_load = false;
-        let mut img_size = Size::ZERO;
+        let mut size = Size::ZERO;
         mgr.draw_shared(|ds| {
             if let Some(id) = self.id {
                 ds.remove_image(id);
@@ -92,13 +147,14 @@ impl Image {
             match ds.image_from_path(&self.path) {
                 Ok(id) => {
                     self.id = Some(id);
-                    img_size = ds.image_size(id).unwrap_or(Size::ZERO);
+                    size = ds.image_size(id).unwrap_or(Size::ZERO);
                 }
                 Err(error) => self.handle_load_fail(&error),
             };
         });
         mgr.redraw(self.id());
-        if img_size != self.img_size {
+        if size != self.sprite.size {
+            self.sprite.size = size;
             *mgr |= TkAction::RESIZE;
         }
     }
@@ -129,8 +185,14 @@ impl WidgetConfig for Image {
     fn configure(&mut self, mgr: &mut Manager) {
         if self.do_load {
             self.do_load = false;
-            match mgr.draw_shared(|ds| ds.image_from_path(&self.path)) {
-                Ok(id) => self.id = Some(id),
+            match mgr.draw_shared(|ds| {
+                ds.image_from_path(&self.path)
+                    .map(|id| (id, ds.image_size(id).unwrap_or(Size::ZERO)))
+            }) {
+                Ok((id, size)) => {
+                    self.id = Some(id);
+                    self.sprite.size = size;
+                }
                 Err(error) => self.handle_load_fail(&error),
             }
         }
@@ -139,36 +201,11 @@ impl WidgetConfig for Image {
 
 impl Layout for Image {
     fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        self.img_size = self
-            .id
-            .and_then(|id| sh.draw_shared().image_size(id))
-            .unwrap_or(Size::ZERO);
-        let margins = sh.outer_margins();
-        SizeRules::extract(axis, self.img_size, margins, self.stretch)
+        self.sprite.size_rules(sh, axis)
     }
 
     fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
-        let ideal = match self.scaling {
-            ImageScaling::None => self.img_size,
-            ImageScaling::FixedAspect => {
-                let img_size = Vec2::from(self.img_size);
-                let ratio = Vec2::from(rect.size) / img_size;
-                // Use smaller ratio, which must be finite
-                if ratio.0 < ratio.1 {
-                    Size(rect.size.0, i32::conv_nearest(ratio.0 * img_size.1))
-                } else if ratio.1 < ratio.0 {
-                    Size(i32::conv_nearest(ratio.1 * img_size.0), rect.size.1)
-                } else {
-                    // Non-finite ratio implies img_size is zero on at least one axis
-                    rect.size
-                }
-            }
-            ImageScaling::Stretch => rect.size,
-        };
-        let rect = align
-            .complete(Default::default(), Default::default())
-            .aligned_rect(ideal, rect);
-        self.core_data_mut().rect = rect;
+        self.core_data_mut().rect = self.sprite.align_rect(rect, align);
     }
 
     fn draw(&self, draw: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {

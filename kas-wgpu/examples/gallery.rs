@@ -238,9 +238,9 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 ScrollBar::new().with_limits(100, 20),
             #[widget(row=9, col=1)] pg: ProgressBar<Right> = ProgressBar::new(),
             #[widget(row=9, col=0)] _ = Label::new("ProgressBar"),
-            #[widget(row=10, col=0)] _ = Label::new("Image"),
+            #[widget(row=10, col=0)] _ = Label::new("SVG"),
             #[widget(row=10, col=1, align=centre)] _ =
-                Image::new("res/rustacean-flat-happy.png").with_stretch(Stretch::Low),
+                Svg::from_path_and_factors("res/rustacean-flat-happy.svg", 0.1, 0.3),
             #[widget(row=11, col=0)] _ = Label::new("Child window"),
             #[widget(row=11, col=1)] _ = popup_edit_box,
         }

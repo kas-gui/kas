@@ -139,11 +139,10 @@ impl<W: Widget, R: FnMut(&mut dyn SizeHandle, AxisInfo) -> SizeRules + 'static> 
     for Reserve<W, R>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Reserve {{ core: {:?}, inner: {:?}, reserve: [omitted] }}",
-            self.core, self.inner,
-        )
+        f.debug_struct("Reserve")
+            .field("core", &self.core)
+            .field("inner", &self.inner)
+            .finish_non_exhaustive()
     }
 }
 
