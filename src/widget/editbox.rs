@@ -859,8 +859,7 @@ impl<G: EditGuard> EditField<G> {
             Command::DelWord => {
                 let next = self.text.text()[pos..]
                     .split_word_bound_indices()
-                    .skip(1)
-                    .next()
+                    .nth(1)
                     .map(|(index, _)| pos + index)
                     .unwrap_or(self.text.str_len());
                 Action::Delete(pos..next)
@@ -899,7 +898,7 @@ impl<G: EditGuard> EditField<G> {
                         // ignore them (preventing line-breaks and ignoring any
                         // actions such as recursive-paste).
                         for (i, c) in content.char_indices() {
-                            if c < '\u{20}' || (c >= '\u{7f}' && c <= '\u{9f}') {
+                            if c < '\u{20}' || ('\u{7f}'..='\u{9f}').contains(&c) {
                                 end = i;
                                 break;
                             }

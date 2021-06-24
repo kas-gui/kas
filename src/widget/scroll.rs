@@ -94,13 +94,13 @@ impl ScrollComponent {
     pub fn offset_event(&self, mut event: Event) -> Event {
         match &mut event {
             Event::PressStart { coord, .. } => {
-                *coord = *coord + self.offset;
+                *coord += self.offset;
             }
             Event::PressMove { coord, .. } => {
-                *coord = *coord + self.offset;
+                *coord += self.offset;
             }
             Event::PressEnd { coord, .. } => {
-                *coord = *coord + self.offset;
+                *coord += self.offset;
             }
             _ => {}
         };

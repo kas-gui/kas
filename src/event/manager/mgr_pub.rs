@@ -94,7 +94,7 @@ impl<'a> Manager<'a> {
 
     /// Access event-handling configuration
     #[inline]
-    pub fn config<'b>(&'b self) -> impl std::ops::Deref<Target = Config> + 'b {
+    pub fn config(&self) -> impl std::ops::Deref<Target = Config> + '_ {
         self.state.config.borrow()
     }
 

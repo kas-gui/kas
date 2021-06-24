@@ -1152,7 +1152,7 @@ impl Parse for WidgetField {
 
         if input.peek(Token![->]) {
             let arrow: Token![->] = input.parse()?;
-            if !widget_attr.is_some() {
+            if widget_attr.is_none() {
                 return Err(Error::new(
                     arrow.span(),
                     "can only use `-> Msg` type restriction on widgets",

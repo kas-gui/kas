@@ -200,7 +200,7 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
     ///
     /// With mode [`SelectionMode::Single`] this may contain zero or one entry;
     /// use `selected_iter().next()` to extract only the first (optional) entry.
-    pub fn selected_iter<'a>(&'a self) -> impl Iterator<Item = &'a T::Key> + 'a {
+    pub fn selected_iter(&'_ self) -> impl Iterator<Item = &'_ T::Key> + '_ {
         self.selection.iter()
     }
 

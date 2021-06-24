@@ -140,13 +140,10 @@ impl<T: SingleData + UpdatableAll<(), V::Msg> + 'static, V: Driver<T::Item>> Sen
 
         if id < self.id() {
             let r = self.child.send(mgr, id, event);
-            match r {
-                Response::Msg(ref msg) => {
-                    if let Some(handle) = self.data.handle(&(), msg) {
-                        mgr.trigger_update(handle, 0);
-                    }
+            if let Response::Msg(ref msg) = r {
+                if let Some(handle) = self.data.handle(&(), msg) {
+                    mgr.trigger_update(handle, 0);
                 }
-                _ => (),
             }
             r
         } else {

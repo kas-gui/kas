@@ -297,7 +297,7 @@ impl<D: Directional> RowPositionSolver<D> {
     ///
     /// Returns `None` when the coordinates lie within the margin area or
     /// outside of the parent widget.
-    pub fn find_child<'a, W: Widget>(self, widgets: &'a [W], coord: Coord) -> Option<&'a W> {
+    pub fn find_child<W: Widget>(self, widgets: &[W], coord: Coord) -> Option<&W> {
         let index = match self.binary_search(widgets, coord) {
             Ok(i) => i,
             Err(i) => {

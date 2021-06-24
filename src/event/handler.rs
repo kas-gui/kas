@@ -144,9 +144,8 @@ impl<'a> Manager<'a> {
                 _ => (),
             };
         }
-        match event {
-            Event::NavFocus => return Response::Focus(widget.rect()),
-            _ => (),
+        if event == Event::NavFocus {
+            return Response::Focus(widget.rect());
         }
         widget.handle(mgr, event)
     }
