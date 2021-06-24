@@ -190,7 +190,7 @@ pub struct RadioBox<M: 'static> {
     core: CoreData,
     #[layout_data]
     layout_data: <Self as kas::LayoutData>::Data,
-    #[inner_widget]
+    #[widget_derive]
     #[widget]
     radiobox: RadioBoxBare<M>,
     #[widget]

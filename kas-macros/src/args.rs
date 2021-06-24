@@ -26,7 +26,7 @@ pub struct Child {
 
 #[derive(Debug)]
 pub struct Args {
-    pub core_data: Member,
+    pub core_data: Option<Member>,
     pub layout_data: Option<Member>,
     pub inner: Option<(Member, Type)>,
     pub derive: WidgetDerive,
@@ -84,34 +84,33 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                         .emit();
                 }
             } else if attr.path == parse_quote! { layout_data } {
-                if layout_data.is_none() {
-                    if field.ty != parse_quote! { <Self as kas::LayoutData>::Data }
-                        && field.ty != parse_quote! { <Self as LayoutData>::Data }
-                    {
-                        #[cfg(nightly)]
-                        field
-                            .ty
-                            .span()
-                            .unwrap()
-                            .warning("expected type `<Self as kas::LayoutData>::Data`")
-                            .emit();
-                    }
-                    layout_data = Some(member(i, field.ident.clone()));
-                } else {
+                if layout_data.is_some() {
                     #[cfg(nightly)]
                     attr.span()
                         .unwrap()
                         .error("multiple fields marked with #[layout_data]")
                         .emit();
+                } else if field.ty != parse_quote! { <Self as kas::LayoutData>::Data }
+                    && field.ty != parse_quote! { <Self as LayoutData>::Data }
+                {
+                    #[cfg(nightly)]
+                    field
+                        .ty
+                        .span()
+                        .unwrap()
+                        .warning("expected type `<Self as kas::LayoutData>::Data`")
+                        .emit();
+                } else {
+                    layout_data = Some(member(i, field.ident.clone()));
                 }
-            } else if attr.path == parse_quote! { inner_widget } {
+            } else if attr.path == parse_quote! { widget_derive } {
                 if inner.is_none() {
                     inner = Some((member(i, field.ident.clone()), field.ty.clone()));
                 } else {
                     #[cfg(nightly)]
                     attr.span()
                         .unwrap()
-                        .error("multiple fields marked with #[inner_widget]")
+                        .error("multiple fields marked with #[widget_derive]")
                         .emit();
                 }
             } else if attr.path == parse_quote! { widget } {
@@ -120,6 +119,19 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                 children.push(Child { ident, args });
             }
         }
+    }
+
+    if core_data.is_none() && inner.is_none() {
+        return Err(Error::new(
+            *span,
+            "require a field with #[widget_core] or a field with #[widget_derive] or both",
+        ));
+    }
+    if core_data.is_none() && (layout_data.is_some() || !children.is_empty()) {
+        return Err(Error::new(
+            *span,
+            "require a field with #[widget_core] when using #[layout_data] or #[widget]",
+        ));
     }
 
     let mut derive = None;
@@ -141,7 +153,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                 attr.span()
                     .unwrap()
                     .error(
-                        "usage of #[widget_derive(..)] without a field marked with #[inner_widget]",
+                        "usage of #[widget_derive(..)] on struct without a field marked with #[widget_derive]",
                     )
                     .emit();
             }
@@ -156,7 +168,16 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
             }
         } else if attr.path == parse_quote! { widget } {
             if widget.is_none() {
-                widget = Some(syn::parse2(attr.tokens)?);
+                let span = attr.span();
+                let w: WidgetArgs = syn::parse2(attr.tokens)?;
+                if core_data.is_none() && !w.children {
+                    #[cfg(nightly)]
+                    span
+                        .unwrap()
+                        .error("it is required to derive WidgetChildren when deriving from an inner widget")
+                        .emit()
+                }
+                widget = Some(w);
             } else {
                 #[cfg(nightly)]
                 attr.span()
@@ -165,47 +186,46 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                     .emit()
             }
         } else if attr.path == parse_quote! { layout } {
-            if layout.is_none() {
-                layout = Some(syn::parse2(attr.tokens)?);
-            } else {
+            if layout.is_some() {
                 #[cfg(nightly)]
                 attr.span()
                     .unwrap()
                     .error("multiple #[layout(..)] attributes on type")
                     .emit()
+            } else if core_data.is_none() {
+                #[cfg(nightly)]
+                attr.span()
+                    .unwrap()
+                    .error("require a field with #[widget_core] when using #[layout(..)]")
+                    .emit()
+            } else {
+                layout = Some(syn::parse2(attr.tokens)?);
             }
         } else if attr.path == parse_quote! { handler } {
             handler.push(syn::parse2(attr.tokens)?);
         }
     }
 
-    if inner.is_some() && derive.is_none() {
+    if core_data.is_some() && inner.is_some() && derive.is_none() {
         return Err(Error::new(
             *span,
-            "usage of #[inner_widget] without #[widget_derive(..)] has no effect",
+            "usage of #[widget_derive] field with #[widget_core] field and without #[widget_derive(..)] on struct has no effect",
         ));
     }
 
     let derive = derive.unwrap_or(WidgetDerive::default());
     let widget = widget.unwrap_or(WidgetArgs::default());
 
-    if let Some(core_data) = core_data {
-        Ok(Args {
-            core_data,
-            layout_data,
-            inner,
-            derive,
-            widget,
-            layout,
-            handler,
-            children,
-        })
-    } else {
-        Err(Error::new(
-            *span,
-            "one field must be marked with #[widget_core] when deriving Widget",
-        ))
-    }
+    Ok(Args {
+        core_data,
+        layout_data,
+        inner,
+        derive,
+        widget,
+        layout,
+        handler,
+        children,
+    })
 }
 
 fn member(index: usize, ident: Option<Ident>) -> Member {

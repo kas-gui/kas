@@ -46,7 +46,7 @@ It also supports lists:
                 #[widget(row=0, col=0, rspan=2)] editor: EditBox =
                     EditBox::new(doc).multi_line(true),
                 #[widget(row=0, col=1)] label: ScrollBarRegion<Label<Markdown>> =
-                    ScrollBarRegion::new2(Label::new(Markdown::new(doc)?)),
+                    ScrollBarRegion::new(Label::new(Markdown::new(doc)?)),
                 #[widget(row=1, col=1, handler=update)] _ = TextButton::new_msg("&Update", ()),
             }
             impl {

@@ -147,7 +147,7 @@ pub struct CheckBox<M: 'static> {
     core: CoreData,
     #[layout_data]
     layout_data: <Self as kas::LayoutData>::Data,
-    #[inner_widget]
+    #[widget_derive]
     #[widget]
     checkbox: CheckBoxBare<M>,
     #[widget]

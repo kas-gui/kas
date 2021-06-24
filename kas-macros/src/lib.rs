@@ -82,15 +82,7 @@ impl<'a> ToTokens for SubstTyGenerics<'a> {
 /// See the [`kas::macros`](../../kas/macros/index.html) module documentation.
 #[proc_macro_derive(
     Widget,
-    attributes(
-        handler,
-        inner_widget,
-        layout,
-        layout_data,
-        widget,
-        widget_core,
-        widget_derive
-    )
+    attributes(handler, layout, layout_data, widget, widget_core, widget_derive)
 )]
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut ast = parse_macro_input!(input as syn::DeriveInput);
@@ -99,11 +91,24 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         Ok(w) => w,
         Err(err) => return err.to_compile_error().into(),
     };
+
+    let derive_inner = args.core_data.is_none();
+    let opt_inner = args.inner.as_ref().map(|(inner, _)| inner.clone());
+
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
     let name = &ast.ident;
     let widget_name = name.to_string();
 
-    let core_data = args.core_data;
+    let (core_data, core_data_mut) = args
+        .core_data
+        .map(|cd| (quote! { &self.#cd }, quote! { &mut self.#cd }))
+        .unwrap_or_else(|| {
+            let inner = opt_inner.as_ref().unwrap();
+            (
+                quote! { self.#inner.core_data() },
+                quote! { self.#inner.core_data_mut() },
+            )
+        });
     let mut toks = quote! {
         impl #impl_generics kas::WidgetCore
             for #name #ty_generics #where_clause
@@ -112,11 +117,11 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             fn as_any_mut(&mut self) -> &mut dyn std::any::Any { self }
 
             fn core_data(&self) -> &kas::CoreData {
-                &self.#core_data
+                #core_data
             }
 
             fn core_data_mut(&mut self) -> &mut kas::CoreData {
-                &mut self.#core_data
+                #core_data_mut
             }
 
             fn widget_name(&self) -> &'static str {
@@ -128,7 +133,30 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
     };
 
-    if args.widget.children {
+    if derive_inner {
+        let inner = opt_inner.as_ref().unwrap();
+        toks.append_all(quote! {
+            impl #impl_generics kas::WidgetChildren
+                for #name #ty_generics #where_clause
+            {
+                fn first_id(&self) -> kas::WidgetId {
+                    self.#inner.first_id()
+                }
+                fn record_first_id(&mut self, id: WidgetId) {
+                    self.#inner.record_first_id(id);
+                }
+                fn num_children(&self) -> usize {
+                    self.#inner.num_children()
+                }
+                fn get_child(&self, index: usize) -> Option<&dyn kas::WidgetConfig> {
+                    self.#inner.get_child(index)
+                }
+                fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn kas::WidgetConfig> {
+                    self.#inner.get_child_mut(index)
+                }
+            }
+        });
+    } else if args.widget.children {
         let first_id = if args.children.is_empty() {
             quote! { self.id() }
         } else {
@@ -194,7 +222,39 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         });
     }
 
-    if let Some(ref layout) = args.layout {
+    if derive_inner {
+        let inner = opt_inner.as_ref().unwrap();
+        toks.append_all(quote! {
+            impl #impl_generics kas::Layout
+                    for #name #ty_generics #where_clause
+            {
+                #[inline]
+                fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+                    self.#inner.size_rules(size_handle, axis)
+                }
+                #[inline]
+                fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+                    self.#inner.set_rect(mgr, rect, align);
+                }
+                #[inline]
+                fn translation(&self, child_index: usize) -> Offset {
+                    self.#inner.translation(child_index)
+                }
+                #[inline]
+                fn spatial_nav(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+                    self.#inner.spatial_nav(reverse, from)
+                }
+                #[inline]
+                fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+                    self.#inner.find_id(coord)
+                }
+                #[inline]
+                fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+                    self.#inner.draw(draw_handle, mgr, disabled);
+                }
+            }
+        });
+    } else if let Some(ref layout) = args.layout {
         match layout::data_type(&args.children, layout) {
             Ok(dt) => toks.append_all(quote! {
                 impl #impl_generics kas::LayoutData
@@ -270,11 +330,23 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
         if handler.handle {
             let msg = handler.msg;
+            let handle = if derive_inner {
+                let inner = opt_inner.as_ref().unwrap();
+                quote! {
+                    #[inline]
+                    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+                        self.#inner.handle(mgr, event)
+                    }
+                }
+            } else {
+                quote! {}
+            };
             toks.append_all(quote! {
                 impl #impl_generics kas::event::Handler
                         for #name #ty_generics #where_clause
                 {
                     type Msg = #msg;
+                    #handle
                 }
             });
         }
@@ -296,10 +368,11 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 });
             }
 
-            let send = quote! {
-                fn send(&mut self, mgr: &mut kas::event::Manager, id: kas::WidgetId, event: kas::event::Event)
-                -> kas::event::Response<Self::Msg>
-                {
+            let send_impl = if derive_inner {
+                let inner = opt_inner.as_ref().unwrap();
+                quote! { self.#inner.send(mgr, id, event) }
+            } else {
+                quote! {
                     use kas::{WidgetCore, event::Response};
                     if self.is_disabled() {
                         return Response::Unhandled;
@@ -316,7 +389,15 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 impl #impl_generics kas::event::SendEvent
                         for #name #ty_generics #where_clause
                 {
-                    #send
+                    fn send(
+                        &mut self,
+                        mgr: &mut kas::event::Manager,
+                        id: kas::WidgetId,
+                        event: kas::event::Event
+                    ) -> kas::event::Response<Self::Msg>
+                    {
+                        #send_impl
+                    }
                 }
             });
         }

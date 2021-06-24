@@ -17,7 +17,7 @@ use kas::{event, prelude::*};
 pub struct Frame<W: Widget> {
     #[widget_core]
     core: CoreData,
-    #[inner_widget]
+    #[widget_derive]
     #[widget]
     pub inner: W,
     offset: Offset,

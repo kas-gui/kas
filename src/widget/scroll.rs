@@ -252,7 +252,7 @@ pub struct ScrollRegion<W: Widget> {
     offset: Offset,
     frame_size: Size,
     scroll: ScrollComponent,
-    #[inner_widget]
+    #[widget_derive]
     #[widget]
     inner: W,
 }
