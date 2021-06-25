@@ -154,6 +154,7 @@ impl Image {
         });
         mgr.redraw(self.id());
         if size != self.sprite.size {
+            self.sprite.size = size;
             *mgr |= TkAction::RESIZE;
         }
     }
@@ -184,8 +185,14 @@ impl WidgetConfig for Image {
     fn configure(&mut self, mgr: &mut Manager) {
         if self.do_load {
             self.do_load = false;
-            match mgr.draw_shared(|ds| ds.image_from_path(&self.path)) {
-                Ok(id) => self.id = Some(id),
+            match mgr.draw_shared(|ds| {
+                ds.image_from_path(&self.path)
+                    .map(|id| (id, ds.image_size(id).unwrap_or(Size::ZERO)))
+            }) {
+                Ok((id, size)) => {
+                    self.id = Some(id);
+                    self.sprite.size = size;
+                }
                 Err(error) => self.handle_load_fail(&error),
             }
         }
@@ -194,10 +201,6 @@ impl WidgetConfig for Image {
 
 impl Layout for Image {
     fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        self.sprite.size = self
-            .id
-            .and_then(|id| sh.draw_shared().image_size(id))
-            .unwrap_or(Size::ZERO);
         self.sprite.size_rules(sh, axis)
     }
 
