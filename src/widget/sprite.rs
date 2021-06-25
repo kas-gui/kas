@@ -6,6 +6,7 @@
 //! 2D pixmap widget
 
 use kas::geom::Vec2;
+use kas::layout::MarginSelector;
 use kas::{event, prelude::*};
 use std::path::PathBuf;
 
@@ -27,8 +28,10 @@ impl Default for SpriteScaling {
 }
 
 /// Widget component for displaying a sprite
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct SpriteDisplay {
+    /// Margins
+    pub margins: MarginSelector,
     /// The native size of the sprite
     pub size: Size,
     /// Widget stretchiness
@@ -42,7 +45,7 @@ impl SpriteDisplay {
     ///
     /// Set [`Self::size`] before calling this.
     fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let margins = sh.outer_margins();
+        let margins = self.margins.select(sh);
         SizeRules::extract(axis, self.size, margins, self.stretch)
     }
 
@@ -74,8 +77,6 @@ impl SpriteDisplay {
 }
 
 /// An image with margins
-///
-/// TODO: `BareImage` variant without margins
 #[derive(Clone, Debug, Default, Widget)]
 #[widget(config = noauto)]
 pub struct Image {
@@ -101,6 +102,12 @@ impl Image {
         }
     }
 
+    /// Set margins
+    pub fn with_margins(mut self, margins: MarginSelector) -> Self {
+        self.sprite.margins = margins;
+        self
+    }
+
     /// Set scaling mode
     pub fn with_scaling(mut self, scaling: SpriteScaling) -> Self {
         self.sprite.scaling = scaling;
@@ -111,6 +118,11 @@ impl Image {
     pub fn with_stretch(mut self, stretch: Stretch) -> Self {
         self.sprite.stretch = stretch;
         self
+    }
+
+    /// Set margins
+    pub fn margins(&mut self, margins: MarginSelector) {
+        self.sprite.margins = margins;
     }
 
     /// Set scaling mode
