@@ -8,6 +8,7 @@
 // TODO: error handling (unwrap)
 
 use kas::draw::{ImageFormat, ImageId};
+use kas::geom::Vec2;
 use kas::layout::MarginSelector;
 use kas::{event, prelude::*};
 use std::path::PathBuf;
@@ -20,7 +21,8 @@ pub struct Svg {
     core: CoreData,
     tree: usvg::Tree,
     margins: MarginSelector,
-    size: Size,
+    min_size: Size,
+    ideal_size: Size,
     stretch: Stretch,
     pixmap: Option<Pixmap>,
     image_id: Option<ImageId>,
@@ -31,7 +33,8 @@ impl std::fmt::Debug for Svg {
         f.debug_struct("Svg")
             .field("core", &self.core)
             .field("margins", &self.margins)
-            .field("size", &self.size)
+            .field("min_size", &self.min_size)
+            .field("ideal_size", &self.ideal_size)
             .field("stretch", &self.stretch)
             .field("pixmap", &self.pixmap)
             .field("image_id", &self.image_id)
@@ -41,7 +44,7 @@ impl std::fmt::Debug for Svg {
 
 impl Svg {
     /// Construct with a path
-    pub fn new<P: Into<PathBuf>>(path: P) -> Self {
+    pub fn new<P: Into<PathBuf>>(path: P, min_size_factor: f32, ideal_size_factor: f32) -> Self {
         // TODO: use resource manager for path deduplication and loading
         let mut path = path.into();
         let data = std::fs::read(&path).unwrap();
@@ -54,13 +57,17 @@ impl Svg {
 
         let tree = usvg::Tree::from_data(&data, &opts).unwrap();
         // TODO: this should be scaled by scale_factor?
-        let size = tree.svg_node().size.to_screen_size();
+        let size = tree.svg_node().size.to_screen_size().dimensions();
+        let size = Vec2(size.0.cast(), size.1.cast());
+        let min_size = Size::from(size * min_size_factor);
+        let ideal_size = Size::from(size * ideal_size_factor);
 
         Svg {
             core: Default::default(),
             tree,
             margins: MarginSelector::Outer,
-            size: size.dimensions().into(),
+            min_size,
+            ideal_size,
             stretch: Stretch::Low,
             pixmap: None,
             image_id: None,
@@ -93,7 +100,21 @@ impl Svg {
 impl Layout for Svg {
     fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let margins = self.margins.select(sh);
-        SizeRules::extract(axis, self.size, margins, self.stretch)
+        if axis.is_horizontal() {
+            SizeRules::new(
+                self.min_size.0,
+                self.ideal_size.0,
+                margins.horiz,
+                self.stretch,
+            )
+        } else {
+            SizeRules::new(
+                self.min_size.1,
+                self.ideal_size.1,
+                margins.vert,
+                self.stretch,
+            )
+        }
     }
 
     fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, _align: AlignHints) {

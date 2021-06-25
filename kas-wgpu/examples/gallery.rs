@@ -240,7 +240,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget(row=9, col=0)] _ = Label::new("ProgressBar"),
             #[widget(row=10, col=0)] _ = Label::new("SVG"),
             #[widget(row=10, col=1, align=centre)] _ =
-                Svg::new("res/rustacean-flat-happy.svg"),
+                Svg::new("res/rustacean-flat-happy.svg", 0.1, 0.3),
             #[widget(row=11, col=0)] _ = Label::new("Child window"),
             #[widget(row=11, col=1)] _ = popup_edit_box,
         }
