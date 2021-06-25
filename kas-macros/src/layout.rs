@@ -262,7 +262,7 @@ pub(crate) fn derive(
             align: kas::layout::AlignHints
         ) {
             use kas::{WidgetCore, Widget};
-            use kas::layout::{Margins, RulesSetter};
+            use kas::layout::{RulesSetter};
             self.core.rect = rect;
 
             let mut setter = <Self as kas::LayoutData>::Setter::new(

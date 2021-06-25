@@ -324,7 +324,7 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         rules.reduce_min_to(line_height);
 
         // We use a zero-sized frame to push any margins inside the scroll-region.
-        let frame = FrameRules::new(0, 0, 0, (0, 0));
+        let frame = kas::layout::FrameRules::new(0, 0, 0, (0, 0));
         let (rules, offset, size) = frame.surround(rules);
         self.offset.set_component(axis, offset);
         self.frame_size.set_component(axis, size);

@@ -361,7 +361,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Layout fo
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         // We use an invisible frame for highlighting selections, drawing into the margin
         let inner_margin = size_handle.inner_margin().extract(axis);
-        let frame = FrameRules::new_sym(0, inner_margin, 0);
+        let frame = kas::layout::FrameRules::new_sym(0, inner_margin, 0);
 
         // We use a default-generated widget to generate size rules
         let mut rules = self.view.new().size_rules(size_handle, axis);
