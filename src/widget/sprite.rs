@@ -3,15 +3,15 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Image widget
+//! 2D pixmap widget
 
 use kas::geom::Vec2;
 use kas::{event, prelude::*};
 use std::path::PathBuf;
 
-/// Image scaling policies
+/// Scaling policies
 #[derive(Clone, Copy, Debug)]
-pub enum ImageScaling {
+pub enum SpriteScaling {
     /// No scaling; align in available space
     None,
     /// Fixed aspect ratio scaling; align on other axis
@@ -20,9 +20,9 @@ pub enum ImageScaling {
     Stretch,
 }
 
-impl Default for ImageScaling {
+impl Default for SpriteScaling {
     fn default() -> Self {
-        ImageScaling::FixedAspect
+        SpriteScaling::FixedAspect
     }
 }
 
@@ -38,7 +38,7 @@ pub struct Image {
     do_load: bool,
     id: Option<ImageId>,
     img_size: Size,
-    scaling: ImageScaling,
+    scaling: SpriteScaling,
     stretch: Stretch,
 }
 
@@ -59,7 +59,7 @@ impl Image {
     }
 
     /// Set scaling mode
-    pub fn with_scaling(mut self, scaling: ImageScaling) -> Self {
+    pub fn with_scaling(mut self, scaling: SpriteScaling) -> Self {
         self.scaling = scaling;
         self
     }
@@ -71,7 +71,7 @@ impl Image {
     }
 
     /// Set scaling mode
-    pub fn set_scaling(&mut self, scaling: ImageScaling) {
+    pub fn set_scaling(&mut self, scaling: SpriteScaling) {
         self.scaling = scaling;
     }
 
@@ -149,8 +149,8 @@ impl Layout for Image {
 
     fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
         let ideal = match self.scaling {
-            ImageScaling::None => self.img_size,
-            ImageScaling::FixedAspect => {
+            SpriteScaling::None => self.img_size,
+            SpriteScaling::FixedAspect => {
                 let img_size = Vec2::from(self.img_size);
                 let ratio = Vec2::from(rect.size) / img_size;
                 // Use smaller ratio, which must be finite
@@ -163,7 +163,7 @@ impl Layout for Image {
                     rect.size
                 }
             }
-            ImageScaling::Stretch => rect.size,
+            SpriteScaling::Stretch => rect.size,
         };
         let rect = align
             .complete(Default::default(), Default::default())
