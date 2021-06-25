@@ -53,6 +53,9 @@ json = ["config", "serde_json"]
 # Enable support for RON (de)serialisation
 ron = ["config", "dep_ron"]
 
+# Support SVG images
+svg = ["tiny-skia", "resvg", "usvg"]
+
 [dependencies]
 easy-cast = "0.4.2"
 log = "0.4"
@@ -67,6 +70,9 @@ serde_json = { version = "1.0.61", optional = true }
 serde_yaml = { version = "0.8.16", optional = true }
 dep_ron = { version = "0.6.4", package = "ron", optional = true }
 image = "0.23.14"
+tiny-skia = { version = "0.5.1", optional = true }
+resvg = { version = "0.15.0", optional = true }
+usvg = { version = "0.15.0", optional = true }
 
 [dependencies.kas-macros]
 version = "0.8.0"

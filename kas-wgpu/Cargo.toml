@@ -19,11 +19,14 @@ features = ["stack_dst", "raster"]
 
 [features]
 # WARNING: if "raster" is disabled, an alternative like "kas-text/fontdue" is required!
-default = ["clipboard", "stack_dst", "shaping", "raster"]
+default = ["clipboard", "stack_dst", "shaping", "raster", "svg"]
 nightly = ["unsize", "kas/nightly", "kas-theme/nightly"]
 
 shaping = ["kas-text/shaping"]
 raster = ["kas-text/raster"]
+
+# Support SVG images
+svg = ["kas/svg"]
 
 # Use Generic Associated Types (this is too unstable to include in nightly!)
 gat = ["kas-theme/gat"]

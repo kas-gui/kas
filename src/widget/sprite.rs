@@ -44,7 +44,7 @@ impl SpriteDisplay {
     /// Generates `size_rules` based on size
     ///
     /// Set [`Self::size`] before calling this.
-    fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+    pub fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let margins = self.margins.select(sh);
         SizeRules::extract(axis, self.size, margins, self.stretch)
     }
@@ -52,7 +52,7 @@ impl SpriteDisplay {
     /// Aligns `rect` according to stretch policy
     ///
     /// Assign the result to `self.core_data_mut().rect`.
-    fn align_rect(&mut self, rect: Rect, align: AlignHints) -> Rect {
+    pub fn align_rect(&mut self, rect: Rect, align: AlignHints) -> Rect {
         let ideal = match self.scaling {
             SpriteScaling::None => self.size,
             SpriteScaling::FixedAspect => {

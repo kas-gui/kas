@@ -73,6 +73,8 @@ mod slider;
 mod splitter;
 mod sprite;
 mod stack;
+#[cfg(feature = "svg")]
+mod svg;
 mod window;
 
 pub mod view;
@@ -99,4 +101,6 @@ pub use slider::{Slider, SliderType};
 pub use splitter::*;
 pub use sprite::{Image, SpriteDisplay, SpriteScaling};
 pub use stack::{BoxStack, RefStack, Stack};
+#[cfg(feature = "svg")]
+pub use svg::Svg;
 pub use window::Window;
