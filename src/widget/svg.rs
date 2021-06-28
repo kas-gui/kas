@@ -117,18 +117,35 @@ impl Layout for Svg {
         }
     }
 
-    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, _align: AlignHints) {
-        self.core_data_mut().rect = rect;
+    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+        let size = match self.ideal_size.aspect_scale_to(rect.size) {
+            Some(size) => {
+                self.core_data_mut().rect = align
+                    .complete(Align::Centre, Align::Centre)
+                    .aligned_rect(size, rect);
+                Into::<(u32, u32)>::into(size)
+            }
+            None => {
+                self.core_data_mut().rect = rect;
+                self.pixmap = None;
+                self.image_id = None;
+                return;
+            }
+        };
+
         let pm_size = self.pixmap.as_ref().map(|pm| (pm.width(), pm.height()));
-        if Size::from(pm_size.unwrap_or((0, 0))) != rect.size {
+        if pm_size.unwrap_or((0, 0)) != size {
             if let Some(id) = self.image_id {
                 mgr.draw_shared(|ds| ds.remove_image(id));
             }
-            self.pixmap = Pixmap::new(rect.size.0.cast(), rect.size.1.cast());
+            self.pixmap = Pixmap::new(size.0, size.1);
             let tree = &self.tree;
             self.image_id = self.pixmap.as_mut().map(|pm| {
                 let (w, h) = (pm.width(), pm.height());
-                resvg::render(tree, usvg::FitTo::Size(w, h), pm.as_mut());
+
+                // alas, we cannot tell resvg to skip the aspect-ratio-scaling!
+                resvg::render(tree, usvg::FitTo::Height(h), pm.as_mut());
+
                 mgr.draw_shared(|ds| {
                     let id = ds.image_alloc((w, h)).unwrap();
                     ds.image_upload(id, pm.data(), ImageFormat::Rgba8);
