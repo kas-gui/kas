@@ -16,11 +16,15 @@ use tiny_skia::Pixmap;
 
 /// An SVG image loaded from a path
 #[derive(Clone, Widget)]
+#[widget(config = noauto)]
 pub struct Svg {
     #[widget_core]
     core: CoreData,
-    tree: usvg::Tree,
+    path: PathBuf,
+    tree: Option<usvg::Tree>,
     margins: MarginSelector,
+    min_size_factor: f32,
+    ideal_size_factor: f32,
     min_size: Size,
     ideal_size: Size,
     stretch: Stretch,
@@ -32,7 +36,10 @@ impl std::fmt::Debug for Svg {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.debug_struct("Svg")
             .field("core", &self.core)
+            .field("path", &self.path)
             .field("margins", &self.margins)
+            .field("min_size_factor", &self.min_size_factor)
+            .field("ideal_size_factor", &self.ideal_size_factor)
             .field("min_size", &self.min_size)
             .field("ideal_size", &self.ideal_size)
             .field("stretch", &self.stretch)
@@ -43,31 +50,25 @@ impl std::fmt::Debug for Svg {
 }
 
 impl Svg {
-    /// Construct with a path
-    pub fn new<P: Into<PathBuf>>(path: P, min_size_factor: f32, ideal_size_factor: f32) -> Self {
-        // TODO: use resource manager for path deduplication and loading
-        let mut path = path.into();
-        let data = std::fs::read(&path).unwrap();
-
-        let mut opts = usvg::Options::default();
-        if path.pop() {
-            opts.resources_dir = Some(path);
-        }
-        // TODO: set additional opts
-
-        let tree = usvg::Tree::from_data(&data, &opts).unwrap();
-        // TODO: this should be scaled by scale_factor?
-        let size = tree.svg_node().size.to_screen_size().dimensions();
-        let size = Vec2(size.0.cast(), size.1.cast());
-        let min_size = Size::from(size * min_size_factor);
-        let ideal_size = Size::from(size * ideal_size_factor);
-
+    /// Construct with a path and size factors
+    ///
+    /// An SVG image has an embedded "original" size. This constructor
+    /// multiplies that size by the given factors to obtain minimum and ideal
+    /// sizes (see [`SizeRules`] for a description of min / ideal sizes).
+    pub fn from_path_and_factors<P: Into<PathBuf>>(
+        path: P,
+        min_size_factor: f32,
+        ideal_size_factor: f32,
+    ) -> Self {
         Svg {
             core: Default::default(),
-            tree,
+            path: path.into(),
+            tree: None,
             margins: MarginSelector::Outer,
-            min_size,
-            ideal_size,
+            min_size_factor,
+            ideal_size_factor,
+            min_size: Size::ZERO,
+            ideal_size: Size::ZERO,
             stretch: Stretch::Low,
             pixmap: None,
             image_id: None,
@@ -94,6 +95,32 @@ impl Svg {
     /// Set stretch policy
     pub fn set_stretch(&mut self, stretch: Stretch) {
         self.stretch = stretch;
+    }
+}
+
+impl WidgetConfig for Svg {
+    fn configure(&mut self, mgr: &mut Manager) {
+        if self.tree.is_none() {
+            // TODO: maybe we should use a singleton to deduplicate loading by
+            // path? Probably not much use for duplicate SVG widgets however.
+            let data = std::fs::read(&self.path).unwrap();
+
+            let mut opts = usvg::Options::default();
+            if let Some(path) = self.path.parent() {
+                opts.resources_dir = Some(path.to_path_buf());
+            }
+            let scale_factor = mgr.size_handle(|sh| sh.scale_factor());
+            opts.dpi = 96.0 * f64::conv(scale_factor);
+            // TODO: allow configuration for rendering options (speed vs quality)
+            // TODO: set font family and database
+
+            let tree = usvg::Tree::from_data(&data, &opts).unwrap();
+            let size = tree.svg_node().size.to_screen_size().dimensions();
+            self.tree = Some(tree);
+            let size = Vec2(size.0.cast(), size.1.cast());
+            self.min_size = Size::from(size * self.min_size_factor * scale_factor);
+            self.ideal_size = Size::from(size * self.ideal_size_factor * scale_factor);
+        }
     }
 }
 
@@ -139,19 +166,20 @@ impl Layout for Svg {
                 mgr.draw_shared(|ds| ds.remove_image(id));
             }
             self.pixmap = Pixmap::new(size.0, size.1);
-            let tree = &self.tree;
-            self.image_id = self.pixmap.as_mut().map(|pm| {
-                let (w, h) = (pm.width(), pm.height());
+            if let Some(tree) = self.tree.as_ref() {
+                self.image_id = self.pixmap.as_mut().map(|pm| {
+                    let (w, h) = (pm.width(), pm.height());
 
-                // alas, we cannot tell resvg to skip the aspect-ratio-scaling!
-                resvg::render(tree, usvg::FitTo::Height(h), pm.as_mut());
+                    // alas, we cannot tell resvg to skip the aspect-ratio-scaling!
+                    resvg::render(tree, usvg::FitTo::Height(h), pm.as_mut());
 
-                mgr.draw_shared(|ds| {
-                    let id = ds.image_alloc((w, h)).unwrap();
-                    ds.image_upload(id, pm.data(), ImageFormat::Rgba8);
-                    id
-                })
-            });
+                    mgr.draw_shared(|ds| {
+                        let id = ds.image_alloc((w, h)).unwrap();
+                        ds.image_upload(id, pm.data(), ImageFormat::Rgba8);
+                        id
+                    })
+                });
+            }
         }
     }
 
