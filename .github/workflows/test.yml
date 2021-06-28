@@ -19,8 +19,8 @@ jobs:
           toolchain: nightly
           override: true
           components: rustfmt
-      - name: Install xcb libraries
-        run: sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev
+      - name: Install dependencies
+        run: sudo apt-get install -y libxkbcommon-dev libxcb-shape0-dev libxcb-xfixes0-dev
 
       - name: Rustfmt check
         uses: actions-rs/cargo@v1
@@ -59,9 +59,9 @@ jobs:
           profile: minimal
           toolchain: ${{ matrix.toolchain }}
           override: true
-      - name: Install xcb libraries
+      - name: Install dependencies
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev
+        run: sudo apt-get install -y libxkbcommon-dev libxcb-shape0-dev libxcb-xfixes0-dev
 
       - name: test (kas-macros)
         run: cargo test --manifest-path kas-macros/Cargo.toml --all-features
