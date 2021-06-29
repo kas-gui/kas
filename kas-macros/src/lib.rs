@@ -334,6 +334,10 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 let inner = opt_inner.as_ref().unwrap();
                 quote! {
                     #[inline]
+                    fn activation_via_press(&self) -> bool {
+                        self.#inner.activation_via_press()
+                    }
+                    #[inline]
                     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
                         self.#inner.handle(mgr, event)
                     }
