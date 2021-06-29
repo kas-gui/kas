@@ -6,7 +6,6 @@
 //! [`SizeRules`] type
 
 use smallvec::SmallVec;
-use std::fmt;
 use std::iter::Sum;
 
 use super::{Margins, Stretch};
@@ -80,7 +79,7 @@ use kas::draw::SizeHandle;
 /// [`kas::Layout::set_rect`] and [`kas::layout::AlignHints`].
 ///
 /// [`Rect`]: kas::geom::Rect
-#[derive(Copy, Clone, Default, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub struct SizeRules {
     // minimum good size
     a: i32,
@@ -89,16 +88,6 @@ pub struct SizeRules {
     // (pre, post) margins
     m: (u16, u16),
     stretch: Stretch,
-}
-
-impl fmt::Debug for SizeRules {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "SizeRules {{ a: {}, b: {}, m: ({}, {}), stretch: {:?} }}",
-            self.a, self.b, self.m.0, self.m.1, self.stretch
-        )
-    }
 }
 
 impl SizeRules {

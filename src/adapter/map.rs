@@ -45,11 +45,10 @@ impl<W: Widget, M> MapResponse<W, M> {
 
 impl<W: Widget, M> fmt::Debug for MapResponse<W, M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "MapResponse {{ core: {:?}, inner: {:?}, ... }}",
-            self.core, self.inner,
-        )
+        f.debug_struct("MapResponse")
+            .field("core", &self.core)
+            .field("inner", &self.inner)
+            .finish_non_exhaustive()
     }
 }
 

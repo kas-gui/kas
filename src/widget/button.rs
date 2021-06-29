@@ -28,11 +28,12 @@ pub struct TextButton<M: 'static> {
 
 impl<M: 'static> Debug for TextButton<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "TextButton {{ core: {:?}, keys1: {:?}, frame_size: {:?}, label: {:?}, ... }}",
-            self.core, self.keys1, self.frame_size, self.label,
-        )
+        f.debug_struct("TextButton")
+            .field("core", &self.core)
+            .field("keys1", &self.keys1)
+            .field("frame_size", &self.frame_size)
+            .field("label", &self.label)
+            .finish_non_exhaustive()
     }
 }
 
