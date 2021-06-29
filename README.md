@@ -116,6 +116,8 @@ The `kas` crate has the following feature flags:
     utility types (specifying `serde` instead only implements for utility types)
 -   `json`: adds config (de)serialisation using JSON (implies `config`)
 -   `yaml`: adds config (de)serialisation using YAML (implies `config`)
+-   `ron`: adds config (de)serialisation using RON (implies `config`)
+-   `svg`: adds support for SVG images
 -   `winit`: adds compatibility code for winit's event and geometry types.
     This is currently the only functional windowing/event library.
 -   `stack_dst`: some compatibility impls (see `kas-theme`'s documentation)

@@ -197,6 +197,10 @@ impl<'a, DS: DrawableShared> draw::SizeHandle for SizeHandle<'a, DS> {
         Margins::splat(self.w.dims.outer_margin)
     }
 
+    fn text_margins(&self) -> Margins {
+        Margins::splat(self.w.dims.text_margin)
+    }
+
     fn line_height(&self, _: TextClass) -> i32 {
         self.w.dims.line_height
     }

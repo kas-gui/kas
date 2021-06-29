@@ -169,6 +169,12 @@ pub trait SizeHandle {
     /// Widgets must not draw in outer margins.
     fn outer_margins(&self) -> Margins;
 
+    /// The margin around text elements
+    ///
+    /// Similar to [`Self::outer_margins`], but intended for things like text
+    /// labels which do not have a visible hard edge.
+    fn text_margins(&self) -> Margins;
+
     /// The height of a line of text
     fn line_height(&self, class: TextClass) -> i32;
 
@@ -490,6 +496,9 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     fn outer_margins(&self) -> Margins {
         self.deref().outer_margins()
     }
+    fn text_margins(&self) -> Margins {
+        self.deref().text_margins()
+    }
 
     fn line_height(&self, class: TextClass) -> i32 {
         self.deref().line_height(class)
@@ -566,6 +575,9 @@ where
     }
     fn outer_margins(&self) -> Margins {
         self.deref().outer_margins()
+    }
+    fn text_margins(&self) -> Margins {
+        self.deref().text_margins()
     }
 
     fn line_height(&self, class: TextClass) -> i32 {

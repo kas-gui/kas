@@ -59,7 +59,6 @@ mod drag;
 mod editbox;
 mod filler;
 mod frame;
-mod image;
 mod label;
 mod list;
 mod menu;
@@ -72,12 +71,14 @@ mod scrollbar;
 mod separator;
 mod slider;
 mod splitter;
+mod sprite;
 mod stack;
+#[cfg(feature = "svg")]
+mod svg;
 mod window;
 
 pub mod view;
 
-pub use self::image::{Image, ImageScaling};
 pub use button::TextButton;
 pub use checkbox::{CheckBox, CheckBoxBare};
 pub use combobox::ComboBox;
@@ -98,5 +99,8 @@ pub use scrollbar::{ScrollBar, ScrollBarRegion, ScrollBars, Scrollable};
 pub use separator::Separator;
 pub use slider::{Slider, SliderType};
 pub use splitter::*;
+pub use sprite::{Image, SpriteDisplay, SpriteScaling};
 pub use stack::{BoxStack, RefStack, Stack};
+#[cfg(feature = "svg")]
+pub use svg::Svg;
 pub use window::Window;

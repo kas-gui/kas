@@ -7,6 +7,7 @@
 
 use super::SizeRules;
 use crate::geom::Size;
+use kas::cast::{Cast, ConvFloat};
 
 // for doc use
 #[allow(unused)]
@@ -16,7 +17,7 @@ use kas::draw::SizeHandle;
 ///
 /// Used by the layout system for margins around child widgets. Margins may be
 /// drawn in and handle events like any other widget area.
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub struct Margins {
     /// Size of horizontal margins
     pub horiz: (u16, u16),
@@ -64,6 +65,48 @@ impl Margins {
     /// Pad a size with margins
     pub fn pad(self, size: Size) -> Size {
         Size::new(size.0 + self.sum_horiz(), size.1 + self.sum_vert())
+    }
+}
+
+impl From<Size> for Margins {
+    fn from(size: Size) -> Self {
+        Margins::hv_splat(size.0.cast(), size.1.cast())
+    }
+}
+
+/// Margins (selectable)
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum MarginSelector {
+    /// Use the theme's default around-widget margins
+    Outer,
+    /// Use the theme's default within-widget margins
+    Inner,
+    /// Use theme's default around-text margins
+    Text,
+    /// Use fixed margins
+    Fixed(Margins),
+    /// Use scaled margins (single value)
+    ScaledSplat(f32),
+}
+
+impl Default for MarginSelector {
+    fn default() -> Self {
+        MarginSelector::Outer
+    }
+}
+
+impl MarginSelector {
+    /// Convert to fixed [`Margins`]
+    pub fn select(&self, sh: &dyn SizeHandle) -> Margins {
+        match self {
+            MarginSelector::Outer => sh.outer_margins(),
+            MarginSelector::Inner => Margins::from(sh.inner_margin()),
+            MarginSelector::Text => sh.text_margins(),
+            MarginSelector::Fixed(fixed) => *fixed,
+            MarginSelector::ScaledSplat(m) => {
+                Margins::splat(u16::conv_nearest(m * sh.scale_factor()))
+            }
+        }
     }
 }
 

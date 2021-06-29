@@ -28,7 +28,7 @@ pub use kas::event::{
 #[doc(no_inline)]
 pub use kas::geom::{Coord, Offset, Rect, Size};
 #[doc(no_inline)]
-pub use kas::layout::{Align, AlignHints, AxisInfo, FrameRules, Margins, SizeRules, Stretch};
+pub use kas::layout::{Align, AlignHints, AxisInfo, SizeRules, Stretch};
 #[doc(no_inline)]
 pub use kas::macros::*;
 #[doc(no_inline)]

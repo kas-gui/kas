@@ -301,6 +301,23 @@ impl Size {
         // This impl should aid vectorisation. We avoid Sub impl because of its check.
         Size(self.0 - rhs.0, self.1 - rhs.1).max(Size::ZERO)
     }
+
+    /// Scale to fit within the target size, keeping aspect ratio
+    ///
+    /// If either dimension of self is 0, this returns None.
+    pub fn aspect_scale_to(self, target: Size) -> Option<Size> {
+        if self.0 == 0 || self.1 == 0 {
+            return None;
+        }
+
+        let h = i32::conv((i64::conv(self.1) * i64::conv(target.0)) / i64::conv(self.0));
+        if h <= target.1 {
+            Some(Size(target.0, h))
+        } else {
+            let w = i32::conv((i64::conv(self.0) * i64::conv(target.1)) / i64::conv(self.1));
+            Some(Size(w, target.1))
+        }
+    }
 }
 
 impl std::ops::Add for Size {
