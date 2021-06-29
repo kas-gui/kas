@@ -19,14 +19,11 @@ features = ["stack_dst", "raster"]
 
 [features]
 # WARNING: if "raster" is disabled, an alternative like "kas-text/fontdue" is required!
-default = ["clipboard", "stack_dst", "shaping", "raster", "svg"]
+default = ["clipboard", "stack_dst", "shaping", "raster"]
 nightly = ["unsize", "kas/nightly", "kas-theme/nightly"]
 
 shaping = ["kas-text/shaping"]
 raster = ["kas-text/raster"]
-
-# Support SVG images
-svg = ["kas/svg"]
 
 # Use Generic Associated Types (this is too unstable to include in nightly!)
 gat = ["kas-theme/gat"]
@@ -57,7 +54,7 @@ guillotiere = "0.6.0"
 [dev-dependencies]
 chrono = "0.4"
 env_logger = "0.8"
-kas = { path = "..", features = ["markdown", "winit", "json", "yaml", "ron"] }
+kas = { path = "..", features = ["markdown", "winit", "json", "yaml", "ron", "svg"] }
 
 [build-dependencies]
 glob = "0.3"
