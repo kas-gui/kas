@@ -13,7 +13,7 @@ use kas::text::fonts::FaceId;
 use kas::text::{Effect, Glyph, TextDisplay};
 use kas_text::raster::{raster, Config, SpriteDescriptor};
 use kas_theme::RasterConfig;
-use std::collections::HashMap;
+use rustc_hash::FxHashMap as HashMap;
 use std::mem::size_of;
 use std::num::NonZeroU32;
 
