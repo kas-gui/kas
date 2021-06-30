@@ -13,7 +13,7 @@ use kas::text::fonts::FaceId;
 use kas::text::{Effect, Glyph, TextDisplay};
 use kas_text::raster::{raster, Config, SpriteDescriptor};
 use kas_theme::RasterConfig;
-use std::collections::hash_map::{Entry, HashMap};
+use std::collections::HashMap;
 use std::mem::size_of;
 use std::num::NonZeroU32;
 
@@ -155,40 +155,50 @@ impl Pipeline {
     /// `None` (with a warning) on error.
     fn get_glyph(&mut self, face: FaceId, dpem: f32, glyph: Glyph) -> Option<Sprite> {
         let desc = SpriteDescriptor::new(&self.config, face, glyph, dpem);
-        match self.glyphs.entry(desc) {
-            Entry::Occupied(entry) => entry.get().clone(),
-            Entry::Vacant(entry) => {
-                // NOTE: we only need the allocation and coordinates now; the
-                // rendering could be offloaded.
-                let mut sprite = None;
-                if let Some(rs) = raster(&self.config, desc) {
-                    match self.atlas_pipe.allocate(rs.size) {
-                        Ok((atlas, _, origin, tex_quad)) => {
-                            let s = Sprite {
-                                atlas,
-                                size: Vec2(rs.size.0.cast(), rs.size.1.cast()),
-                                offset: Vec2(rs.offset.0.cast(), rs.offset.1.cast()),
-                                tex_quad,
-                            };
-
-                            self.prepare.push((s.atlas, origin, rs.size, rs.data));
-                            sprite = Some(s);
-                        }
-                        Err(_) => {
-                            log::warn!(
-                                "text_pipe: failed to allocate glyph with size {:?}",
-                                rs.size
-                            );
-                        }
-                    };
-                } else {
-                    // This comes up a lot and is usually harmless
-                    log::debug!("Failed to rasterize glyph: {:?}", glyph);
-                };
-                entry.insert(sprite.clone());
-                sprite
-            }
+        if let Some(opt_sprite) = self.glyphs.get(&desc).cloned() {
+            opt_sprite
+        } else {
+            // NOTE: this branch is *rare*. We don't use HashMap::entry and push
+            // rastering to another function to optimise for the common case.
+            self.raster_glyph(desc)
         }
+    }
+
+    fn raster_glyph(&mut self, desc: SpriteDescriptor) -> Option<Sprite> {
+        // NOTE: we only need the allocation and coordinates now; the
+        // rendering could be offloaded (though this may not be useful).
+        let mut sprite = None;
+        if let Some(rs) = raster(&self.config, desc) {
+            match self.atlas_pipe.allocate(rs.size) {
+                Ok((atlas, _, origin, tex_quad)) => {
+                    let s = Sprite {
+                        atlas,
+                        size: Vec2(rs.size.0.cast(), rs.size.1.cast()),
+                        offset: Vec2(rs.offset.0.cast(), rs.offset.1.cast()),
+                        tex_quad,
+                    };
+
+                    self.prepare.push((s.atlas, origin, rs.size, rs.data));
+                    sprite = Some(s);
+                }
+                Err(_) => {
+                    log::warn!(
+                        "text_pipe: failed to allocate glyph with size {:?}",
+                        rs.size
+                    );
+                }
+            };
+        } else {
+            // This comes up a lot and is usually harmless
+            log::debug!(
+                "Failed to raster glyph {:?} of face {:?}",
+                desc.glyph(),
+                desc.face()
+            );
+        };
+
+        self.glyphs.insert(desc, sprite.clone());
+        sprite
     }
 }
 
