@@ -157,10 +157,10 @@ impl<T: SingleData + UpdatableAll<(), V::Msg> + 'static, V: Driver<T::Item>> fmt
     for SingleView<T, V>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "SingleView {{ core: {:?}, data: {:?}, child: {:?} }}",
-            self.core, self.data, self.child,
-        )
+        f.debug_struct("SingleView")
+            .field("core", &self.core)
+            .field("data", &self.data)
+            .field("child", &self.child)
+            .finish_non_exhaustive()
     }
 }

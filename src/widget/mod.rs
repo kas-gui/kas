@@ -79,7 +79,7 @@ mod window;
 
 pub mod view;
 
-pub use button::TextButton;
+pub use button::{Button, TextButton};
 pub use checkbox::{CheckBox, CheckBoxBare};
 pub use combobox::ComboBox;
 pub use dialog::MessageBox;

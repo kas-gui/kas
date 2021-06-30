@@ -27,11 +27,11 @@ pub struct RadioBoxBare<M: 'static> {
 
 impl<M: 'static> Debug for RadioBoxBare<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "RadioBoxBare {{ core: {:?}, state: {:?}, handle: {:?}, ... }}",
-            self.core, self.state, self.handle,
-        )
+        f.debug_struct("RadioBox")
+            .field("core", &self.core)
+            .field("state", &self.state)
+            .field("handle", &self.handle)
+            .finish_non_exhaustive()
     }
 }
 
@@ -199,11 +199,12 @@ pub struct RadioBox<M: 'static> {
 
 impl<M: 'static> Debug for RadioBox<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "RadioBox {{ core: {:?}, layout_data: {:?}, radiobox: {:?}, label: {:?} }}",
-            self.core, self.layout_data, self.radiobox, self.label,
-        )
+        f.debug_struct("RadioBox")
+            .field("core", &self.core)
+            .field("layout_data", &self.layout_data)
+            .field("radiobox", &self.radiobox)
+            .field("label", &self.label)
+            .finish()
     }
 }
 

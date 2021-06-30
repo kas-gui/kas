@@ -284,13 +284,9 @@ impl Window {
                 .map(|e| *e != Effect::default(()))
                 .unwrap_or(false)
         {
-            let for_rect = |x1, x2, mut y, h: f32, _, _| {
-                let y2 = y + h;
-                if h < 1.0 {
-                    // h too small can make the line invisible due to rounding
-                    // In this case we prefer to push the line up (nearer text).
-                    y = y2 - 1.0;
-                }
+            let for_rect = |x1, x2, y: f32, h: f32, _, _| {
+                let y = y.ceil();
+                let y2 = y + h.ceil();
                 let quad = Quad::with_coords(pos + Vec2(x1, y), pos + Vec2(x2, y2));
                 rects.push(quad);
             };
@@ -338,13 +334,9 @@ impl Window {
             }
         };
 
-        let for_rect = |x1, x2, mut y, h: f32, _, col: Rgba| {
-            let y2 = y + h;
-            if h < 1.0 {
-                // h too small can make the line invisible due to rounding
-                // In this case we prefer to push the line up (nearer text).
-                y = y2 - 1.0;
-            }
+        let for_rect = |x1, x2, y: f32, h: f32, _, col: Rgba| {
+            let y = y.ceil();
+            let y2 = y + h.ceil();
             let quad = Quad::with_coords(pos + Vec2(x1, y), pos + Vec2(x2, y2));
             rects.push((quad, col));
         };

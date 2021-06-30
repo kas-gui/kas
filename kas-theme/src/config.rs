@@ -230,7 +230,7 @@ mod defaults {
     use super::*;
 
     pub fn font_size() -> f32 {
-        12.0
+        10.0
     }
 
     pub fn color_schemes() -> BTreeMap<String, ColorsSrgb> {

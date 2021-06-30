@@ -35,12 +35,15 @@ pub struct ComboBox<M: 'static> {
 
 impl<M: 'static> Debug for ComboBox<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "ComboBox {{ core: {:?}, label: {:?}, frame_size: {:?}, popup: {:?}, active: {}, opening: {}, popup_id: {:?}, on_select: {} }}",
-            self.core, self.label, self.frame_size, self.popup, self.active, self.opening, self.popup_id,
-            if self.on_select.is_none() { "None" } else { "Some(<fn>)" }
-        )
+        f.debug_struct("ComboBox")
+            .field("core", &self.core)
+            .field("label", &self.label)
+            .field("frame_size", &self.frame_size)
+            .field("popup", &self.popup)
+            .field("active", &self.active)
+            .field("opening", &self.opening)
+            .field("popup_id", &self.popup_id)
+            .finish_non_exhaustive()
     }
 }
 

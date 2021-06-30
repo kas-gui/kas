@@ -28,17 +28,13 @@ pub struct Window<W: Widget + 'static> {
 
 impl<W: Widget> Debug for Window<W> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Window {{ core: {:?}, restrict_dimensions: {:?}, title: {:?}, w: {:?}, popups: {:?}, drop: ",
-            self.core, self.restrict_dimensions, self.title, self.w, self.popups,
-        )?;
-        if let Some(ref d) = self.drop {
-            write!(f, "Some(<closure>, {:?})", d.1)?;
-        } else {
-            write!(f, "None")?;
-        }
-        write!(f, " }}")
+        f.debug_struct("Window")
+            .field("core", &self.core)
+            .field("restrict_dimensions", &self.restrict_dimensions)
+            .field("title", &self.title)
+            .field("w", &self.w)
+            .field("popups", &self.popups)
+            .finish_non_exhaustive()
     }
 }
 

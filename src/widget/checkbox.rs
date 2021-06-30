@@ -24,11 +24,10 @@ pub struct CheckBoxBare<M: 'static> {
 
 impl<M: 'static> Debug for CheckBoxBare<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "CheckBoxBare {{ core: {:?}, state: {:?}, ... }}",
-            self.core, self.state
-        )
+        f.debug_struct("CheckBoxBare")
+            .field("core", &self.core)
+            .field("state", &self.state)
+            .finish_non_exhaustive()
     }
 }
 
@@ -156,11 +155,12 @@ pub struct CheckBox<M: 'static> {
 
 impl<M: 'static> Debug for CheckBox<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "CheckBox {{ core: {:?}, layout_data: {:?}, checkbox: {:?}, label: {:?} }}",
-            self.core, self.layout_data, self.checkbox, self.label,
-        )
+        f.debug_struct("CheckBox")
+            .field("core", &self.core)
+            .field("layout_data", &self.layout_data)
+            .field("checkbox", &self.checkbox)
+            .field("label", &self.label)
+            .finish()
     }
 }
 
