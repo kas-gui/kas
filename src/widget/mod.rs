@@ -52,6 +52,8 @@
 //! -   [`DragHandle`]: a handle (e.g. for a slider, splitter or scrollbar)
 
 mod button;
+#[cfg(feature = "canvas")]
+mod canvas;
 mod checkbox;
 mod combobox;
 mod dialog;
@@ -80,6 +82,8 @@ mod window;
 pub mod view;
 
 pub use button::{Button, TextButton};
+#[cfg(feature = "canvas")]
+pub use canvas::{Canvas, CanvasDrawable};
 pub use checkbox::{CheckBox, CheckBoxBare};
 pub use combobox::ComboBox;
 pub use dialog::MessageBox;
@@ -104,3 +108,6 @@ pub use stack::{BoxStack, RefStack, Stack};
 #[cfg(feature = "svg")]
 pub use svg::Svg;
 pub use window::Window;
+
+#[cfg(feature = "canvas")]
+pub use tiny_skia;
