@@ -213,8 +213,8 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
         ));
     }
 
-    let derive = derive.unwrap_or(WidgetDerive::default());
-    let widget = widget.unwrap_or(WidgetArgs::default());
+    let derive = derive.unwrap_or_default();
+    let widget = widget.unwrap_or_default();
 
     Ok(Args {
         core_data,
