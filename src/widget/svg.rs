@@ -15,6 +15,7 @@ use std::path::PathBuf;
 use tiny_skia::Pixmap;
 
 /// An SVG image loaded from a path
+#[cfg_attr(doc_cfg, doc(cfg(svg)))]
 #[derive(Clone, Widget)]
 #[widget(config = noauto)]
 pub struct Svg {
@@ -88,7 +89,7 @@ impl Svg {
     }
 
     /// Set margins
-    pub fn margins(&mut self, margins: MarginSelector) {
+    pub fn set_margins(&mut self, margins: MarginSelector) {
         self.margins = margins;
     }
 

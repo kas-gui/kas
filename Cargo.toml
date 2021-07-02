@@ -53,6 +53,9 @@ json = ["config", "serde_json"]
 # Enable support for RON (de)serialisation
 ron = ["config", "dep_ron"]
 
+# Support canvas widget
+canvas = ["tiny-skia"]
+
 # Support SVG images
 svg = ["tiny-skia", "resvg", "usvg"]
 
