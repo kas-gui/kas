@@ -449,7 +449,8 @@ pub trait Layout: WidgetChildren {
     /// If `from.is_some()`, return its next sibling in iteration order,
     /// otherwise return the first or last child.
     ///
-    /// Often it is sufficient to implement [`Self.:spatial_range`] instead.
+    /// The default implementation often suffices: it will navigate through
+    /// children in order.
     fn spatial_nav(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
         let last = self.num_children().wrapping_sub(1);
         if last == usize::MAX {
