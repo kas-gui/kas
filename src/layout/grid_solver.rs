@@ -13,6 +13,7 @@ use crate::cast::Conv;
 use crate::geom::{Coord, Offset, Rect, Size};
 
 /// Per-child information
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct GridChildInfo {
     /// Column index (first column when in a span)
     pub col: u32,
