@@ -356,8 +356,7 @@ impl<D: Directional, W: Widget> List<D, W> {
     /// Iterate over childern
     pub fn iter(&self) -> impl Iterator<Item = &W> {
         ListIter {
-            list: self,
-            index: 0,
+            list: &self.widgets,
         }
     }
 
@@ -388,17 +387,16 @@ impl<D: Directional, W: Widget> IndexMut<usize> for List<D, W> {
     }
 }
 
-struct ListIter<'a, D: Directional, W: Widget> {
-    list: &'a List<D, W>,
-    index: usize,
+struct ListIter<'a, W: Widget> {
+    list: &'a [W],
 }
-impl<'a, D: Directional, W: Widget> Iterator for ListIter<'a, D, W> {
+impl<'a, W: Widget> Iterator for ListIter<'a, W> {
     type Item = &'a W;
     fn next(&mut self) -> Option<Self::Item> {
-        let index = self.index;
-        if index < self.list.widgets.len() {
-            self.index = index + 1;
-            Some(&self.list.widgets[index])
+        if !self.list.is_empty() {
+            let item = &self.list[0];
+            self.list = &self.list[1..];
+            Some(item)
         } else {
             None
         }
@@ -408,8 +406,8 @@ impl<'a, D: Directional, W: Widget> Iterator for ListIter<'a, D, W> {
         (len, Some(len))
     }
 }
-impl<'a, D: Directional, W: Widget> ExactSizeIterator for ListIter<'a, D, W> {
+impl<'a, W: Widget> ExactSizeIterator for ListIter<'a, W> {
     fn len(&self) -> usize {
-        self.list.widgets.len() - self.index
+        self.list.len()
     }
 }
