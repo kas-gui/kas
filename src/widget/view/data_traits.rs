@@ -49,6 +49,7 @@ pub trait SingleDataMut: SingleData {
 }
 
 /// Trait for viewable data lists
+#[allow(clippy::len_without_is_empty)]
 pub trait ListData: Debug {
     /// Key type
     type Key: Clone + Debug + PartialEq + Eq;

@@ -25,6 +25,7 @@
 
 // Use ``never_loop`` until: https://github.com/rust-lang/rust-clippy/issues/7397 is fixed
 #![allow(
+    clippy::identity_op,
     clippy::or_fun_call,
     clippy::never_loop,
     clippy::module_inception,
