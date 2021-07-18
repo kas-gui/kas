@@ -177,6 +177,12 @@ impl<M: 'static> ComboBox<M> {
         self.popup.inner.len()
     }
 
+    /// True if the box contains no entries
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.popup.inner.is_empty()
+    }
+
     /// Remove all choices
     ///
     /// Triggers a [reconfigure action](Manager::send_action).
