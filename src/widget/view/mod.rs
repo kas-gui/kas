@@ -71,6 +71,7 @@
 #[allow(unused)]
 use kas::event::UpdateHandle;
 use kas::macros::VoidMsg;
+use thiserror::Error;
 
 mod data_impls;
 mod data_traits;
@@ -103,4 +104,13 @@ impl Default for SelectionMode {
     fn default() -> Self {
         SelectionMode::None
     }
+}
+
+/// Selection errors
+#[derive(Error, Debug)]
+pub enum SelectionError {
+    #[error("selection disabled")]
+    Disabled,
+    #[error("invalid key or index")]
+    Key,
 }
