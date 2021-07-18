@@ -109,15 +109,21 @@ where
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        shared: &'static mut DrawShared<DS>,
-        draw: Draw<'static, DS::Draw>,
-        window: &'static mut Self::Window,
+        shared: &mut DrawShared<DS>,
+        draw: Draw<DS::Draw>,
+        window: &mut Self::Window,
     ) -> Self::DrawHandle {
+        unsafe fn extend_lifetime<'b, T: ?Sized>(r: &'b T) -> &'static T {
+            std::mem::transmute::<&'b T, &'static T>(r)
+        }
+        unsafe fn extend_lifetime_mut<'b, T: ?Sized>(r: &'b mut T) -> &'static mut T {
+            std::mem::transmute::<&'b mut T, &'static mut T>(r)
+        }
         DrawHandle {
-            shared,
-            draw,
-            window,
-            cols: std::mem::transmute::<&ColorsLinear, &'static ColorsLinear>(&self.flat.cols),
+            shared: extend_lifetime_mut(shared),
+            draw: Draw::new(extend_lifetime_mut(draw.draw), draw.pass()),
+            window: extend_lifetime_mut(window),
+            cols: extend_lifetime(&self.flat.cols),
             offset: Offset::ZERO,
         }
     }

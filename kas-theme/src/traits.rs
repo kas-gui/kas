@@ -99,17 +99,17 @@ pub trait Theme<DS: DrawableShared>: ThemeApi {
     /// [`Theme::new_window`] on `self`, and the `draw` reference is guaranteed
     /// to be identical to the one passed to [`Theme::new_window`].
     ///
-    /// Without the "gat" feature (Generic Associated Types; rust#44265), the
-    /// caller must unsafely extend the lifetime of references to `'static`.
-    /// These references shall not escape the lifetime of the return value.
-    /// The method is marked `unsafe` since sometimes it must extend the
-    /// lifetime of internal state.
+    /// # Safety
+    ///
+    /// (This section only applies when not using the `gat` feature.)
+    ///
+    /// All references passed into the method must outlive the returned object.
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        shared: &'static mut DrawShared<DS>,
-        draw: Draw<'static, DS::Draw>,
-        window: &'static mut Self::Window,
+        shared: &mut DrawShared<DS>,
+        draw: Draw<DS::Draw>,
+        window: &mut Self::Window,
     ) -> Self::DrawHandle;
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
@@ -141,6 +141,10 @@ pub trait Window<DS: DrawableShared>: 'static {
     ///
     /// The `shared` reference is guaranteed to be identical to the one used to
     /// construct this object.
+    ///
+    /// # Safety
+    ///
+    /// All references passed into the method must outlive the returned object.
     #[cfg(not(feature = "gat"))]
     unsafe fn size_handle(&mut self, shared: &mut DrawShared<DS>) -> Self::SizeHandle;
     #[cfg(feature = "gat")]
@@ -179,9 +183,9 @@ impl<T: Theme<DS>, DS: DrawableShared> Theme<DS> for Box<T> {
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        shared: &'static mut DrawShared<DS>,
-        draw: Draw<'static, DS::Draw>,
-        window: &'static mut Self::Window,
+        shared: &mut DrawShared<DS>,
+        draw: Draw<DS::Draw>,
+        window: &mut Self::Window,
     ) -> Self::DrawHandle {
         self.deref().draw_handle(shared, draw, window)
     }

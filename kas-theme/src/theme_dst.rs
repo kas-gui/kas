@@ -67,14 +67,15 @@ pub trait ThemeDst<DS: DrawableShared>: ThemeApi {
     ///
     /// See also [`Theme::draw_handle`].
     ///
-    /// This function is **unsafe** because the returned object requires a
-    /// lifetime bound not exceeding that of all three pointers passed in.
+    /// # Safety
+    ///
+    /// All references passed into the method must outlive the returned object.
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        shared: &'static mut DrawShared<DS>,
-        draw: Draw<'static, DS::Draw>,
-        window: &'static mut dyn WindowDst<DS>,
+        shared: &mut DrawShared<DS>,
+        draw: Draw<DS::Draw>,
+        window: &mut dyn WindowDst<DS>,
     ) -> StackDst<dyn DrawHandle>;
 
     /// Construct a [`DrawHandle`] object
@@ -141,9 +142,9 @@ where
 
     unsafe fn draw_handle(
         &self,
-        shared: &'static mut DrawShared<DS>,
-        draw: Draw<'static, DS::Draw>,
-        window: &'static mut dyn WindowDst<DS>,
+        shared: &mut DrawShared<DS>,
+        draw: Draw<DS::Draw>,
+        window: &mut dyn WindowDst<DS>,
     ) -> StackDst<dyn DrawHandle> {
         let window = window.as_any_mut().downcast_mut().unwrap();
         let h = <T as Theme<DS>>::draw_handle(self, shared, draw, window);
@@ -220,8 +221,9 @@ pub trait WindowDst<DS: DrawableShared> {
     /// The `shared` reference is guaranteed to be identical to the one used to
     /// construct this object.
     ///
-    /// This function is **unsafe** because the returned object requires a
-    /// lifetime bound not exceeding that of all three pointers passed in.
+    /// # Safety
+    ///
+    /// All references passed into the method must outlive the returned object.
     #[cfg(not(feature = "gat"))]
     unsafe fn size_handle(&mut self, shared: &mut DrawShared<DS>) -> StackDst<dyn SizeHandle>;
 

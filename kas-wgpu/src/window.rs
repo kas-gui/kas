@@ -323,15 +323,11 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
         #[cfg(not(feature = "gat"))]
         unsafe {
-            unsafe fn extend_lifetime<'b, T>(r: &'b mut T) -> &'static mut T {
-                std::mem::transmute::<&'b mut T, &'static mut T>(r)
-            }
-
             // Safety: lifetimes do not escape the returned draw_handle value.
-            let draw_shared = extend_lifetime(&mut shared.draw);
+            let draw_shared = &mut shared.draw;
             let pass = Pass::new(0);
-            let draw = Draw::new(extend_lifetime(&mut self.draw), pass);
-            let window = extend_lifetime(&mut self.theme_window);
+            let draw = Draw::new(&mut self.draw, pass);
+            let window = &mut self.theme_window;
 
             let mut draw_handle = shared.theme.draw_handle(draw_shared, draw, window);
             self.widget.draw(&mut draw_handle, &self.mgr, false);
