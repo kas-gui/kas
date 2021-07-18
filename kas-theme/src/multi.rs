@@ -80,12 +80,12 @@ impl<DS> MultiThemeBuilder<DS> {
 
     /// Build
     ///
-    /// Fails if no themes were added.
-    pub fn try_build(self) -> Result<MultiTheme<DS>, ()> {
+    /// Returns `None` if no themes were added.
+    pub fn try_build(self) -> Option<MultiTheme<DS>> {
         if self.themes.is_empty() {
-            return Err(());
+            return None;
         }
-        Ok(MultiTheme {
+        Some(MultiTheme {
             names: self.names,
             themes: self.themes,
             active: 0,
@@ -97,7 +97,7 @@ impl<DS> MultiThemeBuilder<DS> {
     /// Panics if no themes were added.
     pub fn build(self) -> MultiTheme<DS> {
         self.try_build()
-            .unwrap_or_else(|_| panic!("MultiThemeBuilder: no themes added"))
+            .unwrap_or_else(|| panic!("MultiThemeBuilder: no themes added"))
     }
 }
 
