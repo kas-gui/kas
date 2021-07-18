@@ -343,8 +343,7 @@ impl<D: Directional> RowPositionSolver<D> {
             Err(_) => 0,
         };
 
-        for i in start..widgets.len() {
-            let child = &widgets[i];
+        for child in widgets[start..].iter() {
             let do_break = match self.direction.as_direction() {
                 Direction::Right => child.rect().pos.0 >= end.0,
                 Direction::Down => child.rect().pos.1 >= end.1,

@@ -392,6 +392,7 @@ impl SizeRules {
     /// is passed explicitly.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[allow(clippy::comparison_chain, clippy::needless_range_loop)]
     #[inline]
     pub fn solve_seq_total(out: &mut [i32], rules: &[Self], total: Self, target: i32) {
         type Targets = SmallVec<[i32; 16]>;
@@ -710,20 +711,20 @@ impl SizeRules {
         let b_per_elt = excess_b / count;
         let mut extra_a = excess_a - count * a_per_elt;
         let mut extra_b = excess_b - count * b_per_elt;
-        for i in 0..len {
-            if rules[i].stretch == highest_stretch {
-                rules[i].a += a_per_elt;
-                rules[i].b += b_per_elt;
+        for rules in rules.iter_mut() {
+            if rules.stretch == highest_stretch {
+                rules.a += a_per_elt;
+                rules.b += b_per_elt;
                 if extra_a > 0 {
-                    rules[i].a += 1;
+                    rules.a += 1;
                     extra_a -= 1;
                 }
                 if extra_b > 0 {
-                    rules[i].b += 1;
+                    rules.b += 1;
                     extra_b -= 1;
                 }
                 if highest_stretch < self.stretch {
-                    rules[i].stretch = self.stretch;
+                    rules.stretch = self.stretch;
                 }
             }
         }
