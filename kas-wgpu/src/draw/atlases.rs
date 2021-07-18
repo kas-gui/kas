@@ -215,7 +215,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
 
         self.new_aa.push(Atlas::new_alloc(tex_size));
         match self.new_aa.last_mut().unwrap().allocate(size2d) {
-            Some(alloc) => return Ok((atlas.cast(), alloc, tex_size)),
+            Some(alloc) => Ok((atlas.cast(), alloc, tex_size)),
             None => unreachable!(),
         }
     }

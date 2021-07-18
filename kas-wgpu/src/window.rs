@@ -134,7 +134,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
                 self.solve_cache.invalidate_rule_cache();
                 self.do_resize(shared, *new_inner_size);
             }
-            event @ _ => {
+            event => {
                 let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
                 let widget = &mut *self.widget;
                 self.mgr.with(&mut tkw, |mgr| {

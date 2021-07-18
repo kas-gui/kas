@@ -36,7 +36,7 @@ fn main() {
         Err(e) => panic!("failed to read env var SHADERC: {}", e),
     };
 
-    let mut pat = String::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    let mut pat = env::var("CARGO_MANIFEST_DIR").unwrap();
     pat.push_str("/**/*.vert");
     walk(&pat, &shaderc, &mut runners);
     pat.replace_range((pat.len() - 4).., "frag");

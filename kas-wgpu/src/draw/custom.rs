@@ -157,7 +157,6 @@ impl CustomPipeBuilder for () {
         _: &wgpu::BindGroupLayout,
         _: wgpu::TextureFormat,
     ) -> Self::Pipe {
-        ()
     }
 }
 
@@ -166,9 +165,7 @@ pub enum Void {}
 /// A dummy implementation (does nothing)
 impl CustomPipe for () {
     type Window = ();
-    fn new_window(&self, _: &wgpu::Device, _: Size) -> Self::Window {
-        ()
-    }
+    fn new_window(&self, _: &wgpu::Device, _: Size) -> Self::Window {}
     fn resize(&self, _: &mut Self::Window, _: &wgpu::Device, _: &wgpu::Queue, _: Size) {}
 }
 
