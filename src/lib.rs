@@ -29,7 +29,6 @@
     clippy::or_fun_call,
     clippy::never_loop,
     clippy::module_inception,
-    clippy::len_zero,
     clippy::needless_return,
     clippy::neg_cmp_op_on_partial_ord,
     clippy::comparison_chain

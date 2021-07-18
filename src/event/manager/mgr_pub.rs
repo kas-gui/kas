@@ -173,7 +173,7 @@ impl<'a> Manager<'a> {
         self.state
             .handle_updates
             .entry(handle)
-            .or_insert(Default::default())
+            .or_insert_with(Default::default)
             .insert(w_id);
     }
 
