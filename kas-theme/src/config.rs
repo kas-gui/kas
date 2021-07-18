@@ -176,6 +176,7 @@ impl Config {
 /// Other functions
 impl Config {
     /// Currently this is just "set". Later, maybe some type of merge.
+    #[allow(clippy::float_cmp)]
     pub fn apply_config(&mut self, other: &Config) -> TkAction {
         let action = if self.font_size != other.font_size {
             TkAction::RESIZE | TkAction::THEME_UPDATE

@@ -21,6 +21,12 @@ pub struct ShadedTheme {
     flat: FlatTheme,
 }
 
+impl Default for ShadedTheme {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ShadedTheme {
     /// Construct
     pub fn new() -> Self {
@@ -92,7 +98,7 @@ where
     }
 
     fn new_window(&self, dpi_factor: f32) -> Self::Window {
-        let fonts = self.flat.fonts.as_ref().clone().unwrap().clone();
+        let fonts = self.flat.fonts.as_ref().unwrap().clone();
         DimensionsWindow::new(DIMS, self.flat.config.font_size(), dpi_factor, fonts)
     }
 
@@ -161,10 +167,10 @@ where
         'b: 'c,
     {
         super::flat_theme::DrawHandle {
-            shared: *&mut self.shared,
+            shared: self.shared,
             draw: self.draw.reborrow(),
-            window: *&mut self.window,
-            cols: *&self.cols,
+            window: self.window,
+            cols: self.cols,
             offset: self.offset,
         }
     }

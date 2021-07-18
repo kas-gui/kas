@@ -33,6 +33,12 @@ pub struct FlatTheme {
     pub(crate) fonts: Option<Rc<LinearMap<TextClass, fonts::FontId>>>,
 }
 
+impl Default for FlatTheme {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FlatTheme {
     /// Construct
     #[inline]
@@ -117,13 +123,13 @@ where
         self.fonts = Some(Rc::new(
             self.config
                 .iter_fonts()
-                .filter_map(|(c, s)| fonts.select_font(&s).ok().map(|id| (*c, id)))
+                .filter_map(|(c, s)| fonts.select_font(s).ok().map(|id| (*c, id)))
                 .collect(),
         ));
     }
 
     fn new_window(&self, dpi_factor: f32) -> Self::Window {
-        let fonts = self.fonts.as_ref().clone().unwrap().clone();
+        let fonts = self.fonts.as_ref().unwrap().clone();
         DimensionsWindow::new(DIMS, self.config.font_size(), dpi_factor, fonts)
     }
 

@@ -82,7 +82,7 @@ impl<DS> MultiThemeBuilder<DS> {
     ///
     /// Fails if no themes were added.
     pub fn try_build(self) -> Result<MultiTheme<DS>, ()> {
-        if self.themes.len() == 0 {
+        if self.themes.is_empty() {
             return Err(());
         }
         Ok(MultiTheme {

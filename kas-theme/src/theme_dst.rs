@@ -105,7 +105,7 @@ where
     fn config(&self) -> MaybeBoxed<dyn Any> {
         match self.config() {
             Cow::Borrowed(config) => MaybeBoxed::Borrowed(config),
-            Cow::Owned(config) => MaybeBoxed::Boxed(Box::new(config.to_owned())),
+            Cow::Owned(config) => MaybeBoxed::Boxed(Box::new(config)),
         }
     }
 
