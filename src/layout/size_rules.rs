@@ -392,7 +392,11 @@ impl SizeRules {
     /// is passed explicitly.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    #[allow(clippy::comparison_chain, clippy::needless_range_loop)]
+    #[allow(
+        clippy::comparison_chain,
+        clippy::needless_range_loop,
+        clippy::needless_return
+    )]
     #[inline]
     pub fn solve_seq_total(out: &mut [i32], rules: &[Self], total: Self, target: i32) {
         type Targets = SmallVec<[i32; 16]>;

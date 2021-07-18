@@ -58,6 +58,7 @@
 
 pub mod color;
 
+#[allow(clippy::module_inception)]
 mod draw;
 mod draw_shared;
 mod handle;
