@@ -59,6 +59,7 @@ impl<D: Directional> ProgressBar<D> {
     /// Set the value
     ///
     /// Returns [`TkAction::REDRAW`] if a redraw is required.
+    #[allow(clippy::float_cmp)]
     pub fn set_value(&mut self, value: f32) -> TkAction {
         let value = value.max(0.0).min(1.0);
         if value == self.value {

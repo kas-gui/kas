@@ -48,6 +48,7 @@ pub struct Pipeline {
     config: Config,
     atlas_pipe: atlases::Pipeline<Instance>,
     glyphs: HashMap<SpriteDescriptor, Option<Sprite>>,
+    #[allow(clippy::type_complexity)]
     prepare: Vec<(u32, (u32, u32), (u32, u32), Vec<u8>)>,
 }
 
@@ -60,7 +61,7 @@ impl Pipeline {
     ) -> Self {
         let atlas_pipe = atlases::Pipeline::new(
             device,
-            &bgl_common,
+            bgl_common,
             512,
             wgpu::TextureFormat::R8Unorm,
             wgpu::VertexState {

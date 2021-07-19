@@ -131,20 +131,21 @@ where
     #[inline]
     pub fn set_clipboard(&mut self, _content: String) {
         #[cfg(feature = "clipboard")]
-        self.clipboard
-            .as_mut()
-            .map(|cb| match cb.write(_content.into()) {
+        if let Some(cb) = self.clipboard.as_mut() {
+            match cb.write(_content) {
                 Ok(()) => (),
                 Err(e) => warn_about_error("Failed to set clipboard contents", e.as_ref()),
-            });
+            }
+        }
     }
 
     pub fn update_shared_data(&mut self, handle: UpdateHandle, data: Rc<dyn Updatable>) {
         let list = self
             .data_updates
             .entry(handle)
-            .or_insert(Default::default());
-        if list.iter().find(|d| Rc::ptr_eq(d, &data)).is_some() {
+            .or_insert_with(Default::default);
+        #[allow(clippy::vtable_address_comparisons)]
+        if list.iter().any(|d| Rc::ptr_eq(d, &data)) {
             return;
         }
         list.push(data);

@@ -115,7 +115,7 @@ impl<D: Directional, W: Widget> WidgetChildren for Splitter<D, W> {
 
 impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        if self.widgets.len() == 0 {
+        if self.widgets.is_empty() {
             return SizeRules::EMPTY;
         }
         assert_eq!(self.handles.len() + 1, self.widgets.len());
@@ -146,7 +146,7 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
 
     fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
-        if self.widgets.len() == 0 {
+        if self.widgets.is_empty() {
             return;
         }
         assert!(self.handles.len() + 1 == self.widgets.len());
@@ -220,7 +220,7 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
 
 impl<D: Directional, W: Widget> event::SendEvent for Splitter<D, W> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        if !self.is_disabled() && self.widgets.len() > 0 {
+        if !self.is_disabled() && !self.widgets.is_empty() {
             assert!(self.handles.len() + 1 == self.widgets.len());
             let mut n = 0;
             loop {

@@ -189,6 +189,7 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
     }
 
     // true if not equal to old value
+    #[allow(clippy::neg_cmp_op_on_partial_ord)]
     fn set_offset(&mut self, offset: Offset) -> bool {
         let b = self.range.1 - self.range.0;
         let max_offset = self.handle.max_offset();

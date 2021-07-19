@@ -33,6 +33,12 @@ pub struct FlatTheme {
     pub(crate) fonts: Option<Rc<LinearMap<TextClass, fonts::FontId>>>,
 }
 
+impl Default for FlatTheme {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FlatTheme {
     /// Construct
     #[inline]
@@ -117,13 +123,13 @@ where
         self.fonts = Some(Rc::new(
             self.config
                 .iter_fonts()
-                .filter_map(|(c, s)| fonts.select_font(&s).ok().map(|id| (*c, id)))
+                .filter_map(|(c, s)| fonts.select_font(s).ok().map(|id| (*c, id)))
                 .collect(),
         ));
     }
 
     fn new_window(&self, dpi_factor: f32) -> Self::Window {
-        let fonts = self.fonts.as_ref().clone().unwrap().clone();
+        let fonts = self.fonts.as_ref().unwrap().clone();
         DimensionsWindow::new(DIMS, self.config.font_size(), dpi_factor, fonts)
     }
 
@@ -134,15 +140,21 @@ where
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        shared: &'static mut DrawShared<DS>,
-        draw: Draw<'static, DS::Draw>,
-        window: &'static mut Self::Window,
+        shared: &mut DrawShared<DS>,
+        draw: Draw<DS::Draw>,
+        window: &mut Self::Window,
     ) -> Self::DrawHandle {
+        unsafe fn extend_lifetime<'b, T: ?Sized>(r: &'b T) -> &'static T {
+            std::mem::transmute::<&'b T, &'static T>(r)
+        }
+        unsafe fn extend_lifetime_mut<'b, T: ?Sized>(r: &'b mut T) -> &'static mut T {
+            std::mem::transmute::<&'b mut T, &'static mut T>(r)
+        }
         DrawHandle {
-            shared,
-            draw,
-            window,
-            cols: std::mem::transmute::<&ColorsLinear, &'static ColorsLinear>(&self.cols),
+            shared: extend_lifetime_mut(shared),
+            draw: Draw::new(extend_lifetime_mut(draw.draw), draw.pass()),
+            window: extend_lifetime_mut(window),
+            cols: extend_lifetime(&self.cols),
             offset: Offset::ZERO,
         }
     }

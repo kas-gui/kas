@@ -110,15 +110,13 @@ impl SelectionHelper {
                 .next_back()
                 .map(|(index, _)| index)
                 .unwrap_or(0);
-            end = 'a: loop {
-                for (index, _) in string[start..].split_word_bound_indices() {
+            end = string[start..]
+                .split_word_bound_indices()
+                .find_map(|(index, _)| {
                     let pos = start + index;
-                    if pos >= range.end {
-                        break 'a pos;
-                    }
-                }
-                break 'a string.len();
-            };
+                    (pos >= range.end).then(|| pos)
+                })
+                .unwrap_or_else(|| string.len());
         } else {
             start = text.find_line(range.start).map(|r| r.1.start).unwrap_or(0);
             end = text

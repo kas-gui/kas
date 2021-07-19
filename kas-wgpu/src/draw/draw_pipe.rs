@@ -185,29 +185,29 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         self.images.prepare(
             &mut window.images,
-            &mut self.device,
+            &self.device,
             &mut self.staging_belt,
             &mut encoder,
         );
         window
             .shaded_square
-            .write_buffers(&mut self.device, &mut self.staging_belt, &mut encoder);
+            .write_buffers(&self.device, &mut self.staging_belt, &mut encoder);
         window
             .shaded_round
-            .write_buffers(&mut self.device, &mut self.staging_belt, &mut encoder);
+            .write_buffers(&self.device, &mut self.staging_belt, &mut encoder);
         window
             .flat_round
-            .write_buffers(&mut self.device, &mut self.staging_belt, &mut encoder);
+            .write_buffers(&self.device, &mut self.staging_belt, &mut encoder);
         self.custom.prepare(
             &mut window.custom,
-            &mut self.device,
+            &self.device,
             &mut self.staging_belt,
             &mut encoder,
         );
-        self.text.prepare(&mut self.device, &mut self.queue);
+        self.text.prepare(&self.device, &self.queue);
         window
             .text
-            .write_buffers(&mut self.device, &mut self.staging_belt, &mut encoder);
+            .write_buffers(&self.device, &mut self.staging_belt, &mut encoder);
 
         let mut color_attachments = [wgpu::RenderPassColorAttachment {
             view: frame_view,
@@ -248,13 +248,12 @@ impl<C: CustomPipe> DrawPipe<C> {
                     .render(&window.flat_round, pass, &mut rpass, bg_common);
                 self.custom.render_pass(
                     &mut window.custom,
-                    &mut self.device,
+                    &self.device,
                     pass,
                     &mut rpass,
                     bg_common,
                 );
-                self.text
-                    .render(&mut window.text, pass, &mut rpass, bg_common);
+                self.text.render(&window.text, pass, &mut rpass, bg_common);
             }
 
             color_attachments[0].ops.load = wgpu::LoadOp::Load;
@@ -265,7 +264,7 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         self.custom.render_final(
             &mut window.custom,
-            &mut self.device,
+            &self.device,
             &mut encoder,
             frame_view,
             size,

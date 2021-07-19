@@ -24,7 +24,7 @@ pub struct Shortcuts {
 impl Shortcuts {
     /// Construct, with no bindings
     #[inline]
-    pub fn new() -> Self {
+    pub fn empty() -> Self {
         Shortcuts {
             map: Default::default(),
         }
@@ -33,7 +33,7 @@ impl Shortcuts {
     /// Construct, with default bindings
     #[inline]
     pub fn platform_defaults() -> Self {
-        let mut s = Self::new();
+        let mut s = Self::empty();
         s.load_platform_defaults();
         s
     }

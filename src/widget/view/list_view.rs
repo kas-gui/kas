@@ -5,7 +5,7 @@
 
 //! List view widget
 
-use super::{driver, Driver, ListData, SelectionMode};
+use super::{driver, Driver, ListData, SelectionError, SelectionMode};
 use kas::event::{ChildMsg, Command, CursorIcon, GrabMode, PressSource};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
@@ -223,14 +223,14 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
     /// invalid.
     ///
     /// Does not send [`ChildMsg`] responses.
-    pub fn select(&mut self, key: T::Key) -> Result<bool, ()> {
+    pub fn select(&mut self, key: T::Key) -> Result<bool, SelectionError> {
         match self.sel_mode {
-            SelectionMode::None => return Err(()),
+            SelectionMode::None => return Err(SelectionError::Disabled),
             SelectionMode::Single => self.selection.clear(),
             _ => (),
         }
         if !self.data.contains_key(&key) {
-            return Err(());
+            return Err(SelectionError::Key);
         }
         Ok(self.selection.insert(key))
     }

@@ -226,10 +226,10 @@ impl<'a, DS: DrawableShared> draw::SizeHandle for SizeHandle<'a, DS> {
             }
             env.set_bounds(bounds);
 
-            env.set_wrap(match class {
-                TextClass::Label | TextClass::EditMulti | TextClass::LabelScroll => true,
-                _ => false,
-            });
+            env.set_wrap(matches!(
+                class,
+                TextClass::Label | TextClass::EditMulti | TextClass::LabelScroll
+            ));
         });
 
         let margin = self.w.dims.text_margin;
