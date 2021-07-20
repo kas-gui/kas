@@ -15,7 +15,7 @@ layout(location = 2) in vec2 a1;
 layout(location = 0) out vec4 b_col;
 layout(location = 1) out vec2 b1;
 
-layout(set = 0, binding = 0) uniform Locals {
+layout(set = 0, binding = 0) uniform VertexCommon {
     vec2 scale;
 };
 
