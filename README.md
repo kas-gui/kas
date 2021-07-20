@@ -25,8 +25,14 @@ KAS's design provides:
 
 ## Examples
 
-Examples can be found in [kas-wgpu/examples](kas-wgpu/examples).
+Examples can be found in [`kas-wgpu/examples/`](kas-wgpu/examples).
 Further examples can be found in [kas-gui/7guis](https://github.com/kas-gui/7guis/).
+
+Precompiled example apps can be downloaded as follows:
+
+-   go to <https://github.com/kas-gui/kas/actions/workflows/build.yml>
+-   select the latest (complete) run
+-   download one of the `examples-*` artifacts
 
 ![Gallery](https://github.com/kas-gui/data-dump/blob/master/video/gallery.png)
 
