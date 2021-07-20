@@ -30,6 +30,7 @@ jobs:
             target/release/examples/calculator
             target/release/examples/gallery
             target/release/examples/mandlebrot
+            kas-wgpu/res/
 
   macos:
     name: MacOS
@@ -57,6 +58,7 @@ jobs:
             target/release/examples/calculator
             target/release/examples/gallery
             target/release/examples/mandlebrot
+            kas-wgpu/res/
 
   windows:
     name: Windows
@@ -79,3 +81,4 @@ jobs:
             target/release/examples/calculator.exe
             target/release/examples/gallery.exe
             target/release/examples/mandlebrot.exe
+            kas-wgpu/res/
