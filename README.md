@@ -65,16 +65,6 @@ Using the **nightly** channel does have a couple of advantages:
 -   Documentation generated via `cargo doc` requires nightly for links
 -   A few minor option things: see [Feature flags](#feature-flags) below.
 
-#### WebGPU
-
-Currently, KAS's only drawing method is [WebGPU] which requires DirectX 11/12,
-Vulkan, Metal or OpenGL. Support for OpenGL is limited, currently requiring the
-`wgpu/cross` feature flag. For example:
-```sh
-cd kas-wgpu
-KAS_BACKENDS=GL cargo run --example gallery --features wgpu/cross
-```
-
 ### Quick-start
 
 Install dependencies:
@@ -98,6 +88,14 @@ cargo run --example gallery
 cargo run --example layout
 cargo run --example mandlebrot
 ```
+
+If possible, `wgpu` ([WebGPU]) will use the Vulkan, Metal or DirectX 12 graphics
+API. If none of these are available it may instead use OpenGL, however this
+currently requires the `wgpu/cross` feature:
+```sh
+cargo run --example gallery --features wgpu/cross
+```
+(To force OpenGL on other platforms, set `KAS_BACKENDS=GL`.)
 
 To build docs locally:
 ```
