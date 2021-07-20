@@ -45,6 +45,7 @@ jobs:
       - name: Build examples
         env:
           MACOSX_DEPLOYMENT_TARGET: 10.7
+          WINIT_LINK_COLORSYNC: 1
         run: |
           cargo build --manifest-path kas-wgpu/Cargo.toml --release --example calculator --example gallery --example mandlebrot
           strip target/release/examples/calculator target/release/examples/gallery target/release/examples/mandlebrot
