@@ -34,7 +34,7 @@ Precompiled example apps can be downloaded as follows:
 -   select the latest (complete) run
 -   download one of the `examples-*` artifacts
 
-![Gallery](https://github.com/kas-gui/data-dump/blob/master/video/gallery.png)
+![Gallery](screenshots/gallery.png)
 
 ## Features
 
