@@ -21,15 +21,15 @@ jobs:
       - name: Build examples
         run: |
           cargo build --manifest-path kas-wgpu/Cargo.toml --release --example calculator --example gallery --example mandlebrot
-          strip target/release/calculator target/release/gallery target/release/mandlebrot
+          strip target/release/examples/calculator target/release/examples/gallery target/release/examples/mandlebrot
       - name: Upload
         uses: actions/upload-artifact@v2
         with:
           name: examples-ubuntu
           path: |
-            target/release/calculator
-            target/release/gallery
-            target/release/mandlebrot
+            target/release/examples/calculator
+            target/release/examples/gallery
+            target/release/examples/mandlebrot
 
   macos:
     name: MacOS
@@ -47,15 +47,15 @@ jobs:
           MACOSX_DEPLOYMENT_TARGET: 10.7
         run: |
           cargo build --manifest-path kas-wgpu/Cargo.toml --release --example calculator --example gallery --example mandlebrot
-          strip target/release/calculator target/release/gallery target/release/mandlebrot
+          strip target/release/examples/calculator target/release/examples/gallery target/release/examples/mandlebrot
       - name: Upload
         uses: actions/upload-artifact@v2
         with:
           name: examples-macOS
           path: |
-            target/release/calculator
-            target/release/gallery
-            target/release/mandlebrot
+            target/release/examples/calculator
+            target/release/examples/gallery
+            target/release/examples/mandlebrot
 
   windows:
     name: Windows
@@ -75,6 +75,6 @@ jobs:
         with:
           name: examples-windows
           path: |
-            target/release/calculator.exe
-            target/release/gallery.exe
-            target/release/mandlebrot.exe
+            target/release/examples/calculator.exe
+            target/release/examples/gallery.exe
+            target/release/examples/mandlebrot.exe
