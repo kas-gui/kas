@@ -68,8 +68,12 @@ Using the **nightly** channel does have a couple of advantages:
 #### WebGPU
 
 Currently, KAS's only drawing method is [WebGPU] which requires DirectX 11/12,
-Vulkan or Metal.
-In the future, there may be support for OpenGL and software rendering.
+Vulkan, Metal or OpenGL. Support for OpenGL is limited, currently requiring the
+`wgpu/cross` feature flag. For example:
+```sh
+cd kas-wgpu
+KAS_BACKENDS=GL cargo run --example gallery --features wgpu/cross
+```
 
 ### Quick-start
 
