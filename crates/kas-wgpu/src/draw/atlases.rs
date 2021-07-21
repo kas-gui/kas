@@ -63,7 +63,7 @@ impl Atlas {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format,
-            usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::COPY_DST,
+            usage: wgpu::TextureUsages::SAMPLED | wgpu::TextureUsages::COPY_DST,
         });
 
         let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
@@ -119,7 +119,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
             entries: &[
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Texture {
                         sample_type: wgpu::TextureSampleType::Float { filterable: false },
                         view_dimension: wgpu::TextureViewDimension::D2,
@@ -129,7 +129,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Sampler {
                         filtering: false,
                         comparison: false,
@@ -385,7 +385,7 @@ impl<I: bytemuck::Pod> Window<I> {
             let buffer = device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("atlases vertex buffer"),
                 size: buffer_size,
-                usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::COPY_DST,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: true,
             });
 

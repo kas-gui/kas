@@ -78,7 +78,7 @@ impl<V: bytemuck::Pod> Window<V> {
             let buffer = device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("vertex buffer"),
                 size: buffer_size,
-                usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::COPY_DST,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: true,
             });
 

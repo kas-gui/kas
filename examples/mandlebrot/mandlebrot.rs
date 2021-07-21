@@ -33,7 +33,7 @@ impl Shaders {
         let fragment = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("fragment shader"),
             source: wgpu::util::make_spirv(include_bytes!("shader.frag.spv")),
-            flags: Default::default(),
+//             flags: Default::default(),
         });
 
         Shaders { vertex, fragment }
@@ -92,7 +92,7 @@ impl CustomPipeBuilder for PipeBuilder {
             label: None,
             bind_group_layouts: &[bgl_common],
             push_constant_ranges: &[wgpu::PushConstantRange {
-                stages: wgpu::ShaderStage::FRAGMENT,
+                stages: wgpu::ShaderStages::FRAGMENT,
                 range: 0..size_of::<PushConstants>().cast(),
             }],
         });
@@ -126,7 +126,7 @@ impl CustomPipeBuilder for PipeBuilder {
                 targets: &[wgpu::ColorTargetState {
                     format: tex_format,
                     blend: None,
-                    write_mask: wgpu::ColorWrite::ALL,
+                    write_mask: wgpu::ColorWrites::ALL,
                 }],
             }),
         });
@@ -175,7 +175,7 @@ impl CustomPipe for Pipe {
                 let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: None,
                     contents: bytemuck::cast_slice(&pass.0),
-                    usage: wgpu::BufferUsage::VERTEX,
+                    usage: wgpu::BufferUsages::VERTEX,
                 });
                 pass.1 = Some(buffer);
                 pass.2 = pass.0.len().cast();
@@ -198,7 +198,7 @@ impl CustomPipe for Pipe {
             if let Some(buffer) = tuple.1.as_ref() {
                 rpass.set_pipeline(&self.render_pipeline);
                 rpass.set_push_constants(
-                    wgpu::ShaderStage::FRAGMENT,
+                    wgpu::ShaderStages::FRAGMENT,
                     0,
                     bytemuck::bytes_of(&window.push_constants),
                 );

@@ -11,7 +11,7 @@ use kas_theme::{Theme, ThemeConfig};
 use log::warn;
 use std::env::var;
 use std::path::PathBuf;
-pub use wgpu::{BackendBit, PowerPreference};
+pub use wgpu::{Backends, PowerPreference};
 
 /// Config mode
 ///
@@ -42,7 +42,7 @@ pub struct Options {
     /// Adapter power preference. Default value: low power.
     pub power_preference: PowerPreference,
     /// Adapter backend. Default value: PRIMARY (Vulkan/Metal/DX12).
-    pub backends: BackendBit,
+    pub backends: Backends,
 }
 
 impl Default for Options {
@@ -52,7 +52,7 @@ impl Default for Options {
             theme_config_path: PathBuf::new(),
             config_mode: ConfigMode::Read,
             power_preference: PowerPreference::LowPower,
-            backends: BackendBit::PRIMARY,
+            backends: Backends::PRIMARY,
         }
     }
 }
@@ -148,13 +148,13 @@ impl Options {
         if let Ok(mut v) = var("KAS_BACKENDS") {
             v.make_ascii_uppercase();
             options.backends = match v.as_str() {
-                "VULKAN" => BackendBit::VULKAN,
-                "GL" => BackendBit::GL,
-                "METAL" => BackendBit::METAL,
-                "DX11" => BackendBit::DX11,
-                "DX12" => BackendBit::DX12,
-                "PRIMARY" => BackendBit::PRIMARY,
-                "SECONDARY" => BackendBit::SECONDARY,
+                "VULKAN" => Backends::VULKAN,
+                "GL" => Backends::GL,
+                "METAL" => Backends::METAL,
+                "DX11" => Backends::DX11,
+                "DX12" => Backends::DX12,
+                "PRIMARY" => Backends::PRIMARY,
+                "SECONDARY" => Backends::SECONDARY,
                 other => {
                     warn!("Unexpected environment value: KAS_BACKENDS={}", other);
                     options.backends
@@ -172,7 +172,7 @@ impl Options {
         }
     }
 
-    pub(crate) fn backend(&self) -> BackendBit {
+    pub(crate) fn backend(&self) -> Backends {
         self.backends
     }
 

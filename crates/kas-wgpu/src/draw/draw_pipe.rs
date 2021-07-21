@@ -34,7 +34,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             entries: &[
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStage::VERTEX,
+                    visibility: wgpu::ShaderStages::VERTEX,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -44,7 +44,7 @@ impl<C: CustomPipe> DrawPipe<C> {
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -68,7 +68,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let light_norm_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("light_norm_buf"),
             contents: bytemuck::cast_slice(&light_norm),
-            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
         let images = images::Images::new(&device, &shaders, &bgl_common);
@@ -169,7 +169,7 @@ impl<C: CustomPipe> DrawPipe<C> {
                     let scale_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                         label: Some("scale_buf"),
                         contents: bytemuck::cast_slice(&scale),
-                        usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+                        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                     });
                     let bg_common = device.create_bind_group(&wgpu::BindGroupDescriptor {
                         label: Some("common bind group"),

@@ -85,7 +85,7 @@ impl Pipeline {
                 targets: &[wgpu::ColorTargetState {
                     format: super::RENDER_TEX_FORMAT,
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                    write_mask: wgpu::ColorWrite::ALL,
+                    write_mask: wgpu::ColorWrites::ALL,
                 }],
             },
         );
@@ -122,6 +122,7 @@ impl Pipeline {
                         y: origin.1,
                         z: 0,
                     },
+                    aspect: wgpu::TextureAspect::All,
                 },
                 &data,
                 wgpu::ImageDataLayout {

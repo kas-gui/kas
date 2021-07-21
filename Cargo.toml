@@ -11,6 +11,7 @@ keywords = ["gui"]
 categories = ["gui"]
 repository = "https://github.com/kas-gui/kas"
 exclude = ["/examples"]
+resolver = "2"
 
 [package.metadata.docs.rs]
 features = ["nightly"]
