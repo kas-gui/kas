@@ -13,7 +13,7 @@ layout(location = 1) in vec2 norm2;
 
 layout(location = 0) out vec4 outColor;
 
-layout(set = 0, binding = 1) uniform Locals {
+layout(set = 0, binding = 1) uniform FragCommon {
     vec3 lightNorm;
 };
 

@@ -17,7 +17,7 @@ layout(location = 4) in vec4 inColor;
 layout(location = 0) out vec2 tex_pos;
 layout(location = 1) out vec4 outColor;
 
-layout(set = 0, binding = 0) uniform Locals {
+layout(set = 0, binding = 0) uniform VertexCommon {
     vec2 scale;
 };
 

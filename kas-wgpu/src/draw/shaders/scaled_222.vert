@@ -19,7 +19,7 @@ layout(location = 1) out vec2 b1;
 layout(location = 2) out vec2 b2;
 layout(location = 3) out vec2 b3;
 
-layout(set = 0, binding = 0) uniform Locals {
+layout(set = 0, binding = 0) uniform VertexCommon {
     vec2 scale;
 };
 

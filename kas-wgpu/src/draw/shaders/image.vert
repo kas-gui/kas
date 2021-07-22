@@ -15,7 +15,7 @@ layout(location = 3) in vec2 tex_b;
 
 layout(location = 0) out vec2 tex_pos;
 
-layout(set = 0, binding = 0) uniform Locals {
+layout(set = 0, binding = 0) uniform VertexCommon {
     vec2 scale;
 };
 

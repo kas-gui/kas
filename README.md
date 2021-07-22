@@ -25,10 +25,16 @@ KAS's design provides:
 
 ## Examples
 
-Examples can be found in [kas-wgpu/examples](kas-wgpu/examples).
+Examples can be found in [`kas-wgpu/examples/`](kas-wgpu/examples).
 Further examples can be found in [kas-gui/7guis](https://github.com/kas-gui/7guis/).
 
-![Gallery](https://github.com/kas-gui/data-dump/blob/master/video/gallery.png)
+Precompiled example apps can be downloaded as follows:
+
+-   go to <https://github.com/kas-gui/kas/actions/workflows/build.yml>
+-   select the latest (complete) run
+-   download one of the `examples-*` artifacts
+
+![Gallery](screenshots/gallery.png)
 
 ## Features
 
@@ -59,12 +65,6 @@ Using the **nightly** channel does have a couple of advantages:
 -   Documentation generated via `cargo doc` requires nightly for links
 -   A few minor option things: see [Feature flags](#feature-flags) below.
 
-#### WebGPU
-
-Currently, KAS's only drawing method is [WebGPU] which requires DirectX 11/12,
-Vulkan or Metal.
-In the future, there may be support for OpenGL and software rendering.
-
 ### Quick-start
 
 Install dependencies:
@@ -88,6 +88,14 @@ cargo run --example gallery
 cargo run --example layout
 cargo run --example mandlebrot
 ```
+
+If possible, `wgpu` ([WebGPU]) will use the Vulkan, Metal or DirectX 12 graphics
+API. If none of these are available it may instead use OpenGL, however this
+currently requires the `wgpu/cross` feature:
+```sh
+cargo run --example gallery --features wgpu/cross
+```
+(To force OpenGL on other platforms, set `KAS_BACKENDS=GL`.)
 
 To build docs locally:
 ```
