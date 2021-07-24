@@ -261,13 +261,11 @@ pub trait DrawHandle {
 
     /// Access the low-level draw device
     ///
-    /// Returns `(offset, draw, shared)`.
-    ///
-    /// All local coordinates must be adjusted by `offset` (i.e. `new_pos = pos + offset`).
+    /// Returns `(draw, shared)`.
     ///
     /// The `draw` object is over the [`Drawable`] interface which exposes only
     /// minimal functionality. [`Draw::downcast`] will likely be of use.
-    fn draw_device(&mut self) -> (Offset, Draw<'_, dyn Drawable>, &mut dyn DrawSharedT);
+    fn draw_device(&mut self) -> (Draw<'_, dyn Drawable>, &mut dyn DrawSharedT);
 
     /// Add a clip region
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -623,7 +621,7 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         self.deref_mut().size_handle_dyn(f)
     }
-    fn draw_device(&mut self) -> (Offset, Draw<'_, dyn Drawable>, &mut dyn DrawSharedT) {
+    fn draw_device(&mut self) -> (Draw<'_, dyn Drawable>, &mut dyn DrawSharedT) {
         self.deref_mut().draw_device()
     }
     fn with_clip_region(
@@ -709,7 +707,7 @@ where
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         self.deref_mut().size_handle_dyn(f)
     }
-    fn draw_device(&'_ mut self) -> (Offset, Draw<'_, dyn Drawable>, &'_ mut dyn DrawSharedT) {
+    fn draw_device(&'_ mut self) -> (Draw<'_, dyn Drawable>, &'_ mut dyn DrawSharedT) {
         self.deref_mut().draw_device()
     }
     fn with_clip_region(

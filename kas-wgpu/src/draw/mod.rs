@@ -18,7 +18,7 @@ mod shaded_square;
 mod shaders;
 mod text_pipe;
 
-use kas::geom::Rect;
+use kas::geom::{Offset, Rect};
 use shaders::ShaderManager;
 use wgpu::TextureFormat;
 
@@ -30,6 +30,8 @@ pub use custom::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom};
 /// and let the graphics pipeline handle colour conversions.
 pub(crate) const RENDER_TEX_FORMAT: TextureFormat = TextureFormat::Bgra8UnormSrgb;
 
+type Scale = [f32; 4];
+
 /// Shared pipeline data
 pub struct DrawPipe<C> {
     device: wgpu::Device,
@@ -37,6 +39,8 @@ pub struct DrawPipe<C> {
     local_pool: futures::executor::LocalPool,
     staging_belt: wgpu::util::StagingBelt,
     bgl_common: wgpu::BindGroupLayout,
+    light_norm_buf: wgpu::Buffer,
+    bg_common: Vec<(wgpu::Buffer, wgpu::BindGroup)>,
     images: images::Images,
     shaded_square: shaded_square::Pipeline,
     shaded_round: shaded_round::Pipeline,
@@ -47,9 +51,8 @@ pub struct DrawPipe<C> {
 
 /// Per-window pipeline data
 pub struct DrawWindow<CW: CustomWindow> {
-    scale_buf: wgpu::Buffer,
-    clip_regions: Vec<Rect>,
-    bg_common: wgpu::BindGroup,
+    scale: Scale,
+    clip_regions: Vec<(Rect, Offset)>,
     images: images::Window,
     shaded_square: shaded_square::Window,
     shaded_round: shaded_round::Window,

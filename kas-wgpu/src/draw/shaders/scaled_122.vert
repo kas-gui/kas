@@ -20,13 +20,12 @@ layout(location = 2) out vec2 b2;
 layout(location = 3) out vec2 b3;
 
 layout(set = 0, binding = 0) uniform VertexCommon {
+    vec2 offset;
     vec2 scale;
 };
 
-const vec2 offset = { -1.0, 1.0 };
-
 void main() {
-    gl_Position = vec4(scale * a_pos.xy + offset, 0.0, 1.0);
+    gl_Position = vec4(scale * (a_pos.xy + offset), 0.0, 1.0);
     b_col = a_col;
     b1 = a1;
     b2 = a2;

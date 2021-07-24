@@ -13,7 +13,7 @@ use std::f32::consts::PI;
 use std::time::Duration;
 
 use kas::draw::{color, RegionClass, TextClass};
-use kas::geom::{Quad, Vec2};
+use kas::geom::{Offset, Quad, Vec2};
 use kas::text::util::set_text_and_prepare;
 use kas::widget::Window;
 use kas::{event, prelude::*};
@@ -72,13 +72,10 @@ impl Layout for Clock {
 
         // We use the low-level draw device to draw our clock. This means it is
         // not themeable, but gives us much more flexible draw routines.
-        //
-        // Note: offset is used for scroll-regions, and should be zero here;
-        // we add it anyway as is recommended.
-        let (offset, mut draw, _shared) = draw_handle.draw_device();
+        let (mut draw, _shared) = draw_handle.draw_device();
         let mut draw = draw.downcast::<DrawWindow<()>>().unwrap();
 
-        let rect = self.core.rect + offset;
+        let rect = self.core.rect;
         let quad = Quad::from(rect);
         draw.circle(quad, 0.95, col_face);
 
@@ -96,7 +93,7 @@ impl Layout for Clock {
         }
 
         // We use a new clip region to control the draw order (force in front).
-        let mut draw = draw.new_clip_region(rect, RegionClass::ScrollRegion);
+        let mut draw = draw.new_clip_region(rect, Offset::ZERO, RegionClass::ScrollRegion);
         let mut line_seg = |t: f32, r1: f32, r2: f32, w, col| {
             let v = Vec2(t.sin(), -t.cos());
             draw.rounded_line(centre + v * r1, centre + v * r2, w, col);

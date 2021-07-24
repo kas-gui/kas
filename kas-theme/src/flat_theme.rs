@@ -88,7 +88,6 @@ pub struct DrawHandle<'a, DS: DrawableShared> {
     pub(crate) draw: Draw<'a, DS::Draw>,
     pub(crate) window: &'a mut DimensionsWindow,
     pub(crate) cols: &'a ColorsLinear,
-    pub(crate) offset: Offset,
 }
 
 impl<DS: DrawableShared> Theme<DS> for FlatTheme
@@ -155,7 +154,6 @@ where
             draw: Draw::new(extend_lifetime_mut(draw.draw), draw.pass()),
             window: extend_lifetime_mut(window),
             cols: extend_lifetime(&self.cols),
-            offset: Offset::ZERO,
         }
     }
     #[cfg(feature = "gat")]
@@ -170,7 +168,6 @@ where
             draw,
             window,
             cols: &self.cols,
-            offset: Offset::ZERO,
         }
     }
 
@@ -235,7 +232,7 @@ where
 
     /// Draw a handle (for slider, scrollbar)
     fn draw_handle(&mut self, rect: Rect, state: InputState) {
-        let outer = Quad::from(rect + self.offset);
+        let outer = Quad::from(rect);
         let thickness = outer.size().min_comp() / 2.0;
         let inner = outer.shrink(thickness);
         let col = self.cols.scrollbar_state(state);
@@ -259,27 +256,26 @@ where
         }
     }
 
-    fn draw_device<'b>(&'b mut self) -> (Offset, Draw<'b, dyn Drawable>, &mut dyn DrawSharedT) {
-        (self.offset, self.draw.upcast_base(), self.shared)
+    fn draw_device<'b>(&'b mut self) -> (Draw<'b, dyn Drawable>, &mut dyn DrawSharedT) {
+        (self.draw.upcast_base(), self.shared)
     }
 
     fn with_clip_region(
         &mut self,
-        rect: Rect,
+        mut rect: Rect,
         offset: Offset,
         class: RegionClass,
         f: &mut dyn FnMut(&mut dyn draw::DrawHandle),
     ) {
-        let inner_rect = rect + self.offset;
-        let outer_rect = match class {
-            RegionClass::ScrollRegion => inner_rect,
-            RegionClass::Overlay => inner_rect.expand(self.window.dims.frame),
-        };
-        let mut draw = self.draw.new_clip_region(outer_rect, class);
+        if class == RegionClass::Overlay {
+            rect = rect.expand(self.window.dims.frame);
+        }
+        let mut draw = self.draw.new_clip_region(rect, offset, class);
 
         if class == RegionClass::Overlay {
-            let outer = Quad::from(outer_rect);
-            let inner = Quad::from(inner_rect);
+            let outer = draw.clip_rect();
+            let inner = Quad::from(outer.shrink(self.window.dims.frame));
+            let outer = Quad::from(outer);
             draw.rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
             let inner = outer.shrink(self.window.dims.frame as f32 * BG_SHRINK_FACTOR);
             draw.rect(inner, self.cols.background);
@@ -290,25 +286,23 @@ where
             draw,
             window: self.window,
             cols: self.cols,
-            offset: self.offset - offset,
         };
         f(&mut handle);
     }
 
     fn target_rect(&self) -> Rect {
-        // Translate to local coordinates
-        self.draw.clip_rect() - self.offset
+        self.draw.clip_rect()
     }
 
     fn outer_frame(&mut self, rect: Rect) {
-        let outer = Quad::from(rect + self.offset);
+        let outer = Quad::from(rect);
         let inner = outer.shrink(self.window.dims.frame as f32);
         self.draw
             .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
     }
 
     fn separator(&mut self, rect: Rect) {
-        let outer = Quad::from(rect + self.offset);
+        let outer = Quad::from(rect);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
         self.draw
             .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
@@ -316,14 +310,14 @@ where
 
     fn nav_frame(&mut self, rect: Rect, state: InputState) {
         if let Some(col) = self.cols.nav_region(state) {
-            let outer = Quad::from(rect + self.offset);
+            let outer = Quad::from(rect);
             let inner = outer.shrink(self.window.dims.inner_margin as f32);
             self.draw.rounded_frame(outer, inner, 0.0, col);
         }
     }
 
     fn selection_box(&mut self, rect: Rect) {
-        let inner = Quad::from(rect + self.offset);
+        let inner = Quad::from(rect);
         let outer = inner.grow(self.window.dims.inner_margin.into());
         // TODO: this should use its own colour and a stippled pattern
         let col = self.cols.text_sel_bg;
@@ -331,7 +325,7 @@ where
     }
 
     fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass) {
-        let pos = pos + self.offset;
+        let pos = pos;
         let col = self.cols.text_class(class);
         self.shared
             .draw_text(self.draw.reborrow(), pos.into(), text, col);
@@ -340,7 +334,7 @@ where
     fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
         self.shared.draw_text_col_effects(
             self.draw.reborrow(),
-            (pos + self.offset).into(),
+            (pos).into(),
             text.display(),
             self.cols.text_class(class),
             text.effect_tokens(),
@@ -348,7 +342,7 @@ where
     }
 
     fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
-        let pos = Vec2::from(pos + self.offset);
+        let pos = Vec2::from(pos);
         let col = self.cols.text_class(class);
         if state {
             let effects = text.text().effect_tokens();
@@ -372,7 +366,7 @@ where
         range: Range<usize>,
         class: TextClass,
     ) {
-        let pos = Vec2::from(pos + self.offset);
+        let pos = Vec2::from(pos);
         let col = self.cols.text_class(class);
 
         // Draw background:
@@ -406,7 +400,7 @@ where
 
     fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
         let width = self.window.dims.font_marker_width;
-        let pos = Vec2::from(pos + self.offset);
+        let pos = Vec2::from(pos);
 
         let mut col = self.cols.text_class(class);
         for cursor in text.text_glyph_pos(byte).rev() {
@@ -435,13 +429,13 @@ where
 
     fn menu_entry(&mut self, rect: Rect, state: InputState) {
         if let Some(col) = self.cols.menu_entry(state) {
-            let quad = Quad::from(rect + self.offset);
+            let quad = Quad::from(rect);
             self.draw.rect(quad, col);
         }
     }
 
     fn button(&mut self, rect: Rect, state: InputState) {
-        let outer = Quad::from(rect + self.offset);
+        let outer = Quad::from(rect);
         let col = self.cols.button_state(state);
 
         let inner = outer.shrink(self.window.dims.button_frame as f32);
@@ -456,14 +450,14 @@ where
 
     fn edit_box(&mut self, rect: Rect, state: InputState) {
         let bg_col = self.cols.bg_col(state);
-        self.draw_edit_box(rect + self.offset, bg_col, self.cols.nav_region(state));
+        self.draw_edit_box(rect, bg_col, self.cols.nav_region(state));
     }
 
     fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState) {
         let bg_col = self.cols.bg_col(state);
         let nav_col = self.cols.nav_region(state).or(Some(bg_col));
 
-        let inner = self.draw_edit_box(rect + self.offset, bg_col, nav_col);
+        let inner = self.draw_edit_box(rect, bg_col, nav_col);
 
         if let Some(col) = self.cols.check_mark_state(state, checked) {
             let radius = inner.size().sum() * (1.0 / 16.0);
@@ -477,7 +471,7 @@ where
         let bg_col = self.cols.bg_col(state);
         let nav_col = self.cols.nav_region(state).or(Some(bg_col));
 
-        let inner = self.draw_edit_box(rect + self.offset, bg_col, nav_col);
+        let inner = self.draw_edit_box(rect, bg_col, nav_col);
 
         if let Some(col) = self.cols.check_mark_state(state, checked) {
             let inner = inner.shrink(self.window.dims.inner_margin as f32);
@@ -487,7 +481,7 @@ where
 
     fn scrollbar(&mut self, rect: Rect, h_rect: Rect, _dir: Direction, state: InputState) {
         // track
-        let outer = Quad::from(rect + self.offset);
+        let outer = Quad::from(rect);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
         let col = self.cols.frame;
         self.draw.rounded_frame(outer, inner, 0.0, col);
@@ -498,7 +492,7 @@ where
 
     fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
         // track
-        let mut outer = Quad::from(rect + self.offset);
+        let mut outer = Quad::from(rect);
         outer = match dir.is_horizontal() {
             true => outer.shrink_vec(Vec2(0.0, outer.size().1 * (3.0 / 8.0))),
             false => outer.shrink_vec(Vec2(outer.size().0 * (3.0 / 8.0), 0.0)),
@@ -512,7 +506,7 @@ where
     }
 
     fn progress_bar(&mut self, rect: Rect, dir: Direction, _: InputState, value: f32) {
-        let outer = Quad::from(rect + self.offset);
+        let outer = Quad::from(rect);
         let mut inner = outer.shrink(self.window.dims.frame as f32);
         let col = self.cols.frame;
         self.draw.rounded_frame(outer, inner, BG_SHRINK_FACTOR, col);
@@ -527,7 +521,7 @@ where
     }
 
     fn image(&mut self, id: ImageId, rect: Rect) {
-        let rect = Quad::from(rect + self.offset);
+        let rect = Quad::from(rect);
         self.shared.draw_image(self.draw.reborrow(), id, rect);
     }
 }
