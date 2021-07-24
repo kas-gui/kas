@@ -683,7 +683,9 @@ impl<G: EditGuard> EditField<G> {
             self.selection.set_pos(pos + c.len_utf8());
         }
         self.edit_x_coord = None;
-        self.text.prepare();
+        if let Some(req) = self.text.prepare() {
+            self.required = req.into();
+        }
         self.set_view_offset_from_edit_pos();
         mgr.redraw(self.id());
         true
@@ -980,7 +982,9 @@ impl<G: EditGuard> EditField<G> {
 
         let mut set_offset = self.selection.edit_pos() != pos;
         if !self.text.required_action().is_ready() {
-            self.text.prepare();
+            if let Some(req) = self.text.prepare() {
+                self.required = req.into();
+            }
             set_offset = true;
             mgr.redraw(self.id());
         }
@@ -1042,10 +1046,14 @@ impl<G: EditGuard> HasStr for EditField<G> {
 
 impl<G: EditGuard> HasString for EditField<G> {
     fn set_string(&mut self, string: String) -> TkAction {
-        let avail = self.core.rect.size;
-        let action = kas::text::util::set_string_and_prepare(&mut self.text, string, avail);
+        self.text.set_string(string);
+        if kas::text::fonts::fonts().num_faces() > 0 {
+            if let Some(req) = self.text.prepare() {
+                self.required = req.into();
+            }
+        }
         let _ = G::update(self);
-        action
+        TkAction::REDRAW
     }
 }
 
