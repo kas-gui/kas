@@ -18,8 +18,16 @@ pub trait Directional: Copy + Sized + std::fmt::Debug + 'static {
     /// This allows compile-time selection of the flipped direction.
     type Flipped: Directional;
 
+    /// Direction reversed along axis (i.e. Left ↔ Right)
+    ///
+    /// This allows compile-time selection of the reversed direction.
+    type Reversed: Directional;
+
     /// Flip over diagonal (i.e. Down ↔ Right)
     fn flipped(self) -> Self::Flipped;
+
+    /// Reverse along axis (i.e. Left ↔ Right)
+    fn reversed(self) -> Self::Reversed;
 
     /// Convert to the [`Direction`] enum
     fn as_direction(self) -> Direction;
@@ -44,17 +52,21 @@ pub trait Directional: Copy + Sized + std::fmt::Debug + 'static {
 }
 
 macro_rules! fixed {
-    [] => {};
-    [($d:ident, $df:ident)] => {
+    ($d:ident, $df:ident, $dr:ident) => {
         /// Fixed instantiation of [`Directional`]
         #[derive(Copy, Clone, Default, Debug)]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         pub struct $d;
         impl Directional for $d {
             type Flipped = $df;
+            type Reversed = $dr;
             #[inline]
             fn flipped(self) -> Self::Flipped {
                 $df
+            }
+            #[inline]
+            fn reversed(self) -> Self::Reversed {
+                $dr
             }
             #[inline]
             fn as_direction(self) -> Direction {
@@ -62,13 +74,11 @@ macro_rules! fixed {
             }
         }
     };
-    [($d:ident, $df:ident), $(($d1:ident, $d2:ident),)*] => {
-        fixed![($d, $df)];
-        fixed![($df, $d)];
-        fixed![$(($d1, $d2),)*];
-    };
 }
-fixed![(Right, Down), (Left, Up),];
+fixed!(Left, Up, Right);
+fixed!(Right, Down, Left);
+fixed!(Up, Left, Down);
+fixed!(Down, Right, Up);
 
 /// Axis-aligned directions
 ///
@@ -84,6 +94,7 @@ pub enum Direction {
 
 impl Directional for Direction {
     type Flipped = Self;
+    type Reversed = Self;
 
     fn flipped(self) -> Self::Flipped {
         use Direction::*;
@@ -92,6 +103,16 @@ impl Directional for Direction {
             Down => Right,
             Left => Up,
             Up => Left,
+        }
+    }
+
+    fn reversed(self) -> Self::Reversed {
+        use Direction::*;
+        match self {
+            Right => Left,
+            Down => Up,
+            Left => Right,
+            Up => Down,
         }
     }
 
