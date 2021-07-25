@@ -20,6 +20,12 @@ use std::collections::HashMap;
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Control {
+    Set(usize),
+    Dir,
+}
+
+#[derive(Clone, Debug, VoidMsg)]
+enum Button {
     Decr,
     Incr,
     Set,
@@ -193,30 +199,31 @@ fn main() -> Result<(), kas_wgpu::Error> {
 
     let controls = make_widget! {
         #[layout(row)]
-        #[handler(msg = usize)]
+        #[handler(msg = Control)]
         struct {
             #[widget] _ = Label::new("Number of rows:"),
             #[widget(handler = activate)] edit: impl HasString = EditBox::new("3")
                 .on_afl(|text, _| text.parse::<usize>().ok()),
-            #[widget(handler = button)] _ = TextButton::new_msg("Set", Control::Set),
-            #[widget(handler = button)] _ = TextButton::new_msg("−", Control::Decr),
-            #[widget(handler = button)] _ = TextButton::new_msg("+", Control::Incr),
+            #[widget(handler = button)] _ = TextButton::new_msg("Set", Button::Set),
+            #[widget(handler = button)] _ = TextButton::new_msg("−", Button::Decr),
+            #[widget(handler = button)] _ = TextButton::new_msg("+", Button::Incr),
+            #[widget] _ = TextButton::new_msg("↓↑", Control::Dir),
             n: usize = 3,
         }
         impl {
-            fn activate(&mut self, _: &mut Manager, n: usize) -> Response<usize> {
+            fn activate(&mut self, _: &mut Manager, n: usize) -> Response<Control> {
                 self.n = n;
-                n.into()
+                Control::Set(n).into()
             }
-            fn button(&mut self, mgr: &mut Manager, msg: Control) -> Response<usize> {
+            fn button(&mut self, mgr: &mut Manager, msg: Button) -> Response<Control> {
                 let n = match msg {
-                    Control::Decr => self.n.saturating_sub(1),
-                    Control::Incr => self.n.saturating_add(1),
-                    Control::Set => self.n,
+                    Button::Decr => self.n.saturating_sub(1),
+                    Button::Incr => self.n.saturating_add(1),
+                    Button::Set => self.n,
                 };
                 *mgr |= self.edit.set_string(n.to_string());
                 self.n = n;
-                n.into()
+                Control::Set(n).into()
             }
         }
     };
@@ -225,7 +232,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
         radio_group: UpdateHandle::new(),
     };
     let data = MyData::new(3);
-    type MyList = ListView<kas::dir::Down, MyData, MyDriver>;
+    type MyList = ListView<Direction, MyData, MyDriver>;
+    let list = ListView::new_with_dir_driver(Direction::Down, driver, data);
 
     let window = Window::new(
         "Dynamic widget demo",
@@ -234,20 +242,28 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget] _ = Label::new("Demonstration of dynamic widget creation / deletion"),
-                #[widget(handler = set_len)] controls -> usize = controls,
+                #[widget(handler = control)] controls -> Control = controls,
                 #[widget] _ = Label::new("Contents of selected entry:"),
                 #[widget] display: StringLabel = Label::from("Entry #0"),
                 #[widget] _ = Separator::new(),
                 #[widget(handler = set_radio)] list: ScrollBars<MyList> =
-                    ScrollBars::new(ListView::new_with_driver(driver, data)).with_bars(false, true),
+                    ScrollBars::new(list).with_bars(false, true),
             }
             impl {
-                fn set_len(&mut self, mgr: &mut Manager, len: usize) -> Response<VoidMsg> {
-                    let (opt_text, handle) = self.list.data_mut().set_len(len);
-                    if let Some(text) = opt_text {
-                        *mgr |= self.display.set_string(text);
+                fn control(&mut self, mgr: &mut Manager, control: Control) -> Response<VoidMsg> {
+                    match control {
+                        Control::Set(len) => {
+                            let (opt_text, handle) = self.list.data_mut().set_len(len);
+                            if let Some(text) = opt_text {
+                                *mgr |= self.display.set_string(text);
+                            }
+                            mgr.trigger_update(handle, 0);
+                        }
+                        Control::Dir => {
+                            let dir = self.list.direction().reversed();
+                            *mgr |= self.list.set_direction(dir);
+                        }
                     }
-                    mgr.trigger_update(handle, 0);
                     Response::None
                 }
                 fn set_radio(&mut self, mgr: &mut Manager, msg: ChildMsg<usize, EntryMsg>) -> Response<VoidMsg> {
