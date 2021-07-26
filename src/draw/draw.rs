@@ -6,7 +6,7 @@
 //! Drawing APIs — draw interface
 
 use super::color::Rgba;
-use super::{Pass, RegionClass};
+use super::{PassId, RegionClass};
 use crate::geom::{Offset, Quad, Rect, Vec2};
 use std::any::Any;
 
@@ -30,7 +30,7 @@ use std::any::Any;
 /// [`DrawableRounded`] is implemented. In other cases one may directly use
 /// [`Draw::draw`], passing the result of [`Draw::pass`] as a parameter.
 pub struct Draw<'a, D: Any + ?Sized> {
-    pass: Pass,
+    pass: PassId,
     pub draw: &'a mut D,
 }
 
@@ -38,7 +38,7 @@ pub struct Draw<'a, D: Any + ?Sized> {
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 impl<'a, D: Drawable + ?Sized> Draw<'a, D> {
     /// Construct (this is only called by the shell)
-    pub fn new(draw: &'a mut D, pass: Pass) -> Self {
+    pub fn new(draw: &'a mut D, pass: PassId) -> Self {
         Draw { pass, draw }
     }
 }
@@ -102,7 +102,7 @@ impl<'a, D: Drawable + ?Sized> Draw<'a, D> {
     }
 
     /// Get the current draw pass
-    pub fn pass(&self) -> Pass {
+    pub fn pass(&self) -> PassId {
         self.pass
     }
 
@@ -110,7 +110,7 @@ impl<'a, D: Drawable + ?Sized> Draw<'a, D> {
     ///
     /// The clip region is a draw target within the same window, with draw
     /// operations restricted to a "scissor rect" `rect` and translated by
-    /// subtracting `offset`. The returned object uses a new [`Pass`].
+    /// subtracting `offset`. The returned object uses a new [`PassId`].
     ///
     /// Note that `rect` is defined relative to the coordinate system used by
     /// the *current* `Draw` object and pass.
@@ -200,8 +200,8 @@ impl<'a, D: DrawableRounded + ?Sized> Draw<'a, D> {
 /// should be ordered after those without transparency.
 ///
 /// Draw operations take place over multiple render passes, identified by a
-/// handle of type [`Pass`]. In general the user only needs to pass this value
-/// into methods as required. [`Drawable::add_clip_region`] creates a new [`Pass`].
+/// handle of type [`PassId`]. In general the user only needs to pass this value
+/// into methods as required. [`Drawable::add_clip_region`] creates a new [`PassId`].
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait Drawable: Any {
@@ -217,22 +217,22 @@ pub trait Drawable: Any {
     /// Add a clip region
     fn add_clip_region(
         &mut self,
-        pass: Pass,
+        pass: PassId,
         rect: Rect,
         offset: Offset,
         class: RegionClass,
-    ) -> Pass;
+    ) -> PassId;
 
     /// Get drawable rect for a clip region
     ///
     /// (This may be smaller than the rect passed to [`Drawable::add_clip_region`].)
-    fn get_clip_rect(&self, pass: Pass) -> Rect;
+    fn get_clip_rect(&self, pass: PassId) -> Rect;
 
     /// Draw a rectangle of uniform colour
-    fn rect(&mut self, pass: Pass, rect: Quad, col: Rgba);
+    fn rect(&mut self, pass: PassId, rect: Quad, col: Rgba);
 
     /// Draw a frame of uniform colour
-    fn frame(&mut self, pass: Pass, outer: Quad, inner: Quad, col: Rgba);
+    fn frame(&mut self, pass: PassId, outer: Quad, inner: Quad, col: Rgba);
 }
 
 /// Drawing commands for rounded shapes
@@ -246,11 +246,18 @@ pub trait Drawable: Any {
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait DrawableRounded: Drawable {
     /// Draw a line with rounded ends and uniform colour
-    fn rounded_line(&mut self, pass: Pass, p1: Vec2, p2: Vec2, radius: f32, col: Rgba);
+    fn rounded_line(&mut self, pass: PassId, p1: Vec2, p2: Vec2, radius: f32, col: Rgba);
 
     /// Draw a circle or oval of uniform colour
-    fn circle(&mut self, pass: Pass, rect: Quad, inner_radius: f32, col: Rgba);
+    fn circle(&mut self, pass: PassId, rect: Quad, inner_radius: f32, col: Rgba);
 
     /// Draw a frame with rounded corners and uniform colour
-    fn rounded_frame(&mut self, pass: Pass, outer: Quad, inner: Quad, inner_radius: f32, col: Rgba);
+    fn rounded_frame(
+        &mut self,
+        pass: PassId,
+        outer: Quad,
+        inner: Quad,
+        inner_radius: f32,
+        col: Rgba,
+    );
 }

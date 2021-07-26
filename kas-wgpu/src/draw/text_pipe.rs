@@ -7,7 +7,7 @@
 
 use super::{atlases, ShaderManager};
 use kas::cast::*;
-use kas::draw::{color::Rgba, Pass};
+use kas::draw::{color::Rgba, PassId};
 use kas::geom::{Quad, Vec2};
 use kas::text::fonts::FaceId;
 use kas::text::{Effect, Glyph, TextDisplay};
@@ -231,7 +231,7 @@ impl Window {
     pub fn text(
         &mut self,
         pipe: &mut Pipeline,
-        pass: Pass,
+        pass: PassId,
         pos: Vec2,
         text: &TextDisplay,
         col: Rgba,
@@ -257,7 +257,7 @@ impl Window {
     pub fn text_col_effects(
         &mut self,
         pipe: &mut Pipeline,
-        pass: Pass,
+        pass: PassId,
         pos: Vec2,
         text: &TextDisplay,
         col: Rgba,
@@ -313,7 +313,7 @@ impl Window {
     pub fn text_effects(
         &mut self,
         pipe: &mut Pipeline,
-        pass: Pass,
+        pass: PassId,
         pos: Vec2,
         text: &TextDisplay,
         effects: &[Effect<Rgba>],

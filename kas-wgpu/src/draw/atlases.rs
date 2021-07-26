@@ -12,7 +12,7 @@ use std::ops::Range;
 use thiserror::Error;
 
 use kas::cast::{Cast, Conv};
-use kas::draw::{ImageError, Pass};
+use kas::draw::{ImageError, PassId};
 use kas::geom::{Quad, Size, Vec2};
 
 fn to_vec2(p: guillotiere::Point) -> Vec2 {
@@ -423,7 +423,7 @@ impl<I: bytemuck::Pod> Window<I> {
     }
 
     /// Add a rectangle to the buffer
-    pub fn rect(&mut self, pass: Pass, atlas: u32, instance: I) {
+    pub fn rect(&mut self, pass: PassId, atlas: u32, instance: I) {
         let pass = pass.pass();
         if self.passes.len() <= pass {
             // We only need one more, but no harm in adding extra

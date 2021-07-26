@@ -7,7 +7,7 @@
 
 use super::common;
 use crate::draw::ShaderManager;
-use kas::draw::{color::Rgba, Pass};
+use kas::draw::{color::Rgba, PassId};
 use kas::geom::{Quad, Vec2};
 use std::mem::size_of;
 
@@ -108,7 +108,7 @@ impl Pipeline {
 }
 
 impl Window {
-    pub fn line(&mut self, pass: Pass, p1: Vec2, p2: Vec2, radius: f32, col: Rgba) {
+    pub fn line(&mut self, pass: PassId, p1: Vec2, p2: Vec2, radius: f32, col: Rgba) {
         if p1 == p2 {
             let a = p1 - radius;
             let b = p2 + radius;
@@ -164,7 +164,7 @@ impl Window {
     }
 
     /// Bounds on input: `0 ≤ inner_radius ≤ 1`.
-    pub fn circle(&mut self, pass: Pass, rect: Quad, inner_radius: f32, col: Rgba) {
+    pub fn circle(&mut self, pass: PassId, rect: Quad, inner_radius: f32, col: Rgba) {
         let aa = rect.a;
         let bb = rect.b;
 
@@ -206,7 +206,7 @@ impl Window {
     /// Bounds on input: `aa < cc < dd < bb`, `0 ≤ inner_radius ≤ 1`.
     pub fn rounded_frame(
         &mut self,
-        pass: Pass,
+        pass: PassId,
         outer: Quad,
         inner: Quad,
         inner_radius: f32,

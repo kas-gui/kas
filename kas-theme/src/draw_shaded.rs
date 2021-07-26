@@ -6,7 +6,7 @@
 //! Drawing APIs — shaded drawing
 
 use kas::draw::color::Rgba;
-use kas::draw::{Draw, Drawable, Pass};
+use kas::draw::{Draw, Drawable, PassId};
 use kas::geom::Quad;
 
 /// Extension trait providing shaded drawing over [`Draw`]
@@ -72,15 +72,15 @@ impl<'a, D: DrawableShaded + ?Sized> DrawableShadedExt for Draw<'a, D> {
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 pub trait DrawableShaded: Drawable {
     /// Add a shaded square to the draw buffer
-    fn shaded_square(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Rgba);
+    fn shaded_square(&mut self, pass: PassId, rect: Quad, norm: (f32, f32), col: Rgba);
 
     /// Add a shaded circle to the draw buffer
-    fn shaded_circle(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Rgba);
+    fn shaded_circle(&mut self, pass: PassId, rect: Quad, norm: (f32, f32), col: Rgba);
 
     /// Add a square shaded frame to the draw buffer.
     fn shaded_square_frame(
         &mut self,
-        pass: Pass,
+        pass: PassId,
         outer: Quad,
         inner: Quad,
         norm: (f32, f32),
@@ -91,7 +91,7 @@ pub trait DrawableShaded: Drawable {
     /// Add a rounded shaded frame to the draw buffer.
     fn shaded_round_frame(
         &mut self,
-        pass: Pass,
+        pass: PassId,
         outer: Quad,
         inner: Quad,
         norm: (f32, f32),

@@ -12,6 +12,7 @@ use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
+/// Identifier for an image allocation
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ImageId(NonZeroU32);
 

@@ -7,7 +7,7 @@
 
 use super::common;
 use crate::draw::ShaderManager;
-use kas::draw::{color::Rgba, Pass};
+use kas::draw::{color::Rgba, PassId};
 use kas::geom::{Quad, Vec2};
 use std::mem::size_of;
 
@@ -88,7 +88,7 @@ impl Pipeline {
 
 impl Window {
     /// Add a rectangle to the buffer
-    pub fn rect(&mut self, pass: Pass, rect: Quad, col: Rgba) {
+    pub fn rect(&mut self, pass: PassId, rect: Quad, col: Rgba) {
         let aa = rect.a;
         let bb = rect.b;
 
@@ -112,7 +112,7 @@ impl Window {
     /// Add a rect to the buffer, defined by two outer corners, `aa` and `bb`.
     ///
     /// Bounds on input: `aa < cc` and `-1 ≤ norm ≤ 1`.
-    pub fn shaded_rect(&mut self, pass: Pass, rect: Quad, mut norm: Vec2, col: Rgba) {
+    pub fn shaded_rect(&mut self, pass: PassId, rect: Quad, mut norm: Vec2, col: Rgba) {
         let aa = rect.a;
         let bb = rect.b;
 
@@ -143,7 +143,7 @@ impl Window {
     }
 
     #[inline]
-    pub fn frame(&mut self, pass: Pass, outer: Quad, inner: Quad, col: Rgba) {
+    pub fn frame(&mut self, pass: PassId, outer: Quad, inner: Quad, col: Rgba) {
         let norm = Vec2::splat(0.0);
         self.shaded_frame(pass, outer, inner, norm, col, col);
     }
@@ -154,7 +154,7 @@ impl Window {
     /// Bounds on input: `aa < cc < dd < bb` and `-1 ≤ norm ≤ 1`.
     pub fn shaded_frame(
         &mut self,
-        pass: Pass,
+        pass: PassId,
         outer: Quad,
         inner: Quad,
         mut norm: Vec2,

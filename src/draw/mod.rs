@@ -80,15 +80,15 @@ pub use theme::*;
 ///
 /// Custom render pipes should extract the pass number.
 #[derive(Copy, Clone)]
-pub struct Pass(u32);
+pub struct PassId(u32);
 
-impl Pass {
+impl PassId {
     /// Construct a new pass from a `u32` identifier
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     #[inline]
     pub const fn new(n: u32) -> Self {
-        Pass(n)
+        PassId(n)
     }
 
     /// The pass number
