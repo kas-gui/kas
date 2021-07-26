@@ -407,11 +407,11 @@ impl<CW: CustomWindow> Drawable for DrawWindow<CW> {
         parent_pass: PassId,
         rect: Rect,
         offset: Offset,
-        class: RegionClass,
+        class: PassType,
     ) -> PassId {
         let parent = match class {
-            RegionClass::ScrollRegion => &self.clip_regions[parent_pass.pass()],
-            RegionClass::Overlay => &self.clip_regions[0],
+            PassType::Clip => &self.clip_regions[parent_pass.pass()],
+            PassType::Overlay => &self.clip_regions[0],
         };
         let rect = rect - parent.1;
         let offset = offset + parent.1;

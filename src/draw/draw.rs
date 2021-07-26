@@ -6,7 +6,7 @@
 //! Drawing APIs — draw interface
 
 use super::color::Rgba;
-use super::{PassId, RegionClass};
+use super::{PassId, PassType};
 use crate::geom::{Offset, Quad, Rect, Vec2};
 use std::any::Any;
 
@@ -113,15 +113,15 @@ impl<'a, D: Drawable + ?Sized> Draw<'a, D> {
     /// (see [`Draw::clip_rect`]) and may offset (translate) draw
     /// operations.
     ///
-    /// Case `class == RegionClass::ScrollRegion`: the new pass is derived from
+    /// Case `class == PassType::Clip`: the new pass is derived from
     /// `parent_pass`; `rect` and `offset` are specified relative to this parent
     /// and the intersecton of `rect` and the parent's "clip rect" is used.
     /// be clipped to `rect` (expressed in the parent's coordinate system).
     ///
-    /// Case `class == RegionClass::Overlay`: the new pass is derived from the
+    /// Case `class == PassType::Overlay`: the new pass is derived from the
     /// base pass (i.e. the window). Draw operations still happen after those in
     /// `parent_pass`.
-    pub fn new_draw_pass(&mut self, rect: Rect, offset: Offset, class: RegionClass) -> Draw<D> {
+    pub fn new_draw_pass(&mut self, rect: Rect, offset: Offset, class: PassType) -> Draw<D> {
         let pass = self.draw.new_draw_pass(self.pass, rect, offset, class);
         Draw {
             draw: &mut *self.draw,
@@ -137,7 +137,7 @@ impl<'a, D: Drawable + ?Sized> Draw<'a, D> {
     /// (This is not guaranteed to equal the rect passed to
     /// [`Draw::new_draw_pass`].)
     pub fn clip_rect(&self) -> Rect {
-        dbg!(self.draw.clip_rect(self.pass))
+        self.draw.clip_rect(self.pass)
     }
 
     /// Draw a rectangle of uniform colour
@@ -229,12 +229,12 @@ pub trait Drawable: Any {
     /// (see [`Drawable::clip_rect`]) and may offset (translate) draw
     /// operations.
     ///
-    /// Case `class == RegionClass::ScrollRegion`: the new pass is derived from
+    /// Case `class == PassType::Clip`: the new pass is derived from
     /// `parent_pass`; `rect` and `offset` are specified relative to this parent
     /// and the intersecton of `rect` and the parent's "clip rect" is used.
     /// be clipped to `rect` (expressed in the parent's coordinate system).
     ///
-    /// Case `class == RegionClass::Overlay`: the new pass is derived from the
+    /// Case `class == PassType::Overlay`: the new pass is derived from the
     /// base pass (i.e. the window). Draw operations still happen after those in
     /// `parent_pass`.
     fn new_draw_pass(
@@ -242,7 +242,7 @@ pub trait Drawable: Any {
         parent_pass: PassId,
         rect: Rect,
         offset: Offset,
-        class: RegionClass,
+        class: PassType,
     ) -> PassId;
 
     /// Get drawable rect for a draw `pass`

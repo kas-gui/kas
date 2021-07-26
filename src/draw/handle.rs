@@ -98,12 +98,18 @@ impl Default for TextClass {
     }
 }
 
-/// Region class
+/// Type of draw pass
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
-pub enum RegionClass {
-    ScrollRegion,
+pub enum PassType {
+    /// New pass is clipped and offset relative to parent
+    Clip,
+    /// New pass is an overlay
+    ///
+    /// An overlay is a layer drawn over the base window, for example a tooltip
+    /// or combobox menu. The rect and offset are relative to the base window.
+    /// The theme may draw a shadow or border around this rect.
     Overlay,
 }
 
@@ -274,7 +280,7 @@ pub trait DrawHandle {
         &mut self,
         rect: Rect,
         offset: Offset,
-        class: RegionClass,
+        class: PassType,
         f: &mut dyn FnMut(&mut dyn DrawHandle),
     );
 
@@ -407,29 +413,24 @@ pub trait DrawHandleExt: DrawHandle {
         result.expect("DrawHandle::size_handle_dyn impl failed to call function argument")
     }
 
-    /// Draw to a sub-region with offset (e.g. for scrolling)
+    /// Draw to a new pass with clipping and offset (e.g. for scrolling)
     ///
-    /// This new region uses coordinates relative to `offset` (i.e. coordinates
-    /// are subtracted by `offset`).
-    ///
-    /// All content drawn by the new region is clipped to the intersection of
-    /// `rect` and the current target ([`DrawHandle::clip_rect`]).
+    /// Adds a new draw pass of type [`PassType::Clip`], with draw operations
+    /// clipped to `rect` and translated by `offset.
     fn clip_region(&mut self, rect: Rect, offset: Offset, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
-        self.new_draw_pass(rect, offset, RegionClass::ScrollRegion, f);
+        self.new_draw_pass(rect, offset, PassType::Clip, f);
     }
 
-    /// Draw to an overlay (e.g. for pop-up menus)
+    /// Draw to a new pass as an overlay (e.g. for pop-up menus)
     ///
-    /// This new region uses coordinates relative to `rect` (i.e. `Coord::ZERO`
-    /// is the first pixel inside `rect`).
+    /// Adds a new draw pass of type [`PassType::Overlay`], with draw operations
+    /// clipped to `rect`.
     ///
-    /// All content drawn via this handle is clipped to the given `rect`.
-    ///
-    /// The new `rect` may extend beyond the current draw region. If it extends
-    /// beyond the bounds of the window, it will be silently reduced to that of
-    /// the window.
+    /// The theme is permitted to enlarge the `rect` for the purpose of drawing
+    /// a frame or shadow around this overlay, thus the
+    /// [`DrawHandle::clip_rect`] may be larger than expected.
     fn overlay(&mut self, rect: Rect, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
-        self.new_draw_pass(rect, Offset::ZERO, RegionClass::Overlay, f);
+        self.new_draw_pass(rect, Offset::ZERO, PassType::Overlay, f);
     }
 
     /// Draw some text using the standard font, with a subset selected
@@ -628,7 +629,7 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
         &mut self,
         rect: Rect,
         offset: Offset,
-        class: RegionClass,
+        class: PassType,
         f: &mut dyn FnMut(&mut dyn DrawHandle),
     ) {
         self.deref_mut().new_draw_pass(rect, offset, class, f);
@@ -714,7 +715,7 @@ where
         &mut self,
         rect: Rect,
         offset: Offset,
-        class: RegionClass,
+        class: PassType,
         f: &mut dyn FnMut(&mut dyn DrawHandle),
     ) {
         self.deref_mut().new_draw_pass(rect, offset, class, f);

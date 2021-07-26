@@ -264,15 +264,15 @@ where
         &mut self,
         mut rect: Rect,
         offset: Offset,
-        class: RegionClass,
+        class: PassType,
         f: &mut dyn FnMut(&mut dyn draw::DrawHandle),
     ) {
-        if class == RegionClass::Overlay {
+        if class == PassType::Overlay {
             rect = rect.expand(self.window.dims.frame);
         }
         let mut draw = self.draw.new_draw_pass(rect, offset, class);
 
-        if class == RegionClass::Overlay {
+        if class == PassType::Overlay {
             let outer = draw.clip_rect();
             let inner = Quad::from(outer.shrink(self.window.dims.frame));
             let outer = Quad::from(outer);
