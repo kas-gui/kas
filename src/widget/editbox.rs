@@ -478,7 +478,7 @@ impl<G: EditGuard> Layout for EditField<G> {
         } else {
             TextClass::Edit
         };
-        draw_handle.clip_region(self.rect(), self.view_offset, &mut |draw_handle| {
+        draw_handle.with_clip_region(self.rect(), self.view_offset, &mut |draw_handle| {
             if self.selection.is_empty() {
                 draw_handle.text(self.rect().pos, self.text.as_ref(), class);
             } else {

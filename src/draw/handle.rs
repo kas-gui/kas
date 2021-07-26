@@ -113,12 +113,17 @@ pub enum PassType {
     Overlay,
 }
 
-/// Handle passed to objects during sizing operations
+/// A handle to the active theme, used for sizing
 ///
-/// Themes must implement both [`SizeHandle`] and [`DrawHandle`].
+/// The shell provides widgets a `&dyn SizeHandle` in [`kas::Layout::size_rules`].
+/// It may also be accessed through [`kas::event::Manager::size_handle`].
 ///
-/// The toolkit provides a `&dyn SizeHandle` value when resizing widgets. The
-/// handle may also be accessed via [`kas::event::Manager::size_handle`].
+/// Most methods get or calculate the size of some feature. Exceptions:
+///
+/// -   [`Self::draw_shared`] accesses shared draw state which may be used e.g.
+///     to manage images in the graphics device's memory
+///
+/// See also [`DrawHandle`].
 pub trait SizeHandle {
     /// Access [`DrawSharedT`] trait object
     fn draw_shared(&mut self) -> &mut dyn DrawSharedT;
@@ -248,22 +253,31 @@ pub trait SizeHandle {
     fn progress_bar(&self) -> Size;
 }
 
-/// Handle passed to objects during draw operations
+/// A handle to the active theme, used for drawing
 ///
-/// Themes must implement both [`SizeHandle`] and [`DrawHandle`].
-///
-/// The toolkit provides a `&mut dyn DrawHandle` value when drawing widgets.
+/// The shell provides widgets a `&dyn DrawHandle` in [`kas::Layout::draw`].
 /// The extension trait [`DrawHandleExt`] provides some additional methods on
 /// draw handles.
+///
+/// Most methods draw some feature. Exceptions:
+///
+/// -   [`Self::with_size_handle_dyn`], [`DrawHandleExt::with_size_handle`]
+///     provide access to a [`SizeHandle`]
+/// -   [`Self::draw_device`] provides a lower-level interface for draw operations
+/// -   [`Self::new_draw_pass`], [`DrawHandleExt::with_clip_region`],
+///     [`DrawHandleExt::with_overlay`] construct new draw passes
+/// -   [`Self::get_clip_rect`] returns the clip rect
+///
+/// See also [`SizeHandle`].
 pub trait DrawHandle {
     /// Access a [`SizeHandle`] (object-safe version)
     ///
-    /// Users may prefer to use [`DrawHandleExt::size_handle`] instead. If using
+    /// Users may prefer to use [`DrawHandleExt::with_size_handle`] instead. If using
     /// this method directly, note that there is no guarantee that `f` gets
     /// called exactly once, or even that it gets called at all.
     ///
     /// Implementations *should* call the given function argument once.
-    fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle));
+    fn with_size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle));
 
     /// Access the low-level draw device
     ///
@@ -287,9 +301,10 @@ pub trait DrawHandle {
     /// Target area for drawing
     ///
     /// Drawing is restricted to this [`Rect`], which may be the whole window, a
-    /// [clip region](DrawHandleExt::clip_region) or an [overlay](DrawHandleExt::overlay).
-    /// This may be used to cull hidden items from lists inside a scrollable view.
-    fn clip_rect(&self) -> Rect;
+    /// [clip region](DrawHandleExt::with_clip_region) or an
+    /// [overlay](DrawHandleExt::with_overlay). This may be used to cull hidden
+    /// items from lists inside a scrollable view.
+    fn get_clip_rect(&self) -> Rect;
 
     /// Draw a frame inside the given `rect`
     ///
@@ -405,19 +420,24 @@ pub trait DrawHandleExt: DrawHandle {
     /// the closure's result is returned.
     ///
     /// This method will panic if the implementation fails to call the closure.
-    fn size_handle<F: Fn(&mut dyn SizeHandle) -> T, T>(&mut self, f: F) -> T {
+    fn with_size_handle<F: Fn(&mut dyn SizeHandle) -> T, T>(&mut self, f: F) -> T {
         let mut result = None;
-        self.size_handle_dyn(&mut |size_handle| {
+        self.with_size_handle_dyn(&mut |size_handle| {
             result = Some(f(size_handle));
         });
-        result.expect("DrawHandle::size_handle_dyn impl failed to call function argument")
+        result.expect("DrawHandle::with_size_handle_dyn impl failed to call function argument")
     }
 
     /// Draw to a new pass with clipping and offset (e.g. for scrolling)
     ///
     /// Adds a new draw pass of type [`PassType::Clip`], with draw operations
     /// clipped to `rect` and translated by `offset.
-    fn clip_region(&mut self, rect: Rect, offset: Offset, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
+    fn with_clip_region(
+        &mut self,
+        rect: Rect,
+        offset: Offset,
+        f: &mut dyn FnMut(&mut dyn DrawHandle),
+    ) {
         self.new_draw_pass(rect, offset, PassType::Clip, f);
     }
 
@@ -428,8 +448,8 @@ pub trait DrawHandleExt: DrawHandle {
     ///
     /// The theme is permitted to enlarge the `rect` for the purpose of drawing
     /// a frame or shadow around this overlay, thus the
-    /// [`DrawHandle::clip_rect`] may be larger than expected.
-    fn overlay(&mut self, rect: Rect, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
+    /// [`DrawHandle::get_clip_rect`] may be larger than expected.
+    fn with_overlay(&mut self, rect: Rect, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
         self.new_draw_pass(rect, Offset::ZERO, PassType::Overlay, f);
     }
 
@@ -619,8 +639,8 @@ where
 }
 
 impl<H: DrawHandle> DrawHandle for Box<H> {
-    fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
-        self.deref_mut().size_handle_dyn(f)
+    fn with_size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
+        self.deref_mut().with_size_handle_dyn(f)
     }
     fn draw_device(&mut self) -> (Draw<'_, dyn Drawable>, &mut dyn DrawSharedT) {
         self.deref_mut().draw_device()
@@ -634,8 +654,8 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     ) {
         self.deref_mut().new_draw_pass(rect, offset, class, f);
     }
-    fn clip_rect(&self) -> Rect {
-        self.deref().clip_rect()
+    fn get_clip_rect(&self) -> Rect {
+        self.deref().get_clip_rect()
     }
     fn outer_frame(&mut self, rect: Rect) {
         self.deref_mut().outer_frame(rect);
@@ -705,8 +725,8 @@ impl<'a, S> DrawHandle for stack_dst::ValueA<dyn DrawHandle + 'a, S>
 where
     S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>,
 {
-    fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
-        self.deref_mut().size_handle_dyn(f)
+    fn with_size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
+        self.deref_mut().with_size_handle_dyn(f)
     }
     fn draw_device(&'_ mut self) -> (Draw<'_, dyn Drawable>, &'_ mut dyn DrawSharedT) {
         self.deref_mut().draw_device()
@@ -720,8 +740,8 @@ where
     ) {
         self.deref_mut().new_draw_pass(rect, offset, class, f);
     }
-    fn clip_rect(&self) -> Rect {
-        self.deref().clip_rect()
+    fn get_clip_rect(&self) -> Rect {
+        self.deref().get_clip_rect()
     }
     fn outer_frame(&mut self, rect: Rect) {
         self.deref_mut().outer_frame(rect);

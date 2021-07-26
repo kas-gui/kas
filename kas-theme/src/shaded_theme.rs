@@ -221,7 +221,7 @@ impl<'a, DS: DrawableShared> draw::DrawHandle for DrawHandle<'a, DS>
 where
     DS::Draw: DrawableRounded + DrawableShaded,
 {
-    fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
+    fn with_size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         unsafe {
             let mut size_handle = self.window.size_handle(self.shared);
             f(&mut size_handle);
@@ -262,7 +262,7 @@ where
         f(&mut handle);
     }
 
-    fn clip_rect(&self) -> Rect {
+    fn get_clip_rect(&self) -> Rect {
         self.draw.clip_rect()
     }
 

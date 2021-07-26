@@ -131,7 +131,7 @@ pub(crate) fn derive(
     let mut set_rect = TokenStream::new();
     let mut draw = quote! {
         use kas::{geom::Coord, WidgetCore};
-        let rect = draw_handle.clip_rect();
+        let rect = draw_handle.get_clip_rect();
         let pos1 = rect.pos;
         let pos2 = rect.pos2();
         let disabled = disabled || self.is_disabled();
