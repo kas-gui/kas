@@ -50,14 +50,13 @@ impl Layout for Clock {
 
         // Note: font size is calculated as dpem = dpp * pt_size. Instead of
         // the usual semantics we set dpp=1 (in constructor) and pt_size=dpem.
-        let dpem = (size.1 as f32 * 0.12).into();
         let half_size = Size(size.0, size.1 / 2);
         self.date.update_env(|env| {
-            env.set_pt_size(dpem);
+            env.set_pt_size(size.1 as f32 * 0.12);
             env.set_bounds(half_size.into());
         });
         self.time.update_env(|env| {
-            env.set_pt_size(dpem);
+            env.set_pt_size(size.1 as f32 * 0.15);
             env.set_bounds(half_size.into());
         });
         self.date_pos = pos + Size(0, size.1 - half_size.1);
@@ -89,7 +88,7 @@ impl Layout for Clock {
             let l = if d % 3 == 0 { 2.0 * l } else { l };
             let t = d as f32 * (PI / 6.0);
             let v = Vec2(t.sin(), -t.cos());
-            draw.rounded_line(centre + v * r - l, centre + v * r, w, col_face);
+            draw.rounded_line(centre + v * (r - l), centre + v * r, w, col_face);
         }
 
         // We use a new clip region to control the draw order (force in front).
