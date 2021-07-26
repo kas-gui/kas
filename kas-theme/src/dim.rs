@@ -3,9 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Widget styling
-//!
-//! Widget size and appearance can be modified through themes.
+//! Common implementation of [`kas::draw::SizeHandle`]
 
 use linear_map::LinearMap;
 use std::any::Any;
@@ -23,7 +21,7 @@ use kas::text::{fonts::FontId, TextApi, TextApiExt};
 /// All dimensions are multiplied by the DPI factor, then rounded to the
 /// nearest integer. Example: `(2.0 * 1.25).round() = 3.0`.
 #[derive(Clone, Debug)]
-pub struct DimensionsParams {
+pub struct Parameters {
     /// Space between elements
     pub outer_margin: f32,
     /// Margin inside a frame before contents
@@ -42,7 +40,7 @@ pub struct DimensionsParams {
     pub progress_bar: Vec2,
 }
 
-/// Dimensions available within [`DimensionsWindow`]
+/// Dimensions available within [`Window`]
 #[derive(Clone, Debug)]
 pub struct Dimensions {
     pub scale_factor: f32,
@@ -63,7 +61,7 @@ pub struct Dimensions {
 }
 
 impl Dimensions {
-    pub fn new(params: DimensionsParams, pt_size: f32, scale_factor: f32) -> Self {
+    pub fn new(params: Parameters, pt_size: f32, scale_factor: f32) -> Self {
         let font_id = Default::default();
         let dpp = scale_factor * (96.0 / 72.0);
         let dpem = dpp * pt_size;
@@ -98,30 +96,30 @@ impl Dimensions {
 }
 
 /// A convenient implementation of [`crate::Window`]
-pub struct DimensionsWindow {
+pub struct Window {
     pub dims: Dimensions,
     pub fonts: Rc<LinearMap<TextClass, FontId>>,
 }
 
-impl DimensionsWindow {
+impl Window {
     pub fn new(
-        dims: DimensionsParams,
+        dims: Parameters,
         pt_size: f32,
         scale_factor: f32,
         fonts: Rc<LinearMap<TextClass, FontId>>,
     ) -> Self {
-        DimensionsWindow {
+        Window {
             dims: Dimensions::new(dims, pt_size, scale_factor),
             fonts,
         }
     }
 
-    pub fn update(&mut self, dims: DimensionsParams, pt_size: f32, scale_factor: f32) {
+    pub fn update(&mut self, dims: Parameters, pt_size: f32, scale_factor: f32) {
         self.dims = Dimensions::new(dims, pt_size, scale_factor);
     }
 }
 
-impl<DS: DrawableShared> crate::Window<DS> for DimensionsWindow {
+impl<DS: DrawableShared> crate::Window<DS> for Window {
     #[cfg(not(feature = "gat"))]
     type SizeHandle = SizeHandle<'static, DS>;
     #[cfg(feature = "gat")]
@@ -143,13 +141,14 @@ impl<DS: DrawableShared> crate::Window<DS> for DimensionsWindow {
     }
 }
 
+/// Concrete type implementing [`kas::draw::SizeHandle`]
 pub struct SizeHandle<'a, DS: DrawableShared> {
-    w: &'a DimensionsWindow,
+    w: &'a Window,
     shared: &'a mut DrawShared<DS>,
 }
 
 impl<'a, DS: DrawableShared> SizeHandle<'a, DS> {
-    pub fn new(w: &'a DimensionsWindow, shared: &'a mut DrawShared<DS>) -> Self {
+    pub fn new(w: &'a Window, shared: &'a mut DrawShared<DS>) -> Self {
         SizeHandle { w, shared }
     }
 }

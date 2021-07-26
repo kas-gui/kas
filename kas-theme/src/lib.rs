@@ -20,7 +20,6 @@
 
 mod colors;
 mod config;
-mod dim;
 mod draw_shaded;
 mod flat_theme;
 #[cfg(feature = "stack_dst")]
@@ -30,11 +29,11 @@ mod shaded_theme;
 mod theme_dst;
 mod traits;
 
+pub mod dim;
 pub use kas;
 
 pub use colors::{Colors, ColorsLinear, ColorsSrgb};
 pub use config::{Config, RasterConfig};
-pub use dim::{Dimensions, DimensionsParams, DimensionsWindow};
 pub use draw_shaded::{DrawableShaded, DrawableShadedExt};
 pub use flat_theme::FlatTheme;
 #[cfg(feature = "stack_dst")]

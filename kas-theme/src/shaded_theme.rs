@@ -8,7 +8,7 @@
 use std::f32;
 use std::ops::Range;
 
-use crate::{ColorsLinear, Config, DimensionsParams, DimensionsWindow, FlatTheme, Theme, Window};
+use crate::{dim, ColorsLinear, Config, FlatTheme, Theme, Window};
 use crate::{DrawableShaded, DrawableShadedExt};
 use kas::dir::{Direction, Directional};
 use kas::draw::{self, color::Rgba, *};
@@ -55,7 +55,7 @@ impl ShadedTheme {
     }
 }
 
-const DIMS: DimensionsParams = DimensionsParams {
+const DIMS: dim::Parameters = dim::Parameters {
     outer_margin: 6.0,
     inner_margin: 1.2,
     text_margin: 2.0,
@@ -69,7 +69,7 @@ const DIMS: DimensionsParams = DimensionsParams {
 pub struct DrawHandle<'a, DS: DrawableShared> {
     shared: &'a mut DrawShared<DS>,
     draw: Draw<'a, DS::Draw>,
-    window: &'a DimensionsWindow,
+    window: &'a dim::Window,
     cols: &'a ColorsLinear,
 }
 
@@ -78,7 +78,7 @@ where
     DS::Draw: DrawableRounded + DrawableShaded,
 {
     type Config = Config;
-    type Window = DimensionsWindow;
+    type Window = dim::Window;
 
     #[cfg(not(feature = "gat"))]
     type DrawHandle = DrawHandle<'static, DS>;
@@ -99,7 +99,7 @@ where
 
     fn new_window(&self, dpi_factor: f32) -> Self::Window {
         let fonts = self.flat.fonts.as_ref().unwrap().clone();
-        DimensionsWindow::new(DIMS, self.flat.config.font_size(), dpi_factor, fonts)
+        dim::Window::new(DIMS, self.flat.config.font_size(), dpi_factor, fonts)
     }
 
     fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
