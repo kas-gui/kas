@@ -116,7 +116,8 @@ pub enum PassType {
 /// A handle to the active theme, used for sizing
 ///
 /// The shell provides widgets a `&dyn SizeHandle` in [`kas::Layout::size_rules`].
-/// It may also be accessed through [`kas::event::Manager::size_handle`].
+/// It may also be accessed through [`kas::event::Manager::size_handle`] and
+/// [`DrawHandle::size_handle`].
 ///
 /// All methods get or calculate the size of some feature.
 ///
@@ -254,8 +255,7 @@ pub trait SizeHandle {
 ///
 /// Most methods draw some feature. Exceptions:
 ///
-/// -   [`Self::with_size_handle_dyn`], [`DrawHandleExt::with_size_handle`]
-///     provide access to a [`SizeHandle`]
+/// -   [`Self::size_handle`] provides access to a [`SizeHandle`]
 /// -   [`Self::draw_device`] provides a lower-level interface for draw operations
 /// -   [`Self::new_draw_pass`], [`DrawHandleExt::with_clip_region`],
 ///     [`DrawHandleExt::with_overlay`] construct new draw passes
@@ -263,14 +263,8 @@ pub trait SizeHandle {
 ///
 /// See also [`SizeHandle`].
 pub trait DrawHandle {
-    /// Access a [`SizeHandle`] (object-safe version)
-    ///
-    /// Users may prefer to use [`DrawHandleExt::with_size_handle`] instead. If using
-    /// this method directly, note that there is no guarantee that `f` gets
-    /// called exactly once, or even that it gets called at all.
-    ///
-    /// Implementations *should* call the given function argument once.
-    fn with_size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle));
+    /// Access a [`SizeHandle`]
+    fn size_handle(&mut self) -> &mut dyn SizeHandle;
 
     /// Access the low-level draw device
     ///
@@ -407,20 +401,6 @@ pub trait DrawHandle {
 /// Importing this trait allows use of additional methods (which cannot be
 /// defined directly on [`DrawHandle`]).
 pub trait DrawHandleExt: DrawHandle {
-    /// Access a [`SizeHandle`]
-    ///
-    /// The given closure is called with a reference to a [`SizeHandle`], and
-    /// the closure's result is returned.
-    ///
-    /// This method will panic if the implementation fails to call the closure.
-    fn with_size_handle<F: Fn(&mut dyn SizeHandle) -> T, T>(&mut self, f: F) -> T {
-        let mut result = None;
-        self.with_size_handle_dyn(&mut |size_handle| {
-            result = Some(f(size_handle));
-        });
-        result.expect("DrawHandle::with_size_handle_dyn impl failed to call function argument")
-    }
-
     /// Draw to a new pass with clipping and offset (e.g. for scrolling)
     ///
     /// Adds a new draw pass of type [`PassType::Clip`], with draw operations
@@ -543,8 +523,8 @@ impl<S: SizeHandle + ?Sized, R: Deref<Target = S>> SizeHandle for R {
 }
 
 impl<H: DrawHandle> DrawHandle for Box<H> {
-    fn with_size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
-        self.deref_mut().with_size_handle_dyn(f)
+    fn size_handle(&mut self) -> &mut dyn SizeHandle {
+        self.deref_mut().size_handle()
     }
     fn draw_device(&mut self) -> (Draw<'_, dyn Drawable>, &mut dyn DrawSharedT) {
         self.deref_mut().draw_device()
@@ -629,8 +609,8 @@ impl<'a, S> DrawHandle for stack_dst::ValueA<dyn DrawHandle + 'a, S>
 where
     S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>,
 {
-    fn with_size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
-        self.deref_mut().with_size_handle_dyn(f)
+    fn size_handle(&mut self) -> &mut dyn SizeHandle {
+        self.deref_mut().size_handle()
     }
     fn draw_device(&'_ mut self) -> (Draw<'_, dyn Drawable>, &'_ mut dyn DrawSharedT) {
         self.deref_mut().draw_device()
@@ -718,7 +698,7 @@ mod test {
         // We can't call this method without constructing an actual DrawHandle.
         // But we don't need to: we just want to test that methods are callable.
 
-        let _scale = draw_handle.size_handle(|h| h.scale_factor());
+        let _scale = draw_handle.size_handle().scale_factor();
 
         let text = kas::text::Text::new_single("sample");
         let class = TextClass::Label;

@@ -249,8 +249,8 @@ impl<'a, DS: DrawableShared> draw::DrawHandle for DrawHandle<'a, DS>
 where
     DS::Draw: DrawableRounded,
 {
-    fn with_size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
-        f(self.window);
+    fn size_handle(&mut self) -> &mut dyn SizeHandle {
+        self.window
     }
 
     fn draw_device<'b>(&'b mut self) -> (Draw<'b, dyn Drawable>, &mut dyn DrawSharedT) {
