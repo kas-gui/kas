@@ -46,7 +46,7 @@ pub trait Theme<DS: DrawableShared>: ThemeApi {
     type Config: ThemeConfig;
 
     /// The associated [`Window`] implementation.
-    type Window: Window<DS>;
+    type Window: Window;
 
     /// The associated [`DrawHandle`] implementation.
     #[cfg(not(feature = "gat"))]
@@ -129,7 +129,7 @@ pub trait Theme<DS: DrawableShared>: ThemeApi {
 ///
 /// The main reason for this separation is to allow proper handling of
 /// multi-window applications across screens with differing DPIs.
-pub trait Window<DS: DrawableShared>: 'static {
+pub trait Window: 'static {
     /// The associated [`SizeHandle`] implementation.
     #[cfg(not(feature = "gat"))]
     type SizeHandle: SizeHandle;
@@ -146,9 +146,9 @@ pub trait Window<DS: DrawableShared>: 'static {
     ///
     /// All references passed into the method must outlive the returned object.
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle(&self, shared: &mut DrawShared<DS>) -> Self::SizeHandle;
+    unsafe fn size_handle(&self) -> Self::SizeHandle;
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a self, shared: &'a mut DrawShared<DS>) -> Self::SizeHandle<'a>;
+    fn size_handle<'a>(&'a self) -> Self::SizeHandle<'a>;
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
@@ -204,19 +204,19 @@ impl<T: Theme<DS>, DS: DrawableShared> Theme<DS> for Box<T> {
     }
 }
 
-impl<DS: DrawableShared, W: Window<DS>> Window<DS> for Box<W> {
+impl<W: Window> Window for Box<W> {
     #[cfg(not(feature = "gat"))]
-    type SizeHandle = <W as Window<DS>>::SizeHandle;
+    type SizeHandle = <W as Window>::SizeHandle;
     #[cfg(feature = "gat")]
-    type SizeHandle<'a> = <W as Window<DS>>::SizeHandle<'a>;
+    type SizeHandle<'a> = <W as Window>::SizeHandle<'a>;
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle(&self, shared: &mut DrawShared<DS>) -> Self::SizeHandle {
-        self.deref().size_handle(shared)
+    unsafe fn size_handle(&self) -> Self::SizeHandle {
+        self.deref().size_handle()
     }
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a self, shared: &'a mut DrawShared<DS>) -> Self::SizeHandle<'a> {
-        self.deref().size_handle(shared)
+    fn size_handle<'a>(&'a self) -> Self::SizeHandle<'a> {
+        self.deref().size_handle()
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any {

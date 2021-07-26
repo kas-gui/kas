@@ -103,7 +103,7 @@ impl<DS> MultiThemeBuilder<DS> {
 
 impl<DS: DrawableShared> Theme<DS> for MultiTheme<DS> {
     type Config = Config;
-    type Window = StackDst<dyn WindowDst<DS>>;
+    type Window = StackDst<dyn WindowDst>;
 
     #[cfg(not(feature = "gat"))]
     type DrawHandle = StackDst<dyn DrawHandle>;

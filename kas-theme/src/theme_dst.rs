@@ -54,12 +54,12 @@ pub trait ThemeDst<DS: DrawableShared>: ThemeApi {
     /// Uses a [`StackDst`] to avoid requiring an associated type.
     ///
     /// See also [`Theme::new_window`].
-    fn new_window(&self, dpi_factor: f32) -> StackDst<dyn WindowDst<DS>>;
+    fn new_window(&self, dpi_factor: f32) -> StackDst<dyn WindowDst>;
 
     /// Update a window created by [`Theme::new_window`]
     ///
     /// See also [`Theme::update_window`].
-    fn update_window(&self, window: &mut dyn WindowDst<DS>, dpi_factor: f32);
+    fn update_window(&self, window: &mut dyn WindowDst, dpi_factor: f32);
 
     /// Construct a [`DrawHandle`] object
     ///
@@ -75,7 +75,7 @@ pub trait ThemeDst<DS: DrawableShared>: ThemeApi {
         &self,
         shared: &mut DrawShared<DS>,
         draw: Draw<DS::Draw>,
-        window: &mut dyn WindowDst<DS>,
+        window: &mut dyn WindowDst,
     ) -> StackDst<dyn DrawHandle>;
 
     /// Construct a [`DrawHandle`] object
@@ -88,7 +88,7 @@ pub trait ThemeDst<DS: DrawableShared>: ThemeApi {
         &'a self,
         shared: &'a mut DrawShared<DS>,
         draw: Draw<'a, DS::Draw>,
-        window: &'a mut dyn WindowDst<DS>,
+        window: &'a mut dyn WindowDst,
     ) -> StackDst<dyn DrawHandle + 'a>;
 
     /// Background colour
@@ -101,7 +101,7 @@ pub trait ThemeDst<DS: DrawableShared>: ThemeApi {
 impl<'a, DS: DrawableShared, T: Theme<DS>> ThemeDst<DS> for T
 where
     <T as Theme<DS>>::DrawHandle: 'static,
-    <<T as Theme<DS>>::Window as Window<DS>>::SizeHandle: 'static,
+    <<T as Theme<DS>>::Window as Window>::SizeHandle: 'static,
 {
     fn config(&self) -> MaybeBoxed<dyn Any> {
         match self.config() {
@@ -118,7 +118,7 @@ where
         self.init(shared);
     }
 
-    fn new_window(&self, dpi_factor: f32) -> StackDst<dyn WindowDst<DS>> {
+    fn new_window(&self, dpi_factor: f32) -> StackDst<dyn WindowDst> {
         let window = <T as Theme<DS>>::new_window(self, dpi_factor);
         #[cfg(feature = "unsize")]
         {
@@ -126,16 +126,16 @@ where
         }
         #[cfg(not(feature = "unsize"))]
         {
-            match StackDst::new_stable(window, |w| w as &dyn WindowDst<DS>) {
+            match StackDst::new_stable(window, |w| w as &dyn WindowDst) {
                 Ok(s) => s,
-                Err(window) => StackDst::new_stable(Box::new(window), |w| w as &dyn WindowDst<DS>)
+                Err(window) => StackDst::new_stable(Box::new(window), |w| w as &dyn WindowDst)
                     .ok()
                     .expect("boxed window too big for StackDst!"),
             }
         }
     }
 
-    fn update_window(&self, window: &mut dyn WindowDst<DS>, dpi_factor: f32) {
+    fn update_window(&self, window: &mut dyn WindowDst, dpi_factor: f32) {
         let window = window.as_any_mut().downcast_mut().unwrap();
         self.update_window(window, dpi_factor);
     }
@@ -144,7 +144,7 @@ where
         &self,
         shared: &mut DrawShared<DS>,
         draw: Draw<DS::Draw>,
-        window: &mut dyn WindowDst<DS>,
+        window: &mut dyn WindowDst,
     ) -> StackDst<dyn DrawHandle> {
         let window = window.as_any_mut().downcast_mut().unwrap();
         let h = <T as Theme<DS>>::draw_handle(self, shared, draw, window);
@@ -182,12 +182,12 @@ impl<'a, DS: DrawableShared, T: Theme<DS>> ThemeDst<DS> for T {
         self.init(shared);
     }
 
-    fn new_window(&self, dpi_factor: f32) -> StackDst<dyn WindowDst<DS>> {
+    fn new_window(&self, dpi_factor: f32) -> StackDst<dyn WindowDst> {
         let window = <T as Theme<DS>>::new_window(self, dpi_factor);
         StackDst::new_or_boxed(window)
     }
 
-    fn update_window(&self, window: &mut dyn WindowDst<DS>, dpi_factor: f32) {
+    fn update_window(&self, window: &mut dyn WindowDst, dpi_factor: f32) {
         let window = window.as_any_mut().downcast_mut().unwrap();
         self.update_window(window, dpi_factor);
     }
@@ -196,7 +196,7 @@ impl<'a, DS: DrawableShared, T: Theme<DS>> ThemeDst<DS> for T {
         &'b self,
         shared: &'b mut DrawShared<DS>,
         draw: Draw<'b, DS::Draw>,
-        window: &'b mut dyn WindowDst<DS>,
+        window: &'b mut dyn WindowDst,
     ) -> StackDst<dyn DrawHandle + 'b> {
         let window = window.as_any_mut().downcast_mut().unwrap();
         let h = <T as Theme<DS>>::draw_handle(self, shared, draw, window);
@@ -215,7 +215,7 @@ impl<'a, DS: DrawableShared, T: Theme<DS>> ThemeDst<DS> for T {
 /// trait is required.
 ///
 /// **Feature gated**: this is only available with feature `stack_dst`.
-pub trait WindowDst<DS: DrawableShared> {
+pub trait WindowDst {
     /// Construct a [`SizeHandle`] object
     ///
     /// The `shared` reference is guaranteed to be identical to the one used to
@@ -225,28 +225,25 @@ pub trait WindowDst<DS: DrawableShared> {
     ///
     /// All references passed into the method must outlive the returned object.
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle(&self, shared: &mut DrawShared<DS>) -> StackDst<dyn SizeHandle>;
+    unsafe fn size_handle(&self) -> StackDst<dyn SizeHandle>;
 
     /// Construct a [`SizeHandle`] object
     ///
     /// The `shared` reference is guaranteed to be identical to the one used to
     /// construct this object.
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a self, shared: &'a mut DrawShared<DS>) -> StackDst<dyn SizeHandle + 'a>;
+    fn size_handle<'a>(&'a self) -> StackDst<dyn SizeHandle + 'a>;
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
 #[cfg(not(feature = "gat"))]
-impl<DS: DrawableShared, W: Window<DS>> WindowDst<DS> for W
+impl<W: Window> WindowDst for W
 where
-    <W as Window<DS>>::SizeHandle: 'static,
+    <W as Window>::SizeHandle: 'static,
 {
-    unsafe fn size_handle<'a>(
-        &'a self,
-        shared: &'a mut DrawShared<DS>,
-    ) -> StackDst<dyn SizeHandle> {
-        let h = <W as Window<DS>>::size_handle(self, shared);
+    unsafe fn size_handle<'a>(&'a self) -> StackDst<dyn SizeHandle> {
+        let h = <W as Window>::size_handle(self);
         #[cfg(feature = "unsize")]
         {
             StackDst::new_or_boxed(h)
@@ -265,9 +262,9 @@ where
 }
 
 #[cfg(feature = "gat")]
-impl<DS: DrawableShared, W: Window<DS>> WindowDst<DS> for W {
-    fn size_handle<'a>(&'a self, shared: &'a mut DrawShared<DS>) -> StackDst<dyn SizeHandle + 'a> {
-        let h = <W as Window<DS>>::size_handle(self, shared);
+impl<W: Window> WindowDst for W {
+    fn size_handle<'a>(&'a self) -> StackDst<dyn SizeHandle + 'a> {
+        let h = <W as Window>::size_handle(self);
         StackDst::new_or_boxed(h)
     }
 
@@ -276,20 +273,20 @@ impl<DS: DrawableShared, W: Window<DS>> WindowDst<DS> for W {
     }
 }
 
-impl<DS: DrawableShared> Window<DS> for StackDst<dyn WindowDst<DS>> {
+impl Window for StackDst<dyn WindowDst> {
     #[cfg(not(feature = "gat"))]
     type SizeHandle = StackDst<dyn SizeHandle>;
     #[cfg(feature = "gat")]
     type SizeHandle<'a> = StackDst<dyn SizeHandle + 'a>;
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle(&self, shared: &mut DrawShared<DS>) -> Self::SizeHandle {
-        self.deref().size_handle(shared)
+    unsafe fn size_handle(&self) -> Self::SizeHandle {
+        self.deref().size_handle()
     }
 
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a self, shared: &'a mut DrawShared<DS>) -> Self::SizeHandle<'a> {
-        self.deref().size_handle(shared)
+    fn size_handle<'a>(&'a self) -> Self::SizeHandle<'a> {
+        self.deref().size_handle()
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any {

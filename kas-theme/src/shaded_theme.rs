@@ -223,7 +223,7 @@ where
 {
     fn with_size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         unsafe {
-            let mut size_handle = self.window.size_handle(self.shared);
+            let mut size_handle = self.window.size_handle();
             f(&mut size_handle);
         }
     }

@@ -118,16 +118,10 @@ pub enum PassType {
 /// The shell provides widgets a `&dyn SizeHandle` in [`kas::Layout::size_rules`].
 /// It may also be accessed through [`kas::event::Manager::size_handle`].
 ///
-/// Most methods get or calculate the size of some feature. Exceptions:
-///
-/// -   [`Self::draw_shared`] accesses shared draw state which may be used e.g.
-///     to manage images in the graphics device's memory
+/// All methods get or calculate the size of some feature.
 ///
 /// See also [`DrawHandle`].
 pub trait SizeHandle {
-    /// Access [`DrawSharedT`] trait object
-    fn draw_shared(&mut self) -> &mut dyn DrawSharedT;
-
     /// Get the scale (DPI) factor
     ///
     /// "Traditional" PC screens have a scale factor of 1; high-DPI screens
@@ -483,10 +477,6 @@ pub trait DrawHandleExt: DrawHandle {
 impl<D: DrawHandle + ?Sized> DrawHandleExt for D {}
 
 impl<S: SizeHandle> SizeHandle for Box<S> {
-    fn draw_shared(&mut self) -> &mut dyn DrawSharedT {
-        self.deref_mut().draw_shared()
-    }
-
     fn scale_factor(&self) -> f32 {
         self.deref().scale_factor()
     }
@@ -563,10 +553,6 @@ impl<'a, S> SizeHandle for stack_dst::ValueA<dyn SizeHandle + 'a, S>
 where
     S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>,
 {
-    fn draw_shared(&mut self) -> &mut dyn DrawSharedT {
-        self.deref_mut().draw_shared()
-    }
-
     fn scale_factor(&self) -> f32 {
         self.deref().scale_factor()
     }

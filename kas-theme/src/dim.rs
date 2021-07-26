@@ -11,7 +11,7 @@ use std::f32;
 use std::rc::Rc;
 
 use kas::cast::{Cast, CastFloat, ConvFloat};
-use kas::draw::{self, DrawShared, DrawSharedT, DrawableShared, TextClass};
+use kas::draw::{self, TextClass};
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, Stretch};
 use kas::text::{fonts::FontId, TextApi, TextApiExt};
@@ -119,21 +119,21 @@ impl Window {
     }
 }
 
-impl<DS: DrawableShared> crate::Window<DS> for Window {
+impl crate::Window for Window {
     #[cfg(not(feature = "gat"))]
-    type SizeHandle = SizeHandle<'static, DS>;
+    type SizeHandle = SizeHandle<'static>;
     #[cfg(feature = "gat")]
-    type SizeHandle<'a> = SizeHandle<'a, DS>;
+    type SizeHandle<'a> = SizeHandle<'a>;
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle<'a>(&'a self, shared: &'a mut DrawShared<DS>) -> Self::SizeHandle {
+    unsafe fn size_handle<'a>(&'a self) -> Self::SizeHandle {
         // We extend lifetimes (unsafe) due to the lack of associated type generics.
-        let h: SizeHandle<'a, DS> = SizeHandle::new(self, shared);
+        let h: SizeHandle<'a> = SizeHandle::new(self);
         std::mem::transmute(h)
     }
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a self, shared: &'a mut DrawShared<DS>) -> Self::SizeHandle<'a> {
-        SizeHandle::new(self, shared)
+    fn size_handle<'a>(&'a self) -> Self::SizeHandle<'a> {
+        SizeHandle::new(self)
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
@@ -142,22 +142,17 @@ impl<DS: DrawableShared> crate::Window<DS> for Window {
 }
 
 /// Concrete type implementing [`kas::draw::SizeHandle`]
-pub struct SizeHandle<'a, DS: DrawableShared> {
+pub struct SizeHandle<'a> {
     w: &'a Window,
-    shared: &'a mut DrawShared<DS>,
 }
 
-impl<'a, DS: DrawableShared> SizeHandle<'a, DS> {
-    pub fn new(w: &'a Window, shared: &'a mut DrawShared<DS>) -> Self {
-        SizeHandle { w, shared }
+impl<'a> SizeHandle<'a> {
+    pub fn new(w: &'a Window) -> Self {
+        SizeHandle { w }
     }
 }
 
-impl<'a, DS: DrawableShared> draw::SizeHandle for SizeHandle<'a, DS> {
-    fn draw_shared(&mut self) -> &mut dyn DrawSharedT {
-        self.shared
-    }
-
+impl<'a> draw::SizeHandle for SizeHandle<'a> {
     fn scale_factor(&self) -> f32 {
         self.w.dims.scale_factor
     }
