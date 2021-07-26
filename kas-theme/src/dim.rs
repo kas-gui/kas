@@ -11,7 +11,7 @@ use std::f32;
 use std::rc::Rc;
 
 use kas::cast::{Cast, CastFloat, ConvFloat};
-use kas::draw::{self, TextClass};
+use kas::draw::{SizeHandle, TextClass};
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, Stretch};
 use kas::text::{fonts::FontId, TextApi, TextApiExt};
@@ -120,18 +120,7 @@ impl Window {
 }
 
 impl crate::Window for Window {
-    #[cfg(not(feature = "gat"))]
-    type SizeHandle = &'static Window;
-    #[cfg(feature = "gat")]
-    type SizeHandle<'a> = &'a Window;
-
-    #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle(&self) -> Self::SizeHandle {
-        // We extend lifetimes (unsafe) due to the lack of associated type generics.
-        std::mem::transmute(self)
-    }
-    #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a self) -> Self::SizeHandle<'a> {
+    fn size_handle(&self) -> &dyn SizeHandle {
         self
     }
 
@@ -140,7 +129,7 @@ impl crate::Window for Window {
     }
 }
 
-impl draw::SizeHandle for Window {
+impl SizeHandle for Window {
     fn scale_factor(&self) -> f32 {
         self.dims.scale_factor
     }

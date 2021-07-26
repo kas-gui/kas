@@ -130,25 +130,8 @@ pub trait Theme<DS: DrawableShared>: ThemeApi {
 /// The main reason for this separation is to allow proper handling of
 /// multi-window applications across screens with differing DPIs.
 pub trait Window: 'static {
-    /// The associated [`SizeHandle`] implementation.
-    #[cfg(not(feature = "gat"))]
-    type SizeHandle: SizeHandle;
-    #[cfg(feature = "gat")]
-    // TODO(gat): add DS: Draw parameter instead of using dyn Draw?
-    type SizeHandle<'a>: SizeHandle;
-
     /// Construct a [`SizeHandle`] object
-    ///
-    /// The `shared` reference is guaranteed to be identical to the one used to
-    /// construct this object.
-    ///
-    /// # Safety
-    ///
-    /// All references passed into the method must outlive the returned object.
-    #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle(&self) -> Self::SizeHandle;
-    #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a self) -> Self::SizeHandle<'a>;
+    fn size_handle(&self) -> &dyn SizeHandle;
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
@@ -205,17 +188,7 @@ impl<T: Theme<DS>, DS: DrawableShared> Theme<DS> for Box<T> {
 }
 
 impl<W: Window> Window for Box<W> {
-    #[cfg(not(feature = "gat"))]
-    type SizeHandle = <W as Window>::SizeHandle;
-    #[cfg(feature = "gat")]
-    type SizeHandle<'a> = <W as Window>::SizeHandle<'a>;
-
-    #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle(&self) -> Self::SizeHandle {
-        self.deref().size_handle()
-    }
-    #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a self) -> Self::SizeHandle<'a> {
+    fn size_handle(&self) -> &dyn SizeHandle {
         self.deref().size_handle()
     }
 

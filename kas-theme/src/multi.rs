@@ -9,7 +9,7 @@ use std::collections::HashMap;
 #[cfg(feature = "unsize")]
 use std::marker::Unsize;
 
-use crate::{Config, StackDst, Theme, ThemeDst, WindowDst};
+use crate::{Config, StackDst, Theme, ThemeDst, Window};
 use kas::draw::{color, Draw, DrawHandle, DrawShared, DrawableShared, ThemeApi};
 use kas::TkAction;
 
@@ -103,7 +103,7 @@ impl<DS> MultiThemeBuilder<DS> {
 
 impl<DS: DrawableShared> Theme<DS> for MultiTheme<DS> {
     type Config = Config;
-    type Window = StackDst<dyn WindowDst>;
+    type Window = StackDst<dyn Window>;
 
     #[cfg(not(feature = "gat"))]
     type DrawHandle = StackDst<dyn DrawHandle>;

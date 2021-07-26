@@ -62,7 +62,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let mut tkw = TkWindow::new(shared, None, &mut theme_window);
         mgr.configure(&mut tkw, &mut *widget);
 
-        let mut size_handle = unsafe { theme_window.size_handle() };
+        let mut size_handle = theme_window.size_handle();
         let solve_cache = SolveCache::find_constraints(widget.as_widget_mut(), &mut size_handle);
         // Opening a zero-size window causes a crash, so force at least 1x1:
         let ideal = solve_cache.ideal(true).max(Size(1, 1));
@@ -465,7 +465,7 @@ where
 
     fn size_handle(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         use kas_theme::Window;
-        let mut size_handle = unsafe { self.theme_window.size_handle() };
+        let mut size_handle = self.theme_window.size_handle();
         f(&mut size_handle);
     }
 
