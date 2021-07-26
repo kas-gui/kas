@@ -200,6 +200,15 @@ impl<D: Directional + Default, W: Widget> List<D, W> {
     }
 }
 
+impl<W: Widget> List<Direction, W> {
+    /// Set the direction of contents
+    pub fn set_direction(&mut self, direction: Direction) -> TkAction {
+        self.direction = direction;
+        // Note: most of the time SET_SIZE would be enough, but margins can be different
+        TkAction::RESIZE
+    }
+}
+
 impl<D: Directional, W: Widget> List<D, W> {
     /// Construct a new instance with explicit direction
     pub fn new_with_direction(direction: D, widgets: Vec<W>) -> Self {

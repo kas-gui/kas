@@ -7,7 +7,7 @@
 
 use super::color::Rgba;
 use super::{Pass, RegionClass};
-use crate::geom::{Quad, Rect, Vec2};
+use crate::geom::{Offset, Quad, Rect, Vec2};
 use std::any::Any;
 
 /// Interface over a (local) draw object
@@ -108,10 +108,14 @@ impl<'a, D: Drawable + ?Sized> Draw<'a, D> {
 
     /// Construct a clip region
     ///
-    /// A clip region is a draw target within the same window with a new scissor
-    /// rect (i.e. draw operations will be clipped to this `rect`).
-    pub fn new_clip_region(&mut self, rect: Rect, class: RegionClass) -> Draw<D> {
-        let pass = self.draw.add_clip_region(self.pass, rect, class);
+    /// The clip region is a draw target within the same window, with draw
+    /// operations restricted to a "scissor rect" `rect` and translated by
+    /// subtracting `offset`. The returned object uses a new [`Pass`].
+    ///
+    /// Note that `rect` is defined relative to the coordinate system used by
+    /// the *current* `Draw` object and pass.
+    pub fn new_clip_region(&mut self, rect: Rect, offset: Offset, class: RegionClass) -> Draw<D> {
+        let pass = self.draw.add_clip_region(self.pass, rect, offset, class);
         Draw {
             draw: &mut *self.draw,
             pass,
@@ -120,7 +124,10 @@ impl<'a, D: Drawable + ?Sized> Draw<'a, D> {
 
     /// Get drawable rect for current target
     ///
-    /// (This may be smaller than the rect passed to [`Drawable::add_clip_region`].)
+    /// The result is in the current target's coordinate system, thus normally
+    /// `Rect::pos` is zero (but this is not guaranteed).
+    ///
+    /// (This may not equal the rect passed to [`Drawable::add_clip_region`].)
     pub fn clip_rect(&self) -> Rect {
         self.draw.get_clip_rect(self.pass)
     }
@@ -238,7 +245,13 @@ pub trait Drawable: Any {
     fn as_drawable_mut(&mut self) -> &mut dyn Drawable;
 
     /// Add a clip region
-    fn add_clip_region(&mut self, pass: Pass, rect: Rect, class: RegionClass) -> Pass;
+    fn add_clip_region(
+        &mut self,
+        pass: Pass,
+        rect: Rect,
+        offset: Offset,
+        class: RegionClass,
+    ) -> Pass;
 
     /// Get drawable rect for a clip region
     ///

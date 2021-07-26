@@ -101,6 +101,13 @@ impl<D: Directional + Default, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Dr
         Self::new_with_dir_driver(D::default(), view, data)
     }
 }
+impl<T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> ListView<Direction, T, V> {
+    /// Set the direction of contents
+    pub fn set_direction(&mut self, direction: Direction) -> TkAction {
+        self.direction = direction;
+        TkAction::SET_SIZE
+    }
+}
 impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>>
     ListView<D, T, V>
 {
@@ -289,18 +296,21 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
         }
         *mgr |= self.scroll.set_sizes(view_size, content_size);
 
-        // set_rect allocates enough widgets to view a page; we update widget-data allocations
-        let len = self.widgets.len().min(data_len);
-        self.cur_len = len.cast();
-
         let offset = u64::conv(self.scroll_offset().extract(self.direction));
-        let first_data = usize::conv(offset / u64::conv(skip.extract(self.direction)));
+        // first visible data item, in downward direction:
+        let mut first_data = usize::conv(offset / u64::conv(skip.extract(self.direction)));
+
+        // set_rect allocates enough widgets to view a page; we update widget-data allocations
+        let len = self.widgets.len().min(data_len - first_data);
+        self.cur_len = len.cast();
 
         let mut pos_start = self.core.rect.pos + self.frame_offset;
         if self.direction.is_reversed() {
-            pos_start += skip * i32::conv(len - 1);
+            first_data = (data_len - first_data).saturating_sub(len);
+            pos_start += skip * i32::conv(data_len - 1);
             skip = skip * -1;
         }
+
         let mut rect = Rect::new(pos_start, self.child_size);
         let mut action = TkAction::empty();
         for (i, item) in self

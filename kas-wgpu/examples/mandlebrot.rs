@@ -327,15 +327,11 @@ impl Layout for Mandlebrot {
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {
-        let (offset, mut draw, _shared) = draw_handle.draw_device();
-        // TODO: our view transform assumes that offset = 0.
-        // Here it is but in general we should be able to handle an offset here!
-        assert_eq!(offset, Offset::ZERO, "view transform assumption violated");
-
+        let (mut draw, _shared) = draw_handle.draw_device();
         let draw = draw.downcast::<DrawWindow<PipeWindow>>().unwrap();
         let pass = draw.pass();
         let p = (self.alpha, self.delta, self.rel_width, self.iter);
-        draw.draw.custom(pass, self.core.rect + offset, p);
+        draw.draw.custom(pass, self.core.rect, p);
     }
 }
 

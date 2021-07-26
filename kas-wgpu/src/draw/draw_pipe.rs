@@ -54,6 +54,22 @@ impl<C: CustomPipe> DrawPipe<C> {
             ],
         });
 
+        // Light dir: `(a, b)` where `0 ≤ a < pi/2` is the angle to the screen
+        // normal (i.e. `a = 0` is straight at the screen) and `b` is the bearing
+        // (from UP, clockwise), both in radians.
+        let dir: (f32, f32) = (0.3, 0.4);
+        assert!(0.0 <= dir.0 && dir.0 < FRAC_PI_2);
+        let a = (dir.0.sin(), dir.0.cos());
+        // We normalise intensity:
+        let f = a.0 / a.1;
+        let light_norm = [dir.1.sin() * f, -dir.1.cos() * f, 1.0];
+
+        let light_norm_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("light_norm_buf"),
+            contents: bytemuck::cast_slice(&light_norm),
+            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+        });
+
         let images = images::Images::new(&device, &shaders, &bgl_common);
         let shaded_square = shaded_square::Pipeline::new(&device, &shaders, &bgl_common);
         let shaded_round = shaded_round::Pipeline::new(&device, &shaders, &bgl_common);
@@ -67,6 +83,8 @@ impl<C: CustomPipe> DrawPipe<C> {
             local_pool,
             staging_belt,
             bgl_common,
+            light_norm_buf,
+            bg_common: vec![],
             images,
             shaded_square,
             shaded_round,
@@ -78,66 +96,16 @@ impl<C: CustomPipe> DrawPipe<C> {
 
     /// Construct per-window state
     pub fn new_window(&self, size: Size) -> DrawWindow<C::Window> {
-        type Scale = [f32; 2];
-        let scale_factor: Scale = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
-        let scale_buf = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("SR scale_buf"),
-                contents: bytemuck::cast_slice(&scale_factor),
-                usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-            });
-
-        // Light dir: `(a, b)` where `0 ≤ a < pi/2` is the angle to the screen
-        // normal (i.e. `a = 0` is straight at the screen) and `b` is the bearing
-        // (from UP, clockwise), both in radians.
-        let dir: (f32, f32) = (0.3, 0.4);
-        assert!(dir.0 >= 0.0);
-        assert!(dir.0 < FRAC_PI_2);
-        let a = (dir.0.sin(), dir.0.cos());
-        // We normalise intensity:
-        let f = a.0 / a.1;
-        let light_norm = [dir.1.sin() * f, -dir.1.cos() * f, 1.0];
-
-        let light_norm_buf = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("SR light_norm_buf"),
-                contents: bytemuck::cast_slice(&light_norm),
-                usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-            });
-
-        let bg_common = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("common bind group"),
-            layout: &self.bgl_common,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                        buffer: &scale_buf,
-                        offset: 0,
-                        size: None,
-                    }),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                        buffer: &light_norm_buf,
-                        offset: 0,
-                        size: None,
-                    }),
-                },
-            ],
-        });
+        let vsize = Vec2::from(size);
+        let scale: Scale = [-0.5 * vsize.0, 0.5 * vsize.1, 2.0 / vsize.0, -2.0 / vsize.1];
 
         let rect = Rect::new(Coord::ZERO, size);
 
         let custom = self.custom.new_window(&self.device, size);
 
         DrawWindow {
-            scale_buf,
-            clip_regions: vec![rect],
-            bg_common,
+            scale,
+            clip_regions: vec![(rect, Offset::ZERO)],
             images: Default::default(),
             shaded_square: Default::default(),
             shaded_round: Default::default(),
@@ -158,11 +126,15 @@ impl<C: CustomPipe> DrawPipe<C> {
 
     /// Process window resize
     pub fn resize(&self, window: &mut DrawWindow<C::Window>, size: Size) {
-        window.clip_regions[0].size = size;
+        window.clip_regions[0].0.size = size;
 
-        let scale_factor = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
-        self.queue
-            .write_buffer(&window.scale_buf, 0, bytemuck::cast_slice(&scale_factor));
+        let vsize = Vec2::from(size);
+        window.scale = [
+            -0.5 * vsize.0,
+            -0.5 * vsize.1,
+            2.0 / vsize.0,
+            -2.0 / vsize.1,
+        ];
 
         self.custom
             .resize(&mut window.custom, &self.device, &self.queue, size);
@@ -177,6 +149,59 @@ impl<C: CustomPipe> DrawPipe<C> {
         frame_view: &wgpu::TextureView,
         clear_color: wgpu::Color,
     ) {
+        // Update all bind groups. We use a separate bind group for each clip
+        // region and update on each render, although they don't always change.
+        // NOTE: we could use push constants instead.
+        let mut scale = window.scale;
+        let base_offset = (scale[0], scale[1]);
+        for (region, bg) in window.clip_regions.iter().zip(self.bg_common.iter()) {
+            let offset = Vec2::from(region.1);
+            scale[0] = base_offset.0 - offset.0;
+            scale[1] = base_offset.1 - offset.1;
+            self.queue
+                .write_buffer(&bg.0, 0, bytemuck::cast_slice(&scale));
+        }
+        let device = &self.device;
+        let bg_len = self.bg_common.len();
+        if window.clip_regions.len() > bg_len {
+            let (bgl_common, light_norm_buf) = (&self.bgl_common, &self.light_norm_buf);
+            self.bg_common
+                .extend(window.clip_regions[bg_len..].iter().map(|region| {
+                    let offset = Vec2::from(region.1);
+                    scale[0] = base_offset.0 - offset.0;
+                    scale[1] = base_offset.1 - offset.1;
+                    let scale_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("scale_buf"),
+                        contents: bytemuck::cast_slice(&scale),
+                        usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+                    });
+                    let bg_common = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: Some("common bind group"),
+                        layout: bgl_common,
+                        entries: &[
+                            wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                                    buffer: &scale_buf,
+                                    offset: 0,
+                                    size: None,
+                                }),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 1,
+                                resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                                    buffer: light_norm_buf,
+                                    offset: 0,
+                                    size: None,
+                                }),
+                            },
+                        ],
+                    });
+                    (scale_buf, bg_common)
+                }));
+        }
+        self.queue.submit(std::iter::empty());
+
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -219,11 +244,11 @@ impl<C: CustomPipe> DrawPipe<C> {
         }];
 
         // We use a separate render pass for each clipped region.
-        for (pass, rect) in window.clip_regions.iter().enumerate() {
+        for (pass, (rect, _)) in window.clip_regions.iter().enumerate() {
             if rect.size.0 == 0 || rect.size.1 == 0 {
                 continue;
             }
-            let bg_common = &window.bg_common;
+            let bg_common = &self.bg_common[pass].1;
 
             {
                 let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -259,8 +284,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             color_attachments[0].ops.load = wgpu::LoadOp::Load;
         }
 
-        // Fonts and custom pipes use their own render pass(es).
-        let size = window.clip_regions[0].size;
+        let size = window.clip_regions[0].0.size;
 
         self.custom.render_final(
             &mut window.custom,
@@ -377,21 +401,29 @@ impl<CW: CustomWindow> Drawable for DrawWindow<CW> {
         self
     }
 
-    fn add_clip_region(&mut self, pass: Pass, rect: Rect, class: RegionClass) -> Pass {
+    fn add_clip_region(
+        &mut self,
+        pass: Pass,
+        rect: Rect,
+        offset: Offset,
+        class: RegionClass,
+    ) -> Pass {
         let parent = match class {
-            RegionClass::ScrollRegion => pass.pass(),
-            RegionClass::Overlay => 0,
+            RegionClass::ScrollRegion => &self.clip_regions[pass.pass()],
+            RegionClass::Overlay => &self.clip_regions[0],
         };
-        let parent_rect = self.clip_regions[parent];
-        let rect = rect.intersection(&parent_rect).unwrap_or(Rect::ZERO);
+        let rect = rect - parent.1;
+        let offset = offset + parent.1;
+        let rect = rect.intersection(&parent.0).unwrap_or(Rect::ZERO);
         let pass = self.clip_regions.len().cast();
-        self.clip_regions.push(rect);
+        self.clip_regions.push((rect, offset));
         Pass::new(pass)
     }
 
     #[inline]
     fn get_clip_rect(&self, pass: Pass) -> Rect {
-        self.clip_regions[pass.pass()]
+        let region = &self.clip_regions[pass.pass()];
+        region.0 + region.1
     }
 
     #[inline]

@@ -204,20 +204,18 @@ fn main() -> Result<(), kas_wgpu::Error> {
         }
     };
 
-    let text = "
-Example text in multiple languages.
+    let text = "Example text in multiple languages.
 مثال على نص بلغات متعددة.
 Пример текста на нескольких языках.
-טקסט לדוגמא במספר שפות.
-";
+טקסט לדוגמא במספר שפות.";
 
     let radio = UpdateHandle::new();
     let widgets = make_widget! {
         #[layout(grid)]
         #[handler(msg = Item)]
         struct {
-            #[widget(row=0, col=0)] _ = Label::new("Label"),
-            #[widget(row=0, col=1)] _ = Label::new(text),
+            #[widget(row=0, col=0)] _ = Label::new("ScrollLabel"),
+            #[widget(row=0, col=1)] _ = ScrollLabel::new(text),
             #[widget(row=1, col=0)] _ = Label::new("EditBox"),
             #[widget(row=1, col=1)] _ = EditBox::new("edit me").with_guard(Guard),
             #[widget(row=2, col=0)] _ = Label::new("TextButton"),

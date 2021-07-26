@@ -26,9 +26,15 @@ thread_local! {
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Control {
+    Set(usize),
+    Dir,
+}
+
+#[derive(Clone, Debug, VoidMsg)]
+enum Button {
+    Set,
     Decr,
     Incr,
-    Set,
 }
 
 #[derive(Clone, Debug, VoidMsg)]
@@ -94,30 +100,31 @@ fn main() -> Result<(), kas_wgpu::Error> {
 
     let controls = make_widget! {
         #[layout(row)]
-        #[handler(msg = usize)]
+        #[handler(msg = Control)]
         struct {
             #[widget] _ = Label::new("Number of rows:"),
             #[widget(handler = activate)] edit: impl HasString = EditBox::new("3")
                 .on_afl(|text, _| text.parse::<usize>().ok()),
-            #[widget(handler = button)] _ = TextButton::new_msg("Set", Control::Set),
-            #[widget(handler = button)] _ = TextButton::new_msg("−", Control::Decr),
-            #[widget(handler = button)] _ = TextButton::new_msg("+", Control::Incr),
+            #[widget(handler = button)] _ = TextButton::new_msg("Set", Button::Set),
+            #[widget(handler = button)] _ = TextButton::new_msg("−", Button::Decr),
+            #[widget(handler = button)] _ = TextButton::new_msg("+", Button::Incr),
+            #[widget] _ = TextButton::new_msg("↓↑", Control::Dir),
             n: usize = 3,
         }
         impl {
-            fn activate(&mut self, _: &mut Manager, n: usize) -> Response<usize> {
+            fn activate(&mut self, _: &mut Manager, n: usize) -> Response<Control> {
                 self.n = n;
-                n.into()
+                Control::Set(n).into()
             }
-            fn button(&mut self, mgr: &mut Manager, msg: Control) -> Response<usize> {
+            fn button(&mut self, mgr: &mut Manager, msg: Button) -> Response<Control> {
                 let n = match msg {
-                    Control::Decr => self.n.saturating_sub(1),
-                    Control::Incr => self.n.saturating_add(1),
-                    Control::Set => self.n,
+                    Button::Set => self.n,
+                    Button::Decr => self.n.saturating_sub(1),
+                    Button::Incr => self.n.saturating_add(1),
                 };
                 *mgr |= self.edit.set_string(n.to_string());
                 self.n = n;
-                n.into()
+                Control::Set(n).into()
             }
         }
     };
@@ -127,6 +134,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         ListEntry::new(1, false),
         ListEntry::new(2, false),
     ];
+    let list = List::new_with_direction(Direction::Down, entries);
 
     let window = Window::new(
         "Dynamic widget demo",
@@ -135,22 +143,30 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget] _ = Label::new("Demonstration of dynamic widget creation / deletion"),
-                #[widget(handler = set_len)] controls -> usize = controls,
+                #[widget(handler = control)] controls -> Control = controls,
                 #[widget] _ = Label::new("Contents of selected entry:"),
                 #[widget] display: StringLabel = Label::from("Entry #0"),
                 #[widget] _ = Separator::new(),
-                #[widget(handler = set_radio)] list: ScrollBarRegion<Column<ListEntry>> =
-                    ScrollBarRegion::new(Column::new(entries)).with_bars(false, true),
+                #[widget(handler = set_radio)] list: ScrollBarRegion<List<Direction, ListEntry>> =
+                    ScrollBarRegion::new(list).with_bars(false, true),
                 #[widget] _ = Filler::maximize(),
                 active: usize = 0,
             }
             impl {
-                fn set_len(&mut self, mgr: &mut Manager, len: usize) -> Response<VoidMsg> {
-                    let active = self.active;
-                    let old_len = self.list.len();
-                    *mgr |= self.list.inner_mut().resize_with(len, |n| ListEntry::new(n, n == active));
-                    if active >= old_len && active < len {
-                        let _ = self.set_radio(mgr, (active, EntryMsg::Select));
+                fn control(&mut self, mgr: &mut Manager, control: Control) -> Response<VoidMsg> {
+                    match control {
+                        Control::Set(len) => {
+                            let active = self.active;
+                            let old_len = self.list.len();
+                            *mgr |= self.list.inner_mut().resize_with(len, |n| ListEntry::new(n, n == active));
+                            if active >= old_len && active < len {
+                                let _ = self.set_radio(mgr, (active, EntryMsg::Select));
+                            }
+                        }
+                        Control::Dir => {
+                            let dir = self.list.direction().reversed();
+                            *mgr |= self.list.set_direction(dir);
+                        }
                     }
                     Response::None
                 }

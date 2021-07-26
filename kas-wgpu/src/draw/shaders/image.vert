@@ -16,10 +16,9 @@ layout(location = 3) in vec2 tex_b;
 layout(location = 0) out vec2 tex_pos;
 
 layout(set = 0, binding = 0) uniform VertexCommon {
+    vec2 offset;
     vec2 scale;
 };
-
-const vec2 offset = { -1.0, 1.0 };
 
 void main() {
     vec2 pos;
@@ -42,5 +41,5 @@ void main() {
             break;
     }
 
-    gl_Position = vec4(scale * pos.xy + offset, 0.0, 1.0);
+    gl_Position = vec4(scale * (pos.xy + offset), 0.0, 1.0);
 }
