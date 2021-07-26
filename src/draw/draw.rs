@@ -19,12 +19,11 @@ use std::any::Any;
 /// per-window draw state. As such, it is normal to pass *a new copy* created
 /// via [`Draw::reborrow`] as a method argument. (Note that Rust automatically
 /// "reborrows" reference types passed as method arguments, but cannot do so
-/// (automatically) for methods containing references.)
+/// automatically for structs containing references.)
 ///
 /// This is created over a [`Drawable`] object created by the shell. The
-/// [`Drawable`] trait provides a very limited set of draw routines; the shell
-/// may implement extension traits such as [`DrawableRounded`],
-/// [`DrawableShaded`], or traits defined elsewhere.
+/// [`Drawable`] trait provides a very limited set of draw routines, beyond
+/// which optional traits such as [`DrawableRounded`] may be used.
 ///
 /// The [`Draw`] object provides a "medium level" interface over known
 /// "drawable" traits, for example one may use [`Draw::circle`] when
@@ -36,6 +35,7 @@ pub struct Draw<'a, D: Any + ?Sized> {
 }
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 impl<'a, D: Drawable + ?Sized> Draw<'a, D> {
     /// Construct (this is only called by the shell)
     pub fn new(draw: &'a mut D, pass: Pass) -> Self {
@@ -101,7 +101,7 @@ impl<'a, D: Drawable + ?Sized> Draw<'a, D> {
         }
     }
 
-    /// Get current pass
+    /// Get the current draw pass
     pub fn pass(&self) -> Pass {
         self.pass
     }
@@ -186,42 +186,11 @@ impl<'a, D: DrawableRounded + ?Sized> Draw<'a, D> {
     }
 }
 
-impl<'a, D: DrawableShaded + ?Sized> Draw<'a, D> {
-    /// Add a shaded square to the draw buffer
-    pub fn shaded_square(&mut self, rect: Quad, norm: (f32, f32), col: Rgba) {
-        self.draw.shaded_square(self.pass, rect, norm, col);
-    }
-
-    /// Add a shaded circle to the draw buffer
-    pub fn shaded_circle(&mut self, rect: Quad, norm: (f32, f32), col: Rgba) {
-        self.draw.shaded_circle(self.pass, rect, norm, col);
-    }
-
-    /// Add a square shaded frame to the draw buffer.
-    pub fn shaded_square_frame(
-        &mut self,
-        outer: Quad,
-        inner: Quad,
-        norm: (f32, f32),
-        outer_col: Rgba,
-        inner_col: Rgba,
-    ) {
-        self.draw
-            .shaded_square_frame(self.pass, outer, inner, norm, outer_col, inner_col);
-    }
-
-    /// Add a rounded shaded frame to the draw buffer.
-    pub fn shaded_round_frame(&mut self, outer: Quad, inner: Quad, norm: (f32, f32), col: Rgba) {
-        self.draw
-            .shaded_round_frame(self.pass, outer, inner, norm, col);
-    }
-}
-
 /// Base abstraction over drawing
 ///
 /// This trait covers only the bare minimum of functionality which *must* be
-/// provided by the shell; extension traits such as [`DrawableRounded`] and
-/// [`DrawableShaded`] optionally provide more functionality.
+/// provided by the shell; extension traits such as [`DrawableRounded`]
+/// optionally provide more functionality.
 ///
 /// Coordinates are specified via a [`Vec2`] and rectangular regions via
 /// [`Quad`] allowing fractional positions.
@@ -234,6 +203,7 @@ impl<'a, D: DrawableShaded + ?Sized> Draw<'a, D> {
 /// handle of type [`Pass`]. In general the user only needs to pass this value
 /// into methods as required. [`Drawable::add_clip_region`] creates a new [`Pass`].
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait Drawable: Any {
     /// Cast self to [`Any`] reference
     ///
@@ -273,6 +243,7 @@ pub trait Drawable: Any {
 /// If the implementation buffers draw commands, it should draw these
 /// primitives after solid primitives.
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait DrawableRounded: Drawable {
     /// Draw a line with rounded ends and uniform colour
     fn rounded_line(&mut self, pass: Pass, p1: Vec2, p2: Vec2, radius: f32, col: Rgba);
@@ -282,45 +253,4 @@ pub trait DrawableRounded: Drawable {
 
     /// Draw a frame with rounded corners and uniform colour
     fn rounded_frame(&mut self, pass: Pass, outer: Quad, inner: Quad, inner_radius: f32, col: Rgba);
-}
-
-/// Drawing commands for shaded shapes
-///
-/// This trait is an extension over [`Drawable`] providing solid shaded shapes.
-///
-/// Some drawing primitives (the "round" ones) are partially transparent.
-/// If the implementation buffers draw commands, it should draw these
-/// primitives after solid primitives.
-///
-/// These are parameterised via a pair of normals, `(inner, outer)`. These may
-/// have values from the closed range `[-1, 1]`, where -1 points inwards,
-/// 0 is perpendicular to the screen towards the viewer, and 1 points outwards.
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-pub trait DrawableShaded: Drawable {
-    /// Add a shaded square to the draw buffer
-    fn shaded_square(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Rgba);
-
-    /// Add a shaded circle to the draw buffer
-    fn shaded_circle(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Rgba);
-
-    /// Add a square shaded frame to the draw buffer.
-    fn shaded_square_frame(
-        &mut self,
-        pass: Pass,
-        outer: Quad,
-        inner: Quad,
-        norm: (f32, f32),
-        outer_col: Rgba,
-        inner_col: Rgba,
-    );
-
-    /// Add a rounded shaded frame to the draw buffer.
-    fn shaded_round_frame(
-        &mut self,
-        pass: Pass,
-        outer: Quad,
-        inner: Quad,
-        norm: (f32, f32),
-        col: Rgba,
-    );
 }

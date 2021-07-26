@@ -14,6 +14,7 @@ use kas::draw::color::Rgba;
 use kas::draw::*;
 use kas::geom::{Coord, Quad, Rect, Size, Vec2};
 use kas::text::{Effect, TextDisplay};
+use kas_theme::DrawableShaded;
 
 impl<C: CustomPipe> DrawPipe<C> {
     /// Construct

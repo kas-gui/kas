@@ -29,6 +29,7 @@ pub struct DrawShared<DS: DrawableShared> {
 }
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 impl<DS: DrawableShared> DrawShared<DS> {
     /// Construct (this is only called by the shell)
     pub fn new(draw: DS) -> Self {
@@ -234,6 +235,7 @@ impl<DS: DrawableShared> DrawSharedT for DrawShared<DS> {
 ///
 /// This is typically used via [`DrawShared`].
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait DrawableShared: Any {
     type Draw: Drawable;
 

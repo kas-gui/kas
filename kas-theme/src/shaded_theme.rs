@@ -9,6 +9,7 @@ use std::f32;
 use std::ops::Range;
 
 use crate::{ColorsLinear, Config, DimensionsParams, DimensionsWindow, FlatTheme, Theme, Window};
+use crate::{DrawableShaded, DrawableShadedExt};
 use kas::dir::{Direction, Directional};
 use kas::draw::{self, color::Rgba, *};
 use kas::geom::*;

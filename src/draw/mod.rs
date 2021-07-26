@@ -73,9 +73,10 @@ pub use handle::*;
 pub use images::{ImageError, ImageFormat, ImageId};
 pub use theme::*;
 
-/// Pass identifier
+/// Draw pass identifier
 ///
-/// Users normally need only pass this value.
+/// This is a small value passed by copy to identify which pass draw routines
+/// happen in. Draw passes allow control over draw order and clipping.
 ///
 /// Custom render pipes should extract the pass number.
 #[derive(Copy, Clone)]
