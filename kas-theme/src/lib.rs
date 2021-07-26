@@ -15,6 +15,7 @@
 //! Additionally, a meta-theme, [`MultiTheme`], allows run-time switching
 //! between themes.
 
+#![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![cfg_attr(feature = "gat", feature(generic_associated_types))]
 #![cfg_attr(feature = "unsize", feature(unsize))]
 
@@ -44,6 +45,7 @@ pub use theme_dst::{MaybeBoxed, ThemeDst};
 pub use traits::{Theme, ThemeConfig, Window};
 
 #[cfg(feature = "stack_dst")]
+#[cfg_attr(doc_cfg, doc(cfg(stack_dst)))]
 /// Fixed-size object of `Unsized` type
 ///
 /// This is a re-export of

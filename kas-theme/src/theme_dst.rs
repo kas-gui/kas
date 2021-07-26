@@ -16,6 +16,7 @@ use kas::TkAction;
 /// An optionally-owning (boxed) reference
 ///
 /// This is related but not identical to [`Cow`].
+#[cfg_attr(doc_cfg, doc(cfg(stack_dst)))]
 pub enum MaybeBoxed<'a, B: 'a + ?Sized> {
     Borrowed(&'a B),
     Boxed(Box<B>),
@@ -35,8 +36,7 @@ impl<T: ?Sized> AsRef<T> for MaybeBoxed<'_, T> {
 /// This trait is implemented automatically for all implementations of
 /// [`Theme`]. It is intended only for use where a less parameterised
 /// trait is required.
-///
-/// **Feature gated**: this is only available with feature `stack_dst`.
+#[cfg_attr(doc_cfg, doc(cfg(stack_dst)))]
 pub trait ThemeDst<DS: DrawableShared>: ThemeApi {
     /// Get current config
     fn config(&self) -> MaybeBoxed<dyn Any>;

@@ -19,8 +19,7 @@ type DynTheme<DS> = StackDst<dyn ThemeDst<DS>>;
 type DynTheme<DS> = Box<dyn ThemeDst<DS>>;
 
 /// Wrapper around mutliple themes, supporting run-time switching
-///
-/// **Feature gated**: this is only available with feature `stack_dst`.
+#[cfg_attr(doc_cfg, doc(cfg(stack_dst)))]
 pub struct MultiTheme<DS> {
     names: HashMap<String, usize>,
     themes: Vec<DynTheme<DS>>,
@@ -30,6 +29,7 @@ pub struct MultiTheme<DS> {
 /// Builder for [`MultiTheme`]
 ///
 /// Construct via [`MultiTheme::builder`].
+#[cfg_attr(doc_cfg, doc(cfg(stack_dst)))]
 pub struct MultiThemeBuilder<DS> {
     names: HashMap<String, usize>,
     themes: Vec<DynTheme<DS>>,

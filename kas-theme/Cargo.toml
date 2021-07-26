@@ -11,6 +11,12 @@ repository = "https://github.com/kas-gui/kas"
 readme = "README.md"
 documentation = "https://docs.rs/kas-theme/"
 
+[package.metadata.docs.rs]
+features = ["stack_dst"]
+rustdoc-args = ["--cfg", "doc_cfg"]
+# To build locally:
+# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=internal_doc,stack_dst --open
+
 [features]
 default = ["stack_dst"]
 nightly = ["unsize", "kas/nightly"]
@@ -42,6 +48,3 @@ stack_dst_ = { version = "0.6", package = "stack_dst", optional = true }
 [dependencies.kas]
 path = ".."
 version = "0.8.0"
-
-[package.metadata.docs.rs]
-features = ["stack_dst"]

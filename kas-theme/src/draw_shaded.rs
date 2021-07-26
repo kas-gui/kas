@@ -70,6 +70,7 @@ impl<'a, D: DrawableShaded + ?Sized> DrawableShadedExt for Draw<'a, D> {
 /// have values from the closed range `[-1, 1]`, where -1 points inwards,
 /// 0 is perpendicular to the screen towards the viewer, and 1 points outwards.
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait DrawableShaded: Drawable {
     /// Add a shaded square to the draw buffer
     fn shaded_square(&mut self, pass: PassId, rect: Quad, norm: (f32, f32), col: Rgba);
