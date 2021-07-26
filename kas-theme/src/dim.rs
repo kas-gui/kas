@@ -128,13 +128,13 @@ impl<DS: DrawableShared> crate::Window<DS> for DimensionsWindow {
     type SizeHandle<'a> = SizeHandle<'a, DS>;
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle<'a>(&'a mut self, shared: &'a mut DrawShared<DS>) -> Self::SizeHandle {
+    unsafe fn size_handle<'a>(&'a self, shared: &'a mut DrawShared<DS>) -> Self::SizeHandle {
         // We extend lifetimes (unsafe) due to the lack of associated type generics.
         let h: SizeHandle<'a, DS> = SizeHandle::new(self, shared);
         std::mem::transmute(h)
     }
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a mut self, shared: &'a mut DrawShared<DS>) -> Self::SizeHandle<'a> {
+    fn size_handle<'a>(&'a self, shared: &'a mut DrawShared<DS>) -> Self::SizeHandle<'a> {
         SizeHandle::new(self, shared)
     }
 

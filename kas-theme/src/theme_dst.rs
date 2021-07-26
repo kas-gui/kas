@@ -7,7 +7,7 @@
 
 use std::any::Any;
 use std::borrow::Cow;
-use std::ops::DerefMut;
+use std::ops::{Deref, DerefMut};
 
 use super::{StackDst, Theme, Window};
 use kas::draw::{color, Draw, DrawHandle, DrawShared, DrawableShared, SizeHandle, ThemeApi};
@@ -225,17 +225,14 @@ pub trait WindowDst<DS: DrawableShared> {
     ///
     /// All references passed into the method must outlive the returned object.
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle(&mut self, shared: &mut DrawShared<DS>) -> StackDst<dyn SizeHandle>;
+    unsafe fn size_handle(&self, shared: &mut DrawShared<DS>) -> StackDst<dyn SizeHandle>;
 
     /// Construct a [`SizeHandle`] object
     ///
     /// The `shared` reference is guaranteed to be identical to the one used to
     /// construct this object.
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(
-        &'a mut self,
-        shared: &'a mut DrawShared<DS>,
-    ) -> StackDst<dyn SizeHandle + 'a>;
+    fn size_handle<'a>(&'a self, shared: &'a mut DrawShared<DS>) -> StackDst<dyn SizeHandle + 'a>;
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
@@ -246,7 +243,7 @@ where
     <W as Window<DS>>::SizeHandle: 'static,
 {
     unsafe fn size_handle<'a>(
-        &'a mut self,
+        &'a self,
         shared: &'a mut DrawShared<DS>,
     ) -> StackDst<dyn SizeHandle> {
         let h = <W as Window<DS>>::size_handle(self, shared);
@@ -269,10 +266,7 @@ where
 
 #[cfg(feature = "gat")]
 impl<DS: DrawableShared, W: Window<DS>> WindowDst<DS> for W {
-    fn size_handle<'a>(
-        &'a mut self,
-        shared: &'a mut DrawShared<DS>,
-    ) -> StackDst<dyn SizeHandle + 'a> {
+    fn size_handle<'a>(&'a self, shared: &'a mut DrawShared<DS>) -> StackDst<dyn SizeHandle + 'a> {
         let h = <W as Window<DS>>::size_handle(self, shared);
         StackDst::new_or_boxed(h)
     }
@@ -289,13 +283,13 @@ impl<DS: DrawableShared> Window<DS> for StackDst<dyn WindowDst<DS>> {
     type SizeHandle<'a> = StackDst<dyn SizeHandle + 'a>;
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle(&mut self, shared: &mut DrawShared<DS>) -> Self::SizeHandle {
-        self.deref_mut().size_handle(shared)
+    unsafe fn size_handle(&self, shared: &mut DrawShared<DS>) -> Self::SizeHandle {
+        self.deref().size_handle(shared)
     }
 
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a mut self, shared: &'a mut DrawShared<DS>) -> Self::SizeHandle<'a> {
-        self.deref_mut().size_handle(shared)
+    fn size_handle<'a>(&'a self, shared: &'a mut DrawShared<DS>) -> Self::SizeHandle<'a> {
+        self.deref().size_handle(shared)
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any {

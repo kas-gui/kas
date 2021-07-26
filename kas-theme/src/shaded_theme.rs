@@ -69,7 +69,7 @@ const DIMS: DimensionsParams = DimensionsParams {
 pub struct DrawHandle<'a, DS: DrawableShared> {
     shared: &'a mut DrawShared<DS>,
     draw: Draw<'a, DS::Draw>,
-    window: &'a mut DimensionsWindow,
+    window: &'a DimensionsWindow,
     cols: &'a ColorsLinear,
 }
 
