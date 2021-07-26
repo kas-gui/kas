@@ -196,8 +196,7 @@ pub trait SizeHandle {
     /// [`Environment`]: kas::text::Environment
     /// [`Layout::set_rect`]: kas::Layout::set_rect
     /// [`Layout::size_rules`]: kas::Layout::size_rules
-    fn text_bound(&mut self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo)
-        -> SizeRules;
+    fn text_bound(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules;
 
     /// Width of an edit marker
     fn edit_marker_width(&self) -> f32;
@@ -476,7 +475,7 @@ pub trait DrawHandleExt: DrawHandle {
 
 impl<D: DrawHandle + ?Sized> DrawHandleExt for D {}
 
-impl<S: SizeHandle + ?Sized, R: DerefMut<Target = S>> SizeHandle for R {
+impl<S: SizeHandle + ?Sized, R: Deref<Target = S>> SizeHandle for R {
     fn scale_factor(&self) -> f32 {
         self.deref().scale_factor()
     }
@@ -512,13 +511,8 @@ impl<S: SizeHandle + ?Sized, R: DerefMut<Target = S>> SizeHandle for R {
     fn line_height(&self, class: TextClass) -> i32 {
         self.deref().line_height(class)
     }
-    fn text_bound(
-        &mut self,
-        text: &mut dyn TextApi,
-        class: TextClass,
-        axis: AxisInfo,
-    ) -> SizeRules {
-        self.deref_mut().text_bound(text, class, axis)
+    fn text_bound(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules {
+        self.deref().text_bound(text, class, axis)
     }
     fn edit_marker_width(&self) -> f32 {
         self.deref().edit_marker_width()

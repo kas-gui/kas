@@ -199,12 +199,7 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         self.w.dims.line_height
     }
 
-    fn text_bound(
-        &mut self,
-        text: &mut dyn TextApi,
-        class: TextClass,
-        axis: AxisInfo,
-    ) -> SizeRules {
+    fn text_bound(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules {
         let required = text.update_env(|env| {
             if let Some(font_id) = self.w.fonts.get(&class).cloned() {
                 env.set_font_id(font_id);
