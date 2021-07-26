@@ -402,15 +402,15 @@ impl<CW: CustomWindow> Drawable for DrawWindow<CW> {
         self
     }
 
-    fn add_clip_region(
+    fn new_draw_pass(
         &mut self,
-        pass: PassId,
+        parent_pass: PassId,
         rect: Rect,
         offset: Offset,
         class: RegionClass,
     ) -> PassId {
         let parent = match class {
-            RegionClass::ScrollRegion => &self.clip_regions[pass.pass()],
+            RegionClass::ScrollRegion => &self.clip_regions[parent_pass.pass()],
             RegionClass::Overlay => &self.clip_regions[0],
         };
         let rect = rect - parent.1;
@@ -422,7 +422,7 @@ impl<CW: CustomWindow> Drawable for DrawWindow<CW> {
     }
 
     #[inline]
-    fn get_clip_rect(&self, pass: PassId) -> Rect {
+    fn clip_rect(&self, pass: PassId) -> Rect {
         let region = &self.clip_regions[pass.pass()];
         region.0 + region.1
     }

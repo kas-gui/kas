@@ -106,30 +106,38 @@ impl<'a, D: Drawable + ?Sized> Draw<'a, D> {
         self.pass
     }
 
-    /// Construct a clip region
+    /// Add a draw pass
     ///
-    /// The clip region is a draw target within the same window, with draw
-    /// operations restricted to a "scissor rect" `rect` and translated by
-    /// subtracting `offset`. The returned object uses a new [`PassId`].
+    /// Adds a new draw pass. Passes affect draw order (operations in new passes
+    /// happen after their parent pass), may clip drawing to a "clip rect"
+    /// (see [`Draw::clip_rect`]) and may offset (translate) draw
+    /// operations.
     ///
-    /// Note that `rect` is defined relative to the coordinate system used by
-    /// the *current* `Draw` object and pass.
-    pub fn new_clip_region(&mut self, rect: Rect, offset: Offset, class: RegionClass) -> Draw<D> {
-        let pass = self.draw.add_clip_region(self.pass, rect, offset, class);
+    /// Case `class == RegionClass::ScrollRegion`: the new pass is derived from
+    /// `parent_pass`; `rect` and `offset` are specified relative to this parent
+    /// and the intersecton of `rect` and the parent's "clip rect" is used.
+    /// be clipped to `rect` (expressed in the parent's coordinate system).
+    ///
+    /// Case `class == RegionClass::Overlay`: the new pass is derived from the
+    /// base pass (i.e. the window). Draw operations still happen after those in
+    /// `parent_pass`.
+    pub fn new_draw_pass(&mut self, rect: Rect, offset: Offset, class: RegionClass) -> Draw<D> {
+        let pass = self.draw.new_draw_pass(self.pass, rect, offset, class);
         Draw {
             draw: &mut *self.draw,
             pass,
         }
     }
 
-    /// Get drawable rect for current target
+    /// Get drawable rect for a draw `pass`
     ///
     /// The result is in the current target's coordinate system, thus normally
     /// `Rect::pos` is zero (but this is not guaranteed).
     ///
-    /// (This may not equal the rect passed to [`Drawable::add_clip_region`].)
+    /// (This is not guaranteed to equal the rect passed to
+    /// [`Draw::new_draw_pass`].)
     pub fn clip_rect(&self) -> Rect {
-        self.draw.get_clip_rect(self.pass)
+        dbg!(self.draw.clip_rect(self.pass))
     }
 
     /// Draw a rectangle of uniform colour
@@ -201,7 +209,7 @@ impl<'a, D: DrawableRounded + ?Sized> Draw<'a, D> {
 ///
 /// Draw operations take place over multiple render passes, identified by a
 /// handle of type [`PassId`]. In general the user only needs to pass this value
-/// into methods as required. [`Drawable::add_clip_region`] creates a new [`PassId`].
+/// into methods as required. [`Drawable::new_draw_pass`] creates a new [`PassId`].
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait Drawable: Any {
@@ -214,19 +222,37 @@ pub trait Drawable: Any {
     /// Upcast to dyn drawable
     fn as_drawable_mut(&mut self) -> &mut dyn Drawable;
 
-    /// Add a clip region
-    fn add_clip_region(
+    /// Add a draw pass
+    ///
+    /// Adds a new draw pass. Passes affect draw order (operations in new passes
+    /// happen after their parent pass), may clip drawing to a "clip rect"
+    /// (see [`Drawable::clip_rect`]) and may offset (translate) draw
+    /// operations.
+    ///
+    /// Case `class == RegionClass::ScrollRegion`: the new pass is derived from
+    /// `parent_pass`; `rect` and `offset` are specified relative to this parent
+    /// and the intersecton of `rect` and the parent's "clip rect" is used.
+    /// be clipped to `rect` (expressed in the parent's coordinate system).
+    ///
+    /// Case `class == RegionClass::Overlay`: the new pass is derived from the
+    /// base pass (i.e. the window). Draw operations still happen after those in
+    /// `parent_pass`.
+    fn new_draw_pass(
         &mut self,
-        pass: PassId,
+        parent_pass: PassId,
         rect: Rect,
         offset: Offset,
         class: RegionClass,
     ) -> PassId;
 
-    /// Get drawable rect for a clip region
+    /// Get drawable rect for a draw `pass`
     ///
-    /// (This may be smaller than the rect passed to [`Drawable::add_clip_region`].)
-    fn get_clip_rect(&self, pass: PassId) -> Rect;
+    /// The result is in the current target's coordinate system, thus normally
+    /// `Rect::pos` is zero (but this is not guaranteed).
+    ///
+    /// (This is not guaranteed to equal the rect passed to
+    /// [`Drawable::new_draw_pass`].)
+    fn clip_rect(&self, pass: PassId) -> Rect;
 
     /// Draw a rectangle of uniform colour
     fn rect(&mut self, pass: PassId, rect: Quad, col: Rgba);

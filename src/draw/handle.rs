@@ -267,10 +267,10 @@ pub trait DrawHandle {
     /// minimal functionality. [`Draw::downcast`] will likely be of use.
     fn draw_device(&mut self) -> (Draw<'_, dyn Drawable>, &mut dyn DrawSharedT);
 
-    /// Add a clip region
+    /// Add a draw pass
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn with_clip_region(
+    fn new_draw_pass(
         &mut self,
         rect: Rect,
         offset: Offset,
@@ -283,7 +283,7 @@ pub trait DrawHandle {
     /// Drawing is restricted to this [`Rect`], which may be the whole window, a
     /// [clip region](DrawHandleExt::clip_region) or an [overlay](DrawHandleExt::overlay).
     /// This may be used to cull hidden items from lists inside a scrollable view.
-    fn target_rect(&self) -> Rect;
+    fn clip_rect(&self) -> Rect;
 
     /// Draw a frame inside the given `rect`
     ///
@@ -413,9 +413,9 @@ pub trait DrawHandleExt: DrawHandle {
     /// are subtracted by `offset`).
     ///
     /// All content drawn by the new region is clipped to the intersection of
-    /// `rect` and the current target ([`DrawHandle::target_rect`]).
+    /// `rect` and the current target ([`DrawHandle::clip_rect`]).
     fn clip_region(&mut self, rect: Rect, offset: Offset, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
-        self.with_clip_region(rect, offset, RegionClass::ScrollRegion, f);
+        self.new_draw_pass(rect, offset, RegionClass::ScrollRegion, f);
     }
 
     /// Draw to an overlay (e.g. for pop-up menus)
@@ -429,7 +429,7 @@ pub trait DrawHandleExt: DrawHandle {
     /// beyond the bounds of the window, it will be silently reduced to that of
     /// the window.
     fn overlay(&mut self, rect: Rect, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
-        self.with_clip_region(rect, Offset::ZERO, RegionClass::Overlay, f);
+        self.new_draw_pass(rect, Offset::ZERO, RegionClass::Overlay, f);
     }
 
     /// Draw some text using the standard font, with a subset selected
@@ -624,17 +624,17 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn draw_device(&mut self) -> (Draw<'_, dyn Drawable>, &mut dyn DrawSharedT) {
         self.deref_mut().draw_device()
     }
-    fn with_clip_region(
+    fn new_draw_pass(
         &mut self,
         rect: Rect,
         offset: Offset,
         class: RegionClass,
         f: &mut dyn FnMut(&mut dyn DrawHandle),
     ) {
-        self.deref_mut().with_clip_region(rect, offset, class, f);
+        self.deref_mut().new_draw_pass(rect, offset, class, f);
     }
-    fn target_rect(&self) -> Rect {
-        self.deref().target_rect()
+    fn clip_rect(&self) -> Rect {
+        self.deref().clip_rect()
     }
     fn outer_frame(&mut self, rect: Rect) {
         self.deref_mut().outer_frame(rect);
@@ -710,17 +710,17 @@ where
     fn draw_device(&'_ mut self) -> (Draw<'_, dyn Drawable>, &'_ mut dyn DrawSharedT) {
         self.deref_mut().draw_device()
     }
-    fn with_clip_region(
+    fn new_draw_pass(
         &mut self,
         rect: Rect,
         offset: Offset,
         class: RegionClass,
         f: &mut dyn FnMut(&mut dyn DrawHandle),
     ) {
-        self.deref_mut().with_clip_region(rect, offset, class, f);
+        self.deref_mut().new_draw_pass(rect, offset, class, f);
     }
-    fn target_rect(&self) -> Rect {
-        self.deref().target_rect()
+    fn clip_rect(&self) -> Rect {
+        self.deref().clip_rect()
     }
     fn outer_frame(&mut self, rect: Rect) {
         self.deref_mut().outer_frame(rect);

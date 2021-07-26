@@ -207,12 +207,12 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
 
         let solver = layout::RowPositionSolver::new(self.direction);
         let disabled = disabled || self.is_disabled();
-        solver.for_children(&self.widgets, draw_handle.target_rect(), |w| {
+        solver.for_children(&self.widgets, draw_handle.clip_rect(), |w| {
             w.draw(draw_handle, mgr, disabled)
         });
 
         let solver = layout::RowPositionSolver::new(self.direction);
-        solver.for_children(&self.handles, draw_handle.target_rect(), |w| {
+        solver.for_children(&self.handles, draw_handle.clip_rect(), |w| {
             draw_handle.separator(w.rect())
         });
     }

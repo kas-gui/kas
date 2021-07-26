@@ -232,7 +232,7 @@ where
         (self.draw.upcast_base(), self.shared)
     }
 
-    fn with_clip_region(
+    fn new_draw_pass(
         &mut self,
         mut rect: Rect,
         offset: Offset,
@@ -242,7 +242,7 @@ where
         if class == RegionClass::Overlay {
             rect = rect.expand(self.window.dims.frame);
         }
-        let mut draw = self.draw.new_clip_region(rect, offset, class);
+        let mut draw = self.draw.new_draw_pass(rect, offset, class);
 
         if class == RegionClass::Overlay {
             let outer = draw.clip_rect();
@@ -262,7 +262,7 @@ where
         f(&mut handle);
     }
 
-    fn target_rect(&self) -> Rect {
+    fn clip_rect(&self) -> Rect {
         self.draw.clip_rect()
     }
 
