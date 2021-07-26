@@ -58,8 +58,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         // normal (i.e. `a = 0` is straight at the screen) and `b` is the bearing
         // (from UP, clockwise), both in radians.
         let dir: (f32, f32) = (0.3, 0.4);
-        assert!(dir.0 >= 0.0);
-        assert!(dir.0 < FRAC_PI_2);
+        assert!(0.0 <= dir.0 && dir.0 < FRAC_PI_2);
         let a = (dir.0.sin(), dir.0.cos());
         // We normalise intensity:
         let f = a.0 / a.1;
@@ -178,7 +177,7 @@ impl<C: CustomPipe> DrawPipe<C> {
                     });
                     let bg_common = device.create_bind_group(&wgpu::BindGroupDescriptor {
                         label: Some("common bind group"),
-                        layout: &bgl_common,
+                        layout: bgl_common,
                         entries: &[
                             wgpu::BindGroupEntry {
                                 binding: 0,
@@ -191,7 +190,7 @@ impl<C: CustomPipe> DrawPipe<C> {
                             wgpu::BindGroupEntry {
                                 binding: 1,
                                 resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                                    buffer: &light_norm_buf,
+                                    buffer: light_norm_buf,
                                     offset: 0,
                                     size: None,
                                 }),
