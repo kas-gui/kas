@@ -121,19 +121,18 @@ impl Window {
 
 impl crate::Window for Window {
     #[cfg(not(feature = "gat"))]
-    type SizeHandle = SizeHandle<'static>;
+    type SizeHandle = &'static Window;
     #[cfg(feature = "gat")]
-    type SizeHandle<'a> = SizeHandle<'a>;
+    type SizeHandle<'a> = &'a Window;
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle<'a>(&'a self) -> Self::SizeHandle {
+    unsafe fn size_handle(&self) -> Self::SizeHandle {
         // We extend lifetimes (unsafe) due to the lack of associated type generics.
-        let h: SizeHandle<'a> = SizeHandle::new(self);
-        std::mem::transmute(h)
+        std::mem::transmute(self)
     }
     #[cfg(feature = "gat")]
     fn size_handle<'a>(&'a self) -> Self::SizeHandle<'a> {
-        SizeHandle::new(self)
+        self
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
@@ -141,71 +140,60 @@ impl crate::Window for Window {
     }
 }
 
-/// Concrete type implementing [`kas::draw::SizeHandle`]
-pub struct SizeHandle<'a> {
-    w: &'a Window,
-}
-
-impl<'a> SizeHandle<'a> {
-    pub fn new(w: &'a Window) -> Self {
-        SizeHandle { w }
-    }
-}
-
-impl<'a> draw::SizeHandle for SizeHandle<'a> {
+impl draw::SizeHandle for Window {
     fn scale_factor(&self) -> f32 {
-        self.w.dims.scale_factor
+        self.dims.scale_factor
     }
 
     fn pixels_from_points(&self, pt: f32) -> f32 {
-        self.w.dims.dpp * pt
+        self.dims.dpp * pt
     }
 
     fn pixels_from_em(&self, em: f32) -> f32 {
-        self.w.dims.dpp * self.w.dims.pt_size * em
+        self.dims.dpp * self.dims.pt_size * em
     }
 
     fn frame(&self, _vert: bool) -> FrameRules {
-        FrameRules::new_sym(self.w.dims.frame, 0, 0)
+        FrameRules::new_sym(self.dims.frame, 0, 0)
     }
     fn menu_frame(&self, vert: bool) -> FrameRules {
-        let mut size = self.w.dims.frame;
+        let mut size = self.dims.frame;
         if vert {
             size /= 2;
         }
         FrameRules::new_sym(size, 0, 0)
     }
     fn separator(&self) -> Size {
-        Size::splat(self.w.dims.frame)
+        Size::splat(self.dims.frame)
     }
 
     fn nav_frame(&self, _vert: bool) -> FrameRules {
-        FrameRules::new_sym(self.w.dims.inner_margin.into(), 0, 0)
+        FrameRules::new_sym(self.dims.inner_margin.into(), 0, 0)
     }
 
     fn inner_margin(&self) -> Size {
-        Size::splat(self.w.dims.inner_margin.into())
+        Size::splat(self.dims.inner_margin.into())
     }
 
     fn outer_margins(&self) -> Margins {
-        Margins::splat(self.w.dims.outer_margin)
+        Margins::splat(self.dims.outer_margin)
     }
 
     fn text_margins(&self) -> Margins {
-        Margins::splat(self.w.dims.text_margin)
+        Margins::splat(self.dims.text_margin)
     }
 
     fn line_height(&self, _: TextClass) -> i32 {
-        self.w.dims.line_height
+        self.dims.line_height
     }
 
     fn text_bound(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules {
         let required = text.update_env(|env| {
-            if let Some(font_id) = self.w.fonts.get(&class).cloned() {
+            if let Some(font_id) = self.fonts.get(&class).cloned() {
                 env.set_font_id(font_id);
             }
-            env.set_dpp(self.w.dims.dpp);
-            env.set_pt_size(self.w.dims.pt_size);
+            env.set_dpp(self.dims.dpp);
+            env.set_pt_size(self.dims.pt_size);
 
             let mut bounds = kas::text::Vec2::INFINITY;
             if let Some(size) = axis.size_other_if_fixed(false) {
@@ -221,11 +209,11 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
             ));
         });
 
-        let margin = self.w.dims.text_margin;
+        let margin = self.dims.text_margin;
         let margins = (margin, margin);
         if axis.is_horizontal() {
             let bound = i32::conv_ceil(required.0);
-            let min = self.w.dims.min_line_length;
+            let min = self.dims.min_line_length;
             let (min, ideal) = match class {
                 TextClass::Edit => (min, 2 * min),
                 TextClass::EditMulti => (min, 3 * min),
@@ -243,10 +231,8 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         } else {
             let min = match class {
                 TextClass::Label => i32::conv_ceil(required.1),
-                TextClass::MenuLabel | TextClass::Button | TextClass::Edit => {
-                    self.w.dims.line_height
-                }
-                TextClass::EditMulti | TextClass::LabelScroll => self.w.dims.line_height * 3,
+                TextClass::MenuLabel | TextClass::Button | TextClass::Edit => self.dims.line_height,
+                TextClass::EditMulti | TextClass::LabelScroll => self.dims.line_height * 3,
             };
             let ideal = i32::conv_ceil(required.1).max(min);
             let stretch = match class {
@@ -258,23 +244,23 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
     }
 
     fn edit_marker_width(&self) -> f32 {
-        self.w.dims.font_marker_width
+        self.dims.font_marker_width
     }
 
     fn button_surround(&self, _vert: bool) -> FrameRules {
-        let inner = self.w.dims.inner_margin.into();
-        let outer = self.w.dims.outer_margin;
-        FrameRules::new_sym(self.w.dims.frame, inner, outer)
+        let inner = self.dims.inner_margin.into();
+        let outer = self.dims.outer_margin;
+        FrameRules::new_sym(self.dims.frame, inner, outer)
     }
 
     fn edit_surround(&self, _vert: bool) -> FrameRules {
-        let inner = self.w.dims.inner_margin.into();
+        let inner = self.dims.inner_margin.into();
         let outer = 0;
-        FrameRules::new_sym(self.w.dims.frame, inner, outer)
+        FrameRules::new_sym(self.dims.frame, inner, outer)
     }
 
     fn checkbox(&self) -> Size {
-        Size::splat(self.w.dims.checkbox)
+        Size::splat(self.dims.checkbox)
     }
 
     #[inline]
@@ -283,16 +269,16 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
     }
 
     fn scrollbar(&self) -> (Size, i32) {
-        let size = self.w.dims.scrollbar;
+        let size = self.dims.scrollbar;
         (size, 3 * size.0)
     }
 
     fn slider(&self) -> (Size, i32) {
-        let size = self.w.dims.slider;
+        let size = self.dims.slider;
         (size, 5 * size.0)
     }
 
     fn progress_bar(&self) -> Size {
-        self.w.dims.progress_bar
+        self.dims.progress_bar
     }
 }

@@ -8,7 +8,7 @@
 use std::f32;
 use std::ops::Range;
 
-use crate::{dim, ColorsLinear, Config, FlatTheme, Theme, Window};
+use crate::{dim, ColorsLinear, Config, FlatTheme, Theme};
 use crate::{DrawableShaded, DrawableShadedExt};
 use kas::dir::{Direction, Directional};
 use kas::draw::{self, color::Rgba, *};
@@ -69,7 +69,7 @@ const DIMS: dim::Parameters = dim::Parameters {
 pub struct DrawHandle<'a, DS: DrawableShared> {
     shared: &'a mut DrawShared<DS>,
     draw: Draw<'a, DS::Draw>,
-    window: &'a dim::Window,
+    window: &'a mut dim::Window,
     cols: &'a ColorsLinear,
 }
 
@@ -222,10 +222,7 @@ where
     DS::Draw: DrawableRounded + DrawableShaded,
 {
     fn with_size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
-        unsafe {
-            let mut size_handle = self.window.size_handle();
-            f(&mut size_handle);
-        }
+        f(self.window);
     }
 
     fn draw_device<'b>(&'b mut self) -> (Draw<'b, dyn Drawable>, &mut dyn DrawSharedT) {
@@ -255,8 +252,8 @@ where
 
         let mut handle = DrawHandle {
             shared: self.shared,
-            draw,
             window: self.window,
+            draw,
             cols: self.cols,
         };
         f(&mut handle);
