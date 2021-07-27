@@ -36,11 +36,11 @@ where
     DS::Draw: DrawableShaded,
 {
     fn shaded_square(&mut self, rect: Quad, norm: (f32, f32), col: Rgba) {
-        self.draw.shaded_square(self.pass(), rect, norm, col);
+        self.draw.shaded_square(self.pass, rect, norm, col);
     }
 
     fn shaded_circle(&mut self, rect: Quad, norm: (f32, f32), col: Rgba) {
-        self.draw.shaded_circle(self.pass(), rect, norm, col);
+        self.draw.shaded_circle(self.pass, rect, norm, col);
     }
 
     fn shaded_square_frame(
@@ -52,12 +52,12 @@ where
         inner_col: Rgba,
     ) {
         self.draw
-            .shaded_square_frame(self.pass(), outer, inner, norm, outer_col, inner_col);
+            .shaded_square_frame(self.pass, outer, inner, norm, outer_col, inner_col);
     }
 
     fn shaded_round_frame(&mut self, outer: Quad, inner: Quad, norm: (f32, f32), col: Rgba) {
         self.draw
-            .shaded_round_frame(self.pass(), outer, inner, norm, col);
+            .shaded_round_frame(self.pass, outer, inner, norm, col);
     }
 }
 

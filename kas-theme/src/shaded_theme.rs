@@ -114,11 +114,11 @@ where
             std::mem::transmute::<&'b mut T, &'static mut T>(r)
         }
         DrawHandle {
-            draw: Draw::new(
-                extend_lifetime_mut(draw.draw),
-                extend_lifetime_mut(draw.shared),
-                draw.pass(),
-            ),
+            draw: Draw {
+                draw: extend_lifetime_mut(draw.draw),
+                shared: extend_lifetime_mut(draw.shared),
+                pass: draw.pass,
+            },
             window: extend_lifetime_mut(window),
             cols: extend_lifetime(&self.flat.cols),
         }

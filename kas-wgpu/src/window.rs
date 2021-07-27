@@ -321,23 +321,24 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
     pub(crate) fn do_draw(&mut self, shared: &mut SharedState<C, T>) {
         let time = Instant::now();
 
-        #[cfg(not(feature = "gat"))]
-        unsafe {
-            // Safety: lifetimes do not escape the returned draw_handle value.
-            let pass = PassId::new(0);
-            let draw = Draw::new(&mut self.draw, &mut shared.draw, pass);
-            let window = &mut self.theme_window;
-
-            let mut draw_handle = shared.theme.draw_handle(draw, window);
-            self.widget.draw(&mut draw_handle, &self.mgr, false);
-        }
-
-        #[cfg(feature = "gat")]
         {
-            let pass = PassId::new(0);
-            let draw = Draw::new(&mut self.draw, &mut shared.draw, pass);
-            let mut draw_handle = shared.theme.draw_handle(draw, &mut self.theme_window);
-            self.widget.draw(&mut draw_handle, &self.mgr, false);
+            let draw = Draw {
+                draw: &mut self.draw,
+                shared: &mut shared.draw,
+                pass: PassId::new(0),
+            };
+
+            #[cfg(not(feature = "gat"))]
+            unsafe {
+                // Safety: lifetimes do not escape the returned draw_handle value.
+                let mut draw_handle = shared.theme.draw_handle(draw, &mut self.theme_window);
+                self.widget.draw(&mut draw_handle, &self.mgr, false);
+            }
+            #[cfg(feature = "gat")]
+            {
+                let mut draw_handle = shared.theme.draw_handle(draw, &mut self.theme_window);
+                self.widget.draw(&mut draw_handle, &self.mgr, false);
+            }
         }
 
         let time2 = Instant::now();

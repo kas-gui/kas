@@ -153,11 +153,11 @@ impl<DS: DrawableShared> Theme<DS> for MultiTheme<DS> {
             std::mem::transmute::<&'b mut T, &'static mut T>(r)
         }
         self.themes[self.active].draw_handle(
-            Draw::new(
-                extend_lifetime_mut(draw.draw),
-                extend_lifetime_mut(draw.shared),
-                draw.pass(),
-            ),
+            Draw {
+                draw: extend_lifetime_mut(draw.draw),
+                shared: extend_lifetime_mut(draw.shared),
+                pass: draw.pass,
+            },
             extend_lifetime_mut(window),
         )
     }

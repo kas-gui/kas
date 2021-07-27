@@ -12,7 +12,7 @@ use wgpu::util::DeviceExt;
 use wgpu::{include_spirv, Buffer, ShaderModule};
 
 use kas::adapter::ReserveP;
-use kas::draw::{Draw, PassId};
+use kas::draw::{Draw, DrawT, PassId};
 use kas::event::{self, Command};
 use kas::geom::{DVec2, Vec2, Vec3};
 use kas::prelude::*;
@@ -329,9 +329,8 @@ impl Layout for Mandlebrot {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {
         let draw = draw_handle.draw_device();
         let draw = Draw::<DrawPipe<Pipe>>::downcast_from(draw).unwrap();
-        let pass = draw.pass();
         let p = (self.alpha, self.delta, self.rel_width, self.iter);
-        draw.draw.custom(pass, self.core.rect, p);
+        draw.draw.custom(draw.pass(), self.core.rect, p);
     }
 }
 

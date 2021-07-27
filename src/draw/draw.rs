@@ -31,30 +31,27 @@ use std::any::Any;
 /// [`DrawableRounded`] is implemented. In other cases one may directly use
 /// [`Draw::draw`], passing the result of [`Draw::pass`] as a parameter.
 pub struct Draw<'a, DS: DrawableShared> {
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub draw: &'a mut DS::Draw,
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub shared: &'a mut DrawShared<DS>,
-    pass: PassId,
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    pub pass: PassId,
 }
 
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 impl<'a, DS: DrawableShared> Draw<'a, DS> {
-    /// Construct (this is only called by the shell)
-    pub fn new(draw: &'a mut DS::Draw, shared: &'a mut DrawShared<DS>, pass: PassId) -> Self {
-        Draw { draw, shared, pass }
-    }
-
     /// Attempt to downcast a `&mut dyn DrawT` to a concrete [`Draw`] object
     pub fn downcast_from(obj: &'a mut dyn DrawT) -> Option<Self> {
         let pass = obj.pass();
         let (draw, shared) = obj.fields_as_any_mut();
         let draw = draw.downcast_mut()?;
         let shared = shared.downcast_mut()?;
-        Some(Draw::new(draw, shared, pass))
+        Some(Draw { draw, shared, pass })
     }
-}
 
-impl<'a, DS: DrawableShared> Draw<'a, DS> {
     /// Reborrow with a new lifetime
     pub fn reborrow<'b>(&'b mut self) -> Draw<'b, DS>
     where
@@ -65,11 +62,6 @@ impl<'a, DS: DrawableShared> Draw<'a, DS> {
             shared: &mut *self.shared,
             pass: self.pass,
         }
-    }
-
-    /// Get the current draw pass
-    pub fn pass(&self) -> PassId {
-        self.pass
     }
 
     /// Add a draw pass
