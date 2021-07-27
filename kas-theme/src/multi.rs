@@ -9,7 +9,7 @@ use std::collections::HashMap;
 #[cfg(feature = "unsize")]
 use std::marker::Unsize;
 
-use crate::{Config, StackDst, Theme, ThemeDst, WindowDst};
+use crate::{Config, StackDst, Theme, ThemeDst, Window};
 use kas::draw::{color, Draw, DrawHandle, DrawShared, DrawableShared, ThemeApi};
 use kas::TkAction;
 
@@ -19,8 +19,7 @@ type DynTheme<DS> = StackDst<dyn ThemeDst<DS>>;
 type DynTheme<DS> = Box<dyn ThemeDst<DS>>;
 
 /// Wrapper around mutliple themes, supporting run-time switching
-///
-/// **Feature gated**: this is only available with feature `stack_dst`.
+#[cfg_attr(doc_cfg, doc(cfg(stack_dst)))]
 pub struct MultiTheme<DS> {
     names: HashMap<String, usize>,
     themes: Vec<DynTheme<DS>>,
@@ -30,6 +29,7 @@ pub struct MultiTheme<DS> {
 /// Builder for [`MultiTheme`]
 ///
 /// Construct via [`MultiTheme::builder`].
+#[cfg_attr(doc_cfg, doc(cfg(stack_dst)))]
 pub struct MultiThemeBuilder<DS> {
     names: HashMap<String, usize>,
     themes: Vec<DynTheme<DS>>,
@@ -103,7 +103,7 @@ impl<DS> MultiThemeBuilder<DS> {
 
 impl<DS: DrawableShared> Theme<DS> for MultiTheme<DS> {
     type Config = Config;
-    type Window = StackDst<dyn WindowDst<DS>>;
+    type Window = StackDst<dyn Window>;
 
     #[cfg(not(feature = "gat"))]
     type DrawHandle = StackDst<dyn DrawHandle>;

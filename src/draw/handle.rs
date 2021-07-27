@@ -98,25 +98,31 @@ impl Default for TextClass {
     }
 }
 
-/// Region class
+/// Type of draw pass
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
-pub enum RegionClass {
-    ScrollRegion,
+pub enum PassType {
+    /// New pass is clipped and offset relative to parent
+    Clip,
+    /// New pass is an overlay
+    ///
+    /// An overlay is a layer drawn over the base window, for example a tooltip
+    /// or combobox menu. The rect and offset are relative to the base window.
+    /// The theme may draw a shadow or border around this rect.
     Overlay,
 }
 
-/// Handle passed to objects during sizing operations
+/// A handle to the active theme, used for sizing
 ///
-/// Themes must implement both [`SizeHandle`] and [`DrawHandle`].
+/// The shell provides widgets a `&dyn SizeHandle` in [`kas::Layout::size_rules`].
+/// It may also be accessed through [`kas::event::Manager::size_handle`] and
+/// [`DrawHandle::size_handle`].
 ///
-/// The toolkit provides a `&dyn SizeHandle` value when resizing widgets. The
-/// handle may also be accessed via [`kas::event::Manager::size_handle`].
+/// All methods get or calculate the size of some feature.
+///
+/// See also [`DrawHandle`].
 pub trait SizeHandle {
-    /// Access [`DrawSharedT`] trait object
-    fn draw_shared(&mut self) -> &mut dyn DrawSharedT;
-
     /// Get the scale (DPI) factor
     ///
     /// "Traditional" PC screens have a scale factor of 1; high-DPI screens
@@ -191,8 +197,7 @@ pub trait SizeHandle {
     /// [`Environment`]: kas::text::Environment
     /// [`Layout::set_rect`]: kas::Layout::set_rect
     /// [`Layout::size_rules`]: kas::Layout::size_rules
-    fn text_bound(&mut self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo)
-        -> SizeRules;
+    fn text_bound(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules;
 
     /// Width of an edit marker
     fn edit_marker_width(&self) -> f32;
@@ -242,22 +247,24 @@ pub trait SizeHandle {
     fn progress_bar(&self) -> Size;
 }
 
-/// Handle passed to objects during draw operations
+/// A handle to the active theme, used for drawing
 ///
-/// Themes must implement both [`SizeHandle`] and [`DrawHandle`].
-///
-/// The toolkit provides a `&mut dyn DrawHandle` value when drawing widgets.
+/// The shell provides widgets a `&dyn DrawHandle` in [`kas::Layout::draw`].
 /// The extension trait [`DrawHandleExt`] provides some additional methods on
 /// draw handles.
+///
+/// Most methods draw some feature. Exceptions:
+///
+/// -   [`Self::size_handle`] provides access to a [`SizeHandle`]
+/// -   [`Self::draw_device`] provides a lower-level interface for draw operations
+/// -   [`Self::new_draw_pass`], [`DrawHandleExt::with_clip_region`],
+///     [`DrawHandleExt::with_overlay`] construct new draw passes
+/// -   [`Self::get_clip_rect`] returns the clip rect
+///
+/// See also [`SizeHandle`].
 pub trait DrawHandle {
-    /// Access a [`SizeHandle`] (object-safe version)
-    ///
-    /// Users may prefer to use [`DrawHandleExt::size_handle`] instead. If using
-    /// this method directly, note that there is no guarantee that `f` gets
-    /// called exactly once, or even that it gets called at all.
-    ///
-    /// Implementations *should* call the given function argument once.
-    fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle));
+    /// Access a [`SizeHandle`]
+    fn size_handle(&mut self) -> &mut dyn SizeHandle;
 
     /// Access the low-level draw device
     ///
@@ -267,23 +274,24 @@ pub trait DrawHandle {
     /// minimal functionality. [`Draw::downcast`] will likely be of use.
     fn draw_device(&mut self) -> (Draw<'_, dyn Drawable>, &mut dyn DrawSharedT);
 
-    /// Add a clip region
+    /// Add a draw pass
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn with_clip_region(
+    fn new_draw_pass(
         &mut self,
         rect: Rect,
         offset: Offset,
-        class: RegionClass,
+        class: PassType,
         f: &mut dyn FnMut(&mut dyn DrawHandle),
     );
 
     /// Target area for drawing
     ///
     /// Drawing is restricted to this [`Rect`], which may be the whole window, a
-    /// [clip region](DrawHandleExt::clip_region) or an [overlay](DrawHandleExt::overlay).
-    /// This may be used to cull hidden items from lists inside a scrollable view.
-    fn target_rect(&self) -> Rect;
+    /// [clip region](DrawHandleExt::with_clip_region) or an
+    /// [overlay](DrawHandleExt::with_overlay). This may be used to cull hidden
+    /// items from lists inside a scrollable view.
+    fn get_clip_rect(&self) -> Rect;
 
     /// Draw a frame inside the given `rect`
     ///
@@ -393,43 +401,29 @@ pub trait DrawHandle {
 /// Importing this trait allows use of additional methods (which cannot be
 /// defined directly on [`DrawHandle`]).
 pub trait DrawHandleExt: DrawHandle {
-    /// Access a [`SizeHandle`]
+    /// Draw to a new pass with clipping and offset (e.g. for scrolling)
     ///
-    /// The given closure is called with a reference to a [`SizeHandle`], and
-    /// the closure's result is returned.
-    ///
-    /// This method will panic if the implementation fails to call the closure.
-    fn size_handle<F: Fn(&mut dyn SizeHandle) -> T, T>(&mut self, f: F) -> T {
-        let mut result = None;
-        self.size_handle_dyn(&mut |size_handle| {
-            result = Some(f(size_handle));
-        });
-        result.expect("DrawHandle::size_handle_dyn impl failed to call function argument")
+    /// Adds a new draw pass of type [`PassType::Clip`], with draw operations
+    /// clipped to `rect` and translated by `offset.
+    fn with_clip_region(
+        &mut self,
+        rect: Rect,
+        offset: Offset,
+        f: &mut dyn FnMut(&mut dyn DrawHandle),
+    ) {
+        self.new_draw_pass(rect, offset, PassType::Clip, f);
     }
 
-    /// Draw to a sub-region with offset (e.g. for scrolling)
+    /// Draw to a new pass as an overlay (e.g. for pop-up menus)
     ///
-    /// This new region uses coordinates relative to `offset` (i.e. coordinates
-    /// are subtracted by `offset`).
+    /// Adds a new draw pass of type [`PassType::Overlay`], with draw operations
+    /// clipped to `rect`.
     ///
-    /// All content drawn by the new region is clipped to the intersection of
-    /// `rect` and the current target ([`DrawHandle::target_rect`]).
-    fn clip_region(&mut self, rect: Rect, offset: Offset, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
-        self.with_clip_region(rect, offset, RegionClass::ScrollRegion, f);
-    }
-
-    /// Draw to an overlay (e.g. for pop-up menus)
-    ///
-    /// This new region uses coordinates relative to `rect` (i.e. `Coord::ZERO`
-    /// is the first pixel inside `rect`).
-    ///
-    /// All content drawn via this handle is clipped to the given `rect`.
-    ///
-    /// The new `rect` may extend beyond the current draw region. If it extends
-    /// beyond the bounds of the window, it will be silently reduced to that of
-    /// the window.
-    fn overlay(&mut self, rect: Rect, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
-        self.with_clip_region(rect, Offset::ZERO, RegionClass::Overlay, f);
+    /// The theme is permitted to enlarge the `rect` for the purpose of drawing
+    /// a frame or shadow around this overlay, thus the
+    /// [`DrawHandle::get_clip_rect`] may be larger than expected.
+    fn with_overlay(&mut self, rect: Rect, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
+        self.new_draw_pass(rect, Offset::ZERO, PassType::Overlay, f);
     }
 
     /// Draw some text using the standard font, with a subset selected
@@ -461,11 +455,7 @@ pub trait DrawHandleExt: DrawHandle {
 
 impl<D: DrawHandle + ?Sized> DrawHandleExt for D {}
 
-impl<S: SizeHandle> SizeHandle for Box<S> {
-    fn draw_shared(&mut self) -> &mut dyn DrawSharedT {
-        self.deref_mut().draw_shared()
-    }
-
+impl<S: SizeHandle + ?Sized, R: Deref<Target = S>> SizeHandle for R {
     fn scale_factor(&self) -> f32 {
         self.deref().scale_factor()
     }
@@ -501,93 +491,8 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     fn line_height(&self, class: TextClass) -> i32 {
         self.deref().line_height(class)
     }
-    fn text_bound(
-        &mut self,
-        text: &mut dyn TextApi,
-        class: TextClass,
-        axis: AxisInfo,
-    ) -> SizeRules {
-        self.deref_mut().text_bound(text, class, axis)
-    }
-    fn edit_marker_width(&self) -> f32 {
-        self.deref().edit_marker_width()
-    }
-
-    fn button_surround(&self, vert: bool) -> FrameRules {
-        self.deref().button_surround(vert)
-    }
-    fn edit_surround(&self, vert: bool) -> FrameRules {
-        self.deref().edit_surround(vert)
-    }
-
-    fn checkbox(&self) -> Size {
-        self.deref().checkbox()
-    }
-    fn radiobox(&self) -> Size {
-        self.deref().radiobox()
-    }
-    fn scrollbar(&self) -> (Size, i32) {
-        self.deref().scrollbar()
-    }
-    fn slider(&self) -> (Size, i32) {
-        self.deref().slider()
-    }
-    fn progress_bar(&self) -> Size {
-        self.deref().progress_bar()
-    }
-}
-
-#[cfg(feature = "stack_dst")]
-impl<'a, S> SizeHandle for stack_dst::ValueA<dyn SizeHandle + 'a, S>
-where
-    S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>,
-{
-    fn draw_shared(&mut self) -> &mut dyn DrawSharedT {
-        self.deref_mut().draw_shared()
-    }
-
-    fn scale_factor(&self) -> f32 {
-        self.deref().scale_factor()
-    }
-    fn pixels_from_points(&self, pt: f32) -> f32 {
-        self.deref().pixels_from_points(pt)
-    }
-    fn pixels_from_em(&self, em: f32) -> f32 {
-        self.deref().pixels_from_em(em)
-    }
-
-    fn frame(&self, vert: bool) -> FrameRules {
-        self.deref().frame(vert)
-    }
-    fn menu_frame(&self, vert: bool) -> FrameRules {
-        self.deref().menu_frame(vert)
-    }
-    fn separator(&self) -> Size {
-        self.deref().separator()
-    }
-    fn nav_frame(&self, vert: bool) -> FrameRules {
-        self.deref().nav_frame(vert)
-    }
-    fn inner_margin(&self) -> Size {
-        self.deref().inner_margin()
-    }
-    fn outer_margins(&self) -> Margins {
-        self.deref().outer_margins()
-    }
-    fn text_margins(&self) -> Margins {
-        self.deref().text_margins()
-    }
-
-    fn line_height(&self, class: TextClass) -> i32 {
-        self.deref().line_height(class)
-    }
-    fn text_bound(
-        &mut self,
-        text: &mut dyn TextApi,
-        class: TextClass,
-        axis: AxisInfo,
-    ) -> SizeRules {
-        self.deref_mut().text_bound(text, class, axis)
+    fn text_bound(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules {
+        self.deref().text_bound(text, class, axis)
     }
     fn edit_marker_width(&self) -> f32 {
         self.deref().edit_marker_width()
@@ -618,23 +523,23 @@ where
 }
 
 impl<H: DrawHandle> DrawHandle for Box<H> {
-    fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
-        self.deref_mut().size_handle_dyn(f)
+    fn size_handle(&mut self) -> &mut dyn SizeHandle {
+        self.deref_mut().size_handle()
     }
     fn draw_device(&mut self) -> (Draw<'_, dyn Drawable>, &mut dyn DrawSharedT) {
         self.deref_mut().draw_device()
     }
-    fn with_clip_region(
+    fn new_draw_pass(
         &mut self,
         rect: Rect,
         offset: Offset,
-        class: RegionClass,
+        class: PassType,
         f: &mut dyn FnMut(&mut dyn DrawHandle),
     ) {
-        self.deref_mut().with_clip_region(rect, offset, class, f);
+        self.deref_mut().new_draw_pass(rect, offset, class, f);
     }
-    fn target_rect(&self) -> Rect {
-        self.deref().target_rect()
+    fn get_clip_rect(&self) -> Rect {
+        self.deref().get_clip_rect()
     }
     fn outer_frame(&mut self, rect: Rect) {
         self.deref_mut().outer_frame(rect);
@@ -704,23 +609,23 @@ impl<'a, S> DrawHandle for stack_dst::ValueA<dyn DrawHandle + 'a, S>
 where
     S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>,
 {
-    fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
-        self.deref_mut().size_handle_dyn(f)
+    fn size_handle(&mut self) -> &mut dyn SizeHandle {
+        self.deref_mut().size_handle()
     }
     fn draw_device(&'_ mut self) -> (Draw<'_, dyn Drawable>, &'_ mut dyn DrawSharedT) {
         self.deref_mut().draw_device()
     }
-    fn with_clip_region(
+    fn new_draw_pass(
         &mut self,
         rect: Rect,
         offset: Offset,
-        class: RegionClass,
+        class: PassType,
         f: &mut dyn FnMut(&mut dyn DrawHandle),
     ) {
-        self.deref_mut().with_clip_region(rect, offset, class, f);
+        self.deref_mut().new_draw_pass(rect, offset, class, f);
     }
-    fn target_rect(&self) -> Rect {
-        self.deref().target_rect()
+    fn get_clip_rect(&self) -> Rect {
+        self.deref().get_clip_rect()
     }
     fn outer_frame(&mut self, rect: Rect) {
         self.deref_mut().outer_frame(rect);
@@ -793,7 +698,7 @@ mod test {
         // We can't call this method without constructing an actual DrawHandle.
         // But we don't need to: we just want to test that methods are callable.
 
-        let _scale = draw_handle.size_handle(|h| h.scale_factor());
+        let _scale = draw_handle.size_handle().scale_factor();
 
         let text = kas::text::Text::new_single("sample");
         let class = TextClass::Label;

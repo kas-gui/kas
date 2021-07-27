@@ -6,7 +6,7 @@
 //! Custom draw pipes
 
 use super::DrawWindow;
-use kas::draw::Pass;
+use kas::draw::PassId;
 use kas::geom::{Rect, Size};
 
 /// Allows use of the low-level graphics API
@@ -15,7 +15,7 @@ use kas::geom::{Rect, Size};
 /// corresponding [`CustomPipeBuilder`] to [`crate::Toolkit::new_custom`].
 pub trait DrawCustom<CW: CustomWindow> {
     /// Call a custom draw pipe
-    fn custom(&mut self, pass: Pass, rect: Rect, param: CW::Param);
+    fn custom(&mut self, pass: PassId, rect: Rect, param: CW::Param);
 }
 
 /// Builder for a [`CustomPipe`]
@@ -145,7 +145,7 @@ pub trait CustomWindow: 'static {
     ///
     /// Custom add-primitives / update function called from user code by
     /// [`DrawCustom::custom`].
-    fn invoke(&mut self, pass: Pass, rect: Rect, param: Self::Param);
+    fn invoke(&mut self, pass: PassId, rect: Rect, param: Self::Param);
 }
 
 /// A dummy implementation (does nothing)
@@ -172,11 +172,11 @@ impl CustomPipe for () {
 /// A dummy implementation (does nothing)
 impl CustomWindow for () {
     type Param = Void;
-    fn invoke(&mut self, _: Pass, _: Rect, _: Self::Param) {}
+    fn invoke(&mut self, _: PassId, _: Rect, _: Self::Param) {}
 }
 
 impl<CW: CustomWindow> DrawCustom<CW> for DrawWindow<CW> {
-    fn custom(&mut self, pass: Pass, rect: Rect, param: CW::Param) {
+    fn custom(&mut self, pass: PassId, rect: Rect, param: CW::Param) {
         self.custom.invoke(pass, rect, param);
     }
 }

@@ -3,9 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Widget styling
-//!
-//! Widget size and appearance can be modified through themes.
+//! Common implementation of [`kas::draw::SizeHandle`]
 
 use linear_map::LinearMap;
 use std::any::Any;
@@ -13,7 +11,7 @@ use std::f32;
 use std::rc::Rc;
 
 use kas::cast::{Cast, CastFloat, ConvFloat};
-use kas::draw::{self, DrawShared, DrawSharedT, DrawableShared, TextClass};
+use kas::draw::{SizeHandle, TextClass};
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, Stretch};
 use kas::text::{fonts::FontId, TextApi, TextApiExt};
@@ -23,7 +21,7 @@ use kas::text::{fonts::FontId, TextApi, TextApiExt};
 /// All dimensions are multiplied by the DPI factor, then rounded to the
 /// nearest integer. Example: `(2.0 * 1.25).round() = 3.0`.
 #[derive(Clone, Debug)]
-pub struct DimensionsParams {
+pub struct Parameters {
     /// Space between elements
     pub outer_margin: f32,
     /// Margin inside a frame before contents
@@ -42,7 +40,7 @@ pub struct DimensionsParams {
     pub progress_bar: Vec2,
 }
 
-/// Dimensions available within [`DimensionsWindow`]
+/// Dimensions available within [`Window`]
 #[derive(Clone, Debug)]
 pub struct Dimensions {
     pub scale_factor: f32,
@@ -63,7 +61,7 @@ pub struct Dimensions {
 }
 
 impl Dimensions {
-    pub fn new(params: DimensionsParams, pt_size: f32, scale_factor: f32) -> Self {
+    pub fn new(params: Parameters, pt_size: f32, scale_factor: f32) -> Self {
         let font_id = Default::default();
         let dpp = scale_factor * (96.0 / 72.0);
         let dpem = dpp * pt_size;
@@ -98,44 +96,32 @@ impl Dimensions {
 }
 
 /// A convenient implementation of [`crate::Window`]
-pub struct DimensionsWindow {
+pub struct Window {
     pub dims: Dimensions,
     pub fonts: Rc<LinearMap<TextClass, FontId>>,
 }
 
-impl DimensionsWindow {
+impl Window {
     pub fn new(
-        dims: DimensionsParams,
+        dims: Parameters,
         pt_size: f32,
         scale_factor: f32,
         fonts: Rc<LinearMap<TextClass, FontId>>,
     ) -> Self {
-        DimensionsWindow {
+        Window {
             dims: Dimensions::new(dims, pt_size, scale_factor),
             fonts,
         }
     }
 
-    pub fn update(&mut self, dims: DimensionsParams, pt_size: f32, scale_factor: f32) {
+    pub fn update(&mut self, dims: Parameters, pt_size: f32, scale_factor: f32) {
         self.dims = Dimensions::new(dims, pt_size, scale_factor);
     }
 }
 
-impl<DS: DrawableShared> crate::Window<DS> for DimensionsWindow {
-    #[cfg(not(feature = "gat"))]
-    type SizeHandle = SizeHandle<'static, DS>;
-    #[cfg(feature = "gat")]
-    type SizeHandle<'a> = SizeHandle<'a, DS>;
-
-    #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle<'a>(&'a mut self, shared: &'a mut DrawShared<DS>) -> Self::SizeHandle {
-        // We extend lifetimes (unsafe) due to the lack of associated type generics.
-        let h: SizeHandle<'a, DS> = SizeHandle::new(self, shared);
-        std::mem::transmute(h)
-    }
-    #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a mut self, shared: &'a mut DrawShared<DS>) -> Self::SizeHandle<'a> {
-        SizeHandle::new(self, shared)
+impl crate::Window for Window {
+    fn size_handle(&self) -> &dyn SizeHandle {
+        self
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
@@ -143,80 +129,60 @@ impl<DS: DrawableShared> crate::Window<DS> for DimensionsWindow {
     }
 }
 
-pub struct SizeHandle<'a, DS: DrawableShared> {
-    w: &'a DimensionsWindow,
-    shared: &'a mut DrawShared<DS>,
-}
-
-impl<'a, DS: DrawableShared> SizeHandle<'a, DS> {
-    pub fn new(w: &'a DimensionsWindow, shared: &'a mut DrawShared<DS>) -> Self {
-        SizeHandle { w, shared }
-    }
-}
-
-impl<'a, DS: DrawableShared> draw::SizeHandle for SizeHandle<'a, DS> {
-    fn draw_shared(&mut self) -> &mut dyn DrawSharedT {
-        self.shared
-    }
-
+impl SizeHandle for Window {
     fn scale_factor(&self) -> f32 {
-        self.w.dims.scale_factor
+        self.dims.scale_factor
     }
 
     fn pixels_from_points(&self, pt: f32) -> f32 {
-        self.w.dims.dpp * pt
+        self.dims.dpp * pt
     }
 
     fn pixels_from_em(&self, em: f32) -> f32 {
-        self.w.dims.dpp * self.w.dims.pt_size * em
+        self.dims.dpp * self.dims.pt_size * em
     }
 
     fn frame(&self, _vert: bool) -> FrameRules {
-        FrameRules::new_sym(self.w.dims.frame, 0, 0)
+        FrameRules::new_sym(self.dims.frame, 0, 0)
     }
     fn menu_frame(&self, vert: bool) -> FrameRules {
-        let mut size = self.w.dims.frame;
+        let mut size = self.dims.frame;
         if vert {
             size /= 2;
         }
         FrameRules::new_sym(size, 0, 0)
     }
     fn separator(&self) -> Size {
-        Size::splat(self.w.dims.frame)
+        Size::splat(self.dims.frame)
     }
 
     fn nav_frame(&self, _vert: bool) -> FrameRules {
-        FrameRules::new_sym(self.w.dims.inner_margin.into(), 0, 0)
+        FrameRules::new_sym(self.dims.inner_margin.into(), 0, 0)
     }
 
     fn inner_margin(&self) -> Size {
-        Size::splat(self.w.dims.inner_margin.into())
+        Size::splat(self.dims.inner_margin.into())
     }
 
     fn outer_margins(&self) -> Margins {
-        Margins::splat(self.w.dims.outer_margin)
+        Margins::splat(self.dims.outer_margin)
     }
 
     fn text_margins(&self) -> Margins {
-        Margins::splat(self.w.dims.text_margin)
+        Margins::splat(self.dims.text_margin)
     }
 
     fn line_height(&self, _: TextClass) -> i32 {
-        self.w.dims.line_height
+        self.dims.line_height
     }
 
-    fn text_bound(
-        &mut self,
-        text: &mut dyn TextApi,
-        class: TextClass,
-        axis: AxisInfo,
-    ) -> SizeRules {
+    fn text_bound(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules {
         let required = text.update_env(|env| {
-            if let Some(font_id) = self.w.fonts.get(&class).cloned() {
+            if let Some(font_id) = self.fonts.get(&class).cloned() {
                 env.set_font_id(font_id);
             }
-            env.set_dpp(self.w.dims.dpp);
-            env.set_pt_size(self.w.dims.pt_size);
+            env.set_dpp(self.dims.dpp);
+            env.set_pt_size(self.dims.pt_size);
 
             let mut bounds = kas::text::Vec2::INFINITY;
             if let Some(size) = axis.size_other_if_fixed(false) {
@@ -232,11 +198,11 @@ impl<'a, DS: DrawableShared> draw::SizeHandle for SizeHandle<'a, DS> {
             ));
         });
 
-        let margin = self.w.dims.text_margin;
+        let margin = self.dims.text_margin;
         let margins = (margin, margin);
         if axis.is_horizontal() {
             let bound = i32::conv_ceil(required.0);
-            let min = self.w.dims.min_line_length;
+            let min = self.dims.min_line_length;
             let (min, ideal) = match class {
                 TextClass::Edit => (min, 2 * min),
                 TextClass::EditMulti => (min, 3 * min),
@@ -254,10 +220,8 @@ impl<'a, DS: DrawableShared> draw::SizeHandle for SizeHandle<'a, DS> {
         } else {
             let min = match class {
                 TextClass::Label => i32::conv_ceil(required.1),
-                TextClass::MenuLabel | TextClass::Button | TextClass::Edit => {
-                    self.w.dims.line_height
-                }
-                TextClass::EditMulti | TextClass::LabelScroll => self.w.dims.line_height * 3,
+                TextClass::MenuLabel | TextClass::Button | TextClass::Edit => self.dims.line_height,
+                TextClass::EditMulti | TextClass::LabelScroll => self.dims.line_height * 3,
             };
             let ideal = i32::conv_ceil(required.1).max(min);
             let stretch = match class {
@@ -269,23 +233,23 @@ impl<'a, DS: DrawableShared> draw::SizeHandle for SizeHandle<'a, DS> {
     }
 
     fn edit_marker_width(&self) -> f32 {
-        self.w.dims.font_marker_width
+        self.dims.font_marker_width
     }
 
     fn button_surround(&self, _vert: bool) -> FrameRules {
-        let inner = self.w.dims.inner_margin.into();
-        let outer = self.w.dims.outer_margin;
-        FrameRules::new_sym(self.w.dims.frame, inner, outer)
+        let inner = self.dims.inner_margin.into();
+        let outer = self.dims.outer_margin;
+        FrameRules::new_sym(self.dims.frame, inner, outer)
     }
 
     fn edit_surround(&self, _vert: bool) -> FrameRules {
-        let inner = self.w.dims.inner_margin.into();
+        let inner = self.dims.inner_margin.into();
         let outer = 0;
-        FrameRules::new_sym(self.w.dims.frame, inner, outer)
+        FrameRules::new_sym(self.dims.frame, inner, outer)
     }
 
     fn checkbox(&self) -> Size {
-        Size::splat(self.w.dims.checkbox)
+        Size::splat(self.dims.checkbox)
     }
 
     #[inline]
@@ -294,16 +258,16 @@ impl<'a, DS: DrawableShared> draw::SizeHandle for SizeHandle<'a, DS> {
     }
 
     fn scrollbar(&self) -> (Size, i32) {
-        let size = self.w.dims.scrollbar;
+        let size = self.dims.scrollbar;
         (size, 3 * size.0)
     }
 
     fn slider(&self) -> (Size, i32) {
-        let size = self.w.dims.slider;
+        let size = self.dims.slider;
         (size, 5 * size.0)
     }
 
     fn progress_bar(&self) -> Size {
-        self.w.dims.progress_bar
+        self.dims.progress_bar
     }
 }

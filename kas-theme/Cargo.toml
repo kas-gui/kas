@@ -11,9 +11,21 @@ repository = "https://github.com/kas-gui/kas"
 readme = "README.md"
 documentation = "https://docs.rs/kas-theme/"
 
+[package.metadata.docs.rs]
+features = ["stack_dst"]
+rustdoc-args = ["--cfg", "doc_cfg"]
+# To build locally:
+# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=internal_doc,stack_dst --open
+
 [features]
 default = ["stack_dst"]
 nightly = ["unsize", "kas/nightly"]
+
+# Enables documentation of APIs for shells and internal usage.
+# This API is not intended for use by end-user applications and
+# thus is omitted from built documentation by default.
+# This flag does not change the API, only built documentation.
+internal_doc = ["kas/internal_doc"]
 
 # Enable config read/write
 config = ["serde", "kas/config"]
@@ -36,6 +48,3 @@ stack_dst_ = { version = "0.6", package = "stack_dst", optional = true }
 [dependencies.kas]
 path = ".."
 version = "0.8.0"
-
-[package.metadata.docs.rs]
-features = ["stack_dst"]

@@ -8,7 +8,8 @@
 use std::f32;
 use std::ops::Range;
 
-use crate::{ColorsLinear, Config, DimensionsParams, DimensionsWindow, FlatTheme, Theme, Window};
+use crate::{dim, ColorsLinear, Config, FlatTheme, Theme};
+use crate::{DrawableShaded, DrawableShadedExt};
 use kas::dir::{Direction, Directional};
 use kas::draw::{self, color::Rgba, *};
 use kas::geom::*;
@@ -54,7 +55,7 @@ impl ShadedTheme {
     }
 }
 
-const DIMS: DimensionsParams = DimensionsParams {
+const DIMS: dim::Parameters = dim::Parameters {
     outer_margin: 6.0,
     inner_margin: 1.2,
     text_margin: 2.0,
@@ -68,7 +69,7 @@ const DIMS: DimensionsParams = DimensionsParams {
 pub struct DrawHandle<'a, DS: DrawableShared> {
     shared: &'a mut DrawShared<DS>,
     draw: Draw<'a, DS::Draw>,
-    window: &'a mut DimensionsWindow,
+    window: &'a mut dim::Window,
     cols: &'a ColorsLinear,
 }
 
@@ -77,7 +78,7 @@ where
     DS::Draw: DrawableRounded + DrawableShaded,
 {
     type Config = Config;
-    type Window = DimensionsWindow;
+    type Window = dim::Window;
 
     #[cfg(not(feature = "gat"))]
     type DrawHandle = DrawHandle<'static, DS>;
@@ -98,7 +99,7 @@ where
 
     fn new_window(&self, dpi_factor: f32) -> Self::Window {
         let fonts = self.flat.fonts.as_ref().unwrap().clone();
-        DimensionsWindow::new(DIMS, self.flat.config.font_size(), dpi_factor, fonts)
+        dim::Window::new(DIMS, self.flat.config.font_size(), dpi_factor, fonts)
     }
 
     fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
@@ -220,30 +221,27 @@ impl<'a, DS: DrawableShared> draw::DrawHandle for DrawHandle<'a, DS>
 where
     DS::Draw: DrawableRounded + DrawableShaded,
 {
-    fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
-        unsafe {
-            let mut size_handle = self.window.size_handle(self.shared);
-            f(&mut size_handle);
-        }
+    fn size_handle(&mut self) -> &mut dyn SizeHandle {
+        self.window
     }
 
     fn draw_device<'b>(&'b mut self) -> (Draw<'b, dyn Drawable>, &mut dyn DrawSharedT) {
         (self.draw.upcast_base(), self.shared)
     }
 
-    fn with_clip_region(
+    fn new_draw_pass(
         &mut self,
         mut rect: Rect,
         offset: Offset,
-        class: RegionClass,
+        class: PassType,
         f: &mut dyn FnMut(&mut dyn draw::DrawHandle),
     ) {
-        if class == RegionClass::Overlay {
+        if class == PassType::Overlay {
             rect = rect.expand(self.window.dims.frame);
         }
-        let mut draw = self.draw.new_clip_region(rect, offset, class);
+        let mut draw = self.draw.new_draw_pass(rect, offset, class);
 
-        if class == RegionClass::Overlay {
+        if class == PassType::Overlay {
             let outer = draw.clip_rect();
             let inner = Quad::from(outer.shrink(self.window.dims.frame));
             let outer = Quad::from(outer);
@@ -254,14 +252,14 @@ where
 
         let mut handle = DrawHandle {
             shared: self.shared,
-            draw,
             window: self.window,
+            draw,
             cols: self.cols,
         };
         f(&mut handle);
     }
 
-    fn target_rect(&self) -> Rect {
+    fn get_clip_rect(&self) -> Rect {
         self.draw.clip_rect()
     }
 

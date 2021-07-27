@@ -92,7 +92,7 @@ pub struct Toolkit<C: CustomPipe, T: Theme<DrawPipe<C>>> {
 
 impl<T: Theme<DrawPipe<()>> + 'static> Toolkit<(), T>
 where
-    T::Window: kas_theme::Window<DrawPipe<()>>,
+    T::Window: kas_theme::Window,
 {
     /// Construct a new instance with default options.
     ///
@@ -106,7 +106,7 @@ where
 
 impl<C: CustomPipe, T: Theme<DrawPipe<C>> + 'static> Toolkit<C, T>
 where
-    T::Window: kas_theme::Window<DrawPipe<C>>,
+    T::Window: kas_theme::Window,
 {
     /// Construct an instance with custom options
     ///

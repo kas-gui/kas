@@ -14,6 +14,7 @@ use kas::draw::color::Rgba;
 use kas::draw::*;
 use kas::geom::{Coord, Quad, Rect, Size, Vec2};
 use kas::text::{Effect, TextDisplay};
+use kas_theme::DrawableShaded;
 
 impl<C: CustomPipe> DrawPipe<C> {
     /// Construct
@@ -401,57 +402,57 @@ impl<CW: CustomWindow> Drawable for DrawWindow<CW> {
         self
     }
 
-    fn add_clip_region(
+    fn new_draw_pass(
         &mut self,
-        pass: Pass,
+        parent_pass: PassId,
         rect: Rect,
         offset: Offset,
-        class: RegionClass,
-    ) -> Pass {
+        class: PassType,
+    ) -> PassId {
         let parent = match class {
-            RegionClass::ScrollRegion => &self.clip_regions[pass.pass()],
-            RegionClass::Overlay => &self.clip_regions[0],
+            PassType::Clip => &self.clip_regions[parent_pass.pass()],
+            PassType::Overlay => &self.clip_regions[0],
         };
         let rect = rect - parent.1;
         let offset = offset + parent.1;
         let rect = rect.intersection(&parent.0).unwrap_or(Rect::ZERO);
         let pass = self.clip_regions.len().cast();
         self.clip_regions.push((rect, offset));
-        Pass::new(pass)
+        PassId::new(pass)
     }
 
     #[inline]
-    fn get_clip_rect(&self, pass: Pass) -> Rect {
+    fn clip_rect(&self, pass: PassId) -> Rect {
         let region = &self.clip_regions[pass.pass()];
         region.0 + region.1
     }
 
     #[inline]
-    fn rect(&mut self, pass: Pass, rect: Quad, col: Rgba) {
+    fn rect(&mut self, pass: PassId, rect: Quad, col: Rgba) {
         self.shaded_square.rect(pass, rect, col);
     }
 
     #[inline]
-    fn frame(&mut self, pass: Pass, outer: Quad, inner: Quad, col: Rgba) {
+    fn frame(&mut self, pass: PassId, outer: Quad, inner: Quad, col: Rgba) {
         self.shaded_square.frame(pass, outer, inner, col);
     }
 }
 
 impl<CW: CustomWindow> DrawableRounded for DrawWindow<CW> {
     #[inline]
-    fn rounded_line(&mut self, pass: Pass, p1: Vec2, p2: Vec2, radius: f32, col: Rgba) {
+    fn rounded_line(&mut self, pass: PassId, p1: Vec2, p2: Vec2, radius: f32, col: Rgba) {
         self.flat_round.line(pass, p1, p2, radius, col);
     }
 
     #[inline]
-    fn circle(&mut self, pass: Pass, rect: Quad, inner_radius: f32, col: Rgba) {
+    fn circle(&mut self, pass: PassId, rect: Quad, inner_radius: f32, col: Rgba) {
         self.flat_round.circle(pass, rect, inner_radius, col);
     }
 
     #[inline]
     fn rounded_frame(
         &mut self,
-        pass: Pass,
+        pass: PassId,
         outer: Quad,
         inner: Quad,
         inner_radius: f32,
@@ -464,20 +465,20 @@ impl<CW: CustomWindow> DrawableRounded for DrawWindow<CW> {
 
 impl<CW: CustomWindow> DrawableShaded for DrawWindow<CW> {
     #[inline]
-    fn shaded_square(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Rgba) {
+    fn shaded_square(&mut self, pass: PassId, rect: Quad, norm: (f32, f32), col: Rgba) {
         self.shaded_square
             .shaded_rect(pass, rect, Vec2::from(norm), col);
     }
 
     #[inline]
-    fn shaded_circle(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Rgba) {
+    fn shaded_circle(&mut self, pass: PassId, rect: Quad, norm: (f32, f32), col: Rgba) {
         self.shaded_round.circle(pass, rect, Vec2::from(norm), col);
     }
 
     #[inline]
     fn shaded_square_frame(
         &mut self,
-        pass: Pass,
+        pass: PassId,
         outer: Quad,
         inner: Quad,
         norm: (f32, f32),
@@ -491,7 +492,7 @@ impl<CW: CustomWindow> DrawableShaded for DrawWindow<CW> {
     #[inline]
     fn shaded_round_frame(
         &mut self,
-        pass: Pass,
+        pass: PassId,
         outer: Quad,
         inner: Quad,
         norm: (f32, f32),

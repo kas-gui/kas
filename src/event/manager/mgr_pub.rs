@@ -341,7 +341,11 @@ impl<'a> Manager<'a> {
     ///
     /// This can be accessed through [`Self::size_handle`]; this method is merely a shortcut.
     pub fn draw_shared<F: FnMut(&mut dyn DrawSharedT) -> T, T>(&mut self, mut f: F) -> T {
-        self.size_handle(|sh| f(sh.draw_shared()))
+        let mut result = None;
+        self.shell.draw_shared(&mut |draw_shared| {
+            result = Some(f(draw_shared));
+        });
+        result.expect("ShellWindow::draw_shared impl failed to call function argument")
     }
 }
 

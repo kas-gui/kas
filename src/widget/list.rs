@@ -159,7 +159,7 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         let disabled = disabled || self.is_disabled();
         let solver = layout::RowPositionSolver::new(self.direction);
-        solver.for_children(&self.widgets, draw_handle.target_rect(), |w| {
+        solver.for_children(&self.widgets, draw_handle.get_clip_rect(), |w| {
             w.draw(draw_handle, mgr, disabled)
         });
     }

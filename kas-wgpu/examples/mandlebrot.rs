@@ -12,7 +12,7 @@ use wgpu::util::DeviceExt;
 use wgpu::{include_spirv, Buffer, ShaderModule};
 
 use kas::adapter::ReserveP;
-use kas::draw::Pass;
+use kas::draw::PassId;
 use kas::event::{self, Command};
 use kas::geom::{DVec2, Vec2, Vec3};
 use kas::prelude::*;
@@ -213,7 +213,7 @@ impl CustomPipe for Pipe {
 impl CustomWindow for PipeWindow {
     type Param = (DVec2, DVec2, f32, i32);
 
-    fn invoke(&mut self, pass: Pass, rect: Rect, p: Self::Param) {
+    fn invoke(&mut self, pass: PassId, rect: Rect, p: Self::Param) {
         self.push_constants.set(p.0, p.1, p.3);
         let rel_width = p.2;
 

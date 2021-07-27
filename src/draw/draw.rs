@@ -6,7 +6,7 @@
 //! Drawing APIs — draw interface
 
 use super::color::Rgba;
-use super::{Pass, RegionClass};
+use super::{PassId, PassType};
 use crate::geom::{Offset, Quad, Rect, Vec2};
 use std::any::Any;
 
@@ -19,26 +19,26 @@ use std::any::Any;
 /// per-window draw state. As such, it is normal to pass *a new copy* created
 /// via [`Draw::reborrow`] as a method argument. (Note that Rust automatically
 /// "reborrows" reference types passed as method arguments, but cannot do so
-/// (automatically) for methods containing references.)
+/// automatically for structs containing references.)
 ///
 /// This is created over a [`Drawable`] object created by the shell. The
-/// [`Drawable`] trait provides a very limited set of draw routines; the shell
-/// may implement extension traits such as [`DrawableRounded`],
-/// [`DrawableShaded`], or traits defined elsewhere.
+/// [`Drawable`] trait provides a very limited set of draw routines, beyond
+/// which optional traits such as [`DrawableRounded`] may be used.
 ///
 /// The [`Draw`] object provides a "medium level" interface over known
 /// "drawable" traits, for example one may use [`Draw::circle`] when
 /// [`DrawableRounded`] is implemented. In other cases one may directly use
 /// [`Draw::draw`], passing the result of [`Draw::pass`] as a parameter.
 pub struct Draw<'a, D: Any + ?Sized> {
-    pass: Pass,
+    pass: PassId,
     pub draw: &'a mut D,
 }
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 impl<'a, D: Drawable + ?Sized> Draw<'a, D> {
     /// Construct (this is only called by the shell)
-    pub fn new(draw: &'a mut D, pass: Pass) -> Self {
+    pub fn new(draw: &'a mut D, pass: PassId) -> Self {
         Draw { pass, draw }
     }
 }
@@ -101,35 +101,43 @@ impl<'a, D: Drawable + ?Sized> Draw<'a, D> {
         }
     }
 
-    /// Get current pass
-    pub fn pass(&self) -> Pass {
+    /// Get the current draw pass
+    pub fn pass(&self) -> PassId {
         self.pass
     }
 
-    /// Construct a clip region
+    /// Add a draw pass
     ///
-    /// The clip region is a draw target within the same window, with draw
-    /// operations restricted to a "scissor rect" `rect` and translated by
-    /// subtracting `offset`. The returned object uses a new [`Pass`].
+    /// Adds a new draw pass. Passes affect draw order (operations in new passes
+    /// happen after their parent pass), may clip drawing to a "clip rect"
+    /// (see [`Draw::clip_rect`]) and may offset (translate) draw
+    /// operations.
     ///
-    /// Note that `rect` is defined relative to the coordinate system used by
-    /// the *current* `Draw` object and pass.
-    pub fn new_clip_region(&mut self, rect: Rect, offset: Offset, class: RegionClass) -> Draw<D> {
-        let pass = self.draw.add_clip_region(self.pass, rect, offset, class);
+    /// Case `class == PassType::Clip`: the new pass is derived from
+    /// `parent_pass`; `rect` and `offset` are specified relative to this parent
+    /// and the intersecton of `rect` and the parent's "clip rect" is used.
+    /// be clipped to `rect` (expressed in the parent's coordinate system).
+    ///
+    /// Case `class == PassType::Overlay`: the new pass is derived from the
+    /// base pass (i.e. the window). Draw operations still happen after those in
+    /// `parent_pass`.
+    pub fn new_draw_pass(&mut self, rect: Rect, offset: Offset, class: PassType) -> Draw<D> {
+        let pass = self.draw.new_draw_pass(self.pass, rect, offset, class);
         Draw {
             draw: &mut *self.draw,
             pass,
         }
     }
 
-    /// Get drawable rect for current target
+    /// Get drawable rect for a draw `pass`
     ///
     /// The result is in the current target's coordinate system, thus normally
     /// `Rect::pos` is zero (but this is not guaranteed).
     ///
-    /// (This may not equal the rect passed to [`Drawable::add_clip_region`].)
+    /// (This is not guaranteed to equal the rect passed to
+    /// [`Draw::new_draw_pass`].)
     pub fn clip_rect(&self) -> Rect {
-        self.draw.get_clip_rect(self.pass)
+        self.draw.clip_rect(self.pass)
     }
 
     /// Draw a rectangle of uniform colour
@@ -186,42 +194,11 @@ impl<'a, D: DrawableRounded + ?Sized> Draw<'a, D> {
     }
 }
 
-impl<'a, D: DrawableShaded + ?Sized> Draw<'a, D> {
-    /// Add a shaded square to the draw buffer
-    pub fn shaded_square(&mut self, rect: Quad, norm: (f32, f32), col: Rgba) {
-        self.draw.shaded_square(self.pass, rect, norm, col);
-    }
-
-    /// Add a shaded circle to the draw buffer
-    pub fn shaded_circle(&mut self, rect: Quad, norm: (f32, f32), col: Rgba) {
-        self.draw.shaded_circle(self.pass, rect, norm, col);
-    }
-
-    /// Add a square shaded frame to the draw buffer.
-    pub fn shaded_square_frame(
-        &mut self,
-        outer: Quad,
-        inner: Quad,
-        norm: (f32, f32),
-        outer_col: Rgba,
-        inner_col: Rgba,
-    ) {
-        self.draw
-            .shaded_square_frame(self.pass, outer, inner, norm, outer_col, inner_col);
-    }
-
-    /// Add a rounded shaded frame to the draw buffer.
-    pub fn shaded_round_frame(&mut self, outer: Quad, inner: Quad, norm: (f32, f32), col: Rgba) {
-        self.draw
-            .shaded_round_frame(self.pass, outer, inner, norm, col);
-    }
-}
-
 /// Base abstraction over drawing
 ///
 /// This trait covers only the bare minimum of functionality which *must* be
-/// provided by the shell; extension traits such as [`DrawableRounded`] and
-/// [`DrawableShaded`] optionally provide more functionality.
+/// provided by the shell; extension traits such as [`DrawableRounded`]
+/// optionally provide more functionality.
 ///
 /// Coordinates are specified via a [`Vec2`] and rectangular regions via
 /// [`Quad`] allowing fractional positions.
@@ -231,9 +208,10 @@ impl<'a, D: DrawableShaded + ?Sized> Draw<'a, D> {
 /// should be ordered after those without transparency.
 ///
 /// Draw operations take place over multiple render passes, identified by a
-/// handle of type [`Pass`]. In general the user only needs to pass this value
-/// into methods as required. [`Drawable::add_clip_region`] creates a new [`Pass`].
+/// handle of type [`PassId`]. In general the user only needs to pass this value
+/// into methods as required. [`Drawable::new_draw_pass`] creates a new [`PassId`].
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait Drawable: Any {
     /// Cast self to [`Any`] reference
     ///
@@ -244,25 +222,43 @@ pub trait Drawable: Any {
     /// Upcast to dyn drawable
     fn as_drawable_mut(&mut self) -> &mut dyn Drawable;
 
-    /// Add a clip region
-    fn add_clip_region(
+    /// Add a draw pass
+    ///
+    /// Adds a new draw pass. Passes affect draw order (operations in new passes
+    /// happen after their parent pass), may clip drawing to a "clip rect"
+    /// (see [`Drawable::clip_rect`]) and may offset (translate) draw
+    /// operations.
+    ///
+    /// Case `class == PassType::Clip`: the new pass is derived from
+    /// `parent_pass`; `rect` and `offset` are specified relative to this parent
+    /// and the intersecton of `rect` and the parent's "clip rect" is used.
+    /// be clipped to `rect` (expressed in the parent's coordinate system).
+    ///
+    /// Case `class == PassType::Overlay`: the new pass is derived from the
+    /// base pass (i.e. the window). Draw operations still happen after those in
+    /// `parent_pass`.
+    fn new_draw_pass(
         &mut self,
-        pass: Pass,
+        parent_pass: PassId,
         rect: Rect,
         offset: Offset,
-        class: RegionClass,
-    ) -> Pass;
+        class: PassType,
+    ) -> PassId;
 
-    /// Get drawable rect for a clip region
+    /// Get drawable rect for a draw `pass`
     ///
-    /// (This may be smaller than the rect passed to [`Drawable::add_clip_region`].)
-    fn get_clip_rect(&self, pass: Pass) -> Rect;
+    /// The result is in the current target's coordinate system, thus normally
+    /// `Rect::pos` is zero (but this is not guaranteed).
+    ///
+    /// (This is not guaranteed to equal the rect passed to
+    /// [`Drawable::new_draw_pass`].)
+    fn clip_rect(&self, pass: PassId) -> Rect;
 
     /// Draw a rectangle of uniform colour
-    fn rect(&mut self, pass: Pass, rect: Quad, col: Rgba);
+    fn rect(&mut self, pass: PassId, rect: Quad, col: Rgba);
 
     /// Draw a frame of uniform colour
-    fn frame(&mut self, pass: Pass, outer: Quad, inner: Quad, col: Rgba);
+    fn frame(&mut self, pass: PassId, outer: Quad, inner: Quad, col: Rgba);
 }
 
 /// Drawing commands for rounded shapes
@@ -273,54 +269,21 @@ pub trait Drawable: Any {
 /// If the implementation buffers draw commands, it should draw these
 /// primitives after solid primitives.
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait DrawableRounded: Drawable {
     /// Draw a line with rounded ends and uniform colour
-    fn rounded_line(&mut self, pass: Pass, p1: Vec2, p2: Vec2, radius: f32, col: Rgba);
+    fn rounded_line(&mut self, pass: PassId, p1: Vec2, p2: Vec2, radius: f32, col: Rgba);
 
     /// Draw a circle or oval of uniform colour
-    fn circle(&mut self, pass: Pass, rect: Quad, inner_radius: f32, col: Rgba);
+    fn circle(&mut self, pass: PassId, rect: Quad, inner_radius: f32, col: Rgba);
 
     /// Draw a frame with rounded corners and uniform colour
-    fn rounded_frame(&mut self, pass: Pass, outer: Quad, inner: Quad, inner_radius: f32, col: Rgba);
-}
-
-/// Drawing commands for shaded shapes
-///
-/// This trait is an extension over [`Drawable`] providing solid shaded shapes.
-///
-/// Some drawing primitives (the "round" ones) are partially transparent.
-/// If the implementation buffers draw commands, it should draw these
-/// primitives after solid primitives.
-///
-/// These are parameterised via a pair of normals, `(inner, outer)`. These may
-/// have values from the closed range `[-1, 1]`, where -1 points inwards,
-/// 0 is perpendicular to the screen towards the viewer, and 1 points outwards.
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-pub trait DrawableShaded: Drawable {
-    /// Add a shaded square to the draw buffer
-    fn shaded_square(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Rgba);
-
-    /// Add a shaded circle to the draw buffer
-    fn shaded_circle(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Rgba);
-
-    /// Add a square shaded frame to the draw buffer.
-    fn shaded_square_frame(
+    fn rounded_frame(
         &mut self,
-        pass: Pass,
+        pass: PassId,
         outer: Quad,
         inner: Quad,
-        norm: (f32, f32),
-        outer_col: Rgba,
-        inner_col: Rgba,
-    );
-
-    /// Add a rounded shaded frame to the draw buffer.
-    fn shaded_round_frame(
-        &mut self,
-        pass: Pass,
-        outer: Quad,
-        inner: Quad,
-        norm: (f32, f32),
+        inner_radius: f32,
         col: Rgba,
     );
 }

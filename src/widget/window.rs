@@ -143,7 +143,7 @@ impl<W: Widget> Layout for Window<W> {
         self.w.draw(draw_handle, mgr, disabled);
         for (_, popup) in &self.popups {
             if let Some(widget) = self.find_leaf(popup.id) {
-                draw_handle.overlay(widget.rect(), &mut |draw_handle| {
+                draw_handle.with_overlay(widget.rect(), &mut |draw_handle| {
                     widget.draw(draw_handle, mgr, disabled);
                 });
             }

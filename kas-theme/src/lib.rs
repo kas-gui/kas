@@ -15,12 +15,13 @@
 //! Additionally, a meta-theme, [`MultiTheme`], allows run-time switching
 //! between themes.
 
+#![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![cfg_attr(feature = "gat", feature(generic_associated_types))]
 #![cfg_attr(feature = "unsize", feature(unsize))]
 
 mod colors;
 mod config;
-mod dim;
+mod draw_shaded;
 mod flat_theme;
 #[cfg(feature = "stack_dst")]
 mod multi;
@@ -29,20 +30,22 @@ mod shaded_theme;
 mod theme_dst;
 mod traits;
 
+pub mod dim;
 pub use kas;
 
 pub use colors::{Colors, ColorsLinear, ColorsSrgb};
 pub use config::{Config, RasterConfig};
-pub use dim::{Dimensions, DimensionsParams, DimensionsWindow};
+pub use draw_shaded::{DrawableShaded, DrawableShadedExt};
 pub use flat_theme::FlatTheme;
 #[cfg(feature = "stack_dst")]
 pub use multi::{MultiTheme, MultiThemeBuilder};
 pub use shaded_theme::ShadedTheme;
 #[cfg(feature = "stack_dst")]
-pub use theme_dst::{MaybeBoxed, ThemeDst, WindowDst};
+pub use theme_dst::{MaybeBoxed, ThemeDst};
 pub use traits::{Theme, ThemeConfig, Window};
 
 #[cfg(feature = "stack_dst")]
+#[cfg_attr(doc_cfg, doc(cfg(stack_dst)))]
 /// Fixed-size object of `Unsized` type
 ///
 /// This is a re-export of

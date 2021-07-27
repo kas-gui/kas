@@ -10,7 +10,7 @@ use std::rc::Rc;
 use std::time::Instant;
 
 use kas::cast::Cast;
-use kas::draw::{Draw, Pass, SizeHandle, ThemeApi};
+use kas::draw::{Draw, DrawSharedT, PassId, SizeHandle, ThemeApi};
 use kas::event::{CursorIcon, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
@@ -62,7 +62,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let mut tkw = TkWindow::new(shared, None, &mut theme_window);
         mgr.configure(&mut tkw, &mut *widget);
 
-        let mut size_handle = unsafe { theme_window.size_handle(&mut shared.draw) };
+        let mut size_handle = theme_window.size_handle();
         let solve_cache = SolveCache::find_constraints(widget.as_widget_mut(), &mut size_handle);
         // Opening a zero-size window causes a crash, so force at least 1x1:
         let ideal = solve_cache.ideal(true).max(Size(1, 1));
@@ -325,7 +325,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         unsafe {
             // Safety: lifetimes do not escape the returned draw_handle value.
             let draw_shared = &mut shared.draw;
-            let pass = Pass::new(0);
+            let pass = PassId::new(0);
             let draw = Draw::new(&mut self.draw, pass);
             let window = &mut self.theme_window;
 
@@ -335,7 +335,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
         #[cfg(feature = "gat")]
         {
-            let pass = Pass::new(0);
+            let pass = PassId::new(0);
             let draw = Draw::new(&mut self.draw, pass);
             let mut draw_handle =
                 shared
@@ -382,7 +382,7 @@ fn to_wgpu_color(c: kas::draw::color::Rgba) -> wgpu::Color {
 
 struct TkWindow<'a, C: CustomPipe, T: Theme<DrawPipe<C>>>
 where
-    T::Window: kas_theme::Window<DrawPipe<C>>,
+    T::Window: kas_theme::Window,
 {
     shared: &'a mut SharedState<C, T>,
     window: Option<&'a winit::window::Window>,
@@ -391,7 +391,7 @@ where
 
 impl<'a, C: CustomPipe, T: Theme<DrawPipe<C>>> TkWindow<'a, C, T>
 where
-    T::Window: kas_theme::Window<DrawPipe<C>>,
+    T::Window: kas_theme::Window,
 {
     fn new(
         shared: &'a mut SharedState<C, T>,
@@ -410,7 +410,7 @@ impl<'a, C, T> kas::ShellWindow for TkWindow<'a, C, T>
 where
     C: CustomPipe,
     T: Theme<DrawPipe<C>>,
-    T::Window: kas_theme::Window<DrawPipe<C>>,
+    T::Window: kas_theme::Window,
 {
     fn add_popup(&mut self, popup: kas::Popup) -> Option<WindowId> {
         self.window.map(|w| w.id()).map(|parent_id| {
@@ -465,8 +465,12 @@ where
 
     fn size_handle(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         use kas_theme::Window;
-        let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.shared.draw) };
+        let mut size_handle = self.theme_window.size_handle();
         f(&mut size_handle);
+    }
+
+    fn draw_shared(&mut self, f: &mut dyn FnMut(&mut dyn DrawSharedT)) {
+        f(&mut self.shared.draw);
     }
 
     #[inline]

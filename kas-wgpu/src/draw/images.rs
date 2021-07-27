@@ -11,7 +11,7 @@ use std::mem::size_of;
 use std::num::NonZeroU32;
 
 use super::{atlases, ShaderManager};
-use kas::draw::{ImageError, ImageFormat, ImageId, Pass};
+use kas::draw::{ImageError, ImageFormat, ImageId, PassId};
 use kas::geom::{Quad, Vec2};
 
 #[derive(Debug)]
@@ -219,7 +219,7 @@ impl Window {
     }
 
     /// Add a rectangle to the buffer
-    pub fn rect(&mut self, pass: Pass, atlas: u32, tex: Quad, rect: Quad) {
+    pub fn rect(&mut self, pass: PassId, atlas: u32, tex: Quad, rect: Quad) {
         if !rect.a.lt(rect.b) {
             // zero / negative size: nothing to draw
             return;

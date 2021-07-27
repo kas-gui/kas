@@ -42,19 +42,20 @@
 //!
 //! ## Draw order
 //!
-//! All draw operations may be batched, thus where draw operations overlap the
-//! result depends on the order batches are executed. This is expected to be in
-//! the following order:
+//! All draw operations happen within a "draw pass". The first pass corresponds
+//! to the window, while additional passes may be clipped and offset (see
+//! [`Draw::new_draw_pass`]). Draw passes are executed sequentially in the order
+//! defined.
+//!
+//! Within each pass, draw operations may be batched by the shell, thus draw
+//! operations may not happen in the order queued. In general, it may be
+//! expected that batches are executed in the following order:
 //!
 //! 1.  Images
-//! 2.  Non-rounded primitives (e.g. [`Draw::rect`])
-//! 3.  Rounded primitives (e.g. [`Draw::rounded_line`])
+//! 2.  Square-edged primitives (e.g. [`Draw::rect`])
+//! 3.  Rounded or other partially-transparent primitives (e.g. [`Draw::circle`])
 //! 4.  Custom draw routines (`CustomPipe`)
 //! 5.  Text
-//!
-//! Note that clip regions are always drawn after their parent region, thus
-//! one can use [`Draw::new_clip_region`] to control draw order. This is
-//! demonstrated in the `clock` example.
 
 pub mod color;
 
@@ -73,21 +74,22 @@ pub use handle::*;
 pub use images::{ImageError, ImageFormat, ImageId};
 pub use theme::*;
 
-/// Pass identifier
+/// Draw pass identifier
 ///
-/// Users normally need only pass this value.
+/// This is a small value passed by copy to identify which pass draw routines
+/// happen in. Draw passes allow control over draw order and clipping.
 ///
 /// Custom render pipes should extract the pass number.
 #[derive(Copy, Clone)]
-pub struct Pass(u32);
+pub struct PassId(u32);
 
-impl Pass {
+impl PassId {
     /// Construct a new pass from a `u32` identifier
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     #[inline]
     pub const fn new(n: u32) -> Self {
-        Pass(n)
+        PassId(n)
     }
 
     /// The pass number
