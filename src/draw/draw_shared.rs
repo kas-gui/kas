@@ -6,7 +6,7 @@
 //! Drawing APIs — shared draw state
 
 use super::color::Rgba;
-use super::{images, Draw, Drawable, ImageError, ImageFormat, ImageId};
+use super::{images, Drawable, ImageError, ImageFormat, ImageId, PassId};
 use crate::geom::{Quad, Size, Vec2};
 use crate::text::{Effect, TextDisplay};
 use std::any::Any;
@@ -41,14 +41,21 @@ impl<DS: DrawableShared> DrawShared<DS> {
 impl<DS: DrawableShared> DrawShared<DS> {
     /// Draw the image in the given `rect`
     #[inline]
-    pub fn draw_image(&self, target: Draw<DS::Draw>, id: ImageId, rect: Quad) {
-        self.draw.draw_image(target, id, rect)
+    pub fn draw_image(&self, draw: &mut DS::Draw, pass: PassId, id: ImageId, rect: Quad) {
+        self.draw.draw_image(draw, pass, id, rect)
     }
 
     /// Draw text with a colour
     #[inline]
-    pub fn draw_text(&mut self, target: Draw<DS::Draw>, pos: Vec2, text: &TextDisplay, col: Rgba) {
-        self.draw.draw_text(target, pos, text, col)
+    pub fn draw_text(
+        &mut self,
+        draw: &mut DS::Draw,
+        pass: PassId,
+        pos: Vec2,
+        text: &TextDisplay,
+        col: Rgba,
+    ) {
+        self.draw.draw_text(draw, pass, pos, text, col)
     }
 
     /// Draw text with a colour and effects
@@ -58,14 +65,15 @@ impl<DS: DrawableShared> DrawShared<DS> {
     #[inline]
     pub fn draw_text_col_effects(
         &mut self,
-        target: Draw<DS::Draw>,
+        draw: &mut DS::Draw,
+        pass: PassId,
         pos: Vec2,
         text: &TextDisplay,
         col: Rgba,
         effects: &[Effect<()>],
     ) {
         self.draw
-            .draw_text_col_effects(target, pos, text, col, effects)
+            .draw_text_col_effects(draw, pass, pos, text, col, effects)
     }
 
     /// Draw text with effects
@@ -76,12 +84,13 @@ impl<DS: DrawableShared> DrawShared<DS> {
     #[inline]
     pub fn draw_text_effects(
         &mut self,
-        target: Draw<DS::Draw>,
+        draw: &mut DS::Draw,
+        pass: PassId,
         pos: Vec2,
         text: &TextDisplay,
         effects: &[Effect<Rgba>],
     ) {
-        self.draw.draw_text_effects(target, pos, text, effects)
+        self.draw.draw_text_effects(draw, pass, pos, text, effects)
     }
 }
 
@@ -119,10 +128,17 @@ pub trait DrawSharedT {
     fn image_size(&self, id: ImageId) -> Option<Size>;
 
     /// Draw the image in the given `rect`
-    fn draw_image(&self, target: Draw<dyn Drawable>, id: ImageId, rect: Quad);
+    fn draw_image(&self, draw: &mut dyn Drawable, pass: PassId, id: ImageId, rect: Quad);
 
     /// Draw text with a colour
-    fn draw_text(&mut self, target: Draw<dyn Drawable>, pos: Vec2, text: &TextDisplay, col: Rgba);
+    fn draw_text(
+        &mut self,
+        draw: &mut dyn Drawable,
+        pass: PassId,
+        pos: Vec2,
+        text: &TextDisplay,
+        col: Rgba,
+    );
 
     /// Draw text with a colour and effects
     ///
@@ -130,7 +146,8 @@ pub trait DrawSharedT {
     /// underlining/strikethrough information. It may be empty.
     fn draw_text_col_effects(
         &mut self,
-        target: Draw<dyn Drawable>,
+        draw: &mut dyn Drawable,
+        pass: PassId,
         pos: Vec2,
         text: &TextDisplay,
         col: Rgba,
@@ -144,7 +161,8 @@ pub trait DrawSharedT {
     /// default entity will be assumed.
     fn draw_text_effects(
         &mut self,
-        target: Draw<dyn Drawable>,
+        draw: &mut dyn Drawable,
+        pass: PassId,
         pos: Vec2,
         text: &TextDisplay,
         effects: &[Effect<Rgba>],
@@ -186,47 +204,50 @@ impl<DS: DrawableShared> DrawSharedT for DrawShared<DS> {
         self.draw.image_size(id).map(|size| size.into())
     }
 
-    fn draw_image(&self, mut target: Draw<dyn Drawable>, id: ImageId, rect: Quad) {
-        if let Some(target) = target.downcast() {
-            self.draw.draw_image(target, id, rect)
+    fn draw_image(&self, draw: &mut dyn Drawable, pass: PassId, id: ImageId, rect: Quad) {
+        if let Some(draw) = draw.as_any_mut().downcast_mut() {
+            self.draw.draw_image(draw, pass, id, rect)
         };
     }
 
     fn draw_text(
         &mut self,
-        mut target: Draw<dyn Drawable>,
+        draw: &mut dyn Drawable,
+        pass: PassId,
         pos: Vec2,
         text: &TextDisplay,
         col: Rgba,
     ) {
-        if let Some(target) = target.downcast() {
-            self.draw.draw_text(target, pos, text, col)
+        if let Some(draw) = draw.as_any_mut().downcast_mut() {
+            self.draw.draw_text(draw, pass, pos, text, col)
         };
     }
 
     fn draw_text_col_effects(
         &mut self,
-        mut target: Draw<dyn Drawable>,
+        draw: &mut dyn Drawable,
+        pass: PassId,
         pos: Vec2,
         text: &TextDisplay,
         col: Rgba,
         effects: &[Effect<()>],
     ) {
-        if let Some(target) = target.downcast() {
+        if let Some(draw) = draw.as_any_mut().downcast_mut() {
             self.draw
-                .draw_text_col_effects(target, pos, text, col, effects)
+                .draw_text_col_effects(draw, pass, pos, text, col, effects)
         };
     }
 
     fn draw_text_effects(
         &mut self,
-        mut target: Draw<dyn Drawable>,
+        draw: &mut dyn Drawable,
+        pass: PassId,
         pos: Vec2,
         text: &TextDisplay,
         effects: &[Effect<Rgba>],
     ) {
-        if let Some(target) = target.downcast() {
-            self.draw.draw_text_effects(target, pos, text, effects)
+        if let Some(draw) = draw.as_any_mut().downcast_mut() {
+            self.draw.draw_text_effects(draw, pass, pos, text, effects)
         };
     }
 }
@@ -260,10 +281,17 @@ pub trait DrawableShared: Any {
     fn image_size(&self, id: ImageId) -> Option<(u32, u32)>;
 
     /// Draw the image in the given `rect`
-    fn draw_image(&self, target: Draw<Self::Draw>, id: ImageId, rect: Quad);
+    fn draw_image(&self, draw: &mut Self::Draw, pass: PassId, id: ImageId, rect: Quad);
 
     /// Draw text with a colour
-    fn draw_text(&mut self, target: Draw<Self::Draw>, pos: Vec2, text: &TextDisplay, col: Rgba);
+    fn draw_text(
+        &mut self,
+        draw: &mut Self::Draw,
+        pass: PassId,
+        pos: Vec2,
+        text: &TextDisplay,
+        col: Rgba,
+    );
 
     /// Draw text with a colour and effects
     ///
@@ -271,7 +299,8 @@ pub trait DrawableShared: Any {
     /// underlining/strikethrough information. It may be empty.
     fn draw_text_col_effects(
         &mut self,
-        target: Draw<Self::Draw>,
+        draw: &mut Self::Draw,
+        pass: PassId,
         pos: Vec2,
         text: &TextDisplay,
         col: Rgba,
@@ -285,7 +314,8 @@ pub trait DrawableShared: Any {
     /// default entity will be assumed.
     fn draw_text_effects(
         &mut self,
-        target: Draw<Self::Draw>,
+        draw: &mut Self::Draw,
+        pass: PassId,
         pos: Vec2,
         text: &TextDisplay,
         effects: &[Effect<Rgba>],

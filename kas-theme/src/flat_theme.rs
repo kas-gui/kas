@@ -324,13 +324,16 @@ where
     fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass) {
         let pos = pos;
         let col = self.cols.text_class(class);
+        let pass = self.draw.pass();
         self.shared
-            .draw_text(self.draw.reborrow(), pos.into(), text, col);
+            .draw_text(&mut self.draw.draw, pass, pos.into(), text, col);
     }
 
     fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
+        let pass = self.draw.pass();
         self.shared.draw_text_col_effects(
-            self.draw.reborrow(),
+            &mut self.draw.draw,
+            pass,
             (pos).into(),
             text.display(),
             self.cols.text_class(class),
@@ -341,10 +344,12 @@ where
     fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
         let pos = Vec2::from(pos);
         let col = self.cols.text_class(class);
+        let pass = self.draw.pass();
         if state {
             let effects = text.text().effect_tokens();
             self.shared.draw_text_col_effects(
-                self.draw.reborrow(),
+                &mut self.draw.draw,
+                pass,
                 pos,
                 text.as_ref(),
                 col,
@@ -352,7 +357,7 @@ where
             );
         } else {
             self.shared
-                .draw_text(self.draw.reborrow(), pos, text.as_ref(), col);
+                .draw_text(&mut self.draw.draw, pass, pos, text.as_ref(), col);
         }
     }
 
@@ -391,8 +396,9 @@ where
                 aux: col,
             },
         ];
+        let pass = self.draw.pass();
         self.shared
-            .draw_text_effects(self.draw.reborrow(), pos, text, &effects);
+            .draw_text_effects(&mut self.draw.draw, pass, pos, text, &effects);
     }
 
     fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
@@ -519,6 +525,7 @@ where
 
     fn image(&mut self, id: ImageId, rect: Rect) {
         let rect = Quad::from(rect);
-        self.shared.draw_image(self.draw.reborrow(), id, rect);
+        let pass = self.draw.pass();
+        self.shared.draw_image(&mut self.draw.draw, pass, id, rect);
     }
 }

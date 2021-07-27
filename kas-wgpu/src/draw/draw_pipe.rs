@@ -340,53 +340,54 @@ impl<C: CustomPipe> DrawableShared for DrawPipe<C> {
     }
 
     #[inline]
-    fn draw_image(&self, target: Draw<Self::Draw>, id: ImageId, rect: Quad) {
+    fn draw_image(&self, draw: &mut Self::Draw, pass: PassId, id: ImageId, rect: Quad) {
         if let Some((atlas, tex)) = self.images.get_im_atlas_coords(id) {
-            target.draw.images.rect(target.pass(), atlas, tex, rect);
+            draw.images.rect(pass, atlas, tex, rect);
         };
     }
 
     #[inline]
-    fn draw_text(&mut self, target: Draw<Self::Draw>, pos: Vec2, text: &TextDisplay, col: Rgba) {
-        target
-            .draw
-            .text
-            .text(&mut self.text, target.pass(), pos, text, col);
+    fn draw_text(
+        &mut self,
+        draw: &mut Self::Draw,
+        pass: PassId,
+        pos: Vec2,
+        text: &TextDisplay,
+        col: Rgba,
+    ) {
+        draw.text.text(&mut self.text, pass, pos, text, col);
     }
 
     fn draw_text_col_effects(
         &mut self,
-        target: Draw<Self::Draw>,
+        draw: &mut Self::Draw,
+        pass: PassId,
         pos: Vec2,
         text: &TextDisplay,
         col: Rgba,
         effects: &[Effect<()>],
     ) {
-        let pass = target.pass();
-        let rects =
-            target
-                .draw
-                .text
-                .text_col_effects(&mut self.text, pass, pos, text, col, effects);
+        let rects = draw
+            .text
+            .text_col_effects(&mut self.text, pass, pos, text, col, effects);
         for rect in rects {
-            target.draw.shaded_square.rect(pass, rect, col);
+            draw.shaded_square.rect(pass, rect, col);
         }
     }
 
     fn draw_text_effects(
         &mut self,
-        target: Draw<Self::Draw>,
+        draw: &mut Self::Draw,
+        pass: PassId,
         pos: Vec2,
         text: &TextDisplay,
         effects: &[Effect<Rgba>],
     ) {
-        let pass = target.pass();
-        let rects = target
-            .draw
+        let rects = draw
             .text
             .text_effects(&mut self.text, pass, pos, text, effects);
         for (rect, col) in rects {
-            target.draw.shaded_square.rect(pass, rect, col);
+            draw.shaded_square.rect(pass, rect, col);
         }
     }
 }
