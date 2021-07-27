@@ -126,47 +126,6 @@ pub trait DrawSharedT {
 
     /// Get the size of an image
     fn image_size(&self, id: ImageId) -> Option<Size>;
-
-    /// Draw the image in the given `rect`
-    fn draw_image(&self, draw: &mut dyn Drawable, pass: PassId, id: ImageId, rect: Quad);
-
-    /// Draw text with a colour
-    fn draw_text(
-        &mut self,
-        draw: &mut dyn Drawable,
-        pass: PassId,
-        pos: Vec2,
-        text: &TextDisplay,
-        col: Rgba,
-    );
-
-    /// Draw text with a colour and effects
-    ///
-    /// The effects list does not contain colour information, but may contain
-    /// underlining/strikethrough information. It may be empty.
-    fn draw_text_col_effects(
-        &mut self,
-        draw: &mut dyn Drawable,
-        pass: PassId,
-        pos: Vec2,
-        text: &TextDisplay,
-        col: Rgba,
-        effects: &[Effect<()>],
-    );
-
-    /// Draw text with effects
-    ///
-    /// The `effects` list provides both underlining and colour information.
-    /// If the `effects` list is empty or the first entry has `start > 0`, a
-    /// default entity will be assumed.
-    fn draw_text_effects(
-        &mut self,
-        draw: &mut dyn Drawable,
-        pass: PassId,
-        pos: Vec2,
-        text: &TextDisplay,
-        effects: &[Effect<Rgba>],
-    );
 }
 
 impl<DS: DrawableShared> DrawSharedT for DrawShared<DS> {
@@ -202,53 +161,6 @@ impl<DS: DrawableShared> DrawSharedT for DrawShared<DS> {
     #[inline]
     fn image_size(&self, id: ImageId) -> Option<Size> {
         self.draw.image_size(id).map(|size| size.into())
-    }
-
-    fn draw_image(&self, draw: &mut dyn Drawable, pass: PassId, id: ImageId, rect: Quad) {
-        if let Some(draw) = draw.as_any_mut().downcast_mut() {
-            self.draw.draw_image(draw, pass, id, rect)
-        };
-    }
-
-    fn draw_text(
-        &mut self,
-        draw: &mut dyn Drawable,
-        pass: PassId,
-        pos: Vec2,
-        text: &TextDisplay,
-        col: Rgba,
-    ) {
-        if let Some(draw) = draw.as_any_mut().downcast_mut() {
-            self.draw.draw_text(draw, pass, pos, text, col)
-        };
-    }
-
-    fn draw_text_col_effects(
-        &mut self,
-        draw: &mut dyn Drawable,
-        pass: PassId,
-        pos: Vec2,
-        text: &TextDisplay,
-        col: Rgba,
-        effects: &[Effect<()>],
-    ) {
-        if let Some(draw) = draw.as_any_mut().downcast_mut() {
-            self.draw
-                .draw_text_col_effects(draw, pass, pos, text, col, effects)
-        };
-    }
-
-    fn draw_text_effects(
-        &mut self,
-        draw: &mut dyn Drawable,
-        pass: PassId,
-        pos: Vec2,
-        text: &TextDisplay,
-        effects: &[Effect<Rgba>],
-    ) {
-        if let Some(draw) = draw.as_any_mut().downcast_mut() {
-            self.draw.draw_text_effects(draw, pass, pos, text, effects)
-        };
     }
 }
 
