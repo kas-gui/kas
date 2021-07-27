@@ -267,15 +267,6 @@ where
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait Drawable: Any {
-    /// Cast self to [`Any`] reference
-    ///
-    /// A downcast on this value may be used to obtain a reference to a
-    /// shell-specific API.
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-
-    /// Upcast to dyn drawable
-    fn as_drawable_mut(&mut self) -> &mut dyn Drawable;
-
     /// Add a draw pass
     ///
     /// Adds a new draw pass. Passes affect draw order (operations in new passes

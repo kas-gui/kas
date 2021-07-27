@@ -116,9 +116,6 @@ impl<DS: DrawableShared> DrawSharedT for DrawShared<DS> {
 pub trait DrawableShared: Any {
     type Draw: Drawable;
 
-    /// Cast self to [`Any`] reference
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-
     /// Allocate an image
     ///
     /// Use [`DrawableShared::image_upload`] to set contents of the new image.
