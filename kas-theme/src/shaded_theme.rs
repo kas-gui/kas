@@ -67,8 +67,7 @@ const DIMS: dim::Parameters = dim::Parameters {
 };
 
 pub struct DrawHandle<'a, DS: DrawableShared> {
-    shared: &'a mut DrawShared<DS>,
-    draw: Draw<'a, DS::Draw>,
+    draw: Draw<'a, DS>,
     window: &'a mut dim::Window,
     cols: &'a ColorsLinear,
 }
@@ -107,12 +106,7 @@ where
     }
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle(
-        &self,
-        shared: &mut DrawShared<DS>,
-        draw: Draw<DS::Draw>,
-        window: &mut Self::Window,
-    ) -> Self::DrawHandle {
+    unsafe fn draw_handle(&self, draw: Draw<DS>, window: &mut Self::Window) -> Self::DrawHandle {
         unsafe fn extend_lifetime<'b, T: ?Sized>(r: &'b T) -> &'static T {
             std::mem::transmute::<&'b T, &'static T>(r)
         }
@@ -120,8 +114,11 @@ where
             std::mem::transmute::<&'b mut T, &'static mut T>(r)
         }
         DrawHandle {
-            shared: extend_lifetime_mut(shared),
-            draw: Draw::new(extend_lifetime_mut(draw.draw), draw.pass()),
+            draw: Draw::new(
+                extend_lifetime_mut(draw.draw),
+                extend_lifetime_mut(draw.shared),
+                draw.pass(),
+            ),
             window: extend_lifetime_mut(window),
             cols: extend_lifetime(&self.flat.cols),
         }
@@ -129,12 +126,10 @@ where
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        shared: &'a mut DrawShared<DS>,
-        draw: Draw<'a, DS::Draw>,
+        draw: Draw<'a, DS>,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
         DrawHandle {
-            shared,
             draw,
             window,
             cols: &self.flat.cols,
@@ -171,7 +166,6 @@ where
         'b: 'c,
     {
         super::flat_theme::DrawHandle {
-            shared: self.shared,
             draw: self.draw.reborrow(),
             window: self.window,
             cols: self.cols,
@@ -225,8 +219,8 @@ where
         self.window
     }
 
-    fn draw_device<'b>(&'b mut self) -> (Draw<'b, dyn Drawable>, &mut dyn DrawSharedT) {
-        (self.draw.upcast_base(), self.shared)
+    fn draw_device<'b>(&'b mut self) -> &mut dyn DrawT {
+        &mut self.draw
     }
 
     fn new_draw_pass(
@@ -251,7 +245,6 @@ where
         }
 
         let mut handle = DrawHandle {
-            shared: self.shared,
             window: self.window,
             draw,
             cols: self.cols,

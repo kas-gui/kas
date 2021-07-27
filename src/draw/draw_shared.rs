@@ -38,62 +38,6 @@ impl<DS: DrawableShared> DrawShared<DS> {
     }
 }
 
-impl<DS: DrawableShared> DrawShared<DS> {
-    /// Draw the image in the given `rect`
-    #[inline]
-    pub fn draw_image(&self, draw: &mut DS::Draw, pass: PassId, id: ImageId, rect: Quad) {
-        self.draw.draw_image(draw, pass, id, rect)
-    }
-
-    /// Draw text with a colour
-    #[inline]
-    pub fn draw_text(
-        &mut self,
-        draw: &mut DS::Draw,
-        pass: PassId,
-        pos: Vec2,
-        text: &TextDisplay,
-        col: Rgba,
-    ) {
-        self.draw.draw_text(draw, pass, pos, text, col)
-    }
-
-    /// Draw text with a colour and effects
-    ///
-    /// The effects list does not contain colour information, but may contain
-    /// underlining/strikethrough information. It may be empty.
-    #[inline]
-    pub fn draw_text_col_effects(
-        &mut self,
-        draw: &mut DS::Draw,
-        pass: PassId,
-        pos: Vec2,
-        text: &TextDisplay,
-        col: Rgba,
-        effects: &[Effect<()>],
-    ) {
-        self.draw
-            .draw_text_col_effects(draw, pass, pos, text, col, effects)
-    }
-
-    /// Draw text with effects
-    ///
-    /// The `effects` list provides both underlining and colour information.
-    /// If the `effects` list is empty or the first entry has `start > 0`, a
-    /// default entity will be assumed.
-    #[inline]
-    pub fn draw_text_effects(
-        &mut self,
-        draw: &mut DS::Draw,
-        pass: PassId,
-        pos: Vec2,
-        text: &TextDisplay,
-        effects: &[Effect<Rgba>],
-    ) {
-        self.draw.draw_text_effects(draw, pass, pos, text, effects)
-    }
-}
-
 /// Interface over [`DrawShared`]
 pub trait DrawSharedT {
     /// Access [`DrawableShared`] object as `Any` to allow downcasting

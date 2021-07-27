@@ -146,16 +146,18 @@ impl<DS: DrawableShared> Theme<DS> for MultiTheme<DS> {
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        shared: &mut DrawShared<DS>,
-        draw: Draw<DS::Draw>,
+        draw: Draw<DS>,
         window: &mut Self::Window,
     ) -> StackDst<dyn DrawHandle> {
         unsafe fn extend_lifetime_mut<'b, T: ?Sized>(r: &'b mut T) -> &'static mut T {
             std::mem::transmute::<&'b mut T, &'static mut T>(r)
         }
         self.themes[self.active].draw_handle(
-            extend_lifetime_mut(shared),
-            Draw::new(extend_lifetime_mut(draw.draw), draw.pass()),
+            Draw::new(
+                extend_lifetime_mut(draw.draw),
+                extend_lifetime_mut(draw.shared),
+                draw.pass(),
+            ),
             extend_lifetime_mut(window),
         )
     }
@@ -163,11 +165,10 @@ impl<DS: DrawableShared> Theme<DS> for MultiTheme<DS> {
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        shared: &'a mut DrawShared<DS>,
-        draw: Draw<'a, DS::Draw>,
+        draw: Draw<'a, DS>,
         window: &'a mut Self::Window,
     ) -> StackDst<dyn DrawHandle + 'a> {
-        self.themes[self.active].draw_handle(shared, draw, window)
+        self.themes[self.active].draw_handle(draw, window)
     }
 
     fn clear_color(&self) -> color::Rgba {

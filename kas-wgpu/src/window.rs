@@ -324,23 +324,19 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         #[cfg(not(feature = "gat"))]
         unsafe {
             // Safety: lifetimes do not escape the returned draw_handle value.
-            let draw_shared = &mut shared.draw;
             let pass = PassId::new(0);
-            let draw = Draw::new(&mut self.draw, pass);
+            let draw = Draw::new(&mut self.draw, &mut shared.draw, pass);
             let window = &mut self.theme_window;
 
-            let mut draw_handle = shared.theme.draw_handle(draw_shared, draw, window);
+            let mut draw_handle = shared.theme.draw_handle(draw, window);
             self.widget.draw(&mut draw_handle, &self.mgr, false);
         }
 
         #[cfg(feature = "gat")]
         {
             let pass = PassId::new(0);
-            let draw = Draw::new(&mut self.draw, pass);
-            let mut draw_handle =
-                shared
-                    .theme
-                    .draw_handle(&mut shared.draw, draw, &mut self.theme_window);
+            let draw = Draw::new(&mut self.draw, &mut shared.draw, pass);
+            let mut draw_handle = shared.theme.draw_handle(draw, &mut self.theme_window);
             self.widget.draw(&mut draw_handle, &self.mgr, false);
         }
 

@@ -84,8 +84,7 @@ const DIMS: dim::Parameters = dim::Parameters {
 };
 
 pub struct DrawHandle<'a, DS: DrawableShared> {
-    pub(crate) shared: &'a mut DrawShared<DS>,
-    pub(crate) draw: Draw<'a, DS::Draw>,
+    pub(crate) draw: Draw<'a, DS>,
     pub(crate) window: &'a mut dim::Window,
     pub(crate) cols: &'a ColorsLinear,
 }
@@ -137,12 +136,7 @@ where
     }
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle(
-        &self,
-        shared: &mut DrawShared<DS>,
-        draw: Draw<DS::Draw>,
-        window: &mut Self::Window,
-    ) -> Self::DrawHandle {
+    unsafe fn draw_handle(&self, draw: Draw<DS>, window: &mut Self::Window) -> Self::DrawHandle {
         unsafe fn extend_lifetime<'b, T: ?Sized>(r: &'b T) -> &'static T {
             std::mem::transmute::<&'b T, &'static T>(r)
         }
@@ -150,8 +144,11 @@ where
             std::mem::transmute::<&'b mut T, &'static mut T>(r)
         }
         DrawHandle {
-            shared: extend_lifetime_mut(shared),
-            draw: Draw::new(extend_lifetime_mut(draw.draw), draw.pass()),
+            draw: Draw::new(
+                extend_lifetime_mut(draw.draw),
+                extend_lifetime_mut(draw.shared),
+                draw.pass(),
+            ),
             window: extend_lifetime_mut(window),
             cols: extend_lifetime(&self.cols),
         }
@@ -159,12 +156,10 @@ where
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        shared: &'a mut DrawShared<DS>,
-        draw: Draw<'a, DS::Draw>,
+        draw: Draw<'a, DS>,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
         DrawHandle {
-            shared,
             draw,
             window,
             cols: &self.cols,
@@ -253,8 +248,8 @@ where
         self.window
     }
 
-    fn draw_device<'b>(&'b mut self) -> (Draw<'b, dyn Drawable>, &mut dyn DrawSharedT) {
-        (self.draw.upcast_base(), self.shared)
+    fn draw_device<'b>(&'b mut self) -> &mut dyn DrawT {
+        &mut self.draw
     }
 
     fn new_draw_pass(
@@ -279,7 +274,6 @@ where
         }
 
         let mut handle = DrawHandle {
-            shared: self.shared,
             window: self.window,
             draw,
             cols: self.cols,
@@ -324,16 +318,11 @@ where
     fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass) {
         let pos = pos;
         let col = self.cols.text_class(class);
-        let pass = self.draw.pass();
-        self.shared
-            .draw_text(&mut self.draw.draw, pass, pos.into(), text, col);
+        self.draw.text(pos.into(), text, col);
     }
 
     fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
-        let pass = self.draw.pass();
-        self.shared.draw_text_col_effects(
-            &mut self.draw.draw,
-            pass,
+        self.draw.text_col_effects(
             (pos).into(),
             text.display(),
             self.cols.text_class(class),
@@ -344,20 +333,11 @@ where
     fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
         let pos = Vec2::from(pos);
         let col = self.cols.text_class(class);
-        let pass = self.draw.pass();
         if state {
             let effects = text.text().effect_tokens();
-            self.shared.draw_text_col_effects(
-                &mut self.draw.draw,
-                pass,
-                pos,
-                text.as_ref(),
-                col,
-                effects,
-            );
+            self.draw.text_col_effects(pos, text.as_ref(), col, effects);
         } else {
-            self.shared
-                .draw_text(&mut self.draw.draw, pass, pos, text.as_ref(), col);
+            self.draw.text(pos, text.as_ref(), col);
         }
     }
 
@@ -396,9 +376,7 @@ where
                 aux: col,
             },
         ];
-        let pass = self.draw.pass();
-        self.shared
-            .draw_text_effects(&mut self.draw.draw, pass, pos, text, &effects);
+        self.draw.text_effects(pos, text, &effects);
     }
 
     fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
@@ -525,7 +503,6 @@ where
 
     fn image(&mut self, id: ImageId, rect: Rect) {
         let rect = Quad::from(rect);
-        let pass = self.draw.pass();
-        self.shared.draw_image(&mut self.draw.draw, pass, id, rect);
+        self.draw.image(id, rect);
     }
 }

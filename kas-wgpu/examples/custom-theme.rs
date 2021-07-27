@@ -79,22 +79,16 @@ where
     }
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle(
-        &self,
-        shared: &mut DrawShared<DS>,
-        draw: Draw<DS::Draw>,
-        window: &mut Self::Window,
-    ) -> Self::DrawHandle {
-        Theme::<DS>::draw_handle(&self.inner, shared, draw, window)
+    unsafe fn draw_handle(&self, draw: Draw<DS>, window: &mut Self::Window) -> Self::DrawHandle {
+        Theme::<DS>::draw_handle(&self.inner, draw, window)
     }
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        shared: &'a mut DrawShared<DS>,
-        draw: Draw<'a, DS::Draw>,
+        draw: Draw<'a, DS>,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
-        Theme::<DS>::draw_handle(&self.inner, shared, draw, window)
+        Theme::<DS>::draw_handle(&self.inner, draw, window)
     }
 
     fn clear_color(&self) -> Rgba {

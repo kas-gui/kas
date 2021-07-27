@@ -9,7 +9,7 @@ use std::convert::AsRef;
 use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 
 use kas::dir::Direction;
-use kas::draw::{Draw, DrawSharedT, Drawable, ImageId};
+use kas::draw::{DrawT, ImageId};
 use kas::geom::{Coord, Offset, Rect, Size};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules};
 use kas::text::{AccelString, Text, TextApi, TextDisplay};
@@ -267,12 +267,7 @@ pub trait DrawHandle {
     fn size_handle(&mut self) -> &mut dyn SizeHandle;
 
     /// Access the low-level draw device
-    ///
-    /// Returns `(draw, shared)`.
-    ///
-    /// The `draw` object is over the [`Drawable`] interface which exposes only
-    /// minimal functionality. [`Draw::downcast`] will likely be of use.
-    fn draw_device(&mut self) -> (Draw<'_, dyn Drawable>, &mut dyn DrawSharedT);
+    fn draw_device(&mut self) -> &mut dyn DrawT;
 
     /// Add a draw pass
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -526,7 +521,7 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn size_handle(&mut self) -> &mut dyn SizeHandle {
         self.deref_mut().size_handle()
     }
-    fn draw_device(&mut self) -> (Draw<'_, dyn Drawable>, &mut dyn DrawSharedT) {
+    fn draw_device(&mut self) -> &mut dyn DrawT {
         self.deref_mut().draw_device()
     }
     fn new_draw_pass(
@@ -612,7 +607,7 @@ where
     fn size_handle(&mut self) -> &mut dyn SizeHandle {
         self.deref_mut().size_handle()
     }
-    fn draw_device(&'_ mut self) -> (Draw<'_, dyn Drawable>, &'_ mut dyn DrawSharedT) {
+    fn draw_device(&mut self) -> &mut dyn DrawT {
         self.deref_mut().draw_device()
     }
     fn new_draw_pass(

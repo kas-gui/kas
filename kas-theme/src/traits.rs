@@ -105,17 +105,11 @@ pub trait Theme<DS: DrawableShared>: ThemeApi {
     ///
     /// All references passed into the method must outlive the returned object.
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle(
-        &self,
-        shared: &mut DrawShared<DS>,
-        draw: Draw<DS::Draw>,
-        window: &mut Self::Window,
-    ) -> Self::DrawHandle;
+    unsafe fn draw_handle(&self, draw: Draw<DS>, window: &mut Self::Window) -> Self::DrawHandle;
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        shared: &'a mut DrawShared<DS>,
-        draw: Draw<'a, DS::Draw>,
+        draw: Draw<'a, DS>,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a>;
 
@@ -164,22 +158,16 @@ impl<T: Theme<DS>, DS: DrawableShared> Theme<DS> for Box<T> {
     }
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle(
-        &self,
-        shared: &mut DrawShared<DS>,
-        draw: Draw<DS::Draw>,
-        window: &mut Self::Window,
-    ) -> Self::DrawHandle {
-        self.deref().draw_handle(shared, draw, window)
+    unsafe fn draw_handle(&self, draw: Draw<DS>, window: &mut Self::Window) -> Self::DrawHandle {
+        self.deref().draw_handle(draw, window)
     }
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        shared: &'a mut DrawShared<DS>,
-        draw: Draw<'a, DS::Draw>,
+        draw: Draw<'a, DS>,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
-        self.deref().draw_handle(shared, draw, window)
+        self.deref().draw_handle(draw, window)
     }
 
     fn clear_color(&self) -> color::Rgba {

@@ -73,8 +73,7 @@ pub trait ThemeDst<DS: DrawableShared>: ThemeApi {
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        shared: &mut DrawShared<DS>,
-        draw: Draw<DS::Draw>,
+        draw: Draw<DS>,
         window: &mut dyn Window,
     ) -> StackDst<dyn DrawHandle>;
 
@@ -86,8 +85,7 @@ pub trait ThemeDst<DS: DrawableShared>: ThemeApi {
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        shared: &'a mut DrawShared<DS>,
-        draw: Draw<'a, DS::Draw>,
+        draw: Draw<'a, DS>,
         window: &'a mut dyn Window,
     ) -> StackDst<dyn DrawHandle + 'a>;
 
@@ -141,12 +139,11 @@ where
 
     unsafe fn draw_handle(
         &self,
-        shared: &mut DrawShared<DS>,
-        draw: Draw<DS::Draw>,
+        draw: Draw<DS>,
         window: &mut dyn Window,
     ) -> StackDst<dyn DrawHandle> {
         let window = window.as_any_mut().downcast_mut().unwrap();
-        let h = <T as Theme<DS>>::draw_handle(self, shared, draw, window);
+        let h = <T as Theme<DS>>::draw_handle(self, draw, window);
         #[cfg(feature = "unsize")]
         {
             StackDst::new_or_boxed(h)
@@ -193,12 +190,11 @@ impl<'a, DS: DrawableShared, T: Theme<DS>> ThemeDst<DS> for T {
 
     fn draw_handle<'b>(
         &'b self,
-        shared: &'b mut DrawShared<DS>,
-        draw: Draw<'b, DS::Draw>,
+        draw: Draw<'b, DS>,
         window: &'b mut dyn Window,
     ) -> StackDst<dyn DrawHandle + 'b> {
         let window = window.as_any_mut().downcast_mut().unwrap();
-        let h = <T as Theme<DS>>::draw_handle(self, shared, draw, window);
+        let h = <T as Theme<DS>>::draw_handle(self, draw, window);
         StackDst::new_or_boxed(h)
     }
 

@@ -12,12 +12,12 @@ use log::info;
 use std::f32::consts::PI;
 use std::time::Duration;
 
-use kas::draw::{color, PassType, TextClass};
+use kas::draw::{color, Draw, DrawRoundedT, PassType, TextClass};
 use kas::geom::{Offset, Quad, Vec2};
 use kas::text::util::set_text_and_prepare;
 use kas::widget::Window;
 use kas::{event, prelude::*};
-use kas_wgpu::draw::DrawWindow;
+use kas_wgpu::draw::DrawPipe;
 
 #[derive(Clone, Debug, kas :: macros :: Widget)]
 #[handler(handle=noauto)]
@@ -71,8 +71,9 @@ impl Layout for Clock {
 
         // We use the low-level draw device to draw our clock. This means it is
         // not themeable, but gives us much more flexible draw routines.
-        let (mut draw, _shared) = draw_handle.draw_device();
-        let mut draw = draw.downcast::<DrawWindow<()>>().unwrap();
+        let draw = draw_handle.draw_device();
+        // Use use DrawRoundedT methods, thus must downcast:
+        let mut draw = Draw::<DrawPipe<()>>::downcast_from(draw).unwrap();
 
         let rect = self.core.rect;
         let quad = Quad::from(rect);
