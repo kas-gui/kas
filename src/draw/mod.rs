@@ -22,15 +22,11 @@
 //!
 //! ### Medium-level drawing interfaces
 //!
-//! The theme draws widget components over a [`Draw`] object (unique to the
-//! current draw context) plus a reference to [`DrawShared`] (for shared data
-//! related to drawing, e.g. loaded images). Widgets may access this same API
-//! via [`DrawHandle::draw_device`].
+//! The theme draws widget components over a [`Draw`] object.
+//! Widgets may access this same API via [`DrawHandle::draw_device`].
 //!
-//! Both [`Draw`] and [`DrawShared`] are wrappers over types provided by the
-//! shell implementing [`Drawable`] and [`DrawableShared`] respectively.
-//! Extension traits to [`Drawable`] (which may be defined elsewhere) cover
-//! further functionality.
+//! The traits [`DrawT`] and [`DrawRoundedT`] provide functinality over a
+//! [`Draw`] object. Additional interfaces may be defined in external crates.
 //!
 //! ### Low-level interface
 //!

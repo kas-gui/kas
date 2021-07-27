@@ -6,30 +6,44 @@
 //! Drawing APIs — draw interface
 
 use super::color::Rgba;
+#[allow(unused)]
+use super::DrawHandle;
 use super::{DrawShared, DrawableShared, ImageId, PassId, PassType};
 use crate::geom::{Offset, Quad, Rect, Vec2};
 use crate::text::{Effect, TextDisplay};
 use std::any::Any;
 
-/// Interface over a (local) draw object
+/// Draw interface object
 ///
-/// A [`Draw`] object is local to a draw context and may be created by the shell
-/// or from another [`Draw`] object via upcast/downcast/reborrow.
+/// [`DrawT`] and extension traits such as [`DrawRoundedT`] provide draw
+/// functionality over this object.
+///
+/// This type is used to present a unified mid-level draw interface, as
+/// available from [`DrawHandle::draw_device`]. A concrete `Draw` object may be
+/// obtained via downcast, e.g.:
+/// ```ignore
+/// # use kas::draw::{Draw, DrawableRounded, DrawableShared, DrawHandle, DrawRoundedT, color::Rgba};
+/// # use kas::geom::Rect;
+/// # struct CircleWidget<DS> {
+/// #     rect: Rect,
+/// #     _pd: std::marker::PhantomData<DS>,
+/// # }
+/// impl CircleWidget {
+///     fn draw(&self, draw_handle: &mut dyn DrawHandle) {
+///         // This type assumes usage of kas_wgpu without a custom draw pipe:
+///         type Draw = Draw<kas_wgpu::draw::DrawPipe<()>>;
+///         if let Some(mut draw) = Draw::downcast_from(draw_handle.draw_device()) {
+///             draw.circle(self.rect.into(), 0.9, Rgba::BLACK);
+///         }
+///     }
+/// }
+/// ```
 ///
 /// Note that this object is little more than a mutable reference to the shell's
 /// per-window draw state. As such, it is normal to pass *a new copy* created
 /// via [`Draw::reborrow`] as a method argument. (Note that Rust automatically
 /// "reborrows" reference types passed as method arguments, but cannot do so
 /// automatically for structs containing references.)
-///
-/// This is created over a [`Drawable`] object created by the shell. The
-/// [`Drawable`] trait provides a very limited set of draw routines, beyond
-/// which optional traits such as [`DrawableRounded`] may be used.
-///
-/// The [`Draw`] object provides a "medium level" interface over known
-/// "drawable" traits, for example one may use [`Draw::circle`] when
-/// [`DrawableRounded`] is implemented. In other cases one may directly use
-/// [`Draw::draw`], passing the result of [`Draw::pass`] as a parameter.
 pub struct Draw<'a, DS: DrawableShared> {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
@@ -89,12 +103,17 @@ impl<'a, DS: DrawableShared> Draw<'a, DS> {
     }
 }
 
-/// Interface over [`Draw`]
+/// Base drawing interface for [`Draw`]
+///
+/// It is expected that extension traits are used for additional draw methods,
+/// for example [`DrawRoundedT`]. Traits may be defined in external crates.
 pub trait DrawT {
     /// Get the current draw pass
     fn pass(&self) -> PassId;
 
     /// Cast fields to [`Any`] references
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn fields_as_any_mut(&mut self) -> (&mut dyn Any, &mut dyn Any);
 
     /// Get drawable rect for a draw `pass`
@@ -189,7 +208,7 @@ impl<'a, DS: DrawableShared> DrawT for Draw<'a, DS> {
     }
 }
 
-/// Extension of [`DrawT`]
+/// Extension over [`DrawT`] for rounded shapes
 pub trait DrawRoundedT: DrawT {
     /// Draw a line with rounded ends and uniform colour
     ///
