@@ -256,7 +256,7 @@ where
         &mut self.draw
     }
 
-    fn new_draw_pass(
+    fn new_pass(
         &mut self,
         mut rect: Rect,
         offset: Offset,
@@ -266,7 +266,7 @@ where
         if class == PassType::Overlay {
             rect = rect.expand(self.window.dims.frame);
         }
-        let mut draw = self.draw.new_draw_pass(rect, offset, class);
+        let mut draw = self.draw.new_pass(rect, offset, class);
 
         if class == PassType::Overlay {
             let outer = draw.clip_rect();

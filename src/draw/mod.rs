@@ -40,7 +40,7 @@
 //!
 //! All draw operations happen within a "draw pass". The first pass corresponds
 //! to the window, while additional passes may be clipped and offset (see
-//! [`DrawIface::new_draw_pass`]). Draw passes are executed sequentially in the order
+//! [`DrawIface::new_pass`]). Draw passes are executed sequentially in the order
 //! defined.
 //!
 //! Within each pass, draw operations may be batched by the shell, thus draw
@@ -72,10 +72,7 @@ pub use theme::*;
 
 /// Draw pass identifier
 ///
-/// This is a small value passed by copy to identify which pass draw routines
-/// happen in. Draw passes allow control over draw order and clipping.
-///
-/// Custom render pipes should extract the pass number.
+/// This is a numerical identifier for the draw pass (see [`DrawIface::new_pass`]).
 #[derive(Copy, Clone)]
 pub struct PassId(u32);
 

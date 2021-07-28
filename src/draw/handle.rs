@@ -242,7 +242,7 @@ pub trait SizeHandle {
 ///
 /// -   [`Self::size_handle`] provides access to a [`SizeHandle`]
 /// -   [`Self::draw_device`] provides a lower-level interface for draw operations
-/// -   [`Self::new_draw_pass`], [`DrawHandleExt::with_clip_region`],
+/// -   [`Self::new_pass`], [`DrawHandleExt::with_clip_region`],
 ///     [`DrawHandleExt::with_overlay`] construct new draw passes
 /// -   [`Self::get_clip_rect`] returns the clip rect
 ///
@@ -257,7 +257,7 @@ pub trait DrawHandle {
     /// Add a draw pass
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn new_draw_pass(
+    fn new_pass(
         &mut self,
         rect: Rect,
         offset: Offset,
@@ -391,7 +391,7 @@ pub trait DrawHandleExt: DrawHandle {
         offset: Offset,
         f: &mut dyn FnMut(&mut dyn DrawHandle),
     ) {
-        self.new_draw_pass(rect, offset, PassType::Clip, f);
+        self.new_pass(rect, offset, PassType::Clip, f);
     }
 
     /// Draw to a new pass as an overlay (e.g. for pop-up menus)
@@ -403,7 +403,7 @@ pub trait DrawHandleExt: DrawHandle {
     /// a frame or shadow around this overlay, thus the
     /// [`DrawHandle::get_clip_rect`] may be larger than expected.
     fn with_overlay(&mut self, rect: Rect, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
-        self.new_draw_pass(rect, Offset::ZERO, PassType::Overlay, f);
+        self.new_pass(rect, Offset::ZERO, PassType::Overlay, f);
     }
 
     /// Draw some text using the standard font, with a subset selected
@@ -509,14 +509,14 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn draw_device(&mut self) -> &mut dyn Draw {
         self.deref_mut().draw_device()
     }
-    fn new_draw_pass(
+    fn new_pass(
         &mut self,
         rect: Rect,
         offset: Offset,
         class: PassType,
         f: &mut dyn FnMut(&mut dyn DrawHandle),
     ) {
-        self.deref_mut().new_draw_pass(rect, offset, class, f);
+        self.deref_mut().new_pass(rect, offset, class, f);
     }
     fn get_clip_rect(&self) -> Rect {
         self.deref().get_clip_rect()
@@ -595,14 +595,14 @@ where
     fn draw_device(&mut self) -> &mut dyn Draw {
         self.deref_mut().draw_device()
     }
-    fn new_draw_pass(
+    fn new_pass(
         &mut self,
         rect: Rect,
         offset: Offset,
         class: PassType,
         f: &mut dyn FnMut(&mut dyn DrawHandle),
     ) {
-        self.deref_mut().new_draw_pass(rect, offset, class, f);
+        self.deref_mut().new_pass(rect, offset, class, f);
     }
     fn get_clip_rect(&self) -> Rect {
         self.deref().get_clip_rect()

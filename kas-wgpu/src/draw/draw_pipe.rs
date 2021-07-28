@@ -388,7 +388,7 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
 }
 
 impl<CW: CustomWindow> DrawImpl for DrawWindow<CW> {
-    fn new_draw_pass(
+    fn new_pass(
         &mut self,
         parent_pass: PassId,
         rect: Rect,

@@ -93,7 +93,7 @@ impl Layout for Clock {
         }
 
         // We use a new pass to control the draw order (force in front).
-        let mut draw = draw.new_draw_pass(rect, Offset::ZERO, PassType::Clip);
+        let mut draw = draw.new_pass(rect, Offset::ZERO, PassType::Clip);
         let mut line_seg = |t: f32, r1: f32, r2: f32, w, col| {
             let v = Vec2(t.sin(), -t.cos());
             draw.rounded_line(centre + v * r1, centre + v * r2, w, col);

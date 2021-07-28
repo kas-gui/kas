@@ -93,8 +93,8 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
     /// Case `class == PassType::Overlay`: the new pass is derived from the
     /// base pass (i.e. the window). Draw operations still happen after those in
     /// `parent_pass`.
-    pub fn new_draw_pass(&mut self, rect: Rect, offset: Offset, class: PassType) -> DrawIface<DS> {
-        let pass = self.draw.new_draw_pass(self.pass, rect, offset, class);
+    pub fn new_pass(&mut self, rect: Rect, offset: Offset, class: PassType) -> DrawIface<DS> {
+        let pass = self.draw.new_pass(self.pass, rect, offset, class);
         DrawIface {
             draw: &mut *self.draw,
             shared: &mut *self.shared,
@@ -146,7 +146,7 @@ pub trait Draw {
     /// `Rect::pos` is zero (but this is not guaranteed).
     ///
     /// (This is not guaranteed to equal the rect passed to
-    /// [`DrawIface::new_draw_pass`].)
+    /// [`DrawIface::new_pass`].)
     fn clip_rect(&self) -> Rect;
 
     /// Draw a rectangle of uniform colour
@@ -198,7 +198,7 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
         offset: Offset,
         class: PassType,
     ) -> stack_dst::ValueA<dyn Draw + 'b, [usize; 4]> {
-        let draw = self.new_draw_pass(rect, offset, class);
+        let draw = self.new_pass(rect, offset, class);
         stack_dst::ValueA::new_stable(draw, |d| d as &dyn Draw)
             .unwrap_or_else(|_| panic!("boxed window too big for StackDst!"))
     }
@@ -309,7 +309,7 @@ where
 ///
 /// Draw operations take place over multiple render passes, identified by a
 /// handle of type [`PassId`]. In general the user only needs to pass this value
-/// into methods as required. [`DrawImpl::new_draw_pass`] creates a new [`PassId`].
+/// into methods as required. [`DrawImpl::new_pass`] creates a new [`PassId`].
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait DrawImpl: Any {
@@ -328,7 +328,7 @@ pub trait DrawImpl: Any {
     /// Case `class == PassType::Overlay`: the new pass is derived from the
     /// base pass (i.e. the window). Draw operations still happen after those in
     /// `parent_pass`.
-    fn new_draw_pass(
+    fn new_pass(
         &mut self,
         parent_pass: PassId,
         rect: Rect,
@@ -342,7 +342,7 @@ pub trait DrawImpl: Any {
     /// `Rect::pos` is zero (but this is not guaranteed).
     ///
     /// (This is not guaranteed to equal the rect passed to
-    /// [`DrawImpl::new_draw_pass`].)
+    /// [`DrawImpl::new_pass`].)
     fn clip_rect(&self, pass: PassId) -> Rect;
 
     /// Draw a rectangle of uniform colour
