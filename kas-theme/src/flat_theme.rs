@@ -248,7 +248,7 @@ where
         self.window
     }
 
-    fn draw_device<'b>(&'b mut self) -> &mut dyn DrawT {
+    fn draw_device<'b>(&'b mut self) -> &mut dyn Draw {
         &mut self.draw
     }
 

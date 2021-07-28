@@ -20,7 +20,7 @@ pub use kas::class::*;
 #[doc(no_inline)]
 pub use kas::dir::{Direction, Directional};
 #[doc(no_inline)]
-pub use kas::draw::{DrawHandle, DrawHandleExt, DrawSharedT, ImageId, SizeHandle, ThemeApi};
+pub use kas::draw::{DrawHandle, DrawHandleExt, DrawShared, ImageId, SizeHandle, ThemeApi};
 #[doc(no_inline)]
 pub use kas::event::{
     Event, Handler, Manager, ManagerState, Response, SendEvent, UpdateHandle, VoidMsg,

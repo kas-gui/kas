@@ -25,7 +25,7 @@
 //! The theme draws widget components over a [`DrawIface`] object.
 //! Widgets may access this same API via [`DrawHandle::draw_device`].
 //!
-//! The traits [`DrawT`] and [`DrawRoundedT`] provide functinality over a
+//! The traits [`Draw`] and [`DrawRounded`] provide functinality over a
 //! [`DrawIface`] object. Additional interfaces may be defined in external crates.
 //!
 //! ### Low-level interface
@@ -49,7 +49,7 @@
 //!
 //! 1.  Images
 //! 2.  Square-edged primitives (e.g. [`Draw::rect`])
-//! 3.  Rounded or other partially-transparent primitives (e.g. [`Draw::circle`])
+//! 3.  Rounded or other partially-transparent primitives (e.g. [`DrawRounded::circle`])
 //! 4.  Custom draw routines (`CustomPipe`)
 //! 5.  Text
 
@@ -65,7 +65,7 @@ mod theme;
 use crate::cast::Cast;
 
 pub use draw::*;
-pub use draw_shared::{SharedState, DrawSharedT, DrawSharedImpl};
+pub use draw_shared::{SharedState, DrawShared, DrawSharedImpl};
 pub use handle::*;
 pub use images::{ImageError, ImageFormat, ImageId};
 pub use theme::*;

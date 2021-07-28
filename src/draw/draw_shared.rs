@@ -19,7 +19,7 @@ use std::path::Path;
 /// which may be accessed directly for a lower-level API (though most methods
 /// are available through [`SharedState`] directly).
 ///
-/// Note: all functionality is implemented through the [`DrawSharedT`] trait to
+/// Note: all functionality is implemented through the [`DrawShared`] trait to
 /// allow usage where the `DS` type parameter is unknown. Some functionality is
 /// also implemented directly to avoid the need for downcasting.
 pub struct SharedState<DS: DrawSharedImpl> {
@@ -39,7 +39,7 @@ impl<DS: DrawSharedImpl> SharedState<DS> {
 }
 
 /// Interface over [`SharedState`]
-pub trait DrawSharedT {
+pub trait DrawShared {
     /// Access [`DrawSharedImpl`] object as `Any` to allow downcasting
     fn drawable_as_any_mut(&mut self) -> &mut dyn Any;
 
@@ -72,7 +72,7 @@ pub trait DrawSharedT {
     fn image_size(&self, id: ImageId) -> Option<Size>;
 }
 
-impl<DS: DrawSharedImpl> DrawSharedT for SharedState<DS> {
+impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
     fn drawable_as_any_mut(&mut self) -> &mut dyn Any {
         &mut self.draw
     }

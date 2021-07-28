@@ -12,7 +12,7 @@ use wgpu::util::DeviceExt;
 use wgpu::{include_spirv, Buffer, ShaderModule};
 
 use kas::adapter::ReserveP;
-use kas::draw::{DrawIface, DrawT, PassId};
+use kas::draw::{DrawIface, Draw, PassId};
 use kas::event::{self, Command};
 use kas::geom::{DVec2, Vec2, Vec3};
 use kas::prelude::*;

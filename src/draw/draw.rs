@@ -15,14 +15,14 @@ use std::any::Any;
 
 /// Draw interface object
 ///
-/// [`DrawT`] and extension traits such as [`DrawRoundedT`] provide draw
+/// [`Draw`] and extension traits such as [`DrawRounded`] provide draw
 /// functionality over this object.
 ///
 /// This type is used to present a unified mid-level draw interface, as
 /// available from [`DrawHandle::draw_device`]. A concrete `DrawIface` object may be
 /// obtained via downcast, e.g.:
 /// ```ignore
-/// # use kas::draw::{DrawIface, DrawRoundedImpl, DrawSharedImpl, DrawHandle, DrawRoundedT, color::Rgba};
+/// # use kas::draw::{DrawIface, DrawRoundedImpl, DrawSharedImpl, DrawHandle, DrawRounded, color::Rgba};
 /// # use kas::geom::Rect;
 /// # struct CircleWidget<DS> {
 /// #     rect: Rect,
@@ -57,8 +57,8 @@ pub struct DrawIface<'a, DS: DrawSharedImpl> {
 }
 
 impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
-    /// Attempt to downcast a `&mut dyn DrawT` to a concrete [`DrawIface`] object
-    pub fn downcast_from(obj: &'a mut dyn DrawT) -> Option<Self> {
+    /// Attempt to downcast a `&mut dyn Draw` to a concrete [`DrawIface`] object
+    pub fn downcast_from(obj: &'a mut dyn Draw) -> Option<Self> {
         let pass = obj.pass();
         let (draw, shared) = obj.fields_as_any_mut();
         let draw = draw.downcast_mut()?;
@@ -106,8 +106,8 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
 /// Base drawing interface for [`DrawIface`]
 ///
 /// It is expected that extension traits are used for additional draw methods,
-/// for example [`DrawRoundedT`]. Traits may be defined in external crates.
-pub trait DrawT {
+/// for example [`DrawRounded`]. Traits may be defined in external crates.
+pub trait Draw {
     /// Get the current draw pass
     fn pass(&self) -> PassId;
 
@@ -138,7 +138,7 @@ pub trait DrawT {
         rect: Rect,
         offset: Offset,
         class: PassType,
-    ) -> stack_dst::ValueA<dyn DrawT + 'b, [usize; 4]>;
+    ) -> stack_dst::ValueA<dyn Draw + 'b, [usize; 4]>;
 
     /// Get drawable rect for a draw `pass`
     ///
@@ -183,7 +183,7 @@ pub trait DrawT {
     fn text_effects(&mut self, pos: Vec2, text: &TextDisplay, effects: &[Effect<Rgba>]);
 }
 
-impl<'a, DS: DrawSharedImpl> DrawT for DrawIface<'a, DS> {
+impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
     fn pass(&self) -> PassId {
         self.pass
     }
@@ -197,9 +197,9 @@ impl<'a, DS: DrawSharedImpl> DrawT for DrawIface<'a, DS> {
         rect: Rect,
         offset: Offset,
         class: PassType,
-    ) -> stack_dst::ValueA<dyn DrawT + 'b, [usize; 4]> {
+    ) -> stack_dst::ValueA<dyn Draw + 'b, [usize; 4]> {
         let draw = self.new_draw_pass(rect, offset, class);
-        stack_dst::ValueA::new_stable(draw, |d| d as &dyn DrawT)
+        stack_dst::ValueA::new_stable(draw, |d| d as &dyn Draw)
             .unwrap_or_else(|_| panic!("boxed window too big for StackDst!"))
     }
 
@@ -243,8 +243,8 @@ impl<'a, DS: DrawSharedImpl> DrawT for DrawIface<'a, DS> {
     }
 }
 
-/// Extension over [`DrawT`] for rounded shapes
-pub trait DrawRoundedT: DrawT {
+/// Extension over [`Draw`] for rounded shapes
+pub trait DrawRounded: Draw {
     /// Draw a line with rounded ends and uniform colour
     ///
     /// This command draws a line segment between the points `p1` and `p2`.
@@ -278,7 +278,7 @@ pub trait DrawRoundedT: DrawT {
     fn rounded_frame(&mut self, outer: Quad, inner: Quad, inner_radius: f32, col: Rgba);
 }
 
-impl<'a, DS: DrawSharedImpl> DrawRoundedT for DrawIface<'a, DS>
+impl<'a, DS: DrawSharedImpl> DrawRounded for DrawIface<'a, DS>
 where
     DS::Draw: DrawRoundedImpl,
 {

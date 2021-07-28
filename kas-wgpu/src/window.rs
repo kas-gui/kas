@@ -10,7 +10,7 @@ use std::rc::Rc;
 use std::time::Instant;
 
 use kas::cast::Cast;
-use kas::draw::{DrawIface, DrawSharedT, PassId, SizeHandle, ThemeApi};
+use kas::draw::{DrawIface, DrawShared, PassId, SizeHandle, ThemeApi};
 use kas::event::{CursorIcon, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
@@ -466,7 +466,7 @@ where
         f(&mut size_handle);
     }
 
-    fn draw_shared(&mut self, f: &mut dyn FnMut(&mut dyn DrawSharedT)) {
+    fn draw_shared(&mut self, f: &mut dyn FnMut(&mut dyn DrawShared)) {
         f(&mut self.shared.draw);
     }
 
