@@ -161,7 +161,7 @@ impl<P: CanvasDrawable> Layout for Canvas<P> {
         let pm_size = self.pixmap.as_ref().map(|pm| (pm.width(), pm.height()));
         if pm_size.unwrap_or((0, 0)) != size {
             if let Some(id) = self.image_id {
-                mgr.draw_shared(|ds| ds.remove_image(id));
+                mgr.draw_shared(|ds| ds.image_free(id));
             }
             self.pixmap = Pixmap::new(size.0, size.1);
             let program = &self.program;

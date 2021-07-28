@@ -39,10 +39,9 @@ impl<DS: DrawSharedImpl> SharedState<DS> {
 }
 
 /// Interface over [`SharedState`]
+///
+/// All methods concern management of resources for drawing.
 pub trait DrawShared {
-    /// Access [`DrawSharedImpl`] object as `Any` to allow downcasting
-    fn drawable_as_any_mut(&mut self) -> &mut dyn Any;
-
     /// Allocate an image
     ///
     /// Use [`SharedState::image_upload`] to set contents of the new image.
@@ -63,20 +62,16 @@ pub trait DrawShared {
     /// Remove a loaded image, by path
     ///
     /// This reduces the reference count and frees if zero.
-    fn remove_image_from_path(&mut self, path: &Path);
+    fn image_free_from_path(&mut self, path: &Path);
 
     /// Free an image
-    fn remove_image(&mut self, id: ImageId);
+    fn image_free(&mut self, id: ImageId);
 
     /// Get the size of an image
     fn image_size(&self, id: ImageId) -> Option<Size>;
 }
 
 impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
-    fn drawable_as_any_mut(&mut self) -> &mut dyn Any {
-        &mut self.draw
-    }
-
     #[inline]
     fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, ImageError> {
         self.draw.image_alloc(size)
@@ -93,12 +88,12 @@ impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
     }
 
     #[inline]
-    fn remove_image_from_path(&mut self, path: &Path) {
+    fn image_free_from_path(&mut self, path: &Path) {
         self.images.remove_path(&mut self.draw, path);
     }
 
     #[inline]
-    fn remove_image(&mut self, id: ImageId) {
+    fn image_free(&mut self, id: ImageId) {
         self.images.remove_id(&mut self.draw, id);
     }
 
