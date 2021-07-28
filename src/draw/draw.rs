@@ -116,6 +116,30 @@ pub trait DrawT {
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn fields_as_any_mut(&mut self) -> (&mut dyn Any, &mut dyn Any);
 
+    /// Add a draw pass
+    ///
+    /// Adds a new draw pass. Passes affect draw order (operations in new passes
+    /// happen after their parent pass), may clip drawing to a "clip rect"
+    /// (see [`Draw::clip_rect`]) and may offset (translate) draw
+    /// operations.
+    ///
+    /// Case `class == PassType::Clip`: the new pass is derived from
+    /// `parent_pass`; `rect` and `offset` are specified relative to this parent
+    /// and the intersecton of `rect` and the parent's "clip rect" is used.
+    /// be clipped to `rect` (expressed in the parent's coordinate system).
+    ///
+    /// Case `class == PassType::Overlay`: the new pass is derived from the
+    /// base pass (i.e. the window). Draw operations still happen after those in
+    /// `parent_pass`.
+    #[cfg(feature = "stack_dst")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "stack_dst")))]
+    fn new_dyn_pass<'b>(
+        &'b mut self,
+        rect: Rect,
+        offset: Offset,
+        class: PassType,
+    ) -> stack_dst::ValueA<dyn DrawT + 'b, [usize; 4]>;
+
     /// Get drawable rect for a draw `pass`
     ///
     /// The result is in the current target's coordinate system, thus normally
@@ -166,6 +190,17 @@ impl<'a, DS: DrawableShared> DrawT for Draw<'a, DS> {
 
     fn fields_as_any_mut(&mut self) -> (&mut dyn Any, &mut dyn Any) {
         (self.draw, self.shared)
+    }
+
+    fn new_dyn_pass<'b>(
+        &'b mut self,
+        rect: Rect,
+        offset: Offset,
+        class: PassType,
+    ) -> stack_dst::ValueA<dyn DrawT + 'b, [usize; 4]> {
+        let draw = self.new_draw_pass(rect, offset, class);
+        stack_dst::ValueA::new_stable(draw, |d| d as &dyn DrawT)
+            .unwrap_or_else(|_| panic!("boxed window too big for StackDst!"))
     }
 
     fn clip_rect(&self) -> Rect {
