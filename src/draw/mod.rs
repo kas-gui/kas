@@ -104,3 +104,16 @@ impl PassId {
         0.0
     }
 }
+
+/// Type of draw pass
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub enum PassType {
+    /// New pass is clipped and offset relative to parent
+    Clip,
+    /// New pass is an overlay
+    ///
+    /// An overlay is a layer drawn over the base window, for example a tooltip
+    /// or combobox menu. The rect and offset are relative to the base window.
+    /// The theme may draw a shadow or border around this rect.
+    Overlay,
+}

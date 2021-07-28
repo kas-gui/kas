@@ -9,7 +9,7 @@ use std::convert::AsRef;
 use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 
 use kas::dir::Direction;
-use kas::draw::{Draw, ImageId};
+use kas::draw::{Draw, ImageId, PassType};
 use kas::geom::{Coord, Offset, Rect, Size};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules};
 use kas::text::{AccelString, Text, TextApi, TextDisplay};
@@ -96,21 +96,6 @@ impl Default for TextClass {
     fn default() -> Self {
         TextClass::Label
     }
-}
-
-/// Type of draw pass
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
-pub enum PassType {
-    /// New pass is clipped and offset relative to parent
-    Clip,
-    /// New pass is an overlay
-    ///
-    /// An overlay is a layer drawn over the base window, for example a tooltip
-    /// or combobox menu. The rect and offset are relative to the base window.
-    /// The theme may draw a shadow or border around this rect.
-    Overlay,
 }
 
 /// A handle to the active theme, used for sizing
