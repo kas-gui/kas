@@ -408,7 +408,7 @@ impl<CW: CustomWindow> DrawImpl for DrawWindow<CW> {
     }
 
     #[inline]
-    fn clip_rect(&self, pass: PassId) -> Rect {
+    fn get_clip_rect(&self, pass: PassId) -> Rect {
         let region = &self.clip_regions[pass.pass()];
         region.0 + region.1
     }

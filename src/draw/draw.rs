@@ -59,8 +59,8 @@ pub struct DrawIface<'a, DS: DrawSharedImpl> {
 impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
     /// Attempt to downcast a `&mut dyn Draw` to a concrete [`DrawIface`] object
     pub fn downcast_from(obj: &'a mut dyn Draw) -> Option<Self> {
-        let pass = obj.pass();
-        let (draw, shared) = obj.fields_as_any_mut();
+        let pass = obj.get_pass();
+        let (draw, shared) = obj.get_fields_as_any_mut();
         let draw = draw.downcast_mut()?;
         let shared = shared.downcast_mut()?;
         Some(DrawIface { draw, shared, pass })
@@ -82,7 +82,7 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
     ///
     /// Adds a new draw pass. Passes affect draw order (operations in new passes
     /// happen after their parent pass), may clip drawing to a "clip rect"
-    /// (see [`DrawIface::clip_rect`]) and may offset (translate) draw
+    /// (see [`DrawIface::get_clip_rect`]) and may offset (translate) draw
     /// operations.
     ///
     /// Case `class == PassType::Clip`: the new pass is derived from
@@ -105,22 +105,25 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
 
 /// Base drawing interface for [`DrawIface`]
 ///
+/// Most methods draw some feature. Exceptions are those starting with `get_`
+/// and [`Self::new_dyn_pass`].
+///
 /// It is expected that extension traits are used for additional draw methods,
 /// for example [`DrawRounded`]. Traits may be defined in external crates.
 pub trait Draw {
     /// Get the current draw pass
-    fn pass(&self) -> PassId;
+    fn get_pass(&self) -> PassId;
 
     /// Cast fields to [`Any`] references
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn fields_as_any_mut(&mut self) -> (&mut dyn Any, &mut dyn Any);
+    fn get_fields_as_any_mut(&mut self) -> (&mut dyn Any, &mut dyn Any);
 
     /// Add a draw pass
     ///
     /// Adds a new draw pass. Passes affect draw order (operations in new passes
     /// happen after their parent pass), may clip drawing to a "clip rect"
-    /// (see [`DrawIface::clip_rect`]) and may offset (translate) draw
+    /// (see [`DrawIface::get_clip_rect`]) and may offset (translate) draw
     /// operations.
     ///
     /// Case `class == PassType::Clip`: the new pass is derived from
@@ -147,7 +150,7 @@ pub trait Draw {
     ///
     /// (This is not guaranteed to equal the rect passed to
     /// [`DrawIface::new_pass`].)
-    fn clip_rect(&self) -> Rect;
+    fn get_clip_rect(&self) -> Rect;
 
     /// Draw a rectangle of uniform colour
     fn rect(&mut self, rect: Quad, col: Rgba);
@@ -184,11 +187,11 @@ pub trait Draw {
 }
 
 impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
-    fn pass(&self) -> PassId {
+    fn get_pass(&self) -> PassId {
         self.pass
     }
 
-    fn fields_as_any_mut(&mut self) -> (&mut dyn Any, &mut dyn Any) {
+    fn get_fields_as_any_mut(&mut self) -> (&mut dyn Any, &mut dyn Any) {
         (self.draw, self.shared)
     }
 
@@ -203,8 +206,8 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
             .unwrap_or_else(|_| panic!("boxed window too big for StackDst!"))
     }
 
-    fn clip_rect(&self) -> Rect {
-        self.draw.clip_rect(self.pass)
+    fn get_clip_rect(&self) -> Rect {
+        self.draw.get_clip_rect(self.pass)
     }
 
     fn rect(&mut self, rect: Quad, col: Rgba) {
@@ -266,7 +269,7 @@ pub trait DrawImpl: Any {
     ///
     /// Adds a new draw pass. Passes affect draw order (operations in new passes
     /// happen after their parent pass), may clip drawing to a "clip rect"
-    /// (see [`DrawImpl::clip_rect`]) and may offset (translate) draw
+    /// (see [`DrawImpl::get_clip_rect`]) and may offset (translate) draw
     /// operations.
     ///
     /// Case `class == PassType::Clip`: the new pass is derived from
@@ -292,7 +295,7 @@ pub trait DrawImpl: Any {
     ///
     /// (This is not guaranteed to equal the rect passed to
     /// [`DrawImpl::new_pass`].)
-    fn clip_rect(&self, pass: PassId) -> Rect;
+    fn get_clip_rect(&self, pass: PassId) -> Rect;
 
     /// Draw a rectangle of uniform colour
     fn rect(&mut self, pass: PassId, rect: Quad, col: Rgba);

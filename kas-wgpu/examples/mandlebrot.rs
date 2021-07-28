@@ -330,7 +330,7 @@ impl Layout for Mandlebrot {
         let draw = draw_handle.draw_device();
         let draw = DrawIface::<DrawPipe<Pipe>>::downcast_from(draw).unwrap();
         let p = (self.alpha, self.delta, self.rel_width, self.iter);
-        draw.draw.custom(draw.pass(), self.core.rect, p);
+        draw.draw.custom(draw.get_pass(), self.core.rect, p);
     }
 }
 

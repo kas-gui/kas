@@ -269,7 +269,7 @@ where
         let mut draw = self.draw.new_pass(rect, offset, class);
 
         if class == PassType::Overlay {
-            let outer = draw.clip_rect();
+            let outer = draw.get_clip_rect();
             let inner = Quad::from(outer.shrink(self.window.dims.frame));
             let outer = Quad::from(outer);
             draw.rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
@@ -286,7 +286,7 @@ where
     }
 
     fn get_clip_rect(&self) -> Rect {
-        self.draw.clip_rect()
+        self.draw.get_clip_rect()
     }
 
     fn outer_frame(&mut self, rect: Rect) {
