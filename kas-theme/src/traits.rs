@@ -5,7 +5,7 @@
 
 //! Theme traits
 
-use kas::draw::{color, DrawIface, DrawHandle, DrawShared, DrawableShared, SizeHandle, ThemeApi};
+use kas::draw::{color, DrawIface, DrawHandle, SharedState, DrawableShared, SizeHandle, ThemeApi};
 use kas::TkAction;
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
@@ -67,7 +67,7 @@ pub trait Theme<DS: DrawableShared>: ThemeApi {
     ///
     /// At a minimum, a theme must load a font to [`kas::text::fonts`].
     /// The first font loaded (by any theme) becomes the default font.
-    fn init(&mut self, shared: &mut DrawShared<DS>);
+    fn init(&mut self, shared: &mut SharedState<DS>);
 
     /// Construct per-window storage
     ///
@@ -146,7 +146,7 @@ impl<T: Theme<DS>, DS: DrawableShared> Theme<DS> for Box<T> {
         self.deref_mut().apply_config(config)
     }
 
-    fn init(&mut self, shared: &mut DrawShared<DS>) {
+    fn init(&mut self, shared: &mut SharedState<DS>) {
         self.deref_mut().init(shared);
     }
 

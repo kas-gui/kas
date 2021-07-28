@@ -113,7 +113,7 @@ where
         action
     }
 
-    fn init(&mut self, _shared: &mut DrawShared<DS>) {
+    fn init(&mut self, _shared: &mut SharedState<DS>) {
         let fonts = fonts::fonts();
         if let Err(e) = fonts.select_default() {
             panic!("Error loading font: {}", e);

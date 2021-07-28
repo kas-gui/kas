@@ -92,7 +92,7 @@ where
         <FlatTheme as Theme<DS>>::apply_config(&mut self.flat, config)
     }
 
-    fn init(&mut self, shared: &mut DrawShared<DS>) {
+    fn init(&mut self, shared: &mut SharedState<DS>) {
         <FlatTheme as Theme<DS>>::init(&mut self.flat, shared)
     }
 

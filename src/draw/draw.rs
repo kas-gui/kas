@@ -8,7 +8,7 @@
 use super::color::Rgba;
 #[allow(unused)]
 use super::DrawHandle;
-use super::{DrawShared, DrawableShared, ImageId, PassId, PassType};
+use super::{SharedState, DrawableShared, ImageId, PassId, PassType};
 use crate::geom::{Offset, Quad, Rect, Vec2};
 use crate::text::{Effect, TextDisplay};
 use std::any::Any;
@@ -50,7 +50,7 @@ pub struct DrawIface<'a, DS: DrawableShared> {
     pub draw: &'a mut DS::Draw,
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub shared: &'a mut DrawShared<DS>,
+    pub shared: &'a mut SharedState<DS>,
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub pass: PassId,

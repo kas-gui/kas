@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::marker::Unsize;
 
 use crate::{Config, StackDst, Theme, ThemeDst, Window};
-use kas::draw::{color, DrawIface, DrawHandle, DrawShared, DrawableShared, ThemeApi};
+use kas::draw::{color, DrawIface, DrawHandle, SharedState, DrawableShared, ThemeApi};
 use kas::TkAction;
 
 #[cfg(feature = "unsize")]
@@ -129,7 +129,7 @@ impl<DS: DrawableShared> Theme<DS> for MultiTheme<DS> {
         action
     }
 
-    fn init(&mut self, shared: &mut DrawShared<DS>) {
+    fn init(&mut self, shared: &mut SharedState<DS>) {
         for theme in &mut self.themes {
             theme.init(shared);
         }

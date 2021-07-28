@@ -10,7 +10,7 @@ use std::borrow::Cow;
 use std::ops::{Deref, DerefMut};
 
 use super::{StackDst, Theme, Window};
-use kas::draw::{color, DrawIface, DrawHandle, DrawShared, DrawableShared, SizeHandle, ThemeApi};
+use kas::draw::{color, DrawIface, DrawHandle, SharedState, DrawableShared, SizeHandle, ThemeApi};
 use kas::TkAction;
 
 /// An optionally-owning (boxed) reference
@@ -47,7 +47,7 @@ pub trait ThemeDst<DS: DrawableShared>: ThemeApi {
     /// Theme initialisation
     ///
     /// See also [`Theme::init`].
-    fn init(&mut self, shared: &mut DrawShared<DS>);
+    fn init(&mut self, shared: &mut SharedState<DS>);
 
     /// Construct per-window storage
     ///
@@ -111,7 +111,7 @@ where
         self.apply_config(config.downcast_ref().unwrap())
     }
 
-    fn init(&mut self, shared: &mut DrawShared<DS>) {
+    fn init(&mut self, shared: &mut SharedState<DS>) {
         self.init(shared);
     }
 
@@ -174,7 +174,7 @@ impl<'a, DS: DrawableShared, T: Theme<DS>> ThemeDst<DS> for T {
         self.apply_config(config.downcast_ref().unwrap())
     }
 
-    fn init(&mut self, shared: &mut DrawShared<DS>) {
+    fn init(&mut self, shared: &mut SharedState<DS>) {
         self.init(shared);
     }
 
