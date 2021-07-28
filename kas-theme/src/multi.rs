@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::marker::Unsize;
 
 use crate::{Config, StackDst, Theme, ThemeDst, Window};
-use kas::draw::{color, DrawIface, DrawHandle, SharedState, DrawableShared, ThemeApi};
+use kas::draw::{color, DrawIface, DrawHandle, SharedState, DrawSharedImpl, ThemeApi};
 use kas::TkAction;
 
 #[cfg(feature = "unsize")]
@@ -69,7 +69,7 @@ impl<DS> MultiThemeBuilder<DS> {
     #[cfg(not(feature = "unsize"))]
     pub fn add<S: ToString, T>(mut self, name: S, theme: T) -> Self
     where
-        DS: DrawableShared,
+        DS: DrawSharedImpl,
         T: ThemeDst<DS> + 'static,
     {
         let index = self.themes.len();
@@ -101,7 +101,7 @@ impl<DS> MultiThemeBuilder<DS> {
     }
 }
 
-impl<DS: DrawableShared> Theme<DS> for MultiTheme<DS> {
+impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
     type Config = Config;
     type Window = StackDst<dyn Window>;
 

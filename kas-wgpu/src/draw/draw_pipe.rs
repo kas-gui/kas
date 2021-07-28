@@ -14,7 +14,7 @@ use kas::draw::color::Rgba;
 use kas::draw::*;
 use kas::geom::{Coord, Quad, Rect, Size, Vec2};
 use kas::text::{Effect, TextDisplay};
-use kas_theme::DrawableShaded;
+use kas_theme::DrawShadedImpl;
 
 impl<C: CustomPipe> DrawPipe<C> {
     /// Construct
@@ -310,7 +310,7 @@ impl<C: CustomPipe> DrawPipe<C> {
     }
 }
 
-impl<C: CustomPipe> DrawableShared for DrawPipe<C> {
+impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
     type Draw = DrawWindow<C::Window>;
 
     #[inline]
@@ -387,7 +387,7 @@ impl<C: CustomPipe> DrawableShared for DrawPipe<C> {
     }
 }
 
-impl<CW: CustomWindow> Drawable for DrawWindow<CW> {
+impl<CW: CustomWindow> DrawImpl for DrawWindow<CW> {
     fn new_draw_pass(
         &mut self,
         parent_pass: PassId,
@@ -424,7 +424,7 @@ impl<CW: CustomWindow> Drawable for DrawWindow<CW> {
     }
 }
 
-impl<CW: CustomWindow> DrawableRounded for DrawWindow<CW> {
+impl<CW: CustomWindow> DrawRoundedImpl for DrawWindow<CW> {
     #[inline]
     fn rounded_line(&mut self, pass: PassId, p1: Vec2, p2: Vec2, radius: f32, col: Rgba) {
         self.flat_round.line(pass, p1, p2, radius, col);
@@ -449,7 +449,7 @@ impl<CW: CustomWindow> DrawableRounded for DrawWindow<CW> {
     }
 }
 
-impl<CW: CustomWindow> DrawableShaded for DrawWindow<CW> {
+impl<CW: CustomWindow> DrawShadedImpl for DrawWindow<CW> {
     #[inline]
     fn shaded_square(&mut self, pass: PassId, rect: Quad, norm: (f32, f32), col: Rgba) {
         self.shaded_square

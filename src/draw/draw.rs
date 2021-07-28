@@ -8,7 +8,7 @@
 use super::color::Rgba;
 #[allow(unused)]
 use super::DrawHandle;
-use super::{SharedState, DrawableShared, ImageId, PassId, PassType};
+use super::{SharedState, DrawSharedImpl, ImageId, PassId, PassType};
 use crate::geom::{Offset, Quad, Rect, Vec2};
 use crate::text::{Effect, TextDisplay};
 use std::any::Any;
@@ -22,7 +22,7 @@ use std::any::Any;
 /// available from [`DrawHandle::draw_device`]. A concrete `DrawIface` object may be
 /// obtained via downcast, e.g.:
 /// ```ignore
-/// # use kas::draw::{DrawIface, DrawableRounded, DrawableShared, DrawHandle, DrawRoundedT, color::Rgba};
+/// # use kas::draw::{DrawIface, DrawRoundedImpl, DrawSharedImpl, DrawHandle, DrawRoundedT, color::Rgba};
 /// # use kas::geom::Rect;
 /// # struct CircleWidget<DS> {
 /// #     rect: Rect,
@@ -44,7 +44,7 @@ use std::any::Any;
 /// via [`DrawIface::reborrow`] as a method argument. (Note that Rust automatically
 /// "reborrows" reference types passed as method arguments, but cannot do so
 /// automatically for structs containing references.)
-pub struct DrawIface<'a, DS: DrawableShared> {
+pub struct DrawIface<'a, DS: DrawSharedImpl> {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub draw: &'a mut DS::Draw,
@@ -56,7 +56,7 @@ pub struct DrawIface<'a, DS: DrawableShared> {
     pub pass: PassId,
 }
 
-impl<'a, DS: DrawableShared> DrawIface<'a, DS> {
+impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
     /// Attempt to downcast a `&mut dyn DrawT` to a concrete [`DrawIface`] object
     pub fn downcast_from(obj: &'a mut dyn DrawT) -> Option<Self> {
         let pass = obj.pass();
@@ -183,7 +183,7 @@ pub trait DrawT {
     fn text_effects(&mut self, pos: Vec2, text: &TextDisplay, effects: &[Effect<Rgba>]);
 }
 
-impl<'a, DS: DrawableShared> DrawT for DrawIface<'a, DS> {
+impl<'a, DS: DrawSharedImpl> DrawT for DrawIface<'a, DS> {
     fn pass(&self) -> PassId {
         self.pass
     }
@@ -251,7 +251,7 @@ pub trait DrawRoundedT: DrawT {
     /// Pixels within the given `radius` of this segment are drawn, resulting
     /// in rounded ends and width `2 * radius`.
     ///
-    /// Note that for rectangular, axis-aligned lines, [`Drawable::rect`] should be
+    /// Note that for rectangular, axis-aligned lines, [`DrawImpl::rect`] should be
     /// preferred.
     fn rounded_line(&mut self, p1: Vec2, p2: Vec2, radius: f32, col: Rgba);
 
@@ -278,9 +278,9 @@ pub trait DrawRoundedT: DrawT {
     fn rounded_frame(&mut self, outer: Quad, inner: Quad, inner_radius: f32, col: Rgba);
 }
 
-impl<'a, DS: DrawableShared> DrawRoundedT for DrawIface<'a, DS>
+impl<'a, DS: DrawSharedImpl> DrawRoundedT for DrawIface<'a, DS>
 where
-    DS::Draw: DrawableRounded,
+    DS::Draw: DrawRoundedImpl,
 {
     fn rounded_line(&mut self, p1: Vec2, p2: Vec2, radius: f32, col: Rgba) {
         self.draw.rounded_line(self.pass, p1, p2, radius, col);
@@ -297,7 +297,7 @@ where
 /// Base abstraction over drawing
 ///
 /// This trait covers only the bare minimum of functionality which *must* be
-/// provided by the shell; extension traits such as [`DrawableRounded`]
+/// provided by the shell; extension traits such as [`DrawRoundedImpl`]
 /// optionally provide more functionality.
 ///
 /// Coordinates are specified via a [`Vec2`] and rectangular regions via
@@ -309,15 +309,15 @@ where
 ///
 /// Draw operations take place over multiple render passes, identified by a
 /// handle of type [`PassId`]. In general the user only needs to pass this value
-/// into methods as required. [`Drawable::new_draw_pass`] creates a new [`PassId`].
+/// into methods as required. [`DrawImpl::new_draw_pass`] creates a new [`PassId`].
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-pub trait Drawable: Any {
+pub trait DrawImpl: Any {
     /// Add a draw pass
     ///
     /// Adds a new draw pass. Passes affect draw order (operations in new passes
     /// happen after their parent pass), may clip drawing to a "clip rect"
-    /// (see [`Drawable::clip_rect`]) and may offset (translate) draw
+    /// (see [`DrawImpl::clip_rect`]) and may offset (translate) draw
     /// operations.
     ///
     /// Case `class == PassType::Clip`: the new pass is derived from
@@ -342,7 +342,7 @@ pub trait Drawable: Any {
     /// `Rect::pos` is zero (but this is not guaranteed).
     ///
     /// (This is not guaranteed to equal the rect passed to
-    /// [`Drawable::new_draw_pass`].)
+    /// [`DrawImpl::new_draw_pass`].)
     fn clip_rect(&self, pass: PassId) -> Rect;
 
     /// Draw a rectangle of uniform colour
@@ -354,14 +354,14 @@ pub trait Drawable: Any {
 
 /// Drawing commands for rounded shapes
 ///
-/// This trait is an extension over [`Drawable`] providing rounded shapes.
+/// This trait is an extension over [`DrawImpl`] providing rounded shapes.
 ///
 /// The primitives provided by this trait are partially transparent.
 /// If the implementation buffers draw commands, it should draw these
 /// primitives after solid primitives.
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-pub trait DrawableRounded: Drawable {
+pub trait DrawRoundedImpl: DrawImpl {
     /// Draw a line with rounded ends and uniform colour
     fn rounded_line(&mut self, pass: PassId, p1: Vec2, p2: Vec2, radius: f32, col: Rgba);
 

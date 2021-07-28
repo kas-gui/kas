@@ -6,7 +6,7 @@
 //! Drawing APIs — shaded drawing
 
 use kas::draw::color::Rgba;
-use kas::draw::{DrawIface, Drawable, DrawableShared, PassId};
+use kas::draw::{DrawIface, DrawImpl, DrawSharedImpl, PassId};
 use kas::geom::Quad;
 
 /// Extension trait providing shaded drawing over [`DrawIface`]
@@ -31,9 +31,9 @@ pub trait DrawableShadedExt {
     fn shaded_round_frame(&mut self, outer: Quad, inner: Quad, norm: (f32, f32), col: Rgba);
 }
 
-impl<'a, DS: DrawableShared> DrawableShadedExt for DrawIface<'a, DS>
+impl<'a, DS: DrawSharedImpl> DrawableShadedExt for DrawIface<'a, DS>
 where
-    DS::Draw: DrawableShaded,
+    DS::Draw: DrawShadedImpl,
 {
     fn shaded_square(&mut self, rect: Quad, norm: (f32, f32), col: Rgba) {
         self.draw.shaded_square(self.pass, rect, norm, col);
@@ -63,7 +63,7 @@ where
 
 /// Drawing commands for shaded shapes
 ///
-/// This trait is an extension over [`Drawable`] providing solid shaded shapes.
+/// This trait is an extension over [`DrawImpl`] providing solid shaded shapes.
 ///
 /// Some drawing primitives (the "round" ones) are partially transparent.
 /// If the implementation buffers draw commands, it should draw these
@@ -74,7 +74,7 @@ where
 /// 0 is perpendicular to the screen towards the viewer, and 1 points outwards.
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-pub trait DrawableShaded: Drawable {
+pub trait DrawShadedImpl: DrawImpl {
     /// Add a shaded square to the draw buffer
     fn shaded_square(&mut self, pass: PassId, rect: Quad, norm: (f32, f32), col: Rgba);
 

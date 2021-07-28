@@ -46,9 +46,9 @@ thread_local! {
     static BACKGROUND: Cell<Rgba> = Cell::new(Rgba::grey(1.0));
 }
 
-impl<DS: DrawableShared> Theme<DS> for CustomTheme
+impl<DS: DrawSharedImpl> Theme<DS> for CustomTheme
 where
-    DS::Draw: DrawableRounded,
+    DS::Draw: DrawRoundedImpl,
 {
     type Config = kas_theme::Config;
     type Window = <FlatTheme as Theme<DS>>::Window;

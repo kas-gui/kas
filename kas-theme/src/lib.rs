@@ -35,7 +35,7 @@ pub use kas;
 
 pub use colors::{Colors, ColorsLinear, ColorsSrgb};
 pub use config::{Config, RasterConfig};
-pub use draw_shaded::{DrawableShaded, DrawableShadedExt};
+pub use draw_shaded::{DrawShadedImpl, DrawableShadedExt};
 pub use flat_theme::FlatTheme;
 #[cfg(feature = "stack_dst")]
 pub use multi::{MultiTheme, MultiThemeBuilder};

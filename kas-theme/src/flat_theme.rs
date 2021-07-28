@@ -83,15 +83,15 @@ const DIMS: dim::Parameters = dim::Parameters {
     progress_bar: Vec2::splat(12.0),
 };
 
-pub struct DrawHandle<'a, DS: DrawableShared> {
+pub struct DrawHandle<'a, DS: DrawSharedImpl> {
     pub(crate) draw: DrawIface<'a, DS>,
     pub(crate) window: &'a mut dim::Window,
     pub(crate) cols: &'a ColorsLinear,
 }
 
-impl<DS: DrawableShared> Theme<DS> for FlatTheme
+impl<DS: DrawSharedImpl> Theme<DS> for FlatTheme
 where
-    DS::Draw: DrawableRounded,
+    DS::Draw: DrawRoundedImpl,
 {
     type Config = Config;
     type Window = dim::Window;
@@ -196,9 +196,9 @@ impl ThemeApi for FlatTheme {
     }
 }
 
-impl<'a, DS: DrawableShared> DrawHandle<'a, DS>
+impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS>
 where
-    DS::Draw: DrawableRounded,
+    DS::Draw: DrawRoundedImpl,
 {
     /// Draw an edit box with optional navigation highlight.
     /// Return the inner rect.
@@ -240,9 +240,9 @@ where
     }
 }
 
-impl<'a, DS: DrawableShared> draw::DrawHandle for DrawHandle<'a, DS>
+impl<'a, DS: DrawSharedImpl> draw::DrawHandle for DrawHandle<'a, DS>
 where
-    DS::Draw: DrawableRounded,
+    DS::Draw: DrawRoundedImpl,
 {
     fn size_handle(&mut self) -> &mut dyn SizeHandle {
         self.window

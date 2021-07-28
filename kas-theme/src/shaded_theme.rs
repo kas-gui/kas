@@ -9,7 +9,7 @@ use std::f32;
 use std::ops::Range;
 
 use crate::{dim, ColorsLinear, Config, FlatTheme, Theme};
-use crate::{DrawableShaded, DrawableShadedExt};
+use crate::{DrawShadedImpl, DrawableShadedExt};
 use kas::dir::{Direction, Directional};
 use kas::draw::{self, color::Rgba, *};
 use kas::geom::*;
@@ -66,15 +66,15 @@ const DIMS: dim::Parameters = dim::Parameters {
     progress_bar: Vec2::splat(12.0),
 };
 
-pub struct DrawHandle<'a, DS: DrawableShared> {
+pub struct DrawHandle<'a, DS: DrawSharedImpl> {
     draw: DrawIface<'a, DS>,
     window: &'a mut dim::Window,
     cols: &'a ColorsLinear,
 }
 
-impl<DS: DrawableShared> Theme<DS> for ShadedTheme
+impl<DS: DrawSharedImpl> Theme<DS> for ShadedTheme
 where
-    DS::Draw: DrawableRounded + DrawableShaded,
+    DS::Draw: DrawRoundedImpl + DrawShadedImpl,
 {
     type Config = Config;
     type Window = dim::Window;
@@ -155,9 +155,9 @@ impl ThemeApi for ShadedTheme {
     }
 }
 
-impl<'a, DS: DrawableShared> DrawHandle<'a, DS>
+impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS>
 where
-    DS::Draw: DrawableRounded + DrawableShaded,
+    DS::Draw: DrawRoundedImpl + DrawShadedImpl,
 {
     // Type-cast to flat_theme's DrawHandle. Should be equivalent to transmute.
     fn as_flat<'b, 'c>(&'b mut self) -> super::flat_theme::DrawHandle<'c, DS>
@@ -211,9 +211,9 @@ where
     }
 }
 
-impl<'a, DS: DrawableShared> draw::DrawHandle for DrawHandle<'a, DS>
+impl<'a, DS: DrawSharedImpl> draw::DrawHandle for DrawHandle<'a, DS>
 where
-    DS::Draw: DrawableRounded + DrawableShaded,
+    DS::Draw: DrawRoundedImpl + DrawShadedImpl,
 {
     fn size_handle(&mut self) -> &mut dyn SizeHandle {
         self.window

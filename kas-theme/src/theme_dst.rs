@@ -10,7 +10,7 @@ use std::borrow::Cow;
 use std::ops::{Deref, DerefMut};
 
 use super::{StackDst, Theme, Window};
-use kas::draw::{color, DrawIface, DrawHandle, SharedState, DrawableShared, SizeHandle, ThemeApi};
+use kas::draw::{color, DrawIface, DrawHandle, SharedState, DrawSharedImpl, SizeHandle, ThemeApi};
 use kas::TkAction;
 
 /// An optionally-owning (boxed) reference
@@ -37,7 +37,7 @@ impl<T: ?Sized> AsRef<T> for MaybeBoxed<'_, T> {
 /// [`Theme`]. It is intended only for use where a less parameterised
 /// trait is required.
 #[cfg_attr(doc_cfg, doc(cfg(feature = "stack_dst")))]
-pub trait ThemeDst<DS: DrawableShared>: ThemeApi {
+pub trait ThemeDst<DS: DrawSharedImpl>: ThemeApi {
     /// Get current config
     fn config(&self) -> MaybeBoxed<dyn Any>;
 
@@ -96,7 +96,7 @@ pub trait ThemeDst<DS: DrawableShared>: ThemeApi {
 }
 
 #[cfg(not(feature = "gat"))]
-impl<'a, DS: DrawableShared, T: Theme<DS>> ThemeDst<DS> for T
+impl<'a, DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T
 where
     <T as Theme<DS>>::DrawHandle: 'static,
 {
@@ -162,7 +162,7 @@ where
 }
 
 #[cfg(feature = "gat")]
-impl<'a, DS: DrawableShared, T: Theme<DS>> ThemeDst<DS> for T {
+impl<'a, DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T {
     fn config(&self) -> MaybeBoxed<dyn Any> {
         match self.config() {
             Cow::Borrowed(config) => MaybeBoxed::Borrowed(config),

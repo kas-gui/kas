@@ -6,7 +6,7 @@
 //! Drawing APIs — shared draw state
 
 use super::color::Rgba;
-use super::{images, Drawable, ImageError, ImageFormat, ImageId, PassId};
+use super::{images, DrawImpl, ImageError, ImageFormat, ImageId, PassId};
 use crate::geom::{Quad, Size, Vec2};
 use crate::text::{Effect, TextDisplay};
 use std::any::Any;
@@ -15,22 +15,22 @@ use std::path::Path;
 /// Interface over a shared draw object
 ///
 /// A single [`SharedState`] instance is shared by all windows and draw contexts.
-/// This struct is built over a [`DrawableShared`] object provided by the shell,
+/// This struct is built over a [`DrawSharedImpl`] object provided by the shell,
 /// which may be accessed directly for a lower-level API (though most methods
 /// are available through [`SharedState`] directly).
 ///
 /// Note: all functionality is implemented through the [`DrawSharedT`] trait to
 /// allow usage where the `DS` type parameter is unknown. Some functionality is
 /// also implemented directly to avoid the need for downcasting.
-pub struct SharedState<DS: DrawableShared> {
-    /// The shell's [`DrawableShared`] object
+pub struct SharedState<DS: DrawSharedImpl> {
+    /// The shell's [`DrawSharedImpl`] object
     pub draw: DS,
     images: images::Images,
 }
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-impl<DS: DrawableShared> SharedState<DS> {
+impl<DS: DrawSharedImpl> SharedState<DS> {
     /// Construct (this is only called by the shell)
     pub fn new(draw: DS) -> Self {
         let images = images::Images::new();
@@ -40,7 +40,7 @@ impl<DS: DrawableShared> SharedState<DS> {
 
 /// Interface over [`SharedState`]
 pub trait DrawSharedT {
-    /// Access [`DrawableShared`] object as `Any` to allow downcasting
+    /// Access [`DrawSharedImpl`] object as `Any` to allow downcasting
     fn drawable_as_any_mut(&mut self) -> &mut dyn Any;
 
     /// Allocate an image
@@ -72,7 +72,7 @@ pub trait DrawSharedT {
     fn image_size(&self, id: ImageId) -> Option<Size>;
 }
 
-impl<DS: DrawableShared> DrawSharedT for SharedState<DS> {
+impl<DS: DrawSharedImpl> DrawSharedT for SharedState<DS> {
     fn drawable_as_any_mut(&mut self) -> &mut dyn Any {
         &mut self.draw
     }
@@ -113,12 +113,12 @@ impl<DS: DrawableShared> DrawSharedT for SharedState<DS> {
 /// This is typically used via [`SharedState`].
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-pub trait DrawableShared: Any {
-    type Draw: Drawable;
+pub trait DrawSharedImpl: Any {
+    type Draw: DrawImpl;
 
     /// Allocate an image
     ///
-    /// Use [`DrawableShared::image_upload`] to set contents of the new image.
+    /// Use [`DrawSharedImpl::image_upload`] to set contents of the new image.
     fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, ImageError>;
 
     /// Upload an image to the GPU
