@@ -15,7 +15,7 @@ use std::path::PathBuf;
 use tiny_skia::Pixmap;
 
 /// An SVG image loaded from a path
-#[cfg_attr(doc_cfg, doc(cfg(svg)))]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "svg")))]
 #[derive(Clone, Widget)]
 #[widget(config = noauto)]
 pub struct Svg {

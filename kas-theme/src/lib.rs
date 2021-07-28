@@ -45,7 +45,7 @@ pub use theme_dst::{MaybeBoxed, ThemeDst};
 pub use traits::{Theme, ThemeConfig, Window};
 
 #[cfg(feature = "stack_dst")]
-#[cfg_attr(doc_cfg, doc(cfg(stack_dst)))]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "stack_dst")))]
 /// Fixed-size object of `Unsized` type
 ///
 /// This is a re-export of
