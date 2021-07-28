@@ -10,7 +10,7 @@ use kas::draw::{DrawIface, DrawImpl, DrawSharedImpl, PassId};
 use kas::geom::Quad;
 
 /// Extension trait providing shaded drawing over [`DrawIface`]
-pub trait DrawableShadedExt {
+pub trait DrawShaded {
     /// Add a shaded square to the draw buffer
     fn shaded_square(&mut self, rect: Quad, norm: (f32, f32), col: Rgba);
 
@@ -31,7 +31,7 @@ pub trait DrawableShadedExt {
     fn shaded_round_frame(&mut self, outer: Quad, inner: Quad, norm: (f32, f32), col: Rgba);
 }
 
-impl<'a, DS: DrawSharedImpl> DrawableShadedExt for DrawIface<'a, DS>
+impl<'a, DS: DrawSharedImpl> DrawShaded for DrawIface<'a, DS>
 where
     DS::Draw: DrawShadedImpl,
 {
