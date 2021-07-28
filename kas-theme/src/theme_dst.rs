@@ -10,7 +10,7 @@ use std::borrow::Cow;
 use std::ops::{Deref, DerefMut};
 
 use super::{StackDst, Theme, Window};
-use kas::draw::{color, Draw, DrawHandle, DrawShared, DrawableShared, SizeHandle, ThemeApi};
+use kas::draw::{color, DrawIface, DrawHandle, DrawShared, DrawableShared, SizeHandle, ThemeApi};
 use kas::TkAction;
 
 /// An optionally-owning (boxed) reference
@@ -73,7 +73,7 @@ pub trait ThemeDst<DS: DrawableShared>: ThemeApi {
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        draw: Draw<DS>,
+        draw: DrawIface<DS>,
         window: &mut dyn Window,
     ) -> StackDst<dyn DrawHandle>;
 
@@ -85,7 +85,7 @@ pub trait ThemeDst<DS: DrawableShared>: ThemeApi {
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        draw: Draw<'a, DS>,
+        draw: DrawIface<'a, DS>,
         window: &'a mut dyn Window,
     ) -> StackDst<dyn DrawHandle + 'a>;
 
@@ -139,7 +139,7 @@ where
 
     unsafe fn draw_handle(
         &self,
-        draw: Draw<DS>,
+        draw: DrawIface<DS>,
         window: &mut dyn Window,
     ) -> StackDst<dyn DrawHandle> {
         let window = window.as_any_mut().downcast_mut().unwrap();
@@ -190,7 +190,7 @@ impl<'a, DS: DrawableShared, T: Theme<DS>> ThemeDst<DS> for T {
 
     fn draw_handle<'b>(
         &'b self,
-        draw: Draw<'b, DS>,
+        draw: DrawIface<'b, DS>,
         window: &'b mut dyn Window,
     ) -> StackDst<dyn DrawHandle + 'b> {
         let window = window.as_any_mut().downcast_mut().unwrap();

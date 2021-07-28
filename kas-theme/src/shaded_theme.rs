@@ -67,7 +67,7 @@ const DIMS: dim::Parameters = dim::Parameters {
 };
 
 pub struct DrawHandle<'a, DS: DrawableShared> {
-    draw: Draw<'a, DS>,
+    draw: DrawIface<'a, DS>,
     window: &'a mut dim::Window,
     cols: &'a ColorsLinear,
 }
@@ -106,7 +106,7 @@ where
     }
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle(&self, draw: Draw<DS>, window: &mut Self::Window) -> Self::DrawHandle {
+    unsafe fn draw_handle(&self, draw: DrawIface<DS>, window: &mut Self::Window) -> Self::DrawHandle {
         unsafe fn extend_lifetime<'b, T: ?Sized>(r: &'b T) -> &'static T {
             std::mem::transmute::<&'b T, &'static T>(r)
         }
@@ -114,7 +114,7 @@ where
             std::mem::transmute::<&'b mut T, &'static mut T>(r)
         }
         DrawHandle {
-            draw: Draw {
+            draw: DrawIface {
                 draw: extend_lifetime_mut(draw.draw),
                 shared: extend_lifetime_mut(draw.shared),
                 pass: draw.pass,
@@ -126,7 +126,7 @@ where
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        draw: Draw<'a, DS>,
+        draw: DrawIface<'a, DS>,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
         DrawHandle {

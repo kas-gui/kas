@@ -22,11 +22,11 @@
 //!
 //! ### Medium-level drawing interfaces
 //!
-//! The theme draws widget components over a [`Draw`] object.
+//! The theme draws widget components over a [`DrawIface`] object.
 //! Widgets may access this same API via [`DrawHandle::draw_device`].
 //!
 //! The traits [`DrawT`] and [`DrawRoundedT`] provide functinality over a
-//! [`Draw`] object. Additional interfaces may be defined in external crates.
+//! [`DrawIface`] object. Additional interfaces may be defined in external crates.
 //!
 //! ### Low-level interface
 //!
@@ -40,7 +40,7 @@
 //!
 //! All draw operations happen within a "draw pass". The first pass corresponds
 //! to the window, while additional passes may be clipped and offset (see
-//! [`Draw::new_draw_pass`]). Draw passes are executed sequentially in the order
+//! [`DrawIface::new_draw_pass`]). Draw passes are executed sequentially in the order
 //! defined.
 //!
 //! Within each pass, draw operations may be batched by the shell, thus draw

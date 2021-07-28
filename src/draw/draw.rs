@@ -19,10 +19,10 @@ use std::any::Any;
 /// functionality over this object.
 ///
 /// This type is used to present a unified mid-level draw interface, as
-/// available from [`DrawHandle::draw_device`]. A concrete `Draw` object may be
+/// available from [`DrawHandle::draw_device`]. A concrete `DrawIface` object may be
 /// obtained via downcast, e.g.:
 /// ```ignore
-/// # use kas::draw::{Draw, DrawableRounded, DrawableShared, DrawHandle, DrawRoundedT, color::Rgba};
+/// # use kas::draw::{DrawIface, DrawableRounded, DrawableShared, DrawHandle, DrawRoundedT, color::Rgba};
 /// # use kas::geom::Rect;
 /// # struct CircleWidget<DS> {
 /// #     rect: Rect,
@@ -31,8 +31,8 @@ use std::any::Any;
 /// impl CircleWidget {
 ///     fn draw(&self, draw_handle: &mut dyn DrawHandle) {
 ///         // This type assumes usage of kas_wgpu without a custom draw pipe:
-///         type Draw = Draw<kas_wgpu::draw::DrawPipe<()>>;
-///         if let Some(mut draw) = Draw::downcast_from(draw_handle.draw_device()) {
+///         type DrawIface = DrawIface<kas_wgpu::draw::DrawPipe<()>>;
+///         if let Some(mut draw) = DrawIface::downcast_from(draw_handle.draw_device()) {
 ///             draw.circle(self.rect.into(), 0.9, Rgba::BLACK);
 ///         }
 ///     }
@@ -41,10 +41,10 @@ use std::any::Any;
 ///
 /// Note that this object is little more than a mutable reference to the shell's
 /// per-window draw state. As such, it is normal to pass *a new copy* created
-/// via [`Draw::reborrow`] as a method argument. (Note that Rust automatically
+/// via [`DrawIface::reborrow`] as a method argument. (Note that Rust automatically
 /// "reborrows" reference types passed as method arguments, but cannot do so
 /// automatically for structs containing references.)
-pub struct Draw<'a, DS: DrawableShared> {
+pub struct DrawIface<'a, DS: DrawableShared> {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub draw: &'a mut DS::Draw,
@@ -56,22 +56,22 @@ pub struct Draw<'a, DS: DrawableShared> {
     pub pass: PassId,
 }
 
-impl<'a, DS: DrawableShared> Draw<'a, DS> {
-    /// Attempt to downcast a `&mut dyn DrawT` to a concrete [`Draw`] object
+impl<'a, DS: DrawableShared> DrawIface<'a, DS> {
+    /// Attempt to downcast a `&mut dyn DrawT` to a concrete [`DrawIface`] object
     pub fn downcast_from(obj: &'a mut dyn DrawT) -> Option<Self> {
         let pass = obj.pass();
         let (draw, shared) = obj.fields_as_any_mut();
         let draw = draw.downcast_mut()?;
         let shared = shared.downcast_mut()?;
-        Some(Draw { draw, shared, pass })
+        Some(DrawIface { draw, shared, pass })
     }
 
     /// Reborrow with a new lifetime
-    pub fn reborrow<'b>(&'b mut self) -> Draw<'b, DS>
+    pub fn reborrow<'b>(&'b mut self) -> DrawIface<'b, DS>
     where
         'a: 'b,
     {
-        Draw {
+        DrawIface {
             draw: &mut *self.draw,
             shared: &mut *self.shared,
             pass: self.pass,
@@ -82,7 +82,7 @@ impl<'a, DS: DrawableShared> Draw<'a, DS> {
     ///
     /// Adds a new draw pass. Passes affect draw order (operations in new passes
     /// happen after their parent pass), may clip drawing to a "clip rect"
-    /// (see [`Draw::clip_rect`]) and may offset (translate) draw
+    /// (see [`DrawIface::clip_rect`]) and may offset (translate) draw
     /// operations.
     ///
     /// Case `class == PassType::Clip`: the new pass is derived from
@@ -93,9 +93,9 @@ impl<'a, DS: DrawableShared> Draw<'a, DS> {
     /// Case `class == PassType::Overlay`: the new pass is derived from the
     /// base pass (i.e. the window). Draw operations still happen after those in
     /// `parent_pass`.
-    pub fn new_draw_pass(&mut self, rect: Rect, offset: Offset, class: PassType) -> Draw<DS> {
+    pub fn new_draw_pass(&mut self, rect: Rect, offset: Offset, class: PassType) -> DrawIface<DS> {
         let pass = self.draw.new_draw_pass(self.pass, rect, offset, class);
-        Draw {
+        DrawIface {
             draw: &mut *self.draw,
             shared: &mut *self.shared,
             pass,
@@ -103,7 +103,7 @@ impl<'a, DS: DrawableShared> Draw<'a, DS> {
     }
 }
 
-/// Base drawing interface for [`Draw`]
+/// Base drawing interface for [`DrawIface`]
 ///
 /// It is expected that extension traits are used for additional draw methods,
 /// for example [`DrawRoundedT`]. Traits may be defined in external crates.
@@ -120,7 +120,7 @@ pub trait DrawT {
     ///
     /// Adds a new draw pass. Passes affect draw order (operations in new passes
     /// happen after their parent pass), may clip drawing to a "clip rect"
-    /// (see [`Draw::clip_rect`]) and may offset (translate) draw
+    /// (see [`DrawIface::clip_rect`]) and may offset (translate) draw
     /// operations.
     ///
     /// Case `class == PassType::Clip`: the new pass is derived from
@@ -146,7 +146,7 @@ pub trait DrawT {
     /// `Rect::pos` is zero (but this is not guaranteed).
     ///
     /// (This is not guaranteed to equal the rect passed to
-    /// [`Draw::new_draw_pass`].)
+    /// [`DrawIface::new_draw_pass`].)
     fn clip_rect(&self) -> Rect;
 
     /// Draw a rectangle of uniform colour
@@ -183,7 +183,7 @@ pub trait DrawT {
     fn text_effects(&mut self, pos: Vec2, text: &TextDisplay, effects: &[Effect<Rgba>]);
 }
 
-impl<'a, DS: DrawableShared> DrawT for Draw<'a, DS> {
+impl<'a, DS: DrawableShared> DrawT for DrawIface<'a, DS> {
     fn pass(&self) -> PassId {
         self.pass
     }
@@ -278,7 +278,7 @@ pub trait DrawRoundedT: DrawT {
     fn rounded_frame(&mut self, outer: Quad, inner: Quad, inner_radius: f32, col: Rgba);
 }
 
-impl<'a, DS: DrawableShared> DrawRoundedT for Draw<'a, DS>
+impl<'a, DS: DrawableShared> DrawRoundedT for DrawIface<'a, DS>
 where
     DS::Draw: DrawableRounded,
 {

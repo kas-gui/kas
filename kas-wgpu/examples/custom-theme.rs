@@ -79,13 +79,13 @@ where
     }
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle(&self, draw: Draw<DS>, window: &mut Self::Window) -> Self::DrawHandle {
+    unsafe fn draw_handle(&self, draw: DrawIface<DS>, window: &mut Self::Window) -> Self::DrawHandle {
         Theme::<DS>::draw_handle(&self.inner, draw, window)
     }
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        draw: Draw<'a, DS>,
+        draw: DrawIface<'a, DS>,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
         Theme::<DS>::draw_handle(&self.inner, draw, window)

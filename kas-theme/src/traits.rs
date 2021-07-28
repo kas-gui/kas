@@ -5,7 +5,7 @@
 
 //! Theme traits
 
-use kas::draw::{color, Draw, DrawHandle, DrawShared, DrawableShared, SizeHandle, ThemeApi};
+use kas::draw::{color, DrawIface, DrawHandle, DrawShared, DrawableShared, SizeHandle, ThemeApi};
 use kas::TkAction;
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
@@ -37,7 +37,7 @@ pub trait ThemeConfig:
 
 /// A *theme* provides widget sizing and drawing implementations.
 ///
-/// The theme is generic over some `Draw` type.
+/// The theme is generic over some `DrawIface`.
 ///
 /// Objects of this type are copied within each window's data structure. For
 /// large resources (e.g. fonts and icons) consider using external storage.
@@ -63,7 +63,7 @@ pub trait Theme<DS: DrawableShared>: ThemeApi {
     /// Theme initialisation
     ///
     /// The toolkit must call this method before [`Theme::new_window`]
-    /// to allow initialisation specific to the `Draw` device.
+    /// to allow initialisation specific to the `DrawIface`.
     ///
     /// At a minimum, a theme must load a font to [`kas::text::fonts`].
     /// The first font loaded (by any theme) becomes the default font.
@@ -105,11 +105,11 @@ pub trait Theme<DS: DrawableShared>: ThemeApi {
     ///
     /// All references passed into the method must outlive the returned object.
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle(&self, draw: Draw<DS>, window: &mut Self::Window) -> Self::DrawHandle;
+    unsafe fn draw_handle(&self, draw: DrawIface<DS>, window: &mut Self::Window) -> Self::DrawHandle;
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        draw: Draw<'a, DS>,
+        draw: DrawIface<'a, DS>,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a>;
 
@@ -158,13 +158,13 @@ impl<T: Theme<DS>, DS: DrawableShared> Theme<DS> for Box<T> {
     }
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle(&self, draw: Draw<DS>, window: &mut Self::Window) -> Self::DrawHandle {
+    unsafe fn draw_handle(&self, draw: DrawIface<DS>, window: &mut Self::Window) -> Self::DrawHandle {
         self.deref().draw_handle(draw, window)
     }
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        draw: Draw<'a, DS>,
+        draw: DrawIface<'a, DS>,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
         self.deref().draw_handle(draw, window)

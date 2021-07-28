@@ -10,7 +10,7 @@ use std::rc::Rc;
 use std::time::Instant;
 
 use kas::cast::Cast;
-use kas::draw::{Draw, DrawSharedT, PassId, SizeHandle, ThemeApi};
+use kas::draw::{DrawIface, DrawSharedT, PassId, SizeHandle, ThemeApi};
 use kas::event::{CursorIcon, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
@@ -322,7 +322,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let time = Instant::now();
 
         {
-            let draw = Draw {
+            let draw = DrawIface {
                 draw: &mut self.draw,
                 shared: &mut shared.draw,
                 pass: PassId::new(0),

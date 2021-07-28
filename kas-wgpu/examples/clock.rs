@@ -12,7 +12,7 @@ use log::info;
 use std::f32::consts::PI;
 use std::time::Duration;
 
-use kas::draw::{color, Draw, DrawRoundedT, PassType, TextClass};
+use kas::draw::{color, DrawIface, DrawRoundedT, PassType, TextClass};
 use kas::geom::{Offset, Quad, Vec2};
 use kas::text::util::set_text_and_prepare;
 use kas::widget::Window;
@@ -73,7 +73,7 @@ impl Layout for Clock {
         // not themeable, but gives us much more flexible draw routines.
         let draw = draw_handle.draw_device();
         // Use use DrawRoundedT methods, thus must downcast:
-        let mut draw = Draw::<DrawPipe<()>>::downcast_from(draw).unwrap();
+        let mut draw = DrawIface::<DrawPipe<()>>::downcast_from(draw).unwrap();
 
         let rect = self.core.rect;
         let quad = Quad::from(rect);
