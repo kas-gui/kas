@@ -195,6 +195,7 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
         (self.draw, self.shared)
     }
 
+    #[cfg(feature = "stack_dst")]
     fn new_dyn_pass<'b>(
         &'b mut self,
         rect: Rect,
