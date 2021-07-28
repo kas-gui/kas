@@ -10,6 +10,12 @@ use kas::draw::{DrawIface, DrawImpl, DrawSharedImpl, PassId};
 use kas::geom::Quad;
 
 /// Extension trait providing shaded drawing over [`DrawIface`]
+///
+/// All methods draw some feature.
+///
+/// Methods are parameterised via a pair of normals, `(inner, outer)`. These may
+/// have values from the closed range `[-1, 1]`, where -1 points inwards,
+/// 0 is perpendicular to the screen towards the viewer, and 1 points outwards.
 pub trait DrawShaded {
     /// Add a shaded square to the draw buffer
     fn shaded_square(&mut self, rect: Quad, norm: (f32, f32), col: Rgba);
@@ -69,7 +75,7 @@ where
 /// If the implementation buffers draw commands, it should draw these
 /// primitives after solid primitives.
 ///
-/// These are parameterised via a pair of normals, `(inner, outer)`. These may
+/// Methods are parameterised via a pair of normals, `(inner, outer)`. These may
 /// have values from the closed range `[-1, 1]`, where -1 points inwards,
 /// 0 is perpendicular to the screen towards the viewer, and 1 points outwards.
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]

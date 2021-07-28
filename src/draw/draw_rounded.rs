@@ -10,6 +10,8 @@ use super::{Draw, DrawIface, DrawImpl, DrawSharedImpl, PassId};
 use crate::geom::{Quad, Vec2};
 
 /// Extension over [`Draw`] for rounded shapes
+///
+/// All methods draw some feature.
 pub trait DrawRounded: Draw {
     /// Draw a line with rounded ends and uniform colour
     ///
