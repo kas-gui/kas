@@ -12,7 +12,7 @@ use crate::text::{Effect, TextDisplay};
 use std::any::Any;
 use std::path::Path;
 
-/// Interface over a shared draw object
+/// Shared draw state
 ///
 /// A single [`SharedState`] instance is shared by all windows and draw contexts.
 /// This struct is built over a [`DrawSharedImpl`] object provided by the shell,

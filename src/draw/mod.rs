@@ -57,6 +57,7 @@ pub mod color;
 
 #[allow(clippy::module_inception)]
 mod draw;
+mod draw_rounded;
 mod draw_shared;
 mod handle;
 mod images;
@@ -64,11 +65,12 @@ mod theme;
 
 use crate::cast::Cast;
 
-pub use draw::*;
+pub use draw::{Draw, DrawIface, DrawImpl};
+pub use draw_rounded::{DrawRounded, DrawRoundedImpl};
 pub use draw_shared::{DrawShared, DrawSharedImpl, SharedState};
-pub use handle::*;
+pub use handle::{DrawHandle, DrawHandleExt, InputState, SizeHandle, TextClass};
 pub use images::{ImageError, ImageFormat, ImageId};
-pub use theme::*;
+pub use theme::ThemeApi;
 
 /// Draw pass identifier
 ///
