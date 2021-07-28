@@ -10,7 +10,7 @@ use std::borrow::Cow;
 use std::ops::{Deref, DerefMut};
 
 use super::{StackDst, Theme, Window};
-use kas::draw::{color, DrawIface, DrawHandle, SharedState, DrawSharedImpl, SizeHandle, ThemeApi};
+use kas::draw::{color, DrawHandle, DrawIface, DrawSharedImpl, SharedState, SizeHandle, ThemeApi};
 use kas::TkAction;
 
 /// An optionally-owning (boxed) reference

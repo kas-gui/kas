@@ -5,7 +5,7 @@
 
 //! Theme traits
 
-use kas::draw::{color, DrawIface, DrawHandle, SharedState, DrawSharedImpl, SizeHandle, ThemeApi};
+use kas::draw::{color, DrawHandle, DrawIface, DrawSharedImpl, SharedState, SizeHandle, ThemeApi};
 use kas::TkAction;
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
@@ -105,7 +105,11 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeApi {
     ///
     /// All references passed into the method must outlive the returned object.
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle(&self, draw: DrawIface<DS>, window: &mut Self::Window) -> Self::DrawHandle;
+    unsafe fn draw_handle(
+        &self,
+        draw: DrawIface<DS>,
+        window: &mut Self::Window,
+    ) -> Self::DrawHandle;
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
@@ -158,7 +162,11 @@ impl<T: Theme<DS>, DS: DrawSharedImpl> Theme<DS> for Box<T> {
     }
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle(&self, draw: DrawIface<DS>, window: &mut Self::Window) -> Self::DrawHandle {
+    unsafe fn draw_handle(
+        &self,
+        draw: DrawIface<DS>,
+        window: &mut Self::Window,
+    ) -> Self::DrawHandle {
         self.deref().draw_handle(draw, window)
     }
     #[cfg(feature = "gat")]

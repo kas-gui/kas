@@ -9,7 +9,7 @@ use std::f32;
 use std::ops::Range;
 
 use crate::{dim, ColorsLinear, Config, FlatTheme, Theme};
-use crate::{DrawShadedImpl, DrawShaded};
+use crate::{DrawShaded, DrawShadedImpl};
 use kas::dir::{Direction, Directional};
 use kas::draw::{self, color::Rgba, *};
 use kas::geom::*;
@@ -106,7 +106,11 @@ where
     }
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle(&self, draw: DrawIface<DS>, window: &mut Self::Window) -> Self::DrawHandle {
+    unsafe fn draw_handle(
+        &self,
+        draw: DrawIface<DS>,
+        window: &mut Self::Window,
+    ) -> Self::DrawHandle {
         unsafe fn extend_lifetime<'b, T: ?Sized>(r: &'b T) -> &'static T {
             std::mem::transmute::<&'b T, &'static T>(r)
         }

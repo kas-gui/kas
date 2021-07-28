@@ -65,7 +65,7 @@ mod theme;
 use crate::cast::Cast;
 
 pub use draw::*;
-pub use draw_shared::{SharedState, DrawShared, DrawSharedImpl};
+pub use draw_shared::{DrawShared, DrawSharedImpl, SharedState};
 pub use handle::*;
 pub use images::{ImageError, ImageFormat, ImageId};
 pub use theme::*;

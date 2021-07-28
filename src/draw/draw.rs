@@ -8,7 +8,7 @@
 use super::color::Rgba;
 #[allow(unused)]
 use super::DrawHandle;
-use super::{SharedState, DrawSharedImpl, ImageId, PassId, PassType};
+use super::{DrawSharedImpl, ImageId, PassId, PassType, SharedState};
 use crate::geom::{Offset, Quad, Rect, Vec2};
 use crate::text::{Effect, TextDisplay};
 use std::any::Any;
