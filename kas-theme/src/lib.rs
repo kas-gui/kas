@@ -35,7 +35,7 @@ pub use kas;
 
 pub use colors::{Colors, ColorsLinear, ColorsSrgb};
 pub use config::{Config, RasterConfig};
-pub use draw_shaded::{DrawableShaded, DrawableShadedExt};
+pub use draw_shaded::{DrawShaded, DrawShadedImpl};
 pub use flat_theme::FlatTheme;
 #[cfg(feature = "stack_dst")]
 pub use multi::{MultiTheme, MultiThemeBuilder};
@@ -45,7 +45,7 @@ pub use theme_dst::{MaybeBoxed, ThemeDst};
 pub use traits::{Theme, ThemeConfig, Window};
 
 #[cfg(feature = "stack_dst")]
-#[cfg_attr(doc_cfg, doc(cfg(stack_dst)))]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "stack_dst")))]
 /// Fixed-size object of `Unsized` type
 ///
 /// This is a re-export of

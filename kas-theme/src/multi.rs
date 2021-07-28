@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::marker::Unsize;
 
 use crate::{Config, StackDst, Theme, ThemeDst, Window};
-use kas::draw::{color, Draw, DrawHandle, DrawShared, DrawableShared, ThemeApi};
+use kas::draw::{color, DrawHandle, DrawIface, DrawSharedImpl, SharedState, ThemeApi};
 use kas::TkAction;
 
 #[cfg(feature = "unsize")]
@@ -19,7 +19,7 @@ type DynTheme<DS> = StackDst<dyn ThemeDst<DS>>;
 type DynTheme<DS> = Box<dyn ThemeDst<DS>>;
 
 /// Wrapper around mutliple themes, supporting run-time switching
-#[cfg_attr(doc_cfg, doc(cfg(stack_dst)))]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "stack_dst")))]
 pub struct MultiTheme<DS> {
     names: HashMap<String, usize>,
     themes: Vec<DynTheme<DS>>,
@@ -29,7 +29,7 @@ pub struct MultiTheme<DS> {
 /// Builder for [`MultiTheme`]
 ///
 /// Construct via [`MultiTheme::builder`].
-#[cfg_attr(doc_cfg, doc(cfg(stack_dst)))]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "stack_dst")))]
 pub struct MultiThemeBuilder<DS> {
     names: HashMap<String, usize>,
     themes: Vec<DynTheme<DS>>,
@@ -69,7 +69,7 @@ impl<DS> MultiThemeBuilder<DS> {
     #[cfg(not(feature = "unsize"))]
     pub fn add<S: ToString, T>(mut self, name: S, theme: T) -> Self
     where
-        DS: DrawableShared,
+        DS: DrawSharedImpl,
         T: ThemeDst<DS> + 'static,
     {
         let index = self.themes.len();
@@ -101,7 +101,7 @@ impl<DS> MultiThemeBuilder<DS> {
     }
 }
 
-impl<DS: DrawableShared> Theme<DS> for MultiTheme<DS> {
+impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
     type Config = Config;
     type Window = StackDst<dyn Window>;
 
@@ -129,7 +129,7 @@ impl<DS: DrawableShared> Theme<DS> for MultiTheme<DS> {
         action
     }
 
-    fn init(&mut self, shared: &mut DrawShared<DS>) {
+    fn init(&mut self, shared: &mut SharedState<DS>) {
         for theme in &mut self.themes {
             theme.init(shared);
         }
@@ -146,16 +146,18 @@ impl<DS: DrawableShared> Theme<DS> for MultiTheme<DS> {
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        shared: &mut DrawShared<DS>,
-        draw: Draw<DS::Draw>,
+        draw: DrawIface<DS>,
         window: &mut Self::Window,
     ) -> StackDst<dyn DrawHandle> {
         unsafe fn extend_lifetime_mut<'b, T: ?Sized>(r: &'b mut T) -> &'static mut T {
             std::mem::transmute::<&'b mut T, &'static mut T>(r)
         }
         self.themes[self.active].draw_handle(
-            extend_lifetime_mut(shared),
-            Draw::new(extend_lifetime_mut(draw.draw), draw.pass()),
+            DrawIface {
+                draw: extend_lifetime_mut(draw.draw),
+                shared: extend_lifetime_mut(draw.shared),
+                pass: draw.pass,
+            },
             extend_lifetime_mut(window),
         )
     }
@@ -163,11 +165,10 @@ impl<DS: DrawableShared> Theme<DS> for MultiTheme<DS> {
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        shared: &'a mut DrawShared<DS>,
-        draw: Draw<'a, DS::Draw>,
+        draw: DrawIface<'a, DS>,
         window: &'a mut Self::Window,
     ) -> StackDst<dyn DrawHandle + 'a> {
-        self.themes[self.active].draw_handle(shared, draw, window)
+        self.themes[self.active].draw_handle(draw, window)
     }
 
     fn clear_color(&self) -> color::Rgba {

@@ -9,7 +9,7 @@ use std::f32;
 use std::ops::Range;
 
 use crate::{dim, ColorsLinear, Config, FlatTheme, Theme};
-use crate::{DrawableShaded, DrawableShadedExt};
+use crate::{DrawShaded, DrawShadedImpl};
 use kas::dir::{Direction, Directional};
 use kas::draw::{self, color::Rgba, *};
 use kas::geom::*;
@@ -66,16 +66,15 @@ const DIMS: dim::Parameters = dim::Parameters {
     progress_bar: Vec2::splat(12.0),
 };
 
-pub struct DrawHandle<'a, DS: DrawableShared> {
-    shared: &'a mut DrawShared<DS>,
-    draw: Draw<'a, DS::Draw>,
+pub struct DrawHandle<'a, DS: DrawSharedImpl> {
+    draw: DrawIface<'a, DS>,
     window: &'a mut dim::Window,
     cols: &'a ColorsLinear,
 }
 
-impl<DS: DrawableShared> Theme<DS> for ShadedTheme
+impl<DS: DrawSharedImpl> Theme<DS> for ShadedTheme
 where
-    DS::Draw: DrawableRounded + DrawableShaded,
+    DS::Draw: DrawRoundedImpl + DrawShadedImpl,
 {
     type Config = Config;
     type Window = dim::Window;
@@ -93,7 +92,7 @@ where
         <FlatTheme as Theme<DS>>::apply_config(&mut self.flat, config)
     }
 
-    fn init(&mut self, shared: &mut DrawShared<DS>) {
+    fn init(&mut self, shared: &mut SharedState<DS>) {
         <FlatTheme as Theme<DS>>::init(&mut self.flat, shared)
     }
 
@@ -109,8 +108,7 @@ where
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        shared: &mut DrawShared<DS>,
-        draw: Draw<DS::Draw>,
+        draw: DrawIface<DS>,
         window: &mut Self::Window,
     ) -> Self::DrawHandle {
         unsafe fn extend_lifetime<'b, T: ?Sized>(r: &'b T) -> &'static T {
@@ -120,8 +118,11 @@ where
             std::mem::transmute::<&'b mut T, &'static mut T>(r)
         }
         DrawHandle {
-            shared: extend_lifetime_mut(shared),
-            draw: Draw::new(extend_lifetime_mut(draw.draw), draw.pass()),
+            draw: DrawIface {
+                draw: extend_lifetime_mut(draw.draw),
+                shared: extend_lifetime_mut(draw.shared),
+                pass: draw.pass,
+            },
             window: extend_lifetime_mut(window),
             cols: extend_lifetime(&self.flat.cols),
         }
@@ -129,12 +130,10 @@ where
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        shared: &'a mut DrawShared<DS>,
-        draw: Draw<'a, DS::Draw>,
+        draw: DrawIface<'a, DS>,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
         DrawHandle {
-            shared,
             draw,
             window,
             cols: &self.flat.cols,
@@ -160,9 +159,9 @@ impl ThemeApi for ShadedTheme {
     }
 }
 
-impl<'a, DS: DrawableShared> DrawHandle<'a, DS>
+impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS>
 where
-    DS::Draw: DrawableRounded + DrawableShaded,
+    DS::Draw: DrawRoundedImpl + DrawShadedImpl,
 {
     // Type-cast to flat_theme's DrawHandle. Should be equivalent to transmute.
     fn as_flat<'b, 'c>(&'b mut self) -> super::flat_theme::DrawHandle<'c, DS>
@@ -171,7 +170,6 @@ where
         'b: 'c,
     {
         super::flat_theme::DrawHandle {
-            shared: self.shared,
             draw: self.draw.reborrow(),
             window: self.window,
             cols: self.cols,
@@ -217,19 +215,19 @@ where
     }
 }
 
-impl<'a, DS: DrawableShared> draw::DrawHandle for DrawHandle<'a, DS>
+impl<'a, DS: DrawSharedImpl> draw::DrawHandle for DrawHandle<'a, DS>
 where
-    DS::Draw: DrawableRounded + DrawableShaded,
+    DS::Draw: DrawRoundedImpl + DrawShadedImpl,
 {
     fn size_handle(&mut self) -> &mut dyn SizeHandle {
         self.window
     }
 
-    fn draw_device<'b>(&'b mut self) -> (Draw<'b, dyn Drawable>, &mut dyn DrawSharedT) {
-        (self.draw.upcast_base(), self.shared)
+    fn draw_device<'b>(&'b mut self) -> &mut dyn Draw {
+        &mut self.draw
     }
 
-    fn new_draw_pass(
+    fn new_pass(
         &mut self,
         mut rect: Rect,
         offset: Offset,
@@ -239,10 +237,10 @@ where
         if class == PassType::Overlay {
             rect = rect.expand(self.window.dims.frame);
         }
-        let mut draw = self.draw.new_draw_pass(rect, offset, class);
+        let mut draw = self.draw.new_pass(rect, offset, class);
 
         if class == PassType::Overlay {
-            let outer = draw.clip_rect();
+            let outer = draw.get_clip_rect();
             let inner = Quad::from(outer.shrink(self.window.dims.frame));
             let outer = Quad::from(outer);
             let norm = (0.0, 0.0);
@@ -251,7 +249,6 @@ where
         }
 
         let mut handle = DrawHandle {
-            shared: self.shared,
             window: self.window,
             draw,
             cols: self.cols,
@@ -260,7 +257,7 @@ where
     }
 
     fn get_clip_rect(&self) -> Rect {
-        self.draw.clip_rect()
+        self.draw.get_clip_rect()
     }
 
     fn outer_frame(&mut self, rect: Rect) {

@@ -6,11 +6,17 @@
 //! Drawing APIs — shaded drawing
 
 use kas::draw::color::Rgba;
-use kas::draw::{Draw, Drawable, PassId};
+use kas::draw::{DrawIface, DrawImpl, DrawSharedImpl, PassId};
 use kas::geom::Quad;
 
-/// Extension trait providing shaded drawing over [`Draw`]
-pub trait DrawableShadedExt {
+/// Extension trait providing shaded drawing over [`DrawIface`]
+///
+/// All methods draw some feature.
+///
+/// Methods are parameterised via a pair of normals, `(inner, outer)`. These may
+/// have values from the closed range `[-1, 1]`, where -1 points inwards,
+/// 0 is perpendicular to the screen towards the viewer, and 1 points outwards.
+pub trait DrawShaded {
     /// Add a shaded square to the draw buffer
     fn shaded_square(&mut self, rect: Quad, norm: (f32, f32), col: Rgba);
 
@@ -31,13 +37,16 @@ pub trait DrawableShadedExt {
     fn shaded_round_frame(&mut self, outer: Quad, inner: Quad, norm: (f32, f32), col: Rgba);
 }
 
-impl<'a, D: DrawableShaded + ?Sized> DrawableShadedExt for Draw<'a, D> {
+impl<'a, DS: DrawSharedImpl> DrawShaded for DrawIface<'a, DS>
+where
+    DS::Draw: DrawShadedImpl,
+{
     fn shaded_square(&mut self, rect: Quad, norm: (f32, f32), col: Rgba) {
-        self.draw.shaded_square(self.pass(), rect, norm, col);
+        self.draw.shaded_square(self.pass, rect, norm, col);
     }
 
     fn shaded_circle(&mut self, rect: Quad, norm: (f32, f32), col: Rgba) {
-        self.draw.shaded_circle(self.pass(), rect, norm, col);
+        self.draw.shaded_circle(self.pass, rect, norm, col);
     }
 
     fn shaded_square_frame(
@@ -49,29 +58,29 @@ impl<'a, D: DrawableShaded + ?Sized> DrawableShadedExt for Draw<'a, D> {
         inner_col: Rgba,
     ) {
         self.draw
-            .shaded_square_frame(self.pass(), outer, inner, norm, outer_col, inner_col);
+            .shaded_square_frame(self.pass, outer, inner, norm, outer_col, inner_col);
     }
 
     fn shaded_round_frame(&mut self, outer: Quad, inner: Quad, norm: (f32, f32), col: Rgba) {
         self.draw
-            .shaded_round_frame(self.pass(), outer, inner, norm, col);
+            .shaded_round_frame(self.pass, outer, inner, norm, col);
     }
 }
 
 /// Drawing commands for shaded shapes
 ///
-/// This trait is an extension over [`Drawable`] providing solid shaded shapes.
+/// This trait is an extension over [`DrawImpl`] providing solid shaded shapes.
 ///
 /// Some drawing primitives (the "round" ones) are partially transparent.
 /// If the implementation buffers draw commands, it should draw these
 /// primitives after solid primitives.
 ///
-/// These are parameterised via a pair of normals, `(inner, outer)`. These may
+/// Methods are parameterised via a pair of normals, `(inner, outer)`. These may
 /// have values from the closed range `[-1, 1]`, where -1 points inwards,
 /// 0 is perpendicular to the screen towards the viewer, and 1 points outwards.
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-pub trait DrawableShaded: Drawable {
+pub trait DrawShadedImpl: DrawImpl {
     /// Add a shaded square to the draw buffer
     fn shaded_square(&mut self, pass: PassId, rect: Quad, norm: (f32, f32), col: Rgba);
 

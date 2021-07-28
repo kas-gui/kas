@@ -46,9 +46,9 @@ thread_local! {
     static BACKGROUND: Cell<Rgba> = Cell::new(Rgba::grey(1.0));
 }
 
-impl<DS: DrawableShared> Theme<DS> for CustomTheme
+impl<DS: DrawSharedImpl> Theme<DS> for CustomTheme
 where
-    DS::Draw: DrawableRounded,
+    DS::Draw: DrawRoundedImpl,
 {
     type Config = kas_theme::Config;
     type Window = <FlatTheme as Theme<DS>>::Window;
@@ -66,7 +66,7 @@ where
         Theme::<DS>::apply_config(&mut self.inner, config)
     }
 
-    fn init(&mut self, shared: &mut DrawShared<DS>) {
+    fn init(&mut self, shared: &mut SharedState<DS>) {
         self.inner.init(shared);
     }
 
@@ -81,20 +81,18 @@ where
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        shared: &mut DrawShared<DS>,
-        draw: Draw<DS::Draw>,
+        draw: DrawIface<DS>,
         window: &mut Self::Window,
     ) -> Self::DrawHandle {
-        Theme::<DS>::draw_handle(&self.inner, shared, draw, window)
+        Theme::<DS>::draw_handle(&self.inner, draw, window)
     }
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        shared: &'a mut DrawShared<DS>,
-        draw: Draw<'a, DS::Draw>,
+        draw: DrawIface<'a, DS>,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
-        Theme::<DS>::draw_handle(&self.inner, shared, draw, window)
+        Theme::<DS>::draw_handle(&self.inner, draw, window)
     }
 
     fn clear_color(&self) -> Rgba {

@@ -15,7 +15,7 @@
 use std::num::NonZeroU32;
 use std::rc::Rc;
 
-use crate::draw::{DrawSharedT, SizeHandle, ThemeApi};
+use crate::draw::{DrawShared, SizeHandle, ThemeApi};
 use crate::event;
 use crate::event::UpdateHandle;
 use crate::updatable::Updatable;
@@ -151,12 +151,12 @@ pub trait ShellWindow {
     /// User-code *must not* depend on `f` being called for memory safety.
     fn size_handle(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle));
 
-    /// Access a [`DrawSharedT`]
+    /// Access a [`DrawShared`]
     ///
     /// Implementations should call the given function argument once; not doing
     /// so is memory-safe but will cause a panic when `draw_shared` is called.
     /// User-code *must not* depend on `f` being called for memory safety.
-    fn draw_shared(&mut self, f: &mut dyn FnMut(&mut dyn DrawSharedT));
+    fn draw_shared(&mut self, f: &mut dyn FnMut(&mut dyn DrawShared));
 
     /// Set the mouse cursor
     fn set_cursor_icon(&mut self, icon: event::CursorIcon);

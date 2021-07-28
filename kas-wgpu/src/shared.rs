@@ -13,7 +13,7 @@ use std::rc::Rc;
 
 use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe, DrawWindow};
 use crate::{warn_about_error, Error, Options, WindowId};
-use kas::draw::DrawShared;
+use kas::draw;
 use kas::event::UpdateHandle;
 use kas::updatable::Updatable;
 use kas::TkAction;
@@ -28,7 +28,7 @@ pub struct SharedState<C: CustomPipe, T> {
     clipboard: Option<Clipboard>,
     data_updates: HashMap<UpdateHandle, Vec<Rc<dyn Updatable>>>,
     pub instance: wgpu::Instance,
-    pub draw: DrawShared<DrawPipe<C>>,
+    pub draw: draw::SharedState<DrawPipe<C>>,
     pub theme: T,
     pub config: Rc<RefCell<kas::event::Config>>,
     pub pending: Vec<PendingAction>,
@@ -65,7 +65,7 @@ where
         let device_and_queue = futures::executor::block_on(req)?;
 
         let pipe = DrawPipe::new(custom, device_and_queue, theme.config().raster());
-        let mut draw = DrawShared::new(pipe);
+        let mut draw = draw::SharedState::new(pipe);
 
         theme.init(&mut draw);
 

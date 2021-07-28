@@ -22,15 +22,11 @@
 //!
 //! ### Medium-level drawing interfaces
 //!
-//! The theme draws widget components over a [`Draw`] object (unique to the
-//! current draw context) plus a reference to [`DrawShared`] (for shared data
-//! related to drawing, e.g. loaded images). Widgets may access this same API
-//! via [`DrawHandle::draw_device`].
+//! The theme draws widget components over a [`DrawIface`] object.
+//! Widgets may access this same API via [`DrawHandle::draw_device`].
 //!
-//! Both [`Draw`] and [`DrawShared`] are wrappers over types provided by the
-//! shell implementing [`Drawable`] and [`DrawableShared`] respectively.
-//! Extension traits to [`Drawable`] (which may be defined elsewhere) cover
-//! further functionality.
+//! The traits [`Draw`] and [`DrawRounded`] provide functinality over a
+//! [`DrawIface`] object. Additional interfaces may be defined in external crates.
 //!
 //! ### Low-level interface
 //!
@@ -44,7 +40,7 @@
 //!
 //! All draw operations happen within a "draw pass". The first pass corresponds
 //! to the window, while additional passes may be clipped and offset (see
-//! [`Draw::new_draw_pass`]). Draw passes are executed sequentially in the order
+//! [`DrawIface::new_pass`]). Draw passes are executed sequentially in the order
 //! defined.
 //!
 //! Within each pass, draw operations may be batched by the shell, thus draw
@@ -53,7 +49,7 @@
 //!
 //! 1.  Images
 //! 2.  Square-edged primitives (e.g. [`Draw::rect`])
-//! 3.  Rounded or other partially-transparent primitives (e.g. [`Draw::circle`])
+//! 3.  Rounded or other partially-transparent primitives (e.g. [`DrawRounded::circle`])
 //! 4.  Custom draw routines (`CustomPipe`)
 //! 5.  Text
 
@@ -61,6 +57,7 @@ pub mod color;
 
 #[allow(clippy::module_inception)]
 mod draw;
+mod draw_rounded;
 mod draw_shared;
 mod handle;
 mod images;
@@ -68,18 +65,16 @@ mod theme;
 
 use crate::cast::Cast;
 
-pub use draw::*;
-pub use draw_shared::{DrawShared, DrawSharedT, DrawableShared};
-pub use handle::*;
+pub use draw::{Draw, DrawIface, DrawImpl};
+pub use draw_rounded::{DrawRounded, DrawRoundedImpl};
+pub use draw_shared::{DrawShared, DrawSharedImpl, SharedState};
+pub use handle::{DrawHandle, DrawHandleExt, InputState, SizeHandle, TextClass};
 pub use images::{ImageError, ImageFormat, ImageId};
-pub use theme::*;
+pub use theme::ThemeApi;
 
 /// Draw pass identifier
 ///
-/// This is a small value passed by copy to identify which pass draw routines
-/// happen in. Draw passes allow control over draw order and clipping.
-///
-/// Custom render pipes should extract the pass number.
+/// This is a numerical identifier for the draw pass (see [`DrawIface::new_pass`]).
 #[derive(Copy, Clone)]
 pub struct PassId(u32);
 
@@ -107,4 +102,17 @@ impl PassId {
     pub fn depth(self) -> f32 {
         0.0
     }
+}
+
+/// Type of draw pass
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub enum PassType {
+    /// New pass is clipped and offset relative to parent
+    Clip,
+    /// New pass is an overlay
+    ///
+    /// An overlay is a layer drawn over the base window, for example a tooltip
+    /// or combobox menu. The rect and offset are relative to the base window.
+    /// The theme may draw a shadow or border around this rect.
+    Overlay,
 }

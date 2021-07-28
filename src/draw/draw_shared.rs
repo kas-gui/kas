@@ -6,93 +6,45 @@
 //! Drawing APIs — shared draw state
 
 use super::color::Rgba;
-use super::{images, Draw, Drawable, ImageError, ImageFormat, ImageId};
+use super::{images, DrawImpl, ImageError, ImageFormat, ImageId, PassId};
 use crate::geom::{Quad, Size, Vec2};
 use crate::text::{Effect, TextDisplay};
 use std::any::Any;
 use std::path::Path;
 
-/// Interface over a shared draw object
+/// Shared draw state
 ///
-/// A single [`DrawShared`] instance is shared by all windows and draw contexts.
-/// This struct is built over a [`DrawableShared`] object provided by the shell,
+/// A single [`SharedState`] instance is shared by all windows and draw contexts.
+/// This struct is built over a [`DrawSharedImpl`] object provided by the shell,
 /// which may be accessed directly for a lower-level API (though most methods
-/// are available through [`DrawShared`] directly).
+/// are available through [`SharedState`] directly).
 ///
-/// Note: all functionality is implemented through the [`DrawSharedT`] trait to
+/// Note: all functionality is implemented through the [`DrawShared`] trait to
 /// allow usage where the `DS` type parameter is unknown. Some functionality is
 /// also implemented directly to avoid the need for downcasting.
-pub struct DrawShared<DS: DrawableShared> {
-    /// The shell's [`DrawableShared`] object
+pub struct SharedState<DS: DrawSharedImpl> {
+    /// The shell's [`DrawSharedImpl`] object
     pub draw: DS,
     images: images::Images,
 }
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-impl<DS: DrawableShared> DrawShared<DS> {
+impl<DS: DrawSharedImpl> SharedState<DS> {
     /// Construct (this is only called by the shell)
     pub fn new(draw: DS) -> Self {
         let images = images::Images::new();
-        DrawShared { draw, images }
+        SharedState { draw, images }
     }
 }
 
-impl<DS: DrawableShared> DrawShared<DS> {
-    /// Draw the image in the given `rect`
-    #[inline]
-    pub fn draw_image(&self, target: Draw<DS::Draw>, id: ImageId, rect: Quad) {
-        self.draw.draw_image(target, id, rect)
-    }
-
-    /// Draw text with a colour
-    #[inline]
-    pub fn draw_text(&mut self, target: Draw<DS::Draw>, pos: Vec2, text: &TextDisplay, col: Rgba) {
-        self.draw.draw_text(target, pos, text, col)
-    }
-
-    /// Draw text with a colour and effects
-    ///
-    /// The effects list does not contain colour information, but may contain
-    /// underlining/strikethrough information. It may be empty.
-    #[inline]
-    pub fn draw_text_col_effects(
-        &mut self,
-        target: Draw<DS::Draw>,
-        pos: Vec2,
-        text: &TextDisplay,
-        col: Rgba,
-        effects: &[Effect<()>],
-    ) {
-        self.draw
-            .draw_text_col_effects(target, pos, text, col, effects)
-    }
-
-    /// Draw text with effects
-    ///
-    /// The `effects` list provides both underlining and colour information.
-    /// If the `effects` list is empty or the first entry has `start > 0`, a
-    /// default entity will be assumed.
-    #[inline]
-    pub fn draw_text_effects(
-        &mut self,
-        target: Draw<DS::Draw>,
-        pos: Vec2,
-        text: &TextDisplay,
-        effects: &[Effect<Rgba>],
-    ) {
-        self.draw.draw_text_effects(target, pos, text, effects)
-    }
-}
-
-/// Interface over [`DrawShared`]
-pub trait DrawSharedT {
-    /// Access [`DrawableShared`] object as `Any` to allow downcasting
-    fn drawable_as_any_mut(&mut self) -> &mut dyn Any;
-
+/// Interface over [`SharedState`]
+///
+/// All methods concern management of resources for drawing.
+pub trait DrawShared {
     /// Allocate an image
     ///
-    /// Use [`DrawShared::image_upload`] to set contents of the new image.
+    /// Use [`SharedState::image_upload`] to set contents of the new image.
     fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, ImageError>;
 
     /// Upload an image to the GPU
@@ -110,52 +62,16 @@ pub trait DrawSharedT {
     /// Remove a loaded image, by path
     ///
     /// This reduces the reference count and frees if zero.
-    fn remove_image_from_path(&mut self, path: &Path);
+    fn image_free_from_path(&mut self, path: &Path);
 
     /// Free an image
-    fn remove_image(&mut self, id: ImageId);
+    fn image_free(&mut self, id: ImageId);
 
     /// Get the size of an image
     fn image_size(&self, id: ImageId) -> Option<Size>;
-
-    /// Draw the image in the given `rect`
-    fn draw_image(&self, target: Draw<dyn Drawable>, id: ImageId, rect: Quad);
-
-    /// Draw text with a colour
-    fn draw_text(&mut self, target: Draw<dyn Drawable>, pos: Vec2, text: &TextDisplay, col: Rgba);
-
-    /// Draw text with a colour and effects
-    ///
-    /// The effects list does not contain colour information, but may contain
-    /// underlining/strikethrough information. It may be empty.
-    fn draw_text_col_effects(
-        &mut self,
-        target: Draw<dyn Drawable>,
-        pos: Vec2,
-        text: &TextDisplay,
-        col: Rgba,
-        effects: &[Effect<()>],
-    );
-
-    /// Draw text with effects
-    ///
-    /// The `effects` list provides both underlining and colour information.
-    /// If the `effects` list is empty or the first entry has `start > 0`, a
-    /// default entity will be assumed.
-    fn draw_text_effects(
-        &mut self,
-        target: Draw<dyn Drawable>,
-        pos: Vec2,
-        text: &TextDisplay,
-        effects: &[Effect<Rgba>],
-    );
 }
 
-impl<DS: DrawableShared> DrawSharedT for DrawShared<DS> {
-    fn drawable_as_any_mut(&mut self) -> &mut dyn Any {
-        &mut self.draw
-    }
-
+impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
     #[inline]
     fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, ImageError> {
         self.draw.image_alloc(size)
@@ -172,12 +88,12 @@ impl<DS: DrawableShared> DrawSharedT for DrawShared<DS> {
     }
 
     #[inline]
-    fn remove_image_from_path(&mut self, path: &Path) {
+    fn image_free_from_path(&mut self, path: &Path) {
         self.images.remove_path(&mut self.draw, path);
     }
 
     #[inline]
-    fn remove_image(&mut self, id: ImageId) {
+    fn image_free(&mut self, id: ImageId) {
         self.images.remove_id(&mut self.draw, id);
     }
 
@@ -185,66 +101,19 @@ impl<DS: DrawableShared> DrawSharedT for DrawShared<DS> {
     fn image_size(&self, id: ImageId) -> Option<Size> {
         self.draw.image_size(id).map(|size| size.into())
     }
-
-    fn draw_image(&self, mut target: Draw<dyn Drawable>, id: ImageId, rect: Quad) {
-        if let Some(target) = target.downcast() {
-            self.draw.draw_image(target, id, rect)
-        };
-    }
-
-    fn draw_text(
-        &mut self,
-        mut target: Draw<dyn Drawable>,
-        pos: Vec2,
-        text: &TextDisplay,
-        col: Rgba,
-    ) {
-        if let Some(target) = target.downcast() {
-            self.draw.draw_text(target, pos, text, col)
-        };
-    }
-
-    fn draw_text_col_effects(
-        &mut self,
-        mut target: Draw<dyn Drawable>,
-        pos: Vec2,
-        text: &TextDisplay,
-        col: Rgba,
-        effects: &[Effect<()>],
-    ) {
-        if let Some(target) = target.downcast() {
-            self.draw
-                .draw_text_col_effects(target, pos, text, col, effects)
-        };
-    }
-
-    fn draw_text_effects(
-        &mut self,
-        mut target: Draw<dyn Drawable>,
-        pos: Vec2,
-        text: &TextDisplay,
-        effects: &[Effect<Rgba>],
-    ) {
-        if let Some(target) = target.downcast() {
-            self.draw.draw_text_effects(target, pos, text, effects)
-        };
-    }
 }
 
 /// Trait over shared data of draw object
 ///
-/// This is typically used via [`DrawShared`].
+/// This is typically used via [`SharedState`].
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-pub trait DrawableShared: Any {
-    type Draw: Drawable;
-
-    /// Cast self to [`Any`] reference
-    fn as_any_mut(&mut self) -> &mut dyn Any;
+pub trait DrawSharedImpl: Any {
+    type Draw: DrawImpl;
 
     /// Allocate an image
     ///
-    /// Use [`DrawableShared::image_upload`] to set contents of the new image.
+    /// Use [`DrawSharedImpl::image_upload`] to set contents of the new image.
     fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, ImageError>;
 
     /// Upload an image to the GPU
@@ -260,10 +129,17 @@ pub trait DrawableShared: Any {
     fn image_size(&self, id: ImageId) -> Option<(u32, u32)>;
 
     /// Draw the image in the given `rect`
-    fn draw_image(&self, target: Draw<Self::Draw>, id: ImageId, rect: Quad);
+    fn draw_image(&self, draw: &mut Self::Draw, pass: PassId, id: ImageId, rect: Quad);
 
     /// Draw text with a colour
-    fn draw_text(&mut self, target: Draw<Self::Draw>, pos: Vec2, text: &TextDisplay, col: Rgba);
+    fn draw_text(
+        &mut self,
+        draw: &mut Self::Draw,
+        pass: PassId,
+        pos: Vec2,
+        text: &TextDisplay,
+        col: Rgba,
+    );
 
     /// Draw text with a colour and effects
     ///
@@ -271,7 +147,8 @@ pub trait DrawableShared: Any {
     /// underlining/strikethrough information. It may be empty.
     fn draw_text_col_effects(
         &mut self,
-        target: Draw<Self::Draw>,
+        draw: &mut Self::Draw,
+        pass: PassId,
         pos: Vec2,
         text: &TextDisplay,
         col: Rgba,
@@ -285,7 +162,8 @@ pub trait DrawableShared: Any {
     /// default entity will be assumed.
     fn draw_text_effects(
         &mut self,
-        target: Draw<Self::Draw>,
+        draw: &mut Self::Draw,
+        pass: PassId,
         pos: Vec2,
         text: &TextDisplay,
         effects: &[Effect<Rgba>],

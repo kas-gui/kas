@@ -83,16 +83,15 @@ const DIMS: dim::Parameters = dim::Parameters {
     progress_bar: Vec2::splat(12.0),
 };
 
-pub struct DrawHandle<'a, DS: DrawableShared> {
-    pub(crate) shared: &'a mut DrawShared<DS>,
-    pub(crate) draw: Draw<'a, DS::Draw>,
+pub struct DrawHandle<'a, DS: DrawSharedImpl> {
+    pub(crate) draw: DrawIface<'a, DS>,
     pub(crate) window: &'a mut dim::Window,
     pub(crate) cols: &'a ColorsLinear,
 }
 
-impl<DS: DrawableShared> Theme<DS> for FlatTheme
+impl<DS: DrawSharedImpl> Theme<DS> for FlatTheme
 where
-    DS::Draw: DrawableRounded,
+    DS::Draw: DrawRoundedImpl,
 {
     type Config = Config;
     type Window = dim::Window;
@@ -114,7 +113,7 @@ where
         action
     }
 
-    fn init(&mut self, _shared: &mut DrawShared<DS>) {
+    fn init(&mut self, _shared: &mut SharedState<DS>) {
         let fonts = fonts::fonts();
         if let Err(e) = fonts.select_default() {
             panic!("Error loading font: {}", e);
@@ -139,8 +138,7 @@ where
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        shared: &mut DrawShared<DS>,
-        draw: Draw<DS::Draw>,
+        draw: DrawIface<DS>,
         window: &mut Self::Window,
     ) -> Self::DrawHandle {
         unsafe fn extend_lifetime<'b, T: ?Sized>(r: &'b T) -> &'static T {
@@ -150,8 +148,11 @@ where
             std::mem::transmute::<&'b mut T, &'static mut T>(r)
         }
         DrawHandle {
-            shared: extend_lifetime_mut(shared),
-            draw: Draw::new(extend_lifetime_mut(draw.draw), draw.pass()),
+            draw: DrawIface {
+                draw: extend_lifetime_mut(draw.draw),
+                shared: extend_lifetime_mut(draw.shared),
+                pass: draw.pass,
+            },
             window: extend_lifetime_mut(window),
             cols: extend_lifetime(&self.cols),
         }
@@ -159,12 +160,10 @@ where
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        shared: &'a mut DrawShared<DS>,
-        draw: Draw<'a, DS::Draw>,
+        draw: DrawIface<'a, DS>,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
         DrawHandle {
-            shared,
             draw,
             window,
             cols: &self.cols,
@@ -201,9 +200,9 @@ impl ThemeApi for FlatTheme {
     }
 }
 
-impl<'a, DS: DrawableShared> DrawHandle<'a, DS>
+impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS>
 where
-    DS::Draw: DrawableRounded,
+    DS::Draw: DrawRoundedImpl,
 {
     /// Draw an edit box with optional navigation highlight.
     /// Return the inner rect.
@@ -245,19 +244,19 @@ where
     }
 }
 
-impl<'a, DS: DrawableShared> draw::DrawHandle for DrawHandle<'a, DS>
+impl<'a, DS: DrawSharedImpl> draw::DrawHandle for DrawHandle<'a, DS>
 where
-    DS::Draw: DrawableRounded,
+    DS::Draw: DrawRoundedImpl,
 {
     fn size_handle(&mut self) -> &mut dyn SizeHandle {
         self.window
     }
 
-    fn draw_device<'b>(&'b mut self) -> (Draw<'b, dyn Drawable>, &mut dyn DrawSharedT) {
-        (self.draw.upcast_base(), self.shared)
+    fn draw_device<'b>(&'b mut self) -> &mut dyn Draw {
+        &mut self.draw
     }
 
-    fn new_draw_pass(
+    fn new_pass(
         &mut self,
         mut rect: Rect,
         offset: Offset,
@@ -267,10 +266,10 @@ where
         if class == PassType::Overlay {
             rect = rect.expand(self.window.dims.frame);
         }
-        let mut draw = self.draw.new_draw_pass(rect, offset, class);
+        let mut draw = self.draw.new_pass(rect, offset, class);
 
         if class == PassType::Overlay {
-            let outer = draw.clip_rect();
+            let outer = draw.get_clip_rect();
             let inner = Quad::from(outer.shrink(self.window.dims.frame));
             let outer = Quad::from(outer);
             draw.rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
@@ -279,7 +278,6 @@ where
         }
 
         let mut handle = DrawHandle {
-            shared: self.shared,
             window: self.window,
             draw,
             cols: self.cols,
@@ -288,7 +286,7 @@ where
     }
 
     fn get_clip_rect(&self) -> Rect {
-        self.draw.clip_rect()
+        self.draw.get_clip_rect()
     }
 
     fn outer_frame(&mut self, rect: Rect) {
@@ -324,13 +322,11 @@ where
     fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass) {
         let pos = pos;
         let col = self.cols.text_class(class);
-        self.shared
-            .draw_text(self.draw.reborrow(), pos.into(), text, col);
+        self.draw.text(pos.into(), text, col);
     }
 
     fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
-        self.shared.draw_text_col_effects(
-            self.draw.reborrow(),
+        self.draw.text_col_effects(
             (pos).into(),
             text.display(),
             self.cols.text_class(class),
@@ -343,16 +339,9 @@ where
         let col = self.cols.text_class(class);
         if state {
             let effects = text.text().effect_tokens();
-            self.shared.draw_text_col_effects(
-                self.draw.reborrow(),
-                pos,
-                text.as_ref(),
-                col,
-                effects,
-            );
+            self.draw.text_col_effects(pos, text.as_ref(), col, effects);
         } else {
-            self.shared
-                .draw_text(self.draw.reborrow(), pos, text.as_ref(), col);
+            self.draw.text(pos, text.as_ref(), col);
         }
     }
 
@@ -391,8 +380,7 @@ where
                 aux: col,
             },
         ];
-        self.shared
-            .draw_text_effects(self.draw.reborrow(), pos, text, &effects);
+        self.draw.text_effects(pos, text, &effects);
     }
 
     fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
@@ -519,6 +507,6 @@ where
 
     fn image(&mut self, id: ImageId, rect: Rect) {
         let rect = Quad::from(rect);
-        self.shared.draw_image(self.draw.reborrow(), id, rect);
+        self.draw.image(id, rect);
     }
 }

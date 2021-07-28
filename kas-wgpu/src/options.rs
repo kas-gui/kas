@@ -6,7 +6,7 @@
 //! Options
 
 use super::Error;
-use kas::draw::DrawableShared;
+use kas::draw::DrawSharedImpl;
 use kas_theme::{Theme, ThemeConfig};
 use log::warn;
 use std::env::var;
@@ -179,7 +179,7 @@ impl Options {
     }
 
     /// Load/save theme config on start
-    pub fn theme_config<DS: DrawableShared, T: Theme<DS>>(
+    pub fn theme_config<DS: DrawSharedImpl, T: Theme<DS>>(
         &self,
         theme: &mut T,
     ) -> Result<(), Error> {
@@ -224,7 +224,7 @@ impl Options {
     }
 
     /// Save all config (on exit or after changes)
-    pub fn save_config<DS: DrawableShared, T: Theme<DS>>(
+    pub fn save_config<DS: DrawSharedImpl, T: Theme<DS>>(
         &self,
         config: &kas::event::Config,
         theme: &T,

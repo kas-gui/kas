@@ -5,7 +5,7 @@
 
 //! Image resource management
 
-use super::DrawableShared;
+use super::DrawSharedImpl;
 use image::RgbaImage;
 use std::collections::HashMap;
 use std::num::NonZeroU32;
@@ -67,7 +67,7 @@ impl Images {
     ///
     /// This deduplicates multiple loads of the same path, instead incrementing
     /// a reference count.
-    pub fn load_path<DS: DrawableShared>(
+    pub fn load_path<DS: DrawSharedImpl>(
         &mut self,
         draw: &mut DS,
         path: &Path,
@@ -95,7 +95,7 @@ impl Images {
     /// Remove a loaded image, by path
     ///
     /// This reduces the reference count and frees if zero.
-    pub fn remove_path<DS: DrawableShared>(&mut self, draw: &mut DS, path: &Path) {
+    pub fn remove_path<DS: DrawSharedImpl>(&mut self, draw: &mut DS, path: &Path) {
         let mut opt_id = None;
         self.paths.retain(|p, (id, _)| {
             if p == path {
@@ -116,7 +116,7 @@ impl Images {
     ///
     /// This reduces the reference count and frees if zero.
     /// (It also removes images not created through [`Images::load_path`].)
-    pub fn remove_id<DS: DrawableShared>(&mut self, draw: &mut DS, id: ImageId) {
+    pub fn remove_id<DS: DrawSharedImpl>(&mut self, draw: &mut DS, id: ImageId) {
         // We don't have a map from id to path, hence have to iterate. We can
         // however do a fast check that id is used.
         if !self.images.contains_key(&id) {

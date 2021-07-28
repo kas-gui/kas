@@ -142,7 +142,7 @@ impl Image {
         let mut size = Size::ZERO;
         mgr.draw_shared(|ds| {
             if let Some(id) = self.id {
-                ds.remove_image(id);
+                ds.image_free(id);
             }
             match ds.image_from_path(&self.path) {
                 Ok(id) => {
@@ -163,7 +163,7 @@ impl Image {
     pub fn clear(&mut self, mgr: &mut Manager) {
         if let Some(id) = self.id.take() {
             self.do_load = false;
-            mgr.draw_shared(|ds| ds.remove_image(id));
+            mgr.draw_shared(|ds| ds.image_free(id));
         }
     }
 

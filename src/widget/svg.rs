@@ -15,7 +15,7 @@ use std::path::PathBuf;
 use tiny_skia::Pixmap;
 
 /// An SVG image loaded from a path
-#[cfg_attr(doc_cfg, doc(cfg(svg)))]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "svg")))]
 #[derive(Clone, Widget)]
 #[widget(config = noauto)]
 pub struct Svg {
@@ -164,7 +164,7 @@ impl Layout for Svg {
         let pm_size = self.pixmap.as_ref().map(|pm| (pm.width(), pm.height()));
         if pm_size.unwrap_or((0, 0)) != size {
             if let Some(id) = self.image_id {
-                mgr.draw_shared(|ds| ds.remove_image(id));
+                mgr.draw_shared(|ds| ds.image_free(id));
             }
             self.pixmap = Pixmap::new(size.0, size.1);
             if let Some(tree) = self.tree.as_ref() {

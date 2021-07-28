@@ -10,13 +10,13 @@ use std::borrow::Cow;
 use std::ops::{Deref, DerefMut};
 
 use super::{StackDst, Theme, Window};
-use kas::draw::{color, Draw, DrawHandle, DrawShared, DrawableShared, SizeHandle, ThemeApi};
+use kas::draw::{color, DrawHandle, DrawIface, DrawSharedImpl, SharedState, SizeHandle, ThemeApi};
 use kas::TkAction;
 
 /// An optionally-owning (boxed) reference
 ///
 /// This is related but not identical to [`Cow`].
-#[cfg_attr(doc_cfg, doc(cfg(stack_dst)))]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "stack_dst")))]
 pub enum MaybeBoxed<'a, B: 'a + ?Sized> {
     Borrowed(&'a B),
     Boxed(Box<B>),
@@ -36,8 +36,8 @@ impl<T: ?Sized> AsRef<T> for MaybeBoxed<'_, T> {
 /// This trait is implemented automatically for all implementations of
 /// [`Theme`]. It is intended only for use where a less parameterised
 /// trait is required.
-#[cfg_attr(doc_cfg, doc(cfg(stack_dst)))]
-pub trait ThemeDst<DS: DrawableShared>: ThemeApi {
+#[cfg_attr(doc_cfg, doc(cfg(feature = "stack_dst")))]
+pub trait ThemeDst<DS: DrawSharedImpl>: ThemeApi {
     /// Get current config
     fn config(&self) -> MaybeBoxed<dyn Any>;
 
@@ -47,7 +47,7 @@ pub trait ThemeDst<DS: DrawableShared>: ThemeApi {
     /// Theme initialisation
     ///
     /// See also [`Theme::init`].
-    fn init(&mut self, shared: &mut DrawShared<DS>);
+    fn init(&mut self, shared: &mut SharedState<DS>);
 
     /// Construct per-window storage
     ///
@@ -73,8 +73,7 @@ pub trait ThemeDst<DS: DrawableShared>: ThemeApi {
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        shared: &mut DrawShared<DS>,
-        draw: Draw<DS::Draw>,
+        draw: DrawIface<DS>,
         window: &mut dyn Window,
     ) -> StackDst<dyn DrawHandle>;
 
@@ -86,8 +85,7 @@ pub trait ThemeDst<DS: DrawableShared>: ThemeApi {
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        shared: &'a mut DrawShared<DS>,
-        draw: Draw<'a, DS::Draw>,
+        draw: DrawIface<'a, DS>,
         window: &'a mut dyn Window,
     ) -> StackDst<dyn DrawHandle + 'a>;
 
@@ -98,7 +96,7 @@ pub trait ThemeDst<DS: DrawableShared>: ThemeApi {
 }
 
 #[cfg(not(feature = "gat"))]
-impl<'a, DS: DrawableShared, T: Theme<DS>> ThemeDst<DS> for T
+impl<'a, DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T
 where
     <T as Theme<DS>>::DrawHandle: 'static,
 {
@@ -113,7 +111,7 @@ where
         self.apply_config(config.downcast_ref().unwrap())
     }
 
-    fn init(&mut self, shared: &mut DrawShared<DS>) {
+    fn init(&mut self, shared: &mut SharedState<DS>) {
         self.init(shared);
     }
 
@@ -141,12 +139,11 @@ where
 
     unsafe fn draw_handle(
         &self,
-        shared: &mut DrawShared<DS>,
-        draw: Draw<DS::Draw>,
+        draw: DrawIface<DS>,
         window: &mut dyn Window,
     ) -> StackDst<dyn DrawHandle> {
         let window = window.as_any_mut().downcast_mut().unwrap();
-        let h = <T as Theme<DS>>::draw_handle(self, shared, draw, window);
+        let h = <T as Theme<DS>>::draw_handle(self, draw, window);
         #[cfg(feature = "unsize")]
         {
             StackDst::new_or_boxed(h)
@@ -165,7 +162,7 @@ where
 }
 
 #[cfg(feature = "gat")]
-impl<'a, DS: DrawableShared, T: Theme<DS>> ThemeDst<DS> for T {
+impl<'a, DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T {
     fn config(&self) -> MaybeBoxed<dyn Any> {
         match self.config() {
             Cow::Borrowed(config) => MaybeBoxed::Borrowed(config),
@@ -177,7 +174,7 @@ impl<'a, DS: DrawableShared, T: Theme<DS>> ThemeDst<DS> for T {
         self.apply_config(config.downcast_ref().unwrap())
     }
 
-    fn init(&mut self, shared: &mut DrawShared<DS>) {
+    fn init(&mut self, shared: &mut SharedState<DS>) {
         self.init(shared);
     }
 
@@ -193,12 +190,11 @@ impl<'a, DS: DrawableShared, T: Theme<DS>> ThemeDst<DS> for T {
 
     fn draw_handle<'b>(
         &'b self,
-        shared: &'b mut DrawShared<DS>,
-        draw: Draw<'b, DS::Draw>,
+        draw: DrawIface<'b, DS>,
         window: &'b mut dyn Window,
     ) -> StackDst<dyn DrawHandle + 'b> {
         let window = window.as_any_mut().downcast_mut().unwrap();
-        let h = <T as Theme<DS>>::draw_handle(self, shared, draw, window);
+        let h = <T as Theme<DS>>::draw_handle(self, draw, window);
         StackDst::new_or_boxed(h)
     }
 

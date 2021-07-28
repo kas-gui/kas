@@ -9,7 +9,7 @@ use std::convert::AsRef;
 use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 
 use kas::dir::Direction;
-use kas::draw::{Draw, DrawSharedT, Drawable, ImageId};
+use kas::draw::{Draw, ImageId, PassType};
 use kas::geom::{Coord, Offset, Rect, Size};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules};
 use kas::text::{AccelString, Text, TextApi, TextDisplay};
@@ -96,21 +96,6 @@ impl Default for TextClass {
     fn default() -> Self {
         TextClass::Label
     }
-}
-
-/// Type of draw pass
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
-pub enum PassType {
-    /// New pass is clipped and offset relative to parent
-    Clip,
-    /// New pass is an overlay
-    ///
-    /// An overlay is a layer drawn over the base window, for example a tooltip
-    /// or combobox menu. The rect and offset are relative to the base window.
-    /// The theme may draw a shadow or border around this rect.
-    Overlay,
 }
 
 /// A handle to the active theme, used for sizing
@@ -257,7 +242,7 @@ pub trait SizeHandle {
 ///
 /// -   [`Self::size_handle`] provides access to a [`SizeHandle`]
 /// -   [`Self::draw_device`] provides a lower-level interface for draw operations
-/// -   [`Self::new_draw_pass`], [`DrawHandleExt::with_clip_region`],
+/// -   [`Self::new_pass`], [`DrawHandleExt::with_clip_region`],
 ///     [`DrawHandleExt::with_overlay`] construct new draw passes
 /// -   [`Self::get_clip_rect`] returns the clip rect
 ///
@@ -267,17 +252,12 @@ pub trait DrawHandle {
     fn size_handle(&mut self) -> &mut dyn SizeHandle;
 
     /// Access the low-level draw device
-    ///
-    /// Returns `(draw, shared)`.
-    ///
-    /// The `draw` object is over the [`Drawable`] interface which exposes only
-    /// minimal functionality. [`Draw::downcast`] will likely be of use.
-    fn draw_device(&mut self) -> (Draw<'_, dyn Drawable>, &mut dyn DrawSharedT);
+    fn draw_device(&mut self) -> &mut dyn Draw;
 
     /// Add a draw pass
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn new_draw_pass(
+    fn new_pass(
         &mut self,
         rect: Rect,
         offset: Offset,
@@ -411,7 +391,7 @@ pub trait DrawHandleExt: DrawHandle {
         offset: Offset,
         f: &mut dyn FnMut(&mut dyn DrawHandle),
     ) {
-        self.new_draw_pass(rect, offset, PassType::Clip, f);
+        self.new_pass(rect, offset, PassType::Clip, f);
     }
 
     /// Draw to a new pass as an overlay (e.g. for pop-up menus)
@@ -423,7 +403,7 @@ pub trait DrawHandleExt: DrawHandle {
     /// a frame or shadow around this overlay, thus the
     /// [`DrawHandle::get_clip_rect`] may be larger than expected.
     fn with_overlay(&mut self, rect: Rect, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
-        self.new_draw_pass(rect, Offset::ZERO, PassType::Overlay, f);
+        self.new_pass(rect, Offset::ZERO, PassType::Overlay, f);
     }
 
     /// Draw some text using the standard font, with a subset selected
@@ -526,17 +506,17 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn size_handle(&mut self) -> &mut dyn SizeHandle {
         self.deref_mut().size_handle()
     }
-    fn draw_device(&mut self) -> (Draw<'_, dyn Drawable>, &mut dyn DrawSharedT) {
+    fn draw_device(&mut self) -> &mut dyn Draw {
         self.deref_mut().draw_device()
     }
-    fn new_draw_pass(
+    fn new_pass(
         &mut self,
         rect: Rect,
         offset: Offset,
         class: PassType,
         f: &mut dyn FnMut(&mut dyn DrawHandle),
     ) {
-        self.deref_mut().new_draw_pass(rect, offset, class, f);
+        self.deref_mut().new_pass(rect, offset, class, f);
     }
     fn get_clip_rect(&self) -> Rect {
         self.deref().get_clip_rect()
@@ -612,17 +592,17 @@ where
     fn size_handle(&mut self) -> &mut dyn SizeHandle {
         self.deref_mut().size_handle()
     }
-    fn draw_device(&'_ mut self) -> (Draw<'_, dyn Drawable>, &'_ mut dyn DrawSharedT) {
+    fn draw_device(&mut self) -> &mut dyn Draw {
         self.deref_mut().draw_device()
     }
-    fn new_draw_pass(
+    fn new_pass(
         &mut self,
         rect: Rect,
         offset: Offset,
         class: PassType,
         f: &mut dyn FnMut(&mut dyn DrawHandle),
     ) {
-        self.deref_mut().new_draw_pass(rect, offset, class, f);
+        self.deref_mut().new_pass(rect, offset, class, f);
     }
     fn get_clip_rect(&self) -> Rect {
         self.deref().get_clip_rect()
