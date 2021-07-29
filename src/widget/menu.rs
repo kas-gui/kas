@@ -33,7 +33,7 @@ pub trait Menu: Widget {
     /// are menus, these should open.
     ///
     /// `target == None` implies that all menus should close.
-    fn menu_path(&mut self, _mgr: &mut Manager, _target: Option<WidgetId>) {}
+    fn set_menu_path(&mut self, _mgr: &mut Manager, _target: Option<WidgetId>) {}
 }
 
 impl<M: 'static> WidgetCore for Box<dyn Menu<Msg = M>> {
@@ -156,8 +156,8 @@ impl<M: 'static> Menu for Box<dyn Menu<Msg = M>> {
     fn menu_is_open(&self) -> bool {
         self.deref().menu_is_open()
     }
-    fn menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>) {
-        self.deref_mut().menu_path(mgr, target)
+    fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>) {
+        self.deref_mut().set_menu_path(mgr, target)
     }
 }
 
