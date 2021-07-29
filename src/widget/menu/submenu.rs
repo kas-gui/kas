@@ -231,7 +231,7 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
                     _ => Response::Unhandled,
                 },
                 Response::Update | Response::Select => {
-                    self.menu_path(mgr, Some(id));
+                    self.set_menu_path(mgr, Some(id));
                     Response::None
                 }
                 Response::Msg((_, msg)) => {
@@ -250,7 +250,7 @@ impl<D: Directional, W: Menu> Menu for SubMenu<D, W> {
         self.popup_id.is_some()
     }
 
-    fn menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>) {
+    fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>) {
         match target {
             Some(id) if self.is_ancestor_of(id) => {
                 if self.popup_id.is_some() {
@@ -260,17 +260,17 @@ impl<D: Directional, W: Menu> Menu for SubMenu<D, W> {
                         if self.list[i].is_ancestor_of(id) {
                             child = Some(i);
                         } else {
-                            self.list[i].menu_path(mgr, None);
+                            self.list[i].set_menu_path(mgr, None);
                         }
                     }
                     if let Some(i) = child {
-                        self.list[i].menu_path(mgr, target);
+                        self.list[i].set_menu_path(mgr, target);
                     }
                 } else {
                     self.open_menu(mgr);
                     if id != self.id() {
                         for i in 0..self.list.len() {
-                            self.list[i].menu_path(mgr, target);
+                            self.list[i].set_menu_path(mgr, target);
                         }
                     }
                 }
@@ -278,7 +278,7 @@ impl<D: Directional, W: Menu> Menu for SubMenu<D, W> {
             _ => {
                 if self.popup_id.is_some() {
                     for i in 0..self.list.len() {
-                        self.list[i].menu_path(mgr, None);
+                        self.list[i].set_menu_path(mgr, None);
                     }
                     self.close_menu(mgr);
                 }

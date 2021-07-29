@@ -236,11 +236,12 @@ impl Window {
         text: &TextDisplay,
         col: Rgba,
     ) {
+        let pos = pos.round();
         let time = std::time::Instant::now();
 
         let for_glyph = |face: FaceId, dpem: f32, glyph: Glyph| {
             if let Some(sprite) = pipe.get_glyph(face, dpem, glyph) {
-                let pos = pos + Vec2::from(glyph.position);
+                let pos = pos + Vec2::from(glyph.position).floor();
                 let a = pos + sprite.offset;
                 let b = a + sprite.size;
                 let (ta, tb) = (sprite.tex_quad.a, sprite.tex_quad.b);
@@ -263,6 +264,7 @@ impl Window {
         col: Rgba,
         effects: &[Effect<()>],
     ) -> Vec<Quad> {
+        let pos = pos.round();
         // Optimisation: use cheaper TextDisplay::glyphs method
         if effects.len() <= 1
             && effects
@@ -279,7 +281,7 @@ impl Window {
 
         let mut for_glyph = |face: FaceId, dpem: f32, glyph: Glyph, _: usize, _: ()| {
             if let Some(sprite) = pipe.get_glyph(face, dpem, glyph) {
-                let pos = pos + Vec2::from(glyph.position);
+                let pos = pos + Vec2::from(glyph.position).floor();
                 let a = pos + sprite.offset;
                 let b = a + sprite.size;
                 let (ta, tb) = (sprite.tex_quad.a, sprite.tex_quad.b);
@@ -318,6 +320,7 @@ impl Window {
         text: &TextDisplay,
         effects: &[Effect<Rgba>],
     ) -> Vec<(Quad, Rgba)> {
+        let pos = pos.round();
         // Optimisation: use cheaper TextDisplay::glyphs method
         if effects.len() <= 1
             && effects
@@ -335,7 +338,7 @@ impl Window {
 
         let for_glyph = |face: FaceId, dpem: f32, glyph: Glyph, _, col: Rgba| {
             if let Some(sprite) = pipe.get_glyph(face, dpem, glyph) {
-                let pos = pos + Vec2::from(glyph.position);
+                let pos = pos + Vec2::from(glyph.position).floor();
                 let a = pos + sprite.offset;
                 let b = a + sprite.size;
                 let (ta, tb) = (sprite.tex_quad.a, sprite.tex_quad.b);

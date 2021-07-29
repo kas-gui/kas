@@ -179,10 +179,22 @@ macro_rules! impl_vec2 {
                 $T(self.0.abs(), self.1.abs())
             }
 
+            /// Take the floor of each component
+            #[inline]
+            pub fn floor(self) -> Self {
+                $T(self.0.floor(), self.1.floor())
+            }
+
             /// Take the ceiling of each component
             #[inline]
             pub fn ceil(self) -> Self {
                 $T(self.0.ceil(), self.1.ceil())
+            }
+
+            /// Round each component to the nearest integer
+            #[inline]
+            pub fn round(self) -> Self {
+                $T(self.0.round(), self.1.round())
             }
 
             /// For each component, return `±1` with the same sign as `self`.
