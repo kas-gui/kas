@@ -206,7 +206,7 @@ impl FrameRules {
     /// The content's margin is reduced by the size of the frame, with any
     /// residual margin applying outside the frame (using the max of the
     /// frame's own margin and the residual). In other respects,
-    /// this is the same as [`FrameRules::surround`].
+    /// this is the same as [`FrameRules::surround_with_margin`].
     pub fn surround_as_margin(self, content: SizeRules) -> (SizeRules, i32, i32) {
         let (m0, m1) = content.margins();
         let offset = self.offset + self.inner_margin;
