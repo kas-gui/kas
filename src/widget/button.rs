@@ -168,11 +168,11 @@ impl<L: Widget<Msg = VoidMsg>, M: 'static> Handler for Button<L, M> {
 
 impl<L: Widget<Msg = VoidMsg>, M: 'static> SendEvent for Button<L, M> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<M> {
-        if id <= self.label.id() {
+        if id < self.label.id() {
             self.label.send(mgr, id, event).void_into()
         } else {
             debug_assert_eq!(id, self.id());
-            self.handle(mgr, event)
+            Manager::handle_generic(self, mgr, event)
         }
     }
 }

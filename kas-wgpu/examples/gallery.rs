@@ -16,6 +16,8 @@ use kas::{dir::Right, Future};
 #[derive(Clone, Debug, VoidMsg)]
 enum Item {
     Button,
+    LightTheme,
+    DarkTheme,
     Check(bool),
     Combo(i32),
     Radio(u32),
@@ -222,8 +224,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget(row=2, col=1)] _ = TextButton::new_msg("&Press me", Item::Button),
             #[widget(row=3, col=0)] _ = Label::new("Button<Image>"),
             #[widget(row=3, col=1)] _ = Row::new(vec![
-                Button::new(Image::new("res/sun_32.png")),
-                Button::new(Image::new("res/moon_32.png")),
+                Button::new_msg(Image::new("res/sun_32.png"), Item::LightTheme),
+                Button::new_msg(Image::new("res/moon_32.png"), Item::DarkTheme),
             ]).map_msg(|_, (_, m)| m),
             #[widget(row=4, col=0)] _ = Label::new("CheckBox"),
             #[widget(row=4, col=1)] _ = CheckBox::new("&Check me")
@@ -310,9 +312,11 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     }
                     Response::None
                 }
-                fn activations(&mut self, _: &mut Manager, item: Item) -> VoidResponse {
+                fn activations(&mut self, mgr: &mut Manager, item: Item) -> VoidResponse {
                     match item {
                         Item::Button => println!("Clicked!"),
+                        Item::LightTheme => mgr.adjust_theme(|theme| theme.set_scheme("")),
+                        Item::DarkTheme => mgr.adjust_theme(|theme| theme.set_scheme("dark")),
                         Item::Check(b) => println!("CheckBox: {}", b),
                         Item::Combo(c) => println!("ComboBox: {}", c),
                         Item::Radio(id) => println!("RadioBox: {}", id),
