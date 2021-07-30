@@ -132,6 +132,14 @@ The `kas` crate has the following feature flags:
 -   `internal_doc`: turns on some extra documentation intended for internal
     usage but not for end users. (This only affects generated documentation.)
 
+Additionally, the following flags require a nightly compiler:
+
+-   `nightly`: enables "more stable" unstable features
+-   `min_spec` (enabled by `nightly`): use `min_specialization` to draw
+    underlines in `AccelLabel`
+-   `spec`: use `specialization` to enable `TryFormat`
+-   `gat`: compatibility with `kas-text/gat`
+
 ### Configuration
 
 Formats are not yet stabilised, hence reading/writing configuration is disabled
