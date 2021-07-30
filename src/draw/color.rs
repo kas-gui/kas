@@ -97,6 +97,84 @@ impl From<[f32; 4]> for Rgba {
     }
 }
 
+/// 3-part colour data, linear, sRGB colour space
+///
+/// Linear format must be used for colour data uploaded via uniforms or vertex
+/// lists. Conversion from sRGB happens in user-space.
+///
+/// This is the expected type for shader inputs, encoded as three `f32` values
+/// in RGB order.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Rgb {
+    pub r: f32,
+    pub g: f32,
+    pub b: f32,
+}
+
+impl Rgb {
+    /// Opaque white
+    pub const WHITE: Self = Self::grey(1.0);
+    /// Opaque black
+    pub const BLACK: Self = Self::grey(0.0);
+
+    /// Construct from R-G-B components
+    ///
+    /// Values should be between 0 and 1 on a linear scale.
+    pub const fn rgb(r: f32, g: f32, b: f32) -> Self {
+        Self { r, g, b }
+    }
+
+    /// Construct from grey-scale
+    pub const fn grey(s: f32) -> Self {
+        Self::rgb(s, s, s)
+    }
+
+    /// Average three colour components (desaturate)
+    pub fn average(self) -> Self {
+        Self::grey((self.r + self.g + self.b) * (1.0 / 3.0))
+    }
+
+    /// Multiply and clamp three colour components
+    pub fn multiply(self, x: f32) -> Self {
+        debug_assert!(x >= 0.0);
+        Self {
+            r: (self.r * x).min(1.0),
+            g: (self.g * x).min(1.0),
+            b: (self.b * x).min(1.0),
+        }
+    }
+
+    /// Clamp each colour component to at least `min`
+    pub fn max(self, min: f32) -> Self {
+        debug_assert!(min <= 1.0);
+        Self {
+            r: self.r.max(min),
+            g: self.g.max(min),
+            b: self.b.max(min),
+        }
+    }
+}
+
+impl From<Rgb> for [f32; 3] {
+    fn from(c: Rgb) -> Self {
+        [c.r, c.g, c.b]
+    }
+}
+
+impl From<[f32; 3]> for Rgb {
+    fn from(c: [f32; 3]) -> Self {
+        Self::rgb(c[0], c[1], c[2])
+    }
+}
+
+impl From<Rgb> for Rgba {
+    fn from(c: Rgb) -> Self {
+        Self::rgb(c.r, c.g, c.b)
+    }
+}
+
 /// 8-bit-per-channel sRGB colour + alpha component
 ///
 /// This is a common format for inputs (alpha component defaults to opaque).
@@ -308,6 +386,16 @@ impl From<Rgba8Srgb> for Rgba {
     }
 }
 
+impl From<Rgba8Srgb> for Rgb {
+    fn from(c: Rgba8Srgb) -> Self {
+        Rgb {
+            r: into_linear(c.0[0]),
+            g: into_linear(c.0[1]),
+            b: into_linear(c.0[2]),
+        }
+    }
+}
+
 impl From<Rgba> for Rgba8Srgb {
     fn from(c: Rgba) -> Self {
         Rgba8Srgb([
@@ -315,6 +403,17 @@ impl From<Rgba> for Rgba8Srgb {
             from_linear(c.g),
             from_linear(c.b),
             u8::conv_nearest(c.a * 255.0),
+        ])
+    }
+}
+
+impl From<Rgb> for Rgba8Srgb {
+    fn from(c: Rgb) -> Self {
+        Rgba8Srgb([
+            from_linear(c.r),
+            from_linear(c.g),
+            from_linear(c.b),
+            255,
         ])
     }
 }
