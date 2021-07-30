@@ -8,6 +8,10 @@
 use kas::draw::color::{Rgba, Rgba8Srgb};
 use kas::draw::{InputState, TextClass};
 
+const MULT_DEPRESS: f32 = 0.75;
+const MULT_HIGHLIGHT: f32 = 1.25;
+const MIN_HIGHLIGHT: f32 = 0.2;
+
 /// Provides standard theme colours
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "config", derive(serde::Serialize, serde::Deserialize))]
@@ -17,11 +21,9 @@ pub struct Colors<C> {
     /// Colour for frames (not always used)
     pub frame: C,
     /// Background colour of `EditBox`
-    pub bg: C,
-    /// Background colour of `EditBox` (disabled state)
-    pub bg_disabled: C,
+    pub edit_bg: C,
     /// Background colour of `EditBox` (error state)
-    pub bg_error: C,
+    pub edit_bg_error: C,
     /// Text colour in an `EditBox`
     pub text: C,
     /// Selected tect colour
@@ -36,12 +38,6 @@ pub struct Colors<C> {
     pub nav_focus: C,
     /// Colour of a `TextButton`
     pub button: C,
-    /// Colour of a `TextButton` (disabled state)
-    pub button_disabled: C,
-    /// Colour of a `TextButton` when hovered by the mouse
-    pub button_highlighted: C,
-    /// Colour of a `TextButton` when depressed
-    pub button_depressed: C,
     /// Colour of mark within a `CheckBox` or `RadioBox`
     pub checkbox: C,
 }
@@ -57,9 +53,8 @@ impl From<ColorsSrgb> for ColorsLinear {
         Colors {
             background: col.background.into(),
             frame: col.frame.into(),
-            bg: col.bg.into(),
-            bg_disabled: col.bg_disabled.into(),
-            bg_error: col.bg_error.into(),
+            edit_bg: col.edit_bg.into(),
+            edit_bg_error: col.edit_bg_error.into(),
             text: col.text.into(),
             text_sel: col.text_sel.into(),
             text_sel_bg: col.text_sel_bg.into(),
@@ -67,9 +62,6 @@ impl From<ColorsSrgb> for ColorsLinear {
             button_text: col.button_text.into(),
             nav_focus: col.nav_focus.into(),
             button: col.button.into(),
-            button_disabled: col.button_disabled.into(),
-            button_highlighted: col.button_highlighted.into(),
-            button_depressed: col.button_depressed.into(),
             checkbox: col.checkbox.into(),
         }
     }
@@ -80,9 +72,8 @@ impl From<ColorsLinear> for ColorsSrgb {
         Colors {
             background: col.background.into(),
             frame: col.frame.into(),
-            bg: col.bg.into(),
-            bg_disabled: col.bg_disabled.into(),
-            bg_error: col.bg_error.into(),
+            edit_bg: col.edit_bg.into(),
+            edit_bg_error: col.edit_bg_error.into(),
             text: col.text.into(),
             text_sel: col.text_sel.into(),
             text_sel_bg: col.text_sel_bg.into(),
@@ -90,9 +81,6 @@ impl From<ColorsLinear> for ColorsSrgb {
             button_text: col.button_text.into(),
             nav_focus: col.nav_focus.into(),
             button: col.button.into(),
-            button_disabled: col.button_disabled.into(),
-            button_highlighted: col.button_highlighted.into(),
-            button_depressed: col.button_depressed.into(),
             checkbox: col.checkbox.into(),
         }
     }
@@ -120,9 +108,8 @@ impl ColorsLinear {
         Colors {
             background: Rgba::grey(1.0),
             frame: Rgba::grey(0.7),
-            bg: Rgba::grey(1.0),
-            bg_disabled: Rgba::grey(0.85),
-            bg_error: Rgba::rgb(1.0, 0.5, 0.5),
+            edit_bg: Rgba::grey(1.0),
+            edit_bg_error: Rgba::rgb(1.0, 0.5, 0.5),
             text: Rgba::grey(0.0),
             text_sel: Rgba::grey(1.0),
             text_sel_bg: Rgba::rgb(0.15, 0.525, 0.75),
@@ -130,9 +117,6 @@ impl ColorsLinear {
             button_text: Rgba::grey(1.0),
             nav_focus: Rgba::rgb(0.9, 0.65, 0.4),
             button: Rgba::rgb(0.2, 0.7, 1.0),
-            button_disabled: Rgba::grey(0.5),
-            button_highlighted: Rgba::rgb(0.25, 0.8, 1.0),
-            button_depressed: Rgba::rgb(0.15, 0.525, 0.75),
             checkbox: Rgba::rgb(0.2, 0.7, 1.0),
         }
     }
@@ -142,9 +126,8 @@ impl ColorsLinear {
         Colors {
             background: Rgba::grey(0.9),
             frame: Rgba::rgb(0.8, 0.8, 0.9),
-            bg: Rgba::grey(1.0),
-            bg_disabled: Rgba::grey(0.85),
-            bg_error: Rgba::rgb(1.0, 0.5, 0.5),
+            edit_bg: Rgba::grey(1.0),
+            edit_bg_error: Rgba::rgb(1.0, 0.5, 0.5),
             text: Rgba::grey(0.0),
             text_sel: Rgba::grey(0.0),
             text_sel_bg: Rgba::rgb(0.8, 0.72, 0.24),
@@ -152,9 +135,6 @@ impl ColorsLinear {
             button_text: Rgba::grey(0.0),
             nav_focus: Rgba::rgb(0.9, 0.65, 0.4),
             button: Rgba::rgb(1.0, 0.9, 0.3),
-            button_disabled: Rgba::grey(0.6),
-            button_highlighted: Rgba::rgb(1.0, 0.95, 0.6),
-            button_depressed: Rgba::rgb(0.8, 0.72, 0.24),
             checkbox: Rgba::grey(0.4),
         }
     }
@@ -164,9 +144,8 @@ impl ColorsLinear {
         Colors {
             background: Rgba::grey(0.2),
             frame: Rgba::grey(0.4),
-            bg: Rgba::grey(0.1),
-            bg_disabled: Rgba::grey(0.3),
-            bg_error: Rgba::rgb(1.0, 0.5, 0.5),
+            edit_bg: Rgba::grey(0.1),
+            edit_bg_error: Rgba::rgb(1.0, 0.5, 0.5),
             text: Rgba::grey(1.0),
             text_sel: Rgba::grey(1.0),
             text_sel_bg: Rgba::rgb(0.6, 0.3, 0.1),
@@ -174,21 +153,31 @@ impl ColorsLinear {
             button_text: Rgba::grey(1.0),
             nav_focus: Rgba::rgb(1.0, 0.7, 0.5),
             button: Rgba::rgb(0.5, 0.1, 0.1),
-            button_disabled: Rgba::grey(0.7),
-            button_highlighted: Rgba::rgb(0.6, 0.3, 0.1),
-            button_depressed: Rgba::rgb(0.3, 0.1, 0.1),
             checkbox: Rgba::rgb(0.5, 0.1, 0.1),
+        }
+    }
+
+    /// Adjust a colour depending on state
+    pub fn adjust_for_state(col: Rgba, state: InputState) -> Rgba {
+        if state.disabled {
+            col.average()
+        } else if state.depress {
+            col.multiply(MULT_DEPRESS)
+        } else if state.hover {
+            col.multiply(MULT_HIGHLIGHT).max(MIN_HIGHLIGHT)
+        } else {
+            col
         }
     }
 
     /// Get colour of a text area, depending on state
     pub fn bg_col(&self, state: InputState) -> Rgba {
         if state.disabled {
-            self.bg_disabled
+            self.edit_bg.average()
         } else if state.error {
-            self.bg_error
+            self.edit_bg_error
         } else {
-            self.bg
+            self.edit_bg
         }
     }
 
@@ -202,43 +191,28 @@ impl ColorsLinear {
     }
 
     /// Get colour for a button, depending on state
+    #[inline]
     pub fn button_state(&self, state: InputState) -> Rgba {
-        if state.disabled {
-            self.button_disabled
-        } else if state.depress {
-            self.button_depressed
-        } else if state.hover {
-            self.button_highlighted
-        } else {
-            self.button
-        }
+        Self::adjust_for_state(self.button, state)
     }
 
     /// Get colour for a checkbox mark, depending on state
     pub fn check_mark_state(&self, state: InputState, checked: bool) -> Option<Rgba> {
-        Some(if checked {
-            if state.disabled {
-                self.button_disabled
-            } else if state.depress {
-                self.button_depressed
-            } else if state.hover {
-                self.button_highlighted
-            } else {
-                self.checkbox
-            }
+        if checked {
+            Some(Self::adjust_for_state(self.checkbox, state))
         } else if state.depress {
-            self.button_depressed
+            Some(self.checkbox.multiply(MULT_DEPRESS))
         } else {
-            return None;
-        })
+            None
+        }
     }
 
     /// Get background highlight colour of a menu entry, if any
     pub fn menu_entry(&self, state: InputState) -> Option<Rgba> {
         if state.depress || state.nav_focus {
-            Some(self.button_depressed)
+            Some(self.button.multiply(MULT_DEPRESS))
         } else if state.hover {
-            Some(self.button_highlighted)
+            Some(self.button.multiply(MULT_HIGHLIGHT).max(MIN_HIGHLIGHT))
         } else {
             None
         }

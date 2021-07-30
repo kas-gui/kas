@@ -51,6 +51,38 @@ impl Rgba {
     pub const fn grey(s: f32) -> Self {
         Self::rgb(s, s, s)
     }
+
+    /// Construct from grey-scale with alpha
+    pub const fn ga(s: f32, a: f32) -> Self {
+        Self::rgba(s, s, s, a)
+    }
+
+    /// Average three colour components (desaturate)
+    pub fn average(self) -> Self {
+        Self::ga((self.r + self.g + self.b) * (1.0 / 3.0), self.a)
+    }
+
+    /// Multiply and clamp three colour components
+    pub fn multiply(self, x: f32) -> Self {
+        debug_assert!(x >= 0.0);
+        Self {
+            r: (self.r * x).min(1.0),
+            g: (self.g * x).min(1.0),
+            b: (self.b * x).min(1.0),
+            a: self.a,
+        }
+    }
+
+    /// Clamp each colour component to at least `min`
+    pub fn max(self, min: f32) -> Self {
+        debug_assert!(min <= 1.0);
+        Self {
+            r: self.r.max(min),
+            g: self.g.max(min),
+            b: self.b.max(min),
+            a: self.a,
+        }
+    }
 }
 
 impl From<Rgba> for [f32; 4] {
@@ -115,6 +147,11 @@ impl Rgba8Srgb {
     /// Construct from grey-scale
     pub const fn grey(s: u8) -> Self {
         Self::rgb(s, s, s)
+    }
+
+    /// Construct from grey-scale with alpha
+    pub const fn ga(s: u8, a: u8) -> Self {
+        Self::rgba(s, s, s, a)
     }
 
     /// Format to a string

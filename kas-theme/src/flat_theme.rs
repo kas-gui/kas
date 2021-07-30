@@ -408,7 +408,7 @@ where
                 self.draw.rect(quad, col);
             }
             // hack to make secondary marker grey:
-            col = self.cols.button_disabled;
+            col = col.average();
         }
     }
 
