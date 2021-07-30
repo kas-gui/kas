@@ -258,20 +258,20 @@ where
 
     fn new_pass(
         &mut self,
-        mut rect: Rect,
+        inner_rect: Rect,
         offset: Offset,
         class: PassType,
         f: &mut dyn FnMut(&mut dyn draw::DrawHandle),
     ) {
+        let mut outer_rect = inner_rect;
         if class == PassType::Overlay {
-            rect = rect.expand(self.window.dims.frame);
+            outer_rect = inner_rect.expand(self.window.dims.frame);
         }
-        let mut draw = self.draw.new_pass(rect, offset, class);
+        let mut draw = self.draw.new_pass(outer_rect, offset, class);
 
         if class == PassType::Overlay {
-            let outer = draw.get_clip_rect();
-            let inner = Quad::from(outer.shrink(self.window.dims.frame));
-            let outer = Quad::from(outer);
+            let outer = Quad::from(outer_rect + offset);
+            let inner = Quad::from(inner_rect + offset);
             draw.rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
             let inner = outer.shrink(self.window.dims.frame as f32 * BG_SHRINK_FACTOR);
             draw.rect(inner, self.cols.background);
