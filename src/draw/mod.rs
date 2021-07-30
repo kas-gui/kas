@@ -68,7 +68,7 @@ use crate::cast::Cast;
 pub use draw::{Draw, DrawIface, DrawImpl};
 pub use draw_rounded::{DrawRounded, DrawRoundedImpl};
 pub use draw_shared::{DrawShared, DrawSharedImpl, SharedState};
-pub use handle::{DrawHandle, DrawHandleExt, InputState, SizeHandle, TextClass};
+pub use handle::{DrawHandle, DrawHandleExt, InputState, SizeHandle, TextClass, DerivedDrawHandle};
 pub use images::{ImageError, ImageFormat, ImageId};
 pub use theme::ThemeApi;
 

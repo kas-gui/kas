@@ -435,6 +435,238 @@ pub trait DrawHandleExt: DrawHandle {
 
 impl<D: DrawHandle + ?Sized> DrawHandleExt for D {}
 
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+pub trait DerivedDrawHandle {
+    type H: DrawHandle;
+    fn base(&self) -> &Self::H;
+    fn base_mut(&mut self) -> &mut Self::H;
+
+    /// Access a [`SizeHandle`]
+    fn size_handle(&mut self) -> &mut dyn SizeHandle {
+        self.base_mut().size_handle()
+    }
+
+    /// Access the low-level draw device
+    fn draw_device(&mut self) -> &mut dyn Draw {
+        self.base_mut().draw_device()
+    }
+
+    /// Add a draw pass
+    fn new_pass(
+        &mut self,
+        rect: Rect,
+        offset: Offset,
+        class: PassType,
+        f: &mut dyn FnMut(&mut dyn DrawHandle),
+    ) {
+        self.base_mut().new_pass(rect, offset, class, f)
+    }
+
+    /// Target area for drawing
+    fn get_clip_rect(&self) -> Rect {
+        self.base().get_clip_rect()
+    }
+
+    /// Draw a frame inside the given `rect`
+    fn outer_frame(&mut self, rect: Rect) {
+        self.base_mut().outer_frame(rect);
+    }
+
+    /// Draw a separator in the given `rect`
+    fn separator(&mut self, rect: Rect) {
+        self.base_mut().separator(rect);
+    }
+
+    /// Draw a navigation highlight frame in the given `rect`
+    fn nav_frame(&mut self, rect: Rect, state: InputState) {
+        self.base_mut().nav_frame(rect, state);
+    }
+
+    /// Draw a selection box
+    fn selection_box(&mut self, rect: Rect) {
+        self.base_mut().selection_box(rect);
+    }
+
+    /// Draw some text using the standard font
+    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass) {
+        self.base_mut().text(pos, text, class);
+    }
+
+    /// Draw text with effects
+    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
+        self.base_mut().text_effects(pos, text, class);
+    }
+
+    /// Draw an `AccelString` text
+    fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
+        self.base_mut().text_accel(pos, text, state, class);
+    }
+
+    /// Method used to implement [`DrawHandleExt::text_selected`]
+    fn text_selected_range(
+        &mut self,
+        pos: Coord,
+        text: &TextDisplay,
+        range: Range<usize>,
+        class: TextClass,
+    ) {
+        self.base_mut().text_selected_range(pos, text, range, class);
+    }
+
+    /// Draw an edit marker at the given `byte` index on this `text`
+    fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
+        self.base_mut().edit_marker(pos, text, class, byte);
+    }
+
+    /// Draw the background of a menu entry
+    fn menu_entry(&mut self, rect: Rect, state: InputState) {
+        self.base_mut().menu_entry(rect, state);
+    }
+
+    /// Draw button sides, background and margin-area highlight
+    fn button(&mut self, rect: Rect, state: InputState) {
+        self.base_mut().button(rect, state);
+    }
+
+    /// Draw edit box sides, background and margin-area highlight
+    fn edit_box(&mut self, rect: Rect, state: InputState) {
+        self.base_mut().edit_box(rect, state);
+    }
+
+    /// Draw UI element: checkbox
+    fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState) {
+        self.base_mut().checkbox(rect, checked, state);
+    }
+
+    /// Draw UI element: radiobox
+    fn radiobox(&mut self, rect: Rect, checked: bool, state: InputState) {
+        self.base_mut().radiobox(rect, checked, state);
+    }
+
+    /// Draw UI element: scrollbar
+    fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
+        self.base_mut().scrollbar(rect, h_rect, dir, state);
+    }
+
+    /// Draw UI element: slider
+    fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
+        self.base_mut().slider(rect, h_rect, dir, state);
+    }
+
+    /// Draw UI element: progress bar
+    fn progress_bar(&mut self, rect: Rect, dir: Direction, state: InputState, value: f32) {
+        self.base_mut().progress_bar(rect, dir, state, value);
+    }
+
+    /// Draw an image
+    fn image(&mut self, id: ImageId, rect: Rect) {
+        self.base_mut().image(id, rect);
+    }
+}
+
+impl<D: DerivedDrawHandle> DrawHandle for D {
+    fn size_handle(&mut self) -> &mut dyn SizeHandle {
+        self.size_handle()
+    }
+
+    fn draw_device(&mut self) -> &mut dyn Draw {
+        self.draw_device()
+    }
+
+    fn new_pass(
+        &mut self,
+        rect: Rect,
+        offset: Offset,
+        class: PassType,
+        f: &mut dyn FnMut(&mut dyn DrawHandle),
+    ) {
+        self.new_pass(rect, offset, class, f)
+    }
+
+    fn get_clip_rect(&self) -> Rect {
+        self.get_clip_rect()
+    }
+
+    fn outer_frame(&mut self, rect: Rect) {
+        self.outer_frame(rect);
+    }
+
+    fn separator(&mut self, rect: Rect) {
+        self.separator(rect);
+    }
+
+    fn nav_frame(&mut self, rect: Rect, state: InputState) {
+        self.nav_frame(rect, state);
+    }
+
+    fn selection_box(&mut self, rect: Rect) {
+        self.selection_box(rect);
+    }
+
+    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass) {
+        self.text(pos, text, class);
+    }
+
+    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
+        self.text_effects(pos, text, class);
+    }
+
+    fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
+        self.text_accel(pos, text, state, class);
+    }
+
+    fn text_selected_range(
+        &mut self,
+        pos: Coord,
+        text: &TextDisplay,
+        range: Range<usize>,
+        class: TextClass,
+    ) {
+        self.text_selected_range(pos, text, range, class);
+    }
+
+    fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
+        self.edit_marker(pos, text, class, byte);
+    }
+
+    fn menu_entry(&mut self, rect: Rect, state: InputState) {
+        self.menu_entry(rect, state);
+    }
+
+    fn button(&mut self, rect: Rect, state: InputState) {
+        self.button(rect, state);
+    }
+
+    fn edit_box(&mut self, rect: Rect, state: InputState) {
+        self.edit_box(rect, state);
+    }
+
+    fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState) {
+        self.checkbox(rect, checked, state);
+    }
+
+    fn radiobox(&mut self, rect: Rect, checked: bool, state: InputState) {
+        self.radiobox(rect, checked, state);
+    }
+
+    fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
+        self.scrollbar(rect, h_rect, dir, state);
+    }
+
+    fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
+        self.slider(rect, h_rect, dir, state);
+    }
+
+    fn progress_bar(&mut self, rect: Rect, dir: Direction, state: InputState, value: f32) {
+        self.progress_bar(rect, dir, state, value);
+    }
+
+    fn image(&mut self, id: ImageId, rect: Rect) {
+        self.image(id, rect);
+    }
+}
+
 impl<S: SizeHandle + ?Sized, R: Deref<Target = S>> SizeHandle for R {
     fn scale_factor(&self) -> f32 {
         self.deref().scale_factor()
