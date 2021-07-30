@@ -426,7 +426,7 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
             rules.multiply_with_margin(2, self.ideal_visible);
             rules.set_stretch(rules.stretch().max(Stretch::High));
         }
-        let (rules, offset, size) = frame.surround(rules);
+        let (rules, offset, size) = frame.surround_with_margin(rules);
         self.frame_offset.set_component(axis, offset);
         self.frame_size.set_component(axis, size);
         rules

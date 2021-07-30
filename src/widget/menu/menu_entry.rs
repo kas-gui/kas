@@ -42,7 +42,7 @@ impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let frame_rules = size_handle.menu_frame(axis.is_vertical());
         let text_rules = size_handle.text_bound(&mut self.label, TextClass::MenuLabel, axis);
-        let (rules, offset, size) = frame_rules.surround(text_rules);
+        let (rules, offset, size) = frame_rules.surround_as_margin(text_rules);
         self.label_off.set_component(axis, offset);
         self.frame_size.set_component(axis, size);
         rules

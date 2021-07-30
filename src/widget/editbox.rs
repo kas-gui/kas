@@ -338,7 +338,7 @@ impl<G: EditGuard> Layout for EditBox<G> {
         let frame_rules = size_handle.edit_surround(axis.is_vertical());
         let child_rules = self.inner.size_rules(size_handle, axis);
 
-        let (rules, offset, size) = frame_rules.surround(child_rules);
+        let (rules, offset, size) = frame_rules.surround_as_margin(child_rules);
         self.offset.set_component(axis, offset);
         self.frame_size.set_component(axis, size);
         rules

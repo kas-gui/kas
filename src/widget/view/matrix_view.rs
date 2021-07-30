@@ -376,7 +376,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Layout fo
         rules.multiply_with_margin(2, self.ideal_len.extract(axis));
         rules.set_stretch(rules.stretch().max(Stretch::High));
 
-        let (rules, offset, size) = frame.surround(rules);
+        let (rules, offset, size) = frame.surround_with_margin(rules);
         self.frame_offset.set_component(axis, offset);
         self.frame_size.set_component(axis, size);
         rules

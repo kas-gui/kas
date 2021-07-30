@@ -59,7 +59,7 @@ impl<L: Widget<Msg = VoidMsg>, M: 'static> Layout for Button<L, M> {
         let frame_rules = size_handle.button_surround(axis.is_vertical());
         let content_rules = self.label.size_rules(size_handle, axis);
 
-        let (rules, offset, size) = frame_rules.surround(content_rules);
+        let (rules, offset, size) = frame_rules.surround_as_margin(content_rules);
         self.frame_size.set_component(axis, size);
         self.frame_offset.set_component(axis, offset);
         rules
@@ -225,7 +225,7 @@ impl<M: 'static> Layout for TextButton<M> {
         let frame_rules = size_handle.button_surround(axis.is_vertical());
         let content_rules = size_handle.text_bound(&mut self.label, TextClass::Button, axis);
 
-        let (rules, offset, size) = frame_rules.surround(content_rules);
+        let (rules, offset, size) = frame_rules.surround_as_margin(content_rules);
         self.frame_size.set_component(axis, size);
         self.frame_offset.set_component(axis, offset);
         rules
