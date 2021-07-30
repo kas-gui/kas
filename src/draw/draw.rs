@@ -153,6 +153,10 @@ pub trait Draw {
     fn get_clip_rect(&self) -> Rect;
 
     /// Draw a rectangle of uniform colour
+    ///
+    /// Note: where the implementation batches and/or re-orders draw calls,
+    /// this should be one of the first items drawn such that almost anything
+    /// else will draw "in front of" a rect.
     fn rect(&mut self, rect: Quad, col: Rgba);
 
     /// Draw a frame of uniform colour

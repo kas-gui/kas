@@ -47,8 +47,8 @@
 //! operations may not happen in the order queued. In general, it may be
 //! expected that batches are executed in the following order:
 //!
-//! 1.  Images
-//! 2.  Square-edged primitives (e.g. [`Draw::rect`])
+//! 1.  Square-edged primitives (e.g. [`Draw::rect`])
+//! 2.  Images
 //! 3.  Rounded or other partially-transparent primitives (e.g. [`DrawRounded::circle`])
 //! 4.  Custom draw routines (`CustomPipe`)
 //! 5.  Text

@@ -264,10 +264,10 @@ impl<C: CustomPipe> DrawPipe<C> {
                     rect.size.1.cast(),
                 );
 
-                self.images
-                    .render(&window.images, pass, &mut rpass, bg_common);
                 self.shaded_square
                     .render(&window.shaded_square, pass, &mut rpass, bg_common);
+                self.images
+                    .render(&window.images, pass, &mut rpass, bg_common);
                 self.shaded_round
                     .render(&window.shaded_round, pass, &mut rpass, bg_common);
                 self.flat_round
