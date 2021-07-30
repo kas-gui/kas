@@ -8,7 +8,7 @@
 use std::fmt::{self, Debug};
 use std::rc::Rc;
 
-use kas::draw::TextClass;
+use kas::draw::{color::Rgb, TextClass};
 use kas::event::{self, VirtualKeyCode, VirtualKeyCodes};
 use kas::prelude::*;
 
@@ -23,6 +23,7 @@ pub struct Button<L: Widget<Msg = VoidMsg>, M: 'static> {
     keys1: VirtualKeyCodes,
     frame_size: Size,
     frame_offset: Offset,
+    color: Option<Rgb>,
     #[widget_derive]
     #[widget]
     pub label: L,
@@ -36,6 +37,7 @@ impl<L: Widget<Msg = VoidMsg>, M: 'static> Debug for Button<L, M> {
             .field("keys1", &self.keys1)
             .field("frame_size", &self.frame_size)
             .field("frame_offset", &self.frame_offset)
+            .field("color", &self.color)
             .field("label", &self.label)
             .finish_non_exhaustive()
     }
@@ -73,7 +75,7 @@ impl<L: Widget<Msg = VoidMsg>, M: 'static> Layout for Button<L, M> {
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-        draw_handle.button(self.core.rect, self.input_state(mgr, disabled));
+        draw_handle.button(self.core.rect, self.color, self.input_state(mgr, disabled));
         self.label.draw(draw_handle, mgr, disabled);
     }
 }
@@ -87,6 +89,7 @@ impl<L: Widget<Msg = VoidMsg>> Button<L, VoidMsg> {
             keys1: Default::default(),
             frame_size: Default::default(),
             frame_offset: Default::default(),
+            color: None,
             label,
             on_push: None,
         }
@@ -107,6 +110,7 @@ impl<L: Widget<Msg = VoidMsg>> Button<L, VoidMsg> {
             keys1: self.keys1,
             frame_size: self.frame_size,
             frame_offset: self.frame_offset,
+            color: self.color,
             label: self.label,
             on_push: Some(Rc::new(f)),
         }
@@ -146,6 +150,17 @@ impl<L: Widget<Msg = VoidMsg>, M: 'static> Button<L, M> {
     pub fn with_keys(mut self, keys: &[VirtualKeyCode]) -> Self {
         self.keys1.clear();
         self.keys1.extend_from_slice(keys);
+        self
+    }
+
+    /// Set button color
+    pub fn set_color(&mut self, color: Option<Rgb>) {
+        self.color = color;
+    }
+
+    /// Set button color (chain style)
+    pub fn with_color(mut self, color: Rgb) -> Self {
+        self.color = Some(color);
         self
     }
 }
@@ -190,6 +205,7 @@ pub struct TextButton<M: 'static> {
     keys1: VirtualKeyCodes,
     frame_size: Size,
     frame_offset: Offset,
+    color: Option<Rgb>,
     label: Text<AccelString>,
     on_push: Option<Rc<dyn Fn(&mut Manager) -> Option<M>>>,
 }
@@ -201,6 +217,7 @@ impl<M: 'static> Debug for TextButton<M> {
             .field("keys1", &self.keys1)
             .field("frame_size", &self.frame_size)
             .field("frame_offset", &self.frame_offset)
+            .field("color", &self.color)
             .field("label", &self.label)
             .finish_non_exhaustive()
     }
@@ -241,7 +258,7 @@ impl<M: 'static> Layout for TextButton<M> {
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-        draw_handle.button(self.core.rect, self.input_state(mgr, disabled));
+        draw_handle.button(self.core.rect, self.color, self.input_state(mgr, disabled));
         let pos = self.core.rect.pos + self.frame_offset;
         let state = mgr.show_accel_labels();
         draw_handle.text_accel(pos, &self.label, state, TextClass::Button);
@@ -259,6 +276,7 @@ impl TextButton<VoidMsg> {
             keys1: Default::default(),
             frame_size: Default::default(),
             frame_offset: Default::default(),
+            color: None,
             label: text,
             on_push: None,
         }
@@ -279,6 +297,7 @@ impl TextButton<VoidMsg> {
             keys1: self.keys1,
             frame_size: self.frame_size,
             frame_offset: self.frame_offset,
+            color: self.color,
             label: self.label,
             on_push: Some(Rc::new(f)),
         }
@@ -318,6 +337,17 @@ impl<M: 'static> TextButton<M> {
     pub fn with_keys(mut self, keys: &[VirtualKeyCode]) -> Self {
         self.keys1.clear();
         self.keys1.extend_from_slice(keys);
+        self
+    }
+
+    /// Set button color
+    pub fn set_color(&mut self, color: Option<Rgb>) {
+        self.color = color;
+    }
+
+    /// Set button color (chain style)
+    pub fn with_color(mut self, color: Rgb) -> Self {
+        self.color = Some(color);
         self
     }
 }

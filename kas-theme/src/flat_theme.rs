@@ -419,9 +419,10 @@ where
         }
     }
 
-    fn button(&mut self, rect: Rect, state: InputState) {
+    fn button(&mut self, rect: Rect, col: Option<color::Rgb>, state: InputState) {
         let outer = Quad::from(rect);
-        let col = self.cols.button_state(state);
+        let col = col.map(|c| c.into()).unwrap_or(self.cols.button);
+        let col = ColorsLinear::adjust_for_state(col, state);
 
         let inner = outer.shrink(self.window.dims.button_frame as f32);
         self.draw.rounded_frame(outer, inner, 0.0, col);

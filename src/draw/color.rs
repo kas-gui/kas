@@ -409,11 +409,6 @@ impl From<Rgba> for Rgba8Srgb {
 
 impl From<Rgb> for Rgba8Srgb {
     fn from(c: Rgb) -> Self {
-        Rgba8Srgb([
-            from_linear(c.r),
-            from_linear(c.g),
-            from_linear(c.b),
-            255,
-        ])
+        Rgba8Srgb([from_linear(c.r), from_linear(c.g), from_linear(c.b), 255])
     }
 }

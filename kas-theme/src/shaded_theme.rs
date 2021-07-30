@@ -314,10 +314,11 @@ where
         self.as_flat().menu_entry(rect, state);
     }
 
-    fn button(&mut self, rect: Rect, state: InputState) {
+    fn button(&mut self, rect: Rect, col: Option<color::Rgb>, state: InputState) {
         let outer = Quad::from(rect);
         let inner = outer.shrink(self.window.dims.button_frame as f32);
-        let col = self.cols.button_state(state);
+        let col = col.map(|c| c.into()).unwrap_or(self.cols.button);
+        let col = ColorsLinear::adjust_for_state(col, state);
 
         self.draw.shaded_round_frame(outer, inner, (0.0, 0.6), col);
         self.draw.rect(inner, col);

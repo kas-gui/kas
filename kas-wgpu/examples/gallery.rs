@@ -8,6 +8,7 @@
 //! This is a test-bed to demonstrate most toolkit functionality
 //! (excepting custom graphics).
 
+use kas::draw::color::Rgb;
 use kas::event::{Command, VoidResponse};
 use kas::prelude::*;
 use kas::widget::*;
@@ -224,8 +225,10 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget(row=2, col=1)] _ = TextButton::new_msg("&Press me", Item::Button),
             #[widget(row=3, col=0)] _ = Label::new("Button<Image>"),
             #[widget(row=3, col=1)] _ = Row::new(vec![
-                Button::new_msg(Image::new("res/sun_32.png"), Item::LightTheme),
-                Button::new_msg(Image::new("res/moon_32.png"), Item::DarkTheme),
+                Button::new_msg(Image::new("res/sun_32.png"), Item::LightTheme)
+                    .with_color(Rgb::rgb(0.3, 0.4, 0.5)),
+                Button::new_msg(Image::new("res/moon_32.png"), Item::DarkTheme)
+                    .with_color(Rgb::BLACK),
             ]).map_msg(|_, (_, m)| m),
             #[widget(row=4, col=0)] _ = Label::new("CheckBox"),
             #[widget(row=4, col=1)] _ = CheckBox::new("&Check me")
