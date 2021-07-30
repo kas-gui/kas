@@ -619,6 +619,12 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
                 (None, Response::Select) => return Response::None,
                 (_, Response::Update) => return Response::None,
                 (key, Response::Msg(msg)) => {
+                    trace!(
+                        "Received by {} from {:?}: {:?}",
+                        self.id(),
+                        &key,
+                        kas::util::TryFormat(&msg)
+                    );
                     if let Some(key) = key {
                         if let Some(handle) = self.data.handle(&key, &msg) {
                             mgr.trigger_update(handle, 0);

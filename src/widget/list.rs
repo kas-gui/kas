@@ -173,7 +173,15 @@ impl<D: Directional, W: Widget> event::SendEvent for List<D, W> {
                     let r = child.send(mgr, id, event);
                     return match Response::try_from(r) {
                         Ok(r) => r,
-                        Err(msg) => Response::Msg((i, msg)),
+                        Err(msg) => {
+                            log::trace!(
+                                "Received by {} from {}: {:?}",
+                                self.id(),
+                                id,
+                                kas::util::TryFormat(&msg)
+                            );
+                            Response::Msg((i, msg))
+                        }
                     };
                 }
             }

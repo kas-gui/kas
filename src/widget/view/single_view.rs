@@ -141,6 +141,12 @@ impl<T: SingleData + UpdatableAll<(), V::Msg> + 'static, V: Driver<T::Item>> Sen
         if id < self.id() {
             let r = self.child.send(mgr, id, event);
             if let Response::Msg(ref msg) = r {
+                log::trace!(
+                    "Received by {} from {}: {:?}",
+                    self.id(),
+                    id,
+                    kas::util::TryFormat(&msg)
+                );
                 if let Some(handle) = self.data.handle(&(), msg) {
                     mgr.trigger_update(handle, 0);
                 }

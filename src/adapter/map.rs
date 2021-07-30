@@ -60,7 +60,15 @@ impl<W: Widget, M> SendEvent for MapResponse<W, M> {
 
         if id < self.id() {
             let r = self.inner.send(mgr, id, event);
-            r.try_into().unwrap_or_else(|msg| (self.map)(mgr, msg))
+            r.try_into().unwrap_or_else(|msg| {
+                log::trace!(
+                    "Received by {} from {}: {:?}",
+                    self.id(),
+                    id,
+                    kas::util::TryFormat(&msg)
+                );
+                (self.map)(mgr, msg)
+            })
         } else {
             debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
             self.handle(mgr, event)
