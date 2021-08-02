@@ -62,7 +62,7 @@ impl Options {
     ///
     /// The following environment variables are read, in case-insensitive mode.
     ///
-    /// ### Config
+    /// # Config files
     ///
     /// WARNING: file formats are not stable and may not be compatible across
     /// KAS versions (aside from patch versions)!
@@ -83,21 +83,19 @@ impl Options {
     ///
     /// -   `Read` (default): read-only
     /// -   `ReadWrite`: read on start-up, write on exit
-    /// -   `WriteDefault`: generate platform-default configuration, and write
-    ///     it to the config path, overwriting any existing config
+    /// -   `WriteDefault`: generate platform-default configuration and write
+    ///     it to the config path(s) specified, overwriting any existing config
     ///
     /// Note: in the future, the default will likely change to a read-write mode,
     /// allowing changes to be written out.
     ///
-    /// ### Power preference
+    /// # Graphics options
     ///
     /// The `KAS_POWER_PREFERENCE` variable supports:
     ///
     /// -   `Default`
     /// -   `LowPower`
     /// -   `HighPerformance`
-    ///
-    /// ### Backend
     ///
     /// The `KAS_BACKENDS` variable supports:
     ///

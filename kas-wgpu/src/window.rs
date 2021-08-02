@@ -76,7 +76,10 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         if restrict_dimensions.1 {
             builder = builder.with_max_inner_size(ideal);
         }
-        let window = builder.with_title(widget.title()).build(elwt)?;
+        let window = builder
+            .with_title(widget.title())
+            .with_window_icon(widget.icon())
+            .build(elwt)?;
 
         shared.init_clipboard(&window);
 

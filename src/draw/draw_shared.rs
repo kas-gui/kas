@@ -51,6 +51,10 @@ pub trait DrawShared {
     ///
     /// This should be called at least once on each image before display. May be
     /// called again to update the image contents.
+    ///
+    /// `id` must refer to an allocation of some size `(w, h)`, such that
+    /// `data.len() == b * w * h` where `b` is the number of bytes per pixel,
+    /// according to `format`. Data must be in row-major order.
     fn image_upload(&mut self, id: ImageId, data: &[u8], format: ImageFormat);
 
     /// Load an image from a path, autodetecting file type

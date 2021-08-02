@@ -5,17 +5,18 @@
 
 //! KAS GUI Toolkit
 //!
-//! KAS is a GUI library. This crate provides the following:
+//! This is the main KAS crate, featuring:
 //!
 //! -   the [`Widget`] trait family, with [`macros`] to implement them
-//! -   a [`layout`] solver and [`event`] handling for widgets
-//! -   building blocks including [`geom`] types and a [`draw`] API
-//! -   some pre-build widgets: the [`widget`] module
+//! -   high-level themable and mid-level [`draw`] APIs
+//! -   [`event`] handling code
+//! -   [`geom`]-etry types and widget [`layout`] solvers
+//! -   a [`widget`] library
 //!
 //! See also these external crates:
 //!
-//! -   [`kas-theme`](https://crates.io/crates/kas-theme) - [docs.rs](https://docs.rs/kas-theme) - theme API + themes
-//! -   [`kas-wgpu`](https://crates.io/crates/kas-wgpu) - [docs.rs](https://docs.rs/kas-wgpu) - WebGPU + winit integration
+//! -   `kas-theme` - [crates.io](https://crates.io/crates/kas-theme) - [docs.rs](https://docs.rs/kas-theme) - theme API + themes
+//! -   `kas-wgpu` - [crates.io](https://crates.io/crates/kas-wgpu) - [docs.rs](https://docs.rs/kas-wgpu) - WebGPU + winit integration
 //!
 //! Also refer to:
 //!

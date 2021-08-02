@@ -158,6 +158,10 @@ pub trait Window: Widget<Msg = event::VoidMsg> {
     /// Get the window title
     fn title(&self) -> &str;
 
+    /// Get the window icon, if any
+    #[cfg(feature = "winit")]
+    fn icon(&self) -> Option<winit::window::Icon>;
+
     /// Whether to limit the maximum size of a window
     ///
     /// All widgets' size rules allow calculation of two sizes: the minimum

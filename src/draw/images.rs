@@ -34,7 +34,7 @@ impl ImageId {
 /// Image formats available for upload
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum ImageFormat {
-    /// 8-bit RGBA values
+    /// 8-bit unsigned RGBA values (4 bytes per pixel)
     Rgba8,
 }
 
@@ -77,7 +77,9 @@ impl Images {
             return Ok(*id);
         }
 
-        let image = image::io::Reader::open(path)?.decode()?;
+        let image = image::io::Reader::open(path)?
+            .with_guessed_format()?
+            .decode()?;
         // TODO(opt): we convert to RGBA8 since this is the only format common
         // to both the image crate and WGPU. It may not be optimal however.
         // It also assumes that the image colour space is sRGB.
