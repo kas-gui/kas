@@ -55,8 +55,7 @@ pub trait CustomPipeBuilder {
 /// [`crate::Toolkit::new_custom`].
 ///
 /// Note that `kas-wgpu` accepts only a single custom pipe. To use more than
-/// one, you will have to implement your own multiplexer (presumably using an
-/// enum for the `Param` type).
+/// one custom graphics pipeline, you must implement your own multiplexer.
 pub trait CustomPipe: 'static {
     /// Associated per-window state for the custom pipe
     type Window: CustomWindow;

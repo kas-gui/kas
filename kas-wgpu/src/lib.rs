@@ -5,11 +5,18 @@
 
 //! KAS shell over [winit] and [WebGPU]
 //!
-//! This crate provides an implementation of KAS, using [WebGPU] for
-//! GPU-accelerated rendering.
+//! This crate implements a KAS shell (backend) using [WebGPU] for
+//! GPU-accelerated rendering and [winit] for windowing, thus it should be
+//! portable to most desktop and potentially also mobile platforms.
 //!
-//! Windowing is provided by [winit].
-//! Clipboard functionality is (currently) provided by the [clipboard] crate.
+//! This crate supports themes via the [`kas_theme`] crate, including shaded
+//! drawing.
+//!
+//! Custom GPU-accelerated drawing is supported via [`draw::CustomPipe`]
+//! (see the [Mandlebrot example](https://github.com/kas-gui/kas/blob/master/kas-wgpu/examples/mandlebrot.rs)).
+//!
+//! By default, some environment variables are read for configuration.
+//! See [`options::Options::from_env`] for documentation.
 //!
 //! [WebGPU]: https://github.com/gfx-rs/wgpu-rs
 //! [winit]: https://github.com/rust-windowing/winit

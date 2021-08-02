@@ -104,7 +104,6 @@ impl Pipeline {
 }
 
 impl Window {
-    /// Bounds on input: `0 ≤ inner_radius ≤ 1`.
     pub fn circle(&mut self, pass: PassId, rect: Quad, mut norm: Vec2, col: Rgba) {
         let aa = rect.a;
         let bb = rect.b;
