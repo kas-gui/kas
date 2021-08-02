@@ -19,7 +19,7 @@ other platforms manual installation may be required. Alternatively a web-based
 tool such as [glslang.js] may be used.
 
 Automatic re-compilation may be enabled by setting e.g. `SHADERC=glslc`.
-See [`build.rs`] for details.
+See [`build.rs`](build.rs) for details.
 
 [glslang.js]: https://alexaltea.github.io/glslang.js/
 [shaderc]: https://github.com/google/shaderc
