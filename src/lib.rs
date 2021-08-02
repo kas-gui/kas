@@ -32,7 +32,11 @@
 )]
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![cfg_attr(feature = "gat", feature(generic_associated_types))]
-#![cfg_attr(feature = "min_spec", feature(min_specialization))]
+#![cfg_attr(
+    all(feature = "min_spec", not(feature = "spec")),
+    feature(min_specialization)
+)]
+#![cfg_attr(feature = "spec", feature(specialization))]
 
 #[macro_use]
 extern crate bitflags;
@@ -59,6 +63,7 @@ pub mod layout;
 pub mod prelude;
 pub mod text;
 pub mod updatable;
+pub mod util;
 pub mod widget;
 
 // macro re-exports

@@ -62,7 +62,8 @@ use kas::draw::SizeHandle;
 /// margin-merging behaviour, one cannot simply "add" two `SizeRules`. Instead,
 /// when placing one widget next to another, use [`SizeRules::append`] or
 /// [`SizeRules::appended`]; when placing a widget within a frame, use
-/// [`FrameRules::surround`]. When calculating the size of a sequence of
+/// [`FrameRules::surround_with_margin`] or [`FrameRules::surround_as_margin`].
+/// When calculating the size of a sequence of
 /// widgets, one may use the [`Sum`] implementation (this assumes that the
 /// sequence is in left-to-right or top-to-bottom order).
 ///

@@ -131,7 +131,15 @@ impl<W: Widget> event::SendEvent for Grid<W> {
                     let r = child.0.send(mgr, id, event);
                     return match Response::try_from(r) {
                         Ok(r) => r,
-                        Err(msg) => Response::Msg((i, msg)),
+                        Err(msg) => {
+                            log::trace!(
+                                "Received by {} from {}: {:?}",
+                                self.id(),
+                                id,
+                                kas::util::TryFormat(&msg)
+                            );
+                            Response::Msg((i, msg))
+                        }
                     };
                 }
             }

@@ -29,6 +29,8 @@ gat = ["kas-text/gat"]
 
 # Use min_specialization (enables accelerator underlining for AccelLabel)
 min_spec = []
+# Use full specialization
+spec = ["min_spec"]
 
 # Enables documentation of APIs for shells and internal usage.
 # This API is not intended for use by end-user applications and

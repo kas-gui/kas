@@ -9,7 +9,7 @@ use std::convert::AsRef;
 use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 
 use kas::dir::Direction;
-use kas::draw::{Draw, ImageId, PassType};
+use kas::draw::{color::Rgb, Draw, ImageId, PassType};
 use kas::geom::{Coord, Offset, Rect, Size};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules};
 use kas::text::{AccelString, Text, TextApi, TextDisplay};
@@ -331,7 +331,10 @@ pub trait DrawHandle {
     fn menu_entry(&mut self, rect: Rect, state: InputState);
 
     /// Draw button sides, background and margin-area highlight
-    fn button(&mut self, rect: Rect, state: InputState);
+    ///
+    /// Optionally, a specific colour may be used.
+    // TODO: Allow theme-provided named colours?
+    fn button(&mut self, rect: Rect, col: Option<Rgb>, state: InputState);
 
     /// Draw edit box sides, background and margin-area highlight
     fn edit_box(&mut self, rect: Rect, state: InputState);
@@ -558,8 +561,8 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn menu_entry(&mut self, rect: Rect, state: InputState) {
         self.deref_mut().menu_entry(rect, state)
     }
-    fn button(&mut self, rect: Rect, state: InputState) {
-        self.deref_mut().button(rect, state)
+    fn button(&mut self, rect: Rect, col: Option<Rgb>, state: InputState) {
+        self.deref_mut().button(rect, col, state)
     }
     fn edit_box(&mut self, rect: Rect, state: InputState) {
         self.deref_mut().edit_box(rect, state)
@@ -644,8 +647,8 @@ where
     fn menu_entry(&mut self, rect: Rect, state: InputState) {
         self.deref_mut().menu_entry(rect, state)
     }
-    fn button(&mut self, rect: Rect, state: InputState) {
-        self.deref_mut().button(rect, state)
+    fn button(&mut self, rect: Rect, col: Option<Rgb>, state: InputState) {
+        self.deref_mut().button(rect, col, state)
     }
     fn edit_box(&mut self, rect: Rect, state: InputState) {
         self.deref_mut().edit_box(rect, state)

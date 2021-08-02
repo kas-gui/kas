@@ -7,7 +7,7 @@
 
 use super::SizeRules;
 use crate::geom::Size;
-use kas::cast::{Cast, ConvFloat};
+use kas::cast::{Cast, Conv, ConvFloat};
 
 // for doc use
 #[allow(unused)]
@@ -185,7 +185,7 @@ impl FrameRules {
     /// -   the content `offset` within the allocated rect
     /// -   the size consumed by the frame and inner margins (thus the content's
     ///     size will be that allocated for this object minus this `size` value)
-    pub fn surround(self, content: SizeRules) -> (SizeRules, i32, i32) {
+    pub fn surround_with_margin(self, content: SizeRules) -> (SizeRules, i32, i32) {
         let (m0, m1) = content.margins_i32();
         let m0 = m0.max(self.inner_margin);
         let m1 = m1.max(self.inner_margin);
@@ -201,14 +201,18 @@ impl FrameRules {
         (rules, offset, size)
     }
 
-    /// Variant: frame surrounds inner content only
+    /// Variant: frame surrounds content
     ///
-    /// The content's margin is pushed *outside* the frame. In other respects,
-    /// this is the same as [`FrameRules::surround`].
-    pub fn surround_inner(self, content: SizeRules) -> (SizeRules, i32, i32) {
+    /// The content's margin is reduced by the size of the frame, with any
+    /// residual margin applying outside the frame (using the max of the
+    /// frame's own margin and the residual). In other respects,
+    /// this is the same as [`FrameRules::surround_with_margin`].
+    pub fn surround_as_margin(self, content: SizeRules) -> (SizeRules, i32, i32) {
         let (m0, m1) = content.margins();
         let offset = self.offset + self.inner_margin;
+        let m0 = u16::conv((i32::conv(m0) - offset).max(0));
         let size = self.size + 2 * self.inner_margin;
+        let m1 = u16::conv((i32::conv(m1) + offset - size).max(0));
         let margins = (self.m.0.max(m0), self.m.1.max(m1));
 
         let rules = SizeRules::new(

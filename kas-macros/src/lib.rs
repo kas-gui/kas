@@ -357,26 +357,36 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
 
         if handler.send {
-            let mut ev_to_num = TokenStream::new();
-            for child in args.children.iter() {
-                let ident = &child.ident;
-                let handler = if let Some(ref h) = child.args.handler {
-                    quote! { r.try_into().unwrap_or_else(|msg| self.#h(mgr, msg)) }
-                } else {
-                    quote! { r.into() }
-                };
-                ev_to_num.append_all(quote! {
-                    if id <= self.#ident.id() {
-                        let r = self.#ident.send(mgr, id, event);
-                        #handler
-                    } else
-                });
-            }
-
             let send_impl = if derive_inner {
                 let inner = opt_inner.as_ref().unwrap();
                 quote! { self.#inner.send(mgr, id, event) }
             } else {
+                let mut ev_to_num = TokenStream::new();
+                for child in args.children.iter() {
+                    let ident = &child.ident;
+                    let handler = if let Some(ref h) = child.args.handler {
+                        quote! {
+                            r.try_into().unwrap_or_else(|msg| {
+                                log::trace!(
+                                    "Received by {} from {}: {:?}",
+                                    self.id(),
+                                    id,
+                                    kas::util::TryFormat(&msg)
+                                );
+                                self.#h(mgr, msg)
+                            })
+                        }
+                    } else {
+                        quote! { r.into() }
+                    };
+                    ev_to_num.append_all(quote! {
+                        if id <= self.#ident.id() {
+                            let r = self.#ident.send(mgr, id, event);
+                            #handler
+                        } else
+                    });
+                }
+
                 quote! {
                     use kas::{WidgetCore, event::Response};
                     if self.is_disabled() {

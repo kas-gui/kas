@@ -229,20 +229,20 @@ where
 
     fn new_pass(
         &mut self,
-        mut rect: Rect,
+        inner_rect: Rect,
         offset: Offset,
         class: PassType,
         f: &mut dyn FnMut(&mut dyn draw::DrawHandle),
     ) {
+        let mut outer_rect = inner_rect;
         if class == PassType::Overlay {
-            rect = rect.expand(self.window.dims.frame);
+            outer_rect = inner_rect.expand(self.window.dims.frame);
         }
-        let mut draw = self.draw.new_pass(rect, offset, class);
+        let mut draw = self.draw.new_pass(outer_rect, offset, class);
 
         if class == PassType::Overlay {
-            let outer = draw.get_clip_rect();
-            let inner = Quad::from(outer.shrink(self.window.dims.frame));
-            let outer = Quad::from(outer);
+            let outer = Quad::from(outer_rect + offset);
+            let inner = Quad::from(inner_rect + offset);
             let norm = (0.0, 0.0);
             draw.shaded_square_frame(outer, inner, norm, Rgba::TRANSPARENT, Rgba::BLACK);
             draw.rect(inner, self.cols.background);
@@ -314,10 +314,11 @@ where
         self.as_flat().menu_entry(rect, state);
     }
 
-    fn button(&mut self, rect: Rect, state: InputState) {
+    fn button(&mut self, rect: Rect, col: Option<color::Rgb>, state: InputState) {
         let outer = Quad::from(rect);
         let inner = outer.shrink(self.window.dims.button_frame as f32);
-        let col = self.cols.button_state(state);
+        let col = col.map(|c| c.into()).unwrap_or(self.cols.button);
+        let col = ColorsLinear::adjust_for_state(col, state);
 
         self.draw.shaded_round_frame(outer, inner, (0.0, 0.6), col);
         self.draw.rect(inner, col);

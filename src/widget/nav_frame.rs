@@ -42,7 +42,7 @@ impl<W: Widget> Layout for NavFrame<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let frame_rules = size_handle.nav_frame(axis.is_vertical());
         let child_rules = self.inner.size_rules(size_handle, axis);
-        let (rules, offset, size) = frame_rules.surround_inner(child_rules);
+        let (rules, offset, size) = frame_rules.surround_as_margin(child_rules);
         self.offset.set_component(axis, offset);
         self.size.set_component(axis, size);
         rules

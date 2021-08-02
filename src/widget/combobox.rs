@@ -52,7 +52,7 @@ impl<M: 'static> kas::Layout for ComboBox<M> {
         let frame_rules = size_handle.button_surround(axis.is_vertical());
         let content_rules = size_handle.text_bound(&mut self.label, TextClass::Button, axis);
 
-        let (rules, _offset, size) = frame_rules.surround(content_rules);
+        let (rules, _offset, size) = frame_rules.surround_as_margin(content_rules);
         self.frame_size.set_component(axis, size);
         rules
     }
@@ -75,7 +75,7 @@ impl<M: 'static> kas::Layout for ComboBox<M> {
         if self.popup_id.is_some() {
             state.depress = true;
         }
-        draw_handle.button(self.core.rect, state);
+        draw_handle.button(self.core.rect, None, state);
         draw_handle.text(self.core.rect.pos, self.label.as_ref(), TextClass::Button);
     }
 }
