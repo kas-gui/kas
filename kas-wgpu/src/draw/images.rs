@@ -11,6 +11,7 @@ use std::mem::size_of;
 use std::num::NonZeroU32;
 
 use super::{atlases, ShaderManager};
+use kas::cast::Conv;
 use kas::draw::{ImageError, ImageFormat, ImageId, PassId};
 use kas::geom::{Quad, Vec2};
 
@@ -32,6 +33,8 @@ impl Image {
     ) {
         // TODO(opt): use StagingBelt for upload (when supported)? Or our own equivalent.
         let size = self.size;
+        assert!(data.len() > 0);
+        assert_eq!(data.len(), 4 * usize::conv(size.0) * usize::conv(size.1));
         queue.write_texture(
             wgpu::ImageCopyTexture {
                 texture: atlas_pipe.get_texture(self.atlas),

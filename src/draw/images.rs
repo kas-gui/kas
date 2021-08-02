@@ -34,7 +34,7 @@ impl ImageId {
 /// Image formats available for upload
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum ImageFormat {
-    /// 8-bit RGBA values
+    /// 8-bit unsigned RGBA values (4 bytes per pixel)
     Rgba8,
 }
 
