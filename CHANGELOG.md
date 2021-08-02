@@ -2,6 +2,72 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] — 2021-08-03
+
+Version 0.8 added image support without much thought to the API, leaving image
+management methods in `SizeHandle`. Version 0.9 takes the opportunity to revise
+the draw API, culminating in a new unified `Draw` trait and `DrawIface`
+implementation accessible via `DrawHandle::draw_device`. This simplifies usage
+of mid-level draw APIs, e.g. in themes and the `clock` example.
+
+Also in this release is SVG support, a `Canvas` widget, image buttons, and
+fixed sub-pixel positioning (clearer rendering for small text).
+
+### Draw API
+
+-   Image loading split into *allocate* and *upload* steps, with immediate
+    uploads avoiding the need for image storage in the graphics pipeline (#204)
+-   Image resource management moved into `kas::draw` (#204)
+-   Draw trait revision (#204, #206, #207, #221, #223, #224)
+-   Add unified draw interface, `DrawIface` (#206, #221, #224)
+-   Remove image management methods from `SizeHandle` (#207)
+-   Simplify `DrawHandle::size_handle`; remove `SizeHandle::draw_shared` (#223)
+-   Support custom button colours (#227)
+-   Add `kas::draw::color::Rgb` and some methods over colour types (#227)
+
+### Draw themes and backend
+
+-   Move `DrawShaded` trait to `kas-theme` (#223)
+-   Support large allocations in texture atlases (#212)
+-   Initial WGPU-over-OpenGL support and docs (#220)
+-   Apply draw offsets in vertex shaders; this reduces the maximum scroll offset
+    to approx 2^24 pixels (#221)
+-   Make `kas_theme::dim` module public, as helper for custom themes (#223)
+-   Autogenerate colour variants for depressed/highlighted/disabled features (#227)
+
+### Widgets
+
+-   Allow `derive(Widget)` macro to forward impls to a field, allowing "thin
+    wrappers" over widgets (#210)
+-   Add `Svg` widget using the [resvg library](https://crates.io/crates/resvg)
+    (#212)
+-   More flexible margins for `Image` widget (#212)
+-   Add generic `Button`, supporting images (#213, #227)
+-   Add `Canvas` widget (#215)
+-   Add `Grid` widget as alternative to `derive(Widget)`'s grid layout (#217)
+-   Test and fix reversed `List` and `ListView` lists via a reverse-direction
+    button in `data-list` examples (#221)
+-   Fix menu opening on mouse movement (#225)
+
+### Text
+
+-   Tweak text underlines; use 10pt font by default (#213)
+-   Text-drawing optimisations (#215)
+-   Fix text scrolling in `EditBox` / `EditField` (#221)
+-   Fix sub-pixel positioning for text (#225)
+
+### Miscellaneous
+
+-   Fix clippy warnings (#208, #209, #214, #218)
+-   Add build artifacts (#219)
+-   Add `Directional::Reversed` assoc. type and `reversed` method (#221)
+-   Add `TryFormat` wrapper for debugging over generic types (#227)
+-   Support window icons (#228)
+
+## [0.8.1] — 2021-06-21
+
+-   Fix KAS-wgpu docs build (#205)
+
 ## [0.8.0] — 2021-06-17
 
 This release sees basic support for images, improved text rendering,
