@@ -69,6 +69,11 @@ impl<T: FormattableText + 'static> kas::Window for MessageBox<T> {
         &self.title
     }
 
+    #[cfg(feature = "winit")]
+    fn icon(&self) -> Option<winit::window::Icon> {
+        None // TODO
+    }
+
     fn restrict_dimensions(&self) -> (bool, bool) {
         (true, true)
     }

@@ -5,12 +5,15 @@
 
 //! Window widgets
 
-use smallvec::SmallVec;
-use std::fmt::{self, Debug};
-
 use kas::layout;
 use kas::prelude::*;
 use kas::{Future, WindowId};
+use smallvec::SmallVec;
+use std::error::Error;
+use std::fmt::{self, Debug};
+use std::path::Path;
+#[cfg(feature = "winit")]
+use winit::window::Icon;
 
 /// The main instantiation of the [`Window`] trait.
 #[derive(Widget)]
@@ -24,6 +27,7 @@ pub struct Window<W: Widget + 'static> {
     w: W,
     popups: SmallVec<[(WindowId, kas::Popup); 16]>,
     drop: Option<(Box<dyn FnMut(&mut W)>, UpdateHandle)>,
+    icon: Option<winit::window::Icon>,
 }
 
 impl<W: Widget> Debug for Window<W> {
@@ -47,6 +51,7 @@ impl<W: Widget + Clone> Clone for Window<W> {
             w: self.w.clone(),
             popups: Default::default(), // these are temporary; don't clone
             drop: None,                 // we cannot clone this!
+            icon: self.icon.clone(),
         }
     }
 }
@@ -61,6 +66,7 @@ impl<W: Widget> Window<W> {
             w,
             popups: Default::default(),
             drop: None,
+            icon: None,
         }
     }
 
@@ -108,6 +114,28 @@ impl<W: Widget> Window<W> {
         let update = UpdateHandle::new();
         self.drop = Some((finish, update));
         (future, update)
+    }
+
+    /// Set the window icon
+    #[cfg(feature = "winit")]
+    pub fn set_icon(&mut self, icon: Option<Icon>) {
+        self.icon = icon;
+    }
+
+    /// Load the window icon from a path
+    ///
+    /// On error the icon is not set. The window may still be used.
+    #[cfg(feature = "winit")]
+    pub fn load_icon_from_path<P: AsRef<Path>>(&mut self, path: P) -> Result<(), Box<dyn Error>> {
+        // TODO(opt): image loading could be de-duplicated with
+        // DrawShared::image_from_path, but this may not be worthwhile.
+        let im = image::io::Reader::open(path)?
+            .with_guessed_format()?
+            .decode()?
+            .into_rgba8();
+        let (w, h) = im.dimensions();
+        self.icon = Some(Icon::from_rgba(im.into_vec(), w, h)?);
+        Ok(())
     }
 }
 
@@ -163,6 +191,11 @@ impl<M: Into<VoidMsg>, W: Widget<Msg = M> + 'static> SendEvent for Window<W> {
 impl<M: Into<VoidMsg>, W: Widget<Msg = M> + 'static> kas::Window for Window<W> {
     fn title(&self) -> &str {
         &self.title
+    }
+
+    #[cfg(feature = "winit")]
+    fn icon(&self) -> Option<winit::window::Icon> {
+        self.icon.clone()
     }
 
     fn restrict_dimensions(&self) -> (bool, bool) {

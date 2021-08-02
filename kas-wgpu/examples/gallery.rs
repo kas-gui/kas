@@ -280,7 +280,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         }
     };
 
-    let window = Window::new(
+    let mut window = Window::new(
         "Widget Gallery",
         make_widget! {
             #[layout(column)]
@@ -332,6 +332,9 @@ fn main() -> Result<(), kas_wgpu::Error> {
             }
         },
     );
+    if let Err(err) = window.load_icon_from_path("res/gallery.png") {
+        println!("Failed to load window icon: {}", err);
+    }
 
     toolkit.add(window)?;
     toolkit.run()
