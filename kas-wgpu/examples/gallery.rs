@@ -9,8 +9,8 @@
 //! (excepting custom graphics).
 
 use kas::draw::color::Rgb;
-use kas::event::{Command, VoidResponse};
 use kas::event::VirtualKeyCode as VK;
+use kas::event::{Command, VoidResponse};
 use kas::prelude::*;
 use kas::widget::*;
 use kas::{dir::Right, Future};
