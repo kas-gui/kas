@@ -9,8 +9,10 @@ use kas::layout;
 use kas::prelude::*;
 use kas::{Future, WindowId};
 use smallvec::SmallVec;
+#[cfg(feature = "winit")]
 use std::error::Error;
 use std::fmt::{self, Debug};
+#[cfg(feature = "winit")]
 use std::path::Path;
 #[cfg(feature = "winit")]
 use winit::window::Icon;
@@ -27,6 +29,7 @@ pub struct Window<W: Widget + 'static> {
     w: W,
     popups: SmallVec<[(WindowId, kas::Popup); 16]>,
     drop: Option<(Box<dyn FnMut(&mut W)>, UpdateHandle)>,
+    #[cfg(feature = "winit")]
     icon: Option<winit::window::Icon>,
 }
 
@@ -51,6 +54,7 @@ impl<W: Widget + Clone> Clone for Window<W> {
             w: self.w.clone(),
             popups: Default::default(), // these are temporary; don't clone
             drop: None,                 // we cannot clone this!
+            #[cfg(feature = "winit")]
             icon: self.icon.clone(),
         }
     }
@@ -66,6 +70,7 @@ impl<W: Widget> Window<W> {
             w,
             popups: Default::default(),
             drop: None,
+            #[cfg(feature = "winit")]
             icon: None,
         }
     }
