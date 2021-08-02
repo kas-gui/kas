@@ -13,17 +13,24 @@ use kas::geom::Quad;
 ///
 /// All methods draw some feature.
 ///
-/// Methods are parameterised via a pair of normals, `(inner, outer)`. These may
-/// have values from the closed range `[-1, 1]`, where -1 points inwards,
-/// 0 is perpendicular to the screen towards the viewer, and 1 points outwards.
+/// Methods are parameterised via a pair of normals, `(inner, outer)`, which
+/// specify the surface normal direction at inner and outer edges of the feature
+/// respectively (with interpolation between these edges). These have values
+/// from the closed range `[-1, 1]`, where -1 points towards the inside of the
+/// feature, 1 points away from the feature, and 0 is perpendicular to the
+/// screen towards the viewer.
 pub trait DrawShaded {
     /// Add a shaded square to the draw buffer
+    ///
+    /// For shading purposes, the mid-point is considered the inner edge.
     fn shaded_square(&mut self, rect: Quad, norm: (f32, f32), col: Rgba);
 
     /// Add a shaded circle to the draw buffer
+    ///
+    /// For shading purposes, the mid-point is considered the inner edge.
     fn shaded_circle(&mut self, rect: Quad, norm: (f32, f32), col: Rgba);
 
-    /// Add a square shaded frame to the draw buffer.
+    /// Add a shaded frame with square corners to the draw buffer
     fn shaded_square_frame(
         &mut self,
         outer: Quad,
@@ -33,7 +40,7 @@ pub trait DrawShaded {
         inner_col: Rgba,
     );
 
-    /// Add a rounded shaded frame to the draw buffer.
+    /// Add a shaded frame with rounded corners to the draw buffer
     fn shaded_round_frame(&mut self, outer: Quad, inner: Quad, norm: (f32, f32), col: Rgba);
 }
 

@@ -5,15 +5,14 @@
 
 //! KAS theme support
 //!
-//! This crate allows widget rendering to be customised via themes,
-//! and provides mid-level draw implementations for widgets.
+//! This crate provides the [`Theme`] trait, [`MultiTheme`] adapter, color
+//! schemes, some supporting items, and the themes [`FlatTheme`] and
+//! [`ShadedTheme`].
 //!
-//! Each [`Theme`] is expected to have [`Window`]-specific data,
-//! and provides an implementation of [`kas::draw::DrawHandle`].
-//!
-//! Two themes are provided by this trait: [`FlatTheme`] and [`ShadedTheme`].
-//! Additionally, a meta-theme, [`MultiTheme`], allows run-time switching
-//! between themes.
+//! Custom themes may be built over this crate, optionally including custom draw
+//! routines (e.g. [`DrawShaded`]), provided that the shell implements support.
+//! Alternatively this crate may be skipped altogether, especially for a
+//! minimal shell with a custom fixed theme.
 
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![cfg_attr(feature = "gat", feature(generic_associated_types))]
