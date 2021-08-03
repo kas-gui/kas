@@ -8,7 +8,9 @@
 mod label;
 mod map;
 mod reserve;
+mod widget_ext;
 
 pub use label::WithLabel;
 pub use map::MapResponse;
 pub use reserve::{Reserve, ReserveP};
+pub use widget_ext::*;

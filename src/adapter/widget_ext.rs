@@ -5,7 +5,6 @@
 
 //! Widget extension traits
 
-use super::Widget;
 use crate::adapter::{MapResponse, Reserve, WithLabel};
 use crate::dir::Directional;
 use crate::draw::SizeHandle;
@@ -14,6 +13,7 @@ use crate::layout::{AxisInfo, SizeRules};
 use crate::text::AccelString;
 #[allow(unused)]
 use crate::Layout;
+use crate::Widget;
 
 /// Provides some convenience methods on widgets
 pub trait WidgetExt: Widget {
@@ -94,18 +94,3 @@ pub trait WidgetExt: Widget {
     }
 }
 impl<W: Widget + ?Sized> WidgetExt for W {}
-
-/// Provides a convenient `.boxed()` method on implementors
-//
-// Note: this is distinct from WidgetExt to allow this variant on M: Menu + Sized:
-// fn boxed(self) -> Box<dyn Menu<Msg = M::Msg>>
-pub trait Boxed<T: ?Sized> {
-    /// Boxing method
-    fn boxed(self) -> Box<T>;
-}
-
-impl<W: Widget + Sized> Boxed<dyn Widget<Msg = W::Msg>> for W {
-    fn boxed(self) -> Box<dyn Widget<Msg = W::Msg>> {
-        Box::new(self)
-    }
-}

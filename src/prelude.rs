@@ -14,6 +14,8 @@
 //! using widgets in a GUI.
 
 #[doc(no_inline)]
+pub use kas::adapter::WidgetExt;
+#[doc(no_inline)]
 pub use kas::cast::{Cast, CastFloat, Conv, ConvFloat};
 #[doc(no_inline)]
 pub use kas::class::*;
@@ -38,7 +40,7 @@ pub use kas::text::{EditableTextApi, Text, TextApi, TextApiExt};
 #[doc(no_inline)]
 pub use kas::WidgetId;
 #[doc(no_inline)]
-pub use kas::{Boxed, TkAction, WidgetExt};
+pub use kas::{Boxed, TkAction};
 #[doc(no_inline)]
 pub use kas::{CoreData, LayoutData};
 #[doc(no_inline)]

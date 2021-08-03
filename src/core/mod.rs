@@ -8,8 +8,21 @@
 mod data;
 mod impls;
 mod widget;
-mod widget_ext;
 
 pub use data::*;
 pub use widget::*;
-pub use widget_ext::*;
+
+/// Provides a convenient `.boxed()` method on implementors
+//
+// Note: this is distinct from WidgetExt to allow this variant on M: Menu + Sized:
+// fn boxed(self) -> Box<dyn Menu<Msg = M::Msg>>
+pub trait Boxed<T: ?Sized> {
+    /// Boxing method
+    fn boxed(self) -> Box<T>;
+}
+
+impl<W: Widget + Sized> Boxed<dyn Widget<Msg = W::Msg>> for W {
+    fn boxed(self) -> Box<dyn Widget<Msg = W::Msg>> {
+        Box::new(self)
+    }
+}
