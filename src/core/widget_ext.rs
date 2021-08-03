@@ -13,7 +13,7 @@ use crate::event::{Manager, Response};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::text::AccelString;
 #[allow(unused)]
-use kas::Layout;
+use crate::Layout;
 
 /// Provides some convenience methods on widgets
 pub trait WidgetExt: Widget {

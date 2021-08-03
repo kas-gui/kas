@@ -15,7 +15,7 @@ use std::rc::Rc;
 #[handler(msg=M, send=noauto)]
 pub struct MapResponse<W: Widget, M: 'static> {
     #[widget_core]
-    core: kas::CoreData,
+    core: crate::CoreData,
     #[widget]
     inner: W,
     map: Rc<dyn Fn(&mut Manager, W::Msg) -> Response<M>>,
@@ -65,7 +65,7 @@ impl<W: Widget, M> SendEvent for MapResponse<W, M> {
                     "Received by {} from {}: {:?}",
                     self.id(),
                     id,
-                    kas::util::TryFormat(&msg)
+                    crate::util::TryFormat(&msg)
                 );
                 (self.map)(mgr, msg)
             })

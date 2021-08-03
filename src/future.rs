@@ -10,7 +10,7 @@ use std::rc::Rc;
 
 // for doc use
 #[allow(unused)]
-use kas::event::UpdateHandle;
+use crate::event::UpdateHandle;
 
 /// A future value, pending UI operation
 ///

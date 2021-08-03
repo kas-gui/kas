@@ -84,7 +84,7 @@ use std::fmt::Debug;
 
 // doc imports
 #[allow(unused)]
-use kas::{draw::InputState, Layout, WidgetCore};
+use crate::{draw::InputState, Layout, WidgetCore};
 
 #[cfg(feature = "winit")]
 pub use winit::event::{ModifiersState, MouseButton, VirtualKeyCode};

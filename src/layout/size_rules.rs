@@ -17,7 +17,7 @@ use crate::geom::Size;
 #[allow(unused)]
 use super::FrameRules;
 #[allow(unused)]
-use kas::draw::SizeHandle;
+use crate::draw::SizeHandle;
 
 /// Widget sizing information
 ///

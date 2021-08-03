@@ -8,15 +8,15 @@
 use std::convert::AsRef;
 use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 
-use kas::dir::Direction;
-use kas::draw::{color::Rgb, Draw, ImageId, PassType};
-use kas::geom::{Coord, Offset, Rect, Size};
-use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules};
-use kas::text::{AccelString, Text, TextApi, TextDisplay};
+use crate::dir::Direction;
+use crate::draw::{color::Rgb, Draw, ImageId, PassType};
+use crate::geom::{Coord, Offset, Rect, Size};
+use crate::layout::{AxisInfo, FrameRules, Margins, SizeRules};
+use crate::text::{AccelString, Text, TextApi, TextDisplay};
 
 // for doc use
 #[allow(unused)]
-use kas::text::TextApiExt;
+use crate::text::TextApiExt;
 
 /// Input and highlighting state of a widget
 ///

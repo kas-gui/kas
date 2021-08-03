@@ -6,12 +6,12 @@
 //! Types used by size rules
 
 use super::SizeRules;
+use crate::cast::{Cast, Conv, ConvFloat};
 use crate::geom::Size;
-use kas::cast::{Cast, Conv, ConvFloat};
 
 // for doc use
 #[allow(unused)]
-use kas::draw::SizeHandle;
+use crate::draw::SizeHandle;
 
 /// Margin sizes
 ///

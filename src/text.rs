@@ -22,7 +22,7 @@ pub use string::AccelString;
 /// Utilities integrating `kas-text` functionality
 pub mod util {
     use super::{fonts, format, EditableTextApi, Text, TextApi, Vec2};
-    use kas::{geom::Size, TkAction};
+    use crate::{geom::Size, TkAction};
     use log::trace;
 
     /// Set the text and prepare

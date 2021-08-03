@@ -6,7 +6,7 @@
 //! Event handling: Response type
 
 use super::VoidResponse;
-use kas::geom::{Offset, Rect};
+use crate::geom::{Offset, Rect};
 
 /// Response type from [`Handler::handle`].
 ///

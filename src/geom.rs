@@ -5,8 +5,8 @@
 
 //! Geometry data types
 
-use kas::cast::Conv;
-use kas::dir::Directional;
+use crate::cast::Conv;
+use crate::dir::Directional;
 #[cfg(feature = "winit")]
 use winit::dpi::{LogicalPosition, PhysicalPosition, PhysicalSize, Pixel};
 

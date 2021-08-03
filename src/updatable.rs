@@ -17,7 +17,7 @@
 //! -   [`UpdatableHandler`]: allows data updates from widget messages (or
 //!     potentially from other message sources)
 
-use kas::event::{Manager, UpdateHandle};
+use crate::event::{Manager, UpdateHandle};
 #[allow(unused)] // doc links
 use std::cell::RefCell;
 use std::fmt::Debug;

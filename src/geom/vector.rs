@@ -7,8 +7,8 @@
 //!
 //! For drawing operations, all dimensions use the `f32` type.
 
-use kas::cast::{CastFloat, Conv};
-use kas::geom::{Coord, Offset, Rect, Size};
+use crate::cast::{CastFloat, Conv};
+use crate::geom::{Coord, Offset, Rect, Size};
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 /// Axis-aligned 2D cuboid, specified via two corners `a` and `b`

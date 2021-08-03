@@ -6,8 +6,9 @@
 //! Wrapper adding a label
 
 use crate::draw::TextClass;
-// use kas::text::format::{FormattableText};
+// use crate::text::format::{FormattableText};
 use crate::layout::{RulesSetter, RulesSolver};
+use crate::text::util::set_text_and_prepare;
 use crate::{event, layout, prelude::*};
 
 /// A wrapper widget with a label
@@ -51,7 +52,7 @@ impl<W: Widget, D: Directional> WithLabel<W, D> {
     /// Note: this must not be called before fonts have been initialised
     /// (usually done by the theme when the main loop starts).
     pub fn set_text<T: Into<AccelString>>(&mut self, text: T) -> TkAction {
-        kas::text::util::set_text_and_prepare(&mut self.label, text.into(), self.core.rect.size)
+        set_text_and_prepare(&mut self.label, text.into(), self.core.rect.size)
     }
 
     /// Get the accelerator keys
@@ -119,7 +120,7 @@ impl<W: Widget, D: Directional> SetAccel for WithLabel<W, D> {
         if self.label.text().keys() != string.keys() {
             action |= TkAction::RECONFIGURE;
         }
-        action | kas::text::util::set_text_and_prepare(&mut self.label, string, self.core.rect.size)
+        action | set_text_and_prepare(&mut self.label, string, self.core.rect.size)
     }
 }
 

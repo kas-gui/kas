@@ -11,12 +11,12 @@
 
 use smallvec::{smallvec, SmallVec};
 
-use kas::cast::Conv;
-use kas::event::{VirtualKeyCode as VK, VirtualKeyCodes};
-use kas::text::format::{FontToken, FormattableText};
+use crate::cast::Conv;
+use crate::event::{VirtualKeyCode as VK, VirtualKeyCodes};
+use crate::text::format::{FontToken, FormattableText};
 #[cfg(not(feature = "gat"))]
-use kas::text::OwningVecIter;
-use kas::text::{Effect, EffectFlags};
+use crate::text::OwningVecIter;
+use crate::text::{Effect, EffectFlags};
 
 /// An accelerator key string
 ///

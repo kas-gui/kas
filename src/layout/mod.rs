@@ -44,7 +44,7 @@ mod size_types;
 mod sizer;
 mod storage;
 
-use kas::dir::{Direction, Directional};
+use crate::dir::{Direction, Directional};
 
 pub use align::{Align, AlignHints, CompleteAlignment};
 pub use grid_solver::{GridChildInfo, GridSetter, GridSolver};
