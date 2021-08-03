@@ -85,7 +85,7 @@ usvg = { version = "0.15.0", optional = true }
 
 [dependencies.kas-macros]
 version = "0.9.1"
-path = "kas-macros"
+path = "crates/kas-macros"
 
 [dependencies.kas-text]
 version = "0.3.0"
@@ -97,4 +97,4 @@ optional = true
 features = ["serde"]
 
 [workspace]
-members = ["kas-macros", "kas-theme", "kas-wgpu"]
+members = ["crates/*"]
