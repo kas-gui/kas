@@ -1,6 +1,6 @@
 [package]
 name = "kas"
-version = "0.9.0"
+version = "0.9.1"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -61,6 +61,10 @@ canvas = ["tiny-skia"]
 # Support SVG images
 svg = ["tiny-skia", "resvg", "usvg"]
 
+# Inject logging into macro-generated code.
+# Requires that all crates using these macros depend on the log crate.
+macros_log = ["kas-macros/log"]
+
 [dependencies]
 easy-cast = "0.4.2"
 log = "0.4"
@@ -80,7 +84,7 @@ resvg = { version = "0.15.0", optional = true }
 usvg = { version = "0.15.0", optional = true }
 
 [dependencies.kas-macros]
-version = "0.9.0"
+version = "0.9.1"
 path = "kas-macros"
 
 [dependencies.kas-text]

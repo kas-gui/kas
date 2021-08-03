@@ -131,6 +131,8 @@ The `kas` crate has the following feature flags:
 -   `stack_dst`: some compatibility impls (see `kas-theme`'s documentation)
 -   `internal_doc`: turns on some extra documentation intended for internal
     usage but not for end users. (This only affects generated documentation.)
+-   `macros_log`: enable logging in macro-generated code. Requires that all
+    crates using `derive(Widget)` or `make_widget` depend on the `log` crate.
 
 Additionally, the following flags require a nightly compiler:
 
