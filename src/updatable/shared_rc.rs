@@ -10,7 +10,6 @@
 //! If not, we can probably remove `ListDataMut` and other `*Mut` traits too.
 //! Probably this question requires seeing more examples/applications to answer.
 
-use super::*;
 #[allow(unused)]
 use kas::event::Manager;
 use kas::event::UpdateHandle;

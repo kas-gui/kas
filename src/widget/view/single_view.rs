@@ -5,9 +5,9 @@
 
 //! Single view widget
 
-use super::{driver, Driver, SingleData};
+use super::{driver, Driver};
 use kas::prelude::*;
-use kas::updatable::UpdatableAll;
+use kas::updatable::{SingleData, UpdatableAll};
 use std::fmt::{self};
 
 /// Single view widget

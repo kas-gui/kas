@@ -8,12 +8,12 @@
 use kas::dir::Down;
 use kas::event::ChildMsg;
 use kas::prelude::*;
+use kas::updatable::{ListData, SimpleCaseInsensitiveFilter};
 use kas::widget::view::{driver, ListView, SelectionMode};
-use kas::widget::view::{ListData, SimpleCaseInsensitiveFilter};
 use kas::widget::{EditBox, Label, RadioBox, ScrollBars, Window};
 
 mod data {
-    use kas::widget::view::{FilteredList, SimpleCaseInsensitiveFilter};
+    use kas::updatable::{FilteredList, SimpleCaseInsensitiveFilter};
     use std::rc::Rc;
 
     type SC = &'static [&'static str];

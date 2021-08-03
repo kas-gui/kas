@@ -17,11 +17,22 @@
 //! -   [`UpdatableHandler`]: allows data updates from widget messages (or
 //!     potentially from other message sources)
 
+mod data_impls;
+mod data_traits;
+mod filter;
+mod shared_rc;
+
 use crate::event::{Manager, UpdateHandle};
 #[allow(unused)] // doc links
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::ops::Deref;
+
+pub use data_traits::{
+    ListData, ListDataMut, MatrixData, MatrixDataMut, SingleData, SingleDataMut,
+};
+pub use filter::{Filter, FilteredList, SimpleCaseInsensitiveFilter};
+pub use shared_rc::SharedRc;
 
 /// Shared (data) objects which may notify of updates
 pub trait Updatable: Debug {

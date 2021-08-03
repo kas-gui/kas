@@ -7,7 +7,8 @@
 
 use kas::event::{Manager, Response, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
-use kas::widget::view::{SharedRc, SingleView};
+use kas::updatable::SharedRc;
+use kas::widget::view::SingleView;
 use kas::widget::{TextButton, Window};
 
 #[derive(Clone, Debug, VoidMsg)]
