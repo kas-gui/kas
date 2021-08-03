@@ -161,8 +161,14 @@ impl<M: 'static> Menu for Box<dyn Menu<Msg = M>> {
     }
 }
 
-impl<M: Menu + Sized> Boxed<dyn Menu<Msg = M::Msg>> for M {
-    fn boxed(self) -> Box<dyn Menu<Msg = M::Msg>> {
+/// Provides a convenient `.boxed()` method on implementors
+pub trait BoxedMenu<T: ?Sized> {
+    /// Boxing method
+    fn boxed_menu(self) -> Box<T>;
+}
+
+impl<M: Menu + Sized> BoxedMenu<dyn Menu<Msg = M::Msg>> for M {
+    fn boxed_menu(self) -> Box<dyn Menu<Msg = M::Msg>> {
         Box::new(self)
     }
 }

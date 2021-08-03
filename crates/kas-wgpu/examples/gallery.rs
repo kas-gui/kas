@@ -119,8 +119,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
     }
 
     let themes = vec![
-        MenuEntry::new("&Shaded", Menu::Theme("shaded")).boxed(),
-        MenuEntry::new("&Flat", Menu::Theme("flat")).boxed(),
+        MenuEntry::new("&Shaded", Menu::Theme("shaded")).boxed_menu(),
+        MenuEntry::new("&Flat", Menu::Theme("flat")).boxed_menu(),
     ];
     // Enumerate colour schemes. Access through the toolkit since this handles
     // config loading.
@@ -150,14 +150,17 @@ fn main() -> Result<(), kas_wgpu::Error> {
         })
         .collect();
     let styles = vec![
-        SubMenu::right("&Colours", colours).boxed(),
-        Separator::infer().boxed(),
+        SubMenu::right("&Colours", colours).boxed_menu(),
+        Separator::infer().boxed_menu(),
         MenuToggle::new("&Disabled")
             .on_toggle(|_, state| Some(Menu::Disabled(state)))
-            .boxed(),
+            .boxed_menu(),
     ];
     let menubar = MenuBar::<_>::new(vec![
-        SubMenu::new("&App", vec![MenuEntry::new("&Quit", Menu::Quit).boxed()]),
+        SubMenu::new(
+            "&App",
+            vec![MenuEntry::new("&Quit", Menu::Quit).boxed_menu()],
+        ),
         SubMenu::new("&Theme", themes),
         SubMenu::new("&Style", styles),
     ]);

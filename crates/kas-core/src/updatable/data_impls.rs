@@ -6,7 +6,7 @@
 //! Impls for data traits
 
 use super::*;
-use kas::event::UpdateHandle;
+use crate::event::UpdateHandle;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 

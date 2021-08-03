@@ -5,6 +5,8 @@
 
 //! Window widgets
 
+#[cfg(feature = "winit")]
+use dep_winit::window::Icon;
 use kas::layout;
 use kas::prelude::*;
 use kas::{Future, WindowId};
@@ -14,8 +16,6 @@ use std::error::Error;
 use std::fmt::{self, Debug};
 #[cfg(feature = "winit")]
 use std::path::Path;
-#[cfg(feature = "winit")]
-use winit::window::Icon;
 
 /// The main instantiation of the [`Window`] trait.
 #[derive(Widget)]
@@ -30,7 +30,7 @@ pub struct Window<W: Widget + 'static> {
     popups: SmallVec<[(WindowId, kas::Popup); 16]>,
     drop: Option<(Box<dyn FnMut(&mut W)>, UpdateHandle)>,
     #[cfg(feature = "winit")]
-    icon: Option<winit::window::Icon>,
+    icon: Option<Icon>,
 }
 
 impl<W: Widget> Debug for Window<W> {
@@ -199,7 +199,7 @@ impl<M: Into<VoidMsg>, W: Widget<Msg = M> + 'static> kas::Window for Window<W> {
     }
 
     #[cfg(feature = "winit")]
-    fn icon(&self) -> Option<winit::window::Icon> {
+    fn icon(&self) -> Option<Icon> {
         self.icon.clone()
     }
 

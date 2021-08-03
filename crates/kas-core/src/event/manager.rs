@@ -119,7 +119,7 @@ pub struct ManagerState {
     pan_grab: SmallVec<[PanGrab; 4]>,
     accel_stack: Vec<(bool, HashMap<VirtualKeyCode, WidgetId>)>,
     accel_layers: HashMap<WidgetId, (bool, HashMap<VirtualKeyCode, WidgetId>)>,
-    popups: SmallVec<[(WindowId, kas::Popup); 16]>,
+    popups: SmallVec<[(WindowId, crate::Popup); 16]>,
     new_popups: SmallVec<[WidgetId; 16]>,
     popup_removed: SmallVec<[(WidgetId, WindowId); 16]>,
 

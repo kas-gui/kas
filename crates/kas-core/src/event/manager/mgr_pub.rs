@@ -242,7 +242,7 @@ impl<'a> Manager<'a> {
     /// Returns `None` if window creation is not currently available (but note
     /// that `Some` result does not guarantee the operation succeeded).
     #[inline]
-    pub fn add_popup(&mut self, popup: kas::Popup) -> Option<WindowId> {
+    pub fn add_popup(&mut self, popup: crate::Popup) -> Option<WindowId> {
         let opt_id = self.shell.add_popup(popup.clone());
         if let Some(id) = opt_id {
             self.state.new_popups.push(popup.id);
@@ -262,7 +262,7 @@ impl<'a> Manager<'a> {
     /// Caveat: if an error occurs opening the new window it will not be
     /// reported (except via log messages).
     #[inline]
-    pub fn add_window(&mut self, widget: Box<dyn kas::Window>) -> WindowId {
+    pub fn add_window(&mut self, widget: Box<dyn crate::Window>) -> WindowId {
         self.shell.add_window(widget)
     }
 
@@ -359,7 +359,7 @@ impl<'a> Manager<'a> {
     /// [`Event::Activate`].)
     ///
     /// Only one widget can be a fallback, and the *first* to set itself wins.
-    /// This is primarily used to allow [`kas::widget::ScrollRegion`] to
+    /// This is primarily used to allow [`crate::widget::ScrollRegion`] to
     /// respond to navigation keys when no widget has focus.
     pub fn register_nav_fallback(&mut self, id: WidgetId) {
         if self.state.nav_fallback.is_none() {
@@ -421,7 +421,7 @@ impl<'a> Manager<'a> {
     /// The widget with this `id` then receives [`Event::Activate`].
     ///
     /// Note that accelerator keys may be automatically derived from labels:
-    /// see [`kas::text::AccelString`].
+    /// see [`crate::text::AccelString`].
     ///
     /// Accelerator keys may be added to the base layer or to a new layer
     /// associated with a pop-up (see [`Manager::push_accel_layer`]).

@@ -13,9 +13,6 @@ pub use data::*;
 pub use widget::*;
 
 /// Provides a convenient `.boxed()` method on implementors
-//
-// Note: this is distinct from WidgetExt to allow this variant on M: Menu + Sized:
-// fn boxed(self) -> Box<dyn Menu<Msg = M::Msg>>
 pub trait Boxed<T: ?Sized> {
     /// Boxing method
     fn boxed(self) -> Box<T>;

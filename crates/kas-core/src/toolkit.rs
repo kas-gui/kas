@@ -8,8 +8,8 @@
 //! This module provides the primary interface between the KAS toolkit and a
 //! KAS shell, though it is not the only interface. A KAS shell connects to the
 //! operating system (or further abstraction layers) by implementing
-//! [`ShellWindow`], the family of draw traits in [`kas::draw`], and
-//! constructing and using an event manager ([`kas::event::ManagerState`]).
+//! [`ShellWindow`], the family of draw traits in [`crate::draw`], and
+//! constructing and using an event manager ([`crate::event::ManagerState`]).
 //! The shell also provides the entrypoint, a type named `Toolkit`.
 
 use std::num::NonZeroU32;
@@ -79,7 +79,7 @@ bitflags! {
         /// Window requires reconfiguring
         ///
         /// *Configuring* widgets assigns [`WidgetId`] identifiers and calls
-        /// [`kas::WidgetConfig::configure`].
+        /// [`crate::WidgetConfig::configure`].
         ///
         /// [`WidgetId`]: crate::WidgetId
         const RECONFIGURE = 1 << 16;
@@ -106,7 +106,7 @@ pub trait ShellWindow {
     ///
     /// Returns `None` if window creation is not currently available (but note
     /// that `Some` result does not guarantee the operation succeeded).
-    fn add_popup(&mut self, popup: kas::Popup) -> Option<WindowId>;
+    fn add_popup(&mut self, popup: crate::Popup) -> Option<WindowId>;
 
     /// Add a window
     ///
@@ -115,7 +115,7 @@ pub trait ShellWindow {
     ///
     /// This method is an alternative allowing a window to be added from an
     /// event handler, albeit without error handling.
-    fn add_window(&mut self, widget: Box<dyn kas::Window>) -> WindowId;
+    fn add_window(&mut self, widget: Box<dyn crate::Window>) -> WindowId;
 
     /// Close a window
     fn close_window(&mut self, id: WindowId);

@@ -11,9 +11,9 @@
 //! Probably this question requires seeing more examples/applications to answer.
 
 #[allow(unused)]
-use kas::event::Manager;
-use kas::event::UpdateHandle;
-use kas::updatable::*;
+use crate::event::Manager;
+use crate::event::UpdateHandle;
+use crate::updatable::*;
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;

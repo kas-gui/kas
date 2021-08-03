@@ -17,7 +17,7 @@
 //! ## Event delivery
 //!
 //! Events can be addressed only to a [`WidgetId`], so the first step (for
-//! mouse and touch events) is to use [`kas::Layout::find_id`] to translate a
+//! mouse and touch events) is to use [`crate::Layout::find_id`] to translate a
 //! coordinate to a [`WidgetId`].
 //!
 //! Events then process from root to leaf. [`SendEvent::send`] is responsible
@@ -160,11 +160,17 @@ impl_void_msg!(std::time::Duration, std::time::Instant);
 /// A keyed message from a child
 ///
 /// This type is used by some containers to forward messages from children.
-#[derive(Clone, Debug, kas::macros::VoidMsg)]
+#[derive(Clone, Debug)]
 pub enum ChildMsg<K, M> {
     Select(K),
     Deselect(K),
     Child(K, M),
+}
+
+impl<K, M> From<VoidMsg> for ChildMsg<K, M> {
+    fn from(_: VoidMsg) -> Self {
+        unreachable!()
+    }
 }
 
 impl<K, M> From<Response<ChildMsg<K, M>>> for Response<M> {

@@ -32,45 +32,17 @@
     clippy::comparison_chain
 )]
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
-#![cfg_attr(feature = "gat", feature(generic_associated_types))]
-#![cfg_attr(
-    all(feature = "min_spec", not(feature = "spec")),
-    feature(min_specialization)
-)]
-#![cfg_attr(feature = "spec", feature(specialization))]
+#![cfg_attr(feature = "min_spec", feature(min_specialization))]
 
-#[macro_use]
-extern crate bitflags;
-
-pub extern crate easy_cast as cast;
 extern crate kas_macros;
 extern crate self as kas; // required for reliable self-reference in kas_macros
 
-// internal modules:
-mod core;
-mod future;
-mod toolkit;
-
 // public implementations:
 pub mod adapter;
-pub mod class;
-#[cfg(feature = "config")]
-pub mod config;
-pub mod dir;
-pub mod draw;
-pub mod event;
-pub mod geom;
-pub mod layout;
 pub mod prelude;
-pub mod text;
-pub mod updatable;
-pub mod util;
 pub mod widget;
 
 // macro re-exports
 pub mod macros;
 
-// export most important members directly for convenience and less redundancy:
-pub use crate::core::*;
-pub use crate::future::*;
-pub use crate::toolkit::*;
+pub use kas_core::*;

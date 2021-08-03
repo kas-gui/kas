@@ -1,10 +1,10 @@
 [package]
-name = "kas"
+name = "kas-core"
 version = "0.9.1"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
 license = "Apache-2.0"
-description = "KAS GUI Toolkit"
+description = "KAS GUI / core"
 readme = "README.md"
 documentation = "https://docs.rs/kas/"
 keywords = ["gui"]
@@ -19,79 +19,59 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 # RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=nightly,internal_doc,markdown,yaml,json --all --no-deps --open
 
 [features]
-default = []
-
-# Enables usage of unstable Rust features
-nightly = ["min_spec"]
-
 # Use Generic Associated Types (this is too unstable to include in nightly!)
-gat = ["kas-core/gat"]
+gat = ["kas-text/gat"]
 
-# Use min_specialization (enables accelerator underlining for AccelLabel)
-min_spec = []
 # Use full specialization
-spec = ["min_spec", "kas-core/spec"]
+spec = []
 
 # Enables documentation of APIs for shells and internal usage.
 # This API is not intended for use by end-user applications and
 # thus is omitted from built documentation by default.
 # This flag does not change the API, only built documentation.
-internal_doc = ["kas-core/internal_doc"]
+internal_doc = []
 
 # Enable Markdown parsing
-markdown = ["kas-core/markdown"]
+markdown = ["kas-text/markdown"]
 
 # Enable config read/write
 #TODO(cargo): once weak-dep-features (cargo#8832) is stable, add "winit?/serde"
 # and remove the serde feature requirement under dependencies.winit.
-config = ["kas-core/config"]
+config = ["serde", "kas-text/serde"]
 
 # Enable support for YAML (de)serialisation
-yaml = ["config", "kas-core/yaml"]
+yaml = ["config", "serde_yaml"]
 
 # Enable support for JSON (de)serialisation
-json = ["config", "kas-core/json"]
+json = ["config", "serde_json"]
 
 # Enable support for RON (de)serialisation
-ron = ["config", "kas-core/ron"]
-
-# Support canvas widget
-canvas = ["tiny-skia"]
-
-# Support SVG images
-svg = ["tiny-skia", "resvg", "usvg"]
+ron = ["config", "dep_ron"]
 
 # Inject logging into macro-generated code.
 # Requires that all crates using these macros depend on the log crate.
-macros_log = ["kas-macros/log"]
-
-stack_dst = ["kas-core/stack_dst"]
-
-winit = ["dep_winit", "kas-core/winit"]
+#macros_log = ["kas-macros/log"]
 
 [dependencies]
+easy-cast = "0.4.2"
 log = "0.4"
 smallvec = "1.6.1"
+stack_dst = { version = "0.6", optional = true }
+bitflags = "1.2.1" # only used without winit
 unicode-segmentation = "1.7"
 linear-map = "1.2.0"
 thiserror = "1.0.23"
+serde = { version = "1.0.123", features = ["derive"], optional = true }
+serde_json = { version = "1.0.61", optional = true }
+serde_yaml = { version = "0.8.16", optional = true }
+dep_ron = { version = "0.6.4", package = "ron", optional = true }
 image = "0.23.14"
-tiny-skia = { version = "0.5.1", optional = true }
-resvg = { version = "0.15.0", optional = true }
-usvg = { version = "0.15.0", optional = true }
 
-[dependencies.kas-core]
-version = "0.9.1"
-path = "crates/kas-core"
+[dependencies.kas-text]
+version = "0.3.0"
 
-[dependencies.kas-macros]
-version = "0.9.1"
-path = "crates/kas-macros"
-
-[dependencies.dep_winit]
+[dependencies.winit]
+# Provides translations for several winit types
 version = "0.25"
-package = "winit"
 optional = true
-
-[workspace]
-members = ["crates/*"]
+features = ["serde"]
