@@ -35,6 +35,7 @@ pub mod draw;
 pub mod event;
 pub mod geom;
 pub mod layout;
+pub mod prelude;
 pub mod text;
 pub mod updatable;
 pub mod util;
