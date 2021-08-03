@@ -365,6 +365,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 for child in args.children.iter() {
                     let ident = &child.ident;
                     let handler = if let Some(ref h) = child.args.handler {
+                        #[cfg(feature = "log")]
                         quote! {
                             r.try_into().unwrap_or_else(|msg| {
                                 log::trace!(
@@ -376,6 +377,8 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                                 self.#h(mgr, msg)
                             })
                         }
+                        #[cfg(not(feature = "log"))]
+                        quote! { r.try_into().unwrap_or_else(|msg| self.#h(mgr, msg)) }
                     } else {
                         quote! { r.into() }
                     };
