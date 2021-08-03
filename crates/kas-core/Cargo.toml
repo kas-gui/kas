@@ -6,7 +6,7 @@ edition = "2018"
 license = "Apache-2.0"
 description = "KAS GUI / core"
 readme = "README.md"
-documentation = "https://docs.rs/kas/"
+documentation = "https://docs.rs/kas-core/"
 keywords = ["gui"]
 categories = ["gui"]
 repository = "https://github.com/kas-gui/kas"
@@ -47,10 +47,6 @@ json = ["config", "serde_json"]
 
 # Enable support for RON (de)serialisation
 ron = ["config", "dep_ron"]
-
-# Inject logging into macro-generated code.
-# Requires that all crates using these macros depend on the log crate.
-#macros_log = ["kas-macros/log"]
 
 [dependencies]
 easy-cast = "0.4.2"
