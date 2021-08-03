@@ -112,6 +112,16 @@ Partially related to the above was the work on theme configuration, covering
 colour schemes, font size, font family (per font class and global), and glyph
 rastering.
 
+### 0.9.0 — August 2021
+
+Following the recent addition of image support, this release takes the
+opportunity to revise the draw API, culminating in a new unified `Draw` trait
+and `DrawIface` implementation, accessible via `DrawHandle::draw_device`. This
+simplifies usage of mid-level draw APIs, e.g. in themes and the `clock` example.
+
+Also in this release is SVG support, a `Canvas` widget, image buttons, and
+fixed sub-pixel positioning (clearer rendering for small text).
+
 
 Future work
 -----------
@@ -130,8 +140,6 @@ Support display of images in the GUI:
 
 -   image display using a target size and multiple rastered versions, with
     the option of scaling to the target size or using the nearest size
--   vector images rastered to a target size
--   buttons with embedded images
 
 Possibly as part of this topic, implement colour management
 [#59](https://github.com/kas-gui/kas/issues/59).

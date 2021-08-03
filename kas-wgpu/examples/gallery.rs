@@ -9,6 +9,7 @@
 //! (excepting custom graphics).
 
 use kas::draw::color::Rgb;
+use kas::event::VirtualKeyCode as VK;
 use kas::event::{Command, VoidResponse};
 use kas::prelude::*;
 use kas::widget::*;
@@ -226,9 +227,11 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget(row=3, col=0)] _ = Label::new("Button<Image>"),
             #[widget(row=3, col=1)] _ = Row::new(vec![
                 Button::new_msg(Image::new("res/sun_32.png"), Item::LightTheme)
-                    .with_color(Rgb::rgb(0.3, 0.4, 0.5)),
+                    .with_color(Rgb::rgb(0.3, 0.4, 0.5))
+                    .with_keys(&[VK::L]),
                 Button::new_msg(Image::new("res/moon_32.png"), Item::DarkTheme)
-                    .with_color(Rgb::BLACK),
+                    .with_color(Rgb::grey(0.1))
+                    .with_keys(&[VK::K]),
             ]).map_msg(|_, (_, m)| m),
             #[widget(row=4, col=0)] _ = Label::new("CheckBox"),
             #[widget(row=4, col=1)] _ = CheckBox::new("&Check me")

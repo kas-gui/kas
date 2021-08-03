@@ -1,16 +1,36 @@
 KAS Examples
 ==========
 
-Exmaples demonstrate various features of KAS.
+Examples are listed below in alphabetical order.
 
-Note that screenshots may be outdated since themes, draw routines and layout code has been updated quite frequently.
+If learning KAS, the Hello, Counter, Calculator, and perhaps Filter-list
+examples may be the most accessible. Also see
+[the tutorials](https://kas-gui.github.io/tutorials/).
 
-### Gallery
+### Async event
 
-A testbed demoing most widgets along with theme and colour switching.
+Demonstrates updating the UI in response to events from a background thread.
 
-![Gallery](../../screenshots/gallery.png)
-![Gallery](https://github.com/kas-gui/data-dump/blob/master/video/gallery.png)
+![Async-event](https://github.com/kas-gui/data-dump/blob/master/screenshots/async-event.png)
+
+### Calculator
+
+A simple calculator show-casing the grid layout and keyboard support.
+
+![Calculator](https://github.com/kas-gui/data-dump/blob/master/screenshots/calculator.png)
+
+### Canvas
+
+Test drawing with the `Canvas` widget.
+
+![Canvas](https://github.com/kas-gui/data-dump/blob/master/screenshots/canvas.png)
+
+### Clock
+
+A simple clock. An example of a custom widget using mid-level draw routines and
+timer updates.
+
+![Clock](https://github.com/kas-gui/data-dump/blob/master/screenshots/clock.png)
 
 ### Counter
 
@@ -18,37 +38,20 @@ A testbed demoing most widgets along with theme and colour switching.
 
 **Variant:** `sync-counter` opens two windows with a synchronised counter.
 
-![Counter](../../screenshots/counter.png)
+![Counter](https://github.com/kas-gui/data-dump/blob/master/screenshots/counter.png)
 
-### Calculator
+### Cursors
 
-A simple calculator, with (limited) keyboard support.
+Curious what each mouse cursor available on your desktop (via winit) looks like?
 
-![Calculator](../../screenshots/calculator.png)
+![[Cursors](https://github.com/kas-gui/data-dump/blob/master/screenshots/cursors.png)
 
-### Clock
+### Custom theme
 
-A simple clock. An example of a custom widget using lower-level draw routines.
+An example demonstrating a custom theme implementation.
+Pretty useless, but hey, funky background colours!
 
-![Clock](../../screenshots/clock.png)
-
-### Splitter
-
-Demonstrates resizable panes.
-
-![Splitter](../../screenshots/splitter.gif)
-
-### Hello
-
-A message box.
-
-![Hello](../../screenshots/hello.png)
-
-### Stopwatch
-
-Ready? Set! Go!
-
-![Stopwatch](../../screenshots/stopwatch.png)
+![Custom theme](https://github.com/kas-gui/data-dump/blob/master/screenshots/theme.png)
 
 ### Data list
 
@@ -60,49 +63,72 @@ same UI, but different internals:
     within the widgets; it can scale to hundreds of entries or potentially tens
     of thousands when using release optimisations and tolerating some delays
 -   `data-list-view` uses a dynamic view over a lazily-allocated data structure;
-    performance is thus independent of the number of entries, but the size type
-    used to calculate the maximum scroll offset overflows with a few tens of
-    millions of entries (depending on item widget and scale factor)
+    performance is thus independent of the number of entries (though length is
+    still limited by the maximum possible scroll offset; see issue #222)
 
-![Data list](../../screenshots/data-list.png)
+![Data list](https://github.com/kas-gui/data-dump/blob/master/screenshots/data-list.png)
+
+### Filter list
+
+Demonstrates usage of `ListView` with a filter, and allows testing single- and
+multiple-item selection modes.
+
+![Filtler-list](https://github.com/kas-gui/data-dump/blob/master/screenshots/filter-list.png)
+
+### Gallery
+
+A testbed demoing most widgets along with theme and colour switching.
+
+Note: the video demo below is quite dated.
+
+![Gallery](https://github.com/kas-gui/data-dump/blob/master/screenshots/gallery.png)
+![Gallery](https://github.com/kas-gui/data-dump/blob/master/video/gallery.png)
+
+### Hello
+
+A message box.
+
+![Hello](https://github.com/kas-gui/data-dump/blob/master/screenshots/hello.png)
 
 ### Layout
 
-Demonstration of complex layout setting. Resizing is a little slow due to the
-text layout engine (may be improved in the future).
+Demonstration of complex layout and multi-paragraph text.
 
-![Layout](../../screenshots/layout.png)
+![Layout](https://github.com/kas-gui/data-dump/blob/master/screenshots/layout.png)
+
+### Mandlebrot
+
+GPU-accelerated fractals via a custom embedded WGPU graphics pipeline.
+
+![Mandlebrot](https://github.com/kas-gui/data-dump/blob/master/screenshots/mandlebrot.png)
 
 ### Markdown
 
 Markdown parsing and rich-text rendering. This is a demonstrator for
 [KAS-text](https://github.com/kas-gui/kas-text/)'s rich text support, using
-Markdown as an input language. Note that full support for Markdown requires a
-considerably more complex text layout engine as well as an HTML parser and
-potentially even CSS support; this is beyond the (immediate) goals of this feature.
+Markdown as an input language.
 
-![Markdown](../../screenshots/markdown.png)
+Note that the goal of the Markdown parser is easy rich text entry, *not* full
+compliance with the Markdown standard. Many Markdown features are not supported.
 
-### Custom theme
+![Markdown](https://github.com/kas-gui/data-dump/blob/master/screenshots/markdown.png)
 
-An example demonstrating a custom theme implementation.
-Pretty useless, but hey, funky background colours!
+### Splitter
 
-![Custom theme](../../screenshots/theme.png)
+Demonstrates resizable panes.
 
-### Mandlebrot
+![Splitter](https://github.com/kas-gui/data-dump/blob/master/screenshots/splitter.gif)
 
-An example demonstrating a custom draw pipe.
+### Stopwatch
 
-![Mandlebrot](../../screenshots/mandlebrot.png)
+Ready? Set! Go!
 
-### Async event
+![Stopwatch](https://github.com/kas-gui/data-dump/blob/master/screenshots/stopwatch.png)
 
-Demonstrates how to send data from another thread.
+### Sync-counter
 
-### Cursors
-
-Gallery of available mouse cursors.
+A variant of [Counter](#Counter), demonstrating multiple windows and the
+`SingleView` widget (the simplest shared data widget).
 
 
 Copyright and Licence
