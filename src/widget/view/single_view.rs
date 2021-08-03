@@ -16,7 +16,7 @@ use std::fmt::{self};
 ///
 /// The shared data type `T` must support [`SingleData`] and
 /// [`UpdatableAll`], the latter with key type `()` and message type
-/// matching the widget's message. One may use [`kas::widget::view::SharedRc`]
+/// matching the widget's message. One may use [`kas::updatable::SharedRc`]
 /// or a custom shared data type.
 ///
 /// The driver `V` must implement [`Driver`], with data type

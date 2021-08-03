@@ -89,7 +89,7 @@ pub trait WidgetCore: Any + fmt::Debug {
     ///
     /// This is identical to [`WidgetCore::set_disabled`], but can be called in
     /// chaining fashion. Example:
-    /// ```
+    /// ```ignore
     /// use kas::{WidgetCore, widget::MenuEntry};
     /// let entry = MenuEntry::new("Disabled Item", ()).with_disabled(true);
     /// ```
@@ -381,8 +381,9 @@ pub trait WidgetConfig: Layout {
 /// as well as low-level event handling.
 ///
 /// For parent widgets, the implementation will often be derived (see
-/// [`kas::macros`]); otherwise, a layout engine may be used (see
-/// [`kas::layout`]). For leaf widgets, it is implemented directly.
+/// [`kas::macros`](https://docs.rs/kas/latest/kas/macros/));
+/// otherwise, a layout engine may be used (see
+/// [`crate::layout`]). For leaf widgets, it is implemented directly.
 ///
 /// For a description of the widget size model, see [`SizeRules`].
 ///
@@ -399,7 +400,7 @@ pub trait Layout: WidgetChildren {
     /// first, followed by the height; when sizing for height, [`AxisInfo`]
     /// contains the size of the *other* axis (i.e. the width).
     ///
-    /// For widgets with children, a [`kas::layout::RulesSolver`] engine may be
+    /// For widgets with children, a [`crate::layout::RulesSolver`] engine may be
     /// useful to calculate requirements of complex layouts.
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules;
 
@@ -414,8 +415,8 @@ pub trait Layout: WidgetChildren {
     /// 2.  Filling available space and applying alignment to contents (e.g.
     ///     `Label` widget)
     ///
-    /// For widgets with children, a [`kas::layout::RulesSetter`] engine may be
-    /// useful (used with a corresponding [`kas::layout::RulesSolver`]).
+    /// For widgets with children, a [`crate::layout::RulesSetter`] engine may be
+    /// useful (used with a corresponding [`crate::layout::RulesSolver`]).
     ///
     /// One may assume that `size_rules` has been called at least once for each
     /// axis with current size information before this method, however

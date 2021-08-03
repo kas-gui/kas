@@ -17,10 +17,10 @@ pub use crate::text::Align;
 /// where hints are not provided.
 ///
 /// The [`AlignHints::complete`] method is provided to conveniently apply
-/// alignment to a widget within [`kas::Layout::set_rect`]:
+/// alignment to a widget within [`crate::Layout::set_rect`]:
 /// ```
-/// # use kas::layout::{Align, AlignHints};
-/// # use kas::geom::*;
+/// # use kas_core::layout::{Align, AlignHints};
+/// # use kas_core::geom::*;
 /// # let align = AlignHints::NONE;
 /// # let rect = Rect::new(Coord::ZERO, Size::ZERO);
 /// let pref_size = Size(30, 20); // usually size comes from SizeHandle

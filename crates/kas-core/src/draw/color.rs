@@ -181,7 +181,7 @@ impl From<Rgb> for Rgba {
 ///
 /// This type may be parsed from a string:
 /// ```
-/// use kas::draw::color::Rgba8Srgb;
+/// use kas_core::draw::color::Rgba8Srgb;
 ///
 /// let red: Rgba8Srgb = "#FF0000".parse().unwrap();
 /// assert_eq!(red, Rgba8Srgb::rgb(255, 0, 0));

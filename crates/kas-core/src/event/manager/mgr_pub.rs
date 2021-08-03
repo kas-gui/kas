@@ -359,7 +359,7 @@ impl<'a> Manager<'a> {
     /// [`Event::Activate`].)
     ///
     /// Only one widget can be a fallback, and the *first* to set itself wins.
-    /// This is primarily used to allow [`crate::widget::ScrollRegion`] to
+    /// This is primarily used to allow scroll-region widgets to
     /// respond to navigation keys when no widget has focus.
     pub fn register_nav_fallback(&mut self, id: WidgetId) {
         if self.state.nav_fallback.is_none() {

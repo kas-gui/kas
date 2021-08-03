@@ -11,7 +11,7 @@
 //!
 //! When widgets are sized or drawn, they are provided a [`SizeHandle`] or a
 //! [`DrawHandle`] trait object. A [`SizeHandle`] may also be obtained through
-//! [`kas::event::Manager::size_handle`].
+//! [`crate::event::Manager::size_handle`].
 //!
 //! These traits are implemented by the theme of choice, providing a high-level
 //! themed API over "widget features".

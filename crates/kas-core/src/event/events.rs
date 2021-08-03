@@ -58,7 +58,7 @@ pub enum Event {
     ///
     /// In general, a point `p` on the screen should be transformed as follows:
     /// ```
-    /// # use kas::geom::{Coord, DVec2};
+    /// # use kas_core::geom::{Coord, DVec2};
     /// # let (alpha, delta) = (DVec2::ZERO, DVec2::ZERO);
     /// # let mut p = Coord::ZERO;
     /// // Works for Coord type; for DVec2 type-conversions are unnecessary:
@@ -73,7 +73,7 @@ pub enum Event {
     ///
     /// Two such transforms may be combined as follows:
     /// ```
-    /// # use kas::geom::DVec2;
+    /// # use kas_core::geom::DVec2;
     /// # let (alpha1, delta1) = (DVec2::ZERO, DVec2::ZERO);
     /// # let (alpha2, delta2) = (DVec2::ZERO, DVec2::ZERO);
     /// let alpha = alpha2.complex_mul(alpha1);
@@ -82,7 +82,7 @@ pub enum Event {
     /// If instead one uses a transform to map screen-space to world-space,
     /// this transform should be adjusted as follows:
     /// ```
-    /// # use kas::geom::DVec2;
+    /// # use kas_core::geom::DVec2;
     /// # let (alpha, delta) = (DVec2::ZERO, DVec2::ZERO);
     /// # let (mut world_alpha, mut world_delta) = (DVec2::ZERO, DVec2::ZERO);
     /// world_alpha = world_alpha.complex_div(alpha.into());
@@ -93,7 +93,7 @@ pub enum Event {
     /// `alpha = a * e^{i*t}` where `a` is the scale component and `t` is the
     /// angle of rotation. Calculate these components as follows:
     /// ```
-    /// # use kas::geom::DVec2;
+    /// # use kas_core::geom::DVec2;
     /// # let alpha = DVec2::ZERO;
     /// let a = (alpha.0 * alpha.0 + alpha.1 * alpha.1).sqrt();
     /// let t = (alpha.1).atan2(alpha.0);

@@ -100,8 +100,8 @@ impl Default for TextClass {
 
 /// A handle to the active theme, used for sizing
 ///
-/// The shell provides widgets a `&dyn SizeHandle` in [`kas::Layout::size_rules`].
-/// It may also be accessed through [`kas::event::Manager::size_handle`] and
+/// The shell provides widgets a `&dyn SizeHandle` in [`crate::Layout::size_rules`].
+/// It may also be accessed through [`crate::event::Manager::size_handle`] and
 /// [`DrawHandle::size_handle`].
 ///
 /// All methods get or calculate the size of some feature.
@@ -114,14 +114,14 @@ pub trait SizeHandle {
     /// may have a factor of 2 or higher; this may be fractional. It is
     /// recommended to calculate sizes as follows:
     /// ```
-    /// use kas::cast::*;
+    /// use kas_core::cast::*;
     /// # let scale_factor = 1.5f32;
     /// let size: i32 = (100.0 * scale_factor).cast_ceil();
     /// ```
     ///
     /// This value may change during a program's execution (e.g. when a window
     /// is moved to a different monitor); in this case all widgets will be
-    /// resized via [`kas::Layout::size_rules`].
+    /// resized via [`crate::Layout::size_rules`].
     fn scale_factor(&self) -> f32;
 
     /// Convert a size in virtual pixels to physical pixels
@@ -179,9 +179,9 @@ pub trait SizeHandle {
     /// Usually this method is used in [`Layout::size_rules`], then
     /// [`TextApiExt::update_env`] is used in [`Layout::set_rect`].
     ///
-    /// [`Environment`]: kas::text::Environment
-    /// [`Layout::set_rect`]: kas::Layout::set_rect
-    /// [`Layout::size_rules`]: kas::Layout::size_rules
+    /// [`Environment`]: crate::text::Environment
+    /// [`Layout::set_rect`]: crate::Layout::set_rect
+    /// [`Layout::size_rules`]: crate::Layout::size_rules
     fn text_bound(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules;
 
     /// Width of an edit marker
@@ -234,7 +234,7 @@ pub trait SizeHandle {
 
 /// A handle to the active theme, used for drawing
 ///
-/// The shell provides widgets a `&dyn DrawHandle` in [`kas::Layout::draw`].
+/// The shell provides widgets a `&dyn DrawHandle` in [`crate::Layout::draw`].
 /// The extension trait [`DrawHandleExt`] provides some additional methods on
 /// draw handles.
 ///
@@ -683,7 +683,7 @@ mod test {
 
         let _scale = draw_handle.size_handle().scale_factor();
 
-        let text = kas::text::Text::new_single("sample");
+        let text = crate::text::Text::new_single("sample");
         let class = TextClass::Label;
         draw_handle.text_selected(Coord::ZERO, &text, .., class)
     }
