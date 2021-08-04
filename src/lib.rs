@@ -23,6 +23,7 @@
 //! -   [KAS Tutorials](https://kas-gui.github.io/tutorials/)
 //! -   [Examples](https://github.com/kas-gui/kas/tree/master/kas-wgpu/examples)
 //! -   [Discuss](https://github.com/kas-gui/kas/discussions)
+//! -   [easy-cast API docs](https://docs.rs/easy-cast) (this is re-exported as `cast`)
 
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 
@@ -34,6 +35,7 @@ pub mod macros;
 
 // include most of kas_core, excluding macros and prelude:
 #[cfg(feature = "config")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "config")))]
 pub use kas_core::config;
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
