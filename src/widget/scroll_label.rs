@@ -10,7 +10,6 @@ use kas::draw::TextClass;
 use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{self, ScrollDelta};
 use kas::geom::Vec2;
-use kas::macros::*;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
 use kas::text::SelectionHelper;

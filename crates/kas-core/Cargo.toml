@@ -48,6 +48,10 @@ json = ["config", "serde_json"]
 # Enable support for RON (de)serialisation
 ron = ["config", "dep_ron"]
 
+# Inject logging into macro-generated code.
+# Requires that all crates using these macros depend on the log crate.
+macros_log = ["kas-macros/log"]
+
 [dependencies]
 easy-cast = "0.4.2"
 log = "0.4"
@@ -62,6 +66,10 @@ serde_json = { version = "1.0.61", optional = true }
 serde_yaml = { version = "0.8.16", optional = true }
 dep_ron = { version = "0.6.4", package = "ron", optional = true }
 image = "0.23.14"
+
+[dependencies.kas-macros]
+version = "0.9.1"
+path = "../kas-macros"
 
 [dependencies.kas-text]
 version = "0.3.0"

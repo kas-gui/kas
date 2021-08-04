@@ -20,6 +20,7 @@
 extern crate bitflags;
 
 pub extern crate easy_cast as cast;
+pub extern crate kas_macros as macros;
 
 // internal modules:
 mod core;

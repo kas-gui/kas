@@ -34,7 +34,6 @@
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![cfg_attr(feature = "min_spec", feature(min_specialization))]
 
-extern crate kas_macros;
 extern crate self as kas; // required for reliable self-reference in kas_macros
 
 // public implementations:
@@ -45,4 +44,13 @@ pub mod widget;
 // macro re-exports
 pub mod macros;
 
-pub use kas_core::*;
+// include most of kas_core, excluding macros and prelude:
+#[cfg(feature = "config")]
+pub use kas_core::config;
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+pub use kas_core::ShellWindow;
+pub use kas_core::{cast, class, dir, draw, event, geom, layout, text, updatable, util};
+pub use kas_core::{Boxed, Layout, LayoutData, Window};
+pub use kas_core::{CoreData, Future, Popup, TkAction, WidgetId, WindowId};
+pub use kas_core::{Widget, WidgetChildren, WidgetConfig, WidgetCore};

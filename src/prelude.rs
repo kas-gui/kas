@@ -16,6 +16,4 @@
 #[doc(no_inline)]
 pub use kas::adapter::WidgetExt;
 #[doc(no_inline)]
-pub use kas::macros::*;
-#[doc(no_inline)]
 pub use kas_core::prelude::*;

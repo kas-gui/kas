@@ -454,4 +454,4 @@ use crate::{
     CoreData, Layout, LayoutData, Widget, WidgetChildren, WidgetConfig, WidgetCore, WidgetId,
 };
 
-pub use kas_macros::{make_widget, VoidMsg, Widget};
+pub use kas_core::macros::*;

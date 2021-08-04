@@ -25,6 +25,8 @@ pub use crate::geom::{Coord, Offset, Rect, Size};
 #[doc(no_inline)]
 pub use crate::layout::{Align, AlignHints, AxisInfo, SizeRules, Stretch};
 #[doc(no_inline)]
+pub use crate::macros::*;
+#[doc(no_inline)]
 pub use crate::text::AccelString;
 #[doc(no_inline)]
 pub use crate::text::{EditableTextApi, Text, TextApi, TextApiExt};
