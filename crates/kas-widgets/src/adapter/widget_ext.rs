@@ -56,7 +56,8 @@ pub trait WidgetExt: Widget {
     /// [`Layout::size_rules`]. This can be done by instantiating a temporary
     /// widget, for example:
     ///```
-    /// use kas::widget::Label;
+    /// # use kas_widgets::adapter::WidgetExt;
+    /// use kas_widgets::Label;
     /// use kas::prelude::*;
     ///
     /// let label = Label::new("0").with_reserve(|size_handle, axis| {
@@ -65,7 +66,8 @@ pub trait WidgetExt: Widget {
     ///```
     /// Alternatively one may use virtual pixels:
     ///```
-    /// use kas::widget::Filler;
+    /// # use kas_widgets::adapter::WidgetExt;
+    /// use kas_widgets::Filler;
     /// use kas::prelude::*;
     ///
     /// let label = Filler::new().with_reserve(|size_handle, axis| {

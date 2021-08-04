@@ -140,7 +140,7 @@ impl ScrollComponent {
     /// # type Msg = ();
     /// fn dummy_event_handler(
     ///     id: WidgetId,
-    ///     scroll: &mut kas::widget::ScrollComponent,
+    ///     scroll: &mut kas_widgets::ScrollComponent,
     ///     mgr: &mut Manager,
     ///     event: Event
     /// )

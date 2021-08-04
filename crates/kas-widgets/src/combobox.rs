@@ -86,7 +86,7 @@ impl ComboBox<VoidMsg> {
     /// Constructs a combobox with labels derived from an iterator over string
     /// types, and the chosen `active` entry. For example:
     /// ```
-    /// # use kas::widget::ComboBox;
+    /// # use kas_widgets::ComboBox;
     /// let combobox = ComboBox::new(&["zero", "one", "two"], 0);
     /// ```
     #[inline]
