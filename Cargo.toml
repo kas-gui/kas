@@ -26,6 +26,9 @@ theme = ["kas-theme"]
 #Enable WGPU backend:
 wgpu = ["kas-wgpu"]
 
+# Enable dynamic linking (faster linking via an extra run-time dependency):
+dynamic = ["kas-dylib"]
+
 # Enables usage of unstable Rust features
 nightly = ["min_spec"]
 
@@ -76,6 +79,7 @@ winit = ["kas-core/winit"]
 
 [dependencies]
 kas-core = { version = "0.9.1", path = "crates/kas-core" }
+kas-dylib = { version = "0.9.1", path = "crates/kas-dylib", optional = true }
 kas-widgets = { version = "0.9.1", path = "crates/kas-widgets" }
 kas-theme = { version = "0.9.0", path = "crates/kas-theme", optional = true }
 kas-wgpu = { version = "0.9.0", path = "crates/kas-wgpu", optional = true }
@@ -88,6 +92,7 @@ log = "0.4"
 [workspace]
 members = [
     "crates/kas-core",
+    "crates/kas-dylib",
     "crates/kas-macros",
     "crates/kas-theme",
     "crates/kas-wgpu",

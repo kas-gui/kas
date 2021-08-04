@@ -52,3 +52,7 @@ pub use kas_theme as theme;
 
 #[cfg(feature = "wgpu")]
 pub use kas_wgpu as shell;
+
+#[cfg(feature = "dynamic")]
+#[allow(unused_imports)]
+use kas_dylib;
