@@ -67,7 +67,7 @@ macros_log = ["kas-core/macros_log"]
 
 stack_dst = ["kas-core/stack_dst"]
 
-winit = ["dep_winit", "kas-core/winit"]
+winit = ["kas-core/winit"]
 
 [dependencies]
 log = "0.4"
@@ -83,11 +83,6 @@ usvg = { version = "0.15.0", optional = true }
 [dependencies.kas-core]
 version = "0.9.1"
 path = "crates/kas-core"
-
-[dependencies.dep_winit]
-version = "0.25"
-package = "winit"
-optional = true
 
 [workspace]
 members = [

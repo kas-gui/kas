@@ -69,8 +69,7 @@ impl<T: FormattableText + 'static> kas::Window for MessageBox<T> {
         &self.title
     }
 
-    #[cfg(feature = "winit")]
-    fn icon(&self) -> Option<dep_winit::window::Icon> {
+    fn icon(&self) -> Option<kas_core::Icon> {
         None // TODO
     }
 

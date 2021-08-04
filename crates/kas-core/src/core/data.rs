@@ -16,6 +16,28 @@ use crate::event::{self, Manager};
 use crate::geom::Rect;
 use crate::{dir::Direction, layout, WindowId};
 
+#[cfg(feature = "winit")]
+pub use winit::window::Icon;
+
+#[cfg(not(feature = "winit"))]
+#[derive(Clone)]
+pub struct Icon;
+#[cfg(not(feature = "winit"))]
+impl Icon {
+    /// Creates an `Icon` from 32bpp RGBA data.
+    ///
+    /// The length of `rgba` must be divisible by 4, and `width * height` must equal
+    /// `rgba.len() / 4`. Otherwise, this will return a `BadIcon` error.
+    pub fn from_rgba(
+        rgba: Vec<u8>,
+        width: u32,
+        height: u32,
+    ) -> Result<Self, impl std::error::Error> {
+        let _ = (rgba, width, height);
+        Result::<Self, std::convert::Infallible>::Ok(Icon)
+    }
+}
+
 /// Widget identifier
 ///
 /// All widgets are assigned an identifier which is unique within the window.
@@ -159,8 +181,7 @@ pub trait Window: Widget<Msg = event::VoidMsg> {
     fn title(&self) -> &str;
 
     /// Get the window icon, if any
-    #[cfg(feature = "winit")]
-    fn icon(&self) -> Option<winit::window::Icon>;
+    fn icon(&self) -> Option<Icon>;
 
     /// Whether to limit the maximum size of a window
     ///

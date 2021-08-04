@@ -5,16 +5,13 @@
 
 //! Window widgets
 
-#[cfg(feature = "winit")]
-use dep_winit::window::Icon;
 use kas::layout;
 use kas::prelude::*;
 use kas::{Future, WindowId};
+use kas_core::Icon;
 use smallvec::SmallVec;
-#[cfg(feature = "winit")]
 use std::error::Error;
 use std::fmt::{self, Debug};
-#[cfg(feature = "winit")]
 use std::path::Path;
 
 /// The main instantiation of the [`Window`] trait.
@@ -29,7 +26,6 @@ pub struct Window<W: Widget + 'static> {
     w: W,
     popups: SmallVec<[(WindowId, kas::Popup); 16]>,
     drop: Option<(Box<dyn FnMut(&mut W)>, UpdateHandle)>,
-    #[cfg(feature = "winit")]
     icon: Option<Icon>,
 }
 
@@ -54,7 +50,6 @@ impl<W: Widget + Clone> Clone for Window<W> {
             w: self.w.clone(),
             popups: Default::default(), // these are temporary; don't clone
             drop: None,                 // we cannot clone this!
-            #[cfg(feature = "winit")]
             icon: self.icon.clone(),
         }
     }
@@ -70,7 +65,6 @@ impl<W: Widget> Window<W> {
             w,
             popups: Default::default(),
             drop: None,
-            #[cfg(feature = "winit")]
             icon: None,
         }
     }
@@ -122,7 +116,6 @@ impl<W: Widget> Window<W> {
     }
 
     /// Set the window icon
-    #[cfg(feature = "winit")]
     pub fn set_icon(&mut self, icon: Option<Icon>) {
         self.icon = icon;
     }
@@ -130,7 +123,6 @@ impl<W: Widget> Window<W> {
     /// Load the window icon from a path
     ///
     /// On error the icon is not set. The window may still be used.
-    #[cfg(feature = "winit")]
     pub fn load_icon_from_path<P: AsRef<Path>>(&mut self, path: P) -> Result<(), Box<dyn Error>> {
         // TODO(opt): image loading could be de-duplicated with
         // DrawShared::image_from_path, but this may not be worthwhile.
@@ -198,7 +190,6 @@ impl<M: Into<VoidMsg>, W: Widget<Msg = M> + 'static> kas::Window for Window<W> {
         &self.title
     }
 
-    #[cfg(feature = "winit")]
     fn icon(&self) -> Option<Icon> {
         self.icon.clone()
     }
