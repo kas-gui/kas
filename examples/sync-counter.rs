@@ -17,7 +17,7 @@ enum Message {
     Incr,
 }
 
-fn main() -> Result<(), kas_wgpu::Error> {
+fn main() -> Result<(), kas::shell::Error> {
     env_logger::init();
 
     let buttons = make_widget! {
@@ -55,8 +55,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
         },
     );
 
-    let theme = kas_theme::ShadedTheme::new().with_font_size(24.0);
-    kas_wgpu::Toolkit::new(theme)?
+    let theme = kas::theme::ShadedTheme::new().with_font_size(24.0);
+    kas::shell::Toolkit::new(theme)?
         .with(window.clone())?
         .with(window)?
         .run()

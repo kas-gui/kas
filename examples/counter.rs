@@ -15,7 +15,7 @@ enum Message {
     Incr,
 }
 
-fn main() -> Result<(), kas_wgpu::Error> {
+fn main() -> Result<(), kas::shell::Error> {
     env_logger::init();
 
     // Most examples use make_widget! for layout, but here we use the Row widget
@@ -57,6 +57,6 @@ fn main() -> Result<(), kas_wgpu::Error> {
         },
     );
 
-    let theme = kas_theme::ShadedTheme::new().with_font_size(24.0);
-    kas_wgpu::Toolkit::new(theme)?.with(window)?.run()
+    let theme = kas::theme::ShadedTheme::new().with_font_size(24.0);
+    kas::shell::Toolkit::new(theme)?.with(window)?.run()
 }

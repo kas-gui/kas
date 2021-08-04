@@ -40,7 +40,7 @@ mod data {
     }
 }
 
-fn main() -> Result<(), kas_wgpu::Error> {
+fn main() -> Result<(), kas::shell::Error> {
     env_logger::init();
 
     let r = UpdateHandle::new();
@@ -96,6 +96,6 @@ fn main() -> Result<(), kas_wgpu::Error> {
         },
     );
 
-    let theme = kas_theme::ShadedTheme::new();
-    kas_wgpu::Toolkit::new(theme)?.with(window)?.run()
+    let theme = kas::theme::ShadedTheme::new();
+    kas::shell::Toolkit::new(theme)?.with(window)?.run()
 }

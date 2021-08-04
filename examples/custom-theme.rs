@@ -11,10 +11,10 @@ use std::cell::Cell;
 use kas::draw::color::Rgba;
 use kas::draw::*;
 use kas::prelude::*;
+use kas::theme::Theme;
 use kas::widget::*;
-use kas_theme::Theme;
 
-use kas_theme::FlatTheme;
+use kas::theme::FlatTheme;
 
 /// A demo theme
 ///
@@ -50,7 +50,7 @@ impl<DS: DrawSharedImpl> Theme<DS> for CustomTheme
 where
     DS::Draw: DrawRoundedImpl,
 {
-    type Config = kas_theme::Config;
+    type Config = kas::theme::Config;
     type Window = <FlatTheme as Theme<DS>>::Window;
 
     #[cfg(not(feature = "gat"))]
@@ -122,7 +122,7 @@ enum Item {
     Yellow,
 }
 
-fn main() -> Result<(), kas_wgpu::Error> {
+fn main() -> Result<(), kas::shell::Error> {
     env_logger::init();
 
     let widgets = make_widget! {
@@ -163,5 +163,5 @@ fn main() -> Result<(), kas_wgpu::Error> {
         },
     );
 
-    kas_wgpu::Toolkit::new(theme)?.with(window)?.run()
+    kas::shell::Toolkit::new(theme)?.with(window)?.run()
 }

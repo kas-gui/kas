@@ -98,17 +98,17 @@ impl Handler for TextEditPopup {
     }
 }
 
-fn main() -> Result<(), kas_wgpu::Error> {
+fn main() -> Result<(), kas::shell::Error> {
     env_logger::init();
 
     #[cfg(feature = "stack_dst")]
-    let theme = kas_theme::MultiTheme::builder()
-        .add("shaded", kas_theme::ShadedTheme::new())
-        .add("flat", kas_theme::FlatTheme::new())
+    let theme = kas::theme::MultiTheme::builder()
+        .add("shaded", kas::theme::ShadedTheme::new())
+        .add("flat", kas::theme::FlatTheme::new())
         .build();
     #[cfg(not(feature = "stack_dst"))]
-    let theme = kas_theme::ShadedTheme::new();
-    let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
+    let theme = kas::theme::ShadedTheme::new();
+    let mut toolkit = kas::shell::Toolkit::new(theme)?;
 
     #[derive(Clone, Debug, VoidMsg)]
     enum Menu {

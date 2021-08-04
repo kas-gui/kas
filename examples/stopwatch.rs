@@ -74,13 +74,13 @@ fn make_window() -> Box<dyn kas::Window> {
     Box::new(window)
 }
 
-fn main() -> Result<(), kas_wgpu::Error> {
+fn main() -> Result<(), kas::shell::Error> {
     env_logger::init();
 
-    let theme = kas_theme::ShadedTheme::new()
+    let theme = kas::theme::ShadedTheme::new()
         .with_colours("dark")
         .with_font_size(18.0);
-    kas_wgpu::Toolkit::new(theme)?
+    kas::shell::Toolkit::new(theme)?
         .with_boxed(make_window())?
         .run()
 }

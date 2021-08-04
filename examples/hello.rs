@@ -14,6 +14,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let text = kas::text::format::Markdown::new("Hello *world*!")?;
     let window = MessageBox::new("Message", text);
 
-    let theme = kas_theme::FlatTheme::new();
-    kas_wgpu::Toolkit::new(theme)?.with(window)?.run()
+    let theme = kas::theme::FlatTheme::new();
+    kas::shell::Toolkit::new(theme)?.with(window)?.run()
 }

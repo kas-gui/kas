@@ -14,10 +14,10 @@ use std::time::Duration;
 
 use kas::draw::{color, DrawIface, DrawRounded, PassType, TextClass};
 use kas::geom::{Offset, Quad, Vec2};
+use kas::shell::draw::DrawPipe;
 use kas::text::util::set_text_and_prepare;
 use kas::widget::Window;
 use kas::{event, prelude::*};
-use kas_wgpu::draw::DrawPipe;
 
 #[derive(Clone, Debug, kas :: macros :: Widget)]
 #[handler(handle=noauto)]
@@ -163,11 +163,11 @@ impl Clock {
     }
 }
 
-fn main() -> Result<(), kas_wgpu::Error> {
+fn main() -> Result<(), kas::shell::Error> {
     env_logger::init();
 
     let window = Window::new("Clock", Clock::new());
 
-    let theme = kas_theme::FlatTheme::new();
-    kas_wgpu::Toolkit::new(theme)?.with(window)?.run()
+    let theme = kas::theme::FlatTheme::new();
+    kas::shell::Toolkit::new(theme)?.with(window)?.run()
 }

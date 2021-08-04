@@ -56,12 +56,12 @@ impl CanvasDrawable for Program {
     }
 }
 
-fn main() -> Result<(), kas_wgpu::Error> {
+fn main() -> Result<(), kas::shell::Error> {
     env_logger::init();
 
     let canvas = Canvas::new(Program, Size(400, 400));
     let window = Window::new("Canvas", canvas);
 
-    let theme = kas_theme::FlatTheme::new();
-    kas_wgpu::Toolkit::new(theme)?.with(window)?.run()
+    let theme = kas::theme::FlatTheme::new();
+    kas::shell::Toolkit::new(theme)?.with(window)?.run()
 }

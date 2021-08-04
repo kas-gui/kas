@@ -15,10 +15,10 @@ use kas::draw::color::Rgba;
 use kas::prelude::*;
 use kas::widget::Window;
 
-fn main() -> Result<(), kas_wgpu::Error> {
+fn main() -> Result<(), kas::shell::Error> {
     env_logger::init();
-    let theme = kas_theme::FlatTheme::new();
-    let toolkit = kas_wgpu::Toolkit::new(theme)?;
+    let theme = kas::theme::FlatTheme::new();
+    let toolkit = kas::shell::Toolkit::new(theme)?;
 
     // We construct a proxy from the toolkit to enable cross-thread communication.
     let proxy = toolkit.create_proxy();
@@ -85,7 +85,11 @@ impl Handler for ColourSquare {
     }
 }
 
-fn generate_colors(proxy: kas_wgpu::ToolkitProxy, handle: UpdateHandle, colour: Arc<Mutex<Rgba>>) {
+fn generate_colors(
+    proxy: kas::shell::ToolkitProxy,
+    handle: UpdateHandle,
+    colour: Arc<Mutex<Rgba>>,
+) {
     // This function is called in a separate thread, and runs until the program ends.
     let start_time = Instant::now();
 

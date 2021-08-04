@@ -66,6 +66,6 @@ It also supports lists:
         },
     );
 
-    let theme = kas_theme::FlatTheme::new();
-    kas_wgpu::Toolkit::new(theme)?.with(window)?.run()
+    let theme = kas::theme::FlatTheme::new();
+    kas::shell::Toolkit::new(theme)?.with(window)?.run()
 }
