@@ -8,9 +8,8 @@
 // Use ``never_loop`` until: https://github.com/rust-lang/rust-clippy/issues/7397 is fixed
 #![allow(
     clippy::identity_op,
-    clippy::or_fun_call,
     clippy::never_loop,
-    clippy::comparison_chain
+    clippy::self_named_constructor
 )]
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![cfg_attr(feature = "gat", feature(generic_associated_types))]

@@ -66,7 +66,6 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let solve_cache = SolveCache::find_constraints(widget.as_widget_mut(), &mut size_handle);
         // Opening a zero-size window causes a crash, so force at least 1x1:
         let ideal = solve_cache.ideal(true).max(Size(1, 1));
-        drop(size_handle);
 
         let mut builder = WindowBuilder::new().with_inner_size(ideal);
         let restrict_dimensions = widget.restrict_dimensions();

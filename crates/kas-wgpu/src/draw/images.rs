@@ -33,7 +33,7 @@ impl Image {
     ) {
         // TODO(opt): use StagingBelt for upload (when supported)? Or our own equivalent.
         let size = self.size;
-        assert!(data.len() > 0);
+        assert!(!data.is_empty());
         assert_eq!(data.len(), 4 * usize::conv(size.0) * usize::conv(size.1));
         queue.write_texture(
             wgpu::ImageCopyTexture {

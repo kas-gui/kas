@@ -24,13 +24,6 @@
 //! -   [Examples](https://github.com/kas-gui/kas/tree/master/kas-wgpu/examples)
 //! -   [Discuss](https://github.com/kas-gui/kas/discussions)
 
-// Use ``never_loop`` until: https://github.com/rust-lang/rust-clippy/issues/7397 is fixed
-#![allow(
-    clippy::identity_op,
-    clippy::or_fun_call,
-    clippy::never_loop,
-    clippy::comparison_chain
-)]
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 
 // public implementations:
