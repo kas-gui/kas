@@ -94,4 +94,9 @@ package = "winit"
 optional = true
 
 [workspace]
-members = ["crates/*"]
+members = [
+    "crates/kas-core",
+    "crates/kas-macros",
+    "crates/kas-theme",
+    "crates/kas-wgpu",
+]
