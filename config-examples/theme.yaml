@@ -1,0 +1,25 @@
+---
+font_size: 10.0
+active_scheme: dark
+font_aliases:
+  sans-serif:
+    mode: Prepend
+    list: [Calibri]
+  Calibri:
+    mode: Append
+    list: [Carlito]
+fonts:
+  Edit:
+    families:
+      - serif
+  EditMulti:
+    families:
+      - serif
+  MenuLabel:
+    families:
+      - sans-serif
+    weight: 600
+raster:
+    mode: 0
+    subpixel_threshold: 0
+    subpixel_steps: 1
