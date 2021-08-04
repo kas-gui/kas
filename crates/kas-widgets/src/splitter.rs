@@ -68,7 +68,7 @@ pub type RefSplitter<'a, D, M> = Splitter<D, &'a mut dyn Widget<Msg = M>>;
 
 /// A resizable row/column widget
 ///
-/// Similar to [`kas::widget::List`] but with draggable handles between items.
+/// Similar to [`crate::List`] but with draggable handles between items.
 // TODO: better doc
 #[derive(Clone, Default, Debug, Widget)]
 #[handler(send=noauto, msg=<W as event::Handler>::Msg)]

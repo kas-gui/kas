@@ -21,7 +21,7 @@ pub trait CanvasDrawable: std::fmt::Debug + 'static {
 
 /// A canvas widget over the `tiny-skia` library
 ///
-/// Note that the `tiny-skia` API is re-exported as [`kas::widget::tiny_skia`].
+/// Note that the `tiny-skia` API is re-exported as [`crate::tiny_skia`].
 ///
 /// Canvas size is controlled by the sizing arguments passed to the constructor,
 /// as well as the `stretch` factor and the display's scale factor `sf`.
