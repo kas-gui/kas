@@ -5,15 +5,15 @@
 
 //! Widget extension traits
 
-use crate::adapter::{MapResponse, Reserve, WithLabel};
-use crate::dir::Directional;
-use crate::draw::SizeHandle;
-use crate::event::{Manager, Response};
-use crate::layout::{AxisInfo, SizeRules};
-use crate::text::AccelString;
+use super::{MapResponse, Reserve, WithLabel};
+use kas::dir::Directional;
+use kas::draw::SizeHandle;
+use kas::event::{Manager, Response};
+use kas::layout::{AxisInfo, SizeRules};
+use kas::text::AccelString;
 #[allow(unused)]
-use crate::Layout;
-use crate::Widget;
+use kas::Layout;
+use kas::Widget;
 
 /// Provides some convenience methods on widgets
 pub trait WidgetExt: Widget {

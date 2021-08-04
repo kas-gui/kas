@@ -5,11 +5,10 @@
 
 //! Wrapper adding a label
 
-use crate::draw::TextClass;
-// use crate::text::format::{FormattableText};
-use crate::layout::{RulesSetter, RulesSolver};
-use crate::text::util::set_text_and_prepare;
-use crate::{event, layout, prelude::*};
+use kas::draw::TextClass;
+use kas::layout::{RulesSetter, RulesSolver};
+use kas::text::util::set_text_and_prepare;
+use kas::{event, layout, prelude::*};
 
 /// A wrapper widget with a label
 #[derive(Clone, Default, Debug, Widget)]

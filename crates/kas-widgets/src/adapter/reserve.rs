@@ -5,7 +5,7 @@
 
 //! Size reservation
 
-use crate::{event, prelude::*};
+use kas::{event, prelude::*};
 use std::fmt::{self, Debug};
 
 /// Parameterisation of [`Reserve`] using a function pointer

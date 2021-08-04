@@ -6,9 +6,9 @@
 //! Menubar
 
 use super::{Menu, SubMenu};
+use crate::List;
 use kas::event::{self, Command, GrabMode};
 use kas::prelude::*;
-use kas::widget::List;
 
 /// A menu-bar
 ///

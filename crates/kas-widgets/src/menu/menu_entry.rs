@@ -8,9 +8,9 @@
 use std::fmt::{self, Debug};
 
 use super::Menu;
+use crate::{AccelLabel, CheckBoxBare};
 use kas::draw::TextClass;
 use kas::prelude::*;
-use kas::widget::{AccelLabel, CheckBoxBare};
 
 /// A standard menu entry
 #[derive(Clone, Debug, Default, Widget)]

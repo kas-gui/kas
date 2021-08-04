@@ -8,8 +8,10 @@
 //! Intended usage is to import the module name rather than its contents, thus
 //! allowing referal to e.g. `driver::Default`.
 
+use crate::{
+    CheckBoxBare, EditBox, EditField, EditGuard, Label, NavFrame, ProgressBar, SliderType,
+};
 use kas::prelude::*;
-use kas::widget::{self, *};
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
@@ -45,8 +47,8 @@ pub trait Driver<T>: Debug + 'static {
 ///
 /// This struct implements [`Driver`], using a default widget for the data type:
 ///
-/// -   [`widget::Label`] for `String`, `&str`, integer and float types
-/// -   [`widget::CheckBoxBare`] (disabled) for the bool type
+/// -   [`crate::Label`] for `String`, `&str`, integer and float types
+/// -   [`crate::CheckBoxBare`] (disabled) for the bool type
 #[derive(Clone, Debug, Default)]
 pub struct Default;
 
@@ -55,9 +57,9 @@ pub struct Default;
 /// This struct implements [`Driver`], using a default widget for the data type
 /// which also supports keyboard navigation:
 ///
-/// -   [`widget::NavFrame`] around a [`widget::Label`] for `String`, `&str`,
+/// -   [`crate::NavFrame`] around a [`crate::Label`] for `String`, `&str`,
 ///     integer and float types
-/// -   [`widget::CheckBoxBare`] (disabled) for the bool type
+/// -   [`crate::CheckBoxBare`] (disabled) for the bool type
 #[derive(Clone, Debug, Default)]
 pub struct DefaultNav;
 
@@ -185,7 +187,7 @@ impl<D: Directional + std::default::Default> Driver<f32> for Widget<ProgressBar<
     }
 }
 
-/// [`widget::CheckBox`] view widget constructor
+/// [`crate::CheckBox`] view widget constructor
 #[derive(Clone, Debug, Default)]
 pub struct CheckBox {
     label: AccelString,
@@ -199,16 +201,16 @@ impl CheckBox {
 }
 impl Driver<bool> for CheckBox {
     type Msg = bool;
-    type Widget = widget::CheckBox<bool>;
+    type Widget = crate::CheckBox<bool>;
     fn new(&self) -> Self::Widget {
-        widget::CheckBox::new(self.label.clone()).on_toggle(|_, state| Some(state))
+        crate::CheckBox::new(self.label.clone()).on_toggle(|_, state| Some(state))
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
     }
 }
 
-/// [`widget::RadioBoxBare`] view widget constructor
+/// [`crate::RadioBoxBare`] view widget constructor
 #[derive(Clone, Debug, Default)]
 pub struct RadioBoxBare {
     handle: UpdateHandle,
@@ -221,16 +223,16 @@ impl RadioBoxBare {
 }
 impl Driver<bool> for RadioBoxBare {
     type Msg = bool;
-    type Widget = widget::RadioBoxBare<bool>;
+    type Widget = crate::RadioBoxBare<bool>;
     fn new(&self) -> Self::Widget {
-        widget::RadioBoxBare::new(self.handle).on_select(|_| Some(true))
+        crate::RadioBoxBare::new(self.handle).on_select(|_| Some(true))
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
     }
 }
 
-/// [`widget::RadioBox`] view widget constructor
+/// [`crate::RadioBox`] view widget constructor
 #[derive(Clone, Debug, Default)]
 pub struct RadioBox {
     label: AccelString,
@@ -245,16 +247,16 @@ impl RadioBox {
 }
 impl Driver<bool> for RadioBox {
     type Msg = bool;
-    type Widget = widget::RadioBox<bool>;
+    type Widget = crate::RadioBox<bool>;
     fn new(&self) -> Self::Widget {
-        widget::RadioBox::new(self.label.clone(), self.handle).on_select(|_| Some(true))
+        crate::RadioBox::new(self.label.clone(), self.handle).on_select(|_| Some(true))
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
     }
 }
 
-/// [`widget::Slider`] view widget constructor
+/// [`crate::Slider`] view widget constructor
 #[derive(Clone, Debug, Default)]
 pub struct Slider<T: SliderType, D: Directional> {
     min: T,
@@ -286,9 +288,9 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
 }
 impl<T: SliderType, D: Directional> Driver<T> for Slider<T, D> {
     type Msg = T;
-    type Widget = widget::Slider<T, D>;
+    type Widget = crate::Slider<T, D>;
     fn new(&self) -> Self::Widget {
-        widget::Slider::new_with_direction(self.min, self.max, self.step, self.direction)
+        crate::Slider::new_with_direction(self.min, self.max, self.step, self.direction)
     }
     fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction {
         widget.set_value(data)

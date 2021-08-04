@@ -14,6 +14,6 @@
 //! using widgets in a GUI.
 
 #[doc(no_inline)]
-pub use kas::adapter::WidgetExt;
-#[doc(no_inline)]
 pub use kas_core::prelude::*;
+#[doc(no_inline)]
+pub use kas_widgets::adapter::WidgetExt;

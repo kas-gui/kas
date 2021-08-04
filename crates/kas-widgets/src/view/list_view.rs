@@ -6,13 +6,13 @@
 //! List view widget
 
 use super::{driver, Driver, SelectionError, SelectionMode};
+#[allow(unused)] // doc links
+use crate::ScrollBars;
+use crate::{ScrollComponent, Scrollable};
 use kas::event::{ChildMsg, Command, CursorIcon, GrabMode, PressSource};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
-use kas::updatable::{MatrixData, UpdatableAll};
-#[allow(unused)] // doc links
-use kas::widget::ScrollBars;
-use kas::widget::{ScrollComponent, Scrollable};
+use kas::updatable::{ListData, UpdatableAll};
 use linear_map::set::LinearSet;
 use log::{debug, trace};
 use std::time::Instant;
@@ -23,17 +23,17 @@ struct WidgetData<K, W> {
     widget: W,
 }
 
-/// Matrix view widget
+/// List view widget
 ///
-/// This widget supports a view over a matrix of shared data items.
+/// This widget supports a view over a list of shared data items.
 ///
-/// The shared data type `T` must support [`MatrixData`] and
+/// The shared data type `T` must support [`ListData`] and
 /// [`UpdatableAll`], the latter with key type `T::Key` and message type
 /// matching the widget's message. One may use [`kas::updatable::SharedRc`]
 /// or a custom shared data type.
 ///
 /// The driver `V` must implement [`Driver`], with data type
-/// `<T as MatrixData>::Item`. Several implementations are available in the
+/// `<T as ListData>::Item`. Several implementations are available in the
 /// [`driver`] module or a custom implementation may be used.
 ///
 /// This widget is [`Scrollable`], supporting keyboard, wheel and drag
@@ -41,8 +41,9 @@ struct WidgetData<K, W> {
 #[derive(Clone, Debug, Widget)]
 #[handler(send=noauto, msg=ChildMsg<T::Key, <V::Widget as Handler>::Msg>)]
 #[widget(children=noauto, config=noauto)]
-pub struct MatrixView<
-    T: MatrixData + UpdatableAll<T::Key, V::Msg> + 'static,
+pub struct ListView<
+    D: Directional,
+    T: ListData + UpdatableAll<T::Key, V::Msg> + 'static,
     V: Driver<T::Item> = driver::Default,
 > {
     first_id: WidgetId,
@@ -53,14 +54,13 @@ pub struct MatrixView<
     view: V,
     data: T,
     widgets: Vec<WidgetData<T::Key, V::Widget>>,
+    cur_len: u32,
+    direction: D,
     align_hints: AlignHints,
-    // TODO: the following three all have units of "the number of rows/cols"
-    ideal_len: Size,
-    alloc_len: Size,
-    cur_len: Size,
-    child_size_min: Size,
-    child_size_ideal: Size,
-    child_inter_margin: Size,
+    ideal_visible: i32,
+    child_size_min: i32,
+    child_size_ideal: i32,
+    child_inter_margin: i32,
     child_size: Size,
     scroll: ScrollComponent,
     sel_mode: SelectionMode,
@@ -70,16 +70,50 @@ pub struct MatrixView<
     press_target: Option<T::Key>,
 }
 
-impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item> + Default> MatrixView<T, V> {
+impl<
+        D: Directional + Default,
+        T: ListData + UpdatableAll<T::Key, V::Msg>,
+        V: Driver<T::Item> + Default,
+    > ListView<D, T, V>
+{
     /// Construct a new instance
+    ///
+    /// This constructor is available where the direction is determined by the
+    /// type: for `D: Directional + Default`. In other cases, use
+    /// [`ListView::new_with_direction`].
     pub fn new(data: T) -> Self {
-        Self::new_with_driver(<V as Default>::default(), data)
+        Self::new_with_dir_driver(D::default(), <V as Default>::default(), data)
     }
 }
-impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> MatrixView<T, V> {
+impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item> + Default>
+    ListView<D, T, V>
+{
+    /// Construct a new instance with explicit direction
+    pub fn new_with_direction(direction: D, data: T) -> Self {
+        Self::new_with_dir_driver(direction, <V as Default>::default(), data)
+    }
+}
+impl<D: Directional + Default, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>>
+    ListView<D, T, V>
+{
     /// Construct a new instance with explicit view
     pub fn new_with_driver(view: V, data: T) -> Self {
-        MatrixView {
+        Self::new_with_dir_driver(D::default(), view, data)
+    }
+}
+impl<T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> ListView<Direction, T, V> {
+    /// Set the direction of contents
+    pub fn set_direction(&mut self, direction: Direction) -> TkAction {
+        self.direction = direction;
+        TkAction::SET_SIZE
+    }
+}
+impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>>
+    ListView<D, T, V>
+{
+    /// Construct a new instance with explicit direction and view
+    pub fn new_with_dir_driver(direction: D, view: V, data: T) -> Self {
+        ListView {
             first_id: Default::default(),
             core: Default::default(),
             frame_offset: Default::default(),
@@ -87,13 +121,13 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> MatrixVie
             view,
             data,
             widgets: Default::default(),
+            cur_len: 0,
+            direction,
             align_hints: Default::default(),
-            ideal_len: Size(5, 3),
-            alloc_len: Size::ZERO,
-            cur_len: Size::ZERO,
-            child_size_min: Size::ZERO,
-            child_size_ideal: Size::ZERO,
-            child_inter_margin: Size::ZERO,
+            ideal_visible: 5,
+            child_size_min: 0,
+            child_size_ideal: 0,
+            child_inter_margin: 0,
             child_size: Size::ZERO,
             scroll: Default::default(),
             sel_mode: SelectionMode::None,
@@ -110,7 +144,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> MatrixVie
 
     /// Mutably access the stored data
     ///
-    /// It may be necessary to use [`MatrixView::update_view`] to update the view of this data.
+    /// It may be necessary to use [`ListView::update_view`] to update the view of this data.
     pub fn data_mut(&mut self) -> &mut T {
         &mut self.data
     }
@@ -123,7 +157,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> MatrixVie
     /// Set shared data
     ///
     /// This method updates the shared data, if supported (see
-    /// [`MatrixData::update`]). Other widgets sharing this data are notified
+    /// [`ListData::update`]). Other widgets sharing this data are notified
     /// of the update, if data is changed.
     pub fn set_value(&self, mgr: &mut Manager, key: &T::Key, data: T::Item) {
         if let Some(handle) = self.data.update(key, data) {
@@ -133,7 +167,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> MatrixVie
 
     /// Update shared data
     ///
-    /// This is purely a convenience method over [`MatrixView::set_value`].
+    /// This is purely a convenience method over [`ListView::set_value`].
     /// It does nothing if no value is found at `key`.
     /// It notifies other widgets of updates to the shared data.
     pub fn update_value<F: Fn(T::Item) -> T::Item>(&self, mgr: &mut Manager, key: &T::Key, f: F) {
@@ -202,7 +236,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> MatrixVie
             SelectionMode::Single => self.selection.clear(),
             _ => (),
         }
-        if !self.data.contains(&key) {
+        if !self.data.contains_key(&key) {
             return Err(SelectionError::Key);
         }
         Ok(self.selection.insert(key))
@@ -221,7 +255,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> MatrixVie
     /// Manually trigger an update to handle changed data
     pub fn update_view(&mut self, mgr: &mut Manager) {
         let data = &self.data;
-        self.selection.retain(|key| data.contains(key));
+        self.selection.retain(|key| data.contains_key(key));
         for w in &mut self.widgets {
             w.key = None;
         }
@@ -231,74 +265,91 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> MatrixVie
         *mgr |= TkAction::SET_SIZE;
     }
 
+    /// Get the direction of contents
+    pub fn direction(&self) -> Direction {
+        self.direction.as_direction()
+    }
+
     /// Set the preferred number of items visible (inline)
     ///
     /// This affects the (ideal) size request and whether children are sized
     /// according to their ideal or minimum size but not the minimum size.
-    pub fn with_num_visible(mut self, cols: i32, rows: i32) -> Self {
-        self.ideal_len = Size(cols, rows);
+    pub fn with_num_visible(mut self, number: i32) -> Self {
+        self.ideal_visible = number;
         self
     }
 
     fn update_widgets(&mut self, mgr: &mut Manager) {
         let time = Instant::now();
 
-        let data_len = Size(self.data.col_len().cast(), self.data.row_len().cast());
+        let data_len = self.data.len();
+        let data_len32 = i32::conv(data_len);
         let view_size = self.rect().size;
-        let skip = self.child_size + self.child_inter_margin;
-        let content_size = (skip.cwise_mul(data_len) - self.child_inter_margin).max(Size::ZERO);
+        let mut content_size = view_size;
+        let mut skip;
+        if self.direction.is_horizontal() {
+            skip = Offset(self.child_size.0 + self.child_inter_margin, 0);
+            content_size.0 = (skip.0 * data_len32 - self.child_inter_margin).max(0);
+        } else {
+            skip = Offset(0, self.child_size.1 + self.child_inter_margin);
+            content_size.1 = (skip.1 * data_len32 - self.child_inter_margin).max(0);
+        }
         *mgr |= self.scroll.set_sizes(view_size, content_size);
 
-        let offset = self.scroll_offset();
-        let first_col = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
-        let first_row = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
-        let cols = self
-            .data
-            .col_iter_vec_from(first_col, self.alloc_len.0.cast());
-        let rows = self
-            .data
-            .row_iter_vec_from(first_row, self.alloc_len.1.cast());
-        self.cur_len = Size(cols.len().cast(), rows.len().cast());
+        let offset = u64::conv(self.scroll_offset().extract(self.direction));
+        // first visible data item, in downward direction:
+        let mut first_data = usize::conv(offset / u64::conv(skip.extract(self.direction)));
 
-        let pos_start = self.core.rect.pos + self.frame_offset;
+        // set_rect allocates enough widgets to view a page; we update widget-data allocations
+        let len = self.widgets.len().min(data_len - first_data);
+        self.cur_len = len.cast();
+
+        let mut pos_start = self.core.rect.pos + self.frame_offset;
+        if self.direction.is_reversed() {
+            first_data = (data_len - first_data).saturating_sub(len);
+            pos_start += skip * i32::conv(data_len - 1);
+            skip = skip * -1;
+        }
+
         let mut rect = Rect::new(pos_start, self.child_size);
-
         let mut action = TkAction::empty();
-        for (cn, col) in cols.iter().enumerate() {
-            let ci = first_col + cn;
-            for (rn, row) in rows.iter().enumerate() {
-                let ri = first_row + rn;
-                let i = (ci % cols.len()) + (ri % rows.len()) * cols.len();
-                let w = &mut self.widgets[i];
-                let key = T::make_key(col, row);
-                if w.key.as_ref() != Some(&key) {
-                    if let Some(item) = self.data.get_cloned(&key) {
-                        w.key = Some(key.clone());
-                        action |= self.view.set(&mut w.widget, item);
-                    } else {
-                        w.key = None; // disables drawing and clicking
-                    }
-                }
-                rect.pos = pos_start + skip.cwise_mul(Size(ci.cast(), ri.cast()));
-                if w.widget.rect() != rect {
-                    w.widget.set_rect(mgr, rect, self.align_hints);
-                }
+        for (i, item) in self
+            .data
+            .iter_vec_from(first_data, len)
+            .into_iter()
+            .enumerate()
+        {
+            let i = first_data + i;
+            let key = Some(item.0.clone());
+            let w = &mut self.widgets[i % len];
+            if key != w.key {
+                w.key = key;
+                action |= self.view.set(&mut w.widget, item.1);
+            }
+            rect.pos = pos_start + skip * i32::conv(i);
+            if w.widget.rect() != rect {
+                w.widget.set_rect(mgr, rect, self.align_hints);
             }
         }
         *mgr |= action;
         let dur = (Instant::now() - time).as_micros();
-        trace!("MatrixView::update_widgets completed in {}μs", dur);
+        trace!("ListView::update_widgets completed in {}μs", dur);
     }
 }
 
-impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Scrollable
-    for MatrixView<T, V>
+impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Scrollable
+    for ListView<D, T, V>
 {
     fn scroll_axes(&self, size: Size) -> (bool, bool) {
+        // TODO: maybe we should support a scrollbar on the other axis?
+        // We would need to report a fake min-child-size to enable scrolling.
         let item_min = self.child_size_min + self.child_inter_margin;
-        let data_len = Size(self.data.col_len().cast(), self.data.row_len().cast());
-        let min_size = (item_min.cwise_mul(data_len) - self.child_inter_margin).max(Size::ZERO);
-        (min_size.0 > size.0, min_size.1 > size.1)
+        let num = i32::conv(self.data.len());
+        let min_size = (item_min * num - self.child_inter_margin).max(0);
+        (
+            self.direction.is_horizontal() && min_size > size.0,
+            self.direction.is_vertical() && min_size > size.1,
+        )
     }
 
     #[inline]
@@ -319,8 +370,8 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Scrollabl
     }
 }
 
-impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> WidgetChildren
-    for MatrixView<T, V>
+impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> WidgetChildren
+    for ListView<D, T, V>
 {
     #[inline]
     fn first_id(&self) -> WidgetId {
@@ -345,8 +396,8 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> WidgetChi
     }
 }
 
-impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> WidgetConfig
-    for MatrixView<T, V>
+impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> WidgetConfig
+    for ListView<D, T, V>
 {
     fn configure(&mut self, mgr: &mut Manager) {
         self.data.enable_recursive_updates(mgr);
@@ -357,7 +408,9 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> WidgetCon
     }
 }
 
-impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Layout for MatrixView<T, V> {
+impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Layout
+    for ListView<D, T, V>
+{
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         // We use an invisible frame for highlighting selections, drawing into the margin
         let inner_margin = size_handle.inner_margin().extract(axis);
@@ -365,46 +418,49 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Layout fo
 
         // We use a default-generated widget to generate size rules
         let mut rules = self.view.new().size_rules(size_handle, axis);
-
-        self.child_size_min.set_component(axis, rules.min_size());
-        self.child_size_ideal
-            .set_component(axis, rules.ideal_size());
-        let m = rules.margins_i32();
-        self.child_inter_margin
-            .set_component(axis, (m.0 + m.1).max(inner_margin));
-
-        rules.multiply_with_margin(2, self.ideal_len.extract(axis));
-        rules.set_stretch(rules.stretch().max(Stretch::High));
-
+        if axis.is_vertical() == self.direction.is_vertical() {
+            self.child_size_min = rules.min_size();
+            self.child_size_ideal = rules.ideal_size();
+            let m = rules.margins_i32();
+            self.child_inter_margin = m.0.max(m.1).max(inner_margin);
+            rules.multiply_with_margin(2, self.ideal_visible);
+            rules.set_stretch(rules.stretch().max(Stretch::High));
+        }
         let (rules, offset, size) = frame.surround_with_margin(rules);
         self.frame_offset.set_component(axis, offset);
         self.frame_size.set_component(axis, size);
         rules
     }
 
-    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, mut align: AlignHints) {
         self.core.rect = rect;
 
         let mut child_size = rect.size - self.frame_size;
-        if child_size.0 >= self.ideal_len.0 * self.child_size_ideal.0 {
-            child_size.0 = self.child_size_ideal.0;
+        let num = if self.direction.is_horizontal() {
+            if child_size.0 >= self.ideal_visible * self.child_size_ideal {
+                child_size.0 = self.child_size_ideal;
+            } else {
+                child_size.0 = self.child_size_min;
+            }
+            let skip = child_size.0 + self.child_inter_margin;
+            align.horiz = None;
+            (rect.size.0 + skip - 1) / skip + 1
         } else {
-            child_size.0 = self.child_size_min.0;
-        }
-        if child_size.1 >= self.ideal_len.1 * self.child_size_ideal.1 {
-            child_size.1 = self.child_size_ideal.1;
-        } else {
-            child_size.1 = self.child_size_min.1;
-        }
+            if child_size.1 >= self.ideal_visible * self.child_size_ideal {
+                child_size.1 = self.child_size_ideal;
+            } else {
+                child_size.1 = self.child_size_min;
+            }
+            let skip = child_size.1 + self.child_inter_margin;
+            align.vert = None;
+            (rect.size.1 + skip - 1) / skip + 1
+        };
+
         self.child_size = child_size;
         self.align_hints = align;
 
-        let skip = child_size + self.child_inter_margin;
-        let vis_len = (rect.size + skip - Size::splat(1)).cwise_div(skip) + Size::splat(1);
-        self.alloc_len = vis_len;
-
         let old_num = self.widgets.len();
-        let num = usize::conv(vis_len.0) * usize::conv(vis_len.1);
+        let num = usize::conv(num);
         if old_num < num {
             debug!("allocating widgets (old len = {}, new = {})", old_num, num);
             *mgr |= TkAction::RECONFIGURE;
@@ -421,7 +477,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Layout fo
                     self.widgets.push(WidgetData { key: None, widget });
                 }
             });
-        } else if num + 64 <= self.widgets.len() {
+        } else if num + 64 <= old_num {
             // Free memory (rarely useful?)
             self.widgets.truncate(num);
         }
@@ -429,17 +485,17 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Layout fo
     }
 
     fn spatial_nav(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-        let cur_len = usize::conv(self.cur_len.0) * usize::conv(self.cur_len.1);
-        if cur_len == 0 {
+        if self.cur_len == 0 {
             return None;
         }
 
-        // TODO: if last row/col is completely hidden, this and cur_len should be less
-        let last = cur_len - 1;
+        // TODO: if last widget is completely hidden, this should be one less
+        let last = usize::conv(self.cur_len) - 1;
+        let iter_reverse = reverse ^ self.direction.is_reversed();
 
         if let Some(index) = from {
             let p = self.widgets[index].widget.rect().pos;
-            let index = match reverse {
+            let index = match iter_reverse {
                 false if index < last => index + 1,
                 false => 0,
                 true if 0 < index => index - 1,
@@ -447,22 +503,19 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Layout fo
             };
             let q = self.widgets[index].widget.rect().pos;
             match reverse {
-                false if q.1 > p.1 || (q.1 == p.1 && q.0 > p.0) => Some(index),
-                true if q.1 < p.1 || (q.1 == p.1 && q.0 < p.0) => Some(index),
+                false if q.1 >= p.1 && q.0 >= p.0 => Some(index),
+                true if q.1 <= p.1 && q.0 <= p.0 => Some(index),
                 _ => None,
             }
         } else {
             // Simplified version of logic in update_widgets
-            let skip = self.child_size + self.child_inter_margin;
-            let offset = self.scroll_offset();
-            let ci = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
-            let ri = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
-            let (cols, rows): (usize, usize) = (self.cur_len.0.cast(), self.cur_len.1.cast());
-            let mut data = (ci % cols) * rows + (ri % rows);
-            if reverse {
+            let skip = self.child_size.extract(self.direction) + self.child_inter_margin;
+            let offset = u64::conv(self.scroll_offset().extract(self.direction));
+            let mut data = usize::conv(offset / u64::conv(skip));
+            if iter_reverse {
                 data += last;
             }
-            Some(data % cur_len)
+            Some(data % usize::conv(self.cur_len))
         }
     }
 
@@ -472,12 +525,9 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Layout fo
         }
 
         let coord = coord + self.scroll.offset();
-        let num = usize::conv(self.cur_len.0) * usize::conv(self.cur_len.1);
-        for child in &self.widgets[..num] {
-            if child.key.is_some() {
-                if let Some(id) = child.widget.find_id(coord) {
-                    return Some(id);
-                }
+        for child in &self.widgets[..self.cur_len.cast()] {
+            if let Some(id) = child.widget.find_id(coord) {
+                return Some(id);
             }
         }
         Some(self.id())
@@ -486,11 +536,10 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Layout fo
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         let disabled = disabled || self.is_disabled();
         let offset = self.scroll_offset();
-        let num = usize::conv(self.cur_len.0) * usize::conv(self.cur_len.1);
         draw_handle.with_clip_region(self.core.rect, offset, &mut |draw_handle| {
-            for child in &self.widgets[..num] {
+            for child in &self.widgets[..self.cur_len.cast()] {
+                child.widget.draw(draw_handle, mgr, disabled);
                 if let Some(ref key) = child.key {
-                    child.widget.draw(draw_handle, mgr, disabled);
                     if self.is_selected(key) {
                         draw_handle.selection_box(child.widget.rect());
                     }
@@ -500,8 +549,8 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Layout fo
     }
 }
 
-impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> SendEvent
-    for MatrixView<T, V>
+impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> SendEvent
+    for ListView<D, T, V>
 {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
@@ -582,7 +631,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> SendEvent
                         }
                         return Response::Msg(ChildMsg::Child(key, msg));
                     } else {
-                        log::warn!("MatrixView: response from widget with no key");
+                        log::warn!("ListView: response from widget with no key");
                         return Response::None;
                     }
                 }
@@ -591,6 +640,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> SendEvent
             debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
             match event {
                 Event::HandleUpdate { .. } => {
+                    // TODO(opt): use the update payload to indicate which widgets need updating?
                     self.update_view(mgr);
                     return Response::Update;
                 }
@@ -633,58 +683,46 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> SendEvent
         let id = self.id();
         let (action, response) = if let Event::Command(cmd, _) = event {
             // Simplified version of logic in update_widgets
-            let (cols, rows): (usize, usize) = (self.cur_len.0.cast(), self.cur_len.1.cast());
-
-            let skip = self.child_size + self.child_inter_margin;
-            let offset = self.scroll_offset();
-            let first_col = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
-            let first_row = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
-            let col_start = (first_col / cols) * cols;
-            let row_start = (first_row / rows) * rows;
+            let len = usize::conv(self.cur_len);
+            let skip = self.child_size.extract(self.direction) + self.child_inter_margin;
+            let offset = u64::conv(self.scroll_offset().extract(self.direction));
+            let first_data = usize::conv(offset / u64::conv(skip));
+            let data_start = (first_data / len) * len;
 
             let cur = mgr
                 .nav_focus()
                 .and_then(|id| self.find_child(id))
                 .map(|index| {
-                    let mut col_index = col_start + index % cols;
-                    let mut row_index = row_start + index / cols;
-                    if col_index < first_col {
-                        col_index += cols;
+                    let mut data = data_start + index;
+                    if data < first_data {
+                        data += len;
                     }
-                    if row_index < first_row {
-                        row_index += rows;
-                    }
-                    (col_index, row_index)
+                    data
                 });
-            let last_col = self.data.col_len().wrapping_sub(1);
-            let last_row = self.data.row_len().wrapping_sub(1);
+            let last = self.data.len().wrapping_sub(1);
+            let is_vert = self.direction.is_vertical();
 
             let data = match (cmd, cur) {
-                _ if last_col == usize::MAX || last_row == usize::MAX => None,
+                _ if last == usize::MAX => None,
                 _ if !self.widgets[0].widget.key_nav() => None,
-                (Command::Home, _) => Some((0, 0)),
-                (Command::End, _) => Some((last_col, last_row)),
-                (Command::Left, Some((ci, ri))) if ci > 0 => Some((ci - 1, ri)),
-                (Command::Up, Some((ci, ri))) if ri > 0 => Some((ci, ri - 1)),
-                (Command::Right, Some((ci, ri))) if ci < last_col => Some((ci + 1, ri)),
-                (Command::Down, Some((ci, ri))) if ri < last_row => Some((ci, ri + 1)),
-                (Command::PageUp, Some((ci, ri))) if ri > 0 => {
-                    Some((ci, ri.saturating_sub(rows / 2)))
-                }
-                (Command::PageDown, Some((ci, ri))) if ri < last_row => {
-                    Some((ci, (ri + rows / 2).min(last_row)))
-                }
+                (Command::Home, _) => Some(0),
+                (Command::End, _) => Some(last),
+                (Command::Left, Some(cur)) if !is_vert && cur > 0 => Some(cur - 1),
+                (Command::Up, Some(cur)) if is_vert && cur > 0 => Some(cur - 1),
+                (Command::Right, Some(cur)) if !is_vert && cur < last => Some(cur + 1),
+                (Command::Down, Some(cur)) if is_vert && cur < last => Some(cur + 1),
+                (Command::PageUp, Some(cur)) if cur > 0 => Some(cur.saturating_sub(len / 2)),
+                (Command::PageDown, Some(cur)) if cur < last => Some((cur + len / 2).min(last)),
                 _ => None,
             };
-            let action = if let Some((ci, ri)) = data {
+            let action = if let Some(index) = data {
                 // Set nav focus to index and update scroll position
                 // Note: we update nav focus before updating widgets; this is fine
-                let index = (ci % cols) + (ri % rows) * cols;
-                mgr.set_nav_focus(self.widgets[index].widget.id());
+                mgr.set_nav_focus(self.widgets[index % len].widget.id());
 
-                let pos = self.core.rect.pos
-                    + self.frame_offset
-                    + skip.cwise_mul(Size(ci.cast(), ri.cast()));
+                let mut skip_off = Offset::ZERO;
+                skip_off.set_component(self.direction, skip);
+                let pos = self.core.rect.pos + self.frame_offset + skip_off * i32::conv(index);
                 let item_rect = Rect::new(pos, self.child_size);
                 self.scroll.focus_rect(item_rect, self.core.rect).1
             } else {

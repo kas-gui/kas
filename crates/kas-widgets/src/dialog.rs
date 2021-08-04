@@ -8,10 +8,10 @@
 //! KAS dialog boxes are pre-configured windows, usually allowing some
 //! customisation.
 
+use crate::{Label, TextButton};
 use kas::event::VirtualKeyCode;
 use kas::prelude::*;
 use kas::text::format::FormattableText;
-use kas::widget::{Label, TextButton};
 use kas::WindowId;
 
 #[derive(Clone, Debug, VoidMsg)]
@@ -69,7 +69,7 @@ impl<T: FormattableText + 'static> kas::Window for MessageBox<T> {
         &self.title
     }
 
-    fn icon(&self) -> Option<kas_core::Icon> {
+    fn icon(&self) -> Option<kas::Icon> {
         None // TODO
     }
 

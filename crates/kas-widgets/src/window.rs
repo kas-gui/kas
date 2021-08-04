@@ -7,8 +7,8 @@
 
 use kas::layout;
 use kas::prelude::*;
+use kas::Icon;
 use kas::{Future, WindowId};
-use kas_core::Icon;
 use smallvec::SmallVec;
 use std::error::Error;
 use std::fmt::{self, Debug};

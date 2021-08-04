@@ -6,10 +6,10 @@
 //! Sub-menu
 
 use super::Menu;
+use crate::Column;
 use kas::draw::TextClass;
 use kas::event::{self, Command, ConfigureManager};
 use kas::prelude::*;
-use kas::widget::Column;
 use kas::WindowId;
 
 /// A sub-menu

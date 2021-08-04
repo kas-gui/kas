@@ -32,14 +32,9 @@
     clippy::comparison_chain
 )]
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
-#![cfg_attr(feature = "min_spec", feature(min_specialization))]
-
-extern crate self as kas; // required for reliable self-reference in kas_macros
 
 // public implementations:
-pub mod adapter;
 pub mod prelude;
-pub mod widget;
 
 // macro re-exports
 pub mod macros;
@@ -54,3 +49,5 @@ pub use kas_core::{cast, class, dir, draw, event, geom, layout, text, updatable,
 pub use kas_core::{Boxed, Layout, LayoutData, Window};
 pub use kas_core::{CoreData, Future, Popup, TkAction, WidgetId, WindowId};
 pub use kas_core::{Widget, WidgetChildren, WidgetConfig, WidgetCore};
+
+pub use kas_widgets as widget;

@@ -3,11 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Widget library
-//!
-//! Unlike the rest of the `kas` crate, this module is not infrastructure but
-//! merely a library of useful widgets. It may be moved to a new crate in the
-//! future. Any implementation can be directly copied into user code if desired.
+//! KAS widget library
 //!
 //! ## Dialogs
 //!
@@ -51,6 +47,9 @@
 //! -   [`RadioBoxBare`]: `RadioBox` without its label
 //! -   [`DragHandle`]: a handle (e.g. for a slider, splitter or scrollbar)
 
+#![cfg_attr(doc_cfg, feature(doc_cfg))]
+#![cfg_attr(feature = "min_spec", feature(min_specialization))]
+
 mod button;
 #[cfg(feature = "canvas")]
 mod canvas;
@@ -80,6 +79,7 @@ mod stack;
 mod svg;
 mod window;
 
+pub mod adapter;
 pub mod view;
 
 pub use button::{Button, TextButton};

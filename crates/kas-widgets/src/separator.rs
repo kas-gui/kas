@@ -8,7 +8,7 @@
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
-use kas::widget::Menu;
+use crate::Menu;
 use kas::{event, prelude::*};
 
 /// A separator

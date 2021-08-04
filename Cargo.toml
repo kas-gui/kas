@@ -28,7 +28,7 @@ nightly = ["min_spec"]
 gat = ["kas-core/gat"]
 
 # Use min_specialization (enables accelerator underlining for AccelLabel)
-min_spec = []
+min_spec = ["kas-widgets/min_spec"]
 # Use full specialization
 spec = ["min_spec", "kas-core/spec"]
 
@@ -56,10 +56,10 @@ json = ["config", "kas-core/json"]
 ron = ["config", "kas-core/ron"]
 
 # Support canvas widget
-canvas = ["tiny-skia"]
+canvas = ["kas-widgets/canvas"]
 
 # Support SVG images
-svg = ["tiny-skia", "resvg", "usvg"]
+svg = ["kas-widgets/svg"]
 
 # Inject logging into macro-generated code.
 # Requires that all crates using these macros depend on the log crate.
@@ -70,19 +70,8 @@ stack_dst = ["kas-core/stack_dst"]
 winit = ["kas-core/winit"]
 
 [dependencies]
-log = "0.4"
-smallvec = "1.6.1"
-unicode-segmentation = "1.7"
-linear-map = "1.2.0"
-thiserror = "1.0.23"
-image = "0.23.14"
-tiny-skia = { version = "0.5.1", optional = true }
-resvg = { version = "0.15.0", optional = true }
-usvg = { version = "0.15.0", optional = true }
-
-[dependencies.kas-core]
-version = "0.9.1"
-path = "crates/kas-core"
+kas-core = { version = "0.9.1", path = "crates/kas-core" }
+kas-widgets = { version = "0.9.1", path = "crates/kas-widgets" }
 
 [workspace]
 members = [
@@ -90,4 +79,5 @@ members = [
     "crates/kas-macros",
     "crates/kas-theme",
     "crates/kas-wgpu",
+    "crates/kas-widgets",
 ]

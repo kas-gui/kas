@@ -5,7 +5,7 @@
 
 //! Message Map widget
 
-use crate::prelude::*;
+use kas::prelude::*;
 use std::fmt;
 use std::rc::Rc;
 
@@ -15,7 +15,7 @@ use std::rc::Rc;
 #[handler(msg=M, send=noauto)]
 pub struct MapResponse<W: Widget, M: 'static> {
     #[widget_core]
-    core: crate::CoreData,
+    core: kas::CoreData,
     #[widget]
     inner: W,
     map: Rc<dyn Fn(&mut Manager, W::Msg) -> Response<M>>,
@@ -65,7 +65,7 @@ impl<W: Widget, M> SendEvent for MapResponse<W, M> {
                     "Received by {} from {}: {:?}",
                     self.id(),
                     id,
-                    crate::util::TryFormat(&msg)
+                    kas::util::TryFormat(&msg)
                 );
                 (self.map)(mgr, msg)
             })
