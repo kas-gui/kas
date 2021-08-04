@@ -68,38 +68,38 @@ pub(crate) fn data_type(children: &[Child], layout: &LayoutArgs) -> Result<Token
     Ok(match layout.layout {
         LayoutType::Single => quote! {
             type Data = ();
-            type Solver = kas::layout::SingleSolver;
-            type Setter = kas::layout::SingleSetter;
+            type Solver = ::kas::layout::SingleSolver;
+            type Setter = ::kas::layout::SingleSetter;
         },
         l @ LayoutType::Right | l @ LayoutType::Left => quote! {
-            type Data = kas::layout::FixedRowStorage::<#cols>;
-            type Solver = kas::layout::RowSolver::<Self::Data>;
-            type Setter = kas::layout::RowSetter::<
+            type Data = ::kas::layout::FixedRowStorage::<#cols>;
+            type Solver = ::kas::layout::RowSolver::<Self::Data>;
+            type Setter = ::kas::layout::RowSetter::<
                 #l,
                 #col_temp,
                 Self::Data,
             >;
         },
         l @ LayoutType::Down | l @ LayoutType::Up => quote! {
-            type Data = kas::layout::FixedRowStorage::<#rows>;
-            type Solver = kas::layout::RowSolver::<Self::Data>;
-            type Setter = kas::layout::RowSetter::<
+            type Data = ::kas::layout::FixedRowStorage::<#rows>;
+            type Solver = ::kas::layout::RowSolver::<Self::Data>;
+            type Setter = ::kas::layout::RowSetter::<
                 #l,
                 #row_temp,
                 Self::Data,
             >;
         },
         LayoutType::Grid => quote! {
-            type Data = kas::layout::FixedGridStorage::<
+            type Data = ::kas::layout::FixedGridStorage::<
                 #cols,
                 #rows,
             >;
-            type Solver = kas::layout::GridSolver::<
-                [(kas::layout::SizeRules, u32, u32); #col_spans],
-                [(kas::layout::SizeRules, u32, u32); #row_spans],
+            type Solver = ::kas::layout::GridSolver::<
+                [(::kas::layout::SizeRules, u32, u32); #col_spans],
+                [(::kas::layout::SizeRules, u32, u32); #row_spans],
                 Self::Data,
             >;
-            type Setter = kas::layout::GridSetter::<
+            type Setter = ::kas::layout::GridSetter::<
                 #col_temp,
                 #row_temp,
                 Self::Data,
@@ -130,7 +130,7 @@ pub(crate) fn derive(
     let mut size = TokenStream::new();
     let mut set_rect = TokenStream::new();
     let mut draw = quote! {
-        use kas::{geom::Coord, WidgetCore};
+        use ::kas::{geom::Coord, WidgetCore};
         let rect = draw_handle.get_clip_rect();
         let pos1 = rect.pos;
         let pos2 = rect.pos2();
@@ -166,7 +166,7 @@ pub(crate) fn derive(
                 rows = rows.max(r1 as usize);
 
                 quote! {
-                    kas::layout::GridChildInfo {
+                    ::kas::layout::GridChildInfo {
                         col: #c0,
                         col_end: #c1,
                         row: #r0,
@@ -214,10 +214,10 @@ pub(crate) fn derive(
 
     let dim = match layout.layout {
         LayoutType::Single => quote! { () },
-        LayoutType::Right => quote! { (kas::dir::Right, #cols) },
-        LayoutType::Left => quote! { (kas::dir::Left, #cols) },
-        LayoutType::Down => quote! { (kas::dir::Down, #rows) },
-        LayoutType::Up => quote! { (kas::dir::Up, #rows) },
+        LayoutType::Right => quote! { (::kas::dir::Right, #cols) },
+        LayoutType::Left => quote! { (::kas::dir::Left, #cols) },
+        LayoutType::Down => quote! { (::kas::dir::Down, #rows) },
+        LayoutType::Up => quote! { (::kas::dir::Up, #rows) },
         LayoutType::Grid => quote! { (#cols, #rows) },
     };
 
@@ -240,13 +240,13 @@ pub(crate) fn derive(
     };
 
     Ok(quote! {
-        fn size_rules(&mut self, sh: &mut dyn kas::draw::SizeHandle, axis: kas::layout::AxisInfo)
-            -> kas::layout::SizeRules
+        fn size_rules(&mut self, sh: &mut dyn ::kas::draw::SizeHandle, axis: ::kas::layout::AxisInfo)
+            -> ::kas::layout::SizeRules
         {
-            use kas::WidgetCore;
-            use kas::layout::RulesSolver;
+            use ::kas::WidgetCore;
+            use ::kas::layout::RulesSolver;
 
-            let mut solver = <Self as kas::LayoutData>::Solver::new(
+            let mut solver = <Self as ::kas::LayoutData>::Solver::new(
                 axis,
                 #dim,
                 &mut #data,
@@ -257,15 +257,15 @@ pub(crate) fn derive(
 
         fn set_rect(
             &mut self,
-            _mgr: &mut kas::event::Manager,
-            rect: kas::geom::Rect,
-            align: kas::layout::AlignHints
+            _mgr: &mut ::kas::event::Manager,
+            rect: ::kas::geom::Rect,
+            align: ::kas::layout::AlignHints
         ) {
-            use kas::{WidgetCore, Widget};
-            use kas::layout::{RulesSetter};
+            use ::kas::{WidgetCore, Widget};
+            use ::kas::layout::{RulesSetter};
             self.core.rect = rect;
 
-            let mut setter = <Self as kas::LayoutData>::Setter::new(
+            let mut setter = <Self as ::kas::LayoutData>::Setter::new(
                 rect,
                 #dim,
                 align,
@@ -274,8 +274,8 @@ pub(crate) fn derive(
             #set_rect
         }
 
-        fn find_id(&self, coord: kas::geom::Coord) -> Option<kas::WidgetId> {
-            use kas::WidgetCore;
+        fn find_id(&self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
+            use ::kas::WidgetCore;
             if !self.rect().contains(coord) {
                 return None;
             }
@@ -285,8 +285,8 @@ pub(crate) fn derive(
 
         fn draw(
             &self,
-            draw_handle: &mut dyn kas::draw::DrawHandle,
-            mgr: &kas::event::ManagerState,
+            draw_handle: &mut dyn ::kas::draw::DrawHandle,
+            mgr: &::kas::event::ManagerState,
             disabled: bool,
         ) {
             #draw

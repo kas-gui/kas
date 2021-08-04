@@ -91,6 +91,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                         .error("multiple fields marked with #[layout_data]")
                         .emit();
                 } else if field.ty != parse_quote! { <Self as kas::LayoutData>::Data }
+                    && field.ty != parse_quote! { <Self as ::kas::LayoutData>::Data }
                     && field.ty != parse_quote! { <Self as LayoutData>::Data }
                 {
                     #[cfg(nightly)]
@@ -376,15 +377,15 @@ impl WidgetAttrArgs {
 
     fn match_align(ident: &Ident, horiz: bool) -> Result<TokenStream> {
         Ok(match ident {
-            ident if ident == "default" => quote! { kas::layout::Align::Default },
-            ident if horiz && ident == "left" => quote! { kas::layout::Align::TL },
-            ident if !horiz && ident == "top" => quote! { kas::layout::Align::TL },
+            ident if ident == "default" => quote! { ::kas::layout::Align::Default },
+            ident if horiz && ident == "left" => quote! { ::kas::layout::Align::TL },
+            ident if !horiz && ident == "top" => quote! { ::kas::layout::Align::TL },
             ident if ident == "centre" || ident == "center" => {
-                quote! { kas::layout::Align::Centre }
+                quote! { ::kas::layout::Align::Centre }
             }
-            ident if horiz && ident == "right" => quote! { kas::layout::Align::BR },
-            ident if !horiz && ident == "bottom" => quote! { kas::layout::Align::BR },
-            ident if ident == "stretch" => quote! { kas::layout::Align::Stretch },
+            ident if horiz && ident == "right" => quote! { ::kas::layout::Align::BR },
+            ident if !horiz && ident == "bottom" => quote! { ::kas::layout::Align::BR },
+            ident if ident == "stretch" => quote! { ::kas::layout::Align::Stretch },
             ident => {
                 return Err(Error::new(
                     ident.span(),
@@ -587,7 +588,7 @@ impl Default for WidgetConfig {
         WidgetConfig {
             key_nav: false,
             hover_highlight: false,
-            cursor_icon: parse_quote! { kas::event::CursorIcon::Default },
+            cursor_icon: parse_quote! { ::kas::event::CursorIcon::Default },
         }
     }
 }
@@ -697,10 +698,10 @@ impl ToTokens for LayoutType {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(match self {
             LayoutType::Single | LayoutType::Grid => unreachable!(),
-            LayoutType::Right => quote! { kas::dir::Right },
-            LayoutType::Left => quote! { kas::dir::Left },
-            LayoutType::Down => quote! { kas::dir::Down },
-            LayoutType::Up => quote! { kas::dir::Up },
+            LayoutType::Right => quote! { ::kas::dir::Right },
+            LayoutType::Left => quote! { ::kas::dir::Left },
+            LayoutType::Down => quote! { ::kas::dir::Down },
+            LayoutType::Up => quote! { ::kas::dir::Up },
         })
     }
 }
@@ -817,7 +818,7 @@ impl HandlerArgs {
 
 impl Default for HandlerArgs {
     fn default() -> Self {
-        let msg = parse_quote! { kas::event::VoidMsg };
+        let msg = parse_quote! { ::kas::event::VoidMsg };
         HandlerArgs::new(msg, true, true)
     }
 }

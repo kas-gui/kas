@@ -111,17 +111,17 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             )
         });
     let mut toks = quote! {
-        impl #impl_generics kas::WidgetCore
+        impl #impl_generics ::kas::WidgetCore
             for #name #ty_generics #where_clause
         {
             fn as_any(&self) -> &dyn std::any::Any { self }
             fn as_any_mut(&mut self) -> &mut dyn std::any::Any { self }
 
-            fn core_data(&self) -> &kas::CoreData {
+            fn core_data(&self) -> &::kas::CoreData {
                 #core_data
             }
 
-            fn core_data_mut(&mut self) -> &mut kas::CoreData {
+            fn core_data_mut(&mut self) -> &mut ::kas::CoreData {
                 #core_data_mut
             }
 
@@ -129,18 +129,18 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 #widget_name
             }
 
-            fn as_widget(&self) -> &dyn kas::WidgetConfig { self }
-            fn as_widget_mut(&mut self) -> &mut dyn kas::WidgetConfig { self }
+            fn as_widget(&self) -> &dyn ::kas::WidgetConfig { self }
+            fn as_widget_mut(&mut self) -> &mut dyn ::kas::WidgetConfig { self }
         }
     };
 
     if derive_inner {
         let inner = opt_inner.as_ref().unwrap();
         toks.append_all(quote! {
-            impl #impl_generics kas::WidgetChildren
+            impl #impl_generics ::kas::WidgetChildren
                 for #name #ty_generics #where_clause
             {
-                fn first_id(&self) -> kas::WidgetId {
+                fn first_id(&self) -> ::kas::WidgetId {
                     self.#inner.first_id()
                 }
                 fn record_first_id(&mut self, id: WidgetId) {
@@ -149,10 +149,10 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 fn num_children(&self) -> usize {
                     self.#inner.num_children()
                 }
-                fn get_child(&self, index: usize) -> Option<&dyn kas::WidgetConfig> {
+                fn get_child(&self, index: usize) -> Option<&dyn ::kas::WidgetConfig> {
                     self.#inner.get_child(index)
                 }
-                fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn kas::WidgetConfig> {
+                fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn ::kas::WidgetConfig> {
                     self.#inner.get_child_mut(index)
                 }
             }
@@ -176,22 +176,22 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
 
         toks.append_all(quote! {
-            impl #impl_generics kas::WidgetChildren
+            impl #impl_generics ::kas::WidgetChildren
                 for #name #ty_generics #where_clause
             {
-                fn first_id(&self) -> kas::WidgetId {
+                fn first_id(&self) -> ::kas::WidgetId {
                     #first_id
                 }
                 fn num_children(&self) -> usize {
                     #count
                 }
-                fn get_child(&self, _index: usize) -> Option<&dyn kas::WidgetConfig> {
+                fn get_child(&self, _index: usize) -> Option<&dyn ::kas::WidgetConfig> {
                     match _index {
                         #get_rules
                         _ => None
                     }
                 }
-                fn get_child_mut(&mut self, _index: usize) -> Option<&mut dyn kas::WidgetConfig> {
+                fn get_child_mut(&mut self, _index: usize) -> Option<&mut dyn ::kas::WidgetConfig> {
                     match _index {
                         #get_mut_rules
                         _ => None
@@ -207,7 +207,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         let cursor_icon = config.cursor_icon;
 
         toks.append_all(quote! {
-            impl #impl_generics kas::WidgetConfig
+            impl #impl_generics ::kas::WidgetConfig
                     for #name #ty_generics #where_clause
             {
                 fn key_nav(&self) -> bool {
@@ -216,7 +216,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 fn hover_highlight(&self) -> bool {
                     #hover_highlight
                 }
-                fn cursor_icon(&self) -> kas::event::CursorIcon {
+                fn cursor_icon(&self) -> ::kas::event::CursorIcon {
                     #cursor_icon
                 }
             }
@@ -226,7 +226,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     if derive_inner {
         let inner = opt_inner.as_ref().unwrap();
         toks.append_all(quote! {
-            impl #impl_generics kas::Layout
+            impl #impl_generics ::kas::Layout
                     for #name #ty_generics #where_clause
             {
                 #[inline]
@@ -258,7 +258,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     } else if let Some(ref layout) = args.layout {
         match layout::data_type(&args.children, layout) {
             Ok(dt) => toks.append_all(quote! {
-                impl #impl_generics kas::LayoutData
+                impl #impl_generics ::kas::LayoutData
                         for #name #ty_generics #where_clause
                 {
                     #dt
@@ -269,7 +269,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
         match layout::derive(&args.children, layout, &args.layout_data) {
             Ok(fns) => toks.append_all(quote! {
-                impl #impl_generics kas::Layout
+                impl #impl_generics ::kas::Layout
                         for #name #ty_generics #where_clause
                 {
                     #fns
@@ -347,7 +347,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 quote! {}
             };
             toks.append_all(quote! {
-                impl #impl_generics kas::event::Handler
+                impl #impl_generics ::kas::event::Handler
                         for #name #ty_generics #where_clause
                 {
                     type Msg = #msg;
@@ -372,7 +372,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                                     "Received by {} from {}: {:?}",
                                     self.id(),
                                     id,
-                                    kas::util::TryFormat(&msg)
+                                    ::kas::util::TryFormat(&msg)
                                 );
                                 self.#h(mgr, msg)
                             })
@@ -391,28 +391,28 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 }
 
                 quote! {
-                    use kas::{WidgetCore, event::Response};
+                    use ::kas::{WidgetCore, event::Response};
                     if self.is_disabled() {
                         return Response::Unhandled;
                     }
 
                     #ev_to_num {
                         debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
-                        kas::event::Manager::handle_generic(self, mgr, event)
+                        ::kas::event::Manager::handle_generic(self, mgr, event)
                     }
                 }
             };
 
             toks.append_all(quote! {
-                impl #impl_generics kas::event::SendEvent
+                impl #impl_generics ::kas::event::SendEvent
                         for #name #ty_generics #where_clause
                 {
                     fn send(
                         &mut self,
-                        mgr: &mut kas::event::Manager,
-                        id: kas::WidgetId,
-                        event: kas::event::Event
-                    ) -> kas::event::Response<Self::Msg>
+                        mgr: &mut ::kas::event::Manager,
+                        id: ::kas::WidgetId,
+                        event: ::kas::event::Event
+                    ) -> ::kas::event::Response<Self::Msg>
                     {
                         #send_impl
                     }
@@ -421,7 +421,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
 
         toks.append_all(quote! {
-            impl #impl_generics kas::Widget for #name #ty_generics #where_clause {}
+            impl #impl_generics ::kas::Widget for #name #ty_generics #where_clause {}
         });
     }
 
@@ -466,16 +466,16 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         };
 
         if args.derive.has_bool {
-            let wc = extended_where_clause(parse_quote! { #ty: kas::class::HasBool });
+            let wc = extended_where_clause(parse_quote! { #ty: ::kas::class::HasBool });
             toks.append_all(quote! {
-                impl #impl_generics kas::class::HasBool for #name #ty_generics #wc {
+                impl #impl_generics ::kas::class::HasBool for #name #ty_generics #wc {
                     #[inline]
                     fn get_bool(&self) -> bool {
                         self.#member.get_bool()
                     }
 
                     #[inline]
-                    fn set_bool(&mut self, state: bool) -> kas::TkAction {
+                    fn set_bool(&mut self, state: bool) -> ::kas::TkAction {
                         self.#member.set_bool(state)
                     }
                 }
@@ -483,9 +483,9 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
 
         if args.derive.has_str {
-            let wc = extended_where_clause(parse_quote! { #ty: kas::class::HasStr });
+            let wc = extended_where_clause(parse_quote! { #ty: ::kas::class::HasStr });
             toks.append_all(quote! {
-                impl #impl_generics kas::class::HasStr for #name #ty_generics #wc {
+                impl #impl_generics ::kas::class::HasStr for #name #ty_generics #wc {
                     #[inline]
                     fn get_str(&self) -> &str {
                         self.#member.get_str()
@@ -500,16 +500,16 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
 
         if args.derive.has_string {
-            let wc = extended_where_clause(parse_quote! { #ty: kas::class::HasString });
+            let wc = extended_where_clause(parse_quote! { #ty: ::kas::class::HasString });
             toks.append_all(quote! {
-                impl #impl_generics kas::class::HasString for #name #ty_generics #wc {
+                impl #impl_generics ::kas::class::HasString for #name #ty_generics #wc {
                     #[inline]
-                    fn set_str(&mut self, text: &str) -> kas::TkAction {
+                    fn set_str(&mut self, text: &str) -> ::kas::TkAction {
                         self.#member.set_str(text)
                     }
 
                     #[inline]
-                    fn set_string(&mut self, text: String) -> kas::TkAction {
+                    fn set_string(&mut self, text: String) -> ::kas::TkAction {
                         self.#member.set_string(text)
                     }
                 }
@@ -517,11 +517,11 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
 
         if args.derive.set_accel {
-            let wc = extended_where_clause(parse_quote! { #ty: kas::class::SetAccel });
+            let wc = extended_where_clause(parse_quote! { #ty: ::kas::class::SetAccel });
             toks.append_all(quote! {
-                impl #impl_generics kas::class::SetAccel for #name #ty_generics #wc {
+                impl #impl_generics ::kas::class::SetAccel for #name #ty_generics #wc {
                     #[inline]
-                    fn set_accel_string(&mut self, accel: AccelString) -> kas::TkAction {
+                    fn set_accel_string(&mut self, accel: AccelString) -> ::kas::TkAction {
                         self.#member.set_accel_string(accel)
                     }
                 }
@@ -617,8 +617,8 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     // fields of anonymous struct:
     let mut field_toks = quote! {
-        #[widget_core] core: kas::CoreData,
-        #[layout_data] layout_data: <Self as kas::LayoutData>::Data,
+        #[widget_core] core: ::kas::CoreData,
+        #[layout_data] layout_data: <Self as ::kas::LayoutData>::Data,
     };
     // initialisers for these fields:
     let mut field_val_toks = quote! {
@@ -638,7 +638,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         let msg_ident: Ident = parse_quote! { Msg };
         for (name, body) in &args.impls {
             if name == &Some(parse_quote! { Handler })
-                || name == &Some(parse_quote! { kas::Handler })
+                || name == &Some(parse_quote! { ::kas::Handler })
             {
                 handle = false;
 
@@ -654,7 +654,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     }
                 }
             } else if name == &Some(parse_quote! { SendEvent })
-                || name == &Some(parse_quote! { kas::SendEvent })
+                || name == &Some(parse_quote! { ::kas::SendEvent })
             {
                 send = false;
             }
@@ -710,7 +710,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
                 if let Some(ref wattr) = attr {
                     if let Some(tyr) = gen_msg {
-                        handler_clauses.push(parse_quote! { #ty: kas::Widget<Msg = #tyr> });
+                        handler_clauses.push(parse_quote! { #ty: ::kas::Widget<Msg = #tyr> });
                     } else {
                         // No typing. If a handler is specified, then the child must implement
                         // Handler<Msg = X> where the handler takes type X; otherwise
@@ -718,7 +718,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         if let Some(ref handler) = wattr.args.handler {
                             if let Some(ty_bound) = find_handler_ty(handler, &args.impls) {
                                 handler_clauses
-                                    .push(parse_quote! { #ty: kas::Widget<Msg = #ty_bound> });
+                                    .push(parse_quote! { #ty: ::kas::Widget<Msg = #ty_bound> });
                             } else {
                                 return quote! {}.into(); // exit after emitting error
                             }
@@ -729,16 +729,18 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                                 .generics
                                 .params
                                 .push(syn::GenericParam::Type(tyr.clone().into()));
-                            handler_clauses.push(parse_quote! { #ty: kas::Widget<Msg = #tyr> });
+                            handler_clauses.push(parse_quote! { #ty: ::kas::Widget<Msg = #tyr> });
                             handler_clauses.push(parse_quote! { #msg: From<#tyr> });
                         }
                     }
 
                     if let Some(mut bound) = gen_bound {
-                        bound.bounds.push(parse_quote! { kas::Widget });
+                        bound.bounds.push(parse_quote! { ::kas::Widget });
                         args.generics.params.push(parse_quote! { #ty: #bound });
                     } else {
-                        args.generics.params.push(parse_quote! { #ty: kas::Widget });
+                        args.generics
+                            .params
+                            .push(parse_quote! { #ty: ::kas::Widget });
                     }
                 } else {
                     args.generics.params.push(parse_quote! { #ty });
@@ -790,7 +792,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // TODO: we should probably not rely on recursive macro expansion here!
     // (I.e. use direct code generation for Widget derivation, instead of derive.)
     let toks = (quote! { {
-        #[derive(Debug, kas::macros::Widget)]
+        #[derive(Debug, ::kas::macros::Widget)]
         #handler
         #extra_attrs
         struct AnonWidget #impl_generics #where_clause {
@@ -818,10 +820,10 @@ pub fn derive_empty_msg(input: proc_macro::TokenStream) -> proc_macro::TokenStre
     let name = &ast.ident;
 
     let toks = quote! {
-        impl #impl_generics From<kas::event::VoidMsg>
+        impl #impl_generics From<::kas::event::VoidMsg>
             for #name #ty_generics #where_clause
         {
-            fn from(_: kas::event::VoidMsg) -> Self {
+            fn from(_: ::kas::event::VoidMsg) -> Self {
                 unreachable!()
             }
         }
