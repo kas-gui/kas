@@ -15,10 +15,10 @@ use kas::draw::{Draw, DrawIface, PassId};
 use kas::event::{self, Command};
 use kas::geom::{DVec2, Vec2, Vec3};
 use kas::prelude::*;
+use kas::shell::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawPipe};
+use kas::shell::Options;
 use kas::widget::adapter::ReserveP;
 use kas::widget::{Label, Slider, Window};
-use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawPipe};
-use kas_wgpu::Options;
 
 struct Shaders {
     vertex: ShaderModule,
@@ -27,12 +27,12 @@ struct Shaders {
 
 impl Shaders {
     fn new(device: &wgpu::Device) -> Self {
-        let vertex = device.create_shader_module(&include_spirv!("mandlebrot/shader.vert.spv"));
+        let vertex = device.create_shader_module(&include_spirv!("shader.vert.spv"));
         // Note: we don't use wgpu::include_spirv since it forces validation,
         // which cannot currently deal with double precision floats (dvec2).
         let fragment = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("fragment shader"),
-            source: wgpu::util::make_spirv(include_bytes!("mandlebrot/shader.frag.spv")),
+            source: wgpu::util::make_spirv(include_bytes!("shader.frag.spv")),
             flags: Default::default(),
         });
 
@@ -171,7 +171,7 @@ impl CustomPipe for Pipe {
         // RenderPass we cannot currently create buffers in render().
         // See https://github.com/gfx-rs/wgpu-rs/issues/188
         for pass in &mut window.passes {
-            if pass.0.len() > 0 {
+            if !pass.0.is_empty() {
                 let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: None,
                     contents: bytemuck::cast_slice(&pass.0),
@@ -378,8 +378,8 @@ impl event::Handler for Mandlebrot {
                 // α_w' = (1/α) * α_w
                 // δ_w' = δ_w - α_w' * α_v * δ + (α_w - α_w') δ_v
                 // where x' is the "new x".
-                let new_alpha = self.alpha.complex_div(alpha.into());
-                self.delta = self.delta - new_alpha.complex_mul(delta.into()) * self.view_alpha
+                let new_alpha = self.alpha.complex_div(alpha);
+                self.delta = self.delta - new_alpha.complex_mul(delta) * self.view_alpha
                     + (self.alpha - new_alpha).complex_mul(self.view_delta);
                 self.alpha = new_alpha;
 
@@ -447,12 +447,12 @@ impl MandlebrotWindow {
     }
 }
 
-fn main() -> Result<(), kas_wgpu::Error> {
+fn main() -> Result<(), kas::shell::Error> {
     env_logger::init();
 
-    let theme = kas_theme::FlatTheme::new().with_colours("dark");
+    let theme = kas::theme::FlatTheme::new().with_colours("dark");
 
-    kas_wgpu::Toolkit::new_custom(PipeBuilder, theme, Options::from_env())?
+    kas::shell::Toolkit::new_custom(PipeBuilder, theme, Options::from_env())?
         .with(MandlebrotWindow::new_window())?
         .run()
 }

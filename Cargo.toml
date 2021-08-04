@@ -10,7 +10,7 @@ documentation = "https://docs.rs/kas/"
 keywords = ["gui"]
 categories = ["gui"]
 repository = "https://github.com/kas-gui/kas"
-exclude = ["/screenshots"]
+exclude = ["/examples"]
 
 [package.metadata.docs.rs]
 features = ["nightly", "stack_dst", "winit", "markdown"]
@@ -19,7 +19,12 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 # RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=nightly,internal_doc,markdown,yaml,json --all --no-deps --open
 
 [features]
-default = []
+default = ["theme", "wgpu", "yaml", "svg", "canvas", "markdown"]
+
+# Enable theme support:
+theme = ["kas-theme"]
+#Enable WGPU backend:
+wgpu = ["kas-wgpu"]
 
 # Enables usage of unstable Rust features
 nightly = ["min_spec"]
@@ -72,6 +77,13 @@ winit = ["kas-core/winit"]
 [dependencies]
 kas-core = { version = "0.9.1", path = "crates/kas-core" }
 kas-widgets = { version = "0.9.1", path = "crates/kas-widgets" }
+kas-theme = { version = "0.9.0", path = "crates/kas-theme", optional = true }
+kas-wgpu = { version = "0.9.0", path = "crates/kas-wgpu", optional = true }
+
+[dev-dependencies]
+chrono = "0.4"
+env_logger = "0.8"
+log = "0.4"
 
 [workspace]
 members = [
@@ -80,4 +92,5 @@ members = [
     "crates/kas-theme",
     "crates/kas-wgpu",
     "crates/kas-widgets",
+    "examples/mandlebrot",
 ]

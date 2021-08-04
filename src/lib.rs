@@ -46,3 +46,9 @@ pub use kas_core::{CoreData, Future, Popup, TkAction, WidgetId, WindowId};
 pub use kas_core::{Widget, WidgetChildren, WidgetConfig, WidgetCore};
 
 pub use kas_widgets as widget;
+
+#[cfg(feature = "theme")]
+pub use kas_theme as theme;
+
+#[cfg(feature = "wgpu")]
+pub use kas_wgpu as shell;
