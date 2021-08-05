@@ -321,15 +321,14 @@ impl<'a> Manager<'a> {
 
         // First priority goes to the widget with char focus and/or with nav
         // focus (note: char focus implies nav focus).
-        if let Some(id) = self.state.char_focus() {
+        if let Some(id) = self.state.sel_focus {
             if let Some(cmd) = opt_command {
-                let event = Event::Command(cmd, shift);
-                if self.try_send_event(widget, id, event) {
+                if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
                     return;
                 }
             }
         } else if !self.state.modifiers.alt() {
-            if let Some(id) = self.state.nav_focus {
+            if let Some(id) = self.state.sel_focus.or(self.state.nav_focus) {
                 if vkey == VK::Space || vkey == VK::Return || vkey == VK::NumpadEnter {
                     self.add_key_depress(scancode, id);
                     self.send_event(widget, id, Event::Activate);
@@ -343,16 +342,15 @@ impl<'a> Manager<'a> {
         }
 
         if let Some(cmd) = opt_command {
-            let ev = Event::Command(cmd, shift);
             // Next priority goes to any popup present
             if let Some(id) = self.state.popups.last().map(|popup| popup.1.parent) {
-                if self.try_send_event(widget, id, ev.clone()) {
+                if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
                     return;
                 }
             }
             // Then to the nav fallback
             if let Some(id) = self.state.nav_fallback {
-                if self.try_send_event(widget, id, ev) {
+                if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
                     return;
                 }
             }
