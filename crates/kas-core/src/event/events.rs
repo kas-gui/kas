@@ -160,7 +160,9 @@ pub enum Event {
     PopupRemoved(WindowId),
     /// Sent when a widget receives keyboard navigation focus
     ///
-    /// The widget should reply with [`Response::Focus`].
+    /// The widget should reply with [`Response::Focus`] (this is done by
+    /// [`Manager::handle_generic`]). It may also be used as an opportunity to
+    /// request char focus.
     NavFocus,
 }
 
