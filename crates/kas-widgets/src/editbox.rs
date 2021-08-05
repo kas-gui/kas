@@ -1045,6 +1045,11 @@ impl<G: EditGuard> HasStr for EditField<G> {
 
 impl<G: EditGuard> HasString for EditField<G> {
     fn set_string(&mut self, string: String) -> TkAction {
+        // TODO: make text.set_string report bool for is changed?
+        if *self.text.text() == string {
+            return TkAction::empty();
+        }
+
         self.text.set_string(string);
         if kas::text::fonts::fonts().num_faces() > 0 {
             if let Some(req) = self.text.prepare() {
