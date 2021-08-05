@@ -443,19 +443,45 @@ impl<'a> Manager<'a> {
 
     /// Request character-input focus
     ///
+    /// Returns true on success or when the widget already had char focus.
+    ///
     /// Character data is sent to the widget with char focus via
     /// [`Event::ReceivedCharacter`] and [`Event::Command`].
     ///
-    /// This method returns true on success, false if focus is unavailable.
-    /// When granted, focus persists until either another widget requests focus
-    /// or the widget's event handler returns `Response::Unhandled` on event
-    /// `Event::Control(ControlKey::Escape)`.
+    /// Char focus implies sel focus (see [`Self::request_sel_focus`]) and
+    /// navigation focus.
+    ///
+    /// When char focus is lost, [`Event::LostCharFocus`] is sent.
+    #[inline]
     pub fn request_char_focus(&mut self, id: WidgetId) -> bool {
         if !self.read_only {
-            self.set_char_focus(Some(id));
+            self.set_sel_focus(id, true);
             true
         } else {
-            false
+            self.state.sel_focus == Some(id) && self.state.char_focus
+        }
+    }
+
+    /// Request selection focus
+    ///
+    /// Returns true on success or when the widget already had sel focus.
+    ///
+    /// To prevent multiple simultaneous selections (e.g. of text) in the UI,
+    /// only widgets with "selection focus" are allowed to select things.
+    /// Selection focus is implied by character focus. [`Event::LostSelFocus`]
+    /// is sent when selection focus is lost; in this case any existing
+    /// selection should be cleared.
+    ///
+    /// Selection focus implies navigation focus.
+    ///
+    /// When char focus is lost, [`Event::LostSelFocus`] is sent.
+    #[inline]
+    pub fn request_sel_focus(&mut self, id: WidgetId) -> bool {
+        if !self.read_only {
+            self.set_sel_focus(id, false);
+            true
+        } else {
+            self.state.sel_focus == Some(id)
         }
     }
 
@@ -550,7 +576,7 @@ impl<'a> Manager<'a> {
         }
 
         if self.state.char_focus && self.state.sel_focus != Some(id) {
-            self.set_char_focus(None);
+            self.clear_char_focus();
         }
         self.redraw(start_id);
         true

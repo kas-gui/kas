@@ -440,8 +440,8 @@ impl<'a> Manager<'a> {
             HoveredFileCancelled => ,
             */
             ReceivedCharacter(c) => {
-                if let Some(id) = self.state.sel_focus {
-                    if self.state.char_focus {
+                if self.state.char_focus {
+                    if let Some(id) = self.state.sel_focus {
                         // Filter out control codes (Unicode 5.11). These may be
                         // generated from combinations such as Ctrl+C by some other
                         // layer. We use our own shortcut system instead.

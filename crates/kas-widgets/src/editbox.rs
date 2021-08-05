@@ -1122,15 +1122,17 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
                 TextInputAction::Cursor(coord, anchor, clear, repeats) => {
                     let mut response = Response::None;
                     self.set_edit_pos_from_coord(mgr, coord);
-                    if anchor {
-                        self.selection.set_anchor();
-                        response = request_focus(self, mgr);
-                    }
-                    if clear {
-                        self.selection.set_empty();
-                    }
-                    if repeats > 1 {
-                        self.selection.expand(&self.text, repeats);
+                    if self.has_key_focus || mgr.request_sel_focus(self.id()) {
+                        if anchor {
+                            self.selection.set_anchor();
+                            response = request_focus(self, mgr);
+                        }
+                        if clear {
+                            self.selection.set_empty();
+                        }
+                        if repeats > 1 {
+                            self.selection.expand(&self.text, repeats);
+                        }
                     }
                     response
                 }

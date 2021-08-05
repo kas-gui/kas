@@ -289,7 +289,7 @@ impl<'a> Manager<'a> {
         let shift = self.state.modifiers.shift();
 
         if vkey == VK::Tab {
-            self.set_char_focus(None);
+            self.clear_char_focus();
             if !self.next_nav_focus(widget.as_widget(), shift) {
                 self.clear_nav_focus();
             }
@@ -306,7 +306,7 @@ impl<'a> Manager<'a> {
                     trace!("Send to {}: {:?}", id, event);
                     if let Response::Unhandled = widget.send(self, id, event) {
                         if cmd == Command::Escape {
-                            self.set_char_focus(None)
+                            self.clear_char_focus();
                         }
                     }
                 }
@@ -439,46 +439,43 @@ impl<'a> Manager<'a> {
         })
     }
 
-    fn set_char_focus(&mut self, wid: Option<WidgetId>) {
-        trace!(
-            "Manager::set_char_focus: char_focus={:?}, new={:?}",
-            self.state.char_focus,
-            wid
-        );
-
-        if let Some(id) = wid {
-            self.set_nav_focus(id);
+    fn clear_char_focus(&mut self) {
+        trace!("Manager::clear_char_focus");
+        if self.state.char_focus {
+            if let Some(id) = self.state.sel_focus {
+                // If widget has char focus, this is lost
+                self.state.char_focus = false;
+                self.state.pending.push(Pending::LostCharFocus(id));
+            }
         }
+    }
 
-        if self.state.sel_focus == wid {
-            // We cannot lose char focus here
-            // Corner case: char_focus == true but sel_focus == None: ignore char_focus
-            self.state.char_focus = wid.is_some();
+    // Set selection focus to `wid`; if `char_focus` also set that
+    fn set_sel_focus(&mut self, wid: WidgetId, char_focus: bool) {
+        trace!(
+            "Manager::set_sel_focus: wid={}, char_focus={}",
+            wid,
+            char_focus
+        );
+        self.set_nav_focus(wid);
+
+        if self.state.sel_focus == Some(wid) {
+            self.state.char_focus = self.state.char_focus || char_focus;
             return;
         }
 
-        let had_char_focus = self.state.char_focus;
-        self.state.char_focus = wid.is_some();
-
         if let Some(id) = self.state.sel_focus {
-            debug_assert!(Some(id) != wid);
-
-            if had_char_focus {
+            if self.state.char_focus {
                 // If widget has char focus, this is lost
                 self.state.pending.push(Pending::LostCharFocus(id));
-            }
-
-            if wid.is_none() {
-                return;
             }
 
             // Selection focus is lost if another widget receives char focus
             self.state.pending.push(Pending::LostSelFocus(id));
         }
 
-        if let Some(id) = wid {
-            self.state.sel_focus = Some(id);
-        }
+        self.state.char_focus = char_focus;
+        self.state.sel_focus = Some(wid);
     }
 
     fn send_event<W: Widget + ?Sized>(&mut self, widget: &mut W, id: WidgetId, event: Event) {
