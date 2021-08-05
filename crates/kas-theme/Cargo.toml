@@ -12,10 +12,10 @@ readme = "README.md"
 documentation = "https://docs.rs/kas-theme/"
 
 [package.metadata.docs.rs]
-features = ["stack_dst"]
+features = ["nightly", "config"]
 rustdoc-args = ["--cfg", "doc_cfg"]
 # To build locally:
-# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=internal_doc,stack_dst --open
+# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=internal_doc,nightly,config --open
 
 [features]
 default = ["stack_dst"]

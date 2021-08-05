@@ -13,7 +13,7 @@ repository = "https://github.com/kas-gui/kas"
 exclude = ["/screenshots"]
 
 [package.metadata.docs.rs]
-features = ["nightly", "winit", "markdown"]
+features = ["min_spec", "canvas", "svg"]
 rustdoc-args = ["--cfg", "doc_cfg"]
 # To build locally:
 # RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=canvas,svg --no-deps --open

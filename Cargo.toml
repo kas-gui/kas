@@ -13,13 +13,13 @@ repository = "https://github.com/kas-gui/kas"
 exclude = ["/examples"]
 
 [package.metadata.docs.rs]
-features = ["nightly", "stack_dst", "winit", "markdown"]
+features = ["nightly"]
 rustdoc-args = ["--cfg", "doc_cfg"]
 # To build locally:
-# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=nightly,internal_doc,markdown,yaml,json --all --no-deps --open
+# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=nightly,internal_doc --all --no-deps --open
 
 [features]
-default = ["theme", "wgpu", "yaml", "svg", "canvas", "markdown"]
+default = ["theme", "wgpu", "winit", "yaml", "svg", "canvas", "clipboard", "markdown", "shaping", "stack_dst"]
 
 # Enable theme support:
 theme = ["kas-theme"]
@@ -30,10 +30,10 @@ wgpu = ["kas-wgpu"]
 dynamic = ["kas-dylib"]
 
 # Enables usage of unstable Rust features
-nightly = ["min_spec"]
+nightly = ["min_spec", "kas-theme/nightly", "kas-wgpu/nightly", "unsize"]
 
 # Use Generic Associated Types (this is too unstable to include in nightly!)
-gat = ["kas-core/gat"]
+gat = ["kas-core/gat", "kas-theme/gat", "kas-wgpu/gat"]
 
 # Use min_specialization (enables accelerator underlining for AccelLabel)
 min_spec = ["kas-widgets/min_spec"]
@@ -44,15 +44,21 @@ spec = ["min_spec", "kas-core/spec"]
 # This API is not intended for use by end-user applications and
 # thus is omitted from built documentation by default.
 # This flag does not change the API, only built documentation.
-internal_doc = ["kas-core/internal_doc"]
+internal_doc = ["kas-core/internal_doc", "kas-theme/internal_doc"]
+
+# Enables clipboard read/write
+clipboard = ["kas-wgpu/clipboard"]
 
 # Enable Markdown parsing
 markdown = ["kas-core/markdown"]
 
+# Enable text shaping
+shaping = ["kas-wgpu/shaping"]
+
 # Enable config read/write
 #TODO(cargo): once weak-dep-features (cargo#8832) is stable, add "winit?/serde"
 # and remove the serde feature requirement under dependencies.winit.
-config = ["kas-core/config"]
+config = ["kas-core/config", "kas-theme/config"]
 
 # Enable support for YAML (de)serialisation
 yaml = ["config", "kas-core/yaml"]
@@ -73,7 +79,10 @@ svg = ["kas-widgets/svg"]
 # Requires that all crates using these macros depend on the log crate.
 macros_log = ["kas-core/macros_log"]
 
-stack_dst = ["kas-core/stack_dst"]
+stack_dst = ["kas-core/stack_dst", "kas-theme/stack_dst", "kas-wgpu/stack_dst"]
+
+# Use the unstable 'unsize' feature
+unsize = ["kas-theme/unsize", "kas-wgpu/unsize"]
 
 winit = ["kas-core/winit"]
 
@@ -81,8 +90,14 @@ winit = ["kas-core/winit"]
 kas-core = { version = "0.9.1", path = "crates/kas-core" }
 kas-dylib = { version = "0.9.1", path = "crates/kas-dylib", optional = true }
 kas-widgets = { version = "0.9.1", path = "crates/kas-widgets" }
-kas-theme = { version = "0.9.0", path = "crates/kas-theme", optional = true }
-kas-wgpu = { version = "0.9.0", path = "crates/kas-wgpu", optional = true }
+kas-theme = { version = "0.9.0", path = "crates/kas-theme", optional = true, default-features = false }
+
+[dependencies.kas-wgpu]
+version = "0.9.0"
+path = "crates/kas-wgpu"
+optional = true
+default-features = false
+features = ["raster"]
 
 [dev-dependencies]
 chrono = "0.4"
