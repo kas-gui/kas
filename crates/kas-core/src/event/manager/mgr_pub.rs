@@ -43,7 +43,7 @@ impl ManagerState {
     ///
     /// Note that `char_focus` implies `sel_focus`.
     #[inline]
-    pub fn char_focus(&self, w_id: WidgetId) -> (bool, bool) {
+    pub fn has_char_focus(&self, w_id: WidgetId) -> (bool, bool) {
         if let Some(id) = self.sel_focus {
             if id == w_id {
                 return (self.char_focus, true);
@@ -458,7 +458,7 @@ impl<'a> Manager<'a> {
             self.set_sel_focus(id, true);
             true
         } else {
-            self.state.sel_focus == Some(id) && self.state.char_focus
+            self.state.char_focus() == Some(id)
         }
     }
 

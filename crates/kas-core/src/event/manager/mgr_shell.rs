@@ -440,15 +440,13 @@ impl<'a> Manager<'a> {
             HoveredFileCancelled => ,
             */
             ReceivedCharacter(c) => {
-                if self.state.char_focus {
-                    if let Some(id) = self.state.sel_focus {
-                        // Filter out control codes (Unicode 5.11). These may be
-                        // generated from combinations such as Ctrl+C by some other
-                        // layer. We use our own shortcut system instead.
-                        if c >= '\u{20}' && !('\u{7f}'..='\u{9f}').contains(&c) {
-                            let event = Event::ReceivedCharacter(c);
-                            self.send_event(widget, id, event);
-                        }
+                if let Some(id) = self.state.char_focus() {
+                    // Filter out control codes (Unicode 5.11). These may be
+                    // generated from combinations such as Ctrl+C by some other
+                    // layer. We use our own shortcut system instead.
+                    if c >= '\u{20}' && !('\u{7f}'..='\u{9f}').contains(&c) {
+                        let event = Event::ReceivedCharacter(c);
+                        self.send_event(widget, id, event);
                     }
                 }
             }

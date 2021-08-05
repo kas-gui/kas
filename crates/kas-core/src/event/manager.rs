@@ -134,6 +134,15 @@ pub struct ManagerState {
 
 /// internals
 impl ManagerState {
+    #[inline]
+    fn char_focus(&self) -> Option<WidgetId> {
+        if self.char_focus {
+            self.sel_focus
+        } else {
+            None
+        }
+    }
+
     fn set_pan_on(
         &mut self,
         id: WidgetId,
@@ -290,9 +299,6 @@ impl<'a> Manager<'a> {
         );
 
         use VirtualKeyCode as VK;
-        let config = self.state.config.borrow();
-        let opt_command = config.shortcuts().get(self.state.modifiers, vkey);
-        drop(config);
         let shift = self.state.modifiers.shift();
 
         if vkey == VK::Tab {
@@ -306,19 +312,24 @@ impl<'a> Manager<'a> {
             return;
         }
 
-        if self.state.char_focus {
-            if let Some(id) = self.state.sel_focus {
-                if let Some(cmd) = opt_command {
-                    let event = Event::Command(cmd, shift);
-                    trace!("Send to {}: {:?}", id, event);
-                    if let Response::Unhandled = widget.send(self, id, event) {
-                        if cmd == Command::Escape {
-                            self.clear_char_focus();
-                        }
+        let opt_command = self
+            .state
+            .config
+            .borrow()
+            .shortcuts()
+            .get(self.state.modifiers, vkey);
+
+        if let Some(id) = self.state.char_focus() {
+            if let Some(cmd) = opt_command {
+                let event = Event::Command(cmd, shift);
+                trace!("Send to {}: {:?}", id, event);
+                if let Response::Unhandled = widget.send(self, id, event) {
+                    if cmd == Command::Escape {
+                        self.clear_char_focus();
                     }
                 }
-                return;
             }
+            return;
         }
 
         let mut id_action = None;
@@ -448,12 +459,10 @@ impl<'a> Manager<'a> {
 
     fn clear_char_focus(&mut self) {
         trace!("Manager::clear_char_focus");
-        if self.state.char_focus {
-            if let Some(id) = self.state.sel_focus {
-                // If widget has char focus, this is lost
-                self.state.char_focus = false;
-                self.state.pending.push(Pending::LostCharFocus(id));
-            }
+        if let Some(id) = self.state.char_focus() {
+            // If widget has char focus, this is lost
+            self.state.char_focus = false;
+            self.state.pending.push(Pending::LostCharFocus(id));
         }
     }
 
