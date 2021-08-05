@@ -1,0 +1,48 @@
+[package]
+name = "kas-theme"
+version = "0.9.0"
+authors = ["Diggory Hardy <git@dhardy.name>"]
+edition = "2018"
+license = "Apache-2.0"
+description = "KAS GUI / theme support"
+keywords = ["gui"]
+categories = ["gui"]
+repository = "https://github.com/kas-gui/kas"
+readme = "README.md"
+documentation = "https://docs.rs/kas-theme/"
+
+[package.metadata.docs.rs]
+features = ["nightly", "config"]
+rustdoc-args = ["--cfg", "doc_cfg"]
+# To build locally:
+# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=internal_doc,nightly,config --open
+
+[features]
+default = ["stack_dst"]
+nightly = ["unsize"]
+
+# Enables documentation of APIs for shells and internal usage.
+# This API is not intended for use by end-user applications and
+# thus is omitted from built documentation by default.
+# This flag does not change the API, only built documentation.
+internal_doc = ["kas/internal_doc"]
+
+# Enable config read/write
+config = ["serde", "kas/config"]
+
+# Use Generic Associated Types (this is too unstable to include in nightly!)
+gat = ["unsize", "kas/gat"]
+
+# Use stack_dst crate for sized unsized types
+stack_dst = ["kas/stack_dst", "stack_dst_"]
+
+# Use the unstable 'unsize' feature
+unsize = ["stack_dst_/unsize"]
+
+[dependencies]
+# Rename package purely for convenience:
+kas = { version = "0.9.1", package = "kas-core", path = "../kas-core" }
+linear-map = "1.2.0"
+log = "0.4"
+serde = { version = "1.0.123", features = ["derive"], optional = true }
+stack_dst_ = { version = "0.6", package = "stack_dst", optional = true }

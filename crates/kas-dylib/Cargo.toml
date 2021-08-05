@@ -1,0 +1,21 @@
+[package]
+name = "kas-dylib"
+version = "0.9.1"
+authors = ["Diggory Hardy <git@dhardy.name>"]
+edition = "2018"
+license = "Apache-2.0"
+description = "KAS GUI / dylib"
+readme = "README.md"
+documentation = "https://docs.rs/kas-dylib/"
+keywords = ["gui"]
+categories = ["gui"]
+repository = "https://github.com/kas-gui/kas"
+
+[lib]
+crate-type = ["dylib"]
+
+[dependencies]
+kas-core = { version = "0.9.1", path = "../kas-core" }
+kas-widgets = { version = "0.9.1", path = "../kas-widgets" }
+kas-theme = { version = "0.9.0", path = "../kas-theme" }
+kas-wgpu = { version = "0.9.0", path = "../kas-wgpu" }

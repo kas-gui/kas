@@ -23,54 +23,36 @@
 //! -   [KAS Tutorials](https://kas-gui.github.io/tutorials/)
 //! -   [Examples](https://github.com/kas-gui/kas/tree/master/kas-wgpu/examples)
 //! -   [Discuss](https://github.com/kas-gui/kas/discussions)
+//! -   [easy-cast API docs](https://docs.rs/easy-cast) (this is re-exported as `cast`)
 
-// Use ``never_loop`` until: https://github.com/rust-lang/rust-clippy/issues/7397 is fixed
-#![allow(
-    clippy::identity_op,
-    clippy::or_fun_call,
-    clippy::never_loop,
-    clippy::comparison_chain
-)]
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
-#![cfg_attr(feature = "gat", feature(generic_associated_types))]
-#![cfg_attr(
-    all(feature = "min_spec", not(feature = "spec")),
-    feature(min_specialization)
-)]
-#![cfg_attr(feature = "spec", feature(specialization))]
-
-#[macro_use]
-extern crate bitflags;
-
-pub extern crate easy_cast as cast;
-extern crate kas_macros;
-extern crate self as kas; // required for reliable self-reference in kas_macros
-
-// internal modules:
-mod core;
-mod future;
-mod toolkit;
 
 // public implementations:
-pub mod adapter;
-pub mod class;
-#[cfg(feature = "config")]
-pub mod config;
-pub mod dir;
-pub mod draw;
-pub mod event;
-pub mod geom;
-pub mod layout;
 pub mod prelude;
-pub mod text;
-pub mod updatable;
-pub mod util;
-pub mod widget;
 
 // macro re-exports
 pub mod macros;
 
-// export most important members directly for convenience and less redundancy:
-pub use crate::core::*;
-pub use crate::future::*;
-pub use crate::toolkit::*;
+// include most of kas_core, excluding macros and prelude:
+#[cfg(feature = "config")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "config")))]
+pub use kas_core::config;
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+pub use kas_core::ShellWindow;
+pub use kas_core::{cast, class, dir, draw, event, geom, layout, text, updatable, util};
+pub use kas_core::{Boxed, Layout, LayoutData, Window};
+pub use kas_core::{CoreData, Future, Popup, TkAction, WidgetId, WindowId};
+pub use kas_core::{Widget, WidgetChildren, WidgetConfig, WidgetCore};
+
+pub use kas_widgets as widget;
+
+#[cfg(feature = "theme")]
+pub use kas_theme as theme;
+
+#[cfg(feature = "wgpu")]
+pub use kas_wgpu as shell;
+
+#[cfg(feature = "dynamic")]
+#[allow(unused_imports)]
+use kas_dylib;

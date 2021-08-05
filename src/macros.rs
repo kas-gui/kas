@@ -182,7 +182,7 @@
 //! -   `handle=noauto` — do not derive [`Handler`] (whose main method is [`Handler::handle`])
 //! -   `send=noauto` — do not derive [`SendEvent`] (whose main method is [`SendEvent::send`])
 //! -   `msg = TYPE` — the [`Handler::Msg`] associated type; if not
-//!     specified, this type defaults to [`kas::event::VoidMsg`]
+//!     specified, this type defaults to [`crate::event::VoidMsg`]
 //! -   `generics = ...`; this parameter must appear last in the
 //!     list and allows extra type parameters and/or restrictions to appear on
 //!     the implementations of [`Handler`], [`SendEvent`] and [`Widget`].
@@ -255,16 +255,16 @@
 //!     this field must implement [`Widget`] and the widget traits are
 //!     implemented for the struct as wrappers around this field. This
 //!     may be useful to implement a wrapper struct as a widget, for example
-//!     [`kas::widget::ScrollBarRegion`] (shown below).
+//!     [`crate::widget::ScrollBarRegion`] (shown below).
 //! 2.  If used on the struct *and* on a field, the attribute allows deriving
 //!     various traits: [`std::ops::Deref`], [`std::ops::DerefMut`], and the
-//!     "class traits": [`kas::class`]. The traits to derive must be specified
+//!     "class traits": [`crate::class`]. The traits to derive must be specified
 //!     as parameters to the attribute applied to the struct. The parameter
-//!     `class_traits` may be used to imply all [`kas::class`] traits, where
+//!     `class_traits` may be used to imply all [`crate::class`] traits, where
 //!     available. These traits will be derived to refer to the marked field.
 //!
 //! An example showing both effects simultaneously to implement [`Widget`],
-//! [`std::ops::Deref`], [`std::ops::DerefMut`] and the [`kas::class`] traits:
+//! [`std::ops::Deref`], [`std::ops::DerefMut`] and the [`crate::class`] traits:
 //! ```
 //! # use kas::prelude::*;
 //! # use kas::widget::{ScrollBars, ScrollRegion};
@@ -454,4 +454,4 @@ use crate::{
     CoreData, Layout, LayoutData, Widget, WidgetChildren, WidgetConfig, WidgetCore, WidgetId,
 };
 
-pub use kas_macros::{make_widget, VoidMsg, Widget};
+pub use kas_core::macros::*;

@@ -10,91 +10,107 @@ documentation = "https://docs.rs/kas/"
 keywords = ["gui"]
 categories = ["gui"]
 repository = "https://github.com/kas-gui/kas"
-exclude = ["/screenshots"]
+exclude = ["/examples"]
 
 [package.metadata.docs.rs]
-features = ["nightly", "stack_dst", "winit", "markdown"]
+features = ["nightly"]
 rustdoc-args = ["--cfg", "doc_cfg"]
 # To build locally:
-# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=nightly,internal_doc,markdown,yaml,json --all --no-deps --open
+# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=nightly,internal_doc --all --no-deps --open
 
 [features]
-default = []
+default = ["theme", "wgpu", "winit", "yaml", "svg", "canvas", "clipboard", "markdown", "shaping", "stack_dst"]
+
+# Enable theme support:
+theme = ["kas-theme"]
+#Enable WGPU backend:
+wgpu = ["kas-wgpu"]
+
+# Enable dynamic linking (faster linking via an extra run-time dependency):
+dynamic = ["kas-dylib"]
 
 # Enables usage of unstable Rust features
-nightly = ["min_spec"]
+nightly = ["min_spec", "kas-theme/nightly", "kas-wgpu/nightly", "unsize"]
 
 # Use Generic Associated Types (this is too unstable to include in nightly!)
-gat = ["kas-text/gat"]
+gat = ["kas-core/gat", "kas-theme/gat", "kas-wgpu/gat"]
 
 # Use min_specialization (enables accelerator underlining for AccelLabel)
-min_spec = []
+min_spec = ["kas-widgets/min_spec"]
 # Use full specialization
-spec = ["min_spec"]
+spec = ["min_spec", "kas-core/spec"]
 
 # Enables documentation of APIs for shells and internal usage.
 # This API is not intended for use by end-user applications and
 # thus is omitted from built documentation by default.
 # This flag does not change the API, only built documentation.
-internal_doc = []
+internal_doc = ["kas-core/internal_doc", "kas-theme/internal_doc"]
+
+# Enables clipboard read/write
+clipboard = ["kas-wgpu/clipboard"]
 
 # Enable Markdown parsing
-markdown = ["kas-text/markdown"]
+markdown = ["kas-core/markdown"]
+
+# Enable text shaping
+shaping = ["kas-wgpu/shaping"]
 
 # Enable config read/write
 #TODO(cargo): once weak-dep-features (cargo#8832) is stable, add "winit?/serde"
 # and remove the serde feature requirement under dependencies.winit.
-config = ["serde", "kas-text/serde"]
+config = ["kas-core/config", "kas-theme/config"]
 
 # Enable support for YAML (de)serialisation
-yaml = ["config", "serde_yaml"]
+yaml = ["config", "kas-core/yaml"]
 
 # Enable support for JSON (de)serialisation
-json = ["config", "serde_json"]
+json = ["config", "kas-core/json"]
 
 # Enable support for RON (de)serialisation
-ron = ["config", "dep_ron"]
+ron = ["config", "kas-core/ron"]
 
 # Support canvas widget
-canvas = ["tiny-skia"]
+canvas = ["kas-widgets/canvas"]
 
 # Support SVG images
-svg = ["tiny-skia", "resvg", "usvg"]
+svg = ["kas-widgets/svg"]
 
 # Inject logging into macro-generated code.
 # Requires that all crates using these macros depend on the log crate.
-macros_log = ["kas-macros/log"]
+macros_log = ["kas-core/macros_log"]
+
+stack_dst = ["kas-core/stack_dst", "kas-theme/stack_dst", "kas-wgpu/stack_dst"]
+
+# Use the unstable 'unsize' feature
+unsize = ["kas-theme/unsize", "kas-wgpu/unsize"]
+
+winit = ["kas-core/winit"]
 
 [dependencies]
-easy-cast = "0.4.2"
-log = "0.4"
-smallvec = "1.6.1"
-stack_dst = { version = "0.6", optional = true }
-bitflags = "1.2.1" # only used without winit
-unicode-segmentation = "1.7"
-linear-map = "1.2.0"
-thiserror = "1.0.23"
-serde = { version = "1.0.123", features = ["derive"], optional = true }
-serde_json = { version = "1.0.61", optional = true }
-serde_yaml = { version = "0.8.16", optional = true }
-dep_ron = { version = "0.6.4", package = "ron", optional = true }
-image = "0.23.14"
-tiny-skia = { version = "0.5.1", optional = true }
-resvg = { version = "0.15.0", optional = true }
-usvg = { version = "0.15.0", optional = true }
+kas-core = { version = "0.9.1", path = "crates/kas-core" }
+kas-dylib = { version = "0.9.1", path = "crates/kas-dylib", optional = true }
+kas-widgets = { version = "0.9.1", path = "crates/kas-widgets" }
+kas-theme = { version = "0.9.0", path = "crates/kas-theme", optional = true, default-features = false }
 
-[dependencies.kas-macros]
-version = "0.9.1"
-path = "kas-macros"
-
-[dependencies.kas-text]
-version = "0.3.0"
-
-[dependencies.winit]
-# Provides translations for several winit types
-version = "0.25"
+[dependencies.kas-wgpu]
+version = "0.9.0"
+path = "crates/kas-wgpu"
 optional = true
-features = ["serde"]
+default-features = false
+features = ["raster"]
+
+[dev-dependencies]
+chrono = "0.4"
+env_logger = "0.8"
+log = "0.4"
 
 [workspace]
-members = ["kas-macros", "kas-theme", "kas-wgpu"]
+members = [
+    "crates/kas-core",
+    "crates/kas-dylib",
+    "crates/kas-macros",
+    "crates/kas-theme",
+    "crates/kas-wgpu",
+    "crates/kas-widgets",
+    "examples/mandlebrot",
+]

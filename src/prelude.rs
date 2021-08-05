@@ -14,32 +14,6 @@
 //! using widgets in a GUI.
 
 #[doc(no_inline)]
-pub use kas::cast::{Cast, CastFloat, Conv, ConvFloat};
+pub use kas_core::prelude::*;
 #[doc(no_inline)]
-pub use kas::class::*;
-#[doc(no_inline)]
-pub use kas::dir::{Direction, Directional};
-#[doc(no_inline)]
-pub use kas::draw::{DrawHandle, DrawHandleExt, DrawShared, ImageId, SizeHandle, ThemeApi};
-#[doc(no_inline)]
-pub use kas::event::{
-    Event, Handler, Manager, ManagerState, Response, SendEvent, UpdateHandle, VoidMsg,
-};
-#[doc(no_inline)]
-pub use kas::geom::{Coord, Offset, Rect, Size};
-#[doc(no_inline)]
-pub use kas::layout::{Align, AlignHints, AxisInfo, SizeRules, Stretch};
-#[doc(no_inline)]
-pub use kas::macros::*;
-#[doc(no_inline)]
-pub use kas::text::AccelString;
-#[doc(no_inline)]
-pub use kas::text::{EditableTextApi, Text, TextApi, TextApiExt};
-#[doc(no_inline)]
-pub use kas::WidgetId;
-#[doc(no_inline)]
-pub use kas::{Boxed, TkAction, WidgetExt};
-#[doc(no_inline)]
-pub use kas::{CoreData, LayoutData};
-#[doc(no_inline)]
-pub use kas::{Layout, Widget, WidgetChildren, WidgetConfig, WidgetCore};
+pub use kas_widgets::adapter::WidgetExt;
