@@ -137,9 +137,10 @@ impl Shortcuts {
         }
         #[cfg(not(target_os = "macos"))]
         {
+            let shortcuts = [(VK::Q, Command::Exit), (VK::R, Command::FindReplace)];
+            map.extend(shortcuts.iter().cloned());
+
             let shortcuts = [
-                (VK::Q, Command::Exit),
-                (VK::R, Command::FindReplace),
                 (VK::Up, Command::ViewUp),
                 (VK::Down, Command::ViewDown),
                 (VK::Left, Command::WordLeft),
@@ -151,6 +152,11 @@ impl Shortcuts {
                 (VK::PageUp, Command::TabPrev),
                 (VK::PageDown, Command::TabNext),
             ];
+            map.extend(shortcuts.iter().cloned());
+
+            // Shift + Ctrl
+            let modifiers = ModifiersState::SHIFT | CMD;
+            let map = self.map.entry(modifiers).or_insert_with(Default::default);
             map.extend(shortcuts.iter().cloned());
         }
 

@@ -282,6 +282,13 @@ impl<'a> Manager<'a> {
     where
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
+        trace!(
+            "Manager::start_key_event: widget={}, vkey={:?}, scancode={}",
+            widget.id(),
+            vkey,
+            scancode
+        );
+
         use VirtualKeyCode as VK;
         let config = self.state.config.borrow();
         let opt_command = config.shortcuts().get(self.state.modifiers, vkey);
