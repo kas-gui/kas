@@ -19,10 +19,13 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get install -y libxkbcommon-dev libxcb-shape0-dev libxcb-xfixes0-dev
       - name: Build examples
-        run: cargo build --manifest-path kas-wgpu/Cargo.toml --release --example calculator --example gallery --example mandlebrot
+        run: |
+          cargo build --release --example calculator --example gallery
+          cargo build --release --manifest-path examples/mandlebrot/Cargo.toml
       - name: Prepare
         run: |
-          strip target/release/examples/calculator target/release/examples/gallery target/release/examples/mandlebrot
+          strip target/release/examples/calculator target/release/examples/gallery target/release/mandlebrot
+          mv target/release/mandlebrot target/release/examples/
           cp -a kas-wgpu/res target/release/examples/
       - name: Upload
         uses: actions/upload-artifact@v2
@@ -49,10 +52,13 @@ jobs:
         env:
           MACOSX_DEPLOYMENT_TARGET: 10.7
           WINIT_LINK_COLORSYNC: 1
-        run: cargo build --manifest-path kas-wgpu/Cargo.toml --release --example calculator --example gallery --example mandlebrot
+        run: |
+          cargo build --release --example calculator --example gallery
+          cargo build --release --manifest-path examples/mandlebrot/Cargo.toml
       - name: Prepare
         run: |
-          strip target/release/examples/calculator target/release/examples/gallery target/release/examples/mandlebrot
+          strip target/release/examples/calculator target/release/examples/gallery target/release/mandlebrot
+          mv target/release/mandlebrot target/release/examples/
           cp -a kas-wgpu/res target/release/examples/
       - name: Upload
         uses: actions/upload-artifact@v2
@@ -76,10 +82,13 @@ jobs:
           toolchain: stable
           override: true
       - name: Build examples
-        run: cargo build --manifest-path kas-wgpu/Cargo.toml --release --example calculator --example gallery --example mandlebrot
+        run: |
+          cargo build --release --example calculator --example gallery
+          cargo build --release --manifest-path examples/mandlebrot/Cargo.toml
       - name: Prepare
         run: |
-          strip target/release/examples/calculator target/release/examples/gallery target/release/examples/mandlebrot
+          strip target/release/examples/calculator target/release/examples/gallery target/release/mandlebrot
+          mv target/release/mandlebrot target/release/examples/
           xcopy kas-wgpu\res target\release\examples\res /e/k/c/i/y
       - name: Upload
         uses: actions/upload-artifact@v2
