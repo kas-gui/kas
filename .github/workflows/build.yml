@@ -20,11 +20,11 @@ jobs:
         run: sudo apt-get install -y libxkbcommon-dev libxcb-shape0-dev libxcb-xfixes0-dev
       - name: Build examples
         run: |
-          cargo build --release --example calculator --example gallery
+          cargo build --release --example layout --example gallery
           cargo build --release --manifest-path examples/mandlebrot/Cargo.toml
       - name: Prepare
         run: |
-          strip target/release/examples/calculator target/release/examples/gallery target/release/mandlebrot
+          strip target/release/examples/layout target/release/examples/gallery target/release/mandlebrot
           mv target/release/mandlebrot target/release/examples/
           cp -a kas-wgpu/res target/release/examples/
       - name: Upload
@@ -32,7 +32,7 @@ jobs:
         with:
           name: examples-ubuntu
           path: |
-            target/release/examples/calculator
+            target/release/examples/layout
             target/release/examples/gallery
             target/release/examples/mandlebrot
             target/release/examples/res/
@@ -53,11 +53,11 @@ jobs:
           MACOSX_DEPLOYMENT_TARGET: 10.7
           WINIT_LINK_COLORSYNC: 1
         run: |
-          cargo build --release --example calculator --example gallery
+          cargo build --release --example layout --example gallery
           cargo build --release --manifest-path examples/mandlebrot/Cargo.toml
       - name: Prepare
         run: |
-          strip target/release/examples/calculator target/release/examples/gallery target/release/mandlebrot
+          strip target/release/examples/layout target/release/examples/gallery target/release/mandlebrot
           mv target/release/mandlebrot target/release/examples/
           cp -a kas-wgpu/res target/release/examples/
       - name: Upload
@@ -65,7 +65,7 @@ jobs:
         with:
           name: examples-macOS
           path: |
-            target/release/examples/calculator
+            target/release/examples/layout
             target/release/examples/gallery
             target/release/examples/mandlebrot
             target/release/examples/res/
@@ -83,11 +83,11 @@ jobs:
           override: true
       - name: Build examples
         run: |
-          cargo build --release --example calculator --example gallery
+          cargo build --release --example layout --example gallery
           cargo build --release --manifest-path examples/mandlebrot/Cargo.toml
       - name: Prepare
         run: |
-          strip target/release/examples/calculator target/release/examples/gallery target/release/mandlebrot
+          strip target/release/examples/layout target/release/examples/gallery target/release/mandlebrot
           mv target/release/mandlebrot target/release/examples/
           xcopy kas-wgpu\res target\release\examples\res /e/k/c/i/y
       - name: Upload
@@ -95,7 +95,7 @@ jobs:
         with:
           name: examples-windows
           path: |
-            target/release/examples/calculator.exe
+            target/release/examples/layout.exe
             target/release/examples/gallery.exe
             target/release/examples/mandlebrot.exe
             target/release/examples/res/
