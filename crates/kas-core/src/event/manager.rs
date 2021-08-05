@@ -319,101 +319,94 @@ impl<'a> Manager<'a> {
             .shortcuts()
             .get(self.state.modifiers, vkey);
 
+        // First priority goes to the widget with char focus and/or with nav
+        // focus (note: char focus implies nav focus).
         if let Some(id) = self.state.char_focus() {
             if let Some(cmd) = opt_command {
                 let event = Event::Command(cmd, shift);
-                trace!("Send to {}: {:?}", id, event);
-                if let Response::Unhandled = widget.send(self, id, event) {
-                    if cmd == Command::Escape {
-                        self.clear_char_focus();
-                    }
+                if self.try_send_event(widget, id, event) {
+                    return;
                 }
             }
-            return;
-        }
-
-        let mut id_action = None;
-        if !self.state.modifiers.alt() {
-            // First priority goes to the widget with nav focus,
-            // but only when Alt is not pressed.
-            if let Some(nav_id) = self.state.nav_focus {
+        } else if !self.state.modifiers.alt() {
+            if let Some(id) = self.state.nav_focus {
                 if vkey == VK::Space || vkey == VK::Return || vkey == VK::NumpadEnter {
-                    id_action = Some((nav_id, Event::Activate));
+                    self.add_key_depress(scancode, id);
+                    self.send_event(widget, id, Event::Activate);
+                    return;
                 } else if let Some(cmd) = opt_command {
-                    id_action = Some((nav_id, Event::Command(cmd, shift)));
-                }
-            }
-
-            if id_action.is_none() {
-                // Next priority goes to pop-up widget
-                if let Some(cmd) = opt_command {
-                    let ev = Event::Command(cmd, shift);
-                    if let Some(popup) = self.state.popups.last() {
-                        id_action = Some((popup.1.parent, ev));
-                    } else if let Some(id) = self.state.nav_fallback {
-                        id_action = Some((id, ev));
-                    }
-                }
-            }
-        }
-
-        if id_action.is_none() {
-            // Next priority goes to accelerator keys when Alt is held or alt_bypass is true
-            let mut n = 0;
-            for (i, id) in (self.state.popups.iter().rev())
-                .map(|(_, popup)| popup.parent)
-                .chain(std::iter::once(widget.id()))
-                .enumerate()
-            {
-                if let Some(layer) = self.state.accel_layers.get(&id) {
-                    // but only when Alt is held or alt-bypass is enabled:
-                    if self.state.modifiers.alt() || layer.0 {
-                        if let Some(id) = layer.1.get(&vkey).cloned() {
-                            id_action = Some((id, Event::Activate));
-                            n = i;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // If we had to look below the top pop-up, we should close it
-            if n > 0 {
-                let last = self.state.popups.len() - 1;
-                for i in 0..n {
-                    let id = self.state.popups[last - i].0;
-                    self.close_window(id);
-                }
-            }
-        }
-
-        if let Some((id, event)) = id_action {
-            let is_activate = event == Event::Activate;
-            trace!("Send to {}: {:?}", id, event);
-            match widget.send(self, id, event) {
-                Response::Unhandled if vkey == VK::Escape => {
-                    // When unhandled, the Escape key causes other actions
-                    if let Some(id) = self.state.popups.last().map(|(id, _)| *id) {
-                        self.close_window(id);
-                    } else if self.nav_focus().is_some() {
-                        self.clear_nav_focus();
-                    }
-                }
-                _ => (),
-            }
-
-            // Event::Activate causes buttons to be visually depressed
-            if is_activate {
-                for press_id in self.state.key_depress.values().cloned() {
-                    if press_id == id {
+                    if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
                         return;
                     }
                 }
-
-                self.state.key_depress.insert(scancode, id);
-                self.redraw(id);
             }
         }
+
+        if let Some(cmd) = opt_command {
+            let ev = Event::Command(cmd, shift);
+            // Next priority goes to any popup present
+            if let Some(id) = self.state.popups.last().map(|popup| popup.1.parent) {
+                if self.try_send_event(widget, id, ev.clone()) {
+                    return;
+                }
+            }
+            // Then to the nav fallback
+            if let Some(id) = self.state.nav_fallback {
+                if self.try_send_event(widget, id, ev) {
+                    return;
+                }
+            }
+        }
+
+        // Next priority goes to accelerator keys when Alt is held or alt_bypass is true
+        let mut target = None;
+        let mut n = 0;
+        for (i, id) in (self.state.popups.iter().rev())
+            .map(|(_, popup)| popup.parent)
+            .chain(std::iter::once(widget.id()))
+            .enumerate()
+        {
+            if let Some(layer) = self.state.accel_layers.get(&id) {
+                // but only when Alt is held or alt-bypass is enabled:
+                if self.state.modifiers.alt() || layer.0 {
+                    if let Some(id) = layer.1.get(&vkey).cloned() {
+                        target = Some(id);
+                        n = i;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // If we found a key binding below the top layer, we should close everything above
+        if n > 0 {
+            let last = self.state.popups.len() - 1;
+            for i in 0..n {
+                let id = self.state.popups[last - i].0;
+                self.close_window(id);
+            }
+        }
+
+        if let Some(id) = target {
+            self.add_key_depress(scancode, id);
+            if !self.try_send_event(widget, id, Event::Activate) {
+                if vkey == VK::Escape {
+                    // When unhandled, the Escape key causes other actions
+                    if let Some(id) = self.state.popups.last().map(|(id, _)| *id) {
+                        self.close_window(id);
+                    }
+                }
+            }
+        }
+    }
+
+    fn add_key_depress(&mut self, scancode: u32, id: WidgetId) {
+        if self.state.key_depress.values().any(|v| *v == id) {
+            return;
+        }
+
+        self.state.key_depress.insert(scancode, id);
+        self.redraw(id);
     }
 
     fn end_key_event(&mut self, scancode: u32) {
@@ -497,6 +490,18 @@ impl<'a> Manager<'a> {
     fn send_event<W: Widget + ?Sized>(&mut self, widget: &mut W, id: WidgetId, event: Event) {
         trace!("Send to {}: {:?}", id, event);
         let _ = widget.send(self, id, event);
+    }
+
+    // Similar to send_event, but return true only if response != Response::Unhandled
+    fn try_send_event<W: Widget + ?Sized>(
+        &mut self,
+        widget: &mut W,
+        id: WidgetId,
+        event: Event,
+    ) -> bool {
+        trace!("Send to {}: {:?}", id, event);
+        let r = widget.send(self, id, event);
+        !matches!(r, Response::Unhandled)
     }
 
     fn send_popup_first<W: Widget + ?Sized>(&mut self, widget: &mut W, id: WidgetId, event: Event) {
