@@ -288,6 +288,17 @@ impl<'a> Manager<'a> {
         drop(config);
         let shift = self.state.modifiers.shift();
 
+        if vkey == VK::Tab {
+            self.set_char_focus(None);
+            if !self.next_nav_focus(widget.as_widget(), shift) {
+                self.clear_nav_focus();
+            }
+            if let Some(id) = self.state.nav_focus {
+                self.send_event(widget, id, Event::NavFocus);
+            }
+            return;
+        }
+
         if self.state.char_focus {
             if let Some(id) = self.state.sel_focus {
                 if let Some(cmd) = opt_command {
@@ -301,16 +312,6 @@ impl<'a> Manager<'a> {
                 }
                 return;
             }
-        }
-
-        if vkey == VK::Tab {
-            if !self.next_nav_focus(widget.as_widget(), shift) {
-                self.clear_nav_focus();
-            }
-            if let Some(id) = self.state.nav_focus {
-                self.send_event(widget, id, Event::NavFocus);
-            }
-            return;
         }
 
         let mut id_action = None;
