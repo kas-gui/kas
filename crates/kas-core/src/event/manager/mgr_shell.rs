@@ -578,10 +578,11 @@ impl<'a> Manager<'a> {
                         };
                         self.send_popup_first(widget, start_id, event);
 
-                        if widget
-                            .find_leaf(start_id)
-                            .map(|w| w.key_nav())
-                            .unwrap_or(false)
+                        if self.state.config.borrow().mouse_nav_focus()
+                            && widget
+                                .find_leaf(start_id)
+                                .map(|w| w.key_nav())
+                                .unwrap_or(false)
                         {
                             self.set_nav_focus(start_id);
                         }
@@ -602,6 +603,15 @@ impl<'a> Manager<'a> {
                                 coord,
                             };
                             self.send_popup_first(widget, start_id, event);
+
+                            if self.state.config.borrow().touch_nav_focus()
+                                && widget
+                                    .find_leaf(start_id)
+                                    .map(|w| w.key_nav())
+                                    .unwrap_or(false)
+                            {
+                                self.set_nav_focus(start_id);
+                            }
                         }
                     }
                     TouchPhase::Moved => {
