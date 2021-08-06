@@ -399,6 +399,11 @@ impl<M: 'static> event::SendEvent for ComboBox<M> {
         }
 
         if id <= self.popup.id() {
+            if event == Event::NavFocus && self.popup_id.is_none() {
+                // Steal focus since child is invisible
+                mgr.set_nav_focus(self.id(), false);
+            }
+
             let r = self.popup.send(mgr, id, event.clone());
             self.map_response(mgr, id, event, r)
         } else {

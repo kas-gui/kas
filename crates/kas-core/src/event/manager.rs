@@ -382,6 +382,7 @@ impl<'a> Manager<'a> {
         }
 
         if let Some(id) = target {
+            self.set_nav_focus(id, true);
             self.add_key_depress(scancode, id);
             if !self.try_send_event(widget, id, Event::Activate) {
                 if vkey == VK::Escape {
