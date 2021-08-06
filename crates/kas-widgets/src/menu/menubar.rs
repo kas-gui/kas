@@ -97,7 +97,7 @@ impl<W: Menu<Msg = M>, D: Directional, M> event::Handler for MenuBar<W, D> {
                     {
                         mgr.set_grab_depress(source, Some(start_id));
                         self.find_leaf(start_id)
-                            .map(|w| mgr.next_nav_focus(w, false));
+                            .map(|w| mgr.next_nav_focus(w, false, false));
                         self.opening = false;
                         let delay = mgr.config().menu_delay();
                         if self.rect().contains(coord) {
@@ -128,7 +128,7 @@ impl<W: Menu<Msg = M>, D: Directional, M> event::Handler for MenuBar<W, D> {
                     cur_id.filter(|id| self.find_leaf(*id).map(|w| w.key_nav()).unwrap_or(false));
                 mgr.set_grab_depress(source, target_id);
                 if let Some(id) = target_id {
-                    mgr.set_nav_focus(id);
+                    mgr.set_nav_focus(id, false);
                     // We instantly open a sub-menu on motion over the bar,
                     // but delay when over a sub-menu (most intuitive?)
                     if self.rect().contains(coord) {

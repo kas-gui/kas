@@ -146,7 +146,7 @@ impl<'a> Manager<'a> {
         }
         let is_nav_focus = event == Event::NavFocus;
         match widget.handle(mgr, event) {
-            Response::None if is_nav_focus => Response::Focus(widget.rect()),
+            Response::Unhandled | Response::None if is_nav_focus => Response::Focus(widget.rect()),
             r => r,
         }
     }

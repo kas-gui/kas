@@ -77,6 +77,7 @@ struct PanGrab {
 enum Pending {
     LostCharFocus(WidgetId),
     LostSelFocus(WidgetId),
+    SetNavFocus(WidgetId),
 }
 
 /// Event manager state
@@ -303,11 +304,8 @@ impl<'a> Manager<'a> {
 
         if vkey == VK::Tab {
             self.clear_char_focus();
-            if !self.next_nav_focus(widget.as_widget(), shift) {
+            if !self.next_nav_focus(widget.as_widget(), shift, true) {
                 self.clear_nav_focus();
-            }
-            if let Some(id) = self.state.nav_focus {
-                self.send_event(widget, id, Event::NavFocus);
             }
             return;
         }
@@ -464,7 +462,7 @@ impl<'a> Manager<'a> {
             wid,
             char_focus
         );
-        self.set_nav_focus(wid);
+        self.set_nav_focus(wid, false);
 
         if self.state.sel_focus == Some(wid) {
             self.state.char_focus = self.state.char_focus || char_focus;

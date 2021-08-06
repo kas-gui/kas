@@ -218,6 +218,14 @@ impl ManagerState {
                     false
                 }
             }
+            Pending::SetNavFocus(id) => {
+                if let Some(new_id) = renames.get(id) {
+                    *item = Pending::SetNavFocus(*new_id);
+                    true
+                } else {
+                    false
+                }
+            }
         });
     }
 
@@ -368,6 +376,7 @@ impl ManagerState {
             let (id, event) = match item {
                 Pending::LostCharFocus(id) => (id, Event::LostCharFocus),
                 Pending::LostSelFocus(id) => (id, Event::LostSelFocus),
+                Pending::SetNavFocus(id) => (id, Event::NavFocus),
             };
             mgr.send_event(widget, id, event);
         }
@@ -584,7 +593,7 @@ impl<'a> Manager<'a> {
                                 .map(|w| w.key_nav())
                                 .unwrap_or(false)
                         {
-                            self.set_nav_focus(start_id);
+                            self.set_nav_focus(start_id, false);
                         }
                     }
                 }
@@ -610,7 +619,7 @@ impl<'a> Manager<'a> {
                                     .map(|w| w.key_nav())
                                     .unwrap_or(false)
                             {
-                                self.set_nav_focus(start_id);
+                                self.set_nav_focus(start_id, false);
                             }
                         }
                     }

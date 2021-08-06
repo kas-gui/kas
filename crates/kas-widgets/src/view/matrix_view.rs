@@ -676,21 +676,13 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> SendEvent
                 }
                 _ => None,
             };
-            let action = if let Some((ci, ri)) = data {
+            if let Some((ci, ri)) = data {
                 // Set nav focus to index and update scroll position
                 // Note: we update nav focus before updating widgets; this is fine
                 let index = (ci % cols) + (ri % rows) * cols;
-                mgr.set_nav_focus(self.widgets[index].widget.id());
-
-                let pos = self.core.rect.pos
-                    + self.frame_offset
-                    + skip.cwise_mul(Size(ci.cast(), ri.cast()));
-                let item_rect = Rect::new(pos, self.child_size);
-                self.scroll.focus_rect(item_rect, self.core.rect).1
-            } else {
-                TkAction::empty()
-            };
-            (action, Response::None)
+                mgr.set_nav_focus(self.widgets[index].widget.id(), true);
+            }
+            (TkAction::empty(), Response::None)
         } else {
             self.scroll
                 .scroll_by_event(event, self.core.rect.size, |source, _, coord| {

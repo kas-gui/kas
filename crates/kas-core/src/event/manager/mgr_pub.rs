@@ -654,15 +654,22 @@ impl<'a> Manager<'a> {
     /// [`WidgetConfig::key_nav`] *should* return true for the given widget,
     /// otherwise navigation behaviour may not be correct.
     ///
-    /// Note: this method does *not* send [`Event::NavFocus`] to notify the
-    /// widget of navigation focus and ensure the widget's visibility. Only
-    /// navigation via the <kbd>Tab</kbd> key does that.
-    pub fn set_nav_focus(&mut self, id: WidgetId) {
+    /// If `notify` is true, then [`Event::NavFocus`] will be sent to the new
+    /// widget if focus is changed. This may cause UI adjustments such as
+    /// scrolling to ensure that the new navigation target is visible and can
+    /// potentially have other side effects, e.g. an `EditBox` claiming keyboard
+    /// focus. If `notify` is false this doesn't happen, though the UI is still
+    /// redrawn to visually indicate navigation focus.
+    pub fn set_nav_focus(&mut self, id: WidgetId, notify: bool) {
         if self.state.nav_focus != Some(id) {
             self.redraw(id);
             self.state.nav_focus = Some(id);
             self.state.nav_stack.clear();
             trace!("Manager: nav_focus = Some({})", id);
+
+            if notify {
+                self.state.pending.push(Pending::SetNavFocus(id));
+            }
         }
     }
 
@@ -676,7 +683,19 @@ impl<'a> Manager<'a> {
     /// This method returns true when the navigation focus has been updated,
     /// otherwise leaves the focus unchanged. The caller may (optionally) choose
     /// to call [`Manager::clear_nav_focus`] when this method returns false.
-    pub fn next_nav_focus(&mut self, mut widget: &dyn WidgetConfig, reverse: bool) -> bool {
+    ///
+    /// If `notify` is true, then [`Event::NavFocus`] will be sent to the new
+    /// widget if focus is changed. This may cause UI adjustments such as
+    /// scrolling to ensure that the new navigation target is visible and can
+    /// potentially have other side effects, e.g. an `EditBox` claiming keyboard
+    /// focus. If `notify` is false this doesn't happen, though the UI is still
+    /// redrawn to visually indicate navigation focus.
+    pub fn next_nav_focus(
+        &mut self,
+        mut widget: &dyn WidgetConfig,
+        reverse: bool,
+        notify: bool,
+    ) -> bool {
         type WidgetStack<'b> = SmallVec<[&'b dyn WidgetConfig; 16]>;
         let mut widget_stack = WidgetStack::new();
 
@@ -779,8 +798,12 @@ impl<'a> Manager<'a> {
         macro_rules! try_set_focus {
             ($self:ident, $widget:ident) => {
                 if $widget.key_nav() && !$widget.is_disabled() {
-                    $self.state.nav_focus = Some($widget.id());
+                    let id = $widget.id();
+                    $self.state.nav_focus = Some(id);
                     trace!("Manager: nav_focus = {:?}", $self.state.nav_focus);
+                    if notify {
+                        $self.state.pending.push(Pending::SetNavFocus(id));
+                    }
                     return true;
                 }
             };

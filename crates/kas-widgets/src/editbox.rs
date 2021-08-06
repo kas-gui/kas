@@ -1071,9 +1071,7 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
         ) -> Response<G::Msg> {
             if !s.has_key_focus && mgr.request_char_focus(s.id()) {
                 s.has_key_focus = true;
-                G::focus_gained(s, mgr)
-                    .map(|msg| msg.into())
-                    .unwrap_or(Response::None)
+                Response::none_or_msg(G::focus_gained(s, mgr))
             } else {
                 Response::None
             }
