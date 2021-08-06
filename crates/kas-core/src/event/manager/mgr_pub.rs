@@ -766,31 +766,36 @@ impl<'a> Manager<'a> {
             }};
         }
 
+        enum Case {
+            Sibling,
+            Pop,
+            End,
+        }
+
         // Progresses to the next (or previous) sibling, otherwise pops to the
-        // parent. Returns true if a sibling is found.
-        // Breaks to given lifetime on error.
+        // parent. Breaks to given lifetime on error.
         macro_rules! do_sibling_or_pop {
             ($lt:lifetime, $nav_stack:ident, $widget:ident, $widget_stack:ident) => {{
-                let index;
                 match ($nav_stack.pop(), $widget_stack.pop()) {
                     (Some(i), Some(w)) => {
-                        index = i.cast();
+                        let index = i.cast();
                         $widget = w;
+
+                        match $widget.spatial_nav(reverse, Some(index)) {
+                            Some(index) if !$widget.is_disabled() => {
+                                let new = match $widget.get_child(index) {
+                                    None => break $lt,
+                                    Some(w) => w,
+                                };
+                                $nav_stack.push(index.cast());
+                                $widget_stack.push($widget);
+                                $widget = new;
+                                Case::Sibling
+                            }
+                            _ => Case::Pop,
+                        }
                     }
-                    _ => break $lt,
-                };
-                match $widget.spatial_nav(reverse, Some(index)) {
-                    Some(index) if !$widget.is_disabled() => {
-                        let new = match $widget.get_child(index) {
-                            None => break $lt,
-                            Some(w) => w,
-                        };
-                        $nav_stack.push(index.cast());
-                        $widget_stack.push($widget);
-                        $widget = new;
-                        true
-                    }
-                    _ => false,
+                    _ => Case::End,
                 }
             }};
         }
@@ -813,6 +818,8 @@ impl<'a> Manager<'a> {
         // processing, we can push directly to self.state.action.
         self.state.send_action(TkAction::REDRAW);
         let nav_stack = &mut self.state.nav_stack;
+        // Whether to restart from the beginning on failure
+        let mut restart = self.state.nav_focus.is_some();
 
         if !reverse {
             // Depth-first search without function recursion. Our starting
@@ -825,9 +832,17 @@ impl<'a> Manager<'a> {
                 }
 
                 loop {
-                    if do_sibling_or_pop!('l1, nav_stack, widget, widget_stack) {
-                        try_set_focus!(self, widget);
-                        break;
+                    match do_sibling_or_pop!('l1, nav_stack, widget, widget_stack) {
+                        Case::Sibling => {
+                            try_set_focus!(self, widget);
+                            break;
+                        }
+                        Case::Pop => (),
+                        Case::End if restart => {
+                            restart = false;
+                            continue 'l1;
+                        }
+                        Case::End => break 'l1,
                     }
                 }
             }
@@ -835,9 +850,21 @@ impl<'a> Manager<'a> {
             // Reverse depth-first search
             let mut start = self.state.nav_focus.is_none();
             'l2: loop {
-                if start || do_sibling_or_pop!('l2, nav_stack, widget, widget_stack) {
+                let case = if start {
                     start = false;
-                    while do_child!('l2, nav_stack, widget, widget_stack) {}
+                    Case::Sibling
+                } else {
+                    do_sibling_or_pop!('l2, nav_stack, widget, widget_stack)
+                };
+                match case {
+                    Case::Sibling => while do_child!('l2, nav_stack, widget, widget_stack) {},
+                    Case::Pop => (),
+                    Case::End if restart => {
+                        restart = false;
+                        start = true;
+                        continue 'l2;
+                    }
+                    Case::End => break 'l2,
                 }
 
                 try_set_focus!(self, widget);
