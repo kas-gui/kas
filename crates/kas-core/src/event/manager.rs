@@ -304,9 +304,7 @@ impl<'a> Manager<'a> {
 
         if vkey == VK::Tab {
             self.clear_char_focus();
-            if !self.next_nav_focus(widget.as_widget(), shift, true) {
-                self.clear_nav_focus();
-            }
+            self.next_nav_focus(widget.as_widget(), shift, true);
             return;
         }
 

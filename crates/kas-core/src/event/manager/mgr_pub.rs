@@ -680,9 +680,8 @@ impl<'a> Manager<'a> {
     /// returns true; otherwise this will give focus to the first (or last)
     /// such widget.
     ///
-    /// This method returns true when the navigation focus has been updated,
-    /// otherwise leaves the focus unchanged. The caller may (optionally) choose
-    /// to call [`Manager::clear_nav_focus`] when this method returns false.
+    /// Returns true on success, false if there are no navigable widgets or
+    /// some error occurred.
     ///
     /// If `notify` is true, then [`Event::NavFocus`] will be sent to the new
     /// widget if focus is changed. This may cause UI adjustments such as
