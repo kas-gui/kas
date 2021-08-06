@@ -653,11 +653,17 @@ impl<'a> Manager<'a> {
     ///
     /// [`WidgetConfig::key_nav`] *should* return true for the given widget,
     /// otherwise navigation behaviour may not be correct.
+    ///
+    /// Note: this method does *not* send [`Event::NavFocus`] to notify the
+    /// widget of navigation focus and ensure the widget's visibility. Only
+    /// navigation via the <kbd>Tab</kbd> key does that.
     pub fn set_nav_focus(&mut self, id: WidgetId) {
-        self.redraw(id);
-        self.state.nav_focus = Some(id);
-        self.state.nav_stack.clear();
-        trace!("Manager: nav_focus = Some({})", id);
+        if self.state.nav_focus != Some(id) {
+            self.redraw(id);
+            self.state.nav_focus = Some(id);
+            self.state.nav_stack.clear();
+            trace!("Manager: nav_focus = Some({})", id);
+        }
     }
 
     /// Advance the keyboard navigation focus

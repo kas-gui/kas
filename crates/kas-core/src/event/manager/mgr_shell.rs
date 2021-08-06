@@ -577,6 +577,14 @@ impl<'a> Manager<'a> {
                             coord,
                         };
                         self.send_popup_first(widget, start_id, event);
+
+                        if widget
+                            .find_leaf(start_id)
+                            .map(|w| w.key_nav())
+                            .unwrap_or(false)
+                        {
+                            self.set_nav_focus(start_id);
+                        }
                     }
                 }
             }
