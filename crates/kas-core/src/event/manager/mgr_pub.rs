@@ -637,8 +637,10 @@ impl<'a> Manager<'a> {
 
     /// Set the keyboard navigation focus directly
     ///
-    /// [`WidgetConfig::key_nav`] *should* return true for the given widget,
-    /// otherwise navigation behaviour may not be correct.
+    /// Normally, [`WidgetConfig::key_nav`] will be true for the specified
+    /// widget, but this is not required, e.g. a `ScrollLabel` can receive focus
+    /// on text selection with the mouse. (Currently such widgets will receive
+    /// events like any other with nav focus, but this may change.)
     ///
     /// If `notify` is true, then [`Event::NavFocus`] will be sent to the new
     /// widget if focus is changed. This may cause UI adjustments such as
@@ -796,7 +798,7 @@ impl<'a> Manager<'a> {
                 if $widget.key_nav() && !$widget.is_disabled() {
                     let id = $widget.id();
                     $self.state.nav_focus = Some(id);
-                    trace!("Manager: nav_focus = {:?}", $self.state.nav_focus);
+                    trace!("Manager: nav_focus = Some({})", id);
                     if notify {
                         $self.state.pending.push(Pending::SetNavFocus(id));
                     }

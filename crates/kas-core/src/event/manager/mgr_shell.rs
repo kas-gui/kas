@@ -583,13 +583,10 @@ impl<'a> Manager<'a> {
                         };
                         self.send_popup_first(widget, start_id, event);
 
-                        if self.state.config.borrow().mouse_nav_focus()
-                            && widget
-                                .find_leaf(start_id)
-                                .map(|w| w.key_nav())
-                                .unwrap_or(false)
-                        {
-                            self.set_nav_focus(start_id, false);
+                        if self.state.config.borrow().mouse_nav_focus() {
+                            if let Some(w) = widget.find_leaf(start_id) {
+                                self.set_nav_focus(w.id(), false);
+                            }
                         }
                     }
                 }
@@ -609,13 +606,10 @@ impl<'a> Manager<'a> {
                             };
                             self.send_popup_first(widget, start_id, event);
 
-                            if self.state.config.borrow().touch_nav_focus()
-                                && widget
-                                    .find_leaf(start_id)
-                                    .map(|w| w.key_nav())
-                                    .unwrap_or(false)
-                            {
-                                self.set_nav_focus(start_id, false);
+                            if self.state.config.borrow().touch_nav_focus() {
+                                if let Some(w) = widget.find_leaf(start_id) {
+                                    self.set_nav_focus(w.id(), false);
+                                }
                             }
                         }
                     }
