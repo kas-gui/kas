@@ -453,7 +453,7 @@ impl<'a> Manager<'a> {
                     // Filter out control codes (Unicode 5.11). These may be
                     // generated from combinations such as Ctrl+C by some other
                     // layer. We use our own shortcut system instead.
-                    if c >= '\u{20}' && !('\u{7f}'..='\u{9f}').contains(&c) {
+                    if c >= '\x20' && !('\x7f'..='\u{9f}').contains(&c) {
                         let event = Event::ReceivedCharacter(c);
                         self.send_event(widget, id, event);
                     }

@@ -23,19 +23,21 @@ pub enum Event {
     None,
     /// Widget activation
     ///
-    /// For example, clicking a button, toggling a check-box, opening a menu or
-    /// requesting char focus (keyboard input).
-    ///
-    /// This event is triggered by keyboard navigation and accelerator key
-    /// bindings, and may be used by a parent widget to activate a child.
+    /// "Activate" is triggered e.g. by clicking on a control or using keyboard
+    /// navigation to trigger a control. It should then perform the widget's
+    /// primary function, e.g. a button or menu action, toggle a checkbox, etc.
     Activate,
     /// (Keyboard) command input
     ///
     /// This represents a control or navigation action, usually from the
-    /// keyboard. It is sent to the widget with char focus (if any; see
-    /// [`Manager::request_char_focus`]), otherwise to the widget with nav focus
-    /// ([`Manager::nav_focus`]), otherwise to a widget registered as a nav
-    /// fallback ([`Manager::register_nav_fallback`]).
+    /// keyboard. It is sent to whichever widget is "most appropriate", then
+    /// potentially to the "next most appropriate" target if the first returns
+    /// [`Response::Unhandled`], until handled or no more appropriate targets
+    /// are available (the exact logic is encoded in `Manager::start_key_event`).
+    ///
+    /// In some cases keys are remapped, e.g. a widget with selection focus but
+    /// not character or navigation focus may receive [`Command::Deselect`]
+    /// when the <kbd>Esc</kbd> key is pressed.
     ///
     /// The state of the shift key is included (true = pressed).
     Command(Command, bool),
@@ -47,6 +49,11 @@ pub enum Event {
     /// widget has already received [`Event::LostCharFocus`].
     LostSelFocus,
     /// Widget receives a character of text input
+    ///
+    /// This is only received by a widget with character focus (see
+    /// [`Manager::request_char_focus`]). There is no overlap with
+    /// [`Event::Command`]: key presses result in at most one of these events
+    /// being sent to a widget.
     ReceivedCharacter(char),
     /// A mouse or touchpad scroll event
     Scroll(ScrollDelta),
@@ -168,13 +175,7 @@ pub enum Event {
 
 /// Command input ([`Event::Command`])
 ///
-/// Behaviour differs slightly between char and nav focus. When a widget
-/// has char focus, the Space key sends a space character via
-/// [`Event::ReceivedCharacter`] while the Return key sends
-/// [`Command::Return`]. Without char focus, both Space and Return keys
-/// send [`Event::Activate`] to the widget with nav focus (or the fallback).
-/// Also, [`Command::Escape`] and [`Command::Tab`] are only sent to widgets
-/// with char focus.
+/// The exact command sent depends on the type of focus a widget has.
 ///
 /// Handling may depend on the state of the Shift key.
 ///
@@ -188,6 +189,8 @@ pub enum Command {
     /// Each press of this key should somehow relax control. It is expected that
     /// widgets receiving this key repeatedly eventually (soon) have no more
     /// use for this themselves and return it via [`Response::Unhandled`].
+    ///
+    /// This is in some cases remapped to [`Command::Deselect`].
     Escape,
     /// Return / enter key
     ///
@@ -201,7 +204,7 @@ pub enum Command {
     /// This key is used to insert (horizontal) tabulators as well as to
     /// navigate focus (in reverse when combined with Shift).
     ///
-    /// This is only sent to widgets with char focus.
+    /// This is usually not sent to widgets but instead used for navigation.
     Tab,
 
     /// Move view up without affecting selection
