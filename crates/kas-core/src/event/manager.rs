@@ -237,7 +237,6 @@ impl ManagerState {
 /// from documentation unless the `internal_doc` feature is enabled.
 #[must_use]
 pub struct Manager<'a> {
-    read_only: bool,
     state: &'a mut ManagerState,
     shell: &'a mut dyn ShellWindow,
     action: TkAction,

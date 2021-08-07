@@ -432,11 +432,9 @@ impl<'a> Manager<'a> {
     // TODO(type safety): consider only implementing on ConfigureManager
     #[inline]
     pub fn add_accel_keys(&mut self, id: WidgetId, keys: &[VirtualKeyCode]) {
-        if !self.read_only {
-            if let Some(last) = self.state.accel_stack.last_mut() {
-                for key in keys {
-                    last.1.insert(*key, id);
-                }
+        if let Some(last) = self.state.accel_stack.last_mut() {
+            for key in keys {
+                last.1.insert(*key, id);
             }
         }
     }
@@ -454,12 +452,8 @@ impl<'a> Manager<'a> {
     /// When char focus is lost, [`Event::LostCharFocus`] is sent.
     #[inline]
     pub fn request_char_focus(&mut self, id: WidgetId) -> bool {
-        if !self.read_only {
-            self.set_sel_focus(id, true);
-            true
-        } else {
-            self.state.char_focus() == Some(id)
-        }
+        self.set_sel_focus(id, true);
+        true
     }
 
     /// Request selection focus
@@ -477,12 +471,8 @@ impl<'a> Manager<'a> {
     /// When char focus is lost, [`Event::LostSelFocus`] is sent.
     #[inline]
     pub fn request_sel_focus(&mut self, id: WidgetId) -> bool {
-        if !self.read_only {
-            self.set_sel_focus(id, false);
-            true
-        } else {
-            self.state.sel_focus == Some(id)
-        }
+        self.set_sel_focus(id, false);
+        true
     }
 
     /// Request a grab on the given input `source`
@@ -526,10 +516,6 @@ impl<'a> Manager<'a> {
         mode: GrabMode,
         cursor: Option<CursorIcon>,
     ) -> bool {
-        if self.read_only {
-            return false;
-        }
-
         let start_id = id;
         let mut pan_grab = (u16::MAX, 0);
         match source {

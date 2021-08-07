@@ -286,7 +286,6 @@ impl ManagerState {
         F: FnOnce(&mut Manager),
     {
         let mut mgr = Manager {
-            read_only: false,
             state: self,
             shell,
             action: TkAction::empty(),
@@ -303,7 +302,6 @@ impl ManagerState {
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
         let mut mgr = Manager {
-            read_only: false,
             state: self,
             shell,
             action: TkAction::empty(),
@@ -367,12 +365,10 @@ impl ManagerState {
             }
         }
 
-        // To avoid infinite loops, we consider mgr read-only from here on.
-        // Since we don't wish to duplicate Handler::handle, we don't actually
-        // make mgr const, but merely pretend it is in the public API.
-        mgr.read_only = true;
-
+        // Warning: infinite loops are possible here if widgets always queue a
+        // new pending event when evaluating one of these:
         while let Some(item) = mgr.state.pending.pop() {
+            trace!("Handling Pending::{:?}", item);
             let (id, event) = match item {
                 Pending::LostCharFocus(id) => (id, Event::LostCharFocus),
                 Pending::LostSelFocus(id) => (id, Event::LostSelFocus),
