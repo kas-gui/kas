@@ -1077,12 +1077,21 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
                 mgr.redraw(self.id());
                 Response::None
             }
-            Event::Command(cmd, shift) => match self.control_key(mgr, cmd, shift) {
-                EditAction::None => Response::None,
-                EditAction::Unhandled => Response::Unhandled,
-                EditAction::Activate => Response::none_or_msg(G::activate(self, mgr)),
-                EditAction::Edit => Response::update_or_msg(G::edit(self, mgr)),
-            },
+            Event::Command(cmd, shift) => {
+                // Note: we can receive a Command without char focus, but should
+                // ensure we have focus before acting on it.
+                request_focus(self, mgr);
+                if self.has_key_focus {
+                    match self.control_key(mgr, cmd, shift) {
+                        EditAction::None => Response::None,
+                        EditAction::Unhandled => Response::Unhandled,
+                        EditAction::Activate => Response::none_or_msg(G::activate(self, mgr)),
+                        EditAction::Edit => Response::update_or_msg(G::edit(self, mgr)),
+                    }
+                } else {
+                    Response::Unhandled
+                }
+            }
             Event::ReceivedCharacter(c) => match self.received_char(mgr, c) {
                 false => Response::Unhandled,
                 true => Response::update_or_msg(G::edit(self, mgr)),
