@@ -396,7 +396,9 @@ impl<'a> Manager<'a> {
         }
 
         if let Some(id) = target {
-            self.set_nav_focus(id, true);
+            if widget.find_leaf(id).map(|w| w.key_nav()).unwrap_or(false) {
+                self.set_nav_focus(id, true);
+            }
             self.add_key_depress(scancode, id);
             self.send_event(widget, id, Event::Activate);
         }
