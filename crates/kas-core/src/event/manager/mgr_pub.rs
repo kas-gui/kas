@@ -246,9 +246,8 @@ impl<'a> Manager<'a> {
         let opt_id = self.shell.add_popup(popup.clone());
         if let Some(id) = opt_id {
             self.state.new_popups.push(popup.id);
-            self.state.popups.push((id, popup));
-            self.state.nav_focus = None;
-            self.state.nav_stack.clear();
+            self.state.popups.push((id, popup, self.state.nav_focus));
+            self.clear_nav_focus();
         }
         opt_id
     }
@@ -280,13 +279,11 @@ impl<'a> Manager<'a> {
                 },
             )
         {
-            let (_, popup) = self.state.popups.remove(index);
+            let (_, popup, old_nav_focus) = self.state.popups.remove(index);
             self.state.popup_removed.push((popup.parent, id));
 
-            if self.state.nav_focus.is_some() {
-                // We guess that the parent supports key_nav:
-                self.state.nav_focus = Some(popup.parent);
-                self.state.nav_stack.clear();
+            if let Some(id) = old_nav_focus {
+                self.set_nav_focus(id, true);
             }
         }
 
@@ -561,9 +558,6 @@ impl<'a> Manager<'a> {
             }
         }
 
-        if self.state.char_focus && self.state.sel_focus != Some(id) {
-            self.clear_char_focus();
-        }
         self.redraw(start_id);
         true
     }
@@ -637,8 +631,10 @@ impl<'a> Manager<'a> {
 
     /// Set the keyboard navigation focus directly
     ///
-    /// [`WidgetConfig::key_nav`] *should* return true for the given widget,
-    /// otherwise navigation behaviour may not be correct.
+    /// Normally, [`WidgetConfig::key_nav`] will be true for the specified
+    /// widget, but this is not required, e.g. a `ScrollLabel` can receive focus
+    /// on text selection with the mouse. (Currently such widgets will receive
+    /// events like any other with nav focus, but this may change.)
     ///
     /// If `notify` is true, then [`Event::NavFocus`] will be sent to the new
     /// widget if focus is changed. This may cause UI adjustments such as
@@ -649,6 +645,9 @@ impl<'a> Manager<'a> {
     pub fn set_nav_focus(&mut self, id: WidgetId, notify: bool) {
         if self.state.nav_focus != Some(id) {
             self.redraw(id);
+            if self.state.sel_focus != Some(id) {
+                self.clear_char_focus();
+            }
             self.state.nav_focus = Some(id);
             self.state.nav_stack.clear();
             trace!("Manager: nav_focus = Some({})", id);
@@ -684,7 +683,7 @@ impl<'a> Manager<'a> {
         type WidgetStack<'b> = SmallVec<[&'b dyn WidgetConfig; 16]>;
         let mut widget_stack = WidgetStack::new();
 
-        if let Some(id) = self.state.popups.last().map(|(_, p)| p.id) {
+        if let Some(id) = self.state.popups.last().map(|(_, p, _)| p.id) {
             if let Some(w) = widget.find_leaf(id) {
                 widget = w;
             } else {
@@ -692,6 +691,10 @@ impl<'a> Manager<'a> {
                 return false;
             }
         }
+
+        // We redraw in all cases. Since this is not part of widget event
+        // processing, we can push directly to self.state.action.
+        self.state.send_action(TkAction::REDRAW);
 
         if self.state.nav_stack.is_empty() {
             if let Some(id) = self.state.nav_focus {
@@ -708,6 +711,7 @@ impl<'a> Manager<'a> {
                     }
 
                     warn!("next_nav_focus: unable to find widget {}", id);
+                    self.clear_char_focus();
                     self.state.nav_focus = None;
                     self.state.nav_stack.clear();
                     return false;
@@ -789,8 +793,11 @@ impl<'a> Manager<'a> {
             ($self:ident, $widget:ident) => {
                 if $widget.key_nav() && !$widget.is_disabled() {
                     let id = $widget.id();
+                    if $self.state.sel_focus != Some(id) {
+                        $self.clear_char_focus();
+                    }
                     $self.state.nav_focus = Some(id);
-                    trace!("Manager: nav_focus = {:?}", $self.state.nav_focus);
+                    trace!("Manager: nav_focus = Some({})", id);
                     if notify {
                         $self.state.pending.push(Pending::SetNavFocus(id));
                     }
@@ -799,9 +806,6 @@ impl<'a> Manager<'a> {
             };
         }
 
-        // We redraw in all cases. Since this is not part of widget event
-        // processing, we can push directly to self.state.action.
-        self.state.send_action(TkAction::REDRAW);
         let nav_stack = &mut self.state.nav_stack;
         // Whether to restart from the beginning on failure
         let mut restart = self.state.nav_focus.is_some();

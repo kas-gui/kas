@@ -315,7 +315,7 @@ impl ManagerState {
                 .state
                 .popups
                 .iter()
-                .map(|(_, popup)| popup.parent)
+                .map(|(_, popup, _)| popup.parent)
                 .collect::<SmallVec<[WidgetId; 16]>>()
             {
                 mgr.send_event(widget, parent, Event::NewPopup(id));
@@ -499,7 +499,7 @@ impl<'a> Manager<'a> {
                     {
                         pan.coords[usize::conv(grab.pan_grab.1)].1 = coord;
                     }
-                } else if let Some(id) = self.state.popups.last().map(|(_, p)| p.parent) {
+                } else if let Some(id) = self.state.popups.last().map(|(_, p, _)| p.parent) {
                     let source = PressSource::Mouse(FAKE_MOUSE_BUTTON, 0);
                     let event = Event::PressMove {
                         source,
@@ -583,13 +583,10 @@ impl<'a> Manager<'a> {
                         };
                         self.send_popup_first(widget, start_id, event);
 
-                        if self.state.config.borrow().mouse_nav_focus()
-                            && widget
-                                .find_leaf(start_id)
-                                .map(|w| w.key_nav())
-                                .unwrap_or(false)
-                        {
-                            self.set_nav_focus(start_id, false);
+                        if self.state.config.borrow().mouse_nav_focus() {
+                            if let Some(w) = widget.find_leaf(start_id) {
+                                self.set_nav_focus(w.id(), false);
+                            }
                         }
                     }
                 }
@@ -609,13 +606,10 @@ impl<'a> Manager<'a> {
                             };
                             self.send_popup_first(widget, start_id, event);
 
-                            if self.state.config.borrow().touch_nav_focus()
-                                && widget
-                                    .find_leaf(start_id)
-                                    .map(|w| w.key_nav())
-                                    .unwrap_or(false)
-                            {
-                                self.set_nav_focus(start_id, false);
+                            if self.state.config.borrow().touch_nav_focus() {
+                                if let Some(w) = widget.find_leaf(start_id) {
+                                    self.set_nav_focus(w.id(), false);
+                                }
                             }
                         }
                     }

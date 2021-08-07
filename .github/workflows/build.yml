@@ -26,7 +26,7 @@ jobs:
         run: |
           strip target/release/examples/layout target/release/examples/gallery target/release/mandlebrot
           mv target/release/mandlebrot target/release/examples/
-          cp -a kas-wgpu/res target/release/examples/
+          cp -a res target/release/examples/
       - name: Upload
         uses: actions/upload-artifact@v2
         with:
@@ -59,7 +59,7 @@ jobs:
         run: |
           strip target/release/examples/layout target/release/examples/gallery target/release/mandlebrot
           mv target/release/mandlebrot target/release/examples/
-          cp -a kas-wgpu/res target/release/examples/
+          cp -a res target/release/examples/
       - name: Upload
         uses: actions/upload-artifact@v2
         with:
@@ -89,7 +89,7 @@ jobs:
         run: |
           strip target/release/examples/layout target/release/examples/gallery target/release/mandlebrot
           mv target/release/mandlebrot target/release/examples/
-          xcopy kas-wgpu\res target\release\examples\res /e/k/c/i/y
+          xcopy res target\release\examples\res /e/k/c/i/y
       - name: Upload
         uses: actions/upload-artifact@v2
         with:

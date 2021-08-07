@@ -20,6 +20,7 @@ pub struct SubMenu<D: Directional, W: Menu> {
     #[widget_core]
     core: CoreData,
     direction: D,
+    pub(crate) key_nav: bool,
     label: Text<AccelString>,
     label_off: Offset,
     frame_size: Size,
@@ -62,6 +63,7 @@ impl<D: Directional, W: Menu> SubMenu<D, W> {
         SubMenu {
             core: Default::default(),
             direction,
+            key_nav: true,
             label: Text::new_single(label.into()),
             label_off: Offset::ZERO,
             frame_size: Size::ZERO,
@@ -98,7 +100,7 @@ impl<D: Directional, W: Menu> WidgetConfig for SubMenu<D, W> {
     }
 
     fn key_nav(&self) -> bool {
-        true
+        self.key_nav
     }
     fn hover_highlight(&self) -> bool {
         true
@@ -201,30 +203,28 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
                 Response::Focus(rect) => Response::Focus(rect),
                 Response::Unhandled => match event {
                     Event::Command(key, _) if self.popup_id.is_some() => {
-                        if self.popup_id.is_some() {
-                            let dir = self.direction.as_direction();
-                            let inner_vert = self.list.direction().is_vertical();
-                            let next = |mgr: &mut Manager, s, clr, rev| {
-                                if clr {
-                                    mgr.clear_nav_focus();
-                                }
-                                mgr.next_nav_focus(s, rev, true);
-                            };
-                            let rev = self.list.direction().is_reversed();
-                            use Direction::*;
-                            match key {
-                                Command::Left if !inner_vert => next(mgr, self, false, !rev),
-                                Command::Right if !inner_vert => next(mgr, self, false, rev),
-                                Command::Up if inner_vert => next(mgr, self, false, !rev),
-                                Command::Down if inner_vert => next(mgr, self, false, rev),
-                                Command::Home => next(mgr, self, true, false),
-                                Command::End => next(mgr, self, true, true),
-                                Command::Left if dir == Right => self.close_menu(mgr),
-                                Command::Right if dir == Left => self.close_menu(mgr),
-                                Command::Up if dir == Down => self.close_menu(mgr),
-                                Command::Down if dir == Up => self.close_menu(mgr),
-                                _ => return Response::Unhandled,
+                        let dir = self.direction.as_direction();
+                        let inner_vert = self.list.direction().is_vertical();
+                        let next = |mgr: &mut Manager, s, clr, rev| {
+                            if clr {
+                                mgr.clear_nav_focus();
                             }
+                            mgr.next_nav_focus(s, rev, true);
+                        };
+                        let rev = self.list.direction().is_reversed();
+                        use Direction::*;
+                        match key {
+                            Command::Left if !inner_vert => next(mgr, self, false, !rev),
+                            Command::Right if !inner_vert => next(mgr, self, false, rev),
+                            Command::Up if inner_vert => next(mgr, self, false, !rev),
+                            Command::Down if inner_vert => next(mgr, self, false, rev),
+                            Command::Home => next(mgr, self, true, false),
+                            Command::End => next(mgr, self, true, true),
+                            Command::Left if dir == Right => self.close_menu(mgr),
+                            Command::Right if dir == Left => self.close_menu(mgr),
+                            Command::Up if dir == Down => self.close_menu(mgr),
+                            Command::Down if dir == Up => self.close_menu(mgr),
+                            _ => return Response::Unhandled,
                         }
                         Response::None
                     }
