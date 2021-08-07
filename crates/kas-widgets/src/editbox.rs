@@ -712,14 +712,10 @@ impl<G: EditGuard> EditField<G> {
         }
 
         let action = match key {
-            Command::Escape => {
-                if !self.selection.is_empty() {
-                    self.selection.set_empty();
-                    mgr.redraw(self.id());
-                    Action::None
-                } else {
-                    Action::Unhandled
-                }
+            Command::Escape | Command::Deselect if !selection.is_empty() => {
+                self.selection.set_empty();
+                mgr.redraw(self.id());
+                Action::None
             }
             Command::Return if shift || !self.multi_line => Action::Activate,
             Command::Return if self.multi_line => {
@@ -872,11 +868,6 @@ impl<G: EditGuard> EditField<G> {
                     .map(|(index, _)| index)
                     .unwrap_or(0);
                 Action::Delete(prev..pos)
-            }
-            Command::Deselect => {
-                self.selection.set_sel_pos(pos);
-                mgr.redraw(self.id());
-                Action::None
             }
             Command::SelectAll => {
                 self.selection.set_sel_pos(0);

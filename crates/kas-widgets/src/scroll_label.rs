@@ -144,7 +144,7 @@ impl<T: FormattableText + 'static> event::Handler for ScrollLabel<T> {
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
         match event {
             Event::Command(cmd, _) => match cmd {
-                Command::Escape | Command::Deselect => {
+                Command::Escape | Command::Deselect if !self.selection.is_empty() => {
                     self.selection.set_empty();
                     mgr.redraw(self.id());
                     Response::None
