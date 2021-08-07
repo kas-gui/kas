@@ -202,31 +202,29 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
                 Response::Pan(delta) => Response::Pan(delta),
                 Response::Focus(rect) => Response::Focus(rect),
                 Response::Unhandled => match event {
-                    Event::Command(key, _) if self.popup_id.is_some() => {
-                        if self.popup_id.is_some() {
-                            let dir = self.direction.as_direction();
-                            let inner_vert = self.list.direction().is_vertical();
-                            let next = |mgr: &mut Manager, s, clr, rev| {
-                                if clr {
-                                    mgr.clear_nav_focus();
-                                }
-                                mgr.next_nav_focus(s, rev, true);
-                            };
-                            let rev = self.list.direction().is_reversed();
-                            use Direction::*;
-                            match key {
-                                Command::Left if !inner_vert => next(mgr, self, false, !rev),
-                                Command::Right if !inner_vert => next(mgr, self, false, rev),
-                                Command::Up if inner_vert => next(mgr, self, false, !rev),
-                                Command::Down if inner_vert => next(mgr, self, false, rev),
-                                Command::Home => next(mgr, self, true, false),
-                                Command::End => next(mgr, self, true, true),
-                                Command::Left if dir == Right => self.close_menu(mgr),
-                                Command::Right if dir == Left => self.close_menu(mgr),
-                                Command::Up if dir == Down => self.close_menu(mgr),
-                                Command::Down if dir == Up => self.close_menu(mgr),
-                                _ => return Response::Unhandled,
+                    Event::Command(key, _)  if self.popup_id.is_some()=> {
+                        let dir = self.direction.as_direction();
+                        let inner_vert = self.list.direction().is_vertical();
+                        let next = |mgr: &mut Manager, s, clr, rev| {
+                            if clr {
+                                mgr.clear_nav_focus();
                             }
+                            mgr.next_nav_focus(s, rev, true);
+                        };
+                        let rev = self.list.direction().is_reversed();
+                        use Direction::*;
+                        match key {
+                            Command::Left if !inner_vert => next(mgr, self, false, !rev),
+                            Command::Right if !inner_vert => next(mgr, self, false, rev),
+                            Command::Up if inner_vert => next(mgr, self, false, !rev),
+                            Command::Down if inner_vert => next(mgr, self, false, rev),
+                            Command::Home => next(mgr, self, true, false),
+                            Command::End => next(mgr, self, true, true),
+                            Command::Left if dir == Right => self.close_menu(mgr),
+                            Command::Right if dir == Left => self.close_menu(mgr),
+                            Command::Up if dir == Down => self.close_menu(mgr),
+                            Command::Down if dir == Up => self.close_menu(mgr),
+                            _ => return Response::Unhandled,
                         }
                         Response::None
                     }
