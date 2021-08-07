@@ -365,6 +365,20 @@ impl Command {
             _ => return None,
         })
     }
+
+    /// Convert to selection-focus command
+    ///
+    /// Certain limited commands may be sent to widgets with selection focus but
+    /// not character or navigation focus. This is limited to: `Deselect`,
+    /// `Copy`.
+    pub fn as_select(self) -> Option<Self> {
+        use Command::*;
+        Some(match self {
+            Deselect | Escape => Deselect,
+            Cut | Copy => Copy,
+            _ => return None,
+        })
+    }
 }
 
 /// Source of `EventChild::Press`

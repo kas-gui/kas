@@ -306,6 +306,11 @@ impl<'a> Manager<'a> {
             self.clear_char_focus();
             self.next_nav_focus(widget.as_widget(), shift, true);
             return;
+        } else if vkey == VK::Escape {
+            if let Some(id) = self.state.popups.last().map(|(id, _)| *id) {
+                self.close_window(id);
+                return;
+            }
         }
 
         let opt_command = self
@@ -315,16 +320,18 @@ impl<'a> Manager<'a> {
             .shortcuts()
             .get(self.state.modifiers, vkey);
 
-        // First priority goes to the widget with char focus and/or with nav
-        // focus (note: char focus implies nav focus).
-        if let Some(id) = self.state.sel_focus {
-            if let Some(cmd) = opt_command {
-                if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
-                    return;
+        if self.state.char_focus {
+            if let Some(id) = self.state.sel_focus {
+                if let Some(cmd) = opt_command {
+                    if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
+                        return;
+                    }
                 }
             }
-        } else if !self.state.modifiers.alt() {
-            if let Some(id) = self.state.sel_focus.or(self.state.nav_focus) {
+        }
+
+        if !self.state.modifiers.alt() {
+            if let Some(id) = self.state.nav_focus {
                 if vkey == VK::Space || vkey == VK::Return || vkey == VK::NumpadEnter {
                     self.add_key_depress(scancode, id);
                     self.send_event(widget, id, Event::Activate);
@@ -338,13 +345,22 @@ impl<'a> Manager<'a> {
         }
 
         if let Some(cmd) = opt_command {
-            // Next priority goes to any popup present
             if let Some(id) = self.state.popups.last().map(|popup| popup.1.parent) {
                 if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
                     return;
                 }
             }
-            // Then to the nav fallback
+
+            if self.state.sel_focus != self.state.nav_focus {
+                if let Some(id) = self.state.sel_focus {
+                    if let Some(cmd) = cmd.as_select() {
+                        if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
+                            return;
+                        }
+                    }
+                }
+            }
+
             if let Some(id) = self.state.nav_fallback {
                 if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
                     return;
@@ -384,14 +400,7 @@ impl<'a> Manager<'a> {
         if let Some(id) = target {
             self.set_nav_focus(id, true);
             self.add_key_depress(scancode, id);
-            if !self.try_send_event(widget, id, Event::Activate) {
-                if vkey == VK::Escape {
-                    // When unhandled, the Escape key causes other actions
-                    if let Some(id) = self.state.popups.last().map(|(id, _)| *id) {
-                        self.close_window(id);
-                    }
-                }
-            }
+            self.send_event(widget, id, Event::Activate);
         }
     }
 
