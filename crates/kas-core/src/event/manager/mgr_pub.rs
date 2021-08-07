@@ -247,8 +247,7 @@ impl<'a> Manager<'a> {
         if let Some(id) = opt_id {
             self.state.new_popups.push(popup.id);
             self.state.popups.push((id, popup, self.state.nav_focus));
-            self.state.nav_focus = None;
-            self.state.nav_stack.clear();
+            self.clear_nav_focus();
         }
         opt_id
     }
@@ -559,9 +558,6 @@ impl<'a> Manager<'a> {
             }
         }
 
-        if self.state.char_focus && self.state.sel_focus != Some(id) {
-            self.clear_char_focus();
-        }
         self.redraw(start_id);
         true
     }
@@ -649,7 +645,9 @@ impl<'a> Manager<'a> {
     pub fn set_nav_focus(&mut self, id: WidgetId, notify: bool) {
         if self.state.nav_focus != Some(id) {
             self.redraw(id);
-            self.state.char_focus = false;
+            if self.state.sel_focus != Some(id) {
+                self.clear_char_focus();
+            }
             self.state.nav_focus = Some(id);
             self.state.nav_stack.clear();
             trace!("Manager: nav_focus = Some({})", id);
@@ -697,7 +695,6 @@ impl<'a> Manager<'a> {
         // We redraw in all cases. Since this is not part of widget event
         // processing, we can push directly to self.state.action.
         self.state.send_action(TkAction::REDRAW);
-        self.state.char_focus = false;
 
         if self.state.nav_stack.is_empty() {
             if let Some(id) = self.state.nav_focus {
@@ -714,6 +711,7 @@ impl<'a> Manager<'a> {
                     }
 
                     warn!("next_nav_focus: unable to find widget {}", id);
+                    self.clear_char_focus();
                     self.state.nav_focus = None;
                     self.state.nav_stack.clear();
                     return false;
@@ -795,6 +793,9 @@ impl<'a> Manager<'a> {
             ($self:ident, $widget:ident) => {
                 if $widget.key_nav() && !$widget.is_disabled() {
                     let id = $widget.id();
+                    if $self.state.sel_focus != Some(id) {
+                        $self.clear_char_focus();
+                    }
                     $self.state.nav_focus = Some(id);
                     trace!("Manager: nav_focus = Some({})", id);
                     if notify {
