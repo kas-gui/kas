@@ -39,7 +39,10 @@ impl<W: Menu, D: Directional + Default> MenuBar<W, D> {
 
 impl<W: Menu, D: Directional> MenuBar<W, D> {
     /// Construct a menubar with explicit direction
-    pub fn new_with_direction(direction: D, menus: Vec<SubMenu<D::Flipped, W>>) -> Self {
+    pub fn new_with_direction(direction: D, mut menus: Vec<SubMenu<D::Flipped, W>>) -> Self {
+        for menu in menus.iter_mut() {
+            menu.key_nav = false;
+        }
         MenuBar {
             core: Default::default(),
             bar: List::new_with_direction(direction, menus),
