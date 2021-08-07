@@ -130,7 +130,7 @@ pub trait WidgetCore: Any + fmt::Debug {
     /// returns true.
     fn input_state(&self, mgr: &ManagerState, disabled: bool) -> InputState {
         let id = self.core_data().id;
-        let (char_focus, sel_focus) = mgr.char_focus(id);
+        let (char_focus, sel_focus) = mgr.has_char_focus(id);
         InputState {
             disabled: self.core_data().disabled || disabled,
             error: false,

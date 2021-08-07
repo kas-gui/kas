@@ -70,11 +70,9 @@ pub trait EditGuard: Debug + Sized + 'static {
 
     /// Focus-gained guard
     ///
-    /// This function is called when the widget gains keyboard input focus. Its
-    /// return value is converted to [`Response::None`] or [`Response::Msg`].
-    fn focus_gained(edit: &mut EditField<Self>, mgr: &mut Manager) -> Option<Self::Msg> {
+    /// This function is called when the widget gains keyboard input focus.
+    fn focus_gained(edit: &mut EditField<Self>, mgr: &mut Manager) {
         let _ = (edit, mgr);
-        None
     }
 
     /// Focus-lost guard
@@ -712,14 +710,10 @@ impl<G: EditGuard> EditField<G> {
         }
 
         let action = match key {
-            Command::Escape => {
-                if !self.selection.is_empty() {
-                    self.selection.set_empty();
-                    mgr.redraw(self.id());
-                    Action::None
-                } else {
-                    Action::Unhandled
-                }
+            Command::Escape | Command::Deselect if !selection.is_empty() => {
+                self.selection.set_empty();
+                mgr.redraw(self.id());
+                Action::None
             }
             Command::Return if shift || !self.multi_line => Action::Activate,
             Command::Return if self.multi_line => {
@@ -872,11 +866,6 @@ impl<G: EditGuard> EditField<G> {
                     .map(|(index, _)| index)
                     .unwrap_or(0);
                 Action::Delete(prev..pos)
-            }
-            Command::Deselect => {
-                self.selection.set_sel_pos(pos);
-                mgr.redraw(self.id());
-                Action::None
             }
             Command::SelectAll => {
                 self.selection.set_sel_pos(0);
@@ -1045,6 +1034,11 @@ impl<G: EditGuard> HasStr for EditField<G> {
 
 impl<G: EditGuard> HasString for EditField<G> {
     fn set_string(&mut self, string: String) -> TkAction {
+        // TODO: make text.set_string report bool for is changed?
+        if *self.text.text() == string {
+            return TkAction::empty();
+        }
+
         self.text.set_string(string);
         if kas::text::fonts::fonts().num_faces() > 0 {
             if let Some(req) = self.text.prepare() {
@@ -1060,21 +1054,17 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
     type Msg = G::Msg;
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
-        fn request_focus<G: EditGuard + 'static>(
-            s: &mut EditField<G>,
-            mgr: &mut Manager,
-        ) -> Response<G::Msg> {
+        fn request_focus<G: EditGuard + 'static>(s: &mut EditField<G>, mgr: &mut Manager) {
             if !s.has_key_focus && mgr.request_char_focus(s.id()) {
                 s.has_key_focus = true;
-                G::focus_gained(s, mgr)
-                    .map(|msg| msg.into())
-                    .unwrap_or(Response::None)
-            } else {
-                Response::None
+                G::focus_gained(s, mgr);
             }
         }
         match event {
-            Event::Activate => request_focus(self, mgr),
+            Event::Activate | Event::NavFocus => {
+                request_focus(self, mgr);
+                Response::None
+            }
             Event::LostCharFocus => {
                 self.has_key_focus = false;
                 mgr.redraw(self.id());
@@ -1087,12 +1077,21 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
                 mgr.redraw(self.id());
                 Response::None
             }
-            Event::Command(cmd, shift) => match self.control_key(mgr, cmd, shift) {
-                EditAction::None => Response::None,
-                EditAction::Unhandled => Response::Unhandled,
-                EditAction::Activate => Response::none_or_msg(G::activate(self, mgr)),
-                EditAction::Edit => Response::update_or_msg(G::edit(self, mgr)),
-            },
+            Event::Command(cmd, shift) => {
+                // Note: we can receive a Command without char focus, but should
+                // ensure we have focus before acting on it.
+                request_focus(self, mgr);
+                if self.has_key_focus {
+                    match self.control_key(mgr, cmd, shift) {
+                        EditAction::None => Response::None,
+                        EditAction::Unhandled => Response::Unhandled,
+                        EditAction::Activate => Response::none_or_msg(G::activate(self, mgr)),
+                        EditAction::Edit => Response::update_or_msg(G::edit(self, mgr)),
+                    }
+                } else {
+                    Response::Unhandled
+                }
+            }
             Event::ReceivedCharacter(c) => match self.received_char(mgr, c) {
                 false => Response::Unhandled,
                 true => Response::update_or_msg(G::edit(self, mgr)),
@@ -1118,21 +1117,25 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
                     delta if delta == Offset::ZERO => Response::None,
                     delta => Response::Pan(delta),
                 },
-                TextInputAction::Focus => request_focus(self, mgr),
+                TextInputAction::Focus => {
+                    request_focus(self, mgr);
+                    Response::None
+                }
                 TextInputAction::Cursor(coord, anchor, clear, repeats) => {
-                    let mut response = Response::None;
                     self.set_edit_pos_from_coord(mgr, coord);
-                    if anchor {
-                        self.selection.set_anchor();
-                        response = request_focus(self, mgr);
+                    if self.has_key_focus || mgr.request_sel_focus(self.id()) {
+                        if anchor {
+                            self.selection.set_anchor();
+                            request_focus(self, mgr);
+                        }
+                        if clear {
+                            self.selection.set_empty();
+                        }
+                        if repeats > 1 {
+                            self.selection.expand(&self.text, repeats);
+                        }
                     }
-                    if clear {
-                        self.selection.set_empty();
-                    }
-                    if repeats > 1 {
-                        self.selection.expand(&self.text, repeats);
-                    }
-                    response
+                    Response::None
                 }
             },
         }

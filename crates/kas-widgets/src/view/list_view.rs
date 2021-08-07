@@ -715,20 +715,12 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
                 (Command::PageDown, Some(cur)) if cur < last => Some((cur + len / 2).min(last)),
                 _ => None,
             };
-            let action = if let Some(index) = data {
+            if let Some(index) = data {
                 // Set nav focus to index and update scroll position
                 // Note: we update nav focus before updating widgets; this is fine
-                mgr.set_nav_focus(self.widgets[index % len].widget.id());
-
-                let mut skip_off = Offset::ZERO;
-                skip_off.set_component(self.direction, skip);
-                let pos = self.core.rect.pos + self.frame_offset + skip_off * i32::conv(index);
-                let item_rect = Rect::new(pos, self.child_size);
-                self.scroll.focus_rect(item_rect, self.core.rect).1
-            } else {
-                TkAction::empty()
-            };
-            (action, Response::None)
+                mgr.set_nav_focus(self.widgets[index % len].widget.id(), true);
+            }
+            (TkAction::empty(), Response::None)
         } else {
             self.scroll
                 .scroll_by_event(event, self.core.rect.size, |source, _, coord| {

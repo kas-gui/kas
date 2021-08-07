@@ -8,7 +8,7 @@
 use super::Scrollable;
 use kas::draw::TextClass;
 use kas::event::components::{TextInput, TextInputAction};
-use kas::event::{self, ScrollDelta};
+use kas::event::{self, Command, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
@@ -143,6 +143,26 @@ impl<T: FormattableText + 'static> event::Handler for ScrollLabel<T> {
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
         match event {
+            Event::Command(cmd, _) => match cmd {
+                Command::Escape | Command::Deselect if !self.selection.is_empty() => {
+                    self.selection.set_empty();
+                    mgr.redraw(self.id());
+                    Response::None
+                }
+                Command::SelectAll => {
+                    self.selection.set_sel_pos(0);
+                    self.selection.set_edit_pos(self.text.str_len());
+                    mgr.redraw(self.id());
+                    Response::None
+                }
+                Command::Cut | Command::Copy => {
+                    let range = self.selection.range();
+                    mgr.set_clipboard((self.text.as_str()[range]).to_string());
+                    Response::None
+                }
+                // TODO: scroll by command
+                _ => Response::Unhandled,
+            },
             Event::LostSelFocus => {
                 self.selection.set_empty();
                 mgr.redraw(self.id());
@@ -171,14 +191,16 @@ impl<T: FormattableText + 'static> event::Handler for ScrollLabel<T> {
                 },
                 TextInputAction::Cursor(coord, anchor, clear, repeats) => {
                     self.set_edit_pos_from_coord(mgr, coord);
-                    if anchor {
-                        self.selection.set_anchor();
-                    }
-                    if clear {
-                        self.selection.set_empty();
-                    }
-                    if repeats > 1 {
-                        self.selection.expand(&self.text, repeats);
+                    if mgr.request_sel_focus(self.id()) {
+                        if anchor {
+                            self.selection.set_anchor();
+                        }
+                        if clear {
+                            self.selection.set_empty();
+                        }
+                        if repeats > 1 {
+                            self.selection.expand(&self.text, repeats);
+                        }
                     }
                     Response::None
                 }

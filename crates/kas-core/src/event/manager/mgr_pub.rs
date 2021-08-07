@@ -43,7 +43,7 @@ impl ManagerState {
     ///
     /// Note that `char_focus` implies `sel_focus`.
     #[inline]
-    pub fn char_focus(&self, w_id: WidgetId) -> (bool, bool) {
+    pub fn has_char_focus(&self, w_id: WidgetId) -> (bool, bool) {
         if let Some(id) = self.sel_focus {
             if id == w_id {
                 return (self.char_focus, true);
@@ -432,31 +432,47 @@ impl<'a> Manager<'a> {
     // TODO(type safety): consider only implementing on ConfigureManager
     #[inline]
     pub fn add_accel_keys(&mut self, id: WidgetId, keys: &[VirtualKeyCode]) {
-        if !self.read_only {
-            if let Some(last) = self.state.accel_stack.last_mut() {
-                for key in keys {
-                    last.1.insert(*key, id);
-                }
+        if let Some(last) = self.state.accel_stack.last_mut() {
+            for key in keys {
+                last.1.insert(*key, id);
             }
         }
     }
 
     /// Request character-input focus
     ///
+    /// Returns true on success or when the widget already had char focus.
+    ///
     /// Character data is sent to the widget with char focus via
     /// [`Event::ReceivedCharacter`] and [`Event::Command`].
     ///
-    /// This method returns true on success, false if focus is unavailable.
-    /// When granted, focus persists until either another widget requests focus
-    /// or the widget's event handler returns `Response::Unhandled` on event
-    /// `Event::Control(ControlKey::Escape)`.
+    /// Char focus implies sel focus (see [`Self::request_sel_focus`]) and
+    /// navigation focus.
+    ///
+    /// When char focus is lost, [`Event::LostCharFocus`] is sent.
+    #[inline]
     pub fn request_char_focus(&mut self, id: WidgetId) -> bool {
-        if !self.read_only {
-            self.set_char_focus(Some(id));
-            true
-        } else {
-            false
-        }
+        self.set_sel_focus(id, true);
+        true
+    }
+
+    /// Request selection focus
+    ///
+    /// Returns true on success or when the widget already had sel focus.
+    ///
+    /// To prevent multiple simultaneous selections (e.g. of text) in the UI,
+    /// only widgets with "selection focus" are allowed to select things.
+    /// Selection focus is implied by character focus. [`Event::LostSelFocus`]
+    /// is sent when selection focus is lost; in this case any existing
+    /// selection should be cleared.
+    ///
+    /// Selection focus implies navigation focus.
+    ///
+    /// When char focus is lost, [`Event::LostSelFocus`] is sent.
+    #[inline]
+    pub fn request_sel_focus(&mut self, id: WidgetId) -> bool {
+        self.set_sel_focus(id, false);
+        true
     }
 
     /// Request a grab on the given input `source`
@@ -500,10 +516,6 @@ impl<'a> Manager<'a> {
         mode: GrabMode,
         cursor: Option<CursorIcon>,
     ) -> bool {
-        if self.read_only {
-            return false;
-        }
-
         let start_id = id;
         let mut pan_grab = (u16::MAX, 0);
         match source {
@@ -550,7 +562,7 @@ impl<'a> Manager<'a> {
         }
 
         if self.state.char_focus && self.state.sel_focus != Some(id) {
-            self.set_char_focus(None);
+            self.clear_char_focus();
         }
         self.redraw(start_id);
         true
@@ -627,11 +639,24 @@ impl<'a> Manager<'a> {
     ///
     /// [`WidgetConfig::key_nav`] *should* return true for the given widget,
     /// otherwise navigation behaviour may not be correct.
-    pub fn set_nav_focus(&mut self, id: WidgetId) {
-        self.redraw(id);
-        self.state.nav_focus = Some(id);
-        self.state.nav_stack.clear();
-        trace!("Manager: nav_focus = Some({})", id);
+    ///
+    /// If `notify` is true, then [`Event::NavFocus`] will be sent to the new
+    /// widget if focus is changed. This may cause UI adjustments such as
+    /// scrolling to ensure that the new navigation target is visible and can
+    /// potentially have other side effects, e.g. an `EditBox` claiming keyboard
+    /// focus. If `notify` is false this doesn't happen, though the UI is still
+    /// redrawn to visually indicate navigation focus.
+    pub fn set_nav_focus(&mut self, id: WidgetId, notify: bool) {
+        if self.state.nav_focus != Some(id) {
+            self.redraw(id);
+            self.state.nav_focus = Some(id);
+            self.state.nav_stack.clear();
+            trace!("Manager: nav_focus = Some({})", id);
+
+            if notify {
+                self.state.pending.push(Pending::SetNavFocus(id));
+            }
+        }
     }
 
     /// Advance the keyboard navigation focus
@@ -641,10 +666,21 @@ impl<'a> Manager<'a> {
     /// returns true; otherwise this will give focus to the first (or last)
     /// such widget.
     ///
-    /// This method returns true when the navigation focus has been updated,
-    /// otherwise leaves the focus unchanged. The caller may (optionally) choose
-    /// to call [`Manager::clear_nav_focus`] when this method returns false.
-    pub fn next_nav_focus(&mut self, mut widget: &dyn WidgetConfig, reverse: bool) -> bool {
+    /// Returns true on success, false if there are no navigable widgets or
+    /// some error occurred.
+    ///
+    /// If `notify` is true, then [`Event::NavFocus`] will be sent to the new
+    /// widget if focus is changed. This may cause UI adjustments such as
+    /// scrolling to ensure that the new navigation target is visible and can
+    /// potentially have other side effects, e.g. an `EditBox` claiming keyboard
+    /// focus. If `notify` is false this doesn't happen, though the UI is still
+    /// redrawn to visually indicate navigation focus.
+    pub fn next_nav_focus(
+        &mut self,
+        mut widget: &dyn WidgetConfig,
+        reverse: bool,
+        notify: bool,
+    ) -> bool {
         type WidgetStack<'b> = SmallVec<[&'b dyn WidgetConfig; 16]>;
         let mut widget_stack = WidgetStack::new();
 
@@ -715,31 +751,36 @@ impl<'a> Manager<'a> {
             }};
         }
 
+        enum Case {
+            Sibling,
+            Pop,
+            End,
+        }
+
         // Progresses to the next (or previous) sibling, otherwise pops to the
-        // parent. Returns true if a sibling is found.
-        // Breaks to given lifetime on error.
+        // parent. Breaks to given lifetime on error.
         macro_rules! do_sibling_or_pop {
             ($lt:lifetime, $nav_stack:ident, $widget:ident, $widget_stack:ident) => {{
-                let index;
                 match ($nav_stack.pop(), $widget_stack.pop()) {
                     (Some(i), Some(w)) => {
-                        index = i.cast();
+                        let index = i.cast();
                         $widget = w;
+
+                        match $widget.spatial_nav(reverse, Some(index)) {
+                            Some(index) if !$widget.is_disabled() => {
+                                let new = match $widget.get_child(index) {
+                                    None => break $lt,
+                                    Some(w) => w,
+                                };
+                                $nav_stack.push(index.cast());
+                                $widget_stack.push($widget);
+                                $widget = new;
+                                Case::Sibling
+                            }
+                            _ => Case::Pop,
+                        }
                     }
-                    _ => break $lt,
-                };
-                match $widget.spatial_nav(reverse, Some(index)) {
-                    Some(index) if !$widget.is_disabled() => {
-                        let new = match $widget.get_child(index) {
-                            None => break $lt,
-                            Some(w) => w,
-                        };
-                        $nav_stack.push(index.cast());
-                        $widget_stack.push($widget);
-                        $widget = new;
-                        true
-                    }
-                    _ => false,
+                    _ => Case::End,
                 }
             }};
         }
@@ -747,8 +788,12 @@ impl<'a> Manager<'a> {
         macro_rules! try_set_focus {
             ($self:ident, $widget:ident) => {
                 if $widget.key_nav() && !$widget.is_disabled() {
-                    $self.state.nav_focus = Some($widget.id());
+                    let id = $widget.id();
+                    $self.state.nav_focus = Some(id);
                     trace!("Manager: nav_focus = {:?}", $self.state.nav_focus);
+                    if notify {
+                        $self.state.pending.push(Pending::SetNavFocus(id));
+                    }
                     return true;
                 }
             };
@@ -758,6 +803,8 @@ impl<'a> Manager<'a> {
         // processing, we can push directly to self.state.action.
         self.state.send_action(TkAction::REDRAW);
         let nav_stack = &mut self.state.nav_stack;
+        // Whether to restart from the beginning on failure
+        let mut restart = self.state.nav_focus.is_some();
 
         if !reverse {
             // Depth-first search without function recursion. Our starting
@@ -770,9 +817,17 @@ impl<'a> Manager<'a> {
                 }
 
                 loop {
-                    if do_sibling_or_pop!('l1, nav_stack, widget, widget_stack) {
-                        try_set_focus!(self, widget);
-                        break;
+                    match do_sibling_or_pop!('l1, nav_stack, widget, widget_stack) {
+                        Case::Sibling => {
+                            try_set_focus!(self, widget);
+                            break;
+                        }
+                        Case::Pop => (),
+                        Case::End if restart => {
+                            restart = false;
+                            continue 'l1;
+                        }
+                        Case::End => break 'l1,
                     }
                 }
             }
@@ -780,9 +835,21 @@ impl<'a> Manager<'a> {
             // Reverse depth-first search
             let mut start = self.state.nav_focus.is_none();
             'l2: loop {
-                if start || do_sibling_or_pop!('l2, nav_stack, widget, widget_stack) {
+                let case = if start {
                     start = false;
-                    while do_child!('l2, nav_stack, widget, widget_stack) {}
+                    Case::Sibling
+                } else {
+                    do_sibling_or_pop!('l2, nav_stack, widget, widget_stack)
+                };
+                match case {
+                    Case::Sibling => while do_child!('l2, nav_stack, widget, widget_stack) {},
+                    Case::Pop => (),
+                    Case::End if restart => {
+                        restart = false;
+                        start = true;
+                        continue 'l2;
+                    }
+                    Case::End => break 'l2,
                 }
 
                 try_set_focus!(self, widget);

@@ -218,6 +218,14 @@ impl ManagerState {
                     false
                 }
             }
+            Pending::SetNavFocus(id) => {
+                if let Some(new_id) = renames.get(id) {
+                    *item = Pending::SetNavFocus(*new_id);
+                    true
+                } else {
+                    false
+                }
+            }
         });
     }
 
@@ -278,7 +286,6 @@ impl ManagerState {
         F: FnOnce(&mut Manager),
     {
         let mut mgr = Manager {
-            read_only: false,
             state: self,
             shell,
             action: TkAction::empty(),
@@ -295,7 +302,6 @@ impl ManagerState {
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
         let mut mgr = Manager {
-            read_only: false,
             state: self,
             shell,
             action: TkAction::empty(),
@@ -359,15 +365,14 @@ impl ManagerState {
             }
         }
 
-        // To avoid infinite loops, we consider mgr read-only from here on.
-        // Since we don't wish to duplicate Handler::handle, we don't actually
-        // make mgr const, but merely pretend it is in the public API.
-        mgr.read_only = true;
-
+        // Warning: infinite loops are possible here if widgets always queue a
+        // new pending event when evaluating one of these:
         while let Some(item) = mgr.state.pending.pop() {
+            trace!("Handling Pending::{:?}", item);
             let (id, event) = match item {
                 Pending::LostCharFocus(id) => (id, Event::LostCharFocus),
                 Pending::LostSelFocus(id) => (id, Event::LostSelFocus),
+                Pending::SetNavFocus(id) => (id, Event::NavFocus),
             };
             mgr.send_event(widget, id, event);
         }
@@ -440,15 +445,13 @@ impl<'a> Manager<'a> {
             HoveredFileCancelled => ,
             */
             ReceivedCharacter(c) => {
-                if let Some(id) = self.state.sel_focus {
-                    if self.state.char_focus {
-                        // Filter out control codes (Unicode 5.11). These may be
-                        // generated from combinations such as Ctrl+C by some other
-                        // layer. We use our own shortcut system instead.
-                        if c >= '\u{20}' && !('\u{7f}'..='\u{9f}').contains(&c) {
-                            let event = Event::ReceivedCharacter(c);
-                            self.send_event(widget, id, event);
-                        }
+                if let Some(id) = self.state.char_focus() {
+                    // Filter out control codes (Unicode 5.11). These may be
+                    // generated from combinations such as Ctrl+C by some other
+                    // layer. We use our own shortcut system instead.
+                    if c >= '\x20' && !('\x7f'..='\u{9f}').contains(&c) {
+                        let event = Event::ReceivedCharacter(c);
+                        self.send_event(widget, id, event);
                     }
                 }
             }
@@ -579,6 +582,15 @@ impl<'a> Manager<'a> {
                             coord,
                         };
                         self.send_popup_first(widget, start_id, event);
+
+                        if self.state.config.borrow().mouse_nav_focus()
+                            && widget
+                                .find_leaf(start_id)
+                                .map(|w| w.key_nav())
+                                .unwrap_or(false)
+                        {
+                            self.set_nav_focus(start_id, false);
+                        }
                     }
                 }
             }
@@ -596,6 +608,15 @@ impl<'a> Manager<'a> {
                                 coord,
                             };
                             self.send_popup_first(widget, start_id, event);
+
+                            if self.state.config.borrow().touch_nav_focus()
+                                && widget
+                                    .find_leaf(start_id)
+                                    .map(|w| w.key_nav())
+                                    .unwrap_or(false)
+                            {
+                                self.set_nav_focus(start_id, false);
+                            }
                         }
                     }
                     TouchPhase::Moved => {

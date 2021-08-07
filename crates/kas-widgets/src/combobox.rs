@@ -251,7 +251,7 @@ impl<M: 'static> ComboBox<M> {
                         if clr {
                             mgr.clear_nav_focus();
                         }
-                        mgr.next_nav_focus(s, rev);
+                        mgr.next_nav_focus(s, rev, true);
                         Response::None
                     };
                     match cmd {
@@ -304,14 +304,14 @@ impl<M: 'static> event::Handler for ComboBox<M> {
     type Msg = M;
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
-        let open_popup = |s: &mut Self, mgr: &mut Manager| {
+        let open_popup = |s: &mut Self, mgr: &mut Manager, notify: bool| {
             s.popup_id = mgr.add_popup(kas::Popup {
                 id: s.popup.id(),
                 parent: s.id(),
                 direction: Direction::Down,
             });
             if let Some(id) = s.popup.inner.get_child(s.active).map(|w| w.id()) {
-                mgr.set_nav_focus(id);
+                mgr.set_nav_focus(id, notify);
             }
         };
         match event {
@@ -319,7 +319,7 @@ impl<M: 'static> event::Handler for ComboBox<M> {
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id);
                 } else {
-                    open_popup(self, mgr);
+                    open_popup(self, mgr, true);
                 }
             }
             Event::PressStart {
@@ -347,13 +347,13 @@ impl<M: 'static> event::Handler for ComboBox<M> {
                 ..
             } => {
                 if self.popup_id.is_none() {
-                    open_popup(self, mgr);
+                    open_popup(self, mgr, false);
                 }
                 let cond = self.popup.inner.rect().contains(coord);
                 let target = if cond { cur_id } else { None };
                 mgr.set_grab_depress(source, target);
                 if let Some(id) = target {
-                    mgr.set_nav_focus(id);
+                    mgr.set_nav_focus(id, false);
                 }
             }
             Event::PressEnd { end_id, .. } => {
@@ -361,7 +361,7 @@ impl<M: 'static> event::Handler for ComboBox<M> {
                     if id == self.id() {
                         if self.opening {
                             if self.popup_id.is_none() {
-                                open_popup(self, mgr);
+                                open_popup(self, mgr, false);
                             }
                             return Response::None;
                         }
@@ -399,6 +399,11 @@ impl<M: 'static> event::SendEvent for ComboBox<M> {
         }
 
         if id <= self.popup.id() {
+            if event == Event::NavFocus && self.popup_id.is_none() {
+                // Steal focus since child is invisible
+                mgr.set_nav_focus(self.id(), false);
+            }
+
             let r = self.popup.send(mgr, id, event.clone());
             self.map_response(mgr, id, event, r)
         } else {

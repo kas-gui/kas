@@ -77,7 +77,7 @@ impl<D: Directional, W: Menu> SubMenu<D, W> {
                 parent: self.id(),
                 direction: self.direction.as_direction(),
             });
-            mgr.next_nav_focus(self, false);
+            mgr.next_nav_focus(self, false, true);
         }
     }
     fn close_menu(&mut self, mgr: &mut Manager) {
@@ -208,7 +208,7 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
                                 if clr {
                                     mgr.clear_nav_focus();
                                 }
-                                mgr.next_nav_focus(s, rev);
+                                mgr.next_nav_focus(s, rev, true);
                             };
                             let rev = self.list.direction().is_reversed();
                             use Direction::*;

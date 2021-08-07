@@ -77,6 +77,7 @@ struct PanGrab {
 enum Pending {
     LostCharFocus(WidgetId),
     LostSelFocus(WidgetId),
+    SetNavFocus(WidgetId),
 }
 
 /// Event manager state
@@ -134,6 +135,15 @@ pub struct ManagerState {
 
 /// internals
 impl ManagerState {
+    #[inline]
+    fn char_focus(&self) -> Option<WidgetId> {
+        if self.char_focus {
+            self.sel_focus
+        } else {
+            None
+        }
+    }
+
     fn set_pan_on(
         &mut self,
         id: WidgetId,
@@ -227,7 +237,6 @@ impl ManagerState {
 /// from documentation unless the `internal_doc` feature is enabled.
 #[must_use]
 pub struct Manager<'a> {
-    read_only: bool,
     state: &'a mut ManagerState,
     shell: &'a mut dyn ShellWindow,
     action: TkAction,
@@ -282,119 +291,123 @@ impl<'a> Manager<'a> {
     where
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
+        trace!(
+            "Manager::start_key_event: widget={}, vkey={:?}, scancode={}",
+            widget.id(),
+            vkey,
+            scancode
+        );
+
         use VirtualKeyCode as VK;
-        let config = self.state.config.borrow();
-        let opt_command = config.shortcuts().get(self.state.modifiers, vkey);
-        drop(config);
         let shift = self.state.modifiers.shift();
 
-        if self.state.char_focus {
-            if let Some(id) = self.state.sel_focus {
-                if let Some(cmd) = opt_command {
-                    let event = Event::Command(cmd, shift);
-                    trace!("Send to {}: {:?}", id, event);
-                    if let Response::Unhandled = widget.send(self, id, event) {
-                        if cmd == Command::Escape {
-                            self.set_char_focus(None)
-                        }
-                    }
-                }
+        if vkey == VK::Tab {
+            self.clear_char_focus();
+            self.next_nav_focus(widget.as_widget(), shift, true);
+            return;
+        } else if vkey == VK::Escape {
+            if let Some(id) = self.state.popups.last().map(|(id, _)| *id) {
+                self.close_window(id);
                 return;
             }
-        }
-
-        if vkey == VK::Tab {
-            if !self.next_nav_focus(widget.as_widget(), shift) {
-                self.clear_nav_focus();
-            }
+        } else if !self.state.char_focus {
             if let Some(id) = self.state.nav_focus {
-                self.send_event(widget, id, Event::NavFocus);
-            }
-            return;
-        }
-
-        let mut id_action = None;
-        if !self.state.modifiers.alt() {
-            // First priority goes to the widget with nav focus,
-            // but only when Alt is not pressed.
-            if let Some(nav_id) = self.state.nav_focus {
                 if vkey == VK::Space || vkey == VK::Return || vkey == VK::NumpadEnter {
-                    id_action = Some((nav_id, Event::Activate));
-                } else if let Some(cmd) = opt_command {
-                    id_action = Some((nav_id, Event::Command(cmd, shift)));
-                }
-            }
-
-            if id_action.is_none() {
-                // Next priority goes to pop-up widget
-                if let Some(cmd) = opt_command {
-                    let ev = Event::Command(cmd, shift);
-                    if let Some(popup) = self.state.popups.last() {
-                        id_action = Some((popup.1.parent, ev));
-                    } else if let Some(id) = self.state.nav_fallback {
-                        id_action = Some((id, ev));
-                    }
+                    self.add_key_depress(scancode, id);
+                    self.send_event(widget, id, Event::Activate);
+                    return;
                 }
             }
         }
 
-        if id_action.is_none() {
-            // Next priority goes to accelerator keys when Alt is held or alt_bypass is true
-            let mut n = 0;
-            for (i, id) in (self.state.popups.iter().rev())
-                .map(|(_, popup)| popup.parent)
-                .chain(std::iter::once(widget.id()))
-                .enumerate()
-            {
-                if let Some(layer) = self.state.accel_layers.get(&id) {
-                    // but only when Alt is held or alt-bypass is enabled:
-                    if self.state.modifiers.alt() || layer.0 {
-                        if let Some(id) = layer.1.get(&vkey).cloned() {
-                            id_action = Some((id, Event::Activate));
-                            n = i;
-                            break;
-                        }
-                    }
-                }
-            }
+        let opt_command = self
+            .state
+            .config
+            .borrow()
+            .shortcuts()
+            .get(self.state.modifiers, vkey);
 
-            // If we had to look below the top pop-up, we should close it
-            if n > 0 {
-                let last = self.state.popups.len() - 1;
-                for i in 0..n {
-                    let id = self.state.popups[last - i].0;
-                    self.close_window(id);
-                }
-            }
-        }
-
-        if let Some((id, event)) = id_action {
-            let is_activate = event == Event::Activate;
-            trace!("Send to {}: {:?}", id, event);
-            match widget.send(self, id, event) {
-                Response::Unhandled if vkey == VK::Escape => {
-                    // When unhandled, the Escape key causes other actions
-                    if let Some(id) = self.state.popups.last().map(|(id, _)| *id) {
-                        self.close_window(id);
-                    } else if self.nav_focus().is_some() {
-                        self.clear_nav_focus();
-                    }
-                }
-                _ => (),
-            }
-
-            // Event::Activate causes buttons to be visually depressed
-            if is_activate {
-                for press_id in self.state.key_depress.values().cloned() {
-                    if press_id == id {
+        if let Some(cmd) = opt_command {
+            if self.state.char_focus {
+                if let Some(id) = self.state.sel_focus {
+                    if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
                         return;
                     }
                 }
+            }
 
-                self.state.key_depress.insert(scancode, id);
-                self.redraw(id);
+            if !self.state.modifiers.alt() {
+                if let Some(id) = self.state.nav_focus {
+                    if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
+                        return;
+                    }
+                }
+            }
+
+            if let Some(id) = self.state.popups.last().map(|popup| popup.1.parent) {
+                if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
+                    return;
+                }
+            }
+
+            if self.state.sel_focus != self.state.nav_focus && cmd.suitable_for_sel_focus() {
+                if let Some(id) = self.state.sel_focus {
+                    if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
+                        return;
+                    }
+                }
+            }
+
+            if let Some(id) = self.state.nav_fallback {
+                if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
+                    return;
+                }
             }
         }
+
+        // Next priority goes to accelerator keys when Alt is held or alt_bypass is true
+        let mut target = None;
+        let mut n = 0;
+        for (i, id) in (self.state.popups.iter().rev())
+            .map(|(_, popup)| popup.parent)
+            .chain(std::iter::once(widget.id()))
+            .enumerate()
+        {
+            if let Some(layer) = self.state.accel_layers.get(&id) {
+                // but only when Alt is held or alt-bypass is enabled:
+                if self.state.modifiers.alt() || layer.0 {
+                    if let Some(id) = layer.1.get(&vkey).cloned() {
+                        target = Some(id);
+                        n = i;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // If we found a key binding below the top layer, we should close everything above
+        if n > 0 {
+            let last = self.state.popups.len() - 1;
+            for i in 0..n {
+                let id = self.state.popups[last - i].0;
+                self.close_window(id);
+            }
+        }
+
+        if let Some(id) = target {
+            self.set_nav_focus(id, true);
+            self.add_key_depress(scancode, id);
+            self.send_event(widget, id, Event::Activate);
+        }
+    }
+
+    fn add_key_depress(&mut self, scancode: u32, id: WidgetId) {
+        if self.state.key_depress.values().any(|v| *v == id) {
+            return;
+        }
+
+        self.state.key_depress.insert(scancode, id);
+        self.redraw(id);
     }
 
     fn end_key_event(&mut self, scancode: u32) {
@@ -438,51 +451,58 @@ impl<'a> Manager<'a> {
         })
     }
 
-    fn set_char_focus(&mut self, wid: Option<WidgetId>) {
-        trace!(
-            "Manager::set_char_focus: char_focus={:?}, new={:?}",
-            self.state.char_focus,
-            wid
-        );
-
-        if let Some(id) = wid {
-            self.set_nav_focus(id);
+    fn clear_char_focus(&mut self) {
+        trace!("Manager::clear_char_focus");
+        if let Some(id) = self.state.char_focus() {
+            // If widget has char focus, this is lost
+            self.state.char_focus = false;
+            self.state.pending.push(Pending::LostCharFocus(id));
         }
+    }
 
-        if self.state.sel_focus == wid {
-            // We cannot lose char focus here
-            // Corner case: char_focus == true but sel_focus == None: ignore char_focus
-            self.state.char_focus = wid.is_some();
+    // Set selection focus to `wid`; if `char_focus` also set that
+    fn set_sel_focus(&mut self, wid: WidgetId, char_focus: bool) {
+        trace!(
+            "Manager::set_sel_focus: wid={}, char_focus={}",
+            wid,
+            char_focus
+        );
+        self.set_nav_focus(wid, false);
+
+        if self.state.sel_focus == Some(wid) {
+            self.state.char_focus = self.state.char_focus || char_focus;
             return;
         }
 
-        let had_char_focus = self.state.char_focus;
-        self.state.char_focus = wid.is_some();
-
         if let Some(id) = self.state.sel_focus {
-            debug_assert!(Some(id) != wid);
-
-            if had_char_focus {
+            if self.state.char_focus {
                 // If widget has char focus, this is lost
                 self.state.pending.push(Pending::LostCharFocus(id));
-            }
-
-            if wid.is_none() {
-                return;
             }
 
             // Selection focus is lost if another widget receives char focus
             self.state.pending.push(Pending::LostSelFocus(id));
         }
 
-        if let Some(id) = wid {
-            self.state.sel_focus = Some(id);
-        }
+        self.state.char_focus = char_focus;
+        self.state.sel_focus = Some(wid);
     }
 
     fn send_event<W: Widget + ?Sized>(&mut self, widget: &mut W, id: WidgetId, event: Event) {
         trace!("Send to {}: {:?}", id, event);
         let _ = widget.send(self, id, event);
+    }
+
+    // Similar to send_event, but return true only if response != Response::Unhandled
+    fn try_send_event<W: Widget + ?Sized>(
+        &mut self,
+        widget: &mut W,
+        id: WidgetId,
+        event: Event,
+    ) -> bool {
+        trace!("Send to {}: {:?}", id, event);
+        let r = widget.send(self, id, event);
+        !matches!(r, Response::Unhandled)
     }
 
     fn send_popup_first<W: Widget + ?Sized>(&mut self, widget: &mut W, id: WidgetId, event: Event) {

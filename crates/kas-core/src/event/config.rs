@@ -33,6 +33,11 @@ pub struct Config {
     #[cfg_attr(feature = "config", serde(default = "defaults::mouse_text_pan"))]
     mouse_text_pan: MousePan,
 
+    #[cfg_attr(feature = "config", serde(default = "defaults::mouse_nav_focus"))]
+    mouse_nav_focus: bool,
+    #[cfg_attr(feature = "config", serde(default = "defaults::touch_nav_focus"))]
+    touch_nav_focus: bool,
+
     #[cfg_attr(feature = "config", serde(default = "Shortcuts::platform_defaults"))]
     shortcuts: Shortcuts,
 }
@@ -45,6 +50,8 @@ impl Default for Config {
             pan_dist_thresh: defaults::pan_dist_thresh(),
             mouse_pan: defaults::mouse_pan(),
             mouse_text_pan: defaults::mouse_text_pan(),
+            mouse_nav_focus: defaults::mouse_nav_focus(),
+            touch_nav_focus: defaults::touch_nav_focus(),
             shortcuts: Shortcuts::platform_defaults(),
         }
     }
@@ -84,6 +91,18 @@ impl Config {
     #[inline]
     pub fn mouse_text_pan(&self) -> MousePan {
         self.mouse_text_pan
+    }
+
+    /// Whether mouse clicks set keyboard navigation focus
+    #[inline]
+    pub fn mouse_nav_focus(&self) -> bool {
+        self.mouse_nav_focus
+    }
+
+    /// Whether touchscreen events set keyboard navigation focus
+    #[inline]
+    pub fn touch_nav_focus(&self) -> bool {
+        self.touch_nav_focus
     }
 
     /// Read shortcut config
@@ -159,5 +178,11 @@ mod defaults {
         {
             MousePan::WithCtrl
         }
+    }
+    pub fn mouse_nav_focus() -> bool {
+        true
+    }
+    pub fn touch_nav_focus() -> bool {
+        true
     }
 }
