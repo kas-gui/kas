@@ -311,6 +311,14 @@ impl<'a> Manager<'a> {
                 self.close_window(id);
                 return;
             }
+        } else if !self.state.char_focus {
+            if let Some(id) = self.state.nav_focus {
+                if vkey == VK::Space || vkey == VK::Return || vkey == VK::NumpadEnter {
+                    self.add_key_depress(scancode, id);
+                    self.send_event(widget, id, Event::Activate);
+                    return;
+                }
+            }
         }
 
         let opt_command = self
@@ -320,31 +328,23 @@ impl<'a> Manager<'a> {
             .shortcuts()
             .get(self.state.modifiers, vkey);
 
-        if self.state.char_focus {
-            if let Some(id) = self.state.sel_focus {
-                if let Some(cmd) = opt_command {
-                    if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
-                        return;
-                    }
-                }
-            }
-        }
-
-        if !self.state.modifiers.alt() {
-            if let Some(id) = self.state.nav_focus {
-                if vkey == VK::Space || vkey == VK::Return || vkey == VK::NumpadEnter {
-                    self.add_key_depress(scancode, id);
-                    self.send_event(widget, id, Event::Activate);
-                    return;
-                } else if let Some(cmd) = opt_command {
-                    if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
-                        return;
-                    }
-                }
-            }
-        }
-
         if let Some(cmd) = opt_command {
+            if self.state.char_focus {
+                if let Some(id) = self.state.sel_focus {
+                    if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
+                        return;
+                    }
+                }
+            }
+
+            if !self.state.modifiers.alt() {
+                if let Some(id) = self.state.nav_focus {
+                    if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
+                        return;
+                    }
+                }
+            }
+
             if let Some(id) = self.state.popups.last().map(|popup| popup.1.parent) {
                 if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
                     return;
