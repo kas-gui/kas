@@ -120,7 +120,8 @@ pub struct ManagerState {
     pan_grab: SmallVec<[PanGrab; 4]>,
     accel_stack: Vec<(bool, HashMap<VirtualKeyCode, WidgetId>)>,
     accel_layers: HashMap<WidgetId, (bool, HashMap<VirtualKeyCode, WidgetId>)>,
-    popups: SmallVec<[(WindowId, crate::Popup); 16]>,
+    // For each: (WindowId of popup, popup descriptor, old nav focus)
+    popups: SmallVec<[(WindowId, crate::Popup, Option<WidgetId>); 16]>,
     new_popups: SmallVec<[WidgetId; 16]>,
     popup_removed: SmallVec<[(WidgetId, WindowId); 16]>,
 
@@ -306,7 +307,7 @@ impl<'a> Manager<'a> {
             self.next_nav_focus(widget.as_widget(), shift, true);
             return;
         } else if vkey == VK::Escape {
-            if let Some(id) = self.state.popups.last().map(|(id, _)| *id) {
+            if let Some(id) = self.state.popups.last().map(|(id, _, _)| *id) {
                 self.close_window(id);
                 return;
             }
@@ -369,7 +370,7 @@ impl<'a> Manager<'a> {
         let mut target = None;
         let mut n = 0;
         for (i, id) in (self.state.popups.iter().rev())
-            .map(|(_, popup)| popup.parent)
+            .map(|(_, popup, _)| popup.parent)
             .chain(std::iter::once(widget.id()))
             .enumerate()
         {
@@ -506,7 +507,8 @@ impl<'a> Manager<'a> {
     }
 
     fn send_popup_first<W: Widget + ?Sized>(&mut self, widget: &mut W, id: WidgetId, event: Event) {
-        while let Some((wid, parent)) = self.state.popups.last().map(|(wid, p)| (*wid, p.parent)) {
+        while let Some((wid, parent)) = self.state.popups.last().map(|(wid, p, _)| (*wid, p.parent))
+        {
             trace!("Send to popup parent: {}: {:?}", parent, event);
             match widget.send(self, parent, event.clone()) {
                 Response::Unhandled => (),

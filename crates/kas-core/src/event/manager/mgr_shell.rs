@@ -315,7 +315,7 @@ impl ManagerState {
                 .state
                 .popups
                 .iter()
-                .map(|(_, popup)| popup.parent)
+                .map(|(_, popup, _)| popup.parent)
                 .collect::<SmallVec<[WidgetId; 16]>>()
             {
                 mgr.send_event(widget, parent, Event::NewPopup(id));
@@ -499,7 +499,7 @@ impl<'a> Manager<'a> {
                     {
                         pan.coords[usize::conv(grab.pan_grab.1)].1 = coord;
                     }
-                } else if let Some(id) = self.state.popups.last().map(|(_, p)| p.parent) {
+                } else if let Some(id) = self.state.popups.last().map(|(_, p, _)| p.parent) {
                     let source = PressSource::Mouse(FAKE_MOUSE_BUTTON, 0);
                     let event = Event::PressMove {
                         source,

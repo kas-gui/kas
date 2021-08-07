@@ -246,7 +246,7 @@ impl<'a> Manager<'a> {
         let opt_id = self.shell.add_popup(popup.clone());
         if let Some(id) = opt_id {
             self.state.new_popups.push(popup.id);
-            self.state.popups.push((id, popup));
+            self.state.popups.push((id, popup, self.state.nav_focus));
             self.state.nav_focus = None;
             self.state.nav_stack.clear();
         }
@@ -280,13 +280,11 @@ impl<'a> Manager<'a> {
                 },
             )
         {
-            let (_, popup) = self.state.popups.remove(index);
+            let (_, popup, old_nav_focus) = self.state.popups.remove(index);
             self.state.popup_removed.push((popup.parent, id));
 
-            if self.state.nav_focus.is_some() {
-                // We guess that the parent supports key_nav:
-                self.state.nav_focus = Some(popup.parent);
-                self.state.nav_stack.clear();
+            if let Some(id) = old_nav_focus {
+                self.set_nav_focus(id, true);
             }
         }
 
@@ -687,7 +685,7 @@ impl<'a> Manager<'a> {
         type WidgetStack<'b> = SmallVec<[&'b dyn WidgetConfig; 16]>;
         let mut widget_stack = WidgetStack::new();
 
-        if let Some(id) = self.state.popups.last().map(|(_, p)| p.id) {
+        if let Some(id) = self.state.popups.last().map(|(_, p, _)| p.id) {
             if let Some(w) = widget.find_leaf(id) {
                 widget = w;
             } else {

@@ -202,7 +202,7 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
                 Response::Pan(delta) => Response::Pan(delta),
                 Response::Focus(rect) => Response::Focus(rect),
                 Response::Unhandled => match event {
-                    Event::Command(key, _)  if self.popup_id.is_some()=> {
+                    Event::Command(key, _) if self.popup_id.is_some() => {
                         let dir = self.direction.as_direction();
                         let inner_vert = self.list.direction().is_vertical();
                         let next = |mgr: &mut Manager, s, clr, rev| {
