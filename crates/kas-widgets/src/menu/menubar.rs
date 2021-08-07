@@ -127,19 +127,19 @@ impl<W: Menu<Msg = M>, D: Directional, M> event::Handler for MenuBar<W, D> {
                 coord,
                 ..
             } => {
-                let target_id =
-                    cur_id.filter(|id| self.find_leaf(*id).map(|w| w.key_nav()).unwrap_or(false));
-                mgr.set_grab_depress(source, target_id);
-                if let Some(id) = target_id {
-                    mgr.set_nav_focus(id, false);
-                    // We instantly open a sub-menu on motion over the bar,
-                    // but delay when over a sub-menu (most intuitive?)
-                    if self.rect().contains(coord) {
-                        self.set_menu_path(mgr, Some(id));
-                    } else {
-                        self.delayed_open = Some(id);
-                        let delay = mgr.config().menu_delay();
-                        mgr.update_on_timer(delay, self.id(), 0);
+                mgr.set_grab_depress(source, cur_id);
+                if let Some(id) = cur_id {
+                    if self.is_ancestor_of(id) {
+                        mgr.set_nav_focus(id, false);
+                        // We instantly open a sub-menu on motion over the bar,
+                        // but delay when over a sub-menu (most intuitive?)
+                        if self.rect().contains(coord) {
+                            self.set_menu_path(mgr, Some(id));
+                        } else {
+                            self.delayed_open = Some(id);
+                            let delay = mgr.config().menu_delay();
+                            mgr.update_on_timer(delay, self.id(), 0);
+                        }
                     }
                 }
             }
