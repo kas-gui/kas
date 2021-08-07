@@ -649,6 +649,7 @@ impl<'a> Manager<'a> {
     pub fn set_nav_focus(&mut self, id: WidgetId, notify: bool) {
         if self.state.nav_focus != Some(id) {
             self.redraw(id);
+            self.state.char_focus = false;
             self.state.nav_focus = Some(id);
             self.state.nav_stack.clear();
             trace!("Manager: nav_focus = Some({})", id);
@@ -692,6 +693,11 @@ impl<'a> Manager<'a> {
                 return false;
             }
         }
+
+        // We redraw in all cases. Since this is not part of widget event
+        // processing, we can push directly to self.state.action.
+        self.state.send_action(TkAction::REDRAW);
+        self.state.char_focus = false;
 
         if self.state.nav_stack.is_empty() {
             if let Some(id) = self.state.nav_focus {
@@ -799,9 +805,6 @@ impl<'a> Manager<'a> {
             };
         }
 
-        // We redraw in all cases. Since this is not part of widget event
-        // processing, we can push directly to self.state.action.
-        self.state.send_action(TkAction::REDRAW);
         let nav_stack = &mut self.state.nav_stack;
         // Whether to restart from the beginning on failure
         let mut restart = self.state.nav_focus.is_some();
