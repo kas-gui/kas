@@ -70,11 +70,9 @@ pub trait EditGuard: Debug + Sized + 'static {
 
     /// Focus-gained guard
     ///
-    /// This function is called when the widget gains keyboard input focus. Its
-    /// return value is converted to [`Response::None`] or [`Response::Msg`].
-    fn focus_gained(edit: &mut EditField<Self>, mgr: &mut Manager) -> Option<Self::Msg> {
+    /// This function is called when the widget gains keyboard input focus.
+    fn focus_gained(edit: &mut EditField<Self>, mgr: &mut Manager) {
         let _ = (edit, mgr);
-        None
     }
 
     /// Focus-lost guard
@@ -1056,19 +1054,17 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
     type Msg = G::Msg;
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
-        fn request_focus<G: EditGuard + 'static>(
-            s: &mut EditField<G>,
-            mgr: &mut Manager,
-        ) -> Response<G::Msg> {
+        fn request_focus<G: EditGuard + 'static>(s: &mut EditField<G>, mgr: &mut Manager) {
             if !s.has_key_focus && mgr.request_char_focus(s.id()) {
                 s.has_key_focus = true;
-                Response::none_or_msg(G::focus_gained(s, mgr))
-            } else {
-                Response::None
+                G::focus_gained(s, mgr);
             }
         }
         match event {
-            Event::Activate | Event::NavFocus => request_focus(self, mgr),
+            Event::Activate | Event::NavFocus => {
+                request_focus(self, mgr);
+                Response::None
+            }
             Event::LostCharFocus => {
                 self.has_key_focus = false;
                 mgr.redraw(self.id());
@@ -1112,14 +1108,16 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
                     delta if delta == Offset::ZERO => Response::None,
                     delta => Response::Pan(delta),
                 },
-                TextInputAction::Focus => request_focus(self, mgr),
+                TextInputAction::Focus => {
+                    request_focus(self, mgr);
+                    Response::None
+                }
                 TextInputAction::Cursor(coord, anchor, clear, repeats) => {
-                    let mut response = Response::None;
                     self.set_edit_pos_from_coord(mgr, coord);
                     if self.has_key_focus || mgr.request_sel_focus(self.id()) {
                         if anchor {
                             self.selection.set_anchor();
-                            response = request_focus(self, mgr);
+                            request_focus(self, mgr);
                         }
                         if clear {
                             self.selection.set_empty();
@@ -1128,7 +1126,7 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
                             self.selection.expand(&self.text, repeats);
                         }
                     }
-                    response
+                    Response::None
                 }
             },
         }
