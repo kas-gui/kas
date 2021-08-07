@@ -351,12 +351,10 @@ impl<'a> Manager<'a> {
                 }
             }
 
-            if self.state.sel_focus != self.state.nav_focus {
+            if self.state.sel_focus != self.state.nav_focus && cmd.suitable_for_sel_focus() {
                 if let Some(id) = self.state.sel_focus {
-                    if let Some(cmd) = cmd.as_select() {
-                        if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
-                            return;
-                        }
+                    if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
+                        return;
                     }
                 }
             }
