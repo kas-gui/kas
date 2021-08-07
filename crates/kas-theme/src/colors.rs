@@ -211,8 +211,6 @@ impl ColorsLinear {
     pub fn menu_entry(&self, state: InputState) -> Option<Rgba> {
         if state.depress || state.nav_focus {
             Some(self.button.multiply(MULT_DEPRESS))
-        } else if state.hover {
-            Some(self.button.multiply(MULT_HIGHLIGHT).max(MIN_HIGHLIGHT))
         } else {
             None
         }
