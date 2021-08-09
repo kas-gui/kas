@@ -205,7 +205,7 @@ where
         let outer = Quad::from(rect);
         let thickness = outer.size().min_comp() / 2.0;
         let inner = outer.shrink(thickness);
-        let col = self.cols.scrollbar_state(state);
+        let col = self.cols.accent_soft_state(state);
         self.draw.shaded_round_frame(outer, inner, (0.0, 0.6), col);
 
         if let Some(col) = self.cols.nav_region(state) {
@@ -317,7 +317,7 @@ where
     fn button(&mut self, rect: Rect, col: Option<color::Rgb>, state: InputState) {
         let outer = Quad::from(rect);
         let inner = outer.shrink(self.window.dims.button_frame as f32);
-        let col = col.map(|c| c.into()).unwrap_or(self.cols.button);
+        let col = col.map(|c| c.into()).unwrap_or(self.cols.accent_soft);
         let col = ColorsLinear::adjust_for_state(col, state);
 
         self.draw.shaded_round_frame(outer, inner, (0.0, 0.6), col);
@@ -398,7 +398,7 @@ where
         }
         let thickness = outer.size().min_comp() / 2.0;
         let inner = outer.shrink(thickness);
-        let col = self.cols.button;
+        let col = self.cols.accent_soft;
         self.draw.shaded_round_frame(outer, inner, (0.0, 0.6), col);
     }
 

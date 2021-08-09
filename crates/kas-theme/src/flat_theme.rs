@@ -234,7 +234,7 @@ where
         let outer = Quad::from(rect);
         let thickness = outer.size().min_comp() / 2.0;
         let inner = outer.shrink(thickness);
-        let col = self.cols.scrollbar_state(state);
+        let col = self.cols.accent_soft_state(state);
         self.draw.rounded_frame(outer, inner, 0.0, col);
 
         if let Some(col) = self.cols.nav_region(state) {
@@ -515,7 +515,7 @@ where
         } else {
             inner.b.1 = inner.a.1 + value * (inner.b.1 - inner.a.1);
         }
-        let col = self.cols.button;
+        let col = self.cols.accent_soft;
         self.draw.rect(inner, col);
     }
 

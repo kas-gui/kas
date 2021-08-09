@@ -237,7 +237,6 @@ mod defaults {
     pub fn color_schemes() -> BTreeMap<String, ColorsSrgb> {
         let mut schemes = BTreeMap::new();
         schemes.insert("".to_string(), ColorsLinear::white_blue().into());
-        schemes.insert("light".to_string(), ColorsLinear::light().into());
         schemes.insert("dark".to_string(), ColorsLinear::dark().into());
         schemes
     }
