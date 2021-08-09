@@ -25,7 +25,6 @@ pub struct Colors<C> {
     pub edit_bg: C,
     /// Background colour of `EditBox` (error state)
     pub edit_bg_error: C,
-    /// Normal text colour (over background)
     /// Theme accent
     ///
     /// This should be a bold colour, used for small details.
@@ -40,6 +39,7 @@ pub struct Colors<C> {
     /// `accent_soft`. Themes should use `nav_focus` over `accent` where a
     /// strong contrast is required.
     pub nav_focus: C,
+    /// Normal text colour (over background)
     pub text: C,
     /// Opposing text colour (e.g. white if `text` is black)
     pub text_invert: C,
@@ -124,28 +124,43 @@ impl ColorsSrgb {
             text_sel_bg: Rgba8Srgb::from_str("#A172FA").unwrap(),
         }
     }
-}
 
-// NOTE: these colour schemes are defined using linear (Rgba) colours instead of
-// sRGB (Rgba8Srgb) colours for historical reasons. Either should be fine.
-impl ColorsLinear {
     /// Dark scheme
     pub fn dark() -> Self {
         Colors {
-            background: Rgba::grey(0.2),
-            frame: Rgba::grey(0.4),
-            accent: Rgba::rgb(0.5, 0.1, 0.1),
-            accent_soft: Rgba::rgb(0.5, 0.1, 0.1),
-            nav_focus: Rgba::rgb(1.0, 0.7, 0.5),
-            edit_bg: Rgba::grey(0.1),
-            edit_bg_error: Rgba::rgb(1.0, 0.5, 0.5),
-            text: Rgba::WHITE,
-            text_invert: Rgba::BLACK,
-            text_disabled: Rgba::grey(0.6),
-            text_sel_bg: Rgba::rgb(0.6, 0.3, 0.1),
+            background: Rgba8Srgb::from_str("#404040").unwrap(),
+            frame: Rgba8Srgb::from_str("#AAAAAA").unwrap(),
+            accent: Rgba8Srgb::from_str("#F74C00").unwrap(),
+            accent_soft: Rgba8Srgb::from_str("#E77346").unwrap(),
+            nav_focus: Rgba8Srgb::from_str("#A33100").unwrap(),
+            edit_bg: Rgba8Srgb::from_str("#595959").unwrap(),
+            edit_bg_error: Rgba8Srgb::from_str("#FFBCBC").unwrap(),
+            text: Rgba8Srgb::from_str("#FFFFFF").unwrap(),
+            text_invert: Rgba8Srgb::from_str("#000000").unwrap(),
+            text_disabled: Rgba8Srgb::from_str("#CBCBCB").unwrap(),
+            text_sel_bg: Rgba8Srgb::from_str("#E77346").unwrap(),
         }
     }
 
+    /// Blue scheme
+    pub fn blue() -> Self {
+        Colors {
+            background: Rgba8Srgb::from_str("#FFFFFF").unwrap(),
+            frame: Rgba8Srgb::from_str("#DADADA").unwrap(),
+            accent: Rgba8Srgb::from_str("#7CDAFF").unwrap(),
+            accent_soft: Rgba8Srgb::from_str("#7CDAFF").unwrap(),
+            nav_focus: Rgba8Srgb::from_str("#3B697A").unwrap(),
+            edit_bg: Rgba8Srgb::from_str("#FFFFFF").unwrap(),
+            edit_bg_error: Rgba8Srgb::from_str("#FFBCBC").unwrap(),
+            text: Rgba8Srgb::from_str("#000000").unwrap(),
+            text_invert: Rgba8Srgb::from_str("#FFFFFF").unwrap(),
+            text_disabled: Rgba8Srgb::from_str("#AAAAAA").unwrap(),
+            text_sel_bg: Rgba8Srgb::from_str("#6CC0E1").unwrap(),
+        }
+    }
+}
+
+impl ColorsLinear {
     /// Adjust a colour depending on state
     pub fn adjust_for_state(col: Rgba, state: InputState) -> Rgba {
         if state.disabled {

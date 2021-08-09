@@ -324,7 +324,7 @@ fn main() -> Result<(), kas::shell::Error> {
                 fn activations(&mut self, mgr: &mut Manager, item: Item) -> VoidResponse {
                     match item {
                         Item::Button => println!("Clicked!"),
-                        Item::LightTheme => mgr.adjust_theme(|theme| theme.set_scheme("")),
+                        Item::LightTheme => mgr.adjust_theme(|theme| theme.set_scheme("light")),
                         Item::DarkTheme => mgr.adjust_theme(|theme| theme.set_scheme("dark")),
                         Item::Check(b) => println!("CheckBox: {}", b),
                         Item::Combo(c) => println!("ComboBox: {}", c),
