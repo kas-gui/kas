@@ -7,6 +7,7 @@
 
 use kas::draw::color::{Rgba, Rgba8Srgb};
 use kas::draw::InputState;
+use std::str::FromStr;
 
 const MULT_DEPRESS: f32 = 0.75;
 const MULT_HIGHLIGHT: f32 = 1.25;
@@ -95,37 +96,39 @@ impl From<ColorsLinear> for ColorsSrgb {
 impl Default for ColorsLinear {
     #[inline]
     fn default() -> Self {
-        Colors::white_blue()
+        ColorsSrgb::default().into()
     }
 }
 
 impl Default for ColorsSrgb {
     #[inline]
     fn default() -> Self {
-        ColorsLinear::default().into()
+        ColorsSrgb::light()
+    }
+}
+
+impl ColorsSrgb {
+    /// Default "light" scheme
+    pub fn light() -> Self {
+        Colors {
+            background: Rgba8Srgb::from_str("#FAFAFA").unwrap(),
+            frame: Rgba8Srgb::from_str("#BCBCBC").unwrap(),
+            accent: Rgba8Srgb::from_str("#7E3FF2").unwrap(),
+            accent_soft: Rgba8Srgb::from_str("#B38DF9").unwrap(),
+            nav_focus: Rgba8Srgb::from_str("#7E3FF2").unwrap(),
+            edit_bg: Rgba8Srgb::from_str("#FAFAFA").unwrap(),
+            edit_bg_error: Rgba8Srgb::from_str("#FFBCBC").unwrap(),
+            text: Rgba8Srgb::from_str("#000000").unwrap(),
+            text_invert: Rgba8Srgb::from_str("#FFFFFF").unwrap(),
+            text_disabled: Rgba8Srgb::from_str("#AAAAAA").unwrap(),
+            text_sel_bg: Rgba8Srgb::from_str("#A172FA").unwrap(),
+        }
     }
 }
 
 // NOTE: these colour schemes are defined using linear (Rgba) colours instead of
 // sRGB (Rgba8Srgb) colours for historical reasons. Either should be fine.
 impl ColorsLinear {
-    /// White background with blue activable items
-    pub fn white_blue() -> Self {
-        Colors {
-            background: Rgba::grey(1.0),
-            frame: Rgba::grey(0.7),
-            accent: Rgba::rgb(0.2, 0.7, 1.0),
-            accent_soft: Rgba::rgb(0.2, 0.7, 1.0),
-            nav_focus: Rgba::rgb(0.9, 0.65, 0.4),
-            edit_bg: Rgba::grey(1.0),
-            edit_bg_error: Rgba::rgb(1.0, 0.5, 0.5),
-            text: Rgba::BLACK,
-            text_invert: Rgba::WHITE,
-            text_disabled: Rgba::grey(0.4),
-            text_sel_bg: Rgba::rgb(0.15, 0.525, 0.75),
-        }
-    }
-
     /// Dark scheme
     pub fn dark() -> Self {
         Colors {
