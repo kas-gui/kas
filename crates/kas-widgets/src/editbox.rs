@@ -1122,11 +1122,11 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
                     Response::None
                 }
                 TextInputAction::Cursor(coord, anchor, clear, repeats) => {
-                    self.set_edit_pos_from_coord(mgr, coord);
-                    if self.has_key_focus || mgr.request_sel_focus(self.id()) {
+                    request_focus(self, mgr);
+                    if self.has_key_focus {
+                        self.set_edit_pos_from_coord(mgr, coord);
                         if anchor {
                             self.selection.set_anchor();
-                            request_focus(self, mgr);
                         }
                         if clear {
                             self.selection.set_empty();

@@ -190,8 +190,8 @@ impl<T: FormattableText + 'static> event::Handler for ScrollLabel<T> {
                     delta => Response::Pan(delta),
                 },
                 TextInputAction::Cursor(coord, anchor, clear, repeats) => {
-                    self.set_edit_pos_from_coord(mgr, coord);
-                    if mgr.request_sel_focus(self.id()) {
+                    if (clear && repeats <= 1) || mgr.request_sel_focus(self.id()) {
+                        self.set_edit_pos_from_coord(mgr, coord);
                         if anchor {
                             self.selection.set_anchor();
                         }

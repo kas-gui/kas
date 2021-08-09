@@ -21,6 +21,7 @@ pub struct MenuBar<W: Menu, D: Directional = kas::dir::Right> {
     core: CoreData,
     #[widget]
     pub bar: List<D, SubMenu<D::Flipped, W>>,
+    ideal: Size,
     // Open mode. Used to close with click on root only when previously open.
     opening: bool,
     delayed_open: Option<WidgetId>,
@@ -46,6 +47,7 @@ impl<W: Menu, D: Directional> MenuBar<W, D> {
         MenuBar {
             core: Default::default(),
             bar: List::new_with_direction(direction, menus),
+            ideal: Size::ZERO,
             opening: false,
             delayed_open: None,
         }
@@ -55,11 +57,16 @@ impl<W: Menu, D: Directional> MenuBar<W, D> {
 // NOTE: we could use layout(single) except for alignment
 impl<W: Menu, D: Directional> Layout for MenuBar<W, D> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        self.bar.size_rules(size_handle, axis)
+        let rules = self.bar.size_rules(size_handle, axis);
+        self.ideal.set_component(axis, rules.ideal_size());
+        rules
     }
 
-    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, _: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
         self.core_data_mut().rect = rect;
+        let rect = align
+            .complete(Align::Default, Align::Default)
+            .aligned_rect(self.ideal, rect);
         let align = AlignHints::new(Some(Align::Default), Some(Align::Default));
         self.bar.set_rect(mgr, rect, align);
     }
@@ -99,8 +106,6 @@ impl<W: Menu<Msg = M>, D: Directional, M> event::Handler for MenuBar<W, D> {
                         && mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None)
                     {
                         mgr.set_grab_depress(source, Some(start_id));
-                        self.find_leaf(start_id)
-                            .map(|w| mgr.next_nav_focus(w, false, false));
                         self.opening = false;
                         let delay = mgr.config().menu_delay();
                         if self.rect().contains(coord) {
@@ -129,13 +134,13 @@ impl<W: Menu<Msg = M>, D: Directional, M> event::Handler for MenuBar<W, D> {
             } => {
                 mgr.set_grab_depress(source, cur_id);
                 if let Some(id) = cur_id {
-                    if self.is_ancestor_of(id) {
-                        mgr.set_nav_focus(id, false);
+                    if id != self.id() && self.is_ancestor_of(id) {
                         // We instantly open a sub-menu on motion over the bar,
                         // but delay when over a sub-menu (most intuitive?)
                         if self.rect().contains(coord) {
                             self.set_menu_path(mgr, Some(id));
                         } else {
+                            mgr.set_nav_focus(id, false);
                             self.delayed_open = Some(id);
                             let delay = mgr.config().menu_delay();
                             mgr.update_on_timer(delay, self.id(), 0);

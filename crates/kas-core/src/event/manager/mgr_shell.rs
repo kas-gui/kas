@@ -585,7 +585,9 @@ impl<'a> Manager<'a> {
 
                         if self.state.config.borrow().mouse_nav_focus() {
                             if let Some(w) = widget.find_leaf(start_id) {
-                                self.set_nav_focus(w.id(), false);
+                                if w.key_nav() {
+                                    self.set_nav_focus(w.id(), false);
+                                }
                             }
                         }
                     }
@@ -608,7 +610,9 @@ impl<'a> Manager<'a> {
 
                             if self.state.config.borrow().touch_nav_focus() {
                                 if let Some(w) = widget.find_leaf(start_id) {
-                                    self.set_nav_focus(w.id(), false);
+                                    if w.key_nav() {
+                                        self.set_nav_focus(w.id(), false);
+                                    }
                                 }
                             }
                         }
