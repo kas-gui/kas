@@ -423,19 +423,16 @@ where
     fn button(&mut self, rect: Rect, col: Option<color::Rgb>, state: InputState) {
         let outer = Quad::from(rect);
 
-        let inner = outer.shrink(self.window.dims.button_frame as f32 * BG_SHRINK_FACTOR);
         let col = col.map(|c| c.into()).unwrap_or(self.cols.background);
         let col = ColorsLinear::adjust_for_state(col, state);
-        self.draw.rect(inner, col);
-
-        let inner = outer.shrink(self.window.dims.button_frame as f32);
-        self.draw
-            .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
-
-        if let Some(col) = self.cols.nav_region(state) {
-            let outer = outer.shrink(self.window.dims.inner_margin as f32);
-            self.draw.rounded_frame(outer, inner, 0.6, col);
+        if col != self.cols.background {
+            let inner = outer.shrink(self.window.dims.button_frame as f32 * BG_SHRINK_FACTOR);
+            self.draw.rect(inner, col);
         }
+
+        let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
+        let inner = outer.shrink(self.window.dims.button_frame as f32);
+        self.draw.rounded_frame(outer, inner, BG_SHRINK_FACTOR, col);
     }
 
     fn edit_box(&mut self, rect: Rect, state: InputState) {
