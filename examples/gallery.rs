@@ -103,8 +103,8 @@ fn main() -> Result<(), kas::shell::Error> {
 
     #[cfg(feature = "stack_dst")]
     let theme = kas::theme::MultiTheme::builder()
-        .add("shaded", kas::theme::ShadedTheme::new())
         .add("flat", kas::theme::FlatTheme::new())
+        .add("shaded", kas::theme::ShadedTheme::new())
         .build();
     #[cfg(not(feature = "stack_dst"))]
     let theme = kas::theme::ShadedTheme::new();
