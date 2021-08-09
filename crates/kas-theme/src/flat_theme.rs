@@ -77,7 +77,7 @@ const DIMS: dim::Parameters = dim::Parameters {
     inner_margin: 1.2,
     text_margin: 2.0,
     frame_size: 4.0,
-    button_frame: 6.0,
+    button_frame: 2.4,
     scrollbar_size: Vec2::splat(8.0),
     slider_size: Vec2(12.0, 25.0),
     progress_bar: Vec2::splat(12.0),
@@ -421,12 +421,15 @@ where
 
     fn button(&mut self, rect: Rect, col: Option<color::Rgb>, state: InputState) {
         let outer = Quad::from(rect);
-        let col = col.map(|c| c.into()).unwrap_or(self.cols.button);
+
+        let inner = outer.shrink(self.window.dims.button_frame as f32 * BG_SHRINK_FACTOR);
+        let col = col.map(|c| c.into()).unwrap_or(self.cols.background);
         let col = ColorsLinear::adjust_for_state(col, state);
+        self.draw.rect(inner, col);
 
         let inner = outer.shrink(self.window.dims.button_frame as f32);
-        self.draw.rounded_frame(outer, inner, 0.0, col);
-        self.draw.rect(inner, col);
+        self.draw
+            .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
 
         if let Some(col) = self.cols.nav_region(state) {
             let outer = outer.shrink(self.window.dims.inner_margin as f32);

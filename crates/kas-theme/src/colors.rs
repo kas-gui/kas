@@ -125,7 +125,7 @@ impl ColorsLinear {
     pub fn light() -> Self {
         Colors {
             background: Rgba::grey(0.9),
-            frame: Rgba::rgb(0.8, 0.8, 0.9),
+            frame: Rgba::grey(0.5),
             edit_bg: Rgba::grey(1.0),
             edit_bg_error: Rgba::rgb(1.0, 0.5, 0.5),
             text: Rgba::grey(0.0),
