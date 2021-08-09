@@ -6,7 +6,7 @@
 //! Colour schemes
 
 use kas::draw::color::{Rgba, Rgba8Srgb};
-use kas::draw::{InputState, TextClass};
+use kas::draw::InputState;
 
 const MULT_DEPRESS: f32 = 0.75;
 const MULT_HIGHLIGHT: f32 = 1.25;
@@ -24,16 +24,14 @@ pub struct Colors<C> {
     pub edit_bg: C,
     /// Background colour of `EditBox` (error state)
     pub edit_bg_error: C,
-    /// Text colour in an `EditBox`
+    /// Normal text colour (over background)
     pub text: C,
-    /// Selected tect colour
-    pub text_sel: C,
+    /// Opposing text colour (e.g. white if `text` is black)
+    pub text_invert: C,
+    /// Disabled text colour
+    pub text_disabled: C,
     /// Selected text background colour
     pub text_sel_bg: C,
-    /// Text colour in a `Label`
-    pub label_text: C,
-    /// Text colour on a `TextButton`
-    pub button_text: C,
     /// Highlight colour for keyboard navigation
     pub nav_focus: C,
     /// Colour of a `TextButton`
@@ -56,10 +54,9 @@ impl From<ColorsSrgb> for ColorsLinear {
             edit_bg: col.edit_bg.into(),
             edit_bg_error: col.edit_bg_error.into(),
             text: col.text.into(),
-            text_sel: col.text_sel.into(),
+            text_invert: col.text_invert.into(),
+            text_disabled: col.text_disabled.into(),
             text_sel_bg: col.text_sel_bg.into(),
-            label_text: col.label_text.into(),
-            button_text: col.button_text.into(),
             nav_focus: col.nav_focus.into(),
             button: col.button.into(),
             checkbox: col.checkbox.into(),
@@ -75,10 +72,9 @@ impl From<ColorsLinear> for ColorsSrgb {
             edit_bg: col.edit_bg.into(),
             edit_bg_error: col.edit_bg_error.into(),
             text: col.text.into(),
-            text_sel: col.text_sel.into(),
+            text_invert: col.text_invert.into(),
+            text_disabled: col.text_disabled.into(),
             text_sel_bg: col.text_sel_bg.into(),
-            label_text: col.label_text.into(),
-            button_text: col.button_text.into(),
             nav_focus: col.nav_focus.into(),
             button: col.button.into(),
             checkbox: col.checkbox.into(),
@@ -110,11 +106,10 @@ impl ColorsLinear {
             frame: Rgba::grey(0.7),
             edit_bg: Rgba::grey(1.0),
             edit_bg_error: Rgba::rgb(1.0, 0.5, 0.5),
-            text: Rgba::grey(0.0),
-            text_sel: Rgba::grey(1.0),
+            text: Rgba::BLACK,
+            text_invert: Rgba::WHITE,
+            text_disabled: Rgba::grey(0.4),
             text_sel_bg: Rgba::rgb(0.15, 0.525, 0.75),
-            label_text: Rgba::grey(0.0),
-            button_text: Rgba::grey(1.0),
             nav_focus: Rgba::rgb(0.9, 0.65, 0.4),
             button: Rgba::rgb(0.2, 0.7, 1.0),
             checkbox: Rgba::rgb(0.2, 0.7, 1.0),
@@ -128,11 +123,10 @@ impl ColorsLinear {
             frame: Rgba::grey(0.5),
             edit_bg: Rgba::grey(1.0),
             edit_bg_error: Rgba::rgb(1.0, 0.5, 0.5),
-            text: Rgba::grey(0.0),
-            text_sel: Rgba::grey(0.0),
+            text: Rgba::BLACK,
+            text_invert: Rgba::WHITE,
+            text_disabled: Rgba::grey(0.4),
             text_sel_bg: Rgba::rgb(0.8, 0.72, 0.24),
-            label_text: Rgba::grey(0.0),
-            button_text: Rgba::grey(0.0),
             nav_focus: Rgba::rgb(0.9, 0.65, 0.4),
             button: Rgba::rgb(1.0, 0.9, 0.3),
             checkbox: Rgba::grey(0.4),
@@ -146,11 +140,10 @@ impl ColorsLinear {
             frame: Rgba::grey(0.4),
             edit_bg: Rgba::grey(0.1),
             edit_bg_error: Rgba::rgb(1.0, 0.5, 0.5),
-            text: Rgba::grey(1.0),
-            text_sel: Rgba::grey(1.0),
+            text: Rgba::WHITE,
+            text_invert: Rgba::BLACK,
+            text_disabled: Rgba::grey(0.6),
             text_sel_bg: Rgba::rgb(0.6, 0.3, 0.1),
-            label_text: Rgba::grey(1.0),
-            button_text: Rgba::grey(1.0),
             nav_focus: Rgba::rgb(1.0, 0.7, 0.5),
             button: Rgba::rgb(0.5, 0.1, 0.1),
             checkbox: Rgba::rgb(0.5, 0.1, 0.1),
@@ -222,12 +215,13 @@ impl ColorsLinear {
         self.button_state(state)
     }
 
-    /// Get text colour from class
-    pub fn text_class(&self, class: TextClass) -> Rgba {
-        match class {
-            TextClass::Label | TextClass::MenuLabel | TextClass::LabelScroll => self.label_text,
-            TextClass::Button => self.button_text,
-            TextClass::Edit | TextClass::EditMulti => self.text,
+    /// Get appropriate text colour over the given background
+    pub fn text_over(&self, bg: Rgba) -> Rgba {
+        let bg_sum = bg.sum();
+        if (bg_sum - self.text_invert.sum()).abs() > (bg_sum - self.text.sum()).abs() {
+            self.text_invert
+        } else {
+            self.text
         }
     }
 }

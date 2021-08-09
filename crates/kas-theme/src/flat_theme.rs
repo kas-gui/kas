@@ -319,24 +319,24 @@ where
         self.draw.frame(outer, inner, col);
     }
 
-    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass) {
+    fn text(&mut self, pos: Coord, text: &TextDisplay, _: TextClass) {
         let pos = pos;
-        let col = self.cols.text_class(class);
+        let col = self.cols.text;
         self.draw.text(pos.into(), text, col);
     }
 
-    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
+    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, _: TextClass) {
         self.draw.text_col_effects(
             (pos).into(),
             text.display(),
-            self.cols.text_class(class),
+            self.cols.text,
             text.effect_tokens(),
         );
     }
 
-    fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
+    fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, _: TextClass) {
         let pos = Vec2::from(pos);
-        let col = self.cols.text_class(class);
+        let col = self.cols.text;
         if state {
             let effects = text.text().effect_tokens();
             self.draw.text_col_effects(pos, text.as_ref(), col, effects);
@@ -350,10 +350,11 @@ where
         pos: Coord,
         text: &TextDisplay,
         range: Range<usize>,
-        class: TextClass,
+        _: TextClass,
     ) {
         let pos = Vec2::from(pos);
-        let col = self.cols.text_class(class);
+        let col = self.cols.text;
+        let sel_col = self.cols.text_over(self.cols.text_sel_bg);
 
         // Draw background:
         for (p1, p2) in &text.highlight_lines(range.clone()) {
@@ -372,7 +373,7 @@ where
             Effect {
                 start: range.start.cast(),
                 flags: Default::default(),
-                aux: self.cols.text_sel,
+                aux: sel_col,
             },
             Effect {
                 start: range.end.cast(),
@@ -383,11 +384,11 @@ where
         self.draw.text_effects(pos, text, &effects);
     }
 
-    fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
+    fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, _: TextClass, byte: usize) {
         let width = self.window.dims.font_marker_width;
         let pos = Vec2::from(pos);
 
-        let mut col = self.cols.text_class(class);
+        let mut col = self.cols.text;
         for cursor in text.text_glyph_pos(byte).rev() {
             let mut p1 = pos + Vec2::from(cursor.pos);
             let mut p2 = p1;

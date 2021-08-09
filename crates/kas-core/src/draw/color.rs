@@ -57,9 +57,14 @@ impl Rgba {
         Self::rgba(s, s, s, a)
     }
 
+    /// Get the sum of the three colour components
+    pub fn sum(self) -> f32 {
+        self.r + self.g + self.b
+    }
+
     /// Average three colour components (desaturate)
     pub fn average(self) -> Self {
-        Self::ga((self.r + self.g + self.b) * (1.0 / 3.0), self.a)
+        Self::ga(self.sum() * (1.0 / 3.0), self.a)
     }
 
     /// Multiply and clamp three colour components
@@ -131,9 +136,14 @@ impl Rgb {
         Self::rgb(s, s, s)
     }
 
+    /// Get the sum of the three colour components
+    pub fn sum(self) -> f32 {
+        self.r + self.g + self.b
+    }
+
     /// Average three colour components (desaturate)
     pub fn average(self) -> Self {
-        Self::grey((self.r + self.g + self.b) * (1.0 / 3.0))
+        Self::grey(self.sum() * (1.0 / 3.0))
     }
 
     /// Multiply and clamp three colour components
