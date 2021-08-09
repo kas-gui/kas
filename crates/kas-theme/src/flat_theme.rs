@@ -441,28 +441,40 @@ where
     }
 
     fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState) {
-        let bg_col = self.cols.bg_col(state);
-        let nav_col = self.cols.nav_region(state).or(Some(bg_col));
+        let outer = Quad::from(rect);
 
-        let inner = self.draw_edit_box(rect, bg_col, nav_col);
+        let col = ColorsLinear::adjust_for_state(self.cols.background, state);
+        if col != self.cols.background {
+            let inner = outer.shrink(self.window.dims.button_frame as f32 * BG_SHRINK_FACTOR);
+            self.draw.rect(inner, col);
+        }
+
+        let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
+        let inner = outer.shrink(self.window.dims.button_frame as f32);
+        self.draw.rounded_frame(outer, inner, BG_SHRINK_FACTOR, col);
 
         if let Some(col) = self.cols.check_mark_state(state, checked) {
-            let radius = inner.size().sum() * (1.0 / 16.0);
-            let inner = inner.shrink(self.window.dims.inner_margin as f32 + radius);
-            self.draw.rounded_line(inner.a, inner.b, radius, col);
-            self.draw.rounded_line(inner.ab(), inner.ba(), radius, col);
+            let inner = inner.shrink((2 * self.window.dims.inner_margin) as f32);
+            self.draw.rect(inner, col);
         }
     }
 
     fn radiobox(&mut self, rect: Rect, checked: bool, state: InputState) {
-        let bg_col = self.cols.bg_col(state);
-        let nav_col = self.cols.nav_region(state).or(Some(bg_col));
+        let outer = Quad::from(rect);
 
-        let inner = self.draw_edit_box(rect, bg_col, nav_col);
+        let col = ColorsLinear::adjust_for_state(self.cols.background, state);
+        if col != self.cols.background {
+            self.draw.circle(outer, 0.0, col);
+        }
+
+        let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
+        let r = 1.0 - 2.0 * self.window.dims.button_frame as f32 / rect.size.0 as f32;
+        self.draw.circle(outer, r, col);
 
         if let Some(col) = self.cols.check_mark_state(state, checked) {
-            let inner = inner.shrink(self.window.dims.inner_margin as f32);
-            self.draw.circle(inner, 0.5, col);
+            let r = self.window.dims.button_frame + 2 * self.window.dims.inner_margin as i32;
+            let inner = outer.shrink(r as f32);
+            self.draw.circle(inner, 0.0, col);
         }
     }
 
