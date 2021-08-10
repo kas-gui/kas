@@ -473,7 +473,8 @@ where
         }
 
         let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
-        let r = 1.0 - 2.0 * self.window.dims.button_frame as f32 / rect.size.0 as f32;
+        const F: f32 = 2.0 * (1.0 - BG_SHRINK_FACTOR); // match checkbox frame
+        let r = 1.0 - F * self.window.dims.button_frame as f32 / rect.size.0 as f32;
         self.draw.circle(outer, r, col);
 
         if let Some(col) = self.cols.check_mark_state(state, checked) {

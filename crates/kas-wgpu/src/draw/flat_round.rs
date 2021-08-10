@@ -163,7 +163,7 @@ impl Window {
         ]);
     }
 
-    /// Bounds on input: `0 ≤ inner_radius ≤ 1`.
+    /// Bounds on input: `0 ≤ inner_radius ≤ 1`.
     pub fn circle(&mut self, pass: PassId, rect: Quad, inner_radius: f32, col: Rgba) {
         let aa = rect.a;
         let bb = rect.b;
@@ -173,7 +173,8 @@ impl Window {
             return;
         }
 
-        let inner = inner_radius.max(0.0).min(1.0);
+        let inner = inner_radius.clamp(0.0, 1.0);
+        let inner = inner * inner; // shader compares to square
 
         let ab = Vec2(aa.0, bb.1);
         let ba = Vec2(bb.0, aa.1);
