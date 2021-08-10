@@ -77,10 +77,11 @@ const DIMS: dim::Parameters = dim::Parameters {
     inner_margin: 1.2,
     text_margin: 2.0,
     frame_size: 4.0,
+    // NOTE: visual thickness is (button_frame * scale_factor).round() * (1 - BG_SHRINK_FACTOR)
     button_frame: 2.4,
     checkbox_inner: 5.0,
     scrollbar_size: Vec2::splat(8.0),
-    slider_size: Vec2(12.0, 25.0),
+    slider_size: Vec2(16.0, 16.0),
     progress_bar: Vec2::splat(12.0),
 };
 
@@ -506,8 +507,20 @@ where
         let col = self.cols.frame;
         self.draw.rounded_frame(outer, inner, 0.0, col);
 
-        // handle
-        self.draw_handle(h_rect, state);
+        // handle; force it to be square
+        let size = Size::splat(h_rect.size.0.min(h_rect.size.1));
+        let offset = Offset::from((h_rect.size - size) / 2);
+        let outer = Quad::from(Rect::new(h_rect.pos + offset, size));
+
+        let col = if state.nav_focus && !state.disabled {
+            self.cols.accent_soft
+        } else {
+            self.cols.background
+        };
+        let col = ColorsLinear::adjust_for_state(col, state);
+        self.draw.circle(outer, 0.0, col);
+        let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
+        self.draw.circle(outer, 14.0 / 16.0, col);
     }
 
     fn progress_bar(&mut self, rect: Rect, dir: Direction, _: InputState, value: f32) {
