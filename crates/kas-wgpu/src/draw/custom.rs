@@ -61,7 +61,9 @@ pub trait CustomPipe: 'static {
     type Window: CustomWindow;
 
     /// Construct a window associated with this pipeline
-    fn new_window(&self, device: &wgpu::Device, size: Size) -> Self::Window;
+    ///
+    /// Note: [`Self::resize`] will be called before usage.
+    fn new_window(&self, device: &wgpu::Device) -> Self::Window;
 
     /// Called whenever the window is resized
     fn resize(
@@ -164,7 +166,7 @@ pub enum Void {}
 /// A dummy implementation (does nothing)
 impl CustomPipe for () {
     type Window = ();
-    fn new_window(&self, _: &wgpu::Device, _: Size) -> Self::Window {}
+    fn new_window(&self, _: &wgpu::Device) -> Self::Window {}
     fn resize(&self, _: &mut Self::Window, _: &wgpu::Device, _: &wgpu::Queue, _: Size) {}
 }
 

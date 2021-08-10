@@ -12,7 +12,7 @@ use super::*;
 use kas::cast::Cast;
 use kas::draw::color::Rgba;
 use kas::draw::*;
-use kas::geom::{Coord, Quad, Rect, Size, Vec2};
+use kas::geom::{Quad, Rect, Size, Vec2};
 use kas::text::{Effect, TextDisplay};
 use kas_theme::DrawShadedImpl;
 
@@ -96,17 +96,12 @@ impl<C: CustomPipe> DrawPipe<C> {
     }
 
     /// Construct per-window state
-    pub fn new_window(&self, size: Size) -> DrawWindow<C::Window> {
-        let vsize = Vec2::from(size);
-        let scale: Scale = [-0.5 * vsize.0, 0.5 * vsize.1, 2.0 / vsize.0, -2.0 / vsize.1];
-
-        let rect = Rect::new(Coord::ZERO, size);
-
-        let custom = self.custom.new_window(&self.device, size);
+    pub fn new_window(&self) -> DrawWindow<C::Window> {
+        let custom = self.custom.new_window(&self.device);
 
         DrawWindow {
-            scale,
-            clip_regions: vec![(rect, Offset::ZERO)],
+            scale: Default::default(),
+            clip_regions: vec![Default::default()],
             images: Default::default(),
             shaded_square: Default::default(),
             shaded_round: Default::default(),
