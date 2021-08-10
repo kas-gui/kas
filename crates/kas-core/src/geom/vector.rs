@@ -146,6 +146,9 @@ macro_rules! impl_vec2 {
             /// Zero
             pub const ZERO: $T = $T::splat(0.0);
 
+            /// One
+            pub const ONE: $T = $T::splat(1.0);
+
             /// Positive infinity
             pub const INFINITY: $T = $T::splat(<$f>::INFINITY);
 
@@ -332,6 +335,14 @@ macro_rules! impl_vec2 {
             #[inline]
             fn div(self, rhs: $f) -> Self::Output {
                 $T(self.0 / rhs, self.1 / rhs)
+            }
+        }
+
+        impl Div<$T> for $f {
+            type Output = $T;
+            #[inline]
+            fn div(self, rhs: $T) -> Self::Output {
+                $T(self / rhs.0, self / rhs.1)
             }
         }
 

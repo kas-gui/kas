@@ -125,12 +125,9 @@ impl<C: CustomPipe> DrawPipe<C> {
         window.clip_regions[0].0.size = size;
 
         let vsize = Vec2::from(size);
-        window.scale = [
-            -0.5 * vsize.0,
-            -0.5 * vsize.1,
-            2.0 / vsize.0,
-            -2.0 / vsize.1,
-        ];
+        let off = vsize * -0.5;
+        let scale = 2.0 / vsize;
+        window.scale = [off.0, off.1, scale.0, -scale.1];
 
         self.custom
             .resize(&mut window.custom, &self.device, &self.queue, size);
