@@ -253,7 +253,7 @@ fn main() -> Result<(), kas::shell::Error> {
                 .on_select(|_, index| Some(Item::Combo((index + 1).cast()))),
             #[widget(row=8, col=0)] _ = Label::new("Slider"),
             #[widget(row=8, col=1, handler = handle_slider)] s =
-                Slider::<i32, Right>::new(-2, 2, 1).with_value(0),
+                Slider::<i32, Right>::new(0, 10, 1).with_value(0),
             #[widget(row=9, col=0)] _ = Label::new("ScrollBar"),
             #[widget(row=9, col=1, handler = handle_scroll)] sc: ScrollBar<Right> =
                 ScrollBar::new().with_limits(100, 20),

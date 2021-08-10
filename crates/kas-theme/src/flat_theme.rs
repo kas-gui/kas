@@ -499,13 +499,28 @@ where
     fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
         // track
         let mut outer = Quad::from(rect);
-        outer = match dir.is_horizontal() {
-            true => outer.shrink_vec(Vec2(0.0, outer.size().1 * (3.0 / 8.0))),
-            false => outer.shrink_vec(Vec2(outer.size().0 * (3.0 / 8.0), 0.0)),
+        let mid = Vec2::from(h_rect.pos + h_rect.size / 2);
+        let (mut first, mut second);
+        if dir.is_horizontal() {
+            outer = outer.shrink_vec(Vec2(0.0, outer.size().1 * (1.0 / 3.0)));
+            first = outer;
+            second = outer;
+            first.b.0 = mid.0;
+            second.a.0 = mid.0;
+        } else {
+            outer = outer.shrink_vec(Vec2(outer.size().0 * (1.0 / 3.0), 0.0));
+            first = outer;
+            second = outer;
+            first.b.1 = mid.1;
+            second.a.1 = mid.1;
         };
-        let inner = outer.shrink(outer.size().min_comp() / 2.0);
-        let col = self.cols.frame;
-        self.draw.rounded_frame(outer, inner, 0.0, col);
+
+        let dist = outer.size().min_comp() / 2.0;
+        let inner = first.shrink(dist);
+        self.draw.rounded_frame(first, inner, 0.0, self.cols.accent);
+        let inner = second.shrink(dist);
+        self.draw
+            .rounded_frame(second, inner, 1.0 / 3.0, self.cols.frame);
 
         // handle; force it to be square
         let size = Size::splat(h_rect.size.0.min(h_rect.size.1));
