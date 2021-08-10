@@ -423,7 +423,11 @@ where
     fn button(&mut self, rect: Rect, col: Option<color::Rgb>, state: InputState) {
         let outer = Quad::from(rect);
 
-        let col = col.map(|c| c.into()).unwrap_or(self.cols.background);
+        let col = if state.nav_focus && !state.disabled {
+            self.cols.accent_soft
+        } else {
+            col.map(|c| c.into()).unwrap_or(self.cols.background)
+        };
         let col = ColorsLinear::adjust_for_state(col, state);
         if col != self.cols.background {
             let inner = outer.shrink(self.window.dims.button_frame as f32 * BG_SHRINK_FACTOR);
