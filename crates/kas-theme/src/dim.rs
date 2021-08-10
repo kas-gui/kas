@@ -32,6 +32,8 @@ pub struct Parameters {
     pub frame_size: f32,
     /// Button frame size (non-flat outer region)
     pub button_frame: f32,
+    /// Checkbox inner size in Points
+    pub checkbox_inner: f32,
     /// Scrollbar minimum handle size
     pub scrollbar_size: Vec2,
     /// Slider minimum handle size
@@ -87,7 +89,8 @@ impl Dimensions {
             text_margin,
             frame,
             button_frame: (params.button_frame * scale_factor).cast_nearest(),
-            checkbox: i32::conv_nearest(9.0 * dpp) + 2 * (i32::from(inner_margin) + frame),
+            checkbox: i32::conv_nearest(params.checkbox_inner * dpp)
+                + 2 * (i32::from(inner_margin) + frame),
             scrollbar: Size::from(params.scrollbar_size * scale_factor),
             slider: Size::from(params.slider_size * scale_factor),
             progress_bar: Size::from(params.progress_bar * scale_factor),

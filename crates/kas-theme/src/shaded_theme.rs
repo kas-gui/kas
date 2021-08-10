@@ -61,6 +61,7 @@ const DIMS: dim::Parameters = dim::Parameters {
     text_margin: 2.0,
     frame_size: 5.0,
     button_frame: 5.0,
+    checkbox_inner: 9.0,
     scrollbar_size: Vec2::splat(8.0),
     slider_size: Vec2(12.0, 25.0),
     progress_bar: Vec2::splat(12.0),
