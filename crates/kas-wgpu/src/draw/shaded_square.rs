@@ -41,7 +41,7 @@ impl Pipeline {
             label: Some("SS render_pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
-                module: &shaders.vert_2,
+                module: &shaders.vert_shaded_square,
                 entry_point: "main",
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: size_of::<Vertex>() as wgpu::BufferAddress,

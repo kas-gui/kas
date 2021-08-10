@@ -9,9 +9,9 @@ use wgpu::{include_spirv, ShaderModule};
 
 /// Shader manager
 pub struct ShaderManager {
-    pub vert_122: ShaderModule,
-    pub vert_2: ShaderModule,
-    pub vert_222: ShaderModule,
+    pub vert_flat_round: ShaderModule,
+    pub vert_shaded_square: ShaderModule,
+    pub vert_shaded_round: ShaderModule,
     pub vert_image: ShaderModule,
     pub vert_glyph: ShaderModule,
     pub frag_flat_round: ShaderModule,
@@ -29,9 +29,9 @@ macro_rules! create {
 
 impl ShaderManager {
     pub fn new(device: &wgpu::Device) -> Self {
-        let vert_122 = create!(device, "shaders/scaled_122.vert.spv");
-        let vert_2 = create!(device, "shaders/scaled_2.vert.spv");
-        let vert_222 = create!(device, "shaders/scaled_222.vert.spv");
+        let vert_flat_round = create!(device, "shaders/flat_round.vert.spv");
+        let vert_shaded_square = create!(device, "shaders/shaded_square.vert.spv");
+        let vert_shaded_round = create!(device, "shaders/shaded_round.vert.spv");
         let vert_image = create!(device, "shaders/image.vert.spv");
         let vert_glyph = create!(device, "shaders/glyph.vert.spv");
 
@@ -44,9 +44,9 @@ impl ShaderManager {
         ShaderManager {
             vert_image,
             vert_glyph,
-            vert_122,
-            vert_2,
-            vert_222,
+            vert_flat_round,
+            vert_shaded_square,
+            vert_shaded_round,
             frag_flat_round,
             frag_shaded_square,
             frag_shaded_round,
