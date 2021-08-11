@@ -202,25 +202,6 @@ impl ThemeApi for FlatTheme {
     }
 }
 
-impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS>
-where
-    DS::Draw: DrawRoundedImpl,
-{
-    /// Draw a handle (for slider, scrollbar)
-    fn draw_handle(&mut self, rect: Rect, state: InputState) {
-        let outer = Quad::from(rect);
-        let thickness = outer.size().min_comp() / 2.0;
-        let inner = outer.shrink(thickness);
-        let col = self.cols.accent_soft_state(state);
-        self.draw.rounded_frame(outer, inner, 0.0, col);
-
-        if let Some(col) = self.cols.nav_region(state) {
-            let outer = outer.shrink(thickness / 4.0);
-            self.draw.rounded_frame(outer, inner, 0.6, col);
-        }
-    }
-}
-
 impl<'a, DS: DrawSharedImpl> draw::DrawHandle for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl,
@@ -490,11 +471,17 @@ where
         // track
         let outer = Quad::from(rect);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
-        let col = self.cols.frame;
+        let mut col = self.cols.frame;
+        col.a = 0.5; // HACK
         self.draw.rounded_frame(outer, inner, 0.0, col);
 
         // handle
-        self.draw_handle(h_rect, state);
+        let outer = Quad::from(h_rect);
+        let r = outer.size().min_comp() * 0.125;
+        let outer = outer.shrink(r);
+        let inner = outer.shrink(3.0 * r);
+        let col = ColorsLinear::adjust_for_state(self.cols.frame, state);
+        self.draw.rounded_frame(outer, inner, 0.0, col);
     }
 
     fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
