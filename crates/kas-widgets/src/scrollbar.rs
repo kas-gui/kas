@@ -499,6 +499,17 @@ impl<W: Scrollable> ScrollBars<W> {
     pub fn inner_mut(&mut self) -> &mut W {
         &mut self.inner
     }
+
+    fn draw_(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        let disabled = disabled || self.is_disabled();
+        if self.show_bars.0 {
+            self.horiz_bar.draw(draw_handle, mgr, disabled);
+        }
+        if self.show_bars.1 {
+            self.vert_bar.draw(draw_handle, mgr, disabled);
+        }
+        self.inner.draw(draw_handle, mgr, disabled);
+    }
 }
 
 impl<W: Scrollable> Scrollable for ScrollBars<W> {
@@ -586,15 +597,38 @@ impl<W: Scrollable> Layout for ScrollBars<W> {
             .or(Some(self.id()))
     }
 
+    #[cfg(feature = "min_spec")]
+    default fn draw(
+        &self,
+        draw_handle: &mut dyn DrawHandle,
+        mgr: &event::ManagerState,
+        disabled: bool,
+    ) {
+        self.draw_(draw_handle, mgr, disabled);
+    }
+    #[cfg(not(feature = "min_spec"))]
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-        let disabled = disabled || self.is_disabled();
-        if self.show_bars.0 {
-            self.horiz_bar.draw(draw_handle, mgr, disabled);
-        }
-        if self.show_bars.1 {
-            self.vert_bar.draw(draw_handle, mgr, disabled);
-        }
-        self.inner.draw(draw_handle, mgr, disabled);
+        self.draw_(draw_handle, mgr, disabled);
+    }
+}
+
+#[cfg(feature = "min_spec")]
+impl<W: Widget> Layout for ScrollBars<ScrollRegion<W>> {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        let disabled = disabled || self.is_disabled() || self.inner.is_disabled();
+        // Enlarge clip region to *our* rect:
+        draw_handle.with_clip_region(self.core.rect, self.inner.scroll_offset(), &mut |handle| {
+            self.inner.inner().draw(handle, mgr, disabled)
+        });
+        // Use a second clip region to force draw order:
+        draw_handle.with_clip_region(self.core.rect, Offset::ZERO, &mut |draw_handle| {
+            if self.show_bars.0 {
+                self.horiz_bar.draw(draw_handle, mgr, disabled);
+            }
+            if self.show_bars.1 {
+                self.vert_bar.draw(draw_handle, mgr, disabled);
+            }
+        });
     }
 }
 
