@@ -56,14 +56,13 @@ Installation and dependencies
 
 #### Rust
 
-KAS requires [Rust] version 1.52 or greater (currently in **beta**: *usually*
-we maintain compatibility with the latest stable release).
-Using the **nightly** channel does have a couple of advantages:
+KAS requires a recent [Rust] compiler. Currently, version 1.52 or greater is
+required. Using the **nightly** channel does have a few advantages:
 
 -   Proceedural macros emit better diagnostics. In some cases, diagnostics are
     missed without nightly rustc, hence **nightly is recommended for development**.
--   Documentation generated via `cargo doc` requires nightly for links
--   A few minor option things: see [Feature flags](#feature-flags) below.
+-   The `nightly` (`min_spec`) feature allows some visual improvements (see below).
+-   The `doc_cfg` feature may be used for API docs.
 
 ### Quick-start
 
@@ -137,8 +136,9 @@ The `kas` crate has the following feature flags:
 Additionally, the following flags require a nightly compiler:
 
 -   `nightly`: enables "more stable" unstable features
--   `min_spec` (enabled by `nightly`): use `min_specialization` to draw
-    underlines in `AccelLabel`
+-   `min_spec` (enabled by `nightly`): use `min_specialization` for some visual
+    improvements: scrolled regions are drawn under scrollbars,
+    underlines on checkbox accelerator keys show with the <kbd>Alt</kbd> key.
 -   `spec`: use `specialization` to enable `TryFormat`
 -   `gat`: compatibility with `kas-text/gat`
 
