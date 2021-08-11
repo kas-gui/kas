@@ -353,7 +353,7 @@ impl<G: EditGuard> Layout for EditBox<G> {
         if !self.rect().contains(coord) {
             return None;
         }
-        self.inner.find_id(coord).or(Some(self.id()))
+        Some(self.inner.id())
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
@@ -407,7 +407,7 @@ impl<G: EditGuard> std::ops::DerefMut for EditBox<G> {
 /// line-wrapping and a larger vertical height). This mode is only recommended
 /// for short texts for performance reasons.
 #[derive(Clone, Default, Debug, Widget)]
-#[widget(config(key_nav = true, cursor_icon = event::CursorIcon::Text))]
+#[widget(config(key_nav = true, hover_highlight = true, cursor_icon = event::CursorIcon::Text))]
 #[handler(handle=noauto, generics = <> where G: EditGuard)]
 pub struct EditField<G: EditGuard = ()> {
     #[widget_core]

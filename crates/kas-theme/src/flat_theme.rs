@@ -206,31 +206,6 @@ impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl,
 {
-    /// Draw an edit box with optional navigation highlight.
-    /// Return the inner rect.
-    ///
-    /// - `outer`: define position via outer rect
-    /// - `bg_col`: colour of background
-    /// - `nav_col`: colour of navigation highlight, if visible
-    fn draw_edit_box(&mut self, outer: Rect, bg_col: Rgba, nav_col: Option<Rgba>) -> Quad {
-        let outer = Quad::from(outer);
-        let inner1 = outer.shrink(self.window.dims.frame as f32 * BG_SHRINK_FACTOR);
-        let inner2 = outer.shrink(self.window.dims.frame as f32);
-
-        self.draw.rect(inner1, bg_col);
-
-        // We draw over the inner rect, taking advantage of the fact that
-        // rounded frames get drawn after flat rects.
-        self.draw
-            .rounded_frame(outer, inner2, BG_SHRINK_FACTOR, self.cols.frame);
-
-        if let Some(col) = nav_col {
-            self.draw.rounded_frame(inner1, inner2, 0.6, col);
-        }
-
-        inner2
-    }
-
     /// Draw a handle (for slider, scrollbar)
     fn draw_handle(&mut self, rect: Rect, state: InputState) {
         let outer = Quad::from(rect);
@@ -390,7 +365,7 @@ where
         let width = self.window.dims.font_marker_width;
         let pos = Vec2::from(pos);
 
-        let mut col = self.cols.text;
+        let mut col = self.cols.nav_focus;
         for cursor in text.text_glyph_pos(byte).rev() {
             let mut p1 = pos + Vec2::from(cursor.pos);
             let mut p2 = p1;
@@ -441,9 +416,35 @@ where
         self.draw.rounded_frame(outer, inner, BG_SHRINK_FACTOR, col);
     }
 
-    fn edit_box(&mut self, rect: Rect, state: InputState) {
-        let bg_col = self.cols.bg_col(state);
-        self.draw_edit_box(rect, bg_col, self.cols.nav_region(state));
+    fn edit_box(&mut self, rect: Rect, mut state: InputState) {
+        let outer = Quad::from(rect);
+
+        state.depress = false;
+        let col = match state.error {
+            true => self.cols.edit_bg_error,
+            false => self.cols.edit_bg,
+        };
+        let col = ColorsLinear::adjust_for_state(col, state);
+        if col != self.cols.background {
+            let inner = outer.shrink(self.window.dims.button_frame as f32 * BG_SHRINK_FACTOR);
+            self.draw.rect(inner, col);
+        }
+
+        let inner = outer.shrink(self.window.dims.button_frame as f32);
+        self.draw
+            .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
+
+        let col = if state.nav_focus {
+            self.cols.nav_focus
+        } else {
+            // TODO: should this be a dedicated colour?
+            ColorsLinear::adjust_for_state(self.cols.accent.average(), state)
+        };
+        let r = 0.5 * self.window.dims.button_frame as f32;
+        let y = outer.b.1 - r;
+        let a = Vec2(outer.a.0 + r, y);
+        let b = Vec2(outer.b.0 - r, y);
+        self.draw.rounded_line(a, b, r, col);
     }
 
     fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState) {

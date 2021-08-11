@@ -167,7 +167,7 @@ impl ColorsLinear {
             col.average()
         } else if state.depress {
             col.multiply(MULT_DEPRESS)
-        } else if state.hover {
+        } else if state.hover || state.char_focus {
             col.multiply(MULT_HIGHLIGHT).max(MIN_HIGHLIGHT)
         } else {
             col
