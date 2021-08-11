@@ -21,6 +21,7 @@ pub struct ScrollBar<D: Directional> {
     core: CoreData,
     direction: D,
     // Terminology assumes vertical orientation:
+    width: i32,
     min_handle_len: i32,
     handle_len: i32,
     handle_value: i32, // contract: > 0
@@ -48,6 +49,7 @@ impl<D: Directional> ScrollBar<D> {
         ScrollBar {
             core: Default::default(),
             direction,
+            width: 0,
             min_handle_len: 0,
             handle_len: 0,
             handle_value: 1,
@@ -207,11 +209,17 @@ impl<D: Directional> Layout for ScrollBar<D> {
         if self.direction.is_vertical() == axis.is_vertical() {
             SizeRules::new(min_len, min_len, margins, Stretch::High)
         } else {
+            self.width = size.1;
             SizeRules::fixed(size.1, margins)
         }
     }
 
     fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+        let mut ideal_size = Size::splat(self.width);
+        ideal_size.set_component(self.direction, i32::MAX);
+        let rect = align
+            .complete(Align::Centre, Align::Centre)
+            .aligned_rect(ideal_size, rect);
         self.core.rect = rect;
         self.handle.set_rect(mgr, rect, align);
         let _ = self.update_handle();
