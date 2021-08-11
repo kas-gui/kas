@@ -415,17 +415,13 @@ where
         self.draw
             .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
 
-        let col = if state.nav_focus {
-            self.cols.nav_focus
-        } else {
-            // TODO: should this be a dedicated colour?
-            ColorsLinear::adjust_for_state(self.cols.accent.average(), state)
-        };
-        let r = 0.5 * self.window.dims.button_frame as f32;
-        let y = outer.b.1 - r;
-        let a = Vec2(outer.a.0 + r, y);
-        let b = Vec2(outer.b.0 - r, y);
-        self.draw.rounded_line(a, b, r, col);
+        if state.nav_focus {
+            let r = 0.5 * self.window.dims.button_frame as f32;
+            let y = outer.b.1 - r;
+            let a = Vec2(outer.a.0 + r, y);
+            let b = Vec2(outer.b.0 - r, y);
+            self.draw.rounded_line(a, b, r, self.cols.nav_focus);
+        }
     }
 
     fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState) {
