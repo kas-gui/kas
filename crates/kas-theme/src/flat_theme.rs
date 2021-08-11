@@ -82,7 +82,7 @@ const DIMS: dim::Parameters = dim::Parameters {
     checkbox_inner: 5.0,
     scrollbar_size: Vec2::splat(8.0),
     slider_size: Vec2(16.0, 16.0),
-    progress_bar: Vec2::splat(12.0),
+    progress_bar: Vec2::splat(8.0),
 };
 
 pub struct DrawHandle<'a, DS: DrawSharedImpl> {
@@ -527,18 +527,17 @@ where
     }
 
     fn progress_bar(&mut self, rect: Rect, dir: Direction, _: InputState, value: f32) {
-        let outer = Quad::from(rect);
-        let mut inner = outer.shrink(self.window.dims.frame as f32);
-        let col = self.cols.frame;
-        self.draw.rounded_frame(outer, inner, BG_SHRINK_FACTOR, col);
+        let mut outer = Quad::from(rect);
+        let inner = outer.shrink(outer.size().min_comp() / 2.0);
+        self.draw.rounded_frame(outer, inner, 0.75, self.cols.frame);
 
         if dir.is_horizontal() {
-            inner.b.0 = inner.a.0 + value * (inner.b.0 - inner.a.0);
+            outer.b.0 = outer.a.0 + value * (outer.b.0 - outer.a.0);
         } else {
-            inner.b.1 = inner.a.1 + value * (inner.b.1 - inner.a.1);
+            outer.b.1 = outer.a.1 + value * (outer.b.1 - outer.a.1);
         }
-        let col = self.cols.accent_soft;
-        self.draw.rect(inner, col);
+        let inner = outer.shrink(outer.size().min_comp() / 2.0);
+        self.draw.rounded_frame(outer, inner, 0.0, self.cols.accent);
     }
 
     fn image(&mut self, id: ImageId, rect: Rect) {

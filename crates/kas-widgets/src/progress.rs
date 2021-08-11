@@ -17,6 +17,7 @@ pub struct ProgressBar<D: Directional> {
     #[widget_core]
     core: CoreData,
     direction: D,
+    width: i32,
     value: f32,
 }
 
@@ -39,6 +40,7 @@ impl<D: Directional> ProgressBar<D> {
         ProgressBar {
             core: Default::default(),
             direction,
+            width: 0,
             value: 0.0,
         }
     }
@@ -81,8 +83,18 @@ impl<D: Directional> Layout for ProgressBar<D> {
         if self.direction.is_vertical() == axis.is_vertical() {
             SizeRules::new(size.0, size.0, margins, Stretch::High)
         } else {
+            self.width = size.1;
             SizeRules::fixed(size.1, margins)
         }
+    }
+
+    fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
+        let mut ideal_size = Size::splat(self.width);
+        ideal_size.set_component(self.direction, i32::MAX);
+        let rect = align
+            .complete(Align::Centre, Align::Centre)
+            .aligned_rect(ideal_size, rect);
+        self.core.rect = rect;
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
