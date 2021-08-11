@@ -119,8 +119,8 @@ fn main() -> Result<(), kas::shell::Error> {
     }
 
     let themes = vec![
-        MenuEntry::new("&Shaded", Menu::Theme("shaded")).boxed_menu(),
         MenuEntry::new("&Flat", Menu::Theme("flat")).boxed_menu(),
+        MenuEntry::new("&Shaded", Menu::Theme("shaded")).boxed_menu(),
     ];
     // Enumerate colour schemes. Access through the toolkit since this handles
     // config loading.

@@ -75,8 +75,9 @@ impl FlatTheme {
 const DIMS: dim::Parameters = dim::Parameters {
     outer_margin: 8.0,
     inner_margin: 1.2,
+    frame_margin: 2.4,
     text_margin: 2.0,
-    frame_size: 4.0,
+    frame_size: 2.4,
     // NOTE: visual thickness is (button_frame * scale_factor).round() * (1 - BG_SHRINK_FACTOR)
     button_frame: 2.4,
     checkbox_inner: 5.0,

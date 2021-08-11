@@ -138,6 +138,8 @@ pub trait SizeHandle {
     fn pixels_from_em(&self, em: f32) -> f32;
 
     /// Size of a frame around child widget(s)
+    ///
+    /// This already includes the margins specified by [`Self::frame_margins`].
     fn frame(&self, vert: bool) -> FrameRules;
 
     /// Frame/margin around a menu entry
@@ -159,6 +161,9 @@ pub trait SizeHandle {
     ///
     /// Widgets must not draw in outer margins.
     fn outer_margins(&self) -> Margins;
+
+    /// The margin around frames and separators
+    fn frame_margins(&self) -> Margins;
 
     /// The margin around text elements
     ///
@@ -466,6 +471,9 @@ impl<S: SizeHandle + ?Sized, R: Deref<Target = S>> SizeHandle for R {
     }
     fn outer_margins(&self) -> Margins {
         self.deref().outer_margins()
+    }
+    fn frame_margins(&self) -> Margins {
+        self.deref().frame_margins()
     }
     fn text_margins(&self) -> Margins {
         self.deref().text_margins()
