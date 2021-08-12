@@ -75,12 +75,15 @@ impl FlatTheme {
 const DIMS: dim::Parameters = dim::Parameters {
     outer_margin: 8.0,
     inner_margin: 1.2,
+    frame_margin: 2.4,
     text_margin: 2.0,
-    frame_size: 4.0,
-    button_frame: 6.0,
+    frame_size: 2.4,
+    // NOTE: visual thickness is (button_frame * scale_factor).round() * (1 - BG_SHRINK_FACTOR)
+    button_frame: 2.4,
+    checkbox_inner: 5.0,
     scrollbar_size: Vec2::splat(8.0),
-    slider_size: Vec2(12.0, 25.0),
-    progress_bar: Vec2::splat(12.0),
+    slider_size: Vec2(16.0, 16.0),
+    progress_bar: Vec2::splat(8.0),
 };
 
 pub struct DrawHandle<'a, DS: DrawSharedImpl> {
@@ -200,50 +203,6 @@ impl ThemeApi for FlatTheme {
     }
 }
 
-impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS>
-where
-    DS::Draw: DrawRoundedImpl,
-{
-    /// Draw an edit box with optional navigation highlight.
-    /// Return the inner rect.
-    ///
-    /// - `outer`: define position via outer rect
-    /// - `bg_col`: colour of background
-    /// - `nav_col`: colour of navigation highlight, if visible
-    fn draw_edit_box(&mut self, outer: Rect, bg_col: Rgba, nav_col: Option<Rgba>) -> Quad {
-        let outer = Quad::from(outer);
-        let inner1 = outer.shrink(self.window.dims.frame as f32 * BG_SHRINK_FACTOR);
-        let inner2 = outer.shrink(self.window.dims.frame as f32);
-
-        self.draw.rect(inner1, bg_col);
-
-        // We draw over the inner rect, taking advantage of the fact that
-        // rounded frames get drawn after flat rects.
-        self.draw
-            .rounded_frame(outer, inner2, BG_SHRINK_FACTOR, self.cols.frame);
-
-        if let Some(col) = nav_col {
-            self.draw.rounded_frame(inner1, inner2, 0.6, col);
-        }
-
-        inner2
-    }
-
-    /// Draw a handle (for slider, scrollbar)
-    fn draw_handle(&mut self, rect: Rect, state: InputState) {
-        let outer = Quad::from(rect);
-        let thickness = outer.size().min_comp() / 2.0;
-        let inner = outer.shrink(thickness);
-        let col = self.cols.scrollbar_state(state);
-        self.draw.rounded_frame(outer, inner, 0.0, col);
-
-        if let Some(col) = self.cols.nav_region(state) {
-            let outer = outer.shrink(thickness / 4.0);
-            self.draw.rounded_frame(outer, inner, 0.6, col);
-        }
-    }
-}
-
 impl<'a, DS: DrawSharedImpl> draw::DrawHandle for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl,
@@ -319,24 +278,24 @@ where
         self.draw.frame(outer, inner, col);
     }
 
-    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass) {
+    fn text(&mut self, pos: Coord, text: &TextDisplay, _: TextClass) {
         let pos = pos;
-        let col = self.cols.text_class(class);
+        let col = self.cols.text;
         self.draw.text(pos.into(), text, col);
     }
 
-    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
+    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, _: TextClass) {
         self.draw.text_col_effects(
             (pos).into(),
             text.display(),
-            self.cols.text_class(class),
+            self.cols.text,
             text.effect_tokens(),
         );
     }
 
-    fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
+    fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, _: TextClass) {
         let pos = Vec2::from(pos);
-        let col = self.cols.text_class(class);
+        let col = self.cols.text;
         if state {
             let effects = text.text().effect_tokens();
             self.draw.text_col_effects(pos, text.as_ref(), col, effects);
@@ -350,10 +309,11 @@ where
         pos: Coord,
         text: &TextDisplay,
         range: Range<usize>,
-        class: TextClass,
+        _: TextClass,
     ) {
         let pos = Vec2::from(pos);
-        let col = self.cols.text_class(class);
+        let col = self.cols.text;
+        let sel_col = self.cols.text_over(self.cols.text_sel_bg);
 
         // Draw background:
         for (p1, p2) in &text.highlight_lines(range.clone()) {
@@ -372,7 +332,7 @@ where
             Effect {
                 start: range.start.cast(),
                 flags: Default::default(),
-                aux: self.cols.text_sel,
+                aux: sel_col,
             },
             Effect {
                 start: range.end.cast(),
@@ -383,11 +343,11 @@ where
         self.draw.text_effects(pos, text, &effects);
     }
 
-    fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
+    fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, _: TextClass, byte: usize) {
         let width = self.window.dims.font_marker_width;
         let pos = Vec2::from(pos);
 
-        let mut col = self.cols.text_class(class);
+        let mut col = self.cols.nav_focus;
         for cursor in text.text_glyph_pos(byte).rev() {
             let mut p1 = pos + Vec2::from(cursor.pos);
             let mut p2 = p1;
@@ -421,47 +381,86 @@ where
 
     fn button(&mut self, rect: Rect, col: Option<color::Rgb>, state: InputState) {
         let outer = Quad::from(rect);
-        let col = col.map(|c| c.into()).unwrap_or(self.cols.button);
+
+        let col = if state.nav_focus && !state.disabled {
+            self.cols.accent_soft
+        } else {
+            col.map(|c| c.into()).unwrap_or(self.cols.background)
+        };
         let col = ColorsLinear::adjust_for_state(col, state);
+        if col != self.cols.background {
+            let inner = outer.shrink(self.window.dims.button_frame as f32 * BG_SHRINK_FACTOR);
+            self.draw.rect(inner, col);
+        }
+
+        let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
+        let inner = outer.shrink(self.window.dims.button_frame as f32);
+        self.draw.rounded_frame(outer, inner, BG_SHRINK_FACTOR, col);
+    }
+
+    fn edit_box(&mut self, rect: Rect, mut state: InputState) {
+        let outer = Quad::from(rect);
+
+        state.depress = false;
+        let col = match state.error {
+            true => self.cols.edit_bg_error,
+            false => self.cols.edit_bg,
+        };
+        let col = ColorsLinear::adjust_for_state(col, state);
+        if col != self.cols.background {
+            let inner = outer.shrink(self.window.dims.button_frame as f32 * BG_SHRINK_FACTOR);
+            self.draw.rect(inner, col);
+        }
 
         let inner = outer.shrink(self.window.dims.button_frame as f32);
-        self.draw.rounded_frame(outer, inner, 0.0, col);
-        self.draw.rect(inner, col);
+        self.draw
+            .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
 
-        if let Some(col) = self.cols.nav_region(state) {
-            let outer = outer.shrink(self.window.dims.inner_margin as f32);
-            self.draw.rounded_frame(outer, inner, 0.6, col);
+        if state.nav_focus {
+            let r = 0.5 * self.window.dims.button_frame as f32;
+            let y = outer.b.1 - r;
+            let a = Vec2(outer.a.0 + r, y);
+            let b = Vec2(outer.b.0 - r, y);
+            self.draw.rounded_line(a, b, r, self.cols.nav_focus);
         }
     }
 
-    fn edit_box(&mut self, rect: Rect, state: InputState) {
-        let bg_col = self.cols.bg_col(state);
-        self.draw_edit_box(rect, bg_col, self.cols.nav_region(state));
-    }
-
     fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState) {
-        let bg_col = self.cols.bg_col(state);
-        let nav_col = self.cols.nav_region(state).or(Some(bg_col));
+        let outer = Quad::from(rect);
 
-        let inner = self.draw_edit_box(rect, bg_col, nav_col);
+        let col = ColorsLinear::adjust_for_state(self.cols.background, state);
+        if col != self.cols.background {
+            let inner = outer.shrink(self.window.dims.button_frame as f32 * BG_SHRINK_FACTOR);
+            self.draw.rect(inner, col);
+        }
+
+        let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
+        let inner = outer.shrink(self.window.dims.button_frame as f32);
+        self.draw.rounded_frame(outer, inner, BG_SHRINK_FACTOR, col);
 
         if let Some(col) = self.cols.check_mark_state(state, checked) {
-            let radius = inner.size().sum() * (1.0 / 16.0);
-            let inner = inner.shrink(self.window.dims.inner_margin as f32 + radius);
-            self.draw.rounded_line(inner.a, inner.b, radius, col);
-            self.draw.rounded_line(inner.ab(), inner.ba(), radius, col);
+            let inner = inner.shrink((2 * self.window.dims.inner_margin) as f32);
+            self.draw.rect(inner, col);
         }
     }
 
     fn radiobox(&mut self, rect: Rect, checked: bool, state: InputState) {
-        let bg_col = self.cols.bg_col(state);
-        let nav_col = self.cols.nav_region(state).or(Some(bg_col));
+        let outer = Quad::from(rect);
 
-        let inner = self.draw_edit_box(rect, bg_col, nav_col);
+        let col = ColorsLinear::adjust_for_state(self.cols.background, state);
+        if col != self.cols.background {
+            self.draw.circle(outer, 0.0, col);
+        }
+
+        let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
+        const F: f32 = 2.0 * (1.0 - BG_SHRINK_FACTOR); // match checkbox frame
+        let r = 1.0 - F * self.window.dims.button_frame as f32 / rect.size.0 as f32;
+        self.draw.circle(outer, r, col);
 
         if let Some(col) = self.cols.check_mark_state(state, checked) {
-            let inner = inner.shrink(self.window.dims.inner_margin as f32);
-            self.draw.circle(inner, 0.5, col);
+            let r = self.window.dims.button_frame + 2 * self.window.dims.inner_margin as i32;
+            let inner = outer.shrink(r as f32);
+            self.draw.circle(inner, 0.0, col);
         }
     }
 
@@ -469,41 +468,73 @@ where
         // track
         let outer = Quad::from(rect);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
-        let col = self.cols.frame;
+        let mut col = self.cols.frame;
+        col.a = 0.5; // HACK
         self.draw.rounded_frame(outer, inner, 0.0, col);
 
         // handle
-        self.draw_handle(h_rect, state);
+        let outer = Quad::from(h_rect);
+        let r = outer.size().min_comp() * 0.125;
+        let outer = outer.shrink(r);
+        let inner = outer.shrink(3.0 * r);
+        let col = ColorsLinear::adjust_for_state(self.cols.frame, state);
+        self.draw.rounded_frame(outer, inner, 0.0, col);
     }
 
     fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
         // track
         let mut outer = Quad::from(rect);
-        outer = match dir.is_horizontal() {
-            true => outer.shrink_vec(Vec2(0.0, outer.size().1 * (3.0 / 8.0))),
-            false => outer.shrink_vec(Vec2(outer.size().0 * (3.0 / 8.0), 0.0)),
+        let mid = Vec2::from(h_rect.pos + h_rect.size / 2);
+        let (mut first, mut second);
+        if dir.is_horizontal() {
+            outer = outer.shrink_vec(Vec2(0.0, outer.size().1 * (1.0 / 3.0)));
+            first = outer;
+            second = outer;
+            first.b.0 = mid.0;
+            second.a.0 = mid.0;
+        } else {
+            outer = outer.shrink_vec(Vec2(outer.size().0 * (1.0 / 3.0), 0.0));
+            first = outer;
+            second = outer;
+            first.b.1 = mid.1;
+            second.a.1 = mid.1;
         };
-        let inner = outer.shrink(outer.size().min_comp() / 2.0);
-        let col = self.cols.frame;
-        self.draw.rounded_frame(outer, inner, 0.0, col);
 
-        // handle
-        self.draw_handle(h_rect, state);
+        let dist = outer.size().min_comp() / 2.0;
+        let inner = first.shrink(dist);
+        self.draw.rounded_frame(first, inner, 0.0, self.cols.accent);
+        let inner = second.shrink(dist);
+        self.draw
+            .rounded_frame(second, inner, 1.0 / 3.0, self.cols.frame);
+
+        // handle; force it to be square
+        let size = Size::splat(h_rect.size.0.min(h_rect.size.1));
+        let offset = Offset::from((h_rect.size - size) / 2);
+        let outer = Quad::from(Rect::new(h_rect.pos + offset, size));
+
+        let col = if state.nav_focus && !state.disabled {
+            self.cols.accent_soft
+        } else {
+            self.cols.background
+        };
+        let col = ColorsLinear::adjust_for_state(col, state);
+        self.draw.circle(outer, 0.0, col);
+        let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
+        self.draw.circle(outer, 14.0 / 16.0, col);
     }
 
     fn progress_bar(&mut self, rect: Rect, dir: Direction, _: InputState, value: f32) {
-        let outer = Quad::from(rect);
-        let mut inner = outer.shrink(self.window.dims.frame as f32);
-        let col = self.cols.frame;
-        self.draw.rounded_frame(outer, inner, BG_SHRINK_FACTOR, col);
+        let mut outer = Quad::from(rect);
+        let inner = outer.shrink(outer.size().min_comp() / 2.0);
+        self.draw.rounded_frame(outer, inner, 0.75, self.cols.frame);
 
         if dir.is_horizontal() {
-            inner.b.0 = inner.a.0 + value * (inner.b.0 - inner.a.0);
+            outer.b.0 = outer.a.0 + value * (outer.b.0 - outer.a.0);
         } else {
-            inner.b.1 = inner.a.1 + value * (inner.b.1 - inner.a.1);
+            outer.b.1 = outer.a.1 + value * (outer.b.1 - outer.a.1);
         }
-        let col = self.cols.button;
-        self.draw.rect(inner, col);
+        let inner = outer.shrink(outer.size().min_comp() / 2.0);
+        self.draw.rounded_frame(outer, inner, 0.0, self.cols.accent);
     }
 
     fn image(&mut self, id: ImageId, rect: Rect) {

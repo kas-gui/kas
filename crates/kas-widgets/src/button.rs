@@ -23,6 +23,7 @@ pub struct Button<L: Widget<Msg = VoidMsg>, M: 'static> {
     keys1: VirtualKeyCodes,
     frame_size: Size,
     frame_offset: Offset,
+    ideal_size: Size,
     color: Option<Rgb>,
     #[widget_derive]
     #[widget]
@@ -37,6 +38,7 @@ impl<L: Widget<Msg = VoidMsg>, M: 'static> Debug for Button<L, M> {
             .field("keys1", &self.keys1)
             .field("frame_size", &self.frame_size)
             .field("frame_offset", &self.frame_offset)
+            .field("ideal_size", &self.ideal_size)
             .field("color", &self.color)
             .field("label", &self.label)
             .finish_non_exhaustive()
@@ -64,10 +66,14 @@ impl<L: Widget<Msg = VoidMsg>, M: 'static> Layout for Button<L, M> {
         let (rules, offset, size) = frame_rules.surround_as_margin(content_rules);
         self.frame_size.set_component(axis, size);
         self.frame_offset.set_component(axis, offset);
+        self.ideal_size.set_component(axis, rules.ideal_size());
         rules
     }
 
-    fn set_rect(&mut self, mgr: &mut Manager, mut rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+        let mut rect = align
+            .complete(Align::Centre, Align::Centre)
+            .aligned_rect(self.ideal_size, rect);
         self.core.rect = rect;
         rect.pos += self.frame_offset;
         rect.size -= self.frame_size;
@@ -89,6 +95,7 @@ impl<L: Widget<Msg = VoidMsg>> Button<L, VoidMsg> {
             keys1: Default::default(),
             frame_size: Default::default(),
             frame_offset: Default::default(),
+            ideal_size: Default::default(),
             color: None,
             label,
             on_push: None,
@@ -110,6 +117,7 @@ impl<L: Widget<Msg = VoidMsg>> Button<L, VoidMsg> {
             keys1: self.keys1,
             frame_size: self.frame_size,
             frame_offset: self.frame_offset,
+            ideal_size: self.ideal_size,
             color: self.color,
             label: self.label,
             on_push: Some(Rc::new(f)),
@@ -205,6 +213,7 @@ pub struct TextButton<M: 'static> {
     keys1: VirtualKeyCodes,
     frame_size: Size,
     frame_offset: Offset,
+    ideal_size: Size,
     color: Option<Rgb>,
     label: Text<AccelString>,
     on_push: Option<Rc<dyn Fn(&mut Manager) -> Option<M>>>,
@@ -217,6 +226,7 @@ impl<M: 'static> Debug for TextButton<M> {
             .field("keys1", &self.keys1)
             .field("frame_size", &self.frame_size)
             .field("frame_offset", &self.frame_offset)
+            .field("ideal_size", &self.ideal_size)
             .field("color", &self.color)
             .field("label", &self.label)
             .finish_non_exhaustive()
@@ -245,10 +255,14 @@ impl<M: 'static> Layout for TextButton<M> {
         let (rules, offset, size) = frame_rules.surround_as_margin(content_rules);
         self.frame_size.set_component(axis, size);
         self.frame_offset.set_component(axis, offset);
+        self.ideal_size.set_component(axis, rules.ideal_size());
         rules
     }
 
     fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
+        let rect = align
+            .complete(Align::Centre, Align::Centre)
+            .aligned_rect(self.ideal_size, rect);
         self.core.rect = rect;
         let size = rect.size - self.frame_size;
         self.label.update_env(|env| {
@@ -276,6 +290,7 @@ impl TextButton<VoidMsg> {
             keys1: Default::default(),
             frame_size: Default::default(),
             frame_offset: Default::default(),
+            ideal_size: Default::default(),
             color: None,
             label: text,
             on_push: None,
@@ -297,6 +312,7 @@ impl TextButton<VoidMsg> {
             keys1: self.keys1,
             frame_size: self.frame_size,
             frame_offset: self.frame_offset,
+            ideal_size: self.ideal_size,
             color: self.color,
             label: self.label,
             on_push: Some(Rc::new(f)),

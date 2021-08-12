@@ -26,12 +26,16 @@ pub struct Parameters {
     pub outer_margin: f32,
     /// Margin inside a frame before contents
     pub inner_margin: f32,
+    /// Margin around frames and seperators
+    pub frame_margin: f32,
     /// Margin between text elements
     pub text_margin: f32,
     /// Frame size
     pub frame_size: f32,
     /// Button frame size (non-flat outer region)
     pub button_frame: f32,
+    /// Checkbox inner size in Points
+    pub checkbox_inner: f32,
     /// Scrollbar minimum handle size
     pub scrollbar_size: Vec2,
     /// Slider minimum handle size
@@ -51,6 +55,7 @@ pub struct Dimensions {
     pub min_line_length: i32,
     pub outer_margin: u16,
     pub inner_margin: u16,
+    pub frame_margin: u16,
     pub text_margin: u16,
     pub frame: i32,
     pub button_frame: i32,
@@ -73,6 +78,7 @@ impl Dimensions {
 
         let outer_margin = (params.outer_margin * scale_factor).cast_nearest();
         let inner_margin = (params.inner_margin * scale_factor).cast_nearest();
+        let frame_margin = (params.frame_margin * scale_factor).cast_nearest();
         let text_margin = (params.text_margin * scale_factor).cast_nearest();
         let frame = (params.frame_size * scale_factor).cast_nearest();
         Dimensions {
@@ -84,10 +90,12 @@ impl Dimensions {
             min_line_length: (8.0 * dpem).cast_nearest(),
             outer_margin,
             inner_margin,
+            frame_margin,
             text_margin,
             frame,
             button_frame: (params.button_frame * scale_factor).cast_nearest(),
-            checkbox: i32::conv_nearest(9.0 * dpp) + 2 * (i32::from(inner_margin) + frame),
+            checkbox: i32::conv_nearest(params.checkbox_inner * dpp)
+                + 2 * (i32::from(inner_margin) + frame),
             scrollbar: Size::from(params.scrollbar_size * scale_factor),
             slider: Size::from(params.slider_size * scale_factor),
             progress_bar: Size::from(params.progress_bar * scale_factor),
@@ -143,7 +151,7 @@ impl SizeHandle for Window {
     }
 
     fn frame(&self, _vert: bool) -> FrameRules {
-        FrameRules::new_sym(self.dims.frame, 0, 0)
+        FrameRules::new_sym(self.dims.frame, 0, self.dims.frame_margin)
     }
     fn menu_frame(&self, vert: bool) -> FrameRules {
         let mut size = self.dims.frame;
@@ -166,6 +174,10 @@ impl SizeHandle for Window {
 
     fn outer_margins(&self) -> Margins {
         Margins::splat(self.dims.outer_margin)
+    }
+
+    fn frame_margins(&self) -> Margins {
+        Margins::splat(self.dims.frame_margin)
     }
 
     fn text_margins(&self) -> Margins {

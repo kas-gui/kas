@@ -13,8 +13,8 @@ use std::f32::consts::FRAC_PI_2;
 use std::mem::size_of;
 
 /// Offset relative to the size of a pixel used by the fragment shader to
-/// implement multi-sampling.
-const OFFSET: f32 = 0.125;
+/// implement 4x multi-sampling. The pattern is defined by the fragment shader.
+const OFFSET: f32 = 0.5 * std::f32::consts::FRAC_1_SQRT_2;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -52,7 +52,7 @@ impl Pipeline {
             label: Some("SR render_pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
-                module: &shaders.vert_222,
+                module: &shaders.vert_shaded_round,
                 entry_point: "main",
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: size_of::<Vertex>() as wgpu::BufferAddress,

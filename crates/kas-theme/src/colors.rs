@@ -6,7 +6,8 @@
 //! Colour schemes
 
 use kas::draw::color::{Rgba, Rgba8Srgb};
-use kas::draw::{InputState, TextClass};
+use kas::draw::InputState;
+use std::str::FromStr;
 
 const MULT_DEPRESS: f32 = 0.75;
 const MULT_HIGHLIGHT: f32 = 1.25;
@@ -24,22 +25,30 @@ pub struct Colors<C> {
     pub edit_bg: C,
     /// Background colour of `EditBox` (error state)
     pub edit_bg_error: C,
-    /// Text colour in an `EditBox`
-    pub text: C,
-    /// Selected tect colour
-    pub text_sel: C,
-    /// Selected text background colour
-    pub text_sel_bg: C,
-    /// Text colour in a `Label`
-    pub label_text: C,
-    /// Text colour on a `TextButton`
-    pub button_text: C,
+    /// Theme accent
+    ///
+    /// This should be a bold colour, used for small details.
+    pub accent: C,
+    /// Soft version of accent
+    ///
+    /// A softer version of the accent colour, used for block elements in some themes.
+    pub accent_soft: C,
     /// Highlight colour for keyboard navigation
+    ///
+    /// This may be the same as `accent`. It should contrast well with
+    /// `accent_soft`. Themes should use `nav_focus` over `accent` where a
+    /// strong contrast is required.
     pub nav_focus: C,
-    /// Colour of a `TextButton`
-    pub button: C,
-    /// Colour of mark within a `CheckBox` or `RadioBox`
-    pub checkbox: C,
+    /// Normal text colour (over background)
+    pub text: C,
+    /// Opposing text colour (e.g. white if `text` is black)
+    pub text_invert: C,
+    /// Disabled text colour
+    pub text_disabled: C,
+    /// Selected text background colour
+    ///
+    /// This may be the same as `accent_soft`.
+    pub text_sel_bg: C,
 }
 
 /// [`Colors`] parameterised for reading and writing using sRGB
@@ -53,16 +62,15 @@ impl From<ColorsSrgb> for ColorsLinear {
         Colors {
             background: col.background.into(),
             frame: col.frame.into(),
+            accent: col.accent.into(),
+            accent_soft: col.accent_soft.into(),
+            nav_focus: col.nav_focus.into(),
             edit_bg: col.edit_bg.into(),
             edit_bg_error: col.edit_bg_error.into(),
             text: col.text.into(),
-            text_sel: col.text_sel.into(),
+            text_invert: col.text_invert.into(),
+            text_disabled: col.text_disabled.into(),
             text_sel_bg: col.text_sel_bg.into(),
-            label_text: col.label_text.into(),
-            button_text: col.button_text.into(),
-            nav_focus: col.nav_focus.into(),
-            button: col.button.into(),
-            checkbox: col.checkbox.into(),
         }
     }
 }
@@ -72,16 +80,15 @@ impl From<ColorsLinear> for ColorsSrgb {
         Colors {
             background: col.background.into(),
             frame: col.frame.into(),
+            accent: col.accent.into(),
+            accent_soft: col.accent_soft.into(),
+            nav_focus: col.nav_focus.into(),
             edit_bg: col.edit_bg.into(),
             edit_bg_error: col.edit_bg_error.into(),
             text: col.text.into(),
-            text_sel: col.text_sel.into(),
+            text_invert: col.text_invert.into(),
+            text_disabled: col.text_disabled.into(),
             text_sel_bg: col.text_sel_bg.into(),
-            label_text: col.label_text.into(),
-            button_text: col.button_text.into(),
-            nav_focus: col.nav_focus.into(),
-            button: col.button.into(),
-            checkbox: col.checkbox.into(),
         }
     }
 }
@@ -89,81 +96,78 @@ impl From<ColorsLinear> for ColorsSrgb {
 impl Default for ColorsLinear {
     #[inline]
     fn default() -> Self {
-        Colors::white_blue()
+        ColorsSrgb::default().into()
     }
 }
 
 impl Default for ColorsSrgb {
     #[inline]
     fn default() -> Self {
-        ColorsLinear::default().into()
+        ColorsSrgb::light()
     }
 }
 
-// NOTE: these colour schemes are defined using linear (Rgba) colours instead of
-// sRGB (Rgba8Srgb) colours for historical reasons. Either should be fine.
-impl ColorsLinear {
-    /// White background with blue activable items
-    pub fn white_blue() -> Self {
-        Colors {
-            background: Rgba::grey(1.0),
-            frame: Rgba::grey(0.7),
-            edit_bg: Rgba::grey(1.0),
-            edit_bg_error: Rgba::rgb(1.0, 0.5, 0.5),
-            text: Rgba::grey(0.0),
-            text_sel: Rgba::grey(1.0),
-            text_sel_bg: Rgba::rgb(0.15, 0.525, 0.75),
-            label_text: Rgba::grey(0.0),
-            button_text: Rgba::grey(1.0),
-            nav_focus: Rgba::rgb(0.9, 0.65, 0.4),
-            button: Rgba::rgb(0.2, 0.7, 1.0),
-            checkbox: Rgba::rgb(0.2, 0.7, 1.0),
-        }
-    }
-
-    /// Light scheme
+impl ColorsSrgb {
+    /// Default "light" scheme
     pub fn light() -> Self {
         Colors {
-            background: Rgba::grey(0.9),
-            frame: Rgba::rgb(0.8, 0.8, 0.9),
-            edit_bg: Rgba::grey(1.0),
-            edit_bg_error: Rgba::rgb(1.0, 0.5, 0.5),
-            text: Rgba::grey(0.0),
-            text_sel: Rgba::grey(0.0),
-            text_sel_bg: Rgba::rgb(0.8, 0.72, 0.24),
-            label_text: Rgba::grey(0.0),
-            button_text: Rgba::grey(0.0),
-            nav_focus: Rgba::rgb(0.9, 0.65, 0.4),
-            button: Rgba::rgb(1.0, 0.9, 0.3),
-            checkbox: Rgba::grey(0.4),
+            background: Rgba8Srgb::from_str("#FAFAFA").unwrap(),
+            frame: Rgba8Srgb::from_str("#BCBCBC").unwrap(),
+            accent: Rgba8Srgb::from_str("#7E3FF2").unwrap(),
+            accent_soft: Rgba8Srgb::from_str("#B38DF9").unwrap(),
+            nav_focus: Rgba8Srgb::from_str("#7E3FF2").unwrap(),
+            edit_bg: Rgba8Srgb::from_str("#FAFAFA").unwrap(),
+            edit_bg_error: Rgba8Srgb::from_str("#FFBCBC").unwrap(),
+            text: Rgba8Srgb::from_str("#000000").unwrap(),
+            text_invert: Rgba8Srgb::from_str("#FFFFFF").unwrap(),
+            text_disabled: Rgba8Srgb::from_str("#AAAAAA").unwrap(),
+            text_sel_bg: Rgba8Srgb::from_str("#A172FA").unwrap(),
         }
     }
 
     /// Dark scheme
     pub fn dark() -> Self {
         Colors {
-            background: Rgba::grey(0.2),
-            frame: Rgba::grey(0.4),
-            edit_bg: Rgba::grey(0.1),
-            edit_bg_error: Rgba::rgb(1.0, 0.5, 0.5),
-            text: Rgba::grey(1.0),
-            text_sel: Rgba::grey(1.0),
-            text_sel_bg: Rgba::rgb(0.6, 0.3, 0.1),
-            label_text: Rgba::grey(1.0),
-            button_text: Rgba::grey(1.0),
-            nav_focus: Rgba::rgb(1.0, 0.7, 0.5),
-            button: Rgba::rgb(0.5, 0.1, 0.1),
-            checkbox: Rgba::rgb(0.5, 0.1, 0.1),
+            background: Rgba8Srgb::from_str("#404040").unwrap(),
+            frame: Rgba8Srgb::from_str("#AAAAAA").unwrap(),
+            accent: Rgba8Srgb::from_str("#F74C00").unwrap(),
+            accent_soft: Rgba8Srgb::from_str("#E77346").unwrap(),
+            nav_focus: Rgba8Srgb::from_str("#A33100").unwrap(),
+            edit_bg: Rgba8Srgb::from_str("#595959").unwrap(),
+            edit_bg_error: Rgba8Srgb::from_str("#FFBCBC").unwrap(),
+            text: Rgba8Srgb::from_str("#FFFFFF").unwrap(),
+            text_invert: Rgba8Srgb::from_str("#000000").unwrap(),
+            text_disabled: Rgba8Srgb::from_str("#CBCBCB").unwrap(),
+            text_sel_bg: Rgba8Srgb::from_str("#E77346").unwrap(),
         }
     }
 
+    /// Blue scheme
+    pub fn blue() -> Self {
+        Colors {
+            background: Rgba8Srgb::from_str("#FFFFFF").unwrap(),
+            frame: Rgba8Srgb::from_str("#DADADA").unwrap(),
+            accent: Rgba8Srgb::from_str("#7CDAFF").unwrap(),
+            accent_soft: Rgba8Srgb::from_str("#7CDAFF").unwrap(),
+            nav_focus: Rgba8Srgb::from_str("#3B697A").unwrap(),
+            edit_bg: Rgba8Srgb::from_str("#FFFFFF").unwrap(),
+            edit_bg_error: Rgba8Srgb::from_str("#FFBCBC").unwrap(),
+            text: Rgba8Srgb::from_str("#000000").unwrap(),
+            text_invert: Rgba8Srgb::from_str("#FFFFFF").unwrap(),
+            text_disabled: Rgba8Srgb::from_str("#AAAAAA").unwrap(),
+            text_sel_bg: Rgba8Srgb::from_str("#6CC0E1").unwrap(),
+        }
+    }
+}
+
+impl ColorsLinear {
     /// Adjust a colour depending on state
     pub fn adjust_for_state(col: Rgba, state: InputState) -> Rgba {
         if state.disabled {
             col.average()
         } else if state.depress {
             col.multiply(MULT_DEPRESS)
-        } else if state.hover {
+        } else if state.hover || state.char_focus {
             col.multiply(MULT_HIGHLIGHT).max(MIN_HIGHLIGHT)
         } else {
             col
@@ -190,18 +194,24 @@ impl ColorsLinear {
         }
     }
 
-    /// Get colour for a button, depending on state
+    /// Get accent colour, adjusted for state
     #[inline]
-    pub fn button_state(&self, state: InputState) -> Rgba {
-        Self::adjust_for_state(self.button, state)
+    pub fn accent_state(&self, state: InputState) -> Rgba {
+        Self::adjust_for_state(self.accent, state)
+    }
+
+    /// Get soft accent colour, adjusted for state
+    #[inline]
+    pub fn accent_soft_state(&self, state: InputState) -> Rgba {
+        Self::adjust_for_state(self.accent_soft, state)
     }
 
     /// Get colour for a checkbox mark, depending on state
     pub fn check_mark_state(&self, state: InputState, checked: bool) -> Option<Rgba> {
         if checked {
-            Some(Self::adjust_for_state(self.checkbox, state))
+            Some(Self::adjust_for_state(self.accent, state))
         } else if state.depress {
-            Some(self.checkbox.multiply(MULT_DEPRESS))
+            Some(self.accent.multiply(MULT_DEPRESS))
         } else {
             None
         }
@@ -210,24 +220,19 @@ impl ColorsLinear {
     /// Get background highlight colour of a menu entry, if any
     pub fn menu_entry(&self, state: InputState) -> Option<Rgba> {
         if state.depress || state.nav_focus {
-            Some(self.button.multiply(MULT_DEPRESS))
+            Some(self.accent_soft.multiply(MULT_DEPRESS))
         } else {
             None
         }
     }
 
-    /// Get colour of a scrollbar, depending on state
-    #[inline]
-    pub fn scrollbar_state(&self, state: InputState) -> Rgba {
-        self.button_state(state)
-    }
-
-    /// Get text colour from class
-    pub fn text_class(&self, class: TextClass) -> Rgba {
-        match class {
-            TextClass::Label | TextClass::MenuLabel | TextClass::LabelScroll => self.label_text,
-            TextClass::Button => self.button_text,
-            TextClass::Edit | TextClass::EditMulti => self.text,
+    /// Get appropriate text colour over the given background
+    pub fn text_over(&self, bg: Rgba) -> Rgba {
+        let bg_sum = bg.sum();
+        if (bg_sum - self.text_invert.sum()).abs() > (bg_sum - self.text.sum()).abs() {
+            self.text_invert
+        } else {
+            self.text
         }
     }
 }

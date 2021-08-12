@@ -103,8 +103,8 @@ fn main() -> Result<(), kas::shell::Error> {
 
     #[cfg(feature = "stack_dst")]
     let theme = kas::theme::MultiTheme::builder()
-        .add("shaded", kas::theme::ShadedTheme::new())
         .add("flat", kas::theme::FlatTheme::new())
+        .add("shaded", kas::theme::ShadedTheme::new())
         .build();
     #[cfg(not(feature = "stack_dst"))]
     let theme = kas::theme::ShadedTheme::new();
@@ -119,8 +119,8 @@ fn main() -> Result<(), kas::shell::Error> {
     }
 
     let themes = vec![
-        MenuEntry::new("&Shaded", Menu::Theme("shaded")).boxed_menu(),
         MenuEntry::new("&Flat", Menu::Theme("flat")).boxed_menu(),
+        MenuEntry::new("&Shaded", Menu::Theme("shaded")).boxed_menu(),
     ];
     // Enumerate colour schemes. Access through the toolkit since this handles
     // config loading.
@@ -253,7 +253,7 @@ fn main() -> Result<(), kas::shell::Error> {
                 .on_select(|_, index| Some(Item::Combo((index + 1).cast()))),
             #[widget(row=8, col=0)] _ = Label::new("Slider"),
             #[widget(row=8, col=1, handler = handle_slider)] s =
-                Slider::<i32, Right>::new(-2, 2, 1).with_value(0),
+                Slider::<i32, Right>::new(0, 10, 1).with_value(0),
             #[widget(row=9, col=0)] _ = Label::new("ScrollBar"),
             #[widget(row=9, col=1, handler = handle_scroll)] sc: ScrollBar<Right> =
                 ScrollBar::new().with_limits(100, 20),
@@ -324,7 +324,7 @@ fn main() -> Result<(), kas::shell::Error> {
                 fn activations(&mut self, mgr: &mut Manager, item: Item) -> VoidResponse {
                     match item {
                         Item::Button => println!("Clicked!"),
-                        Item::LightTheme => mgr.adjust_theme(|theme| theme.set_scheme("")),
+                        Item::LightTheme => mgr.adjust_theme(|theme| theme.set_scheme("light")),
                         Item::DarkTheme => mgr.adjust_theme(|theme| theme.set_scheme("dark")),
                         Item::Check(b) => println!("CheckBox: {}", b),
                         Item::Combo(c) => println!("ComboBox: {}", c),

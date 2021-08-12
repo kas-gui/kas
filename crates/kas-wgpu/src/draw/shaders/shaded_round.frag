@@ -27,8 +27,8 @@ float sample_a(vec2 dir) {
 
 void main() {
     // Multi-sample alpha to avoid ugly aliasing. A single colour sample is adequate.
-    vec2 off1 = vec2(off.x, 3.0 * off.y);
-    vec2 off2 = vec2(3.0 * off.x, off.y);
+    vec2 off1 = vec2(off.x, 0.0);
+    vec2 off2 = vec2(0.0, off.y);
     float alpha = sample_a(dir + off1)
         + sample_a(dir - off1)
         + sample_a(dir + off2)

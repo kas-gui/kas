@@ -147,7 +147,7 @@ struct PipeWindow {
 impl CustomPipe for Pipe {
     type Window = PipeWindow;
 
-    fn new_window(&self, _: &wgpu::Device, _: Size) -> Self::Window {
+    fn new_window(&self, _: &wgpu::Device) -> Self::Window {
         let push_constants = PushConstants {
             p: DVec2::splat(0.0),
             q: DVec2::splat(1.0),

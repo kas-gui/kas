@@ -12,8 +12,8 @@ use kas::geom::{Quad, Vec2};
 use std::mem::size_of;
 
 /// Offset relative to the size of a pixel used by the fragment shader to
-/// implement multi-sampling.
-const OFFSET: f32 = 0.125;
+/// implement 4x multi-sampling. The pattern is defined by the fragment shader.
+const AA_OFFSET: f32 = 0.5 * std::f32::consts::FRAC_1_SQRT_2;
 
 // NOTE(opt): in theory we could reduce data transmission to the GPU by 1/3 by
 // sending quads (two triangles) as instances in triangle-strip mode. The
@@ -56,7 +56,7 @@ impl Pipeline {
             label: Some("FR render_pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
-                module: &shaders.vert_122,
+                module: &shaders.vert_flat_round,
                 entry_point: "main",
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
@@ -130,7 +130,7 @@ impl Window {
         let na = -nb;
 
         // Since we take the mid-point, all offsets are uniform
-        let p = Vec2::splat(OFFSET / radius);
+        let p = Vec2::splat(AA_OFFSET / radius);
 
         let p1my = p1 - vy;
         let p1py = p1 + vy;
@@ -163,7 +163,7 @@ impl Window {
         ]);
     }
 
-    /// Bounds on input: `0 ≤ inner_radius ≤ 1`.
+    /// Bounds on input: `0 ≤ inner_radius ≤ 1`.
     pub fn circle(&mut self, pass: PassId, rect: Quad, inner_radius: f32, col: Rgba) {
         let aa = rect.a;
         let bb = rect.b;
@@ -173,20 +173,21 @@ impl Window {
             return;
         }
 
-        let inner = inner_radius.max(0.0).min(1.0);
+        let inner = inner_radius.clamp(0.0, 1.0);
+        let inner = inner * inner; // shader compares to square
 
         let ab = Vec2(aa.0, bb.1);
         let ba = Vec2(bb.0, aa.1);
         let mid = (aa + bb) * 0.5;
 
         let n0 = Vec2::splat(0.0);
-        let nb = (bb - aa).sign();
+        let nb = Vec2::ONE; // = (bb - aa).sign();
         let na = -nb;
         let nab = Vec2(na.0, nb.1);
         let nba = Vec2(nb.0, na.1);
 
         // Since we take the mid-point, all offsets are uniform
-        let p = nb / (bb - mid) * OFFSET;
+        let p = nb / (bb - mid) * AA_OFFSET;
 
         let aa = Vertex::new2(aa, col, inner, na, p);
         let ab = Vertex::new2(ab, col, inner, nab, p);
@@ -249,10 +250,10 @@ impl Window {
         let n0a = Vec2(0.0, na.1);
         let n0b = Vec2(0.0, nb.1);
 
-        let paa = na / (aa - cc) * OFFSET;
-        let pab = nab / (ab - cd) * OFFSET;
-        let pba = nba / (ba - dc) * OFFSET;
-        let pbb = nb / (bb - dd) * OFFSET;
+        let paa = na / (aa - cc) * AA_OFFSET;
+        let pab = nab / (ab - cd) * AA_OFFSET;
+        let pba = nba / (ba - dc) * AA_OFFSET;
+        let pbb = nb / (bb - dd) * AA_OFFSET;
 
         // We must add corners separately to ensure correct interpolation of dir
         // values, hence need 16 points:

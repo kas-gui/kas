@@ -53,9 +53,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
     ) -> Result<Self, OsError> {
         let time = Instant::now();
 
-        // Create draw immediately (with Size::ZERO) to find ideal window size
         let scale_factor = shared.scale_factor as f32;
-        let mut draw = shared.draw.draw.new_window(Size::ZERO);
         let mut theme_window = shared.theme.new_window(scale_factor);
 
         let mut mgr = ManagerState::new(shared.config.clone());
@@ -87,7 +85,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let size: Size = window.inner_size().into();
         info!("Constucted new window with size {:?}", size);
 
-        // draw was initially created with Size::ZERO; we must resize
+        let mut draw = shared.draw.draw.new_window();
         shared.draw.draw.resize(&mut draw, size);
 
         let surface = unsafe { shared.instance.create_surface(&window) };

@@ -49,7 +49,8 @@ impl<M: Debug> Separator<M> {
 
 impl<M: Debug> Layout for Separator<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        SizeRules::extract_fixed(axis, size_handle.separator(), Default::default())
+        let margins = size_handle.frame_margins();
+        SizeRules::extract_fixed(axis, size_handle.separator(), margins)
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {

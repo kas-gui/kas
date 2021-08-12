@@ -58,9 +58,11 @@ impl ShadedTheme {
 const DIMS: dim::Parameters = dim::Parameters {
     outer_margin: 6.0,
     inner_margin: 1.2,
+    frame_margin: 1.2,
     text_margin: 2.0,
     frame_size: 5.0,
     button_frame: 5.0,
+    checkbox_inner: 9.0,
     scrollbar_size: Vec2::splat(8.0),
     slider_size: Vec2(12.0, 25.0),
     progress_bar: Vec2::splat(12.0),
@@ -205,7 +207,7 @@ where
         let outer = Quad::from(rect);
         let thickness = outer.size().min_comp() / 2.0;
         let inner = outer.shrink(thickness);
-        let col = self.cols.scrollbar_state(state);
+        let col = self.cols.accent_soft_state(state);
         self.draw.shaded_round_frame(outer, inner, (0.0, 0.6), col);
 
         if let Some(col) = self.cols.nav_region(state) {
@@ -317,7 +319,7 @@ where
     fn button(&mut self, rect: Rect, col: Option<color::Rgb>, state: InputState) {
         let outer = Quad::from(rect);
         let inner = outer.shrink(self.window.dims.button_frame as f32);
-        let col = col.map(|c| c.into()).unwrap_or(self.cols.button);
+        let col = col.map(|c| c.into()).unwrap_or(self.cols.accent_soft);
         let col = ColorsLinear::adjust_for_state(col, state);
 
         self.draw.shaded_round_frame(outer, inner, (0.0, 0.6), col);
@@ -398,7 +400,7 @@ where
         }
         let thickness = outer.size().min_comp() / 2.0;
         let inner = outer.shrink(thickness);
-        let col = self.cols.button;
+        let col = self.cols.accent_soft;
         self.draw.shaded_round_frame(outer, inner, (0.0, 0.6), col);
     }
 

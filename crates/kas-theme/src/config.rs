@@ -5,7 +5,7 @@
 
 //! Theme configuration
 
-use crate::{ColorsLinear, ColorsSrgb, ThemeConfig};
+use crate::{ColorsSrgb, ThemeConfig};
 use kas::draw::TextClass;
 use kas::text::fonts::{fonts, AddMode, FontSelector};
 use kas::TkAction;
@@ -236,9 +236,9 @@ mod defaults {
 
     pub fn color_schemes() -> BTreeMap<String, ColorsSrgb> {
         let mut schemes = BTreeMap::new();
-        schemes.insert("".to_string(), ColorsLinear::white_blue().into());
-        schemes.insert("light".to_string(), ColorsLinear::light().into());
-        schemes.insert("dark".to_string(), ColorsLinear::dark().into());
+        schemes.insert("light".to_string(), ColorsSrgb::light());
+        schemes.insert("dark".to_string(), ColorsSrgb::dark());
+        schemes.insert("blue".to_string(), ColorsSrgb::blue());
         schemes
     }
 
