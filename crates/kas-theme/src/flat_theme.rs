@@ -203,6 +203,23 @@ impl ThemeApi for FlatTheme {
     }
 }
 
+impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS>
+where
+    DS::Draw: DrawRoundedImpl,
+{
+    fn button_frame(&mut self, outer: Quad, col_frame: Rgba, col_bg: Rgba) -> Quad {
+        if col_bg != self.cols.background {
+            let inner = outer.shrink(self.window.dims.button_frame as f32 * BG_SHRINK_FACTOR);
+            self.draw.rect(inner, col_bg);
+        }
+
+        let inner = outer.shrink(self.window.dims.button_frame as f32);
+        self.draw
+            .rounded_frame(outer, inner, BG_SHRINK_FACTOR, col_frame);
+        inner
+    }
+}
+
 impl<'a, DS: DrawSharedImpl> draw::DrawHandle for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl,
@@ -382,39 +399,26 @@ where
     fn button(&mut self, rect: Rect, col: Option<color::Rgb>, state: InputState) {
         let outer = Quad::from(rect);
 
-        let col = if state.nav_focus && !state.disabled {
+        let col_bg = if state.nav_focus && !state.disabled {
             self.cols.accent_soft
         } else {
             col.map(|c| c.into()).unwrap_or(self.cols.background)
         };
-        let col = ColorsLinear::adjust_for_state(col, state);
-        if col != self.cols.background {
-            let inner = outer.shrink(self.window.dims.button_frame as f32 * BG_SHRINK_FACTOR);
-            self.draw.rect(inner, col);
-        }
-
-        let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
-        let inner = outer.shrink(self.window.dims.button_frame as f32);
-        self.draw.rounded_frame(outer, inner, BG_SHRINK_FACTOR, col);
+        let col_bg = ColorsLinear::adjust_for_state(col_bg, state);
+        let col_frame = self.cols.nav_region(state).unwrap_or(self.cols.frame);
+        self.button_frame(outer, col_frame, col_bg);
     }
 
     fn edit_box(&mut self, rect: Rect, mut state: InputState) {
         let outer = Quad::from(rect);
 
         state.depress = false;
-        let col = match state.error {
+        let col_bg = match state.error {
             true => self.cols.edit_bg_error,
             false => self.cols.edit_bg,
         };
-        let col = ColorsLinear::adjust_for_state(col, state);
-        if col != self.cols.background {
-            let inner = outer.shrink(self.window.dims.button_frame as f32 * BG_SHRINK_FACTOR);
-            self.draw.rect(inner, col);
-        }
-
-        let inner = outer.shrink(self.window.dims.button_frame as f32);
-        self.draw
-            .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
+        let col_bg = ColorsLinear::adjust_for_state(col_bg, state);
+        self.button_frame(outer, self.cols.frame, col_bg);
 
         if state.nav_focus {
             let r = 0.5 * self.window.dims.button_frame as f32;
@@ -428,15 +432,9 @@ where
     fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState) {
         let outer = Quad::from(rect);
 
-        let col = ColorsLinear::adjust_for_state(self.cols.background, state);
-        if col != self.cols.background {
-            let inner = outer.shrink(self.window.dims.button_frame as f32 * BG_SHRINK_FACTOR);
-            self.draw.rect(inner, col);
-        }
-
-        let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
-        let inner = outer.shrink(self.window.dims.button_frame as f32);
-        self.draw.rounded_frame(outer, inner, BG_SHRINK_FACTOR, col);
+        let col_bg = ColorsLinear::adjust_for_state(self.cols.background, state);
+        let col_frame = self.cols.nav_region(state).unwrap_or(self.cols.frame);
+        let inner = self.button_frame(outer, col_frame, col_bg);
 
         if let Some(col) = self.cols.check_mark_state(state, checked) {
             let inner = inner.shrink((2 * self.window.dims.inner_margin) as f32);
