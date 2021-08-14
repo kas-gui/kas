@@ -80,7 +80,7 @@ const DIMS: dim::Parameters = dim::Parameters {
     frame_size: 2.4,
     // NOTE: visual thickness is (button_frame * scale_factor).round() * (1 - BG_SHRINK_FACTOR)
     button_frame: 2.4,
-    checkbox_inner: 5.0,
+    checkbox_inner: 9.0,
     scrollbar_size: Vec2::splat(8.0),
     slider_size: Vec2(16.0, 16.0),
     progress_bar: Vec2::splat(8.0),
