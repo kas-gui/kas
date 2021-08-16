@@ -87,8 +87,8 @@ const DIMS: dim::Parameters = dim::Parameters {
     scrollbar_size: Vec2::splat(8.0),
     slider_size: Vec2(16.0, 16.0),
     progress_bar: Vec2::splat(8.0),
-    shadow_size: Vec2(5.0, 4.0),
-    shadow_rel_offset: Vec2(0.3, 0.8),
+    shadow_size: Vec2(5.0, 5.0),
+    shadow_rel_offset: Vec2(0.3, 0.6),
 };
 
 pub struct DrawHandle<'a, DS: DrawSharedImpl> {
@@ -445,12 +445,25 @@ where
         self.draw
             .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
 
-        if state.nav_focus {
+        if state.nav_focus || state.hover {
             let r = 0.5 * self.w.dims.button_frame as f32;
             let y = outer.b.1 - r;
             let a = Vec2(outer.a.0 + r, y);
             let b = Vec2(outer.b.0 - r, y);
-            self.draw.rounded_line(a, b, r, self.cols.nav_focus);
+
+            const F: f32 = 0.5;
+            let (sa, sb) = (self.w.dims.shadow_a * F, self.w.dims.shadow_b * F);
+            let outer = Quad::with_coords(a + sa, b + sb);
+            let inner = Quad::with_coords(a, b);
+            let (c1, c2) = (Rgba::BLACK, Rgba::TRANSPARENT);
+            self.draw.rounded_frame_2col(outer, inner, c1, c2);
+
+            let col = if state.nav_focus {
+                self.cols.nav_focus
+            } else {
+                Rgba::BLACK
+            };
+            self.draw.rounded_line(a, b, r, col);
         }
     }
 
