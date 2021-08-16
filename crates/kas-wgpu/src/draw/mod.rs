@@ -13,6 +13,7 @@ mod custom;
 mod draw_pipe;
 mod flat_round;
 mod images;
+mod round_2col;
 mod shaded_round;
 mod shaded_square;
 mod shaders;
@@ -45,6 +46,7 @@ pub struct DrawPipe<C> {
     shaded_square: shaded_square::Pipeline,
     shaded_round: shaded_round::Pipeline,
     flat_round: flat_round::Pipeline,
+    round_2col: round_2col::Pipeline,
     custom: C,
     pub(crate) text: text_pipe::Pipeline,
 }
@@ -57,6 +59,7 @@ pub struct DrawWindow<CW: CustomWindow> {
     shaded_square: shaded_square::Window,
     shaded_round: shaded_round::Window,
     flat_round: flat_round::Window,
+    round_2col: round_2col::Window,
     custom: CW,
     pub(crate) text: text_pipe::Window,
 }
