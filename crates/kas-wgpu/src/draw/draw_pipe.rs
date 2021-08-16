@@ -262,6 +262,8 @@ impl<C: CustomPipe> DrawPipe<C> {
                     rect.size.1.cast(),
                 );
 
+                self.round_2col
+                    .render(&window.round_2col, pass, &mut rpass, bg_common);
                 self.shaded_square
                     .render(&window.shaded_square, pass, &mut rpass, bg_common);
                 self.images
@@ -270,8 +272,6 @@ impl<C: CustomPipe> DrawPipe<C> {
                     .render(&window.shaded_round, pass, &mut rpass, bg_common);
                 self.flat_round
                     .render(&window.flat_round, pass, &mut rpass, bg_common);
-                self.round_2col
-                    .render(&window.round_2col, pass, &mut rpass, bg_common);
                 self.custom.render_pass(
                     &mut window.custom,
                     &self.device,

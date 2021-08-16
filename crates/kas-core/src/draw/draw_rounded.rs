@@ -38,6 +38,9 @@ pub trait DrawRounded: Draw {
     ///
     /// Colour `col1` is used at the centre and `col2` at the edge with linear
     /// blending. The edge is not anti-aliased.
+    ///
+    /// Note: this is drawn *before* other drawables, allowing it to be used
+    /// for shadows without masking.
     fn circle_2col(&mut self, rect: Quad, col1: Rgba, col2: Rgba);
 
     /// Draw a frame with rounded corners and uniform colour
@@ -57,6 +60,9 @@ pub trait DrawRounded: Draw {
     ///
     /// This is a variant of `rounded_frame` which blends between two colours,
     /// `c1` at the inner edge and `c2` at the outer edge.
+    ///
+    /// Note: this is drawn *before* other drawables, allowing it to be used
+    /// for shadows without masking.
     fn rounded_frame_2col(&mut self, outer: Quad, inner: Quad, c1: Rgba, c2: Rgba);
 }
 

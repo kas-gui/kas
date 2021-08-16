@@ -66,6 +66,8 @@ const DIMS: dim::Parameters = dim::Parameters {
     scrollbar_size: Vec2::splat(8.0),
     slider_size: Vec2(12.0, 25.0),
     progress_bar: Vec2::splat(12.0),
+    shadow_size: Vec2::ZERO,
+    shadow_rel_offset: Vec2::ZERO,
 };
 
 pub struct DrawHandle<'a, DS: DrawSharedImpl> {

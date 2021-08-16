@@ -42,6 +42,10 @@ pub struct Parameters {
     pub slider_size: Vec2,
     /// Progress bar size (horizontal)
     pub progress_bar: Vec2,
+    /// Shadow size (average)
+    pub shadow_size: Vec2,
+    /// Proportional offset of shadow (range: -1..=1)
+    pub shadow_rel_offset: Vec2,
 }
 
 /// Dimensions available within [`Window`]
@@ -63,6 +67,8 @@ pub struct Dimensions {
     pub scrollbar: Size,
     pub slider: Size,
     pub progress_bar: Size,
+    pub shadow_a: Vec2,
+    pub shadow_b: Vec2,
 }
 
 impl Dimensions {
@@ -81,6 +87,10 @@ impl Dimensions {
         let frame_margin = (params.frame_margin * scale_factor).cast_nearest();
         let text_margin = (params.text_margin * scale_factor).cast_nearest();
         let frame = (params.frame_size * scale_factor).cast_nearest();
+
+        let shadow_size = params.shadow_size * scale_factor;
+        let shadow_offset = shadow_size * params.shadow_rel_offset;
+
         Dimensions {
             scale_factor,
             dpp,
@@ -99,6 +109,8 @@ impl Dimensions {
             scrollbar: Size::from(params.scrollbar_size * scale_factor),
             slider: Size::from(params.slider_size * scale_factor),
             progress_bar: Size::from(params.progress_bar * scale_factor),
+            shadow_a: shadow_offset - shadow_size,
+            shadow_b: shadow_offset + shadow_size,
         }
     }
 }

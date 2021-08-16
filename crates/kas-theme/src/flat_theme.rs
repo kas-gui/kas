@@ -25,6 +25,9 @@ use kas::TkAction;
 // Also the maximum inner radius of circular borders to overlap with this rect.
 const BG_SHRINK_FACTOR: f32 = 1.0 - std::f32::consts::FRAC_1_SQRT_2;
 
+// Shadow enlargement on hover
+const SHADOW_HOVER: f32 = 1.2;
+
 /// A theme with flat (unshaded) rendering
 #[derive(Clone, Debug)]
 pub struct FlatTheme {
@@ -84,6 +87,8 @@ const DIMS: dim::Parameters = dim::Parameters {
     scrollbar_size: Vec2::splat(8.0),
     slider_size: Vec2(16.0, 16.0),
     progress_bar: Vec2::splat(8.0),
+    shadow_size: Vec2(5.0, 4.0),
+    shadow_rel_offset: Vec2(0.3, 0.8),
 };
 
 pub struct DrawHandle<'a, DS: DrawSharedImpl> {
@@ -207,13 +212,30 @@ impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl,
 {
-    fn button_frame(&mut self, outer: Quad, col_frame: Rgba, col_bg: Rgba) -> Quad {
-        if col_bg != self.cols.background {
-            let inner = outer.shrink(self.window.dims.button_frame as f32 * BG_SHRINK_FACTOR);
-            self.draw.rect(inner, col_bg);
+    fn button_frame(
+        &mut self,
+        outer: Quad,
+        col_frame: Rgba,
+        col_bg: Rgba,
+        state: InputState,
+    ) -> Quad {
+        let inner = outer.shrink(self.window.dims.button_frame as f32);
+        let col_bg = ColorsLinear::adjust_for_state(col_bg, state);
+
+        if !(state.disabled || state.depress) {
+            let (mut a, mut b) = (self.window.dims.shadow_a, self.window.dims.shadow_b);
+            if state.hover || state.nav_focus {
+                a = a * SHADOW_HOVER;
+                b = b * SHADOW_HOVER;
+            }
+            let shadow_outer = Quad::with_coords(a + inner.a, b + inner.b);
+            self.draw
+                .rounded_frame_2col(shadow_outer, inner, Rgba::BLACK, Rgba::TRANSPARENT);
         }
 
-        let inner = outer.shrink(self.window.dims.button_frame as f32);
+        let bgr = outer.shrink(self.window.dims.button_frame as f32 * BG_SHRINK_FACTOR);
+        self.draw.rect(bgr, col_bg);
+
         self.draw
             .rounded_frame(outer, inner, BG_SHRINK_FACTOR, col_frame);
         inner
@@ -404,9 +426,8 @@ where
         } else {
             col.map(|c| c.into()).unwrap_or(self.cols.background)
         };
-        let col_bg = ColorsLinear::adjust_for_state(col_bg, state);
         let col_frame = self.cols.nav_region(state).unwrap_or(self.cols.frame);
-        self.button_frame(outer, col_frame, col_bg);
+        self.button_frame(outer, col_frame, col_bg, state);
     }
 
     fn edit_box(&mut self, rect: Rect, mut state: InputState) {
@@ -418,7 +439,15 @@ where
             false => self.cols.edit_bg,
         };
         let col_bg = ColorsLinear::adjust_for_state(col_bg, state);
-        self.button_frame(outer, self.cols.frame, col_bg);
+
+        if col_bg != self.cols.background {
+            let inner = outer.shrink(self.window.dims.button_frame as f32 * BG_SHRINK_FACTOR);
+            self.draw.rect(inner, col_bg);
+        }
+
+        let inner = outer.shrink(self.window.dims.button_frame as f32);
+        self.draw
+            .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
 
         if state.nav_focus {
             let r = 0.5 * self.window.dims.button_frame as f32;
@@ -432,9 +461,8 @@ where
     fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState) {
         let outer = Quad::from(rect);
 
-        let col_bg = ColorsLinear::adjust_for_state(self.cols.background, state);
         let col_frame = self.cols.nav_region(state).unwrap_or(self.cols.frame);
-        let inner = self.button_frame(outer, col_frame, col_bg);
+        let inner = self.button_frame(outer, col_frame, self.cols.background, state);
 
         if let Some(col) = self.cols.check_mark_state(state, checked) {
             let inner = inner.shrink((2 * self.window.dims.inner_margin) as f32);
@@ -445,10 +473,19 @@ where
     fn radiobox(&mut self, rect: Rect, checked: bool, state: InputState) {
         let outer = Quad::from(rect);
 
-        let col = ColorsLinear::adjust_for_state(self.cols.background, state);
-        if col != self.cols.background {
-            self.draw.circle(outer, 0.0, col);
+        if !(state.disabled || state.depress) {
+            let (mut a, mut b) = (self.window.dims.shadow_a, self.window.dims.shadow_b);
+            if state.hover || state.nav_focus {
+                a = a * SHADOW_HOVER;
+                b = b * SHADOW_HOVER;
+            }
+            let shadow_outer = Quad::with_coords(a + outer.a, b + outer.b);
+            self.draw
+                .circle_2col(shadow_outer, Rgba::BLACK, Rgba::TRANSPARENT);
         }
+
+        let col = ColorsLinear::adjust_for_state(self.cols.background, state);
+        self.draw.circle(outer, 0.0, col);
 
         let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
         const F: f32 = 2.0 * (1.0 - BG_SHRINK_FACTOR); // match checkbox frame
