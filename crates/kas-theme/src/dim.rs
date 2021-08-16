@@ -72,7 +72,7 @@ pub struct Dimensions {
 }
 
 impl Dimensions {
-    pub fn new(params: Parameters, pt_size: f32, scale_factor: f32) -> Self {
+    pub fn new(params: &Parameters, pt_size: f32, scale_factor: f32) -> Self {
         let font_id = Default::default();
         let dpp = scale_factor * (96.0 / 72.0);
         let dpem = dpp * pt_size;
@@ -123,7 +123,7 @@ pub struct Window {
 
 impl Window {
     pub fn new(
-        dims: Parameters,
+        dims: &Parameters,
         pt_size: f32,
         scale_factor: f32,
         fonts: Rc<LinearMap<TextClass, FontId>>,
@@ -134,7 +134,7 @@ impl Window {
         }
     }
 
-    pub fn update(&mut self, dims: Parameters, pt_size: f32, scale_factor: f32) {
+    pub fn update(&mut self, dims: &Parameters, pt_size: f32, scale_factor: f32) {
         self.dims = Dimensions::new(dims, pt_size, scale_factor);
     }
 }

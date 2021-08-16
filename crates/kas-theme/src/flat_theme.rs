@@ -33,6 +33,7 @@ const SHADOW_HOVER: f32 = 1.2;
 pub struct FlatTheme {
     pub(crate) config: Config,
     pub(crate) cols: ColorsLinear,
+    dims: dim::Parameters,
     pub(crate) fonts: Option<Rc<LinearMap<TextClass, fonts::FontId>>>,
 }
 
@@ -46,9 +47,15 @@ impl FlatTheme {
     /// Construct
     #[inline]
     pub fn new() -> Self {
+        let cols = ColorsLinear::default();
+        let mut dims = DIMS;
+        if cols.is_dark {
+            dims.shadow_rel_offset = Vec2::ZERO;
+        }
         FlatTheme {
             config: Default::default(),
-            cols: ColorsLinear::default(),
+            cols,
+            dims,
             fonts: None,
         }
     }
@@ -66,12 +73,28 @@ impl FlatTheme {
     ///
     /// If no scheme by this name is found the scheme is left unchanged.
     #[inline]
-    pub fn with_colours(mut self, scheme: &str) -> Self {
-        self.config.set_active_scheme(scheme);
-        if let Some(scheme) = self.config.get_color_scheme(scheme) {
-            self.cols = scheme.into();
+    pub fn with_colours(mut self, name: &str) -> Self {
+        if let Some(scheme) = self.config.get_color_scheme(name) {
+            self.config.set_active_scheme(name);
+            let _ = self.set_colors(scheme.into());
         }
         self
+    }
+
+    pub fn set_colors(&mut self, cols: ColorsLinear) -> TkAction {
+        let mut action = TkAction::REDRAW;
+        if cols.is_dark != self.cols.is_dark {
+            action |= TkAction::THEME_UPDATE;
+            if cols.is_dark {
+                self.dims.shadow_size = DARK_SHADOW_SIZE;
+                self.dims.shadow_rel_offset = DARK_SHADOW_OFFSET;
+            } else {
+                self.dims.shadow_size = DIMS.shadow_size;
+                self.dims.shadow_rel_offset = DIMS.shadow_rel_offset;
+            }
+        }
+        self.cols = cols;
+        action
     }
 }
 
@@ -90,6 +113,8 @@ const DIMS: dim::Parameters = dim::Parameters {
     shadow_size: Vec2(5.0, 5.0),
     shadow_rel_offset: Vec2(0.3, 0.6),
 };
+const DARK_SHADOW_SIZE: Vec2 = Vec2::splat(4.0);
+const DARK_SHADOW_OFFSET: Vec2 = Vec2::ZERO;
 
 pub struct DrawHandle<'a, DS: DrawSharedImpl> {
     pub(crate) draw: DrawIface<'a, DS>,
@@ -114,9 +139,9 @@ where
     }
 
     fn apply_config(&mut self, config: &Self::Config) -> TkAction {
-        let action = self.config.apply_config(config);
+        let mut action = self.config.apply_config(config);
         if let Some(scheme) = self.config.get_active_scheme() {
-            self.cols = scheme.into();
+            action |= self.set_colors(scheme.into());
         }
         action
     }
@@ -136,11 +161,12 @@ where
 
     fn new_window(&self, dpi_factor: f32) -> Self::Window {
         let fonts = self.fonts.as_ref().unwrap().clone();
-        dim::Window::new(DIMS, self.config.font_size(), dpi_factor, fonts)
+        dim::Window::new(&self.dims, self.config.font_size(), dpi_factor, fonts)
     }
 
     fn update_window(&self, w: &mut Self::Window, dpi_factor: f32) {
-        w.update(DIMS, self.config.font_size(), dpi_factor);
+        w.update(&self.dims, self.config.font_size(), dpi_factor);
+        println!("update_window: dims.shadow_b = {:?}", w.dims.shadow_b);
     }
 
     #[cfg(not(feature = "gat"))]
@@ -195,9 +221,8 @@ impl ThemeApi for FlatTheme {
     fn set_scheme(&mut self, name: &str) -> TkAction {
         if name != self.config.active_scheme() {
             if let Some(scheme) = self.config.get_color_scheme(name) {
-                self.cols = scheme.into();
                 self.config.set_active_scheme(name);
-                return TkAction::REDRAW;
+                return self.set_colors(scheme.into());
             }
         }
         TkAction::empty()

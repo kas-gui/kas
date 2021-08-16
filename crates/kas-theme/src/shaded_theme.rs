@@ -102,11 +102,11 @@ where
 
     fn new_window(&self, dpi_factor: f32) -> Self::Window {
         let fonts = self.flat.fonts.as_ref().unwrap().clone();
-        dim::Window::new(DIMS, self.flat.config.font_size(), dpi_factor, fonts)
+        dim::Window::new(&DIMS, self.flat.config.font_size(), dpi_factor, fonts)
     }
 
     fn update_window(&self, w: &mut Self::Window, dpi_factor: f32) {
-        w.update(DIMS, self.flat.config.font_size(), dpi_factor);
+        w.update(&DIMS, self.flat.config.font_size(), dpi_factor);
     }
 
     #[cfg(not(feature = "gat"))]
