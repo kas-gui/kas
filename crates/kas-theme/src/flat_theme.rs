@@ -225,8 +225,15 @@ where
                 b = b * SHADOW_HOVER;
             }
             let shadow_outer = Quad::with_coords(a + inner.a, b + inner.b);
+            let col1 = if self.cols.is_dark {
+                col_frame
+            } else {
+                Rgba::BLACK
+            };
+            let mut col2 = col1;
+            col2.a = 0.0;
             self.draw
-                .rounded_frame_2col(shadow_outer, inner, Rgba::BLACK, Rgba::TRANSPARENT);
+                .rounded_frame_2col(shadow_outer, inner, col1, col2);
         }
 
         let bgr = outer.shrink(self.w.dims.button_frame as f32 * BG_SHRINK_FACTOR);
@@ -450,19 +457,21 @@ where
             let y = outer.b.1 - r;
             let a = Vec2(outer.a.0 + r, y);
             let b = Vec2(outer.b.0 - r, y);
+            let col = if state.nav_focus {
+                self.cols.nav_focus
+            } else {
+                self.cols.text
+            };
 
             const F: f32 = 0.5;
             let (sa, sb) = (self.w.dims.shadow_a * F, self.w.dims.shadow_b * F);
             let outer = Quad::with_coords(a + sa, b + sb);
             let inner = Quad::with_coords(a, b);
-            let (c1, c2) = (Rgba::BLACK, Rgba::TRANSPARENT);
-            self.draw.rounded_frame_2col(outer, inner, c1, c2);
+            let col1 = if self.cols.is_dark { col } else { Rgba::BLACK };
+            let mut col2 = col1;
+            col2.a = 0.0;
+            self.draw.rounded_frame_2col(outer, inner, col1, col2);
 
-            let col = if state.nav_focus {
-                self.cols.nav_focus
-            } else {
-                Rgba::BLACK
-            };
             self.draw.rounded_line(a, b, r, col);
         }
     }
@@ -481,6 +490,7 @@ where
 
     fn radiobox(&mut self, rect: Rect, checked: bool, state: InputState) {
         let outer = Quad::from(rect);
+        let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
 
         if !(state.disabled || state.depress) {
             let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
@@ -489,14 +499,15 @@ where
                 b = b * SHADOW_HOVER;
             }
             let shadow_outer = Quad::with_coords(a + outer.a, b + outer.b);
-            self.draw
-                .circle_2col(shadow_outer, Rgba::BLACK, Rgba::TRANSPARENT);
+            let col1 = if self.cols.is_dark { col } else { Rgba::BLACK };
+            let mut col2 = col1;
+            col2.a = 0.0;
+            self.draw.circle_2col(shadow_outer, col1, col2);
         }
 
-        let col = ColorsLinear::adjust_for_state(self.cols.background, state);
-        self.draw.circle(outer, 0.0, col);
+        let col_bg = ColorsLinear::adjust_for_state(self.cols.background, state);
+        self.draw.circle(outer, 0.0, col_bg);
 
-        let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
         const F: f32 = 2.0 * (1.0 - BG_SHRINK_FACTOR); // match checkbox frame
         let r = 1.0 - F * self.w.dims.button_frame as f32 / rect.size.0 as f32;
         self.draw.circle(outer, r, col);
