@@ -600,6 +600,22 @@ where
             self.cols.background
         };
         let col = ColorsLinear::adjust_for_state(col, state);
+
+        if !(state.disabled || state.depress) {
+            let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
+            let mut mult = 0.6;
+            if state.hover {
+                mult *= SHADOW_HOVER;
+            }
+            a = a * mult;
+            b = b * mult;
+            let shadow_outer = Quad::with_coords(a + outer.a, b + outer.b);
+            let col1 = if self.cols.is_dark { col } else { Rgba::BLACK };
+            let mut col2 = col1;
+            col2.a = 0.0;
+            self.draw.circle_2col(shadow_outer, col1, col2);
+        }
+
         self.draw.circle(outer, 0.0, col);
         let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
         self.draw.circle(outer, 14.0 / 16.0, col);
