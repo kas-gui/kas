@@ -113,7 +113,7 @@ const DIMS: dim::Parameters = dim::Parameters {
     shadow_size: Vec2(5.0, 5.0),
     shadow_rel_offset: Vec2(0.3, 0.6),
 };
-const DARK_SHADOW_SIZE: Vec2 = Vec2::splat(4.0);
+const DARK_SHADOW_SIZE: Vec2 = Vec2::splat(5.0);
 const DARK_SHADOW_OFFSET: Vec2 = Vec2::ZERO;
 
 pub struct DrawHandle<'a, DS: DrawSharedImpl> {
@@ -245,7 +245,7 @@ where
 
         if !(state.disabled || state.depress) {
             let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
-            if state.hover || state.nav_focus {
+            if state.hover {
                 a = a * SHADOW_HOVER;
                 b = b * SHADOW_HOVER;
             }
@@ -519,10 +519,12 @@ where
 
         if !(state.disabled || state.depress) {
             let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
-            if state.hover || state.nav_focus {
-                a = a * SHADOW_HOVER;
-                b = b * SHADOW_HOVER;
+            let mut mult = 0.6;
+            if state.hover {
+                mult *= SHADOW_HOVER;
             }
+            a = a * mult;
+            b = b * mult;
             let shadow_outer = Quad::with_coords(a + outer.a, b + outer.b);
             let col1 = if self.cols.is_dark { col } else { Rgba::BLACK };
             let mut col2 = col1;
