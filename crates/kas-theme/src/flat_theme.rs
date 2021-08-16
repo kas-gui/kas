@@ -289,15 +289,27 @@ where
         class: PassType,
         f: &mut dyn FnMut(&mut dyn draw::DrawHandle),
     ) {
+        let mut frame_rect = Default::default();
+        let mut shadow = Default::default();
         let mut outer_rect = inner_rect;
         if class == PassType::Overlay {
-            outer_rect = inner_rect.expand(self.w.dims.frame);
+            frame_rect = inner_rect.expand(self.w.dims.frame);
+            shadow = Quad::from(frame_rect);
+            shadow.a += self.w.dims.shadow_a;
+            shadow.b += self.w.dims.shadow_b;
+            let a = shadow.a.floor();
+            let b = shadow.b.ceil();
+            outer_rect = Rect::new(a.into(), (b - a).into());
         }
         let mut draw = self.draw.new_pass(outer_rect, offset, class);
 
         if class == PassType::Overlay {
-            let outer = Quad::from(outer_rect + offset);
+            shadow += offset.into();
+            let outer = Quad::from(frame_rect + offset);
             let inner = Quad::from(inner_rect + offset);
+
+            draw.rounded_frame_2col(shadow, inner, Rgba::BLACK, Rgba::TRANSPARENT);
+
             draw.rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
             let inner = outer.shrink(self.w.dims.frame as f32 * BG_SHRINK_FACTOR);
             draw.rect(inner, self.cols.background);
