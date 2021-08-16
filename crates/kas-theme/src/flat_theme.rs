@@ -93,7 +93,7 @@ const DIMS: dim::Parameters = dim::Parameters {
 
 pub struct DrawHandle<'a, DS: DrawSharedImpl> {
     pub(crate) draw: DrawIface<'a, DS>,
-    pub(crate) window: &'a mut dim::Window,
+    pub(crate) w: &'a mut dim::Window,
     pub(crate) cols: &'a ColorsLinear,
 }
 
@@ -139,16 +139,12 @@ where
         dim::Window::new(DIMS, self.config.font_size(), dpi_factor, fonts)
     }
 
-    fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
-        window.update(DIMS, self.config.font_size(), dpi_factor);
+    fn update_window(&self, w: &mut Self::Window, dpi_factor: f32) {
+        w.update(DIMS, self.config.font_size(), dpi_factor);
     }
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle(
-        &self,
-        draw: DrawIface<DS>,
-        window: &mut Self::Window,
-    ) -> Self::DrawHandle {
+    unsafe fn draw_handle(&self, draw: DrawIface<DS>, w: &mut Self::Window) -> Self::DrawHandle {
         unsafe fn extend_lifetime<'b, T: ?Sized>(r: &'b T) -> &'static T {
             std::mem::transmute::<&'b T, &'static T>(r)
         }
@@ -161,7 +157,7 @@ where
                 shared: extend_lifetime_mut(draw.shared),
                 pass: draw.pass,
             },
-            window: extend_lifetime_mut(window),
+            w: extend_lifetime_mut(w),
             cols: extend_lifetime(&self.cols),
         }
     }
@@ -169,11 +165,11 @@ where
     fn draw_handle<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
-        window: &'a mut Self::Window,
+        w: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
         DrawHandle {
             draw,
-            window,
+            w,
             cols: &self.cols,
         }
     }
@@ -219,11 +215,11 @@ where
         col_bg: Rgba,
         state: InputState,
     ) -> Quad {
-        let inner = outer.shrink(self.window.dims.button_frame as f32);
+        let inner = outer.shrink(self.w.dims.button_frame as f32);
         let col_bg = ColorsLinear::adjust_for_state(col_bg, state);
 
         if !(state.disabled || state.depress) {
-            let (mut a, mut b) = (self.window.dims.shadow_a, self.window.dims.shadow_b);
+            let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
             if state.hover || state.nav_focus {
                 a = a * SHADOW_HOVER;
                 b = b * SHADOW_HOVER;
@@ -233,7 +229,7 @@ where
                 .rounded_frame_2col(shadow_outer, inner, Rgba::BLACK, Rgba::TRANSPARENT);
         }
 
-        let bgr = outer.shrink(self.window.dims.button_frame as f32 * BG_SHRINK_FACTOR);
+        let bgr = outer.shrink(self.w.dims.button_frame as f32 * BG_SHRINK_FACTOR);
         self.draw.rect(bgr, col_bg);
 
         self.draw
@@ -247,7 +243,7 @@ where
     DS::Draw: DrawRoundedImpl,
 {
     fn size_handle(&mut self) -> &mut dyn SizeHandle {
-        self.window
+        self.w
     }
 
     fn draw_device(&mut self) -> &mut dyn Draw {
@@ -263,7 +259,7 @@ where
     ) {
         let mut outer_rect = inner_rect;
         if class == PassType::Overlay {
-            outer_rect = inner_rect.expand(self.window.dims.frame);
+            outer_rect = inner_rect.expand(self.w.dims.frame);
         }
         let mut draw = self.draw.new_pass(outer_rect, offset, class);
 
@@ -271,12 +267,12 @@ where
             let outer = Quad::from(outer_rect + offset);
             let inner = Quad::from(inner_rect + offset);
             draw.rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
-            let inner = outer.shrink(self.window.dims.frame as f32 * BG_SHRINK_FACTOR);
+            let inner = outer.shrink(self.w.dims.frame as f32 * BG_SHRINK_FACTOR);
             draw.rect(inner, self.cols.background);
         }
 
         let mut handle = DrawHandle {
-            window: self.window,
+            w: self.w,
             draw,
             cols: self.cols,
         };
@@ -289,7 +285,7 @@ where
 
     fn outer_frame(&mut self, rect: Rect) {
         let outer = Quad::from(rect);
-        let inner = outer.shrink(self.window.dims.frame as f32);
+        let inner = outer.shrink(self.w.dims.frame as f32);
         self.draw
             .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
     }
@@ -304,14 +300,14 @@ where
     fn nav_frame(&mut self, rect: Rect, state: InputState) {
         if let Some(col) = self.cols.nav_region(state) {
             let outer = Quad::from(rect);
-            let inner = outer.shrink(self.window.dims.inner_margin as f32);
+            let inner = outer.shrink(self.w.dims.inner_margin as f32);
             self.draw.rounded_frame(outer, inner, 0.0, col);
         }
     }
 
     fn selection_box(&mut self, rect: Rect) {
         let inner = Quad::from(rect);
-        let outer = inner.grow(self.window.dims.inner_margin.into());
+        let outer = inner.grow(self.w.dims.inner_margin.into());
         // TODO: this should use its own colour and a stippled pattern
         let col = self.cols.text_sel_bg;
         self.draw.frame(outer, inner, col);
@@ -383,7 +379,7 @@ where
     }
 
     fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, _: TextClass, byte: usize) {
-        let width = self.window.dims.font_marker_width;
+        let width = self.w.dims.font_marker_width;
         let pos = Vec2::from(pos);
 
         let mut col = self.cols.nav_focus;
@@ -441,16 +437,16 @@ where
         let col_bg = ColorsLinear::adjust_for_state(col_bg, state);
 
         if col_bg != self.cols.background {
-            let inner = outer.shrink(self.window.dims.button_frame as f32 * BG_SHRINK_FACTOR);
+            let inner = outer.shrink(self.w.dims.button_frame as f32 * BG_SHRINK_FACTOR);
             self.draw.rect(inner, col_bg);
         }
 
-        let inner = outer.shrink(self.window.dims.button_frame as f32);
+        let inner = outer.shrink(self.w.dims.button_frame as f32);
         self.draw
             .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
 
         if state.nav_focus {
-            let r = 0.5 * self.window.dims.button_frame as f32;
+            let r = 0.5 * self.w.dims.button_frame as f32;
             let y = outer.b.1 - r;
             let a = Vec2(outer.a.0 + r, y);
             let b = Vec2(outer.b.0 - r, y);
@@ -465,7 +461,7 @@ where
         let inner = self.button_frame(outer, col_frame, self.cols.background, state);
 
         if let Some(col) = self.cols.check_mark_state(state, checked) {
-            let inner = inner.shrink((2 * self.window.dims.inner_margin) as f32);
+            let inner = inner.shrink((2 * self.w.dims.inner_margin) as f32);
             self.draw.rect(inner, col);
         }
     }
@@ -474,7 +470,7 @@ where
         let outer = Quad::from(rect);
 
         if !(state.disabled || state.depress) {
-            let (mut a, mut b) = (self.window.dims.shadow_a, self.window.dims.shadow_b);
+            let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
             if state.hover || state.nav_focus {
                 a = a * SHADOW_HOVER;
                 b = b * SHADOW_HOVER;
@@ -489,11 +485,11 @@ where
 
         let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
         const F: f32 = 2.0 * (1.0 - BG_SHRINK_FACTOR); // match checkbox frame
-        let r = 1.0 - F * self.window.dims.button_frame as f32 / rect.size.0 as f32;
+        let r = 1.0 - F * self.w.dims.button_frame as f32 / rect.size.0 as f32;
         self.draw.circle(outer, r, col);
 
         if let Some(col) = self.cols.check_mark_state(state, checked) {
-            let r = self.window.dims.button_frame + 2 * self.window.dims.inner_margin as i32;
+            let r = self.w.dims.button_frame + 2 * self.w.dims.inner_margin as i32;
             let inner = outer.shrink(r as f32);
             self.draw.circle(inner, 0.0, col);
         }

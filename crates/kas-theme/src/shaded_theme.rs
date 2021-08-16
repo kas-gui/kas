@@ -72,7 +72,7 @@ const DIMS: dim::Parameters = dim::Parameters {
 
 pub struct DrawHandle<'a, DS: DrawSharedImpl> {
     draw: DrawIface<'a, DS>,
-    window: &'a mut dim::Window,
+    w: &'a mut dim::Window,
     cols: &'a ColorsLinear,
 }
 
@@ -105,16 +105,12 @@ where
         dim::Window::new(DIMS, self.flat.config.font_size(), dpi_factor, fonts)
     }
 
-    fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
-        window.update(DIMS, self.flat.config.font_size(), dpi_factor);
+    fn update_window(&self, w: &mut Self::Window, dpi_factor: f32) {
+        w.update(DIMS, self.flat.config.font_size(), dpi_factor);
     }
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle(
-        &self,
-        draw: DrawIface<DS>,
-        window: &mut Self::Window,
-    ) -> Self::DrawHandle {
+    unsafe fn draw_handle(&self, draw: DrawIface<DS>, w: &mut Self::Window) -> Self::DrawHandle {
         unsafe fn extend_lifetime<'b, T: ?Sized>(r: &'b T) -> &'static T {
             std::mem::transmute::<&'b T, &'static T>(r)
         }
@@ -127,7 +123,7 @@ where
                 shared: extend_lifetime_mut(draw.shared),
                 pass: draw.pass,
             },
-            window: extend_lifetime_mut(window),
+            w: extend_lifetime_mut(w),
             cols: extend_lifetime(&self.flat.cols),
         }
     }
@@ -135,11 +131,11 @@ where
     fn draw_handle<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
-        window: &'a mut Self::Window,
+        w: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
         DrawHandle {
             draw,
-            window,
+            w,
             cols: &self.flat.cols,
         }
     }
@@ -175,7 +171,7 @@ where
     {
         super::flat_theme::DrawHandle {
             draw: self.draw.reborrow(),
-            window: self.window,
+            w: self.w,
             cols: self.cols,
         }
     }
@@ -188,7 +184,7 @@ where
     /// - `nav_col`: colour of navigation highlight, if visible
     fn draw_edit_box(&mut self, outer: Rect, bg_col: Rgba, nav_col: Option<Rgba>) -> Quad {
         let mut outer = Quad::from(outer);
-        let mut inner = outer.shrink(self.window.dims.frame as f32);
+        let mut inner = outer.shrink(self.w.dims.frame as f32);
 
         let col = self.cols.background;
         self.draw
@@ -196,7 +192,7 @@ where
 
         if let Some(col) = nav_col {
             outer = inner;
-            inner = outer.shrink(self.window.dims.inner_margin as f32);
+            inner = outer.shrink(self.w.dims.inner_margin as f32);
             self.draw.frame(outer, inner, col);
         }
 
@@ -224,7 +220,7 @@ where
     DS::Draw: DrawRoundedImpl + DrawShadedImpl,
 {
     fn size_handle(&mut self) -> &mut dyn SizeHandle {
-        self.window
+        self.w
     }
 
     fn draw_device(&mut self) -> &mut dyn Draw {
@@ -240,7 +236,7 @@ where
     ) {
         let mut outer_rect = inner_rect;
         if class == PassType::Overlay {
-            outer_rect = inner_rect.expand(self.window.dims.frame);
+            outer_rect = inner_rect.expand(self.w.dims.frame);
         }
         let mut draw = self.draw.new_pass(outer_rect, offset, class);
 
@@ -253,7 +249,7 @@ where
         }
 
         let mut handle = DrawHandle {
-            window: self.window,
+            w: self.w,
             draw,
             cols: self.cols,
         };
@@ -266,7 +262,7 @@ where
 
     fn outer_frame(&mut self, rect: Rect) {
         let outer = Quad::from(rect);
-        let inner = outer.shrink(self.window.dims.frame as f32);
+        let inner = outer.shrink(self.w.dims.frame as f32);
         let norm = (0.7, -0.7);
         let col = self.cols.background;
         self.draw.shaded_round_frame(outer, inner, norm, col);
@@ -320,7 +316,7 @@ where
 
     fn button(&mut self, rect: Rect, col: Option<color::Rgb>, state: InputState) {
         let outer = Quad::from(rect);
-        let inner = outer.shrink(self.window.dims.button_frame as f32);
+        let inner = outer.shrink(self.w.dims.button_frame as f32);
         let col = col.map(|c| c.into()).unwrap_or(self.cols.accent_soft);
         let col = ColorsLinear::adjust_for_state(col, state);
 
@@ -328,7 +324,7 @@ where
         self.draw.rect(inner, col);
 
         if let Some(col) = self.cols.nav_region(state) {
-            let outer = outer.shrink(self.window.dims.inner_margin as f32);
+            let outer = outer.shrink(self.w.dims.inner_margin as f32);
             self.draw.rounded_frame(outer, inner, 0.6, col);
         }
     }
