@@ -66,7 +66,7 @@ const DIMS: dim::Parameters = dim::Parameters {
     scrollbar_size: Vec2::splat(8.0),
     slider_size: Vec2(12.0, 25.0),
     progress_bar: Vec2::splat(12.0),
-    shadow_size: Vec2::ZERO,
+    shadow_size: Vec2::splat(6.0),
     shadow_rel_offset: Vec2::ZERO,
 };
 
@@ -234,17 +234,23 @@ where
         class: PassType,
         f: &mut dyn FnMut(&mut dyn draw::DrawHandle),
     ) {
+        let mut shadow = Default::default();
         let mut outer_rect = inner_rect;
         if class == PassType::Overlay {
-            outer_rect = inner_rect.expand(self.w.dims.frame);
+            shadow = Quad::from(inner_rect);
+            shadow.a += self.w.dims.shadow_a;
+            shadow.b += self.w.dims.shadow_b;
+            let a = shadow.a.floor();
+            let b = shadow.b.ceil();
+            outer_rect = Rect::new(a.into(), (b - a).into());
         }
         let mut draw = self.draw.new_pass(outer_rect, offset, class);
 
         if class == PassType::Overlay {
-            let outer = Quad::from(outer_rect + offset);
+            shadow += offset.into();
             let inner = Quad::from(inner_rect + offset);
-            let norm = (0.0, 0.0);
-            draw.shaded_square_frame(outer, inner, norm, Rgba::TRANSPARENT, Rgba::BLACK);
+            draw.rounded_frame_2col(shadow, inner, Rgba::BLACK, Rgba::TRANSPARENT);
+
             draw.rect(inner, self.cols.background);
         }
 
