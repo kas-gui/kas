@@ -11,6 +11,11 @@ use kas::draw::{color::Rgba, PassId};
 use kas::geom::{Quad, Vec2};
 use std::mem::size_of;
 
+/// Vertex
+///
+/// -   `screen_pos: Vec2` — screen coordinate
+/// -   `colour: Rgba`
+/// -   `dir: Vec2` — normalised direction of slope (from (-1, -1) to (1, 1))
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct Vertex(Vec2, Rgba, Vec2);
@@ -20,6 +25,8 @@ unsafe impl bytemuck::Pod for Vertex {}
 pub type Window = common::Window<Vertex>;
 
 /// A pipeline for rendering with flat and square-corner shading
+///
+/// Does not use anti-aliasing since edges are usually pixel-aligned.
 pub struct Pipeline {
     render_pipeline: wgpu::RenderPipeline,
 }

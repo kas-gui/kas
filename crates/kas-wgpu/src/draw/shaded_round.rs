@@ -16,6 +16,13 @@ use std::mem::size_of;
 /// implement 4x multi-sampling. The pattern is defined by the fragment shader.
 const OFFSET: f32 = 0.5 * std::f32::consts::FRAC_1_SQRT_2;
 
+/// Vertex
+///
+/// -   `screen_pos: Vec2` — screen coordinate
+/// -   `colour: Rgba`
+/// -   `dir: Vec2` — normalised direction of slope (from (-1, -1) to (1, 1))
+/// -   `adjust: Vec2`
+/// -   `pix_offset: Vec2` — offset for a pixel; used for AA
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct Vertex(Vec2, Rgba, Vec2, Vec2, Vec2);
@@ -31,6 +38,8 @@ impl Vertex {
 pub type Window = common::Window<Vertex>;
 
 /// A pipeline for rendering rounded shapes
+///
+/// Uses 4x sampling for anti-aliasing.
 pub struct Pipeline {
     render_pipeline: wgpu::RenderPipeline,
 }
