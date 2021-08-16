@@ -27,6 +27,8 @@ const BG_SHRINK_FACTOR: f32 = 1.0 - std::f32::consts::FRAC_1_SQRT_2;
 
 // Shadow enlargement on hover
 const SHADOW_HOVER: f32 = 1.2;
+// Shadow enlargement for pop-ups
+const SHADOW_POPUP: f32 = 1.4;
 
 /// A theme with flat (unshaded) rendering
 #[derive(Clone, Debug)]
@@ -295,8 +297,8 @@ where
         if class == PassType::Overlay {
             frame_rect = inner_rect.expand(self.w.dims.frame);
             shadow = Quad::from(frame_rect);
-            shadow.a += self.w.dims.shadow_a;
-            shadow.b += self.w.dims.shadow_b;
+            shadow.a += self.w.dims.shadow_a * SHADOW_POPUP;
+            shadow.b += self.w.dims.shadow_b * SHADOW_POPUP;
             let a = shadow.a.floor();
             let b = shadow.b.ceil();
             outer_rect = Rect::new(a.into(), (b - a).into());
