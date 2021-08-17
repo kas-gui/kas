@@ -26,9 +26,9 @@ use kas::TkAction;
 const BG_SHRINK_FACTOR: f32 = 1.0 - std::f32::consts::FRAC_1_SQRT_2;
 
 // Shadow enlargement on hover
-const SHADOW_HOVER: f32 = 1.2;
+const SHADOW_HOVER: f32 = 1.1;
 // Shadow enlargement for pop-ups
-const SHADOW_POPUP: f32 = 1.4;
+const SHADOW_POPUP: f32 = 1.2;
 
 /// A theme with flat (unshaded) rendering
 #[derive(Clone, Debug)]
@@ -112,8 +112,8 @@ const DIMS: dim::Parameters = dim::Parameters {
     scrollbar_size: Vec2::splat(8.0),
     slider_size: Vec2(16.0, 16.0),
     progress_bar: Vec2::splat(8.0),
-    shadow_size: Vec2(5.0, 5.0),
-    shadow_rel_offset: Vec2(0.3, 0.6),
+    shadow_size: Vec2(4.0, 4.0),
+    shadow_rel_offset: Vec2(0.2, 0.3),
 };
 const DARK_SHADOW_SIZE: Vec2 = Vec2::splat(5.0);
 const DARK_SHADOW_OFFSET: Vec2 = Vec2::ZERO;
@@ -502,7 +502,7 @@ where
                 self.cols.text
             };
 
-            const F: f32 = 0.5;
+            const F: f32 = 0.6;
             let (sa, sb) = (self.w.dims.shadow_a * F, self.w.dims.shadow_b * F);
             let outer = Quad::with_coords(a + sa, b + sb);
             let inner = Quad::with_coords(a, b);
@@ -533,7 +533,7 @@ where
 
         if !(state.disabled || state.depress) {
             let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
-            let mut mult = 0.6;
+            let mut mult = 0.65;
             if state.hover {
                 mult *= SHADOW_HOVER;
             }
