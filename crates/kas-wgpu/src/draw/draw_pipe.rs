@@ -75,6 +75,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let shaded_square = shaded_square::Pipeline::new(&device, &shaders, &bgl_common);
         let shaded_round = shaded_round::Pipeline::new(&device, &shaders, &bgl_common);
         let flat_round = flat_round::Pipeline::new(&device, &shaders, &bgl_common);
+        let round_2col = round_2col::Pipeline::new(&device, &shaders, &bgl_common);
         let custom = custom.build(&device, &bgl_common, RENDER_TEX_FORMAT);
         let text = text_pipe::Pipeline::new(&device, &shaders, &bgl_common, raster_config);
 
@@ -90,6 +91,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             shaded_square,
             shaded_round,
             flat_round,
+            round_2col,
             custom,
             text,
         }
@@ -106,6 +108,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             shaded_square: Default::default(),
             shaded_round: Default::default(),
             flat_round: Default::default(),
+            round_2col: Default::default(),
             custom,
             text: Default::default(),
         }
@@ -216,6 +219,9 @@ impl<C: CustomPipe> DrawPipe<C> {
         window
             .flat_round
             .write_buffers(&self.device, &mut self.staging_belt, &mut encoder);
+        window
+            .round_2col
+            .write_buffers(&self.device, &mut self.staging_belt, &mut encoder);
         self.custom.prepare(
             &mut window.custom,
             &self.device,
@@ -256,6 +262,8 @@ impl<C: CustomPipe> DrawPipe<C> {
                     rect.size.1.cast(),
                 );
 
+                self.round_2col
+                    .render(&window.round_2col, pass, &mut rpass, bg_common);
                 self.shaded_square
                     .render(&window.shaded_square, pass, &mut rpass, bg_common);
                 self.images
@@ -428,16 +436,18 @@ impl<CW: CustomWindow> DrawRoundedImpl for DrawWindow<CW> {
     }
 
     #[inline]
-    fn rounded_frame(
-        &mut self,
-        pass: PassId,
-        outer: Quad,
-        inner: Quad,
-        inner_radius: f32,
-        col: Rgba,
-    ) {
-        self.flat_round
-            .rounded_frame(pass, outer, inner, inner_radius, col);
+    fn circle_2col(&mut self, pass: PassId, rect: Quad, col1: Rgba, col2: Rgba) {
+        self.round_2col.circle(pass, rect, col1, col2);
+    }
+
+    #[inline]
+    fn rounded_frame(&mut self, pass: PassId, outer: Quad, inner: Quad, r1: f32, col: Rgba) {
+        self.flat_round.rounded_frame(pass, outer, inner, r1, col);
+    }
+
+    #[inline]
+    fn rounded_frame_2col(&mut self, pass: PassId, outer: Quad, inner: Quad, c1: Rgba, c2: Rgba) {
+        self.round_2col.frame(pass, outer, inner, c1, c2);
     }
 }
 

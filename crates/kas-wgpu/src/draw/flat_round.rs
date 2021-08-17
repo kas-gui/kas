@@ -20,6 +20,14 @@ const AA_OFFSET: f32 = 0.5 * std::f32::consts::FRAC_1_SQRT_2;
 // "frame" shape could support four-triangle strips. However, this would require
 // many rpass.draw() commands or shaders unpacking vertices from instance data.
 
+/// Vertex
+///
+/// -   `screen_pos: Vec2` — screen coordinate
+/// -   `colour: Rgba`
+/// -   `inner: f32` — inner radius, relative to outer (range: 0 to 1)
+/// -   `circle_pos: Vec2` — coordinate on virtual circle with radius 1 centred
+///     on the origin
+/// -   `pix_offset: Vec2` — size of a pixel on the virtual circle; used for AA
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct Vertex(Vec2, Rgba, f32, Vec2, Vec2);
@@ -35,6 +43,8 @@ impl Vertex {
 pub type Window = common::Window<Vertex>;
 
 /// A pipeline for rendering rounded shapes
+///
+/// Uses 4x sampling for anti-aliasing.
 pub struct Pipeline {
     render_pipeline: wgpu::RenderPipeline,
 }
@@ -250,6 +260,7 @@ impl Window {
         let n0a = Vec2(0.0, na.1);
         let n0b = Vec2(0.0, nb.1);
 
+        // Size of each corner may differ, hence need for separate pixel offsets:
         let paa = na / (aa - cc) * AA_OFFSET;
         let pab = nab / (ab - cd) * AA_OFFSET;
         let pba = nba / (ba - dc) * AA_OFFSET;

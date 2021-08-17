@@ -9,7 +9,7 @@
 
 use crate::cast::{CastFloat, Conv};
 use crate::geom::{Coord, Offset, Rect, Size};
-use std::ops::{Add, Div, Mul, Neg, Sub};
+use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub};
 
 /// Axis-aligned 2D cuboid, specified via two corners `a` and `b`
 ///
@@ -100,6 +100,14 @@ impl Quad {
         } else {
             None
         }
+    }
+}
+
+impl AddAssign<Vec2> for Quad {
+    #[inline]
+    fn add_assign(&mut self, rhs: Vec2) {
+        self.a += rhs;
+        self.b += rhs;
     }
 }
 
@@ -287,6 +295,22 @@ macro_rules! impl_vec2 {
             #[inline]
             fn add(self, rhs: $f) -> Self::Output {
                 $T(self.0 + rhs, self.1 + rhs)
+            }
+        }
+
+        impl AddAssign<$T> for $T {
+            #[inline]
+            fn add_assign(&mut self, rhs: $T) {
+                self.0 += rhs.0;
+                self.1 += rhs.1;
+            }
+        }
+
+        impl AddAssign<$f> for $T {
+            #[inline]
+            fn add_assign(&mut self, rhs: $f) {
+                self.0 += rhs;
+                self.1 += rhs;
             }
         }
 

@@ -17,6 +17,8 @@ const MIN_HIGHLIGHT: f32 = 0.2;
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "config", derive(serde::Serialize, serde::Deserialize))]
 pub struct Colors<C> {
+    /// True if this is a dark theme
+    pub is_dark: bool,
     /// Background colour
     pub background: C,
     /// Colour for frames (not always used)
@@ -60,6 +62,7 @@ pub type ColorsLinear = Colors<Rgba>;
 impl From<ColorsSrgb> for ColorsLinear {
     fn from(col: ColorsSrgb) -> Self {
         Colors {
+            is_dark: col.is_dark,
             background: col.background.into(),
             frame: col.frame.into(),
             accent: col.accent.into(),
@@ -78,6 +81,7 @@ impl From<ColorsSrgb> for ColorsLinear {
 impl From<ColorsLinear> for ColorsSrgb {
     fn from(col: ColorsLinear) -> Self {
         Colors {
+            is_dark: col.is_dark,
             background: col.background.into(),
             frame: col.frame.into(),
             accent: col.accent.into(),
@@ -111,6 +115,7 @@ impl ColorsSrgb {
     /// Default "light" scheme
     pub fn light() -> Self {
         Colors {
+            is_dark: false,
             background: Rgba8Srgb::from_str("#FAFAFA").unwrap(),
             frame: Rgba8Srgb::from_str("#BCBCBC").unwrap(),
             accent: Rgba8Srgb::from_str("#7E3FF2").unwrap(),
@@ -128,6 +133,7 @@ impl ColorsSrgb {
     /// Dark scheme
     pub fn dark() -> Self {
         Colors {
+            is_dark: true,
             background: Rgba8Srgb::from_str("#404040").unwrap(),
             frame: Rgba8Srgb::from_str("#AAAAAA").unwrap(),
             accent: Rgba8Srgb::from_str("#F74C00").unwrap(),
@@ -145,6 +151,7 @@ impl ColorsSrgb {
     /// Blue scheme
     pub fn blue() -> Self {
         Colors {
+            is_dark: false,
             background: Rgba8Srgb::from_str("#FFFFFF").unwrap(),
             frame: Rgba8Srgb::from_str("#DADADA").unwrap(),
             accent: Rgba8Srgb::from_str("#7CDAFF").unwrap(),
