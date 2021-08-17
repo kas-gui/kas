@@ -573,7 +573,11 @@ where
         let r = outer.size().min_comp() * 0.125;
         let outer = outer.shrink(r);
         let inner = outer.shrink(3.0 * r);
-        let col = ColorsLinear::adjust_for_state(self.cols.frame, state);
+        let col = if state.depress || state.nav_focus {
+            self.cols.nav_focus
+        } else {
+            self.cols.accent_soft
+        };
         self.draw.rounded_frame(outer, inner, 0.0, col);
     }
 
