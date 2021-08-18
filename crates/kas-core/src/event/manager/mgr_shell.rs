@@ -218,9 +218,9 @@ impl ManagerState {
                     false
                 }
             }
-            Pending::SetNavFocus(id) => {
+            Pending::SetNavFocus(id, key_focus) => {
                 if let Some(new_id) = renames.get(id) {
-                    *item = Pending::SetNavFocus(*new_id);
+                    *item = Pending::SetNavFocus(*new_id, *key_focus);
                     true
                 } else {
                     false
@@ -372,7 +372,7 @@ impl ManagerState {
             let (id, event) = match item {
                 Pending::LostCharFocus(id) => (id, Event::LostCharFocus),
                 Pending::LostSelFocus(id) => (id, Event::LostSelFocus),
-                Pending::SetNavFocus(id) => (id, Event::NavFocus),
+                Pending::SetNavFocus(id, key_focus) => (id, Event::NavFocus(key_focus)),
             };
             mgr.send_event(widget, id, event);
         }
