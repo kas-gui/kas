@@ -7,8 +7,8 @@
 
 use kas::cast::Conv;
 use kas::geom::Size;
-use kas::widgets::tiny_skia::*;
-use kas::widgets::{Canvas, CanvasDrawable, Window};
+use kas::resvg::{tiny_skia::*, Canvas, CanvasDrawable};
+use kas::widgets::Window;
 
 #[derive(Debug)]
 struct Program;

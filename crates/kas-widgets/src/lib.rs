@@ -53,8 +53,6 @@
 #![cfg_attr(feature = "min_spec", feature(min_specialization))]
 
 mod button;
-#[cfg(feature = "canvas")]
-mod canvas;
 mod checkbox;
 mod combobox;
 mod dialog;
@@ -77,16 +75,12 @@ mod slider;
 mod splitter;
 mod sprite;
 mod stack;
-#[cfg(feature = "svg")]
-mod svg;
 mod window;
 
 pub mod adapter;
 pub mod view;
 
 pub use button::{Button, TextButton};
-#[cfg(feature = "canvas")]
-pub use canvas::{Canvas, CanvasDrawable};
 pub use checkbox::{CheckBox, CheckBoxBare};
 pub use combobox::ComboBox;
 pub use dialog::MessageBox;
@@ -109,9 +103,4 @@ pub use slider::{Slider, SliderType};
 pub use splitter::*;
 pub use sprite::{Image, SpriteDisplay, SpriteScaling};
 pub use stack::{BoxStack, RefStack, Stack};
-#[cfg(feature = "svg")]
-pub use svg::Svg;
 pub use window::Window;
-
-#[cfg(feature = "canvas")]
-pub use tiny_skia;

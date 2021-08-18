@@ -12,6 +12,7 @@ use kas::draw::color::Rgb;
 use kas::event::VirtualKeyCode as VK;
 use kas::event::{Command, VoidResponse};
 use kas::prelude::*;
+use kas::resvg::Svg;
 use kas::widgets::*;
 use kas::{dir::Right, Future};
 

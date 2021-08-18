@@ -17,5 +17,6 @@ crate-type = ["dylib"]
 [dependencies]
 kas-core = { version = "0.9.1", path = "../kas-core" }
 kas-widgets = { version = "0.9.1", path = "../kas-widgets" }
+kas-resvg = { version = "0.10.0", path = "../kas-resvg", optional = true }
 kas-theme = { version = "0.9.0", path = "../kas-theme" }
 kas-wgpu = { version = "0.9.0", path = "../kas-wgpu" }

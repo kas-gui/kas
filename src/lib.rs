@@ -47,6 +47,9 @@ pub use kas_core::{Widget, WidgetChildren, WidgetConfig, WidgetCore};
 
 pub use kas_widgets as widgets;
 
+#[cfg(any(feature = "canvas", feature = "svg"))]
+pub use kas_resvg as resvg;
+
 #[cfg(feature = "theme")]
 pub use kas_theme as theme;
 
