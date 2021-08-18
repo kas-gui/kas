@@ -180,6 +180,10 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
         }
     }
 
+    fn spatial_nav(&self, _: bool, _: Option<usize>) -> Option<usize> {
+        None // handles are not navigable
+    }
+
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
         if !self.rect().contains(coord) {
             return None;

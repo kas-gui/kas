@@ -225,6 +225,10 @@ impl<D: Directional> Layout for ScrollBar<D> {
         let _ = self.update_handle();
     }
 
+    fn spatial_nav(&self, _: bool, _: Option<usize>) -> Option<usize> {
+        None // handle is not navigable
+    }
+
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
         if !self.rect().contains(coord) {
             return None;

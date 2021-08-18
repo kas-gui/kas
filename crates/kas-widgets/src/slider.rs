@@ -240,6 +240,10 @@ impl<T: SliderType, D: Directional> Layout for Slider<T, D> {
         let _ = self.handle.set_size_and_offset(size, self.offset());
     }
 
+    fn spatial_nav(&self, _: bool, _: Option<usize>) -> Option<usize> {
+        None // handle is not navigable
+    }
+
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
         if !self.rect().contains(coord) {
             return None;
@@ -261,12 +265,24 @@ impl<T: SliderType, D: Directional> event::SendEvent for Slider<T, D> {
         }
 
         let offset = if id <= self.handle.id() {
-            match self.handle.send(mgr, id, event).try_into() {
-                Ok(res) => return res,
-                Err(offset) => offset,
+            match event {
+                Event::NavFocus(key_focus) => {
+                    mgr.set_nav_focus(self.id(), key_focus);
+                    return Response::None; // NavFocus event will be sent to self
+                }
+                event => match self.handle.send(mgr, id, event).try_into() {
+                    Ok(res) => return res,
+                    Err(offset) => offset,
+                },
             }
         } else {
             match event {
+                Event::NavFocus(true) => {
+                    return Response::Focus(self.rect());
+                }
+                Event::NavFocus(false) => {
+                    return Response::None;
+                }
                 Event::Command(cmd, _) => {
                     let rev = self.direction.is_reversed();
                     let v = match cmd {
