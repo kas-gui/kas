@@ -16,7 +16,7 @@ use kas::draw::{color, DrawIface, DrawRounded, PassType, TextClass};
 use kas::geom::{Offset, Quad, Vec2};
 use kas::shell::draw::DrawPipe;
 use kas::text::util::set_text_and_prepare;
-use kas::widget::Window;
+use kas::widgets::Window;
 use kas::{event, prelude::*};
 
 #[derive(Clone, Debug, kas :: macros :: Widget)]

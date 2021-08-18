@@ -255,7 +255,7 @@
 //!     this field must implement [`Widget`] and the widget traits are
 //!     implemented for the struct as wrappers around this field. This
 //!     may be useful to implement a wrapper struct as a widget, for example
-//!     [`crate::widget::ScrollBarRegion`] (shown below).
+//!     [`crate::widgets::ScrollBarRegion`] (shown below).
 //! 2.  If used on the struct *and* on a field, the attribute allows deriving
 //!     various traits: [`std::ops::Deref`], [`std::ops::DerefMut`], and the
 //!     "class traits": [`crate::class`]. The traits to derive must be specified

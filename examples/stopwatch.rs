@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use kas::class::HasString;
 use kas::event::{Event, Handler, Manager, Response, VoidMsg};
 use kas::macros::make_widget;
-use kas::widget::{Frame, Label, TextButton, Window};
+use kas::widgets::{Frame, Label, TextButton, Window};
 use kas::WidgetCore;
 
 // Unlike most examples, we encapsulate the GUI configuration into a function.

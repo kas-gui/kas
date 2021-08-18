@@ -7,7 +7,7 @@
 
 use kas::macros::{make_widget, VoidMsg};
 use kas::prelude::*;
-use kas::widget::{Label, Row, TextButton, Window};
+use kas::widgets::{Label, Row, TextButton, Window};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Message {

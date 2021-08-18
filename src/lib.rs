@@ -11,7 +11,7 @@
 //! -   high-level themable and mid-level [`draw`] APIs
 //! -   [`event`] handling code
 //! -   [`geom`]-etry types and widget [`layout`] solvers
-//! -   a [`widget`] library
+//! -   the standard [`widgets`] library
 //!
 //! See also these external crates:
 //!
@@ -45,7 +45,7 @@ pub use kas_core::{Boxed, Layout, LayoutData, Window};
 pub use kas_core::{CoreData, Future, Popup, TkAction, WidgetId, WindowId};
 pub use kas_core::{Widget, WidgetChildren, WidgetConfig, WidgetCore};
 
-pub use kas_widgets as widget;
+pub use kas_widgets as widgets;
 
 #[cfg(feature = "theme")]
 pub use kas_theme as theme;

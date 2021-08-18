@@ -7,7 +7,7 @@
 
 use kas::event::VoidMsg;
 use kas::macros::make_widget;
-use kas::widget::{CheckBoxBare, EditBox, Label, ScrollLabel, Window};
+use kas::widgets::{CheckBoxBare, EditBox, Label, ScrollLabel, Window};
 
 fn main() -> Result<(), kas::shell::Error> {
     env_logger::init();

@@ -12,7 +12,7 @@ use kas::class::HasString;
 use kas::event::VirtualKeyCode as VK;
 use kas::event::{Manager, Response, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
-use kas::widget::{EditBox, TextButton, Window};
+use kas::widgets::{EditBox, TextButton, Window};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Key {

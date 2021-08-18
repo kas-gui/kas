@@ -17,8 +17,8 @@ use kas::geom::{DVec2, Vec2, Vec3};
 use kas::prelude::*;
 use kas::shell::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawPipe};
 use kas::shell::Options;
-use kas::widget::adapter::ReserveP;
-use kas::widget::{Label, Slider, Window};
+use kas::widgets::adapter::ReserveP;
+use kas::widgets::{Label, Slider, Window};
 
 struct Shaders {
     vertex: ShaderModule,
