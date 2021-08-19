@@ -441,6 +441,12 @@ impl From<Vec2> for kas_text::Vec2 {
     }
 }
 
+impl From<DVec2> for Vec2 {
+    fn from(size: DVec2) -> Vec2 {
+        Vec2(size.0 as f32, size.1 as f32)
+    }
+}
+
 impl_vec2!(Vec2, f32);
 impl_vec2!(DVec2, f64);
 

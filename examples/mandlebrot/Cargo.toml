@@ -15,6 +15,11 @@ log = "0.4"
 wgpu = "0.10.0"
 bytemuck = "1.7.0"
 
+[features]
+# Use 64-bit shaders
+# This allows much greater zoom levels, but has compatibility issues.
+shader64 = []
+
 [[bin]]
 name = "mandlebrot"
 path = "mandlebrot.rs"

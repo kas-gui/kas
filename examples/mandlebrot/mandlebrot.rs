@@ -20,6 +20,21 @@ use kas::shell::Options;
 use kas::widgets::adapter::ReserveP;
 use kas::widgets::{Label, Slider, Window};
 
+#[cfg(not(feature = "shader64"))]
+type ShaderVec2 = Vec2;
+#[cfg(feature = "shader64")]
+type ShaderVec2 = DVec2;
+
+#[cfg(not(feature = "shader64"))]
+const SHADER_FLOAT64: wgpu::Features = wgpu::Features::empty();
+#[cfg(feature = "shader64")]
+const SHADER_FLOAT64: wgpu::Features = wgpu::Features::SHADER_FLOAT64;
+
+#[cfg(not(feature = "shader64"))]
+const FRAG_SHADER: &[u8] = include_bytes!("shader32.frag.spv");
+#[cfg(feature = "shader64")]
+const FRAG_SHADER: &[u8] = include_bytes!("shader64.frag.spv");
+
 struct Shaders {
     vertex: ShaderModule,
     fragment: ShaderModule,
@@ -32,7 +47,7 @@ impl Shaders {
         // which cannot currently deal with double precision floats (dvec2).
         let fragment = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("fragment shader"),
-            source: wgpu::util::make_spirv(include_bytes!("shader64.frag.spv")),
+            source: wgpu::util::make_spirv(FRAG_SHADER),
         });
 
         Shaders { vertex, fragment }
@@ -48,14 +63,23 @@ unsafe impl bytemuck::Pod for Vertex {}
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 struct PushConstants {
-    p: DVec2,
-    q: DVec2,
+    p: ShaderVec2,
+    q: ShaderVec2,
     iterations: i32,
+}
+impl Default for PushConstants {
+    fn default() -> Self {
+        PushConstants {
+            p: ShaderVec2::splat(0.0),
+            q: ShaderVec2::splat(1.0),
+            iterations: 64,
+        }
+    }
 }
 impl PushConstants {
     fn set(&mut self, p: DVec2, q: DVec2, iterations: i32) {
-        self.p = p;
-        self.q = q;
+        self.p = p.into();
+        self.q = q.into();
         self.iterations = iterations;
     }
 }
@@ -70,7 +94,7 @@ impl CustomPipeBuilder for PipeBuilder {
     fn device_descriptor() -> wgpu::DeviceDescriptor<'static> {
         wgpu::DeviceDescriptor {
             label: None,
-            features: wgpu::Features::PUSH_CONSTANTS | wgpu::Features::SHADER_FLOAT64,
+            features: wgpu::Features::PUSH_CONSTANTS | SHADER_FLOAT64,
             limits: wgpu::Limits {
                 max_push_constant_size: size_of::<PushConstants>().cast(),
                 ..Default::default()
@@ -146,14 +170,8 @@ impl CustomPipe for Pipe {
     type Window = PipeWindow;
 
     fn new_window(&self, _: &wgpu::Device) -> Self::Window {
-        let push_constants = PushConstants {
-            p: DVec2::splat(0.0),
-            q: DVec2::splat(1.0),
-            iterations: 64,
-        };
-
         PipeWindow {
-            push_constants,
+            push_constants: Default::default(),
             passes: vec![],
         }
     }
