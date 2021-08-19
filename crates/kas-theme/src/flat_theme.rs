@@ -168,7 +168,6 @@ where
 
     fn update_window(&self, w: &mut Self::Window, dpi_factor: f32) {
         w.update(&self.dims, self.config.font_size(), dpi_factor);
-        println!("update_window: dims.shadow_b = {:?}", w.dims.shadow_b);
     }
 
     #[cfg(not(feature = "gat"))]

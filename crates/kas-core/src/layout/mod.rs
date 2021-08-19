@@ -51,7 +51,9 @@ pub use grid_solver::{GridChildInfo, GridSetter, GridSolver};
 pub use row_solver::{RowPositionSolver, RowSetter, RowSolver};
 pub use single_solver::{SingleSetter, SingleSolver};
 pub use size_rules::SizeRules;
-pub use size_types::{FrameRules, MarginSelector, Margins, Stretch};
+pub use size_types::{
+    AspectScaling, FrameRules, MarginSelector, Margins, SpriteDisplay, SpriteScaling, Stretch,
+};
 pub use sizer::{solve_size_rules, RulesSetter, RulesSolver, SolveCache};
 pub use storage::{
     DynGridStorage, DynRowStorage, FixedGridStorage, FixedRowStorage, GridStorage, RowStorage,
