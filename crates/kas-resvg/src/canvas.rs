@@ -6,7 +6,7 @@
 //! Canvas widget
 
 use kas::draw::{ImageFormat, ImageId};
-use kas::layout::MarginSelector;
+use kas::layout::{SpriteDisplay, SpriteScaling};
 use kas::{event, prelude::*};
 use tiny_skia::{Color, Pixmap};
 
@@ -38,11 +38,7 @@ pub trait CanvasDrawable: std::fmt::Debug + 'static {
 pub struct Canvas<P: CanvasDrawable> {
     #[widget_core]
     core: CoreData,
-    margins: MarginSelector,
-    fix_aspect: bool,
-    min_size: Size,
-    ideal_size: Size,
-    stretch: Stretch,
+    sprite: SpriteDisplay,
     pixmap: Option<Pixmap>,
     image_id: Option<ImageId>,
     /// The program drawing to the canvas
@@ -52,52 +48,38 @@ pub struct Canvas<P: CanvasDrawable> {
 impl<P: CanvasDrawable> Canvas<P> {
     /// Construct with given size
     ///
-    /// Creates a new canvas with `min_size = ideal_size = size` and
-    /// `fix_aspect = true`. Use [`Canvas::new_sizes`] for more control.
-    /// Sizes are multiplied by the display's scale factor.
+    /// Creates a new canvas with a given size. The size is adjusted
+    /// according to the display's scale factor.
     #[inline]
     pub fn new(program: P, size: Size) -> Self {
-        Self::new_sizes(program, size, size, true)
-    }
-
-    /// Construct with given sizes and optional aspect ratio fixing
-    ///
-    /// Sizes are multiplied by the display's scale factor. See [`Canvas`]
-    /// documentation for more details on sizing.
-    pub fn new_sizes(program: P, min_size: Size, ideal_size: Size, fix_aspect: bool) -> Self {
         Canvas {
             core: Default::default(),
-            margins: MarginSelector::Outer,
-            fix_aspect,
-            min_size,
-            ideal_size,
-            stretch: Stretch::None,
+            sprite: SpriteDisplay {
+                margins: Default::default(),
+                size,
+                scaling: SpriteScaling::Real,
+                aspect: Default::default(),
+                stretch: Stretch::High,
+            },
             pixmap: None,
             image_id: None,
             program,
         }
     }
 
-    /// Set margins
-    pub fn with_margins(mut self, margins: MarginSelector) -> Self {
-        self.margins = margins;
+    /// Adjust scaling
+    #[inline]
+    pub fn with_scaling(mut self, f: impl FnOnce(SpriteDisplay) -> SpriteDisplay) -> Self {
+        self.sprite = f(self.sprite);
         self
     }
 
-    /// Set stretch policy
-    pub fn with_stretch(mut self, stretch: Stretch) -> Self {
-        self.stretch = stretch;
-        self
-    }
-
-    /// Set margins
-    pub fn set_margins(&mut self, margins: MarginSelector) {
-        self.margins = margins;
-    }
-
-    /// Set stretch policy
-    pub fn set_stretch(&mut self, stretch: Stretch) {
-        self.stretch = stretch;
+    /// Adjust scaling
+    #[inline]
+    pub fn set_scaling(&mut self, f: impl FnOnce(&mut SpriteDisplay)) -> TkAction {
+        f(&mut self.sprite);
+        // NOTE: if only `aspect` is changed, REDRAW is enough
+        TkAction::RESIZE
     }
 
     /// Redraw immediately
@@ -117,46 +99,12 @@ impl<P: CanvasDrawable> Canvas<P> {
 
 impl<P: CanvasDrawable> Layout for Canvas<P> {
     fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let margins = self.margins.select(sh);
-        if axis.is_horizontal() {
-            let mut ideal_w = self.ideal_size.0;
-            if let Some(height) = axis.other() {
-                ideal_w = i32::conv(
-                    i64::conv(height) * i64::conv(ideal_w) / i64::conv(self.ideal_size.1),
-                );
-            }
-            SizeRules::new(self.min_size.0, ideal_w, margins.horiz, self.stretch)
-        } else {
-            let mut ideal_h = self.ideal_size.1;
-            if let Some(width) = axis.other() {
-                ideal_h =
-                    i32::conv(i64::conv(width) * i64::conv(ideal_h) / i64::conv(self.ideal_size.0));
-            }
-            SizeRules::new(self.min_size.1, ideal_h, margins.vert, self.stretch)
-        }
+        self.sprite.size_rules(sh, axis)
     }
 
     fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
-        let size = if self.fix_aspect {
-            match self.ideal_size.aspect_scale_to(rect.size) {
-                Some(size) => {
-                    self.core_data_mut().rect = align
-                        .complete(Align::Centre, Align::Centre)
-                        .aligned_rect(size, rect);
-                    size
-                }
-                None => {
-                    self.core_data_mut().rect = rect;
-                    self.pixmap = None;
-                    self.image_id = None;
-                    return;
-                }
-            }
-        } else {
-            self.core_data_mut().rect = rect;
-            rect.size
-        };
-        let size: (u32, u32) = size.into();
+        self.core.rect = self.sprite.align_rect(rect, align);
+        let size: (u32, u32) = self.core.rect.size.into();
 
         let pm_size = self.pixmap.as_ref().map(|pm| (pm.width(), pm.height()));
         if pm_size.unwrap_or((0, 0)) != size {

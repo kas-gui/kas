@@ -5,7 +5,7 @@
 
 //! Types used by size rules
 
-use super::{AlignHints, AxisInfo, SizeRules};
+use super::{Align, AlignHints, AxisInfo, SizeRules};
 use crate::cast::{Cast, CastFloat, Conv, ConvFloat};
 use crate::dir::Directional;
 use crate::geom::{Rect, Size, Vec2};
@@ -251,7 +251,7 @@ impl SpriteDisplay {
             AspectScaling::Free => rect.size,
         };
         align
-            .complete(Default::default(), Default::default())
+            .complete(Align::Centre, Align::Centre)
             .aligned_rect(ideal, rect)
     }
 }
