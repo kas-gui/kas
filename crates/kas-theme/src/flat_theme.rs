@@ -338,9 +338,7 @@ where
 
     fn separator(&mut self, rect: Rect) {
         let outer = Quad::from(rect);
-        let inner = outer.shrink(outer.size().min_comp() / 2.0);
-        self.draw
-            .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
+        self.draw.rect(outer, self.cols.frame);
     }
 
     fn nav_frame(&mut self, rect: Rect, state: InputState) {
