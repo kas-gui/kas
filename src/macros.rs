@@ -267,7 +267,7 @@
 //! [`std::ops::Deref`], [`std::ops::DerefMut`] and the [`crate::class`] traits:
 //! ```
 //! # use kas::prelude::*;
-//! # use kas::widget::{ScrollBars, ScrollRegion};
+//! # use kas::widgets::{ScrollBars, ScrollRegion};
 //! #[derive(Clone, Debug, Default, Widget)]
 //! #[widget_derive(class_traits, Deref, DerefMut)]
 //! #[handler(msg = <W as Handler>::Msg)]
@@ -282,7 +282,7 @@
 //! ```
 //! use kas::event::{Manager, Response, VoidMsg};
 //! use kas::macros::Widget;
-//! use kas::widget::StrLabel;
+//! use kas::widgets::StrLabel;
 //! use kas::{CoreData, LayoutData, Widget};
 //!
 //! #[derive(Debug)]
@@ -342,7 +342,7 @@
 //!
 //! ```
 //! use kas::prelude::*;
-//! use kas::widget::{Label, TextButton, Window};
+//! use kas::widgets::{Label, TextButton, Window};
 //!
 //! let message = "A message to print.";
 //!

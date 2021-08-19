@@ -35,6 +35,8 @@ jobs:
         run: cargo test --manifest-path crates/kas-core/Cargo.toml --all-features
       - name: Test kas-widgets
         run: cargo test --manifest-path crates/kas-widgets/Cargo.toml --all-features
+      - name: Test kas-resvg
+        run: cargo test --manifest-path crates/kas-resvg/Cargo.toml --all-features
       - name: Test kas-theme
         run: cargo test --manifest-path crates/kas-theme/Cargo.toml --all-features
       - name: Test kas-wgpu
@@ -78,6 +80,8 @@ jobs:
         run: cargo test --manifest-path crates/kas-core/Cargo.toml
       - name: Test kas-widgets
         run: cargo test --manifest-path crates/kas-widgets/Cargo.toml
+      - name: Test kas-resvg
+        run: cargo test --manifest-path crates/kas-resvg/Cargo.toml --all-features
       - name: Test kas-theme
         run: cargo test --manifest-path crates/kas-theme/Cargo.toml
       - name: Test kas-wgpu
