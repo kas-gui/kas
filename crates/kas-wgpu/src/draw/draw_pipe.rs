@@ -114,15 +114,6 @@ impl<C: CustomPipe> DrawPipe<C> {
         }
     }
 
-    /// Wraps [`wgpu::Device::create_swap_chain`]
-    pub fn create_swap_chain(
-        &self,
-        surface: &wgpu::Surface,
-        desc: &wgpu::SwapChainDescriptor,
-    ) -> wgpu::SwapChain {
-        self.device.create_swap_chain(surface, desc)
-    }
-
     /// Process window resize
     pub fn resize(&self, window: &mut DrawWindow<C::Window>, size: Size) {
         window.clip_regions[0].0.size = size;

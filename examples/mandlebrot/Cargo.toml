@@ -12,7 +12,7 @@ kas = { version = "0.9.1", path = "../.." }
 chrono = "0.4"
 env_logger = "0.8"
 log = "0.4"
-wgpu = { path = "/home/dhardy/projects/graphics/wgpu/wgpu", features = ["spirv"] }
+wgpu = "0.10.0"
 bytemuck = "1.7.0"
 
 [[bin]]

@@ -33,7 +33,6 @@ impl Shaders {
         let fragment = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("fragment shader"),
             source: wgpu::util::make_spirv(include_bytes!("shader.frag.spv")),
-//             flags: Default::default(),
         });
 
         Shaders { vertex, fragment }
@@ -85,7 +84,6 @@ impl CustomPipeBuilder for PipeBuilder {
         bgl_common: &wgpu::BindGroupLayout,
         tex_format: wgpu::TextureFormat,
     ) -> Self::Pipe {
-        // Note: real apps should compile shaders once and share between windows
         let shaders = Shaders::new(device);
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -167,9 +165,8 @@ impl CustomPipe for Pipe {
         _: &mut wgpu::util::StagingBelt,
         _: &mut wgpu::CommandEncoder,
     ) {
-        // NOTE: we prepare vertex buffers here. Due to lifetime restrictions on
-        // RenderPass we cannot currently create buffers in render().
-        // See https://github.com/gfx-rs/wgpu-rs/issues/188
+        // Upload per-pass render data to buffers. NOTE: we could use a single
+        // buffer for all passes like in kas-wgpu/src/draw/common.rs.
         for pass in &mut window.passes {
             if !pass.0.is_empty() {
                 let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
