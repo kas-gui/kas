@@ -304,14 +304,14 @@ impl<M: 'static> event::Handler for ComboBox<M> {
     type Msg = M;
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
-        let open_popup = |s: &mut Self, mgr: &mut Manager, notify: bool| {
+        let open_popup = |s: &mut Self, mgr: &mut Manager, key_focus: bool| {
             s.popup_id = mgr.add_popup(kas::Popup {
                 id: s.popup.id(),
                 parent: s.id(),
                 direction: Direction::Down,
             });
             if let Some(id) = s.popup.inner.get_child(s.active).map(|w| w.id()) {
-                mgr.set_nav_focus(id, notify);
+                mgr.set_nav_focus(id, key_focus);
             }
         };
         match event {
@@ -399,9 +399,14 @@ impl<M: 'static> event::SendEvent for ComboBox<M> {
         }
 
         if id <= self.popup.id() {
-            if event == Event::NavFocus && self.popup_id.is_none() {
-                // Steal focus since child is invisible
-                mgr.set_nav_focus(self.id(), false);
+            if let Event::NavFocus(key_focus) = event {
+                if self.popup_id.is_none() {
+                    // Steal focus since child is invisible
+                    mgr.set_nav_focus(self.id(), key_focus);
+                }
+                // Don't bother sending Response::Focus here since NavFocus will
+                // be sent to this widget, and handle_generic will respond.
+                return Response::None;
             }
 
             let r = self.popup.send(mgr, id, event.clone());

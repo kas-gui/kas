@@ -255,7 +255,7 @@
 //!     this field must implement [`Widget`] and the widget traits are
 //!     implemented for the struct as wrappers around this field. This
 //!     may be useful to implement a wrapper struct as a widget, for example
-//!     [`crate::widget::ScrollBarRegion`] (shown below).
+//!     [`crate::widgets::ScrollBarRegion`] (shown below).
 //! 2.  If used on the struct *and* on a field, the attribute allows deriving
 //!     various traits: [`std::ops::Deref`], [`std::ops::DerefMut`], and the
 //!     "class traits": [`crate::class`]. The traits to derive must be specified
@@ -267,7 +267,7 @@
 //! [`std::ops::Deref`], [`std::ops::DerefMut`] and the [`crate::class`] traits:
 //! ```
 //! # use kas::prelude::*;
-//! # use kas::widget::{ScrollBars, ScrollRegion};
+//! # use kas::widgets::{ScrollBars, ScrollRegion};
 //! #[derive(Clone, Debug, Default, Widget)]
 //! #[widget_derive(class_traits, Deref, DerefMut)]
 //! #[handler(msg = <W as Handler>::Msg)]
@@ -282,7 +282,7 @@
 //! ```
 //! use kas::event::{Manager, Response, VoidMsg};
 //! use kas::macros::Widget;
-//! use kas::widget::StrLabel;
+//! use kas::widgets::StrLabel;
 //! use kas::{CoreData, LayoutData, Widget};
 //!
 //! #[derive(Debug)]
@@ -342,7 +342,7 @@
 //!
 //! ```
 //! use kas::prelude::*;
-//! use kas::widget::{Label, TextButton, Window};
+//! use kas::widgets::{Label, TextButton, Window};
 //!
 //! let message = "A message to print.";
 //!

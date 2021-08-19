@@ -9,8 +9,8 @@ use kas::dir::Down;
 use kas::event::ChildMsg;
 use kas::prelude::*;
 use kas::updatable::{ListData, SimpleCaseInsensitiveFilter};
-use kas::widget::view::{driver, ListView, SelectionMode};
-use kas::widget::{EditBox, Label, RadioBox, ScrollBars, Window};
+use kas::widgets::view::{driver, ListView, SelectionMode};
+use kas::widgets::{EditBox, Label, RadioBox, ScrollBars, Window};
 
 mod data {
     use kas::updatable::{FilteredList, SimpleCaseInsensitiveFilter};

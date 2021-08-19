@@ -13,7 +13,7 @@ use std::time::{Duration, Instant};
 
 use kas::draw::color::Rgba;
 use kas::prelude::*;
-use kas::widget::Window;
+use kas::widgets::Window;
 
 fn main() -> Result<(), kas::shell::Error> {
     env_logger::init();

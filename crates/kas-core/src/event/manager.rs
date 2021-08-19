@@ -77,7 +77,7 @@ struct PanGrab {
 enum Pending {
     LostCharFocus(WidgetId),
     LostSelFocus(WidgetId),
-    SetNavFocus(WidgetId),
+    SetNavFocus(WidgetId, bool),
 }
 
 /// Event manager state
@@ -470,7 +470,8 @@ impl<'a> Manager<'a> {
             wid,
             char_focus
         );
-        self.set_nav_focus(wid, false);
+        // The widget probably already has nav focus, but anyway:
+        self.set_nav_focus(wid, true);
 
         if self.state.sel_focus == Some(wid) {
             self.state.char_focus = self.state.char_focus || char_focus;

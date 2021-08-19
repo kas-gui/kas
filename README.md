@@ -4,29 +4,47 @@ KAS GUI
 [![Test Status](https://github.com/kas-gui/kas/workflows/Tests/badge.svg?event=push)](https://github.com/kas-gui/kas/actions)
 [![kas-text](https://img.shields.io/badge/GitHub-kas--text-blueviolet)](https://github.com/kas-gui/kas-text/)
 [![Docs](https://docs.rs/kas/badge.svg)](https://docs.rs/kas)
-![Minimum rustc version](https://img.shields.io/badge/rustc-1.52+-lightgray.svg)
+![Minimum rustc version](https://img.shields.io/badge/rustc-1.53+-lightgray.svg)
 
-KAS, (historically the *toolKit Abstraction System*), is a general-purpose GUI toolkit.
-KAS's design provides:
+KAS is a widget-first GUI toolkit:
 
--   retained mode (library stores state), inspired by Qt (classic)
--   concise, partially declarative specification of widgets
--   type-safe, widget-local event handlers
--   simple ownership with no retained pointers into widget state
--   fast, efficient, responsive UI
+-   widgets retain state
+-   flexibile drawing, layout, event handling, animation
+-   clean, type-safe widget interaction
+-   full keyboard control of UI
+-   fast, efficient, responsive
 
-## Documentation
+### Features
 
--   API docs: <https://docs.rs/kas>, <https://docs.rs/kas-theme>, <https://docs.rs/kas-wgpu>
+-   Good automatic layout (margins, text wrapping width-for-height logic)
+-   Partially declarative UI descriptions possible through macros
+-   Stepless DPI scaling
+-   Advanced text features: shaping, bidirectional support, font fallbacks
+-   Embedded GPU shaders (see [Mandlebrot example](examples/mandlebrot))
+-   Supports theming and end-user configuration
+-   View widgets for seemless scrolling and sharing of large data
+
+### Limitations
+
+-   Slow compile times. The `dynamic` feature may help (see below).
+-   Large binaries. Distributing feature-heavy applications without shared
+    libraries will always have this problem, but if you seek a minimal GUI
+    toolkit then you should probably look elsewhere.
+
+### Documentation
+
+-   API docs: <https://docs.rs/kas>, <https://docs.rs/kas-core>,
+    <https://docs.rs/kas-widgets>, <https://docs.rs/kas-theme>, <https://docs.rs/kas-wgpu>
 -   [KAS Tutorials](https://kas-gui.github.io/tutorials/)
--   [Examples](https://github.com/kas-gui/kas/tree/master/kas-wgpu/examples)
+-   [Changlelog](CHANGELOG.md)
+-   [Roadmap](ROADMAP.md)
 -   [Discuss](https://github.com/kas-gui/kas/discussions)
 -   [KAS Blog](https://kas-gui.github.io/blog/)
 
-## Examples
+### Examples
 
-Examples can be found in [`kas-wgpu/examples/`](kas-wgpu/examples).
-Further examples can be found in [kas-gui/7guis](https://github.com/kas-gui/7guis/).
+See the [`examples`](examples) directory and
+[kas-gui/7guis](https://github.com/kas-gui/7guis/).
 
 Precompiled example apps can be downloaded as follows:
 
@@ -34,29 +52,13 @@ Precompiled example apps can be downloaded as follows:
 -   select the latest (complete) run
 -   download one of the `examples-*` artifacts
 
-![Gallery](https://github.com/kas-gui/data-dump/blob/master/screenshots/gallery.png)
-
-## Features
-
-The below should give a rough idea of what's done and what's not. See also the
-[ROADMAP].
-
--   Stepless DPI scaling
--   Texts supporting bidirectional languages and font fallback
--   Accelerated graphics via [WebGPU] (via DirectX/Vulkan/Metal or possibly
-    OpenGL); currently no CPU fallback
--   Shaders in custom widgets (see [Mandlebrot example](kas-wgpu/examples/README.md#Mandlebrot))
--   Support themes, colour schemes and end-user configuration
--   Keyboard navigation and control
--   View widgets over shared state
-
 
 Installation and dependencies
 ----------------
 
 #### Rust
 
-KAS requires a recent [Rust] compiler. Currently, version 1.52 or greater is
+KAS requires a recent [Rust] compiler. Currently, version 1.53 or greater is
 required. Using the **nightly** channel does have a few advantages:
 
 -   Proceedural macros emit better diagnostics. In some cases, diagnostics are
@@ -66,13 +68,12 @@ required. Using the **nightly** channel does have a few advantages:
 
 ### Quick-start
 
-Install dependencies:
+Install dependencies (glslc is optional; see [kas-wgpu's README](crates/kas-wgpu/README.md)):
 ```sh
 # For Ubuntu:
 sudo apt-get install build-essential git libxcb-shape0-dev libxcb-xfixes0-dev libharfbuzz-dev
 
 # For Fedora:
-# glslc is optional; see kas-wgpu/README.md
 sudo dnf install libxcb-devel harfbuzz-devel glslc
 ```
 
@@ -80,12 +81,10 @@ Next, clone the repository and run the examples as follows:
 ```sh
 git clone https://github.com/kas-gui/kas.git
 cd kas
-cargo test
-cd kas-wgpu
-cargo build --examples
 cargo run --example gallery
 cargo run --example layout
-cargo run --example mandlebrot
+cargo run --example filter-list
+cd examples/mandlebrot; cargo run
 ```
 
 If possible, `wgpu` ([WebGPU]) will use the Vulkan, Metal or DirectX 12 graphics
@@ -98,69 +97,74 @@ cargo run --example gallery --features wgpu/cross
 
 To build docs locally:
 ```
-RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features markdown --no-deps --all --open
+RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=nightly --all --no-deps --open
 ```
 
 ### Crates
 
--   `kas`: the *core* of the GUI library, providing most interfaces and logic
-    along with a selection of common widgets
--   `kas-macros`: a helper crate for proc macros (do not use directly)
--   [KAS-text]: font loading, text layout, text navigation
--   `kas-theme`: theming support for KAS (API plus two themes; organisation may change)
+-   `kas` is a meta-package; most of the time this is the only one you need to
+    use directly
+-   `kas-macros`: a helper crate for proc macros
+-   `kas-core` provides most interfaces and logic concerning widgets (event
+    handling, layout, draw API, geometry types)
+-   [KAS-text]: provides text layout and font management
+-   `kas-widgets`: the standard widget library
+-   `kas-theme`: theming support for KAS (API, two themes, config support)
 -   `kas-wgpu`: provides windowing via [winit] and rendering via [WebGPU]
+-   `kas-dylib`: support for dynamic linking
+-   <https://docs.rs/easy-cast>: spin-off crate for checked casts
 
-A user depends on `kas` to write their complete UI specification, selects a
-theme from `kas-theme`, instances a `kas_wgpu::Toolkit`, adds the window(s),
-and runs the UI.
+At this point in time, `kas-wgpu` is the only windowing/rendering implementation
+and `kas-theme` the only theme (high-level drawing) implementation, thus `kas`
+uses these crates by default, though they are optional.
+
+Futher, capabilities such as text shaping and Markdown processing are enabled by
+default. Image-loading support is not currently optional, and includes all
+formats supported by the `image` crate. Some improvements to binary size and
+compile time should be possible here.
 
 ### Feature flags
 
-The `kas` crate has the following feature flags:
+The `kas` crate enables most important features by default, excepting those
+requiring nightly `rustc`. Other crates enable fewer features by defualt.
 
--   `markdown`: enables Markdown parsing for rich-text
--   `config`: adds (de)serialisation support for configuration plus a few
-    utility types (specifying `serde` instead only implements for utility types)
--   `json`: adds config (de)serialisation using JSON (implies `config`)
--   `yaml`: adds config (de)serialisation using YAML (implies `config`)
--   `ron`: adds config (de)serialisation using RON (implies `config`)
--   `svg`: adds support for SVG images
--   `winit`: adds compatibility code for winit's event and geometry types.
-    This is currently the only functional windowing/event library.
--   `stack_dst`: some compatibility impls (see `kas-theme`'s documentation)
+The following non-default features of `kas` are highlighted:
+
+-   `dynamic`: enable dynamic linking for `kas`. This feature improves
+    (re)compile times of examples and dependent code, at the cost of requiring
+    extra libraries at run-time.
 -   `internal_doc`: turns on some extra documentation intended for internal
     usage but not for end users. (This only affects generated documentation.)
--   `macros_log`: enable logging in macro-generated code. Requires that all
-    crates using `derive(Widget)` or `make_widget` depend on the `log` crate.
-
-Additionally, the following flags require a nightly compiler:
-
 -   `nightly`: enables "more stable" unstable features
 -   `min_spec` (enabled by `nightly`): use `min_specialization` for some visual
     improvements: scrolled regions are drawn under scrollbars,
     underlines on checkbox accelerator keys show with the <kbd>Alt</kbd> key.
 -   `spec`: use `specialization` to enable `TryFormat`
--   `gat`: compatibility with `kas-text/gat`
+
+For full documentation of feature flags, see the [`Cargo.toml`](Cargo.toml).
 
 ### Configuration
 
-Formats are not yet stabilised, hence reading/writing configuration is disabled
-by default. Ensure that the `yaml` and/or `json` feature flag is enabled, then
-configure with environment variables:
+Configuration support is built by default but not enabled unless certain
+environment variables are present (or options are passed programmatically).
+
+Use as follows:
 ```sh
-# Set the config path:
-export KAS_CONFIG=kas-config.yaml
+# Set config paths:
+export KAS_CONFIG=kas.yaml
+export KAS_THEME_CONFIG=theme.yaml
 # Use write-mode to write out default config:
 KAS_CONFIG_MODE=writedefault cargo run --example gallery
 # Now just edit the config and run like normal:
 cargo run --example gallery
 ```
 
+For further documentation, see [`kas_wgpu::Options`].
+
 [KAS-text]: https://github.com/kas-gui/kas-text/
 [winit]: https://github.com/rust-windowing/winit/
-[HarfBuzz]: https://harfbuzz.github.io/
 [WebGPU]: https://github.com/gfx-rs/wgpu-rs
-[ROADMAP]: ROADMAP.md
+[`kas_wgpu::Options`]: https://docs.rs/kas-wgpu/latest/kas_wgpu/options/struct.Options.html
 
 
 Copyright and Licence

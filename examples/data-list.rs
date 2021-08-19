@@ -18,7 +18,7 @@
 //!     long), but in many ways still performs well in release mode
 
 use kas::prelude::*;
-use kas::widget::*;
+use kas::widgets::*;
 
 thread_local! {
     pub static RADIO: UpdateHandle = UpdateHandle::new();

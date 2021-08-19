@@ -8,8 +8,8 @@
 use kas::event::{Manager, Response, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
 use kas::updatable::SharedRc;
-use kas::widget::view::SingleView;
-use kas::widget::{TextButton, Window};
+use kas::widgets::view::SingleView;
+use kas::widgets::{TextButton, Window};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Message {

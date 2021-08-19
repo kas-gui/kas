@@ -7,7 +7,7 @@
 
 use kas::event::{Manager, VoidMsg, VoidResponse};
 use kas::macros::{make_widget, VoidMsg};
-use kas::widget::{EditField, RowSplitter, TextButton, Window};
+use kas::widgets::{EditField, RowSplitter, TextButton, Window};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Message {

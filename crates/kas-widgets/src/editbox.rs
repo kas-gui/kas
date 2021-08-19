@@ -1061,10 +1061,11 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
             }
         }
         match event {
-            Event::Activate | Event::NavFocus => {
+            Event::Activate | Event::NavFocus(true) => {
                 request_focus(self, mgr);
-                Response::None
+                Response::Focus(self.rect())
             }
+            Event::NavFocus(false) => Response::None,
             Event::LostCharFocus => {
                 self.has_key_focus = false;
                 mgr.redraw(self.id());

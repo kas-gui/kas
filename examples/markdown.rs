@@ -9,7 +9,7 @@ use kas::class::HasStr;
 use kas::event::{Manager, Response, VoidMsg};
 use kas::macros::make_widget;
 use kas::text::format::Markdown;
-use kas::widget::{EditBox, Label, ScrollBarRegion, TextButton, Window};
+use kas::widgets::{EditBox, Label, ScrollBarRegion, TextButton, Window};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();

@@ -70,10 +70,10 @@ json = ["config", "kas-core/json"]
 ron = ["config", "kas-core/ron"]
 
 # Support canvas widget
-canvas = ["kas-widgets/canvas"]
+canvas = ["kas-resvg/canvas"]
 
 # Support SVG images
-svg = ["kas-widgets/svg"]
+svg = ["kas-resvg/svg"]
 
 # Inject logging into macro-generated code.
 # Requires that all crates using these macros depend on the log crate.
@@ -90,6 +90,7 @@ winit = ["kas-core/winit"]
 kas-core = { version = "0.9.1", path = "crates/kas-core" }
 kas-dylib = { version = "0.9.1", path = "crates/kas-dylib", optional = true }
 kas-widgets = { version = "0.9.1", path = "crates/kas-widgets" }
+kas-resvg = { version = "0.10.0", path = "crates/kas-resvg" }
 kas-theme = { version = "0.9.0", path = "crates/kas-theme", optional = true, default-features = false }
 
 [dependencies.kas-wgpu]
@@ -109,6 +110,7 @@ members = [
     "crates/kas-core",
     "crates/kas-dylib",
     "crates/kas-macros",
+    "crates/kas-resvg",
     "crates/kas-theme",
     "crates/kas-wgpu",
     "crates/kas-widgets",

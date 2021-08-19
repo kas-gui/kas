@@ -636,13 +636,11 @@ impl<'a> Manager<'a> {
     /// on text selection with the mouse. (Currently such widgets will receive
     /// events like any other with nav focus, but this may change.)
     ///
-    /// If `notify` is true, then [`Event::NavFocus`] will be sent to the new
-    /// widget if focus is changed. This may cause UI adjustments such as
-    /// scrolling to ensure that the new navigation target is visible and can
-    /// potentially have other side effects, e.g. an `EditBox` claiming keyboard
-    /// focus. If `notify` is false this doesn't happen, though the UI is still
-    /// redrawn to visually indicate navigation focus.
-    pub fn set_nav_focus(&mut self, id: WidgetId, notify: bool) {
+    /// The target widget, if not already having navigation focus, will receive
+    /// [`Event::NavFocus`] with `key_focus` as the payload. This boolean should
+    /// be true if focussing in response to keyboard input, false if reacting to
+    /// mouse or touch input.
+    pub fn set_nav_focus(&mut self, id: WidgetId, key_focus: bool) {
         if self.state.nav_focus != Some(id) {
             self.redraw(id);
             if self.state.sel_focus != Some(id) {
@@ -651,10 +649,7 @@ impl<'a> Manager<'a> {
             self.state.nav_focus = Some(id);
             self.state.nav_stack.clear();
             trace!("Manager: nav_focus = Some({})", id);
-
-            if notify {
-                self.state.pending.push(Pending::SetNavFocus(id));
-            }
+            self.state.pending.push(Pending::SetNavFocus(id, key_focus));
         }
     }
 
@@ -668,17 +663,14 @@ impl<'a> Manager<'a> {
     /// Returns true on success, false if there are no navigable widgets or
     /// some error occurred.
     ///
-    /// If `notify` is true, then [`Event::NavFocus`] will be sent to the new
-    /// widget if focus is changed. This may cause UI adjustments such as
-    /// scrolling to ensure that the new navigation target is visible and can
-    /// potentially have other side effects, e.g. an `EditBox` claiming keyboard
-    /// focus. If `notify` is false this doesn't happen, though the UI is still
-    /// redrawn to visually indicate navigation focus.
+    /// The target widget will receive [`Event::NavFocus`] with `key_focus` as
+    /// the payload. This boolean should be true if focussing in response to
+    /// keyboard input, false if reacting to mouse or touch input.
     pub fn next_nav_focus(
         &mut self,
         mut widget: &dyn WidgetConfig,
         reverse: bool,
-        notify: bool,
+        key_focus: bool,
     ) -> bool {
         type WidgetStack<'b> = SmallVec<[&'b dyn WidgetConfig; 16]>;
         let mut widget_stack = WidgetStack::new();
@@ -798,9 +790,10 @@ impl<'a> Manager<'a> {
                     }
                     $self.state.nav_focus = Some(id);
                     trace!("Manager: nav_focus = Some({})", id);
-                    if notify {
-                        $self.state.pending.push(Pending::SetNavFocus(id));
-                    }
+                    $self
+                        .state
+                        .pending
+                        .push(Pending::SetNavFocus(id, key_focus));
                     return true;
                 }
             };

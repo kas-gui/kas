@@ -12,7 +12,7 @@ use kas::draw::color::Rgba;
 use kas::draw::*;
 use kas::prelude::*;
 use kas::theme::Theme;
-use kas::widget::*;
+use kas::widgets::*;
 
 use kas::theme::FlatTheme;
 

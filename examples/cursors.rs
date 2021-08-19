@@ -7,7 +7,7 @@
 
 use kas::event::CursorIcon;
 use kas::prelude::*;
-use kas::widget::{Column, Label, StrLabel, Window};
+use kas::widgets::{Column, Label, StrLabel, Window};
 
 #[derive(Clone, Debug, Widget)]
 #[widget(config = noauto)]

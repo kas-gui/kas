@@ -9,7 +9,7 @@
 use serde::{Deserialize, Serialize};
 
 #[allow(unused)]
-use super::{GrabMode, Manager, Response}; // for doc-links
+use super::{GrabMode, Manager, Response, SendEvent}; // for doc-links
 use super::{MouseButton, UpdateHandle, VirtualKeyCode};
 
 use crate::geom::{Coord, DVec2, Offset};
@@ -167,10 +167,21 @@ pub enum Event {
     PopupRemoved(WindowId),
     /// Sent when a widget receives keyboard navigation focus
     ///
-    /// The widget should reply with [`Response::Focus`] (this is done by
-    /// [`Manager::handle_generic`]). It may also be used as an opportunity to
-    /// request char focus.
-    NavFocus,
+    /// This event may be used to react (e.g. by requesting char focus) or to
+    /// steal focus from a child.
+    ///
+    /// When the payload, `key_focus`, is true when the focus was triggered by
+    /// the keyboard, not the mouse or a touch event. When true, the widget
+    /// should reply with [`Response::Focus`] in order to ensure visibility.
+    /// This should not be done when `key_focus` is false to avoid moving
+    /// widgets during interaction via mouse or finger.
+    ///
+    /// Widgets using [`Manager::handle_generic`] should note that this event
+    /// is trapped and responded to (in line with the above recommendation).
+    /// If the widget needs to react to `NavFocus`, the event must be matched
+    /// *before* calling `handle_generic`, which might require a custom
+    /// implementation of [`SendEvent`].
+    NavFocus(bool),
 }
 
 /// Command input ([`Event::Command`])

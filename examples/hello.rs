@@ -5,7 +5,7 @@
 
 //! Hello world example
 
-use kas::widget::MessageBox;
+use kas::widgets::MessageBox;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Build widgets.
