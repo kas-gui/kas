@@ -7,6 +7,7 @@
 
 use super::SizeRules;
 use crate::cast::{Cast, Conv, ConvFloat};
+use crate::dir::Directional;
 use crate::geom::Size;
 
 // for doc use
@@ -65,6 +66,18 @@ impl Margins {
     /// Pad a size with margins
     pub fn pad(self, size: Size) -> Size {
         Size::new(size.0 + self.sum_horiz(), size.1 + self.sum_vert())
+    }
+
+    /// Extract one component, based on a direction
+    ///
+    /// This merely extracts the horizontal or vertical component.
+    /// It never negates it, even if the axis is reversed.
+    #[inline]
+    pub fn extract<D: Directional>(self, dir: D) -> (u16, u16) {
+        match dir.is_vertical() {
+            false => self.horiz,
+            true => self.vert,
+        }
     }
 }
 

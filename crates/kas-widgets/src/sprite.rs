@@ -10,34 +10,68 @@ use kas::layout::MarginSelector;
 use kas::{event, prelude::*};
 use std::path::PathBuf;
 
-/// Scaling policies
+/// Scaling of image according to scale factor
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum SpriteScaling {
-    /// No scaling; align in available space
-    None,
-    /// Fixed aspect ratio scaling; align on other axis
-    FixedAspect,
-    /// Stretch on both axes without regard for aspect ratio
-    Stretch,
+    /// Do not scale with scale factor
+    Original,
+    /// Use the nearest integer of scale factor (e.g. 1, 2, 3)
+    Integer,
+    /// Use raw scale factor
+    Real,
 }
 
 impl Default for SpriteScaling {
     fn default() -> Self {
-        SpriteScaling::FixedAspect
+        SpriteScaling::Integer
+    }
+}
+
+/// Scaling of image sprite within allocation
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub enum AspectScaling {
+    /// Align sprite within available space without further scaling
+    None,
+    /// Scale sprite to available space with fixed aspect ratio
+    Fixed,
+    /// Scale sprite freely
+    Free,
+    // TODO: we could add repeat (tile) and mirrored repeat modes here
+}
+
+impl Default for AspectScaling {
+    fn default() -> Self {
+        AspectScaling::Fixed
     }
 }
 
 /// Widget component for displaying a sprite
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SpriteDisplay {
     /// Margins
     pub margins: MarginSelector,
     /// The native size of the sprite
     pub size: Size,
+    /// Sprite scaling according to scale factor
+    pub scaling: SpriteScaling,
+    /// Sprite scaling within allocation, after impact of scale factor
+    ///
+    /// Note: this only has an impact if `stretch > Stretch::None`.
+    pub aspect: AspectScaling,
     /// Widget stretchiness
     pub stretch: Stretch,
-    /// Sprite scaling mode
-    pub scaling: SpriteScaling,
+}
+
+impl Default for SpriteDisplay {
+    fn default() -> Self {
+        SpriteDisplay {
+            margins: MarginSelector::Outer,
+            size: Size::ZERO,
+            scaling: SpriteScaling::Integer,
+            aspect: AspectScaling::Fixed,
+            stretch: Stretch::None,
+        }
+    }
 }
 
 impl SpriteDisplay {
@@ -45,17 +79,23 @@ impl SpriteDisplay {
     ///
     /// Set [`Self::size`] before calling this.
     pub fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let margins = self.margins.select(sh);
-        SizeRules::extract(axis, self.size, margins, self.stretch)
+        let margins = self.margins.select(sh).extract(axis);
+        let size = self.size.extract(axis);
+        let size = match self.scaling {
+            SpriteScaling::Original => size,
+            SpriteScaling::Integer => i32::conv_nearest(sh.scale_factor()) * size,
+            SpriteScaling::Real => (sh.scale_factor() * f32::conv(size)).cast_nearest(),
+        };
+        SizeRules::new(size, size, margins, self.stretch)
     }
 
     /// Aligns `rect` according to stretch policy
     ///
     /// Assign the result to `self.core_data_mut().rect`.
     pub fn align_rect(&mut self, rect: Rect, align: AlignHints) -> Rect {
-        let ideal = match self.scaling {
-            SpriteScaling::None => self.size,
-            SpriteScaling::FixedAspect => {
+        let ideal = match self.aspect {
+            AspectScaling::None => self.size,
+            AspectScaling::Fixed => {
                 let size = Vec2::from(self.size);
                 let ratio = Vec2::from(rect.size) / size;
                 // Use smaller ratio, which must be finite
@@ -68,7 +108,7 @@ impl SpriteDisplay {
                     rect.size
                 }
             }
-            SpriteScaling::Stretch => rect.size,
+            AspectScaling::Free => rect.size,
         };
         align
             .complete(Default::default(), Default::default())
@@ -108,9 +148,15 @@ impl Image {
         self
     }
 
-    /// Set scaling mode
+    /// Set scaling mode according to scale factor
     pub fn with_scaling(mut self, scaling: SpriteScaling) -> Self {
         self.sprite.scaling = scaling;
+        self
+    }
+
+    /// Set aspect ratio scaling
+    pub fn with_aspect(mut self, aspect: AspectScaling) -> Self {
+        self.sprite.aspect = aspect;
         self
     }
 
@@ -125,9 +171,14 @@ impl Image {
         self.sprite.margins = margins;
     }
 
-    /// Set scaling mode
+    /// Set scaling mode according to scale factor
     pub fn set_scaling(&mut self, scaling: SpriteScaling) {
         self.sprite.scaling = scaling;
+    }
+
+    /// Set aspect ratio scaling
+    pub fn set_aspect(&mut self, aspect: AspectScaling) {
+        self.sprite.aspect = aspect;
     }
 
     /// Set stretch policy
