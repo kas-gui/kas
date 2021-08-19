@@ -32,7 +32,7 @@ impl Shaders {
         // which cannot currently deal with double precision floats (dvec2).
         let fragment = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("fragment shader"),
-            source: wgpu::util::make_spirv(include_bytes!("shader.frag.spv")),
+            source: wgpu::util::make_spirv(include_bytes!("shader64.frag.spv")),
         });
 
         Shaders { vertex, fragment }
