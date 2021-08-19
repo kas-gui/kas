@@ -183,7 +183,10 @@ where
     }
 
     pub fn on_exit(&self) {
-        match self.options.save_config(&self.config.borrow(), &self.theme) {
+        match self
+            .options
+            .write_config(&self.config.borrow(), &self.theme)
+        {
             Ok(()) => (),
             Err(error) => warn_about_error("Failed to save config", &error),
         }
