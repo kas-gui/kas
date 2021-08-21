@@ -11,7 +11,7 @@ use kas_theme::{Theme, ThemeConfig};
 use log::warn;
 use std::env::var;
 use std::path::PathBuf;
-pub use wgpu::{BackendBit, PowerPreference};
+pub use wgpu::{Backends, PowerPreference};
 
 /// Config mode
 ///
@@ -42,7 +42,7 @@ pub struct Options {
     /// Adapter power preference. Default value: low power.
     pub power_preference: PowerPreference,
     /// Adapter backend. Default value: PRIMARY (Vulkan/Metal/DX12).
-    pub backends: BackendBit,
+    pub backends: Backends,
 }
 
 impl Default for Options {
@@ -52,7 +52,7 @@ impl Default for Options {
             theme_config_path: PathBuf::new(),
             config_mode: ConfigMode::Read,
             power_preference: PowerPreference::LowPower,
-            backends: BackendBit::PRIMARY,
+            backends: Backends::PRIMARY,
         }
     }
 }
@@ -148,13 +148,13 @@ impl Options {
         if let Ok(mut v) = var("KAS_BACKENDS") {
             v.make_ascii_uppercase();
             options.backends = match v.as_str() {
-                "VULKAN" => BackendBit::VULKAN,
-                "GL" => BackendBit::GL,
-                "METAL" => BackendBit::METAL,
-                "DX11" => BackendBit::DX11,
-                "DX12" => BackendBit::DX12,
-                "PRIMARY" => BackendBit::PRIMARY,
-                "SECONDARY" => BackendBit::SECONDARY,
+                "VULKAN" => Backends::VULKAN,
+                "GL" => Backends::GL,
+                "METAL" => Backends::METAL,
+                "DX11" => Backends::DX11,
+                "DX12" => Backends::DX12,
+                "PRIMARY" => Backends::PRIMARY,
+                "SECONDARY" => Backends::SECONDARY,
                 other => {
                     warn!("Unexpected environment value: KAS_BACKENDS={}", other);
                     options.backends
@@ -172,39 +172,38 @@ impl Options {
         }
     }
 
-    pub(crate) fn backend(&self) -> BackendBit {
+    pub(crate) fn backend(&self) -> Backends {
         self.backends
     }
 
     /// Load/save theme config on start
-    pub fn theme_config<DS: DrawSharedImpl, T: Theme<DS>>(
+    pub fn init_theme_config<DS: DrawSharedImpl, T: Theme<DS>>(
         &self,
         theme: &mut T,
     ) -> Result<(), Error> {
-        if !self.theme_config_path.as_os_str().is_empty() {
-            match self.config_mode {
-                ConfigMode::Read | ConfigMode::ReadWrite => {
-                    let config: T::Config =
-                        kas::config::Format::guess_and_read_path(&self.theme_config_path)?;
-                    config.apply_startup();
-                    // Ignore TkAction: UI isn't built yet
-                    let _ = theme.apply_config(&config);
-                }
-                ConfigMode::WriteDefault => {
-                    let config = theme.config();
-                    config.apply_startup();
-                    kas::config::Format::guess_and_write_path(
-                        &self.theme_config_path,
-                        config.as_ref(),
-                    )?;
-                }
+        match self.config_mode {
+            ConfigMode::Read | ConfigMode::ReadWrite if self.theme_config_path.is_file() => {
+                let config: T::Config =
+                    kas::config::Format::guess_and_read_path(&self.theme_config_path)?;
+                config.apply_startup();
+                // Ignore TkAction: UI isn't built yet
+                let _ = theme.apply_config(&config);
             }
+            ConfigMode::WriteDefault if !self.theme_config_path.as_os_str().is_empty() => {
+                let config = theme.config();
+                config.apply_startup();
+                kas::config::Format::guess_and_write_path(
+                    &self.theme_config_path,
+                    config.as_ref(),
+                )?;
+            }
+            _ => theme.config().apply_startup(),
         }
         Ok(())
     }
 
     /// Load/save KAS config on start
-    pub fn config(&self) -> Result<kas::event::Config, Error> {
+    pub fn read_config(&self) -> Result<kas::event::Config, Error> {
         if !self.config_path.as_os_str().is_empty() {
             match self.config_mode {
                 ConfigMode::Read | ConfigMode::ReadWrite => {
@@ -222,15 +221,11 @@ impl Options {
     }
 
     /// Save all config (on exit or after changes)
-    pub fn save_config<DS: DrawSharedImpl, T: Theme<DS>>(
+    pub fn write_config<DS: DrawSharedImpl, T: Theme<DS>>(
         &self,
         config: &kas::event::Config,
         theme: &T,
     ) -> Result<(), Error> {
-        //TODO: we should only write out config when it changed. This would be
-        // easy to test with a hash value, but std::hash does not support f32 or
-        // HashMap (with good reasons), thus we can't simply derive(Hash).
-        // Perhaps write to a buffer first and compare the buffer's checksum?
         if self.config_mode == ConfigMode::ReadWrite {
             if !self.config_path.as_os_str().is_empty() && config.is_dirty() {
                 kas::config::Format::guess_and_write_path(&self.config_path, &config)?;

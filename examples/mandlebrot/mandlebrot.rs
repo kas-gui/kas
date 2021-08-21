@@ -20,6 +20,21 @@ use kas::shell::Options;
 use kas::widgets::adapter::ReserveP;
 use kas::widgets::{Label, Slider, Window};
 
+#[cfg(not(feature = "shader64"))]
+type ShaderVec2 = Vec2;
+#[cfg(feature = "shader64")]
+type ShaderVec2 = DVec2;
+
+#[cfg(not(feature = "shader64"))]
+const SHADER_FLOAT64: wgpu::Features = wgpu::Features::empty();
+#[cfg(feature = "shader64")]
+const SHADER_FLOAT64: wgpu::Features = wgpu::Features::SHADER_FLOAT64;
+
+#[cfg(not(feature = "shader64"))]
+const FRAG_SHADER: &[u8] = include_bytes!("shader32.frag.spv");
+#[cfg(feature = "shader64")]
+const FRAG_SHADER: &[u8] = include_bytes!("shader64.frag.spv");
+
 struct Shaders {
     vertex: ShaderModule,
     fragment: ShaderModule,
@@ -32,8 +47,7 @@ impl Shaders {
         // which cannot currently deal with double precision floats (dvec2).
         let fragment = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: Some("fragment shader"),
-            source: wgpu::util::make_spirv(include_bytes!("shader.frag.spv")),
-            flags: Default::default(),
+            source: wgpu::util::make_spirv(FRAG_SHADER),
         });
 
         Shaders { vertex, fragment }
@@ -49,14 +63,23 @@ unsafe impl bytemuck::Pod for Vertex {}
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 struct PushConstants {
-    p: DVec2,
-    q: DVec2,
+    p: ShaderVec2,
+    q: ShaderVec2,
     iterations: i32,
+}
+impl Default for PushConstants {
+    fn default() -> Self {
+        PushConstants {
+            p: ShaderVec2::splat(0.0),
+            q: ShaderVec2::splat(1.0),
+            iterations: 64,
+        }
+    }
 }
 impl PushConstants {
     fn set(&mut self, p: DVec2, q: DVec2, iterations: i32) {
-        self.p = p;
-        self.q = q;
+        self.p = p.into();
+        self.q = q.into();
         self.iterations = iterations;
     }
 }
@@ -71,7 +94,7 @@ impl CustomPipeBuilder for PipeBuilder {
     fn device_descriptor() -> wgpu::DeviceDescriptor<'static> {
         wgpu::DeviceDescriptor {
             label: None,
-            features: wgpu::Features::PUSH_CONSTANTS | wgpu::Features::SHADER_FLOAT64,
+            features: wgpu::Features::PUSH_CONSTANTS | SHADER_FLOAT64,
             limits: wgpu::Limits {
                 max_push_constant_size: size_of::<PushConstants>().cast(),
                 ..Default::default()
@@ -85,14 +108,13 @@ impl CustomPipeBuilder for PipeBuilder {
         bgl_common: &wgpu::BindGroupLayout,
         tex_format: wgpu::TextureFormat,
     ) -> Self::Pipe {
-        // Note: real apps should compile shaders once and share between windows
         let shaders = Shaders::new(device);
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
             bind_group_layouts: &[bgl_common],
             push_constant_ranges: &[wgpu::PushConstantRange {
-                stages: wgpu::ShaderStage::FRAGMENT,
+                stages: wgpu::ShaderStages::FRAGMENT,
                 range: 0..size_of::<PushConstants>().cast(),
             }],
         });
@@ -105,7 +127,7 @@ impl CustomPipeBuilder for PipeBuilder {
                 entry_point: "main",
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
-                    step_mode: wgpu::InputStepMode::Vertex,
+                    step_mode: wgpu::VertexStepMode::Vertex,
                     attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2],
                 }],
             },
@@ -126,7 +148,7 @@ impl CustomPipeBuilder for PipeBuilder {
                 targets: &[wgpu::ColorTargetState {
                     format: tex_format,
                     blend: None,
-                    write_mask: wgpu::ColorWrite::ALL,
+                    write_mask: wgpu::ColorWrites::ALL,
                 }],
             }),
         });
@@ -148,14 +170,8 @@ impl CustomPipe for Pipe {
     type Window = PipeWindow;
 
     fn new_window(&self, _: &wgpu::Device) -> Self::Window {
-        let push_constants = PushConstants {
-            p: DVec2::splat(0.0),
-            q: DVec2::splat(1.0),
-            iterations: 64,
-        };
-
         PipeWindow {
-            push_constants,
+            push_constants: Default::default(),
             passes: vec![],
         }
     }
@@ -167,15 +183,14 @@ impl CustomPipe for Pipe {
         _: &mut wgpu::util::StagingBelt,
         _: &mut wgpu::CommandEncoder,
     ) {
-        // NOTE: we prepare vertex buffers here. Due to lifetime restrictions on
-        // RenderPass we cannot currently create buffers in render().
-        // See https://github.com/gfx-rs/wgpu-rs/issues/188
+        // Upload per-pass render data to buffers. NOTE: we could use a single
+        // buffer for all passes like in kas-wgpu/src/draw/common.rs.
         for pass in &mut window.passes {
             if !pass.0.is_empty() {
                 let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: None,
                     contents: bytemuck::cast_slice(&pass.0),
-                    usage: wgpu::BufferUsage::VERTEX,
+                    usage: wgpu::BufferUsages::VERTEX,
                 });
                 pass.1 = Some(buffer);
                 pass.2 = pass.0.len().cast();
@@ -198,7 +213,7 @@ impl CustomPipe for Pipe {
             if let Some(buffer) = tuple.1.as_ref() {
                 rpass.set_pipeline(&self.render_pipeline);
                 rpass.set_push_constants(
-                    wgpu::ShaderStage::FRAGMENT,
+                    wgpu::ShaderStages::FRAGMENT,
                     0,
                     bytemuck::bytes_of(&window.push_constants),
                 );

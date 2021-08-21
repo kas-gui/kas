@@ -139,13 +139,9 @@ impl SizeRules {
 
     /// Construct rules from given data
     #[inline]
-    pub fn extract<D: Directional>(dir: D, size: Size, margin: Margins, stretch: Stretch) -> Self {
+    pub fn extract<D: Directional>(dir: D, size: Size, margins: Margins, stretch: Stretch) -> Self {
         let size = size.extract(dir);
-        let m = if dir.is_horizontal() {
-            margin.horiz
-        } else {
-            margin.vert
-        };
+        let m = margins.extract(dir);
         SizeRules::new(size, size, m, stretch)
     }
 

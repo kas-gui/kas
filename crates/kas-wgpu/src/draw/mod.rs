@@ -35,7 +35,7 @@ type Scale = [f32; 4];
 
 /// Shared pipeline data
 pub struct DrawPipe<C> {
-    device: wgpu::Device,
+    pub(crate) device: wgpu::Device,
     queue: wgpu::Queue,
     local_pool: futures::executor::LocalPool,
     staging_belt: wgpu::util::StagingBelt,

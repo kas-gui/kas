@@ -4,9 +4,6 @@ Mandlebrot example
 This example demonstrates an embedded WGPU graphics pipeline and two-finger
 scroll/zoom/rotation via `Event::Pan`.
 
-Compatibility: this example uses `f64` (double-precision floats) in shaders,
-which is not supported on all platforms.
-
 ![Mandlebrot](https://github.com/kas-gui/data-dump/blob/master/screenshots/mandlebrot.png)
 
 

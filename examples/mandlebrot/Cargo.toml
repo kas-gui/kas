@@ -12,9 +12,17 @@ kas = { version = "0.9.1", path = "../.." }
 chrono = "0.4"
 env_logger = "0.8"
 log = "0.4"
-wgpu = "0.9.0"
+wgpu = "0.10.0"
 bytemuck = "1.7.0"
+
+[features]
+# Use 64-bit shaders
+# This allows much greater zoom levels, but has compatibility issues.
+shader64 = []
 
 [[bin]]
 name = "mandlebrot"
 path = "mandlebrot.rs"
+
+[build-dependencies]
+glob = "0.3"

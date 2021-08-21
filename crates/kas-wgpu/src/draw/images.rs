@@ -44,6 +44,7 @@ impl Image {
                     y: self.origin.1,
                     z: 0,
                 },
+                aspect: wgpu::TextureAspect::All,
             },
             data,
             wgpu::ImageDataLayout {
@@ -96,7 +97,7 @@ impl Images {
                 entry_point: "main",
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: size_of::<Instance>() as wgpu::BufferAddress,
-                    step_mode: wgpu::InputStepMode::Instance,
+                    step_mode: wgpu::VertexStepMode::Instance,
                     attributes: &wgpu::vertex_attr_array![
                         0 => Float32x2,
                         1 => Float32x2,
@@ -111,7 +112,7 @@ impl Images {
                 targets: &[wgpu::ColorTargetState {
                     format: super::RENDER_TEX_FORMAT,
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                    write_mask: wgpu::ColorWrite::ALL,
+                    write_mask: wgpu::ColorWrites::ALL,
                 }],
             },
         );

@@ -104,7 +104,8 @@ where
     /// Construct a new instance with default options.
     ///
     /// Environment variables may affect option selection; see documentation
-    /// of [`Options::from_env`]. KAS config is provided by [`Options::config`].
+    /// of [`Options::from_env`]. KAS config is provided by
+    /// [`Options::read_config`].
     #[inline]
     pub fn new(theme: T) -> Result<Self, Error> {
         Self::new_custom((), theme, Options::from_env())
@@ -123,8 +124,8 @@ where
     /// The [`Options`] parameter allows direct specification of shell options;
     /// usually, these are provided by [`Options::from_env`].
     ///
-    /// KAS config is provided by [`Options::config`] and `theme` is configured
-    /// through [`Options::theme_config`].
+    /// KAS config is provided by [`Options::read_config`] and `theme` is
+    /// configured through [`Options::init_theme_config`].
     #[inline]
     pub fn new_custom<CB: CustomPipeBuilder<Pipe = C>>(
         custom: CB,
@@ -132,8 +133,16 @@ where
         options: Options,
     ) -> Result<Self, Error> {
         let el = EventLoop::with_user_event();
-        options.theme_config(&mut theme)?;
-        let config = Rc::new(RefCell::new(options.config()?));
+
+        options.init_theme_config(&mut theme)?;
+        let config = match options.read_config() {
+            Ok(config) => config,
+            Err(error) => {
+                warn_about_error("Failed to save read", &error);
+                Default::default()
+            }
+        };
+        let config = Rc::new(RefCell::new(config));
         let scale_factor = find_scale_factor(&el);
         Ok(Toolkit {
             el,
@@ -145,10 +154,10 @@ where
     /// Construct an instance with custom options and config
     ///
     /// This is like [`Toolkit::new_custom`], but allows KAS config to be
-    /// specified directly, instead of loading via [`Options::config`].
+    /// specified directly, instead of loading via [`Options::read_config`].
     ///
     /// Unlike other the constructors, this method does not configure the theme.
-    /// The user may wish to call [`Options::theme_config`] before this method.
+    /// The user should call [`Options::init_theme_config`] before this method.
     #[inline]
     pub fn new_custom_config<CB: CustomPipeBuilder<Pipe = C>>(
         custom: CB,

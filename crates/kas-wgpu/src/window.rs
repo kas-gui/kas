@@ -36,8 +36,7 @@ pub(crate) struct Window<C: CustomPipe, T: Theme<DrawPipe<C>>> {
     /// The winit window
     pub(crate) window: winit::window::Window,
     surface: wgpu::Surface,
-    sc_desc: wgpu::SwapChainDescriptor,
-    swap_chain: wgpu::SwapChain,
+    sc_desc: wgpu::SurfaceConfiguration,
     draw: DrawWindow<C::Window>,
     theme_window: T::Window,
 }
@@ -89,14 +88,14 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         shared.draw.draw.resize(&mut draw, size);
 
         let surface = unsafe { shared.instance.create_surface(&window) };
-        let sc_desc = wgpu::SwapChainDescriptor {
-            usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
+        let sc_desc = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: crate::draw::RENDER_TEX_FORMAT,
             width: size.0.cast(),
             height: size.1.cast(),
             present_mode: wgpu::PresentMode::Mailbox,
         };
-        let swap_chain = shared.draw.draw.create_swap_chain(&surface, &sc_desc);
+        surface.configure(&shared.draw.draw.device, &sc_desc);
 
         let mut r = Window {
             widget,
@@ -106,7 +105,6 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             window,
             surface,
             sc_desc,
-            swap_chain,
             draw,
             theme_window,
         };
@@ -118,7 +116,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
     /// Handle an event
     pub fn handle_event(&mut self, shared: &mut SharedState<C, T>, event: WindowEvent) {
-        // Note: resize must be handled here to update self.swap_chain.
+        // Note: resize must be handled here to re-configure self.surface.
         match event {
             WindowEvent::Destroyed => (),
             WindowEvent::Resized(size) => self.do_resize(shared, size),
@@ -303,10 +301,8 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
         self.sc_desc.width = size.0.cast();
         self.sc_desc.height = size.1.cast();
-        self.swap_chain = shared
-            .draw
-            .draw
-            .create_swap_chain(&self.surface, &self.sc_desc);
+        self.surface
+            .configure(&shared.draw.draw.device, &self.sc_desc);
 
         // Note that on resize, width adjustments may affect height
         // requirements; we therefore refresh size restrictions.
@@ -342,18 +338,19 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         }
 
         let time2 = Instant::now();
-        let frame = match self.swap_chain.get_current_frame() {
+        let frame = match self.surface.get_current_frame() {
             Ok(frame) => frame,
             Err(error) => {
                 error!("Frame swap failed: {}", error);
                 return;
             }
         };
+        let view = frame.output.texture.create_view(&Default::default());
 
         let time3 = Instant::now();
         // TODO: check frame.optimal ?
         let clear_color = to_wgpu_color(shared.theme.clear_color());
-        shared.render(&mut self.draw, &frame.output.view, clear_color);
+        shared.render(&mut self.draw, &view, clear_color);
 
         let end = Instant::now();
         // Explanation: 'text' is the time to prepare positioned glyphs, 'frame-

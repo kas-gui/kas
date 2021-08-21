@@ -1,5 +1,5 @@
 KAS GUI
-==========
+=======
 
 [![Test Status](https://github.com/kas-gui/kas/workflows/Tests/badge.svg?event=push)](https://github.com/kas-gui/kas/actions)
 [![kas-text](https://img.shields.io/badge/GitHub-kas--text-blueviolet)](https://github.com/kas-gui/kas-text/)
@@ -53,10 +53,10 @@ Precompiled example apps can be downloaded as follows:
 -   download one of the `examples-*` artifacts
 
 
-Installation and dependencies
-----------------
+Getting started
+---------------
 
-#### Rust
+### Dependencies
 
 KAS requires a recent [Rust] compiler. Currently, version 1.53 or greater is
 required. Using the **nightly** channel does have a few advantages:
@@ -66,7 +66,7 @@ required. Using the **nightly** channel does have a few advantages:
 -   The `nightly` (`min_spec`) feature allows some visual improvements (see below).
 -   The `doc_cfg` feature may be used for API docs.
 
-### Quick-start
+#### Linux libraries
 
 Install dependencies (glslc is optional; see [kas-wgpu's README](crates/kas-wgpu/README.md)):
 ```sh
@@ -77,7 +77,9 @@ sudo apt-get install build-essential git libxcb-shape0-dev libxcb-xfixes0-dev li
 sudo dnf install libxcb-devel harfbuzz-devel glslc
 ```
 
-Next, clone the repository and run the examples as follows:
+### Running examples
+
+Clone the repository and run the examples as follows:
 ```sh
 git clone https://github.com/kas-gui/kas.git
 cd kas
@@ -87,18 +89,56 @@ cargo run --example filter-list
 cd examples/mandlebrot; cargo run
 ```
 
-If possible, `wgpu` ([WebGPU]) will use the Vulkan, Metal or DirectX 12 graphics
-API. If none of these are available it may instead use OpenGL, however this
-currently requires the `wgpu/cross` feature:
-```sh
-cargo run --example gallery --features wgpu/cross
-```
-(To force OpenGL on other platforms, set `KAS_BACKENDS=GL`.)
+#### Buliding documentation locally
 
-To build docs locally:
 ```
 RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=nightly --all --no-deps --open
 ```
+
+### Run-time configuration
+
+#### Graphics
+
+KAS uses [WebGPU] for rendering, which targets Vulkan and OpenGL on Linux and
+Android, Vulkan, DX12 and DX11 on Windows, and finally Metal on MacOS and iOS.
+This should satisfy *most* devices, albeit support may be incomplete (refer to
+[WebGPU] documentation).
+
+To force use of a specific backend, set `KAS_BACKENDS`, for example:
+```
+export KAS_BACKENDS=GL
+```
+To prefer use of a discrete GPU over integrated graphics, set:
+```
+export KAS_POWER_PREFERENCE=HighPerformance
+```
+
+#### Config files
+
+Configuration support is built but not enabled by default, since formats are not
+yet stable. It may also be used programmatically.
+
+To use, specify paths (`KAS_CONFIG`, `KAS_THEME_CONFIG`) and mode
+(`KAS_CONFIG_MODE`: `Read` (default), `ReadWrite` or `WriteDefault`).
+
+To get started:
+```sh
+export KAS_CONFIG=kas.yaml
+export KAS_THEME_CONFIG=theme.yaml
+export KAS_CONFIG_MODE=readwrite
+
+# Optionally, force creation of default files:
+KAS_CONFIG_MODE=WriteDefault cargo run --example gallery
+
+# Now, just run:
+cargo run --example gallery
+```
+
+For further documentation, see [`kas_wgpu::Options`].
+
+
+Crates and features
+-------------------
 
 ### Crates
 
@@ -143,32 +183,14 @@ The following non-default features of `kas` are highlighted:
 
 For full documentation of feature flags, see the [`Cargo.toml`](Cargo.toml).
 
-### Configuration
-
-Configuration support is built by default but not enabled unless certain
-environment variables are present (or options are passed programmatically).
-
-Use as follows:
-```sh
-# Set config paths:
-export KAS_CONFIG=kas.yaml
-export KAS_THEME_CONFIG=theme.yaml
-# Use write-mode to write out default config:
-KAS_CONFIG_MODE=writedefault cargo run --example gallery
-# Now just edit the config and run like normal:
-cargo run --example gallery
-```
-
-For further documentation, see [`kas_wgpu::Options`].
-
 [KAS-text]: https://github.com/kas-gui/kas-text/
 [winit]: https://github.com/rust-windowing/winit/
-[WebGPU]: https://github.com/gfx-rs/wgpu-rs
+[WebGPU]: https://github.com/gfx-rs/wgpu
 [`kas_wgpu::Options`]: https://docs.rs/kas-wgpu/latest/kas_wgpu/options/struct.Options.html
 
 
 Copyright and Licence
--------
+---------------------
 
 The [COPYRIGHT](COPYRIGHT) file includes a list of contributors who claim
 copyright on this project. This list may be incomplete; new contributors may

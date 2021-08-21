@@ -101,8 +101,8 @@ macro_rules! impl_common {
 
             /// Extract one component, based on a direction
             ///
-            /// This merely extracts the horizontal component. It never negates
-            /// it, even if the direction is reversed.
+            /// This merely extracts the horizontal or vertical component.
+            /// It never negates it, even if the axis is reversed.
             #[inline]
             pub fn extract<D: Directional>(self, dir: D) -> i32 {
                 match dir.is_vertical() {

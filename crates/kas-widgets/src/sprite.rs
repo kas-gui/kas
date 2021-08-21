@@ -5,76 +5,9 @@
 
 //! 2D pixmap widget
 
-use kas::geom::Vec2;
-use kas::layout::MarginSelector;
+use kas::layout::SpriteDisplay;
 use kas::{event, prelude::*};
 use std::path::PathBuf;
-
-/// Scaling policies
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub enum SpriteScaling {
-    /// No scaling; align in available space
-    None,
-    /// Fixed aspect ratio scaling; align on other axis
-    FixedAspect,
-    /// Stretch on both axes without regard for aspect ratio
-    Stretch,
-}
-
-impl Default for SpriteScaling {
-    fn default() -> Self {
-        SpriteScaling::FixedAspect
-    }
-}
-
-/// Widget component for displaying a sprite
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct SpriteDisplay {
-    /// Margins
-    pub margins: MarginSelector,
-    /// The native size of the sprite
-    pub size: Size,
-    /// Widget stretchiness
-    pub stretch: Stretch,
-    /// Sprite scaling mode
-    pub scaling: SpriteScaling,
-}
-
-impl SpriteDisplay {
-    /// Generates `size_rules` based on size
-    ///
-    /// Set [`Self::size`] before calling this.
-    pub fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let margins = self.margins.select(sh);
-        SizeRules::extract(axis, self.size, margins, self.stretch)
-    }
-
-    /// Aligns `rect` according to stretch policy
-    ///
-    /// Assign the result to `self.core_data_mut().rect`.
-    pub fn align_rect(&mut self, rect: Rect, align: AlignHints) -> Rect {
-        let ideal = match self.scaling {
-            SpriteScaling::None => self.size,
-            SpriteScaling::FixedAspect => {
-                let size = Vec2::from(self.size);
-                let ratio = Vec2::from(rect.size) / size;
-                // Use smaller ratio, which must be finite
-                if ratio.0 < ratio.1 {
-                    Size(rect.size.0, i32::conv_nearest(ratio.0 * size.1))
-                } else if ratio.1 < ratio.0 {
-                    Size(i32::conv_nearest(ratio.1 * size.0), rect.size.1)
-                } else {
-                    // Non-finite ratio implies size is zero on at least one axis
-                    rect.size
-                }
-            }
-            SpriteScaling::Stretch => rect.size,
-        };
-        align
-            .complete(Default::default(), Default::default())
-            .aligned_rect(ideal, rect)
-    }
-}
 
 /// An image with margins
 #[derive(Clone, Debug, Default, Widget)]
@@ -90,8 +23,6 @@ pub struct Image {
 
 impl Image {
     /// Construct with a path
-    ///
-    /// TODO: low level variant allowing use of an existing image resource?
     pub fn new<P: Into<PathBuf>>(path: P) -> Self {
         Image {
             core: Default::default(),
@@ -102,37 +33,19 @@ impl Image {
         }
     }
 
-    /// Set margins
-    pub fn with_margins(mut self, margins: MarginSelector) -> Self {
-        self.sprite.margins = margins;
+    /// Adjust scaling
+    #[inline]
+    pub fn with_scaling(mut self, f: impl FnOnce(SpriteDisplay) -> SpriteDisplay) -> Self {
+        self.sprite = f(self.sprite);
         self
     }
 
-    /// Set scaling mode
-    pub fn with_scaling(mut self, scaling: SpriteScaling) -> Self {
-        self.sprite.scaling = scaling;
-        self
-    }
-
-    /// Set stretch policy
-    pub fn with_stretch(mut self, stretch: Stretch) -> Self {
-        self.sprite.stretch = stretch;
-        self
-    }
-
-    /// Set margins
-    pub fn margins(&mut self, margins: MarginSelector) {
-        self.sprite.margins = margins;
-    }
-
-    /// Set scaling mode
-    pub fn set_scaling(&mut self, scaling: SpriteScaling) {
-        self.sprite.scaling = scaling;
-    }
-
-    /// Set stretch policy
-    pub fn set_stretch(&mut self, stretch: Stretch) {
-        self.sprite.stretch = stretch;
+    /// Adjust scaling
+    #[inline]
+    pub fn set_scaling(&mut self, f: impl FnOnce(&mut SpriteDisplay)) -> TkAction {
+        f(&mut self.sprite);
+        // NOTE: if only `aspect` is changed, REDRAW is enough
+        TkAction::RESIZE
     }
 
     /// Set image path
