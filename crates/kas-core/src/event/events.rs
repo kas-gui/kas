@@ -386,10 +386,7 @@ impl Command {
     /// not character or navigation focus.
     pub fn suitable_for_sel_focus(self) -> bool {
         use Command::*;
-        match self {
-            Escape | Cut | Copy | Deselect => true,
-            _ => false,
-        }
+        matches!(self, Escape | Cut | Copy | Deselect)
     }
 }
 
