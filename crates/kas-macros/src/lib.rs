@@ -4,18 +4,17 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 #![recursion_limit = "128"]
-#![cfg_attr(nightly, feature(proc_macro_diagnostic))]
 #![allow(clippy::let_and_return)]
 
 extern crate proc_macro;
 
 use self::args::{ChildType, HandlerArgs};
 use proc_macro2::{Span, TokenStream};
+use proc_macro_error::abort;
 use quote::{quote, ToTokens, TokenStreamExt};
 use std::collections::HashMap;
 use std::fmt::Write;
 use syn::punctuated::Punctuated;
-#[cfg(nightly)]
 use syn::spanned::Spanned;
 use syn::Token;
 use syn::{parse_macro_input, parse_quote};
@@ -558,32 +557,17 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         if sig.ident == *handler =>
                     {
                         if let Some(_x) = x {
-                            #[cfg(nightly)]
-                            handler
-                                .span()
-                                .unwrap()
-                                .error("multiple methods with this name")
-                                .emit();
-                            #[cfg(nightly)]
-                            _x.0.span()
-                                .unwrap()
-                                .error("first method with this name")
-                                .emit();
-                            #[cfg(nightly)]
-                            sig.ident
-                                .span()
-                                .unwrap()
-                                .error("second method with this name")
-                                .emit();
-                            return None;
+                            abort!(
+                                handler.span(), "multiple methods with this name";
+                                help = _x.0.span() => "first method with this name";
+                                help = sig.ident.span() => "second method with this name";
+                            );
                         }
                         if sig.inputs.len() != 3 {
-                            #[cfg(nightly)]
-                            sig.span()
-                                .unwrap()
-                                .error("handler functions must have signature: fn handler(&mut self, mgr: &mut Manager, msg: T)")
-                                .emit();
-                            return None;
+                            abort!(
+                                sig.span(),
+                                "handler functions must have signature: fn handler(&mut self, mgr: &mut Manager, msg: T)"
+                            );
                         }
                         let arg = sig.inputs.last().unwrap();
                         let ty = match arg {
@@ -600,13 +584,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             find_handler_ty_buf.push((handler.clone(), x.1.clone()));
             Some(x.1)
         } else {
-            #[cfg(nightly)]
-            handler
-                .span()
-                .unwrap()
-                .error("no methods with this name found")
-                .emit();
-            None
+            abort!(handler.span(), "no methods with this name found");
         }
     };
 
@@ -665,12 +643,10 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         } else {
             // We could default to msg=VoidMsg here. If error messages weren't
             // so terrible this might even be a good idea!
-            #[cfg(nightly)]
-            args.struct_span
-                .unwrap()
-                .error("make_widget: cannot discover msg type from #[handler] attr or Handler impl")
-                .emit();
-            return proc_macro::TokenStream::new();
+            abort!(
+                args.struct_span,
+                "make_widget: cannot discover msg type from #[handler] attr or Handler impl"
+            );
         }
     };
     let msg = &handler.msg;

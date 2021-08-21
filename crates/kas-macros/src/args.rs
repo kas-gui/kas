@@ -6,6 +6,7 @@
 use std::collections::HashMap;
 
 use proc_macro2::{Punct, Spacing, Span, TokenStream, TokenTree};
+use proc_macro_error::{emit_error, emit_warning};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
@@ -68,39 +69,27 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
         for attr in field.attrs.drain(..) {
             if attr.path == parse_quote! { layout } || attr.path == parse_quote! { handler } {
                 // These are valid attributes according to proc_macro_derive, so we need to catch them
-                #[cfg(nightly)]
-                attr.span()
-                    .unwrap()
-                    .error("invalid attribute on Widget field (applicable to struct only)")
-                    .emit()
+                emit_error!(
+                    attr.span(),
+                    "invalid attribute on Widget field (applicable to struct only)"
+                );
             } else if attr.path == parse_quote! { widget_core } {
                 if core_data.is_none() {
                     core_data = Some(member(i, field.ident.clone()));
                 } else {
-                    #[cfg(nightly)]
-                    attr.span()
-                        .unwrap()
-                        .error("multiple fields marked with #[widget_core]")
-                        .emit();
+                    emit_error!(attr.span(), "multiple fields marked with #[widget_core]");
                 }
             } else if attr.path == parse_quote! { layout_data } {
                 if layout_data.is_some() {
-                    #[cfg(nightly)]
-                    attr.span()
-                        .unwrap()
-                        .error("multiple fields marked with #[layout_data]")
-                        .emit();
+                    emit_error!(attr.span(), "multiple fields marked with #[layout_data]");
                 } else if field.ty != parse_quote! { <Self as kas::LayoutData>::Data }
                     && field.ty != parse_quote! { <Self as ::kas::LayoutData>::Data }
                     && field.ty != parse_quote! { <Self as LayoutData>::Data }
                 {
-                    #[cfg(nightly)]
-                    field
-                        .ty
-                        .span()
-                        .unwrap()
-                        .warning("expected type `<Self as kas::LayoutData>::Data`")
-                        .emit();
+                    emit_warning!(
+                        field.ty.span(),
+                        "expected type `<Self as kas::LayoutData>::Data`"
+                    );
                 } else {
                     layout_data = Some(member(i, field.ident.clone()));
                 }
@@ -108,11 +97,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                 if inner.is_none() {
                     inner = Some((member(i, field.ident.clone()), field.ty.clone()));
                 } else {
-                    #[cfg(nightly)]
-                    attr.span()
-                        .unwrap()
-                        .error("multiple fields marked with #[widget_derive]")
-                        .emit();
+                    emit_error!(attr.span(), "multiple fields marked with #[widget_derive]");
                 }
             } else if attr.path == parse_quote! { widget } {
                 let ident = member(i, field.ident.clone());
@@ -143,62 +128,41 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
     for attr in ast.attrs.drain(..) {
         if attr.path == parse_quote! { widget_core } || attr.path == parse_quote! { layout_data } {
             // These are valid attributes according to proc_macro_derive, so we need to catch them
-            #[cfg(nightly)]
-            attr.span()
-                .unwrap()
-                .error("invalid attribute on Widget struct (applicable to fields only)")
-                .emit()
+            emit_error!(
+                attr.span(),
+                "invalid attribute on Widget struct (applicable to fields only)"
+            );
         } else if attr.path == parse_quote! { widget_derive } {
             if inner.is_none() {
-                #[cfg(nightly)]
-                attr.span()
-                    .unwrap()
-                    .error(
-                        "usage of #[widget_derive(..)] on struct without a field marked with #[widget_derive]",
-                    )
-                    .emit();
+                emit_error!(attr.span(), "usage of #[widget_derive(..)] on struct without a field marked with #[widget_derive]");
             }
             if derive.is_none() {
                 derive = Some(syn::parse2(attr.tokens)?);
             } else {
-                #[cfg(nightly)]
-                attr.span()
-                    .unwrap()
-                    .error("multiple #[widget_derive(..)] attributes on type")
-                    .emit()
+                emit_error!(
+                    attr.span(),
+                    "multiple #[widget_derive(..)] attributes on type"
+                );
             }
         } else if attr.path == parse_quote! { widget } {
             if widget.is_none() {
                 let _span = attr.span();
                 let w: WidgetArgs = syn::parse2(attr.tokens)?;
                 if core_data.is_none() && !w.children {
-                    #[cfg(nightly)]
-                    _span
-                        .unwrap()
-                        .error("it is required to derive WidgetChildren when deriving from an inner widget")
-                        .emit()
+                    emit_error!(_span, "it is required to derive WidgetChildren when deriving from an inner widget");
                 }
                 widget = Some(w);
             } else {
-                #[cfg(nightly)]
-                attr.span()
-                    .unwrap()
-                    .error("multiple #[widget(..)] attributes on type")
-                    .emit()
+                emit_error!(attr.span(), "multiple #[widget(..)] attributes on type");
             }
         } else if attr.path == parse_quote! { layout } {
             if layout.is_some() {
-                #[cfg(nightly)]
-                attr.span()
-                    .unwrap()
-                    .error("multiple #[layout(..)] attributes on type")
-                    .emit()
+                emit_error!(attr.span(), "multiple #[layout(..)] attributes on type");
             } else if core_data.is_none() {
-                #[cfg(nightly)]
-                attr.span()
-                    .unwrap()
-                    .error("require a field with #[widget_core] when using #[layout(..)]")
-                    .emit()
+                emit_error!(
+                    attr.span(),
+                    "require a field with #[widget_core] when using #[layout(..)]"
+                );
             } else {
                 layout = Some(syn::parse2(attr.tokens)?);
             }
