@@ -43,6 +43,8 @@ pub struct Options {
     pub power_preference: PowerPreference,
     /// Adapter backend. Default value: PRIMARY (Vulkan/Metal/DX12).
     pub backends: Backends,
+    /// WGPU's API tracing path
+    pub wgpu_trace_path: Option<PathBuf>,
 }
 
 impl Default for Options {
@@ -53,6 +55,7 @@ impl Default for Options {
             config_mode: ConfigMode::Read,
             power_preference: PowerPreference::LowPower,
             backends: Backends::PRIMARY,
+            wgpu_trace_path: None,
         }
     }
 }
@@ -106,6 +109,14 @@ impl Options {
     /// -   `DX12`
     /// -   `PRIMARY`: any of Vulkan, Metal or DX12
     /// -   `SECONDARY`: any of GL or DX11
+    ///
+    /// WGPU has an [API tracing] feature for debugging. To use this, ensure the
+    /// `wgpu/trace` feature is enabled and set the output path:
+    /// ```sh
+    /// export KAS_WGPU_TRACE_PATH="api_trace"
+    /// ```
+    ///
+    /// [API tracing]: https://github.com/gfx-rs/wgpu/wiki/Debugging-wgpu-Applications#tracing-infrastructure
     pub fn from_env() -> Self {
         let mut options = Options::default();
 
@@ -160,6 +171,10 @@ impl Options {
                     options.backends
                 }
             }
+        }
+
+        if let Ok(v) = var("KAS_WGPU_TRACE_PATH") {
+            options.wgpu_trace_path = Some(v.into());
         }
 
         options
