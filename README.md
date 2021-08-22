@@ -26,7 +26,7 @@ KAS is a widget-first GUI toolkit:
 
 ### Limitations
 
--   Slow compile times. The `dynamic` feature may help (see below).
+-   Slow compile times. See [Faster builds](#faster-builds) below.
 -   Large binaries. Distributing feature-heavy applications without shared
     libraries will always have this problem, but if you seek a minimal GUI
     toolkit then you should probably look elsewhere.
@@ -94,6 +94,49 @@ cd examples/mandlebrot; cargo run
 ```
 RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=nightly --all --no-deps --open
 ```
+
+### Faster builds
+
+People variously complain that Rust / KAS is slow to compile, and they have a
+point: just recompiling the `gallery` example takes over six seconds on a 5800X!
+
+There are two strategies we can use to speed this up:
+
+1.  Dynamic linking. I wouldn't recommend *shipping* code with dynamic linking
+    due to dependency complications (although it is possible and potentially
+    useful, especially within Linux distributions), but during development it
+    can make a lot of sense.
+
+    Enabling dynamic linking is very easy: use `--features dynamic`.
+
+2.  A faster linker: [LLD](https://lld.llvm.org/) or better yet
+    [mold](https://github.com/rui314/mold).
+
+    Using LLD: (1) install (e.g. via Linux distribution packages), (2) create
+    `$HOME/.cargo/config`, (3) add this:
+
+    ```toml
+    [build]
+    rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+    ```
+
+    Using Mold: (1) install (see project page), (2) prefix build commands with
+    `mold -run`.
+
+Here are some crude benchmarks. **Method:** build the gallery example, touch
+(or re-save) `gallery.rs`, and rebuild. Use the Unix `time` command, run three
+times, and report the best `real` time of the three. **Machine:** 5800X, Fedora
+34, SSD.
+
+| configuration | time | version |
+| ------------- | ---- | ------- |
+| standard | 0m6.124s | rustc 1.54.0 (a178d0322 2021-07-26) |
+| dynamic | 0m2.275s | |
+| lld | 0m1.537s | LLD 12.0.1 (lld-12.0.1-1.fc34.src.rpm) |
+| lld + dynamic | 0m1.061s | |
+| mold | 0m1.147s | mold 0.9.3 (ec3319b37f653dccfa4d1a859a5c687565ab722d) |
+| mold + dynamic | 0m0.971s | |
+
 
 ### Run-time configuration
 
@@ -170,9 +213,7 @@ requiring nightly `rustc`. Other crates enable fewer features by defualt.
 
 The following non-default features of `kas` are highlighted:
 
--   `dynamic`: enable dynamic linking for `kas`. This feature improves
-    (re)compile times of examples and dependent code, at the cost of requiring
-    extra libraries at run-time.
+-   `dynamic`: enable dynamic linking for `kas` (see [Faster builds](#faster-builds))
 -   `internal_doc`: turns on some extra documentation intended for internal
     usage but not for end users. (This only affects generated documentation.)
 -   `nightly`: enables "more stable" unstable features
