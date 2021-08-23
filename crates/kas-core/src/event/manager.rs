@@ -74,6 +74,7 @@ struct PanGrab {
 }
 
 #[derive(Clone, Debug)]
+#[allow(clippy::enum_variant_names)] // they all happen to be about Focus
 enum Pending {
     LostCharFocus(WidgetId),
     LostSelFocus(WidgetId),
