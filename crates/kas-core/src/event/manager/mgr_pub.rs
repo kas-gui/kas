@@ -5,7 +5,7 @@
 
 //! Event manager — public API
 
-use log::{debug, trace, warn};
+use log::{debug, error, trace};
 use std::time::{Duration, Instant};
 use std::u16;
 
@@ -688,41 +688,46 @@ impl<'a> Manager<'a> {
         // processing, we can push directly to self.state.action.
         self.state.send_action(TkAction::REDRAW);
 
-        if self.state.nav_stack.is_empty() {
-            if let Some(id) = self.state.nav_focus {
-                // This is caused by set_nav_focus; we need to rebuild nav_stack
-                'l: while id != widget.id() {
-                    for index in 0..widget.num_children() {
-                        let w = widget.get_child(index).unwrap();
-                        if w.is_ancestor_of(id) {
-                            self.state.nav_stack.push(index.cast());
-                            widget_stack.push(widget);
-                            widget = w;
-                            continue 'l;
-                        }
+        if let Some(id) = self.state.nav_focus {
+            let mut i = 0;
+            'l: while id != widget.id() {
+                // We use nav_stack as a cache, but verify
+                if let Some(index) = self.state.nav_stack.get(i) {
+                    let w = widget.get_child((*index).cast()).unwrap();
+                    if w.is_ancestor_of(id) {
+                        i += 1;
+                        widget_stack.push(widget);
+                        widget = w;
+                        continue 'l;
+                    } else {
+                        // wrong child!
+                        self.state.nav_stack.truncate(i);
                     }
-
-                    warn!("next_nav_focus: unable to find widget {}", id);
-                    self.clear_char_focus();
-                    self.state.nav_focus = None;
-                    self.state.nav_stack.clear();
-                    return false;
                 }
+
+                // Otherwise, we just do a linear search.
+                // TODO(opt): add WidgetChildren::find_ancestor_of method to
+                // allow optimisations for widgets with many children?
+                for index in 0..widget.num_children() {
+                    let w = widget.get_child(index).unwrap();
+                    if w.is_ancestor_of(id) {
+                        self.state.nav_stack.push(index.cast());
+                        i += 1;
+                        widget_stack.push(widget);
+                        widget = w;
+                        continue 'l;
+                    }
+                }
+
+                // This should be impossible if widgets are correctly configured
+                error!("next_nav_focus: unable to find widget {}", id);
+                self.clear_char_focus();
+                self.state.nav_focus = None;
+                self.state.nav_stack.clear();
+                return false;
             }
-        } else if self
-            .state
-            .nav_focus
-            .map(|id| !widget.is_ancestor_of(id))
-            .unwrap_or(true)
-        {
-            self.state.nav_stack.clear();
         } else {
-            // Reconstruct widget_stack:
-            for index in self.state.nav_stack.iter().cloned() {
-                let new = widget.get_child(index.cast()).unwrap();
-                widget_stack.push(widget);
-                widget = new;
-            }
+            self.state.nav_stack.clear();
         }
 
         // Progresses to the first child (or last if reverse).
