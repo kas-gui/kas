@@ -38,7 +38,6 @@ impl ManagerState {
             sel_focus: None,
             nav_focus: None,
             nav_fallback: None,
-            nav_stack: SmallVec::new(),
             hover: None,
             hover_icon: CursorIcon::Default,
             key_depress: Default::default(),

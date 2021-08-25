@@ -108,7 +108,6 @@ pub struct ManagerState {
     sel_focus: Option<WidgetId>,
     nav_focus: Option<WidgetId>,
     nav_fallback: Option<WidgetId>,
-    nav_stack: SmallVec<[u32; 16]>,
     hover: Option<WidgetId>,
     hover_icon: CursorIcon,
     key_depress: LinearMap<u32, WidgetId>,
@@ -305,7 +304,7 @@ impl<'a> Manager<'a> {
 
         if vkey == VK::Tab {
             self.clear_char_focus();
-            self.next_nav_focus(widget.as_widget(), shift, true);
+            self.next_nav_focus(widget.as_widget_mut(), shift, true);
             return;
         } else if vkey == VK::Escape {
             if let Some(id) = self.state.popups.last().map(|(id, _, _)| *id) {
