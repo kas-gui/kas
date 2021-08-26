@@ -54,7 +54,9 @@ pub struct ListView<
     view: V,
     data: T,
     widgets: Vec<WidgetData<T::Key, V::Widget>>,
+    /// The number of widgets in use (cur_len ≤ widgets.len())
     cur_len: u32,
+    /// The first visible data item
     direction: D,
     align_hints: AlignHints,
     ideal_visible: i32,
@@ -278,10 +280,39 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
         self.ideal_visible = number;
         self
     }
+}
 
-    fn update_widgets(&mut self, mgr: &mut Manager) {
-        let time = Instant::now();
+struct PositionSolver {
+    pos_start: Coord,
+    skip: Offset,
+    size: Size,
+    first_data: usize,
+    cur_len: usize,
+}
 
+impl PositionSolver {
+    /// Map a child index to a data index
+    fn child_to_data(&self, index: usize) -> usize {
+        let mut data = (self.first_data / self.cur_len) * self.cur_len + index;
+        if data < self.first_data {
+            data += self.cur_len;
+        }
+        data
+    }
+
+    /// Rect of data item i
+    fn rect(&self, i: usize) -> Rect {
+        let pos = self.pos_start + self.skip * i32::conv(i);
+        Rect::new(pos, self.size)
+    }
+}
+
+impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>>
+    ListView<D, T, V>
+{
+    /// Construct a position solver. Note: this does more work and updates to
+    /// self than is necessary in several cases where it is used.
+    fn position_solver(&mut self, mgr: &mut Manager) -> PositionSolver {
         let data_len = self.data.len();
         let data_len32 = i32::conv(data_len);
         let view_size = self.rect().size;
@@ -301,32 +332,44 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
         let mut first_data = usize::conv(offset / u64::conv(skip.extract(self.direction)));
 
         // set_rect allocates enough widgets to view a page; we update widget-data allocations
-        let len = self.widgets.len().min(data_len - first_data);
-        self.cur_len = len.cast();
+        let cur_len = self.widgets.len().min(data_len - first_data);
+        self.cur_len = cur_len.cast();
 
         let mut pos_start = self.core.rect.pos + self.frame_offset;
         if self.direction.is_reversed() {
-            first_data = (data_len - first_data).saturating_sub(len);
+            first_data = (data_len - first_data).saturating_sub(cur_len);
             pos_start += skip * i32::conv(data_len - 1);
             skip = skip * -1;
         }
 
-        let mut rect = Rect::new(pos_start, self.child_size);
+        PositionSolver {
+            pos_start,
+            skip,
+            size: self.child_size,
+            first_data,
+            cur_len,
+        }
+    }
+
+    fn update_widgets(&mut self, mgr: &mut Manager) {
+        let time = Instant::now();
+        let solver = self.position_solver(mgr);
+
         let mut action = TkAction::empty();
         for (i, item) in self
             .data
-            .iter_vec_from(first_data, len)
+            .iter_vec_from(solver.first_data, solver.cur_len)
             .into_iter()
             .enumerate()
         {
-            let i = first_data + i;
+            let i = solver.first_data + i;
             let key = Some(item.0.clone());
-            let w = &mut self.widgets[i % len];
+            let w = &mut self.widgets[i % solver.cur_len];
             if key != w.key {
                 w.key = key;
                 action |= self.view.set(&mut w.widget, item.1);
             }
-            rect.pos = pos_start + skip * i32::conv(i);
+            let rect = solver.rect(i);
             if w.widget.rect() != rect {
                 w.widget.set_rect(mgr, rect, self.align_hints);
             }
@@ -494,34 +537,30 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
             return None;
         }
 
-        // TODO: if last widget is completely hidden, this should be one less
-        let last = usize::conv(self.cur_len) - 1;
-        let iter_reverse = reverse ^ self.direction.is_reversed();
-
-        if let Some(index) = from {
-            let p = self.widgets[index].widget.rect().pos;
-            let index = match iter_reverse {
-                false if index < last => index + 1,
-                false => 0,
-                true if 0 < index => index - 1,
-                true => last,
-            };
-            let q = self.widgets[index].widget.rect().pos;
-            match reverse {
-                false if q.1 >= p.1 && q.0 >= p.0 => Some(index),
-                true if q.1 <= p.1 && q.0 <= p.0 => Some(index),
-                _ => None,
+        let solver = self.position_solver(mgr);
+        let last_data = self.data.len() - 1;
+        let data = if let Some(index) = from {
+            let data = solver.child_to_data(index);
+            if !reverse && data < last_data {
+                data + 1
+            } else if reverse && data > 0 {
+                data - 1
+            } else {
+                return None;
             }
+        } else if !reverse {
+            0
         } else {
-            // Simplified version of logic in update_widgets
-            let skip = self.child_size.extract(self.direction) + self.child_inter_margin;
-            let offset = u64::conv(self.scroll_offset().extract(self.direction));
-            let mut data = usize::conv(offset / u64::conv(skip));
-            if iter_reverse {
-                data += last;
-            }
-            Some(data % usize::conv(self.cur_len))
+            last_data
+        };
+
+        let (_, action) = self.scroll.focus_rect(solver.rect(data), self.core.rect);
+        if !action.is_empty() {
+            *mgr |= action;
+            self.update_widgets(mgr);
         }
+
+        Some(data % usize::conv(self.cur_len))
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
@@ -686,26 +725,15 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
         };
 
         let id = self.id();
-        let (action, response) = if let Event::Command(cmd, _) = event {
-            // Simplified version of logic in update_widgets
-            let len = usize::conv(self.cur_len);
-            let skip = self.child_size.extract(self.direction) + self.child_inter_margin;
-            let offset = u64::conv(self.scroll_offset().extract(self.direction));
-            let first_data = usize::conv(offset / u64::conv(skip));
-            let data_start = (first_data / len) * len;
-
+        if let Event::Command(cmd, _) = event {
+            let solver = self.position_solver(mgr);
             let cur = mgr
                 .nav_focus()
                 .and_then(|id| self.find_child(id))
-                .map(|index| {
-                    let mut data = data_start + index;
-                    if data < first_data {
-                        data += len;
-                    }
-                    data
-                });
+                .map(|index| solver.child_to_data(index));
             let last = self.data.len().wrapping_sub(1);
             let is_vert = self.direction.is_vertical();
+            let len = solver.cur_len;
 
             let data = match (cmd, cur) {
                 _ if last == usize::MAX => None,
@@ -722,24 +750,30 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
             };
             if let Some(index) = data {
                 // Set nav focus to index and update scroll position
-                // Note: we update nav focus before updating widgets; this is fine
+                let (rect, action) = self.scroll.focus_rect(solver.rect(index), self.core.rect);
+                if !action.is_empty() {
+                    *mgr |= action;
+                    self.update_widgets(mgr);
+                }
+                let len = usize::conv(self.cur_len);
                 mgr.set_nav_focus(self.widgets[index % len].widget.id(), true);
+                Response::Focus(rect)
+            } else {
+                Response::None
             }
-            (TkAction::empty(), Response::None)
         } else {
-            self.scroll
-                .scroll_by_event(event, self.core.rect.size, |source, _, coord| {
-                    if source.is_primary() && mgr.config_enable_mouse_pan() {
-                        let icon = Some(CursorIcon::Grabbing);
-                        mgr.request_grab(id, source, coord, GrabMode::Grab, icon);
-                    }
-                })
-        };
-        if !action.is_empty() {
-            *mgr |= action;
-            self.update_widgets(mgr);
-            Response::Focus(self.rect())
-        } else {
+            let (action, response) =
+                self.scroll
+                    .scroll_by_event(event, self.core.rect.size, |source, _, coord| {
+                        if source.is_primary() && mgr.config_enable_mouse_pan() {
+                            let icon = Some(CursorIcon::Grabbing);
+                            mgr.request_grab(id, source, coord, GrabMode::Grab, icon);
+                        }
+                    });
+            if !action.is_empty() {
+                *mgr |= action;
+                self.update_widgets(mgr);
+            }
             response.void_into()
         }
     }
