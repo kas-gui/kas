@@ -484,7 +484,12 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
         self.update_widgets(mgr);
     }
 
-    fn spatial_nav(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+    fn spatial_nav(
+        &mut self,
+        mgr: &mut Manager,
+        reverse: bool,
+        from: Option<usize>,
+    ) -> Option<usize> {
         if self.cur_len == 0 {
             return None;
         }

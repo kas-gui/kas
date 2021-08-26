@@ -684,6 +684,7 @@ impl<'a> Manager<'a> {
         self.state.send_action(TkAction::REDRAW);
 
         fn nav<'a>(
+            mgr: &mut Manager,
             widget: &mut dyn WidgetConfig,
             focus: Option<WidgetId>,
             rev: bool,
@@ -724,7 +725,10 @@ impl<'a> Manager<'a> {
 
             if !rev {
                 if let Some(index) = child {
-                    if let Some(id) = widget.get_child_mut(index).and_then(|w| nav(w, focus, rev)) {
+                    if let Some(id) = widget
+                        .get_child_mut(index)
+                        .and_then(|w| nav(mgr, w, focus, rev))
+                    {
                         return Some(id);
                     }
                 } else if focus != Some(widget.id()) && widget.key_nav() {
@@ -732,9 +736,10 @@ impl<'a> Manager<'a> {
                 }
 
                 loop {
-                    if let Some(index) = widget.spatial_nav(rev, child) {
-                        if let Some(id) =
-                            widget.get_child_mut(index).and_then(|w| nav(w, focus, rev))
+                    if let Some(index) = widget.spatial_nav(mgr, rev, child) {
+                        if let Some(id) = widget
+                            .get_child_mut(index)
+                            .and_then(|w| nav(mgr, w, focus, rev))
                         {
                             return Some(id);
                         }
@@ -745,15 +750,19 @@ impl<'a> Manager<'a> {
                 }
             } else {
                 if let Some(index) = child {
-                    if let Some(id) = widget.get_child_mut(index).and_then(|w| nav(w, focus, rev)) {
+                    if let Some(id) = widget
+                        .get_child_mut(index)
+                        .and_then(|w| nav(mgr, w, focus, rev))
+                    {
                         return Some(id);
                     }
                 }
 
                 loop {
-                    if let Some(index) = widget.spatial_nav(rev, child) {
-                        if let Some(id) =
-                            widget.get_child_mut(index).and_then(|w| nav(w, focus, rev))
+                    if let Some(index) = widget.spatial_nav(mgr, rev, child) {
+                        if let Some(id) = widget
+                            .get_child_mut(index)
+                            .and_then(|w| nav(mgr, w, focus, rev))
                         {
                             return Some(id);
                         }
@@ -772,9 +781,9 @@ impl<'a> Manager<'a> {
         // Whether to restart from the beginning on failure
         let restart = self.state.nav_focus.is_some();
 
-        let mut opt_id = nav(widget, self.state.nav_focus, reverse);
+        let mut opt_id = nav(self, widget, self.state.nav_focus, reverse);
         if restart && opt_id.is_none() {
-            opt_id = nav(widget, None, reverse);
+            opt_id = nav(self, widget, None, reverse);
         }
 
         trace!("Manager: nav_focus = {:?}", opt_id);

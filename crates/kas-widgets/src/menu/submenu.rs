@@ -126,7 +126,7 @@ impl<D: Directional, W: Menu> kas::Layout for SubMenu<D, W> {
         });
     }
 
-    fn spatial_nav(&self, _: bool, _: Option<usize>) -> Option<usize> {
+    fn spatial_nav(&mut self, _: &mut Manager, _: bool, _: Option<usize>) -> Option<usize> {
         // We have no child within our rect
         None
     }

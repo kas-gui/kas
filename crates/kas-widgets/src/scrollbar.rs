@@ -225,7 +225,7 @@ impl<D: Directional> Layout for ScrollBar<D> {
         let _ = self.update_handle();
     }
 
-    fn spatial_nav(&self, _: bool, _: Option<usize>) -> Option<usize> {
+    fn spatial_nav(&mut self, _: &mut Manager, _: bool, _: Option<usize>) -> Option<usize> {
         None // handle is not navigable
     }
 

@@ -121,7 +121,12 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
         }
     }
 
-    fn spatial_nav(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+    fn spatial_nav(
+        &mut self,
+        _: &mut Manager,
+        reverse: bool,
+        from: Option<usize>,
+    ) -> Option<usize> {
         if self.num_children() == 0 {
             return None;
         }

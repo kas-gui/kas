@@ -180,7 +180,7 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
         }
     }
 
-    fn spatial_nav(&self, _: bool, _: Option<usize>) -> Option<usize> {
+    fn spatial_nav(&mut self, _: &mut Manager, _: bool, _: Option<usize>) -> Option<usize> {
         None // handles are not navigable
     }
 
