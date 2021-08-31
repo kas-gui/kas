@@ -428,7 +428,14 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Layout fo
         self.update_widgets(mgr);
     }
 
-    fn spatial_nav(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+    fn spatial_nav(
+        &mut self,
+        mgr: &mut Manager,
+        reverse: bool,
+        from: Option<usize>,
+    ) -> Option<usize> {
+        let _ = mgr; // TODO: this needs a rewrite like ListView::spatial_nav
+
         let cur_len = usize::conv(self.cur_len.0) * usize::conv(self.cur_len.1);
         if cur_len == 0 {
             return None;

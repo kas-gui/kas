@@ -5,7 +5,7 @@
 
 //! Event manager — public API
 
-use log::{debug, trace, warn};
+use log::{debug, error, trace};
 use std::time::{Duration, Instant};
 use std::u16;
 
@@ -625,7 +625,6 @@ impl<'a> Manager<'a> {
             self.redraw(id);
         }
         self.state.nav_focus = None;
-        self.state.nav_stack.clear();
         trace!("Manager: nav_focus = None");
     }
 
@@ -647,7 +646,6 @@ impl<'a> Manager<'a> {
                 self.clear_char_focus();
             }
             self.state.nav_focus = Some(id);
-            self.state.nav_stack.clear();
             trace!("Manager: nav_focus = Some({})", id);
             self.state.pending.push(Pending::SetNavFocus(id, key_focus));
         }
@@ -668,15 +666,12 @@ impl<'a> Manager<'a> {
     /// keyboard input, false if reacting to mouse or touch input.
     pub fn next_nav_focus(
         &mut self,
-        mut widget: &dyn WidgetConfig,
+        mut widget: &mut dyn WidgetConfig,
         reverse: bool,
         key_focus: bool,
     ) -> bool {
-        type WidgetStack<'b> = SmallVec<[&'b dyn WidgetConfig; 16]>;
-        let mut widget_stack = WidgetStack::new();
-
         if let Some(id) = self.state.popups.last().map(|(_, p, _)| p.id) {
-            if let Some(w) = widget.find_leaf(id) {
+            if let Some(w) = widget.find_leaf_mut(id) {
                 widget = w;
             } else {
                 // This is a corner-case. Do nothing.
@@ -688,171 +683,122 @@ impl<'a> Manager<'a> {
         // processing, we can push directly to self.state.action.
         self.state.send_action(TkAction::REDRAW);
 
-        if self.state.nav_stack.is_empty() {
-            if let Some(id) = self.state.nav_focus {
-                // This is caused by set_nav_focus; we need to rebuild nav_stack
-                'l: while id != widget.id() {
-                    for index in 0..widget.num_children() {
-                        let w = widget.get_child(index).unwrap();
-                        if w.is_ancestor_of(id) {
-                            self.state.nav_stack.push(index.cast());
-                            widget_stack.push(widget);
-                            widget = w;
-                            continue 'l;
+        fn nav<'a>(
+            mgr: &mut Manager,
+            widget: &mut dyn WidgetConfig,
+            focus: Option<WidgetId>,
+            rev: bool,
+        ) -> Option<WidgetId> {
+            let last = widget.num_children().wrapping_sub(1);
+            if widget.is_disabled() {
+                return None;
+            } else if last == usize::MAX {
+                if focus != Some(widget.id()) && widget.key_nav() {
+                    return Some(widget.id());
+                }
+                return None;
+            }
+
+            let mut child = None;
+            if let Some(id) = focus {
+                // Checking is_ancestor_of is just an optimisation
+                if widget.is_ancestor_of(id) && id != widget.id() {
+                    // TODO(opt): add WidgetChildren::find_ancestor_of method to
+                    // allow optimisations for widgets with many children?
+                    for index in 0..=last {
+                        if widget
+                            .get_child(index)
+                            .map(|w| w.is_ancestor_of(id))
+                            .unwrap_or(false)
+                        {
+                            child = Some(index);
+                            break;
                         }
                     }
 
-                    warn!("next_nav_focus: unable to find widget {}", id);
-                    self.clear_char_focus();
-                    self.state.nav_focus = None;
-                    self.state.nav_stack.clear();
-                    return false;
+                    if child.is_none() {
+                        error!("unable to find widget {}", id);
+                        return None;
+                    }
                 }
             }
-        } else if self
-            .state
-            .nav_focus
-            .map(|id| !widget.is_ancestor_of(id))
-            .unwrap_or(true)
-        {
-            self.state.nav_stack.clear();
-        } else {
-            // Reconstruct widget_stack:
-            for index in self.state.nav_stack.iter().cloned() {
-                let new = widget.get_child(index.cast()).unwrap();
-                widget_stack.push(widget);
-                widget = new;
-            }
-        }
 
-        // Progresses to the first child (or last if reverse).
-        // Returns true if a child is found.
-        // Breaks to given lifetime on error.
-        macro_rules! do_child {
-            ($lt:lifetime, $nav_stack:ident, $widget:ident, $widget_stack:ident) => {{
-                if $widget.is_disabled() {
-                    false
-                } else if let Some(index) = $widget.spatial_nav(reverse, None) {
-                    let new = match $widget.get_child(index) {
-                        None => break $lt,
-                        Some(w) => w,
-                    };
-                    $nav_stack.push(index.cast());
-                    $widget_stack.push($widget);
-                    $widget = new;
-                    true
-                } else {
-                    false
-                }
-            }};
-        }
-
-        enum Case {
-            Sibling,
-            Pop,
-            End,
-        }
-
-        // Progresses to the next (or previous) sibling, otherwise pops to the
-        // parent. Breaks to given lifetime on error.
-        macro_rules! do_sibling_or_pop {
-            ($lt:lifetime, $nav_stack:ident, $widget:ident, $widget_stack:ident) => {{
-                match ($nav_stack.pop(), $widget_stack.pop()) {
-                    (Some(i), Some(w)) => {
-                        let index = i.cast();
-                        $widget = w;
-
-                        match $widget.spatial_nav(reverse, Some(index)) {
-                            Some(index) if !$widget.is_disabled() => {
-                                let new = match $widget.get_child(index) {
-                                    None => break $lt,
-                                    Some(w) => w,
-                                };
-                                $nav_stack.push(index.cast());
-                                $widget_stack.push($widget);
-                                $widget = new;
-                                Case::Sibling
-                            }
-                            _ => Case::Pop,
-                        }
+            if !rev {
+                if let Some(index) = child {
+                    if let Some(id) = widget
+                        .get_child_mut(index)
+                        .and_then(|w| nav(mgr, w, focus, rev))
+                    {
+                        return Some(id);
                     }
-                    _ => Case::End,
-                }
-            }};
-        }
-
-        macro_rules! try_set_focus {
-            ($self:ident, $widget:ident) => {
-                if $widget.key_nav() && !$widget.is_disabled() {
-                    let id = $widget.id();
-                    if $self.state.sel_focus != Some(id) {
-                        $self.clear_char_focus();
-                    }
-                    $self.state.nav_focus = Some(id);
-                    trace!("Manager: nav_focus = Some({})", id);
-                    $self
-                        .state
-                        .pending
-                        .push(Pending::SetNavFocus(id, key_focus));
-                    return true;
-                }
-            };
-        }
-
-        let nav_stack = &mut self.state.nav_stack;
-        // Whether to restart from the beginning on failure
-        let mut restart = self.state.nav_focus.is_some();
-
-        if !reverse {
-            // Depth-first search without function recursion. Our starting
-            // entry has already been used (if applicable); the next
-            // candidate is its first child.
-            'l1: loop {
-                if do_child!('l1, nav_stack, widget, widget_stack) {
-                    try_set_focus!(self, widget);
-                    continue;
+                } else if focus != Some(widget.id()) && widget.key_nav() {
+                    return Some(widget.id());
                 }
 
                 loop {
-                    match do_sibling_or_pop!('l1, nav_stack, widget, widget_stack) {
-                        Case::Sibling => {
-                            try_set_focus!(self, widget);
-                            break;
+                    if let Some(index) = widget.spatial_nav(mgr, rev, child) {
+                        if let Some(id) = widget
+                            .get_child_mut(index)
+                            .and_then(|w| nav(mgr, w, focus, rev))
+                        {
+                            return Some(id);
                         }
-                        Case::Pop => (),
-                        Case::End if restart => {
-                            restart = false;
-                            continue 'l1;
-                        }
-                        Case::End => break 'l1,
+                        child = Some(index);
+                    } else {
+                        return None;
                     }
                 }
-            }
-        } else {
-            // Reverse depth-first search
-            let mut start = self.state.nav_focus.is_none();
-            'l2: loop {
-                let case = if start {
-                    start = false;
-                    Case::Sibling
-                } else {
-                    do_sibling_or_pop!('l2, nav_stack, widget, widget_stack)
-                };
-                match case {
-                    Case::Sibling => while do_child!('l2, nav_stack, widget, widget_stack) {},
-                    Case::Pop => (),
-                    Case::End if restart => {
-                        restart = false;
-                        start = true;
-                        continue 'l2;
+            } else {
+                if let Some(index) = child {
+                    if let Some(id) = widget
+                        .get_child_mut(index)
+                        .and_then(|w| nav(mgr, w, focus, rev))
+                    {
+                        return Some(id);
                     }
-                    Case::End => break 'l2,
                 }
 
-                try_set_focus!(self, widget);
+                loop {
+                    if let Some(index) = widget.spatial_nav(mgr, rev, child) {
+                        if let Some(id) = widget
+                            .get_child_mut(index)
+                            .and_then(|w| nav(mgr, w, focus, rev))
+                        {
+                            return Some(id);
+                        }
+                        child = Some(index);
+                    } else {
+                        return if focus != Some(widget.id()) && widget.key_nav() {
+                            Some(widget.id())
+                        } else {
+                            None
+                        };
+                    }
+                }
             }
         }
 
-        false
+        // Whether to restart from the beginning on failure
+        let restart = self.state.nav_focus.is_some();
+
+        let mut opt_id = nav(self, widget, self.state.nav_focus, reverse);
+        if restart && opt_id.is_none() {
+            opt_id = nav(self, widget, None, reverse);
+        }
+
+        trace!("Manager: nav_focus = {:?}", opt_id);
+        self.state.nav_focus = opt_id;
+
+        if let Some(id) = opt_id {
+            if self.state.sel_focus != Some(id) {
+                self.clear_char_focus();
+            }
+            self.state.pending.push(Pending::SetNavFocus(id, key_focus));
+        } else {
+            // Most likely an error occurred
+            self.clear_char_focus();
+            self.state.nav_focus = None;
+        }
+        opt_id.is_some()
     }
 }

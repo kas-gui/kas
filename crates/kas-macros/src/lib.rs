@@ -229,27 +229,46 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     for #name #ty_generics #where_clause
             {
                 #[inline]
-                fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+                fn size_rules(
+                    &mut self,
+                    size_handle: &mut dyn ::kas::draw::SizeHandle,
+                    axis: ::kas::layout::AxisInfo,
+                ) -> ::kas::layout::SizeRules {
                     self.#inner.size_rules(size_handle, axis)
                 }
                 #[inline]
-                fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+                fn set_rect(
+                    &mut self,
+                    mgr: &mut ::kas::event::Manager,
+                    rect: ::kas::geom::Rect,
+                    align: ::kas::layout::AlignHints,
+                ) {
                     self.#inner.set_rect(mgr, rect, align);
                 }
                 #[inline]
-                fn translation(&self, child_index: usize) -> Offset {
+                fn translation(&self, child_index: usize) -> ::kas::geom::Offset {
                     self.#inner.translation(child_index)
                 }
                 #[inline]
-                fn spatial_nav(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-                    self.#inner.spatial_nav(reverse, from)
+                fn spatial_nav(
+                    &mut self,
+                    mgr: &mut ::kas::event::Manager,
+                    reverse: bool,
+                    from: Option<usize>,
+                ) -> Option<usize> {
+                    self.#inner.spatial_nav(mgr, reverse, from)
                 }
                 #[inline]
-                fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+                fn find_id(&self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
                     self.#inner.find_id(coord)
                 }
                 #[inline]
-                fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+                fn draw(
+                    &self,
+                    draw_handle: &mut dyn ::kas::draw::DrawHandle,
+                    mgr: &::kas::event::ManagerState,
+                    disabled: bool,
+                ) {
                     self.#inner.draw(draw_handle, mgr, disabled);
                 }
             }

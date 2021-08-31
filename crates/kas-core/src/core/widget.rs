@@ -452,7 +452,13 @@ pub trait Layout: WidgetChildren {
     ///
     /// The default implementation often suffices: it will navigate through
     /// children in order.
-    fn spatial_nav(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+    fn spatial_nav(
+        &mut self,
+        mgr: &mut Manager,
+        reverse: bool,
+        from: Option<usize>,
+    ) -> Option<usize> {
+        let _ = mgr;
         let last = self.num_children().wrapping_sub(1);
         if last == usize::MAX {
             return None;
