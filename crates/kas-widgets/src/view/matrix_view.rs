@@ -606,8 +606,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> SendEvent
                 }
                 Event::PressMove { source, coord, .. } if self.press_event == Some(source) => {
                     if let PressPhase::Start(start_coord) = self.press_phase {
-                        let delta = coord - start_coord;
-                        if delta.distance_l_inf() > mgr.config().pan_dist_thresh() {
+                        if mgr.config_test_pan_thresh(coord - start_coord) {
                             self.press_phase = PressPhase::Pan;
                         }
                     }

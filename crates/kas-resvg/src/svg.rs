@@ -110,7 +110,7 @@ impl WidgetConfig for Svg {
             if let Some(path) = self.path.parent() {
                 opts.resources_dir = Some(path.to_path_buf());
             }
-            let scale_factor = mgr.size_handle(|sh| sh.scale_factor());
+            let scale_factor = mgr.scale_factor();
             opts.dpi = 96.0 * f64::conv(scale_factor);
             // TODO: allow configuration for rendering options (speed vs quality)
             // TODO: set font family and database
