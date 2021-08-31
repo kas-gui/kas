@@ -489,7 +489,7 @@ impl<G: EditGuard> Layout for EditField<G> {
                     class,
                 );
             }
-            if self.input_state(mgr, disabled).char_focus {
+            if mgr.has_char_focus(self.id()).0 {
                 draw_handle.edit_marker(
                     self.rect().pos,
                     self.text.as_ref(),

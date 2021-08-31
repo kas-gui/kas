@@ -473,12 +473,7 @@ where
         let outer = Quad::from(rect);
 
         state.depress = false;
-        let col_bg = match state.error {
-            true => self.cols.edit_bg_error,
-            false => self.cols.edit_bg,
-        };
-        let col_bg = ColorsLinear::adjust_for_state(col_bg, state);
-
+        let col_bg = self.cols.edit_bg(state);
         if col_bg != self.cols.background {
             let inner = outer.shrink(self.w.dims.button_frame as f32 * BG_SHRINK_FACTOR);
             self.draw.rect(inner, col_bg);
@@ -516,7 +511,7 @@ where
         let outer = Quad::from(rect);
 
         let col_frame = self.cols.nav_region(state).unwrap_or(self.cols.frame);
-        let inner = self.button_frame(outer, col_frame, self.cols.background, state);
+        let inner = self.button_frame(outer, col_frame, self.cols.edit_bg(state), state);
 
         if let Some(col) = self.cols.check_mark_state(state, checked) {
             let inner = inner.shrink((2 * self.w.dims.inner_margin) as f32);
@@ -543,8 +538,7 @@ where
             self.draw.circle_2col(shadow_outer, col1, col2);
         }
 
-        let col_bg = ColorsLinear::adjust_for_state(self.cols.background, state);
-        self.draw.circle(outer, 0.0, col_bg);
+        self.draw.circle(outer, 0.0, self.cols.edit_bg(state));
 
         const F: f32 = 2.0 * (1.0 - BG_SHRINK_FACTOR); // match checkbox frame
         let r = 1.0 - F * self.w.dims.button_frame as f32 / rect.size.0 as f32;

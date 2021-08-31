@@ -336,12 +336,12 @@ where
     }
 
     fn edit_box(&mut self, rect: Rect, state: InputState) {
-        let bg_col = self.cols.bg_col(state);
+        let bg_col = self.cols.edit_bg(state);
         self.draw_edit_box(rect, bg_col, self.cols.nav_region(state));
     }
 
     fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState) {
-        let bg_col = self.cols.bg_col(state);
+        let bg_col = self.cols.edit_bg(state);
         let nav_col = self.cols.nav_region(state).or(Some(bg_col));
 
         let inner = self.draw_edit_box(rect, bg_col, nav_col);
@@ -352,7 +352,7 @@ where
     }
 
     fn radiobox(&mut self, rect: Rect, checked: bool, state: InputState) {
-        let bg_col = self.cols.bg_col(state);
+        let bg_col = self.cols.edit_bg(state);
         let nav_col = self.cols.nav_region(state).or(Some(bg_col));
 
         let inner = self.draw_edit_box(rect, bg_col, nav_col);
