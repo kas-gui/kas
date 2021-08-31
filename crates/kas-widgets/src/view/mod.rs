@@ -86,6 +86,13 @@ pub use list_view::ListView;
 pub use matrix_view::MatrixView;
 pub use single_view::SingleView;
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+enum PressPhase {
+    None,
+    Start(kas::geom::Coord),
+    Pan,
+}
+
 /// Selection mode used by [`ListView`]
 #[derive(Clone, Copy, Debug, VoidMsg)]
 pub enum SelectionMode {

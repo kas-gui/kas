@@ -5,7 +5,7 @@
 
 //! List view widget
 
-use super::{driver, Driver, SelectionError, SelectionMode};
+use super::{driver, Driver, PressPhase, SelectionError, SelectionMode};
 #[allow(unused)] // doc links
 use crate::ScrollBars;
 use crate::{ScrollComponent, Scrollable};
@@ -69,6 +69,7 @@ pub struct ListView<
     // TODO(opt): replace selection list with RangeOrSet type?
     selection: LinearSet<T::Key>,
     press_event: Option<PressSource>,
+    press_phase: PressPhase,
     press_target: Option<T::Key>,
 }
 
@@ -135,6 +136,7 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
             sel_mode: SelectionMode::None,
             selection: Default::default(),
             press_event: None,
+            press_phase: PressPhase::None,
             press_target: None,
         }
     }
@@ -624,6 +626,7 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
                             // PressMove/PressEnd events are matched below.
                             if mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None) {
                                 self.press_event = Some(source);
+                                self.press_phase = PressPhase::Start(coord);
                                 self.press_target = key;
                             }
                             return Response::None;
@@ -688,13 +691,26 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
                     self.update_view(mgr);
                     return Response::Update;
                 }
-                Event::PressMove { source, .. } if self.press_event == Some(source) => {
-                    self.press_event = None;
-                    mgr.update_grab_cursor(self.id(), CursorIcon::Grabbing);
-                    // fall through to scroll handler
+                Event::PressMove { source, coord, .. } if self.press_event == Some(source) => {
+                    if let PressPhase::Start(start_coord) = self.press_phase {
+                        let delta = coord - start_coord;
+                        if delta.distance_l_inf() > mgr.config().pan_dist_thresh() {
+                            self.press_phase = PressPhase::Pan;
+                        }
+                    }
+                    match self.press_phase {
+                        PressPhase::Pan => {
+                            mgr.update_grab_cursor(self.id(), CursorIcon::Grabbing);
+                            // fall through to scroll handler
+                        }
+                        _ => return Response::None,
+                    }
                 }
                 Event::PressEnd { source, .. } if self.press_event == Some(source) => {
                     self.press_event = None;
+                    if self.press_phase == PressPhase::Pan {
+                        return Response::None;
+                    }
                     return match self.sel_mode {
                         SelectionMode::None => Response::None,
                         SelectionMode::Single => {
