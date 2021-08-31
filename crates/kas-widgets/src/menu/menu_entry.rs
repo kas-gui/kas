@@ -65,6 +65,7 @@ impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
             &self.label,
             mgr.show_accel_labels(),
             TextClass::MenuLabel,
+            self.input_state(mgr, disabled),
         );
     }
 }

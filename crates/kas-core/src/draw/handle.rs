@@ -302,21 +302,28 @@ pub trait DrawHandle {
     /// Draw some text using the standard font
     ///
     /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
-    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass);
+    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, state: InputState);
 
     /// Draw text with effects
     ///
     /// [`DrawHandle::text`] already supports *font* effects: bold,
     /// emphasis, text size. In addition, this method supports underline and
     /// strikethrough effects.
-    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass);
+    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass, state: InputState);
 
     /// Draw an `AccelString` text
     ///
     /// The `text` is drawn within the rect from `pos` to `text.env().bounds`.
     ///
     /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
-    fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass);
+    fn text_accel(
+        &mut self,
+        pos: Coord,
+        text: &Text<AccelString>,
+        accel: bool,
+        class: TextClass,
+        state: InputState,
+    );
 
     /// Method used to implement [`DrawHandleExt::text_selected`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -327,6 +334,7 @@ pub trait DrawHandle {
         text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
+        state: InputState,
     );
 
     /// Draw an edit marker at the given `byte` index on this `text`
@@ -425,6 +433,7 @@ pub trait DrawHandleExt: DrawHandle {
         text: T,
         range: R,
         class: TextClass,
+        state: InputState,
     ) {
         let start = match range.start_bound() {
             Bound::Included(n) => *n,
@@ -437,7 +446,7 @@ pub trait DrawHandleExt: DrawHandle {
             Bound::Unbounded => usize::MAX,
         };
         let range = Range { start, end };
-        self.text_selected_range(pos, text.as_ref(), range, class);
+        self.text_selected_range(pos, text.as_ref(), range, class, state);
     }
 }
 
@@ -544,14 +553,27 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn selection_box(&mut self, rect: Rect) {
         self.deref_mut().selection_box(rect);
     }
-    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass) {
-        self.deref_mut().text(pos, text, class)
+    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, state: InputState) {
+        self.deref_mut().text(pos, text, class, state)
     }
-    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
-        self.deref_mut().text_effects(pos, text, class);
+    fn text_effects(
+        &mut self,
+        pos: Coord,
+        text: &dyn TextApi,
+        class: TextClass,
+        state: InputState,
+    ) {
+        self.deref_mut().text_effects(pos, text, class, state);
     }
-    fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
-        self.deref_mut().text_accel(pos, text, state, class);
+    fn text_accel(
+        &mut self,
+        pos: Coord,
+        text: &Text<AccelString>,
+        accel: bool,
+        class: TextClass,
+        state: InputState,
+    ) {
+        self.deref_mut().text_accel(pos, text, accel, class, state);
     }
     fn text_selected_range(
         &mut self,
@@ -559,9 +581,10 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
         text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
+        state: InputState,
     ) {
         self.deref_mut()
-            .text_selected_range(pos, text, range, class);
+            .text_selected_range(pos, text, range, class, state);
     }
     fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
         self.deref_mut().edit_marker(pos, text, class, byte)
@@ -630,14 +653,27 @@ where
     fn selection_box(&mut self, rect: Rect) {
         self.deref_mut().selection_box(rect);
     }
-    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass) {
-        self.deref_mut().text(pos, text, class)
+    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, state: InputState) {
+        self.deref_mut().text(pos, text, class, state)
     }
-    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
-        self.deref_mut().text_effects(pos, text, class);
+    fn text_effects(
+        &mut self,
+        pos: Coord,
+        text: &dyn TextApi,
+        class: TextClass,
+        state: InputState,
+    ) {
+        self.deref_mut().text_effects(pos, text, class, state);
     }
-    fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
-        self.deref_mut().text_accel(pos, text, state, class);
+    fn text_accel(
+        &mut self,
+        pos: Coord,
+        text: &Text<AccelString>,
+        accel: bool,
+        class: TextClass,
+        state: InputState,
+    ) {
+        self.deref_mut().text_accel(pos, text, accel, class, state);
     }
     fn text_selected_range(
         &mut self,
@@ -645,9 +681,10 @@ where
         text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
+        state: InputState,
     ) {
         self.deref_mut()
-            .text_selected_range(pos, text, range, class);
+            .text_selected_range(pos, text, range, class, state);
     }
     fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
         self.deref_mut().edit_marker(pos, text, class, byte)

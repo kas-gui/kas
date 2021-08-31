@@ -141,6 +141,7 @@ impl<D: Directional, W: Menu> kas::Layout for SubMenu<D, W> {
             &self.label,
             mgr.show_accel_labels(),
             TextClass::MenuLabel,
+            state,
         );
     }
 }

@@ -356,25 +356,41 @@ where
         self.draw.frame(outer, inner, col);
     }
 
-    fn text(&mut self, pos: Coord, text: &TextDisplay, _: TextClass) {
+    fn text(&mut self, pos: Coord, text: &TextDisplay, _: TextClass, state: InputState) {
         let pos = pos;
-        let col = self.cols.text;
+        let col = if state.disabled {
+            self.cols.text_disabled
+        } else {
+            self.cols.text
+        };
         self.draw.text(pos.into(), text, col);
     }
 
-    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, _: TextClass) {
-        self.draw.text_col_effects(
-            (pos).into(),
-            text.display(),
-            self.cols.text,
-            text.effect_tokens(),
-        );
+    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, _: TextClass, state: InputState) {
+        let col = if state.disabled {
+            self.cols.text_disabled
+        } else {
+            self.cols.text
+        };
+        self.draw
+            .text_col_effects((pos).into(), text.display(), col, text.effect_tokens());
     }
 
-    fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, _: TextClass) {
+    fn text_accel(
+        &mut self,
+        pos: Coord,
+        text: &Text<AccelString>,
+        accel: bool,
+        _: TextClass,
+        state: InputState,
+    ) {
         let pos = Vec2::from(pos);
-        let col = self.cols.text;
-        if state {
+        let col = if state.disabled {
+            self.cols.text_disabled
+        } else {
+            self.cols.text
+        };
+        if accel {
             let effects = text.text().effect_tokens();
             self.draw.text_col_effects(pos, text.as_ref(), col, effects);
         } else {
@@ -388,9 +404,14 @@ where
         text: &TextDisplay,
         range: Range<usize>,
         _: TextClass,
+        state: InputState,
     ) {
         let pos = Vec2::from(pos);
-        let col = self.cols.text;
+        let col = if state.disabled {
+            self.cols.text_disabled
+        } else {
+            self.cols.text
+        };
         let sel_col = self.cols.text_over(self.cols.text_sel_bg);
 
         // Draw background:

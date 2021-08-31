@@ -102,8 +102,9 @@ impl<W: Widget, D: Directional> Layout for WithLabel<W, D> {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         let disabled = disabled || self.is_disabled();
         self.inner.draw(draw_handle, mgr, disabled);
-        let state = mgr.show_accel_labels();
-        draw_handle.text_accel(self.label_pos, &self.label, state, TextClass::Label);
+        let accel = mgr.show_accel_labels();
+        let state = self.input_state(mgr, disabled);
+        draw_handle.text_accel(self.label_pos, &self.label, accel, TextClass::Label, state);
     }
 }
 

@@ -49,11 +49,12 @@ impl<T: FormattableText + 'static> Layout for ScrollLabel<T> {
         self.set_view_offset_from_edit_pos();
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         let class = TextClass::LabelScroll;
+        let state = self.input_state(mgr, disabled);
         draw_handle.with_clip_region(self.rect(), self.view_offset, &mut |draw_handle| {
             if self.selection.is_empty() {
-                draw_handle.text(self.rect().pos, self.text.as_ref(), class);
+                draw_handle.text(self.rect().pos, self.text.as_ref(), class, state);
             } else {
                 // TODO(opt): we could cache the selection rectangles here to make
                 // drawing more efficient (self.text.highlight_lines(range) output).
@@ -63,6 +64,7 @@ impl<T: FormattableText + 'static> Layout for ScrollLabel<T> {
                     &self.text,
                     self.selection.range(),
                     class,
+                    state,
                 );
             }
         });

@@ -475,9 +475,10 @@ impl<G: EditGuard> Layout for EditField<G> {
         } else {
             TextClass::Edit
         };
+        let state = self.input_state(mgr, disabled);
         draw_handle.with_clip_region(self.rect(), self.view_offset, &mut |draw_handle| {
             if self.selection.is_empty() {
-                draw_handle.text(self.rect().pos, self.text.as_ref(), class);
+                draw_handle.text(self.rect().pos, self.text.as_ref(), class, state);
             } else {
                 // TODO(opt): we could cache the selection rectangles here to make
                 // drawing more efficient (self.text.highlight_lines(range) output).
@@ -487,6 +488,7 @@ impl<G: EditGuard> Layout for EditField<G> {
                     &self.text,
                     self.selection.range(),
                     class,
+                    state,
                 );
             }
             if mgr.has_char_focus(self.id()).0 {
