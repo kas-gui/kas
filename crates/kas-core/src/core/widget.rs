@@ -352,6 +352,7 @@ pub trait WidgetConfig: Layout {
     /// Is this widget navigable via Tab key?
     ///
     /// Defaults to `false`.
+    #[inline]
     fn key_nav(&self) -> bool {
         false
     }
@@ -360,6 +361,7 @@ pub trait WidgetConfig: Layout {
     ///
     /// If true, a redraw will be requested whenever this widget gains or loses
     /// mouse-hover status.
+    #[inline]
     fn hover_highlight(&self) -> bool {
         false
     }
@@ -367,6 +369,7 @@ pub trait WidgetConfig: Layout {
     /// Which cursor icon should be used on hover?
     ///
     /// Defaults to [`event::CursorIcon::Default`].
+    #[inline]
     fn cursor_icon(&self) -> event::CursorIcon {
         event::CursorIcon::Default
     }

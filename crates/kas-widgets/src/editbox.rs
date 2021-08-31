@@ -1053,6 +1053,11 @@ impl<G: EditGuard> HasString for EditField<G> {
 impl<G: EditGuard + 'static> event::Handler for EditField<G> {
     type Msg = G::Msg;
 
+    #[inline]
+    fn focus_on_key_nav(&self) -> bool {
+        false
+    }
+
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
         fn request_focus<G: EditGuard + 'static>(s: &mut EditField<G>, mgr: &mut Manager) {
             if !s.has_key_focus && mgr.request_char_focus(s.id()) {

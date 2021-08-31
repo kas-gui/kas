@@ -47,6 +47,16 @@ pub trait Handler: WidgetConfig {
         false
     }
 
+    /// Generic handler: focus rect on key navigation
+    ///
+    /// If this widget receives [`Event::NavFocus`]`(true)` then return
+    /// [`Response::Focus`] with the widget's rect. By default this is true if
+    /// and only if [`WidgetConfig::key_nav`] is true.
+    #[inline]
+    fn focus_on_key_nav(&self) -> bool {
+        self.key_nav()
+    }
+
     /// Handle an event and return a user-defined message
     ///
     /// Widgets should handle any events applicable to themselves here, and
@@ -145,7 +155,7 @@ impl<'a> Manager<'a> {
             };
         }
 
-        if event == Event::NavFocus(true) {
+        if widget.focus_on_key_nav() && event == Event::NavFocus(true) {
             return Response::Focus(widget.rect());
         }
 
