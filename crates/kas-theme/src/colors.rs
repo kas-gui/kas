@@ -177,11 +177,11 @@ impl ColorsSrgb {
 impl ColorsLinear {
     /// Adjust a colour depending on state
     pub fn adjust_for_state(col: Rgba, state: InputState) -> Rgba {
-        if state.disabled {
+        if state.disabled() {
             col.average()
-        } else if state.depress {
+        } else if state.depress() {
             col.multiply(MULT_DEPRESS)
-        } else if state.hover || state.char_focus {
+        } else if state.hover() || state.char_focus() {
             col.multiply(MULT_HIGHLIGHT).max(MIN_HIGHLIGHT)
         } else {
             col
@@ -190,9 +190,9 @@ impl ColorsLinear {
 
     /// Get colour of a text area, depending on state
     pub fn edit_bg(&self, state: InputState) -> Rgba {
-        if state.disabled {
+        if state.disabled() {
             self.edit_bg_disabled
-        } else if state.error {
+        } else if state.error() {
             self.edit_bg_error
         } else {
             self.edit_bg
@@ -201,7 +201,7 @@ impl ColorsLinear {
 
     /// Get colour for navigation highlight region, if any
     pub fn nav_region(&self, state: InputState) -> Option<Rgba> {
-        if state.nav_focus && !state.disabled {
+        if state.nav_focus() && !state.disabled() {
             Some(self.nav_focus)
         } else {
             None
@@ -224,7 +224,7 @@ impl ColorsLinear {
     pub fn check_mark_state(&self, state: InputState, checked: bool) -> Option<Rgba> {
         if checked {
             Some(Self::adjust_for_state(self.accent, state))
-        } else if state.depress {
+        } else if state.depress() {
             Some(self.accent.multiply(MULT_DEPRESS))
         } else {
             None
@@ -233,7 +233,7 @@ impl ColorsLinear {
 
     /// Get background highlight colour of a menu entry, if any
     pub fn menu_entry(&self, state: InputState) -> Option<Rgba> {
-        if state.depress || state.nav_focus {
+        if state.depress() || state.nav_focus() {
             Some(self.accent_soft.multiply(MULT_DEPRESS))
         } else {
             None

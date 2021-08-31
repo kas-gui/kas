@@ -18,49 +18,77 @@ use crate::text::{AccelString, Text, TextApi, TextDisplay};
 #[allow(unused)]
 use crate::text::TextApiExt;
 
-/// Input and highlighting state of a widget
-///
-/// This struct is used to adjust the appearance of [`DrawHandle`]'s primitives.
-///
-/// Multiple instances can be combined via [`std::ops::BitOr`]: `lhs | rhs`.
-#[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
-pub struct InputState {
-    /// Disabled widgets are not responsive to input and usually drawn in grey.
+bitflags! {
+    /// Input and highlighting state of a widget
     ///
-    /// All other states should be ignored when disabled.
-    pub disabled: bool,
-    /// Some widgets, such as `EditBox`, use a red background on error
-    pub error: bool,
-    /// "Hover" is true if the mouse is over this element
-    pub hover: bool,
-    /// Elements such as buttons, handles and menu entries may be depressed
-    /// (visually pushed) by a click or touch event or an accelerator key.
-    /// This is often visualised by a darker colour and/or by offsetting
-    /// graphics. The `hover` state should be ignored when depressed.
-    pub depress: bool,
-    /// Keyboard navigation of UIs moves a "focus" from widget to widget.
-    pub nav_focus: bool,
-    /// "Character focus" implies this widget is ready to receive text input
-    /// (e.g. typing into an input field).
-    pub char_focus: bool,
-    /// "Selection focus" allows things such as text to be selected. Selection
-    /// focus implies that the widget also has character focus.
-    pub sel_focus: bool,
+    /// This struct is used to adjust the appearance of [`DrawHandle`]'s primitives.
+    #[derive(Default)]
+    pub struct InputState: u8 {
+        /// Disabled widgets are not responsive to input and usually drawn in grey.
+        ///
+        /// All other states should be ignored when disabled.
+        const DISABLED = 1 << 0;
+        /// Some widgets, such as `EditBox`, use a red background on error
+        const ERROR = 1 << 1;
+        /// "Hover" is true if the mouse is over this element
+        const HOVER = 1 << 2;
+        /// Elements such as buttons, handles and menu entries may be depressed
+        /// (visually pushed) by a click or touch event or an accelerator key.
+        /// This is often visualised by a darker colour and/or by offsetting
+        /// graphics. The `hover` state should be ignored when depressed.
+        const DEPRESS = 1 << 3;
+        /// Keyboard navigation of UIs moves a "focus" from widget to widget.
+        const NAV_FOCUS = 1 << 4;
+        /// "Character focus" implies this widget is ready to receive text input
+        /// (e.g. typing into an input field).
+        const CHAR_FOCUS = 1 << 5;
+        /// "Selection focus" allows things such as text to be selected. Selection
+        /// focus implies that the widget also has character focus.
+        const SEL_FOCUS = 1 << 6;
+    }
 }
 
-impl std::ops::BitOr for InputState {
-    type Output = Self;
+impl InputState {
+    /// Extract `DISABLED` bit
+    #[inline]
+    pub fn disabled(self) -> bool {
+        self.contains(InputState::DISABLED)
+    }
 
-    fn bitor(self, rhs: Self) -> Self {
-        InputState {
-            disabled: self.disabled || rhs.disabled,
-            error: self.error || rhs.error,
-            hover: self.hover || rhs.hover,
-            depress: self.depress || rhs.depress,
-            nav_focus: self.nav_focus || rhs.nav_focus,
-            char_focus: self.char_focus || rhs.char_focus,
-            sel_focus: self.sel_focus || rhs.sel_focus,
-        }
+    /// Extract `ERROR` bit
+    #[inline]
+    pub fn error(self) -> bool {
+        self.contains(InputState::ERROR)
+    }
+
+    /// Extract `HOVER` bit
+    #[inline]
+    pub fn hover(self) -> bool {
+        self.contains(InputState::HOVER)
+    }
+
+    /// Extract `DEPRESS` bit
+    #[inline]
+    pub fn depress(self) -> bool {
+        self.contains(InputState::DEPRESS)
+    }
+
+    /// Extract `NAV_FOCUS` bit
+    #[inline]
+    pub fn nav_focus(self) -> bool {
+        self.contains(InputState::NAV_FOCUS)
+    }
+
+    /// Extract `CHAR_FOCUS` bit
+    #[inline]
+    pub fn char_focus(self) -> bool {
+        self.contains(InputState::CHAR_FOCUS)
+    }
+
+    /// Extract `SEL_FOCUS` bit
+    #[inline]
+    pub fn sel_focus(self) -> bool {
+        self.contains(InputState::SEL_FOCUS)
     }
 }
 

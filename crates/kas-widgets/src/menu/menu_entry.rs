@@ -205,8 +205,8 @@ impl<M: 'static> MenuToggle<M> {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         let state = self.checkbox.input_state(mgr, disabled);
         draw_handle.menu_entry(self.core.rect, state);
-        self.checkbox.draw(draw_handle, mgr, state.disabled);
-        self.label.draw(draw_handle, mgr, state.disabled);
+        self.checkbox.draw(draw_handle, mgr, state.disabled());
+        self.label.draw(draw_handle, mgr, state.disabled());
     }
 }
 

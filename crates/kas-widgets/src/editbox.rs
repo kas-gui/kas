@@ -360,7 +360,9 @@ impl<G: EditGuard> Layout for EditBox<G> {
         // We draw highlights for input state of inner:
         let disabled = disabled || self.is_disabled() || self.inner.is_disabled();
         let mut input_state = self.inner.input_state(mgr, disabled);
-        input_state.error = self.inner.has_error();
+        if self.inner.has_error() {
+            input_state.insert(InputState::ERROR);
+        }
         draw_handle.edit_box(self.core.rect, input_state);
         self.inner.draw(draw_handle, mgr, disabled);
     }

@@ -66,7 +66,7 @@ impl<W: Widget> Layout for NavFrame<W> {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         let input_state = self.input_state(mgr, disabled);
         draw_handle.nav_frame(self.rect(), input_state);
-        self.inner.draw(draw_handle, mgr, input_state.disabled);
+        self.inner.draw(draw_handle, mgr, input_state.disabled());
     }
 }
 
