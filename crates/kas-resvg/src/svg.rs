@@ -105,17 +105,29 @@ impl WidgetConfig for Svg {
             // TODO: maybe we should use a singleton to deduplicate loading by
             // path? Probably not much use for duplicate SVG widgets however.
             let data = std::fs::read(&self.path).unwrap();
-
-            let mut opts = usvg::Options::default();
-            if let Some(path) = self.path.parent() {
-                opts.resources_dir = Some(path.to_path_buf());
-            }
             let scale_factor = mgr.scale_factor();
-            opts.dpi = 96.0 * f64::conv(scale_factor);
-            // TODO: allow configuration for rendering options (speed vs quality)
-            // TODO: set font family and database
+            let fonts_db = kas::text::fonts::fonts().read_db();
+            let fontdb = fonts_db.db();
+            let font_family = fonts_db
+                .font_family_from_alias("SERIF")
+                .unwrap_or(String::new());
+            let font_size = mgr.size_handle(|sh| sh.pixels_from_em(1.0)) as f64;
 
-            let tree = usvg::Tree::from_data(&data, &opts.to_ref()).unwrap();
+            // TODO: some options here should be configurable
+            let opts = usvg::OptionsRef {
+                resources_dir: self.path.parent(),
+                dpi: 96.0 * f64::conv(scale_factor),
+                font_family: &font_family,
+                font_size,
+                languages: &[],
+                shape_rendering: usvg::ShapeRendering::default(),
+                text_rendering: usvg::TextRendering::default(),
+                image_rendering: usvg::ImageRendering::default(),
+                keep_named_groups: false,
+                fontdb,
+            };
+
+            let tree = usvg::Tree::from_data(&data, &opts).unwrap();
             let size = tree.svg_node().size.to_screen_size().dimensions();
             self.tree = Some(tree);
             let size = Vec2(size.0.cast(), size.1.cast());
