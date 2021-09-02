@@ -10,7 +10,7 @@ publish = false
 [dependencies]
 kas = { version = "0.9.1", path = "../.." }
 chrono = "0.4"
-env_logger = "0.8"
+env_logger = "0.9"
 log = "0.4"
 wgpu = "0.10.0"
 bytemuck = "1.7.0"
