@@ -34,6 +34,11 @@ internal_doc = []
 # Enable Markdown parsing
 markdown = ["kas-text/markdown"]
 
+# Enable text shaping
+shaping = ["kas-text/shaping"]
+# Alternative: use Harfbuzz library for shaping
+harfbuzz = ["kas-text/harfbuzz"]
+
 # Enable config read/write
 #TODO(cargo): once weak-dep-features (cargo#8832) is stable, add "winit?/serde"
 # and remove the serde feature requirement under dependencies.winit.

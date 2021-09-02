@@ -17,6 +17,7 @@ default = ["clipboard", "stack_dst", "shaping", "raster"]
 nightly = ["unsize", "kas-theme/nightly"]
 
 shaping = ["kas-text/shaping"]
+harfbuzz = ["kas-text/harfbuzz"]
 raster = ["kas-text/raster"]
 
 # Use Generic Associated Types (this is too unstable to include in nightly!)
