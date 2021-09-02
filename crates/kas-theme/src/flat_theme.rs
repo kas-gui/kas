@@ -504,7 +504,7 @@ where
         self.draw
             .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
 
-        if state.nav_focus() || state.hover() {
+        if !state.disabled() && (state.nav_focus() || state.hover()) {
             let r = 0.5 * self.w.dims.button_frame as f32;
             let y = outer.b.1 - r;
             let a = Vec2(outer.a.0 + r, y);
