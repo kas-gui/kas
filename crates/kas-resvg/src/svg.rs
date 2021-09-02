@@ -115,7 +115,7 @@ impl WidgetConfig for Svg {
             // TODO: allow configuration for rendering options (speed vs quality)
             // TODO: set font family and database
 
-            let tree = usvg::Tree::from_data(&data, &opts).unwrap();
+            let tree = usvg::Tree::from_data(&data, &opts.to_ref()).unwrap();
             let size = tree.svg_node().size.to_screen_size().dimensions();
             self.tree = Some(tree);
             let size = Vec2(size.0.cast(), size.1.cast());
