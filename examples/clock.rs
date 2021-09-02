@@ -63,11 +63,12 @@ impl Layout for Clock {
         self.time_pos = pos;
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         let col_face = color::Rgba::grey(0.4);
         let col_hands = color::Rgba8Srgb::rgb(124, 124, 170).into();
         let col_secs = color::Rgba8Srgb::rgb(203, 124, 124).into();
         let text_class = TextClass::Label;
+        let state = self.input_state(mgr, disabled);
 
         // We use the low-level draw device to draw our clock. This means it is
         // not themeable, but gives us much more flexible draw routines.
@@ -108,8 +109,8 @@ impl Layout for Clock {
         line_seg(a_min, 0.0, half * 0.8, half * 0.015, col_hands);
         line_seg(a_sec, 0.0, half * 0.9, half * 0.005, col_secs);
 
-        draw_handle.text(self.date_pos, self.date.as_ref(), text_class);
-        draw_handle.text(self.time_pos, self.time.as_ref(), text_class);
+        draw_handle.text(self.date_pos, self.date.as_ref(), text_class, state);
+        draw_handle.text(self.time_pos, self.time.as_ref(), text_class, state);
     }
 }
 
