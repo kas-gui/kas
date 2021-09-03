@@ -24,9 +24,8 @@ pub struct Config {
     )]
     touch_text_sel_delay_ns: u32,
 
-    // TODO: multiply by scale factor on access?
     #[cfg_attr(feature = "config", serde(default = "defaults::pan_dist_thresh"))]
-    pan_dist_thresh: i32,
+    pan_dist_thresh: f32,
 
     #[cfg_attr(feature = "config", serde(default = "defaults::mouse_pan"))]
     mouse_pan: MousePan,
@@ -77,7 +76,7 @@ impl Config {
     /// start; otherwise the system should wait for the text-selection timer.
     /// We currently recommend the L-inf distance metric (max of abs of values).
     #[inline]
-    pub fn pan_dist_thresh(&self) -> i32 {
+    pub fn pan_dist_thresh(&self) -> f32 {
         self.pan_dist_thresh
     }
 
@@ -163,8 +162,8 @@ mod defaults {
     pub fn touch_text_sel_delay_ns() -> u32 {
         1_000_000_000
     }
-    pub fn pan_dist_thresh() -> i32 {
-        2
+    pub fn pan_dist_thresh() -> f32 {
+        2.1
     }
     pub fn mouse_pan() -> MousePan {
         MousePan::Always

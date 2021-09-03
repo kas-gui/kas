@@ -274,8 +274,9 @@ impl<M: 'static> Layout for TextButton<M> {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         draw_handle.button(self.core.rect, self.color, self.input_state(mgr, disabled));
         let pos = self.core.rect.pos + self.frame_offset;
-        let state = mgr.show_accel_labels();
-        draw_handle.text_accel(pos, &self.label, state, TextClass::Button);
+        let accel = mgr.show_accel_labels();
+        let state = self.input_state(mgr, disabled);
+        draw_handle.text_accel(pos, &self.label, accel, TextClass::Button, state);
     }
 }
 

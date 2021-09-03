@@ -131,15 +131,26 @@ pub trait WidgetCore: Any + fmt::Debug {
     fn input_state(&self, mgr: &ManagerState, disabled: bool) -> InputState {
         let id = self.core_data().id;
         let (char_focus, sel_focus) = mgr.has_char_focus(id);
-        InputState {
-            disabled: self.core_data().disabled || disabled,
-            error: false,
-            hover: mgr.is_hovered(id),
-            depress: mgr.is_depressed(id),
-            nav_focus: mgr.nav_focus(id),
-            char_focus,
-            sel_focus,
+        let mut state = InputState::empty();
+        if self.core_data().disabled || disabled {
+            state |= InputState::DISABLED;
         }
+        if mgr.is_hovered(id) {
+            state |= InputState::HOVER;
+        }
+        if mgr.is_depressed(id) {
+            state |= InputState::DEPRESS;
+        }
+        if mgr.nav_focus(id) {
+            state |= InputState::NAV_FOCUS;
+        }
+        if char_focus {
+            state |= InputState::CHAR_FOCUS;
+        }
+        if sel_focus {
+            state |= InputState::SEL_FOCUS;
+        }
+        state
     }
 }
 
@@ -352,6 +363,7 @@ pub trait WidgetConfig: Layout {
     /// Is this widget navigable via Tab key?
     ///
     /// Defaults to `false`.
+    #[inline]
     fn key_nav(&self) -> bool {
         false
     }
@@ -360,6 +372,7 @@ pub trait WidgetConfig: Layout {
     ///
     /// If true, a redraw will be requested whenever this widget gains or loses
     /// mouse-hover status.
+    #[inline]
     fn hover_highlight(&self) -> bool {
         false
     }
@@ -367,6 +380,7 @@ pub trait WidgetConfig: Layout {
     /// Which cursor icon should be used on hover?
     ///
     /// Defaults to [`event::CursorIcon::Default`].
+    #[inline]
     fn cursor_icon(&self) -> event::CursorIcon {
         event::CursorIcon::Default
     }

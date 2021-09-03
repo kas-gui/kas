@@ -290,16 +290,29 @@ where
         self.as_flat().selection_box(rect);
     }
 
-    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass) {
-        self.as_flat().text(pos, text, class);
+    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, state: InputState) {
+        self.as_flat().text(pos, text, class, state);
     }
 
-    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
-        self.as_flat().text_effects(pos, text, class);
+    fn text_effects(
+        &mut self,
+        pos: Coord,
+        text: &dyn TextApi,
+        class: TextClass,
+        state: InputState,
+    ) {
+        self.as_flat().text_effects(pos, text, class, state);
     }
 
-    fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
-        self.as_flat().text_accel(pos, text, state, class);
+    fn text_accel(
+        &mut self,
+        pos: Coord,
+        text: &Text<AccelString>,
+        accel: bool,
+        class: TextClass,
+        state: InputState,
+    ) {
+        self.as_flat().text_accel(pos, text, accel, class, state);
     }
 
     fn text_selected_range(
@@ -308,8 +321,10 @@ where
         text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
+        state: InputState,
     ) {
-        self.as_flat().text_selected_range(pos, text, range, class);
+        self.as_flat()
+            .text_selected_range(pos, text, range, class, state);
     }
 
     fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
@@ -336,12 +351,12 @@ where
     }
 
     fn edit_box(&mut self, rect: Rect, state: InputState) {
-        let bg_col = self.cols.bg_col(state);
+        let bg_col = self.cols.edit_bg(state);
         self.draw_edit_box(rect, bg_col, self.cols.nav_region(state));
     }
 
     fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState) {
-        let bg_col = self.cols.bg_col(state);
+        let bg_col = self.cols.edit_bg(state);
         let nav_col = self.cols.nav_region(state).or(Some(bg_col));
 
         let inner = self.draw_edit_box(rect, bg_col, nav_col);
@@ -352,7 +367,7 @@ where
     }
 
     fn radiobox(&mut self, rect: Rect, checked: bool, state: InputState) {
-        let bg_col = self.cols.bg_col(state);
+        let bg_col = self.cols.edit_bg(state);
         let nav_col = self.cols.nav_region(state).or(Some(bg_col));
 
         let inner = self.draw_edit_box(rect, bg_col, nav_col);

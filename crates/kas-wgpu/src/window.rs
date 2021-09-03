@@ -55,7 +55,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let scale_factor = shared.scale_factor as f32;
         let mut theme_window = shared.theme.new_window(scale_factor);
 
-        let mut mgr = ManagerState::new(shared.config.clone());
+        let mut mgr = ManagerState::new(shared.config.clone(), scale_factor);
         let mut tkw = TkWindow::new(shared, None, &mut theme_window);
         mgr.configure(&mut tkw, &mut *widget);
 
@@ -126,9 +126,11 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             } => {
                 // Note: API allows us to set new window size here.
                 shared.scale_factor = scale_factor;
+                let scale_factor = scale_factor as f32;
+                self.mgr.set_scale_factor(scale_factor);
                 shared
                     .theme
-                    .update_window(&mut self.theme_window, scale_factor as f32);
+                    .update_window(&mut self.theme_window, scale_factor);
                 self.solve_cache.invalidate_rule_cache();
                 self.do_resize(shared, *new_inner_size);
             }

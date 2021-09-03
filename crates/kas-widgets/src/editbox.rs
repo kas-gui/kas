@@ -360,7 +360,9 @@ impl<G: EditGuard> Layout for EditBox<G> {
         // We draw highlights for input state of inner:
         let disabled = disabled || self.is_disabled() || self.inner.is_disabled();
         let mut input_state = self.inner.input_state(mgr, disabled);
-        input_state.error = self.inner.has_error();
+        if self.inner.has_error() {
+            input_state.insert(InputState::ERROR);
+        }
         draw_handle.edit_box(self.core.rect, input_state);
         self.inner.draw(draw_handle, mgr, disabled);
     }
@@ -475,9 +477,10 @@ impl<G: EditGuard> Layout for EditField<G> {
         } else {
             TextClass::Edit
         };
+        let state = self.input_state(mgr, disabled);
         draw_handle.with_clip_region(self.rect(), self.view_offset, &mut |draw_handle| {
             if self.selection.is_empty() {
-                draw_handle.text(self.rect().pos, self.text.as_ref(), class);
+                draw_handle.text(self.rect().pos, self.text.as_ref(), class, state);
             } else {
                 // TODO(opt): we could cache the selection rectangles here to make
                 // drawing more efficient (self.text.highlight_lines(range) output).
@@ -487,9 +490,10 @@ impl<G: EditGuard> Layout for EditField<G> {
                     &self.text,
                     self.selection.range(),
                     class,
+                    state,
                 );
             }
-            if self.input_state(mgr, disabled).char_focus {
+            if mgr.has_char_focus(self.id()).0 {
                 draw_handle.edit_marker(
                     self.rect().pos,
                     self.text.as_ref(),
@@ -1052,6 +1056,11 @@ impl<G: EditGuard> HasString for EditField<G> {
 
 impl<G: EditGuard + 'static> event::Handler for EditField<G> {
     type Msg = G::Msg;
+
+    #[inline]
+    fn focus_on_key_nav(&self) -> bool {
+        false
+    }
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
         fn request_focus<G: EditGuard + 'static>(s: &mut EditField<G>, mgr: &mut Manager) {

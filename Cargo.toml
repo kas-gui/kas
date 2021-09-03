@@ -54,7 +54,9 @@ clipboard = ["kas-wgpu/clipboard"]
 markdown = ["kas-core/markdown"]
 
 # Enable text shaping
-shaping = ["kas-wgpu/shaping"]
+shaping = ["kas-core/shaping"]
+# Alternative: use Harfbuzz library for shaping
+harfbuzz = ["kas-core/harfbuzz"]
 
 # Enable config read/write
 #TODO(cargo): once weak-dep-features (cargo#8832) is stable, add "winit?/serde"
@@ -103,7 +105,7 @@ features = ["raster"]
 
 [dev-dependencies]
 chrono = "0.4"
-env_logger = "0.8"
+env_logger = "0.9"
 log = "0.4"
 
 [workspace]

@@ -223,12 +223,17 @@ impl ThemeConfig for Config {
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "config", derive(serde::Serialize, serde::Deserialize))]
 pub struct FontAliases {
+    #[cfg_attr(feature = "config", serde(default = "defaults::add_mode"))]
     mode: AddMode,
     list: Vec<String>,
 }
 
 mod defaults {
     use super::*;
+
+    pub fn add_mode() -> AddMode {
+        AddMode::Prepend
+    }
 
     pub fn font_size() -> f32 {
         10.0

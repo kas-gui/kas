@@ -244,9 +244,9 @@ where
         let inner = outer.shrink(self.w.dims.button_frame as f32);
         let col_bg = ColorsLinear::adjust_for_state(col_bg, state);
 
-        if !(state.disabled || state.depress) {
+        if !(state.disabled() || state.depress()) {
             let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
-            if state.hover {
+            if state.hover() {
                 a = a * SHADOW_HOVER;
                 b = b * SHADOW_HOVER;
             }
@@ -356,25 +356,41 @@ where
         self.draw.frame(outer, inner, col);
     }
 
-    fn text(&mut self, pos: Coord, text: &TextDisplay, _: TextClass) {
+    fn text(&mut self, pos: Coord, text: &TextDisplay, _: TextClass, state: InputState) {
         let pos = pos;
-        let col = self.cols.text;
+        let col = if state.disabled() {
+            self.cols.text_disabled
+        } else {
+            self.cols.text
+        };
         self.draw.text(pos.into(), text, col);
     }
 
-    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, _: TextClass) {
-        self.draw.text_col_effects(
-            (pos).into(),
-            text.display(),
-            self.cols.text,
-            text.effect_tokens(),
-        );
+    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, _: TextClass, state: InputState) {
+        let col = if state.disabled() {
+            self.cols.text_disabled
+        } else {
+            self.cols.text
+        };
+        self.draw
+            .text_col_effects((pos).into(), text.display(), col, text.effect_tokens());
     }
 
-    fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, _: TextClass) {
+    fn text_accel(
+        &mut self,
+        pos: Coord,
+        text: &Text<AccelString>,
+        accel: bool,
+        _: TextClass,
+        state: InputState,
+    ) {
         let pos = Vec2::from(pos);
-        let col = self.cols.text;
-        if state {
+        let col = if state.disabled() {
+            self.cols.text_disabled
+        } else {
+            self.cols.text
+        };
+        if accel {
             let effects = text.text().effect_tokens();
             self.draw.text_col_effects(pos, text.as_ref(), col, effects);
         } else {
@@ -388,9 +404,14 @@ where
         text: &TextDisplay,
         range: Range<usize>,
         _: TextClass,
+        state: InputState,
     ) {
         let pos = Vec2::from(pos);
-        let col = self.cols.text;
+        let col = if state.disabled() {
+            self.cols.text_disabled
+        } else {
+            self.cols.text
+        };
         let sel_col = self.cols.text_over(self.cols.text_sel_bg);
 
         // Draw background:
@@ -460,7 +481,7 @@ where
     fn button(&mut self, rect: Rect, col: Option<color::Rgb>, state: InputState) {
         let outer = Quad::from(rect);
 
-        let col_bg = if state.nav_focus && !state.disabled {
+        let col_bg = if state.nav_focus() && !state.disabled() {
             self.cols.accent_soft
         } else {
             col.map(|c| c.into()).unwrap_or(self.cols.background)
@@ -472,13 +493,8 @@ where
     fn edit_box(&mut self, rect: Rect, mut state: InputState) {
         let outer = Quad::from(rect);
 
-        state.depress = false;
-        let col_bg = match state.error {
-            true => self.cols.edit_bg_error,
-            false => self.cols.edit_bg,
-        };
-        let col_bg = ColorsLinear::adjust_for_state(col_bg, state);
-
+        state.remove(InputState::DEPRESS);
+        let col_bg = self.cols.edit_bg(state);
         if col_bg != self.cols.background {
             let inner = outer.shrink(self.w.dims.button_frame as f32 * BG_SHRINK_FACTOR);
             self.draw.rect(inner, col_bg);
@@ -488,12 +504,12 @@ where
         self.draw
             .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
 
-        if state.nav_focus || state.hover {
+        if !state.disabled() && (state.nav_focus() || state.hover()) {
             let r = 0.5 * self.w.dims.button_frame as f32;
             let y = outer.b.1 - r;
             let a = Vec2(outer.a.0 + r, y);
             let b = Vec2(outer.b.0 - r, y);
-            let col = if state.nav_focus {
+            let col = if state.nav_focus() {
                 self.cols.nav_focus
             } else {
                 self.cols.text
@@ -516,7 +532,7 @@ where
         let outer = Quad::from(rect);
 
         let col_frame = self.cols.nav_region(state).unwrap_or(self.cols.frame);
-        let inner = self.button_frame(outer, col_frame, self.cols.background, state);
+        let inner = self.button_frame(outer, col_frame, self.cols.edit_bg(state), state);
 
         if let Some(col) = self.cols.check_mark_state(state, checked) {
             let inner = inner.shrink((2 * self.w.dims.inner_margin) as f32);
@@ -528,10 +544,10 @@ where
         let outer = Quad::from(rect);
         let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
 
-        if !(state.disabled || state.depress) {
+        if !(state.disabled() || state.depress()) {
             let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
             let mut mult = 0.65;
-            if state.hover {
+            if state.hover() {
                 mult *= SHADOW_HOVER;
             }
             a = a * mult;
@@ -543,8 +559,7 @@ where
             self.draw.circle_2col(shadow_outer, col1, col2);
         }
 
-        let col_bg = ColorsLinear::adjust_for_state(self.cols.background, state);
-        self.draw.circle(outer, 0.0, col_bg);
+        self.draw.circle(outer, 0.0, self.cols.edit_bg(state));
 
         const F: f32 = 2.0 * (1.0 - BG_SHRINK_FACTOR); // match checkbox frame
         let r = 1.0 - F * self.w.dims.button_frame as f32 / rect.size.0 as f32;
@@ -570,7 +585,7 @@ where
         let r = outer.size().min_comp() * 0.125;
         let outer = outer.shrink(r);
         let inner = outer.shrink(3.0 * r);
-        let col = if state.depress || state.nav_focus {
+        let col = if state.depress() || state.nav_focus() {
             self.cols.nav_focus
         } else {
             self.cols.accent_soft
@@ -609,17 +624,17 @@ where
         let offset = Offset::from((h_rect.size - size) / 2);
         let outer = Quad::from(Rect::new(h_rect.pos + offset, size));
 
-        let col = if state.nav_focus && !state.disabled {
+        let col = if state.nav_focus() && !state.disabled() {
             self.cols.accent_soft
         } else {
             self.cols.background
         };
         let col = ColorsLinear::adjust_for_state(col, state);
 
-        if !(state.disabled || state.depress) {
+        if !state.contains(InputState::DISABLED | InputState::DEPRESS) {
             let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
             let mut mult = 0.6;
-            if state.hover {
+            if state.hover() {
                 mult *= SHADOW_HOVER;
             }
             a = a * mult;

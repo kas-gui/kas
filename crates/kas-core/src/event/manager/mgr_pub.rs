@@ -11,7 +11,7 @@ use std::u16;
 
 use super::*;
 use crate::draw::{DrawShared, SizeHandle, ThemeApi};
-use crate::geom::Coord;
+use crate::geom::{Coord, Offset, Vec2};
 use crate::updatable::Updatable;
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
@@ -110,6 +110,21 @@ impl<'a> Manager<'a> {
         self.config()
             .mouse_text_pan()
             .is_enabled_with(self.modifiers())
+    }
+
+    /// Test pan threshold against config, adjusted for scale factor
+    ///
+    /// Returns true when `dist` is large enough to switch to pan mode.
+    #[inline]
+    pub fn config_test_pan_thresh(&self, dist: Offset) -> bool {
+        let thresh = self.config().pan_dist_thresh() * self.scale_factor();
+        Vec2::from(dist).sum_square() >= thresh * thresh
+    }
+
+    /// Access the screen's scale factor
+    #[inline]
+    pub fn scale_factor(&self) -> f32 {
+        self.state.scale_factor
     }
 
     /// Schedule an update

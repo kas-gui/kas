@@ -18,49 +18,77 @@ use crate::text::{AccelString, Text, TextApi, TextDisplay};
 #[allow(unused)]
 use crate::text::TextApiExt;
 
-/// Input and highlighting state of a widget
-///
-/// This struct is used to adjust the appearance of [`DrawHandle`]'s primitives.
-///
-/// Multiple instances can be combined via [`std::ops::BitOr`]: `lhs | rhs`.
-#[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
-pub struct InputState {
-    /// Disabled widgets are not responsive to input and usually drawn in grey.
+bitflags! {
+    /// Input and highlighting state of a widget
     ///
-    /// All other states should be ignored when disabled.
-    pub disabled: bool,
-    /// Some widgets, such as `EditBox`, use a red background on error
-    pub error: bool,
-    /// "Hover" is true if the mouse is over this element
-    pub hover: bool,
-    /// Elements such as buttons, handles and menu entries may be depressed
-    /// (visually pushed) by a click or touch event or an accelerator key.
-    /// This is often visualised by a darker colour and/or by offsetting
-    /// graphics. The `hover` state should be ignored when depressed.
-    pub depress: bool,
-    /// Keyboard navigation of UIs moves a "focus" from widget to widget.
-    pub nav_focus: bool,
-    /// "Character focus" implies this widget is ready to receive text input
-    /// (e.g. typing into an input field).
-    pub char_focus: bool,
-    /// "Selection focus" allows things such as text to be selected. Selection
-    /// focus implies that the widget also has character focus.
-    pub sel_focus: bool,
+    /// This struct is used to adjust the appearance of [`DrawHandle`]'s primitives.
+    #[derive(Default)]
+    pub struct InputState: u8 {
+        /// Disabled widgets are not responsive to input and usually drawn in grey.
+        ///
+        /// All other states should be ignored when disabled.
+        const DISABLED = 1 << 0;
+        /// Some widgets, such as `EditBox`, use a red background on error
+        const ERROR = 1 << 1;
+        /// "Hover" is true if the mouse is over this element
+        const HOVER = 1 << 2;
+        /// Elements such as buttons, handles and menu entries may be depressed
+        /// (visually pushed) by a click or touch event or an accelerator key.
+        /// This is often visualised by a darker colour and/or by offsetting
+        /// graphics. The `hover` state should be ignored when depressed.
+        const DEPRESS = 1 << 3;
+        /// Keyboard navigation of UIs moves a "focus" from widget to widget.
+        const NAV_FOCUS = 1 << 4;
+        /// "Character focus" implies this widget is ready to receive text input
+        /// (e.g. typing into an input field).
+        const CHAR_FOCUS = 1 << 5;
+        /// "Selection focus" allows things such as text to be selected. Selection
+        /// focus implies that the widget also has character focus.
+        const SEL_FOCUS = 1 << 6;
+    }
 }
 
-impl std::ops::BitOr for InputState {
-    type Output = Self;
+impl InputState {
+    /// Extract `DISABLED` bit
+    #[inline]
+    pub fn disabled(self) -> bool {
+        self.contains(InputState::DISABLED)
+    }
 
-    fn bitor(self, rhs: Self) -> Self {
-        InputState {
-            disabled: self.disabled || rhs.disabled,
-            error: self.error || rhs.error,
-            hover: self.hover || rhs.hover,
-            depress: self.depress || rhs.depress,
-            nav_focus: self.nav_focus || rhs.nav_focus,
-            char_focus: self.char_focus || rhs.char_focus,
-            sel_focus: self.sel_focus || rhs.sel_focus,
-        }
+    /// Extract `ERROR` bit
+    #[inline]
+    pub fn error(self) -> bool {
+        self.contains(InputState::ERROR)
+    }
+
+    /// Extract `HOVER` bit
+    #[inline]
+    pub fn hover(self) -> bool {
+        self.contains(InputState::HOVER)
+    }
+
+    /// Extract `DEPRESS` bit
+    #[inline]
+    pub fn depress(self) -> bool {
+        self.contains(InputState::DEPRESS)
+    }
+
+    /// Extract `NAV_FOCUS` bit
+    #[inline]
+    pub fn nav_focus(self) -> bool {
+        self.contains(InputState::NAV_FOCUS)
+    }
+
+    /// Extract `CHAR_FOCUS` bit
+    #[inline]
+    pub fn char_focus(self) -> bool {
+        self.contains(InputState::CHAR_FOCUS)
+    }
+
+    /// Extract `SEL_FOCUS` bit
+    #[inline]
+    pub fn sel_focus(self) -> bool {
+        self.contains(InputState::SEL_FOCUS)
     }
 }
 
@@ -302,21 +330,28 @@ pub trait DrawHandle {
     /// Draw some text using the standard font
     ///
     /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
-    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass);
+    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, state: InputState);
 
     /// Draw text with effects
     ///
     /// [`DrawHandle::text`] already supports *font* effects: bold,
     /// emphasis, text size. In addition, this method supports underline and
     /// strikethrough effects.
-    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass);
+    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass, state: InputState);
 
     /// Draw an `AccelString` text
     ///
     /// The `text` is drawn within the rect from `pos` to `text.env().bounds`.
     ///
     /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
-    fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass);
+    fn text_accel(
+        &mut self,
+        pos: Coord,
+        text: &Text<AccelString>,
+        accel: bool,
+        class: TextClass,
+        state: InputState,
+    );
 
     /// Method used to implement [`DrawHandleExt::text_selected`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -327,6 +362,7 @@ pub trait DrawHandle {
         text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
+        state: InputState,
     );
 
     /// Draw an edit marker at the given `byte` index on this `text`
@@ -425,6 +461,7 @@ pub trait DrawHandleExt: DrawHandle {
         text: T,
         range: R,
         class: TextClass,
+        state: InputState,
     ) {
         let start = match range.start_bound() {
             Bound::Included(n) => *n,
@@ -437,7 +474,7 @@ pub trait DrawHandleExt: DrawHandle {
             Bound::Unbounded => usize::MAX,
         };
         let range = Range { start, end };
-        self.text_selected_range(pos, text.as_ref(), range, class);
+        self.text_selected_range(pos, text.as_ref(), range, class, state);
     }
 }
 
@@ -544,14 +581,27 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn selection_box(&mut self, rect: Rect) {
         self.deref_mut().selection_box(rect);
     }
-    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass) {
-        self.deref_mut().text(pos, text, class)
+    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, state: InputState) {
+        self.deref_mut().text(pos, text, class, state)
     }
-    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
-        self.deref_mut().text_effects(pos, text, class);
+    fn text_effects(
+        &mut self,
+        pos: Coord,
+        text: &dyn TextApi,
+        class: TextClass,
+        state: InputState,
+    ) {
+        self.deref_mut().text_effects(pos, text, class, state);
     }
-    fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
-        self.deref_mut().text_accel(pos, text, state, class);
+    fn text_accel(
+        &mut self,
+        pos: Coord,
+        text: &Text<AccelString>,
+        accel: bool,
+        class: TextClass,
+        state: InputState,
+    ) {
+        self.deref_mut().text_accel(pos, text, accel, class, state);
     }
     fn text_selected_range(
         &mut self,
@@ -559,9 +609,10 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
         text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
+        state: InputState,
     ) {
         self.deref_mut()
-            .text_selected_range(pos, text, range, class);
+            .text_selected_range(pos, text, range, class, state);
     }
     fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
         self.deref_mut().edit_marker(pos, text, class, byte)
@@ -630,14 +681,27 @@ where
     fn selection_box(&mut self, rect: Rect) {
         self.deref_mut().selection_box(rect);
     }
-    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass) {
-        self.deref_mut().text(pos, text, class)
+    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, state: InputState) {
+        self.deref_mut().text(pos, text, class, state)
     }
-    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
-        self.deref_mut().text_effects(pos, text, class);
+    fn text_effects(
+        &mut self,
+        pos: Coord,
+        text: &dyn TextApi,
+        class: TextClass,
+        state: InputState,
+    ) {
+        self.deref_mut().text_effects(pos, text, class, state);
     }
-    fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
-        self.deref_mut().text_accel(pos, text, state, class);
+    fn text_accel(
+        &mut self,
+        pos: Coord,
+        text: &Text<AccelString>,
+        accel: bool,
+        class: TextClass,
+        state: InputState,
+    ) {
+        self.deref_mut().text_accel(pos, text, accel, class, state);
     }
     fn text_selected_range(
         &mut self,
@@ -645,9 +709,10 @@ where
         text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
+        state: InputState,
     ) {
         self.deref_mut()
-            .text_selected_range(pos, text, range, class);
+            .text_selected_range(pos, text, range, class, state);
     }
     fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
         self.deref_mut().edit_marker(pos, text, class, byte)
@@ -693,6 +758,7 @@ mod test {
 
         let text = crate::text::Text::new_single("sample");
         let class = TextClass::Label;
-        draw_handle.text_selected(Coord::ZERO, &text, .., class)
+        let state = InputState::empty();
+        draw_handle.text_selected(Coord::ZERO, &text, .., class, state)
     }
 }

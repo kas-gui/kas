@@ -15,7 +15,9 @@ pub use crate::class::*;
 #[doc(no_inline)]
 pub use crate::dir::{Direction, Directional};
 #[doc(no_inline)]
-pub use crate::draw::{DrawHandle, DrawHandleExt, DrawShared, ImageId, SizeHandle, ThemeApi};
+pub use crate::draw::{
+    DrawHandle, DrawHandleExt, DrawShared, ImageId, InputState, SizeHandle, ThemeApi,
+};
 #[doc(no_inline)]
 pub use crate::event::{
     Event, Handler, Manager, ManagerState, Response, SendEvent, UpdateHandle, VoidMsg,

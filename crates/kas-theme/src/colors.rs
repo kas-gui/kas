@@ -25,6 +25,8 @@ pub struct Colors<C> {
     pub frame: C,
     /// Background colour of `EditBox`
     pub edit_bg: C,
+    /// Background colour of `EditBox` (disabled state)
+    pub edit_bg_disabled: C,
     /// Background colour of `EditBox` (error state)
     pub edit_bg_error: C,
     /// Theme accent
@@ -69,6 +71,7 @@ impl From<ColorsSrgb> for ColorsLinear {
             accent_soft: col.accent_soft.into(),
             nav_focus: col.nav_focus.into(),
             edit_bg: col.edit_bg.into(),
+            edit_bg_disabled: col.edit_bg_disabled.into(),
             edit_bg_error: col.edit_bg_error.into(),
             text: col.text.into(),
             text_invert: col.text_invert.into(),
@@ -88,6 +91,7 @@ impl From<ColorsLinear> for ColorsSrgb {
             accent_soft: col.accent_soft.into(),
             nav_focus: col.nav_focus.into(),
             edit_bg: col.edit_bg.into(),
+            edit_bg_disabled: col.edit_bg_disabled.into(),
             edit_bg_error: col.edit_bg_error.into(),
             text: col.text.into(),
             text_invert: col.text_invert.into(),
@@ -122,6 +126,7 @@ impl ColorsSrgb {
             accent_soft: Rgba8Srgb::from_str("#B38DF9").unwrap(),
             nav_focus: Rgba8Srgb::from_str("#7E3FF2").unwrap(),
             edit_bg: Rgba8Srgb::from_str("#FAFAFA").unwrap(),
+            edit_bg_disabled: Rgba8Srgb::from_str("#DCDCDC").unwrap(),
             edit_bg_error: Rgba8Srgb::from_str("#FFBCBC").unwrap(),
             text: Rgba8Srgb::from_str("#000000").unwrap(),
             text_invert: Rgba8Srgb::from_str("#FFFFFF").unwrap(),
@@ -139,7 +144,8 @@ impl ColorsSrgb {
             accent: Rgba8Srgb::from_str("#F74C00").unwrap(),
             accent_soft: Rgba8Srgb::from_str("#E77346").unwrap(),
             nav_focus: Rgba8Srgb::from_str("#A33100").unwrap(),
-            edit_bg: Rgba8Srgb::from_str("#595959").unwrap(),
+            edit_bg: Rgba8Srgb::from_str("#303030").unwrap(),
+            edit_bg_disabled: Rgba8Srgb::from_str("#606060").unwrap(),
             edit_bg_error: Rgba8Srgb::from_str("#FFBCBC").unwrap(),
             text: Rgba8Srgb::from_str("#FFFFFF").unwrap(),
             text_invert: Rgba8Srgb::from_str("#000000").unwrap(),
@@ -158,6 +164,7 @@ impl ColorsSrgb {
             accent_soft: Rgba8Srgb::from_str("#7CDAFF").unwrap(),
             nav_focus: Rgba8Srgb::from_str("#3B697A").unwrap(),
             edit_bg: Rgba8Srgb::from_str("#FFFFFF").unwrap(),
+            edit_bg_disabled: Rgba8Srgb::from_str("#DCDCDC").unwrap(),
             edit_bg_error: Rgba8Srgb::from_str("#FFBCBC").unwrap(),
             text: Rgba8Srgb::from_str("#000000").unwrap(),
             text_invert: Rgba8Srgb::from_str("#FFFFFF").unwrap(),
@@ -170,11 +177,11 @@ impl ColorsSrgb {
 impl ColorsLinear {
     /// Adjust a colour depending on state
     pub fn adjust_for_state(col: Rgba, state: InputState) -> Rgba {
-        if state.disabled {
+        if state.disabled() {
             col.average()
-        } else if state.depress {
+        } else if state.depress() {
             col.multiply(MULT_DEPRESS)
-        } else if state.hover || state.char_focus {
+        } else if state.hover() || state.char_focus() {
             col.multiply(MULT_HIGHLIGHT).max(MIN_HIGHLIGHT)
         } else {
             col
@@ -182,10 +189,10 @@ impl ColorsLinear {
     }
 
     /// Get colour of a text area, depending on state
-    pub fn bg_col(&self, state: InputState) -> Rgba {
-        if state.disabled {
-            self.edit_bg.average()
-        } else if state.error {
+    pub fn edit_bg(&self, state: InputState) -> Rgba {
+        if state.disabled() {
+            self.edit_bg_disabled
+        } else if state.error() {
             self.edit_bg_error
         } else {
             self.edit_bg
@@ -194,7 +201,7 @@ impl ColorsLinear {
 
     /// Get colour for navigation highlight region, if any
     pub fn nav_region(&self, state: InputState) -> Option<Rgba> {
-        if state.nav_focus && !state.disabled {
+        if state.nav_focus() && !state.disabled() {
             Some(self.nav_focus)
         } else {
             None
@@ -217,7 +224,7 @@ impl ColorsLinear {
     pub fn check_mark_state(&self, state: InputState, checked: bool) -> Option<Rgba> {
         if checked {
             Some(Self::adjust_for_state(self.accent, state))
-        } else if state.depress {
+        } else if state.depress() {
             Some(self.accent.multiply(MULT_DEPRESS))
         } else {
             None
@@ -226,7 +233,7 @@ impl ColorsLinear {
 
     /// Get background highlight colour of a menu entry, if any
     pub fn menu_entry(&self, state: InputState) -> Option<Rgba> {
-        if state.depress || state.nav_focus {
+        if state.depress() || state.nav_focus() {
             Some(self.accent_soft.multiply(MULT_DEPRESS))
         } else {
             None

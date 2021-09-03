@@ -101,6 +101,7 @@ enum Pending {
 #[derive(Debug)]
 pub struct ManagerState {
     config: Rc<RefCell<Config>>,
+    scale_factor: f32,
     end_id: WidgetId,
     modifiers: ModifiersState,
     /// char focus is on same widget as sel_focus; otherwise its value is ignored

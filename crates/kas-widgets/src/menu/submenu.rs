@@ -133,7 +133,9 @@ impl<D: Directional, W: Menu> kas::Layout for SubMenu<D, W> {
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         let mut state = self.input_state(mgr, disabled);
-        state.depress = state.depress || self.popup_id.is_some();
+        if self.popup_id.is_some() {
+            state.insert(InputState::DEPRESS);
+        }
         draw_handle.menu_entry(self.core.rect, state);
         let pos = self.core.rect.pos + self.label_off;
         draw_handle.text_accel(
@@ -141,6 +143,7 @@ impl<D: Directional, W: Menu> kas::Layout for SubMenu<D, W> {
             &self.label,
             mgr.show_accel_labels(),
             TextClass::MenuLabel,
+            state,
         );
     }
 }
