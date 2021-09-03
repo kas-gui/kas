@@ -33,7 +33,7 @@ stack_dst = ["kas-theme/stack_dst"]
 unsize = ["kas-theme/unsize"]
 
 [dependencies]
-kas-text = { version = "0.3.4" }
+kas-text = { version = "0.4.0" }
 bytemuck = "1.7.0"
 futures = "0.3"
 log = "0.4"

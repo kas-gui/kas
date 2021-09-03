@@ -77,7 +77,7 @@ version = "0.9.1"
 path = "../kas-macros"
 
 [dependencies.kas-text]
-version = "0.3.0"
+version = "0.4.0"
 
 [dependencies.winit]
 # Provides translations for several winit types
