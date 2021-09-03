@@ -758,6 +758,7 @@ mod test {
 
         let text = crate::text::Text::new_single("sample");
         let class = TextClass::Label;
-        draw_handle.text_selected(Coord::ZERO, &text, .., class)
+        let state = InputState::empty();
+        draw_handle.text_selected(Coord::ZERO, &text, .., class, state)
     }
 }
