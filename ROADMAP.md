@@ -122,6 +122,13 @@ simplifies usage of mid-level draw APIs, e.g. in themes and the `clock` example.
 Also in this release is SVG support, a `Canvas` widget, image buttons, and
 fixed sub-pixel positioning (clearer rendering for small text).
 
+### 0.10.0 — September 2021
+
+This release responds to three key criticisms of KAS: (1) slow compile times,
+(2) non-standard keyboard navigation, (3) ugly themes. While these issues are
+not fully solved, they are significantly improved. Additionally,
+the latest version of WGPU now gives us a working OpenGL backend.
+
 
 Future work
 -----------

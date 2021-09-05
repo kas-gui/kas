@@ -31,4 +31,4 @@ resvg = { version = "0.16.0", optional = true }
 usvg = { version = "0.16.0", optional = true }
 
 # We must rename this package since macros expect kas to be in scope:
-kas = { version = "0.9.1", package = "kas-core", path = "../kas-core" }
+kas = { version = "0.10.0", package = "kas-core", path = "../kas-core" }

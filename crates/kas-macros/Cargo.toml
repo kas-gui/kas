@@ -1,6 +1,6 @@
 [package]
 name = "kas-macros"
-version = "0.9.1"
+version = "0.10.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
 license = "Apache-2.0"

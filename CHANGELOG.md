@@ -2,6 +2,72 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] — 2021-09-05
+
+This release responds to three key criticisms of KAS: (1) slow compile times,
+(2) non-standard keyboard navigation, (3) ugly themes. While these issues are
+not fully solved, they are significantly improved. Additionally,
+the latest version of WGPU now gives us a working OpenGL backend.
+
+### Crate reshuffle
+
+The crate structure was significantly changed (#233):
+
+-   most of the old `kas` moved to `kas-core`
+-   the new `kas` is a wrapper around other crates, including `kas-core`,
+    `kas-theme` and `kas-wgpu`
+-   `kas::widget` is renamed to `kas::widgets`
+-   examples moved to `kas` (top level)
+-   `kas-dylib` added to support dynamic linking
+-   Move `Svg` and `Canvas` widgets to new `kas-resvg` crate (#240)
+
+### Event handling
+
+In response to issue #231, event handling (especially regarding <kbd>Tab</kbd>
+focus) changed to be more in line with traditional UIs:
+
+-   <kbd>Esc</kbd> does not clear focus; <kbd>Enter</kbd> is not required to
+    gain text-input focus; <kbd>Tab</kbd> can navigate away from text-input
+    focus (#234)
+-   <kbd>Ctrl</kbd>+<kbd>C</kbd> works on widgets with only selection focus
+    (e.g. `ScrollLabel`) (#234)
+-   `next_nav_focus` wraps at end instead of clearing focus (#234)
+-   Breaking: `EditGuard::focus_gained` can no longer send a messege (#234)
+-   <kbd>Tab</kbd> cannot focus menus (#235)
+-   Restore nav focus after closing menus (#234)
+-   Click/touch events set nav focus (#234, #240)
+-   Clicking on a non-nav widget does not clear or set nav focus (#236)
+-   Fixes for menus (#235, 236)
+-   Partially fix <kbd>Tab</kbd> navigation of `ListView` widget (#243)
+-   Add move-distance threshold before switching from selection to panning mode
+    in `ListView` and `MatrixView` (#244)
+
+### Themes
+
+The `FlatTheme` was reworked to have shadows (i.e. less "flat"), inspired by
+some proposals by [@hummingly](https://github.com/hummingly):
+
+-   The gallery now defaults to `FlatTheme` (#237)
+-   Redesign buttons, check-/radio-boxes, and text-edit boxes (#237)
+-   Use borders to indicate navigation focus (#237)
+-   Revise colour schemes (#237, #244)
+-   Introduce shadow/glow effects for widgets; better shadows for menus (#239)
+-   Fix drawing of text inputs with disabled state (#244)
+
+### Misc
+
+-   Remove `read_only` state of `Manager` (#234)
+-   Update WGPU to 0.10.0, fixing OpenGL support (#241)
+-   `Read` and `ReadWrite` config modes now tolerate missing files (#241)
+-   Scale `Image` according to the scale factor (#241)
+-   Update README regarding OpenGL and WGPU (#241)
+-   Use `proc-macro-error` crate for macro error reporting (#242)
+-   Support WGPU's API tracing (#242)
+-   Update README regarding lld and mold linkers with some benchmarks (#242)
+-   Enable text in SVGs using KAS's font config (#244)
+-   Make `InputState` a `bitflags` struct (#244)
+-   Apply scale factor to pan theshold (#244)
+
 ## [0.9.1] — 2021-08-03
 
 Add `kas/macros_log` feature, disabled by default.

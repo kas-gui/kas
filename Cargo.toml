@@ -1,6 +1,6 @@
 [package]
 name = "kas"
-version = "0.9.1"
+version = "0.10.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -90,14 +90,14 @@ unsize = ["kas-theme/unsize", "kas-wgpu/unsize"]
 winit = ["kas-core/winit"]
 
 [dependencies]
-kas-core = { version = "0.9.1", path = "crates/kas-core" }
-kas-dylib = { version = "0.9.1", path = "crates/kas-dylib", optional = true }
-kas-widgets = { version = "0.9.1", path = "crates/kas-widgets" }
+kas-core = { version = "0.10.0", path = "crates/kas-core" }
+kas-dylib = { version = "0.10.0", path = "crates/kas-dylib", optional = true }
+kas-widgets = { version = "0.10.0", path = "crates/kas-widgets" }
 kas-resvg = { version = "0.10.0", path = "crates/kas-resvg" }
-kas-theme = { version = "0.9.0", path = "crates/kas-theme", optional = true, default-features = false }
+kas-theme = { version = "0.10.0", path = "crates/kas-theme", optional = true, default-features = false }
 
 [dependencies.kas-wgpu]
-version = "0.9.0"
+version = "0.10.0"
 path = "crates/kas-wgpu"
 optional = true
 default-features = false

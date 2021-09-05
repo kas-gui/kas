@@ -1,6 +1,6 @@
 [package]
 name = "kas-theme"
-version = "0.9.0"
+version = "0.10.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -41,7 +41,7 @@ unsize = ["stack_dst_/unsize"]
 
 [dependencies]
 # Rename package purely for convenience:
-kas = { version = "0.9.1", package = "kas-core", path = "../kas-core" }
+kas = { version = "0.10.0", package = "kas-core", path = "../kas-core" }
 linear-map = "1.2.0"
 log = "0.4"
 serde = { version = "1.0.123", features = ["derive"], optional = true }
