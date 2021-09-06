@@ -418,7 +418,7 @@ impl Parse for WidgetAttrArgs {
                 let _: kw::align = content.parse()?;
                 let _: Eq = content.parse()?;
                 let ident: Ident = content.parse()?;
-                if ident == "centre" || ident == "center" {
+                if ident == "centre" || ident == "center" || ident == "stretch" {
                     args.halign = Some(ident.clone());
                     args.valign = Some(ident);
                 } else {
