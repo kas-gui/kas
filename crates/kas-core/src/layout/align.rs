@@ -69,13 +69,10 @@ pub struct CompleteAlignment {
 
 impl CompleteAlignment {
     /// Construct a rect of size `ideal` within `rect` using the given alignment
-    ///
-    /// Note: this does not stretch, even with [`Align::Stretch`], since widget
-    /// stretching should be determined by the [`Stretch`] priority instead.
     pub fn aligned_rect(&self, ideal: Size, rect: Rect) -> Rect {
         let mut pos = rect.pos;
         let mut size = rect.size;
-        if ideal.0 < size.0 {
+        if ideal.0 < size.0 && self.halign != Align::Stretch {
             pos.0 += match self.halign {
                 Align::Centre => (size.0 - ideal.0) / 2,
                 Align::BR => size.0 - ideal.0,
@@ -83,7 +80,7 @@ impl CompleteAlignment {
             };
             size.0 = ideal.0;
         }
-        if ideal.1 < size.1 {
+        if ideal.1 < size.1 && self.valign != Align::Stretch {
             pos.1 += match self.valign {
                 Align::Centre => (size.1 - ideal.1) / 2,
                 Align::BR => size.1 - ideal.1,
