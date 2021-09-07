@@ -1,6 +1,6 @@
 [package]
 name = "kas-core"
-version = "0.10.0"
+version = "0.10.1"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -73,7 +73,7 @@ dep_ron = { version = "0.6.4", package = "ron", optional = true }
 image = "0.23.14"
 
 [dependencies.kas-macros]
-version = "0.10.0"
+version = "0.10.1"
 path = "../kas-macros"
 
 [dependencies.kas-text]

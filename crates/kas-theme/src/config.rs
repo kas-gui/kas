@@ -231,6 +231,7 @@ pub struct FontAliases {
 mod defaults {
     use super::*;
 
+    #[cfg(feature = "config")]
     pub fn add_mode() -> AddMode {
         AddMode::Prepend
     }

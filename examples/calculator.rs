@@ -49,7 +49,7 @@ fn main() -> Result<(), kas::shell::Error> {
             _ = TextButton::new_msg("&8", Key::Char('8')),
             #[widget(col = 2, row = 1)]
             _ = TextButton::new_msg("&9", Key::Char('9')),
-            #[widget(col = 3, row = 1, rspan = 2)]
+            #[widget(col = 3, row = 1, rspan = 2, align = stretch)]
             _ = TextButton::new_msg("&+", Key::Add),
             #[widget(col = 0, row = 2)]
             _ = TextButton::new_msg("&4", Key::Char('4')),
@@ -63,7 +63,7 @@ fn main() -> Result<(), kas::shell::Error> {
             _ = TextButton::new_msg("&2", Key::Char('2')),
             #[widget(col = 2, row = 3)]
             _ = TextButton::new_msg("&3", Key::Char('3')),
-            #[widget(col = 3, row = 3, rspan = 2)]
+            #[widget(col = 3, row = 3, rspan = 2, align = stretch)]
             _ = TextButton::new_msg("&=", Key::Equals).with_keys(&[VK::Return, VK::NumpadEnter]),
             #[widget(col = 0, row = 4, cspan = 2)]
             _ = TextButton::new_msg("&0", Key::Char('0')),

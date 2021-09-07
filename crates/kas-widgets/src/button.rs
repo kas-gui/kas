@@ -13,6 +13,9 @@ use kas::event::{self, VirtualKeyCode, VirtualKeyCodes};
 use kas::prelude::*;
 
 /// A push-button with a generic label
+///
+/// Default alignment is centred. Content (label) alignment is derived from the
+/// button alignment.
 #[derive(Clone, Widget)]
 #[handler(noauto)]
 #[widget(config=noauto)]
@@ -204,6 +207,10 @@ impl<L: Widget<Msg = VoidMsg>, M: 'static> SendEvent for Button<L, M> {
 ///
 /// This is a specialised variant of [`Button`] supporting key shortcuts from an
 /// [`AccelString`] label and using a custom text class (and thus theme colour).
+///
+/// Default alignment of the button is to stretch horizontally and centre
+/// vertically. The text label is always centred (irrespective of alignment
+/// parameters).
 #[derive(Clone, Widget)]
 #[handler(handle=noauto)]
 #[widget(config=noauto)]
@@ -261,13 +268,13 @@ impl<M: 'static> Layout for TextButton<M> {
 
     fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
         let rect = align
-            .complete(Align::Centre, Align::Centre)
+            .complete(Align::Stretch, Align::Centre)
             .aligned_rect(self.ideal_size, rect);
         self.core.rect = rect;
         let size = rect.size - self.frame_size;
         self.label.update_env(|env| {
             env.set_bounds(size.into());
-            env.set_align(align.unwrap_or(Align::Centre, Align::Centre));
+            env.set_align((Align::Centre, Align::Centre));
         });
     }
 

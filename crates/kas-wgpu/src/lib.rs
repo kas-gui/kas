@@ -88,6 +88,12 @@ fn warn_about_error(msg: &str, mut error: &dyn std::error::Error) {
 
 /// A toolkit over winit and WebGPU
 ///
+/// Constructing the toolkit with [`Toolkit::new`] or [`Toolkit::new_custom`]
+/// reads configuration (depending on passed options or environment variables)
+/// and initialises the font database. Note that this database is a global
+/// singleton and some widgets and other library code may expect fonts to have
+/// been initialised first.
+///
 /// All KAS shells are expected to provide a similar `Toolkit` type and API.
 /// There is no trait abstraction over this API simply because there is very
 /// little reason to do so (and some reason not to: KISS).
