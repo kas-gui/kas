@@ -18,11 +18,13 @@ KAS is a widget-first GUI toolkit:
 
 -   Good automatic layout (margins, text wrapping width-for-height logic)
 -   Partially declarative UI descriptions possible through macros
--   Stepless DPI scaling
 -   Advanced text features: shaping, bidirectional support, font fallbacks
 -   Embedded GPU shaders (see [Mandlebrot example](examples/mandlebrot))
 -   Supports theming and end-user configuration
 -   View widgets for seemless scrolling and sharing of large data
+-   Stepless DPI scaling:
+
+![Scalable](https://github.com/kas-gui/data-dump/blob/master/screenshots/scalable.png)
 
 ### Limitations
 
