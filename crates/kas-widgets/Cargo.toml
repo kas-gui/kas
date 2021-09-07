@@ -1,6 +1,6 @@
 [package]
 name = "kas-widgets"
-version = "0.10.0"
+version = "0.10.1"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
 license = "Apache-2.0"

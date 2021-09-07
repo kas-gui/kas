@@ -1,6 +1,6 @@
 [package]
 name = "kas"
-version = "0.10.0"
+version = "0.10.1"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -90,7 +90,7 @@ unsize = ["kas-theme/unsize", "kas-wgpu/unsize"]
 winit = ["kas-core/winit"]
 
 [dependencies]
-kas-core = { version = "0.10.0", path = "crates/kas-core" }
+kas-core = { version = "0.10.1", path = "crates/kas-core" }
 kas-dylib = { version = "0.10.0", path = "crates/kas-dylib", optional = true }
 kas-widgets = { version = "0.10.0", path = "crates/kas-widgets" }
 kas-resvg = { version = "0.10.0", path = "crates/kas-resvg" }
