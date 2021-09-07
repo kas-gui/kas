@@ -13,6 +13,8 @@ use kas::widgets::{EditBox, Label, ScrollBarRegion, TextButton, Window};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
+    let theme = kas::theme::FlatTheme::new();
+    let shell = kas::shell::Toolkit::new(theme)?;
 
     let doc = r"Markdown document
 ================
@@ -66,6 +68,5 @@ It also supports lists:
         },
     );
 
-    let theme = kas::theme::FlatTheme::new();
-    kas::shell::Toolkit::new(theme)?.with(window)?.run()
+    shell.with(window)?.run()
 }

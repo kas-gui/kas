@@ -11,8 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Build widgets.
     // Message is a Window with an "Ok" button and notification status.
     // Each Window::new method creates objects then solves constraints.
-    let text = kas::text::format::Markdown::new("Hello *world*!")?;
-    let window = MessageBox::new("Message", text);
+    let window = MessageBox::new("Message", "Hello world");
 
     let theme = kas::theme::FlatTheme::new();
     kas::shell::Toolkit::new(theme)?.with(window)?.run()
