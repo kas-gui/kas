@@ -34,13 +34,11 @@ fn main() -> Result<(), kas::shell::Error> {
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget(halign=centre)] display: Label<String> = Label::from("0"),
-                #[widget(handler = handle_button)] buttons -> Message = buttons,
+                #[widget(use_msg = handle_button)] buttons -> Message = buttons,
                 counter: usize = 0,
             }
             impl {
-                fn handle_button(&mut self, mgr: &mut Manager, msg: Message)
-                    -> Response<VoidMsg>
-                {
+                fn handle_button(&mut self, mgr: &mut Manager, msg: Message) {
                     match msg {
                         Message::Decr => {
                             self.counter = self.counter.saturating_sub(1);
@@ -51,7 +49,6 @@ fn main() -> Result<(), kas::shell::Error> {
                             *mgr |= self.display.set_string(self.counter.to_string());
                         }
                     };
-                    Response::None
                 }
             }
         },

@@ -103,20 +103,20 @@ fn main() -> Result<(), kas::shell::Error> {
         #[handler(msg = Control)]
         struct {
             #[widget] _ = Label::new("Number of rows:"),
-            #[widget(handler = activate)] edit: impl HasString = EditBox::new("3")
+            #[widget(map_msg = activate)] edit: impl HasString = EditBox::new("3")
                 .on_afl(|text, _| text.parse::<usize>().ok()),
-            #[widget(handler = button)] _ = TextButton::new_msg("Set", Button::Set),
-            #[widget(handler = button)] _ = TextButton::new_msg("−", Button::Decr),
-            #[widget(handler = button)] _ = TextButton::new_msg("+", Button::Incr),
+            #[widget(map_msg = button)] _ = TextButton::new_msg("Set", Button::Set),
+            #[widget(map_msg = button)] _ = TextButton::new_msg("−", Button::Decr),
+            #[widget(map_msg = button)] _ = TextButton::new_msg("+", Button::Incr),
             #[widget] _ = TextButton::new_msg("↓↑", Control::Dir),
             n: usize = 3,
         }
         impl {
-            fn activate(&mut self, _: &mut Manager, n: usize) -> Response<Control> {
+            fn activate(&mut self, _: &mut Manager, n: usize) -> Control {
                 self.n = n;
-                Control::Set(n).into()
+                Control::Set(n)
             }
-            fn button(&mut self, mgr: &mut Manager, msg: Button) -> Response<Control> {
+            fn button(&mut self, mgr: &mut Manager, msg: Button) -> Control {
                 let n = match msg {
                     Button::Set => self.n,
                     Button::Decr => self.n.saturating_sub(1),
@@ -124,7 +124,7 @@ fn main() -> Result<(), kas::shell::Error> {
                 };
                 *mgr |= self.edit.set_string(n.to_string());
                 self.n = n;
-                Control::Set(n).into()
+                Control::Set(n)
             }
         }
     };
@@ -143,17 +143,17 @@ fn main() -> Result<(), kas::shell::Error> {
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget] _ = Label::new("Demonstration of dynamic widget creation / deletion"),
-                #[widget(handler = control)] controls -> Control = controls,
+                #[widget(use_msg = control)] controls -> Control = controls,
                 #[widget] _ = Label::new("Contents of selected entry:"),
                 #[widget] display: StringLabel = Label::from("Entry #0"),
                 #[widget] _ = Separator::new(),
-                #[widget(handler = set_radio)] list: ScrollBarRegion<List<Direction, ListEntry>> =
+                #[widget(use_msg = set_radio)] list: ScrollBarRegion<List<Direction, ListEntry>> =
                     ScrollBarRegion::new(list).with_bars(false, true),
                 #[widget] _ = Filler::maximize(),
                 active: usize = 0,
             }
             impl {
-                fn control(&mut self, mgr: &mut Manager, control: Control) -> Response<VoidMsg> {
+                fn control(&mut self, mgr: &mut Manager, control: Control) {
                     match control {
                         Control::Set(len) => {
                             let active = self.active;
@@ -168,9 +168,8 @@ fn main() -> Result<(), kas::shell::Error> {
                             *mgr |= self.list.set_direction(dir);
                         }
                     }
-                    Response::None
                 }
-                fn set_radio(&mut self, mgr: &mut Manager, msg: (usize, EntryMsg)) -> Response<VoidMsg> {
+                fn set_radio(&mut self, mgr: &mut Manager, msg: (usize, EntryMsg)) {
                     let n = msg.0;
                     match msg.1 {
                         EntryMsg::Select => {
@@ -184,7 +183,6 @@ fn main() -> Result<(), kas::shell::Error> {
                             }
                         }
                     }
-                    Response::None
                 }
             }
         },

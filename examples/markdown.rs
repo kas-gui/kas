@@ -6,7 +6,7 @@
 //! Markdown parsing demo
 
 use kas::class::HasStr;
-use kas::event::{Manager, Response, VoidMsg};
+use kas::event::{Manager, VoidMsg};
 use kas::macros::make_widget;
 use kas::text::format::Markdown;
 use kas::widgets::{EditBox, Label, ScrollBarRegion, TextButton, Window};
@@ -49,10 +49,10 @@ It also supports lists:
                     EditBox::new(doc).multi_line(true),
                 #[widget(row=0, col=1)] label: ScrollBarRegion<Label<Markdown>> =
                     ScrollBarRegion::new(Label::new(Markdown::new(doc)?)),
-                #[widget(row=1, col=1, handler=update)] _ = TextButton::new_msg("&Update", ()),
+                #[widget(row=1, col=1, use_msg=update)] _ = TextButton::new_msg("&Update", ()),
             }
             impl {
-                fn update(&mut self, mgr: &mut Manager, _: ()) -> Response<VoidMsg> {
+                fn update(&mut self, mgr: &mut Manager, _: ()) {
                     let text = match Markdown::new(self.editor.get_str()) {
                         Ok(text) => text,
                         Err(err) => {
@@ -62,7 +62,6 @@ It also supports lists:
                     };
                     // TODO: this should update the size requirements of the inner area
                     *mgr |= self.label.set_text(text);
-                    Response::None
                 }
             }
         },

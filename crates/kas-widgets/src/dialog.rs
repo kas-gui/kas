@@ -31,7 +31,7 @@ pub struct MessageBox<T: FormattableText + 'static> {
     title: String,
     #[widget]
     label: Label<T>,
-    #[widget(handler = handle_button)]
+    #[widget(use_msg = handle_button)]
     button: TextButton<DialogButton>,
 }
 
@@ -50,11 +50,10 @@ impl<T: FormattableText + 'static> MessageBox<T> {
         }
     }
 
-    fn handle_button(&mut self, mgr: &mut Manager, msg: DialogButton) -> Response<VoidMsg> {
+    fn handle_button(&mut self, mgr: &mut Manager, msg: DialogButton) {
         match msg {
             DialogButton::Close => mgr.send_action(TkAction::CLOSE),
         };
-        Response::None
     }
 }
 

@@ -5,7 +5,7 @@
 
 //! A counter synchronised between multiple windows
 
-use kas::event::{Manager, Response, VoidMsg};
+use kas::event::{Manager, VoidMsg};
 use kas::macros::make_widget;
 use kas::updatable::SharedRc;
 use kas::widgets::view::SingleView;
@@ -33,14 +33,11 @@ fn main() -> Result<(), kas::shell::Error> {
             struct {
                 // SingleView embeds a shared value, here default-constructed to 0
                 #[widget(halign=centre)] counter: SingleView<SharedRc<i32>> = Default::default(),
-                #[widget(handler = handle_button)] buttons -> i32 = buttons,
+                #[widget(use_msg = update)] buttons -> i32 = buttons,
             }
             impl {
-                fn handle_button(&mut self, mgr: &mut Manager, msg: i32)
-                    -> Response<VoidMsg>
-                {
+                fn update(&mut self, mgr: &mut Manager, msg: i32) {
                     self.counter.update_value(mgr, |v| v + msg);
-                    Response::None
                 }
             }
         },

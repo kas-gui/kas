@@ -22,19 +22,18 @@ fn make_window() -> Box<dyn kas::Window> {
         #[widget(config=noauto)]
         struct {
             #[widget] display: impl HasString = Frame::new(Label::new("0.000".to_string())),
-            #[widget(handler = reset)] _ = TextButton::new_msg("&reset", ()),
-            #[widget(handler = start)] _ = TextButton::new_msg("&start / &stop", ()),
+            #[widget(use_msg = reset)] _ = TextButton::new_msg("&reset", ()),
+            #[widget(use_msg = start)] _ = TextButton::new_msg("&start / &stop", ()),
             saved: Duration = Duration::default(),
             start: Option<Instant> = None,
         }
         impl {
-            fn reset(&mut self, mgr: &mut Manager, _: ()) -> Response<VoidMsg> {
+            fn reset(&mut self, mgr: &mut Manager, _: ()) {
                 self.saved = Duration::default();
                 self.start = None;
                 *mgr |= self.display.set_str("0.000");
-                Response::None
             }
-            fn start(&mut self, mgr: &mut Manager, _: ()) -> Response<VoidMsg> {
+            fn start(&mut self, mgr: &mut Manager, _: ()) {
                 if let Some(start) = self.start {
                     self.saved += Instant::now() - start;
                     self.start = None;
@@ -42,7 +41,6 @@ fn make_window() -> Box<dyn kas::Window> {
                     self.start = Some(Instant::now());
                     mgr.update_on_timer(Duration::new(0, 0), self.id(), 0);
                 }
-                Response::None
             }
         }
         impl kas::WidgetConfig {

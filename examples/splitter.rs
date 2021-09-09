@@ -5,7 +5,7 @@
 
 //! Counter example (simple button)
 
-use kas::event::{Manager, VoidMsg, VoidResponse};
+use kas::event::{Manager, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widgets::{EditField, RowSplitter, TextButton, Window};
 
@@ -38,14 +38,12 @@ fn main() -> Result<(), kas::shell::Error> {
             #[layout(column)]
             #[handler(msg = VoidMsg)]
             struct {
-                #[widget(handler = handle_button)] buttons -> Message = buttons,
+                #[widget(use_msg = handle_button)] buttons -> Message = buttons,
                 #[widget] panes: RowSplitter<EditField> = panes,
                 counter: usize = 0,
             }
             impl {
-                fn handle_button(&mut self, mgr: &mut Manager, msg: Message)
-                    -> VoidResponse
-                {
+                fn handle_button(&mut self, mgr: &mut Manager, msg: Message) {
                     match msg {
                         Message::Decr => {
                             *mgr |= self.panes.pop().1;
@@ -55,7 +53,6 @@ fn main() -> Result<(), kas::shell::Error> {
                             *mgr |= self.panes.push(EditField::new(format!("Pane {}", n)).multi_line(true));
                         }
                     };
-                    VoidResponse::None
                 }
             }
         },

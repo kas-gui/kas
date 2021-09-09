@@ -8,7 +8,7 @@
 
 extern crate proc_macro;
 
-use self::args::{ChildType, HandlerArgs};
+use self::args::{ChildType, Handler, HandlerArgs};
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::abort;
 use quote::{quote, ToTokens, TokenStreamExt};
@@ -381,25 +381,42 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             } else {
                 let mut ev_to_num = TokenStream::new();
                 for child in args.children.iter() {
-                    let ident = &child.ident;
-                    let handler = if let Some(ref h) = child.args.handler {
-                        #[cfg(feature = "log")]
-                        quote! {
-                            r.try_into().unwrap_or_else(|msg| {
-                                log::trace!(
-                                    "Received by {} from {}: {:?}",
-                                    self.id(),
-                                    id,
-                                    ::kas::util::TryFormat(&msg)
-                                );
-                                self.#h(mgr, msg)
-                            })
-                        }
-                        #[cfg(not(feature = "log"))]
-                        quote! { r.try_into().unwrap_or_else(|msg| self.#h(mgr, msg)) }
-                    } else {
-                        quote! { r.into() }
+                    #[cfg(feature = "log")]
+                    let log_msg = quote! {
+                        log::trace!(
+                            "Received by {} from {}: {:?}",
+                            self.id(),
+                            id,
+                            ::kas::util::TryFormat(&msg)
+                        );
                     };
+                    #[cfg(not(feature = "log"))]
+                    let log_msg = quote! {};
+
+                    let ident = &child.ident;
+                    let handler = match &child.args.handler {
+                        Handler::Use(f) => quote! {
+                            r.try_into().unwrap_or_else(|msg| {
+                                #log_msg
+                                let _: () = self.#f(mgr, msg);
+                                Response::None
+                            })
+                        },
+                        Handler::Map(f) => quote! {
+                            r.try_into().unwrap_or_else(|msg| {
+                                #log_msg
+                                Response::Msg(self.#f(mgr, msg))
+                            })
+                        },
+                        Handler::FlatMap(f) => quote! {
+                            r.try_into().unwrap_or_else(|msg| {
+                                #log_msg
+                                self.#f(mgr, msg)
+                            })
+                        },
+                        Handler::None => quote! { r.into() },
+                    };
+
                     ev_to_num.append_all(quote! {
                         if id <= self.#ident.id() {
                             let r = self.#ident.send(mgr, id, event);
@@ -710,7 +727,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         // No typing. If a handler is specified, then the child must implement
                         // Handler<Msg = X> where the handler takes type X; otherwise
                         // we use `msg.into()` and this conversion must be supported.
-                        if let Some(ref handler) = wattr.args.handler {
+                        if let Some(ref handler) = wattr.args.handler.any_ref() {
                             if let Some(ty_bound) = find_handler_ty(handler, &args.impls) {
                                 handler_clauses
                                     .push(parse_quote! { #ty: ::kas::Widget<Msg = #ty_bound> });
