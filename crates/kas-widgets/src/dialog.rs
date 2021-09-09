@@ -14,11 +14,6 @@ use kas::prelude::*;
 use kas::text::format::FormattableText;
 use kas::WindowId;
 
-#[derive(Clone, Debug, VoidMsg)]
-enum DialogButton {
-    Close,
-}
-
 /// A simple message box.
 #[derive(Clone, Debug, Widget)]
 #[layout(column)]
@@ -32,7 +27,7 @@ pub struct MessageBox<T: FormattableText + 'static> {
     #[widget]
     label: Label<T>,
     #[widget(use_msg = handle_button)]
-    button: TextButton<DialogButton>,
+    button: TextButton<()>,
 }
 
 impl<T: FormattableText + 'static> MessageBox<T> {
@@ -42,7 +37,7 @@ impl<T: FormattableText + 'static> MessageBox<T> {
             layout_data: Default::default(),
             title: title.to_string(),
             label: Label::new(message),
-            button: TextButton::new_msg("Ok", DialogButton::Close).with_keys(&[
+            button: TextButton::new_msg("Ok", ()).with_keys(&[
                 VirtualKeyCode::Return,
                 VirtualKeyCode::Space,
                 VirtualKeyCode::NumpadEnter,
@@ -50,10 +45,8 @@ impl<T: FormattableText + 'static> MessageBox<T> {
         }
     }
 
-    fn handle_button(&mut self, mgr: &mut Manager, msg: DialogButton) {
-        match msg {
-            DialogButton::Close => mgr.send_action(TkAction::CLOSE),
-        };
+    fn handle_button(&mut self, mgr: &mut Manager, _: ()) {
+        mgr.send_action(TkAction::CLOSE);
     }
 }
 
