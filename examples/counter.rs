@@ -40,15 +40,10 @@ fn main() -> Result<(), kas::shell::Error> {
             impl {
                 fn handle_button(&mut self, mgr: &mut Manager, msg: Message) {
                     match msg {
-                        Message::Decr => {
-                            self.counter = self.counter.saturating_sub(1);
-                            *mgr |= self.display.set_string(self.counter.to_string());
-                        }
-                        Message::Incr => {
-                            self.counter = self.counter.saturating_add(1);
-                            *mgr |= self.display.set_string(self.counter.to_string());
-                        }
-                    };
+                        Message::Decr => self.counter = self.counter.saturating_sub(1),
+                        Message::Incr => self.counter = self.counter.saturating_add(1),
+                    }
+                    *mgr |= self.display.set_string(self.counter.to_string());
                 }
             }
         },
