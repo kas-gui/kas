@@ -19,7 +19,8 @@
 //! For simpler cases it is not always necessary to implement your own shared
 //! data type, for example `SharedRc<i32>` implements [`SingleData`] and
 //! `&'static [&'static str]` implements [`ListData`]. The [`SharedRc`] type
-//! provides the [`UpdateHandle`] required to synchronise views.
+//! provides an `update` method and the [`UpdateHandle`] required to synchronise
+//! views; `&[T]` does not (data is constant).
 //!
 //! # View widgets and drivers
 //!

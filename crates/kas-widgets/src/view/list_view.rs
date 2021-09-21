@@ -604,11 +604,13 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
 
         if id < self.id() {
             let child_event = self.scroll.offset_event(event.clone());
+            let index;
             let response = 'outer: loop {
                 // We forward events to all children, even if not visible
                 // (e.g. these may be subscribed to an UpdateHandle).
-                for child in self.widgets.iter_mut() {
+                for (i, child) in self.widgets.iter_mut().enumerate() {
                     if id <= child.widget.id() {
+                        index = i;
                         let r = child.widget.send(mgr, id, child_event);
                         break 'outer (child.key.clone(), r);
                     }
@@ -616,6 +618,16 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
                 debug_assert!(false, "SendEvent::send: bad WidgetId");
                 return Response::Unhandled;
             };
+            if matches!(&response.1, Response::Update | Response::Msg(_)) {
+                let wd = &self.widgets[index];
+                if let Some(key) = wd.key.as_ref() {
+                    if let Some(value) = self.view.get(&wd.widget) {
+                        if let Some(handle) = self.data.update(key, value) {
+                            mgr.trigger_update(handle, 0);
+                        }
+                    }
+                }
+            }
             match response {
                 (_, Response::None) => return Response::None,
                 (key, Response::Unhandled) => {

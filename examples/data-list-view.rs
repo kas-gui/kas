@@ -191,6 +191,9 @@ impl Driver<(usize, bool, String)> for MyDriver {
             | widget.radio.set_bool(data.1)
             | widget.entry.set_string(data.2)
     }
+    fn get(&self, _widget: &Self::Widget) -> Option<(usize, bool, String)> {
+        None // unused
+    }
 }
 
 fn main() -> Result<(), kas::shell::Error> {

@@ -139,7 +139,14 @@ impl<T: SingleData + UpdatableAll<(), V::Msg> + 'static, V: Driver<T::Item>> Sen
 
         if id < self.id() {
             let r = self.child.send(mgr, id, event);
-            if let Response::Msg(ref msg) = r {
+            if matches!(&r, Response::Update | Response::Msg(_)) {
+                if let Some(value) = self.view.get(&self.child) {
+                    if let Some(handle) = self.data.update(value) {
+                        mgr.trigger_update(handle, 0);
+                    }
+                }
+            }
+            if let Response::Msg(ref msg) = &r {
                 log::trace!(
                     "Received by {} from {}: {:?}",
                     self.id(),
