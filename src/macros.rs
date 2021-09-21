@@ -295,15 +295,14 @@
 //!     #[widget_core] core: CoreData,
 //!     #[layout_data] layout_data: <Self as LayoutData>::Data,
 //!     #[widget] label: StrLabel,
-//!     #[widget(handler = handler)] child: W,
+//!     #[widget(use_msg = handler)] child: W,
 //! }
 //!
 //! impl<W: Widget> MyWidget<W> {
-//!     fn handler(&mut self, mgr: &mut Manager, msg: ChildMessage) -> Response<VoidMsg> {
+//!     fn handler(&mut self, mgr: &mut Manager, msg: ChildMessage) {
 //!         match msg {
 //!             ChildMessage::A => { println!("handling ChildMessage::A"); }
 //!         }
-//!         Response::None
 //!     }
 //! }
 //! ```
@@ -367,11 +366,11 @@
 //!     #[handler(msg = VoidMsg)]
 //!     struct {
 //!         #[widget] _ = Label::new("Would you like to print a message?"),
-//!         #[widget(handler = buttons)] _ = button_box,
+//!         #[widget(use_msg = buttons)] _ = button_box,
 //!         message: String = message.into(),
 //!     }
 //!     impl {
-//!         fn buttons(&mut self, mgr: &mut Manager, msg: OkCancel) -> Response<VoidMsg> {
+//!         fn buttons(&mut self, mgr: &mut Manager, msg: OkCancel) {
 //!             match msg {
 //!                 OkCancel::Ok => {
 //!                     println!("Message: {}", self.message);
@@ -380,7 +379,6 @@
 //!             }
 //!             // Whichever button was pressed, we close the window:
 //!             *mgr |= TkAction::CLOSE;
-//!             Response::None
 //!         }
 //!     }
 //! });

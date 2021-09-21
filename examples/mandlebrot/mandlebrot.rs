@@ -428,10 +428,10 @@ struct MandlebrotWindow {
     label: Label<String>,
     #[widget(row=1, halign=centre)]
     iters: ReserveP<Label<String>>,
-    #[widget(row=2, handler = iter)]
+    #[widget(row=2, use_msg = iter)]
     slider: Slider<i32, kas::dir::Up>,
     // extra col span allows use of Label's margin
-    #[widget(col=1, cspan=2, row=1, rspan=2, handler = mbrot)]
+    #[widget(col=1, cspan=2, row=1, rspan=2, use_msg = mbrot)]
     mbrot: Mandlebrot,
 }
 impl MandlebrotWindow {
@@ -451,14 +451,12 @@ impl MandlebrotWindow {
         Window::new("Mandlebrot", w)
     }
 
-    fn iter(&mut self, mgr: &mut Manager, iter: i32) -> Response<VoidMsg> {
+    fn iter(&mut self, mgr: &mut Manager, iter: i32) {
         self.mbrot.iter = iter;
         *mgr |= self.iters.set_string(format!("{}", iter));
-        Response::None
     }
-    fn mbrot(&mut self, mgr: &mut Manager, _: ()) -> Response<VoidMsg> {
+    fn mbrot(&mut self, mgr: &mut Manager, _: ()) {
         *mgr |= self.label.set_string(self.mbrot.loc());
-        Response::None
     }
 }
 
