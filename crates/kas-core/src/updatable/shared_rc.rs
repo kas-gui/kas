@@ -20,10 +20,9 @@ use std::rc::Rc;
 
 /// Wrapper for single-thread shared data
 ///
-/// This wrapper adds an [`UpdateHandle`] and implements the [`Updatable`],
-/// [`RecursivelyUpdatable`] and [`UpdatableHandler`] traits (the latter two
-/// with dummy implementations — if you need custom handlers you will need your
-/// own shared data type).
+/// This wrapper adds an [`UpdateHandle`] and implements the [`Updatable`] and
+/// [`UpdatableHandler`] traits (the latter with a dummy implementation —
+/// if you need custom handlers you will need your own shared data type).
 #[derive(Clone, Debug)]
 pub struct SharedRc<T: Debug>(Rc<(UpdateHandle, RefCell<T>)>);
 
@@ -48,7 +47,6 @@ impl<T: Debug> Updatable for SharedRc<T> {
         Some((self.0).0)
     }
 }
-impl<T: Debug> RecursivelyUpdatable for SharedRc<T> {}
 
 impl<T: Clone + Debug, K, M> UpdatableHandler<K, M> for SharedRc<T> {
     fn handle(&self, _: &K, _: &M) -> Option<UpdateHandle> {

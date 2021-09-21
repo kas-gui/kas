@@ -8,12 +8,10 @@
 //! These traits are used for "view widgets", enabling views (and editing) over
 //! shared data.
 //!
-//! Shared data must implement these three traits:
+//! Shared data must implement these traits:
 //!
 //! -   [`Updatable`]: used to expose the [`UpdateHandle`] on which widgets and
 //!     other data may request updates; may also implement self-updates
-//! -   [`RecursivelyUpdatable`]: allows registration of dependencies on other
-//!     data objects; for most shared data this does nothing
 //! -   [`UpdatableHandler`]: allows data updates from widget messages (or
 //!     potentially from other message sources)
 
@@ -22,7 +20,7 @@ mod data_traits;
 mod filter;
 mod shared_rc;
 
-use crate::event::{Manager, UpdateHandle};
+use crate::event::UpdateHandle;
 #[allow(unused)] // doc links
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -42,39 +40,11 @@ pub trait Updatable: Debug {
     /// internal `RefCell`), then it should have an `UpdateHandle` for notifying
     /// other users of the data of the update, and return that here.
     /// If the data is constant (not updatable) this may simply return `None`.
-    ///
-    /// Users registering for updates on this handle should, if possible, also
-    /// call [`RecursivelyUpdatable::enable_recursive_updates`].
     fn update_handle(&self) -> Option<UpdateHandle>;
 
     /// Update self from an update handle
-    ///
-    /// Data views which are themselves dependent on other shared data should
-    /// register themselves for update via [`Manager::update_shared_data`].
     fn update_self(&self) -> Option<UpdateHandle> {
         None
-    }
-}
-
-/// Recursive update support
-///
-/// All shared data types should also implement this trait. Only those which
-/// require recursive updates need to provide a custom implementation of
-/// `enable_recursive_updates`, and when they do it may only be possible to
-/// implement this trait on `Rc<DataType>`.
-//
-// TODO(spec): implement this for all `Updatable` with a default impl? The cost
-// is some non-functional impls, e.g. FilteredList<T, F> (which needs Rc<..>).
-pub trait RecursivelyUpdatable: Updatable {
-    /// Enable recursive updates on this object
-    ///
-    /// Some data objects (e.g. filters) are themselves dependent on another
-    /// data object; this method allows such objects to register for updates on
-    /// the underlying object. It should be called by any view over the data.
-    ///
-    /// The default implementation does nothing.
-    fn enable_recursive_updates(&self, mgr: &mut Manager) {
-        let _ = mgr;
     }
 }
 
@@ -96,11 +66,11 @@ pub trait UpdatableHandler<K, M>: Updatable {
 
 /// Bound over all other "updatable" traits
 ///
-/// This is intended for usage as a bound where [`Updatable`],
-/// [`RecursivelyUpdatable`] and [`UpdatableHandler`] implementations are all
+/// This is intended for usage as a bound where [`Updatable`] and
+/// [`UpdatableHandler`] implementations are all
 /// required. It is automatically implemented when all these traits are.
-pub trait UpdatableAll<K, M>: RecursivelyUpdatable + UpdatableHandler<K, M> {}
-impl<K, M, T: RecursivelyUpdatable + UpdatableHandler<K, M>> UpdatableAll<K, M> for T {}
+pub trait UpdatableAll<K, M>: UpdatableHandler<K, M> {}
+impl<K, M, T: UpdatableHandler<K, M>> UpdatableAll<K, M> for T {}
 
 // TODO(spec): can we add this?
 // impl<K, T> UpdatableHandler<K, VoidMsg> for T {
@@ -114,7 +84,6 @@ impl<T: Debug> Updatable for [T] {
         None
     }
 }
-impl<T: Debug> RecursivelyUpdatable for [T] {}
 impl<T: Debug, M> UpdatableHandler<usize, M> for [T] {
     fn handle(&self, _: &usize, _: &M) -> Option<UpdateHandle> {
         None
@@ -125,10 +94,6 @@ impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> Updatable for std::collectio
     fn update_handle(&self) -> Option<UpdateHandle> {
         None
     }
-}
-impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> RecursivelyUpdatable
-    for std::collections::BTreeMap<K, T>
-{
 }
 impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug, M> UpdatableHandler<K, M>
     for std::collections::BTreeMap<K, T>
@@ -146,11 +111,6 @@ macro_rules! impl_via_deref {
             }
             fn update_self(&self) -> Option<UpdateHandle> {
                 self.deref().update_self()
-            }
-        }
-        impl<$t: RecursivelyUpdatable + ?Sized> RecursivelyUpdatable for $derived {
-            fn enable_recursive_updates(&self, mgr: &mut Manager) {
-                self.deref().enable_recursive_updates(mgr);
             }
         }
         impl<K, M, $t: UpdatableHandler<K, M> + ?Sized> UpdatableHandler<K, M> for $derived {

@@ -86,7 +86,6 @@ impl Updatable for MyData {
         Some(self.handle)
     }
 }
-impl RecursivelyUpdatable for MyData {}
 impl UpdatableHandler<usize, EntryMsg> for MyData {
     fn handle(&self, key: &usize, msg: &EntryMsg) -> Option<UpdateHandle> {
         match msg {

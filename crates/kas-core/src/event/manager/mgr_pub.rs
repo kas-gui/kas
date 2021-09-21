@@ -12,7 +12,6 @@ use std::u16;
 use super::*;
 use crate::draw::{DrawShared, SizeHandle, ThemeApi};
 use crate::geom::{Coord, Offset, Vec2};
-use crate::updatable::Updatable;
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
 use crate::{TkAction, WidgetId, WindowId};
@@ -190,20 +189,6 @@ impl<'a> Manager<'a> {
             .entry(handle)
             .or_insert_with(Default::default)
             .insert(w_id);
-    }
-
-    /// Subscribe shaded data to an update handle
-    ///
-    /// [`Updatable::update_self`] will be called when the update handle is
-    /// triggered, and if this method returns another update handle, then all
-    /// subscribers to that handle are updated in turn.
-    pub fn update_shared_data(&mut self, handle: UpdateHandle, data: Rc<dyn Updatable>) {
-        trace!(
-            "Manager::update_shared_data: update {:?} on handle {:?}",
-            data,
-            handle
-        );
-        self.shell.update_shared_data(handle, data);
     }
 
     /// Notify that a widget must be redrawn

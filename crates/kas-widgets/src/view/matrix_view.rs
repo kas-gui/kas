@@ -351,7 +351,6 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> WidgetCon
     for MatrixView<T, V>
 {
     fn configure(&mut self, mgr: &mut Manager) {
-        self.data.enable_recursive_updates(mgr);
         if let Some(handle) = self.data.update_handle() {
             mgr.update_on_handle(handle, self.id());
         }

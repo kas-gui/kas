@@ -107,7 +107,6 @@ impl<T: SingleData + UpdatableAll<(), V::Msg> + 'static, V: Driver<T::Item>> Wid
     for SingleView<T, V>
 {
     fn configure(&mut self, mgr: &mut Manager) {
-        self.data.enable_recursive_updates(mgr);
         if let Some(handle) = self.data.update_handle() {
             mgr.update_on_handle(handle, self.id());
         }

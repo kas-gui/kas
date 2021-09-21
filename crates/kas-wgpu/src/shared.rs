@@ -5,9 +5,8 @@
 
 //! Shared state
 
-use log::{info, trace, warn};
+use log::info;
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::rc::Rc;
 
@@ -15,7 +14,6 @@ use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe, DrawWindow};
 use crate::{warn_about_error, Error, Options, WindowId};
 use kas::draw;
 use kas::event::UpdateHandle;
-use kas::updatable::Updatable;
 use kas::TkAction;
 use kas_theme::{Theme, ThemeConfig};
 
@@ -26,7 +24,6 @@ use window_clipboard::Clipboard;
 pub struct SharedState<C: CustomPipe, T> {
     #[cfg(feature = "clipboard")]
     clipboard: Option<Clipboard>,
-    data_updates: HashMap<UpdateHandle, Vec<Rc<dyn Updatable>>>,
     pub instance: wgpu::Instance,
     pub draw: draw::SharedState<DrawPipe<C>>,
     pub theme: T,
@@ -73,7 +70,6 @@ where
         Ok(SharedState {
             #[cfg(feature = "clipboard")]
             clipboard: None,
-            data_updates: Default::default(),
             instance,
             draw,
             theme,
@@ -140,47 +136,8 @@ where
         }
     }
 
-    pub fn update_shared_data(&mut self, handle: UpdateHandle, data: Rc<dyn Updatable>) {
-        let list = self
-            .data_updates
-            .entry(handle)
-            .or_insert_with(Default::default);
-        #[allow(clippy::vtable_address_comparisons)]
-        if list.iter().any(|d| Rc::ptr_eq(d, &data)) {
-            return;
-        }
-        list.push(data);
-    }
-
     pub fn trigger_update(&mut self, handle: UpdateHandle, payload: u64) {
-        let mut handles = vec![handle];
-
-        let mut i = 0;
-        while i < handles.len() {
-            for data in self
-                .data_updates
-                .get(&handles[i])
-                .iter()
-                .flat_map(|v| v.iter())
-            {
-                trace!("Triggering update on {:?}", data);
-                if let Some(handle) = data.update_self() {
-                    trace!("... which causes recursive update on {:?}", handle);
-                    if handles.contains(&handle) {
-                        warn!("Recursively dependant shared data discovered!");
-                    } else {
-                        handles.push(handle);
-                    }
-                }
-            }
-            i += 1;
-        }
-
-        self.pending.extend(
-            handles
-                .into_iter()
-                .map(|handle| PendingAction::Update(handle, payload)),
-        );
+        self.pending.push(PendingAction::Update(handle, payload));
     }
 
     pub fn on_exit(&self) {

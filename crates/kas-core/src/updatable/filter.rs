@@ -13,7 +13,6 @@ use crate::event::UpdateHandle;
 use crate::updatable::*;
 use std::cell::RefCell;
 use std::fmt::Debug;
-use std::rc::Rc;
 
 /// Types usable as a filter
 pub trait Filter<T>: Debug + 'static {
@@ -158,16 +157,6 @@ impl<T: ListData, F: Filter<T::Item>> Updatable for FilteredList<T, F> {
     fn update_self(&self) -> Option<UpdateHandle> {
         self.cell.borrow_mut().refresh(&self.data);
         Some(self.update)
-    }
-}
-impl<T: ListData + RecursivelyUpdatable + 'static, F: Filter<T::Item>> RecursivelyUpdatable
-    for Rc<FilteredList<T, F>>
-{
-    fn enable_recursive_updates(&self, mgr: &mut Manager) {
-        self.data.enable_recursive_updates(mgr);
-        if let Some(handle) = self.data.update_handle() {
-            mgr.update_shared_data(handle, self.clone());
-        }
     }
 }
 impl<K, M, T: ListData + UpdatableHandler<K, M> + 'static, F: Filter<T::Item>>

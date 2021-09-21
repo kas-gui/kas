@@ -12,13 +12,10 @@
 //! constructing and using an event manager ([`crate::event::ManagerState`]).
 //! The shell also provides the entrypoint, a type named `Toolkit`.
 
-use std::num::NonZeroU32;
-use std::rc::Rc;
-
 use crate::draw::{DrawShared, SizeHandle, ThemeApi};
 use crate::event;
 use crate::event::UpdateHandle;
-use crate::updatable::Updatable;
+use std::num::NonZeroU32;
 
 /// Identifier for a window or pop-up
 ///
@@ -119,9 +116,6 @@ pub trait ShellWindow {
 
     /// Close a window
     fn close_window(&mut self, id: WindowId);
-
-    /// Register `data` to be updated when an update with the given `handle` is triggered
-    fn update_shared_data(&mut self, handle: UpdateHandle, data: Rc<dyn Updatable>);
 
     /// Updates all subscribed widgets
     ///
