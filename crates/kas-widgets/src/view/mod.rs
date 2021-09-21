@@ -21,10 +21,6 @@
 //! `&'static [&'static str]` implements [`ListData`]. The [`SharedRc`] type
 //! provides the [`UpdateHandle`] required to synchronise views.
 //!
-//! ## Adapters
-//!
-//! -   [`FilteredList`] presents a filtered list over a [`ListData`]
-//!
 //! # View widgets and drivers
 //!
 //! Standard widgets may be used to view data items, but to construct these a
@@ -72,7 +68,7 @@
 use kas::event::UpdateHandle;
 use kas::macros::VoidMsg;
 #[allow(unused)]
-use kas::updatable::{filter::FilteredList, ListData, MatrixData, SharedRc, SingleData};
+use kas::updatable::{ListData, MatrixData, SharedRc, SingleData};
 use thiserror::Error;
 
 mod filter_list;

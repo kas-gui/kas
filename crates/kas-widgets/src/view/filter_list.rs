@@ -9,9 +9,140 @@ use super::{driver, Driver, ListView, SelectionError, SelectionMode};
 use crate::Scrollable;
 use kas::event::ChildMsg;
 use kas::prelude::*;
-use kas::updatable::filter::{Filter, FilteredList};
-use kas::updatable::{ListData, UpdatableAll};
+use kas::updatable::filter::Filter;
+use kas::updatable::{ListData, Updatable, UpdatableAll, UpdatableHandler};
+use std::cell::RefCell;
 use std::fmt::Debug;
+
+/// Filter accessor over another accessor
+///
+/// This is an abstraction over a [`ListData`], applying a filter to items when
+/// iterating and accessing.
+///
+/// When updating, the filter applies to the old value: if the old is included,
+/// it is replaced by the new, otherwise no replacement occurs.
+///
+/// Note: the key and item types are the same as those in the underlying list,
+/// thus one can also retrieve values from the underlying list directly.
+///
+/// Note: only `Rc<FilteredList<T, F>>` implements [`ListData`]; the [`Rc`]
+/// wrapper is required!
+///
+/// Warning: this implementation is `O(n)` where `n = data.len()` and not well
+/// optimised, thus is expected to be slow on large data lists.
+#[derive(Clone, Debug)]
+struct FilteredList<T: ListData, F: Filter<T::Item>> {
+    /// Direct access to unfiltered data
+    ///
+    /// If adjusting this, one should call [`FilteredList::refresh`] after.
+    data: T,
+    /// Direct access to the filter
+    ///
+    /// If adjusting this, one should call [`FilteredList::refresh`] after.
+    filter: F,
+    view: RefCell<Vec<T::Key>>, // TODO: does this need to be in a RefCell?
+}
+
+impl<T: ListData, F: Filter<T::Item>> FilteredList<T, F> {
+    /// Construct and apply filter
+    #[inline]
+    fn new(data: T, filter: F) -> Self {
+        let len = data.len().cast();
+        let view = RefCell::new(Vec::with_capacity(len));
+        let s = FilteredList { data, filter, view };
+        let _ = s.refresh();
+        s
+    }
+
+    /// Refresh the view
+    ///
+    /// Re-applies the filter (`O(n)` where `n` is the number of data elements).
+    /// Calling this directly may be useful in case the data is modified.
+    ///
+    /// An update should be triggered using the returned handle.
+    fn refresh(&self) -> Option<UpdateHandle> {
+        let mut view = self.view.borrow_mut();
+        view.clear();
+        for (key, item) in self.data.iter_vec(usize::MAX) {
+            if self.filter.matches(item) {
+                view.push(key);
+            }
+        }
+        self.filter.update_handle()
+    }
+}
+
+impl<T: ListData, F: Filter<T::Item>> Updatable for FilteredList<T, F> {
+    fn update_handle(&self) -> Option<UpdateHandle> {
+        self.filter.update_handle()
+    }
+
+    fn update_self(&self) -> Option<UpdateHandle> {
+        self.refresh()
+    }
+}
+impl<K, M, T: ListData + UpdatableHandler<K, M> + 'static, F: Filter<T::Item>>
+    UpdatableHandler<K, M> for FilteredList<T, F>
+{
+    fn handle(&self, key: &K, msg: &M) -> Option<UpdateHandle> {
+        self.data.handle(key, msg)
+    }
+}
+
+impl<T: ListData + 'static, F: Filter<T::Item>> ListData for FilteredList<T, F> {
+    type Key = T::Key;
+    type Item = T::Item;
+
+    fn len(&self) -> usize {
+        self.view.borrow().len()
+    }
+
+    fn contains_key(&self, key: &Self::Key) -> bool {
+        self.get_cloned(key).is_some()
+    }
+
+    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
+        // Check the item against our filter (probably O(1)) instead of using
+        // our filtered list (O(n) where n=self.len()).
+        self.data
+            .get_cloned(key)
+            .filter(|item| self.filter.matches(item.clone()))
+    }
+
+    fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle> {
+        // Filtering does not affect result, but does affect the view
+        if self
+            .data
+            .get_cloned(key)
+            .map(|item| !self.filter.matches(item))
+            .unwrap_or(true)
+        {
+            // Not previously visible: no update occurs
+            return None;
+        }
+
+        let new_visible = self.filter.matches(value.clone());
+        let result = self.data.update(key, value);
+        if result.is_some() && !new_visible {
+            // remove the updated item from our filtered list
+            self.view.borrow_mut().retain(|item| item != key);
+        }
+        result
+    }
+
+    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
+        let view = self.view.borrow();
+        let end = self.len().min(start + limit);
+        if start >= end {
+            return Vec::new();
+        }
+        let mut v = Vec::with_capacity(end - start);
+        for k in &view[start..end] {
+            v.push((k.clone(), self.data.get_cloned(k).unwrap()));
+        }
+        v
+    }
+}
 
 /// Filter-list view widget
 ///
@@ -207,7 +338,7 @@ impl<
 
     /// Manually trigger an update to handle changed data or filter
     pub fn update_view(&mut self, mgr: &mut Manager) {
-        // TODO: update filter
+        self.list.data().refresh();
         self.list.update_view(mgr)
     }
 
