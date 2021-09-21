@@ -75,6 +75,7 @@ use kas::macros::VoidMsg;
 use kas::updatable::{FilteredList, ListData, MatrixData, SharedRc, SingleData};
 use thiserror::Error;
 
+mod filter_list;
 mod list_view;
 mod matrix_view;
 mod single_view;
@@ -82,6 +83,7 @@ mod single_view;
 pub mod driver;
 
 pub use driver::Driver;
+pub use filter_list::FilterListView;
 pub use list_view::ListView;
 pub use matrix_view::MatrixView;
 pub use single_view::SingleView;
