@@ -9,81 +9,136 @@ use super::ListData;
 use crate::cast::Cast;
 #[allow(unused)]
 use crate::event::Manager;
-use crate::event::UpdateHandle;
+use crate::event::{UpdateHandle, VoidMsg};
 use crate::updatable::*;
 use std::cell::RefCell;
 use std::fmt::Debug;
+use std::rc::Rc;
 
 /// Types usable as a filter
-pub trait Filter<T>: Debug + 'static {
+pub trait Filter<T>: Updatable + 'static {
     /// Returns true if the given item matches this filter
     // TODO: once Accessor::get returns a reference, this should take item: &T where T: ?Sized
     fn matches(&self, item: T) -> bool;
 }
-impl<'a, T: Clone, X> Filter<&'a T> for X
-where
-    X: Filter<T>,
-{
-    fn matches(&self, item: &T) -> bool {
-        self.matches(item.clone())
+
+/// Filter: target contains self (case-sensitive string match)
+#[derive(Debug, Default, Clone)]
+pub struct ContainsString(Rc<(UpdateHandle, RefCell<String>)>);
+
+impl ContainsString {
+    /// Construct with given string
+    pub fn new<S: ToString>(s: S) -> Self {
+        let handle = UpdateHandle::new();
+        let data = RefCell::new(s.to_string());
+        ContainsString(Rc::new((handle, data)))
+    }
+}
+impl Updatable for ContainsString {
+    fn update_handle(&self) -> Option<UpdateHandle> {
+        Some((self.0).0)
+    }
+}
+impl UpdatableHandler<(), String> for ContainsString {
+    fn handle(&self, _: &(), msg: &String) -> Option<UpdateHandle> {
+        self.update(msg.clone())
+    }
+}
+impl UpdatableHandler<(), VoidMsg> for ContainsString {
+    fn handle(&self, _: &(), _: &VoidMsg) -> Option<UpdateHandle> {
+        None
+    }
+}
+impl SingleData for ContainsString {
+    type Item = String;
+    fn get_cloned(&self) -> Self::Item {
+        (self.0).1.borrow().to_owned()
+    }
+    fn update(&self, value: Self::Item) -> Option<UpdateHandle> {
+        *(self.0).1.borrow_mut() = value;
+        Some((self.0).0)
+    }
+}
+impl SingleDataMut for ContainsString {
+    fn set(&mut self, value: Self::Item) {
+        *(self.0).1.borrow_mut() = value;
     }
 }
 
-impl<'a> Filter<&'a str> for &'static str {
+impl<'a> Filter<&'a str> for ContainsString {
     fn matches(&self, item: &str) -> bool {
-        item.contains(self)
+        item.contains(&self.get_cloned())
     }
 }
-impl<'a> Filter<&'a str> for String {
-    fn matches(&self, item: &str) -> bool {
-        item.contains(self)
-    }
-}
-impl Filter<String> for String {
+impl Filter<String> for ContainsString {
     fn matches(&self, item: String) -> bool {
-        item.contains(self)
+        Filter::<&str>::matches(self, &item)
     }
 }
 
-/// Case-insensitive string matcher
+/// Filter: target contains self (case-insensitive string match)
 ///
-/// This type will likely be removed at some point since it is inefficient and
-/// not accurate for all Unicode input.
-#[derive(Clone, Debug)]
-pub struct SimpleCaseInsensitiveFilter(String);
-impl SimpleCaseInsensitiveFilter {
-    /// Construct
-    pub fn new<T: ToString>(filter: T) -> Self {
-        // Note: this method of caseless matching is not unicode compliant!
-        // https://stackoverflow.com/questions/47298336/case-insensitive-string-matching-in-rust
-        SimpleCaseInsensitiveFilter(filter.to_string().to_uppercase())
+// Note: the implemented method of caseless matching is not unicode compliant,
+// however works in most cases (by converting both the source and the target to
+// upper case). See [question on StackOverflow].
+//
+// [question on StackOverflow]: https://stackoverflow.com/questions/47298336/case-insensitive-string-matching-in-rust
+#[derive(Debug, Default, Clone)]
+pub struct ContainsCaseInsensitive(Rc<(UpdateHandle, RefCell<(String, String)>)>);
+
+impl ContainsCaseInsensitive {
+    /// Construct with given string
+    pub fn new<S: ToString>(s: S) -> Self {
+        let handle = UpdateHandle::new();
+        let s = s.to_string();
+        let u = s.to_uppercase();
+        let data = RefCell::new((s, u));
+        ContainsCaseInsensitive(Rc::new((handle, data)))
     }
 }
-impl<'a> Filter<&'a str> for SimpleCaseInsensitiveFilter {
+impl Updatable for ContainsCaseInsensitive {
+    fn update_handle(&self) -> Option<UpdateHandle> {
+        Some((self.0).0)
+    }
+}
+impl UpdatableHandler<(), String> for ContainsCaseInsensitive {
+    fn handle(&self, _: &(), msg: &String) -> Option<UpdateHandle> {
+        self.update(msg.clone())
+    }
+}
+impl UpdatableHandler<(), VoidMsg> for ContainsCaseInsensitive {
+    fn handle(&self, _: &(), _: &VoidMsg) -> Option<UpdateHandle> {
+        None
+    }
+}
+impl SingleData for ContainsCaseInsensitive {
+    type Item = String;
+    fn get_cloned(&self) -> Self::Item {
+        (self.0).1.borrow().0.clone()
+    }
+    fn update(&self, value: Self::Item) -> Option<UpdateHandle> {
+        let mut cell = (self.0).1.borrow_mut();
+        cell.0 = value;
+        cell.1 = cell.0.to_uppercase();
+        Some((self.0).0)
+    }
+}
+impl SingleDataMut for ContainsCaseInsensitive {
+    fn set(&mut self, value: Self::Item) {
+        let mut cell = (self.0).1.borrow_mut();
+        cell.0 = value;
+        cell.1 = cell.0.to_uppercase();
+    }
+}
+
+impl<'a> Filter<&'a str> for ContainsCaseInsensitive {
     fn matches(&self, item: &str) -> bool {
-        item.to_owned().to_uppercase().contains(&self.0)
+        Filter::<String>::matches(self, item.to_string())
     }
 }
-impl Filter<String> for SimpleCaseInsensitiveFilter {
+impl Filter<String> for ContainsCaseInsensitive {
     fn matches(&self, item: String) -> bool {
-        item.to_uppercase().contains(&self.0)
-    }
-}
-
-#[derive(Clone, Debug)]
-struct FilterView<T: ListData, F: Filter<T::Item>> {
-    filter: F,
-    view: Vec<T::Key>,
-}
-
-impl<T: ListData, F: Filter<T::Item>> FilterView<T, F> {
-    fn refresh(&mut self, data: &T) {
-        self.view.clear();
-        for (key, item) in data.iter_vec(usize::MAX) {
-            if self.filter.matches(item) {
-                self.view.push(key);
-            }
-        }
+        item.to_uppercase().contains(&(self.0).1.borrow().1)
     }
 }
 
@@ -109,8 +164,11 @@ pub struct FilteredList<T: ListData, F: Filter<T::Item>> {
     ///
     /// If adjusting this, one should call [`FilteredList::refresh`] after.
     pub data: T,
-    cell: RefCell<FilterView<T, F>>,
-    update: UpdateHandle,
+    /// Direct access to the filter
+    ///
+    /// If adjusting this, one should call [`FilteredList::refresh`] after.
+    pub filter: F,
+    view: RefCell<Vec<T::Key>>, // TODO: does this need to be in a RefCell?
 }
 
 impl<T: ListData, F: Filter<T::Item>> FilteredList<T, F> {
@@ -118,10 +176,8 @@ impl<T: ListData, F: Filter<T::Item>> FilteredList<T, F> {
     #[inline]
     pub fn new(data: T, filter: F) -> Self {
         let len = data.len().cast();
-        let view = Vec::with_capacity(len);
-        let cell = RefCell::new(FilterView { filter, view });
-        let update = UpdateHandle::new();
-        let s = FilteredList { data, cell, update };
+        let view = RefCell::new(Vec::with_capacity(len));
+        let s = FilteredList { data, filter, view };
         let _ = s.refresh();
         s
     }
@@ -132,31 +188,25 @@ impl<T: ListData, F: Filter<T::Item>> FilteredList<T, F> {
     /// Calling this directly may be useful in case the data is modified.
     ///
     /// An update should be triggered using the returned handle.
-    pub fn refresh(&self) -> UpdateHandle {
-        self.cell.borrow_mut().refresh(&self.data);
-        self.update
-    }
-
-    /// Update and apply the filter
-    ///
-    /// An update should be triggered using the returned handle.
-    /// See [`FilteredList::refresh`].
-    pub fn set_filter(&self, filter: F) -> UpdateHandle {
-        let mut cell = self.cell.borrow_mut();
-        cell.filter = filter;
-        cell.refresh(&self.data);
-        self.update
+    pub fn refresh(&self) -> Option<UpdateHandle> {
+        let mut view = self.view.borrow_mut();
+        view.clear();
+        for (key, item) in self.data.iter_vec(usize::MAX) {
+            if self.filter.matches(item) {
+                view.push(key);
+            }
+        }
+        self.filter.update_handle()
     }
 }
 
 impl<T: ListData, F: Filter<T::Item>> Updatable for FilteredList<T, F> {
     fn update_handle(&self) -> Option<UpdateHandle> {
-        Some(self.update)
+        self.filter.update_handle()
     }
 
     fn update_self(&self) -> Option<UpdateHandle> {
-        self.cell.borrow_mut().refresh(&self.data);
-        Some(self.update)
+        self.refresh()
     }
 }
 impl<K, M, T: ListData + UpdatableHandler<K, M> + 'static, F: Filter<T::Item>>
@@ -172,7 +222,7 @@ impl<T: ListData + 'static, F: Filter<T::Item>> ListData for FilteredList<T, F> 
     type Item = T::Item;
 
     fn len(&self) -> usize {
-        self.cell.borrow().view.len()
+        self.view.borrow().len()
     }
 
     fn contains_key(&self, key: &Self::Key) -> bool {
@@ -182,42 +232,40 @@ impl<T: ListData + 'static, F: Filter<T::Item>> ListData for FilteredList<T, F> 
     fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
         // Check the item against our filter (probably O(1)) instead of using
         // our filtered list (O(n) where n=self.len()).
-        let cell = self.cell.borrow();
         self.data
             .get_cloned(key)
-            .filter(|item| cell.filter.matches(item.clone()))
+            .filter(|item| self.filter.matches(item.clone()))
     }
 
     fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle> {
         // Filtering does not affect result, but does affect the view
-        let mut cell = self.cell.borrow_mut();
         if self
             .data
             .get_cloned(key)
-            .map(|item| !cell.filter.matches(item))
+            .map(|item| !self.filter.matches(item))
             .unwrap_or(true)
         {
             // Not previously visible: no update occurs
             return None;
         }
 
-        let new_visible = cell.filter.matches(value.clone());
+        let new_visible = self.filter.matches(value.clone());
         let result = self.data.update(key, value);
         if result.is_some() && !new_visible {
             // remove the updated item from our filtered list
-            cell.view.retain(|item| item != key);
+            self.view.borrow_mut().retain(|item| item != key);
         }
         result
     }
 
     fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        let cell = self.cell.borrow();
+        let view = self.view.borrow();
         let end = self.len().min(start + limit);
         if start >= end {
             return Vec::new();
         }
         let mut v = Vec::with_capacity(end - start);
-        for k in &cell.view[start..end] {
+        for k in &view[start..end] {
             v.push((k.clone(), self.data.get_cloned(k).unwrap()));
         }
         v

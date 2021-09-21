@@ -17,7 +17,7 @@
 
 mod data_impls;
 mod data_traits;
-mod filter;
+pub mod filter;
 mod shared_rc;
 
 use crate::event::UpdateHandle;
@@ -29,7 +29,6 @@ use std::ops::Deref;
 pub use data_traits::{
     ListData, ListDataMut, MatrixData, MatrixDataMut, SingleData, SingleDataMut,
 };
-pub use filter::{Filter, FilteredList, SimpleCaseInsensitiveFilter};
 pub use shared_rc::SharedRc;
 
 /// Shared (data) objects which may notify of updates

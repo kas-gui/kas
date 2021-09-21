@@ -9,8 +9,8 @@ use super::{driver, Driver, ListView, SelectionError, SelectionMode};
 use crate::Scrollable;
 use kas::event::ChildMsg;
 use kas::prelude::*;
-use kas::updatable::*;
-use kas::updatable::{FilteredList, ListData, UpdatableAll};
+use kas::updatable::filter::{Filter, FilteredList};
+use kas::updatable::{ListData, UpdatableAll};
 use std::fmt::Debug;
 
 /// Filter-list view widget

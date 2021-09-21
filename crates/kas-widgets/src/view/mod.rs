@@ -72,7 +72,7 @@
 use kas::event::UpdateHandle;
 use kas::macros::VoidMsg;
 #[allow(unused)]
-use kas::updatable::{FilteredList, ListData, MatrixData, SharedRc, SingleData};
+use kas::updatable::{filter::FilteredList, ListData, MatrixData, SharedRc, SingleData};
 use thiserror::Error;
 
 mod filter_list;

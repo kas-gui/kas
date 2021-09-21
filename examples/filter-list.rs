@@ -8,16 +8,16 @@
 use kas::dir::Down;
 use kas::event::ChildMsg;
 use kas::prelude::*;
-use kas::updatable::{ListData, SimpleCaseInsensitiveFilter};
-use kas::widgets::view::{driver, ListView, SelectionMode};
+use kas::updatable::ListData;
+use kas::widgets::view::{driver, ListView, SelectionMode, SingleView};
 use kas::widgets::{EditBox, Label, RadioBox, ScrollBars, Window};
 
 mod data {
-    use kas::updatable::{FilteredList, SimpleCaseInsensitiveFilter};
+    use kas::updatable::filter::{ContainsCaseInsensitive, FilteredList};
     use std::rc::Rc;
 
     type SC = &'static [&'static str];
-    pub type Shared = Rc<FilteredList<SC, SimpleCaseInsensitiveFilter>>;
+    pub type Shared = Rc<FilteredList<SC, ContainsCaseInsensitive>>;
 
     const MONTHS: &[&str] = &[
         "January",
@@ -35,7 +35,7 @@ mod data {
     ];
 
     pub fn get() -> Shared {
-        let filter = SimpleCaseInsensitiveFilter::new("");
+        let filter = ContainsCaseInsensitive::new("");
         Rc::new(FilteredList::new(MONTHS.into(), filter))
     }
 }
@@ -57,7 +57,9 @@ fn main() -> Result<(), kas::shell::Error> {
 
     let data = data::get();
     println!("filter-list: {} entries", data.len());
-    let data2 = data.clone();
+    let filter = data.filter.clone();
+    let filter_driver = driver::Widget::<EditBox>::default();
+
     let window = Window::new(
         "Filter-list",
         make_widget! {
@@ -65,12 +67,7 @@ fn main() -> Result<(), kas::shell::Error> {
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget(use_msg = set_selection_mode)] _ = selection_mode,
-                #[widget] filter = EditBox::new("").on_edit(move |text, mgr| {
-                    let update = data2
-                        .set_filter(SimpleCaseInsensitiveFilter::new(text));
-                    mgr.trigger_update(update, 0);
-                    None
-                }),
+                #[widget] filter = SingleView::new_with_driver(filter_driver, filter),
                 #[widget(use_msg = select)] list:
                     ScrollBars<ListView<Down, data::Shared, driver::DefaultNav>> =
                     ScrollBars::new(ListView::new(data)),
