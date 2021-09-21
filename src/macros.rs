@@ -50,7 +50,7 @@
 //! These attributes may be used on fields: `widget`, `widget_core`,
 //! `widget_derive`,  `layout_data`.
 //! The `widget` attribute supports multiple parameters,
-//! discussed below (e.g. `#[widget(row=1, handler=f)]`).
+//! discussed below (e.g. `#[widget(row=1, use_msg=f)]`).
 //! Fields without attributes (plain data fields) are fine too.
 //!
 //! A simple example:
@@ -239,12 +239,17 @@
 //! ```
 //!
 //! A handler is a method on the parent struct with signature
-//! `fn f(&mut self, mgr: &mut Manager, item: Item) -> Response<Out>`
-//! (where `Item` is the child's message type and `Out` is the parent's message
-//! type).
+//! `fn f(&mut self, mgr: &mut Manager, msg: M) -> T`
+//! (where `M` is the child's message type). The return type `T` depends on
+//! the keyword used:
 //!
-//! A handler is bound to a child via the `widget` attribute, for example
-//! `#[widget(handler = f)] child: ChildType`.
+//! -   `#[widget(use_msg = f)]` — `T = ()` (no return value)
+//! -   `#[widget(map_msg = f)]` — `T = P` where `P` is the parent
+//!     widget's message type)
+//! -   `#[widget(flatmap_msg = f)]` — `T = Response<P>` where `P` is the parent
+//!     widget's message type)
+//! -   `#[widget(discard_msg)]` — message is discarded (no handler)
+//! -   `#[widget()]` — message is converted via `Into` (no handler)
 //!
 //! ### widget_derive
 //!

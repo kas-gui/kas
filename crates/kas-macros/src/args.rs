@@ -218,6 +218,7 @@ mod kw {
     custom_keyword!(flatmap_msg);
     custom_keyword!(map_msg);
     custom_keyword!(use_msg);
+    custom_keyword!(discard_msg);
     custom_keyword!(msg);
     custom_keyword!(generics);
     custom_keyword!(single);
@@ -316,6 +317,7 @@ pub enum Handler {
     Use(Ident),
     Map(Ident),
     FlatMap(Ident),
+    Discard,
 }
 impl Handler {
     pub fn is_none(&self) -> bool {
@@ -323,7 +325,7 @@ impl Handler {
     }
     pub fn any_ref(&self) -> Option<&Ident> {
         match self {
-            Handler::None => None,
+            Handler::None | Handler::Discard => None,
             Handler::Use(n) | Handler::Map(n) | Handler::FlatMap(n) => Some(n),
         }
     }
@@ -466,11 +468,14 @@ impl Parse for WidgetAttrArgs {
                 let _: kw::use_msg = content.parse()?;
                 let _: Eq = content.parse()?;
                 args.handler = Handler::Use(content.parse()?);
+            } else if args.handler.is_none() && lookahead.peek(kw::discard_msg) {
+                let _: kw::discard_msg = content.parse()?;
+                args.handler = Handler::Discard;
             } else if lookahead.peek(kw::handler) {
                 let tok: Ident = content.parse()?;
                 return Err(Error::new(
                     tok.span(),
-                    "handler is obsolete; replace with flatmap_msg, map_msg or use_msg",
+                    "handler is obsolete; replace with flatmap_msg, map_msg, use_msg or discard_msg",
                 ));
             } else {
                 return Err(lookahead.error());
@@ -539,6 +544,7 @@ impl ToTokens for WidgetAttrArgs {
                 Handler::Use(f) => args.append_all(quote! { use_msg = #f }),
                 Handler::Map(f) => args.append_all(quote! { map_msg = #f }),
                 Handler::FlatMap(f) => args.append_all(quote! { flatmap_msg = #f }),
+                Handler::Discard => args.append_all(quote! { discard_msg }),
             }
             tokens.append_all(quote! { ( #args ) });
         }
