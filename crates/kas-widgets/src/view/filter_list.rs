@@ -10,9 +10,10 @@ use crate::Scrollable;
 use kas::event::ChildMsg;
 use kas::prelude::*;
 use kas::updatable::filter::Filter;
-use kas::updatable::{ListData, Updatable, UpdatableAll, UpdatableHandler};
+use kas::updatable::{ListData, Updatable, UpdatableHandler};
 use std::cell::RefCell;
 use std::fmt::Debug;
+use UpdatableHandler as UpdHandler;
 
 /// Filter accessor over another accessor
 ///
@@ -164,7 +165,7 @@ impl<T: ListData + 'static, F: Filter<T::Item>> ListData for FilteredList<T, F> 
 #[widget(config=noauto)]
 pub struct FilterListView<
     D: Directional,
-    T: ListData + UpdatableAll<T::Key, V::Msg> + 'static,
+    T: ListData + UpdHandler<T::Key, V::Msg> + 'static,
     F: Filter<T::Item>,
     V: Driver<T::Item> = driver::Default,
 > {
@@ -176,7 +177,7 @@ pub struct FilterListView<
 
 impl<
         D: Directional + Default,
-        T: ListData + UpdatableAll<T::Key, V::Msg>,
+        T: ListData + UpdHandler<T::Key, V::Msg>,
         F: Filter<T::Item>,
         V: Driver<T::Item> + Default,
     > FilterListView<D, T, F, V>
@@ -192,7 +193,7 @@ impl<
 }
 impl<
         D: Directional,
-        T: ListData + UpdatableAll<T::Key, V::Msg>,
+        T: ListData + UpdHandler<T::Key, V::Msg>,
         F: Filter<T::Item>,
         V: Driver<T::Item> + Default,
     > FilterListView<D, T, F, V>
@@ -204,7 +205,7 @@ impl<
 }
 impl<
         D: Directional + Default,
-        T: ListData + UpdatableAll<T::Key, V::Msg>,
+        T: ListData + UpdHandler<T::Key, V::Msg>,
         F: Filter<T::Item>,
         V: Driver<T::Item>,
     > FilterListView<D, T, F, V>
@@ -215,7 +216,7 @@ impl<
     }
 }
 impl<
-        T: ListData + UpdatableAll<T::Key, V::Msg>,
+        T: ListData + UpdHandler<T::Key, V::Msg>,
         F: Filter<T::Item>,
         V: Driver<T::Item> + Default,
     > FilterListView<Direction, T, F, V>
@@ -227,7 +228,7 @@ impl<
 }
 impl<
         D: Directional,
-        T: ListData + UpdatableAll<T::Key, V::Msg>,
+        T: ListData + UpdHandler<T::Key, V::Msg>,
         F: Filter<T::Item>,
         V: Driver<T::Item>,
     > FilterListView<D, T, F, V>
@@ -376,7 +377,7 @@ impl<
 // TODO: support derive(Scrollable)?
 impl<
         D: Directional,
-        T: ListData + UpdatableAll<T::Key, V::Msg>,
+        T: ListData + UpdHandler<T::Key, V::Msg>,
         F: Filter<T::Item>,
         V: Driver<T::Item>,
     > Scrollable for FilterListView<D, T, F, V>
@@ -404,7 +405,7 @@ impl<
 
 impl<
         D: Directional,
-        T: ListData + UpdatableAll<T::Key, V::Msg>,
+        T: ListData + UpdHandler<T::Key, V::Msg>,
         F: Filter<T::Item>,
         V: Driver<T::Item>,
     > WidgetConfig for FilterListView<D, T, F, V>
@@ -423,7 +424,7 @@ impl<
 
 impl<
         D: Directional,
-        T: ListData + UpdatableAll<T::Key, V::Msg>,
+        T: ListData + UpdHandler<T::Key, V::Msg>,
         F: Filter<T::Item>,
         V: Driver<T::Item>,
     > Handler for FilterListView<D, T, F, V>

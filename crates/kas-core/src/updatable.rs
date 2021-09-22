@@ -63,14 +63,6 @@ pub trait UpdatableHandler<K, M>: Updatable {
     fn handle(&self, key: &K, msg: &M) -> Option<UpdateHandle>;
 }
 
-/// Bound over all other "updatable" traits
-///
-/// This is intended for usage as a bound where [`Updatable`] and
-/// [`UpdatableHandler`] implementations are all
-/// required. It is automatically implemented when all these traits are.
-pub trait UpdatableAll<K, M>: UpdatableHandler<K, M> {}
-impl<K, M, T: UpdatableHandler<K, M>> UpdatableAll<K, M> for T {}
-
 // TODO(spec): can we add this?
 // impl<K, T> UpdatableHandler<K, VoidMsg> for T {
 //     fn handle(&self, _: &K, msg: &VoidMsg) -> Option<UpdateHandle> {
