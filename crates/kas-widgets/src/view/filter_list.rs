@@ -241,25 +241,41 @@ impl<
         }
     }
 
-    // TODO: should this access pre-filter data?
     /// Access the stored data (pre-filter)
-    pub fn data(&self) -> &T {
+    pub fn unfiltered_data(&self) -> &T {
         &self.list.data().data
     }
 
     /// Mutably access the stored data (pre-filter)
     ///
     /// It may be necessary to use [`FilterListView::update_view`] to update the view of this data.
+    pub fn unfiltered_data_mut(&mut self) -> &mut T {
+        &mut self.list.data_mut().data
+    }
+
+    /// Access the stored data (post-filter)
+    pub fn data(&self) -> &T {
+        &self.list.data().data
+    }
+
+    /// Mutably access the stored data (post-filter)
+    ///
+    /// It may be necessary to use [`FilterListView::update_view`] to update the view of this data.
     pub fn data_mut(&mut self) -> &mut T {
         &mut self.list.data_mut().data
     }
 
-    /// Get a copy of the shared value at `key` (pre-filter)
+    /// Check whether a key has data (post-filter)
+    pub fn contains_key(&self, key: &T::Key) -> bool {
+        self.data().contains_key(key)
+    }
+
+    /// Get a copy of the shared value at `key` (post-filter)
     pub fn get_value(&self, key: &T::Key) -> Option<T::Item> {
         self.data().get_cloned(key)
     }
 
-    /// Set shared data (pre-filter)
+    /// Set shared data (post-filter)
     ///
     /// This method updates the shared data, if supported (see
     /// [`ListData::update`]). Other widgets sharing this data are notified
@@ -270,7 +286,7 @@ impl<
         }
     }
 
-    /// Update shared data (pre-filter)
+    /// Update shared data (post-filter)
     ///
     /// This is purely a convenience method over [`FilterListView::set_value`].
     /// It does nothing if no value is found at `key`.
