@@ -12,10 +12,11 @@ use crate::{ScrollComponent, Scrollable};
 use kas::event::{ChildMsg, Command, CursorIcon, GrabMode, PressSource};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
-use kas::updatable::{MatrixData, UpdatableAll};
+use kas::updatable::{MatrixData, UpdatableHandler};
 use linear_map::set::LinearSet;
 use log::{debug, trace};
 use std::time::Instant;
+use UpdatableHandler as UpdHandler;
 
 #[derive(Clone, Debug, Default)]
 struct WidgetData<K, W> {
@@ -28,7 +29,7 @@ struct WidgetData<K, W> {
 /// This widget supports a view over a matrix of shared data items.
 ///
 /// The shared data type `T` must support [`MatrixData`] and
-/// [`UpdatableAll`], the latter with key type `T::Key` and message type
+/// [`UpdatableHandler`], the latter with key type `T::Key` and message type
 /// matching the widget's message. One may use [`kas::updatable::SharedRc`]
 /// or a custom shared data type.
 ///
@@ -42,7 +43,7 @@ struct WidgetData<K, W> {
 #[handler(send=noauto, msg=ChildMsg<T::Key, <V::Widget as Handler>::Msg>)]
 #[widget(children=noauto, config=noauto)]
 pub struct MatrixView<
-    T: MatrixData + UpdatableAll<T::Key, V::Msg> + 'static,
+    T: MatrixData + UpdHandler<T::Key, V::Msg> + 'static,
     V: Driver<T::Item> = driver::Default,
 > {
     first_id: WidgetId,
@@ -71,13 +72,13 @@ pub struct MatrixView<
     press_target: Option<T::Key>,
 }
 
-impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item> + Default> MatrixView<T, V> {
+impl<T: MatrixData + UpdHandler<T::Key, V::Msg>, V: Driver<T::Item> + Default> MatrixView<T, V> {
     /// Construct a new instance
     pub fn new(data: T) -> Self {
         Self::new_with_driver(<V as Default>::default(), data)
     }
 }
-impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> MatrixView<T, V> {
+impl<T: MatrixData + UpdHandler<T::Key, V::Msg>, V: Driver<T::Item>> MatrixView<T, V> {
     /// Construct a new instance with explicit view
     pub fn new_with_driver(view: V, data: T) -> Self {
         MatrixView {
@@ -293,7 +294,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> MatrixVie
     }
 }
 
-impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Scrollable
+impl<T: MatrixData + UpdHandler<T::Key, V::Msg>, V: Driver<T::Item>> Scrollable
     for MatrixView<T, V>
 {
     fn scroll_axes(&self, size: Size) -> (bool, bool) {
@@ -321,7 +322,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Scrollabl
     }
 }
 
-impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> WidgetChildren
+impl<T: MatrixData + UpdHandler<T::Key, V::Msg>, V: Driver<T::Item>> WidgetChildren
     for MatrixView<T, V>
 {
     #[inline]
@@ -347,11 +348,10 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> WidgetChi
     }
 }
 
-impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> WidgetConfig
+impl<T: MatrixData + UpdHandler<T::Key, V::Msg>, V: Driver<T::Item>> WidgetConfig
     for MatrixView<T, V>
 {
     fn configure(&mut self, mgr: &mut Manager) {
-        self.data.enable_recursive_updates(mgr);
         if let Some(handle) = self.data.update_handle() {
             mgr.update_on_handle(handle, self.id());
         }
@@ -359,7 +359,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> WidgetCon
     }
 }
 
-impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Layout for MatrixView<T, V> {
+impl<T: MatrixData + UpdHandler<T::Key, V::Msg>, V: Driver<T::Item>> Layout for MatrixView<T, V> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         // We use an invisible frame for highlighting selections, drawing into the margin
         let inner_margin = size_handle.inner_margin().extract(axis);
@@ -509,7 +509,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Layout fo
     }
 }
 
-impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> SendEvent
+impl<T: MatrixData + UpdHandler<T::Key, V::Msg>, V: Driver<T::Item>> SendEvent
     for MatrixView<T, V>
 {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
@@ -519,11 +519,13 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> SendEvent
 
         if id < self.id() {
             let child_event = self.scroll.offset_event(event.clone());
+            let index;
             let response = 'outer: loop {
                 // We forward events to all children, even if not visible
                 // (e.g. these may be subscribed to an UpdateHandle).
-                for child in self.widgets.iter_mut() {
+                for (i, child) in self.widgets.iter_mut().enumerate() {
                     if id <= child.widget.id() {
+                        index = i;
                         let r = child.widget.send(mgr, id, child_event);
                         break 'outer (child.key.clone(), r);
                     }
@@ -531,6 +533,16 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> SendEvent
                 debug_assert!(false, "SendEvent::send: bad WidgetId");
                 return Response::Unhandled;
             };
+            if matches!(&response.1, Response::Update | Response::Msg(_)) {
+                let wd = &self.widgets[index];
+                if let Some(key) = wd.key.as_ref() {
+                    if let Some(value) = self.view.get(&wd.widget) {
+                        if let Some(handle) = self.data.update(key, value) {
+                            mgr.trigger_update(handle, 0);
+                        }
+                    }
+                }
+            }
             match response {
                 (_, Response::None) => return Response::None,
                 (key, Response::Unhandled) => {

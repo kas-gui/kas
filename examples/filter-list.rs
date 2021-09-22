@@ -8,37 +8,24 @@
 use kas::dir::Down;
 use kas::event::ChildMsg;
 use kas::prelude::*;
-use kas::updatable::{ListData, SimpleCaseInsensitiveFilter};
-use kas::widgets::view::{driver, ListView, SelectionMode};
+use kas::updatable::filter::ContainsCaseInsensitive;
+use kas::widgets::view::{driver, FilterListView, SelectionMode, SingleView};
 use kas::widgets::{EditBox, Label, RadioBox, ScrollBars, Window};
 
-mod data {
-    use kas::updatable::{FilteredList, SimpleCaseInsensitiveFilter};
-    use std::rc::Rc;
-
-    type SC = &'static [&'static str];
-    pub type Shared = Rc<FilteredList<SC, SimpleCaseInsensitiveFilter>>;
-
-    const MONTHS: &[&str] = &[
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December",
-    ];
-
-    pub fn get() -> Shared {
-        let filter = SimpleCaseInsensitiveFilter::new("");
-        Rc::new(FilteredList::new(MONTHS.into(), filter))
-    }
-}
+const MONTHS: &[&str] = &[
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+];
 
 fn main() -> Result<(), kas::shell::Error> {
     env_logger::init();
@@ -55,9 +42,11 @@ fn main() -> Result<(), kas::shell::Error> {
         }
     };
 
-    let data = data::get();
+    let data = MONTHS;
     println!("filter-list: {} entries", data.len());
-    let data2 = data.clone();
+    let filter = ContainsCaseInsensitive::new("");
+    let filter_driver = driver::Widget::<EditBox>::default();
+
     let window = Window::new(
         "Filter-list",
         make_widget! {
@@ -65,15 +54,15 @@ fn main() -> Result<(), kas::shell::Error> {
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget(use_msg = set_selection_mode)] _ = selection_mode,
-                #[widget] filter = EditBox::new("").on_edit(move |text, mgr| {
-                    let update = data2
-                        .set_filter(SimpleCaseInsensitiveFilter::new(text));
-                    mgr.trigger_update(update, 0);
-                    None
-                }),
+                #[widget] filter = SingleView::new_with_driver(filter_driver, filter.clone()),
                 #[widget(use_msg = select)] list:
-                    ScrollBars<ListView<Down, data::Shared, driver::DefaultNav>> =
-                    ScrollBars::new(ListView::new(data)),
+                    ScrollBars<FilterListView<
+                        Down,
+                        &'static [&'static str],
+                        ContainsCaseInsensitive,
+                        driver::DefaultNav,
+                    >> =
+                    ScrollBars::new(FilterListView::new(data, filter)),
             }
             impl {
                 fn set_selection_mode(&mut self, mgr: &mut Manager, mode: SelectionMode) {

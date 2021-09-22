@@ -19,11 +19,8 @@
 //! For simpler cases it is not always necessary to implement your own shared
 //! data type, for example `SharedRc<i32>` implements [`SingleData`] and
 //! `&'static [&'static str]` implements [`ListData`]. The [`SharedRc`] type
-//! provides the [`UpdateHandle`] required to synchronise views.
-//!
-//! ## Adapters
-//!
-//! -   [`FilteredList`] presents a filtered list over a [`ListData`]
+//! provides an `update` method and the [`UpdateHandle`] required to synchronise
+//! views; `&[T]` does not (data is constant).
 //!
 //! # View widgets and drivers
 //!
@@ -72,9 +69,10 @@
 use kas::event::UpdateHandle;
 use kas::macros::VoidMsg;
 #[allow(unused)]
-use kas::updatable::{FilteredList, ListData, MatrixData, SharedRc, SingleData};
+use kas::updatable::{ListData, MatrixData, SharedRc, SingleData};
 use thiserror::Error;
 
+mod filter_list;
 mod list_view;
 mod matrix_view;
 mod single_view;
@@ -82,6 +80,7 @@ mod single_view;
 pub mod driver;
 
 pub use driver::Driver;
+pub use filter_list::FilterListView;
 pub use list_view::ListView;
 pub use matrix_view::MatrixView;
 pub use single_view::SingleView;

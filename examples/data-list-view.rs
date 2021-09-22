@@ -86,7 +86,6 @@ impl Updatable for MyData {
         Some(self.handle)
     }
 }
-impl RecursivelyUpdatable for MyData {}
 impl UpdatableHandler<usize, EntryMsg> for MyData {
     fn handle(&self, key: &usize, msg: &EntryMsg) -> Option<UpdateHandle> {
         match msg {
@@ -191,6 +190,9 @@ impl Driver<(usize, bool, String)> for MyDriver {
         widget.label.set_string(label)
             | widget.radio.set_bool(data.1)
             | widget.entry.set_string(data.2)
+    }
+    fn get(&self, _widget: &Self::Widget) -> Option<(usize, bool, String)> {
+        None // unused
     }
 }
 

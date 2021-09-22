@@ -394,6 +394,13 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     let log_msg = quote! {};
 
                     let ident = &child.ident;
+                    let update = if let Some(f) = child.args.update.as_ref() {
+                        quote! {
+                            self.#f(mgr);
+                        }
+                    } else {
+                        quote! {}
+                    };
                     let handler = match &child.args.handler {
                         Handler::Use(f) => quote! {
                             r.try_into().unwrap_or_else(|msg| {
@@ -414,12 +421,20 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                                 self.#f(mgr, msg)
                             })
                         },
+                        Handler::Discard => quote! {
+                            r.try_into().unwrap_or_else(|msg| {
+                                #log_msg
+                                let _ = msg;
+                                Response::None
+                            })
+                        },
                         Handler::None => quote! { r.into() },
                     };
 
                     ev_to_num.append_all(quote! {
                         if id <= self.#ident.id() {
                             let r = self.#ident.send(mgr, id, event);
+                            #update
                             #handler
                         } else
                     });
@@ -724,17 +739,18 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     if let Some(tyr) = gen_msg {
                         handler_clauses.push(parse_quote! { #ty: ::kas::Widget<Msg = #tyr> });
                     } else {
-                        // No typing. If a handler is specified, then the child must implement
-                        // Handler<Msg = X> where the handler takes type X; otherwise
-                        // we use `msg.into()` and this conversion must be supported.
                         if let Some(ref handler) = wattr.args.handler.any_ref() {
+                            // Message passed to a method; exact type required
                             if let Some(ty_bound) = find_handler_ty(handler, &args.impls) {
                                 handler_clauses
                                     .push(parse_quote! { #ty: ::kas::Widget<Msg = #ty_bound> });
                             } else {
                                 return quote! {}.into(); // exit after emitting error
                             }
+                        } else if wattr.args.handler == Handler::Discard {
+                            // No type bound on discarded message
                         } else {
+                            // Message converted via Into
                             name_buf.push('R');
                             let tyr = Ident::new(&name_buf, Span::call_site());
                             handler

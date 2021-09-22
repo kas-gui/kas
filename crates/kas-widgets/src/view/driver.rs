@@ -41,6 +41,21 @@ pub trait Driver<T>: Debug + 'static {
     fn new(&self) -> Self::Widget;
     /// Set the viewed data
     fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction;
+    /// Get data from the view
+    ///
+    /// This method optionally constructs and returns `data` from the widget.
+    /// It is only useful on interactive widgets (e.g. a slider or edit box).
+    ///
+    /// When the constructed widget emits [`Response::Update`] or
+    /// [`Response::Msg`], the "view" (e.g. `SingleView`) calls this method; if
+    /// a data item is returned, then then it is passed to the data model's
+    /// `update` method to update the model.
+    ///
+    /// Note that, additionally, when [`Response::Msg`] is returned,
+    /// [`kas::updatable::UpdatableHandler`] may be used to observe the message.
+    /// Often it will be sufficient to implement custom handling/update logic
+    /// in only one of these places.
+    fn get(&self, widget: &Self::Widget) -> Option<T>;
 }
 
 /// Default view widget constructor
@@ -74,6 +89,7 @@ macro_rules! impl_via_to_string {
             fn set(&self, widget: &mut Self::Widget, data: $t) -> TkAction {
                 widget.set_string(data.to_string())
             }
+            fn get(&self, _: &Self::Widget) -> Option<$t> { None }
         }
         impl Driver<$t> for DefaultNav {
             type Msg = VoidMsg;
@@ -84,6 +100,7 @@ macro_rules! impl_via_to_string {
             fn set(&self, widget: &mut Self::Widget, data: $t) -> TkAction {
                 widget.set_string(data.to_string())
             }
+            fn get(&self, _: &Self::Widget) -> Option<$t> { None }
         }
     };
     ($t:ty, $($tt:ty),+) => {
@@ -105,6 +122,9 @@ impl Driver<bool> for Default {
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
     }
+    fn get(&self, widget: &Self::Widget) -> Option<bool> {
+        Some(widget.get_bool())
+    }
 }
 
 impl Driver<bool> for DefaultNav {
@@ -115,6 +135,9 @@ impl Driver<bool> for DefaultNav {
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
+    }
+    fn get(&self, widget: &Self::Widget) -> Option<bool> {
+        Some(widget.get_bool())
     }
 }
 
@@ -151,6 +174,9 @@ where
     fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction {
         Default.set(widget, data)
     }
+    fn get(&self, widget: &Self::Widget) -> Option<T> {
+        Default.get(widget)
+    }
 }
 
 impl<G: EditGuard + std::default::Default> Driver<String> for Widget<EditField<G>> {
@@ -163,6 +189,9 @@ impl<G: EditGuard + std::default::Default> Driver<String> for Widget<EditField<G
     fn set(&self, widget: &mut Self::Widget, data: String) -> TkAction {
         widget.set_string(data)
     }
+    fn get(&self, widget: &Self::Widget) -> Option<String> {
+        Some(widget.get_string())
+    }
 }
 impl<G: EditGuard + std::default::Default> Driver<String> for Widget<EditBox<G>> {
     type Msg = G::Msg;
@@ -174,6 +203,9 @@ impl<G: EditGuard + std::default::Default> Driver<String> for Widget<EditBox<G>>
     fn set(&self, widget: &mut Self::Widget, data: String) -> TkAction {
         widget.set_string(data)
     }
+    fn get(&self, widget: &Self::Widget) -> Option<String> {
+        Some(widget.get_string())
+    }
 }
 
 impl<D: Directional + std::default::Default> Driver<f32> for Widget<ProgressBar<D>> {
@@ -184,6 +216,9 @@ impl<D: Directional + std::default::Default> Driver<f32> for Widget<ProgressBar<
     }
     fn set(&self, widget: &mut Self::Widget, data: f32) -> TkAction {
         widget.set_value(data)
+    }
+    fn get(&self, widget: &Self::Widget) -> Option<f32> {
+        Some(widget.value())
     }
 }
 
@@ -208,6 +243,9 @@ impl Driver<bool> for CheckBox {
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
     }
+    fn get(&self, widget: &Self::Widget) -> Option<bool> {
+        Some(widget.get_bool())
+    }
 }
 
 /// [`crate::RadioBoxBare`] view widget constructor
@@ -229,6 +267,9 @@ impl Driver<bool> for RadioBoxBare {
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
+    }
+    fn get(&self, widget: &Self::Widget) -> Option<bool> {
+        Some(widget.get_bool())
     }
 }
 
@@ -253,6 +294,9 @@ impl Driver<bool> for RadioBox {
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
+    }
+    fn get(&self, widget: &Self::Widget) -> Option<bool> {
+        Some(widget.get_bool())
     }
 }
 
@@ -294,5 +338,8 @@ impl<T: SliderType, D: Directional> Driver<T> for Slider<T, D> {
     }
     fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction {
         widget.set_value(data)
+    }
+    fn get(&self, widget: &Self::Widget) -> Option<T> {
+        Some(widget.value())
     }
 }
