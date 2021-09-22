@@ -64,33 +64,23 @@ fn main() -> Result<(), kas::shell::Error> {
             #[layout(down)]
             #[handler(msg = VoidMsg)]
             struct {
-                #[widget(handler = set_selection_mode)] _ = selection_mode,
+                #[widget(use_msg = set_selection_mode)] _ = selection_mode,
                 #[widget] filter = EditBox::new("").on_edit(move |text, mgr| {
                     let update = data2
                         .set_filter(SimpleCaseInsensitiveFilter::new(text));
                     mgr.trigger_update(update, 0);
                     None
                 }),
-                #[widget(handler = select)] list:
+                #[widget(use_msg = select)] list:
                     ScrollBars<ListView<Down, data::Shared, driver::DefaultNav>> =
                     ScrollBars::new(ListView::new(data)),
             }
             impl {
-                fn set_selection_mode(
-                    &mut self,
-                    mgr: &mut Manager,
-                    mode: SelectionMode
-                ) -> Response<VoidMsg> {
+                fn set_selection_mode(&mut self, mgr: &mut Manager, mode: SelectionMode) {
                     *mgr |= self.list.set_selection_mode(mode);
-                    Response::None
                 }
-                fn select(
-                    &mut self,
-                    _: &mut Manager,
-                    msg: ChildMsg<usize, VoidMsg>,
-                ) -> Response<VoidMsg> {
+                fn select(&mut self, _: &mut Manager, msg: ChildMsg<usize, VoidMsg>) {
                     println!("Selection message: {:?}", msg);
-                    Response::None
                 }
             }
         },

@@ -215,6 +215,9 @@ mod kw {
     custom_keyword!(rspan);
     custom_keyword!(widget);
     custom_keyword!(handler);
+    custom_keyword!(flatmap_msg);
+    custom_keyword!(map_msg);
+    custom_keyword!(use_msg);
     custom_keyword!(msg);
     custom_keyword!(generics);
     custom_keyword!(single);
@@ -307,6 +310,25 @@ impl Parse for WidgetDerive {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum Handler {
+    None,
+    Use(Ident),
+    Map(Ident),
+    FlatMap(Ident),
+}
+impl Handler {
+    pub fn is_none(&self) -> bool {
+        *self == Handler::None
+    }
+    pub fn any_ref(&self) -> Option<&Ident> {
+        match self {
+            Handler::None => None,
+            Handler::Use(n) | Handler::Map(n) | Handler::FlatMap(n) => Some(n),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct WidgetAttrArgs {
     pub col: Option<Lit>,
@@ -315,7 +337,7 @@ pub struct WidgetAttrArgs {
     pub rspan: Option<Lit>,
     pub halign: Option<Ident>,
     pub valign: Option<Ident>,
-    pub handler: Option<Ident>,
+    pub handler: Handler,
 }
 
 #[derive(Debug)]
@@ -383,7 +405,7 @@ impl Parse for WidgetAttrArgs {
             rspan: None,
             halign: None,
             valign: None,
-            handler: None,
+            handler: Handler::None,
         };
         if input.is_empty() {
             return Ok(args);
@@ -432,10 +454,24 @@ impl Parse for WidgetAttrArgs {
                 let _: kw::valign = content.parse()?;
                 let _: Eq = content.parse()?;
                 args.valign = Some(content.parse()?);
-            } else if args.handler.is_none() && lookahead.peek(kw::handler) {
-                let _: kw::handler = content.parse()?;
+            } else if args.handler.is_none() && lookahead.peek(kw::flatmap_msg) {
+                let _: kw::flatmap_msg = content.parse()?;
                 let _: Eq = content.parse()?;
-                args.handler = Some(content.parse()?);
+                args.handler = Handler::FlatMap(content.parse()?);
+            } else if args.handler.is_none() && lookahead.peek(kw::map_msg) {
+                let _: kw::map_msg = content.parse()?;
+                let _: Eq = content.parse()?;
+                args.handler = Handler::Map(content.parse()?);
+            } else if args.handler.is_none() && lookahead.peek(kw::use_msg) {
+                let _: kw::use_msg = content.parse()?;
+                let _: Eq = content.parse()?;
+                args.handler = Handler::Use(content.parse()?);
+            } else if lookahead.peek(kw::handler) {
+                let tok: Ident = content.parse()?;
+                return Err(Error::new(
+                    tok.span(),
+                    "handler is obsolete; replace with flatmap_msg, map_msg or use_msg",
+                ));
             } else {
                 return Err(lookahead.error());
             }
@@ -458,7 +494,7 @@ impl ToTokens for WidgetAttrArgs {
             || self.rspan.is_some()
             || self.halign.is_some()
             || self.valign.is_some()
-            || self.handler.is_some()
+            || !self.handler.is_none()
         {
             let comma = TokenTree::from(Punct::new(',', Spacing::Alone));
             let mut args = TokenStream::new();
@@ -495,11 +531,14 @@ impl ToTokens for WidgetAttrArgs {
                 }
                 args.append_all(quote! { valign = #ident });
             }
-            if let Some(ref ident) = self.handler {
-                if !args.is_empty() {
-                    args.append(comma);
-                }
-                args.append_all(quote! { handler = #ident });
+            if !self.handler.is_none() && !args.is_empty() {
+                args.append(comma);
+            }
+            match &self.handler {
+                Handler::None => (),
+                Handler::Use(f) => args.append_all(quote! { use_msg = #f }),
+                Handler::Map(f) => args.append_all(quote! { map_msg = #f }),
+                Handler::FlatMap(f) => args.append_all(quote! { flatmap_msg = #f }),
             }
             tokens.append_all(quote! { ( #args ) });
         }

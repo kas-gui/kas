@@ -145,19 +145,16 @@ fn main() -> Result<(), kas::shell::Error> {
             #[layout(single)]
             #[handler(msg = VoidMsg)]
             struct {
-                #[widget(handler = handler)] _ = widgets,
+                #[widget(use_msg = handler)] _ = widgets,
             }
             impl {
-                fn handler(&mut self, _: &mut Manager, item: Item)
-                    -> Response<VoidMsg>
-                {
+                fn handler(&mut self, _: &mut Manager, item: Item) {
                     match item {
                         Item::White => BACKGROUND.with(|b| b.set(Rgba::WHITE)),
                         Item::Red => BACKGROUND.with(|b| b.set(Rgba::rgb(0.9, 0.2, 0.2))),
                         Item::Green => BACKGROUND.with(|b| b.set(Rgba::rgb(0.2, 0.9, 0.2))),
                         Item::Yellow => BACKGROUND.with(|b| b.set(Rgba::rgb(0.9, 0.9, 0.2))),
                     };
-                    Response::None
                 }
             }
         },

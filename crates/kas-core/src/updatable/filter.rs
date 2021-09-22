@@ -71,6 +71,23 @@ impl Filter<String> for SimpleCaseInsensitiveFilter {
     }
 }
 
+#[derive(Clone, Debug)]
+struct FilterView<T: ListData, F: Filter<T::Item>> {
+    filter: F,
+    view: Vec<T::Key>,
+}
+
+impl<T: ListData, F: Filter<T::Item>> FilterView<T, F> {
+    fn refresh(&mut self, data: &T) {
+        self.view.clear();
+        for (key, item) in data.iter_vec(usize::MAX) {
+            if self.filter.matches(item) {
+                self.view.push(key);
+            }
+        }
+    }
+}
+
 /// Filter accessor over another accessor
 ///
 /// This is an abstraction over a [`ListData`], applying a filter to items when
@@ -93,7 +110,7 @@ pub struct FilteredList<T: ListData, F: Filter<T::Item>> {
     ///
     /// If adjusting this, one should call [`FilteredList::refresh`] after.
     pub data: T,
-    cell: RefCell<(F, Vec<T::Key>)>,
+    cell: RefCell<FilterView<T, F>>,
     update: UpdateHandle,
 }
 
@@ -103,7 +120,7 @@ impl<T: ListData, F: Filter<T::Item>> FilteredList<T, F> {
     pub fn new(data: T, filter: F) -> Self {
         let len = data.len().cast();
         let view = Vec::with_capacity(len);
-        let cell = RefCell::new((filter, view));
+        let cell = RefCell::new(FilterView { filter, view });
         let update = UpdateHandle::new();
         let s = FilteredList { data, cell, update };
         let _ = s.refresh();
@@ -117,8 +134,7 @@ impl<T: ListData, F: Filter<T::Item>> FilteredList<T, F> {
     ///
     /// An update should be triggered using the returned handle.
     pub fn refresh(&self) -> UpdateHandle {
-        let mut cell = self.cell.borrow_mut();
-        Self::rebuild_view(&self.data, &mut cell);
+        self.cell.borrow_mut().refresh(&self.data);
         self.update
     }
 
@@ -128,18 +144,9 @@ impl<T: ListData, F: Filter<T::Item>> FilteredList<T, F> {
     /// See [`FilteredList::refresh`].
     pub fn set_filter(&self, filter: F) -> UpdateHandle {
         let mut cell = self.cell.borrow_mut();
-        cell.0 = filter;
-        Self::rebuild_view(&self.data, &mut cell);
+        cell.filter = filter;
+        cell.refresh(&self.data);
         self.update
-    }
-
-    fn rebuild_view(data: &T, cell: &mut (F, Vec<T::Key>)) {
-        cell.1.clear();
-        for (key, item) in data.iter_vec(usize::MAX) {
-            if cell.0.matches(item) {
-                cell.1.push(key);
-            }
-        }
     }
 }
 
@@ -149,7 +156,7 @@ impl<T: ListData, F: Filter<T::Item>> Updatable for FilteredList<T, F> {
     }
 
     fn update_self(&self) -> Option<UpdateHandle> {
-        Self::rebuild_view(&self.data, &mut self.cell.borrow_mut());
+        self.cell.borrow_mut().refresh(&self.data);
         Some(self.update)
     }
 }
@@ -176,7 +183,7 @@ impl<T: ListData + 'static, F: Filter<T::Item>> ListData for FilteredList<T, F> 
     type Item = T::Item;
 
     fn len(&self) -> usize {
-        self.cell.borrow().1.len()
+        self.cell.borrow().view.len()
     }
 
     fn contains_key(&self, key: &Self::Key) -> bool {
@@ -189,7 +196,7 @@ impl<T: ListData + 'static, F: Filter<T::Item>> ListData for FilteredList<T, F> 
         let cell = self.cell.borrow();
         self.data
             .get_cloned(key)
-            .filter(|item| cell.0.matches(item.clone()))
+            .filter(|item| cell.filter.matches(item.clone()))
     }
 
     fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle> {
@@ -198,18 +205,18 @@ impl<T: ListData + 'static, F: Filter<T::Item>> ListData for FilteredList<T, F> 
         if self
             .data
             .get_cloned(key)
-            .map(|item| !cell.0.matches(item))
+            .map(|item| !cell.filter.matches(item))
             .unwrap_or(true)
         {
             // Not previously visible: no update occurs
             return None;
         }
 
-        let new_visible = cell.0.matches(value.clone());
+        let new_visible = cell.filter.matches(value.clone());
         let result = self.data.update(key, value);
         if result.is_some() && !new_visible {
             // remove the updated item from our filtered list
-            cell.1.retain(|item| item != key);
+            cell.view.retain(|item| item != key);
         }
         result
     }
@@ -221,7 +228,7 @@ impl<T: ListData + 'static, F: Filter<T::Item>> ListData for FilteredList<T, F> 
             return Vec::new();
         }
         let mut v = Vec::with_capacity(end - start);
-        for k in &cell.1[start..end] {
+        for k in &cell.view[start..end] {
             v.push((k.clone(), self.data.get_cloned(k).unwrap()));
         }
         v

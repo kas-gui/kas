@@ -58,9 +58,9 @@ struct TextEditPopup {
     edit: EditBox,
     #[widget(row = 1, col = 0)]
     fill: Filler,
-    #[widget(row=1, col=1, handler = close)]
+    #[widget(row=1, col=1, flatmap_msg = close)]
     cancel: TextButton<bool>,
-    #[widget(row=1, col=2, handler = close)]
+    #[widget(row=1, col=2, flatmap_msg = close)]
     save: TextButton<bool>,
     commit: bool,
 }
@@ -171,11 +171,11 @@ fn main() -> Result<(), kas::shell::Error> {
         #[handler(handle = noauto)]
         struct {
             #[widget] label: StringLabel = Label::from("Use button to edit →"),
-            #[widget(handler = edit)] edit = TextButton::new_msg("&Edit", ()),
+            #[widget(use_msg = edit)] edit = TextButton::new_msg("&Edit", ()),
             future: Option<Future<Option<String>>> = None,
         }
         impl {
-            fn edit(&mut self, mgr: &mut Manager, _: ()) -> VoidResponse {
+            fn edit(&mut self, mgr: &mut Manager, _: ()) {
                 if self.future.is_none() {
                     let text = self.label.get_string();
                     let mut window = Window::new("Edit text", TextEditPopup::new(text));
@@ -188,7 +188,6 @@ fn main() -> Result<(), kas::shell::Error> {
                     mgr.update_on_handle(update, self.id());
                     mgr.add_window(Box::new(window));
                 }
-                Response::None
             }
         }
         impl Handler {
@@ -253,10 +252,10 @@ fn main() -> Result<(), kas::shell::Error> {
                 ComboBox::new(&["&One", "T&wo", "Th&ree"], 0)
                 .on_select(|_, index| Some(Item::Combo((index + 1).cast()))),
             #[widget(row=8, col=0)] _ = Label::new("Slider"),
-            #[widget(row=8, col=1, handler = handle_slider)] s =
+            #[widget(row=8, col=1, map_msg = handle_slider)] s =
                 Slider::<i32, Right>::new(0, 10, 1).with_value(0),
             #[widget(row=9, col=0)] _ = Label::new("ScrollBar"),
-            #[widget(row=9, col=1, handler = handle_scroll)] sc: ScrollBar<Right> =
+            #[widget(row=9, col=1, map_msg = handle_scroll)] sc: ScrollBar<Right> =
                 ScrollBar::new().with_limits(100, 20),
             #[widget(row=10, col=1)] pg: ProgressBar<Right> = ProgressBar::new(),
             #[widget(row=10, col=0)] _ = Label::new("ProgressBar"),
@@ -267,13 +266,13 @@ fn main() -> Result<(), kas::shell::Error> {
             #[widget(row=12, col=1)] _ = popup_edit_box,
         }
         impl {
-            fn handle_slider(&mut self, _: &mut Manager, msg: i32) -> Response<Item> {
-                Response::Msg(Item::Slider(msg))
+            fn handle_slider(&mut self, _: &mut Manager, msg: i32) -> Item {
+                Item::Slider(msg)
             }
-            fn handle_scroll(&mut self, mgr: &mut Manager, msg: i32) -> Response<Item> {
+            fn handle_scroll(&mut self, mgr: &mut Manager, msg: i32) -> Item {
                 let ratio = msg as f32 / self.sc.max_value() as f32;
                 *mgr |= self.pg.set_value(ratio);
-                Response::Msg(Item::Scroll(msg))
+                Item::Scroll(msg)
             }
         }
     };
@@ -293,14 +292,14 @@ fn main() -> Result<(), kas::shell::Error> {
             #[layout(column)]
             #[handler(msg = VoidMsg)]
             struct {
-                #[widget(handler = menu)] _ = menubar,
+                #[widget(use_msg = menu)] _ = menubar,
                 #[widget(halign = centre)] _ = Frame::new(head),
-                #[widget(handler = activations)] gallery:
+                #[widget(use_msg = activations)] gallery:
                     for<W: Widget<Msg = Item>> ScrollBarRegion<W> =
                         ScrollBarRegion::new(widgets),
             }
             impl {
-                fn menu(&mut self, mgr: &mut Manager, msg: Menu) -> VoidResponse {
+                fn menu(&mut self, mgr: &mut Manager, msg: Menu) {
                     match msg {
                         Menu::Theme(name) => {
                             println!("Theme: {:?}", name);
@@ -320,9 +319,8 @@ fn main() -> Result<(), kas::shell::Error> {
                             *mgr |= TkAction::EXIT;
                         }
                     }
-                    Response::None
                 }
-                fn activations(&mut self, mgr: &mut Manager, item: Item) -> VoidResponse {
+                fn activations(&mut self, mgr: &mut Manager, item: Item) {
                     match item {
                         Item::Button => println!("Clicked!"),
                         Item::LightTheme => mgr.adjust_theme(|theme| theme.set_scheme("light")),
@@ -334,7 +332,6 @@ fn main() -> Result<(), kas::shell::Error> {
                         Item::Slider(p) => println!("Slider: {}", p),
                         Item::Scroll(p) => println!("ScrollBar: {}", p),
                     };
-                    Response::None
                 }
             }
         },

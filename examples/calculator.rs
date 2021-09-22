@@ -10,7 +10,7 @@ use std::str::FromStr;
 
 use kas::class::HasString;
 use kas::event::VirtualKeyCode as VK;
-use kas::event::{Manager, Response, VoidMsg};
+use kas::event::{Manager, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widgets::{EditBox, TextButton, Window};
 
@@ -82,15 +82,14 @@ fn main() -> Result<(), kas::shell::Error> {
         #[handler(msg = VoidMsg)]
         struct {
             #[widget] display: impl HasString = EditBox::new("0").editable(false).multi_line(true),
-            #[widget(handler = handle_button)] buttons -> Key = buttons,
+            #[widget(use_msg = handle_button)] buttons -> Key = buttons,
             calc: Calculator = Calculator::new(),
         }
         impl {
-            fn handle_button(&mut self, mgr: &mut Manager, msg: Key) -> Response<VoidMsg> {
+            fn handle_button(&mut self, mgr: &mut Manager, msg: Key) {
                 if self.calc.handle(msg) {
                     *mgr |= self.display.set_string(self.calc.display());
                 }
-                Response::None
             }
         }
     };
