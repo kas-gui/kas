@@ -251,6 +251,13 @@
 //! -   `#[widget(discard_msg)]` — message is discarded (no handler)
 //! -   `#[widget()]` — message is converted via `Into` (no handler)
 //!
+//! **Observing `Response::Update`**
+//!
+//! Widgets may return [`Response::Update`] on some interactions instead of
+//! [`Response::Msg`]. It is possible to observe such a response:
+//!
+//! -   `#[widget(update = f)]` where `f` has signature `fn f(&mut self, mgr: &mut Manager)`
+//!
 //! ### widget_derive
 //!
 //! The `#[widget_derive]` attribute may optionally appear on a field, and may
