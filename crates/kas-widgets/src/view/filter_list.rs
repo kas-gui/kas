@@ -398,7 +398,10 @@ impl<
         if let Some(handle) = self.list.data().data.update_handle() {
             mgr.update_on_handle(handle, self.id());
         }
-        // ... but we don't need to watch self.list.data().update_handle()
+        // As well as when the filter changes
+        if let Some(handle) = self.list.data().update_handle() {
+            mgr.update_on_handle(handle, self.id());
+        }
     }
 }
 
