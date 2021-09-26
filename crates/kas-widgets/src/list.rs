@@ -382,6 +382,13 @@ impl<D: Directional, W: Widget> List<D, W> {
         }
     }
 
+    /// Mutably iterate over childern
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut W> {
+        ListIterMut {
+            list: &mut self.widgets,
+        }
+    }
+
     /// Get the index of the child which is an ancestor of `id`, if any
     pub fn find_child_index(&self, id: WidgetId) -> Option<usize> {
         if id >= self.first_id {
@@ -415,10 +422,9 @@ struct ListIter<'a, W: Widget> {
 impl<'a, W: Widget> Iterator for ListIter<'a, W> {
     type Item = &'a W;
     fn next(&mut self) -> Option<Self::Item> {
-        if !self.list.is_empty() {
-            let item = &self.list[0];
-            self.list = &self.list[1..];
-            Some(item)
+        if let Some((first, rest)) = self.list.split_first() {
+            self.list = rest;
+            Some(first)
         } else {
             None
         }
@@ -429,6 +435,31 @@ impl<'a, W: Widget> Iterator for ListIter<'a, W> {
     }
 }
 impl<'a, W: Widget> ExactSizeIterator for ListIter<'a, W> {
+    fn len(&self) -> usize {
+        self.list.len()
+    }
+}
+
+struct ListIterMut<'a, W: Widget> {
+    list: &'a mut [W],
+}
+impl<'a, W: Widget> Iterator for ListIterMut<'a, W> {
+    type Item = &'a mut W;
+    fn next(&mut self) -> Option<Self::Item> {
+        let list = std::mem::replace(&mut self.list, &mut []);
+        if let Some((first, rest)) = list.split_first_mut() {
+            self.list = rest;
+            Some(first)
+        } else {
+            None
+        }
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.len();
+        (len, Some(len))
+    }
+}
+impl<'a, W: Widget> ExactSizeIterator for ListIterMut<'a, W> {
     fn len(&self) -> usize {
         self.list.len()
     }
