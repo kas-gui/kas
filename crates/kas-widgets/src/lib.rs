@@ -63,6 +63,8 @@ mod frame;
 mod grid;
 mod label;
 mod list;
+#[macro_use]
+mod macros;
 mod menu;
 mod nav_frame;
 mod progress;

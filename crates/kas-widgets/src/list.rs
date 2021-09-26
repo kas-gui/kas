@@ -42,12 +42,12 @@ impl<T> FromIndexed<T> for (u64, T) {
 
 /// A generic row widget
 ///
-/// See documentation of [`List`] type.
+/// See documentation of [`List`] type. See also the [`row`](crate::row) macro.
 pub type Row<W> = List<Right, W>;
 
 /// A generic column widget
 ///
-/// See documentation of [`List`] type.
+/// See documentation of [`List`] type. See also the [`column`](crate::column) macro.
 pub type Column<W> = List<Down, W>;
 
 /// A generic row widget
@@ -96,6 +96,7 @@ pub type BoxList<D, M> = List<D, Box<dyn Widget<Msg = M>>>;
 ///
 /// -   [`Row`] fixes the direction to [`Right`]
 /// -   [`Column`] fixes the direction to [`Down`]
+/// -   [`row`](crate::row) and [`column`](crate::column) macros
 /// -   [`BoxList`] is parameterised over the message type `M`, using boxed
 ///     widgets: `Box<dyn Widget<Msg = M>>`
 /// -   [`BoxRow`] and [`BoxColumn`] are variants of [`BoxList`] with fixed direction

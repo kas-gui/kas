@@ -228,14 +228,14 @@ fn main() -> Result<(), kas::shell::Error> {
             #[widget(row=2, col=0)] _ = Label::new("TextButton"),
             #[widget(row=2, col=1)] _ = TextButton::new_msg("&Press me", Item::Button),
             #[widget(row=3, col=0)] _ = Label::new("Button<Image>"),
-            #[widget(row=3, col=1)] _ = Row::new(vec![
+            #[widget(row=3, col=1)] _ = row![
                 Button::new_msg(Image::new("res/sun_32.png"), Item::LightTheme)
                     .with_color(Rgb::rgb(0.3, 0.4, 0.5))
                     .with_keys(&[VK::L]),
                 Button::new_msg(Image::new("res/moon_32.png"), Item::DarkTheme)
                     .with_color(Rgb::grey(0.1))
                     .with_keys(&[VK::K]),
-            ]),
+            ],
             #[widget(row=4, col=0)] _ = Label::new("CheckBox"),
             #[widget(row=4, col=1)] _ = CheckBox::new("&Check me")
                 .with_state(true)

@@ -7,7 +7,7 @@
 
 use kas::macros::{make_widget, VoidMsg};
 use kas::prelude::*;
-use kas::widgets::{Label, Row, TextButton, Window};
+use kas::widgets::{row, Label, TextButton, Window};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Message {
@@ -25,10 +25,10 @@ fn main() -> Result<(), kas::shell::Error> {
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget(halign=centre)] display: Label<String> = Label::from("0"),
-                #[widget(use_msg = handle_button)] buttons -> Message = Row::new(vec![
+                #[widget(use_msg = handle_button)] buttons -> Message = row![
                     TextButton::new_msg("−", Message::Decr),
                     TextButton::new_msg("+", Message::Incr),
-                ]),
+                ],
                 counter: usize = 0,
             }
             impl {

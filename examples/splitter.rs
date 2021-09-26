@@ -40,7 +40,6 @@ fn main() -> Result<(), kas::shell::Error> {
             struct {
                 #[widget(use_msg = handle_button)] buttons -> Message = buttons,
                 #[widget] panes: RowSplitter<EditField> = panes,
-                counter: usize = 0,
             }
             impl {
                 fn handle_button(&mut self, mgr: &mut Manager, msg: Message) {
