@@ -42,7 +42,7 @@ impl dyn WidgetCore {
 /// Users **must not** implement this `WidgetCore` trait manually or may face
 /// unexpected breaking changes.
 ///
-/// [`derive(Widget)`]: macros/index.html#the-derivewidget-macro
+/// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 pub trait WidgetCore: Any + fmt::Debug {
     /// Get self as type `Any`
     fn as_any(&self) -> &dyn Any;
@@ -167,7 +167,7 @@ pub trait WidgetCore: Any + fmt::Debug {
 /// (TODO: this is slow. Find an option for partial reconfigures. This requires
 /// better widget identifiers; see #91.)
 ///
-/// [`derive(Widget)`]: macros/index.html#the-derivewidget-macro
+/// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 pub trait WidgetChildren: WidgetCore {
     /// Get the first identifier of self or any children
     ///
@@ -321,7 +321,7 @@ pub trait WidgetChildren: WidgetCore {
 /// default implementations. Most frequently, this trait is used to implement
 /// some custom action during configure: [`WidgetConfig::configure`].
 ///
-/// [`derive(Widget)`]: macros/index.html#the-derivewidget-macro
+/// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 //
 // TODO(specialization): provide a blanket implementation, so that users only
 // need implement manually when they have something to configure.
@@ -401,7 +401,7 @@ pub trait WidgetConfig: Layout {
 ///
 /// For a description of the widget size model, see [`SizeRules`].
 ///
-/// [`derive(Widget)`]: macros/index.html#the-derivewidget-macro
+/// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 pub trait Layout: WidgetChildren {
     /// Get size rules for the given axis
     ///
@@ -561,5 +561,5 @@ pub trait Layout: WidgetChildren {
 /// To refer to a widget in generic functions, use `<W: Widget>` or
 /// `<M, W: Widget<Msg = M>>`.
 ///
-/// [`derive(Widget)`]: macros/index.html#the-derivewidget-macro
+/// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 pub trait Widget: event::SendEvent {}
