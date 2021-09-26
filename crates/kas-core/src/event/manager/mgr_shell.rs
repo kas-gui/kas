@@ -54,8 +54,6 @@ impl ManagerState {
             popups: Default::default(),
             new_popups: Default::default(),
             popup_removed: Default::default(),
-
-            time_start: Instant::now(),
             time_updates: vec![],
             handle_updates: HashMap::new(),
             pending: SmallVec::new(),
