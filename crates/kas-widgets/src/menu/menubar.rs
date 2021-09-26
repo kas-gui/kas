@@ -6,7 +6,7 @@
 //! Menubar
 
 use super::{Menu, SubMenu};
-use crate::List;
+use crate::IndexedList;
 use kas::event::{self, Command, GrabMode};
 use kas::prelude::*;
 
@@ -20,7 +20,7 @@ pub struct MenuBar<W: Menu, D: Directional = kas::dir::Right> {
     #[widget_core]
     core: CoreData,
     #[widget]
-    pub bar: List<D, SubMenu<D::Flipped, W>>,
+    pub bar: IndexedList<D, SubMenu<D::Flipped, W>>,
     ideal: Size,
     // Open mode. Used to close with click on root only when previously open.
     opening: bool,
@@ -46,7 +46,7 @@ impl<W: Menu, D: Directional> MenuBar<W, D> {
         }
         MenuBar {
             core: Default::default(),
-            bar: List::new_with_direction(direction, menus),
+            bar: IndexedList::new_with_direction(direction, menus),
             ideal: Size::ZERO,
             opening: false,
             delayed_open: None,

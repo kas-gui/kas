@@ -237,7 +237,7 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
                     self.set_menu_path(mgr, Some(id));
                     Response::None
                 }
-                Response::Msg((_, msg)) => {
+                Response::Msg(msg) => {
                     self.close_menu(mgr);
                     Response::Msg(msg)
                 }

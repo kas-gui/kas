@@ -18,15 +18,6 @@ enum Message {
 fn main() -> Result<(), kas::shell::Error> {
     env_logger::init();
 
-    // Most examples use make_widget! for layout, but here we use the Row widget
-    // (compare with sync-counter.rs). Note that Row produces (index, child_msg)
-    // messages, thus we use map_msg to remove the unwanted index.
-    let buttons = Row::new(vec![
-        TextButton::new_msg("−", Message::Decr),
-        TextButton::new_msg("+", Message::Incr),
-    ])
-    .map_msg(|_, msg| msg.1);
-
     let window = Window::new(
         "Counter",
         make_widget! {
@@ -34,7 +25,10 @@ fn main() -> Result<(), kas::shell::Error> {
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget(halign=centre)] display: Label<String> = Label::from("0"),
-                #[widget(use_msg = handle_button)] buttons -> Message = buttons,
+                #[widget(use_msg = handle_button)] buttons -> Message = Row::new(vec![
+                    TextButton::new_msg("−", Message::Decr),
+                    TextButton::new_msg("+", Message::Incr),
+                ]),
                 counter: usize = 0,
             }
             impl {

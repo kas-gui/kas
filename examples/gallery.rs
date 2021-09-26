@@ -235,7 +235,7 @@ fn main() -> Result<(), kas::shell::Error> {
                 Button::new_msg(Image::new("res/moon_32.png"), Item::DarkTheme)
                     .with_color(Rgb::grey(0.1))
                     .with_keys(&[VK::K]),
-            ]).map_msg(|_, (_, m)| m),
+            ]),
             #[widget(row=4, col=0)] _ = Label::new("CheckBox"),
             #[widget(row=4, col=1)] _ = CheckBox::new("&Check me")
                 .with_state(true)

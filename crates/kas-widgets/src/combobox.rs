@@ -8,7 +8,7 @@
 use std::fmt::{self, Debug};
 use std::rc::Rc;
 
-use super::{Column, MenuEntry};
+use super::{IndexedColumn, MenuEntry};
 use kas::draw::TextClass;
 use kas::event::{self, Command, GrabMode};
 use kas::prelude::*;
@@ -117,7 +117,7 @@ impl ComboBox<VoidMsg> {
             frame_size: Default::default(),
             popup: ComboPopup {
                 core: Default::default(),
-                inner: Column::new(entries),
+                inner: IndexedColumn::new(entries),
             },
             active,
             opening: false,
@@ -429,5 +429,5 @@ struct ComboPopup {
     #[widget_core]
     core: CoreData,
     #[widget]
-    inner: Column<MenuEntry<()>>,
+    inner: IndexedColumn<MenuEntry<()>>,
 }
