@@ -127,7 +127,7 @@ fn size_of_virtual_key_codes() {
 ///
 /// `From<VoidMsg>` is implemented for a number of language types;
 /// custom message types are required to implement this via the
-/// [`derive(VoidMsg)`](../macros/index.html#the-derivevoidmsg-macro) macro.
+/// [`derive(VoidMsg)`](https://docs.rs/kas/latest/kas/macros#the-derivevoidmsg-macro) macro.
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum VoidMsg {}

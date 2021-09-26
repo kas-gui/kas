@@ -79,7 +79,7 @@ impl<'a> ToTokens for SubstTyGenerics<'a> {
 
 /// Macro to derive widget traits
 ///
-/// See the [`kas::macros`](../../kas/macros/index.html) module documentation.
+/// See documentation [in the `kas::macros` module](https://docs.rs/kas/latest/kas/macros#the-derivewidget-macro).
 #[proc_macro_derive(
     Widget,
     attributes(handler, layout, layout_data, widget, widget_core, widget_derive)
@@ -584,7 +584,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 /// Macro to create a widget with anonymous type
 ///
-/// See the [`kas::macros`](../../kas/macros/index.html) module documentation.
+/// See documentation [in the `kas::macros` module](https://docs.rs/kas/latest/kas/macros#the-make_widget-macro).
 #[proc_macro]
 pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut find_handler_ty_buf: Vec<(Ident, Type)> = vec![];
@@ -840,7 +840,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 /// Macro to derive `From<VoidMsg>`
 ///
-/// See the [`kas::macros`](../../kas/macros/index.html) module documentation.
+/// See documentation [ in the `kas::macros` module](https://docs.rs/kas/latest/kas/macros#the-derivevoidmsg-macro).
 #[proc_macro_derive(VoidMsg)]
 pub fn derive_empty_msg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = parse_macro_input!(input as syn::DeriveInput);
