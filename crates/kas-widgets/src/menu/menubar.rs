@@ -86,7 +86,7 @@ impl<W: Menu, D: Directional> Layout for MenuBar<W, D> {
         self.bar.draw(draw_handle, mgr, disabled);
     }
 }
-impl<W: Menu<Msg = M>, D: Directional, M> event::Handler for MenuBar<W, D> {
+impl<W: Menu<Msg = M>, D: Directional, M: 'static> event::Handler for MenuBar<W, D> {
     type Msg = M;
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {

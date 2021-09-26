@@ -148,7 +148,7 @@ impl<D: Directional, W: Menu> kas::Layout for SubMenu<D, W> {
     }
 }
 
-impl<D: Directional, M, W: Menu<Msg = M>> event::Handler for SubMenu<D, W> {
+impl<D: Directional, M: 'static, W: Menu<Msg = M>> event::Handler for SubMenu<D, W> {
     type Msg = M;
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
