@@ -13,20 +13,14 @@ repository = "https://github.com/kas-gui/kas"
 exclude = ["/screenshots"]
 
 [package.metadata.docs.rs]
-features = ["min_spec", "canvas", "svg"]
+features = ["min_spec"]
 rustdoc-args = ["--cfg", "doc_cfg"]
 # To build locally:
-# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=canvas,svg --no-deps --open
+# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --no-deps --open
 
 [features]
 # Use min_specialization (enables accelerator underlining for AccelLabel)
 min_spec = []
-
-# Support canvas widget
-canvas = ["tiny-skia"]
-
-# Support SVG images
-svg = ["tiny-skia", "resvg", "usvg"]
 
 [dependencies]
 log = "0.4"
@@ -35,9 +29,6 @@ unicode-segmentation = "1.7"
 linear-map = "1.2.0"
 thiserror = "1.0.23"
 image = "0.23.14"
-tiny-skia = { version = "0.6.1", optional = true }
-resvg = { version = "0.16.0", optional = true }
-usvg = { version = "0.16.0", optional = true }
 kas-macros = { version = "0.10.0", path = "../kas-macros" }
 
 # We must rename this package since macros expect kas to be in scope:
