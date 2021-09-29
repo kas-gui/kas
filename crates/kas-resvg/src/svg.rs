@@ -106,6 +106,7 @@ impl WidgetConfig for Svg {
             // path? Probably not much use for duplicate SVG widgets however.
             let data = std::fs::read(&self.path).unwrap();
             let scale_factor = mgr.scale_factor();
+            let def_size = 100.0 * f64::conv(scale_factor);
             let fonts_db = kas::text::fonts::fonts().read_db();
             let fontdb = fonts_db.db();
             let font_family = fonts_db
@@ -124,6 +125,7 @@ impl WidgetConfig for Svg {
                 text_rendering: usvg::TextRendering::default(),
                 image_rendering: usvg::ImageRendering::default(),
                 keep_named_groups: false,
+                default_size: usvg::Size::new(def_size, def_size).unwrap(),
                 fontdb,
             };
 
