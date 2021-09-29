@@ -78,8 +78,7 @@ fn main() -> Result<(), kas::shell::Error> {
         cursor!(RowResize),
     ]);
 
-    let gallery = column.map_msg(|_, (_, msg)| msg);
-    let window = Window::new("Cursor gallery", gallery);
+    let window = Window::new("Cursor gallery", column);
     let theme = kas::theme::FlatTheme::new();
     kas::shell::Toolkit::new(theme)?.with(window)?.run()
 }

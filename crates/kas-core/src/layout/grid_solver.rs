@@ -9,8 +9,26 @@ use std::marker::PhantomData;
 
 use super::{Align, AlignHints, AxisInfo, SizeRules};
 use super::{GridStorage, RowTemp, RulesSetter, RulesSolver};
-use crate::cast::Conv;
+use crate::cast::{Cast, Conv};
 use crate::geom::{Coord, Offset, Rect, Size};
+
+pub trait DefaultWithLen {
+    // Construct with default elements of given length; panic on failure
+    fn default_with_len(len: usize) -> Self;
+}
+impl<T: Copy + Default, const N: usize> DefaultWithLen for [T; N] {
+    fn default_with_len(len: usize) -> Self {
+        assert_eq!(len, N);
+        [Default::default(); N]
+    }
+}
+impl<T: Clone + Default> DefaultWithLen for Vec<T> {
+    fn default_with_len(len: usize) -> Self {
+        let mut v = Vec::new();
+        v.resize_with(len, Default::default);
+        v
+    }
+}
 
 /// Per-child information
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -25,6 +43,18 @@ pub struct GridChildInfo {
     pub row_end: u32,
 }
 
+impl GridChildInfo {
+    /// Construct from col and row
+    pub fn new(col: u32, row: u32) -> Self {
+        GridChildInfo {
+            col,
+            col_end: col + 1,
+            row,
+            row_end: row + 1,
+        }
+    }
+}
+
 /// A [`RulesSolver`] for grids supporting cell-spans
 ///
 /// This implementation relies on the caller to provide storage for solver data.
@@ -37,19 +67,19 @@ pub struct GridSolver<CSR, RSR, S: GridStorage> {
     _s: PhantomData<S>,
 }
 
-impl<CSR: Default, RSR: Default, S: GridStorage> GridSolver<CSR, RSR, S> {
+impl<CSR: DefaultWithLen, RSR: DefaultWithLen, S: GridStorage> GridSolver<CSR, RSR, S> {
     /// Construct.
     ///
     /// Argument order is consistent with other [`RulesSolver`]s.
     ///
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
-    /// - `(cols, rows)`: number of columns and rows
+    /// - `dim`: number of (cols, rows, col-spans, row-spans)
     /// - `storage`: reference to persistent storage
-    pub fn new(axis: AxisInfo, (cols, rows): (usize, usize), storage: &mut S) -> Self {
-        let col_spans = CSR::default();
-        let row_spans = RSR::default();
+    pub fn new(axis: AxisInfo, dim: (u32, u32, u32, u32), storage: &mut S) -> Self {
+        let col_spans = CSR::default_with_len(dim.2.cast());
+        let row_spans = RSR::default_with_len(dim.3.cast());
 
-        storage.set_dims(cols, rows);
+        storage.set_dims(dim.0.cast(), dim.1.cast());
 
         let mut solver = GridSolver {
             axis,
@@ -236,12 +266,8 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> GridSetter<RT, CT, S> {
     /// -   `(cols, rows)`: number of columns and rows
     /// -   `align`: alignment hints
     /// -   `storage`: access to the solver's storage
-    pub fn new(
-        rect: Rect,
-        (cols, rows): (usize, usize),
-        align: AlignHints,
-        storage: &mut S,
-    ) -> Self {
+    pub fn new(rect: Rect, dim: (u32, u32, u32, u32), align: AlignHints, storage: &mut S) -> Self {
+        let (cols, rows) = (dim.0.cast(), dim.1.cast());
         let mut w_offsets = RT::default();
         w_offsets.set_len(cols);
         let mut h_offsets = CT::default();

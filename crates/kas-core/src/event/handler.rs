@@ -35,7 +35,7 @@ pub trait Handler: WidgetConfig {
     /// The [`VoidMsg`] type may be used where messages are never generated.
     /// This is distinct from `()`, which might be applicable when a widget only
     /// needs to "wake up" a parent.
-    type Msg;
+    type Msg: 'static;
 
     /// Generic handler: translate presses to activations
     ///

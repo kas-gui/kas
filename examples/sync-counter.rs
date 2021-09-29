@@ -9,20 +9,10 @@ use kas::event::{Manager, VoidMsg};
 use kas::macros::make_widget;
 use kas::updatable::SharedRc;
 use kas::widgets::view::SingleView;
-use kas::widgets::{TextButton, Window};
+use kas::widgets::{row, TextButton, Window};
 
 fn main() -> Result<(), kas::shell::Error> {
     env_logger::init();
-
-    let buttons = make_widget! {
-        #[layout(row)]
-        #[handler(msg = i32)]
-        #[derive(Clone)]
-        struct {
-            #[widget] _ = TextButton::new_msg("−", -1),
-            #[widget] _ = TextButton::new_msg("+", 1),
-        }
-    };
 
     let window = Window::new(
         "Counter",
@@ -33,7 +23,10 @@ fn main() -> Result<(), kas::shell::Error> {
             struct {
                 // SingleView embeds a shared value, here default-constructed to 0
                 #[widget(halign=centre)] counter: SingleView<SharedRc<i32>> = Default::default(),
-                #[widget(use_msg = update)] buttons -> i32 = buttons,
+                #[widget(use_msg = update)] buttons -> i32 = row![
+                    TextButton::new_msg("−", -1),
+                    TextButton::new_msg("+", 1),
+                ],
             }
             impl {
                 fn update(&mut self, mgr: &mut Manager, msg: i32) {

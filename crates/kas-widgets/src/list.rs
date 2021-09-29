@@ -5,21 +5,60 @@
 
 //! A row or column with run-time adjustable contents
 
-use std::ops::{Index, IndexMut};
-
 use kas::dir::{Down, Right};
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::{event, prelude::*};
+use std::fmt::{self, Debug};
+use std::ops::{Index, IndexMut};
+
+/// Support for optionally-indexed messages
+pub trait FromIndexed<T> {
+    fn from_indexed(i: usize, t: T) -> Self;
+}
+impl<T> FromIndexed<T> for T {
+    #[inline]
+    fn from_indexed(_: usize, t: T) -> Self {
+        t
+    }
+}
+impl<T> FromIndexed<T> for (usize, T) {
+    #[inline]
+    fn from_indexed(i: usize, t: T) -> Self {
+        (i, t)
+    }
+}
+impl<T> FromIndexed<T> for (u32, T) {
+    #[inline]
+    fn from_indexed(i: usize, t: T) -> Self {
+        (i.cast(), t)
+    }
+}
+impl<T> FromIndexed<T> for (u64, T) {
+    #[inline]
+    fn from_indexed(i: usize, t: T) -> Self {
+        (i.cast(), t)
+    }
+}
 
 /// A generic row widget
 ///
-/// See documentation of [`List`] type.
+/// See documentation of [`List`] type. See also the [`row`](crate::row) macro.
 pub type Row<W> = List<Right, W>;
 
 /// A generic column widget
 ///
-/// See documentation of [`List`] type.
+/// See documentation of [`List`] type. See also the [`column`](crate::column) macro.
 pub type Column<W> = List<Down, W>;
+
+/// A generic row widget
+///
+/// See documentation of [`IndexedList`] type.
+pub type IndexedRow<W> = IndexedList<Right, W>;
+
+/// A generic column widget
+///
+/// See documentation of [`IndexedList`] type.
+pub type IndexedColumn<W> = IndexedList<Down, W>;
 
 /// A row of boxed widgets
 ///
@@ -44,40 +83,147 @@ pub type BoxList<D, M> = List<D, Box<dyn Widget<Msg = M>>>;
 
 /// A generic row/column widget
 ///
-/// This type is generic over both directionality and the type of child widgets.
-/// Essentially, it is a [`Vec`] which also implements the [`Widget`] trait.
+/// This type is roughly [`Vec`] but for widgets. Generics:
 ///
-/// [`Row`] and [`Column`] are parameterisations with set directionality.
+/// -   `D:` [`Directional`] — fixed or run-time direction of layout
+/// -   `W:` [`Widget`] — type of widget
 ///
-/// [`BoxList`] (and its derivatives [`BoxRow`], [`BoxColumn`]) parameterise
-/// `W = Box<dyn Widget>`, thus supporting individually boxed child widgets.
-/// This allows use of multiple types of child widget at the cost of extra
-/// allocation, and requires dynamic dispatch of methods.
+/// The `List` widget forwards messages from children: `M = <W as Handler>::Msg`.
+///
+/// ## Alternatives
+///
+/// Some more specific type-defs are available:
+///
+/// -   [`Row`] fixes the direction to [`Right`]
+/// -   [`Column`] fixes the direction to [`Down`]
+/// -   [`row`](crate::row) and [`column`](crate::column) macros
+/// -   [`BoxList`] is parameterised over the message type `M`, using boxed
+///     widgets: `Box<dyn Widget<Msg = M>>`
+/// -   [`BoxRow`] and [`BoxColumn`] are variants of [`BoxList`] with fixed direction
+///
+/// See also [`IndexedList`] and [`GenericList`] which allow other message types.
+///
+/// Where the entries are fixed, also consider custom [`Widget`] implementations.
+///
+/// ## Performance
 ///
 /// Configuring and resizing elements is O(n) in the number of children.
 /// Drawing and event handling is O(log n) in the number of children (assuming
 /// only a small number are visible at any one time).
+pub type List<D, W> = GenericList<D, W, <W as Handler>::Msg>;
+
+/// A generic row/column widget
 ///
-/// For fixed configurations of child widgets, [`make_widget`] can be used
-/// instead. [`make_widget`] has the advantage that it can support child widgets
-/// of multiple types without allocation and via static dispatch, but the
-/// disadvantage that drawing and event handling are O(n) in the number of
-/// children.
+/// This type is roughly [`Vec`] but for widgets. Generics:
 ///
-/// [`make_widget`]: ../macros/index.html#the-make_widget-macro
-#[derive(Clone, Default, Debug, Widget)]
-#[handler(send=noauto, msg=(usize, <W as event::Handler>::Msg))]
+/// -   `D:` [`Directional`] — fixed or run-time direction of layout
+/// -   `W:` [`Widget`] — type of widget
+///
+/// The `IndexedList` widget forwards messages from children together with the
+/// child's index in the list: `(usize, M)` where `M = <W as Handler>::Msg`.
+///
+/// ## Alternatives
+///
+/// Some more specific type-defs are available:
+///
+/// -   [`IndexedRow`] fixes the direction to [`Right`]
+/// -   [`IndexedColumn`] fixes the direction to [`Down`]
+///
+/// See also [`List`] and [`GenericList`] which allow other message types.
+///
+/// Where the entries are fixed, also consider custom [`Widget`] implementations.
+///
+/// ## Performance
+///
+/// Configuring and resizing elements is O(n) in the number of children.
+/// Drawing and event handling is O(log n) in the number of children (assuming
+/// only a small number are visible at any one time).
+pub type IndexedList<D, W> = GenericList<D, W, (usize, <W as Handler>::Msg)>;
+
+/// A generic row/column widget
+///
+/// This type is roughly [`Vec`] but for widgets. Generics:
+///
+/// -   `D:` [`Directional`] — fixed or run-time direction of layout
+/// -   `W:` [`Widget`] — type of widget
+/// -   `M` — the message type; restricted to `M:` [`FromIndexed`]`<M2>` where
+///     `M2` is the child's message type; this is usually either `M2` or `(usize, M2)`
+///
+/// ## Alternatives
+///
+/// Some more specific type-defs are available:
+///
+/// -   [`List`] fixes the message type to that of the child widget type `M`
+/// -   [`IndexedList`] fixes the message type to `(usize, M)`
+/// -   [`Row`], [`Column`], [`IndexedRow`], [`BoxList`], etc.
+///
+/// Where the entries are fixed, also consider custom [`Widget`] implementations.
+///
+/// ## Performance
+///
+/// Configuring and resizing elements is O(n) in the number of children.
+/// Drawing and event handling is O(log n) in the number of children (assuming
+/// only a small number are visible at any one time).
+#[derive(Widget)]
+#[handler(send=noauto, msg=M)]
 #[widget(children=noauto)]
-pub struct List<D: Directional, W: Widget> {
+pub struct GenericList<D: Directional, W: Widget, M: FromIndexed<<W as Handler>::Msg> + 'static> {
     first_id: WidgetId,
     #[widget_core]
     core: CoreData,
     widgets: Vec<W>,
     data: layout::DynRowStorage,
     direction: D,
+    _pd: std::marker::PhantomData<M>,
 }
 
-impl<D: Directional, W: Widget> WidgetChildren for List<D, W> {
+impl<D: Directional, W: Widget + Clone, M: FromIndexed<<W as Handler>::Msg> + 'static> Clone
+    for GenericList<D, W, M>
+{
+    fn clone(&self) -> Self {
+        GenericList {
+            first_id: self.first_id,
+            core: self.core.clone(),
+            widgets: self.widgets.clone(),
+            data: self.data.clone(),
+            direction: self.direction.clone(),
+            _pd: Default::default(),
+        }
+    }
+}
+
+impl<D: Directional + Default, W: Widget, M: FromIndexed<<W as Handler>::Msg> + 'static> Default
+    for GenericList<D, W, M>
+{
+    fn default() -> Self {
+        GenericList {
+            first_id: Default::default(),
+            core: Default::default(),
+            widgets: Default::default(),
+            data: Default::default(),
+            direction: Default::default(),
+            _pd: Default::default(),
+        }
+    }
+}
+
+impl<D: Directional, W: Widget, M: FromIndexed<<W as Handler>::Msg> + 'static> Debug
+    for GenericList<D, W, M>
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("GenericList")
+            .field("first_id", &self.first_id)
+            .field("core", &self.core)
+            .field("widgets", &self.widgets)
+            .field("data", &self.data)
+            .field("direction", &self.direction)
+            .finish()
+    }
+}
+
+impl<D: Directional, W: Widget, M: FromIndexed<<W as Handler>::Msg> + 'static> WidgetChildren
+    for GenericList<D, W, M>
+{
     #[inline]
     fn first_id(&self) -> WidgetId {
         self.first_id
@@ -99,7 +245,9 @@ impl<D: Directional, W: Widget> WidgetChildren for List<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget> Layout for List<D, W> {
+impl<D: Directional, W: Widget, M: FromIndexed<<W as Handler>::Msg> + 'static> Layout
+    for GenericList<D, W, M>
+{
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let dim = (self.direction, self.widgets.len());
         let mut solver = layout::RowSolver::new(axis, dim, &mut self.data);
@@ -170,7 +318,9 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget> event::SendEvent for List<D, W> {
+impl<D: Directional, W: Widget, M: FromIndexed<<W as Handler>::Msg> + 'static> event::SendEvent
+    for GenericList<D, W, M>
+{
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if !self.is_disabled() {
             for (i, child) in self.widgets.iter_mut().enumerate() {
@@ -185,7 +335,7 @@ impl<D: Directional, W: Widget> event::SendEvent for List<D, W> {
                                 id,
                                 kas::util::TryFormat(&msg)
                             );
-                            Response::Msg((i, msg))
+                            Response::Msg(FromIndexed::from_indexed(i, msg))
                         }
                     };
                 }
@@ -196,24 +346,27 @@ impl<D: Directional, W: Widget> event::SendEvent for List<D, W> {
     }
 }
 
-impl<D: Directional + Default, W: Widget> List<D, W> {
+impl<D: Directional + Default, W: Widget, M: FromIndexed<<W as Handler>::Msg> + 'static>
+    GenericList<D, W, M>
+{
     /// Construct a new instance
     ///
     /// This constructor is available where the direction is determined by the
     /// type: for `D: Directional + Default`. In other cases, use
-    /// [`List::new_with_direction`].
+    /// [`Self::new_with_direction`].
     pub fn new(widgets: Vec<W>) -> Self {
-        List {
+        GenericList {
             first_id: Default::default(),
             core: Default::default(),
             widgets,
             data: Default::default(),
             direction: Default::default(),
+            _pd: Default::default(),
         }
     }
 }
 
-impl<W: Widget> List<Direction, W> {
+impl<W: Widget, M: FromIndexed<<W as Handler>::Msg> + 'static> GenericList<Direction, W, M> {
     /// Set the direction of contents
     pub fn set_direction(&mut self, direction: Direction) -> TkAction {
         self.direction = direction;
@@ -222,15 +375,18 @@ impl<W: Widget> List<Direction, W> {
     }
 }
 
-impl<D: Directional, W: Widget> List<D, W> {
+impl<D: Directional, W: Widget, M: FromIndexed<<W as Handler>::Msg> + 'static>
+    GenericList<D, W, M>
+{
     /// Construct a new instance with explicit direction
     pub fn new_with_direction(direction: D, widgets: Vec<W>) -> Self {
-        List {
+        GenericList {
             first_id: Default::default(),
             core: Default::default(),
             widgets,
             data: Default::default(),
             direction,
+            _pd: Default::default(),
         }
     }
 
@@ -382,6 +538,13 @@ impl<D: Directional, W: Widget> List<D, W> {
         }
     }
 
+    /// Mutably iterate over childern
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut W> {
+        ListIterMut {
+            list: &mut self.widgets,
+        }
+    }
+
     /// Get the index of the child which is an ancestor of `id`, if any
     pub fn find_child_index(&self, id: WidgetId) -> Option<usize> {
         if id >= self.first_id {
@@ -395,7 +558,9 @@ impl<D: Directional, W: Widget> List<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget> Index<usize> for List<D, W> {
+impl<D: Directional, W: Widget, M: FromIndexed<<W as Handler>::Msg> + 'static> Index<usize>
+    for GenericList<D, W, M>
+{
     type Output = W;
 
     fn index(&self, index: usize) -> &Self::Output {
@@ -403,7 +568,9 @@ impl<D: Directional, W: Widget> Index<usize> for List<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget> IndexMut<usize> for List<D, W> {
+impl<D: Directional, W: Widget, M: FromIndexed<<W as Handler>::Msg> + 'static> IndexMut<usize>
+    for GenericList<D, W, M>
+{
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.widgets[index]
     }
@@ -415,10 +582,9 @@ struct ListIter<'a, W: Widget> {
 impl<'a, W: Widget> Iterator for ListIter<'a, W> {
     type Item = &'a W;
     fn next(&mut self) -> Option<Self::Item> {
-        if !self.list.is_empty() {
-            let item = &self.list[0];
-            self.list = &self.list[1..];
-            Some(item)
+        if let Some((first, rest)) = self.list.split_first() {
+            self.list = rest;
+            Some(first)
         } else {
             None
         }
@@ -429,6 +595,31 @@ impl<'a, W: Widget> Iterator for ListIter<'a, W> {
     }
 }
 impl<'a, W: Widget> ExactSizeIterator for ListIter<'a, W> {
+    fn len(&self) -> usize {
+        self.list.len()
+    }
+}
+
+struct ListIterMut<'a, W: Widget> {
+    list: &'a mut [W],
+}
+impl<'a, W: Widget> Iterator for ListIterMut<'a, W> {
+    type Item = &'a mut W;
+    fn next(&mut self) -> Option<Self::Item> {
+        let list = std::mem::replace(&mut self.list, &mut []);
+        if let Some((first, rest)) = list.split_first_mut() {
+            self.list = rest;
+            Some(first)
+        } else {
+            None
+        }
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.len();
+        (len, Some(len))
+    }
+}
+impl<'a, W: Widget> ExactSizeIterator for ListIterMut<'a, W> {
     fn len(&self) -> usize {
         self.list.len()
     }

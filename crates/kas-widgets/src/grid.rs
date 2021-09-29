@@ -5,10 +5,11 @@
 
 //! A grid widget
 
-use std::ops::{Index, IndexMut};
-
-use kas::layout::{self, GridChildInfo, RulesSetter, RulesSolver};
+use kas::layout::{
+    DynGridStorage, GridChildInfo, GridSetter, GridSolver, RulesSetter, RulesSolver,
+};
 use kas::{event, prelude::*};
+use std::ops::{Index, IndexMut};
 
 /// A grid of boxed widgets
 ///
@@ -33,20 +34,39 @@ pub type BoxGrid<M> = Grid<Box<dyn Widget<Msg = M>>>;
 /// through widgets with the Tab key currently uses the list order (though it
 /// may be changed in the future to use display order).
 ///
-/// Most operations (configuring, resizing and drawing) are O(n) in the number
-/// of children. This type is generic over the type of child widgets.
+/// There is no protection against multiple widgets occupying the same cell.
+/// If this does happen, the last widget in that cell will appear on top, but
+/// overlapping widget drawing may not be pretty.
 ///
-/// For fixed layouts, an alternative is to construct a custom widget with
-/// [`kas::macros::make_widget`] which can also perform event handling.
-#[derive(Clone, Default, Debug, Widget)]
-#[handler(send=noauto, msg=(usize, <W as event::Handler>::Msg))]
+/// ## Alternatives
+///
+/// Where the entries are fixed, also consider custom [`Widget`] implementations.
+///
+/// ## Performance
+///
+/// Most operations are `O(n)` in the number of children.
+#[derive(Clone, Debug, Widget)]
+#[handler(send=noauto, msg=<W as Handler>::Msg)]
 #[widget(children=noauto)]
 pub struct Grid<W: Widget> {
     first_id: WidgetId,
     #[widget_core]
     core: CoreData,
-    widgets: Vec<(W, GridChildInfo)>,
-    data: layout::DynGridStorage,
+    widgets: Vec<(GridChildInfo, W)>,
+    data: DynGridStorage,
+    dim: (u32, u32, u32, u32),
+}
+
+impl<W: Widget> Default for Grid<W> {
+    fn default() -> Self {
+        Grid {
+            first_id: Default::default(),
+            core: Default::default(),
+            widgets: Default::default(),
+            data: Default::default(),
+            dim: Default::default(),
+        }
+    }
 }
 
 impl<W: Widget> WidgetChildren for Grid<W> {
@@ -63,21 +83,20 @@ impl<W: Widget> WidgetChildren for Grid<W> {
     }
     #[inline]
     fn get_child(&self, index: usize) -> Option<&dyn WidgetConfig> {
-        self.widgets.get(index).map(|w| w.0.as_widget())
+        self.widgets.get(index).map(|c| c.1.as_widget())
     }
     #[inline]
     fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
-        self.widgets.get_mut(index).map(|w| w.0.as_widget_mut())
+        self.widgets.get_mut(index).map(|c| c.1.as_widget_mut())
     }
 }
 
 impl<W: Widget> Layout for Grid<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let dim = self.dimensions();
-        let mut solver = layout::GridSolver::<Vec<_>, Vec<_>, _>::new(axis, dim, &mut self.data);
+        let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, &mut self.data);
         for child in self.widgets.iter_mut() {
-            solver.for_child(&mut self.data, child.1, |axis| {
-                child.0.size_rules(size_handle, axis)
+            solver.for_child(&mut self.data, child.0, |axis| {
+                child.1.size_rules(size_handle, axis)
             });
         }
         solver.finish(&mut self.data)
@@ -85,14 +104,13 @@ impl<W: Widget> Layout for Grid<W> {
 
     fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
-        let dim = self.dimensions();
         let mut setter =
-            layout::GridSetter::<Vec<i32>, Vec<i32>, _>::new(rect, dim, align, &mut self.data);
+            GridSetter::<Vec<i32>, Vec<i32>, _>::new(rect, self.dim, align, &mut self.data);
 
         for child in self.widgets.iter_mut() {
             child
-                .0
-                .set_rect(mgr, setter.child_rect(&mut self.data, child.1), align);
+                .1
+                .set_rect(mgr, setter.child_rect(&mut self.data, child.0), align);
         }
     }
 
@@ -106,8 +124,9 @@ impl<W: Widget> Layout for Grid<W> {
         }
 
         // TODO(opt): more efficient position solver (also for drawing)?
-        for child in &self.widgets {
-            if let Some(id) = child.0.find_id(coord) {
+        // Reverse iteration since the last valid candidate should be "on top"
+        for child in self.widgets.iter().rev() {
+            if let Some(id) = child.1.find_id(coord) {
                 return Some(id);
             }
         }
@@ -118,7 +137,7 @@ impl<W: Widget> Layout for Grid<W> {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         let disabled = disabled || self.is_disabled();
         for child in &self.widgets {
-            child.0.draw(draw_handle, mgr, disabled);
+            child.1.draw(draw_handle, mgr, disabled)
         }
     }
 }
@@ -126,9 +145,9 @@ impl<W: Widget> Layout for Grid<W> {
 impl<W: Widget> event::SendEvent for Grid<W> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if !self.is_disabled() {
-            for (i, child) in self.widgets.iter_mut().enumerate() {
-                if id <= child.0.id() {
-                    let r = child.0.send(mgr, id, event);
+            for child in self.widgets.iter_mut() {
+                if id <= child.1.id() {
+                    let r = child.1.send(mgr, id, event);
                     return match Response::try_from(r) {
                         Ok(r) => r,
                         Err(msg) => {
@@ -138,7 +157,7 @@ impl<W: Widget> event::SendEvent for Grid<W> {
                                 id,
                                 kas::util::TryFormat(&msg)
                             );
-                            Response::Msg((i, msg))
+                            Response::Msg(msg)
                         }
                     };
                 }
@@ -151,23 +170,43 @@ impl<W: Widget> event::SendEvent for Grid<W> {
 
 impl<W: Widget> Grid<W> {
     /// Construct a new instance
-    pub fn new(widgets: Vec<(W, GridChildInfo)>) -> Self {
-        Grid {
-            first_id: Default::default(),
-            core: Default::default(),
+    pub fn new(widgets: Vec<(GridChildInfo, W)>) -> Self {
+        let mut grid = Grid {
             widgets,
-            data: Default::default(),
-        }
+            ..Default::default()
+        };
+        grid.calc_dim();
+        grid
     }
 
-    /// Calculate the numbers of columns and rows
-    pub fn dimensions(&self) -> (usize, usize) {
+    fn calc_dim(&mut self) {
         let (mut cols, mut rows) = (0, 0);
+        let (mut col_spans, mut row_spans) = (0, 0);
         for child in &self.widgets {
-            cols = cols.max(child.1.col_end);
-            rows = rows.max(child.1.row_end);
+            cols = cols.max(child.0.col_end);
+            rows = rows.max(child.0.row_end);
+            if child.0.col_end - child.0.col > 1 {
+                col_spans += 1;
+            }
+            if child.0.row_end - child.0.row > 1 {
+                row_spans += 1;
+            }
         }
-        (cols.cast(), rows.cast())
+        self.dim = (cols, rows, col_spans, row_spans);
+    }
+
+    /// Construct via a builder
+    pub fn build<F: FnOnce(GridBuilder<W>)>(f: F) -> Self {
+        let mut grid = Self::default();
+        let _ = grid.edit(f);
+        grid
+    }
+
+    /// Edit an existing grid via a builder
+    pub fn edit<F: FnOnce(GridBuilder<W>)>(&mut self, f: F) -> TkAction {
+        f(GridBuilder(&mut self.widgets));
+        self.calc_dim();
+        TkAction::RECONFIGURE // just assume this is requried
     }
 
     /// True if there are no child widgets
@@ -180,175 +219,189 @@ impl<W: Widget> Grid<W> {
         self.widgets.len()
     }
 
+    /// Iterate over childern
+    pub fn iter(&self) -> impl Iterator<Item = &(GridChildInfo, W)> {
+        ListIter {
+            list: &self.widgets,
+        }
+    }
+
+    /// Mutably iterate over childern
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut (GridChildInfo, W)> {
+        ListIterMut {
+            list: &mut self.widgets,
+        }
+    }
+}
+
+pub struct GridBuilder<'a, W: Widget>(&'a mut Vec<(GridChildInfo, W)>);
+impl<'a, W: Widget> GridBuilder<'a, W> {
+    /// True if there are no child widgets
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Returns the number of child widgets
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
     /// Returns the number of elements the vector can hold without reallocating.
     pub fn capacity(&self) -> usize {
-        self.widgets.capacity()
+        self.0.capacity()
     }
 
     /// Reserves capacity for at least `additional` more elements to be inserted
     /// into the list. See documentation of [`Vec::reserve`].
     pub fn reserve(&mut self, additional: usize) {
-        self.widgets.reserve(additional);
+        self.0.reserve(additional);
     }
 
     /// Remove all child widgets
-    ///
-    /// Triggers a [reconfigure action](Manager::send_action) if any widget is
-    /// removed.
-    pub fn clear(&mut self) -> TkAction {
-        let action = match self.widgets.is_empty() {
-            true => TkAction::empty(),
-            false => TkAction::RECONFIGURE,
-        };
-        self.widgets.clear();
-        action
+    pub fn clear(&mut self) {
+        self.0.clear();
     }
 
-    /// Add a widget to a particular cell
+    /// Add a child widget
     ///
-    /// This is just a convenient way to construct a [`GridChildInfo`].
-    pub fn add_cell(&mut self, widget: W, col: u32, row: u32) -> TkAction {
+    /// The child is added to the end of the "list", thus appears last in
+    /// navigation order.
+    pub fn push(&mut self, info: GridChildInfo, widget: W) {
+        self.0.push((info, widget));
+    }
+
+    /// Add a child widget to the given cell
+    ///
+    /// The child is added to the end of the "list", thus appears last in
+    /// navigation order.
+    pub fn push_cell(&mut self, col: u32, row: u32, widget: W) {
+        let info = GridChildInfo::new(col, row);
+        self.push(info, widget);
+    }
+
+    /// Add a child widget to the given cell, builder style
+    ///
+    /// The child is added to the end of the "list", thus appears last in
+    /// navigation order.
+    pub fn with_cell(self, col: u32, row: u32, widget: W) -> Self {
+        self.with_cell_span(col, row, 1, 1, widget)
+    }
+
+    /// Add a child widget to the given cell, with spans
+    ///
+    /// Parameters `col_span` and `row_span` are the number of columns/rows
+    /// spanned and should each be at least 1.
+    ///
+    /// The child is added to the end of the "list", thus appears last in
+    /// navigation order.
+    pub fn push_cell_span(&mut self, col: u32, row: u32, col_span: u32, row_span: u32, widget: W) {
         let info = GridChildInfo {
             col,
-            col_end: col + 1,
+            col_end: col + col_span,
             row,
-            row_end: row + 1,
+            row_end: row + row_span,
         };
-        self.push((widget, info))
+        self.push(info, widget);
     }
 
-    /// Append a child widget
+    /// Add a child widget to the given cell, with spans, builder style
     ///
-    /// Triggers a [reconfigure action](Manager::send_action).
-    pub fn push(&mut self, widget: (W, GridChildInfo)) -> TkAction {
-        self.widgets.push(widget);
-        TkAction::RECONFIGURE
+    /// Parameters `col_span` and `row_span` are the number of columns/rows
+    /// spanned and should each be at least 1.
+    ///
+    /// The child is added to the end of the "list", thus appears last in
+    /// navigation order.
+    pub fn with_cell_span(
+        mut self,
+        col: u32,
+        row: u32,
+        col_span: u32,
+        row_span: u32,
+        widget: W,
+    ) -> Self {
+        self.push_cell_span(col, row, col_span, row_span, widget);
+        self
     }
 
     /// Remove the last child widget
     ///
     /// Returns `None` if there are no children. Otherwise, this
     /// triggers a reconfigure before the next draw operation.
-    ///
-    /// Triggers a [reconfigure action](Manager::send_action) if any widget is
-    /// removed.
-    pub fn pop(&mut self) -> (Option<(W, GridChildInfo)>, TkAction) {
-        let action = match self.widgets.is_empty() {
-            true => TkAction::empty(),
-            false => TkAction::RECONFIGURE,
-        };
-        (self.widgets.pop(), action)
+    pub fn pop(&mut self) -> Option<(GridChildInfo, W)> {
+        self.0.pop()
     }
 
     /// Inserts a child widget position `index`
     ///
     /// Panics if `index > len`.
-    ///
-    /// Triggers a [reconfigure action](Manager::send_action).
-    pub fn insert(&mut self, index: usize, widget: (W, GridChildInfo)) -> TkAction {
-        self.widgets.insert(index, widget);
-        TkAction::RECONFIGURE
+    pub fn insert(&mut self, index: usize, info: GridChildInfo, widget: W) {
+        self.0.insert(index, (info, widget));
     }
 
     /// Removes the child widget at position `index`
     ///
     /// Panics if `index` is out of bounds.
-    ///
-    /// Triggers a [reconfigure action](Manager::send_action).
-    pub fn remove(&mut self, index: usize) -> ((W, GridChildInfo), TkAction) {
-        let r = self.widgets.remove(index);
-        (r, TkAction::RECONFIGURE)
+    pub fn remove(&mut self, index: usize) -> (GridChildInfo, W) {
+        self.0.remove(index)
     }
 
     /// Replace the child at `index`
     ///
     /// Panics if `index` is out of bounds.
-    ///
-    /// Triggers a [reconfigure action](Manager::send_action).
-    // TODO: in theory it is possible to avoid a reconfigure where both widgets
-    // have no children and have compatible size. Is this a good idea and can
-    // we somehow test "has compatible size"?
-    pub fn replace(
-        &mut self,
-        index: usize,
-        mut widget: (W, GridChildInfo),
-    ) -> ((W, GridChildInfo), TkAction) {
-        std::mem::swap(&mut widget, &mut self.widgets[index]);
-        (widget, TkAction::RECONFIGURE)
+    pub fn replace(&mut self, index: usize, info: GridChildInfo, widget: W) -> (GridChildInfo, W) {
+        let mut item = (info, widget);
+        std::mem::swap(&mut item, &mut self.0[index]);
+        item
     }
 
     /// Append child widgets from an iterator
-    ///
-    /// Triggers a [reconfigure action](Manager::send_action) if any widgets
-    /// are added.
-    pub fn extend<T: IntoIterator<Item = (W, GridChildInfo)>>(&mut self, iter: T) -> TkAction {
-        let len = self.widgets.len();
-        self.widgets.extend(iter);
-        match len == self.widgets.len() {
-            true => TkAction::empty(),
-            false => TkAction::RECONFIGURE,
-        }
+    pub fn extend<T: IntoIterator<Item = (GridChildInfo, W)>>(&mut self, iter: T) {
+        self.0.extend(iter);
     }
 
     /// Resize, using the given closure to construct new widgets
-    ///
-    /// Triggers a [reconfigure action](Manager::send_action).
-    pub fn resize_with<F: Fn(usize) -> (W, GridChildInfo)>(
-        &mut self,
-        len: usize,
-        f: F,
-    ) -> TkAction {
-        let l0 = self.widgets.len();
-        if l0 == len {
-            return TkAction::empty();
-        } else if l0 > len {
-            self.widgets.truncate(len);
-        } else {
-            self.widgets.reserve(len);
+    pub fn resize_with<F: Fn(usize) -> (GridChildInfo, W)>(&mut self, len: usize, f: F) {
+        let l0 = self.0.len();
+        if l0 > len {
+            self.0.truncate(len);
+        } else if l0 < len {
+            self.0.reserve(len);
             for i in l0..len {
-                self.widgets.push(f(i));
+                self.0.push(f(i));
             }
         }
-        TkAction::RECONFIGURE
     }
 
     /// Retain only widgets satisfying predicate `f`
     ///
     /// See documentation of [`Vec::retain`].
-    ///
-    /// Triggers a [reconfigure action](Manager::send_action) if any widgets
-    /// are removed.
-    pub fn retain<F: FnMut(&(W, GridChildInfo)) -> bool>(&mut self, f: F) -> TkAction {
-        let len = self.widgets.len();
-        self.widgets.retain(f);
-        match len == self.widgets.len() {
-            true => TkAction::empty(),
-            false => TkAction::RECONFIGURE,
-        }
+    pub fn retain<F: FnMut(&(GridChildInfo, W)) -> bool>(&mut self, f: F) {
+        self.0.retain(f);
     }
 
-    /// Iterate over childern
-    pub fn iter(&self) -> impl Iterator<Item = &W> {
-        ListIter {
-            list: &self.widgets,
-        }
-    }
-
-    /// Get the index of the child which is an ancestor of `id`, if any
-    pub fn find_child_index(&self, id: WidgetId) -> Option<usize> {
-        if id >= self.first_id {
-            for (i, child) in self.widgets.iter().enumerate() {
-                if id <= child.0.id() {
-                    return Some(i);
-                }
+    /// Get the first index of a child occupying the given cell, if any
+    pub fn find_child_cell(&self, col: u32, row: u32) -> Option<usize> {
+        for (i, (info, _)) in self.0.iter().enumerate() {
+            if info.col <= col && col < info.col_end && info.row <= row && row < info.row_end {
+                return Some(i);
             }
         }
         None
     }
+
+    /// Iterate over childern
+    pub fn iter(&self) -> impl Iterator<Item = &(GridChildInfo, W)> {
+        ListIter { list: &self.0 }
+    }
+
+    /// Mutably iterate over childern
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut (GridChildInfo, W)> {
+        ListIterMut { list: &mut self.0 }
+    }
 }
 
 impl<W: Widget> Index<usize> for Grid<W> {
-    type Output = (W, GridChildInfo);
+    type Output = (GridChildInfo, W);
 
     fn index(&self, index: usize) -> &Self::Output {
         &self.widgets[index]
@@ -362,15 +415,14 @@ impl<W: Widget> IndexMut<usize> for Grid<W> {
 }
 
 struct ListIter<'a, W: Widget> {
-    list: &'a [(W, GridChildInfo)],
+    list: &'a [(GridChildInfo, W)],
 }
 impl<'a, W: Widget> Iterator for ListIter<'a, W> {
-    type Item = &'a W;
+    type Item = &'a (GridChildInfo, W);
     fn next(&mut self) -> Option<Self::Item> {
-        if !self.list.is_empty() {
-            let item = &self.list[0].0;
-            self.list = &self.list[1..];
-            Some(item)
+        if let Some((first, rest)) = self.list.split_first() {
+            self.list = rest;
+            Some(first)
         } else {
             None
         }
@@ -381,6 +433,31 @@ impl<'a, W: Widget> Iterator for ListIter<'a, W> {
     }
 }
 impl<'a, W: Widget> ExactSizeIterator for ListIter<'a, W> {
+    fn len(&self) -> usize {
+        self.list.len()
+    }
+}
+
+struct ListIterMut<'a, W: Widget> {
+    list: &'a mut [(GridChildInfo, W)],
+}
+impl<'a, W: Widget> Iterator for ListIterMut<'a, W> {
+    type Item = &'a mut (GridChildInfo, W);
+    fn next(&mut self) -> Option<Self::Item> {
+        let list = std::mem::replace(&mut self.list, &mut []);
+        if let Some((first, rest)) = list.split_first_mut() {
+            self.list = rest;
+            Some(first)
+        } else {
+            None
+        }
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.len();
+        (len, Some(len))
+    }
+}
+impl<'a, W: Widget> ExactSizeIterator for ListIterMut<'a, W> {
     fn len(&self) -> usize {
         self.list.len()
     }

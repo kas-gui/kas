@@ -125,8 +125,10 @@ pub(crate) fn derive(
         quote! { () }
     };
 
-    let mut cols: usize = 0;
-    let mut rows: usize = 0;
+    let mut cols = 0u32;
+    let mut rows = 0u32;
+    let mut col_spans = 0u32;
+    let mut row_spans = 0u32;
     let mut size = TokenStream::new();
     let mut set_rect = TokenStream::new();
     let mut draw = quote! {
@@ -145,14 +147,14 @@ pub(crate) fn derive(
         let child_info = match layout.layout {
             LayoutType::Single => quote! { () },
             LayoutType::Right | LayoutType::Left => {
-                let col = cols;
+                let col = cols as usize;
                 cols += 1;
                 rows = 1;
 
                 quote! { #col }
             }
             LayoutType::Down | LayoutType::Up => {
-                let row = rows;
+                let row = rows as usize;
                 cols = 1;
                 rows += 1;
 
@@ -162,8 +164,14 @@ pub(crate) fn derive(
                 let pos = args.as_pos()?;
                 let (c0, c1) = (pos.0, pos.0 + pos.2);
                 let (r0, r1) = (pos.1, pos.1 + pos.3);
-                cols = cols.max(c1 as usize);
-                rows = rows.max(r1 as usize);
+                cols = cols.max(c1);
+                rows = rows.max(r1);
+                if pos.2 > 1 {
+                    col_spans += 1;
+                }
+                if pos.3 > 1 {
+                    row_spans += 1;
+                }
 
                 quote! {
                     ::kas::layout::GridChildInfo {
@@ -212,13 +220,14 @@ pub(crate) fn derive(
         });
     }
 
+    let (ucols, urows) = (cols as usize, rows as usize);
     let dim = match layout.layout {
         LayoutType::Single => quote! { () },
-        LayoutType::Right => quote! { (::kas::dir::Right, #cols) },
-        LayoutType::Left => quote! { (::kas::dir::Left, #cols) },
-        LayoutType::Down => quote! { (::kas::dir::Down, #rows) },
-        LayoutType::Up => quote! { (::kas::dir::Up, #rows) },
-        LayoutType::Grid => quote! { (#cols, #rows) },
+        LayoutType::Right => quote! { (::kas::dir::Right, #ucols) },
+        LayoutType::Left => quote! { (::kas::dir::Left, #ucols) },
+        LayoutType::Down => quote! { (::kas::dir::Down, #urows) },
+        LayoutType::Up => quote! { (::kas::dir::Up, #urows) },
+        LayoutType::Grid => quote! { (#cols, #rows, #col_spans, #row_spans) },
     };
 
     let find_id_area = layout.area.as_ref().map(|area_widget| {
