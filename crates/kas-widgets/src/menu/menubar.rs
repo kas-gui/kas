@@ -109,12 +109,13 @@ impl<W: Menu<Msg = M>, D: Directional, M: 'static> event::Handler for MenuBar<W,
                         self.opening = false;
                         let delay = mgr.config().menu_delay();
                         if self.rect().contains(coord) {
-                            if let Some(w) = self.bar.iter().find(|w| w.id() == start_id) {
-                                if !w.menu_is_open() {
-                                    self.opening = true;
-                                    self.delayed_open = Some(start_id);
-                                    mgr.update_on_timer(delay, self.id(), 0);
-                                }
+                            if self
+                                .bar
+                                .iter()
+                                .any(|w| w.id() == start_id && !w.menu_is_open())
+                            {
+                                self.opening = true;
+                                self.set_menu_path(mgr, Some(start_id));
                             }
                         } else {
                             self.delayed_open = Some(start_id);
