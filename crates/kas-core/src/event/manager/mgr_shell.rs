@@ -313,14 +313,17 @@ impl ManagerState {
             mgr.send_event(widget, parent, Event::PopupRemoved(wid));
         }
         while let Some(id) = mgr.state.new_popups.pop() {
-            for parent in mgr
-                .state
-                .popups
-                .iter()
-                .map(|(_, popup, _)| popup.parent)
-                .collect::<SmallVec<[WidgetId; 16]>>()
-            {
-                mgr.send_event(widget, parent, Event::NewPopup(id));
+            while let Some((_, popup, _)) = mgr.state.popups.last() {
+                if widget
+                    .find_leaf(popup.parent)
+                    .map(|w| w.is_ancestor_of(id))
+                    .unwrap_or(false)
+                {
+                    break;
+                }
+                let (wid, popup, _old_nav_focus) = mgr.state.popups.pop().unwrap();
+                mgr.send_event(widget, popup.parent, Event::PopupRemoved(wid));
+                // Don't restore old nav focus: assume new focus will be set by new popup
             }
         }
 

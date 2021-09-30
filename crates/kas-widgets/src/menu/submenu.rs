@@ -102,9 +102,6 @@ impl<D: Directional, W: Menu> WidgetConfig for SubMenu<D, W> {
     fn key_nav(&self) -> bool {
         self.key_nav
     }
-    fn hover_highlight(&self) -> bool {
-        true
-    }
 }
 
 impl<D: Directional, W: Menu> kas::Layout for SubMenu<D, W> {
@@ -156,11 +153,6 @@ impl<D: Directional, M: 'static, W: Menu<Msg = M>> event::Handler for SubMenu<D,
             Event::Activate => {
                 if self.popup_id.is_none() {
                     self.open_menu(mgr);
-                }
-            }
-            Event::NewPopup(id) => {
-                if self.popup_id.is_some() && !self.is_ancestor_of(id) {
-                    self.close_menu(mgr);
                 }
             }
             Event::PopupRemoved(id) => {

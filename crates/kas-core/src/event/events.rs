@@ -153,12 +153,6 @@ pub enum Event {
     /// A user-defined payload is passed. Interpretation of this payload is
     /// user-defined and unfortunately not type safe.
     HandleUpdate { handle: UpdateHandle, payload: u64 },
-    /// Notification that a new popup has been created
-    ///
-    /// This is sent to the parent of each open popup when a new popup is
-    /// created. This enables parents to close their popups when the new popup
-    /// is not a descendant of itself. The `WidgetId` is that of the popup.
-    NewPopup(WidgetId),
     /// Notification that a popup has been destroyed
     ///
     /// This is sent to the popup's parent after a popup has been removed.

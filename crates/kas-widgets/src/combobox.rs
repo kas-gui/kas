@@ -379,14 +379,6 @@ impl<M: 'static> event::Handler for ComboBox<M> {
                     mgr.close_window(id);
                 }
             }
-            Event::NewPopup(id) => {
-                // For a ComboBox, for any new Popup we should close self
-                if id != self.popup.id() {
-                    if let Some(id) = self.popup_id {
-                        mgr.close_window(id);
-                    }
-                }
-            }
             Event::PopupRemoved(id) => {
                 debug_assert_eq!(Some(id), self.popup_id);
                 self.popup_id = None;
