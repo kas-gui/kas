@@ -457,6 +457,12 @@ impl<'a> Manager<'a> {
                     }
                 }
             }
+            Focused(false) => {
+                // Window focus lost: close all popups
+                while let Some(id) = self.state.popups.last().map(|(id, _, _)| *id) {
+                    self.close_window(id);
+                }
+            }
             KeyboardInput {
                 input,
                 is_synthetic,
