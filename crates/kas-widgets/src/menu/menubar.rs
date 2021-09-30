@@ -116,6 +116,8 @@ impl<W: Menu<Msg = M>, D: Directional, M: 'static> event::Handler for MenuBar<W,
                             {
                                 self.opening = true;
                                 self.set_menu_path(mgr, Some(start_id));
+                            } else {
+                                self.set_menu_path(mgr, None);
                             }
                         } else {
                             self.delayed_open = Some(start_id);
