@@ -80,7 +80,7 @@ bitflags! {
         ///
         /// [`WidgetId`]: crate::WidgetId
         const RECONFIGURE = 1 << 16;
-        /// The current window or pop-up should be closed
+        /// The current window should be closed
         const CLOSE = 1 << 30;
         /// Close all windows and exit
         const EXIT = 1 << 31;

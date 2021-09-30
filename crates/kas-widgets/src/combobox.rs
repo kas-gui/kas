@@ -299,9 +299,6 @@ impl<M: 'static> ComboBox<M> {
                 }
             }
         }
-        // NOTE: as part of the Popup API we are expected to trap
-        // TkAction::CLOSE here, but we know our widget doesn't generate
-        // this action.
     }
 }
 

@@ -216,17 +216,6 @@ impl<'a> Manager<'a> {
         self.action |= action;
     }
 
-    /// Get the current [`TkAction`], replacing with `None`
-    ///
-    /// The caller is responsible for ensuring the action is handled correctly;
-    /// generally this means matching only actions which can be handled locally
-    /// and downgrading the action, adding the result back to the [`Manager`].
-    pub fn pop_action(&mut self) -> TkAction {
-        let action = self.action;
-        self.action = TkAction::empty();
-        action
-    }
-
     /// Add an overlay (pop-up)
     ///
     /// A pop-up is a box used for things like tool-tips and menus which is
