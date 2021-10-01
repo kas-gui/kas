@@ -214,13 +214,13 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
                     }
                     _ => Response::Unhandled,
                 },
-                Response::Update | Response::Select => {
+                Response::Select => {
                     self.set_menu_path(mgr, Some(id));
                     Response::None
                 }
-                Response::Msg(msg) => {
+                r @ (Response::Update | Response::Msg(_)) => {
                     self.close_menu(mgr);
-                    Response::Msg(msg)
+                    r
                 }
             }
         } else {

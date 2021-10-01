@@ -255,6 +255,9 @@ impl<'a> Manager<'a> {
     }
 
     /// Close a window or pop-up
+    ///
+    /// In the case of a pop-up, all pop-ups created after this will also be
+    /// removed (on the assumption they are a descendant of the first popup).
     #[inline]
     pub fn close_window(&mut self, id: WindowId) {
         if let Some(index) =
@@ -268,17 +271,18 @@ impl<'a> Manager<'a> {
                 },
             )
         {
-            let (_, popup, old_nav_focus) = self.state.popups.remove(index);
-            self.state.popup_removed.push((popup.parent, id));
+            let mut old_nav_focus = None;
+            while self.state.popups.len() > index {
+                let (wid, popup, onf) = self.state.popups.pop().unwrap();
+                self.state.popup_removed.push((popup.parent, wid));
+                self.shell.close_window(wid);
+                old_nav_focus = onf;
+            }
 
             if let Some(id) = old_nav_focus {
                 self.set_nav_focus(id, true);
             }
         }
-
-        // For popups, we need to update mouse/keyboard focus.
-        // (For windows, focus gained/lost events do this job.)
-        self.state.send_action(TkAction::REGION_MOVED);
 
         self.shell.close_window(id);
     }
