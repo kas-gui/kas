@@ -1044,6 +1044,7 @@ impl<G: EditGuard> HasString for EditField<G> {
         }
 
         self.text.set_string(string);
+        self.selection.clear();
         if kas::text::fonts::fonts().num_faces() > 0 {
             if let Some(req) = self.text.prepare() {
                 self.required = req.into();

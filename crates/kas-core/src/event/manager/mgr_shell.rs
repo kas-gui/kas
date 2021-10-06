@@ -240,22 +240,6 @@ impl ManagerState {
         trace!("Manager::region_moved");
         // Note: redraw is already implied.
 
-        self.nav_focus = self
-            .nav_focus
-            .and_then(|id| widget.find_leaf(id).map(|w| w.id()));
-        if let Some(id) = self.sel_focus {
-            if let Some(new_id) = widget.find_leaf(id).map(|w| w.id()) {
-                self.sel_focus = Some(new_id);
-            } else {
-                if self.char_focus {
-                    self.pending.push(Pending::LostCharFocus(id));
-                    self.char_focus = false;
-                }
-                self.pending.push(Pending::LostSelFocus(id));
-                self.sel_focus = None;
-            }
-        }
-
         // Update hovered widget
         let hover = widget.find_id(self.last_mouse_coord);
         self.with(shell, |mgr| mgr.set_hover(widget, hover));
