@@ -72,14 +72,16 @@ impl<D: Directional, W: Menu> SubMenu<D, W> {
         }
     }
 
-    fn open_menu(&mut self, mgr: &mut Manager) {
+    fn open_menu(&mut self, mgr: &mut Manager, set_focus: bool) {
         if self.popup_id.is_none() {
             self.popup_id = mgr.add_popup(kas::Popup {
                 id: self.list.id(),
                 parent: self.id(),
                 direction: self.direction.as_direction(),
             });
-            mgr.next_nav_focus(self, false, true);
+            if set_focus {
+                mgr.next_nav_focus(self, false, true);
+            }
         }
     }
     fn close_menu(&mut self, mgr: &mut Manager) {
@@ -152,7 +154,7 @@ impl<D: Directional, M: 'static, W: Menu<Msg = M>> event::Handler for SubMenu<D,
         match event {
             Event::Activate => {
                 if self.popup_id.is_none() {
-                    self.open_menu(mgr);
+                    self.open_menu(mgr, true);
                 }
             }
             Event::PopupRemoved(id) => {
@@ -160,10 +162,10 @@ impl<D: Directional, M: 'static, W: Menu<Msg = M>> event::Handler for SubMenu<D,
                 self.popup_id = None;
             }
             Event::Command(cmd, _) => match (self.direction.as_direction(), cmd) {
-                (Direction::Left, Command::Left) => self.open_menu(mgr),
-                (Direction::Right, Command::Right) => self.open_menu(mgr),
-                (Direction::Up, Command::Up) => self.open_menu(mgr),
-                (Direction::Down, Command::Down) => self.open_menu(mgr),
+                (Direction::Left, Command::Left) => self.open_menu(mgr, true),
+                (Direction::Right, Command::Right) => self.open_menu(mgr, true),
+                (Direction::Up, Command::Up) => self.open_menu(mgr, true),
+                (Direction::Down, Command::Down) => self.open_menu(mgr, true),
                 _ => return Response::Unhandled,
             },
             _ => return Response::Unhandled,
@@ -215,7 +217,7 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
                     _ => Response::Unhandled,
                 },
                 Response::Select => {
-                    self.set_menu_path(mgr, Some(id));
+                    self.set_menu_path(mgr, Some(id), true);
                     Response::None
                 }
                 r @ (Response::Update | Response::Msg(_)) => {
@@ -234,7 +236,7 @@ impl<D: Directional, W: Menu> Menu for SubMenu<D, W> {
         self.popup_id.is_some()
     }
 
-    fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>) {
+    fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>, set_focus: bool) {
         match target {
             Some(id) if self.is_ancestor_of(id) => {
                 if self.popup_id.is_some() {
@@ -244,17 +246,17 @@ impl<D: Directional, W: Menu> Menu for SubMenu<D, W> {
                         if self.list[i].is_ancestor_of(id) {
                             child = Some(i);
                         } else {
-                            self.list[i].set_menu_path(mgr, None);
+                            self.list[i].set_menu_path(mgr, None, set_focus);
                         }
                     }
                     if let Some(i) = child {
-                        self.list[i].set_menu_path(mgr, target);
+                        self.list[i].set_menu_path(mgr, target, set_focus);
                     }
                 } else {
-                    self.open_menu(mgr);
+                    self.open_menu(mgr, set_focus);
                     if id != self.id() {
                         for i in 0..self.list.len() {
-                            self.list[i].set_menu_path(mgr, target);
+                            self.list[i].set_menu_path(mgr, target, set_focus);
                         }
                     }
                 }
@@ -262,7 +264,7 @@ impl<D: Directional, W: Menu> Menu for SubMenu<D, W> {
             _ => {
                 if self.popup_id.is_some() {
                     for i in 0..self.list.len() {
-                        self.list[i].set_menu_path(mgr, None);
+                        self.list[i].set_menu_path(mgr, None, set_focus);
                     }
                     self.close_menu(mgr);
                 }
