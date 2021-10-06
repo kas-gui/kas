@@ -618,6 +618,7 @@ impl<'a> Manager<'a> {
             self.redraw(id);
         }
         self.state.nav_focus = None;
+        self.clear_char_focus();
         trace!("Manager: nav_focus = None");
     }
 
