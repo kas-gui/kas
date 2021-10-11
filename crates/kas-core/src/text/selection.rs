@@ -34,6 +34,11 @@ impl SelectionHelper {
         }
     }
 
+    /// Reset to the default state
+    pub fn clear(&mut self) {
+        *self = Self::default();
+    }
+
     /// True if the edit pos equals the selection pos
     pub fn is_empty(&self) -> bool {
         self.edit_pos == self.sel_pos

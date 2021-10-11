@@ -72,19 +72,50 @@ impl<D: Directional, W: Menu> SubMenu<D, W> {
         }
     }
 
-    fn open_menu(&mut self, mgr: &mut Manager) {
+    fn open_menu(&mut self, mgr: &mut Manager, set_focus: bool) {
         if self.popup_id.is_none() {
             self.popup_id = mgr.add_popup(kas::Popup {
                 id: self.list.id(),
                 parent: self.id(),
                 direction: self.direction.as_direction(),
             });
-            mgr.next_nav_focus(self, false, true);
+            if set_focus {
+                mgr.next_nav_focus(self, false, true);
+            }
         }
     }
-    fn close_menu(&mut self, mgr: &mut Manager) {
+    fn close_menu(&mut self, mgr: &mut Manager, restore_focus: bool) {
         if let Some(id) = self.popup_id {
-            mgr.close_window(id);
+            mgr.close_window(id, restore_focus);
+        }
+    }
+
+    fn handle_dir_key(&mut self, mgr: &mut Manager, cmd: Command) -> Response<W::Msg> {
+        if self.menu_is_open() {
+            if let Some(dir) = cmd.as_direction() {
+                if dir.is_vertical() == self.list.direction().is_vertical() {
+                    let rev = dir.is_reversed() ^ self.list.direction().is_reversed();
+                    mgr.next_nav_focus(self, rev, true);
+                    Response::None
+                } else if dir == self.direction.as_direction().reversed() {
+                    self.close_menu(mgr, true);
+                    Response::None
+                } else {
+                    Response::Unhandled
+                }
+            } else if matches!(cmd, Command::Home | Command::End) {
+                mgr.clear_nav_focus();
+                let rev = cmd == Command::End;
+                mgr.next_nav_focus(self, rev, true);
+                Response::None
+            } else {
+                Response::Unhandled
+            }
+        } else if Some(self.direction.as_direction()) == cmd.as_direction() {
+            self.open_menu(mgr, true);
+            Response::None
+        } else {
+            Response::Unhandled
         }
     }
 }
@@ -101,9 +132,6 @@ impl<D: Directional, W: Menu> WidgetConfig for SubMenu<D, W> {
 
     fn key_nav(&self) -> bool {
         self.key_nav
-    }
-    fn hover_highlight(&self) -> bool {
-        true
     }
 }
 
@@ -155,25 +183,14 @@ impl<D: Directional, M: 'static, W: Menu<Msg = M>> event::Handler for SubMenu<D,
         match event {
             Event::Activate => {
                 if self.popup_id.is_none() {
-                    self.open_menu(mgr);
-                }
-            }
-            Event::NewPopup(id) => {
-                if self.popup_id.is_some() && !self.is_ancestor_of(id) {
-                    self.close_menu(mgr);
+                    self.open_menu(mgr, true);
                 }
             }
             Event::PopupRemoved(id) => {
                 debug_assert_eq!(Some(id), self.popup_id);
                 self.popup_id = None;
             }
-            Event::Command(cmd, _) => match (self.direction.as_direction(), cmd) {
-                (Direction::Left, Command::Left) => self.open_menu(mgr),
-                (Direction::Right, Command::Right) => self.open_menu(mgr),
-                (Direction::Up, Command::Up) => self.open_menu(mgr),
-                (Direction::Down, Command::Down) => self.open_menu(mgr),
-                _ => return Response::Unhandled,
-            },
+            Event::Command(cmd, _) => return self.handle_dir_key(mgr, cmd),
             _ => return Response::Unhandled,
         }
         Response::None
@@ -189,57 +206,23 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
         if id <= self.list.id() {
             let r = self.list.send(mgr, id, event.clone());
 
-            // The pop-up API expects us to check actions here
-            // But NOTE: we don't actually use this. Should we remove from API?
-            match mgr.pop_action() {
-                TkAction::CLOSE => {
-                    if let Some(id) = self.popup_id {
-                        mgr.close_window(id);
-                    }
-                }
-                other => mgr.send_action(other),
-            }
-
             match r {
                 Response::None => Response::None,
                 Response::Pan(delta) => Response::Pan(delta),
                 Response::Focus(rect) => Response::Focus(rect),
                 Response::Unhandled => match event {
-                    Event::Command(key, _) if self.popup_id.is_some() => {
-                        let dir = self.direction.as_direction();
-                        let inner_vert = self.list.direction().is_vertical();
-                        let next = |mgr: &mut Manager, s, clr, rev| {
-                            if clr {
-                                mgr.clear_nav_focus();
-                            }
-                            mgr.next_nav_focus(s, rev, true);
-                        };
-                        let rev = self.list.direction().is_reversed();
-                        use Direction::*;
-                        match key {
-                            Command::Left if !inner_vert => next(mgr, self, false, !rev),
-                            Command::Right if !inner_vert => next(mgr, self, false, rev),
-                            Command::Up if inner_vert => next(mgr, self, false, !rev),
-                            Command::Down if inner_vert => next(mgr, self, false, rev),
-                            Command::Home => next(mgr, self, true, false),
-                            Command::End => next(mgr, self, true, true),
-                            Command::Left if dir == Right => self.close_menu(mgr),
-                            Command::Right if dir == Left => self.close_menu(mgr),
-                            Command::Up if dir == Down => self.close_menu(mgr),
-                            Command::Down if dir == Up => self.close_menu(mgr),
-                            _ => return Response::Unhandled,
-                        }
-                        Response::None
+                    Event::Command(cmd, _) if self.popup_id.is_some() => {
+                        self.handle_dir_key(mgr, cmd)
                     }
                     _ => Response::Unhandled,
                 },
-                Response::Update | Response::Select => {
-                    self.set_menu_path(mgr, Some(id));
+                Response::Select => {
+                    self.set_menu_path(mgr, Some(id), true);
                     Response::None
                 }
-                Response::Msg(msg) => {
-                    self.close_menu(mgr);
-                    Response::Msg(msg)
+                r @ (Response::Update | Response::Msg(_)) => {
+                    self.close_menu(mgr, true);
+                    r
                 }
             }
         } else {
@@ -253,7 +236,7 @@ impl<D: Directional, W: Menu> Menu for SubMenu<D, W> {
         self.popup_id.is_some()
     }
 
-    fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>) {
+    fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>, set_focus: bool) {
         match target {
             Some(id) if self.is_ancestor_of(id) => {
                 if self.popup_id.is_some() {
@@ -263,17 +246,17 @@ impl<D: Directional, W: Menu> Menu for SubMenu<D, W> {
                         if self.list[i].is_ancestor_of(id) {
                             child = Some(i);
                         } else {
-                            self.list[i].set_menu_path(mgr, None);
+                            self.list[i].set_menu_path(mgr, None, set_focus);
                         }
                     }
                     if let Some(i) = child {
-                        self.list[i].set_menu_path(mgr, target);
+                        self.list[i].set_menu_path(mgr, target, set_focus);
                     }
                 } else {
-                    self.open_menu(mgr);
+                    self.open_menu(mgr, set_focus);
                     if id != self.id() {
                         for i in 0..self.list.len() {
-                            self.list[i].set_menu_path(mgr, target);
+                            self.list[i].set_menu_path(mgr, target, set_focus);
                         }
                     }
                 }
@@ -281,9 +264,9 @@ impl<D: Directional, W: Menu> Menu for SubMenu<D, W> {
             _ => {
                 if self.popup_id.is_some() {
                     for i in 0..self.list.len() {
-                        self.list[i].set_menu_path(mgr, None);
+                        self.list[i].set_menu_path(mgr, None, set_focus);
                     }
-                    self.close_menu(mgr);
+                    self.close_menu(mgr, set_focus);
                 }
             }
         }

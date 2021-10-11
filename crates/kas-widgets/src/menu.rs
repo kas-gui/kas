@@ -33,7 +33,13 @@ pub trait Menu: Widget {
     /// are menus, these should open.
     ///
     /// `target == None` implies that all menus should close.
-    fn set_menu_path(&mut self, _mgr: &mut Manager, _target: Option<WidgetId>) {}
+    ///
+    /// When opening menus and `set_focus` is true, the first navigable child
+    /// of the newly opened menu will be given focus. This is used for keyboard
+    /// navigation only.
+    fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>, set_focus: bool) {
+        let _ = (mgr, target, set_focus);
+    }
 }
 
 impl<M: 'static> WidgetCore for Box<dyn Menu<Msg = M>> {
@@ -156,8 +162,8 @@ impl<M: 'static> Menu for Box<dyn Menu<Msg = M>> {
     fn menu_is_open(&self) -> bool {
         self.deref().menu_is_open()
     }
-    fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>) {
-        self.deref_mut().set_menu_path(mgr, target)
+    fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>, set_focus: bool) {
+        self.deref_mut().set_menu_path(mgr, target, set_focus)
     }
 }
 

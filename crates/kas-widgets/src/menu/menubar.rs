@@ -93,7 +93,7 @@ impl<W: Menu<Msg = M>, D: Directional, M: 'static> event::Handler for MenuBar<W,
         match event {
             Event::TimerUpdate(0) => {
                 if let Some(id) = self.delayed_open {
-                    self.set_menu_path(mgr, Some(id));
+                    self.set_menu_path(mgr, Some(id), false);
                 }
             }
             Event::PressStart {
@@ -115,7 +115,9 @@ impl<W: Menu<Msg = M>, D: Directional, M: 'static> event::Handler for MenuBar<W,
                                 .any(|w| w.id() == start_id && !w.menu_is_open())
                             {
                                 self.opening = true;
-                                self.set_menu_path(mgr, Some(start_id));
+                                self.set_menu_path(mgr, Some(start_id), false);
+                            } else {
+                                self.set_menu_path(mgr, None, false);
                             }
                         } else {
                             self.delayed_open = Some(start_id);
@@ -139,7 +141,7 @@ impl<W: Menu<Msg = M>, D: Directional, M: 'static> event::Handler for MenuBar<W,
                         // We instantly open a sub-menu on motion over the bar,
                         // but delay when over a sub-menu (most intuitive?)
                         if self.rect().contains(coord) {
-                            self.set_menu_path(mgr, Some(id));
+                            self.set_menu_path(mgr, Some(id), false);
                         } else {
                             mgr.set_nav_focus(id, false);
                             self.delayed_open = Some(id);
@@ -160,7 +162,7 @@ impl<W: Menu<Msg = M>, D: Directional, M: 'static> event::Handler for MenuBar<W,
                             self.delayed_open = None;
                             for i in 0..self.bar.len() {
                                 if self.bar[i].id() == id {
-                                    self.bar[i].set_menu_path(mgr, None);
+                                    self.bar[i].set_menu_path(mgr, None, false);
                                 }
                             }
                         }
@@ -171,31 +173,33 @@ impl<W: Menu<Msg = M>, D: Directional, M: 'static> event::Handler for MenuBar<W,
                     }
                 } else {
                     // not on the menu
-                    self.set_menu_path(mgr, None);
+                    self.set_menu_path(mgr, None, false);
                 }
             }
             Event::Command(cmd, _) => {
-                // Arrow keys can switch to the next / previous menu.
+                // Arrow keys can switch to the next / previous menu
+                // as well as to the first / last item of an open menu.
+                use Command::{Left, Up};
                 let is_vert = self.bar.direction().is_vertical();
-                let reverse = self.bar.direction().is_reversed()
-                    ^ match cmd {
-                        Command::Left if !is_vert => true,
-                        Command::Right if !is_vert => false,
-                        Command::Up if is_vert => true,
-                        Command::Down if is_vert => false,
-                        _ => return Response::Unhandled,
-                    };
-
-                for i in 0..self.bar.len() {
-                    if self.bar[i].menu_is_open() {
-                        let index = if reverse { i.wrapping_sub(1) } else { i + 1 };
-                        if index < self.bar.len() {
-                            self.bar[i].set_menu_path(mgr, None);
-                            let w = &mut self.bar[index];
-                            w.set_menu_path(mgr, Some(w.id()));
+                let reverse = self.bar.direction().is_reversed() ^ matches!(cmd, Left | Up);
+                match cmd.as_direction().map(|d| d.is_vertical()) {
+                    Some(v) if v == is_vert => {
+                        for i in 0..self.bar.len() {
+                            if self.bar[i].menu_is_open() {
+                                let mut j = isize::conv(i);
+                                j = if reverse { j - 1 } else { j + 1 };
+                                j = j.rem_euclid(self.bar.len().cast());
+                                self.bar[i].set_menu_path(mgr, None, true);
+                                let w = &mut self.bar[usize::conv(j)];
+                                w.set_menu_path(mgr, Some(w.id()), true);
+                                break;
+                            }
                         }
-                        break;
                     }
+                    Some(_) => {
+                        mgr.next_nav_focus(self, reverse, true);
+                    }
+                    None => return Response::Unhandled,
                 }
             }
             _ => return Response::Unhandled,
@@ -230,7 +234,7 @@ impl<W: Menu, D: Directional> event::SendEvent for MenuBar<W, D> {
 }
 
 impl<W: Menu, D: Directional> Menu for MenuBar<W, D> {
-    fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>) {
+    fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>, set_focus: bool) {
         self.delayed_open = None;
         if let Some(id) = target {
             // We should close other sub-menus before opening
@@ -239,15 +243,15 @@ impl<W: Menu, D: Directional> Menu for MenuBar<W, D> {
                 if self.bar[i].is_ancestor_of(id) {
                     child = Some(i);
                 } else {
-                    self.bar[i].set_menu_path(mgr, None);
+                    self.bar[i].set_menu_path(mgr, None, set_focus);
                 }
             }
             if let Some(i) = child {
-                self.bar[i].set_menu_path(mgr, target);
+                self.bar[i].set_menu_path(mgr, target, set_focus);
             }
         } else {
             for i in 0..self.bar.len() {
-                self.bar[i].set_menu_path(mgr, None);
+                self.bar[i].set_menu_path(mgr, None, set_focus);
             }
         }
     }

@@ -156,12 +156,6 @@ pub trait LayoutData {
 /// A pop-up widget's rect is not contained by its parent, therefore the parent
 /// must not call any [`Layout`] methods on the pop-up (whether or not it is
 /// visible). The window is responsible for calling these methods.
-///
-/// Other methods on the pop-up, including event handlers, should be called
-/// normally, with one exception: after calling an event handler on the pop-up,
-/// the parent should invoke [`Manager::pop_action`] and handle the action
-/// itself, where possible (using [`Manager::close_window`] to close it).
-/// Remaining actions should be added back to the [`Manager`].
 //
 // NOTE: it's tempting to include a pointer to the widget here. There are two
 // options: (a) an unsafe aliased pointer or (b) Rc<RefCell<dyn WidgetConfig>>.

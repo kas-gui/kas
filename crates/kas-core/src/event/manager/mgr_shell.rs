@@ -240,22 +240,6 @@ impl ManagerState {
         trace!("Manager::region_moved");
         // Note: redraw is already implied.
 
-        self.nav_focus = self
-            .nav_focus
-            .and_then(|id| widget.find_leaf(id).map(|w| w.id()));
-        if let Some(id) = self.sel_focus {
-            if let Some(new_id) = widget.find_leaf(id).map(|w| w.id()) {
-                self.sel_focus = Some(new_id);
-            } else {
-                if self.char_focus {
-                    self.pending.push(Pending::LostCharFocus(id));
-                    self.char_focus = false;
-                }
-                self.pending.push(Pending::LostSelFocus(id));
-                self.sel_focus = None;
-            }
-        }
-
         // Update hovered widget
         let hover = widget.find_id(self.last_mouse_coord);
         self.with(shell, |mgr| mgr.set_hover(widget, hover));
@@ -313,14 +297,17 @@ impl ManagerState {
             mgr.send_event(widget, parent, Event::PopupRemoved(wid));
         }
         while let Some(id) = mgr.state.new_popups.pop() {
-            for parent in mgr
-                .state
-                .popups
-                .iter()
-                .map(|(_, popup, _)| popup.parent)
-                .collect::<SmallVec<[WidgetId; 16]>>()
-            {
-                mgr.send_event(widget, parent, Event::NewPopup(id));
+            while let Some((_, popup, _)) = mgr.state.popups.last() {
+                if widget
+                    .find_leaf(popup.parent)
+                    .map(|w| w.is_ancestor_of(id))
+                    .unwrap_or(false)
+                {
+                    break;
+                }
+                let (wid, popup, _old_nav_focus) = mgr.state.popups.pop().unwrap();
+                mgr.send_event(widget, popup.parent, Event::PopupRemoved(wid));
+                // Don't restore old nav focus: assume new focus will be set by new popup
             }
         }
 
@@ -455,6 +442,12 @@ impl<'a> Manager<'a> {
                         let event = Event::ReceivedCharacter(c);
                         self.send_event(widget, id, event);
                     }
+                }
+            }
+            Focused(false) => {
+                // Window focus lost: close all popups
+                while let Some(id) = self.state.popups.last().map(|(id, _, _)| *id) {
+                    self.close_window(id, true);
                 }
             }
             KeyboardInput {
