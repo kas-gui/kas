@@ -177,27 +177,29 @@ impl<W: Menu<Msg = M>, D: Directional, M: 'static> event::Handler for MenuBar<W,
                 }
             }
             Event::Command(cmd, _) => {
-                // Arrow keys can switch to the next / previous menu.
+                // Arrow keys can switch to the next / previous menu
+                // as well as to the first / last item of an open menu.
+                use Command::{Left, Up};
                 let is_vert = self.bar.direction().is_vertical();
-                let reverse = self.bar.direction().is_reversed()
-                    ^ match cmd {
-                        Command::Left if !is_vert => true,
-                        Command::Right if !is_vert => false,
-                        Command::Up if is_vert => true,
-                        Command::Down if is_vert => false,
-                        _ => return Response::Unhandled,
-                    };
-
-                for i in 0..self.bar.len() {
-                    if self.bar[i].menu_is_open() {
-                        let index = if reverse { i.wrapping_sub(1) } else { i + 1 };
-                        if index < self.bar.len() {
-                            self.bar[i].set_menu_path(mgr, None, true);
-                            let w = &mut self.bar[index];
-                            w.set_menu_path(mgr, Some(w.id()), true);
+                let reverse = self.bar.direction().is_reversed() ^ matches!(cmd, Left | Up);
+                match cmd.as_direction().map(|d| d.is_vertical()) {
+                    Some(v) if v == is_vert => {
+                        for i in 0..self.bar.len() {
+                            if self.bar[i].menu_is_open() {
+                                let mut j = isize::conv(i);
+                                j = if reverse { j - 1 } else { j + 1 };
+                                j = j.rem_euclid(self.bar.len().cast());
+                                self.bar[i].set_menu_path(mgr, None, true);
+                                let w = &mut self.bar[usize::conv(j)];
+                                w.set_menu_path(mgr, Some(w.id()), true);
+                                break;
+                            }
                         }
-                        break;
                     }
+                    Some(_) => {
+                        mgr.next_nav_focus(self, reverse, true);
+                    }
+                    None => return Response::Unhandled,
                 }
             }
             _ => return Response::Unhandled,

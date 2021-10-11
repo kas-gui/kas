@@ -89,6 +89,35 @@ impl<D: Directional, W: Menu> SubMenu<D, W> {
             mgr.close_window(id);
         }
     }
+
+    fn handle_dir_key(&mut self, mgr: &mut Manager, cmd: Command) -> Response<W::Msg> {
+        if self.menu_is_open() {
+            if let Some(dir) = cmd.as_direction() {
+                if dir.is_vertical() == self.list.direction().is_vertical() {
+                    let rev = dir.is_reversed() ^ self.list.direction().is_reversed();
+                    mgr.next_nav_focus(self, rev, true);
+                    Response::None
+                } else if dir == self.direction.as_direction().reversed() {
+                    self.close_menu(mgr);
+                    Response::None
+                } else {
+                    Response::Unhandled
+                }
+            } else if matches!(cmd, Command::Home | Command::End) {
+                mgr.clear_nav_focus();
+                let rev = cmd == Command::End;
+                mgr.next_nav_focus(self, rev, true);
+                Response::None
+            } else {
+                Response::Unhandled
+            }
+        } else if Some(self.direction.as_direction()) == cmd.as_direction() {
+            self.open_menu(mgr, true);
+            Response::None
+        } else {
+            Response::Unhandled
+        }
+    }
 }
 
 impl<D: Directional, W: Menu> WidgetConfig for SubMenu<D, W> {
@@ -161,13 +190,7 @@ impl<D: Directional, M: 'static, W: Menu<Msg = M>> event::Handler for SubMenu<D,
                 debug_assert_eq!(Some(id), self.popup_id);
                 self.popup_id = None;
             }
-            Event::Command(cmd, _) => match (self.direction.as_direction(), cmd) {
-                (Direction::Left, Command::Left) => self.open_menu(mgr, true),
-                (Direction::Right, Command::Right) => self.open_menu(mgr, true),
-                (Direction::Up, Command::Up) => self.open_menu(mgr, true),
-                (Direction::Down, Command::Down) => self.open_menu(mgr, true),
-                _ => return Response::Unhandled,
-            },
+            Event::Command(cmd, _) => return self.handle_dir_key(mgr, cmd),
             _ => return Response::Unhandled,
         }
         Response::None
@@ -188,31 +211,8 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
                 Response::Pan(delta) => Response::Pan(delta),
                 Response::Focus(rect) => Response::Focus(rect),
                 Response::Unhandled => match event {
-                    Event::Command(key, _) if self.popup_id.is_some() => {
-                        let dir = self.direction.as_direction();
-                        let inner_vert = self.list.direction().is_vertical();
-                        let next = |mgr: &mut Manager, s, clr, rev| {
-                            if clr {
-                                mgr.clear_nav_focus();
-                            }
-                            mgr.next_nav_focus(s, rev, true);
-                        };
-                        let rev = self.list.direction().is_reversed();
-                        use Direction::*;
-                        match key {
-                            Command::Left if !inner_vert => next(mgr, self, false, !rev),
-                            Command::Right if !inner_vert => next(mgr, self, false, rev),
-                            Command::Up if inner_vert => next(mgr, self, false, !rev),
-                            Command::Down if inner_vert => next(mgr, self, false, rev),
-                            Command::Home => next(mgr, self, true, false),
-                            Command::End => next(mgr, self, true, true),
-                            Command::Left if dir == Right => self.close_menu(mgr),
-                            Command::Right if dir == Left => self.close_menu(mgr),
-                            Command::Up if dir == Down => self.close_menu(mgr),
-                            Command::Down if dir == Up => self.close_menu(mgr),
-                            _ => return Response::Unhandled,
-                        }
-                        Response::None
+                    Event::Command(cmd, _) if self.popup_id.is_some() => {
+                        self.handle_dir_key(mgr, cmd)
                     }
                     _ => Response::Unhandled,
                 },
