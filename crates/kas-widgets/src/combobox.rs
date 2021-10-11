@@ -273,7 +273,7 @@ impl<M: 'static> ComboBox<M> {
             Response::Focus(x) => Response::Focus(x),
             Response::Update | Response::Select => {
                 if let Some(id) = self.popup_id {
-                    mgr.close_window(id);
+                    mgr.close_window(id, true);
                 }
                 if let Some(index) = self.popup.inner.find_child_index(id) {
                     if index != self.active {
@@ -290,7 +290,7 @@ impl<M: 'static> ComboBox<M> {
             Response::Msg((index, ())) => {
                 *mgr |= self.set_active(index);
                 if let Some(id) = self.popup_id {
-                    mgr.close_window(id);
+                    mgr.close_window(id, true);
                 }
                 if let Some(ref f) = self.on_select {
                     Response::update_or_msg((f)(mgr, index))
@@ -319,7 +319,7 @@ impl<M: 'static> event::Handler for ComboBox<M> {
         match event {
             Event::Activate => {
                 if let Some(id) = self.popup_id {
-                    mgr.close_window(id);
+                    mgr.close_window(id, true);
                 } else {
                     open_popup(self, mgr, true);
                 }
@@ -337,7 +337,7 @@ impl<M: 'static> event::Handler for ComboBox<M> {
                     }
                 } else {
                     if let Some(id) = self.popup_id {
-                        mgr.close_window(id);
+                        mgr.close_window(id, false);
                     }
                     return Response::Unhandled;
                 }
@@ -373,7 +373,7 @@ impl<M: 'static> event::Handler for ComboBox<M> {
                     }
                 }
                 if let Some(id) = self.popup_id {
-                    mgr.close_window(id);
+                    mgr.close_window(id, true);
                 }
             }
             Event::PopupRemoved(id) => {

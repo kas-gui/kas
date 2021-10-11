@@ -258,8 +258,12 @@ impl<'a> Manager<'a> {
     ///
     /// In the case of a pop-up, all pop-ups created after this will also be
     /// removed (on the assumption they are a descendant of the first popup).
+    ///
+    /// If `restore_focus` then navigation focus will return to whichever widget
+    /// had focus before the popup was open. (Usually this is true excepting
+    /// where focus has already been changed.)
     #[inline]
-    pub fn close_window(&mut self, id: WindowId) {
+    pub fn close_window(&mut self, id: WindowId, restore_focus: bool) {
         if let Some(index) =
             self.state.popups.iter().enumerate().find_map(
                 |(i, p)| {
@@ -279,9 +283,14 @@ impl<'a> Manager<'a> {
                 old_nav_focus = onf;
             }
 
+            if !restore_focus {
+                old_nav_focus = None
+            }
             if let Some(id) = old_nav_focus {
                 self.set_nav_focus(id, true);
             }
+            // TODO: if popup.id is an ancestor of self.nav_focus then clear
+            // focus if not setting (currently we cannot test this)
         }
 
         self.shell.close_window(id);

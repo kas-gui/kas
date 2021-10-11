@@ -307,7 +307,7 @@ impl<'a> Manager<'a> {
             return;
         } else if vkey == VK::Escape {
             if let Some(id) = self.state.popups.last().map(|(id, _, _)| *id) {
-                self.close_window(id);
+                self.close_window(id, true);
                 return;
             }
         } else if !self.state.char_focus {
@@ -390,7 +390,7 @@ impl<'a> Manager<'a> {
             let last = self.state.popups.len() - 1;
             for i in 0..n {
                 let id = self.state.popups[last - i].0;
-                self.close_window(id);
+                self.close_window(id, false);
             }
         }
 
@@ -516,7 +516,7 @@ impl<'a> Manager<'a> {
                 Response::Unhandled => (),
                 _ => return,
             }
-            self.close_window(wid);
+            self.close_window(wid, false);
         }
         self.send_event(widget, id, event);
     }

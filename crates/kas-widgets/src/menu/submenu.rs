@@ -84,9 +84,9 @@ impl<D: Directional, W: Menu> SubMenu<D, W> {
             }
         }
     }
-    fn close_menu(&mut self, mgr: &mut Manager) {
+    fn close_menu(&mut self, mgr: &mut Manager, restore_focus: bool) {
         if let Some(id) = self.popup_id {
-            mgr.close_window(id);
+            mgr.close_window(id, restore_focus);
         }
     }
 
@@ -98,7 +98,7 @@ impl<D: Directional, W: Menu> SubMenu<D, W> {
                     mgr.next_nav_focus(self, rev, true);
                     Response::None
                 } else if dir == self.direction.as_direction().reversed() {
-                    self.close_menu(mgr);
+                    self.close_menu(mgr, true);
                     Response::None
                 } else {
                     Response::Unhandled
@@ -221,7 +221,7 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
                     Response::None
                 }
                 r @ (Response::Update | Response::Msg(_)) => {
-                    self.close_menu(mgr);
+                    self.close_menu(mgr, true);
                     r
                 }
             }
@@ -266,7 +266,7 @@ impl<D: Directional, W: Menu> Menu for SubMenu<D, W> {
                     for i in 0..self.list.len() {
                         self.list[i].set_menu_path(mgr, None, set_focus);
                     }
-                    self.close_menu(mgr);
+                    self.close_menu(mgr, set_focus);
                 }
             }
         }
