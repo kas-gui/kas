@@ -13,7 +13,7 @@ use super::{GrabMode, Manager, Response, SendEvent}; // for doc-links
 use super::{MouseButton, UpdateHandle, VirtualKeyCode};
 
 use crate::geom::{Coord, DVec2, Offset};
-use crate::{WidgetId, WindowId};
+use crate::{dir::Direction, WidgetId, WindowId};
 
 /// Events addressed to a widget
 #[non_exhaustive]
@@ -381,6 +381,17 @@ impl Command {
     pub fn suitable_for_sel_focus(self) -> bool {
         use Command::*;
         matches!(self, Escape | Cut | Copy | Deselect)
+    }
+
+    /// Convert arrow keys to a direction
+    pub fn as_direction(self) -> Option<Direction> {
+        match self {
+            Command::Left => Some(Direction::Left),
+            Command::Right => Some(Direction::Right),
+            Command::Up => Some(Direction::Up),
+            Command::Down => Some(Direction::Down),
+            _ => None,
+        }
     }
 }
 

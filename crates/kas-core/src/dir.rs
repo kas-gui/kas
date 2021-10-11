@@ -5,6 +5,8 @@
 
 //! Direction types
 
+use std::fmt;
+
 /// Trait over directional types
 ///
 /// This trait has a variable implementation, [`Direction`], and several fixed
@@ -90,6 +92,21 @@ pub enum Direction {
     Down = 1,
     Left = 2,
     Up = 3,
+}
+
+impl fmt::Display for Direction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(
+            f,
+            "{}",
+            match self {
+                Direction::Right => "Right",
+                Direction::Down => "Down",
+                Direction::Left => "Left",
+                Direction::Up => "Up",
+            }
+        )
+    }
 }
 
 impl Directional for Direction {
