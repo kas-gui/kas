@@ -107,6 +107,7 @@ impl Options {
     /// -   `Metal`
     /// -   `DX11`
     /// -   `DX12`
+    /// -   `BROWSER_WEBGPU`: web target through webassembly
     /// -   `PRIMARY`: any of Vulkan, Metal or DX12
     /// -   `SECONDARY`: any of GL or DX11
     ///
@@ -164,6 +165,7 @@ impl Options {
                 "METAL" => Backends::METAL,
                 "DX11" => Backends::DX11,
                 "DX12" => Backends::DX12,
+                "BROWSER_WEBGPU" => Backends::BROWSER_WEBGPU,
                 "PRIMARY" => Backends::PRIMARY,
                 "SECONDARY" => Backends::SECONDARY,
                 other => {
@@ -183,6 +185,7 @@ impl Options {
     pub(crate) fn adapter_options(&self) -> wgpu::RequestAdapterOptions {
         wgpu::RequestAdapterOptions {
             power_preference: self.power_preference,
+            force_fallback_adapter: false, // TODO: expose?
             compatible_surface: None,
         }
     }

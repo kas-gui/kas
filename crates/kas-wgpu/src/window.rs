@@ -338,29 +338,32 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         }
 
         let time2 = Instant::now();
-        let frame = match self.surface.get_current_frame() {
+        let frame = match self.surface.get_current_texture() {
             Ok(frame) => frame,
-            Err(error) => {
-                error!("Frame swap failed: {}", error);
+            Err(e) => {
+                error!("Failed to get frame texture: {}", e);
+                // It may be possible to recover by calling surface.configure(...) then retrying
+                // surface.get_current_texture(), but is doing so ever useful?
                 return;
             }
         };
-        let view = frame.output.texture.create_view(&Default::default());
+        let view = frame.texture.create_view(&Default::default());
 
-        let time3 = Instant::now();
         // TODO: check frame.optimal ?
         let clear_color = to_wgpu_color(shared.theme.clear_color());
         shared.render(&mut self.draw, &view, clear_color);
+
+        frame.present();
 
         let end = Instant::now();
         // Explanation: 'text' is the time to prepare positioned glyphs, 'frame-
         // swap' is mostly about sync, 'render' is time to feed the GPU.
         trace!(
-            "do_draw completed in {}µs ({}µs text, {}µs frame-swap, {}µs render)",
+            "do_draw completed in {}µs ({}μs widgets, {}µs text, {}µs render)",
             (end - time).as_micros(),
+            (time2 - time).as_micros(),
             self.draw.text.dur_micros(),
-            (time3 - time2).as_micros(),
-            (end - time3).as_micros()
+            (end - time2).as_micros()
         );
     }
 }
