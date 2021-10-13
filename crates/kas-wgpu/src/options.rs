@@ -54,7 +54,7 @@ impl Default for Options {
             theme_config_path: PathBuf::new(),
             config_mode: ConfigMode::Read,
             power_preference: PowerPreference::LowPower,
-            backends: Backends::PRIMARY,
+            backends: Backends::all(),
             wgpu_trace_path: None,
         }
     }
@@ -110,6 +110,7 @@ impl Options {
     /// -   `BROWSER_WEBGPU`: web target through webassembly
     /// -   `PRIMARY`: any of Vulkan, Metal or DX12
     /// -   `SECONDARY`: any of GL or DX11
+    /// -   `FALLBACK`: force use of fallback (CPU) rendering
     ///
     /// WGPU has an [API tracing] feature for debugging. To use this, ensure the
     /// `wgpu/trace` feature is enabled and set the output path:
@@ -168,6 +169,7 @@ impl Options {
                 "BROWSER_WEBGPU" => Backends::BROWSER_WEBGPU,
                 "PRIMARY" => Backends::PRIMARY,
                 "SECONDARY" => Backends::SECONDARY,
+                "FALLBACK" => Backends::empty(),
                 other => {
                     warn!("Unexpected environment value: KAS_BACKENDS={}", other);
                     options.backends
@@ -185,13 +187,17 @@ impl Options {
     pub(crate) fn adapter_options(&self) -> wgpu::RequestAdapterOptions {
         wgpu::RequestAdapterOptions {
             power_preference: self.power_preference,
-            force_fallback_adapter: false, // TODO: expose?
+            force_fallback_adapter: self.backends.is_empty(),
             compatible_surface: None,
         }
     }
 
     pub(crate) fn backend(&self) -> Backends {
-        self.backends
+        if self.backends.is_empty() {
+            Backends::all()
+        } else {
+            self.backends
+        }
     }
 
     /// Load/save theme config on start
