@@ -2,7 +2,7 @@
 name = "kas-dylib"
 version = "0.10.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
-edition = "2018"
+edition = "2021"
 license = "Apache-2.0"
 description = "KAS GUI / dylib"
 readme = "README.md"

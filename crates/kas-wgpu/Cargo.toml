@@ -2,7 +2,7 @@
 name = "kas-wgpu"
 version = "0.10.1"
 authors = ["Diggory Hardy <git@dhardy.name>"]
-edition = "2018"
+edition = "2021"
 license = "Apache-2.0"
 description = "KAS GUI / wgpu front-end"
 keywords = ["gui", "wgpu"]
