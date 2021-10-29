@@ -301,25 +301,6 @@ impl<'a> Manager<'a> {
         use VirtualKeyCode as VK;
         let shift = self.state.modifiers.shift();
 
-        if vkey == VK::Tab {
-            self.clear_char_focus();
-            self.next_nav_focus(widget.as_widget_mut(), shift, true);
-            return;
-        } else if vkey == VK::Escape {
-            if let Some(id) = self.state.popups.last().map(|(id, _, _)| *id) {
-                self.close_window(id, true);
-                return;
-            }
-        } else if !self.state.char_focus {
-            if let Some(id) = self.state.nav_focus {
-                if vkey == VK::Space || vkey == VK::Return || vkey == VK::NumpadEnter {
-                    self.add_key_depress(scancode, id);
-                    self.send_event(widget, id, Event::Activate);
-                    return;
-                }
-            }
-        }
-
         let opt_command = self
             .state
             .config
@@ -400,6 +381,23 @@ impl<'a> Manager<'a> {
             }
             self.add_key_depress(scancode, id);
             self.send_event(widget, id, Event::Activate);
+        } else if vkey == VK::Tab {
+            self.clear_char_focus();
+            self.next_nav_focus(widget.as_widget_mut(), shift, true);
+            return;
+        } else if vkey == VK::Escape {
+            if let Some(id) = self.state.popups.last().map(|(id, _, _)| *id) {
+                self.close_window(id, true);
+                return;
+            }
+        } else if !self.state.char_focus {
+            if let Some(id) = self.state.nav_focus {
+                if vkey == VK::Space || vkey == VK::Return || vkey == VK::NumpadEnter {
+                    self.add_key_depress(scancode, id);
+                    self.send_event(widget, id, Event::Activate);
+                    return;
+                }
+            }
         }
     }
 
