@@ -55,6 +55,28 @@ Precompiled example apps can be downloaded as follows:
 -   download one of the `examples-*` artifacts
 
 
+Design
+------
+
+### Data or widget first?
+
+KAS uses a widget-first design: widgets are persistent and retain state; data
+must be pushed into widgets. *Many* modern UIs are data-first: widgets are
+built per-frame over a single persistent data object. There are significant
+trade-offs of a widget-first design:
+
+-   (for) widgets have embedded state; data-first designs may require explicitly
+    connecting widgets to state, for those that need it
+-   (against) dynamic layout is harder
+-   (for) updates are fast since only affected widgets need be touched; using
+    10,000+ widgets in a UI is not a problem
+-   (against) rebuilding the UI is much slower
+-   (for) pre-built "view widgets" with built-in support for scrolling
+    over large external databases (only retrieving visible entries)
+-   (against) "view widgets" are an emulation of data-first design over a
+    widget-first model, and less flexible
+
+
 Getting started
 ---------------
 
