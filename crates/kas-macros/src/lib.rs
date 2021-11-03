@@ -396,7 +396,9 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     let ident = &child.ident;
                     let update = if let Some(f) = child.args.update.as_ref() {
                         quote! {
-                            self.#f(mgr);
+                            if matches!(r, Response::Update) {
+                                self.#f(mgr);
+                            }
                         }
                     } else {
                         quote! {}
