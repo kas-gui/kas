@@ -97,7 +97,7 @@ pub use enums::{CursorIcon, ModifiersState, MouseButton, VirtualKeyCode};
 pub use events::*;
 pub use handler::{Handler, SendEvent};
 pub use manager::{ConfigureManager, GrabMode, Manager, ManagerState};
-pub use response::Response;
+pub use response::{OnMessage, Response};
 pub use update::UpdateHandle;
 
 /// A type supporting a small number of key bindings

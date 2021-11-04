@@ -20,7 +20,7 @@ pub use crate::draw::{
 };
 #[doc(no_inline)]
 pub use crate::event::{
-    Event, Handler, Manager, ManagerState, Response, SendEvent, UpdateHandle, VoidMsg,
+    Event, Handler, Manager, ManagerState, OnMessage, Response, SendEvent, UpdateHandle, VoidMsg,
 };
 #[doc(no_inline)]
 pub use crate::geom::{Coord, Offset, Rect, Size};

@@ -5,8 +5,9 @@
 
 //! Event handling: Response type
 
-use super::VoidResponse;
+use super::{Manager, VoidResponse};
 use crate::geom::{Offset, Rect};
+use crate::Widget;
 
 /// Response type from [`Handler::handle`].
 ///
@@ -149,3 +150,43 @@ impl<M> From<M> for Response<M> {
         Response::Msg(msg)
     }
 }
+
+/// Configurable message converter / handler
+///
+/// Parent widgets are expected to implement this to handle or convert messages
+/// from child widgets, excepting where the parent and child message types are
+/// equal (which is implemented as pass-through).
+pub trait OnMessage<M>: Widget {
+    /// Called on a widget:
+    ///
+    /// -   `mgr`: the event manager
+    /// -   `index`: index of child widget
+    /// -   `msg`: message from child
+    fn on_msg(&mut self, mgr: &mut Manager, index: usize, msg: M) -> Response<Self::Msg>;
+}
+
+// TODO: This impl is required, yet falsely reported to cause conflicts
+// Bug report: https://github.com/rust-lang/rust/issues/90587
+impl<W: Widget, M: Into<W::Msg>> OnMessage<M> for W {
+    #[inline]
+    fn on_msg(&mut self, _mgr: &mut Manager, _index: usize, msg: M) -> Response<W::Msg> {
+        Response::Msg(msg.into())
+    }
+}
+
+// Below alternatives are not viable: some widgets like CheckBox are generic
+// over M and required implementations hit the same conflict.
+
+// impl<W: Widget> OnMessage<VoidMsg> for W {
+//     #[inline]
+//     fn on_msg(&mut self, _: &mut Manager, _: usize, _: VoidMsg) -> Response<W::Msg> {
+//         Response::None
+//     }
+// }
+
+// impl<W: Widget> OnMessage<W::Msg> for W {
+//     #[inline]
+//     fn on_msg(&mut self, _: &mut Manager, _: usize, msg: W::Msg) -> Response<W::Msg> {
+//         Response::Msg(msg)
+//     }
+// }
