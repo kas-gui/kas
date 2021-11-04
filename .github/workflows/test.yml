@@ -60,7 +60,7 @@ jobs:
         toolchain: [stable]
         include:
           - os: ubuntu-latest
-            toolchain: "1.53.0"
+            toolchain: "1.56.0"
 
     steps:
       - uses: actions/checkout@v2
