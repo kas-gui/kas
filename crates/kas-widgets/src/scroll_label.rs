@@ -15,9 +15,6 @@ use kas::text::format::{EditableText, FormattableText};
 use kas::text::SelectionHelper;
 
 /// A text label supporting scrolling and selection
-///
-/// TODO: this should support copying to clipboard (like editbox), but it never
-/// has keyboard focus and we don't yet have another way of capturing Ctrl+C.
 #[derive(Clone, Default, Debug, Widget)]
 #[widget(config(cursor_icon = event::CursorIcon::Text))]
 #[handler(handle=noauto)]
