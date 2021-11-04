@@ -49,6 +49,8 @@ jobs:
         run: cargo test --all-features
       - name: Test examples/mandlebrot
         run: cargo test --manifest-path examples/mandlebrot/Cargo.toml --all-features
+      - name: Clippy
+        run: cargo +nightly clippy --all --features nightly -- -D warnings
 
   test:
     name: Test
