@@ -18,7 +18,7 @@ jobs:
           profile: minimal
           toolchain: nightly
           override: true
-          components: rustfmt
+          components: rustfmt, clippy
       - name: Install dependencies
         run: sudo apt-get install -y libxkbcommon-dev libxcb-shape0-dev libxcb-xfixes0-dev
 
