@@ -99,12 +99,12 @@ impl ManagerState {
 
         // Enumerate and configure all widgets:
         let coord = self.last_mouse_coord;
-        self.with(shell, |mut mgr| {
+        self.with(shell, |mgr| {
             mgr.push_accel_layer(false);
             widget.configure_recurse(ConfigureManager {
                 id: &mut id,
                 map: &mut renames,
-                mgr: &mut mgr,
+                mgr,
             });
             mgr.pop_accel_layer(widget.id());
             debug_assert!(mgr.state.accel_stack.is_empty());

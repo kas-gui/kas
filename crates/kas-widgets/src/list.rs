@@ -186,7 +186,7 @@ impl<D: Directional, W: Widget + Clone, M: FromIndexed<<W as Handler>::Msg> + 's
             core: self.core.clone(),
             widgets: self.widgets.clone(),
             data: self.data.clone(),
-            direction: self.direction.clone(),
+            direction: self.direction,
             _pd: Default::default(),
         }
     }
@@ -606,7 +606,7 @@ struct ListIterMut<'a, W: Widget> {
 impl<'a, W: Widget> Iterator for ListIterMut<'a, W> {
     type Item = &'a mut W;
     fn next(&mut self) -> Option<Self::Item> {
-        let list = std::mem::replace(&mut self.list, &mut []);
+        let list = std::mem::take(&mut self.list);
         if let Some((first, rest)) = list.split_first_mut() {
             self.list = rest;
             Some(first)

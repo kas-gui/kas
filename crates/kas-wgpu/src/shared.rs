@@ -58,7 +58,7 @@ where
         info!("Using graphics adapter: {}", adapter.get_info().name);
 
         let desc = CB::device_descriptor();
-        let trace_path = options.wgpu_trace_path.as_ref().map(|p| p.as_path());
+        let trace_path = options.wgpu_trace_path.as_deref();
         let req = adapter.request_device(&desc, trace_path);
         let device_and_queue = futures::executor::block_on(req)?;
 

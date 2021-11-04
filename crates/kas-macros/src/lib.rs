@@ -740,28 +740,26 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 if let Some(ref wattr) = attr {
                     if let Some(tyr) = gen_msg {
                         handler_clauses.push(parse_quote! { #ty: ::kas::Widget<Msg = #tyr> });
-                    } else {
-                        if let Some(ref handler) = wattr.args.handler.any_ref() {
-                            // Message passed to a method; exact type required
-                            if let Some(ty_bound) = find_handler_ty(handler, &args.impls) {
-                                handler_clauses
-                                    .push(parse_quote! { #ty: ::kas::Widget<Msg = #ty_bound> });
-                            } else {
-                                return quote! {}.into(); // exit after emitting error
-                            }
-                        } else if wattr.args.handler == Handler::Discard {
-                            // No type bound on discarded message
+                    } else if let Some(handler) = wattr.args.handler.any_ref() {
+                        // Message passed to a method; exact type required
+                        if let Some(ty_bound) = find_handler_ty(handler, &args.impls) {
+                            handler_clauses
+                                .push(parse_quote! { #ty: ::kas::Widget<Msg = #ty_bound> });
                         } else {
-                            // Message converted via Into
-                            name_buf.push('R');
-                            let tyr = Ident::new(&name_buf, Span::call_site());
-                            handler
-                                .generics
-                                .params
-                                .push(syn::GenericParam::Type(tyr.clone().into()));
-                            handler_clauses.push(parse_quote! { #ty: ::kas::Widget<Msg = #tyr> });
-                            handler_clauses.push(parse_quote! { #msg: From<#tyr> });
+                            return quote! {}.into(); // exit after emitting error
                         }
+                    } else if wattr.args.handler == Handler::Discard {
+                        // No type bound on discarded message
+                    } else {
+                        // Message converted via Into
+                        name_buf.push('R');
+                        let tyr = Ident::new(&name_buf, Span::call_site());
+                        handler
+                            .generics
+                            .params
+                            .push(syn::GenericParam::Type(tyr.clone().into()));
+                        handler_clauses.push(parse_quote! { #ty: ::kas::Widget<Msg = #tyr> });
+                        handler_clauses.push(parse_quote! { #msg: From<#tyr> });
                     }
 
                     if let Some(mut bound) = gen_bound {

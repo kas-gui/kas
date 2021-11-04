@@ -391,12 +391,12 @@ impl<'a, W: Widget> GridBuilder<'a, W> {
 
     /// Iterate over childern
     pub fn iter(&self) -> impl Iterator<Item = &(GridChildInfo, W)> {
-        ListIter { list: &self.0 }
+        ListIter { list: self.0 }
     }
 
     /// Mutably iterate over childern
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut (GridChildInfo, W)> {
-        ListIterMut { list: &mut self.0 }
+        ListIterMut { list: self.0 }
     }
 }
 
@@ -444,7 +444,7 @@ struct ListIterMut<'a, W: Widget> {
 impl<'a, W: Widget> Iterator for ListIterMut<'a, W> {
     type Item = &'a mut (GridChildInfo, W);
     fn next(&mut self) -> Option<Self::Item> {
-        let list = std::mem::replace(&mut self.list, &mut []);
+        let list = std::mem::take(&mut self.list);
         if let Some((first, rest)) = list.split_first_mut() {
             self.list = rest;
             Some(first)

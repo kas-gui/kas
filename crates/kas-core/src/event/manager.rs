@@ -384,18 +384,15 @@ impl<'a> Manager<'a> {
         } else if vkey == VK::Tab {
             self.clear_char_focus();
             self.next_nav_focus(widget.as_widget_mut(), shift, true);
-            return;
         } else if vkey == VK::Escape {
             if let Some(id) = self.state.popups.last().map(|(id, _, _)| *id) {
                 self.close_window(id, true);
-                return;
             }
         } else if !self.state.char_focus {
             if let Some(id) = self.state.nav_focus {
                 if vkey == VK::Space || vkey == VK::Return || vkey == VK::NumpadEnter {
                     self.add_key_depress(scancode, id);
                     self.send_event(widget, id, Event::Activate);
-                    return;
                 }
             }
         }

@@ -368,7 +368,7 @@ impl event::Handler for Mandlebrot {
                             Command::Right => DVec2(d, 0.0),
                             _ => return Response::Unhandled,
                         };
-                        self.delta = self.delta + self.alpha.complex_mul(delta);
+                        self.delta += self.alpha.complex_mul(delta);
                     }
                 }
                 mgr.redraw(self.id());
