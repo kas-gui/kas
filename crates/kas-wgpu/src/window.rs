@@ -191,8 +191,8 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
     pub fn handle_closure(mut self, shared: &mut SharedState<C, T>) -> TkAction {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let widget = &mut *self.widget;
-        self.mgr.with(&mut tkw, |mut mgr| {
-            widget.handle_closure(&mut mgr);
+        self.mgr.with(&mut tkw, |mgr| {
+            widget.handle_closure(mgr);
         });
         self.mgr.update(&mut tkw, &mut *self.widget)
     }
@@ -222,8 +222,8 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
     pub fn add_popup(&mut self, shared: &mut SharedState<C, T>, id: WindowId, popup: kas::Popup) {
         let window = &mut *self.widget;
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-        self.mgr.with(&mut tkw, |mut mgr| {
-            kas::Window::add_popup(window, &mut mgr, id, popup);
+        self.mgr.with(&mut tkw, |mgr| {
+            kas::Window::add_popup(window, mgr, id, popup);
         });
     }
 
@@ -237,8 +237,8 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         } else {
             let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
             let widget = &mut *self.widget;
-            self.mgr.with(&mut tkw, |mut mgr| {
-                widget.remove_popup(&mut mgr, id);
+            self.mgr.with(&mut tkw, |mgr| {
+                widget.remove_popup(mgr, id);
             });
         }
     }

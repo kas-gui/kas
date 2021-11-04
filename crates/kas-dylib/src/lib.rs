@@ -9,6 +9,7 @@
 //! faster. It may be preferable only to use this in debug builds.
 
 #![allow(unused_imports)]
+#![allow(clippy::single_component_path_imports)]
 
 use kas_core;
 #[cfg(feature = "kas-resvg")]

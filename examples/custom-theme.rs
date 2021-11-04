@@ -19,17 +19,9 @@ use kas::theme::FlatTheme;
 /// A demo theme
 ///
 /// We set a custom background colour and use `FlatTheme` for everything else.
+#[derive(Default)]
 pub struct CustomTheme {
     inner: FlatTheme,
-}
-
-impl CustomTheme {
-    /// Construct
-    pub fn new() -> Self {
-        CustomTheme {
-            inner: FlatTheme::new(),
-        }
-    }
 }
 
 // manual impl because derive macro applies incorrect bounds
@@ -137,7 +129,7 @@ fn main() -> Result<(), kas::shell::Error> {
         }
     };
 
-    let theme = CustomTheme::new();
+    let theme = CustomTheme::default();
 
     let window = Window::new(
         "Theme demo",

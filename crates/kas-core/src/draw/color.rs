@@ -5,6 +5,8 @@
 
 //! Colour types
 
+#![allow(clippy::self_named_constructors)]
+
 use crate::cast::{Conv, ConvFloat};
 use thiserror::Error;
 

@@ -686,7 +686,7 @@ impl<'a> Manager<'a> {
         // processing, we can push directly to self.state.action.
         self.state.send_action(TkAction::REDRAW);
 
-        fn nav<'a>(
+        fn nav(
             mgr: &mut Manager,
             widget: &mut dyn WidgetConfig,
             focus: Option<WidgetId>,

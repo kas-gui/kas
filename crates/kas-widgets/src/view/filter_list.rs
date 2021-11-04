@@ -435,7 +435,7 @@ impl<
         match event {
             Event::HandleUpdate { .. } => {
                 self.update_view(mgr);
-                return Response::Update;
+                Response::Update
             }
             _ => Response::None,
         }
