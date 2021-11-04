@@ -219,7 +219,6 @@ mod kw {
     custom_keyword!(map_msg);
     custom_keyword!(use_msg);
     custom_keyword!(discard_msg);
-    custom_keyword!(update);
     custom_keyword!(msg);
     custom_keyword!(generics);
     custom_keyword!(single);
@@ -340,7 +339,6 @@ pub struct WidgetAttrArgs {
     pub rspan: Option<Lit>,
     pub halign: Option<Ident>,
     pub valign: Option<Ident>,
-    pub update: Option<Ident>,
     pub handler: Handler,
 }
 
@@ -409,7 +407,6 @@ impl Parse for WidgetAttrArgs {
             rspan: None,
             halign: None,
             valign: None,
-            update: None,
             handler: Handler::None,
         };
         if input.is_empty() {
@@ -459,10 +456,6 @@ impl Parse for WidgetAttrArgs {
                 let _: kw::valign = content.parse()?;
                 let _: Eq = content.parse()?;
                 args.valign = Some(content.parse()?);
-            } else if args.update.is_none() && lookahead.peek(kw::update) {
-                let _: kw::update = content.parse()?;
-                let _: Eq = content.parse()?;
-                args.update = Some(content.parse()?);
             } else if args.handler.is_none() && lookahead.peek(kw::flatmap_msg) {
                 let _: kw::flatmap_msg = content.parse()?;
                 let _: Eq = content.parse()?;
@@ -542,12 +535,6 @@ impl ToTokens for WidgetAttrArgs {
                     args.append(comma.clone());
                 }
                 args.append_all(quote! { valign = #ident });
-            }
-            if let Some(ref ident) = self.update {
-                if !args.is_empty() {
-                    args.append(comma.clone());
-                }
-                args.append_all(quote! { update = #ident });
             }
             if !self.handler.is_none() && !args.is_empty() {
                 args.append(comma);
