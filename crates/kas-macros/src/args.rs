@@ -311,26 +311,6 @@ impl Parse for WidgetDerive {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub enum Handler {
-    None,
-    Use(Ident),
-    Map(Ident),
-    FlatMap(Ident),
-    Discard,
-}
-impl Handler {
-    pub fn is_none(&self) -> bool {
-        *self == Handler::None
-    }
-    pub fn any_ref(&self) -> Option<&Ident> {
-        match self {
-            Handler::None | Handler::Discard => None,
-            Handler::Use(n) | Handler::Map(n) | Handler::FlatMap(n) => Some(n),
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct WidgetAttrArgs {
     pub col: Option<Lit>,
@@ -339,7 +319,6 @@ pub struct WidgetAttrArgs {
     pub rspan: Option<Lit>,
     pub halign: Option<Ident>,
     pub valign: Option<Ident>,
-    pub handler: Handler,
 }
 
 #[derive(Debug)]
@@ -407,7 +386,6 @@ impl Parse for WidgetAttrArgs {
             rspan: None,
             halign: None,
             valign: None,
-            handler: Handler::None,
         };
         if input.is_empty() {
             return Ok(args);
@@ -456,26 +434,11 @@ impl Parse for WidgetAttrArgs {
                 let _: kw::valign = content.parse()?;
                 let _: Eq = content.parse()?;
                 args.valign = Some(content.parse()?);
-            } else if args.handler.is_none() && lookahead.peek(kw::flatmap_msg) {
-                let _: kw::flatmap_msg = content.parse()?;
-                let _: Eq = content.parse()?;
-                args.handler = Handler::FlatMap(content.parse()?);
-            } else if args.handler.is_none() && lookahead.peek(kw::map_msg) {
-                let _: kw::map_msg = content.parse()?;
-                let _: Eq = content.parse()?;
-                args.handler = Handler::Map(content.parse()?);
-            } else if args.handler.is_none() && lookahead.peek(kw::use_msg) {
-                let _: kw::use_msg = content.parse()?;
-                let _: Eq = content.parse()?;
-                args.handler = Handler::Use(content.parse()?);
-            } else if args.handler.is_none() && lookahead.peek(kw::discard_msg) {
-                let _: kw::discard_msg = content.parse()?;
-                args.handler = Handler::Discard;
             } else if lookahead.peek(kw::handler) {
                 let tok: Ident = content.parse()?;
                 return Err(Error::new(
                     tok.span(),
-                    "handler is obsolete; replace with flatmap_msg, map_msg, use_msg or discard_msg",
+                    "handler is obsolete; replace with OnMessage",
                 ));
             } else {
                 return Err(lookahead.error());
@@ -499,7 +462,6 @@ impl ToTokens for WidgetAttrArgs {
             || self.rspan.is_some()
             || self.halign.is_some()
             || self.valign.is_some()
-            || !self.handler.is_none()
         {
             let comma = TokenTree::from(Punct::new(',', Spacing::Alone));
             let mut args = TokenStream::new();
@@ -535,16 +497,6 @@ impl ToTokens for WidgetAttrArgs {
                     args.append(comma.clone());
                 }
                 args.append_all(quote! { valign = #ident });
-            }
-            if !self.handler.is_none() && !args.is_empty() {
-                args.append(comma);
-            }
-            match &self.handler {
-                Handler::None => (),
-                Handler::Use(f) => args.append_all(quote! { use_msg = #f }),
-                Handler::Map(f) => args.append_all(quote! { map_msg = #f }),
-                Handler::FlatMap(f) => args.append_all(quote! { flatmap_msg = #f }),
-                Handler::Discard => args.append_all(quote! { discard_msg }),
             }
             tokens.append_all(quote! { ( #args ) });
         }

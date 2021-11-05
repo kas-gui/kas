@@ -26,7 +26,7 @@ pub struct MessageBox<T: FormattableText + 'static> {
     title: String,
     #[widget]
     label: Label<T>,
-    #[widget(use_msg = handle_button)]
+    #[widget]
     button: TextButton<()>,
 }
 
@@ -44,9 +44,12 @@ impl<T: FormattableText + 'static> MessageBox<T> {
             ]),
         }
     }
+}
 
-    fn handle_button(&mut self, mgr: &mut Manager, _: ()) {
+impl<T: FormattableText + 'static> OnMessage<()> for MessageBox<T> {
+    fn on_msg(&mut self, mgr: &mut Manager, _: usize, _: ()) -> Response<VoidMsg> {
         mgr.send_action(TkAction::CLOSE);
+        Response::None
     }
 }
 

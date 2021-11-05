@@ -8,14 +8,13 @@
 
 extern crate proc_macro;
 
-use self::args::{ChildType, Handler, HandlerArgs};
+use self::args::{ChildType, HandlerArgs};
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::abort;
 use quote::{quote, ToTokens, TokenStreamExt};
 use std::collections::HashMap;
 use std::fmt::Write;
 use syn::punctuated::Punctuated;
-use syn::spanned::Spanned;
 use syn::Token;
 use syn::{parse_macro_input, parse_quote};
 use syn::{GenericParam, Ident, Type, TypeParam, TypePath, WhereClause, WherePredicate};
@@ -380,13 +379,13 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 quote! { self.#inner.send(mgr, id, event) }
             } else {
                 let mut ev_to_num = TokenStream::new();
-                for child in args.children.iter() {
+                for (index, child) in args.children.iter().enumerate() {
                     #[cfg(feature = "log")]
                     let log_msg = quote! {
                         log::trace!(
-                            "Received by {} from {}: {:?}",
+                            "Received by {} from #{}: {:?}",
                             self.id(),
-                            id,
+                            #index,
                             ::kas::util::TryFormat(&msg)
                         );
                     };
@@ -394,46 +393,23 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     let log_msg = quote! {};
 
                     let ident = &child.ident;
-                    let handler = match &child.args.handler {
-                        Handler::Use(f) => quote! {
-                            r.try_into().unwrap_or_else(|msg| {
-                                #log_msg
-                                let _: () = self.#f(mgr, msg);
-                                Response::None
-                            })
-                        },
-                        Handler::Map(f) => quote! {
-                            r.try_into().unwrap_or_else(|msg| {
-                                #log_msg
-                                Response::Msg(self.#f(mgr, msg))
-                            })
-                        },
-                        Handler::FlatMap(f) => quote! {
-                            r.try_into().unwrap_or_else(|msg| {
-                                #log_msg
-                                self.#f(mgr, msg)
-                            })
-                        },
-                        Handler::Discard => quote! {
-                            r.try_into().unwrap_or_else(|msg| {
-                                #log_msg
-                                let _ = msg;
-                                Response::None
-                            })
-                        },
-                        Handler::None => quote! { r.into() },
-                    };
 
                     ev_to_num.append_all(quote! {
                         if id <= self.#ident.id() {
-                            let r = self.#ident.send(mgr, id, event);
-                            #handler
+                            match self.#ident.send(mgr, id, event).try_into() {
+                                Ok(r) => r,
+                                Err(msg) => {
+                                    #log_msg
+                                    self.on_msg(mgr, #index, msg)
+                                }
+                            }
                         } else
                     });
                 }
 
                 quote! {
-                    use ::kas::{WidgetCore, event::Response};
+                    use ::kas::WidgetCore;
+                    use ::kas::event::{OnMessage, Response};
                     if self.is_disabled() {
                         return Response::Unhandled;
                     }
@@ -579,58 +555,6 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// See documentation [in the `kas::macros` module](https://docs.rs/kas/latest/kas/macros#the-make_widget-macro).
 #[proc_macro]
 pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let mut find_handler_ty_buf: Vec<(Ident, Type)> = vec![];
-    // find type of handler's message; return None on error
-    let mut find_handler_ty = |handler: &Ident,
-                               impls: &Vec<(Option<TypePath>, Vec<syn::ImplItem>)>|
-     -> Option<Type> {
-        // check the buffer in case we did this already
-        for (ident, ty) in &find_handler_ty_buf {
-            if ident == handler {
-                return Some(ty.clone());
-            }
-        }
-
-        let mut x: Option<(Ident, Type)> = None;
-
-        for impl_block in impls {
-            for f in &impl_block.1 {
-                match f {
-                    syn::ImplItem::Method(syn::ImplItemMethod { sig, .. })
-                        if sig.ident == *handler =>
-                    {
-                        if let Some(_x) = x {
-                            abort!(
-                                handler.span(), "multiple methods with this name";
-                                help = _x.0.span() => "first method with this name";
-                                help = sig.ident.span() => "second method with this name";
-                            );
-                        }
-                        if sig.inputs.len() != 3 {
-                            abort!(
-                                sig.span(),
-                                "handler functions must have signature: fn handler(&mut self, mgr: &mut Manager, msg: T)"
-                            );
-                        }
-                        let arg = sig.inputs.last().unwrap();
-                        let ty = match arg {
-                            syn::FnArg::Typed(arg) => (*arg.ty).clone(),
-                            _ => panic!("expected typed argument"), // nothing else is possible here?
-                        };
-                        x = Some((sig.ident.clone(), ty));
-                    }
-                    _ => (),
-                }
-            }
-        }
-        if let Some(x) = x {
-            find_handler_ty_buf.push((handler.clone(), x.1.clone()));
-            Some(x.1)
-        } else {
-            abort!(handler.span(), "no methods with this name found");
-        }
-    };
-
     let mut args = parse_macro_input!(input as args::MakeWidget);
 
     // Used to make fresh identifiers for generic types
@@ -704,6 +628,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     for (index, field) in args.fields.drain(..).enumerate() {
         let attr = field.widget_attr;
+        let is_widget = attr.is_some();
 
         let ident = match &field.ident {
             Some(ref ident) => ident.clone(),
@@ -727,21 +652,11 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 name_buf.write_fmt(format_args!("MWAnon{}", index)).unwrap();
                 let ty = Ident::new(&name_buf, Span::call_site());
 
-                if let Some(ref wattr) = attr {
+                if is_widget {
                     if let Some(tyr) = gen_msg {
                         handler_clauses.push(parse_quote! { #ty: ::kas::Widget<Msg = #tyr> });
-                    } else if let Some(handler) = wattr.args.handler.any_ref() {
-                        // Message passed to a method; exact type required
-                        if let Some(ty_bound) = find_handler_ty(handler, &args.impls) {
-                            handler_clauses
-                                .push(parse_quote! { #ty: ::kas::Widget<Msg = #ty_bound> });
-                        } else {
-                            return quote! {}.into(); // exit after emitting error
-                        }
-                    } else if wattr.args.handler == Handler::Discard {
-                        // No type bound on discarded message
                     } else {
-                        // Message converted via Into
+                        // Message converted via OnMessage
                         name_buf.push('R');
                         let tyr = Ident::new(&name_buf, Span::call_site());
                         handler
@@ -749,7 +664,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                             .params
                             .push(syn::GenericParam::Type(tyr.clone().into()));
                         handler_clauses.push(parse_quote! { #ty: ::kas::Widget<Msg = #tyr> });
-                        handler_clauses.push(parse_quote! { #msg: From<#tyr> });
+                        handler_clauses.push(parse_quote! { Self: OnMessage<#tyr, #msg> });
                     }
 
                     if let Some(mut bound) = gen_bound {
