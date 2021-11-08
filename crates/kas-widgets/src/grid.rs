@@ -48,6 +48,7 @@ pub type BoxGrid<M> = Grid<Box<dyn Widget<Msg = M>>>;
 #[derive(Clone, Debug, Widget)]
 #[handler(send=noauto, msg=<W as Handler>::Msg)]
 #[widget(children=noauto)]
+// TODO: support custom message type
 pub struct Grid<W: Widget> {
     first_id: WidgetId,
     #[widget_core]

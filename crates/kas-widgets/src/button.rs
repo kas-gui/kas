@@ -20,6 +20,7 @@ use kas::prelude::*;
 #[handler(noauto)]
 #[widget(config=noauto)]
 #[widget_derive(class_traits)]
+// TODO: less restriction on label
 pub struct Button<L: Widget<Msg = VoidMsg>, M: 'static> {
     #[widget_core]
     core: kas::CoreData,

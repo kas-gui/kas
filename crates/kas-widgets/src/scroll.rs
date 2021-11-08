@@ -245,6 +245,7 @@ impl ScrollComponent {
 #[widget(config=noauto)]
 #[handler(send=noauto, msg = <W as event::Handler>::Msg)]
 #[widget_derive(class_traits, Deref, DerefMut)]
+// TODO: support message handling?
 pub struct ScrollRegion<W: Widget> {
     #[widget_core]
     core: CoreData,

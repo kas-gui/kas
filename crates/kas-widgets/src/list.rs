@@ -167,6 +167,7 @@ pub type IndexedList<D, W> = GenericList<D, W, (usize, <W as Handler>::Msg)>;
 #[derive(Widget)]
 #[handler(send=noauto, msg=M)]
 #[widget(children=noauto)]
+// TODO: replace FromIndexed?
 pub struct GenericList<D: Directional, W: Widget, M: FromIndexed<<W as Handler>::Msg> + 'static> {
     first_id: WidgetId,
     #[widget_core]
