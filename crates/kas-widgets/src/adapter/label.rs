@@ -10,18 +10,20 @@ use kas::layout::{RulesSetter, RulesSolver};
 use kas::text::util::set_text_and_prepare;
 use kas::{event, layout, prelude::*};
 
-/// A wrapper widget with a label
-#[derive(Clone, Default, Debug, Widget)]
-#[handler(msg = W::Msg)]
-pub struct WithLabel<W: Widget, D: Directional> {
-    #[widget_core]
-    core: CoreData,
-    layout_data: layout::FixedRowStorage<2>,
-    dir: D,
-    #[widget]
-    inner: W,
-    label_pos: Coord,
-    label: Text<AccelString>,
+widget! {
+    /// A wrapper widget with a label
+    #[derive(Clone, Default, Debug)]
+    #[handler(msg = W::Msg)]
+    pub struct WithLabel<W: Widget, D: Directional> {
+        #[widget_core]
+        core: CoreData,
+        layout_data: layout::FixedRowStorage<2>,
+        dir: D,
+        #[widget]
+        inner: W,
+        label_pos: Coord,
+        label: Text<AccelString>,
+    }
 }
 
 impl<W: Widget, D: Directional + Default> WithLabel<W, D> {

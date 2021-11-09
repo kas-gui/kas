@@ -11,32 +11,34 @@ use kas::updatable::{SingleData, UpdatableHandler};
 use std::fmt::{self};
 use UpdatableHandler as UpdHandler;
 
-/// Single view widget
-///
-/// This widget supports a view over a shared data item.
-///
-/// The shared data type `T` must support [`SingleData`] and
-/// [`UpdatableHandler`], the latter with key type `()` and message type
-/// matching the widget's message. One may use [`kas::updatable::SharedRc`]
-/// or a custom shared data type.
-///
-/// The driver `V` must implement [`Driver`], with data type
-/// `<T as SingleData>::Item`. Several implementations are available in the
-/// [`driver`] module or a custom implementation may be used.
-#[derive(Clone, Widget)]
-#[widget(config=noauto)]
-#[layout(single)]
-#[handler(handle=noauto, send=noauto)]
-pub struct SingleView<
-    T: SingleData + UpdHandler<(), V::Msg> + 'static,
-    V: Driver<T::Item> = driver::Default,
-> {
-    #[widget_core]
-    core: CoreData,
-    view: V,
-    data: T,
-    #[widget]
-    child: V::Widget,
+widget! {
+    /// Single view widget
+    ///
+    /// This widget supports a view over a shared data item.
+    ///
+    /// The shared data type `T` must support [`SingleData`] and
+    /// [`UpdatableHandler`], the latter with key type `()` and message type
+    /// matching the widget's message. One may use [`kas::updatable::SharedRc`]
+    /// or a custom shared data type.
+    ///
+    /// The driver `V` must implement [`Driver`], with data type
+    /// `<T as SingleData>::Item`. Several implementations are available in the
+    /// [`driver`] module or a custom implementation may be used.
+    #[derive(Clone)]
+    #[widget(config=noauto)]
+    #[layout(single)]
+    #[handler(handle=noauto, send=noauto)]
+    pub struct SingleView<
+        T: SingleData + UpdHandler<(), V::Msg> + 'static,
+        V: Driver<T::Item> = driver::Default,
+    > {
+        #[widget_core]
+        core: CoreData,
+        view: V,
+        data: T,
+        #[widget]
+        child: V::Widget,
+    }
 }
 
 impl<T: SingleData + UpdHandler<(), V::Msg> + 'static + Default, V: Driver<T::Item> + Default>

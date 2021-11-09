@@ -14,23 +14,25 @@ use kas::event::{self, Command, GrabMode};
 use kas::prelude::*;
 use kas::WindowId;
 
-/// A pop-up multiple choice menu
-///
-/// A combobox presents a menu with a fixed set of choices when clicked.
-#[derive(Clone, Widget)]
-#[widget(config(key_nav = true, hover_highlight = true))]
-#[handler(noauto)]
-pub struct ComboBox<M: 'static> {
-    #[widget_core]
-    core: CoreData,
-    label: Text<String>,
-    frame_size: Size,
-    #[widget]
-    popup: ComboPopup,
-    active: usize,
-    opening: bool,
-    popup_id: Option<WindowId>,
-    on_select: Option<Rc<dyn Fn(&mut Manager, usize) -> Option<M>>>,
+widget! {
+    /// A pop-up multiple choice menu
+    ///
+    /// A combobox presents a menu with a fixed set of choices when clicked.
+    #[derive(Clone)]
+    #[widget(config(key_nav = true, hover_highlight = true))]
+    #[handler(noauto)]
+    pub struct ComboBox<M: 'static> {
+        #[widget_core]
+        core: CoreData,
+        label: Text<String>,
+        frame_size: Size,
+        #[widget]
+        popup: ComboPopup,
+        active: usize,
+        opening: bool,
+        popup_id: Option<WindowId>,
+        on_select: Option<Rc<dyn Fn(&mut Manager, usize) -> Option<M>>>,
+    }
 }
 
 impl<M: 'static> Debug for ComboBox<M> {
@@ -411,12 +413,14 @@ impl<M: 'static> event::SendEvent for ComboBox<M> {
     }
 }
 
-#[derive(Clone, Debug, Widget)]
-#[layout(single)]
-#[handler(msg=(usize, ()))]
-struct ComboPopup {
-    #[widget_core]
-    core: CoreData,
-    #[widget]
-    inner: IndexedColumn<MenuEntry<()>>,
+widget! {
+    #[derive(Clone, Debug)]
+    #[layout(single)]
+    #[handler(msg=(usize, ()))]
+    struct ComboPopup {
+        #[widget_core]
+        core: CoreData,
+        #[widget]
+        inner: IndexedColumn<MenuEntry<()>>,
+    }
 }

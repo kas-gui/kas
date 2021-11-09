@@ -11,15 +11,17 @@ use std::rc::Rc;
 use super::AccelLabel;
 use kas::{event, prelude::*};
 
-/// A bare checkbox (no label)
-#[derive(Clone, Default, Widget)]
-#[widget(config(key_nav = true, hover_highlight = true))]
-#[handler(handle=noauto)]
-pub struct CheckBoxBare<M: 'static> {
-    #[widget_core]
-    core: CoreData,
-    state: bool,
-    on_toggle: Option<Rc<dyn Fn(&mut Manager, bool) -> Option<M>>>,
+widget! {
+    /// A bare checkbox (no label)
+    #[derive(Clone, Default)]
+    #[widget(config(key_nav = true, hover_highlight = true))]
+    #[handler(handle=noauto)]
+    pub struct CheckBoxBare<M: 'static> {
+        #[widget_core]
+        core: CoreData,
+        state: bool,
+        on_toggle: Option<Rc<dyn Fn(&mut Manager, bool) -> Option<M>>>,
+    }
 }
 
 impl<M: 'static> Debug for CheckBoxBare<M> {
@@ -135,22 +137,24 @@ impl<M: 'static> event::Handler for CheckBoxBare<M> {
     }
 }
 
-/// A checkable box with optional label
-#[derive(Clone, Default, Widget)]
-#[layout(row, area=checkbox)]
-#[handler(msg = M, generics = <> where M: From<VoidMsg>)]
-#[widget(config=noauto)]
-#[widget_derive(HasBool)]
-pub struct CheckBox<M: 'static> {
-    #[widget_core]
-    core: CoreData,
-    #[layout_data]
-    layout_data: <Self as kas::LayoutData>::Data,
-    #[widget_derive]
-    #[widget]
-    checkbox: CheckBoxBare<M>,
-    #[widget]
-    label: AccelLabel,
+widget! {
+    /// A checkable box with optional label
+    #[derive(Clone, Default)]
+    #[layout(row, area=checkbox)]
+    #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
+    #[widget(config=noauto)]
+    #[widget_derive(HasBool)]
+    pub struct CheckBox<M: 'static> {
+        #[widget_core]
+        core: CoreData,
+        #[layout_data]
+        layout_data: <Self as kas::LayoutData>::Data,
+        #[widget_derive]
+        #[widget]
+        checkbox: CheckBoxBare<M>,
+        #[widget]
+        label: AccelLabel,
+    }
 }
 
 impl<M: 'static> Debug for CheckBox<M> {

@@ -7,22 +7,24 @@
 
 use kas::{event, prelude::*};
 
-/// Navigation Frame wrapper
-///
-/// This widget is a wrapper that can be used to make a static widget such as a
-/// `Label` navigable with the keyboard.
-#[derive(Clone, Debug, Default, Widget)]
-#[handler(handle=noauto)]
-#[widget(config(key_nav = true))]
-#[widget_derive(class_traits, Deref, DerefMut)]
-pub struct NavFrame<W: Widget> {
-    #[widget_core]
-    core: CoreData,
-    #[widget_derive]
-    #[widget]
-    pub inner: W,
-    offset: Offset,
-    size: Size,
+widget! {
+    /// Navigation Frame wrapper
+    ///
+    /// This widget is a wrapper that can be used to make a static widget such as a
+    /// `Label` navigable with the keyboard.
+    #[derive(Clone, Debug, Default)]
+    #[handler(handle=noauto)]
+    #[widget(config(key_nav = true))]
+    #[widget_derive(class_traits, Deref, DerefMut)]
+    pub struct NavFrame<W: Widget> {
+        #[widget_core]
+        core: CoreData,
+        #[widget_derive]
+        #[widget]
+        pub inner: W,
+        offset: Offset,
+        size: Size,
+    }
 }
 
 impl<W: Widget> NavFrame<W> {

@@ -182,18 +182,20 @@ impl<F: FnMut(&str)> Debug for EditUpdate<F> {
     }
 }
 
-/// A text-edit box
-///
-/// This is just a wrapper around [`EditField`] adding a frame.
-#[derive(Clone, Default, Debug, Widget)]
-#[handler(msg = G::Msg)]
-pub struct EditBox<G: EditGuard = ()> {
-    #[widget_core]
-    core: CoreData,
-    #[widget]
-    inner: EditField<G>,
-    offset: Offset,
-    frame_size: Size,
+widget! {
+    /// A text-edit box
+    ///
+    /// This is just a wrapper around [`EditField`] adding a frame.
+    #[derive(Clone, Default, Debug)]
+    #[handler(msg = G::Msg)]
+    pub struct EditBox<G: EditGuard = ()> {
+        #[widget_core]
+        core: CoreData,
+        #[widget]
+        inner: EditField<G>,
+        offset: Offset,
+        frame_size: Size,
+    }
 }
 
 impl EditBox<()> {
@@ -395,40 +397,42 @@ impl<G: EditGuard> std::ops::DerefMut for EditBox<G> {
     }
 }
 
-/// A text-edit field (single- or multi-line)
-///
-/// Usually one uses a derived type like [`EditBox`] instead. This field does
-/// not draw any background or borders, thus (1) there is no visual indication
-/// that this is an edit field, and (2) there is no indication for disabled or
-/// error states. The parent widget is responsible for this.
-///
-/// This widget is intended for use with short input strings. Internally it
-/// uses a [`String`], for which edits have `O(n)` cost.
-///
-/// Optionally, [`EditField::multi_line`] mode can be activated (enabling
-/// line-wrapping and a larger vertical height). This mode is only recommended
-/// for short texts for performance reasons.
-#[derive(Clone, Default, Debug, Widget)]
-#[widget(config(key_nav = true, hover_highlight = true, cursor_icon = event::CursorIcon::Text))]
-#[handler(handle=noauto, generics = <> where G: EditGuard)]
-pub struct EditField<G: EditGuard = ()> {
-    #[widget_core]
-    core: CoreData,
-    view_offset: Offset,
-    editable: bool,
-    multi_line: bool,
-    ideal_height: i32,
-    text: Text<String>,
-    required: Vec2,
-    selection: SelectionHelper,
-    edit_x_coord: Option<f32>,
-    old_state: Option<(String, usize, usize)>,
-    last_edit: LastEdit,
-    has_key_focus: bool,
-    error_state: bool,
-    input_handler: TextInput,
-    /// The associated [`EditGuard`] implementation
-    pub guard: G,
+widget! {
+    /// A text-edit field (single- or multi-line)
+    ///
+    /// Usually one uses a derived type like [`EditBox`] instead. This field does
+    /// not draw any background or borders, thus (1) there is no visual indication
+    /// that this is an edit field, and (2) there is no indication for disabled or
+    /// error states. The parent widget is responsible for this.
+    ///
+    /// This widget is intended for use with short input strings. Internally it
+    /// uses a [`String`], for which edits have `O(n)` cost.
+    ///
+    /// Optionally, [`EditField::multi_line`] mode can be activated (enabling
+    /// line-wrapping and a larger vertical height). This mode is only recommended
+    /// for short texts for performance reasons.
+    #[derive(Clone, Default, Debug)]
+    #[widget(config(key_nav = true, hover_highlight = true, cursor_icon = event::CursorIcon::Text))]
+    #[handler(handle=noauto, generics = <> where G: EditGuard)]
+    pub struct EditField<G: EditGuard = ()> {
+        #[widget_core]
+        core: CoreData,
+        view_offset: Offset,
+        editable: bool,
+        multi_line: bool,
+        ideal_height: i32,
+        text: Text<String>,
+        required: Vec2,
+        selection: SelectionHelper,
+        edit_x_coord: Option<f32>,
+        old_state: Option<(String, usize, usize)>,
+        last_edit: LastEdit,
+        has_key_focus: bool,
+        error_state: bool,
+        input_handler: TextInput,
+        /// The associated [`EditGuard`] implementation
+        pub guard: G,
+    }
 }
 
 impl<G: EditGuard> Layout for EditField<G> {

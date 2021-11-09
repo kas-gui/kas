@@ -55,30 +55,32 @@ impl EditGuard for ListEntryGuard {
     }
 }
 
-// The list entry
-//
-// Use of a compound listing here with five child widgets (RadioBox is a
-// compound widget) slows down list resizing significantly (more so in debug
-// builds).
-//
-// Use of an embedded RadioBox demonstrates another performance issue:
-// activating any RadioBox sends a message to all others using the same
-// UpdateHandle, which is quite slow with thousands of entries!
-// (This issue does not occur when RadioBoxes are independent.)
-#[derive(Clone, Debug, Widget)]
-#[layout(column)]
-#[handler(msg=EntryMsg)]
-struct ListEntry {
-    #[widget_core]
-    core: CoreData,
-    #[layout_data]
-    layout_data: <Self as kas::LayoutData>::Data,
-    #[widget]
-    label: StringLabel,
-    #[widget]
-    radio: RadioBox<EntryMsg>,
-    #[widget]
-    entry: EditBox<ListEntryGuard>,
+widget! {
+    // The list entry
+    //
+    // Use of a compound listing here with five child widgets (RadioBox is a
+    // compound widget) slows down list resizing significantly (more so in debug
+    // builds).
+    //
+    // Use of an embedded RadioBox demonstrates another performance issue:
+    // activating any RadioBox sends a message to all others using the same
+    // UpdateHandle, which is quite slow with thousands of entries!
+    // (This issue does not occur when RadioBoxes are independent.)
+    #[derive(Clone, Debug)]
+    #[layout(column)]
+    #[handler(msg=EntryMsg)]
+    struct ListEntry {
+        #[widget_core]
+        core: CoreData,
+        #[layout_data]
+        layout_data: <Self as kas::LayoutData>::Data,
+        #[widget]
+        label: StringLabel,
+        #[widget]
+        radio: RadioBox<EntryMsg>,
+        #[widget]
+        entry: EditBox<ListEntryGuard>,
+    }
 }
 
 impl ListEntry {

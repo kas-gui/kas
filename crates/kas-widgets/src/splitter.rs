@@ -66,21 +66,23 @@ pub type RefColumnSplitter<'a, M> = RefSplitter<'a, Down, M>;
 /// See documentation of [`Splitter`] type.
 pub type RefSplitter<'a, D, M> = Splitter<D, &'a mut dyn Widget<Msg = M>>;
 
-/// A resizable row/column widget
-///
-/// Similar to [`crate::List`] but with draggable handles between items.
-// TODO: better doc
-#[derive(Clone, Default, Debug, Widget)]
-#[handler(send=noauto, msg=<W as event::Handler>::Msg)]
-#[widget(children=noauto)]
-pub struct Splitter<D: Directional, W: Widget> {
-    first_id: WidgetId,
-    #[widget_core]
-    core: CoreData,
-    widgets: Vec<W>,
-    handles: Vec<DragHandle>,
-    data: layout::DynRowStorage,
-    direction: D,
+widget! {
+    /// A resizable row/column widget
+    ///
+    /// Similar to [`crate::List`] but with draggable handles between items.
+    // TODO: better doc
+    #[derive(Clone, Default, Debug)]
+    #[handler(send=noauto, msg=<W as event::Handler>::Msg)]
+    #[widget(children=noauto)]
+    pub struct Splitter<D: Directional, W: Widget> {
+        first_id: WidgetId,
+        #[widget_core]
+        core: CoreData,
+        widgets: Vec<W>,
+        handles: Vec<DragHandle>,
+        data: layout::DynRowStorage,
+        direction: D,
+    }
 }
 
 impl<D: Directional, W: Widget> WidgetChildren for Splitter<D, W> {

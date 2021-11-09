@@ -10,25 +10,27 @@ use std::fmt::Debug;
 use super::{DragHandle, ScrollRegion};
 use kas::{event, prelude::*};
 
-/// A scroll bar
-///
-/// Scroll bars allow user-input of a value between 0 and a defined maximum,
-/// and allow the size of the handle to be specified.
-#[derive(Clone, Debug, Default, Widget)]
-#[handler(send=noauto, msg = i32)]
-pub struct ScrollBar<D: Directional> {
-    #[widget_core]
-    core: CoreData,
-    direction: D,
-    // Terminology assumes vertical orientation:
-    width: i32,
-    min_handle_len: i32,
-    handle_len: i32,
-    handle_value: i32, // contract: > 0
-    max_value: i32,
-    value: i32,
-    #[widget]
-    handle: DragHandle,
+widget! {
+    /// A scroll bar
+    ///
+    /// Scroll bars allow user-input of a value between 0 and a defined maximum,
+    /// and allow the size of the handle to be specified.
+    #[derive(Clone, Debug, Default)]
+    #[handler(send=noauto, msg = i32)]
+    pub struct ScrollBar<D: Directional> {
+        #[widget_core]
+        core: CoreData,
+        direction: D,
+        // Terminology assumes vertical orientation:
+        width: i32,
+        min_handle_len: i32,
+        handle_len: i32,
+        handle_value: i32, // contract: > 0
+        max_value: i32,
+        value: i32,
+        #[widget]
+        handle: DragHandle,
+    }
 }
 
 impl<D: Directional + Default> ScrollBar<D> {
@@ -320,15 +322,17 @@ pub trait Scrollable: Widget {
     }
 }
 
-/// A scrollable region with bars
-///
-/// This is essentially a `ScrollBars<ScrollRegion<W>>`:
-/// [`ScrollRegion`] handles the actual scrolling and wheel/touch events,
-/// while [`ScrollBars`] adds scrollbar controls.
-#[derive(Clone, Debug, Default, Widget)]
-#[widget_derive(class_traits, Deref, DerefMut)]
-#[handler(msg = <W as event::Handler>::Msg)]
-pub struct ScrollBarRegion<W: Widget>(#[widget_derive] ScrollBars<ScrollRegion<W>>);
+widget! {
+    /// A scrollable region with bars
+    ///
+    /// This is essentially a `ScrollBars<ScrollRegion<W>>`:
+    /// [`ScrollRegion`] handles the actual scrolling and wheel/touch events,
+    /// while [`ScrollBars`] adds scrollbar controls.
+    #[derive(Clone, Debug, Default)]
+    #[widget_derive(class_traits, Deref, DerefMut)]
+    #[handler(msg = <W as event::Handler>::Msg)]
+    pub struct ScrollBarRegion<W: Widget>(#[widget_derive] ScrollBars<ScrollRegion<W>>);
+}
 
 impl<W: Widget> ScrollBarRegion<W> {
     /// Construct a `ScrollScrollBarRegion<W>`
@@ -406,31 +410,33 @@ impl<W: Widget> Scrollable for ScrollBarRegion<W> {
     }
 }
 
-/// Scrollbar controls
-///
-/// This is a wrapper adding scrollbar controls around a child. Note that this
-/// widget does not enable scrolling; see [`ScrollBarRegion`] for that.
-///
-/// Scrollbar positioning does not respect the inner widgets margins, since
-/// the result looks poor when content is scrolled. Instead the content should
-/// force internal margins by wrapping contents with a (zero-sized) frame.
-/// [`ScrollRegion`] already does this.
-#[derive(Clone, Debug, Default, Widget)]
-#[widget(config=noauto)]
-#[handler(send=noauto, msg = <W as event::Handler>::Msg)]
-#[widget_derive(class_traits, Deref, DerefMut)]
-pub struct ScrollBars<W: Scrollable> {
-    #[widget_core]
-    core: CoreData,
-    auto_bars: bool,
-    show_bars: (bool, bool),
-    #[widget]
-    horiz_bar: ScrollBar<kas::dir::Right>,
-    #[widget]
-    vert_bar: ScrollBar<kas::dir::Down>,
-    #[widget_derive]
-    #[widget]
-    inner: W,
+widget! {
+    /// Scrollbar controls
+    ///
+    /// This is a wrapper adding scrollbar controls around a child. Note that this
+    /// widget does not enable scrolling; see [`ScrollBarRegion`] for that.
+    ///
+    /// Scrollbar positioning does not respect the inner widgets margins, since
+    /// the result looks poor when content is scrolled. Instead the content should
+    /// force internal margins by wrapping contents with a (zero-sized) frame.
+    /// [`ScrollRegion`] already does this.
+    #[derive(Clone, Debug, Default)]
+    #[widget(config=noauto)]
+    #[handler(send=noauto, msg = <W as event::Handler>::Msg)]
+    #[widget_derive(class_traits, Deref, DerefMut)]
+    pub struct ScrollBars<W: Scrollable> {
+        #[widget_core]
+        core: CoreData,
+        auto_bars: bool,
+        show_bars: (bool, bool),
+        #[widget]
+        horiz_bar: ScrollBar<kas::dir::Right>,
+        #[widget]
+        vert_bar: ScrollBar<kas::dir::Down>,
+        #[widget_derive]
+        #[widget]
+        inner: W,
+    }
 }
 
 impl<W: Scrollable> ScrollBars<W> {

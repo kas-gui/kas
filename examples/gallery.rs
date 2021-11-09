@@ -45,24 +45,26 @@ impl EditGuard for Guard {
     }
 }
 
-#[derive(Debug, Widget)]
-#[widget(config=noauto)]
-#[layout(grid)]
-#[handler(handle=noauto)]
-struct TextEditPopup {
-    #[widget_core]
-    core: CoreData,
-    #[layout_data]
-    layout_data: <Self as kas::LayoutData>::Data,
-    #[widget(cspan = 3)]
-    edit: EditBox,
-    #[widget(row = 1, col = 0)]
-    fill: Filler,
-    #[widget(row=1, col=1, flatmap_msg = close)]
-    cancel: TextButton<bool>,
-    #[widget(row=1, col=2, flatmap_msg = close)]
-    save: TextButton<bool>,
-    commit: bool,
+widget! {
+    #[derive(Debug)]
+    #[widget(config=noauto)]
+    #[layout(grid)]
+    #[handler(handle=noauto)]
+    struct TextEditPopup {
+        #[widget_core]
+        core: CoreData,
+        #[layout_data]
+        layout_data: <Self as kas::LayoutData>::Data,
+        #[widget(cspan = 3)]
+        edit: EditBox,
+        #[widget(row = 1, col = 0)]
+        fill: Filler,
+        #[widget(row=1, col=1, flatmap_msg = close)]
+        cancel: TextButton<bool>,
+        #[widget(row=1, col=2, flatmap_msg = close)]
+        save: TextButton<bool>,
+        commit: bool,
+    }
 }
 impl TextEditPopup {
     fn new<S: ToString>(text: S) -> Self {

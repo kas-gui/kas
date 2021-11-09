@@ -81,22 +81,24 @@ impl SliderType for Duration {
     }
 }
 
-/// A slider
-///
-/// Sliders allow user input of a value from a fixed range.
-#[derive(Clone, Debug, Default, Widget)]
-#[handler(send=noauto, msg = T)]
-#[widget(config(key_nav = true, hover_highlight = true))]
-pub struct Slider<T: SliderType, D: Directional> {
-    #[widget_core]
-    core: CoreData,
-    direction: D,
-    // Terminology assumes vertical orientation:
-    range: (T, T),
-    step: T,
-    value: T,
-    #[widget]
-    handle: DragHandle,
+widget! {
+    /// A slider
+    ///
+    /// Sliders allow user input of a value from a fixed range.
+    #[derive(Clone, Debug, Default)]
+    #[handler(send=noauto, msg = T)]
+    #[widget(config(key_nav = true, hover_highlight = true))]
+    pub struct Slider<T: SliderType, D: Directional> {
+        #[widget_core]
+        core: CoreData,
+        direction: D,
+        // Terminology assumes vertical orientation:
+        range: (T, T),
+        step: T,
+        value: T,
+        #[widget]
+        handle: DragHandle,
+    }
 }
 
 impl<T: SliderType, D: Directional + Default> Slider<T, D> {

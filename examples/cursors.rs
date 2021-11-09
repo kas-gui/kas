@@ -9,15 +9,17 @@ use kas::event::CursorIcon;
 use kas::prelude::*;
 use kas::widgets::{Column, Label, StrLabel, Window};
 
-#[derive(Clone, Debug, Widget)]
-#[widget(config = noauto)]
-#[layout(single)]
-struct CursorWidget {
-    #[widget_core]
-    core: CoreData,
-    #[widget]
-    label: StrLabel,
-    cursor: CursorIcon,
+widget! {
+    #[derive(Clone, Debug)]
+    #[widget(config = noauto)]
+    #[layout(single)]
+    struct CursorWidget {
+        #[widget_core]
+        core: CoreData,
+        #[widget]
+        label: StrLabel,
+        cursor: CursorIcon,
+    }
 }
 impl WidgetConfig for CursorWidget {
     fn cursor_icon(&self) -> CursorIcon {

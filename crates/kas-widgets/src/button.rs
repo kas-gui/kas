@@ -12,26 +12,28 @@ use kas::draw::{color::Rgb, TextClass};
 use kas::event::{self, VirtualKeyCode, VirtualKeyCodes};
 use kas::prelude::*;
 
-/// A push-button with a generic label
-///
-/// Default alignment is centred. Content (label) alignment is derived from the
-/// button alignment.
-#[derive(Clone, Widget)]
-#[handler(noauto)]
-#[widget(config=noauto)]
-#[widget_derive(class_traits)]
-pub struct Button<L: Widget<Msg = VoidMsg>, M: 'static> {
-    #[widget_core]
-    core: kas::CoreData,
-    keys1: VirtualKeyCodes,
-    frame_size: Size,
-    frame_offset: Offset,
-    ideal_size: Size,
-    color: Option<Rgb>,
-    #[widget_derive]
-    #[widget]
-    pub label: L,
-    on_push: Option<Rc<dyn Fn(&mut Manager) -> Option<M>>>,
+widget! {
+    /// A push-button with a generic label
+    ///
+    /// Default alignment is centred. Content (label) alignment is derived from the
+    /// button alignment.
+    #[derive(Clone)]
+    #[handler(noauto)]
+    #[widget(config=noauto)]
+    #[widget_derive(class_traits)]
+    pub struct Button<L: Widget<Msg = VoidMsg>, M: 'static> {
+        #[widget_core]
+        core: kas::CoreData,
+        keys1: VirtualKeyCodes,
+        frame_size: Size,
+        frame_offset: Offset,
+        ideal_size: Size,
+        color: Option<Rgb>,
+        #[widget_derive]
+        #[widget]
+        pub label: L,
+        on_push: Option<Rc<dyn Fn(&mut Manager) -> Option<M>>>,
+    }
 }
 
 impl<L: Widget<Msg = VoidMsg>, M: 'static> Debug for Button<L, M> {
@@ -203,27 +205,29 @@ impl<L: Widget<Msg = VoidMsg>, M: 'static> SendEvent for Button<L, M> {
     }
 }
 
-/// A push-button with a text label
-///
-/// This is a specialised variant of [`Button`] supporting key shortcuts from an
-/// [`AccelString`] label and using a custom text class (and thus theme colour).
-///
-/// Default alignment of the button is to stretch horizontally and centre
-/// vertically. The text label is always centred (irrespective of alignment
-/// parameters).
-#[derive(Clone, Widget)]
-#[handler(handle=noauto)]
-#[widget(config=noauto)]
-pub struct TextButton<M: 'static> {
-    #[widget_core]
-    core: kas::CoreData,
-    keys1: VirtualKeyCodes,
-    frame_size: Size,
-    frame_offset: Offset,
-    ideal_size: Size,
-    color: Option<Rgb>,
-    label: Text<AccelString>,
-    on_push: Option<Rc<dyn Fn(&mut Manager) -> Option<M>>>,
+widget! {
+    /// A push-button with a text label
+    ///
+    /// This is a specialised variant of [`Button`] supporting key shortcuts from an
+    /// [`AccelString`] label and using a custom text class (and thus theme colour).
+    ///
+    /// Default alignment of the button is to stretch horizontally and centre
+    /// vertically. The text label is always centred (irrespective of alignment
+    /// parameters).
+    #[derive(Clone)]
+    #[handler(handle=noauto)]
+    #[widget(config=noauto)]
+    pub struct TextButton<M: 'static> {
+        #[widget_core]
+        core: kas::CoreData,
+        keys1: VirtualKeyCodes,
+        frame_size: Size,
+        frame_offset: Offset,
+        ideal_size: Size,
+        color: Option<Rgb>,
+        label: Text<AccelString>,
+        on_push: Option<Rc<dyn Fn(&mut Manager) -> Option<M>>>,
+    }
 }
 
 impl<M: 'static> Debug for TextButton<M> {

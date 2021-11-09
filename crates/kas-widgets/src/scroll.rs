@@ -234,27 +234,29 @@ impl ScrollComponent {
     }
 }
 
-/// A scrollable region
-///
-/// This region supports scrolling via mouse wheel and click/touch drag.
-///
-/// Scrollbars are not included; use [`ScrollBarRegion`] if you want those.
-///
-/// [`ScrollBarRegion`]: crate::ScrollBarRegion
-#[derive(Clone, Debug, Default, Widget)]
-#[widget(config=noauto)]
-#[handler(send=noauto, msg = <W as event::Handler>::Msg)]
-#[widget_derive(class_traits, Deref, DerefMut)]
-pub struct ScrollRegion<W: Widget> {
-    #[widget_core]
-    core: CoreData,
-    min_child_size: Size,
-    offset: Offset,
-    frame_size: Size,
-    scroll: ScrollComponent,
-    #[widget_derive]
-    #[widget]
-    inner: W,
+widget! {
+    /// A scrollable region
+    ///
+    /// This region supports scrolling via mouse wheel and click/touch drag.
+    ///
+    /// Scrollbars are not included; use [`ScrollBarRegion`] if you want those.
+    ///
+    /// [`ScrollBarRegion`]: crate::ScrollBarRegion
+    #[derive(Clone, Debug, Default)]
+    #[widget(config=noauto)]
+    #[handler(send=noauto, msg = <W as event::Handler>::Msg)]
+    #[widget_derive(class_traits, Deref, DerefMut)]
+    pub struct ScrollRegion<W: Widget> {
+        #[widget_core]
+        core: CoreData,
+        min_child_size: Size,
+        offset: Offset,
+        frame_size: Size,
+        scroll: ScrollComponent,
+        #[widget_derive]
+        #[widget]
+        inner: W,
+    }
 }
 
 impl<W: Widget> ScrollRegion<W> {

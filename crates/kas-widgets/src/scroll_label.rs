@@ -14,18 +14,20 @@ use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
 use kas::text::SelectionHelper;
 
-/// A text label supporting scrolling and selection
-#[derive(Clone, Default, Debug, Widget)]
-#[widget(config(cursor_icon = event::CursorIcon::Text))]
-#[handler(handle=noauto)]
-pub struct ScrollLabel<T: FormattableText + 'static> {
-    #[widget_core]
-    core: CoreData,
-    view_offset: Offset,
-    text: Text<T>,
-    required: Vec2,
-    selection: SelectionHelper,
-    input_handler: TextInput,
+widget! {
+    /// A text label supporting scrolling and selection
+    #[derive(Clone, Default, Debug)]
+    #[widget(config(cursor_icon = event::CursorIcon::Text))]
+    #[handler(handle=noauto)]
+    pub struct ScrollLabel<T: FormattableText + 'static> {
+        #[widget_core]
+        core: CoreData,
+        view_offset: Offset,
+        text: Text<T>,
+        required: Vec2,
+        selection: SelectionHelper,
+        input_handler: TextInput,
+    }
 }
 
 impl<T: FormattableText + 'static> Layout for ScrollLabel<T> {

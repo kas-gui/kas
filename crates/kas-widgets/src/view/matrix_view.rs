@@ -24,52 +24,54 @@ struct WidgetData<K, W> {
     widget: W,
 }
 
-/// Matrix view widget
-///
-/// This widget supports a view over a matrix of shared data items.
-///
-/// The shared data type `T` must support [`MatrixData`] and
-/// [`UpdatableHandler`], the latter with key type `T::Key` and message type
-/// matching the widget's message. One may use [`kas::updatable::SharedRc`]
-/// or a custom shared data type.
-///
-/// The driver `V` must implement [`Driver`], with data type
-/// `<T as MatrixData>::Item`. Several implementations are available in the
-/// [`driver`] module or a custom implementation may be used.
-///
-/// This widget is [`Scrollable`], supporting keyboard, wheel and drag
-/// scrolling. You may wish to wrap this widget with [`ScrollBars`].
-#[derive(Clone, Debug, Widget)]
-#[handler(send=noauto, msg=ChildMsg<T::Key, <V::Widget as Handler>::Msg>)]
-#[widget(children=noauto, config=noauto)]
-pub struct MatrixView<
-    T: MatrixData + UpdHandler<T::Key, V::Msg> + 'static,
-    V: Driver<T::Item> = driver::Default,
-> {
-    first_id: WidgetId,
-    #[widget_core]
-    core: CoreData,
-    frame_offset: Offset,
-    frame_size: Size,
-    view: V,
-    data: T,
-    widgets: Vec<WidgetData<T::Key, V::Widget>>,
-    align_hints: AlignHints,
-    // TODO: the following three all have units of "the number of rows/cols"
-    ideal_len: Size,
-    alloc_len: Size,
-    cur_len: Size,
-    child_size_min: Size,
-    child_size_ideal: Size,
-    child_inter_margin: Size,
-    child_size: Size,
-    scroll: ScrollComponent,
-    sel_mode: SelectionMode,
-    // TODO(opt): replace selection list with RangeOrSet type?
-    selection: LinearSet<T::Key>,
-    press_event: Option<PressSource>,
-    press_phase: PressPhase,
-    press_target: Option<T::Key>,
+widget! {
+    /// Matrix view widget
+    ///
+    /// This widget supports a view over a matrix of shared data items.
+    ///
+    /// The shared data type `T` must support [`MatrixData`] and
+    /// [`UpdatableHandler`], the latter with key type `T::Key` and message type
+    /// matching the widget's message. One may use [`kas::updatable::SharedRc`]
+    /// or a custom shared data type.
+    ///
+    /// The driver `V` must implement [`Driver`], with data type
+    /// `<T as MatrixData>::Item`. Several implementations are available in the
+    /// [`driver`] module or a custom implementation may be used.
+    ///
+    /// This widget is [`Scrollable`], supporting keyboard, wheel and drag
+    /// scrolling. You may wish to wrap this widget with [`ScrollBars`].
+    #[derive(Clone, Debug)]
+    #[handler(send=noauto, msg=ChildMsg<T::Key, <V::Widget as Handler>::Msg>)]
+    #[widget(children=noauto, config=noauto)]
+    pub struct MatrixView<
+        T: MatrixData + UpdHandler<T::Key, V::Msg> + 'static,
+        V: Driver<T::Item> = driver::Default,
+    > {
+        first_id: WidgetId,
+        #[widget_core]
+        core: CoreData,
+        frame_offset: Offset,
+        frame_size: Size,
+        view: V,
+        data: T,
+        widgets: Vec<WidgetData<T::Key, V::Widget>>,
+        align_hints: AlignHints,
+        // TODO: the following three all have units of "the number of rows/cols"
+        ideal_len: Size,
+        alloc_len: Size,
+        cur_len: Size,
+        child_size_min: Size,
+        child_size_ideal: Size,
+        child_inter_margin: Size,
+        child_size: Size,
+        scroll: ScrollComponent,
+        sel_mode: SelectionMode,
+        // TODO(opt): replace selection list with RangeOrSet type?
+        selection: LinearSet<T::Key>,
+        press_event: Option<PressSource>,
+        press_phase: PressPhase,
+        press_target: Option<T::Key>,
+    }
 }
 
 impl<T: MatrixData + UpdHandler<T::Key, V::Msg>, V: Driver<T::Item> + Default> MatrixView<T, V> {

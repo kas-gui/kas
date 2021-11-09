@@ -10,31 +10,33 @@ use std::fmt::Debug;
 use kas::event::{self, PressSource};
 use kas::prelude::*;
 
-/// Draggable Handle
-///
-/// A `DragHandle` is a draggable object with a given size which is restricted
-/// to a *track* and has an *offset* relative to the start of that track.
-///
-/// This widget is unusual in several ways:
-///
-/// 1.  [`Layout::size_rules`] does not request any size; the parent is expected
-///     to do this.
-/// 2.  [`Layout::set_rect`] sets the *track* within which this handle may move;
-///     the parent should always call [`DragHandle::set_size_and_offset`]
-///     afterwards.
-/// 3.  [`Layout::draw`] does nothing. The parent should handle all drawing.
-/// 4.  Optionally, this widget can handle clicks on the track area via
-///     [`DragHandle::handle_press_on_track`].
-#[derive(Clone, Debug, Default, Widget)]
-#[handler(handle=noauto)]
-#[widget(config(hover_highlight = true, key_nav = true, cursor_icon = event::CursorIcon::Grab))]
-pub struct DragHandle {
-    #[widget_core]
-    core: CoreData,
-    // The track is the area within which this DragHandle may move
-    track: Rect,
-    press_source: Option<event::PressSource>,
-    press_coord: Coord,
+widget! {
+    /// Draggable Handle
+    ///
+    /// A `DragHandle` is a draggable object with a given size which is restricted
+    /// to a *track* and has an *offset* relative to the start of that track.
+    ///
+    /// This widget is unusual in several ways:
+    ///
+    /// 1.  [`Layout::size_rules`] does not request any size; the parent is expected
+    ///     to do this.
+    /// 2.  [`Layout::set_rect`] sets the *track* within which this handle may move;
+    ///     the parent should always call [`DragHandle::set_size_and_offset`]
+    ///     afterwards.
+    /// 3.  [`Layout::draw`] does nothing. The parent should handle all drawing.
+    /// 4.  Optionally, this widget can handle clicks on the track area via
+    ///     [`DragHandle::handle_press_on_track`].
+    #[derive(Clone, Debug, Default)]
+    #[handler(handle=noauto)]
+    #[widget(config(hover_highlight = true, key_nav = true, cursor_icon = event::CursorIcon::Grab))]
+    pub struct DragHandle {
+        #[widget_core]
+        core: CoreData,
+        // The track is the area within which this DragHandle may move
+        track: Rect,
+        press_source: Option<event::PressSource>,
+        press_coord: Coord,
+    }
 }
 
 impl DragHandle {

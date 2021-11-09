@@ -19,17 +19,19 @@ use kas::text::util::set_text_and_prepare;
 use kas::widgets::Window;
 use kas::{event, prelude::*};
 
-#[derive(Clone, Debug, kas :: macros :: Widget)]
-#[handler(handle=noauto)]
-#[widget(config = noauto)]
-struct Clock {
-    #[widget_core]
-    core: kas::CoreData,
-    date_pos: Coord,
-    time_pos: Coord,
-    now: DateTime<Local>,
-    date: Text<String>,
-    time: Text<String>,
+widget! {
+    #[derive(Clone, Debug)]
+    #[handler(handle=noauto)]
+    #[widget(config = noauto)]
+    struct Clock {
+        #[widget_core]
+        core: kas::CoreData,
+        date_pos: Coord,
+        time_pos: Coord,
+        now: DateTime<Local>,
+        date: Text<String>,
+        time: Text<String>,
+    }
 }
 
 impl Layout for Clock {

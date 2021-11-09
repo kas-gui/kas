@@ -14,19 +14,20 @@ use std::error::Error;
 use std::fmt::{self, Debug};
 use std::path::Path;
 
-/// The main instantiation of the [`Window`] trait.
-#[derive(Widget)]
-#[handler(send=noauto, generics = <M: Into<VoidMsg>> where W: Widget<Msg = M>)]
-pub struct Window<W: Widget + 'static> {
-    #[widget_core]
-    core: CoreData,
-    restrict_dimensions: (bool, bool),
-    title: String,
-    #[widget]
-    w: W,
-    popups: SmallVec<[(WindowId, kas::Popup); 16]>,
-    drop: Option<(Box<dyn FnMut(&mut W)>, UpdateHandle)>,
-    icon: Option<Icon>,
+widget! {
+    /// The main instantiation of the [`Window`] trait.
+    #[handler(send=noauto, generics = <M: Into<VoidMsg>> where W: Widget<Msg = M>)]
+    pub struct Window<W: Widget + 'static> {
+        #[widget_core]
+        core: CoreData,
+        restrict_dimensions: (bool, bool),
+        title: String,
+        #[widget]
+        w: W,
+        popups: SmallVec<[(WindowId, kas::Popup); 16]>,
+        drop: Option<(Box<dyn FnMut(&mut W)>, UpdateHandle)>,
+        icon: Option<Icon>,
+    }
 }
 
 impl<W: Widget> Debug for Window<W> {

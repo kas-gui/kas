@@ -9,15 +9,17 @@ use kas::draw::TextClass;
 use kas::text::format::{EditableText, FormattableText};
 use kas::{event, prelude::*};
 
-/// A text label
-///
-/// This type is generic over the text type. Some aliases are available:
-/// [`StrLabel`], [`StringLabel`], [`AccelLabel`].
-#[derive(Clone, Default, Debug, Widget)]
-pub struct Label<T: FormattableText + 'static> {
-    #[widget_core]
-    core: CoreData,
-    label: Text<T>,
+widget! {
+    /// A text label
+    ///
+    /// This type is generic over the text type. Some aliases are available:
+    /// [`StrLabel`], [`StringLabel`], [`AccelLabel`].
+    #[derive(Clone, Default, Debug)]
+    pub struct Label<T: FormattableText + 'static> {
+        #[widget_core]
+        core: CoreData,
+        label: Text<T>,
+    }
 }
 
 impl<T: FormattableText + 'static> Layout for Label<T> {

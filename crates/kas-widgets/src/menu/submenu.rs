@@ -12,21 +12,23 @@ use kas::event::{self, Command, ConfigureManager};
 use kas::prelude::*;
 use kas::WindowId;
 
-/// A sub-menu
-#[derive(Clone, Debug, Widget)]
-#[widget(config=noauto)]
-#[handler(noauto)]
-pub struct SubMenu<D: Directional, W: Menu> {
-    #[widget_core]
-    core: CoreData,
-    direction: D,
-    pub(crate) key_nav: bool,
-    label: Text<AccelString>,
-    label_off: Offset,
-    frame_size: Size,
-    #[widget]
-    pub list: Column<W>,
-    popup_id: Option<WindowId>,
+widget! {
+    /// A sub-menu
+    #[derive(Clone, Debug)]
+    #[widget(config=noauto)]
+    #[handler(noauto)]
+    pub struct SubMenu<D: Directional, W: Menu> {
+        #[widget_core]
+        core: CoreData,
+        direction: D,
+        pub(crate) key_nav: bool,
+        label: Text<AccelString>,
+        label_off: Offset,
+        frame_size: Size,
+        #[widget]
+        pub list: Column<W>,
+        popup_id: Option<WindowId>,
+    }
 }
 
 impl<D: Directional + Default, W: Menu> SubMenu<D, W> {

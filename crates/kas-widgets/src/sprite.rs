@@ -9,16 +9,18 @@ use kas::layout::SpriteDisplay;
 use kas::{event, prelude::*};
 use std::path::PathBuf;
 
-/// An image with margins
-#[derive(Clone, Debug, Default, Widget)]
-#[widget(config = noauto)]
-pub struct Image {
-    #[widget_core]
-    core: CoreData,
-    sprite: SpriteDisplay,
-    path: PathBuf,
-    do_load: bool,
-    id: Option<ImageId>,
+widget! {
+    /// An image with margins
+    #[derive(Clone, Debug, Default)]
+    #[widget(config = noauto)]
+    pub struct Image {
+        #[widget_core]
+        core: CoreData,
+        sprite: SpriteDisplay,
+        path: PathBuf,
+        do_load: bool,
+        id: Option<ImageId>,
+    }
 }
 
 impl Image {

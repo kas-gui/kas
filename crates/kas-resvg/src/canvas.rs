@@ -19,30 +19,32 @@ pub trait CanvasDrawable: std::fmt::Debug + 'static {
     fn draw(&self, pixmap: &mut Pixmap);
 }
 
-/// A canvas widget over the `tiny-skia` library
-///
-/// Note that the `tiny-skia` API is re-exported as [`crate::tiny_skia`].
-///
-/// Canvas size is controlled by the sizing arguments passed to the constructor,
-/// as well as the `stretch` factor and the display's scale factor `sf`.
-/// Minimum size is `min_size * sf`. Ideal size is `ideal_size * sf` except that
-/// if `fix_aspect` is true, then the ideal height is the one that preserves
-/// aspect ratio for the given width. The canvas may also exceed the ideal size
-/// if a [`Stretch`] factor greater than `None` is used.
-///
-/// The canvas (re)creates the backing pixmap when the size is set and draws
-/// to the new pixmap immediately. If the canvas program is modified then
-/// [`Canvas::redraw`] must be called to update the pixmap.
-#[cfg_attr(doc_cfg, doc(cfg(feature = "canvas")))]
-#[derive(Clone, Debug, Widget)]
-pub struct Canvas<P: CanvasDrawable> {
-    #[widget_core]
-    core: CoreData,
-    sprite: SpriteDisplay,
-    pixmap: Option<Pixmap>,
-    image_id: Option<ImageId>,
-    /// The program drawing to the canvas
-    pub program: P,
+widget! {
+    /// A canvas widget over the `tiny-skia` library
+    ///
+    /// Note that the `tiny-skia` API is re-exported as [`crate::tiny_skia`].
+    ///
+    /// Canvas size is controlled by the sizing arguments passed to the constructor,
+    /// as well as the `stretch` factor and the display's scale factor `sf`.
+    /// Minimum size is `min_size * sf`. Ideal size is `ideal_size * sf` except that
+    /// if `fix_aspect` is true, then the ideal height is the one that preserves
+    /// aspect ratio for the given width. The canvas may also exceed the ideal size
+    /// if a [`Stretch`] factor greater than `None` is used.
+    ///
+    /// The canvas (re)creates the backing pixmap when the size is set and draws
+    /// to the new pixmap immediately. If the canvas program is modified then
+    /// [`Canvas::redraw`] must be called to update the pixmap.
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "canvas")))]
+    #[derive(Clone, Debug,)]
+    pub struct Canvas<P: CanvasDrawable> {
+        #[widget_core]
+        core: CoreData,
+        sprite: SpriteDisplay,
+        pixmap: Option<Pixmap>,
+        image_id: Option<ImageId>,
+        /// The program drawing to the canvas
+        pub program: P,
+    }
 }
 
 impl<P: CanvasDrawable> Canvas<P> {

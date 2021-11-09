@@ -12,17 +12,19 @@ use crate::{AccelLabel, CheckBoxBare};
 use kas::draw::TextClass;
 use kas::prelude::*;
 
-/// A standard menu entry
-#[derive(Clone, Debug, Default, Widget)]
-#[widget(config=noauto)]
-#[handler(handle=noauto)]
-pub struct MenuEntry<M: Clone + Debug + 'static> {
-    #[widget_core]
-    core: kas::CoreData,
-    label: Text<AccelString>,
-    label_off: Offset,
-    frame_size: Size,
-    msg: M,
+widget! {
+    /// A standard menu entry
+    #[derive(Clone, Debug, Default)]
+    #[widget(config=noauto)]
+    #[handler(handle=noauto)]
+    pub struct MenuEntry<M: Clone + Debug + 'static> {
+        #[widget_core]
+        core: kas::CoreData,
+        label: Text<AccelString>,
+        label_off: Offset,
+        frame_size: Size,
+        msg: M,
+    }
 }
 
 impl<M: Clone + Debug + 'static> WidgetConfig for MenuEntry<M> {
@@ -119,21 +121,23 @@ impl<M: Clone + Debug + 'static> Handler for MenuEntry<M> {
 
 impl<M: Clone + Debug> Menu for MenuEntry<M> {}
 
-/// A menu entry which can be toggled
-#[derive(Clone, Default, Widget)]
-#[handler(msg = M, generics = <> where M: From<VoidMsg>)]
-#[widget(config=noauto)]
-#[layout(row, area=checkbox, draw=draw)]
-pub struct MenuToggle<M: 'static> {
-    #[widget_core]
-    core: CoreData,
-    #[layout_data]
-    layout_data: <Self as kas::LayoutData>::Data,
-    #[widget]
-    checkbox: CheckBoxBare<M>,
-    // TODO: label should use TextClass::MenuLabel
-    #[widget]
-    label: AccelLabel,
+widget! {
+    /// A menu entry which can be toggled
+    #[derive(Clone, Default)]
+    #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
+    #[widget(config=noauto)]
+    #[layout(row, area=checkbox, draw=draw)]
+    pub struct MenuToggle<M: 'static> {
+        #[widget_core]
+        core: CoreData,
+        #[layout_data]
+        layout_data: <Self as kas::LayoutData>::Data,
+        #[widget]
+        checkbox: CheckBoxBare<M>,
+        // TODO: label should use TextClass::MenuLabel
+        #[widget]
+        label: AccelLabel,
+    }
 }
 
 impl<M: 'static> Debug for MenuToggle<M> {

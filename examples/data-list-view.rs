@@ -149,21 +149,23 @@ impl EditGuard for ListEntryGuard {
     }
 }
 
-// The list entry
-#[derive(Clone, Debug, Widget)]
-#[layout(column)]
-#[handler(msg=EntryMsg)]
-struct ListEntry {
-    #[widget_core]
-    core: CoreData,
-    #[layout_data]
-    layout_data: <Self as kas::LayoutData>::Data,
-    #[widget]
-    label: StringLabel,
-    #[widget]
-    radio: RadioBox<EntryMsg>,
-    #[widget]
-    entry: EditBox<ListEntryGuard>,
+widget! {
+    // The list entry
+    #[derive(Clone, Debug)]
+    #[layout(column)]
+    #[handler(msg=EntryMsg)]
+    struct ListEntry {
+        #[widget_core]
+        core: CoreData,
+        #[layout_data]
+        layout_data: <Self as kas::LayoutData>::Data,
+        #[widget]
+        label: StringLabel,
+        #[widget]
+        radio: RadioBox<EntryMsg>,
+        #[widget]
+        entry: EditBox<ListEntryGuard>,
+    }
 }
 
 #[derive(Debug)]

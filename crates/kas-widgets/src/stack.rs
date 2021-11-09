@@ -20,25 +20,27 @@ pub type BoxStack<M> = Stack<Box<dyn Widget<Msg = M>>>;
 /// This is a parametrisation of [`Stack`].
 pub type RefStack<'a, M> = Stack<&'a mut dyn Widget<Msg = M>>;
 
-/// A stack of widgets
-///
-/// A stack consists a set of child widgets, all of equal size.
-/// Only a single member is visible at a time.
-///
-/// This may only be parametrised with a single widget type; [`BoxStack`] is
-/// a parametrisation allowing run-time polymorphism of child widgets.
-///
-/// Configuring and resizing elements is O(n) in the number of children.
-/// Drawing and event handling is O(1).
-#[derive(Clone, Default, Debug, Widget)]
-#[handler(send=noauto, msg=<W as event::Handler>::Msg)]
-#[widget(children=noauto)]
-pub struct Stack<W: Widget> {
-    first_id: WidgetId,
-    #[widget_core]
-    core: CoreData,
-    widgets: Vec<W>,
-    active: usize,
+widget! {
+    /// A stack of widgets
+    ///
+    /// A stack consists a set of child widgets, all of equal size.
+    /// Only a single member is visible at a time.
+    ///
+    /// This may only be parametrised with a single widget type; [`BoxStack`] is
+    /// a parametrisation allowing run-time polymorphism of child widgets.
+    ///
+    /// Configuring and resizing elements is O(n) in the number of children.
+    /// Drawing and event handling is O(1).
+    #[derive(Clone, Default, Debug)]
+    #[handler(send=noauto, msg=<W as event::Handler>::Msg)]
+    #[widget(children=noauto)]
+    pub struct Stack<W: Widget> {
+        first_id: WidgetId,
+        #[widget_core]
+        core: CoreData,
+        widgets: Vec<W>,
+        active: usize,
+    }
 }
 
 impl<W: Widget> WidgetChildren for Stack<W> {

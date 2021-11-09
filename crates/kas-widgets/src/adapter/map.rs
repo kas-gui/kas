@@ -9,16 +9,18 @@ use kas::prelude::*;
 use std::fmt;
 use std::rc::Rc;
 
-/// Wrapper to map messages from the inner widget
-#[derive(Clone, Widget)]
-#[layout(single)]
-#[handler(msg=M, send=noauto)]
-pub struct MapResponse<W: Widget, M: 'static> {
-    #[widget_core]
-    core: kas::CoreData,
-    #[widget]
-    inner: W,
-    map: Rc<dyn Fn(&mut Manager, W::Msg) -> Response<M>>,
+widget! {
+    /// Wrapper to map messages from the inner widget
+    #[derive(Clone)]
+    #[layout(single)]
+    #[handler(msg=M, send=noauto)]
+    pub struct MapResponse<W: Widget, M: 'static> {
+        #[widget_core]
+        core: kas::CoreData,
+        #[widget]
+        inner: W,
+        map: Rc<dyn Fn(&mut Manager, W::Msg) -> Response<M>>,
+    }
 }
 
 impl<W: Widget, M> MapResponse<W, M> {

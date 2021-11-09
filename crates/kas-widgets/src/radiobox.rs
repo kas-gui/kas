@@ -13,16 +13,18 @@ use std::rc::Rc;
 use super::AccelLabel;
 use kas::prelude::*;
 
-/// A bare radiobox (no label)
-#[derive(Clone, Widget)]
-#[handler(handle=noauto)]
-#[widget(config=noauto)]
-pub struct RadioBoxBare<M: 'static> {
-    #[widget_core]
-    core: CoreData,
-    state: bool,
-    handle: UpdateHandle,
-    on_select: Option<Rc<dyn Fn(&mut Manager) -> Option<M>>>,
+widget! {
+    /// A bare radiobox (no label)
+    #[derive(Clone)]
+    #[handler(handle=noauto)]
+    #[widget(config=noauto)]
+    pub struct RadioBoxBare<M: 'static> {
+        #[widget_core]
+        core: CoreData,
+        state: bool,
+        handle: UpdateHandle,
+        on_select: Option<Rc<dyn Fn(&mut Manager) -> Option<M>>>,
+    }
 }
 
 impl<M: 'static> Debug for RadioBoxBare<M> {
@@ -179,22 +181,24 @@ impl<M: 'static> HasBool for RadioBoxBare<M> {
     }
 }
 
-/// A radiobox with optional label
-#[derive(Clone, Widget)]
-#[layout(row, area=radiobox)]
-#[handler(msg = M, generics = <> where M: From<VoidMsg>)]
-#[widget(config=noauto)]
-#[widget_derive(HasBool)]
-pub struct RadioBox<M: 'static> {
-    #[widget_core]
-    core: CoreData,
-    #[layout_data]
-    layout_data: <Self as kas::LayoutData>::Data,
-    #[widget_derive]
-    #[widget]
-    radiobox: RadioBoxBare<M>,
-    #[widget]
-    label: AccelLabel,
+widget! {
+    /// A radiobox with optional label
+    #[derive(Clone)]
+    #[layout(row, area=radiobox)]
+    #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
+    #[widget(config=noauto)]
+    #[widget_derive(HasBool)]
+    pub struct RadioBox<M: 'static> {
+        #[widget_core]
+        core: CoreData,
+        #[layout_data]
+        layout_data: <Self as kas::LayoutData>::Data,
+        #[widget_derive]
+        #[widget]
+        radiobox: RadioBoxBare<M>,
+        #[widget]
+        label: AccelLabel,
+    }
 }
 
 impl<M: 'static> Debug for RadioBox<M> {

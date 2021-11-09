@@ -7,21 +7,23 @@
 
 use kas::{event, prelude::*};
 
-/// A frame around content
-///
-/// This widget provides a simple abstraction: drawing a frame around its
-/// contents.
-#[derive(Clone, Debug, Default, Widget)]
-#[handler(msg = <W as Handler>::Msg)]
-#[widget_derive(class_traits, Deref, DerefMut)]
-pub struct Frame<W: Widget> {
-    #[widget_core]
-    core: CoreData,
-    #[widget_derive]
-    #[widget]
-    pub inner: W,
-    offset: Offset,
-    size: Size,
+widget! {
+    /// A frame around content
+    ///
+    /// This widget provides a simple abstraction: drawing a frame around its
+    /// contents.
+    #[derive(Clone, Debug, Default)]
+    #[handler(msg = <W as Handler>::Msg)]
+    #[widget_derive(class_traits, Deref, DerefMut)]
+    pub struct Frame<W: Widget> {
+        #[widget_core]
+        core: CoreData,
+        #[widget_derive]
+        #[widget]
+        pub inner: W,
+        offset: Offset,
+        size: Size,
+    }
 }
 
 impl<W: Widget> Frame<W> {

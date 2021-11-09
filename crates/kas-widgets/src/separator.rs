@@ -11,15 +11,17 @@ use std::marker::PhantomData;
 use crate::Menu;
 use kas::{event, prelude::*};
 
-/// A separator
-///
-/// This widget draws a bar when in a list.
-#[derive(Clone, Debug, Default, Widget)]
-#[handler(msg=M)]
-pub struct Separator<M: Debug + 'static> {
-    #[widget_core]
-    core: CoreData,
-    _msg: PhantomData<M>,
+widget! {
+    /// A separator
+    ///
+    /// This widget draws a bar when in a list.
+    #[derive(Clone, Debug, Default)]
+    #[handler(msg=M)]
+    pub struct Separator<M: Debug + 'static> {
+        #[widget_core]
+        core: CoreData,
+        _msg: PhantomData<M>,
+    }
 }
 
 impl Separator<event::VoidMsg> {

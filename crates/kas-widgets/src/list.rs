@@ -140,41 +140,42 @@ pub type List<D, W> = GenericList<D, W, <W as Handler>::Msg>;
 /// only a small number are visible at any one time).
 pub type IndexedList<D, W> = GenericList<D, W, (usize, <W as Handler>::Msg)>;
 
-/// A generic row/column widget
-///
-/// This type is roughly [`Vec`] but for widgets. Generics:
-///
-/// -   `D:` [`Directional`] — fixed or run-time direction of layout
-/// -   `W:` [`Widget`] — type of widget
-/// -   `M` — the message type; restricted to `M:` [`FromIndexed`]`<M2>` where
-///     `M2` is the child's message type; this is usually either `M2` or `(usize, M2)`
-///
-/// ## Alternatives
-///
-/// Some more specific type-defs are available:
-///
-/// -   [`List`] fixes the message type to that of the child widget type `M`
-/// -   [`IndexedList`] fixes the message type to `(usize, M)`
-/// -   [`Row`], [`Column`], [`IndexedRow`], [`BoxList`], etc.
-///
-/// Where the entries are fixed, also consider custom [`Widget`] implementations.
-///
-/// ## Performance
-///
-/// Configuring and resizing elements is O(n) in the number of children.
-/// Drawing and event handling is O(log n) in the number of children (assuming
-/// only a small number are visible at any one time).
-#[derive(Widget)]
-#[handler(send=noauto, msg=M)]
-#[widget(children=noauto)]
-pub struct GenericList<D: Directional, W: Widget, M: FromIndexed<<W as Handler>::Msg> + 'static> {
-    first_id: WidgetId,
-    #[widget_core]
-    core: CoreData,
-    widgets: Vec<W>,
-    data: layout::DynRowStorage,
-    direction: D,
-    _pd: std::marker::PhantomData<M>,
+widget! {
+    /// A generic row/column widget
+    ///
+    /// This type is roughly [`Vec`] but for widgets. Generics:
+    ///
+    /// -   `D:` [`Directional`] — fixed or run-time direction of layout
+    /// -   `W:` [`Widget`] — type of widget
+    /// -   `M` — the message type; restricted to `M:` [`FromIndexed`]`<M2>` where
+    ///     `M2` is the child's message type; this is usually either `M2` or `(usize, M2)`
+    ///
+    /// ## Alternatives
+    ///
+    /// Some more specific type-defs are available:
+    ///
+    /// -   [`List`] fixes the message type to that of the child widget type `M`
+    /// -   [`IndexedList`] fixes the message type to `(usize, M)`
+    /// -   [`Row`], [`Column`], [`IndexedRow`], [`BoxList`], etc.
+    ///
+    /// Where the entries are fixed, also consider custom [`Widget`] implementations.
+    ///
+    /// ## Performance
+    ///
+    /// Configuring and resizing elements is O(n) in the number of children.
+    /// Drawing and event handling is O(log n) in the number of children (assuming
+    /// only a small number are visible at any one time).
+    #[handler(send=noauto, msg=M)]
+    #[widget(children=noauto)]
+    pub struct GenericList<D: Directional, W: Widget, M: FromIndexed<<W as Handler>::Msg> + 'static> {
+        first_id: WidgetId,
+        #[widget_core]
+        core: CoreData,
+        widgets: Vec<W>,
+        data: layout::DynRowStorage,
+        direction: D,
+        _pd: std::marker::PhantomData<M>,
+    }
 }
 
 impl<D: Directional, W: Widget + Clone, M: FromIndexed<<W as Handler>::Msg> + 'static> Clone

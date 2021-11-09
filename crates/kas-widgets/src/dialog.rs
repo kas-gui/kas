@@ -14,20 +14,22 @@ use kas::prelude::*;
 use kas::text::format::FormattableText;
 use kas::WindowId;
 
-/// A simple message box.
-#[derive(Clone, Debug, Widget)]
-#[layout(column)]
-#[widget(config=noauto)]
-pub struct MessageBox<T: FormattableText + 'static> {
-    #[widget_core]
-    core: CoreData,
-    #[layout_data]
-    layout_data: <Self as kas::LayoutData>::Data,
-    title: String,
-    #[widget]
-    label: Label<T>,
-    #[widget(use_msg = handle_button)]
-    button: TextButton<()>,
+widget! {
+    /// A simple message box.
+    #[derive(Clone, Debug)]
+    #[layout(column)]
+    #[widget(config=noauto)]
+    pub struct MessageBox<T: FormattableText + 'static> {
+        #[widget_core]
+        core: CoreData,
+        #[layout_data]
+        layout_data: <Self as kas::LayoutData>::Data,
+        title: String,
+        #[widget]
+        label: Label<T>,
+        #[widget(use_msg = handle_button)]
+        button: TextButton<()>,
+    }
 }
 
 impl<T: FormattableText + 'static> MessageBox<T> {

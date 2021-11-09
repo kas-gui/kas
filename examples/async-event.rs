@@ -44,14 +44,16 @@ fn main() -> Result<(), kas::shell::Error> {
     toolkit.with(window)?.run()
 }
 
-#[derive(Debug, Widget)]
-#[handler(handle = noauto)]
-#[widget(config = noauto)]
-struct ColourSquare {
-    #[widget_core]
-    core: CoreData,
-    colour: Arc<Mutex<Rgba>>,
-    handle: UpdateHandle,
+widget! {
+    #[derive(Debug)]
+    #[handler(handle = noauto)]
+    #[widget(config = noauto)]
+    struct ColourSquare {
+        #[widget_core]
+        core: CoreData,
+        colour: Arc<Mutex<Rgba>>,
+        handle: UpdateHandle,
+    }
 }
 impl WidgetConfig for ColourSquare {
     fn configure(&mut self, mgr: &mut Manager) {

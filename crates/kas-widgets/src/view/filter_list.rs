@@ -145,34 +145,36 @@ impl<T: ListData + 'static, F: Filter<T::Item>> ListData for FilteredList<T, F> 
     }
 }
 
-/// Filter-list view widget
-///
-/// This widget is a wrapper around [`ListView`] which applies a filter to the
-/// data list.
-///
-/// Why is a data-filter a widget and not a pure-data item, you ask? The answer
-/// is that a filter-list must be updated when the filter or the data changes,
-/// and, since filtering a list is not especially cheap, the filtering must be
-/// cached and updated when required, not every time the list view asks for more
-/// data. Although it is possible to do this with a data-view, that requires
-/// machinery for recursive-updates on data-structures and/or a mechanism to
-/// test whether the underlying list-data changed. Implementing as a widget
-/// avoids this.
-// TODO: impl Clone
-#[derive(Debug, Widget)]
-#[handler(handle=noauto, generics = <>)]
-#[layout(single)]
-#[widget(config=noauto)]
-pub struct FilterListView<
-    D: Directional,
-    T: ListData + UpdHandler<T::Key, V::Msg> + 'static,
-    F: Filter<T::Item>,
-    V: Driver<T::Item> = driver::Default,
-> {
-    #[widget_core]
-    core: CoreData,
-    #[widget]
-    list: ListView<D, FilteredList<T, F>, V>,
+widget! {
+    /// Filter-list view widget
+    ///
+    /// This widget is a wrapper around [`ListView`] which applies a filter to the
+    /// data list.
+    ///
+    /// Why is a data-filter a widget and not a pure-data item, you ask? The answer
+    /// is that a filter-list must be updated when the filter or the data changes,
+    /// and, since filtering a list is not especially cheap, the filtering must be
+    /// cached and updated when required, not every time the list view asks for more
+    /// data. Although it is possible to do this with a data-view, that requires
+    /// machinery for recursive-updates on data-structures and/or a mechanism to
+    /// test whether the underlying list-data changed. Implementing as a widget
+    /// avoids this.
+    // TODO: impl Clone
+    #[derive(Debug)]
+    #[handler(handle=noauto, generics = <>)]
+    #[layout(single)]
+    #[widget(config=noauto)]
+    pub struct FilterListView<
+        D: Directional,
+        T: ListData + UpdHandler<T::Key, V::Msg> + 'static,
+        F: Filter<T::Item>,
+        V: Driver<T::Item> = driver::Default,
+    > {
+        #[widget_core]
+        core: CoreData,
+        #[widget]
+        list: ListView<D, FilteredList<T, F>, V>,
+    }
 }
 
 impl<

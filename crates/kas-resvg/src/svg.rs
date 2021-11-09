@@ -14,23 +14,25 @@ use kas::{event, prelude::*};
 use std::path::PathBuf;
 use tiny_skia::Pixmap;
 
-/// An SVG image loaded from a path
-#[cfg_attr(doc_cfg, doc(cfg(feature = "svg")))]
-#[derive(Clone, Widget)]
-#[widget(config = noauto)]
-pub struct Svg {
-    #[widget_core]
-    core: CoreData,
-    path: PathBuf,
-    tree: Option<usvg::Tree>,
-    margins: MarginSelector,
-    min_size_factor: f32,
-    ideal_size_factor: f32,
-    min_size: Size,
-    ideal_size: Size,
-    stretch: Stretch,
-    pixmap: Option<Pixmap>,
-    image_id: Option<ImageId>,
+widget! {
+    /// An SVG image loaded from a path
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "svg")))]
+    #[derive(Clone)]
+    #[widget(config = noauto)]
+    pub struct Svg {
+        #[widget_core]
+        core: CoreData,
+        path: PathBuf,
+        tree: Option<usvg::Tree>,
+        margins: MarginSelector,
+        min_size_factor: f32,
+        ideal_size_factor: f32,
+        min_size: Size,
+        ideal_size: Size,
+        stretch: Stretch,
+        pixmap: Option<Pixmap>,
+        image_id: Option<ImageId>,
+    }
 }
 
 impl std::fmt::Debug for Svg {

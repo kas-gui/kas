@@ -79,24 +79,17 @@ impl<'a> ToTokens for SubstTyGenerics<'a> {
 
 /// Macro to derive widget traits
 ///
-/// See documentation [in the `kas::macros` module](https://docs.rs/kas/latest/kas/macros#the-derivewidget-macro).
-#[proc_macro_derive(
-    Widget,
-    attributes(handler, layout, layout_data, widget, widget_core, widget_derive)
-)]
-pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let mut ast = parse_macro_input!(input as syn::DeriveInput);
-
-    let mut args = match args::read_attrs(&mut ast) {
-        Ok(w) => w,
-        Err(err) => return err.to_compile_error().into(),
-    };
+/// See documentation [in the `kas::macros` module](https://docs.rs/kas/latest/kas/macros#the-widget-macro).
+#[proc_macro]
+pub fn widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let mut args = parse_macro_input!(input as args::Widget);
+    let mut toks = quote! { #args };
 
     let derive_inner = args.core_data.is_none();
     let opt_inner = args.inner.as_ref().map(|(inner, _)| inner.clone());
 
-    let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
-    let name = &ast.ident;
+    let (impl_generics, ty_generics, where_clause) = args.generics.split_for_impl();
+    let name = &args.ident;
     let widget_name = name.to_string();
 
     let (core_data, core_data_mut) = args
@@ -109,7 +102,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 quote! { self.#inner.core_data_mut() },
             )
         });
-    let mut toks = quote! {
+    toks.append_all(quote! {
         impl #impl_generics ::kas::WidgetCore
             for #name #ty_generics #where_clause
         {
@@ -131,7 +124,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             fn as_widget(&self) -> &dyn ::kas::WidgetConfig { self }
             fn as_widget_mut(&mut self) -> &mut dyn ::kas::WidgetConfig { self }
         }
-    };
+    });
 
     if derive_inner {
         let inner = opt_inner.as_ref().unwrap();
@@ -156,7 +149,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 }
             }
         });
-    } else if args.widget.children {
+    } else if args.attr_widget.children {
         let first_id = if args.children.is_empty() {
             quote! { self.id() }
         } else {
@@ -200,7 +193,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         });
     }
 
-    if let Some(config) = args.widget.config {
+    if let Some(config) = args.attr_widget.config {
         let key_nav = config.key_nav;
         let hover_highlight = config.hover_highlight;
         let cursor_icon = config.cursor_icon;
@@ -273,7 +266,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 }
             }
         });
-    } else if let Some(ref layout) = args.layout {
+    } else if let Some(ref layout) = args.attr_layout {
         match layout::data_type(&args.children, layout) {
             Ok(dt) => toks.append_all(quote! {
                 impl #impl_generics ::kas::LayoutData
@@ -300,12 +293,12 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // The following traits are all parametrised over the Handler::Msg type.
     // Usually we only have one instance of this, but we support multiple; in
     // case no `#[handler]` attribute is present, we use a default value.
-    if args.handler.is_empty() {
-        args.handler.push(Default::default());
+    if args.attr_handler.is_empty() {
+        args.attr_handler.push(Default::default());
     }
-    for handler in args.handler.drain(..) {
+    for handler in args.attr_handler.drain(..) {
         let subs = handler.substitutions;
-        let mut generics = ast.generics.clone();
+        let mut generics = args.generics.clone();
         generics.params = generics
             .params
             .into_pairs()
@@ -345,7 +338,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         // Note: we may have extra generic types used in where clauses, but we
         // don't want these in ty_generics.
         let (impl_generics, _ty, where_clause) = generics.split_for_impl();
-        let ty_generics = SubstTyGenerics(&ast.generics, subs);
+        let ty_generics = SubstTyGenerics(&args.generics, subs);
 
         if handler.handle {
             let msg = handler.msg;
@@ -478,7 +471,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     }
 
     if let Some((member, ty)) = args.inner {
-        if args.derive.deref {
+        if args.attr_derive.deref {
             toks.append_all(quote! {
                 impl #impl_generics std::ops::Deref for #name #ty_generics #where_clause {
                     type Target = #ty;
@@ -490,7 +483,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             });
         }
 
-        if args.derive.deref_mut {
+        if args.attr_derive.deref_mut {
             toks.append_all(quote! {
                 impl #impl_generics std::ops::DerefMut for #name #ty_generics #where_clause {
                     #[inline]
@@ -517,7 +510,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             }
         };
 
-        if args.derive.has_bool {
+        if args.attr_derive.has_bool {
             let wc = extended_where_clause(parse_quote! { #ty: ::kas::class::HasBool });
             toks.append_all(quote! {
                 impl #impl_generics ::kas::class::HasBool for #name #ty_generics #wc {
@@ -534,7 +527,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             });
         }
 
-        if args.derive.has_str {
+        if args.attr_derive.has_str {
             let wc = extended_where_clause(parse_quote! { #ty: ::kas::class::HasStr });
             toks.append_all(quote! {
                 impl #impl_generics ::kas::class::HasStr for #name #ty_generics #wc {
@@ -551,7 +544,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             });
         }
 
-        if args.derive.has_string {
+        if args.attr_derive.has_string {
             let wc = extended_where_clause(parse_quote! { #ty: ::kas::class::HasString });
             toks.append_all(quote! {
                 impl #impl_generics ::kas::class::HasString for #name #ty_generics #wc {
@@ -568,7 +561,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             });
         }
 
-        if args.derive.set_accel {
+        if args.attr_derive.set_accel {
             let wc = extended_where_clause(parse_quote! { #ty: ::kas::class::SetAccel });
             toks.append_all(quote! {
                 impl #impl_generics ::kas::class::SetAccel for #name #ty_generics #wc {
@@ -820,11 +813,13 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // TODO: we should probably not rely on recursive macro expansion here!
     // (I.e. use direct code generation for Widget derivation, instead of derive.)
     let toks = (quote! { {
-        #[derive(Debug, ::kas::macros::Widget)]
-        #handler
-        #extra_attrs
-        struct AnonWidget #impl_generics #where_clause {
-            #field_toks
+        ::kas::macros::widget! {
+            #[derive(Debug)]
+            #handler
+            #extra_attrs
+            struct AnonWidget #impl_generics #where_clause {
+                #field_toks
+            }
         }
 
         #impls

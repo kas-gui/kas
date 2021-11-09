@@ -10,21 +10,23 @@ use crate::IndexedList;
 use kas::event::{self, Command, GrabMode};
 use kas::prelude::*;
 
-/// A menu-bar
-///
-/// This widget houses a sequence of menu buttons, allowing input actions across
-/// menus.
-#[derive(Clone, Debug, Widget)]
-#[handler(noauto)]
-pub struct MenuBar<W: Menu, D: Directional = kas::dir::Right> {
-    #[widget_core]
-    core: CoreData,
-    #[widget]
-    pub bar: IndexedList<D, SubMenu<D::Flipped, W>>,
-    ideal: Size,
-    // Open mode. Used to close with click on root only when previously open.
-    opening: bool,
-    delayed_open: Option<WidgetId>,
+widget! {
+    /// A menu-bar
+    ///
+    /// This widget houses a sequence of menu buttons, allowing input actions across
+    /// menus.
+    #[derive(Clone, Debug)]
+    #[handler(noauto)]
+    pub struct MenuBar<W: Menu, D: Directional = kas::dir::Right> {
+        #[widget_core]
+        core: CoreData,
+        #[widget]
+        pub bar: IndexedList<D, SubMenu<D::Flipped, W>>,
+        ideal: Size,
+        // Open mode. Used to close with click on root only when previously open.
+        opening: bool,
+        delayed_open: Option<WidgetId>,
+    }
 }
 
 impl<W: Menu, D: Directional + Default> MenuBar<W, D> {

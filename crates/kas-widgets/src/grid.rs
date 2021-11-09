@@ -19,42 +19,44 @@ use std::ops::{Index, IndexMut};
 /// See documentation of [`Grid`] type.
 pub type BoxGrid<M> = Grid<Box<dyn Widget<Msg = M>>>;
 
-/// A generic grid widget
-///
-/// Child widgets are displayed in a grid, according to each child's
-/// [`GridChildInfo`]. This allows spans and overlapping widgets. The numbers
-/// of rows and columns is determined automatically while the sizes of rows and
-/// columns are determined based on their contents (including special handling
-/// for spans, *mostly* with good results).
-///
-/// Note that all child widgets are stored in a list internally. The order of
-/// widgets in that list does not affect display position, but does have a few
-/// effects: (a) widgets may be accessed in this order via indexing, (b) widgets
-/// are configured and drawn in this order, (c) navigating
-/// through widgets with the Tab key currently uses the list order (though it
-/// may be changed in the future to use display order).
-///
-/// There is no protection against multiple widgets occupying the same cell.
-/// If this does happen, the last widget in that cell will appear on top, but
-/// overlapping widget drawing may not be pretty.
-///
-/// ## Alternatives
-///
-/// Where the entries are fixed, also consider custom [`Widget`] implementations.
-///
-/// ## Performance
-///
-/// Most operations are `O(n)` in the number of children.
-#[derive(Clone, Debug, Widget)]
-#[handler(send=noauto, msg=<W as Handler>::Msg)]
-#[widget(children=noauto)]
-pub struct Grid<W: Widget> {
-    first_id: WidgetId,
-    #[widget_core]
-    core: CoreData,
-    widgets: Vec<(GridChildInfo, W)>,
-    data: DynGridStorage,
-    dim: (u32, u32, u32, u32),
+widget! {
+    /// A generic grid widget
+    ///
+    /// Child widgets are displayed in a grid, according to each child's
+    /// [`GridChildInfo`]. This allows spans and overlapping widgets. The numbers
+    /// of rows and columns is determined automatically while the sizes of rows and
+    /// columns are determined based on their contents (including special handling
+    /// for spans, *mostly* with good results).
+    ///
+    /// Note that all child widgets are stored in a list internally. The order of
+    /// widgets in that list does not affect display position, but does have a few
+    /// effects: (a) widgets may be accessed in this order via indexing, (b) widgets
+    /// are configured and drawn in this order, (c) navigating
+    /// through widgets with the Tab key currently uses the list order (though it
+    /// may be changed in the future to use display order).
+    ///
+    /// There is no protection against multiple widgets occupying the same cell.
+    /// If this does happen, the last widget in that cell will appear on top, but
+    /// overlapping widget drawing may not be pretty.
+    ///
+    /// ## Alternatives
+    ///
+    /// Where the entries are fixed, also consider custom [`Widget`] implementations.
+    ///
+    /// ## Performance
+    ///
+    /// Most operations are `O(n)` in the number of children.
+    #[derive(Clone, Debug)]
+    #[handler(send=noauto, msg=<W as Handler>::Msg)]
+    #[widget(children=noauto)]
+    pub struct Grid<W: Widget> {
+        first_id: WidgetId,
+        #[widget_core]
+        core: CoreData,
+        widgets: Vec<(GridChildInfo, W)>,
+        data: DynGridStorage,
+        dim: (u32, u32, u32, u32),
+    }
 }
 
 impl<W: Widget> Default for Grid<W> {

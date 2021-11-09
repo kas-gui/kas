@@ -9,16 +9,18 @@ use std::fmt::Debug;
 
 use kas::prelude::*;
 
-/// A progress bar
-///
-/// The "progress" value may range from 0.0 to 1.0.
-#[derive(Clone, Debug, Default, Widget)]
-pub struct ProgressBar<D: Directional> {
-    #[widget_core]
-    core: CoreData,
-    direction: D,
-    width: i32,
-    value: f32,
+widget! {
+    /// A progress bar
+    ///
+    /// The "progress" value may range from 0.0 to 1.0.
+    #[derive(Clone, Debug, Default)]
+    pub struct ProgressBar<D: Directional> {
+        #[widget_core]
+        core: CoreData,
+        direction: D,
+        width: i32,
+        value: f32,
+    }
 }
 
 impl<D: Directional + Default> ProgressBar<D> {

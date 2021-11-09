@@ -11,12 +11,12 @@ use quote::{quote, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::token::{Brace, Colon, Comma, Eq, For, Impl, Paren};
+use syn::token::{Brace, Colon, Comma, Eq, For, Impl, Paren, Semi};
 use syn::{braced, bracketed, parenthesized, parse_quote};
 use syn::{
-    Attribute, ConstParam, Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed,
-    GenericParam, Generics, Ident, Index, Lifetime, LifetimeDef, Lit, Member, Token, Type,
-    TypeParam, TypePath, TypeTraitObject,
+    Attribute, ConstParam, Expr, Field, Fields, FieldsNamed, GenericParam, Generics, Ident, Index,
+    Lifetime, LifetimeDef, Lit, Member, Token, Type, TypeParam, TypePath, TypeTraitObject,
+    Visibility,
 };
 
 #[derive(Debug)]
@@ -26,171 +26,234 @@ pub struct Child {
 }
 
 #[derive(Debug)]
-pub struct Args {
+pub struct Widget {
+    pub attr_derive: WidgetDerive,
+    pub attr_widget: WidgetArgs,
+    pub attr_layout: Option<LayoutArgs>,
+    pub attr_handler: Vec<HandlerArgs>,
+    pub extra_attrs: Vec<Attribute>,
+
+    pub vis: Visibility,
+    pub token: Token![struct],
+    pub ident: Ident,
+    pub generics: Generics,
+    pub fields: Fields,
+    pub semi_token: Option<Semi>,
+
     pub core_data: Option<Member>,
     pub layout_data: Option<Member>,
     pub inner: Option<(Member, Type)>,
-    pub derive: WidgetDerive,
-    pub widget: WidgetArgs,
-    pub layout: Option<LayoutArgs>,
-    pub handler: Vec<HandlerArgs>,
     pub children: Vec<Child>,
 }
 
-pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
-    let not_struct_err = |span| {
-        Err(Error::new(
-            span,
-            "cannot derive Widget on an enum, union or unit struct",
-        ))
-    };
-    let (fields, span) = match &mut ast.data {
-        Data::Struct(data) => match &mut data.fields {
-            Fields::Named(FieldsNamed {
-                brace_token: Brace { span },
-                named: fields,
-            })
-            | Fields::Unnamed(FieldsUnnamed {
-                paren_token: Paren { span },
-                unnamed: fields,
-            }) => (fields, span),
-            Fields::Unit => return not_struct_err(data.struct_token.span()),
-        },
-        Data::Enum(data) => return not_struct_err(data.enum_token.span()),
-        Data::Union(data) => return not_struct_err(data.union_token.span()),
-    };
+impl Parse for Widget {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let mut attr_derive: Option<(Span, WidgetDerive)> = None;
+        let mut attr_widget = None;
+        let mut attr_layout = None;
+        let mut attr_handler = Vec::new();
+        let mut extra_attrs = Vec::new();
 
-    let mut core_data = None;
-    let mut layout_data = None;
-    let mut inner = None;
-    let mut children = vec![];
-
-    for (i, field) in fields.iter_mut().enumerate() {
-        for attr in field.attrs.drain(..) {
-            if attr.path == parse_quote! { layout } || attr.path == parse_quote! { handler } {
-                // These are valid attributes according to proc_macro_derive, so we need to catch them
-                emit_error!(
-                    attr.span(),
-                    "invalid attribute on Widget field (applicable to struct only)"
-                );
-            } else if attr.path == parse_quote! { widget_core } {
-                if core_data.is_none() {
-                    core_data = Some(member(i, field.ident.clone()));
+        let mut attrs = input.call(Attribute::parse_outer)?;
+        for attr in attrs.drain(..) {
+            if attr.path == parse_quote! { widget_derive } {
+                if attr_derive.is_none() {
+                    let span = attr.span();
+                    let attr = syn::parse2(attr.tokens)?;
+                    attr_derive = Some((span, attr));
                 } else {
-                    emit_error!(attr.span(), "multiple fields marked with #[widget_core]");
-                }
-            } else if attr.path == parse_quote! { layout_data } {
-                if layout_data.is_some() {
-                    emit_error!(attr.span(), "multiple fields marked with #[layout_data]");
-                } else if field.ty != parse_quote! { <Self as kas::LayoutData>::Data }
-                    && field.ty != parse_quote! { <Self as ::kas::LayoutData>::Data }
-                    && field.ty != parse_quote! { <Self as LayoutData>::Data }
-                {
-                    emit_warning!(
-                        field.ty.span(),
-                        "expected type `<Self as kas::LayoutData>::Data`"
+                    emit_error!(
+                        attr.span(),
+                        "multiple #[widget_derive(..)] attributes on type"
                     );
-                } else {
-                    layout_data = Some(member(i, field.ident.clone()));
-                }
-            } else if attr.path == parse_quote! { widget_derive } {
-                if inner.is_none() {
-                    inner = Some((member(i, field.ident.clone()), field.ty.clone()));
-                } else {
-                    emit_error!(attr.span(), "multiple fields marked with #[widget_derive]");
                 }
             } else if attr.path == parse_quote! { widget } {
-                let ident = member(i, field.ident.clone());
-                let args = syn::parse2(attr.tokens)?;
-                children.push(Child { ident, args });
-            }
-        }
-    }
-
-    if core_data.is_none() && inner.is_none() {
-        return Err(Error::new(
-            *span,
-            "require a field with #[widget_core] or a field with #[widget_derive] or both",
-        ));
-    }
-    if core_data.is_none() && (layout_data.is_some() || !children.is_empty()) {
-        return Err(Error::new(
-            *span,
-            "require a field with #[widget_core] when using #[layout_data] or #[widget]",
-        ));
-    }
-
-    let mut derive = None;
-    let mut widget = None;
-    let mut layout = None;
-    let mut handler = vec![];
-
-    for attr in ast.attrs.drain(..) {
-        if attr.path == parse_quote! { widget_core } || attr.path == parse_quote! { layout_data } {
-            // These are valid attributes according to proc_macro_derive, so we need to catch them
-            emit_error!(
-                attr.span(),
-                "invalid attribute on Widget struct (applicable to fields only)"
-            );
-        } else if attr.path == parse_quote! { widget_derive } {
-            if inner.is_none() {
-                emit_error!(attr.span(), "usage of #[widget_derive(..)] on struct without a field marked with #[widget_derive]");
-            }
-            if derive.is_none() {
-                derive = Some(syn::parse2(attr.tokens)?);
-            } else {
-                emit_error!(
-                    attr.span(),
-                    "multiple #[widget_derive(..)] attributes on type"
-                );
-            }
-        } else if attr.path == parse_quote! { widget } {
-            if widget.is_none() {
-                let _span = attr.span();
-                let w: WidgetArgs = syn::parse2(attr.tokens)?;
-                if core_data.is_none() && !w.children {
-                    emit_error!(_span, "it is required to derive WidgetChildren when deriving from an inner widget");
+                if attr_widget.is_none() {
+                    let _span = attr.span();
+                    let w: WidgetArgs = syn::parse2(attr.tokens)?;
+                    attr_widget = Some(w);
+                } else {
+                    emit_error!(attr.span(), "multiple #[widget(..)] attributes on type");
                 }
-                widget = Some(w);
+            } else if attr.path == parse_quote! { layout } {
+                if attr_layout.is_some() {
+                    emit_error!(attr.span(), "multiple #[layout(..)] attributes on type");
+                } else {
+                    attr_layout = Some(syn::parse2(attr.tokens)?);
+                }
+            } else if attr.path == parse_quote! { handler } {
+                attr_handler.push(syn::parse2(attr.tokens)?);
             } else {
-                emit_error!(attr.span(), "multiple #[widget(..)] attributes on type");
+                extra_attrs.push(attr);
             }
-        } else if attr.path == parse_quote! { layout } {
-            if layout.is_some() {
-                emit_error!(attr.span(), "multiple #[layout(..)] attributes on type");
-            } else if core_data.is_none() {
+        }
+
+        let vis = input.parse::<Visibility>()?;
+        let token = input.parse::<Token![struct]>()?;
+        let ident = input.parse::<Ident>()?;
+
+        let mut generics = input.parse::<Generics>()?;
+        let (mut fields, semi_token) = {
+            let mut lookahead = input.lookahead1();
+            if lookahead.peek(Token![where]) {
+                generics.where_clause = Some(input.parse()?);
+                lookahead = input.lookahead1();
+            }
+
+            if generics.where_clause.is_none() && lookahead.peek(Paren) {
+                let fields = input.parse()?;
+
+                lookahead = input.lookahead1();
+                if lookahead.peek(Token![where]) {
+                    generics.where_clause = Some(input.parse()?);
+                    lookahead = input.lookahead1();
+                }
+
+                if lookahead.peek(Token![;]) {
+                    let semi = input.parse()?;
+                    (Fields::Unnamed(fields), Some(semi))
+                } else {
+                    return Err(lookahead.error());
+                }
+            } else if lookahead.peek(Brace) {
+                let content;
+                let brace_token = braced!(content in input);
+                let named = content.parse_terminated(Field::parse_named)?;
+                let fields = Fields::Named(FieldsNamed { brace_token, named });
+                (fields, None)
+            } else {
+                return Err(lookahead.error());
+            }
+        };
+
+        let mut core_data = None;
+        let mut layout_data = None;
+        let mut inner = None;
+        let mut children = vec![];
+
+        for (i, field) in fields.iter_mut().enumerate() {
+            let mut other_attrs = Vec::with_capacity(field.attrs.len());
+            for attr in field.attrs.drain(..) {
+                if attr.path == parse_quote! { widget_core } {
+                    if core_data.is_none() {
+                        core_data = Some(member(i, field.ident.clone()));
+                    } else {
+                        emit_error!(attr.span(), "multiple fields marked with #[widget_core]");
+                    }
+                } else if attr.path == parse_quote! { layout_data } {
+                    if layout_data.is_some() {
+                        emit_error!(attr.span(), "multiple fields marked with #[layout_data]");
+                    } else if field.ty != parse_quote! { <Self as kas::LayoutData>::Data }
+                        && field.ty != parse_quote! { <Self as ::kas::LayoutData>::Data }
+                        && field.ty != parse_quote! { <Self as LayoutData>::Data }
+                    {
+                        emit_warning!(
+                            field.ty.span(),
+                            "expected type `<Self as kas::LayoutData>::Data`"
+                        );
+                    } else {
+                        layout_data = Some(member(i, field.ident.clone()));
+                    }
+                } else if attr.path == parse_quote! { widget_derive } {
+                    if inner.is_none() {
+                        inner = Some((member(i, field.ident.clone()), field.ty.clone()));
+                    } else {
+                        emit_error!(attr.span(), "multiple fields marked with #[widget_derive]");
+                    }
+                } else if attr.path == parse_quote! { widget } {
+                    let ident = member(i, field.ident.clone());
+                    let args = syn::parse2(attr.tokens)?;
+                    children.push(Child { ident, args });
+                } else {
+                    other_attrs.push(attr);
+                }
+            }
+            field.attrs = other_attrs;
+        }
+
+        let attr_widget = attr_widget.unwrap_or_default();
+
+        if core_data.is_none() {
+            if inner.is_none() {
                 emit_error!(
-                    attr.span(),
-                    "require a field with #[widget_core] when using #[layout(..)]"
+                    fields.span(),
+                    "require a field with #[widget_core] or a field with #[widget_derive] or both",
                 );
-            } else {
-                layout = Some(syn::parse2(attr.tokens)?);
             }
-        } else if attr.path == parse_quote! { handler } {
-            handler.push(syn::parse2(attr.tokens)?);
+            if layout_data.is_some() || !children.is_empty() {
+                emit_error!(
+                    fields.span(),
+                    "require a field with #[widget_core] when using #[layout_data] or #[widget]",
+                );
+            }
+            if !attr_widget.children {
+                emit_error!(
+                    token.span(),
+                    "it is required to derive WidgetChildren when deriving from an inner widget"
+                );
+            }
+        }
+
+        if core_data.is_some() && inner.is_some() && attr_derive.is_none() {
+            emit_error!(
+                fields.span(),
+                "usage of #[widget_derive] field with #[widget_core] field and without #[widget_derive(..)] on struct has no effect",
+            );
+        }
+
+        if let Some((ref span, _)) = attr_derive {
+            if inner.is_none() {
+                emit_error!(span, "usage of #[widget_derive(..)] on struct without a field marked with #[widget_derive]");
+            }
+        }
+
+        let attr_derive = attr_derive.map(|(_, attr)| attr).unwrap_or_default();
+
+        Ok(Widget {
+            attr_derive,
+            attr_widget,
+            attr_layout,
+            attr_handler,
+            extra_attrs,
+            vis,
+            token,
+            ident,
+            generics,
+            fields,
+            semi_token,
+            core_data,
+            layout_data,
+            inner,
+            children,
+        })
+    }
+}
+
+/// Prints out the widget struct, but not other fields
+impl ToTokens for Widget {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        tokens.append_all(self.extra_attrs.iter());
+        self.vis.to_tokens(tokens);
+        self.token.to_tokens(tokens);
+        self.ident.to_tokens(tokens);
+        self.generics.to_tokens(tokens);
+        match &self.fields {
+            Fields::Named(fields) => {
+                self.generics.where_clause.to_tokens(tokens);
+                fields.to_tokens(tokens);
+            }
+            Fields::Unnamed(fields) => {
+                fields.to_tokens(tokens);
+                self.generics.where_clause.to_tokens(tokens);
+                self.semi_token.unwrap_or_default().to_tokens(tokens);
+            }
+            Fields::Unit => {
+                unreachable!()
+                // self.generics.where_clause.to_tokens(tokens);
+                // self.semi_token.unwrap_or_default().to_tokens(tokens);
+            }
         }
     }
-
-    if core_data.is_some() && inner.is_some() && derive.is_none() {
-        return Err(Error::new(
-            *span,
-            "usage of #[widget_derive] field with #[widget_core] field and without #[widget_derive(..)] on struct has no effect",
-        ));
-    }
-
-    let derive = derive.unwrap_or_default();
-    let widget = widget.unwrap_or_default();
-
-    Ok(Args {
-        core_data,
-        layout_data,
-        inner,
-        derive,
-        widget,
-        layout,
-        handler,
-        children,
-    })
 }
 
 fn member(index: usize, ident: Option<Ident>) -> Member {
