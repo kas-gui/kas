@@ -113,7 +113,7 @@ fn main() -> Result<(), kas::shell::Error> {
             #[widget] _ = TextButton::new_msg("↓↑", Control::Dir),
             n: usize = 3,
         }
-        impl {
+        impl Self {
             fn activate(&mut self, _: &mut Manager, n: usize) -> Control {
                 self.n = n;
                 Control::Set(n)
@@ -154,7 +154,7 @@ fn main() -> Result<(), kas::shell::Error> {
                 #[widget] _ = Filler::maximize(),
                 active: usize = 0,
             }
-            impl {
+            impl Self {
                 fn control(&mut self, mgr: &mut Manager, control: Control) {
                     match control {
                         Control::Set(len) => {

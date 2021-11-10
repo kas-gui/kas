@@ -25,7 +25,7 @@ fn main() -> Result<(), kas::shell::Error> {
             ],
             count: i32 = 0,
         }
-        impl {
+        impl Self {
             fn handle_button(&mut self, mgr: &mut Manager, incr: i32) {
                 self.count += incr;
                 *mgr |= self.display.set_string(self.count.to_string());

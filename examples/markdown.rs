@@ -51,7 +51,7 @@ It also supports lists:
                     ScrollBarRegion::new(Label::new(Markdown::new(doc)?)),
                 #[widget(row=1, col=1, use_msg=update)] _ = TextButton::new_msg("&Update", ()),
             }
-            impl {
+            impl Self {
                 fn update(&mut self, mgr: &mut Manager, _: ()) {
                     let text = match Markdown::new(self.editor.get_str()) {
                         Ok(text) => text,

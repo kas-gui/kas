@@ -328,11 +328,14 @@ fn parse_impl(in_ident: Option<&Ident>, input: ParseStream) -> Result<ItemImpl> 
             {
                 abort!(
                     self_ty.span(),
-                    format!("expected `Self` or `{0}` or `{0}<...>`", ident)
+                    format!(
+                        "expected `Self` or `{0}` or `{0}<...>` or `Trait for Self`, etc",
+                        ident
+                    )
                 );
             }
         } else {
-            abort!(self_ty.span(), "expected `Self`");
+            abort!(self_ty.span(), "expected `Self` or `Trait for Self`");
         }
     }
 
@@ -1187,7 +1190,7 @@ pub struct MakeWidget {
     // child widgets and data fields
     pub fields: Vec<WidgetField>,
     // impl blocks on the widget
-    pub impls: Vec<(Option<TypePath>, Vec<syn::ImplItem>)>,
+    pub impls: Vec<ItemImpl>,
 }
 
 impl Parse for MakeWidget {
@@ -1229,25 +1232,9 @@ impl Parse for MakeWidget {
             let _: Comma = content.parse()?;
         }
 
-        let mut impls = vec![];
+        let mut impls = Vec::new();
         while !input.is_empty() {
-            let _: Impl = input.parse()?;
-
-            let target = if input.peek(Brace) {
-                None
-            } else {
-                Some(input.parse::<TypePath>()?)
-            };
-
-            let content;
-            let _ = braced!(content in input);
-            let mut methods = vec![];
-
-            while !content.is_empty() {
-                methods.push(content.parse::<syn::ImplItem>()?);
-            }
-
-            impls.push((target, methods));
+            impls.push(parse_impl(None, input)?);
         }
 
         Ok(MakeWidget {

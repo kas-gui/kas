@@ -650,9 +650,7 @@ pub fn widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut find_handler_ty_buf: Vec<(Ident, Type)> = vec![];
     // find type of handler's message; return None on error
-    let mut find_handler_ty = |handler: &Ident,
-                               impls: &Vec<(Option<TypePath>, Vec<syn::ImplItem>)>|
-     -> Option<Type> {
+    let mut find_handler_ty = |handler: &Ident, impls: &Vec<ItemImpl>| -> Option<Type> {
         // check the buffer in case we did this already
         for (ident, ty) in &find_handler_ty_buf {
             if ident == handler {
@@ -663,7 +661,10 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         let mut x: Option<(Ident, Type)> = None;
 
         for impl_block in impls {
-            for f in &impl_block.1 {
+            if impl_block.trait_.is_some() {
+                continue;
+            }
+            for f in &impl_block.items {
                 match f {
                     syn::ImplItem::Method(syn::ImplItemMethod { sig, .. })
                         if sig.ident == *handler =>
@@ -726,27 +727,27 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         let mut send = true;
         let mut msg = None;
         let msg_ident: Ident = parse_quote! { Msg };
-        for (name, body) in &args.impls {
-            if name == &Some(parse_quote! { Handler })
-                || name == &Some(parse_quote! { ::kas::Handler })
-            {
-                handle = false;
+        for impl_block in &args.impls {
+            if let Some((_, ref name, _)) = impl_block.trait_ {
+                if *name == parse_quote! { Handler } || *name == parse_quote! { ::kas::Handler } {
+                    handle = false;
 
-                for item in body {
-                    match item {
-                        syn::ImplItem::Type(syn::ImplItemType {
-                            ref ident, ref ty, ..
-                        }) if *ident == msg_ident => {
-                            msg = Some(ty.clone());
-                            continue;
+                    for item in &impl_block.items {
+                        match item {
+                            syn::ImplItem::Type(syn::ImplItemType {
+                                ref ident, ref ty, ..
+                            }) if *ident == msg_ident => {
+                                msg = Some(ty.clone());
+                                continue;
+                            }
+                            _ => (),
                         }
-                        _ => (),
                     }
+                } else if *name == parse_quote! { SendEvent }
+                    || *name == parse_quote! { ::kas::SendEvent }
+                {
+                    send = false;
                 }
-            } else if name == &Some(parse_quote! { SendEvent })
-                || name == &Some(parse_quote! { ::kas::SendEvent })
-            {
-                send = false;
             }
         }
 
@@ -855,24 +856,12 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         });
     }
 
-    let (impl_generics, ty_generics, where_clause) = args.generics.split_for_impl();
+    let (impl_generics, _, where_clause) = args.generics.split_for_impl();
 
     let mut impls = quote! {};
-
     for impl_block in args.impls {
-        let mut contents = TokenStream::new();
-        for method in impl_block.1 {
-            contents.append_all(std::iter::once(method));
-        }
-        let target = if let Some(t) = impl_block.0 {
-            quote! { #t for }
-        } else {
-            quote! {}
-        };
         impls.append_all(quote! {
-            impl #impl_generics #target AnonWidget #ty_generics #where_clause {
-                #contents
-            }
+            #impl_block
         });
     }
 
@@ -886,9 +875,9 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             struct AnonWidget #impl_generics #where_clause {
                 #field_toks
             }
-        }
 
-        #impls
+            #impls
+        }
 
         AnonWidget {
             #field_val_toks

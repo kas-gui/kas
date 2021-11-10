@@ -139,7 +139,7 @@ fn main() -> Result<(), kas::shell::Error> {
             struct {
                 #[widget(use_msg = handler)] _ = widgets,
             }
-            impl {
+            impl Self {
                 fn handler(&mut self, _: &mut Manager, item: Item) {
                     match item {
                         Item::White => BACKGROUND.with(|b| b.set(Rgba::WHITE)),

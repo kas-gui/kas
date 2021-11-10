@@ -28,7 +28,7 @@ fn main() -> Result<(), kas::shell::Error> {
                     TextButton::new_msg("+", 1),
                 ],
             }
-            impl {
+            impl Self {
                 fn update(&mut self, mgr: &mut Manager, msg: i32) {
                     self.counter.update_value(mgr, |v| v + msg);
                 }

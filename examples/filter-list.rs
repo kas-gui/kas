@@ -64,7 +64,7 @@ fn main() -> Result<(), kas::shell::Error> {
                     >> =
                     ScrollBars::new(FilterListView::new(data, filter)),
             }
-            impl {
+            impl Self {
                 fn set_selection_mode(&mut self, mgr: &mut Manager, mode: SelectionMode) {
                     *mgr |= self.list.set_selection_mode(mode);
                 }

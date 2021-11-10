@@ -70,7 +70,7 @@ fn main() -> Result<(), kas::shell::Error> {
             #[widget(col = 2, row = 4)]
             _ = TextButton::new_msg("&.", Key::Char('.')),
         }
-        impl kas::WidgetConfig {
+        impl kas::WidgetConfig for Self {
             fn configure(&mut self, mgr: &mut Manager) {
                 // Enable key bindings without Alt held:
                 mgr.enable_alt_bypass(true);
@@ -85,7 +85,7 @@ fn main() -> Result<(), kas::shell::Error> {
             #[widget(use_msg = handle_button)] buttons -> Key = buttons,
             calc: Calculator = Calculator::new(),
         }
-        impl {
+        impl Self {
             fn handle_button(&mut self, mgr: &mut Manager, msg: Key) {
                 if self.calc.handle(msg) {
                     *mgr |= self.display.set_string(self.calc.display());

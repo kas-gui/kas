@@ -41,7 +41,7 @@ fn main() -> Result<(), kas::shell::Error> {
                 #[widget(use_msg = handle_button)] buttons -> Message = buttons,
                 #[widget] panes: RowSplitter<EditField> = panes,
             }
-            impl {
+            impl Self {
                 fn handle_button(&mut self, mgr: &mut Manager, msg: Message) {
                     match msg {
                         Message::Decr => {

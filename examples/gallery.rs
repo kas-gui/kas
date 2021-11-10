@@ -176,7 +176,7 @@ fn main() -> Result<(), kas::shell::Error> {
             #[widget(use_msg = edit)] edit = TextButton::new_msg("&Edit", ()),
             future: Option<Future<Option<String>>> = None,
         }
-        impl {
+        impl Self {
             fn edit(&mut self, mgr: &mut Manager, _: ()) {
                 if self.future.is_none() {
                     let text = self.label.get_string();
@@ -192,7 +192,7 @@ fn main() -> Result<(), kas::shell::Error> {
                 }
             }
         }
-        impl Handler {
+        impl Handler for Self {
             type Msg = VoidMsg;
             fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
                 match event {
@@ -267,7 +267,7 @@ fn main() -> Result<(), kas::shell::Error> {
             #[widget(row=12, col=0)] _ = Label::new("Child window"),
             #[widget(row=12, col=1)] _ = popup_edit_box,
         }
-        impl {
+        impl Self {
             fn handle_slider(&mut self, _: &mut Manager, msg: i32) -> Item {
                 Item::Slider(msg)
             }
@@ -300,7 +300,7 @@ fn main() -> Result<(), kas::shell::Error> {
                     for<W: Widget<Msg = Item>> ScrollBarRegion<W> =
                         ScrollBarRegion::new(widgets),
             }
-            impl {
+            impl Self {
                 fn menu(&mut self, mgr: &mut Manager, msg: Menu) {
                     match msg {
                         Menu::Theme(name) => {

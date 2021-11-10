@@ -27,7 +27,7 @@ fn make_window() -> Box<dyn kas::Window> {
             saved: Duration = Duration::default(),
             start: Option<Instant> = None,
         }
-        impl {
+        impl Self {
             fn reset(&mut self, mgr: &mut Manager, _: ()) {
                 self.saved = Duration::default();
                 self.start = None;
@@ -43,12 +43,12 @@ fn make_window() -> Box<dyn kas::Window> {
                 }
             }
         }
-        impl kas::WidgetConfig {
+        impl kas::WidgetConfig for Self {
             fn configure(&mut self, mgr: &mut Manager) {
                 mgr.enable_alt_bypass(true);
             }
         }
-        impl Handler {
+        impl Handler for Self {
             type Msg = VoidMsg;
             fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<VoidMsg> {
                 match event {
