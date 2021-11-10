@@ -3,8 +3,6 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use std::collections::HashMap;
-
 use proc_macro2::{Punct, Spacing, Span, TokenStream, TokenTree};
 use proc_macro_error::{abort, emit_error, emit_warning};
 use quote::{quote, ToTokens, TokenStreamExt};
@@ -964,7 +962,6 @@ impl Parse for LayoutArgs {
 #[derive(Debug)]
 pub struct HandlerArgs {
     pub msg: Type,
-    pub substitutions: HashMap<Ident, Type>,
     pub generics: Generics,
 }
 
@@ -972,7 +969,6 @@ impl HandlerArgs {
     pub fn new(msg: Type) -> Self {
         HandlerArgs {
             msg,
-            substitutions: Default::default(),
             generics: Default::default(),
         }
     }
@@ -1006,15 +1002,6 @@ impl Parse for HandlerArgs {
                     have_gen = true;
                     let _: kw::generics = content.parse()?;
                     let _: Eq = content.parse()?;
-
-                    // Optionally, substitutions come first
-                    while content.peek(Ident) {
-                        let ident: Ident = content.parse()?;
-                        let _: Token![=>] = content.parse()?;
-                        let ty: Type = content.parse()?;
-                        args.substitutions.insert(ident, ty);
-                        let _: Comma = content.parse()?;
-                    }
 
                     if content.peek(Token![<]) {
                         args.generics = content.parse()?;
@@ -1059,19 +1046,9 @@ impl ToTokens for HandlerArgs {
                 self.msg.to_tokens(tokens);
                 Comma::default().to_tokens(tokens);
 
-                if !self.substitutions.is_empty()
-                    || !self.generics.params.is_empty()
-                    || self.generics.where_clause.is_some()
-                {
+                if !self.generics.params.is_empty() || self.generics.where_clause.is_some() {
                     kw::generics::default().to_tokens(tokens);
                     Eq::default().to_tokens(tokens);
-
-                    for (k, v) in &self.substitutions {
-                        k.to_tokens(tokens);
-                        <Token![=>]>::default().to_tokens(tokens);
-                        v.to_tokens(tokens);
-                        Comma::default().to_tokens(tokens);
-                    }
 
                     self.generics.to_tokens(tokens);
                     if let Some(ref clause) = self.generics.where_clause {

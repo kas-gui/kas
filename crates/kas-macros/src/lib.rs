@@ -12,71 +12,15 @@ use self::args::{ChildType, Handler, HandlerArgs};
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::proc_macro_error;
 use proc_macro_error::{abort, emit_error};
-use quote::{quote, ToTokens, TokenStreamExt};
-use std::collections::HashMap;
+use quote::{quote, TokenStreamExt};
 use std::fmt::Write;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::Token;
 use syn::{parse_macro_input, parse_quote};
-use syn::{GenericParam, Generics, Ident, Type, TypeParam, TypePath, WhereClause, WherePredicate};
+use syn::{GenericParam, Generics, Ident, ItemImpl, Type, TypePath, WhereClause, WherePredicate};
 
 mod args;
 mod layout;
-
-struct SubstTyGenerics<'a>(&'a syn::Generics, HashMap<Ident, Type>);
-
-// impl copied from syn, with modifications
-impl<'a> ToTokens for SubstTyGenerics<'a> {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        if self.0.params.is_empty() {
-            return;
-        }
-
-        <Token![<]>::default().to_tokens(tokens);
-
-        // Print lifetimes before types and consts, regardless of their
-        // order in self.params.
-        //
-        // TODO: ordering rules for const parameters vs type parameters have
-        // not been settled yet. https://github.com/rust-lang/rust/issues/44580
-        let mut trailing_or_empty = true;
-        for param in self.0.params.pairs() {
-            if let GenericParam::Lifetime(def) = *param.value() {
-                // Leave off the lifetime bounds and attributes
-                def.lifetime.to_tokens(tokens);
-                param.punct().to_tokens(tokens);
-                trailing_or_empty = param.punct().is_some();
-            }
-        }
-        for param in self.0.params.pairs() {
-            if let GenericParam::Lifetime(_) = **param.value() {
-                continue;
-            }
-            if !trailing_or_empty {
-                <Token![,]>::default().to_tokens(tokens);
-                trailing_or_empty = true;
-            }
-            match *param.value() {
-                GenericParam::Lifetime(_) => unreachable!(),
-                GenericParam::Type(param) => {
-                    if let Some(result) = self.1.get(&param.ident) {
-                        result.to_tokens(tokens);
-                    } else {
-                        param.ident.to_tokens(tokens);
-                    }
-                }
-                GenericParam::Const(param) => {
-                    // Leave off the const parameter defaults
-                    param.ident.to_tokens(tokens);
-                }
-            }
-            param.punct().to_tokens(tokens);
-        }
-
-        <Token![>]>::default().to_tokens(tokens);
-    }
-}
 
 // Support impls on Self by replacing name and summing generics
 fn extend_generics(generics: &mut Generics, in_generics: &Generics) {
@@ -403,28 +347,8 @@ pub fn widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         args.attr_handler.push(Default::default());
     }
     for handler in args.attr_handler.drain(..) {
-        let subs = handler.substitutions;
         let mut generics = args.generics.clone();
-        generics.params = generics
-            .params
-            .into_pairs()
-            .filter(|pair| match pair.value() {
-                GenericParam::Type(TypeParam { ref ident, .. }) => !subs.contains_key(ident),
-                _ => true,
-            })
-            .collect();
-        /* Problem: bounded_ty is too generic with no way to extract the Ident
-        if let Some(clause) = &mut generics.where_clause {
-            clause.predicates = clause.predicates
-                .into_pairs()
-                .filter(|pair| match pair.value() {
-                    &WherePredicate::Type(PredicateType { ref bounded_ty, .. }) =>
-                        subs.iter().all(|pair| &pair.0 != ident),
-                    _ => true,
-                })
-                .collect();
-        }
-        */
+
         if !handler.generics.params.is_empty() {
             if !generics.params.empty_or_trailing() {
                 generics.params.push_punct(Default::default());
@@ -444,7 +368,7 @@ pub fn widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         // Note: we may have extra generic types used in where clauses, but we
         // don't want these in ty_generics.
         let (impl_generics, _ty, where_clause) = generics.split_for_impl();
-        let ty_generics = SubstTyGenerics(&args.generics, subs);
+        let (_, ty_generics, _) = args.generics.split_for_impl();
 
         if impl_handler {
             let msg = handler.msg;
