@@ -341,12 +341,8 @@ pub fn widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     }
 
     // The following traits are all parametrised over the Handler::Msg type.
-    // Usually we only have one instance of this, but we support multiple; in
-    // case no `#[handler]` attribute is present, we use a default value.
-    if args.attr_handler.is_empty() {
-        args.attr_handler.push(Default::default());
-    }
-    for handler in args.attr_handler.drain(..) {
+    let handler = args.attr_handler.unwrap_or_default();
+    {
         let mut generics = args.generics.clone();
 
         if !handler.generics.params.is_empty() {

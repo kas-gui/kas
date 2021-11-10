@@ -28,7 +28,7 @@ pub struct Widget {
     pub attr_derive: WidgetDerive,
     pub attr_widget: WidgetArgs,
     pub attr_layout: Option<LayoutArgs>,
-    pub attr_handler: Vec<HandlerArgs>,
+    pub attr_handler: Option<HandlerArgs>,
     pub extra_attrs: Vec<Attribute>,
 
     pub vis: Visibility,
@@ -51,7 +51,7 @@ impl Parse for Widget {
         let mut attr_derive: Option<(Span, WidgetDerive)> = None;
         let mut attr_widget = None;
         let mut attr_layout = None;
-        let mut attr_handler = Vec::new();
+        let mut attr_handler = None;
         let mut extra_attrs = Vec::new();
 
         let mut attrs = input.call(Attribute::parse_outer)?;
@@ -82,7 +82,11 @@ impl Parse for Widget {
                     attr_layout = Some(syn::parse2(attr.tokens)?);
                 }
             } else if attr.path == parse_quote! { handler } {
-                attr_handler.push(syn::parse2(attr.tokens)?);
+                if attr_handler.is_some() {
+                    emit_error!(attr.span(), "multiple #[handler(..)] attributes on type");
+                } else {
+                    attr_handler = Some(syn::parse2(attr.tokens)?);
+                }
             } else {
                 extra_attrs.push(attr);
             }
