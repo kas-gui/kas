@@ -130,7 +130,7 @@ impl Parse for Widget {
 
         let mut extra_impls = Vec::new();
         while !input.is_empty() {
-            extra_impls.push(parse_impl(&ident, &generics, input)?);
+            extra_impls.push(parse_impl(Some(&ident), input)?);
         }
 
         let mut core_data = None;
@@ -264,7 +264,7 @@ impl ToTokens for Widget {
     }
 }
 
-fn parse_impl(in_ident: &Ident, in_generics: &Generics, input: ParseStream) -> Result<ItemImpl> {
+fn parse_impl(in_ident: Option<&Ident>, input: ParseStream) -> Result<ItemImpl> {
     let mut attrs = input.call(Attribute::parse_outer)?;
     let defaultness: Option<Token![default]> = input.parse()?;
     let unsafety: Option<Token![unsafe]> = input.parse()?;
@@ -286,7 +286,7 @@ fn parse_impl(in_ident: &Ident, in_generics: &Generics, input: ParseStream) -> R
     };
 
     let mut first_ty: Type = input.parse()?;
-    let mut self_ty: Type;
+    let self_ty: Type;
     let trait_;
 
     let is_impl_for = input.peek(Token![for]);
@@ -316,68 +316,24 @@ fn parse_impl(in_ident: &Ident, in_generics: &Generics, input: ParseStream) -> R
 
     generics.where_clause = input.parse()?;
 
-    if self_ty == parse_quote! { Self } {
-        let (_, ty_generics, _) = in_generics.split_for_impl();
-        self_ty = parse_quote! { #in_ident #ty_generics };
-
-        if generics.lt_token.is_none() {
-            debug_assert!(generics.params.is_empty());
-            debug_assert!(generics.gt_token.is_none());
-            generics.lt_token = in_generics.lt_token.clone();
-            generics.params = in_generics.params.clone();
-            generics.gt_token = in_generics.gt_token.clone();
-        } else if in_generics.lt_token.is_none() {
-            debug_assert!(in_generics.params.is_empty());
-            debug_assert!(in_generics.gt_token.is_none());
-        } else {
-            // TODO: error on name conflicts?
-            if !generics.params.empty_or_trailing() {
-                generics.params.push_punct(Default::default());
-            }
-            generics
-                .params
-                .extend(in_generics.params.clone().into_pairs());
-        }
-
-        // Strip defaults which are legal on the struct but not on impls
-        for param in &mut generics.params {
-            match param {
-                GenericParam::Type(p) => {
-                    p.eq_token = None;
-                    p.default = None;
+    if self_ty != parse_quote! { Self } {
+        if let Some(ident) = in_ident {
+            if !matches!(self_ty, Type::Path(TypePath {
+                qself: None,
+                path: Path {
+                    leading_colon: None,
+                    ref segments,
                 }
-                GenericParam::Lifetime(_) => (),
-                GenericParam::Const(p) => {
-                    p.eq_token = None;
-                    p.default = None;
-                }
-            }
-        }
-
-        if let Some(ref mut clause1) = generics.where_clause {
-            if let Some(ref clause2) = in_generics.where_clause {
-                if !clause1.predicates.empty_or_trailing() {
-                    clause1.predicates.push_punct(Default::default());
-                }
-                clause1
-                    .predicates
-                    .extend(clause2.predicates.clone().into_pairs());
+            }) if segments.len() == 1 && segments.first().unwrap().ident == *ident)
+            {
+                abort!(
+                    self_ty.span(),
+                    format!("expected `Self` or `{0}` or `{0}<...>`", ident)
+                );
             }
         } else {
-            generics.where_clause = in_generics.where_clause.clone();
+            abort!(self_ty.span(), "expected `Self`");
         }
-    } else if !matches!(self_ty, Type::Path(TypePath {
-        qself: None,
-        path: Path {
-            leading_colon: None,
-            ref segments,
-        }
-    }) if segments.len() == 1 && segments.first().unwrap().ident == *in_ident)
-    {
-        abort!(
-            self_ty.span(),
-            format!("expected `Self` or `{0}` or `{0}<...>`", in_ident)
-        );
     }
 
     let content;

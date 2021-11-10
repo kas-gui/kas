@@ -19,7 +19,7 @@ use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::Token;
 use syn::{parse_macro_input, parse_quote};
-use syn::{GenericParam, Ident, Type, TypeParam, TypePath, WhereClause, WherePredicate};
+use syn::{GenericParam, Generics, Ident, Type, TypeParam, TypePath, WhereClause, WherePredicate};
 
 mod args;
 mod layout;
@@ -78,6 +78,55 @@ impl<'a> ToTokens for SubstTyGenerics<'a> {
     }
 }
 
+// Support impls on Self by replacing name and summing generics
+fn extend_generics(generics: &mut Generics, in_generics: &Generics) {
+    if generics.lt_token.is_none() {
+        debug_assert!(generics.params.is_empty());
+        debug_assert!(generics.gt_token.is_none());
+        generics.lt_token = in_generics.lt_token.clone();
+        generics.params = in_generics.params.clone();
+        generics.gt_token = in_generics.gt_token.clone();
+    } else if in_generics.lt_token.is_none() {
+        debug_assert!(in_generics.params.is_empty());
+        debug_assert!(in_generics.gt_token.is_none());
+    } else {
+        if !generics.params.empty_or_trailing() {
+            generics.params.push_punct(Default::default());
+        }
+        generics
+            .params
+            .extend(in_generics.params.clone().into_pairs());
+    }
+
+    // Strip defaults which are legal on the struct but not on impls
+    for param in &mut generics.params {
+        match param {
+            GenericParam::Type(p) => {
+                p.eq_token = None;
+                p.default = None;
+            }
+            GenericParam::Lifetime(_) => (),
+            GenericParam::Const(p) => {
+                p.eq_token = None;
+                p.default = None;
+            }
+        }
+    }
+
+    if let Some(ref mut clause1) = generics.where_clause {
+        if let Some(ref clause2) = in_generics.where_clause {
+            if !clause1.predicates.empty_or_trailing() {
+                clause1.predicates.push_punct(Default::default());
+            }
+            clause1
+                .predicates
+                .extend(clause2.predicates.clone().into_pairs());
+        }
+    } else {
+        generics.where_clause = in_generics.where_clause.clone();
+    }
+}
+
 /// Macro to derive widget traits
 ///
 /// See documentation [in the `kas::macros` module](https://docs.rs/kas/latest/kas/macros#the-widget-macro).
@@ -87,11 +136,19 @@ pub fn widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut args = parse_macro_input!(input as args::Widget);
     let mut toks = quote! { #args };
 
+    let name = &args.ident;
+    for impl_ in &mut args.extra_impls {
+        if impl_.self_ty == parse_quote! { Self } {
+            let (_, ty_generics, _) = args.generics.split_for_impl();
+            impl_.self_ty = parse_quote! { #name #ty_generics };
+            extend_generics(&mut impl_.generics, &args.generics);
+        }
+    }
+
     let derive_inner = args.core_data.is_none();
     let opt_inner = args.inner.as_ref().map(|(inner, _)| inner.clone());
 
     let (impl_generics, ty_generics, where_clause) = args.generics.split_for_impl();
-    let name = &args.ident;
     let widget_name = name.to_string();
 
     let (core_data, core_data_mut) = args
@@ -576,7 +633,7 @@ pub fn widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
     }
 
-    for impl_ in args.extra_impls {
+    for impl_ in &mut args.extra_impls {
         toks.append_all(quote! {
             #impl_
         });
