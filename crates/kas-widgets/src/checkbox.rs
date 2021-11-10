@@ -140,7 +140,6 @@ widget! {
     /// A checkable box with optional label
     #[derive(Clone, Default)]
     #[layout(row, area=checkbox)]
-    #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
     #[widget_derive(HasBool)]
     pub struct CheckBox<M: 'static> {
         #[widget_core]
@@ -163,6 +162,16 @@ widget! {
                 .field("label", &self.label)
                 .finish()
         }
+    }
+
+    impl WidgetConfig for Self {
+        fn configure(&mut self, mgr: &mut Manager) {
+            mgr.add_accel_keys(self.checkbox.id(), self.label.keys());
+        }
+    }
+
+    impl Handler for Self where M: From<VoidMsg> {
+        type Msg = M;
     }
 
     impl CheckBox<VoidMsg> {
@@ -221,12 +230,6 @@ widget! {
         pub fn with_state(mut self, state: bool) -> Self {
             self.checkbox = self.checkbox.with_state(state);
             self
-        }
-    }
-
-    impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut Manager) {
-            mgr.add_accel_keys(self.checkbox.id(), self.label.keys());
         }
     }
 }

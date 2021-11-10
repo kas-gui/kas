@@ -183,7 +183,6 @@ widget! {
     /// A radiobox with optional label
     #[derive(Clone)]
     #[layout(row, area=radiobox)]
-    #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
     #[widget_derive(HasBool)]
     pub struct RadioBox<M: 'static> {
         #[widget_core]
@@ -205,6 +204,16 @@ widget! {
                 .field("radiobox", &self.radiobox)
                 .field("label", &self.label)
                 .finish()
+        }
+    }
+
+    impl Handler for Self where M: From<VoidMsg> {
+        type Msg = M;
+    }
+
+    impl WidgetConfig for Self {
+        fn configure(&mut self, mgr: &mut Manager) {
+            mgr.add_accel_keys(self.radiobox.id(), self.label.keys());
         }
     }
 
@@ -294,12 +303,6 @@ widget! {
         pub fn with_state(mut self, state: bool) -> Self {
             self.radiobox = self.radiobox.with_state(state);
             self
-        }
-    }
-
-    impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut Manager) {
-            mgr.add_accel_keys(self.radiobox.id(), self.label.keys());
         }
     }
 }

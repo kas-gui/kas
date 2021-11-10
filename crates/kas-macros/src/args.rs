@@ -966,15 +966,11 @@ impl Parse for LayoutArgs {
 #[derive(Debug)]
 pub struct HandlerArgs {
     pub msg: Type,
-    pub generics: Generics,
 }
 
 impl HandlerArgs {
     pub fn new(msg: Type) -> Self {
-        HandlerArgs {
-            msg,
-            generics: Default::default(),
-        }
+        HandlerArgs { msg }
     }
 }
 
@@ -987,9 +983,7 @@ impl Default for HandlerArgs {
 
 impl Parse for HandlerArgs {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut have_msg = false;
-        let mut have_gen = false;
-        let mut args = HandlerArgs::default();
+        let mut msg = None;
 
         if !input.is_empty() {
             let content;
@@ -997,34 +991,10 @@ impl Parse for HandlerArgs {
 
             while !content.is_empty() {
                 let lookahead = content.lookahead1();
-                if !have_msg && lookahead.peek(kw::msg) {
-                    have_msg = true;
+                if msg.is_none() && lookahead.peek(kw::msg) {
                     let _: kw::msg = content.parse()?;
                     let _: Eq = content.parse()?;
-                    args.msg = content.parse()?;
-                } else if !have_gen && lookahead.peek(kw::generics) {
-                    have_gen = true;
-                    let _: kw::generics = content.parse()?;
-                    let _: Eq = content.parse()?;
-
-                    if content.peek(Token![<]) {
-                        args.generics = content.parse()?;
-                        if content.peek(Token![where]) {
-                            args.generics.where_clause = content.parse()?;
-                        }
-                    } else {
-                        return Err(Error::new(
-                            content.span(),
-                            "expected `< ... > [where ...]` or `T => Substitution ...`",
-                        ));
-                    }
-
-                    if !content.is_empty() {
-                        return Err(Error::new(
-                            content.span(),
-                            "no more content expected (`generics` must be last parameter)",
-                        ));
-                    }
+                    msg = Some(content.parse()?);
                 } else {
                     return Err(lookahead.error());
                 }
@@ -1035,38 +1005,11 @@ impl Parse for HandlerArgs {
             }
         }
 
-        Ok(args)
-    }
-}
-
-impl ToTokens for HandlerArgs {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        <Token![#]>::default().to_tokens(tokens);
-        syn::token::Bracket::default().surround(tokens, |tokens| {
-            kw::handler::default().to_tokens(tokens);
-            syn::token::Paren::default().surround(tokens, |tokens| {
-                kw::msg::default().to_tokens(tokens);
-                Eq::default().to_tokens(tokens);
-                self.msg.to_tokens(tokens);
-                Comma::default().to_tokens(tokens);
-
-                if !self.generics.params.is_empty() || self.generics.where_clause.is_some() {
-                    kw::generics::default().to_tokens(tokens);
-                    Eq::default().to_tokens(tokens);
-
-                    self.generics.to_tokens(tokens);
-                    if let Some(ref clause) = self.generics.where_clause {
-                        if self.generics.params.is_empty() {
-                            // generics doesn't print <> in this case
-                            <Token![<]>::default().to_tokens(tokens);
-                            <Token![>]>::default().to_tokens(tokens);
-                        }
-                        clause.where_token.to_tokens(tokens);
-                        clause.predicates.to_tokens(tokens);
-                    }
-                }
-            });
-        });
+        if let Some(msg) = msg {
+            Ok(HandlerArgs { msg })
+        } else {
+            Ok(HandlerArgs::default())
+        }
     }
 }
 

@@ -122,7 +122,6 @@ widget! {
 widget! {
     /// A menu entry which can be toggled
     #[derive(Clone, Default)]
-    #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
     #[layout(row, area=checkbox, draw=draw)]
     pub struct MenuToggle<M: 'static> {
         #[widget_core]
@@ -146,6 +145,18 @@ widget! {
                 .finish()
         }
     }
+
+    impl WidgetConfig for Self {
+        fn configure(&mut self, mgr: &mut Manager) {
+            mgr.add_accel_keys(self.checkbox.id(), self.label.keys());
+        }
+    }
+
+    impl Handler for Self where M: From<VoidMsg> {
+        type Msg = M;
+    }
+
+    impl Menu for Self where M: From<VoidMsg> {}
 
     impl MenuToggle<VoidMsg> {
         /// Construct a toggleable menu entry with a given `label`
@@ -206,14 +217,6 @@ widget! {
             self.label.draw(draw_handle, mgr, state.disabled());
         }
     }
-
-    impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut Manager) {
-            mgr.add_accel_keys(self.checkbox.id(), self.label.keys());
-        }
-    }
-
-    impl<M: From<VoidMsg>> Menu for MenuToggle<M> {}
 
     impl HasBool for Self {
         #[inline]

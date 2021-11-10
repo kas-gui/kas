@@ -16,7 +16,6 @@ use std::path::Path;
 
 widget! {
     /// The main instantiation of the [`Window`] trait.
-    #[handler(generics = <> where W::Msg: Into<VoidMsg>)]
     pub struct Window<W: Widget + 'static> {
         #[widget_core]
         core: CoreData,
@@ -95,7 +94,7 @@ widget! {
         }
     }
 
-    impl<M: Into<VoidMsg>, W: Widget<Msg = M> + 'static> SendEvent for Window<W> {
+    impl SendEvent for Self where W::Msg: Into<VoidMsg> {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if !self.is_disabled() && id <= self.w.id() {
                 return self.w.send(mgr, id, event).into();

@@ -413,7 +413,6 @@ widget! {
     /// for short texts for performance reasons.
     #[derive(Clone, Default, Debug)]
     #[widget(config(key_nav = true, hover_highlight = true, cursor_icon = event::CursorIcon::Text))]
-    #[handler(generics = <> where G: EditGuard)]
     pub struct EditField<G: EditGuard = ()> {
         #[widget_core]
         core: CoreData,

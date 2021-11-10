@@ -8,7 +8,7 @@
 
 extern crate proc_macro;
 
-use self::args::{ChildType, Handler, HandlerArgs};
+use self::args::{ChildType, Handler};
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::proc_macro_error;
 use proc_macro_error::{abort, emit_error};
@@ -94,9 +94,9 @@ pub fn widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let mut impl_widget_children = true;
     let mut impl_widget_config = true;
-    let mut impl_handler = true;
-    let mut impl_send_event = true;
-    for impl_ in &args.extra_impls {
+    let mut handler_impl = None;
+    let mut send_event_impl = None;
+    for (index, impl_) in args.extra_impls.iter().enumerate() {
         if let Some((_, ref path, _)) = impl_.trait_ {
             if *path == parse_quote! { ::kas::WidgetChildren }
                 || *path == parse_quote! { kas::WidgetChildren }
@@ -124,7 +124,7 @@ pub fn widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     emit_error!(impl_.span(), "impl conflicts with use of widget_derive");
                 }
                 // TODO: warn about unused handler stuff if present
-                impl_handler = false;
+                handler_impl = Some(index);
             } else if *path == parse_quote! { ::kas::event::SendEvent }
                 || *path == parse_quote! { kas::event::SendEvent }
                 || *path == parse_quote! { event::SendEvent }
@@ -133,12 +133,12 @@ pub fn widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 if derive_inner {
                     emit_error!(impl_.span(), "impl conflicts with use of widget_derive");
                 }
-                impl_send_event = false;
+                send_event_impl = Some(index);
             }
         }
     }
 
-    let (impl_generics, ty_generics, where_clause) = args.generics.split_for_impl();
+    let (mut impl_generics, ty_generics, mut where_clause) = args.generics.split_for_impl();
     let widget_name = name.to_string();
 
     let (core_data, core_data_mut) = args
@@ -340,161 +340,145 @@ pub fn widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
     }
 
-    // The following traits are all parametrised over the Handler::Msg type.
-    let handler = args.attr_handler.unwrap_or_default();
-    {
-        let mut generics = args.generics.clone();
-
-        if !handler.generics.params.is_empty() {
-            if !generics.params.empty_or_trailing() {
-                generics.params.push_punct(Default::default());
+    if let Some(index) = handler_impl {
+        // Manual Handler impl may add additional bounds:
+        let (a, _, c) = args.extra_impls[index].generics.split_for_impl();
+        impl_generics = a;
+        where_clause = c;
+    } else {
+        let handler = args.attr_handler.unwrap_or_default();
+        let msg = handler.msg;
+        let handle = if derive_inner {
+            let inner = opt_inner.as_ref().unwrap();
+            quote! {
+                #[inline]
+                fn activation_via_press(&self) -> bool {
+                    self.#inner.activation_via_press()
+                }
+                #[inline]
+                fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+                    self.#inner.handle(mgr, event)
+                }
             }
-            generics.params.extend(handler.generics.params.into_pairs());
-        }
-        if let Some(h_clauses) = handler.generics.where_clause {
-            if let Some(ref mut clauses) = generics.where_clause {
-                if !clauses.predicates.empty_or_trailing() {
-                    clauses.predicates.push_punct(Default::default());
-                }
-                clauses.predicates.extend(h_clauses.predicates.into_pairs());
-            } else {
-                generics.where_clause = Some(h_clauses);
-            }
-        }
-        // Note: we may have extra generic types used in where clauses, but we
-        // don't want these in ty_generics.
-        let (impl_generics, _ty, where_clause) = generics.split_for_impl();
-        let (_, ty_generics, _) = args.generics.split_for_impl();
-
-        if impl_handler {
-            let msg = handler.msg;
-            let handle = if derive_inner {
-                let inner = opt_inner.as_ref().unwrap();
-                quote! {
-                    #[inline]
-                    fn activation_via_press(&self) -> bool {
-                        self.#inner.activation_via_press()
-                    }
-                    #[inline]
-                    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
-                        self.#inner.handle(mgr, event)
-                    }
-                }
-            } else {
-                quote! {}
-            };
-            toks.append_all(quote! {
-                impl #impl_generics ::kas::event::Handler
-                        for #name #ty_generics #where_clause
-                {
-                    type Msg = #msg;
-                    #handle
-                }
-            });
-        }
-
-        if impl_send_event {
-            let send_impl = if derive_inner {
-                let inner = opt_inner.as_ref().unwrap();
-                quote! { self.#inner.send(mgr, id, event) }
-            } else {
-                let mut ev_to_num = TokenStream::new();
-                for child in args.children.iter() {
-                    #[cfg(feature = "log")]
-                    let log_msg = quote! {
-                        log::trace!(
-                            "Received by {} from {}: {:?}",
-                            self.id(),
-                            id,
-                            ::kas::util::TryFormat(&msg)
-                        );
-                    };
-                    #[cfg(not(feature = "log"))]
-                    let log_msg = quote! {};
-
-                    let ident = &child.ident;
-                    let update = if let Some(f) = child.args.update.as_ref() {
-                        quote! {
-                            if matches!(r, Response::Update) {
-                                self.#f(mgr);
-                            }
-                        }
-                    } else {
-                        quote! {}
-                    };
-                    let handler = match &child.args.handler {
-                        Handler::Use(f) => quote! {
-                            r.try_into().unwrap_or_else(|msg| {
-                                #log_msg
-                                let _: () = self.#f(mgr, msg);
-                                Response::None
-                            })
-                        },
-                        Handler::Map(f) => quote! {
-                            r.try_into().unwrap_or_else(|msg| {
-                                #log_msg
-                                Response::Msg(self.#f(mgr, msg))
-                            })
-                        },
-                        Handler::FlatMap(f) => quote! {
-                            r.try_into().unwrap_or_else(|msg| {
-                                #log_msg
-                                self.#f(mgr, msg)
-                            })
-                        },
-                        Handler::Discard => quote! {
-                            r.try_into().unwrap_or_else(|msg| {
-                                #log_msg
-                                let _ = msg;
-                                Response::None
-                            })
-                        },
-                        Handler::None => quote! { r.into() },
-                    };
-
-                    ev_to_num.append_all(quote! {
-                        if id <= self.#ident.id() {
-                            let r = self.#ident.send(mgr, id, event);
-                            #update
-                            #handler
-                        } else
-                    });
-                }
-
-                quote! {
-                    use ::kas::{WidgetCore, event::Response};
-                    if self.is_disabled() {
-                        return Response::Unhandled;
-                    }
-
-                    #ev_to_num {
-                        debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
-                        ::kas::event::Manager::handle_generic(self, mgr, event)
-                    }
-                }
-            };
-
-            toks.append_all(quote! {
-                impl #impl_generics ::kas::event::SendEvent
-                        for #name #ty_generics #where_clause
-                {
-                    fn send(
-                        &mut self,
-                        mgr: &mut ::kas::event::Manager,
-                        id: ::kas::WidgetId,
-                        event: ::kas::event::Event
-                    ) -> ::kas::event::Response<Self::Msg>
-                    {
-                        #send_impl
-                    }
-                }
-            });
-        }
-
+        } else {
+            quote! {}
+        };
         toks.append_all(quote! {
-            impl #impl_generics ::kas::Widget for #name #ty_generics #where_clause {}
+            impl #impl_generics ::kas::event::Handler
+                    for #name #ty_generics #where_clause
+            {
+                type Msg = #msg;
+                #handle
+            }
         });
     }
+
+    if let Some(index) = send_event_impl {
+        // Manual SendEvent impl may add additional bounds:
+        let (a, _, c) = args.extra_impls[index].generics.split_for_impl();
+        impl_generics = a;
+        where_clause = c;
+    } else {
+        let send_impl = if derive_inner {
+            let inner = opt_inner.as_ref().unwrap();
+            quote! { self.#inner.send(mgr, id, event) }
+        } else {
+            let mut ev_to_num = TokenStream::new();
+            for child in args.children.iter() {
+                #[cfg(feature = "log")]
+                let log_msg = quote! {
+                    log::trace!(
+                        "Received by {} from {}: {:?}",
+                        self.id(),
+                        id,
+                        ::kas::util::TryFormat(&msg)
+                    );
+                };
+                #[cfg(not(feature = "log"))]
+                let log_msg = quote! {};
+
+                let ident = &child.ident;
+                let update = if let Some(f) = child.args.update.as_ref() {
+                    quote! {
+                        if matches!(r, Response::Update) {
+                            self.#f(mgr);
+                        }
+                    }
+                } else {
+                    quote! {}
+                };
+                let handler = match &child.args.handler {
+                    Handler::Use(f) => quote! {
+                        r.try_into().unwrap_or_else(|msg| {
+                            #log_msg
+                            let _: () = self.#f(mgr, msg);
+                            Response::None
+                        })
+                    },
+                    Handler::Map(f) => quote! {
+                        r.try_into().unwrap_or_else(|msg| {
+                            #log_msg
+                            Response::Msg(self.#f(mgr, msg))
+                        })
+                    },
+                    Handler::FlatMap(f) => quote! {
+                        r.try_into().unwrap_or_else(|msg| {
+                            #log_msg
+                            self.#f(mgr, msg)
+                        })
+                    },
+                    Handler::Discard => quote! {
+                        r.try_into().unwrap_or_else(|msg| {
+                            #log_msg
+                            let _ = msg;
+                            Response::None
+                        })
+                    },
+                    Handler::None => quote! { r.into() },
+                };
+
+                ev_to_num.append_all(quote! {
+                    if id <= self.#ident.id() {
+                        let r = self.#ident.send(mgr, id, event);
+                        #update
+                        #handler
+                    } else
+                });
+            }
+
+            quote! {
+                use ::kas::{WidgetCore, event::Response};
+                if self.is_disabled() {
+                    return Response::Unhandled;
+                }
+
+                #ev_to_num {
+                    debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
+                    ::kas::event::Manager::handle_generic(self, mgr, event)
+                }
+            }
+        };
+
+        toks.append_all(quote! {
+            impl #impl_generics ::kas::event::SendEvent
+                    for #name #ty_generics #where_clause
+            {
+                fn send(
+                    &mut self,
+                    mgr: &mut ::kas::event::Manager,
+                    id: ::kas::WidgetId,
+                    event: ::kas::event::Event
+                ) -> ::kas::event::Response<Self::Msg>
+                {
+                    #send_impl
+                }
+            }
+        });
+    }
+
+    toks.append_all(quote! {
+        impl #impl_generics ::kas::Widget for #name #ty_generics #where_clause {}
+    });
 
     if let Some((member, ty)) = args.inner {
         if args.attr_derive.deref {
@@ -627,11 +611,11 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
         let mut x: Option<(Ident, Type)> = None;
 
-        for impl_block in impls {
-            if impl_block.trait_.is_some() {
+        for impl_ in impls {
+            if impl_.trait_.is_some() {
                 continue;
             }
-            for f in &impl_block.items {
+            for f in &impl_.items {
                 match f {
                     syn::ImplItem::Method(syn::ImplItemMethod { sig, .. })
                         if sig.ident == *handler =>
@@ -686,21 +670,23 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // debug impl
     let mut debug_fields = TokenStream::new();
 
-    let mut handler = if let Some(h) = args.handler {
-        h
+    let msg;
+    let mut handler_generics = Generics::default();
+    if let Some(h) = args.handler {
+        msg = h.msg;
     } else {
         // A little magic: try to deduce parameters, applying defaults otherwise
-        let mut msg = None;
+        let mut opt_msg = None;
         let msg_ident: Ident = parse_quote! { Msg };
-        for impl_block in &args.impls {
-            if let Some((_, ref name, _)) = impl_block.trait_ {
+        for impl_ in &args.impls {
+            if let Some((_, ref name, _)) = impl_.trait_ {
                 if *name == parse_quote! { Handler } || *name == parse_quote! { ::kas::Handler } {
-                    for item in &impl_block.items {
+                    for item in &impl_.items {
                         match item {
                             syn::ImplItem::Type(syn::ImplItemType {
                                 ref ident, ref ty, ..
                             }) if *ident == msg_ident => {
-                                msg = Some(ty.clone());
+                                opt_msg = Some(ty.clone());
                                 continue;
                             }
                             _ => (),
@@ -710,8 +696,8 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             }
         }
 
-        if let Some(msg) = msg {
-            HandlerArgs::new(msg)
+        if let Some(m) = opt_msg {
+            msg = m;
         } else {
             // We could default to msg=VoidMsg here. If error messages weren't
             // so terrible this might even be a good idea!
@@ -721,13 +707,14 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             );
         }
     };
-    let msg = &handler.msg;
-    let mut handler_clauses = if let Some(ref clause) = handler.generics.where_clause {
-        // Ideally we'd use take() or swap() here, but functionality is limited
-        clause.predicates.clone()
-    } else {
-        Default::default()
-    };
+
+    if handler_generics.where_clause.is_none() {
+        handler_generics.where_clause = Some(WhereClause {
+            where_token: Default::default(),
+            predicates: Default::default(),
+        });
+    }
+    let handler_clauses = &mut handler_generics.where_clause.as_mut().unwrap().predicates;
 
     let extra_attrs = args.extra_attrs;
 
@@ -802,32 +789,58 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             .append_all(quote! { write!(f, ", {}: {:?}", stringify!(#ident), self.#ident)?; });
     }
 
-    if !handler_clauses.is_empty() {
-        handler.generics.where_clause = Some(syn::WhereClause {
-            where_token: Default::default(),
-            predicates: handler_clauses,
-        });
+    if handler_clauses.is_empty() {
+        handler_generics.where_clause = None;
     }
 
-    let (impl_generics, _, where_clause) = args.generics.split_for_impl();
+    let (impl_generics, ty_generics, where_clause) = args.generics.split_for_impl();
 
+    let mut impl_handler = true;
     let mut impls = quote! {};
-    for impl_block in args.impls {
+    for mut impl_ in args.impls {
+        if let Some((_, ref path, _)) = impl_.trait_ {
+            if *path == parse_quote! { ::kas::event::Handler }
+                || *path == parse_quote! { kas::event::Handler }
+                || *path == parse_quote! { event::Handler }
+                || *path == parse_quote! { Handler }
+            {
+                impl_handler = false;
+                extend_generics(&mut impl_.generics, &handler_generics);
+            }
+        }
+
         impls.append_all(quote! {
-            #impl_block
+            #impl_
         });
     }
+
+    let handler = if impl_handler {
+        extend_generics(&mut handler_generics, &args.generics);
+        let (handler_generics, _, handler_where_clause) = handler_generics.split_for_impl();
+
+        quote! {
+            impl #handler_generics ::kas::event::Handler
+            for AnonWidget #ty_generics
+            #handler_where_clause
+            {
+                type Msg = #msg;
+            }
+        }
+    } else {
+        quote! {}
+    };
 
     // TODO: we should probably not rely on recursive macro expansion here!
     // (I.e. use direct code generation for Widget derivation, instead of derive.)
     let toks = (quote! { {
         ::kas::macros::widget! {
             #[derive(Debug)]
-            #handler
             #extra_attrs
             struct AnonWidget #impl_generics #where_clause {
                 #field_toks
             }
+
+            #handler
 
             #impls
         }
