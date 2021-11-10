@@ -15,7 +15,6 @@ use kas::prelude::*;
 widget! {
     /// A standard menu entry
     #[derive(Clone, Debug, Default)]
-    #[handler(handle=noauto)]
     pub struct MenuEntry<M: Clone + Debug + 'static> {
         #[widget_core]
         core: kas::CoreData,

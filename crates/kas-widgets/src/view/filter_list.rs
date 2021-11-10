@@ -161,7 +161,6 @@ widget! {
     /// avoids this.
     // TODO: impl Clone
     #[derive(Debug)]
-    #[handler(handle=noauto, generics = <>)]
     #[layout(single)]
     pub struct FilterListView<
         D: Directional,

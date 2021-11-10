@@ -16,7 +16,7 @@ use std::path::Path;
 
 widget! {
     /// The main instantiation of the [`Window`] trait.
-    #[handler(send=noauto, generics = <M: Into<VoidMsg>> where W: Widget<Msg = M>)]
+    #[handler(generics = <M: Into<VoidMsg>> where W: Widget<Msg = M>)]
     pub struct Window<W: Widget + 'static> {
         #[widget_core]
         core: CoreData,

@@ -13,7 +13,7 @@ widget! {
     /// Wrapper to map messages from the inner widget
     #[derive(Clone)]
     #[layout(single)]
-    #[handler(msg=M, send=noauto)]
+    #[handler(msg=M)]
     pub struct MapResponse<W: Widget, M: 'static> {
         #[widget_core]
         core: kas::CoreData,

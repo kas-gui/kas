@@ -16,7 +16,6 @@ use kas::prelude::*;
 widget! {
     /// A bare radiobox (no label)
     #[derive(Clone)]
-    #[handler(handle=noauto)]
     pub struct RadioBoxBare<M: 'static> {
         #[widget_core]
         core: CoreData,

@@ -20,7 +20,6 @@ widget! {
     /// A combobox presents a menu with a fixed set of choices when clicked.
     #[derive(Clone)]
     #[widget(config(key_nav = true, hover_highlight = true))]
-    #[handler(noauto)]
     pub struct ComboBox<M: 'static> {
         #[widget_core]
         core: CoreData,

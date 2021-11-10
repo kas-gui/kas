@@ -150,6 +150,8 @@ pub fn widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let mut impl_widget_children = true;
     let mut impl_widget_config = true;
+    let mut impl_handler = true;
+    let mut impl_send_event = true;
     for impl_ in &args.extra_impls {
         if let Some((_, ref path, _)) = impl_.trait_ {
             if *path == parse_quote! { ::kas::WidgetChildren }
@@ -169,6 +171,25 @@ pub fn widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 }
                 // TODO: if args.widget_attr.config.is_some() { warn unused }
                 impl_widget_config = false;
+            } else if *path == parse_quote! { ::kas::event::Handler }
+                || *path == parse_quote! { kas::event::Handler }
+                || *path == parse_quote! { event::Handler }
+                || *path == parse_quote! { Handler }
+            {
+                if derive_inner {
+                    emit_error!(impl_.span(), "impl conflicts with use of widget_derive");
+                }
+                // TODO: warn about unused handler stuff if present
+                impl_handler = false;
+            } else if *path == parse_quote! { ::kas::event::SendEvent }
+                || *path == parse_quote! { kas::event::SendEvent }
+                || *path == parse_quote! { event::SendEvent }
+                || *path == parse_quote! { SendEvent }
+            {
+                if derive_inner {
+                    emit_error!(impl_.span(), "impl conflicts with use of widget_derive");
+                }
+                impl_send_event = false;
             }
         }
     }
@@ -425,7 +446,7 @@ pub fn widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         let (impl_generics, _ty, where_clause) = generics.split_for_impl();
         let ty_generics = SubstTyGenerics(&args.generics, subs);
 
-        if handler.handle {
+        if impl_handler {
             let msg = handler.msg;
             let handle = if derive_inner {
                 let inner = opt_inner.as_ref().unwrap();
@@ -452,7 +473,7 @@ pub fn widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             });
         }
 
-        if handler.send {
+        if impl_send_event {
             let send_impl = if derive_inner {
                 let inner = opt_inner.as_ref().unwrap();
                 quote! { self.#inner.send(mgr, id, event) }
@@ -749,15 +770,11 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         h
     } else {
         // A little magic: try to deduce parameters, applying defaults otherwise
-        let mut handle = true;
-        let mut send = true;
         let mut msg = None;
         let msg_ident: Ident = parse_quote! { Msg };
         for impl_block in &args.impls {
             if let Some((_, ref name, _)) = impl_block.trait_ {
                 if *name == parse_quote! { Handler } || *name == parse_quote! { ::kas::Handler } {
-                    handle = false;
-
                     for item in &impl_block.items {
                         match item {
                             syn::ImplItem::Type(syn::ImplItemType {
@@ -769,16 +786,12 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                             _ => (),
                         }
                     }
-                } else if *name == parse_quote! { SendEvent }
-                    || *name == parse_quote! { ::kas::SendEvent }
-                {
-                    send = false;
                 }
             }
         }
 
         if let Some(msg) = msg {
-            HandlerArgs::new(msg, handle, send)
+            HandlerArgs::new(msg)
         } else {
             // We could default to msg=VoidMsg here. If error messages weren't
             // so terrible this might even be a good idea!

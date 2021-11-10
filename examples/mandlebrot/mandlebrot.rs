@@ -274,7 +274,6 @@ impl PipeWindow {
 }
 
 #[derive(Clone, Debug, kas :: macros :: Widget)]
-#[handler(handle=noauto)]
 struct Mandlebrot {
     #[widget_core]
     core: kas::CoreData,

@@ -27,7 +27,6 @@ widget! {
     /// 4.  Optionally, this widget can handle clicks on the track area via
     ///     [`DragHandle::handle_press_on_track`].
     #[derive(Clone, Debug, Default)]
-    #[handler(handle=noauto)]
     #[widget(config(hover_highlight = true, key_nav = true, cursor_icon = event::CursorIcon::Grab))]
     pub struct DragHandle {
         #[widget_core]

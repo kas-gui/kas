@@ -21,7 +21,6 @@ use kas::{event, prelude::*};
 
 widget! {
     #[derive(Clone, Debug)]
-    #[handler(handle=noauto)]
     struct Clock {
         #[widget_core]
         core: kas::CoreData,

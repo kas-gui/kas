@@ -412,7 +412,6 @@ mod kw {
     custom_keyword!(handle);
     custom_keyword!(send);
     custom_keyword!(config);
-    custom_keyword!(noauto);
     custom_keyword!(children);
     custom_keyword!(column);
     custom_keyword!(draw);
@@ -964,18 +963,14 @@ impl Parse for LayoutArgs {
 
 #[derive(Debug)]
 pub struct HandlerArgs {
-    pub handle: bool,
-    pub send: bool,
     pub msg: Type,
     pub substitutions: HashMap<Ident, Type>,
     pub generics: Generics,
 }
 
 impl HandlerArgs {
-    pub fn new(msg: Type, handle: bool, send: bool) -> Self {
+    pub fn new(msg: Type) -> Self {
         HandlerArgs {
-            handle,
-            send,
             msg,
             substitutions: Default::default(),
             generics: Default::default(),
@@ -986,14 +981,12 @@ impl HandlerArgs {
 impl Default for HandlerArgs {
     fn default() -> Self {
         let msg = parse_quote! { ::kas::event::VoidMsg };
-        HandlerArgs::new(msg, true, true)
+        HandlerArgs::new(msg)
     }
 }
 
 impl Parse for HandlerArgs {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut have_handle = false;
-        let mut have_send = false;
         let mut have_msg = false;
         let mut have_gen = false;
         let mut args = HandlerArgs::default();
@@ -1004,23 +997,7 @@ impl Parse for HandlerArgs {
 
             while !content.is_empty() {
                 let lookahead = content.lookahead1();
-                if lookahead.peek(kw::noauto) {
-                    let _: kw::noauto = content.parse()?;
-                    args.handle = false;
-                    args.send = false;
-                } else if !have_handle && lookahead.peek(kw::handle) {
-                    let _: kw::handle = content.parse()?;
-                    let _: Eq = content.parse()?;
-                    let _: kw::noauto = content.parse()?;
-                    have_handle = true;
-                    args.handle = false;
-                } else if !have_send && lookahead.peek(kw::send) {
-                    let _: kw::send = content.parse()?;
-                    let _: Eq = content.parse()?;
-                    let _: kw::noauto = content.parse()?;
-                    have_send = true;
-                    args.send = false;
-                } else if !have_msg && lookahead.peek(kw::msg) {
+                if !have_msg && lookahead.peek(kw::msg) {
                     have_msg = true;
                     let _: kw::msg = content.parse()?;
                     let _: Eq = content.parse()?;
@@ -1077,19 +1054,6 @@ impl ToTokens for HandlerArgs {
         syn::token::Bracket::default().surround(tokens, |tokens| {
             kw::handler::default().to_tokens(tokens);
             syn::token::Paren::default().surround(tokens, |tokens| {
-                if !self.handle {
-                    kw::handle::default().to_tokens(tokens);
-                    Eq::default().to_tokens(tokens);
-                    kw::noauto::default().to_tokens(tokens);
-                    Comma::default().to_tokens(tokens);
-                }
-                if !self.send {
-                    kw::send::default().to_tokens(tokens);
-                    Eq::default().to_tokens(tokens);
-                    kw::noauto::default().to_tokens(tokens);
-                    Comma::default().to_tokens(tokens);
-                }
-
                 kw::msg::default().to_tokens(tokens);
                 Eq::default().to_tokens(tokens);
                 self.msg.to_tokens(tokens);

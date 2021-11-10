@@ -165,7 +165,7 @@ widget! {
     /// Configuring and resizing elements is O(n) in the number of children.
     /// Drawing and event handling is O(log n) in the number of children (assuming
     /// only a small number are visible at any one time).
-    #[handler(send=noauto, msg=M)]
+    #[handler(msg=M)]
     pub struct GenericList<
         D: Directional,
         W: Widget,

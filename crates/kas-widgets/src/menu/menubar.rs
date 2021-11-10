@@ -16,7 +16,6 @@ widget! {
     /// This widget houses a sequence of menu buttons, allowing input actions across
     /// menus.
     #[derive(Clone, Debug)]
-    #[handler(noauto)]
     pub struct MenuBar<W: Menu, D: Directional = kas::dir::Right> {
         #[widget_core]
         core: CoreData,

@@ -243,7 +243,7 @@ widget! {
     ///
     /// [`ScrollBarRegion`]: crate::ScrollBarRegion
     #[derive(Clone, Debug, Default)]
-    #[handler(send=noauto, msg = <W as event::Handler>::Msg)]
+    #[handler(msg = <W as event::Handler>::Msg)]
     #[widget_derive(class_traits, Deref, DerefMut)]
     pub struct ScrollRegion<W: Widget> {
         #[widget_core]

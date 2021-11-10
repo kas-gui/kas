@@ -41,7 +41,7 @@ widget! {
     /// This widget is [`Scrollable`], supporting keyboard, wheel and drag
     /// scrolling. You may wish to wrap this widget with [`ScrollBars`].
     #[derive(Clone, Debug)]
-    #[handler(send=noauto, msg=ChildMsg<T::Key, <V::Widget as Handler>::Msg>)]
+    #[handler(msg=ChildMsg<T::Key, <V::Widget as Handler>::Msg>)]
     pub struct MatrixView<
         T: MatrixData + UpdHandler<T::Key, V::Msg> + 'static,
         V: Driver<T::Item> = driver::Default,

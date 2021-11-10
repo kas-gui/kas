@@ -48,7 +48,6 @@ impl EditGuard for Guard {
 widget! {
     #[derive(Debug)]
     #[layout(grid)]
-    #[handler(handle=noauto)]
     struct TextEditPopup {
         #[widget_core]
         core: CoreData,
@@ -169,7 +168,6 @@ fn main() -> Result<(), kas::shell::Error> {
 
     let popup_edit_box = make_widget! {
         #[layout(row)]
-        #[handler(handle = noauto)]
         struct {
             #[widget] label: StringLabel = Label::from("Use button to edit →"),
             #[widget(use_msg = edit)] edit = TextButton::new_msg("&Edit", ()),

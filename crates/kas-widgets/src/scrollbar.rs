@@ -16,7 +16,7 @@ widget! {
     /// Scroll bars allow user-input of a value between 0 and a defined maximum,
     /// and allow the size of the handle to be specified.
     #[derive(Clone, Debug, Default)]
-    #[handler(send=noauto, msg = i32)]
+    #[handler(msg = i32)]
     pub struct ScrollBar<D: Directional> {
         #[widget_core]
         core: CoreData,
@@ -421,7 +421,7 @@ widget! {
     /// force internal margins by wrapping contents with a (zero-sized) frame.
     /// [`ScrollRegion`] already does this.
     #[derive(Clone, Debug, Default)]
-    #[handler(send=noauto, msg = <W as event::Handler>::Msg)]
+    #[handler(msg = <W as event::Handler>::Msg)]
     #[widget_derive(class_traits, Deref, DerefMut)]
     pub struct ScrollBars<W: Scrollable> {
         #[widget_core]

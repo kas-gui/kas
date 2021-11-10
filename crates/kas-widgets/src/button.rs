@@ -18,7 +18,6 @@ widget! {
     /// Default alignment is centred. Content (label) alignment is derived from the
     /// button alignment.
     #[derive(Clone)]
-    #[handler(noauto)]
     #[widget_derive(class_traits)]
     pub struct Button<L: Widget<Msg = VoidMsg>, M: 'static> {
         #[widget_core]
@@ -214,7 +213,6 @@ widget! {
     /// vertically. The text label is always centred (irrespective of alignment
     /// parameters).
     #[derive(Clone)]
-    #[handler(handle=noauto)]
     pub struct TextButton<M: 'static> {
         #[widget_core]
         core: kas::CoreData,

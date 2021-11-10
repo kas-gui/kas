@@ -18,7 +18,6 @@ widget! {
     /// A text label supporting scrolling and selection
     #[derive(Clone, Default, Debug)]
     #[widget(config(cursor_icon = event::CursorIcon::Text))]
-    #[handler(handle=noauto)]
     pub struct ScrollLabel<T: FormattableText + 'static> {
         #[widget_core]
         core: CoreData,

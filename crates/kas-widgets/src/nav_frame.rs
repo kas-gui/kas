@@ -13,7 +13,6 @@ widget! {
     /// This widget is a wrapper that can be used to make a static widget such as a
     /// `Label` navigable with the keyboard.
     #[derive(Clone, Debug, Default)]
-    #[handler(handle=noauto)]
     #[widget(config(key_nav = true))]
     #[widget_derive(class_traits, Deref, DerefMut)]
     pub struct NavFrame<W: Widget> {

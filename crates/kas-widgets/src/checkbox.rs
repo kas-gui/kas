@@ -15,7 +15,6 @@ widget! {
     /// A bare checkbox (no label)
     #[derive(Clone, Default)]
     #[widget(config(key_nav = true, hover_highlight = true))]
-    #[handler(handle=noauto)]
     pub struct CheckBoxBare<M: 'static> {
         #[widget_core]
         core: CoreData,

@@ -86,7 +86,7 @@ widget! {
     ///
     /// Sliders allow user input of a value from a fixed range.
     #[derive(Clone, Debug, Default)]
-    #[handler(send=noauto, msg = T)]
+    #[handler(msg = T)]
     #[widget(config(key_nav = true, hover_highlight = true))]
     pub struct Slider<T: SliderType, D: Directional> {
         #[widget_core]

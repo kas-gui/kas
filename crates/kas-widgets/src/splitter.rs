@@ -72,7 +72,7 @@ widget! {
     /// Similar to [`crate::List`] but with draggable handles between items.
     // TODO: better doc
     #[derive(Clone, Default, Debug)]
-    #[handler(send=noauto, msg=<W as event::Handler>::Msg)]
+    #[handler(msg=<W as event::Handler>::Msg)]
     pub struct Splitter<D: Directional, W: Widget> {
         first_id: WidgetId,
         #[widget_core]

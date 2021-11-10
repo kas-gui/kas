@@ -32,7 +32,7 @@ widget! {
     /// Configuring and resizing elements is O(n) in the number of children.
     /// Drawing and event handling is O(1).
     #[derive(Clone, Default, Debug)]
-    #[handler(send=noauto, msg=<W as event::Handler>::Msg)]
+    #[handler(msg=<W as event::Handler>::Msg)]
     pub struct Stack<W: Widget> {
         first_id: WidgetId,
         #[widget_core]
