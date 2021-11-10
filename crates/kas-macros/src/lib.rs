@@ -149,6 +149,7 @@ pub fn widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let opt_inner = args.inner.as_ref().map(|(inner, _)| inner.clone());
 
     let mut impl_widget_children = true;
+    let mut impl_widget_config = true;
     for impl_ in &args.extra_impls {
         if let Some((_, ref path, _)) = impl_.trait_ {
             if *path == parse_quote! { ::kas::WidgetChildren }
@@ -159,6 +160,15 @@ pub fn widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     emit_error!(impl_.span(), "impl conflicts with use of widget_derive");
                 }
                 impl_widget_children = false;
+            } else if *path == parse_quote! { ::kas::WidgetConfig }
+                || *path == parse_quote! { kas::WidgetConfig }
+                || *path == parse_quote! { WidgetConfig }
+            {
+                if derive_inner {
+                    emit_error!(impl_.span(), "impl conflicts with use of widget_derive");
+                }
+                // TODO: if args.widget_attr.config.is_some() { warn unused }
+                impl_widget_config = false;
             }
         }
     }
@@ -267,7 +277,8 @@ pub fn widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         });
     }
 
-    if let Some(config) = args.attr_widget.config {
+    if impl_widget_config {
+        let config = args.attr_widget.config.unwrap_or_default();
         let key_nav = config.key_nav;
         let hover_highlight = config.hover_highlight;
         let cursor_icon = config.cursor_icon;

@@ -17,7 +17,6 @@ widget! {
     /// A bare radiobox (no label)
     #[derive(Clone)]
     #[handler(handle=noauto)]
-    #[widget(config=noauto)]
     pub struct RadioBoxBare<M: 'static> {
         #[widget_core]
         core: CoreData,
@@ -186,7 +185,6 @@ widget! {
     #[derive(Clone)]
     #[layout(row, area=radiobox)]
     #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
-    #[widget(config=noauto)]
     #[widget_derive(HasBool)]
     pub struct RadioBox<M: 'static> {
         #[widget_core]

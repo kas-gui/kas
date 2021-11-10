@@ -791,7 +791,6 @@ impl Default for WidgetConfig {
 impl Parse for WidgetArgs {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut config = None;
-        let mut have_config = false;
 
         if !input.is_empty() {
             let content;
@@ -799,60 +798,45 @@ impl Parse for WidgetArgs {
 
             while !content.is_empty() {
                 let lookahead = content.lookahead1();
-                if lookahead.peek(kw::config) && !have_config {
-                    have_config = true;
+                if lookahead.peek(kw::config) && config.is_none() {
                     let _: kw::config = content.parse()?;
 
-                    if content.peek(Eq) {
-                        let _: Eq = content.parse()?;
-                        let lookahead = content.lookahead1();
-                        if lookahead.peek(kw::noauto) {
-                            let _: kw::noauto = content.parse()?;
+                    let content2;
+                    let _ = parenthesized!(content2 in content);
+
+                    let mut conf = WidgetConfig::default();
+                    let mut have_key_nav = false;
+                    let mut have_hover_highlight = false;
+                    let mut have_cursor_icon = false;
+
+                    while !content2.is_empty() {
+                        let lookahead = content2.lookahead1();
+                        if lookahead.peek(kw::key_nav) && !have_key_nav {
+                            let _: kw::key_nav = content2.parse()?;
+                            let _: Eq = content2.parse()?;
+                            let value: syn::LitBool = content2.parse()?;
+                            conf.key_nav = value.value;
+                            have_key_nav = true;
+                        } else if lookahead.peek(kw::hover_highlight) && !have_hover_highlight {
+                            let _: kw::hover_highlight = content2.parse()?;
+                            let _: Eq = content2.parse()?;
+                            let value: syn::LitBool = content2.parse()?;
+                            conf.hover_highlight = value.value;
+                            have_hover_highlight = true;
+                        } else if lookahead.peek(kw::cursor_icon) && !have_cursor_icon {
+                            let _: kw::cursor_icon = content2.parse()?;
+                            let _: Eq = content2.parse()?;
+                            conf.cursor_icon = content2.parse()?;
+                            have_cursor_icon = true;
                         } else {
                             return Err(lookahead.error());
+                        };
+
+                        if content2.peek(Comma) {
+                            let _: Comma = content2.parse()?;
                         }
-                    } else if content.peek(syn::token::Paren) {
-                        let content2;
-                        let _ = parenthesized!(content2 in content);
-
-                        let mut conf = WidgetConfig::default();
-                        let mut have_key_nav = false;
-                        let mut have_hover_highlight = false;
-                        let mut have_cursor_icon = false;
-
-                        while !content2.is_empty() {
-                            let lookahead = content2.lookahead1();
-                            if lookahead.peek(kw::noauto) && !have_key_nav && !have_cursor_icon {
-                                let _: kw::noauto = content2.parse()?;
-                                break;
-                            } else if lookahead.peek(kw::key_nav) && !have_key_nav {
-                                let _: kw::key_nav = content2.parse()?;
-                                let _: Eq = content2.parse()?;
-                                let value: syn::LitBool = content2.parse()?;
-                                conf.key_nav = value.value;
-                                have_key_nav = true;
-                            } else if lookahead.peek(kw::hover_highlight) && !have_hover_highlight {
-                                let _: kw::hover_highlight = content2.parse()?;
-                                let _: Eq = content2.parse()?;
-                                let value: syn::LitBool = content2.parse()?;
-                                conf.hover_highlight = value.value;
-                                have_hover_highlight = true;
-                            } else if lookahead.peek(kw::cursor_icon) && !have_cursor_icon {
-                                let _: kw::cursor_icon = content2.parse()?;
-                                let _: Eq = content2.parse()?;
-                                conf.cursor_icon = content2.parse()?;
-                                have_cursor_icon = true;
-                            } else {
-                                return Err(lookahead.error());
-                            };
-
-                            if content2.peek(Comma) {
-                                let _: Comma = content2.parse()?;
-                            }
-                        }
-
-                        config = Some(conf);
                     }
+                    config = Some(conf);
                 } else {
                     return Err(lookahead.error());
                 }
@@ -861,10 +845,6 @@ impl Parse for WidgetArgs {
                     let _: Comma = content.parse()?;
                 }
             }
-        }
-
-        if !have_config {
-            config = Some(WidgetConfig::default());
         }
 
         Ok(WidgetArgs { config })

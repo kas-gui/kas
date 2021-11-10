@@ -11,7 +11,6 @@ use kas::widgets::{Column, Label, StrLabel, Window};
 
 widget! {
     #[derive(Clone, Debug)]
-    #[widget(config = noauto)]
     #[layout(single)]
     struct CursorWidget {
         #[widget_core]

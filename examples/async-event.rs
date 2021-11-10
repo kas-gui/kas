@@ -47,7 +47,6 @@ fn main() -> Result<(), kas::shell::Error> {
 widget! {
     #[derive(Debug)]
     #[handler(handle = noauto)]
-    #[widget(config = noauto)]
     struct ColourSquare {
         #[widget_core]
         core: CoreData,

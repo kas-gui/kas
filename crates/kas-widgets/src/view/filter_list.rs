@@ -163,7 +163,6 @@ widget! {
     #[derive(Debug)]
     #[handler(handle=noauto, generics = <>)]
     #[layout(single)]
-    #[widget(config=noauto)]
     pub struct FilterListView<
         D: Directional,
         T: ListData + UpdHandler<T::Key, V::Msg> + 'static,

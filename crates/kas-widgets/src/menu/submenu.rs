@@ -15,7 +15,6 @@ use kas::WindowId;
 widget! {
     /// A sub-menu
     #[derive(Clone, Debug)]
-    #[widget(config=noauto)]
     #[handler(noauto)]
     pub struct SubMenu<D: Directional, W: Menu> {
         #[widget_core]

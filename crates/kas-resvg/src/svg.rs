@@ -18,7 +18,6 @@ widget! {
     /// An SVG image loaded from a path
     #[cfg_attr(doc_cfg, doc(cfg(feature = "svg")))]
     #[derive(Clone)]
-    #[widget(config = noauto)]
     pub struct Svg {
         #[widget_core]
         core: CoreData,

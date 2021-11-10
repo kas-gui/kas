@@ -18,7 +18,6 @@ widget! {
     /// A simple message box.
     #[derive(Clone, Debug)]
     #[layout(column)]
-    #[widget(config=noauto)]
     pub struct MessageBox<T: FormattableText + 'static> {
         #[widget_core]
         core: CoreData,

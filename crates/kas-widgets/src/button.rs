@@ -19,7 +19,6 @@ widget! {
     /// button alignment.
     #[derive(Clone)]
     #[handler(noauto)]
-    #[widget(config=noauto)]
     #[widget_derive(class_traits)]
     pub struct Button<L: Widget<Msg = VoidMsg>, M: 'static> {
         #[widget_core]
@@ -216,7 +215,6 @@ widget! {
     /// parameters).
     #[derive(Clone)]
     #[handler(handle=noauto)]
-    #[widget(config=noauto)]
     pub struct TextButton<M: 'static> {
         #[widget_core]
         core: kas::CoreData,

@@ -47,7 +47,6 @@ impl EditGuard for Guard {
 
 widget! {
     #[derive(Debug)]
-    #[widget(config=noauto)]
     #[layout(grid)]
     #[handler(handle=noauto)]
     struct TextEditPopup {

@@ -25,7 +25,6 @@ widget! {
     /// `<T as SingleData>::Item`. Several implementations are available in the
     /// [`driver`] module or a custom implementation may be used.
     #[derive(Clone)]
-    #[widget(config=noauto)]
     #[layout(single)]
     #[handler(handle=noauto, send=noauto)]
     pub struct SingleView<

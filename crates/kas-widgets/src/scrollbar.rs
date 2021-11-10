@@ -421,7 +421,6 @@ widget! {
     /// force internal margins by wrapping contents with a (zero-sized) frame.
     /// [`ScrollRegion`] already does this.
     #[derive(Clone, Debug, Default)]
-    #[widget(config=noauto)]
     #[handler(send=noauto, msg = <W as event::Handler>::Msg)]
     #[widget_derive(class_traits, Deref, DerefMut)]
     pub struct ScrollBars<W: Scrollable> {

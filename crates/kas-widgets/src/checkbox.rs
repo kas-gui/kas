@@ -142,7 +142,6 @@ widget! {
     #[derive(Clone, Default)]
     #[layout(row, area=checkbox)]
     #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
-    #[widget(config=noauto)]
     #[widget_derive(HasBool)]
     pub struct CheckBox<M: 'static> {
         #[widget_core]

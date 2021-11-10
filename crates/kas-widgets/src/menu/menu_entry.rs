@@ -15,7 +15,6 @@ use kas::prelude::*;
 widget! {
     /// A standard menu entry
     #[derive(Clone, Debug, Default)]
-    #[widget(config=noauto)]
     #[handler(handle=noauto)]
     pub struct MenuEntry<M: Clone + Debug + 'static> {
         #[widget_core]
@@ -125,7 +124,6 @@ widget! {
     /// A menu entry which can be toggled
     #[derive(Clone, Default)]
     #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
-    #[widget(config=noauto)]
     #[layout(row, area=checkbox, draw=draw)]
     pub struct MenuToggle<M: 'static> {
         #[widget_core]

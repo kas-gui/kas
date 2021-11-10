@@ -12,7 +12,6 @@ use std::path::PathBuf;
 widget! {
     /// An image with margins
     #[derive(Clone, Debug, Default)]
-    #[widget(config = noauto)]
     pub struct Image {
         #[widget_core]
         core: CoreData,

@@ -31,7 +31,6 @@ fn main() -> Result<(), kas::shell::Error> {
     let buttons = make_widget! {
         #[layout(grid)]
         #[handler(msg = Key)]
-        #[widget(config=noauto)]
         struct {
             // Buttons get keyboard bindings through the "&" item (e.g. "&1"
             // binds both main and numpad 1 key) and via `with_keys`.
