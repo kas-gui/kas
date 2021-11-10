@@ -11,6 +11,7 @@ extern crate proc_macro;
 use self::args::{ChildType, Handler, HandlerArgs};
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::abort;
+use proc_macro_error::proc_macro_error;
 use quote::{quote, ToTokens, TokenStreamExt};
 use std::collections::HashMap;
 use std::fmt::Write;
@@ -80,6 +81,7 @@ impl<'a> ToTokens for SubstTyGenerics<'a> {
 /// Macro to derive widget traits
 ///
 /// See documentation [in the `kas::macros` module](https://docs.rs/kas/latest/kas/macros#the-widget-macro).
+#[proc_macro_error]
 #[proc_macro]
 pub fn widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut args = parse_macro_input!(input as args::Widget);
@@ -574,12 +576,19 @@ pub fn widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
     }
 
+    for impl_ in args.extra_impls {
+        toks.append_all(quote! {
+            #impl_
+        });
+    }
+
     toks.into()
 }
 
 /// Macro to create a widget with anonymous type
 ///
 /// See documentation [in the `kas::macros` module](https://docs.rs/kas/latest/kas/macros#the-make_widget-macro).
+#[proc_macro_error]
 #[proc_macro]
 pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut find_handler_ty_buf: Vec<(Ident, Type)> = vec![];
@@ -836,6 +845,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// Macro to derive `From<VoidMsg>`
 ///
 /// See documentation [ in the `kas::macros` module](https://docs.rs/kas/latest/kas/macros#the-derivevoidmsg-macro).
+#[proc_macro_error]
 #[proc_macro_derive(VoidMsg)]
 pub fn derive_empty_msg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = parse_macro_input!(input as syn::DeriveInput);

@@ -21,6 +21,40 @@ widget! {
         do_load: bool,
         id: Option<ImageId>,
     }
+
+    impl WidgetConfig for Image {
+        fn configure(&mut self, mgr: &mut Manager) {
+            if self.do_load {
+                self.do_load = false;
+                match mgr.draw_shared(|ds| {
+                    ds.image_from_path(&self.path)
+                        .map(|id| (id, ds.image_size(id).unwrap_or(Size::ZERO)))
+                }) {
+                    Ok((id, size)) => {
+                        self.id = Some(id);
+                        self.sprite.size = size;
+                    }
+                    Err(error) => self.handle_load_fail(&error),
+                }
+            }
+        }
+    }
+
+    impl Layout for Image {
+        fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+            self.sprite.size_rules(sh, axis)
+        }
+
+        fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
+            self.core_data_mut().rect = self.sprite.align_rect(rect, align);
+        }
+
+        fn draw(&self, draw: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {
+            if let Some(id) = self.id {
+                draw.image(id, self.rect());
+            }
+        }
+    }
 }
 
 impl Image {
@@ -92,40 +126,6 @@ impl Image {
             } else {
                 break;
             }
-        }
-    }
-}
-
-impl WidgetConfig for Image {
-    fn configure(&mut self, mgr: &mut Manager) {
-        if self.do_load {
-            self.do_load = false;
-            match mgr.draw_shared(|ds| {
-                ds.image_from_path(&self.path)
-                    .map(|id| (id, ds.image_size(id).unwrap_or(Size::ZERO)))
-            }) {
-                Ok((id, size)) => {
-                    self.id = Some(id);
-                    self.sprite.size = size;
-                }
-                Err(error) => self.handle_load_fail(&error),
-            }
-        }
-    }
-}
-
-impl Layout for Image {
-    fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        self.sprite.size_rules(sh, axis)
-    }
-
-    fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
-        self.core_data_mut().rect = self.sprite.align_rect(rect, align);
-    }
-
-    fn draw(&self, draw: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {
-        if let Some(id) = self.id {
-            draw.image(id, self.rect());
         }
     }
 }

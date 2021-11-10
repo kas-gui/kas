@@ -41,78 +41,92 @@ widget! {
         widgets: Vec<W>,
         active: usize,
     }
-}
 
-impl<W: Widget> WidgetChildren for Stack<W> {
-    #[inline]
-    fn first_id(&self) -> WidgetId {
-        self.first_id
-    }
-    fn record_first_id(&mut self, id: WidgetId) {
-        self.first_id = id;
-    }
-    #[inline]
-    fn num_children(&self) -> usize {
-        self.widgets.len()
-    }
-    #[inline]
-    fn get_child(&self, index: usize) -> Option<&dyn WidgetConfig> {
-        self.widgets.get(index).map(|w| w.as_widget())
-    }
-    #[inline]
-    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
-        self.widgets.get_mut(index).map(|w| w.as_widget_mut())
-    }
-}
-
-impl<W: Widget> Layout for Stack<W> {
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let mut rules = SizeRules::EMPTY;
-        for child in &mut self.widgets {
-            rules = rules.max(child.size_rules(size_handle, axis));
+    impl WidgetChildren for Self {
+        #[inline]
+        fn first_id(&self) -> WidgetId {
+            self.first_id
         }
-        rules
-    }
-
-    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
-        self.core.rect = rect;
-        for child in &mut self.widgets {
-            child.set_rect(mgr, rect, align);
+        fn record_first_id(&mut self, id: WidgetId) {
+            self.first_id = id;
+        }
+        #[inline]
+        fn num_children(&self) -> usize {
+            self.widgets.len()
+        }
+        #[inline]
+        fn get_child(&self, index: usize) -> Option<&dyn WidgetConfig> {
+            self.widgets.get(index).map(|w| w.as_widget())
+        }
+        #[inline]
+        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
+            self.widgets.get_mut(index).map(|w| w.as_widget_mut())
         }
     }
 
-    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if self.active < self.widgets.len() {
-            return self.widgets[self.active].find_id(coord);
+    impl Layout for Self {
+        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+            let mut rules = SizeRules::EMPTY;
+            for child in &mut self.widgets {
+                rules = rules.max(child.size_rules(size_handle, axis));
+            }
+            rules
         }
-        None
-    }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-        let disabled = disabled || self.is_disabled();
-        if self.active < self.widgets.len() {
-            self.widgets[self.active].draw(draw_handle, mgr, disabled);
-        }
-    }
-}
-
-impl<W: Widget> event::SendEvent for Stack<W> {
-    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        if !self.is_disabled() {
-            for (index, child) in self.widgets.iter_mut().enumerate() {
-                if id <= child.id() {
-                    return match child.send(mgr, id, event) {
-                        Response::Focus(rect) => {
-                            *mgr |= self.set_active(index);
-                            Response::Focus(rect)
-                        }
-                        r => r,
-                    };
-                }
+        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+            self.core.rect = rect;
+            for child in &mut self.widgets {
+                child.set_rect(mgr, rect, align);
             }
         }
 
-        Response::Unhandled
+        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+            if self.active < self.widgets.len() {
+                return self.widgets[self.active].find_id(coord);
+            }
+            None
+        }
+
+        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+            let disabled = disabled || self.is_disabled();
+            if self.active < self.widgets.len() {
+                self.widgets[self.active].draw(draw_handle, mgr, disabled);
+            }
+        }
+    }
+
+    impl event::SendEvent for Self {
+        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+            if !self.is_disabled() {
+                for (index, child) in self.widgets.iter_mut().enumerate() {
+                    if id <= child.id() {
+                        return match child.send(mgr, id, event) {
+                            Response::Focus(rect) => {
+                                *mgr |= self.set_active(index);
+                                Response::Focus(rect)
+                            }
+                            r => r,
+                        };
+                    }
+                }
+            }
+
+            Response::Unhandled
+        }
+    }
+
+    impl Index<usize> for Self {
+        type Output = W;
+
+        fn index(&self, index: usize) -> &Self::Output {
+            &self.widgets[index]
+        }
+    }
+
+    impl IndexMut<usize> for Self {
+        fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+            &mut self.widgets[index]
+        }
     }
 }
 
@@ -301,19 +315,5 @@ impl<W: Widget> Stack<W> {
             true => TkAction::empty(),
             false => TkAction::RECONFIGURE,
         }
-    }
-}
-
-impl<W: Widget> Index<usize> for Stack<W> {
-    type Output = W;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.widgets[index]
-    }
-}
-
-impl<W: Widget> IndexMut<usize> for Stack<W> {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.widgets[index]
     }
 }

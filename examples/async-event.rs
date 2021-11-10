@@ -54,35 +54,35 @@ widget! {
         colour: Arc<Mutex<Rgba>>,
         handle: UpdateHandle,
     }
-}
-impl WidgetConfig for ColourSquare {
-    fn configure(&mut self, mgr: &mut Manager) {
-        // register to receive updates on this handle
-        mgr.update_on_handle(self.handle, self.id());
+    impl WidgetConfig for ColourSquare {
+        fn configure(&mut self, mgr: &mut Manager) {
+            // register to receive updates on this handle
+            mgr.update_on_handle(self.handle, self.id());
+        }
     }
-}
-impl Layout for ColourSquare {
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {
-        let factor = size_handle.scale_factor();
-        SizeRules::fixed_scaled(100.0, 10.0, factor)
+    impl Layout for ColourSquare {
+        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {
+            let factor = size_handle.scale_factor();
+            SizeRules::fixed_scaled(100.0, 10.0, factor)
+        }
+        fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
+            let draw = draw_handle.draw_device();
+            let col = *self.colour.lock().unwrap();
+            draw.rect((self.rect()).into(), col);
+        }
     }
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
-        let draw = draw_handle.draw_device();
-        let col = *self.colour.lock().unwrap();
-        draw.rect((self.rect()).into(), col);
-    }
-}
-impl Handler for ColourSquare {
-    type Msg = VoidMsg;
-    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<VoidMsg> {
-        match event {
-            Event::HandleUpdate { .. } => {
-                // Note: event has `handle` and `payload` params.
-                // We only need to request a redraw.
-                mgr.redraw(self.id());
-                Response::None
+    impl Handler for ColourSquare {
+        type Msg = VoidMsg;
+        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<VoidMsg> {
+            match event {
+                Event::HandleUpdate { .. } => {
+                    // Note: event has `handle` and `payload` params.
+                    // We only need to request a redraw.
+                    mgr.redraw(self.id());
+                    Response::None
+                }
+                _ => Response::Unhandled,
             }
-            _ => Response::Unhandled,
         }
     }
 }

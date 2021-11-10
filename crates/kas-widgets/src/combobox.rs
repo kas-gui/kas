@@ -33,57 +33,166 @@ widget! {
         popup_id: Option<WindowId>,
         on_select: Option<Rc<dyn Fn(&mut Manager, usize) -> Option<M>>>,
     }
-}
 
-impl<M: 'static> Debug for ComboBox<M> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("ComboBox")
-            .field("core", &self.core)
-            .field("label", &self.label)
-            .field("frame_size", &self.frame_size)
-            .field("popup", &self.popup)
-            .field("active", &self.active)
-            .field("opening", &self.opening)
-            .field("popup_id", &self.popup_id)
-            .finish_non_exhaustive()
-    }
-}
-
-impl<M: 'static> kas::Layout for ComboBox<M> {
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let frame_rules = size_handle.button_surround(axis.is_vertical());
-        let content_rules = size_handle.text_bound(&mut self.label, TextClass::Button, axis);
-
-        let (rules, _offset, size) = frame_rules.surround_as_margin(content_rules);
-        self.frame_size.set_component(axis, size);
-        rules
-    }
-
-    fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
-        self.core.rect = rect;
-        self.label.update_env(|env| {
-            env.set_bounds(rect.size.into());
-            env.set_align(align.unwrap_or(Align::Centre, Align::Centre));
-        });
-    }
-
-    fn spatial_nav(&mut self, _: &mut Manager, _: bool, _: Option<usize>) -> Option<usize> {
-        // We have no child within our rect
-        None
-    }
-
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-        let mut state = self.input_state(mgr, disabled);
-        if self.popup_id.is_some() {
-            state.insert(InputState::DEPRESS);
+    impl Debug for Self {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.debug_struct("ComboBox")
+                .field("core", &self.core)
+                .field("label", &self.label)
+                .field("frame_size", &self.frame_size)
+                .field("popup", &self.popup)
+                .field("active", &self.active)
+                .field("opening", &self.opening)
+                .field("popup_id", &self.popup_id)
+                .finish_non_exhaustive()
         }
-        draw_handle.button(self.core.rect, None, state);
-        draw_handle.text(
-            self.core.rect.pos,
-            self.label.as_ref(),
-            TextClass::Button,
-            state,
-        );
+    }
+
+    impl kas::Layout for Self {
+        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+            let frame_rules = size_handle.button_surround(axis.is_vertical());
+            let content_rules = size_handle.text_bound(&mut self.label, TextClass::Button, axis);
+
+            let (rules, _offset, size) = frame_rules.surround_as_margin(content_rules);
+            self.frame_size.set_component(axis, size);
+            rules
+        }
+
+        fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
+            self.core.rect = rect;
+            self.label.update_env(|env| {
+                env.set_bounds(rect.size.into());
+                env.set_align(align.unwrap_or(Align::Centre, Align::Centre));
+            });
+        }
+
+        fn spatial_nav(&mut self, _: &mut Manager, _: bool, _: Option<usize>) -> Option<usize> {
+            // We have no child within our rect
+            None
+        }
+
+        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+            let mut state = self.input_state(mgr, disabled);
+            if self.popup_id.is_some() {
+                state.insert(InputState::DEPRESS);
+            }
+            draw_handle.button(self.core.rect, None, state);
+            draw_handle.text(
+                self.core.rect.pos,
+                self.label.as_ref(),
+                TextClass::Button,
+                state,
+            );
+        }
+    }
+
+    impl event::Handler for Self {
+        type Msg = M;
+
+        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
+            let open_popup = |s: &mut Self, mgr: &mut Manager, key_focus: bool| {
+                s.popup_id = mgr.add_popup(kas::Popup {
+                    id: s.popup.id(),
+                    parent: s.id(),
+                    direction: Direction::Down,
+                });
+                if let Some(id) = s.popup.inner.get_child(s.active).map(|w| w.id()) {
+                    mgr.set_nav_focus(id, key_focus);
+                }
+            };
+            match event {
+                Event::Activate => {
+                    if let Some(id) = self.popup_id {
+                        mgr.close_window(id, true);
+                    } else {
+                        open_popup(self, mgr, true);
+                    }
+                }
+                Event::PressStart {
+                    source,
+                    start_id,
+                    coord,
+                } => {
+                    if self.is_ancestor_of(start_id) {
+                        if source.is_primary() {
+                            mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None);
+                            mgr.set_grab_depress(source, Some(start_id));
+                            self.opening = self.popup_id.is_none();
+                        }
+                    } else {
+                        if let Some(id) = self.popup_id {
+                            mgr.close_window(id, false);
+                        }
+                        return Response::Unhandled;
+                    }
+                }
+                Event::PressMove {
+                    source,
+                    cur_id,
+                    coord,
+                    ..
+                } => {
+                    if self.popup_id.is_none() {
+                        open_popup(self, mgr, false);
+                    }
+                    let cond = self.popup.inner.rect().contains(coord);
+                    let target = if cond { cur_id } else { None };
+                    mgr.set_grab_depress(source, target);
+                    if let Some(id) = target {
+                        mgr.set_nav_focus(id, false);
+                    }
+                }
+                Event::PressEnd { end_id, .. } => {
+                    if let Some(id) = end_id {
+                        if id == self.id() {
+                            if self.opening {
+                                if self.popup_id.is_none() {
+                                    open_popup(self, mgr, false);
+                                }
+                                return Response::None;
+                            }
+                        } else if self.popup_id.is_some() && self.popup.is_ancestor_of(id) {
+                            let r = self.popup.send(mgr, id, Event::Activate);
+                            return self.map_response(mgr, id, event, r);
+                        }
+                    }
+                    if let Some(id) = self.popup_id {
+                        mgr.close_window(id, true);
+                    }
+                }
+                Event::PopupRemoved(id) => {
+                    debug_assert_eq!(Some(id), self.popup_id);
+                    self.popup_id = None;
+                }
+                _ => return Response::Unhandled,
+            }
+            Response::None
+        }
+    }
+
+    impl event::SendEvent for Self {
+        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+            if self.is_disabled() {
+                return Response::Unhandled;
+            }
+
+            if id <= self.popup.id() {
+                if let Event::NavFocus(key_focus) = event {
+                    if self.popup_id.is_none() {
+                        // Steal focus since child is invisible
+                        mgr.set_nav_focus(self.id(), key_focus);
+                    }
+                    // Don't bother sending Response::Focus here since NavFocus will
+                    // be sent to this widget, and handle_generic will respond.
+                    return Response::None;
+                }
+
+                let r = self.popup.send(mgr, id, event.clone());
+                self.map_response(mgr, id, event, r)
+            } else {
+                Manager::handle_generic(self, mgr, event)
+            }
+        }
     }
 }
 
@@ -300,115 +409,6 @@ impl<M: 'static> ComboBox<M> {
                     Response::Update
                 }
             }
-        }
-    }
-}
-
-impl<M: 'static> event::Handler for ComboBox<M> {
-    type Msg = M;
-
-    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
-        let open_popup = |s: &mut Self, mgr: &mut Manager, key_focus: bool| {
-            s.popup_id = mgr.add_popup(kas::Popup {
-                id: s.popup.id(),
-                parent: s.id(),
-                direction: Direction::Down,
-            });
-            if let Some(id) = s.popup.inner.get_child(s.active).map(|w| w.id()) {
-                mgr.set_nav_focus(id, key_focus);
-            }
-        };
-        match event {
-            Event::Activate => {
-                if let Some(id) = self.popup_id {
-                    mgr.close_window(id, true);
-                } else {
-                    open_popup(self, mgr, true);
-                }
-            }
-            Event::PressStart {
-                source,
-                start_id,
-                coord,
-            } => {
-                if self.is_ancestor_of(start_id) {
-                    if source.is_primary() {
-                        mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None);
-                        mgr.set_grab_depress(source, Some(start_id));
-                        self.opening = self.popup_id.is_none();
-                    }
-                } else {
-                    if let Some(id) = self.popup_id {
-                        mgr.close_window(id, false);
-                    }
-                    return Response::Unhandled;
-                }
-            }
-            Event::PressMove {
-                source,
-                cur_id,
-                coord,
-                ..
-            } => {
-                if self.popup_id.is_none() {
-                    open_popup(self, mgr, false);
-                }
-                let cond = self.popup.inner.rect().contains(coord);
-                let target = if cond { cur_id } else { None };
-                mgr.set_grab_depress(source, target);
-                if let Some(id) = target {
-                    mgr.set_nav_focus(id, false);
-                }
-            }
-            Event::PressEnd { end_id, .. } => {
-                if let Some(id) = end_id {
-                    if id == self.id() {
-                        if self.opening {
-                            if self.popup_id.is_none() {
-                                open_popup(self, mgr, false);
-                            }
-                            return Response::None;
-                        }
-                    } else if self.popup_id.is_some() && self.popup.is_ancestor_of(id) {
-                        let r = self.popup.send(mgr, id, Event::Activate);
-                        return self.map_response(mgr, id, event, r);
-                    }
-                }
-                if let Some(id) = self.popup_id {
-                    mgr.close_window(id, true);
-                }
-            }
-            Event::PopupRemoved(id) => {
-                debug_assert_eq!(Some(id), self.popup_id);
-                self.popup_id = None;
-            }
-            _ => return Response::Unhandled,
-        }
-        Response::None
-    }
-}
-
-impl<M: 'static> event::SendEvent for ComboBox<M> {
-    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        if self.is_disabled() {
-            return Response::Unhandled;
-        }
-
-        if id <= self.popup.id() {
-            if let Event::NavFocus(key_focus) = event {
-                if self.popup_id.is_none() {
-                    // Steal focus since child is invisible
-                    mgr.set_nav_focus(self.id(), key_focus);
-                }
-                // Don't bother sending Response::Focus here since NavFocus will
-                // be sent to this widget, and handle_generic will respond.
-                return Response::None;
-            }
-
-            let r = self.popup.send(mgr, id, event.clone());
-            self.map_response(mgr, id, event, r)
-        } else {
-            Manager::handle_generic(self, mgr, event)
         }
     }
 }

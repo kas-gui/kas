@@ -196,6 +196,71 @@ widget! {
         offset: Offset,
         frame_size: Size,
     }
+
+    impl Layout for Self {
+        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+            let frame_rules = size_handle.edit_surround(axis.is_vertical());
+            let child_rules = self.inner.size_rules(size_handle, axis);
+
+            let (rules, offset, size) = frame_rules.surround_as_margin(child_rules);
+            self.offset.set_component(axis, offset);
+            self.frame_size.set_component(axis, size);
+            rules
+        }
+
+        fn set_rect(&mut self, mgr: &mut Manager, mut rect: Rect, align: AlignHints) {
+            self.core.rect = rect;
+            rect.pos += self.offset;
+            rect.size -= self.frame_size;
+            self.inner.set_rect(mgr, rect, align);
+        }
+
+        #[inline]
+        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) {
+                return None;
+            }
+            Some(self.inner.id())
+        }
+
+        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+            // We draw highlights for input state of inner:
+            let disabled = disabled || self.is_disabled() || self.inner.is_disabled();
+            let mut input_state = self.inner.input_state(mgr, disabled);
+            if self.inner.has_error() {
+                input_state.insert(InputState::ERROR);
+            }
+            draw_handle.edit_box(self.core.rect, input_state);
+            self.inner.draw(draw_handle, mgr, disabled);
+        }
+    }
+
+    impl HasStr for Self {
+        #[inline]
+        fn get_str(&self) -> &str {
+            self.inner.get_str()
+        }
+    }
+
+    impl HasString for Self {
+        #[inline]
+        fn set_string(&mut self, text: String) -> TkAction {
+            self.inner.set_string(text)
+        }
+    }
+
+    impl std::ops::Deref for Self {
+        type Target = EditField<G>;
+        fn deref(&self) -> &Self::Target {
+            &self.inner
+        }
+    }
+
+    impl std::ops::DerefMut for Self {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.inner
+        }
+}
 }
 
 impl EditBox<()> {
@@ -332,71 +397,6 @@ impl<G: EditGuard> EditBox<G> {
     }
 }
 
-impl<G: EditGuard> Layout for EditBox<G> {
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let frame_rules = size_handle.edit_surround(axis.is_vertical());
-        let child_rules = self.inner.size_rules(size_handle, axis);
-
-        let (rules, offset, size) = frame_rules.surround_as_margin(child_rules);
-        self.offset.set_component(axis, offset);
-        self.frame_size.set_component(axis, size);
-        rules
-    }
-
-    fn set_rect(&mut self, mgr: &mut Manager, mut rect: Rect, align: AlignHints) {
-        self.core.rect = rect;
-        rect.pos += self.offset;
-        rect.size -= self.frame_size;
-        self.inner.set_rect(mgr, rect, align);
-    }
-
-    #[inline]
-    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if !self.rect().contains(coord) {
-            return None;
-        }
-        Some(self.inner.id())
-    }
-
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-        // We draw highlights for input state of inner:
-        let disabled = disabled || self.is_disabled() || self.inner.is_disabled();
-        let mut input_state = self.inner.input_state(mgr, disabled);
-        if self.inner.has_error() {
-            input_state.insert(InputState::ERROR);
-        }
-        draw_handle.edit_box(self.core.rect, input_state);
-        self.inner.draw(draw_handle, mgr, disabled);
-    }
-}
-
-impl<G: EditGuard> HasStr for EditBox<G> {
-    #[inline]
-    fn get_str(&self) -> &str {
-        self.inner.get_str()
-    }
-}
-
-impl<G: EditGuard> HasString for EditBox<G> {
-    #[inline]
-    fn set_string(&mut self, text: String) -> TkAction {
-        self.inner.set_string(text)
-    }
-}
-
-impl<G: EditGuard> std::ops::Deref for EditBox<G> {
-    type Target = EditField<G>;
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl<G: EditGuard> std::ops::DerefMut for EditBox<G> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
-    }
-}
-
 widget! {
     /// A text-edit field (single- or multi-line)
     ///
@@ -433,79 +433,232 @@ widget! {
         /// The associated [`EditGuard`] implementation
         pub guard: G,
     }
-}
 
-impl<G: EditGuard> Layout for EditField<G> {
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let class = if self.multi_line {
-            TextClass::EditMulti
-        } else {
-            TextClass::Edit
-        };
-        let rules = size_handle.text_bound(&mut self.text, class, axis);
-        if axis.is_vertical() {
-            self.ideal_height = rules.ideal_size();
-        }
-        rules
-    }
-
-    fn set_rect(&mut self, _: &mut Manager, mut rect: Rect, align: AlignHints) {
-        if !self.multi_line {
-            let excess = (rect.size.1 - self.ideal_height).max(0);
-            let offset = match align.vert {
-                Some(Align::TL) => 0,
-                Some(Align::BR) => excess,
-                _ => excess / 2,
-            };
-            rect.pos.1 += offset;
-            rect.size.1 -= excess;
-        }
-
-        self.core.rect = rect;
-        let size = rect.size;
-        let multi_line = self.multi_line;
-        self.required = self
-            .text
-            .update_env(|env| {
-                env.set_align(align.unwrap_or(Align::Default, Align::Default));
-                env.set_bounds(size.into());
-                env.set_wrap(multi_line);
-            })
-            .into();
-        self.set_view_offset_from_edit_pos();
-    }
-
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-        let class = if self.multi_line {
-            TextClass::EditMulti
-        } else {
-            TextClass::Edit
-        };
-        let state = self.input_state(mgr, disabled);
-        draw_handle.with_clip_region(self.rect(), self.view_offset, &mut |draw_handle| {
-            if self.selection.is_empty() {
-                draw_handle.text(self.rect().pos, self.text.as_ref(), class, state);
+    impl Layout for Self {
+        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+            let class = if self.multi_line {
+                TextClass::EditMulti
             } else {
-                // TODO(opt): we could cache the selection rectangles here to make
-                // drawing more efficient (self.text.highlight_lines(range) output).
-                // The same applies to the edit marker below.
-                draw_handle.text_selected(
-                    self.rect().pos,
-                    &self.text,
-                    self.selection.range(),
-                    class,
-                    state,
-                );
+                TextClass::Edit
+            };
+            let rules = size_handle.text_bound(&mut self.text, class, axis);
+            if axis.is_vertical() {
+                self.ideal_height = rules.ideal_size();
             }
-            if mgr.has_char_focus(self.id()).0 {
-                draw_handle.edit_marker(
-                    self.rect().pos,
-                    self.text.as_ref(),
-                    class,
-                    self.selection.edit_pos(),
-                );
+            rules
+        }
+
+        fn set_rect(&mut self, _: &mut Manager, mut rect: Rect, align: AlignHints) {
+            if !self.multi_line {
+                let excess = (rect.size.1 - self.ideal_height).max(0);
+                let offset = match align.vert {
+                    Some(Align::TL) => 0,
+                    Some(Align::BR) => excess,
+                    _ => excess / 2,
+                };
+                rect.pos.1 += offset;
+                rect.size.1 -= excess;
             }
-        });
+
+            self.core.rect = rect;
+            let size = rect.size;
+            let multi_line = self.multi_line;
+            self.required = self
+                .text
+                .update_env(|env| {
+                    env.set_align(align.unwrap_or(Align::Default, Align::Default));
+                    env.set_bounds(size.into());
+                    env.set_wrap(multi_line);
+                })
+                .into();
+            self.set_view_offset_from_edit_pos();
+        }
+
+        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+            let class = if self.multi_line {
+                TextClass::EditMulti
+            } else {
+                TextClass::Edit
+            };
+            let state = self.input_state(mgr, disabled);
+            draw_handle.with_clip_region(self.rect(), self.view_offset, &mut |draw_handle| {
+                if self.selection.is_empty() {
+                    draw_handle.text(self.rect().pos, self.text.as_ref(), class, state);
+                } else {
+                    // TODO(opt): we could cache the selection rectangles here to make
+                    // drawing more efficient (self.text.highlight_lines(range) output).
+                    // The same applies to the edit marker below.
+                    draw_handle.text_selected(
+                        self.rect().pos,
+                        &self.text,
+                        self.selection.range(),
+                        class,
+                        state,
+                    );
+                }
+                if mgr.has_char_focus(self.id()).0 {
+                    draw_handle.edit_marker(
+                        self.rect().pos,
+                        self.text.as_ref(),
+                        class,
+                        self.selection.edit_pos(),
+                    );
+                }
+            });
+        }
+    }
+
+    impl HasStr for Self {
+        fn get_str(&self) -> &str {
+            self.text.text()
+        }
+    }
+
+    impl HasString for Self {
+        fn set_string(&mut self, string: String) -> TkAction {
+            // TODO: make text.set_string report bool for is changed?
+            if *self.text.text() == string {
+                return TkAction::empty();
+            }
+
+            self.text.set_string(string);
+            self.selection.clear();
+            if kas::text::fonts::fonts().num_faces() > 0 {
+                if let Some(req) = self.text.prepare() {
+                    self.required = req.into();
+                }
+            }
+            let _ = G::update(self);
+            TkAction::REDRAW
+        }
+    }
+
+    impl event::Handler for Self
+    where
+        G: 'static,
+    {
+        type Msg = G::Msg;
+
+        #[inline]
+        fn focus_on_key_nav(&self) -> bool {
+            false
+        }
+
+        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+            fn request_focus<G: EditGuard + 'static>(s: &mut EditField<G>, mgr: &mut Manager) {
+                if !s.has_key_focus && mgr.request_char_focus(s.id()) {
+                    s.has_key_focus = true;
+                    G::focus_gained(s, mgr);
+                }
+            }
+            match event {
+                Event::Activate | Event::NavFocus(true) => {
+                    request_focus(self, mgr);
+                    Response::Focus(self.rect())
+                }
+                Event::NavFocus(false) => Response::None,
+                Event::LostCharFocus => {
+                    self.has_key_focus = false;
+                    mgr.redraw(self.id());
+                    G::focus_lost(self, mgr)
+                        .map(|msg| msg.into())
+                        .unwrap_or(Response::None)
+                }
+                Event::LostSelFocus => {
+                    self.selection.set_empty();
+                    mgr.redraw(self.id());
+                    Response::None
+                }
+                Event::Command(cmd, shift) => {
+                    // Note: we can receive a Command without char focus, but should
+                    // ensure we have focus before acting on it.
+                    request_focus(self, mgr);
+                    if self.has_key_focus {
+                        match self.control_key(mgr, cmd, shift) {
+                            EditAction::None => Response::None,
+                            EditAction::Unhandled => Response::Unhandled,
+                            EditAction::Activate => Response::none_or_msg(G::activate(self, mgr)),
+                            EditAction::Edit => Response::update_or_msg(G::edit(self, mgr)),
+                        }
+                    } else {
+                        Response::Unhandled
+                    }
+                }
+                Event::ReceivedCharacter(c) => match self.received_char(mgr, c) {
+                    false => Response::Unhandled,
+                    true => Response::update_or_msg(G::edit(self, mgr)),
+                },
+                Event::Scroll(delta) => {
+                    let delta2 = match delta {
+                        ScrollDelta::LineDelta(x, y) => {
+                            // We arbitrarily scroll 3 lines:
+                            let dist = 3.0 * self.text.env().height(Default::default());
+                            Offset((x * dist).cast_nearest(), (y * dist).cast_nearest())
+                        }
+                        ScrollDelta::PixelDelta(coord) => coord,
+                    };
+                    match self.pan_delta(mgr, delta2) {
+                        delta if delta == Offset::ZERO => Response::None,
+                        delta => Response::Pan(delta),
+                    }
+                }
+                event => match self.input_handler.handle(mgr, self.id(), event) {
+                    TextInputAction::None => Response::None,
+                    TextInputAction::Unhandled => Response::Unhandled,
+                    TextInputAction::Pan(delta) => match self.pan_delta(mgr, delta) {
+                        delta if delta == Offset::ZERO => Response::None,
+                        delta => Response::Pan(delta),
+                    },
+                    TextInputAction::Focus => {
+                        request_focus(self, mgr);
+                        Response::None
+                    }
+                    TextInputAction::Cursor(coord, anchor, clear, repeats) => {
+                        request_focus(self, mgr);
+                        if self.has_key_focus {
+                            self.set_edit_pos_from_coord(mgr, coord);
+                            if anchor {
+                                self.selection.set_anchor();
+                            }
+                            if clear {
+                                self.selection.set_empty();
+                            }
+                            if repeats > 1 {
+                                self.selection.expand(&self.text, repeats);
+                            }
+                        }
+                        Response::None
+                    }
+                },
+            }
+        }
+    }
+
+    impl Scrollable for Self {
+        fn scroll_axes(&self, size: Size) -> (bool, bool) {
+            let max = self.max_scroll_offset();
+            (max.0 > size.0, max.1 > size.1)
+        }
+
+        fn max_scroll_offset(&self) -> Offset {
+            let bounds = Vec2::from(self.text.env().bounds);
+            let max_offset = (self.required - bounds).ceil();
+            Offset::from(max_offset).max(Offset::ZERO)
+        }
+
+        fn scroll_offset(&self) -> Offset {
+            self.view_offset
+        }
+
+        fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset {
+            let new_offset = offset.clamp(Offset::ZERO, self.max_scroll_offset());
+            if new_offset != self.view_offset {
+                self.view_offset = new_offset;
+                // No widget moves so do not need to report TkAction::REGION_MOVED
+                mgr.redraw(self.id());
+            }
+            new_offset
+        }
     }
 }
 
@@ -1031,155 +1184,5 @@ impl<G: EditGuard> EditField<G> {
 
             self.view_offset = self.view_offset.max(min).min(max);
         }
-    }
-}
-
-impl<G: EditGuard> HasStr for EditField<G> {
-    fn get_str(&self) -> &str {
-        self.text.text()
-    }
-}
-
-impl<G: EditGuard> HasString for EditField<G> {
-    fn set_string(&mut self, string: String) -> TkAction {
-        // TODO: make text.set_string report bool for is changed?
-        if *self.text.text() == string {
-            return TkAction::empty();
-        }
-
-        self.text.set_string(string);
-        self.selection.clear();
-        if kas::text::fonts::fonts().num_faces() > 0 {
-            if let Some(req) = self.text.prepare() {
-                self.required = req.into();
-            }
-        }
-        let _ = G::update(self);
-        TkAction::REDRAW
-    }
-}
-
-impl<G: EditGuard + 'static> event::Handler for EditField<G> {
-    type Msg = G::Msg;
-
-    #[inline]
-    fn focus_on_key_nav(&self) -> bool {
-        false
-    }
-
-    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
-        fn request_focus<G: EditGuard + 'static>(s: &mut EditField<G>, mgr: &mut Manager) {
-            if !s.has_key_focus && mgr.request_char_focus(s.id()) {
-                s.has_key_focus = true;
-                G::focus_gained(s, mgr);
-            }
-        }
-        match event {
-            Event::Activate | Event::NavFocus(true) => {
-                request_focus(self, mgr);
-                Response::Focus(self.rect())
-            }
-            Event::NavFocus(false) => Response::None,
-            Event::LostCharFocus => {
-                self.has_key_focus = false;
-                mgr.redraw(self.id());
-                G::focus_lost(self, mgr)
-                    .map(|msg| msg.into())
-                    .unwrap_or(Response::None)
-            }
-            Event::LostSelFocus => {
-                self.selection.set_empty();
-                mgr.redraw(self.id());
-                Response::None
-            }
-            Event::Command(cmd, shift) => {
-                // Note: we can receive a Command without char focus, but should
-                // ensure we have focus before acting on it.
-                request_focus(self, mgr);
-                if self.has_key_focus {
-                    match self.control_key(mgr, cmd, shift) {
-                        EditAction::None => Response::None,
-                        EditAction::Unhandled => Response::Unhandled,
-                        EditAction::Activate => Response::none_or_msg(G::activate(self, mgr)),
-                        EditAction::Edit => Response::update_or_msg(G::edit(self, mgr)),
-                    }
-                } else {
-                    Response::Unhandled
-                }
-            }
-            Event::ReceivedCharacter(c) => match self.received_char(mgr, c) {
-                false => Response::Unhandled,
-                true => Response::update_or_msg(G::edit(self, mgr)),
-            },
-            Event::Scroll(delta) => {
-                let delta2 = match delta {
-                    ScrollDelta::LineDelta(x, y) => {
-                        // We arbitrarily scroll 3 lines:
-                        let dist = 3.0 * self.text.env().height(Default::default());
-                        Offset((x * dist).cast_nearest(), (y * dist).cast_nearest())
-                    }
-                    ScrollDelta::PixelDelta(coord) => coord,
-                };
-                match self.pan_delta(mgr, delta2) {
-                    delta if delta == Offset::ZERO => Response::None,
-                    delta => Response::Pan(delta),
-                }
-            }
-            event => match self.input_handler.handle(mgr, self.id(), event) {
-                TextInputAction::None => Response::None,
-                TextInputAction::Unhandled => Response::Unhandled,
-                TextInputAction::Pan(delta) => match self.pan_delta(mgr, delta) {
-                    delta if delta == Offset::ZERO => Response::None,
-                    delta => Response::Pan(delta),
-                },
-                TextInputAction::Focus => {
-                    request_focus(self, mgr);
-                    Response::None
-                }
-                TextInputAction::Cursor(coord, anchor, clear, repeats) => {
-                    request_focus(self, mgr);
-                    if self.has_key_focus {
-                        self.set_edit_pos_from_coord(mgr, coord);
-                        if anchor {
-                            self.selection.set_anchor();
-                        }
-                        if clear {
-                            self.selection.set_empty();
-                        }
-                        if repeats > 1 {
-                            self.selection.expand(&self.text, repeats);
-                        }
-                    }
-                    Response::None
-                }
-            },
-        }
-    }
-}
-
-impl<G: EditGuard> Scrollable for EditField<G> {
-    fn scroll_axes(&self, size: Size) -> (bool, bool) {
-        let max = self.max_scroll_offset();
-        (max.0 > size.0, max.1 > size.1)
-    }
-
-    fn max_scroll_offset(&self) -> Offset {
-        let bounds = Vec2::from(self.text.env().bounds);
-        let max_offset = (self.required - bounds).ceil();
-        Offset::from(max_offset).max(Offset::ZERO)
-    }
-
-    fn scroll_offset(&self) -> Offset {
-        self.view_offset
-    }
-
-    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset {
-        let new_offset = offset.clamp(Offset::ZERO, self.max_scroll_offset());
-        if new_offset != self.view_offset {
-            self.view_offset = new_offset;
-            // No widget moves so do not need to report TkAction::REGION_MOVED
-            mgr.redraw(self.id());
-        }
-        new_offset
     }
 }

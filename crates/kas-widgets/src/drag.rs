@@ -37,6 +37,58 @@ widget! {
         press_source: Option<event::PressSource>,
         press_coord: Coord,
     }
+
+    /// This implementation is unusual in that:
+    ///
+    /// 1.  `size_rules` always returns [`SizeRules::EMPTY`]
+    /// 2.  `set_rect` sets the *track* within which this handle may move; the
+    ///     parent should call [`DragHandle::set_size_and_offset`] after
+    ///     `set_rect` (otherwise the handle's offset will not be updated)
+    /// 3.  `draw` does nothing: the parent is expected to do all drawing
+    impl Layout for DragHandle {
+        fn size_rules(&mut self, _: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {
+            SizeRules::EMPTY
+        }
+
+        fn set_rect(&mut self, _: &mut Manager, rect: Rect, _: AlignHints) {
+            self.track = rect;
+        }
+
+        fn draw(&self, _: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {}
+    }
+
+    impl event::Handler for DragHandle {
+        type Msg = Offset;
+
+        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+            match event {
+                Event::PressStart { source, coord, .. } => {
+                    if !self.grab_press(mgr, source, coord) {
+                        return Response::None;
+                    }
+
+                    // Event delivery implies coord is over the handle.
+                    self.press_coord = coord - self.offset();
+                    Response::None
+                }
+                Event::PressMove { source, coord, .. } if Some(source) == self.press_source => {
+                    let offset = coord - self.press_coord;
+                    let (offset, action) = self.set_offset(offset);
+                    if action.is_empty() {
+                        Response::None
+                    } else {
+                        mgr.send_action(action);
+                        Response::Msg(offset)
+                    }
+                }
+                Event::PressEnd { source, .. } if Some(source) == self.press_source => {
+                    self.press_source = None;
+                    Response::None
+                }
+                _ => Response::Unhandled,
+            }
+        }
+    }
 }
 
 impl DragHandle {
@@ -129,58 +181,6 @@ impl DragHandle {
             true
         } else {
             false
-        }
-    }
-}
-
-/// This implementation is unusual in that:
-///
-/// 1.  `size_rules` always returns [`SizeRules::EMPTY`]
-/// 2.  `set_rect` sets the *track* within which this handle may move; the
-///     parent should call [`DragHandle::set_size_and_offset`] after
-///     `set_rect` (otherwise the handle's offset will not be updated)
-/// 3.  `draw` does nothing: the parent is expected to do all drawing
-impl Layout for DragHandle {
-    fn size_rules(&mut self, _: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {
-        SizeRules::EMPTY
-    }
-
-    fn set_rect(&mut self, _: &mut Manager, rect: Rect, _: AlignHints) {
-        self.track = rect;
-    }
-
-    fn draw(&self, _: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {}
-}
-
-impl event::Handler for DragHandle {
-    type Msg = Offset;
-
-    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
-        match event {
-            Event::PressStart { source, coord, .. } => {
-                if !self.grab_press(mgr, source, coord) {
-                    return Response::None;
-                }
-
-                // Event delivery implies coord is over the handle.
-                self.press_coord = coord - self.offset();
-                Response::None
-            }
-            Event::PressMove { source, coord, .. } if Some(source) == self.press_source => {
-                let offset = coord - self.press_coord;
-                let (offset, action) = self.set_offset(offset);
-                if action.is_empty() {
-                    Response::None
-                } else {
-                    mgr.send_action(action);
-                    Response::Msg(offset)
-                }
-            }
-            Event::PressEnd { source, .. } if Some(source) == self.press_source => {
-                self.press_source = None;
-                Response::None
-            }
-            _ => Response::Unhandled,
         }
     }
 }

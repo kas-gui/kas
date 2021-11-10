@@ -28,30 +28,123 @@ widget! {
         drop: Option<(Box<dyn FnMut(&mut W)>, UpdateHandle)>,
         icon: Option<Icon>,
     }
-}
 
-impl<W: Widget> Debug for Window<W> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Window")
-            .field("core", &self.core)
-            .field("restrict_dimensions", &self.restrict_dimensions)
-            .field("title", &self.title)
-            .field("w", &self.w)
-            .field("popups", &self.popups)
-            .finish_non_exhaustive()
+    impl Debug for Self {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.debug_struct("Window")
+                .field("core", &self.core)
+                .field("restrict_dimensions", &self.restrict_dimensions)
+                .field("title", &self.title)
+                .field("w", &self.w)
+                .field("popups", &self.popups)
+                .finish_non_exhaustive()
+        }
     }
-}
 
-impl<W: Widget + Clone> Clone for Window<W> {
-    fn clone(&self) -> Self {
-        Window {
-            core: self.core.clone(),
-            restrict_dimensions: self.restrict_dimensions,
-            title: self.title.clone(),
-            w: self.w.clone(),
-            popups: Default::default(), // these are temporary; don't clone
-            drop: None,                 // we cannot clone this!
-            icon: self.icon.clone(),
+    impl Clone for Self where W: Clone {
+        fn clone(&self) -> Self {
+            Window {
+                core: self.core.clone(),
+                restrict_dimensions: self.restrict_dimensions,
+                title: self.title.clone(),
+                w: self.w.clone(),
+                popups: Default::default(), // these are temporary; don't clone
+                drop: None,                 // we cannot clone this!
+                icon: self.icon.clone(),
+            }
+        }
+    }
+
+    impl Layout for Self {
+        #[inline]
+        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+            // Note: we do not consider popups, since they are usually temporary
+            self.w.size_rules(size_handle, axis)
+        }
+
+        #[inline]
+        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+            self.core.rect = rect;
+            self.w.set_rect(mgr, rect, align);
+        }
+
+        #[inline]
+        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) {
+                return None;
+            }
+            for popup in self.popups.iter().rev() {
+                if let Some(id) = self.w.find_leaf(popup.1.id).and_then(|w| w.find_id(coord)) {
+                    return Some(id);
+                }
+            }
+            self.w.find_id(coord).or(Some(self.id()))
+        }
+
+        #[inline]
+        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+            let disabled = disabled || self.is_disabled();
+            self.w.draw(draw_handle, mgr, disabled);
+            for (_, popup) in &self.popups {
+                if let Some(widget) = self.find_leaf(popup.id) {
+                    draw_handle.with_overlay(widget.rect(), &mut |draw_handle| {
+                        widget.draw(draw_handle, mgr, disabled);
+                    });
+                }
+            }
+        }
+    }
+
+    impl<M: Into<VoidMsg>, W: Widget<Msg = M> + 'static> SendEvent for Window<W> {
+        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+            if !self.is_disabled() && id <= self.w.id() {
+                return self.w.send(mgr, id, event).into();
+            }
+            Response::Unhandled
+        }
+    }
+
+    impl<M: Into<VoidMsg>, W: Widget<Msg = M> + 'static> kas::Window for Window<W> {
+        fn title(&self) -> &str {
+            &self.title
+        }
+
+        fn icon(&self) -> Option<Icon> {
+            self.icon.clone()
+        }
+
+        fn restrict_dimensions(&self) -> (bool, bool) {
+            self.restrict_dimensions
+        }
+
+        fn add_popup(&mut self, mgr: &mut Manager, id: WindowId, popup: kas::Popup) {
+            let index = self.popups.len();
+            self.popups.push((id, popup));
+            self.resize_popup(mgr, index);
+            mgr.send_action(TkAction::REDRAW);
+        }
+
+        fn remove_popup(&mut self, mgr: &mut Manager, id: WindowId) {
+            for i in 0..self.popups.len() {
+                if id == self.popups[i].0 {
+                    self.popups.remove(i);
+                    mgr.send_action(TkAction::REGION_MOVED);
+                    return;
+                }
+            }
+        }
+
+        fn resize_popups(&mut self, mgr: &mut Manager) {
+            for i in 0..self.popups.len() {
+                self.resize_popup(mgr, i);
+            }
+        }
+
+        fn handle_closure(&mut self, mgr: &mut Manager) {
+            if let Some((mut consume, update)) = self.drop.take() {
+                consume(&mut self.w);
+                mgr.trigger_update(update, 0);
+            }
         }
     }
 }
@@ -134,99 +227,6 @@ impl<W: Widget> Window<W> {
         let (w, h) = im.dimensions();
         self.icon = Some(Icon::from_rgba(im.into_vec(), w, h)?);
         Ok(())
-    }
-}
-
-impl<W: Widget> Layout for Window<W> {
-    #[inline]
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        // Note: we do not consider popups, since they are usually temporary
-        self.w.size_rules(size_handle, axis)
-    }
-
-    #[inline]
-    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
-        self.core.rect = rect;
-        self.w.set_rect(mgr, rect, align);
-    }
-
-    #[inline]
-    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if !self.rect().contains(coord) {
-            return None;
-        }
-        for popup in self.popups.iter().rev() {
-            if let Some(id) = self.w.find_leaf(popup.1.id).and_then(|w| w.find_id(coord)) {
-                return Some(id);
-            }
-        }
-        self.w.find_id(coord).or(Some(self.id()))
-    }
-
-    #[inline]
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-        let disabled = disabled || self.is_disabled();
-        self.w.draw(draw_handle, mgr, disabled);
-        for (_, popup) in &self.popups {
-            if let Some(widget) = self.find_leaf(popup.id) {
-                draw_handle.with_overlay(widget.rect(), &mut |draw_handle| {
-                    widget.draw(draw_handle, mgr, disabled);
-                });
-            }
-        }
-    }
-}
-
-impl<M: Into<VoidMsg>, W: Widget<Msg = M> + 'static> SendEvent for Window<W> {
-    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        if !self.is_disabled() && id <= self.w.id() {
-            return self.w.send(mgr, id, event).into();
-        }
-        Response::Unhandled
-    }
-}
-
-impl<M: Into<VoidMsg>, W: Widget<Msg = M> + 'static> kas::Window for Window<W> {
-    fn title(&self) -> &str {
-        &self.title
-    }
-
-    fn icon(&self) -> Option<Icon> {
-        self.icon.clone()
-    }
-
-    fn restrict_dimensions(&self) -> (bool, bool) {
-        self.restrict_dimensions
-    }
-
-    fn add_popup(&mut self, mgr: &mut Manager, id: WindowId, popup: kas::Popup) {
-        let index = self.popups.len();
-        self.popups.push((id, popup));
-        self.resize_popup(mgr, index);
-        mgr.send_action(TkAction::REDRAW);
-    }
-
-    fn remove_popup(&mut self, mgr: &mut Manager, id: WindowId) {
-        for i in 0..self.popups.len() {
-            if id == self.popups[i].0 {
-                self.popups.remove(i);
-                mgr.send_action(TkAction::REGION_MOVED);
-                return;
-            }
-        }
-    }
-
-    fn resize_popups(&mut self, mgr: &mut Manager) {
-        for i in 0..self.popups.len() {
-            self.resize_popup(mgr, i);
-        }
-    }
-
-    fn handle_closure(&mut self, mgr: &mut Manager) {
-        if let Some((mut consume, update)) = self.drop.take() {
-            consume(&mut self.w);
-            mgr.trigger_update(update, 0);
-        }
     }
 }
 

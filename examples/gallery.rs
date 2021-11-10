@@ -65,38 +65,38 @@ widget! {
         save: TextButton<bool>,
         commit: bool,
     }
-}
-impl TextEditPopup {
-    fn new<S: ToString>(text: S) -> Self {
-        TextEditPopup {
-            core: Default::default(),
-            layout_data: Default::default(),
-            edit: EditBox::new(text).multi_line(true),
-            fill: Filler::maximize(),
-            cancel: TextButton::new_msg("&Cancel", false),
-            save: TextButton::new_msg("&Save", true),
-            commit: false,
+    impl TextEditPopup {
+        fn new<S: ToString>(text: S) -> Self {
+            TextEditPopup {
+                core: Default::default(),
+                layout_data: Default::default(),
+                edit: EditBox::new(text).multi_line(true),
+                fill: Filler::maximize(),
+                cancel: TextButton::new_msg("&Cancel", false),
+                save: TextButton::new_msg("&Save", true),
+                commit: false,
+            }
+        }
+
+        fn close(&mut self, mgr: &mut Manager, commit: bool) -> VoidResponse {
+            self.commit = commit;
+            mgr.send_action(TkAction::CLOSE);
+            Response::None
         }
     }
-
-    fn close(&mut self, mgr: &mut Manager, commit: bool) -> VoidResponse {
-        self.commit = commit;
-        mgr.send_action(TkAction::CLOSE);
-        Response::None
+    impl WidgetConfig for TextEditPopup {
+        fn configure(&mut self, mgr: &mut Manager) {
+            mgr.register_nav_fallback(self.id());
+        }
     }
-}
-impl WidgetConfig for TextEditPopup {
-    fn configure(&mut self, mgr: &mut Manager) {
-        mgr.register_nav_fallback(self.id());
-    }
-}
-impl Handler for TextEditPopup {
-    type Msg = VoidMsg;
-    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
-        match event {
-            Event::Command(Command::Escape, _) => self.close(mgr, false),
-            Event::Command(Command::Return, _) => self.close(mgr, true),
-            _ => Response::Unhandled,
+    impl Handler for TextEditPopup {
+        type Msg = VoidMsg;
+        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+            match event {
+                Event::Command(Command::Escape, _) => self.close(mgr, false),
+                Event::Command(Command::Return, _) => self.close(mgr, true),
+                _ => Response::Unhandled,
+            }
         }
     }
 }

@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 
 use proc_macro2::{Punct, Spacing, Span, TokenStream, TokenTree};
-use proc_macro_error::{emit_error, emit_warning};
+use proc_macro_error::{abort, emit_error, emit_warning};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
@@ -14,9 +14,9 @@ use syn::spanned::Spanned;
 use syn::token::{Brace, Colon, Comma, Eq, For, Impl, Paren, Semi};
 use syn::{braced, bracketed, parenthesized, parse_quote};
 use syn::{
-    Attribute, ConstParam, Expr, Field, Fields, FieldsNamed, GenericParam, Generics, Ident, Index,
-    Lifetime, LifetimeDef, Lit, Member, Token, Type, TypeParam, TypePath, TypeTraitObject,
-    Visibility,
+    AttrStyle, Attribute, ConstParam, Expr, Field, Fields, FieldsNamed, GenericParam, Generics,
+    Ident, Index, ItemImpl, Lifetime, LifetimeDef, Lit, Member, Path, Token, Type, TypeParam,
+    TypePath, TypeTraitObject, Visibility,
 };
 
 #[derive(Debug)]
@@ -44,6 +44,8 @@ pub struct Widget {
     pub layout_data: Option<Member>,
     pub inner: Option<(Member, Type)>,
     pub children: Vec<Child>,
+
+    pub extra_impls: Vec<ItemImpl>,
 }
 
 impl Parse for Widget {
@@ -126,10 +128,15 @@ impl Parse for Widget {
             }
         };
 
+        let mut extra_impls = Vec::new();
+        while !input.is_empty() {
+            extra_impls.push(parse_impl(&ident, &generics, input)?);
+        }
+
         let mut core_data = None;
         let mut layout_data = None;
         let mut inner = None;
-        let mut children = vec![];
+        let mut children = Vec::new();
 
         for (i, field) in fields.iter_mut().enumerate() {
             let mut other_attrs = Vec::with_capacity(field.attrs.len());
@@ -225,6 +232,7 @@ impl Parse for Widget {
             layout_data,
             inner,
             children,
+            extra_impls,
         })
     }
 }
@@ -254,6 +262,157 @@ impl ToTokens for Widget {
             }
         }
     }
+}
+
+fn parse_impl(in_ident: &Ident, in_generics: &Generics, input: ParseStream) -> Result<ItemImpl> {
+    let mut attrs = input.call(Attribute::parse_outer)?;
+    let defaultness: Option<Token![default]> = input.parse()?;
+    let unsafety: Option<Token![unsafe]> = input.parse()?;
+    let impl_token: Token![impl] = input.parse()?;
+
+    let has_generics = input.peek(Token![<])
+        && (input.peek2(Token![>])
+            || input.peek2(Token![#])
+            || (input.peek2(Ident) || input.peek2(Lifetime))
+                && (input.peek3(Token![:])
+                    || input.peek3(Token![,])
+                    || input.peek3(Token![>])
+                    || input.peek3(Token![=]))
+            || input.peek2(Token![const]));
+    let mut generics: Generics = if has_generics {
+        input.parse()?
+    } else {
+        Generics::default()
+    };
+
+    let mut first_ty: Type = input.parse()?;
+    let mut self_ty: Type;
+    let trait_;
+
+    let is_impl_for = input.peek(Token![for]);
+    if is_impl_for {
+        let for_token: Token![for] = input.parse()?;
+        let mut first_ty_ref = &first_ty;
+        while let Type::Group(ty) = first_ty_ref {
+            first_ty_ref = &ty.elem;
+        }
+        if let Type::Path(_) = first_ty_ref {
+            while let Type::Group(ty) = first_ty {
+                first_ty = *ty.elem;
+            }
+            if let Type::Path(TypePath { qself: None, path }) = first_ty {
+                trait_ = Some((None, path, for_token));
+            } else {
+                unreachable!();
+            }
+        } else {
+            return Err(Error::new(for_token.span(), "for without target trait"));
+        }
+        self_ty = input.parse()?;
+    } else {
+        trait_ = None;
+        self_ty = first_ty;
+    }
+
+    generics.where_clause = input.parse()?;
+
+    if self_ty == parse_quote! { Self } {
+        let (_, ty_generics, _) = in_generics.split_for_impl();
+        self_ty = parse_quote! { #in_ident #ty_generics };
+
+        if generics.lt_token.is_none() {
+            debug_assert!(generics.params.is_empty());
+            debug_assert!(generics.gt_token.is_none());
+            generics.lt_token = in_generics.lt_token.clone();
+            generics.params = in_generics.params.clone();
+            generics.gt_token = in_generics.gt_token.clone();
+        } else if in_generics.lt_token.is_none() {
+            debug_assert!(in_generics.params.is_empty());
+            debug_assert!(in_generics.gt_token.is_none());
+        } else {
+            // TODO: error on name conflicts?
+            if !generics.params.empty_or_trailing() {
+                generics.params.push_punct(Default::default());
+            }
+            generics
+                .params
+                .extend(in_generics.params.clone().into_pairs());
+        }
+
+        // Strip defaults which are legal on the struct but not on impls
+        for param in &mut generics.params {
+            match param {
+                GenericParam::Type(p) => {
+                    p.eq_token = None;
+                    p.default = None;
+                }
+                GenericParam::Lifetime(_) => (),
+                GenericParam::Const(p) => {
+                    p.eq_token = None;
+                    p.default = None;
+                }
+            }
+        }
+
+        if let Some(ref mut clause1) = generics.where_clause {
+            if let Some(ref clause2) = in_generics.where_clause {
+                if !clause1.predicates.empty_or_trailing() {
+                    clause1.predicates.push_punct(Default::default());
+                }
+                clause1
+                    .predicates
+                    .extend(clause2.predicates.clone().into_pairs());
+            }
+        } else {
+            generics.where_clause = in_generics.where_clause.clone();
+        }
+    } else if !matches!(self_ty, Type::Path(TypePath {
+        qself: None,
+        path: Path {
+            leading_colon: None,
+            ref segments,
+        }
+    }) if segments.len() == 1 && segments.first().unwrap().ident == *in_ident)
+    {
+        abort!(
+            self_ty.span(),
+            format!("expected `Self` or `{0}` or `{0}<...>`", in_ident)
+        );
+    }
+
+    let content;
+    let brace_token = braced!(content in input);
+    parse_attrs_inner(&content, &mut attrs)?;
+
+    let mut items = Vec::new();
+    while !content.is_empty() {
+        items.push(content.parse()?);
+    }
+
+    Ok(ItemImpl {
+        attrs,
+        defaultness,
+        unsafety,
+        impl_token,
+        generics,
+        trait_,
+        self_ty: Box::new(self_ty),
+        brace_token,
+        items,
+    })
+}
+
+fn parse_attrs_inner(input: ParseStream, attrs: &mut Vec<Attribute>) -> Result<()> {
+    Ok(while input.peek(Token![#]) && input.peek2(Token![!]) {
+        let content;
+        attrs.push(Attribute {
+            pound_token: input.parse()?,
+            style: AttrStyle::Inner(input.parse()?),
+            bracket_token: bracketed!(content in input),
+            path: content.call(Path::parse_mod_style)?,
+            tokens: content.parse()?,
+        });
+    })
 }
 
 fn member(index: usize, ident: Option<Ident>) -> Member {

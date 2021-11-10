@@ -257,159 +257,159 @@ widget! {
         #[widget]
         inner: W,
     }
-}
 
-impl<W: Widget> ScrollRegion<W> {
-    /// Construct a new scroll region around an inner widget
-    #[inline]
-    pub fn new(inner: W) -> Self {
-        ScrollRegion {
-            core: Default::default(),
-            min_child_size: Size::ZERO,
-            offset: Default::default(),
-            frame_size: Default::default(),
-            scroll: Default::default(),
-            inner,
-        }
-    }
-
-    /// Access inner widget directly
-    #[inline]
-    pub fn inner(&self) -> &W {
-        &self.inner
-    }
-
-    /// Access inner widget directly
-    #[inline]
-    pub fn inner_mut(&mut self) -> &mut W {
-        &mut self.inner
-    }
-}
-
-impl<W: Widget> Scrollable for ScrollRegion<W> {
-    fn scroll_axes(&self, size: Size) -> (bool, bool) {
-        (
-            self.min_child_size.0 > size.0,
-            self.min_child_size.1 > size.1,
-        )
-    }
-
-    #[inline]
-    fn max_scroll_offset(&self) -> Offset {
-        self.scroll.max_offset()
-    }
-
-    #[inline]
-    fn scroll_offset(&self) -> Offset {
-        self.scroll.offset()
-    }
-
-    #[inline]
-    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset {
-        *mgr |= self.scroll.set_offset(offset);
-        self.scroll.offset()
-    }
-}
-
-impl<W: Widget> WidgetConfig for ScrollRegion<W> {
-    fn configure(&mut self, mgr: &mut Manager) {
-        mgr.register_nav_fallback(self.id());
-    }
-}
-
-impl<W: Widget> Layout for ScrollRegion<W> {
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let mut rules = self.inner.size_rules(size_handle, axis);
-        self.min_child_size.set_component(axis, rules.min_size());
-        let line_height = size_handle.line_height(TextClass::Label);
-        self.scroll.set_scroll_rate(3.0 * f32::conv(line_height));
-        rules.reduce_min_to(line_height);
-
-        // We use a zero-sized frame to push any margins inside the scroll-region.
-        let frame = kas::layout::FrameRules::new(0, 0, 0, (0, 0));
-        let (rules, offset, size) = frame.surround_with_margin(rules);
-        self.offset.set_component(axis, offset);
-        self.frame_size.set_component(axis, size);
-        rules
-    }
-
-    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
-        self.core.rect = rect;
-        let child_size = (rect.size - self.frame_size).max(self.min_child_size);
-        let child_rect = Rect::new(rect.pos + self.offset, child_size);
-        self.inner.set_rect(mgr, child_rect, align);
-        let _ = self
-            .scroll
-            .set_sizes(rect.size, child_size + self.frame_size);
-    }
-
-    #[inline]
-    fn translation(&self, child_index: usize) -> Offset {
-        match child_index {
-            2 => self.scroll_offset(),
-            _ => Offset::ZERO,
-        }
-    }
-
-    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if !self.rect().contains(coord) {
-            return None;
-        }
-
-        self.inner
-            .find_id(coord + self.scroll_offset())
-            .or(Some(self.id()))
-    }
-
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-        let disabled = disabled || self.is_disabled();
-        draw_handle.with_clip_region(self.core.rect, self.scroll_offset(), &mut |handle| {
-            self.inner.draw(handle, mgr, disabled)
-        });
-    }
-}
-
-impl<W: Widget> event::SendEvent for ScrollRegion<W> {
-    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        if self.is_disabled() {
-            return Response::Unhandled;
-        }
-
-        if id <= self.inner.id() {
-            let child_event = self.scroll.offset_event(event.clone());
-            match self.inner.send(mgr, id, child_event) {
-                Response::Unhandled => (),
-                Response::Pan(delta) => {
-                    return match self.scroll_by_delta(mgr, delta) {
-                        delta if delta == Offset::ZERO => Response::None,
-                        delta => Response::Pan(delta),
-                    };
-                }
-                Response::Focus(rect) => {
-                    let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
-                    *mgr |= action;
-                    return Response::Focus(rect);
-                }
-                r => return r,
+    impl Self {
+        /// Construct a new scroll region around an inner widget
+        #[inline]
+        pub fn new(inner: W) -> Self {
+            ScrollRegion {
+                core: Default::default(),
+                min_child_size: Size::ZERO,
+                offset: Default::default(),
+                frame_size: Default::default(),
+                scroll: Default::default(),
+                inner,
             }
-        } else {
-            debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
-        };
+        }
 
-        let id = self.id();
-        let (action, response) =
-            self.scroll
-                .scroll_by_event(event, self.core.rect.size, |source, _, coord| {
-                    if source.is_primary() && mgr.config_enable_mouse_pan() {
-                        let icon = Some(event::CursorIcon::Grabbing);
-                        mgr.request_grab(id, source, coord, event::GrabMode::Grab, icon);
+        /// Access inner widget directly
+        #[inline]
+        pub fn inner(&self) -> &W {
+            &self.inner
+        }
+
+        /// Access inner widget directly
+        #[inline]
+        pub fn inner_mut(&mut self) -> &mut W {
+            &mut self.inner
+        }
+    }
+
+    impl Scrollable for Self {
+        fn scroll_axes(&self, size: Size) -> (bool, bool) {
+            (
+                self.min_child_size.0 > size.0,
+                self.min_child_size.1 > size.1,
+            )
+        }
+
+        #[inline]
+        fn max_scroll_offset(&self) -> Offset {
+            self.scroll.max_offset()
+        }
+
+        #[inline]
+        fn scroll_offset(&self) -> Offset {
+            self.scroll.offset()
+        }
+
+        #[inline]
+        fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset {
+            *mgr |= self.scroll.set_offset(offset);
+            self.scroll.offset()
+        }
+    }
+
+    impl WidgetConfig for Self {
+        fn configure(&mut self, mgr: &mut Manager) {
+            mgr.register_nav_fallback(self.id());
+        }
+    }
+
+    impl Layout for Self {
+        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+            let mut rules = self.inner.size_rules(size_handle, axis);
+            self.min_child_size.set_component(axis, rules.min_size());
+            let line_height = size_handle.line_height(TextClass::Label);
+            self.scroll.set_scroll_rate(3.0 * f32::conv(line_height));
+            rules.reduce_min_to(line_height);
+
+            // We use a zero-sized frame to push any margins inside the scroll-region.
+            let frame = kas::layout::FrameRules::new(0, 0, 0, (0, 0));
+            let (rules, offset, size) = frame.surround_with_margin(rules);
+            self.offset.set_component(axis, offset);
+            self.frame_size.set_component(axis, size);
+            rules
+        }
+
+        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+            self.core.rect = rect;
+            let child_size = (rect.size - self.frame_size).max(self.min_child_size);
+            let child_rect = Rect::new(rect.pos + self.offset, child_size);
+            self.inner.set_rect(mgr, child_rect, align);
+            let _ = self
+                .scroll
+                .set_sizes(rect.size, child_size + self.frame_size);
+        }
+
+        #[inline]
+        fn translation(&self, child_index: usize) -> Offset {
+            match child_index {
+                2 => self.scroll_offset(),
+                _ => Offset::ZERO,
+            }
+        }
+
+        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) {
+                return None;
+            }
+
+            self.inner
+                .find_id(coord + self.scroll_offset())
+                .or(Some(self.id()))
+        }
+
+        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+            let disabled = disabled || self.is_disabled();
+            draw_handle.with_clip_region(self.core.rect, self.scroll_offset(), &mut |handle| {
+                self.inner.draw(handle, mgr, disabled)
+            });
+        }
+    }
+
+    impl event::SendEvent for Self {
+        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+            if self.is_disabled() {
+                return Response::Unhandled;
+            }
+
+            if id <= self.inner.id() {
+                let child_event = self.scroll.offset_event(event.clone());
+                match self.inner.send(mgr, id, child_event) {
+                    Response::Unhandled => (),
+                    Response::Pan(delta) => {
+                        return match self.scroll_by_delta(mgr, delta) {
+                            delta if delta == Offset::ZERO => Response::None,
+                            delta => Response::Pan(delta),
+                        };
                     }
-                });
-        if !action.is_empty() {
-            *mgr |= action;
-            Response::Focus(self.core.rect)
-        } else {
-            response.void_into()
+                    Response::Focus(rect) => {
+                        let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
+                        *mgr |= action;
+                        return Response::Focus(rect);
+                    }
+                    r => return r,
+                }
+            } else {
+                debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
+            };
+
+            let id = self.id();
+            let (action, response) =
+                self.scroll
+                    .scroll_by_event(event, self.core.rect.size, |source, _, coord| {
+                        if source.is_primary() && mgr.config_enable_mouse_pan() {
+                            let icon = Some(event::CursorIcon::Grabbing);
+                            mgr.request_grab(id, source, coord, event::GrabMode::Grab, icon);
+                        }
+                    });
+            if !action.is_empty() {
+                *mgr |= action;
+                Response::Focus(self.core.rect)
+            } else {
+                response.void_into()
+            }
         }
     }
 }

@@ -19,19 +19,19 @@ widget! {
         horiz: Stretch,
         vert: Stretch,
     }
-}
 
-impl Layout for Filler {
-    fn size_rules(&mut self, _: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let stretch = if axis.is_horizontal() {
-            self.horiz
-        } else {
-            self.vert
-        };
-        SizeRules::empty(stretch)
+    impl Layout for Filler {
+        fn size_rules(&mut self, _: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+            let stretch = if axis.is_horizontal() {
+                self.horiz
+            } else {
+                self.vert
+            };
+            SizeRules::empty(stretch)
+        }
+
+        fn draw(&self, _: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {}
     }
-
-    fn draw(&self, _: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {}
 }
 
 impl Filler {

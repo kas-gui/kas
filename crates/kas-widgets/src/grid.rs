@@ -57,116 +57,116 @@ widget! {
         data: DynGridStorage,
         dim: (u32, u32, u32, u32),
     }
-}
 
-impl<W: Widget> Default for Grid<W> {
-    fn default() -> Self {
-        Grid {
-            first_id: Default::default(),
-            core: Default::default(),
-            widgets: Default::default(),
-            data: Default::default(),
-            dim: Default::default(),
-        }
-    }
-}
-
-impl<W: Widget> WidgetChildren for Grid<W> {
-    #[inline]
-    fn first_id(&self) -> WidgetId {
-        self.first_id
-    }
-    fn record_first_id(&mut self, id: WidgetId) {
-        self.first_id = id;
-    }
-    #[inline]
-    fn num_children(&self) -> usize {
-        self.widgets.len()
-    }
-    #[inline]
-    fn get_child(&self, index: usize) -> Option<&dyn WidgetConfig> {
-        self.widgets.get(index).map(|c| c.1.as_widget())
-    }
-    #[inline]
-    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
-        self.widgets.get_mut(index).map(|c| c.1.as_widget_mut())
-    }
-}
-
-impl<W: Widget> Layout for Grid<W> {
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, &mut self.data);
-        for child in self.widgets.iter_mut() {
-            solver.for_child(&mut self.data, child.0, |axis| {
-                child.1.size_rules(size_handle, axis)
-            });
-        }
-        solver.finish(&mut self.data)
-    }
-
-    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
-        self.core.rect = rect;
-        let mut setter =
-            GridSetter::<Vec<i32>, Vec<i32>, _>::new(rect, self.dim, align, &mut self.data);
-
-        for child in self.widgets.iter_mut() {
-            child
-                .1
-                .set_rect(mgr, setter.child_rect(&mut self.data, child.0), align);
+    impl Default for Self {
+        fn default() -> Self {
+            Grid {
+                first_id: Default::default(),
+                core: Default::default(),
+                widgets: Default::default(),
+                data: Default::default(),
+                dim: Default::default(),
+            }
         }
     }
 
-    // TODO: we should probably implement spatial_nav (the same is true for
-    // macro-generated grid widgets).
-    // fn spatial_nav(&self, reverse: bool, from: Option<usize>) -> Option<usize> { .. }
+    impl WidgetChildren for Self {
+        #[inline]
+        fn first_id(&self) -> WidgetId {
+            self.first_id
+        }
+        fn record_first_id(&mut self, id: WidgetId) {
+            self.first_id = id;
+        }
+        #[inline]
+        fn num_children(&self) -> usize {
+            self.widgets.len()
+        }
+        #[inline]
+        fn get_child(&self, index: usize) -> Option<&dyn WidgetConfig> {
+            self.widgets.get(index).map(|c| c.1.as_widget())
+        }
+        #[inline]
+        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
+            self.widgets.get_mut(index).map(|c| c.1.as_widget_mut())
+        }
+    }
 
-    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if !self.rect().contains(coord) {
-            return None;
+    impl Layout for Self {
+        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+            let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, &mut self.data);
+            for child in self.widgets.iter_mut() {
+                solver.for_child(&mut self.data, child.0, |axis| {
+                    child.1.size_rules(size_handle, axis)
+                });
+            }
+            solver.finish(&mut self.data)
         }
 
-        // TODO(opt): more efficient position solver (also for drawing)?
-        // Reverse iteration since the last valid candidate should be "on top"
-        for child in self.widgets.iter().rev() {
-            if let Some(id) = child.1.find_id(coord) {
-                return Some(id);
+        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+            self.core.rect = rect;
+            let mut setter =
+                GridSetter::<Vec<i32>, Vec<i32>, _>::new(rect, self.dim, align, &mut self.data);
+
+            for child in self.widgets.iter_mut() {
+                child
+                    .1
+                    .set_rect(mgr, setter.child_rect(&mut self.data, child.0), align);
             }
         }
 
-        Some(self.id())
-    }
+        // TODO: we should probably implement spatial_nav (the same is true for
+        // macro-generated grid widgets).
+        // fn spatial_nav(&self, reverse: bool, from: Option<usize>) -> Option<usize> { .. }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-        let disabled = disabled || self.is_disabled();
-        for child in &self.widgets {
-            child.1.draw(draw_handle, mgr, disabled)
-        }
-    }
-}
+        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) {
+                return None;
+            }
 
-impl<W: Widget> event::SendEvent for Grid<W> {
-    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        if !self.is_disabled() {
-            for child in self.widgets.iter_mut() {
-                if id <= child.1.id() {
-                    let r = child.1.send(mgr, id, event);
-                    return match Response::try_from(r) {
-                        Ok(r) => r,
-                        Err(msg) => {
-                            log::trace!(
-                                "Received by {} from {}: {:?}",
-                                self.id(),
-                                id,
-                                kas::util::TryFormat(&msg)
-                            );
-                            Response::Msg(msg)
-                        }
-                    };
+            // TODO(opt): more efficient position solver (also for drawing)?
+            // Reverse iteration since the last valid candidate should be "on top"
+            for child in self.widgets.iter().rev() {
+                if let Some(id) = child.1.find_id(coord) {
+                    return Some(id);
                 }
             }
+
+            Some(self.id())
         }
 
-        Response::Unhandled
+        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+            let disabled = disabled || self.is_disabled();
+            for child in &self.widgets {
+                child.1.draw(draw_handle, mgr, disabled)
+            }
+        }
+    }
+
+    impl event::SendEvent for Self {
+        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+            if !self.is_disabled() {
+                for child in self.widgets.iter_mut() {
+                    if id <= child.1.id() {
+                        let r = child.1.send(mgr, id, event);
+                        return match Response::try_from(r) {
+                            Ok(r) => r,
+                            Err(msg) => {
+                                log::trace!(
+                                    "Received by {} from {}: {:?}",
+                                    self.id(),
+                                    id,
+                                    kas::util::TryFormat(&msg)
+                                );
+                                Response::Msg(msg)
+                            }
+                        };
+                    }
+                }
+            }
+
+            Response::Unhandled
+        }
     }
 }
 

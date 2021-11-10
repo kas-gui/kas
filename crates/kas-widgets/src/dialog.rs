@@ -30,52 +30,52 @@ widget! {
         #[widget(use_msg = handle_button)]
         button: TextButton<()>,
     }
-}
 
-impl<T: FormattableText + 'static> MessageBox<T> {
-    pub fn new<A: ToString>(title: A, message: T) -> Self {
-        MessageBox {
-            core: Default::default(),
-            layout_data: Default::default(),
-            title: title.to_string(),
-            label: Label::new(message),
-            button: TextButton::new_msg("Ok", ()).with_keys(&[
-                VirtualKeyCode::Return,
-                VirtualKeyCode::Space,
-                VirtualKeyCode::NumpadEnter,
-            ]),
+    impl Self {
+        pub fn new<A: ToString>(title: A, message: T) -> Self {
+            MessageBox {
+                core: Default::default(),
+                layout_data: Default::default(),
+                title: title.to_string(),
+                label: Label::new(message),
+                button: TextButton::new_msg("Ok", ()).with_keys(&[
+                    VirtualKeyCode::Return,
+                    VirtualKeyCode::Space,
+                    VirtualKeyCode::NumpadEnter,
+                ]),
+            }
+        }
+
+        fn handle_button(&mut self, mgr: &mut Manager, _: ()) {
+            mgr.send_action(TkAction::CLOSE);
         }
     }
 
-    fn handle_button(&mut self, mgr: &mut Manager, _: ()) {
-        mgr.send_action(TkAction::CLOSE);
-    }
-}
-
-impl<T: FormattableText + 'static> kas::WidgetConfig for MessageBox<T> {
-    fn configure(&mut self, mgr: &mut Manager) {
-        mgr.enable_alt_bypass(true);
-    }
-}
-
-impl<T: FormattableText + 'static> kas::Window for MessageBox<T> {
-    fn title(&self) -> &str {
-        &self.title
+    impl kas::WidgetConfig for Self {
+        fn configure(&mut self, mgr: &mut Manager) {
+            mgr.enable_alt_bypass(true);
+        }
     }
 
-    fn icon(&self) -> Option<kas::Icon> {
-        None // TODO
-    }
+    impl kas::Window for Self {
+        fn title(&self) -> &str {
+            &self.title
+        }
 
-    fn restrict_dimensions(&self) -> (bool, bool) {
-        (true, true)
-    }
+        fn icon(&self) -> Option<kas::Icon> {
+            None // TODO
+        }
 
-    // do not support overlays (yet?)
-    fn add_popup(&mut self, _: &mut Manager, _: WindowId, _: kas::Popup) {
-        panic!("MessageBox does not (currently) support pop-ups");
-    }
+        fn restrict_dimensions(&self) -> (bool, bool) {
+            (true, true)
+        }
 
-    fn remove_popup(&mut self, _: &mut Manager, _: WindowId) {}
-    fn resize_popups(&mut self, _: &mut Manager) {}
+        // do not support overlays (yet?)
+        fn add_popup(&mut self, _: &mut Manager, _: WindowId, _: kas::Popup) {
+            panic!("MessageBox does not (currently) support pop-ups");
+        }
+
+        fn remove_popup(&mut self, _: &mut Manager, _: WindowId) {}
+        fn resize_popups(&mut self, _: &mut Manager) {}
+    }
 }

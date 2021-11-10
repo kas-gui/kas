@@ -22,43 +22,43 @@ widget! {
         core: CoreData,
         _msg: PhantomData<M>,
     }
-}
 
-impl Separator<event::VoidMsg> {
-    /// Construct a frame, with void message type
-    #[inline]
-    pub fn new() -> Self {
-        Separator {
-            core: Default::default(),
-            _msg: Default::default(),
+    impl Separator<event::VoidMsg> {
+        /// Construct a frame, with void message type
+        #[inline]
+        pub fn new() -> Self {
+            Separator {
+                core: Default::default(),
+                _msg: Default::default(),
+            }
         }
     }
-}
 
-impl<M: Debug> Separator<M> {
-    /// Construct a frame, with inferred message type
-    ///
-    /// This may be useful when embedding a separator in a list with
-    /// a given message type.
-    #[inline]
-    pub fn infer() -> Self {
-        Separator {
-            core: Default::default(),
-            _msg: Default::default(),
+    impl Self {
+        /// Construct a frame, with inferred message type
+        ///
+        /// This may be useful when embedding a separator in a list with
+        /// a given message type.
+        #[inline]
+        pub fn infer() -> Self {
+            Separator {
+                core: Default::default(),
+                _msg: Default::default(),
+            }
         }
     }
-}
 
-impl<M: Debug> Layout for Separator<M> {
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let margins = size_handle.frame_margins();
-        SizeRules::extract_fixed(axis, size_handle.separator(), margins)
+    impl Layout for Self {
+        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+            let margins = size_handle.frame_margins();
+            SizeRules::extract_fixed(axis, size_handle.separator(), margins)
+        }
+
+        fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {
+            draw_handle.separator(self.core.rect);
+        }
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {
-        draw_handle.separator(self.core.rect);
-    }
+    /// A separator is a valid menu widget
+    impl Menu for Self {}
 }
-
-/// A separator is a valid menu widget
-impl<M: Debug> Menu for Separator<M> {}

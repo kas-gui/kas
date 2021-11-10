@@ -20,10 +20,10 @@ widget! {
         label: StrLabel,
         cursor: CursorIcon,
     }
-}
-impl WidgetConfig for CursorWidget {
-    fn cursor_icon(&self) -> CursorIcon {
-        self.cursor
+    impl WidgetConfig for Self {
+        fn cursor_icon(&self) -> CursorIcon {
+            self.cursor
+        }
     }
 }
 
