@@ -166,7 +166,6 @@ widget! {
     /// Drawing and event handling is O(log n) in the number of children (assuming
     /// only a small number are visible at any one time).
     #[handler(send=noauto, msg=M)]
-    #[widget(children=noauto)]
     pub struct GenericList<
         D: Directional,
         W: Widget,

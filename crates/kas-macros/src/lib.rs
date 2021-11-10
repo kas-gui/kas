@@ -10,8 +10,8 @@ extern crate proc_macro;
 
 use self::args::{ChildType, Handler, HandlerArgs};
 use proc_macro2::{Span, TokenStream};
-use proc_macro_error::abort;
 use proc_macro_error::proc_macro_error;
+use proc_macro_error::{abort, emit_error};
 use quote::{quote, ToTokens, TokenStreamExt};
 use std::collections::HashMap;
 use std::fmt::Write;
@@ -148,6 +148,21 @@ pub fn widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let derive_inner = args.core_data.is_none();
     let opt_inner = args.inner.as_ref().map(|(inner, _)| inner.clone());
 
+    let mut impl_widget_children = true;
+    for impl_ in &args.extra_impls {
+        if let Some((_, ref path, _)) = impl_.trait_ {
+            if *path == parse_quote! { ::kas::WidgetChildren }
+                || *path == parse_quote! { kas::WidgetChildren }
+                || *path == parse_quote! { WidgetChildren }
+            {
+                if derive_inner {
+                    emit_error!(impl_.span(), "impl conflicts with use of widget_derive");
+                }
+                impl_widget_children = false;
+            }
+        }
+    }
+
     let (impl_generics, ty_generics, where_clause) = args.generics.split_for_impl();
     let widget_name = name.to_string();
 
@@ -208,7 +223,7 @@ pub fn widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 }
             }
         });
-    } else if args.attr_widget.children {
+    } else if impl_widget_children {
         let first_id = if args.children.is_empty() {
             quote! { self.id() }
         } else {

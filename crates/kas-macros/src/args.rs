@@ -193,12 +193,6 @@ impl Parse for Widget {
                     "require a field with #[widget_core] when using #[layout_data] or #[widget]",
                 );
             }
-            if !attr_widget.children {
-                emit_error!(
-                    token.span(),
-                    "it is required to derive WidgetChildren when deriving from an inner widget"
-                );
-            }
         }
 
         if core_data.is_some() && inner.is_some() && attr_derive.is_none() {
@@ -767,14 +761,12 @@ impl ToTokens for GridPos {
 #[derive(Debug)]
 pub struct WidgetArgs {
     pub config: Option<WidgetConfig>,
-    pub children: bool,
 }
 
 impl Default for WidgetArgs {
     fn default() -> Self {
         WidgetArgs {
             config: Some(WidgetConfig::default()),
-            children: true,
         }
     }
 }
@@ -800,8 +792,6 @@ impl Parse for WidgetArgs {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut config = None;
         let mut have_config = false;
-        let mut children = true;
-        let mut have_children = false;
 
         if !input.is_empty() {
             let content;
@@ -809,13 +799,7 @@ impl Parse for WidgetArgs {
 
             while !content.is_empty() {
                 let lookahead = content.lookahead1();
-                if lookahead.peek(kw::children) && !have_children {
-                    have_children = true;
-                    let _: kw::children = content.parse()?;
-                    let _: Eq = content.parse()?;
-                    let _: kw::noauto = content.parse()?;
-                    children = false;
-                } else if lookahead.peek(kw::config) && !have_config {
+                if lookahead.peek(kw::config) && !have_config {
                     have_config = true;
                     let _: kw::config = content.parse()?;
 
@@ -883,7 +867,7 @@ impl Parse for WidgetArgs {
             config = Some(WidgetConfig::default());
         }
 
-        Ok(WidgetArgs { config, children })
+        Ok(WidgetArgs { config })
     }
 }
 

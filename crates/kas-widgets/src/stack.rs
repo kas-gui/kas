@@ -33,7 +33,6 @@ widget! {
     /// Drawing and event handling is O(1).
     #[derive(Clone, Default, Debug)]
     #[handler(send=noauto, msg=<W as event::Handler>::Msg)]
-    #[widget(children=noauto)]
     pub struct Stack<W: Widget> {
         first_id: WidgetId,
         #[widget_core]

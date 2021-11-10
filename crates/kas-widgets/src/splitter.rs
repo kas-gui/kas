@@ -73,7 +73,6 @@ widget! {
     // TODO: better doc
     #[derive(Clone, Default, Debug)]
     #[handler(send=noauto, msg=<W as event::Handler>::Msg)]
-    #[widget(children=noauto)]
     pub struct Splitter<D: Directional, W: Widget> {
         first_id: WidgetId,
         #[widget_core]

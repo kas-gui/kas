@@ -42,7 +42,7 @@ widget! {
     /// scrolling. You may wish to wrap this widget with [`ScrollBars`].
     #[derive(Clone, Debug)]
     #[handler(send=noauto, msg=ChildMsg<T::Key, <V::Widget as Handler>::Msg>)]
-    #[widget(children=noauto, config=noauto)]
+    #[widget(config=noauto)]
     pub struct ListView<
         D: Directional,
         T: ListData + UpdHandler<T::Key, V::Msg> + 'static,

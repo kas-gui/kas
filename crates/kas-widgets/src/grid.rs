@@ -48,7 +48,6 @@ widget! {
     /// Most operations are `O(n)` in the number of children.
     #[derive(Clone, Debug)]
     #[handler(send=noauto, msg=<W as Handler>::Msg)]
-    #[widget(children=noauto)]
     pub struct Grid<W: Widget> {
         first_id: WidgetId,
         #[widget_core]
