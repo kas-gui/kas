@@ -771,14 +771,8 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         // No type bound on discarded message
                     } else {
                         // Message converted via Into
-                        name_buf.push('R');
-                        let tyr = Ident::new(&name_buf, Span::call_site());
-                        handler
-                            .generics
-                            .params
-                            .push(syn::GenericParam::Type(tyr.clone().into()));
-                        handler_clauses.push(parse_quote! { #ty: ::kas::Widget<Msg = #tyr> });
-                        handler_clauses.push(parse_quote! { #msg: From<#tyr> });
+                        handler_clauses
+                            .push(parse_quote! { <#ty as ::kas::event::Handler>::Msg: Into<#msg> });
                     }
 
                     if let Some(mut bound) = gen_bound {
