@@ -8,7 +8,6 @@
 use super::{driver, Driver};
 use kas::prelude::*;
 use kas::updatable::{SingleData, UpdatableHandler};
-use std::fmt::{self};
 use UpdatableHandler as UpdHandler;
 
 widget! {
@@ -24,6 +23,7 @@ widget! {
     /// The driver `V` must implement [`Driver`], with data type
     /// `<T as SingleData>::Item`. Several implementations are available in the
     /// [`driver`] module or a custom implementation may be used.
+    #[autoimpl(Debug skip view)]
     #[derive(Clone)]
     #[layout(single)]
     pub struct SingleView<
@@ -154,16 +154,6 @@ widget! {
                 debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
                 self.handle(mgr, event)
             }
-        }
-    }
-
-    impl fmt::Debug for Self {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.debug_struct("SingleView")
-                .field("core", &self.core)
-                .field("data", &self.data)
-                .field("child", &self.child)
-                .finish_non_exhaustive()
         }
     }
 }

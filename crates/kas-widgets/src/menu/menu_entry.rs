@@ -5,12 +5,11 @@
 
 //! Menu Entries
 
-use std::fmt::{self, Debug};
-
 use super::Menu;
 use crate::{AccelLabel, CheckBoxBare};
 use kas::draw::TextClass;
 use kas::prelude::*;
+use std::fmt::Debug;
 
 widget! {
     /// A standard menu entry
@@ -121,6 +120,7 @@ widget! {
 
 widget! {
     /// A menu entry which can be toggled
+    #[autoimpl(Debug)]
     #[derive(Clone, Default)]
     #[layout(row, area=checkbox, draw=draw)]
     pub struct MenuToggle<M: 'static> {
@@ -133,17 +133,6 @@ widget! {
         // TODO: label should use TextClass::MenuLabel
         #[widget]
         label: AccelLabel,
-    }
-
-    impl Debug for Self {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.debug_struct("MenuToggle")
-                .field("core", &self.core)
-                .field("layout_data", &self.layout_data)
-                .field("checkbox", &self.checkbox)
-                .field("label", &self.label)
-                .finish()
-        }
     }
 
     impl WidgetConfig for Self {

@@ -6,11 +6,11 @@
 //! Message Map widget
 
 use kas::prelude::*;
-use std::fmt;
 use std::rc::Rc;
 
 widget! {
     /// Wrapper to map messages from the inner widget
+    #[autoimpl(Debug skip map)]
     #[derive(Clone)]
     #[layout(single)]
     #[handler(msg=M)]
@@ -41,15 +41,6 @@ widget! {
                 inner: child,
                 map: f,
             }
-        }
-    }
-
-    impl fmt::Debug for Self {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.debug_struct("MapResponse")
-                .field("core", &self.core)
-                .field("inner", &self.inner)
-                .finish_non_exhaustive()
         }
     }
 

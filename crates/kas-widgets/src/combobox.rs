@@ -5,19 +5,18 @@
 
 //! Combobox
 
-use std::fmt::{self, Debug};
-use std::rc::Rc;
-
 use super::{IndexedColumn, MenuEntry};
 use kas::draw::TextClass;
 use kas::event::{self, Command, GrabMode};
 use kas::prelude::*;
 use kas::WindowId;
+use std::rc::Rc;
 
 widget! {
     /// A pop-up multiple choice menu
     ///
     /// A combobox presents a menu with a fixed set of choices when clicked.
+    #[autoimpl(Debug skip on_select)]
     #[derive(Clone)]
     #[widget(config(key_nav = true, hover_highlight = true))]
     pub struct ComboBox<M: 'static> {
@@ -31,20 +30,6 @@ widget! {
         opening: bool,
         popup_id: Option<WindowId>,
         on_select: Option<Rc<dyn Fn(&mut Manager, usize) -> Option<M>>>,
-    }
-
-    impl Debug for Self {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.debug_struct("ComboBox")
-                .field("core", &self.core)
-                .field("label", &self.label)
-                .field("frame_size", &self.frame_size)
-                .field("popup", &self.popup)
-                .field("active", &self.active)
-                .field("opening", &self.opening)
-                .field("popup_id", &self.popup_id)
-                .finish_non_exhaustive()
-        }
     }
 
     impl kas::Layout for Self {

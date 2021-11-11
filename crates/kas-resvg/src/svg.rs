@@ -17,6 +17,7 @@ use tiny_skia::Pixmap;
 widget! {
     /// An SVG image loaded from a path
     #[cfg_attr(doc_cfg, doc(cfg(feature = "svg")))]
+    #[autoimpl(Debug skip tree)]
     #[derive(Clone)]
     pub struct Svg {
         #[widget_core]
@@ -31,23 +32,6 @@ widget! {
         stretch: Stretch,
         pixmap: Option<Pixmap>,
         image_id: Option<ImageId>,
-    }
-
-    impl std::fmt::Debug for Svg {
-        fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-            f.debug_struct("Svg")
-                .field("core", &self.core)
-                .field("path", &self.path)
-                .field("margins", &self.margins)
-                .field("min_size_factor", &self.min_size_factor)
-                .field("ideal_size_factor", &self.ideal_size_factor)
-                .field("min_size", &self.min_size)
-                .field("ideal_size", &self.ideal_size)
-                .field("stretch", &self.stretch)
-                .field("pixmap", &self.pixmap)
-                .field("image_id", &self.image_id)
-                .finish_non_exhaustive()
-        }
     }
 
     impl Svg {

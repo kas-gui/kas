@@ -5,10 +5,6 @@
 
 //! Text widgets
 
-use std::fmt::{self, Debug};
-use std::ops::Range;
-use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
-
 use super::Scrollable;
 use kas::draw::TextClass;
 use kas::event::components::{TextInput, TextInputAction};
@@ -16,6 +12,9 @@ use kas::event::{self, Command, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::SelectionHelper;
+use std::fmt::Debug;
+use std::ops::Range;
+use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
 #[derive(Clone, Debug, PartialEq)]
 enum LastEdit {
@@ -111,6 +110,7 @@ impl EditGuard for () {
 }
 
 /// An [`EditGuard`] impl which calls a closure when activated
+#[autoimpl(Debug skip 0)]
 #[derive(Clone)]
 pub struct EditActivate<F: FnMut(&str, &mut Manager) -> Option<M>, M>(pub F);
 impl<F, M: 'static> EditGuard for EditActivate<F, M>
@@ -122,13 +122,9 @@ where
         (edit.guard.0)(edit.text.text(), mgr)
     }
 }
-impl<F: FnMut(&str, &mut Manager) -> Option<M>, M> Debug for EditActivate<F, M> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "EditActivate(..)")
-    }
-}
 
 /// An [`EditGuard`] impl which calls a closure when activated or focus is lost
+#[autoimpl(Debug skip 0)]
 #[derive(Clone)]
 pub struct EditAFL<F: FnMut(&str, &mut Manager) -> Option<M>, M>(pub F);
 impl<F, M: 'static> EditGuard for EditAFL<F, M>
@@ -143,13 +139,9 @@ where
         (edit.guard.0)(edit.text.text(), mgr)
     }
 }
-impl<F: FnMut(&str, &mut Manager) -> Option<M>, M> Debug for EditAFL<F, M> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "EditAFL(..)")
-    }
-}
 
 /// An [`EditGuard`] impl which calls a closure when edited
+#[autoimpl(Debug skip 0)]
 #[derive(Clone)]
 pub struct EditEdit<F: FnMut(&str, &mut Manager) -> Option<M>, M>(pub F);
 impl<F, M: 'static> EditGuard for EditEdit<F, M>
@@ -161,24 +153,15 @@ where
         (edit.guard.0)(edit.text.text(), mgr)
     }
 }
-impl<F: FnMut(&str, &mut Manager) -> Option<M>, M> Debug for EditEdit<F, M> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "EditEdit(..)")
-    }
-}
 
 /// An [`EditGuard`] impl which calls a closure when updated
+#[autoimpl(Debug skip 0)]
 #[derive(Clone)]
 pub struct EditUpdate<F: FnMut(&str)>(pub F);
 impl<F: FnMut(&str) + 'static> EditGuard for EditUpdate<F> {
     type Msg = VoidMsg;
     fn update(edit: &mut EditField<Self>) {
         (edit.guard.0)(edit.text.text());
-    }
-}
-impl<F: FnMut(&str)> Debug for EditUpdate<F> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "EditUpdate(..)")
     }
 }
 

@@ -8,7 +8,6 @@
 use kas::dir::{Down, Right};
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::{event, prelude::*};
-use std::fmt::{self, Debug};
 use std::ops::{Index, IndexMut};
 
 /// Support for optionally-indexed messages
@@ -165,6 +164,7 @@ widget! {
     /// Configuring and resizing elements is O(n) in the number of children.
     /// Drawing and event handling is O(log n) in the number of children (assuming
     /// only a small number are visible at any one time).
+    #[autoimpl(Debug)]
     #[handler(msg=M)]
     pub struct GenericList<
         D: Directional,
@@ -209,18 +209,6 @@ widget! {
                 direction: Default::default(),
                 _pd: Default::default(),
             }
-        }
-    }
-
-    impl Debug for Self {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.debug_struct("GenericList")
-                .field("first_id", &self.first_id)
-                .field("core", &self.core)
-                .field("widgets", &self.widgets)
-                .field("data", &self.data)
-                .field("direction", &self.direction)
-                .finish()
         }
     }
 

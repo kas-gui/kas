@@ -6,7 +6,6 @@
 //! Size reservation
 
 use kas::{event, prelude::*};
-use std::fmt::{self, Debug};
 
 /// Parameterisation of [`Reserve`] using a function pointer
 ///
@@ -22,6 +21,7 @@ widget! {
     /// In a few cases it is desirable to reserve more space for a widget than
     /// required for the current content, e.g. if a label's text may change. This
     /// widget can be used for this by wrapping the base widget.
+    #[autoimpl(Debug skip reserve)]
     #[derive(Clone, Default)]
     #[handler(msg = <W as Handler>::Msg)]
     pub struct Reserve<W: Widget, R: FnMut(&mut dyn SizeHandle, AxisInfo) -> SizeRules + 'static> {
@@ -135,16 +135,6 @@ widget! {
     {
         fn set_accel_string(&mut self, accel: AccelString) -> TkAction {
             self.inner.set_accel_string(accel)
-        }
-    }
-
-    impl Debug for Self
-    {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.debug_struct("Reserve")
-                .field("core", &self.core)
-                .field("inner", &self.inner)
-                .finish_non_exhaustive()
         }
     }
 

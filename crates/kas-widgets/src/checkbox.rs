@@ -5,14 +5,13 @@
 
 //! Toggle widgets
 
-use std::fmt::{self, Debug};
-use std::rc::Rc;
-
 use super::AccelLabel;
 use kas::{event, prelude::*};
+use std::rc::Rc;
 
 widget! {
     /// A bare checkbox (no label)
+    #[autoimpl(Debug skip on_toggle)]
     #[derive(Clone, Default)]
     #[widget(config(key_nav = true, hover_highlight = true))]
     pub struct CheckBoxBare<M: 'static> {
@@ -20,15 +19,6 @@ widget! {
         core: CoreData,
         state: bool,
         on_toggle: Option<Rc<dyn Fn(&mut Manager, bool) -> Option<M>>>,
-    }
-
-    impl Debug for Self {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.debug_struct("CheckBoxBare")
-                .field("core", &self.core)
-                .field("state", &self.state)
-                .finish_non_exhaustive()
-        }
     }
 
     impl Layout for Self {
@@ -138,6 +128,7 @@ widget! {
 
 widget! {
     /// A checkable box with optional label
+    #[autoimpl(Debug)]
     #[derive(Clone, Default)]
     #[layout(row, area=checkbox)]
     #[widget_derive(HasBool)]
@@ -151,17 +142,6 @@ widget! {
         checkbox: CheckBoxBare<M>,
         #[widget]
         label: AccelLabel,
-    }
-
-    impl Debug for Self {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.debug_struct("CheckBox")
-                .field("core", &self.core)
-                .field("layout_data", &self.layout_data)
-                .field("checkbox", &self.checkbox)
-                .field("label", &self.label)
-                .finish()
-        }
     }
 
     impl WidgetConfig for Self {

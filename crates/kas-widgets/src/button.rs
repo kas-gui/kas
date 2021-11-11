@@ -5,18 +5,17 @@
 
 //! Push-buttons
 
-use std::fmt::{self, Debug};
-use std::rc::Rc;
-
 use kas::draw::{color::Rgb, TextClass};
 use kas::event::{self, VirtualKeyCode, VirtualKeyCodes};
 use kas::prelude::*;
+use std::rc::Rc;
 
 widget! {
     /// A push-button with a generic label
     ///
     /// Default alignment is centred. Content (label) alignment is derived from the
     /// button alignment.
+    #[autoimpl(Debug skip on_push)]
     #[derive(Clone)]
     #[widget_derive(class_traits)]
     pub struct Button<L: Widget<Msg = VoidMsg>, M: 'static> {
@@ -31,20 +30,6 @@ widget! {
         #[widget]
         pub label: L,
         on_push: Option<Rc<dyn Fn(&mut Manager) -> Option<M>>>,
-    }
-
-    impl Debug for Self {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.debug_struct("Button")
-                .field("core", &self.core)
-                .field("keys1", &self.keys1)
-                .field("frame_size", &self.frame_size)
-                .field("frame_offset", &self.frame_offset)
-                .field("ideal_size", &self.ideal_size)
-                .field("color", &self.color)
-                .field("label", &self.label)
-                .finish_non_exhaustive()
-        }
     }
 
     impl WidgetConfig for Self {
@@ -212,6 +197,7 @@ widget! {
     /// Default alignment of the button is to stretch horizontally and centre
     /// vertically. The text label is always centred (irrespective of alignment
     /// parameters).
+    #[autoimpl(Debug skip on_push)]
     #[derive(Clone)]
     pub struct TextButton<M: 'static> {
         #[widget_core]
@@ -223,20 +209,6 @@ widget! {
         color: Option<Rgb>,
         label: Text<AccelString>,
         on_push: Option<Rc<dyn Fn(&mut Manager) -> Option<M>>>,
-    }
-
-    impl Debug for Self {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.debug_struct("TextButton")
-                .field("core", &self.core)
-                .field("keys1", &self.keys1)
-                .field("frame_size", &self.frame_size)
-                .field("frame_offset", &self.frame_offset)
-                .field("ideal_size", &self.ideal_size)
-                .field("color", &self.color)
-                .field("label", &self.label)
-                .finish_non_exhaustive()
-        }
     }
 
     impl WidgetConfig for Self {

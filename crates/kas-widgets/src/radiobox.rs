@@ -5,16 +5,15 @@
 
 //! Toggle widgets
 
-use log::trace;
-use std::convert::TryFrom;
-use std::fmt::{self, Debug};
-use std::rc::Rc;
-
 use super::AccelLabel;
 use kas::prelude::*;
+use log::trace;
+use std::convert::TryFrom;
+use std::rc::Rc;
 
 widget! {
     /// A bare radiobox (no label)
+    #[autoimpl(Debug skip on_select)]
     #[derive(Clone)]
     pub struct RadioBoxBare<M: 'static> {
         #[widget_core]
@@ -22,16 +21,6 @@ widget! {
         state: bool,
         handle: UpdateHandle,
         on_select: Option<Rc<dyn Fn(&mut Manager) -> Option<M>>>,
-    }
-
-    impl Debug for Self {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.debug_struct("RadioBox")
-                .field("core", &self.core)
-                .field("state", &self.state)
-                .field("handle", &self.handle)
-                .finish_non_exhaustive()
-        }
     }
 
     impl WidgetConfig for Self {
@@ -181,6 +170,7 @@ widget! {
 
 widget! {
     /// A radiobox with optional label
+    #[autoimpl(Debug)]
     #[derive(Clone)]
     #[layout(row, area=radiobox)]
     #[widget_derive(HasBool)]
@@ -194,17 +184,6 @@ widget! {
         radiobox: RadioBoxBare<M>,
         #[widget]
         label: AccelLabel,
-    }
-
-    impl Debug for Self {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.debug_struct("RadioBox")
-                .field("core", &self.core)
-                .field("layout_data", &self.layout_data)
-                .field("radiobox", &self.radiobox)
-                .field("label", &self.label)
-                .finish()
-        }
     }
 
     impl Handler for Self where M: From<VoidMsg> {

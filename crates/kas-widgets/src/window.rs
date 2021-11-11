@@ -11,11 +11,11 @@ use kas::Icon;
 use kas::{Future, WindowId};
 use smallvec::SmallVec;
 use std::error::Error;
-use std::fmt::{self, Debug};
 use std::path::Path;
 
 widget! {
     /// The main instantiation of the [`Window`] trait.
+    #[autoimpl(Debug skip drop, icon)]
     pub struct Window<W: Widget + 'static> {
         #[widget_core]
         core: CoreData,
@@ -26,18 +26,6 @@ widget! {
         popups: SmallVec<[(WindowId, kas::Popup); 16]>,
         drop: Option<(Box<dyn FnMut(&mut W)>, UpdateHandle)>,
         icon: Option<Icon>,
-    }
-
-    impl Debug for Self {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            f.debug_struct("Window")
-                .field("core", &self.core)
-                .field("restrict_dimensions", &self.restrict_dimensions)
-                .field("title", &self.title)
-                .field("w", &self.w)
-                .field("popups", &self.popups)
-                .finish_non_exhaustive()
-        }
     }
 
     impl Clone for Self where W: Clone {
