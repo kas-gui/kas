@@ -12,12 +12,47 @@ use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
 use quote::quote;
 use syn::parse_macro_input;
-use syn::{GenericParam, Generics};
+use syn::{GenericParam, Generics, ItemStruct};
 
 mod args;
+mod autoimpl;
 mod layout;
 mod make_widget;
 mod widget;
+
+/// A variant of the standard `derive` macro
+///
+/// This macro behaves like `#[derive(Trait)]` except that:
+///
+/// -   Only a fixed list of traits is supported
+/// -   It (currently) only supports struct types (including tuple and unit structs)
+/// -   No bounds on generics (beyond those on the struct itself) are assumed
+/// -   Bounds may be specified manually via `where ...`
+/// -   Fields may be skipped, e.g. `skip a, b`
+/// -   Certain traits may target a specific field via `on x`
+///
+/// # Examples
+///
+/// Basic usage: `#[autoimpl(Debug)]`
+///
+/// Implement `Debug` with a custom bound and skipping an unformattable field:
+/// ```rust
+/// #[autoimpl(Debug where X: Debug skip z)]
+/// struct S<X, Z> {
+///     x: X,
+///     y: String,
+///     z: Z,
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let mut toks = item.clone();
+    let attr = parse_macro_input!(attr as autoimpl::AutoImpl);
+    let item = parse_macro_input!(item as ItemStruct);
+    let impls = autoimpl::autoimpl(attr, item);
+    toks.extend(TokenStream::from(impls));
+    toks
+}
 
 // Support impls on Self by replacing name and summing generics
 fn extend_generics(generics: &mut Generics, in_generics: &Generics) {
