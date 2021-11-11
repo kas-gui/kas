@@ -432,8 +432,6 @@ pub struct WidgetDerive {
     pub has_str: bool,
     pub has_string: bool,
     pub set_accel: bool,
-    pub deref: bool,
-    pub deref_mut: bool,
 }
 
 impl Parse for WidgetDerive {
@@ -468,12 +466,6 @@ impl Parse for WidgetDerive {
                 derive.has_str = true;
                 derive.has_string = true;
                 derive.set_accel = true;
-            } else if !derive.deref && lookahead.peek(kw::Deref) {
-                let _: kw::Deref = content.parse()?;
-                derive.deref = true;
-            } else if !derive.deref_mut && lookahead.peek(kw::DerefMut) {
-                let _: kw::DerefMut = content.parse()?;
-                derive.deref_mut = true;
             } else {
                 return Err(lookahead.error());
             }

@@ -417,29 +417,6 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
     });
 
     if let Some((member, ty)) = args.inner {
-        if args.attr_derive.deref {
-            toks.append_all(quote! {
-                impl #impl_generics std::ops::Deref for #name #ty_generics #where_clause {
-                    type Target = #ty;
-                    #[inline]
-                    fn deref(&self) -> &Self::Target {
-                        &self.#member
-                    }
-                }
-            });
-        }
-
-        if args.attr_derive.deref_mut {
-            toks.append_all(quote! {
-                impl #impl_generics std::ops::DerefMut for #name #ty_generics #where_clause {
-                    #[inline]
-                    fn deref_mut(&mut self) -> &mut Self::Target {
-                        &mut self.#member
-                    }
-                }
-            });
-        }
-
         let extended_where_clause = move |pred: WherePredicate| {
             if let Some(clause) = where_clause {
                 let mut clauses: WhereClause = (*clause).clone();

@@ -12,9 +12,10 @@ widget! {
     ///
     /// This widget provides a simple abstraction: drawing a frame around its
     /// contents.
+    #[autoimpl(Deref, DerefMut on inner)]
     #[derive(Clone, Debug, Default)]
     #[handler(msg = <W as Handler>::Msg)]
-    #[widget_derive(class_traits, Deref, DerefMut)]
+    #[widget_derive(class_traits)]
     pub struct Frame<W: Widget> {
         #[widget_core]
         core: CoreData,

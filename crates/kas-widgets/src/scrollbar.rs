@@ -328,8 +328,9 @@ widget! {
     /// This is essentially a `ScrollBars<ScrollRegion<W>>`:
     /// [`ScrollRegion`] handles the actual scrolling and wheel/touch events,
     /// while [`ScrollBars`] adds scrollbar controls.
+    #[autoimpl(Deref, DerefMut on 0)]
     #[derive(Clone, Debug, Default)]
-    #[widget_derive(class_traits, Deref, DerefMut)]
+    #[widget_derive(class_traits)]
     #[handler(msg = <W as event::Handler>::Msg)]
     pub struct ScrollBarRegion<W: Widget>(#[widget_derive] ScrollBars<ScrollRegion<W>>);
 
@@ -420,9 +421,10 @@ widget! {
     /// the result looks poor when content is scrolled. Instead the content should
     /// force internal margins by wrapping contents with a (zero-sized) frame.
     /// [`ScrollRegion`] already does this.
+    #[autoimpl(Deref, DerefMut on inner)]
     #[derive(Clone, Debug, Default)]
     #[handler(msg = <W as event::Handler>::Msg)]
-    #[widget_derive(class_traits, Deref, DerefMut)]
+    #[widget_derive(class_traits)]
     pub struct ScrollBars<W: Scrollable> {
         #[widget_core]
         core: CoreData,
