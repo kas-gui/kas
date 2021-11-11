@@ -169,6 +169,7 @@ widget! {
     /// A text-edit box
     ///
     /// This is just a wrapper around [`EditField`] adding a frame.
+    #[autoimpl(Deref, DerefMut on inner)]
     #[derive(Clone, Default, Debug)]
     #[handler(msg = G::Msg)]
     pub struct EditBox<G: EditGuard = ()> {
@@ -231,19 +232,6 @@ widget! {
             self.inner.set_string(text)
         }
     }
-
-    impl std::ops::Deref for Self {
-        type Target = EditField<G>;
-        fn deref(&self) -> &Self::Target {
-            &self.inner
-        }
-    }
-
-    impl std::ops::DerefMut for Self {
-        fn deref_mut(&mut self) -> &mut Self::Target {
-            &mut self.inner
-        }
-}
 }
 
 impl EditBox<()> {

@@ -22,6 +22,7 @@ widget! {
     /// required for the current content, e.g. if a label's text may change. This
     /// widget can be used for this by wrapping the base widget.
     #[autoimpl(Debug skip reserve)]
+    #[autoimpl(Deref, DerefMut on inner)]
     #[derive(Clone, Default)]
     #[handler(msg = <W as Handler>::Msg)]
     pub struct Reserve<W: Widget, R: FnMut(&mut dyn SizeHandle, AxisInfo) -> SizeRules + 'static> {
@@ -135,21 +136,6 @@ widget! {
     {
         fn set_accel_string(&mut self, accel: AccelString) -> TkAction {
             self.inner.set_accel_string(accel)
-        }
-    }
-
-    impl std::ops::Deref for Self
-    {
-        type Target = W;
-        fn deref(&self) -> &Self::Target {
-            &self.inner
-        }
-    }
-
-    impl std::ops::DerefMut for Self
-    {
-        fn deref_mut(&mut self) -> &mut Self::Target {
-            &mut self.inner
         }
     }
 }

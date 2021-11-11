@@ -11,6 +11,7 @@ use std::rc::Rc;
 widget! {
     /// Wrapper to map messages from the inner widget
     #[autoimpl(Debug skip map)]
+    #[autoimpl(Deref, DerefMut on inner)]
     #[derive(Clone)]
     #[layout(single)]
     #[handler(msg=M)]
@@ -107,19 +108,6 @@ widget! {
     {
         fn set_accel_string(&mut self, accel: AccelString) -> TkAction {
             self.inner.set_accel_string(accel)
-        }
-    }
-
-    impl std::ops::Deref for Self {
-        type Target = W;
-        fn deref(&self) -> &Self::Target {
-            &self.inner
-        }
-    }
-
-    impl std::ops::DerefMut for Self {
-        fn deref_mut(&mut self) -> &mut Self::Target {
-            &mut self.inner
         }
     }
 }

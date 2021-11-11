@@ -12,6 +12,7 @@ use kas::{event, layout, prelude::*};
 
 widget! {
     /// A wrapper widget with a label
+    #[autoimpl(Deref, DerefMut on inner)]
     #[derive(Clone, Default, Debug)]
     #[handler(msg = W::Msg)]
     pub struct WithLabel<W: Widget, D: Directional> {
@@ -122,19 +123,6 @@ widget! {
                 action |= TkAction::RECONFIGURE;
             }
             action | set_text_and_prepare(&mut self.label, string, self.core.rect.size)
-        }
-    }
-
-    impl std::ops::Deref for Self {
-        type Target = W;
-        fn deref(&self) -> &Self::Target {
-            &self.inner
-        }
-    }
-
-    impl std::ops::DerefMut for Self {
-        fn deref_mut(&mut self) -> &mut Self::Target {
-            &mut self.inner
         }
     }
 }

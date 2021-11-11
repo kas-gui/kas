@@ -10,7 +10,7 @@ use syn::parse::{Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
-use syn::{Fields, Ident, ItemStruct, LitInt, Member, Token, WhereClause};
+use syn::{Field, Fields, Ident, ItemStruct, LitInt, Member, Token, WhereClause};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -110,33 +110,49 @@ pub fn autoimpl(attr: AutoImpl, mut item: ItemStruct) -> TokenStream {
     }
     let (impl_generics, ty_generics, where_clause) = item.generics.split_for_impl();
 
-    for mem in attr.skip.iter() {
-        match item.fields {
-            Fields::Named(ref fields) => {
+    fn for_field<'a, T, F: Fn(&Field) -> T>(fields: &'a Fields, mem: &Member, f: F) -> Option<T> {
+        match (fields, mem) {
+            (Fields::Named(ref fields), Member::Named(ref ident)) => {
+                for field in fields.named.iter() {
+                    if field.ident.as_ref() == Some(ident) {
+                        return Some(f(field));
+                    }
+                }
+            }
+            (Fields::Unnamed(ref fields), Member::Unnamed(index)) => {
+                if let Some(field) = fields.unnamed.iter().nth(index.index as usize) {
+                    return Some(f(field));
+                }
+            }
+            _ => (),
+        }
+        None
+    }
+
+    for mem in attr.on.iter().chain(attr.skip.iter()) {
+        match (&item.fields, mem) {
+            (Fields::Named(fields), Member::Named(ref ident)) => {
                 if fields
                     .named
                     .iter()
-                    .any(|field| *mem == Member::from(field.ident.clone().unwrap()))
+                    .any(|field| field.ident.as_ref() == Some(ident))
                 {
                     continue;
                 }
             }
-            Fields::Unnamed(ref fields) => {
-                let len = fields.unnamed.len();
-                if let Member::Unnamed(index) = mem {
-                    if (index.index as usize) < len {
-                        continue;
-                    }
+            (Fields::Unnamed(fields), Member::Unnamed(index)) => {
+                if (index.index as usize) < fields.unnamed.len() {
+                    continue;
                 }
             }
-            Fields::Unit => (),
+            _ => (),
         }
         emit_error!(mem.span(), "not a struct field");
     }
 
     let skip = |item: &Member| -> bool { attr.skip.iter().any(|mem| *mem == *item) };
 
-    let on_unused = true;
+    let mut on_unused = true;
     let mut toks = TokenStream::new();
 
     for target in &attr.targets {
@@ -212,6 +228,37 @@ pub fn autoimpl(attr: AutoImpl, mut item: ItemStruct) -> TokenStream {
                     }
                 }
             });
+        } else if target == "Deref" {
+            on_unused = false;
+            if let Some(mem) = &attr.on {
+                let ty = for_field(&item.fields, &mem, |field| field.ty.clone()).unwrap();
+                toks.append_all(quote_spanned! {span=>
+                    impl #impl_generics std::ops::Deref for #ident #ty_generics #where_clause {
+                        type Target = #ty;
+                        fn deref(&self) -> &Self::Target {
+                            &self.#mem
+                        }
+                    }
+                });
+            } else {
+                emit_error!(
+                    span,
+                    "autoimpl: Deref requires target: use `#[autoimpl(Deref on FIELD)]`"
+                );
+            }
+        } else if target == "DerefMut" {
+            on_unused = false;
+            if let Some(mem) = &attr.on {
+                toks.append_all(quote_spanned! {span=>
+                    impl #impl_generics std::ops::DerefMut for #ident #ty_generics #where_clause {
+                        fn deref_mut(&mut self) -> &mut Self::Target {
+                            &mut self.#mem
+                        }
+                    }
+                });
+            } else {
+                emit_error!(span, "autoimpl: DerefMut requires target: use `#[autoimpl(Deref, DerefMut on FIELD)]`");
+            }
         } else {
             emit_error!(span, "autoimpl: unsupported trait");
         }

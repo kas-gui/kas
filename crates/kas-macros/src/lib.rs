@@ -36,6 +36,8 @@ mod widget;
 /// -   `Clone` — implements `std::clone::Clone`; any skipped field is
 ///     initialised with `Default::default()`
 /// -   `Debug` — implements `std::fmt::Debug`; skipped fields are not output
+/// -   `Deref` — implements `std::ops::Deref` on the given field
+/// -   `DerefMut` — implements `std::ops::DerefMut` on the given field
 ///
 /// # Examples
 ///
@@ -50,7 +52,14 @@ mod widget;
 ///     z: Z,
 /// }
 /// ```
+///
+/// Implement `Deref` and `DerefMut`, dereferencing to the given field:
+/// ```rust
+/// #[autoimpl(Deref, DerefMut on 0)]
+/// struct MyWrapper<T>(T);
+/// ```
 #[proc_macro_attribute]
+#[proc_macro_error]
 pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut toks = item.clone();
     let attr = parse_macro_input!(attr as autoimpl::AutoImpl);

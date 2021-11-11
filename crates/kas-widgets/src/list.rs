@@ -322,15 +322,9 @@ widget! {
         /// This constructor is available where the direction is determined by the
         /// type: for `D: Directional + Default`. In other cases, use
         /// [`Self::new_with_direction`].
+        #[inline]
         pub fn new(widgets: Vec<W>) -> Self {
-            GenericList {
-                first_id: Default::default(),
-                core: Default::default(),
-                widgets,
-                data: Default::default(),
-                direction: Default::default(),
-                _pd: Default::default(),
-            }
+            Self::new_with_direction(D::default(), widgets)
         }
     }
 
@@ -345,6 +339,7 @@ widget! {
 
     impl Self {
         /// Construct a new instance with explicit direction
+        #[inline]
         pub fn new_with_direction(direction: D, widgets: Vec<W>) -> Self {
             GenericList {
                 first_id: Default::default(),
