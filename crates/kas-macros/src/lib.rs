@@ -31,6 +31,12 @@ mod widget;
 /// -   Fields may be skipped, e.g. `skip a, b`
 /// -   Certain traits may target a specific field via `on x`
 ///
+/// The following traits are supported:
+///
+/// -   `Clone` — implements `std::clone::Clone`; any skipped field is
+///     initialised with `Default::default()`
+/// -   `Debug` — implements `std::fmt::Debug`; skipped fields are not output
+///
 /// # Examples
 ///
 /// Basic usage: `#[autoimpl(Debug)]`

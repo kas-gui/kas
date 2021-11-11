@@ -164,6 +164,7 @@ widget! {
     /// Configuring and resizing elements is O(n) in the number of children.
     /// Drawing and event handling is O(log n) in the number of children (assuming
     /// only a small number are visible at any one time).
+    #[autoimpl(Clone where W: Clone)]
     #[autoimpl(Debug)]
     #[handler(msg=M)]
     pub struct GenericList<
@@ -178,22 +179,6 @@ widget! {
         data: layout::DynRowStorage,
         direction: D,
         _pd: std::marker::PhantomData<M>,
-    }
-
-    impl Clone for Self
-    where
-        W: Clone,
-    {
-        fn clone(&self) -> Self {
-            GenericList {
-                first_id: self.first_id,
-                core: self.core.clone(),
-                widgets: self.widgets.clone(),
-                data: self.data.clone(),
-                direction: self.direction,
-                _pd: Default::default(),
-            }
-        }
     }
 
     impl Default for Self

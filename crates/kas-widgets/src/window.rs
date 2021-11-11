@@ -15,6 +15,7 @@ use std::path::Path;
 
 widget! {
     /// The main instantiation of the [`Window`] trait.
+    #[autoimpl(Clone where W: Clone skip popups, drop)]
     #[autoimpl(Debug skip drop, icon)]
     pub struct Window<W: Widget + 'static> {
         #[widget_core]
@@ -26,20 +27,6 @@ widget! {
         popups: SmallVec<[(WindowId, kas::Popup); 16]>,
         drop: Option<(Box<dyn FnMut(&mut W)>, UpdateHandle)>,
         icon: Option<Icon>,
-    }
-
-    impl Clone for Self where W: Clone {
-        fn clone(&self) -> Self {
-            Window {
-                core: self.core.clone(),
-                restrict_dimensions: self.restrict_dimensions,
-                title: self.title.clone(),
-                w: self.w.clone(),
-                popups: Default::default(), // these are temporary; don't clone
-                drop: None,                 // we cannot clone this!
-                icon: self.icon.clone(),
-            }
-        }
     }
 
     impl Layout for Self {

@@ -7,7 +7,6 @@ use proc_macro2::TokenStream;
 use proc_macro_error::{emit_error, emit_warning};
 use quote::{quote, quote_spanned, TokenStreamExt};
 use syn::parse::{Parse, ParseStream, Result};
-use syn::parse_quote;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
@@ -135,15 +134,42 @@ pub fn autoimpl(attr: AutoImpl, mut item: ItemStruct) -> TokenStream {
         emit_error!(mem.span(), "not a struct field");
     }
 
-    let skip = |item: Member| -> bool { attr.skip.iter().any(|mem| *mem == item) };
+    let skip = |item: &Member| -> bool { attr.skip.iter().any(|mem| *mem == *item) };
 
     let on_unused = true;
     let mut toks = TokenStream::new();
 
     for target in &attr.targets {
         let span = target.span();
-        let debug: Ident = parse_quote! { Debug };
-        if *target == debug {
+        if target == "Clone" {
+            let mut inner = quote! {};
+            for (i, field) in item.fields.iter().enumerate() {
+                let mem = if let Some(ref id) = field.ident {
+                    inner.append_all(quote! { #id: });
+                    Member::from(id.clone())
+                } else {
+                    Member::from(i)
+                };
+
+                if skip(&mem) {
+                    inner.append_all(quote! { Default::default(), });
+                } else {
+                    inner.append_all(quote! { self.#mem.clone(), });
+                }
+            }
+            let inner = match &item.fields {
+                Fields::Named(_) => quote! { Self { #inner } },
+                Fields::Unnamed(_) => quote! { Self( #inner ) },
+                Fields::Unit => quote! { Self },
+            };
+            toks.append_all(quote_spanned! {span=>
+                impl #impl_generics std::clone::Clone for #ident #ty_generics #where_clause {
+                    fn clone(&self) -> Self {
+                        #inner
+                    }
+                }
+            });
+        } else if target == "Debug" {
             let name = ident.to_string();
             let mut inner;
             match item.fields {
@@ -151,7 +177,7 @@ pub fn autoimpl(attr: AutoImpl, mut item: ItemStruct) -> TokenStream {
                     inner = quote! { f.debug_struct(#name) };
                     for field in fields.named.iter() {
                         let ident = field.ident.as_ref().unwrap();
-                        if !skip(ident.clone().into()) {
+                        if !skip(&ident.clone().into()) {
                             let name = ident.to_string();
                             inner.append_all(quote! {
                                 .field(#name, &self.#ident)
@@ -167,7 +193,7 @@ pub fn autoimpl(attr: AutoImpl, mut item: ItemStruct) -> TokenStream {
                 Fields::Unnamed(ref fields) => {
                     inner = quote! { f.debug_tuple(#name) };
                     for i in 0..fields.unnamed.len() {
-                        if !skip(i.into()) {
+                        if !skip(&i.into()) {
                             inner.append_all(quote! {
                                 .field(&self.#i)
                             });
