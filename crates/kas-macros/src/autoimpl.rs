@@ -3,11 +3,10 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use proc_macro2::TokenStream;
-use proc_macro_error::{emit_error, emit_warning};
+use proc_macro2::{Span, TokenStream};
+use proc_macro_error::emit_error;
 use quote::{quote, quote_spanned, TokenStreamExt};
-use syn::parse::{Parse, ParseStream, Result};
-use syn::punctuated::Punctuated;
+use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::token::Comma;
 use syn::{Field, Fields, Ident, ItemStruct, LitInt, Member, Token, WhereClause};
@@ -20,20 +19,62 @@ mod kw {
     custom_keyword!(skip);
 }
 
-#[derive(Debug, Default)]
+/// Traits targetting many fields
+#[derive(Clone, Copy)]
+enum TraitMany {
+    Clone(Span),
+    Debug(Span),
+}
+/// Traits targetting one field
+#[derive(Clone, Copy)]
+enum TraitOne {
+    Deref(Span),
+    DerefMut(Span),
+}
+#[derive(Clone, Copy)]
+enum Class {
+    Many(TraitMany),
+    One(TraitOne),
+}
+fn class(ident: &Ident) -> Option<Class> {
+    if ident == "Clone" {
+        Some(Class::Many(TraitMany::Clone(ident.span())))
+    } else if ident == "Debug" {
+        Some(Class::Many(TraitMany::Debug(ident.span())))
+    } else if ident == "Deref" {
+        Some(Class::One(TraitOne::Deref(ident.span())))
+    } else if ident == "DerefMut" {
+        Some(Class::One(TraitOne::DerefMut(ident.span())))
+    } else {
+        None
+    }
+}
+
+enum Body {
+    Many {
+        targets: Vec<TraitMany>,
+        skip: Vec<Member>,
+    },
+    One {
+        targets: Vec<TraitOne>,
+        on: Member,
+    },
+}
+
 pub struct AutoImpl {
-    pub targets: Punctuated<Ident, Comma>,
-    pub clause: Option<WhereClause>,
-    pub on: Option<Member>,
-    pub skip: Punctuated<Member, Comma>,
+    body: Body,
+    clause: Option<WhereClause>,
 }
 
 impl Parse for AutoImpl {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut targets = Punctuated::new();
+        let mut first = None;
+        let mut targets_many = Vec::new();
+        let mut targets_one = Vec::new();
         let mut clause = None;
         let mut on = None;
-        let mut skip = Punctuated::new();
+        let mut skip = Vec::new();
+        let mut empty_or_trailing = true;
 
         while !input.is_empty() {
             let lookahead = input.lookahead1();
@@ -41,13 +82,39 @@ impl Parse for AutoImpl {
                 break;
             }
 
-            if targets.empty_or_trailing() {
+            if empty_or_trailing {
                 if lookahead.peek(Ident) {
-                    targets.push_value(input.parse()?);
+                    let target = input.parse()?;
+                    match class(&target) {
+                        Some(class) if first.is_none() => {
+                            first = Some(class);
+                            match class {
+                                Class::Many(trait_) => targets_many.push(trait_),
+                                Class::One(trait_) => targets_one.push(trait_),
+                            }
+                        }
+                        Some(Class::Many(trait_)) if matches!(first, Some(Class::Many(_))) => {
+                            targets_many.push(trait_);
+                        }
+                        Some(Class::One(trait_)) if matches!(first, Some(Class::One(_))) => {
+                            targets_one.push(trait_);
+                        }
+                        Some(_) => {
+                            return Err(Error::new(
+                                target.span(),
+                                "incompatible: traits targetting a single field and traits targetting multiple fields may not be derived simultaneously",
+                            ));
+                        }
+                        None => {
+                            return Err(Error::new(target.span(), "unsupported trait"));
+                        }
+                    }
+                    empty_or_trailing = false;
                     continue;
                 }
             } else if input.peek(Comma) {
-                targets.push_punct(input.parse::<Comma>()?);
+                let _ = input.parse::<Comma>()?;
+                empty_or_trailing = true;
                 continue;
             }
             return Err(lookahead.error());
@@ -59,22 +126,25 @@ impl Parse for AutoImpl {
             lookahead = input.lookahead1();
         }
 
-        if input.peek(kw::on) {
+        if matches!(first, Some(Class::One(_))) {
             let _: kw::on = input.parse()?;
             on = Some(input.parse()?);
             lookahead = input.lookahead1();
-        } else if input.peek(kw::skip) {
+        } else if lookahead.peek(kw::skip) {
             let _: kw::skip = input.parse()?;
-            skip.push_value(input.parse()?);
+            skip.push(input.parse()?);
+            empty_or_trailing = false;
             while !input.is_empty() {
                 let lookahead = input.lookahead1();
-                if skip.empty_or_trailing() {
+                if empty_or_trailing {
                     if lookahead.peek(Ident) || lookahead.peek(LitInt) {
-                        skip.push_value(input.parse()?);
+                        skip.push(input.parse()?);
+                        empty_or_trailing = false;
                         continue;
                     }
                 } else if lookahead.peek(Comma) {
-                    skip.push_punct(input.parse()?);
+                    let _ = input.parse::<Comma>()?;
+                    empty_or_trailing = true;
                     continue;
                 }
                 return Err(lookahead.error());
@@ -85,17 +155,23 @@ impl Parse for AutoImpl {
             return Err(lookahead.error());
         }
 
-        Ok(AutoImpl {
-            targets,
-            clause,
-            on,
-            skip,
-        })
+        let body = if matches!(first, Some(Class::One(_))) {
+            Body::One {
+                targets: targets_one,
+                on: on.unwrap(),
+            }
+        } else {
+            Body::Many {
+                targets: targets_many,
+                skip,
+            }
+        };
+
+        Ok(AutoImpl { body, clause })
     }
 }
 
 pub fn autoimpl(attr: AutoImpl, mut item: ItemStruct) -> TokenStream {
-    let ident = &item.ident;
     if let Some(x) = attr.clause {
         if let Some(ref mut y) = item.generics.where_clause {
             if !y.predicates.empty_or_trailing() {
@@ -106,8 +182,135 @@ pub fn autoimpl(attr: AutoImpl, mut item: ItemStruct) -> TokenStream {
             item.generics.where_clause = Some(x);
         }
     }
+
+    fn check_is_field(mem: &Member, fields: &Fields) {
+        match (fields, mem) {
+            (Fields::Named(fields), Member::Named(ref ident)) => {
+                if fields
+                    .named
+                    .iter()
+                    .any(|field| field.ident.as_ref() == Some(ident))
+                {
+                    return;
+                }
+            }
+            (Fields::Unnamed(fields), Member::Unnamed(index)) => {
+                if (index.index as usize) < fields.unnamed.len() {
+                    return;
+                }
+            }
+            _ => (),
+        }
+        emit_error!(mem.span(), "not a struct field");
+    }
+    match &attr.body {
+        Body::Many { skip, .. } => {
+            for mem in skip {
+                check_is_field(mem, &item.fields);
+            }
+        }
+        Body::One { on, .. } => check_is_field(on, &item.fields),
+    }
+
+    let mut toks = TokenStream::new();
+    match attr.body {
+        Body::Many { targets, skip } => autoimpl_many(targets, skip, item, &mut toks),
+        Body::One { targets, on } => autoimpl_one(targets, on, item, &mut toks),
+    }
+    toks
+}
+
+fn autoimpl_many(
+    mut targets: Vec<TraitMany>,
+    skip: Vec<Member>,
+    item: ItemStruct,
+    toks: &mut TokenStream,
+) {
+    let no_skips = skip.is_empty();
+    let skip = |item: &Member| -> bool { skip.iter().any(|mem| *mem == *item) };
+    let ident = &item.ident;
     let (impl_generics, ty_generics, where_clause) = item.generics.split_for_impl();
 
+    for target in targets.drain(..) {
+        match target {
+            TraitMany::Clone(span) => {
+                let mut inner = quote! {};
+                for (i, field) in item.fields.iter().enumerate() {
+                    let mem = if let Some(ref id) = field.ident {
+                        inner.append_all(quote! { #id: });
+                        Member::from(id.clone())
+                    } else {
+                        Member::from(i)
+                    };
+
+                    if skip(&mem) {
+                        inner.append_all(quote! { Default::default(), });
+                    } else {
+                        inner.append_all(quote! { self.#mem.clone(), });
+                    }
+                }
+                let inner = match &item.fields {
+                    Fields::Named(_) => quote! { Self { #inner } },
+                    Fields::Unnamed(_) => quote! { Self( #inner ) },
+                    Fields::Unit => quote! { Self },
+                };
+                toks.append_all(quote_spanned! {span=>
+                    impl #impl_generics std::clone::Clone for #ident #ty_generics #where_clause {
+                        fn clone(&self) -> Self {
+                            #inner
+                        }
+                    }
+                });
+            }
+            TraitMany::Debug(span) => {
+                let name = ident.to_string();
+                let mut inner;
+                match item.fields {
+                    Fields::Named(ref fields) => {
+                        inner = quote! { f.debug_struct(#name) };
+                        for field in fields.named.iter() {
+                            let ident = field.ident.as_ref().unwrap();
+                            if !skip(&ident.clone().into()) {
+                                let name = ident.to_string();
+                                inner.append_all(quote! {
+                                    .field(#name, &self.#ident)
+                                });
+                            }
+                        }
+                        if no_skips {
+                            inner.append_all(quote! { .finish() });
+                        } else {
+                            inner.append_all(quote! { .finish_non_exhaustive() });
+                        };
+                    }
+                    Fields::Unnamed(ref fields) => {
+                        inner = quote! { f.debug_tuple(#name) };
+                        for i in 0..fields.unnamed.len() {
+                            if !skip(&i.into()) {
+                                inner.append_all(quote! {
+                                    .field(&self.#i)
+                                });
+                            }
+                        }
+                        inner.append_all(quote! { .finish() });
+                    }
+                    Fields::Unit => {
+                        inner = quote! { #name };
+                    }
+                }
+                toks.append_all(quote_spanned! {span=>
+                    impl #impl_generics std::fmt::Debug for #ident #ty_generics #where_clause {
+                        fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                            #inner
+                        }
+                    }
+                });
+            }
+        }
+    }
+}
+
+fn autoimpl_one(mut targets: Vec<TraitOne>, on: Member, item: ItemStruct, toks: &mut TokenStream) {
     fn for_field<'a, T, F: Fn(&Field) -> T>(fields: &'a Fields, mem: &Member, f: F) -> Option<T> {
         match (fields, mem) {
             (Fields::Named(ref fields), Member::Named(ref ident)) => {
@@ -127,146 +330,31 @@ pub fn autoimpl(attr: AutoImpl, mut item: ItemStruct) -> TokenStream {
         None
     }
 
-    for mem in attr.on.iter().chain(attr.skip.iter()) {
-        match (&item.fields, mem) {
-            (Fields::Named(fields), Member::Named(ref ident)) => {
-                if fields
-                    .named
-                    .iter()
-                    .any(|field| field.ident.as_ref() == Some(ident))
-                {
-                    continue;
-                }
-            }
-            (Fields::Unnamed(fields), Member::Unnamed(index)) => {
-                if (index.index as usize) < fields.unnamed.len() {
-                    continue;
-                }
-            }
-            _ => (),
-        }
-        emit_error!(mem.span(), "not a struct field");
-    }
+    let ident = &item.ident;
+    let (impl_generics, ty_generics, where_clause) = item.generics.split_for_impl();
 
-    let skip = |item: &Member| -> bool { attr.skip.iter().any(|mem| *mem == *item) };
-
-    let mut on_unused = true;
-    let mut toks = TokenStream::new();
-
-    for target in &attr.targets {
-        let span = target.span();
-        if target == "Clone" {
-            let mut inner = quote! {};
-            for (i, field) in item.fields.iter().enumerate() {
-                let mem = if let Some(ref id) = field.ident {
-                    inner.append_all(quote! { #id: });
-                    Member::from(id.clone())
-                } else {
-                    Member::from(i)
-                };
-
-                if skip(&mem) {
-                    inner.append_all(quote! { Default::default(), });
-                } else {
-                    inner.append_all(quote! { self.#mem.clone(), });
-                }
-            }
-            let inner = match &item.fields {
-                Fields::Named(_) => quote! { Self { #inner } },
-                Fields::Unnamed(_) => quote! { Self( #inner ) },
-                Fields::Unit => quote! { Self },
-            };
-            toks.append_all(quote_spanned! {span=>
-                impl #impl_generics std::clone::Clone for #ident #ty_generics #where_clause {
-                    fn clone(&self) -> Self {
-                        #inner
-                    }
-                }
-            });
-        } else if target == "Debug" {
-            let name = ident.to_string();
-            let mut inner;
-            match item.fields {
-                Fields::Named(ref fields) => {
-                    inner = quote! { f.debug_struct(#name) };
-                    for field in fields.named.iter() {
-                        let ident = field.ident.as_ref().unwrap();
-                        if !skip(&ident.clone().into()) {
-                            let name = ident.to_string();
-                            inner.append_all(quote! {
-                                .field(#name, &self.#ident)
-                            });
-                        }
-                    }
-                    if attr.skip.is_empty() {
-                        inner.append_all(quote! { .finish() });
-                    } else {
-                        inner.append_all(quote! { .finish_non_exhaustive() });
-                    };
-                }
-                Fields::Unnamed(ref fields) => {
-                    inner = quote! { f.debug_tuple(#name) };
-                    for i in 0..fields.unnamed.len() {
-                        if !skip(&i.into()) {
-                            inner.append_all(quote! {
-                                .field(&self.#i)
-                            });
-                        }
-                    }
-                    inner.append_all(quote! { .finish() });
-                }
-                Fields::Unit => {
-                    inner = quote! { #name };
-                }
-            }
-            toks.append_all(quote_spanned! {span=>
-                impl #impl_generics std::fmt::Debug for #ident #ty_generics #where_clause {
-                    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                        #inner
-                    }
-                }
-            });
-        } else if target == "Deref" {
-            on_unused = false;
-            if let Some(mem) = &attr.on {
-                let ty = for_field(&item.fields, &mem, |field| field.ty.clone()).unwrap();
+    for target in targets.drain(..) {
+        match target {
+            TraitOne::Deref(span) => {
+                let ty = for_field(&item.fields, &on, |field| field.ty.clone()).unwrap();
                 toks.append_all(quote_spanned! {span=>
                     impl #impl_generics std::ops::Deref for #ident #ty_generics #where_clause {
                         type Target = #ty;
                         fn deref(&self) -> &Self::Target {
-                            &self.#mem
+                            &self.#on
                         }
                     }
                 });
-            } else {
-                emit_error!(
-                    span,
-                    "autoimpl: Deref requires target: use `#[autoimpl(Deref on FIELD)]`"
-                );
             }
-        } else if target == "DerefMut" {
-            on_unused = false;
-            if let Some(mem) = &attr.on {
+            TraitOne::DerefMut(span) => {
                 toks.append_all(quote_spanned! {span=>
                     impl #impl_generics std::ops::DerefMut for #ident #ty_generics #where_clause {
                         fn deref_mut(&mut self) -> &mut Self::Target {
-                            &mut self.#mem
+                            &mut self.#on
                         }
                     }
                 });
-            } else {
-                emit_error!(span, "autoimpl: DerefMut requires target: use `#[autoimpl(Deref, DerefMut on FIELD)]`");
             }
-        } else {
-            emit_error!(span, "autoimpl: unsupported trait");
         }
     }
-
-    if let Some(mem) = attr.on {
-        if on_unused {
-            emit_warning!(mem.span(), "autoimpl: no impl used this parameter");
-        }
-    }
-
-    toks
 }
