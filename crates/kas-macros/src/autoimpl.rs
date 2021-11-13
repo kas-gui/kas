@@ -30,6 +30,10 @@ enum TraitMany {
 enum TraitOne {
     Deref(Span),
     DerefMut(Span),
+    HasBool(Span),
+    HasStr(Span),
+    HasString(Span),
+    SetAccel(Span),
 }
 #[derive(Clone, Copy)]
 enum Class {
@@ -45,6 +49,14 @@ fn class(ident: &Ident) -> Option<Class> {
         Some(Class::One(TraitOne::Deref(ident.span())))
     } else if ident == "DerefMut" {
         Some(Class::One(TraitOne::DerefMut(ident.span())))
+    } else if ident == "HasBool" {
+        Some(Class::One(TraitOne::HasBool(ident.span())))
+    } else if ident == "HasStr" {
+        Some(Class::One(TraitOne::HasStr(ident.span())))
+    } else if ident == "HasString" {
+        Some(Class::One(TraitOne::HasString(ident.span())))
+    } else if ident == "SetAccel" {
+        Some(Class::One(TraitOne::SetAccel(ident.span())))
     } else {
         None
     }
@@ -351,6 +363,69 @@ fn autoimpl_one(mut targets: Vec<TraitOne>, on: Member, item: ItemStruct, toks: 
                     impl #impl_generics std::ops::DerefMut for #ident #ty_generics #where_clause {
                         fn deref_mut(&mut self) -> &mut Self::Target {
                             &mut self.#on
+                        }
+                    }
+                });
+            }
+            TraitOne::HasBool(span) => {
+                toks.append_all(quote_spanned! {span=>
+                    impl #impl_generics ::kas::class::HasBool for #ident #ty_generics
+                        #where_clause
+                    {
+                        #[inline]
+                        fn get_bool(&self) -> bool {
+                            self.#on.get_bool()
+                        }
+
+                        #[inline]
+                        fn set_bool(&mut self, state: bool) -> ::kas::TkAction {
+                            self.#on.set_bool(state)
+                        }
+                    }
+                });
+            }
+            TraitOne::HasStr(span) => {
+                toks.append_all(quote_spanned! {span=>
+                    impl #impl_generics ::kas::class::HasStr for #ident #ty_generics
+                        #where_clause
+                    {
+                        #[inline]
+                        fn get_str(&self) -> &str {
+                            self.#on.get_str()
+                        }
+
+                        #[inline]
+                        fn get_string(&self) -> String {
+                            self.#on.get_string()
+                        }
+                    }
+                });
+            }
+            TraitOne::HasString(span) => {
+                toks.append_all(quote_spanned! {span=>
+                    impl #impl_generics ::kas::class::HasString for #ident #ty_generics
+                        #where_clause
+                    {
+                        #[inline]
+                        fn set_str(&mut self, text: &str) -> ::kas::TkAction {
+                            self.#on.set_str(text)
+                        }
+
+                        #[inline]
+                        fn set_string(&mut self, text: String) -> ::kas::TkAction {
+                            self.#on.set_string(text)
+                        }
+                    }
+                });
+            }
+            TraitOne::SetAccel(span) => {
+                toks.append_all(quote_spanned! {span=>
+                    impl #impl_generics ::kas::class::SetAccel for #ident #ty_generics
+                        #where_clause
+                    {
+                        #[inline]
+                        fn set_accel_string(&mut self, accel: AccelString) -> ::kas::TkAction {
+                            self.#on.set_accel_string(accel)
                         }
                     }
                 });

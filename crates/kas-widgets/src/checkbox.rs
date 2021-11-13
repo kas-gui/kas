@@ -11,8 +11,8 @@ use std::rc::Rc;
 
 widget! {
     /// A bare checkbox (no label)
-    #[autoimpl(Debug skip on_toggle)]
     #[derive(Clone, Default)]
+    #[autoimpl(Debug skip on_toggle)]
     #[widget(config(key_nav = true, hover_highlight = true))]
     pub struct CheckBoxBare<M: 'static> {
         #[widget_core]
@@ -128,16 +128,15 @@ widget! {
 
 widget! {
     /// A checkable box with optional label
-    #[autoimpl(Debug)]
     #[derive(Clone, Default)]
+    #[autoimpl(Debug)]
+    #[autoimpl(HasBool on checkbox)]
     #[layout(row, area=checkbox)]
-    #[widget_derive(HasBool)]
     pub struct CheckBox<M: 'static> {
         #[widget_core]
         core: CoreData,
         #[layout_data]
         layout_data: <Self as kas::LayoutData>::Data,
-        #[widget_derive]
         #[widget]
         checkbox: CheckBoxBare<M>,
         #[widget]

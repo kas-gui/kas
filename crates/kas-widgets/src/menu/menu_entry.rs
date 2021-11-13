@@ -120,8 +120,9 @@ widget! {
 
 widget! {
     /// A menu entry which can be toggled
-    #[autoimpl(Debug)]
     #[derive(Clone, Default)]
+    #[autoimpl(Debug)]
+    #[autoimpl(HasBool on checkbox)]
     #[layout(row, area=checkbox, draw=draw)]
     pub struct MenuToggle<M: 'static> {
         #[widget_core]
@@ -204,18 +205,6 @@ widget! {
             draw_handle.menu_entry(self.core.rect, state);
             self.checkbox.draw(draw_handle, mgr, state.disabled());
             self.label.draw(draw_handle, mgr, state.disabled());
-        }
-    }
-
-    impl HasBool for Self {
-        #[inline]
-        fn get_bool(&self) -> bool {
-            self.checkbox.get_bool()
-        }
-
-        #[inline]
-        fn set_bool(&mut self, state: bool) -> TkAction {
-            self.checkbox.set_bool(state)
         }
     }
 }

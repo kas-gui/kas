@@ -170,16 +170,15 @@ widget! {
 
 widget! {
     /// A radiobox with optional label
-    #[autoimpl(Debug)]
     #[derive(Clone)]
+    #[autoimpl(Debug)]
+    #[autoimpl(HasBool on radiobox)]
     #[layout(row, area=radiobox)]
-    #[widget_derive(HasBool)]
     pub struct RadioBox<M: 'static> {
         #[widget_core]
         core: CoreData,
         #[layout_data]
         layout_data: <Self as kas::LayoutData>::Data,
-        #[widget_derive]
         #[widget]
         radiobox: RadioBoxBare<M>,
         #[widget]
