@@ -28,16 +28,17 @@ mod widget;
 /// -   It (currently) only supports struct types (including tuple and unit structs)
 /// -   No bounds on generics (beyond those on the struct itself) are assumed
 /// -   Bounds may be specified manually via `where ...`
-/// -   Fields may be skipped, e.g. `skip a, b`
-/// -   Certain traits may target a specific field via `on x`
 ///
-/// The following traits are supported:
+/// The following traits target a specific field:
 ///
-/// -   `Clone` — implements `std::clone::Clone`; any skipped field is
+/// -   `Deref` — implements `std::ops::Deref`
+/// -   `DerefMut` — implements `std::ops::DerefMut`
+///
+/// The following traits target all fields, except those skipped:
+///
+/// -   `Clone` — implements `std::clone::Clone`; skipped fields are
 ///     initialised with `Default::default()`
 /// -   `Debug` — implements `std::fmt::Debug`; skipped fields are not output
-/// -   `Deref` — implements `std::ops::Deref` on the given field
-/// -   `DerefMut` — implements `std::ops::DerefMut` on the given field
 ///
 /// # Examples
 ///

@@ -63,9 +63,7 @@ impl Parse for AutoImpl {
             let _: kw::on = input.parse()?;
             on = Some(input.parse()?);
             lookahead = input.lookahead1();
-        }
-
-        if input.peek(kw::skip) {
+        } else if input.peek(kw::skip) {
             let _: kw::skip = input.parse()?;
             skip.push_value(input.parse()?);
             while !input.is_empty() {
