@@ -9,9 +9,7 @@ use proc_macro2::TokenStream;
 use proc_macro_error::emit_error;
 use quote::{quote, TokenStreamExt};
 use syn::parse_quote;
-use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::{WhereClause, WherePredicate};
 
 pub(crate) fn widget(mut args: Widget) -> TokenStream {
     let mut toks = quote! { #args };
@@ -415,87 +413,6 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
     toks.append_all(quote! {
         impl #impl_generics ::kas::Widget for #name #ty_generics #where_clause {}
     });
-
-    if let Some((member, ty)) = args.inner {
-        let extended_where_clause = move |pred: WherePredicate| {
-            if let Some(clause) = where_clause {
-                let mut clauses: WhereClause = (*clause).clone();
-                clauses.predicates.push_punct(Default::default());
-                clauses.predicates.push_value(pred);
-                clauses
-            } else {
-                let mut predicates = Punctuated::new();
-                predicates.push_value(pred);
-                WhereClause {
-                    where_token: Default::default(),
-                    predicates,
-                }
-            }
-        };
-
-        if args.attr_derive.has_bool {
-            let wc = extended_where_clause(parse_quote! { #ty: ::kas::class::HasBool });
-            toks.append_all(quote! {
-                impl #impl_generics ::kas::class::HasBool for #name #ty_generics #wc {
-                    #[inline]
-                    fn get_bool(&self) -> bool {
-                        self.#member.get_bool()
-                    }
-
-                    #[inline]
-                    fn set_bool(&mut self, state: bool) -> ::kas::TkAction {
-                        self.#member.set_bool(state)
-                    }
-                }
-            });
-        }
-
-        if args.attr_derive.has_str {
-            let wc = extended_where_clause(parse_quote! { #ty: ::kas::class::HasStr });
-            toks.append_all(quote! {
-                impl #impl_generics ::kas::class::HasStr for #name #ty_generics #wc {
-                    #[inline]
-                    fn get_str(&self) -> &str {
-                        self.#member.get_str()
-                    }
-
-                    #[inline]
-                    fn get_string(&self) -> String {
-                        self.#member.get_string()
-                    }
-                }
-            });
-        }
-
-        if args.attr_derive.has_string {
-            let wc = extended_where_clause(parse_quote! { #ty: ::kas::class::HasString });
-            toks.append_all(quote! {
-                impl #impl_generics ::kas::class::HasString for #name #ty_generics #wc {
-                    #[inline]
-                    fn set_str(&mut self, text: &str) -> ::kas::TkAction {
-                        self.#member.set_str(text)
-                    }
-
-                    #[inline]
-                    fn set_string(&mut self, text: String) -> ::kas::TkAction {
-                        self.#member.set_string(text)
-                    }
-                }
-            });
-        }
-
-        if args.attr_derive.set_accel {
-            let wc = extended_where_clause(parse_quote! { #ty: ::kas::class::SetAccel });
-            toks.append_all(quote! {
-                impl #impl_generics ::kas::class::SetAccel for #name #ty_generics #wc {
-                    #[inline]
-                    fn set_accel_string(&mut self, accel: AccelString) -> ::kas::TkAction {
-                        self.#member.set_accel_string(accel)
-                    }
-                }
-            });
-        }
-    }
 
     for impl_ in &mut args.extra_impls {
         toks.append_all(quote! {

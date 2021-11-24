@@ -417,63 +417,24 @@ mod kw {
     custom_keyword!(children);
     custom_keyword!(column);
     custom_keyword!(draw);
-    custom_keyword!(HasBool);
-    custom_keyword!(HasStr);
-    custom_keyword!(HasString);
-    custom_keyword!(SetAccel);
-    custom_keyword!(class_traits);
-    custom_keyword!(Deref);
-    custom_keyword!(DerefMut);
 }
 
 #[derive(Debug, Default)]
-pub struct WidgetDerive {
-    pub has_bool: bool,
-    pub has_str: bool,
-    pub has_string: bool,
-    pub set_accel: bool,
-}
+pub struct WidgetDerive;
 
 impl Parse for WidgetDerive {
     fn parse(input: ParseStream) -> Result<Self> {
         // Note: this parser deliberately cannot return WidgetDerive::default()
-        let mut derive = WidgetDerive::default();
+        let derive = WidgetDerive::default();
         let content;
         let _ = parenthesized!(content in input);
 
         loop {
             let lookahead = content.lookahead1();
-            if !derive.has_bool && lookahead.peek(kw::HasBool) {
-                let _: kw::HasBool = content.parse()?;
-                derive.has_bool = true;
-            } else if !derive.has_str && lookahead.peek(kw::HasStr) {
-                let _: kw::HasStr = content.parse()?;
-                derive.has_str = true;
-            } else if !derive.has_string && lookahead.peek(kw::HasString) {
-                let _: kw::HasString = content.parse()?;
-                derive.has_string = true;
-            } else if !derive.set_accel && lookahead.peek(kw::SetAccel) {
-                let _: kw::SetAccel = content.parse()?;
-                derive.set_accel = true;
-            } else if !derive.has_bool
-                && !derive.has_str
-                && !derive.has_string
-                && !derive.set_accel
-                && lookahead.peek(kw::class_traits)
-            {
-                let _: kw::class_traits = content.parse()?;
-                derive.has_bool = true;
-                derive.has_str = true;
-                derive.has_string = true;
-                derive.set_accel = true;
-            } else {
-                return Err(lookahead.error());
-            }
-
             if content.is_empty() {
                 break;
             }
-            let _: Comma = content.parse()?;
+            return Err(lookahead.error());
         }
 
         Ok(derive)
