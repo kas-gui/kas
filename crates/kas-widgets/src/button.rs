@@ -15,9 +15,9 @@ widget! {
     ///
     /// Default alignment is centred. Content (label) alignment is derived from the
     /// button alignment.
-    #[autoimpl(Debug skip on_push)]
     #[derive(Clone)]
-    #[widget_derive(class_traits)]
+    #[autoimpl(Debug skip on_push)]
+    #[autoimpl(class_traits where L: trait on label)]
     pub struct Button<L: Widget<Msg = VoidMsg>, M: 'static> {
         #[widget_core]
         core: kas::CoreData,
@@ -26,7 +26,6 @@ widget! {
         frame_offset: Offset,
         ideal_size: Size,
         color: Option<Rgb>,
-        #[widget_derive]
         #[widget]
         pub label: L,
         on_push: Option<Rc<dyn Fn(&mut Manager) -> Option<M>>>,

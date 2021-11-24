@@ -242,10 +242,10 @@ widget! {
     /// Scrollbars are not included; use [`ScrollBarRegion`] if you want those.
     ///
     /// [`ScrollBarRegion`]: crate::ScrollBarRegion
-    #[autoimpl(Deref, DerefMut on inner)]
     #[derive(Clone, Debug, Default)]
+    #[autoimpl(Deref, DerefMut on inner)]
+    #[autoimpl(class_traits where W: trait on inner)]
     #[handler(msg = <W as event::Handler>::Msg)]
-    #[widget_derive(class_traits)]
     pub struct ScrollRegion<W: Widget> {
         #[widget_core]
         core: CoreData,
@@ -253,7 +253,6 @@ widget! {
         offset: Offset,
         frame_size: Size,
         scroll: ScrollComponent,
-        #[widget_derive]
         #[widget]
         inner: W,
     }

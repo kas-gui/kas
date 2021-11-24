@@ -40,6 +40,7 @@ enum TraitOne {
 enum Class {
     Many(TraitMany),
     One(TraitOne),
+    ClassTraits,
 }
 fn class(ident: &Ident) -> Option<Class> {
     if ident == "Clone" {
@@ -58,6 +59,8 @@ fn class(ident: &Ident) -> Option<Class> {
         Some(Class::One(TraitOne::HasString(ident.span())))
     } else if ident == "SetAccel" {
         Some(Class::One(TraitOne::SetAccel(ident.span())))
+    } else if ident == "class_traits" {
+        Some(Class::ClassTraits)
     } else {
         None
     }
@@ -81,7 +84,12 @@ pub struct AutoImpl {
 
 impl Parse for AutoImpl {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut first = None;
+        enum Mode {
+            None,
+            One,
+            Many,
+        }
+        let mut mode = Mode::None;
         let mut targets_many = Vec::new();
         let mut targets_one = Vec::new();
         let mut clause = None;
@@ -97,26 +105,37 @@ impl Parse for AutoImpl {
 
             if empty_or_trailing {
                 if lookahead.peek(Ident) {
+                    const MSG: &'static str = "incompatible: traits targetting a single field and traits targetting multiple fields may not be derived simultaneously";
                     let target = input.parse()?;
                     match class(&target) {
-                        Some(class) if first.is_none() => {
-                            first = Some(class);
-                            match class {
-                                Class::Many(trait_) => targets_many.push(trait_),
-                                Class::One(trait_) => targets_one.push(trait_),
+                        Some(Class::Many(trait_)) => {
+                            targets_many.push(trait_);
+                            match mode {
+                                Mode::None => mode = Mode::Many,
+                                Mode::One => return Err(Error::new(target.span(), MSG)),
+                                Mode::Many => (),
                             }
                         }
-                        Some(Class::Many(trait_)) if matches!(first, Some(Class::Many(_))) => {
-                            targets_many.push(trait_);
-                        }
-                        Some(Class::One(trait_)) if matches!(first, Some(Class::One(_))) => {
+                        Some(Class::One(trait_)) => {
                             targets_one.push(trait_);
+                            match mode {
+                                Mode::None => mode = Mode::One,
+                                Mode::One => (),
+                                Mode::Many => return Err(Error::new(target.span(), MSG)),
+                            }
                         }
-                        Some(_) => {
-                            return Err(Error::new(
-                                target.span(),
-                                "incompatible: traits targetting a single field and traits targetting multiple fields may not be derived simultaneously",
-                            ));
+                        Some(Class::ClassTraits) => {
+                            // TODO: change "class_traits" to "kas::class" ?
+                            let span = target.span();
+                            targets_one.push(TraitOne::HasBool(span));
+                            targets_one.push(TraitOne::HasStr(span));
+                            targets_one.push(TraitOne::HasString(span));
+                            targets_one.push(TraitOne::SetAccel(span));
+                            match mode {
+                                Mode::None => mode = Mode::One,
+                                Mode::One => (),
+                                Mode::Many => return Err(Error::new(target.span(), MSG)),
+                            }
                         }
                         None => {
                             return Err(Error::new(target.span(), "unsupported trait"));
@@ -139,7 +158,7 @@ impl Parse for AutoImpl {
             lookahead = input.lookahead1();
         }
 
-        if matches!(first, Some(Class::One(_))) {
+        if matches!(mode, Mode::One) {
             let _: kw::on = input.parse()?;
             on = Some(input.parse()?);
             lookahead = input.lookahead1();
@@ -168,7 +187,7 @@ impl Parse for AutoImpl {
             return Err(lookahead.error());
         }
 
-        let body = if matches!(first, Some(Class::One(_))) {
+        let body = if matches!(mode, Mode::One) {
             Body::One {
                 targets: targets_one,
                 on: on.unwrap(),
