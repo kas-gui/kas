@@ -3,13 +3,14 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
+use crate::where_clause::{clause_to_toks, WhereClause};
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::emit_error;
 use quote::{quote, quote_spanned, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::token::Comma;
-use syn::{Field, Fields, Ident, ItemStruct, LitInt, Member, Token, WhereClause};
+use syn::{Field, Fields, Ident, ItemStruct, LitInt, Member, Token};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -183,18 +184,7 @@ impl Parse for AutoImpl {
     }
 }
 
-pub fn autoimpl(attr: AutoImpl, mut item: ItemStruct) -> TokenStream {
-    if let Some(x) = attr.clause {
-        if let Some(ref mut y) = item.generics.where_clause {
-            if !y.predicates.empty_or_trailing() {
-                y.predicates.push_punct(Default::default());
-            }
-            y.predicates.extend(x.predicates.into_pairs());
-        } else {
-            item.generics.where_clause = Some(x);
-        }
-    }
-
+pub fn autoimpl(attr: AutoImpl, item: ItemStruct) -> TokenStream {
     fn check_is_field(mem: &Member, fields: &Fields) {
         match (fields, mem) {
             (Fields::Named(fields), Member::Named(ref ident)) => {
@@ -226,8 +216,8 @@ pub fn autoimpl(attr: AutoImpl, mut item: ItemStruct) -> TokenStream {
 
     let mut toks = TokenStream::new();
     match attr.body {
-        Body::Many { targets, skip } => autoimpl_many(targets, skip, item, &mut toks),
-        Body::One { targets, on } => autoimpl_one(targets, on, item, &mut toks),
+        Body::Many { targets, skip } => autoimpl_many(targets, skip, item, &attr.clause, &mut toks),
+        Body::One { targets, on } => autoimpl_one(targets, on, item, &attr.clause, &mut toks),
     }
     toks
 }
@@ -236,12 +226,13 @@ fn autoimpl_many(
     mut targets: Vec<TraitMany>,
     skip: Vec<Member>,
     item: ItemStruct,
+    clause: &Option<WhereClause>,
     toks: &mut TokenStream,
 ) {
     let no_skips = skip.is_empty();
     let skip = |item: &Member| -> bool { skip.iter().any(|mem| *mem == *item) };
     let ident = &item.ident;
-    let (impl_generics, ty_generics, where_clause) = item.generics.split_for_impl();
+    let (impl_generics, ty_generics, item_wc) = item.generics.split_for_impl();
 
     for target in targets.drain(..) {
         match target {
@@ -266,8 +257,9 @@ fn autoimpl_many(
                     Fields::Unnamed(_) => quote! { Self( #inner ) },
                     Fields::Unit => quote! { Self },
                 };
+                let wc = clause_to_toks(clause, item_wc, quote! { Clone });
                 toks.append_all(quote_spanned! {span=>
-                    impl #impl_generics std::clone::Clone for #ident #ty_generics #where_clause {
+                    impl #impl_generics std::clone::Clone for #ident #ty_generics #wc {
                         fn clone(&self) -> Self {
                             #inner
                         }
@@ -310,8 +302,9 @@ fn autoimpl_many(
                         inner = quote! { #name };
                     }
                 }
+                let wc = clause_to_toks(clause, item_wc, quote! { Debug });
                 toks.append_all(quote_spanned! {span=>
-                    impl #impl_generics std::fmt::Debug for #ident #ty_generics #where_clause {
+                    impl #impl_generics std::fmt::Debug for #ident #ty_generics #wc {
                         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                             #inner
                         }
@@ -322,7 +315,13 @@ fn autoimpl_many(
     }
 }
 
-fn autoimpl_one(mut targets: Vec<TraitOne>, on: Member, item: ItemStruct, toks: &mut TokenStream) {
+fn autoimpl_one(
+    mut targets: Vec<TraitOne>,
+    on: Member,
+    item: ItemStruct,
+    clause: &Option<WhereClause>,
+    toks: &mut TokenStream,
+) {
     fn for_field<'a, T, F: Fn(&Field) -> T>(fields: &'a Fields, mem: &Member, f: F) -> Option<T> {
         match (fields, mem) {
             (Fields::Named(ref fields), Member::Named(ref ident)) => {
@@ -343,14 +342,15 @@ fn autoimpl_one(mut targets: Vec<TraitOne>, on: Member, item: ItemStruct, toks: 
     }
 
     let ident = &item.ident;
-    let (impl_generics, ty_generics, where_clause) = item.generics.split_for_impl();
+    let (impl_generics, ty_generics, item_wc) = item.generics.split_for_impl();
 
     for target in targets.drain(..) {
         match target {
             TraitOne::Deref(span) => {
+                let wc = clause_to_toks(clause, item_wc, quote! { Deref });
                 let ty = for_field(&item.fields, &on, |field| field.ty.clone()).unwrap();
                 toks.append_all(quote_spanned! {span=>
-                    impl #impl_generics std::ops::Deref for #ident #ty_generics #where_clause {
+                    impl #impl_generics std::ops::Deref for #ident #ty_generics #wc {
                         type Target = #ty;
                         fn deref(&self) -> &Self::Target {
                             &self.#on
@@ -359,8 +359,9 @@ fn autoimpl_one(mut targets: Vec<TraitOne>, on: Member, item: ItemStruct, toks: 
                 });
             }
             TraitOne::DerefMut(span) => {
+                let wc = clause_to_toks(clause, item_wc, quote! { DerefMut });
                 toks.append_all(quote_spanned! {span=>
-                    impl #impl_generics std::ops::DerefMut for #ident #ty_generics #where_clause {
+                    impl #impl_generics std::ops::DerefMut for #ident #ty_generics #wc {
                         fn deref_mut(&mut self) -> &mut Self::Target {
                             &mut self.#on
                         }
@@ -368,10 +369,9 @@ fn autoimpl_one(mut targets: Vec<TraitOne>, on: Member, item: ItemStruct, toks: 
                 });
             }
             TraitOne::HasBool(span) => {
+                let wc = clause_to_toks(clause, item_wc, quote! { ::kas::class::HasBool });
                 toks.append_all(quote_spanned! {span=>
-                    impl #impl_generics ::kas::class::HasBool for #ident #ty_generics
-                        #where_clause
-                    {
+                    impl #impl_generics ::kas::class::HasBool for #ident #ty_generics #wc {
                         #[inline]
                         fn get_bool(&self) -> bool {
                             self.#on.get_bool()
@@ -385,10 +385,9 @@ fn autoimpl_one(mut targets: Vec<TraitOne>, on: Member, item: ItemStruct, toks: 
                 });
             }
             TraitOne::HasStr(span) => {
+                let wc = clause_to_toks(clause, item_wc, quote! { ::kas::class::HasStr });
                 toks.append_all(quote_spanned! {span=>
-                    impl #impl_generics ::kas::class::HasStr for #ident #ty_generics
-                        #where_clause
-                    {
+                    impl #impl_generics ::kas::class::HasStr for #ident #ty_generics #wc {
                         #[inline]
                         fn get_str(&self) -> &str {
                             self.#on.get_str()
@@ -402,10 +401,9 @@ fn autoimpl_one(mut targets: Vec<TraitOne>, on: Member, item: ItemStruct, toks: 
                 });
             }
             TraitOne::HasString(span) => {
+                let wc = clause_to_toks(clause, item_wc, quote! { ::kas::class::HasString });
                 toks.append_all(quote_spanned! {span=>
-                    impl #impl_generics ::kas::class::HasString for #ident #ty_generics
-                        #where_clause
-                    {
+                    impl #impl_generics ::kas::class::HasString for #ident #ty_generics #wc {
                         #[inline]
                         fn set_str(&mut self, text: &str) -> ::kas::TkAction {
                             self.#on.set_str(text)
@@ -419,10 +417,9 @@ fn autoimpl_one(mut targets: Vec<TraitOne>, on: Member, item: ItemStruct, toks: 
                 });
             }
             TraitOne::SetAccel(span) => {
+                let wc = clause_to_toks(clause, item_wc, quote! { ::kas::class::SetAccel });
                 toks.append_all(quote_spanned! {span=>
-                    impl #impl_generics ::kas::class::SetAccel for #ident #ty_generics
-                        #where_clause
-                    {
+                    impl #impl_generics ::kas::class::SetAccel for #ident #ty_generics #wc {
                         #[inline]
                         fn set_accel_string(&mut self, accel: AccelString) -> ::kas::TkAction {
                             self.#on.set_accel_string(accel)

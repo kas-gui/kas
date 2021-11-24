@@ -18,6 +18,7 @@ mod args;
 mod autoimpl;
 mod layout;
 mod make_widget;
+pub(crate) mod where_clause;
 mod widget;
 
 /// A variant of the standard `derive` macro
