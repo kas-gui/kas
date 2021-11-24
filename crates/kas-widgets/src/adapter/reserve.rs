@@ -21,9 +21,10 @@ widget! {
     /// In a few cases it is desirable to reserve more space for a widget than
     /// required for the current content, e.g. if a label's text may change. This
     /// widget can be used for this by wrapping the base widget.
+    #[derive(Clone, Default)]
     #[autoimpl(Debug skip reserve)]
     #[autoimpl(Deref, DerefMut on inner)]
-    #[derive(Clone, Default)]
+    #[autoimpl(class_traits where W: trait on inner)]
     #[handler(msg = <W as Handler>::Msg)]
     pub struct Reserve<W: Widget, R: FnMut(&mut dyn SizeHandle, AxisInfo) -> SizeRules + 'static> {
         #[widget_core]
@@ -94,48 +95,6 @@ widget! {
         fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
             let disabled = disabled || self.is_disabled();
             self.inner.draw(draw_handle, mgr, disabled);
-        }
-    }
-
-    impl HasBool for Self
-    where
-        W: HasBool,
-    {
-        fn get_bool(&self) -> bool {
-            self.inner.get_bool()
-        }
-
-        fn set_bool(&mut self, state: bool) -> TkAction {
-            self.inner.set_bool(state)
-        }
-    }
-
-    impl HasStr for Self
-    where
-        W: HasStr,
-    {
-        fn get_str(&self) -> &str {
-            self.inner.get_str()
-        }
-    }
-
-    impl HasString for Self
-    where
-        W: HasString,
-    {
-        fn set_string(&mut self, text: String) -> TkAction {
-            self.inner.set_string(text)
-        }
-    }
-
-    // TODO: HasFormatted
-
-    impl SetAccel for Self
-    where
-        W: SetAccel,
-    {
-        fn set_accel_string(&mut self, accel: AccelString) -> TkAction {
-            self.inner.set_accel_string(accel)
         }
     }
 }

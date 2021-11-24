@@ -169,8 +169,8 @@ widget! {
     /// A text-edit box
     ///
     /// This is just a wrapper around [`EditField`] adding a frame.
-    #[autoimpl(Deref, DerefMut on inner)]
     #[derive(Clone, Default, Debug)]
+    #[autoimpl(Deref, DerefMut, HasStr, HasString on inner)]
     #[handler(msg = G::Msg)]
     pub struct EditBox<G: EditGuard = ()> {
         #[widget_core]
@@ -216,20 +216,6 @@ widget! {
             }
             draw_handle.edit_box(self.core.rect, input_state);
             self.inner.draw(draw_handle, mgr, disabled);
-        }
-    }
-
-    impl HasStr for Self {
-        #[inline]
-        fn get_str(&self) -> &str {
-            self.inner.get_str()
-        }
-    }
-
-    impl HasString for Self {
-        #[inline]
-        fn set_string(&mut self, text: String) -> TkAction {
-            self.inner.set_string(text)
         }
     }
 }

@@ -10,9 +10,10 @@ use std::rc::Rc;
 
 widget! {
     /// Wrapper to map messages from the inner widget
+    #[derive(Clone)]
     #[autoimpl(Debug skip map)]
     #[autoimpl(Deref, DerefMut on inner)]
-    #[derive(Clone)]
+    #[autoimpl(class_traits where W: trait on inner)]
     #[layout(single)]
     #[handler(msg=M)]
     pub struct MapResponse<W: Widget, M: 'static> {
@@ -66,48 +67,6 @@ widget! {
                 debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
                 self.handle(mgr, event)
             }
-        }
-    }
-
-    impl HasBool for Self
-    where
-        W: HasBool,
-    {
-        fn get_bool(&self) -> bool {
-            self.inner.get_bool()
-        }
-
-        fn set_bool(&mut self, state: bool) -> TkAction {
-            self.inner.set_bool(state)
-        }
-    }
-
-    impl HasStr for Self
-    where
-        W: HasStr,
-    {
-        fn get_str(&self) -> &str {
-            self.inner.get_str()
-        }
-    }
-
-    impl HasString for Self
-    where
-        W: HasString,
-    {
-        fn set_string(&mut self, text: String) -> TkAction {
-            self.inner.set_string(text)
-        }
-    }
-
-    // TODO: HasFormatted
-
-    impl SetAccel for Self
-    where
-        W: SetAccel,
-    {
-        fn set_accel_string(&mut self, accel: AccelString) -> TkAction {
-            self.inner.set_accel_string(accel)
         }
     }
 }
