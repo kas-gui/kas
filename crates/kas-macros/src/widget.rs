@@ -23,8 +23,7 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
         }
     }
 
-    let derive_inner = args.core_data.is_none();
-    let opt_inner = args.inner.as_ref().map(|(inner, _)| inner.clone());
+    let opt_derive = &args.attr_widget.derive;
 
     let mut impl_widget_children = true;
     let mut impl_widget_config = true;
@@ -36,16 +35,22 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
                 || *path == parse_quote! { kas::WidgetChildren }
                 || *path == parse_quote! { WidgetChildren }
             {
-                if derive_inner {
-                    emit_error!(impl_.span(), "impl conflicts with use of widget_derive");
+                if opt_derive.is_some() {
+                    emit_error!(
+                        impl_.span(),
+                        "impl conflicts with use of #[widget(derive=FIELD)]"
+                    );
                 }
                 impl_widget_children = false;
             } else if *path == parse_quote! { ::kas::WidgetConfig }
                 || *path == parse_quote! { kas::WidgetConfig }
                 || *path == parse_quote! { WidgetConfig }
             {
-                if derive_inner {
-                    emit_error!(impl_.span(), "impl conflicts with use of widget_derive");
+                if opt_derive.is_some() {
+                    emit_error!(
+                        impl_.span(),
+                        "impl conflicts with use of #[widget(derive=FIELD)]"
+                    );
                 }
                 // TODO: if args.widget_attr.config.is_some() { warn unused }
                 impl_widget_config = false;
@@ -54,8 +59,11 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
                 || *path == parse_quote! { event::Handler }
                 || *path == parse_quote! { Handler }
             {
-                if derive_inner {
-                    emit_error!(impl_.span(), "impl conflicts with use of widget_derive");
+                if opt_derive.is_some() {
+                    emit_error!(
+                        impl_.span(),
+                        "impl conflicts with use of #[widget(derive=FIELD)]"
+                    );
                 }
                 // TODO: warn about unused handler stuff if present
                 handler_impl = Some(index);
@@ -64,8 +72,11 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
                 || *path == parse_quote! { event::SendEvent }
                 || *path == parse_quote! { SendEvent }
             {
-                if derive_inner {
-                    emit_error!(impl_.span(), "impl conflicts with use of widget_derive");
+                if opt_derive.is_some() {
+                    emit_error!(
+                        impl_.span(),
+                        "impl conflicts with use of #[widget(derive=FIELD)]"
+                    );
                 }
                 send_event_impl = Some(index);
             }
@@ -79,7 +90,7 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
         .core_data
         .map(|cd| (quote! { &self.#cd }, quote! { &mut self.#cd }))
         .unwrap_or_else(|| {
-            let inner = opt_inner.as_ref().unwrap();
+            let inner = opt_derive.as_ref().unwrap();
             (
                 quote! { self.#inner.core_data() },
                 quote! { self.#inner.core_data_mut() },
@@ -109,8 +120,7 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
         }
     });
 
-    if derive_inner {
-        let inner = opt_inner.as_ref().unwrap();
+    if let Some(inner) = opt_derive {
         toks.append_all(quote! {
             impl #impl_generics ::kas::WidgetChildren
                 for #name #ty_generics #where_clause
@@ -199,8 +209,7 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
         });
     }
 
-    if derive_inner {
-        let inner = opt_inner.as_ref().unwrap();
+    if let Some(inner) = opt_derive {
         toks.append_all(quote! {
             impl #impl_generics ::kas::Layout
                     for #name #ty_generics #where_clause
@@ -282,8 +291,7 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
     } else {
         let handler = args.attr_handler.unwrap_or_default();
         let msg = handler.msg;
-        let handle = if derive_inner {
-            let inner = opt_inner.as_ref().unwrap();
+        let handle = if let Some(inner) = opt_derive {
             quote! {
                 #[inline]
                 fn activation_via_press(&self) -> bool {
@@ -313,8 +321,7 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
         impl_generics = a;
         where_clause = c;
     } else {
-        let send_impl = if derive_inner {
-            let inner = opt_inner.as_ref().unwrap();
+        let send_impl = if let Some(inner) = opt_derive {
             quote! { self.#inner.send(mgr, id, event) }
         } else {
             let mut ev_to_num = TokenStream::new();

@@ -25,7 +25,6 @@ pub struct Child {
 
 #[derive(Debug)]
 pub struct Widget {
-    pub attr_derive: WidgetDerive,
     pub attr_widget: WidgetArgs,
     pub attr_layout: Option<LayoutArgs>,
     pub attr_handler: Option<HandlerArgs>,
@@ -40,7 +39,6 @@ pub struct Widget {
 
     pub core_data: Option<Member>,
     pub layout_data: Option<Member>,
-    pub inner: Option<(Member, Type)>,
     pub children: Vec<Child>,
 
     pub extra_impls: Vec<ItemImpl>,
@@ -48,7 +46,6 @@ pub struct Widget {
 
 impl Parse for Widget {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut attr_derive: Option<(Span, WidgetDerive)> = None;
         let mut attr_widget = None;
         let mut attr_layout = None;
         let mut attr_handler = None;
@@ -56,18 +53,7 @@ impl Parse for Widget {
 
         let mut attrs = input.call(Attribute::parse_outer)?;
         for attr in attrs.drain(..) {
-            if attr.path == parse_quote! { widget_derive } {
-                if attr_derive.is_none() {
-                    let span = attr.span();
-                    let attr = syn::parse2(attr.tokens)?;
-                    attr_derive = Some((span, attr));
-                } else {
-                    emit_error!(
-                        attr.span(),
-                        "multiple #[widget_derive(..)] attributes on type"
-                    );
-                }
-            } else if attr.path == parse_quote! { widget } {
+            if attr.path == parse_quote! { widget } {
                 if attr_widget.is_none() {
                     let _span = attr.span();
                     let w: WidgetArgs = syn::parse2(attr.tokens)?;
@@ -137,7 +123,6 @@ impl Parse for Widget {
 
         let mut core_data = None;
         let mut layout_data = None;
-        let mut inner = None;
         let mut children = Vec::new();
 
         for (i, field) in fields.iter_mut().enumerate() {
@@ -163,12 +148,6 @@ impl Parse for Widget {
                     } else {
                         layout_data = Some(member(i, field.ident.clone()));
                     }
-                } else if attr.path == parse_quote! { widget_derive } {
-                    if inner.is_none() {
-                        inner = Some((member(i, field.ident.clone()), field.ty.clone()));
-                    } else {
-                        emit_error!(attr.span(), "multiple fields marked with #[widget_derive]");
-                    }
                 } else if attr.path == parse_quote! { widget } {
                     let ident = member(i, field.ident.clone());
                     let args = syn::parse2(attr.tokens)?;
@@ -183,10 +162,10 @@ impl Parse for Widget {
         let attr_widget = attr_widget.unwrap_or_default();
 
         if core_data.is_none() {
-            if inner.is_none() {
+            if attr_widget.derive.is_none() {
                 emit_error!(
                     fields.span(),
-                    "require a field with #[widget_core] or a field with #[widget_derive] or both",
+                    "require a field with #[widget_core] or #[widget(derive = FIELD)]",
                 );
             }
             if layout_data.is_some() || !children.is_empty() {
@@ -197,23 +176,14 @@ impl Parse for Widget {
             }
         }
 
-        if core_data.is_some() && inner.is_some() && attr_derive.is_none() {
+        if core_data.is_some() && attr_widget.derive.is_some() {
             emit_error!(
                 fields.span(),
-                "usage of #[widget_derive] field with #[widget_core] field and without #[widget_derive(..)] on struct has no effect",
+                "usage of field with #[widget_core] conflicts with #[widget(derive=FIELD)]",
             );
         }
 
-        if let Some((ref span, _)) = attr_derive {
-            if inner.is_none() {
-                emit_error!(span, "usage of #[widget_derive(..)] on struct without a field marked with #[widget_derive]");
-            }
-        }
-
-        let attr_derive = attr_derive.map(|(_, attr)| attr).unwrap_or_default();
-
         Ok(Widget {
-            attr_derive,
             attr_widget,
             attr_layout,
             attr_handler,
@@ -226,7 +196,6 @@ impl Parse for Widget {
             semi_token,
             core_data,
             layout_data,
-            inner,
             children,
             extra_impls,
         })
@@ -417,6 +386,7 @@ mod kw {
     custom_keyword!(children);
     custom_keyword!(column);
     custom_keyword!(draw);
+    custom_keyword!(derive);
 }
 
 #[derive(Debug, Default)]
@@ -715,12 +685,14 @@ impl ToTokens for GridPos {
 #[derive(Debug)]
 pub struct WidgetArgs {
     pub config: Option<WidgetConfig>,
+    pub derive: Option<Member>,
 }
 
 impl Default for WidgetArgs {
     fn default() -> Self {
         WidgetArgs {
             config: Some(WidgetConfig::default()),
+            derive: None,
         }
     }
 }
@@ -745,6 +717,7 @@ impl Default for WidgetConfig {
 impl Parse for WidgetArgs {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut config = None;
+        let mut derive = None;
 
         if !input.is_empty() {
             let content;
@@ -791,6 +764,12 @@ impl Parse for WidgetArgs {
                         }
                     }
                     config = Some(conf);
+                } else if lookahead.peek(kw::derive) && derive.is_none() {
+                    let _: kw::derive = content.parse()?;
+                    let _: Eq = content.parse()?;
+                    let _: Token![self] = content.parse()?;
+                    let _: Token![.] = content.parse()?;
+                    derive = Some(content.parse()?);
                 } else {
                     return Err(lookahead.error());
                 }
@@ -801,7 +780,7 @@ impl Parse for WidgetArgs {
             }
         }
 
-        Ok(WidgetArgs { config })
+        Ok(WidgetArgs { config, derive })
     }
 }
 
