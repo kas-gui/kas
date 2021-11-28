@@ -292,9 +292,9 @@
 //! # use kas::prelude::*;
 //! # use kas::widgets::{ScrollBars, ScrollRegion};
 //! widget! {
-//!     #[derive(Clone, Debug, Default)]
 //!     #[autoimpl(Deref, DerefMut on 0)]
 //!     #[autoimpl(class_traits where W: trait on 0)]
+//!     #[derive(Clone, Debug, Default)]
 //!     #[widget(derive = self.0)]
 //!     #[handler(msg = <W as Handler>::Msg)]
 //!     pub struct ScrollBarRegion<W: Widget>(ScrollBars<ScrollRegion<W>>);

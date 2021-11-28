@@ -11,8 +11,8 @@ use std::rc::Rc;
 
 widget! {
     /// A bare checkbox (no label)
-    #[derive(Clone, Default)]
     #[autoimpl(Debug skip on_toggle)]
+    #[derive(Clone, Default)]
     #[widget(config(key_nav = true, hover_highlight = true))]
     pub struct CheckBoxBare<M: 'static> {
         #[widget_core]
@@ -128,9 +128,9 @@ widget! {
 
 widget! {
     /// A checkable box with optional label
-    #[derive(Clone, Default)]
     #[autoimpl(Debug)]
     #[autoimpl(HasBool on checkbox)]
+    #[derive(Clone, Default)]
     #[layout(row, area=checkbox)]
     pub struct CheckBox<M: 'static> {
         #[widget_core]

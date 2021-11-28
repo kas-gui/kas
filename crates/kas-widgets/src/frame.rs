@@ -12,9 +12,9 @@ widget! {
     ///
     /// This widget provides a simple abstraction: drawing a frame around its
     /// contents.
-    #[derive(Clone, Debug, Default)]
     #[autoimpl(Deref, DerefMut on inner)]
     #[autoimpl(class_traits where W: trait on inner)]
+    #[derive(Clone, Debug, Default)]
     #[handler(msg = <W as Handler>::Msg)]
     pub struct Frame<W: Widget> {
         #[widget_core]

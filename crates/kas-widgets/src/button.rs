@@ -15,9 +15,9 @@ widget! {
     ///
     /// Default alignment is centred. Content (label) alignment is derived from the
     /// button alignment.
-    #[derive(Clone)]
     #[autoimpl(Debug skip on_push)]
     #[autoimpl(class_traits where L: trait on label)]
+    #[derive(Clone)]
     pub struct Button<L: Widget<Msg = VoidMsg>, M: 'static> {
         #[widget_core]
         core: kas::CoreData,

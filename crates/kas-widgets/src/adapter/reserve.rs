@@ -21,10 +21,10 @@ widget! {
     /// In a few cases it is desirable to reserve more space for a widget than
     /// required for the current content, e.g. if a label's text may change. This
     /// widget can be used for this by wrapping the base widget.
-    #[derive(Clone, Default)]
     #[autoimpl(Debug skip reserve)]
     #[autoimpl(Deref, DerefMut on inner)]
     #[autoimpl(class_traits where W: trait on inner)]
+    #[derive(Clone, Default)]
     #[handler(msg = <W as Handler>::Msg)]
     pub struct Reserve<W: Widget, R: FnMut(&mut dyn SizeHandle, AxisInfo) -> SizeRules + 'static> {
         #[widget_core]

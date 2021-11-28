@@ -169,8 +169,8 @@ widget! {
     /// A text-edit box
     ///
     /// This is just a wrapper around [`EditField`] adding a frame.
-    #[derive(Clone, Default, Debug)]
     #[autoimpl(Deref, DerefMut, HasStr, HasString on inner)]
+    #[derive(Clone, Default, Debug)]
     #[handler(msg = G::Msg)]
     pub struct EditBox<G: EditGuard = ()> {
         #[widget_core]

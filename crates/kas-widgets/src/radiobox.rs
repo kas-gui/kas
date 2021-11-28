@@ -170,9 +170,9 @@ widget! {
 
 widget! {
     /// A radiobox with optional label
-    #[derive(Clone)]
     #[autoimpl(Debug)]
     #[autoimpl(HasBool on radiobox)]
+    #[derive(Clone)]
     #[layout(row, area=radiobox)]
     pub struct RadioBox<M: 'static> {
         #[widget_core]

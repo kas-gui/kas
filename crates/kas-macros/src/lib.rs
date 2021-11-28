@@ -25,6 +25,9 @@ mod widget;
 ///
 /// This macro is similar to `#[derive(Trait)]`, but with a few differences.
 ///
+/// If using `autoimpl` **and** `derive` macros, the `autoimpl` attribute must
+/// come first (this limitation is already fixed in Rust nightly; see rust#81119).
+///
 /// Support is currently limited to structs, though in theory enums could be
 /// supported too, at least for the "mutli-field traits".
 ///

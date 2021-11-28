@@ -120,9 +120,9 @@ widget! {
 
 widget! {
     /// A menu entry which can be toggled
-    #[derive(Clone, Default)]
     #[autoimpl(Debug)]
     #[autoimpl(HasBool on checkbox)]
+    #[derive(Clone, Default)]
     #[layout(row, area=checkbox, draw=draw)]
     pub struct MenuToggle<M: 'static> {
         #[widget_core]

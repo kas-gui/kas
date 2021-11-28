@@ -10,10 +10,10 @@ use std::rc::Rc;
 
 widget! {
     /// Wrapper to map messages from the inner widget
-    #[derive(Clone)]
     #[autoimpl(Debug skip map)]
     #[autoimpl(Deref, DerefMut on inner)]
     #[autoimpl(class_traits where W: trait on inner)]
+    #[derive(Clone)]
     #[layout(single)]
     #[handler(msg=M)]
     pub struct MapResponse<W: Widget, M: 'static> {
