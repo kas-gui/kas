@@ -276,7 +276,7 @@ fn autoimpl_many(
                     Fields::Unnamed(_) => quote! { Self( #inner ) },
                     Fields::Unit => quote! { Self },
                 };
-                let wc = clause_to_toks(clause, item_wc, quote! { Clone });
+                let wc = clause_to_toks(clause, item_wc, quote! { std::clone::Clone });
                 toks.append_all(quote_spanned! {span=>
                     impl #impl_generics std::clone::Clone for #ident #ty_generics #wc {
                         fn clone(&self) -> Self {
@@ -321,7 +321,7 @@ fn autoimpl_many(
                         inner = quote! { #name };
                     }
                 }
-                let wc = clause_to_toks(clause, item_wc, quote! { Debug });
+                let wc = clause_to_toks(clause, item_wc, quote! { std::fmt::Debug });
                 toks.append_all(quote_spanned! {span=>
                     impl #impl_generics std::fmt::Debug for #ident #ty_generics #wc {
                         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -366,7 +366,7 @@ fn autoimpl_one(
     for target in targets.drain(..) {
         match target {
             TraitOne::Deref(span) => {
-                let wc = clause_to_toks(clause, item_wc, quote! { Deref });
+                let wc = clause_to_toks(clause, item_wc, quote! { std::ops::Deref });
                 let ty = for_field(&item.fields, &on, |field| field.ty.clone()).unwrap();
                 toks.append_all(quote_spanned! {span=>
                     impl #impl_generics std::ops::Deref for #ident #ty_generics #wc {
@@ -378,7 +378,7 @@ fn autoimpl_one(
                 });
             }
             TraitOne::DerefMut(span) => {
-                let wc = clause_to_toks(clause, item_wc, quote! { DerefMut });
+                let wc = clause_to_toks(clause, item_wc, quote! { std::ops::DerefMut });
                 toks.append_all(quote_spanned! {span=>
                     impl #impl_generics std::ops::DerefMut for #ident #ty_generics #wc {
                         fn deref_mut(&mut self) -> &mut Self::Target {

@@ -78,12 +78,16 @@ mod widget;
 ///
 /// Implement `Clone` and `Debug` on a wrapper, with the required bounds:
 /// ```rust
+/// # use kas_macros::autoimpl;
 /// #[autoimpl(Clone, Debug where T: trait)]
 /// struct Wrapper<T>(pub T);
 /// ```
 ///
 /// Implement `Debug` with a custom bound and skipping an unformattable field:
 /// ```rust
+/// use kas_macros::autoimpl;
+/// use std::fmt::Debug;
+///
 /// #[autoimpl(Debug where X: Debug skip z)]
 /// struct S<X, Z> {
 ///     x: X,
@@ -94,6 +98,7 @@ mod widget;
 ///
 /// Implement `Deref` and `DerefMut`, dereferencing to the given field:
 /// ```rust
+/// # use kas_macros::autoimpl;
 /// #[autoimpl(Deref, DerefMut on 0)]
 /// struct MyWrapper<T>(T);
 /// ```
