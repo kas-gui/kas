@@ -29,6 +29,7 @@ pub struct WhereClause {
 }
 
 /// A single predicate in a `where` clause: `T: Deserialize<'de>`.
+#[allow(clippy::large_enum_variant)]
 pub enum WherePredicate {
     /// A type predicate in a `where` clause: `for<'c> Foo<'c>: Trait<'c>`.
     Type(PredicateType),

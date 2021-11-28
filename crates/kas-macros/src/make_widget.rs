@@ -165,7 +165,7 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> TokenStream {
                             handler_clauses
                                 .push(parse_quote! { #ty: ::kas::Widget<Msg = #ty_bound> });
                         } else {
-                            return quote! {}.into(); // exit after emitting error
+                            return quote! {}; // exit after emitting error
                         }
                     } else if wattr.args.handler == Handler::Discard {
                         // No type bound on discarded message
@@ -245,7 +245,7 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> TokenStream {
 
     // TODO: we should probably not rely on recursive macro expansion here!
     // (I.e. use direct code generation for Widget derivation, instead of derive.)
-    let toks = (quote! { {
+    let toks = quote! { {
         ::kas::macros::widget! {
             #[derive(Debug)]
             #extra_attrs
@@ -261,8 +261,7 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> TokenStream {
         AnonWidget {
             #field_val_toks
         }
-    } })
-    .into();
+    } };
 
     toks
 }

@@ -118,9 +118,9 @@ fn extend_generics(generics: &mut Generics, in_generics: &Generics) {
     if generics.lt_token.is_none() {
         debug_assert!(generics.params.is_empty());
         debug_assert!(generics.gt_token.is_none());
-        generics.lt_token = in_generics.lt_token.clone();
+        generics.lt_token = in_generics.lt_token;
         generics.params = in_generics.params.clone();
-        generics.gt_token = in_generics.gt_token.clone();
+        generics.gt_token = in_generics.gt_token;
     } else if in_generics.lt_token.is_none() {
         debug_assert!(in_generics.params.is_empty());
         debug_assert!(in_generics.gt_token.is_none());

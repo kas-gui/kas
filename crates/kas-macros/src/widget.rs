@@ -268,7 +268,7 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
                     #dt
                 }
             }),
-            Err(err) => return err.to_compile_error().into(),
+            Err(err) => return err.to_compile_error(),
         }
 
         match layout::derive(&args.children, layout, &args.layout_data) {
@@ -279,7 +279,7 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
                     #fns
                 }
             }),
-            Err(err) => return err.to_compile_error().into(),
+            Err(err) => return err.to_compile_error(),
         }
     }
 

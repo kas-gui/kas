@@ -327,16 +327,22 @@ fn parse_impl(in_ident: Option<&Ident>, input: ParseStream) -> Result<ItemImpl> 
 }
 
 fn parse_attrs_inner(input: ParseStream, attrs: &mut Vec<Attribute>) -> Result<()> {
-    Ok(while input.peek(Token![#]) && input.peek2(Token![!]) {
+    while input.peek(Token![#]) && input.peek2(Token![!]) {
+        let pound_token = input.parse()?;
+        let style = AttrStyle::Inner(input.parse()?);
         let content;
+        let bracket_token = bracketed!(content in input);
+        let path = content.call(Path::parse_mod_style)?;
+        let tokens = content.parse()?;
         attrs.push(Attribute {
-            pound_token: input.parse()?,
-            style: AttrStyle::Inner(input.parse()?),
-            bracket_token: bracketed!(content in input),
-            path: content.call(Path::parse_mod_style)?,
-            tokens: content.parse()?,
+            pound_token,
+            style,
+            bracket_token,
+            path,
+            tokens,
         });
-    })
+    }
+    Ok(())
 }
 
 fn member(index: usize, ident: Option<Ident>) -> Member {
@@ -399,11 +405,8 @@ impl Parse for WidgetDerive {
         let content;
         let _ = parenthesized!(content in input);
 
-        loop {
-            let lookahead = content.lookahead1();
-            if content.is_empty() {
-                break;
-            }
+        let lookahead = content.lookahead1();
+        if !content.is_empty() {
             return Err(lookahead.error());
         }
 

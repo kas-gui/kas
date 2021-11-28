@@ -37,6 +37,7 @@ enum TraitOne {
     SetAccel(Span),
 }
 #[derive(Clone, Copy)]
+#[allow(clippy::enum_variant_names)]
 enum Class {
     Many(TraitMany),
     One(TraitOne),
@@ -105,7 +106,7 @@ impl Parse for AutoImpl {
 
             if empty_or_trailing {
                 if lookahead.peek(Ident) {
-                    const MSG: &'static str = "incompatible: traits targetting a single field and traits targetting multiple fields may not be derived simultaneously";
+                    const MSG: &str = "incompatible: traits targetting a single field and traits targetting multiple fields may not be derived simultaneously";
                     let target = input.parse()?;
                     match class(&target) {
                         Some(Class::Many(trait_)) => {
@@ -341,7 +342,7 @@ fn autoimpl_one(
     clause: &Option<WhereClause>,
     toks: &mut TokenStream,
 ) {
-    fn for_field<'a, T, F: Fn(&Field) -> T>(fields: &'a Fields, mem: &Member, f: F) -> Option<T> {
+    fn for_field<T, F: Fn(&Field) -> T>(fields: &Fields, mem: &Member, f: F) -> Option<T> {
         match (fields, mem) {
             (Fields::Named(ref fields), Member::Named(ref ident)) => {
                 for field in fields.named.iter() {
