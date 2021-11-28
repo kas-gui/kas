@@ -23,27 +23,64 @@ mod widget;
 
 /// A variant of the standard `derive` macro
 ///
-/// This macro behaves like `#[derive(Trait)]` except that:
+/// This macro is similar to `#[derive(Trait)]`, but with a few differences.
 ///
-/// -   Only a fixed list of traits is supported
-/// -   It (currently) only supports struct types (including tuple and unit structs)
-/// -   No bounds on generics (beyond those on the struct itself) are assumed
-/// -   Bounds may be specified manually via `where ...`
+/// Support is currently limited to structs, though in theory enums could be
+/// supported too, at least for the "mutli-field traits".
 ///
-/// The following traits target a specific field:
+/// Unlike `derive`, `autoimpl` is not extensible by third-party crates. The
+/// "trait names" provided to `autoimpl` are matched directly, unlike
+/// `derive(...)` arguments which are paths to [`proc_macro_derive`] instances.
+/// Without language support for this there appears to be no option for
+/// third-party extensions.
 ///
-/// -   `Deref` — implements `std::ops::Deref`
-/// -   `DerefMut` — implements `std::ops::DerefMut`
+/// # Bounds
 ///
-/// The following traits target all fields, except those skipped:
+/// No bounds on generic parameters are assumed. For example, if a struct has
+/// type parameter `X: 'static`, then `derive(Debug)` would assume the
+/// bound `X: Debug + 'static` on the implementation (this may or may not be
+/// desired). In contrast, `autoimpl(Debug)` will only assume bounds on the
+/// struct itself (in this case `X: 'static`).
+///
+/// Additional bounds may be specified on the implementation in the form of a
+/// `where` clause following the traits, e.g. `autoimpl(Debug where X: Debug)`.
+///
+/// A special type of bound is supported: `X: trait` — in this case `trait`
+/// resolves to the trait currently being derived.
+///
+/// [`proc_macro_derive`]: https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros
+///
+/// # Multi-field traits
+///
+/// Some trait implementations make use of all fields by default. Individual
+/// fields may be skipped via the `skip x, y` syntax (after any `where`
+/// clauses). The following traits may be derived this way:
 ///
 /// -   `Clone` — implements `std::clone::Clone`; skipped fields are
 ///     initialised with `Default::default()`
-/// -   `Debug` — implements `std::fmt::Debug`; skipped fields are not output
+/// -   `Debug` — implements `std::fmt::Debug`; skipped fields are not printed
+///
+/// # Single-field traits
+///
+/// Other trait implementations make use of a single field, identified via the
+/// `on x` syntax (after any `where` clauses). The following traits may be
+/// derived in this way:
+///
+/// -   `Deref` — implements `std::ops::Deref`
+/// -   `DerefMut` — implements `std::ops::DerefMut`
+/// -   `HasBool`, `HasStr`, `HasString`, `SetAccel` — implement the `kas::class` traits
+/// -   `class_traits` — implements each `kas::class` trait (intended to be
+///     used with a where clause like `where W: trait`)
 ///
 /// # Examples
 ///
 /// Basic usage: `#[autoimpl(Debug)]`
+///
+/// Implement `Clone` and `Debug` on a wrapper, with the required bounds:
+/// ```rust
+/// #[autoimpl(Clone, Debug where T: trait)]
+/// struct Wrapper<T>(pub T);
+/// ```
 ///
 /// Implement `Debug` with a custom bound and skipping an unformattable field:
 /// ```rust

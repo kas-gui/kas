@@ -10,8 +10,9 @@
 //!
 //! The following macros are provided:
 //!
-//! -   [`derive(Widget)`] is used to implement the [`Widget`] trait family
+//! -   [`autoimpl`] is a variant of the standard `derive` macro
 //! -   [`derive(VoidMsg)`] is a convenient way to implement `From<VoidMsg>`
+//! -   [`widget`] is used to implement the [`Widget`] trait family
 //! -   [`make_widget`] allows a custom widget to be defined and instantiated
 //!     simultaneously
 //!
@@ -20,16 +21,32 @@
 //! `kas-macros` crate should not be used directly.
 //!
 //! [`make_widget`]: #the-make_widget-macro
-//! [`derive(Widget)`]: #the-derivewidget-macro
+//! [`widget`]: #the-widget-macro
 //! [`derive(VoidMsg)`]: #the-derivevoidmsg-macro
 //!
 //!
-//! ## The `derive(Widget)` macro
+//! ## The `derive(VoidMsg)` macro
+//!
+//! This macro implements `From<VoidMsg>` for the given type (see [`VoidMsg`]).
+//!
+//! [`VoidMsg`]: crate::event::VoidMsg
+//!
+//! ### Example
+//!
+//! ```
+//! use kas::macros::VoidMsg;
+//!
+//! #[derive(VoidMsg)]
+//! enum MyMessage { A, B };
+//! ```
+//!
+//!
+//! ## The `widget` macro
 //!
 //! The [`Widget`] trait is one of a family, all of which must be
 //! implemented by a widget. This family may be extended with additional traits
 //! in the future, and users are forbidden (to avoid breakage) from directly
-//! implementing the [`Widget`] and [`WidgetCore`] traits. This `derive(Widget)`
+//! implementing the [`Widget`] and [`WidgetCore`] traits. This `widget`
 //! macro is key to making this trait-family design possible: it (potentially)
 //! implements all traits in the family at once, on an opt-out basis
 //! (exception: the [`Layout`] trait is opt-in).
@@ -57,12 +74,17 @@
 //! ```
 //! use kas::{event, prelude::*};
 //!
-//! #[derive(Clone, Debug, Widget)]
-//! #[layout(single)]
-//! #[handler(generics = <> where W: Widget<Msg = event::VoidMsg>)]
-//! struct WrapperWidget<W: Widget> {
-//!     #[widget_core] core: CoreData,
-//!     #[widget] child: W,
+//! widget! {
+//!     #[derive(Clone, Debug)]
+//!     #[layout(single)]
+//!     struct WrapperWidget<W: Widget> {
+//!         #[widget_core] core: CoreData,
+//!         #[widget] child: W,
+//!     }
+//!
+//!     impl event::Handler for Self where W: Widget<Msg = event::VoidMsg> {
+//!         type Msg = VoidMsg;
+//!     }
 //! }
 //! ```
 //!
@@ -207,16 +229,18 @@
 //! parametrised with `W: Widget`, but the [`Handler`] impl may require
 //! `W: Layout`. This may be achieved as follows:
 //! ```
-//! # use kas::macros::Widget;
+//! # use kas::macros::widget;
 //! # use kas::{CoreData, Layout, Widget, event::Handler};
-//! #[derive(Clone, Debug, Default, Widget)]
-//! #[layout(single)]
-//! #[handler(msg = <W as Handler>::Msg, generics = <> where W: Layout)]
-//! pub struct Frame<W: Widget> {
-//!     #[widget_core]
-//!     core: CoreData,
-//!     #[widget]
-//!     child: W,
+//! widget! {
+//!     #[derive(Clone, Debug, Default)]
+//!     #[layout(single)]
+//!     #[handler(msg = <W as Handler>::Msg)]
+//!     pub struct Frame<W: Widget> {
+//!         #[widget_core]
+//!         core: CoreData,
+//!         #[widget]
+//!         child: W,
+//!     }
 //! }
 //! ```
 //!
@@ -258,32 +282,23 @@
 //!
 //! -   `#[widget(update = f)]` where `f` has signature `fn f(&mut self, mgr: &mut Manager)`
 //!
-//! ### widget_derive
+//! ### Deriving `Widget` from a field
 //!
-//! The `#[widget_derive]` attribute may optionally appear on a field, and may
-//! also appear on the struct. The attribute has two possible effects:
-//!
-//! 1.  If used on a field *instead of* a field marked with `#[widget_core]`,
-//!     this field must implement [`Widget`] and the widget traits are
-//!     implemented for the struct as wrappers around this field. This
-//!     may be useful to implement a wrapper struct as a widget, for example
-//!     [`crate::widgets::ScrollBarRegion`] (shown below).
-//! 2.  If used on the struct *and* on a field, the attribute allows deriving
-//!     various traits: [`std::ops::Deref`], [`std::ops::DerefMut`], and the
-//!     "class traits": [`crate::class`]. The traits to derive must be specified
-//!     as parameters to the attribute applied to the struct. The parameter
-//!     `class_traits` may be used to imply all [`crate::class`] traits, where
-//!     available. These traits will be derived to refer to the marked field.
-//!
-//! An example showing both effects simultaneously to implement [`Widget`],
-//! [`std::ops::Deref`], [`std::ops::DerefMut`] and the [`crate::class`] traits:
+//! In some cases it is desirable to create a "thin wrapper" around a widget
+//! (i.e. a `struct` where one field is a widget, and all widget trait
+//! implementations simply forward to that field's implementations). This can
+//! be achieved via `#[widget(derive = self.FIELD)]`:
 //! ```
 //! # use kas::prelude::*;
 //! # use kas::widgets::{ScrollBars, ScrollRegion};
-//! #[derive(Clone, Debug, Default, Widget)]
-//! #[widget_derive(class_traits, Deref, DerefMut)]
-//! #[handler(msg = <W as Handler>::Msg)]
-//! pub struct ScrollBarRegion<W: Widget>(#[widget_derive] ScrollBars<ScrollRegion<W>>);
+//! widget! {
+//!     #[derive(Clone, Debug, Default)]
+//!     #[autoimpl(Deref, DerefMut on 0)]
+//!     #[autoimpl(class_traits where W: trait on 0)]
+//!     #[widget(derive = self.0)]
+//!     #[handler(msg = <W as Handler>::Msg)]
+//!     pub struct ScrollBarRegion<W: Widget>(ScrollBars<ScrollRegion<W>>);
+//! }
 //! ```
 //!
 //! ### Examples
@@ -292,54 +307,43 @@
 //! The example below includes multiple children and custom event handling.
 //!
 //! ```
-//! use kas::event::{Manager, Response, VoidMsg};
-//! use kas::macros::Widget;
+//! use kas::event::{Handler, Manager, Response, VoidMsg};
+//! use kas::macros::widget;
 //! use kas::widgets::StrLabel;
 //! use kas::{CoreData, LayoutData, Widget};
 //!
 //! #[derive(Debug)]
 //! enum ChildMessage { A }
 //!
-//! #[derive(Debug, Widget)]
-//! #[layout(column)]
-//! #[handler(generics = <> where W: Widget<Msg = ChildMessage>)]
-//! struct MyWidget<W: Widget> {
-//!     #[widget_core] core: CoreData,
-//!     #[layout_data] layout_data: <Self as LayoutData>::Data,
-//!     #[widget] label: StrLabel,
-//!     #[widget(use_msg = handler)] child: W,
-//! }
+//! widget! {
+//!     #[derive(Debug)]
+//!     #[layout(column)]
+//!     struct MyWidget<W: Widget> {
+//!         #[widget_core] core: CoreData,
+//!         #[layout_data] layout_data: <Self as LayoutData>::Data,
+//!         #[widget] label: StrLabel,
+//!         #[widget(use_msg = handler)] child: W,
+//!     }
 //!
-//! impl<W: Widget> MyWidget<W> {
-//!     fn handler(&mut self, mgr: &mut Manager, msg: ChildMessage) {
-//!         match msg {
-//!             ChildMessage::A => { println!("handling ChildMessage::A"); }
+//!     impl Handler for Self where W: Widget<Msg = ChildMessage> {
+//!         type Msg = VoidMsg;
+//!     }
+//!
+//!     impl Self {
+//!         fn handler(&mut self, mgr: &mut Manager, msg: ChildMessage) {
+//!             match msg {
+//!                 ChildMessage::A => { println!("handling ChildMessage::A"); }
+//!             }
 //!         }
 //!     }
 //! }
 //! ```
 //!
 //!
-//! ## The `derive(VoidMsg)` macro
-//!
-//! This macro implements `From<VoidMsg>` for the given type (see [`VoidMsg`]).
-//!
-//! [`VoidMsg`]: crate::event::VoidMsg
-//!
-//! ### Example
-//!
-//! ```
-//! use kas::macros::VoidMsg;
-//!
-//! #[derive(VoidMsg)]
-//! enum MyMessage { A, B };
-//! ```
-//!
-//!
 //! ## The `make_widget` macro
 //!
 //! The [`make_widget`] allows a custom widget to be defined and instantiated
-//! simultaneously. In syntax, it is largely similar to [`derive(Widget)`] but
+//! simultaneously. In syntax, it is largely similar to [`widget`] but
 //! allows several details to be omitted, including field names and types.
 //! Its usage is convenient (and widespread in the examples) but not required.
 //!
@@ -381,7 +385,7 @@
 //!         #[widget(use_msg = buttons)] _ = button_box,
 //!         message: String = message.into(),
 //!     }
-//!     impl {
+//!     impl Self {
 //!         fn buttons(&mut self, mgr: &mut Manager, msg: OkCancel) {
 //!             match msg {
 //!                 OkCancel::Ok => {
@@ -413,10 +417,10 @@
 //! appear, including trait impls (`impl HasText { ... }`).
 //!
 //! The structs are both defined with `layout` and `handler` attributes which
-//! are forwarded to the [`derive(Widget)]` macro. Attributes may be applied
+//! are forwarded to the [`widget]` macro. Attributes may be applied
 //! like usual, however `#[derive(Debug, kas::macros::Widget)]` is implied.
 //!
-//! Different from [`derive(Widget)`], one must specify the message type via
+//! Different from [`widget`], one must specify the message type via
 //! either `#[handler(msg = ..)]` or a [`Handler`] implementation. The type does
 //! not default to [`VoidMsg`] (purely to avoid some terrible error messages).
 //!
