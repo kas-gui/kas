@@ -33,7 +33,6 @@ stack_dst = ["kas-theme/stack_dst"]
 unsize = ["kas-theme/unsize"]
 
 [dependencies]
-kas-text = { version = "0.4.0" }
 bytemuck = "1.7.0"
 futures = "0.3"
 log = "0.4"
@@ -57,6 +56,11 @@ path = "../kas-theme"
 features = ["config"]
 version = "0.10.0"
 default-features = false
+
+[dependencies.kas-text]
+# version = "0.4.0"
+git = "https://github.com/kas-gui/kas-text.git"
+rev = "60db64b"
 
 [build-dependencies]
 glob = "0.3"

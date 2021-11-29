@@ -52,7 +52,10 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeApi {
     #[cfg(not(feature = "gat"))]
     type DrawHandle: DrawHandle;
     #[cfg(feature = "gat")]
-    type DrawHandle<'a>: DrawHandle;
+    type DrawHandle<'a>: DrawHandle
+    where
+        DS: 'a,
+        Self: 'a;
 
     /// Get current config
     fn config(&self) -> std::borrow::Cow<Self::Config>;
@@ -141,7 +144,10 @@ impl<T: Theme<DS>, DS: DrawSharedImpl> Theme<DS> for Box<T> {
     #[cfg(not(feature = "gat"))]
     type DrawHandle = <T as Theme<DS>>::DrawHandle;
     #[cfg(feature = "gat")]
-    type DrawHandle<'a> = <T as Theme<DS>>::DrawHandle<'a>;
+    type DrawHandle<'a>
+    where
+        T: 'a,
+    = <T as Theme<DS>>::DrawHandle<'a>;
 
     fn config(&self) -> std::borrow::Cow<Self::Config> {
         self.deref().config()
