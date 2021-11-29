@@ -6,7 +6,7 @@
 //! A row or column with run-time adjustable contents
 
 use kas::dir::{Down, Right};
-use kas::layout::{self, RulesSetter, RulesSolver};
+use kas::layout::{self, Visitor as _};
 use kas::{event, prelude::*};
 use std::ops::{Index, IndexMut};
 
@@ -204,26 +204,21 @@ widget! {
         }
     }
 
+    impl Self {
+        fn layout<'a>(&'a mut self) -> impl layout::Visitor + 'a {
+            let iter = self.widgets.iter_mut().map(|w| w.as_widget_mut()).enumerate();
+            layout::List::new(&mut self.data, self.direction, iter)
+        }
+    }
+
     impl Layout for Self {
         fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let dim = (self.direction, self.widgets.len());
-            let mut solver = layout::RowSolver::new(axis, dim, &mut self.data);
-            for (n, child) in self.widgets.iter_mut().enumerate() {
-                solver.for_child(&mut self.data, n, |axis| {
-                    child.size_rules(size_handle, axis)
-                });
-            }
-            solver.finish(&mut self.data)
+            self.layout().size_rules(size_handle, axis)
         }
 
         fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
-            let dim = (self.direction, self.widgets.len());
-            let mut setter = layout::RowSetter::<D, Vec<i32>, _>::new(rect, dim, align, &mut self.data);
-
-            for (n, child) in self.widgets.iter_mut().enumerate() {
-                child.set_rect(mgr, setter.child_rect(&mut self.data, n), align);
-            }
+            self.layout().set_rect(mgr, rect, align);
         }
 
         fn spatial_nav(

@@ -43,6 +43,7 @@ mod size_rules;
 mod size_types;
 mod sizer;
 mod storage;
+mod visitor;
 
 use crate::dir::{Direction, Directional};
 
@@ -59,6 +60,7 @@ pub use storage::{
     DynGridStorage, DynRowStorage, FixedGridStorage, FixedRowStorage, GridStorage, RowStorage,
     RowTemp, Storage,
 };
+pub use visitor::{List, Visitor};
 
 /// Information on which axis is being resized
 ///
