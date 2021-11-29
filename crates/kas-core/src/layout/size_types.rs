@@ -186,7 +186,7 @@ impl Default for AspectScaling {
 }
 
 /// Widget component for displaying a sprite
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct SpriteDisplay {
     /// Margins
     pub margins: MarginSelector,
@@ -200,18 +200,6 @@ pub struct SpriteDisplay {
     pub aspect: AspectScaling,
     /// Widget stretchiness
     pub stretch: Stretch,
-}
-
-impl Default for SpriteDisplay {
-    fn default() -> Self {
-        SpriteDisplay {
-            margins: MarginSelector::Outer,
-            size: Size::ZERO,
-            scaling: SpriteScaling::Integer,
-            aspect: AspectScaling::Fixed,
-            stretch: Stretch::None,
-        }
-    }
 }
 
 impl SpriteDisplay {

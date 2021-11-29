@@ -14,6 +14,7 @@ use thiserror::Error;
 use kas::cast::{Cast, Conv};
 use kas::draw::{ImageError, PassId};
 use kas::geom::{Quad, Size, Vec2};
+use kas::macros::autoimpl;
 
 fn to_vec2(p: guillotiere::Point) -> Vec2 {
     Vec2(p.x.cast(), p.y.cast())
@@ -300,52 +301,27 @@ impl<I: bytemuck::Pod> Pipeline<I> {
     }
 }
 
+#[autoimpl(Default)]
 #[derive(Clone, Debug)]
 struct AtlasPassData<I: bytemuck::Pod> {
     instances: Vec<I>,
     range: Range<u32>,
 }
 
-impl<I: bytemuck::Pod> Default for AtlasPassData<I> {
-    fn default() -> Self {
-        AtlasPassData {
-            instances: vec![],
-            range: 0..0,
-        }
-    }
-}
-
+#[autoimpl(Default)]
 #[derive(Clone, Debug)]
 struct PassData<I: bytemuck::Pod> {
     atlases: Vec<AtlasPassData<I>>,
     data_range: Range<u64>,
 }
 
-impl<I: bytemuck::Pod> Default for PassData<I> {
-    fn default() -> Self {
-        PassData {
-            atlases: vec![],
-            data_range: 0..0,
-        }
-    }
-}
-
 /// Per-window state
+#[autoimpl(Default)]
 #[derive(Debug)]
 pub struct Window<I: bytemuck::Pod> {
     passes: Vec<PassData<I>>,
     buffer: Option<wgpu::Buffer>,
     buffer_size: u64,
-}
-
-impl<I: bytemuck::Pod> Default for Window<I> {
-    fn default() -> Self {
-        Window {
-            passes: vec![],
-            buffer: None,
-            buffer_size: 0,
-        }
-    }
 }
 
 impl<I: bytemuck::Pod> Window<I> {

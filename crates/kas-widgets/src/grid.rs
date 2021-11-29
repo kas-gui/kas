@@ -46,6 +46,7 @@ widget! {
     /// ## Performance
     ///
     /// Most operations are `O(n)` in the number of children.
+    #[autoimpl(Default)]
     #[derive(Clone, Debug)]
     #[handler(msg=<W as Handler>::Msg)]
     pub struct Grid<W: Widget> {
@@ -55,18 +56,6 @@ widget! {
         widgets: Vec<(GridChildInfo, W)>,
         data: DynGridStorage,
         dim: (u32, u32, u32, u32),
-    }
-
-    impl Default for Self {
-        fn default() -> Self {
-            Grid {
-                first_id: Default::default(),
-                core: Default::default(),
-                widgets: Default::default(),
-                data: Default::default(),
-                dim: Default::default(),
-            }
-        }
     }
 
     impl WidgetChildren for Self {

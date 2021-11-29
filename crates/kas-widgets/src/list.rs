@@ -166,6 +166,7 @@ widget! {
     /// only a small number are visible at any one time).
     #[autoimpl(Clone where W: Clone)]
     #[autoimpl(Debug)]
+    #[autoimpl(Default where D: Default)]
     #[handler(msg=M)]
     pub struct GenericList<
         D: Directional,
@@ -179,22 +180,6 @@ widget! {
         data: layout::DynRowStorage,
         direction: D,
         _pd: std::marker::PhantomData<M>,
-    }
-
-    impl Default for Self
-    where
-        D: Default,
-    {
-        fn default() -> Self {
-            GenericList {
-                first_id: Default::default(),
-                core: Default::default(),
-                widgets: Default::default(),
-                data: Default::default(),
-                direction: Default::default(),
-                _pd: Default::default(),
-            }
-        }
     }
 
     impl WidgetChildren for Self {

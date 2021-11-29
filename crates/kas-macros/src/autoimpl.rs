@@ -25,6 +25,7 @@ mod kw {
 enum TraitMany {
     Clone(Span),
     Debug(Span),
+    Default(Span),
 }
 /// Traits targetting one field
 #[derive(Clone, Copy)]
@@ -48,6 +49,8 @@ fn class(ident: &Ident) -> Option<Class> {
         Some(Class::Many(TraitMany::Clone(ident.span())))
     } else if ident == "Debug" {
         Some(Class::Many(TraitMany::Debug(ident.span())))
+    } else if ident == "Default" {
+        Some(Class::Many(TraitMany::Default(ident.span())))
     } else if ident == "Deref" {
         Some(Class::One(TraitOne::Deref(ident.span())))
     } else if ident == "DerefMut" {
@@ -326,6 +329,37 @@ fn autoimpl_many(
                 toks.append_all(quote_spanned! {span=>
                     impl #impl_generics std::fmt::Debug for #ident #ty_generics #wc {
                         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                            #inner
+                        }
+                    }
+                });
+            }
+            TraitMany::Default(span) => {
+                let mut inner;
+                match item.fields {
+                    Fields::Named(ref fields) => {
+                        inner = quote! {};
+                        for field in fields.named.iter() {
+                            let field = field.ident.as_ref().unwrap();
+                            inner.append_all(quote! { #field: Default::default(), });
+                        }
+                        inner = quote! { #ident { #inner } };
+                    }
+                    Fields::Unnamed(ref fields) => {
+                        inner = quote! {};
+                        for _ in 0..fields.unnamed.len() {
+                            inner.append_all(quote! { Default::default(), });
+                        }
+                        inner = quote! { #ident(#inner) };
+                    }
+                    Fields::Unit => {
+                        inner = quote! { #ident };
+                    }
+                }
+                let wc = clause_to_toks(clause, item_wc, quote! { std::default::Default });
+                toks.append_all(quote_spanned! {span=>
+                    impl #impl_generics std::default::Default for #ident #ty_generics #wc {
+                        fn default() -> Self {
                             #inner
                         }
                     }

@@ -6,10 +6,12 @@
 //! Common pipeline parts
 
 use kas::cast::Conv;
+use kas::macros::autoimpl;
 use std::mem::size_of;
 use std::num::NonZeroU64;
 use std::ops::Range;
 
+#[autoimpl(Default)]
 #[derive(Clone, Debug)]
 struct PassData<V: bytemuck::Pod> {
     vertices: Vec<V>,
@@ -17,31 +19,12 @@ struct PassData<V: bytemuck::Pod> {
     data_range: Range<u64>,
 }
 
-impl<V: bytemuck::Pod> Default for PassData<V> {
-    fn default() -> Self {
-        PassData {
-            vertices: vec![],
-            count: 0,
-            data_range: 0..0,
-        }
-    }
-}
-
 /// Per-window state
+#[autoimpl(Default)]
 pub struct Window<V: bytemuck::Pod> {
     passes: Vec<PassData<V>>,
     buffer: Option<wgpu::Buffer>,
     buffer_size: u64,
-}
-
-impl<V: bytemuck::Pod> Default for Window<V> {
-    fn default() -> Self {
-        Window {
-            passes: vec![],
-            buffer: None,
-            buffer_size: 0,
-        }
-    }
 }
 
 impl<V: bytemuck::Pod> Window<V> {
