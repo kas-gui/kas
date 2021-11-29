@@ -55,30 +55,32 @@ impl EditGuard for ListEntryGuard {
     }
 }
 
-// The list entry
-//
-// Use of a compound listing here with five child widgets (RadioBox is a
-// compound widget) slows down list resizing significantly (more so in debug
-// builds).
-//
-// Use of an embedded RadioBox demonstrates another performance issue:
-// activating any RadioBox sends a message to all others using the same
-// UpdateHandle, which is quite slow with thousands of entries!
-// (This issue does not occur when RadioBoxes are independent.)
-#[derive(Clone, Debug, Widget)]
-#[layout(column)]
-#[handler(msg=EntryMsg)]
-struct ListEntry {
-    #[widget_core]
-    core: CoreData,
-    #[layout_data]
-    layout_data: <Self as kas::LayoutData>::Data,
-    #[widget]
-    label: StringLabel,
-    #[widget]
-    radio: RadioBox<EntryMsg>,
-    #[widget]
-    entry: EditBox<ListEntryGuard>,
+widget! {
+    // The list entry
+    //
+    // Use of a compound listing here with five child widgets (RadioBox is a
+    // compound widget) slows down list resizing significantly (more so in debug
+    // builds).
+    //
+    // Use of an embedded RadioBox demonstrates another performance issue:
+    // activating any RadioBox sends a message to all others using the same
+    // UpdateHandle, which is quite slow with thousands of entries!
+    // (This issue does not occur when RadioBoxes are independent.)
+    #[derive(Clone, Debug)]
+    #[layout(column)]
+    #[handler(msg=EntryMsg)]
+    struct ListEntry {
+        #[widget_core]
+        core: CoreData,
+        #[layout_data]
+        layout_data: <Self as kas::LayoutData>::Data,
+        #[widget]
+        label: StringLabel,
+        #[widget]
+        radio: RadioBox<EntryMsg>,
+        #[widget]
+        entry: EditBox<ListEntryGuard>,
+    }
 }
 
 impl ListEntry {
@@ -111,7 +113,7 @@ fn main() -> Result<(), kas::shell::Error> {
             #[widget] _ = TextButton::new_msg("↓↑", Control::Dir),
             n: usize = 3,
         }
-        impl {
+        impl Self {
             fn activate(&mut self, _: &mut Manager, n: usize) -> Control {
                 self.n = n;
                 Control::Set(n)
@@ -152,7 +154,7 @@ fn main() -> Result<(), kas::shell::Error> {
                 #[widget] _ = Filler::maximize(),
                 active: usize = 0,
             }
-            impl {
+            impl Self {
                 fn control(&mut self, mgr: &mut Manager, control: Control) {
                     match control {
                         Control::Set(len) => {

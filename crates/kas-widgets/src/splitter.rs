@@ -66,192 +66,207 @@ pub type RefColumnSplitter<'a, M> = RefSplitter<'a, Down, M>;
 /// See documentation of [`Splitter`] type.
 pub type RefSplitter<'a, D, M> = Splitter<D, &'a mut dyn Widget<Msg = M>>;
 
-/// A resizable row/column widget
-///
-/// Similar to [`crate::List`] but with draggable handles between items.
-// TODO: better doc
-#[derive(Clone, Default, Debug, Widget)]
-#[handler(send=noauto, msg=<W as event::Handler>::Msg)]
-#[widget(children=noauto)]
-pub struct Splitter<D: Directional, W: Widget> {
-    first_id: WidgetId,
-    #[widget_core]
-    core: CoreData,
-    widgets: Vec<W>,
-    handles: Vec<DragHandle>,
-    data: layout::DynRowStorage,
-    direction: D,
-}
+widget! {
+    /// A resizable row/column widget
+    ///
+    /// Similar to [`crate::List`] but with draggable handles between items.
+    // TODO: better doc
+    #[derive(Clone, Default, Debug)]
+    #[handler(msg=<W as event::Handler>::Msg)]
+    pub struct Splitter<D: Directional, W: Widget> {
+        first_id: WidgetId,
+        #[widget_core]
+        core: CoreData,
+        widgets: Vec<W>,
+        handles: Vec<DragHandle>,
+        data: layout::DynRowStorage,
+        direction: D,
+    }
 
-impl<D: Directional, W: Widget> WidgetChildren for Splitter<D, W> {
-    #[inline]
-    fn first_id(&self) -> WidgetId {
-        self.first_id
-    }
-    fn record_first_id(&mut self, id: WidgetId) {
-        self.first_id = id;
-    }
-    #[inline]
-    fn num_children(&self) -> usize {
-        self.widgets.len() + self.handles.len()
-    }
-    #[inline]
-    fn get_child(&self, index: usize) -> Option<&dyn WidgetConfig> {
-        if (index & 1) != 0 {
-            self.handles.get(index >> 1).map(|w| w.as_widget())
-        } else {
-            self.widgets.get(index >> 1).map(|w| w.as_widget())
+    impl WidgetChildren for Self {
+        #[inline]
+        fn first_id(&self) -> WidgetId {
+            self.first_id
         }
-    }
-    #[inline]
-    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
-        if (index & 1) != 0 {
-            self.handles.get_mut(index >> 1).map(|w| w.as_widget_mut())
-        } else {
-            self.widgets.get_mut(index >> 1).map(|w| w.as_widget_mut())
+        fn record_first_id(&mut self, id: WidgetId) {
+            self.first_id = id;
         }
-    }
-}
-
-impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        if self.widgets.is_empty() {
-            return SizeRules::EMPTY;
+        #[inline]
+        fn num_children(&self) -> usize {
+            self.widgets.len() + self.handles.len()
         }
-        assert_eq!(self.handles.len() + 1, self.widgets.len());
-
-        let handle_size = size_handle.separator().extract(axis);
-
-        let dim = (self.direction, self.num_children());
-        let mut solver = layout::RowSolver::new(axis, dim, &mut self.data);
-
-        let mut n = 0;
-        loop {
-            assert!(n < self.widgets.len());
-            let widgets = &mut self.widgets;
-            solver.for_child(&mut self.data, n << 1, |axis| {
-                widgets[n].size_rules(size_handle, axis)
-            });
-
-            if n >= self.handles.len() {
-                break;
+        #[inline]
+        fn get_child(&self, index: usize) -> Option<&dyn WidgetConfig> {
+            if (index & 1) != 0 {
+                self.handles.get(index >> 1).map(|w| w.as_widget())
+            } else {
+                self.widgets.get(index >> 1).map(|w| w.as_widget())
             }
-            solver.for_child(&mut self.data, (n << 1) + 1, |_axis| {
-                SizeRules::fixed(handle_size, (0, 0))
-            });
-            n += 1;
         }
-        solver.finish(&mut self.data)
-    }
-
-    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
-        self.core.rect = rect;
-        if self.widgets.is_empty() {
-            return;
-        }
-        assert!(self.handles.len() + 1 == self.widgets.len());
-
-        let dim = (self.direction, self.num_children());
-        let is_horiz = dim.0.is_horizontal();
-        let aa = if is_horiz { align.horiz } else { align.vert };
-        if aa.unwrap_or(Align::Stretch) != Align::Stretch {
-            warn!("Splitter: found alignment != Stretch");
-        }
-        let mut setter = layout::RowSetter::<D, Vec<i32>, _>::new(rect, dim, align, &mut self.data);
-
-        let mut n = 0;
-        loop {
-            assert!(n < self.widgets.len());
-            let align = AlignHints::default();
-            self.widgets[n].set_rect(mgr, setter.child_rect(&mut self.data, n << 1), align);
-
-            if n >= self.handles.len() {
-                break;
+        #[inline]
+        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
+            if (index & 1) != 0 {
+                self.handles.get_mut(index >> 1).map(|w| w.as_widget_mut())
+            } else {
+                self.widgets.get_mut(index >> 1).map(|w| w.as_widget_mut())
             }
-
-            // TODO(opt): calculate all maximal sizes simultaneously
-            let index = (n << 1) + 1;
-            let track = setter.maximal_rect_of(&mut self.data, index);
-            self.handles[n].set_rect(mgr, track, AlignHints::default());
-            let handle = setter.child_rect(&mut self.data, index);
-            let _ = self.handles[n].set_size_and_offset(handle.size, handle.pos - track.pos);
-
-            n += 1;
         }
     }
 
-    fn spatial_nav(&mut self, _: &mut Manager, _: bool, _: Option<usize>) -> Option<usize> {
-        None // handles are not navigable
-    }
+    impl Layout for Self {
+        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+            if self.widgets.is_empty() {
+                return SizeRules::EMPTY;
+            }
+            assert_eq!(self.handles.len() + 1, self.widgets.len());
 
-    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if !self.rect().contains(coord) {
-            return None;
-        }
+            let handle_size = size_handle.separator().extract(axis);
 
-        // find_child should gracefully handle the case that a coord is between
-        // widgets, so there's no harm (and only a small performance loss) in
-        // calling it twice.
+            let dim = (self.direction, self.num_children());
+            let mut solver = layout::RowSolver::new(axis, dim, &mut self.data);
 
-        let solver = layout::RowPositionSolver::new(self.direction);
-        if let Some(child) = solver.find_child(&self.widgets, coord) {
-            return child.find_id(coord).or(Some(self.id()));
-        }
-
-        let solver = layout::RowPositionSolver::new(self.direction);
-        if let Some(child) = solver.find_child(&self.handles, coord) {
-            return child.find_id(coord).or(Some(self.id()));
-        }
-
-        Some(self.id())
-    }
-
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-        // as with find_id, there's not much harm in invoking the solver twice
-
-        let solver = layout::RowPositionSolver::new(self.direction);
-        let disabled = disabled || self.is_disabled();
-        solver.for_children(&self.widgets, draw_handle.get_clip_rect(), |w| {
-            w.draw(draw_handle, mgr, disabled)
-        });
-
-        let solver = layout::RowPositionSolver::new(self.direction);
-        solver.for_children(&self.handles, draw_handle.get_clip_rect(), |w| {
-            draw_handle.separator(w.rect())
-        });
-    }
-}
-
-impl<D: Directional, W: Widget> event::SendEvent for Splitter<D, W> {
-    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        if !self.is_disabled() && !self.widgets.is_empty() {
-            assert!(self.handles.len() + 1 == self.widgets.len());
             let mut n = 0;
             loop {
                 assert!(n < self.widgets.len());
-                if id <= self.widgets[n].id() {
-                    return self.widgets[n].send(mgr, id, event);
-                }
+                let widgets = &mut self.widgets;
+                solver.for_child(&mut self.data, n << 1, |axis| {
+                    widgets[n].size_rules(size_handle, axis)
+                });
 
                 if n >= self.handles.len() {
                     break;
                 }
-                if id <= self.handles[n].id() {
-                    return self.handles[n]
-                        .send(mgr, id, event)
-                        .try_into()
-                        .unwrap_or_else(|_| {
-                            // Message is the new offset relative to the track;
-                            // the handle has already adjusted its position
-                            self.adjust_size(mgr, n);
-                            Response::None
-                        });
+                solver.for_child(&mut self.data, (n << 1) + 1, |_axis| {
+                    SizeRules::fixed(handle_size, (0, 0))
+                });
+                n += 1;
+            }
+            solver.finish(&mut self.data)
+        }
+
+        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+            self.core.rect = rect;
+            if self.widgets.is_empty() {
+                return;
+            }
+            assert!(self.handles.len() + 1 == self.widgets.len());
+
+            let dim = (self.direction, self.num_children());
+            let is_horiz = dim.0.is_horizontal();
+            let aa = if is_horiz { align.horiz } else { align.vert };
+            if aa.unwrap_or(Align::Stretch) != Align::Stretch {
+                warn!("Splitter: found alignment != Stretch");
+            }
+            let mut setter = layout::RowSetter::<D, Vec<i32>, _>::new(rect, dim, align, &mut self.data);
+
+            let mut n = 0;
+            loop {
+                assert!(n < self.widgets.len());
+                let align = AlignHints::default();
+                self.widgets[n].set_rect(mgr, setter.child_rect(&mut self.data, n << 1), align);
+
+                if n >= self.handles.len() {
+                    break;
                 }
+
+                // TODO(opt): calculate all maximal sizes simultaneously
+                let index = (n << 1) + 1;
+                let track = setter.maximal_rect_of(&mut self.data, index);
+                self.handles[n].set_rect(mgr, track, AlignHints::default());
+                let handle = setter.child_rect(&mut self.data, index);
+                let _ = self.handles[n].set_size_and_offset(handle.size, handle.pos - track.pos);
+
                 n += 1;
             }
         }
 
-        Response::Unhandled
+        fn spatial_nav(&mut self, _: &mut Manager, _: bool, _: Option<usize>) -> Option<usize> {
+            None // handles are not navigable
+        }
+
+        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) {
+                return None;
+            }
+
+            // find_child should gracefully handle the case that a coord is between
+            // widgets, so there's no harm (and only a small performance loss) in
+            // calling it twice.
+
+            let solver = layout::RowPositionSolver::new(self.direction);
+            if let Some(child) = solver.find_child(&self.widgets, coord) {
+                return child.find_id(coord).or(Some(self.id()));
+            }
+
+            let solver = layout::RowPositionSolver::new(self.direction);
+            if let Some(child) = solver.find_child(&self.handles, coord) {
+                return child.find_id(coord).or(Some(self.id()));
+            }
+
+            Some(self.id())
+        }
+
+        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+            // as with find_id, there's not much harm in invoking the solver twice
+
+            let solver = layout::RowPositionSolver::new(self.direction);
+            let disabled = disabled || self.is_disabled();
+            solver.for_children(&self.widgets, draw_handle.get_clip_rect(), |w| {
+                w.draw(draw_handle, mgr, disabled)
+            });
+
+            let solver = layout::RowPositionSolver::new(self.direction);
+            solver.for_children(&self.handles, draw_handle.get_clip_rect(), |w| {
+                draw_handle.separator(w.rect())
+            });
+        }
+    }
+
+    impl event::SendEvent for Self {
+        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+            if !self.is_disabled() && !self.widgets.is_empty() {
+                assert!(self.handles.len() + 1 == self.widgets.len());
+                let mut n = 0;
+                loop {
+                    assert!(n < self.widgets.len());
+                    if id <= self.widgets[n].id() {
+                        return self.widgets[n].send(mgr, id, event);
+                    }
+
+                    if n >= self.handles.len() {
+                        break;
+                    }
+                    if id <= self.handles[n].id() {
+                        return self.handles[n]
+                            .send(mgr, id, event)
+                            .try_into()
+                            .unwrap_or_else(|_| {
+                                // Message is the new offset relative to the track;
+                                // the handle has already adjusted its position
+                                self.adjust_size(mgr, n);
+                                Response::None
+                            });
+                    }
+                    n += 1;
+                }
+            }
+
+            Response::Unhandled
+        }
+    }
+
+    impl Index<usize> for Self {
+        type Output = W;
+
+        fn index(&self, index: usize) -> &Self::Output {
+            &self.widgets[index]
+        }
+    }
+
+    impl IndexMut<usize> for Self {
+        fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+            &mut self.widgets[index]
+        }
     }
 }
 
@@ -468,19 +483,5 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
             true => TkAction::empty(),
             false => TkAction::RECONFIGURE,
         }
-    }
-}
-
-impl<D: Directional, W: Widget> Index<usize> for Splitter<D, W> {
-    type Output = W;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.widgets[index]
-    }
-}
-
-impl<D: Directional, W: Widget> IndexMut<usize> for Splitter<D, W> {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.widgets[index]
     }
 }

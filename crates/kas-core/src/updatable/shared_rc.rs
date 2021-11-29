@@ -23,16 +23,8 @@ use std::rc::Rc;
 /// This wrapper adds an [`UpdateHandle`] and implements the [`Updatable`] and
 /// [`UpdatableHandler`] traits (the latter with a dummy implementation —
 /// if you need custom handlers you will need your own shared data type).
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct SharedRc<T: Debug>(Rc<(UpdateHandle, RefCell<T>)>);
-
-impl<T: Default + Debug> Default for SharedRc<T> {
-    fn default() -> Self {
-        let handle = UpdateHandle::new();
-        let data = Default::default();
-        SharedRc(Rc::new((handle, data)))
-    }
-}
 
 impl<T: Debug> SharedRc<T> {
     /// Construct with given data

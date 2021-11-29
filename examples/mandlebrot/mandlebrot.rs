@@ -273,190 +273,193 @@ impl PipeWindow {
     }
 }
 
-#[derive(Clone, Debug, kas :: macros :: Widget)]
-#[widget(config=noauto)]
-#[handler(handle=noauto)]
-struct Mandlebrot {
-    #[widget_core]
-    core: kas::CoreData,
-    alpha: DVec2,
-    delta: DVec2,
-    view_delta: DVec2,
-    view_alpha: f64,
-    rel_width: f32,
-    iter: i32,
-}
+widget! {
+    #[derive(Clone, Debug)]
+    struct Mandlebrot {
+        #[widget_core]
+        core: kas::CoreData,
+        alpha: DVec2,
+        delta: DVec2,
+        view_delta: DVec2,
+        view_alpha: f64,
+        rel_width: f32,
+        iter: i32,
+    }
 
-impl Mandlebrot {
-    fn new() -> Self {
-        Mandlebrot {
-            core: Default::default(),
-            alpha: DVec2(1.0, 0.0),
-            delta: DVec2(-0.5, 0.0),
-            view_delta: DVec2::ZERO,
-            view_alpha: 0.0,
-            rel_width: 0.0,
-            iter: 64,
+    impl Mandlebrot {
+        fn new() -> Self {
+            Mandlebrot {
+                core: Default::default(),
+                alpha: DVec2(1.0, 0.0),
+                delta: DVec2(-0.5, 0.0),
+                view_delta: DVec2::ZERO,
+                view_alpha: 0.0,
+                rel_width: 0.0,
+                iter: 64,
+            }
+        }
+
+        fn reset_view(&mut self) {
+            self.alpha = DVec2(1.0, 0.0);
+            self.delta = DVec2(-0.5, 0.0);
+        }
+
+        fn loc(&self) -> String {
+            let op = if self.delta.1 < 0.0 { "−" } else { "+" };
+            format!(
+                "Location: {} {} {}i; scale: {}",
+                self.delta.0,
+                op,
+                self.delta.1.abs(),
+                self.alpha.sum_square().sqrt()
+            )
         }
     }
 
-    fn reset_view(&mut self) {
-        self.alpha = DVec2(1.0, 0.0);
-        self.delta = DVec2(-0.5, 0.0);
+    impl WidgetConfig for Mandlebrot {
+        fn configure(&mut self, mgr: &mut Manager) {
+            mgr.register_nav_fallback(self.id());
+        }
     }
 
-    fn loc(&self) -> String {
-        let op = if self.delta.1 < 0.0 { "−" } else { "+" };
-        format!(
-            "Location: {} {} {}i; scale: {}",
-            self.delta.0,
-            op,
-            self.delta.1.abs(),
-            self.alpha.sum_square().sqrt()
-        )
-    }
-}
+    impl Layout for Mandlebrot {
+        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, a: AxisInfo) -> SizeRules {
+            let min = if a.is_horizontal() { 300.0 } else { 200.0 };
+            let ideal = min * 10.0; // prefer big but not larger than screen size
+            let sf = size_handle.scale_factor();
+            SizeRules::new_scaled(min, ideal, 0.0, Stretch::High, sf)
+        }
 
-impl WidgetConfig for Mandlebrot {
-    fn configure(&mut self, mgr: &mut Manager) {
-        mgr.register_nav_fallback(self.id());
-    }
-}
+        #[inline]
+        fn set_rect(&mut self, _: &mut Manager, rect: Rect, _: AlignHints) {
+            self.core.rect = rect;
+            let size = DVec2::from(rect.size);
+            let rel_width = DVec2(size.0 / size.1, 1.0);
+            self.view_alpha = 2.0 / size.1;
+            self.view_delta = -(DVec2::from(rect.pos) * 2.0 + size) / size.1;
+            self.rel_width = rel_width.0 as f32;
+        }
 
-impl Layout for Mandlebrot {
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, a: AxisInfo) -> SizeRules {
-        let min = if a.is_horizontal() { 300.0 } else { 200.0 };
-        let ideal = min * 10.0; // prefer big but not larger than screen size
-        let sf = size_handle.scale_factor();
-        SizeRules::new_scaled(min, ideal, 0.0, Stretch::High, sf)
-    }
-
-    #[inline]
-    fn set_rect(&mut self, _: &mut Manager, rect: Rect, _: AlignHints) {
-        self.core.rect = rect;
-        let size = DVec2::from(rect.size);
-        let rel_width = DVec2(size.0 / size.1, 1.0);
-        self.view_alpha = 2.0 / size.1;
-        self.view_delta = -(DVec2::from(rect.pos) * 2.0 + size) / size.1;
-        self.rel_width = rel_width.0 as f32;
+        fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {
+            let draw = draw_handle.draw_device();
+            let draw = DrawIface::<DrawPipe<Pipe>>::downcast_from(draw).unwrap();
+            let p = (self.alpha, self.delta, self.rel_width, self.iter);
+            draw.draw.custom(draw.get_pass(), self.core.rect, p);
+        }
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {
-        let draw = draw_handle.draw_device();
-        let draw = DrawIface::<DrawPipe<Pipe>>::downcast_from(draw).unwrap();
-        let p = (self.alpha, self.delta, self.rel_width, self.iter);
-        draw.draw.custom(draw.get_pass(), self.core.rect, p);
-    }
-}
+    impl event::Handler for Mandlebrot {
+        type Msg = ();
 
-impl event::Handler for Mandlebrot {
-    type Msg = ();
-
-    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
-        match event {
-            Event::Command(cmd, _) => {
-                match cmd {
-                    Command::Home | Command::End => self.reset_view(),
-                    Command::PageUp => self.alpha = self.alpha / 2f64.sqrt(),
-                    Command::PageDown => self.alpha = self.alpha * 2f64.sqrt(),
-                    cmd => {
-                        let d = 0.2;
-                        let delta = match cmd {
-                            Command::Up => DVec2(0.0, -d),
-                            Command::Down => DVec2(0.0, d),
-                            Command::Left => DVec2(-d, 0.0),
-                            Command::Right => DVec2(d, 0.0),
-                            _ => return Response::Unhandled,
-                        };
-                        self.delta += self.alpha.complex_mul(delta);
+        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+            match event {
+                Event::Command(cmd, _) => {
+                    match cmd {
+                        Command::Home | Command::End => self.reset_view(),
+                        Command::PageUp => self.alpha = self.alpha / 2f64.sqrt(),
+                        Command::PageDown => self.alpha = self.alpha * 2f64.sqrt(),
+                        cmd => {
+                            let d = 0.2;
+                            let delta = match cmd {
+                                Command::Up => DVec2(0.0, -d),
+                                Command::Down => DVec2(0.0, d),
+                                Command::Left => DVec2(-d, 0.0),
+                                Command::Right => DVec2(d, 0.0),
+                                _ => return Response::Unhandled,
+                            };
+                            self.delta += self.alpha.complex_mul(delta);
+                        }
                     }
+                    mgr.redraw(self.id());
+                    Response::Msg(())
                 }
-                mgr.redraw(self.id());
-                Response::Msg(())
-            }
-            Event::Scroll(delta) => {
-                let factor = match delta {
-                    event::ScrollDelta::LineDelta(_, y) => -0.5 * y as f64,
-                    event::ScrollDelta::PixelDelta(coord) => -0.01 * coord.1 as f64,
-                };
-                self.alpha = self.alpha * 2f64.powf(factor);
-                mgr.redraw(self.id());
-                Response::Msg(())
-            }
-            Event::Pan { alpha, delta } => {
-                // Our full transform (from screen coordinates to world coordinates) is:
-                // f(p) = α_w * α_v * p + α_w * δ_v + δ_w
-                // where _w indicate world transforms (self.alpha, self.delta)
-                // and _v indicate view transforms (see notes in PipeWindow::invoke).
-                //
-                // To adjust the world offset (in reverse), we use the following formulae:
-                // α_w' = (1/α) * α_w
-                // δ_w' = δ_w - α_w' * α_v * δ + (α_w - α_w') δ_v
-                // where x' is the "new x".
-                let new_alpha = self.alpha.complex_div(alpha);
-                self.delta = self.delta - new_alpha.complex_mul(delta) * self.view_alpha
-                    + (self.alpha - new_alpha).complex_mul(self.view_delta);
-                self.alpha = new_alpha;
+                Event::Scroll(delta) => {
+                    let factor = match delta {
+                        event::ScrollDelta::LineDelta(_, y) => -0.5 * y as f64,
+                        event::ScrollDelta::PixelDelta(coord) => -0.01 * coord.1 as f64,
+                    };
+                    self.alpha = self.alpha * 2f64.powf(factor);
+                    mgr.redraw(self.id());
+                    Response::Msg(())
+                }
+                Event::Pan { alpha, delta } => {
+                    // Our full transform (from screen coordinates to world coordinates) is:
+                    // f(p) = α_w * α_v * p + α_w * δ_v + δ_w
+                    // where _w indicate world transforms (self.alpha, self.delta)
+                    // and _v indicate view transforms (see notes in PipeWindow::invoke).
+                    //
+                    // To adjust the world offset (in reverse), we use the following formulae:
+                    // α_w' = (1/α) * α_w
+                    // δ_w' = δ_w - α_w' * α_v * δ + (α_w - α_w') δ_v
+                    // where x' is the "new x".
+                    let new_alpha = self.alpha.complex_div(alpha);
+                    self.delta = self.delta - new_alpha.complex_mul(delta) * self.view_alpha
+                        + (self.alpha - new_alpha).complex_mul(self.view_delta);
+                    self.alpha = new_alpha;
 
-                mgr.redraw(self.id());
-                Response::Msg(())
+                    mgr.redraw(self.id());
+                    Response::Msg(())
+                }
+                Event::PressStart { source, coord, .. } => {
+                    mgr.request_grab(
+                        self.id(),
+                        source,
+                        coord,
+                        event::GrabMode::PanFull,
+                        Some(event::CursorIcon::Grabbing),
+                    );
+                    Response::None
+                }
+                _ => Response::None,
             }
-            Event::PressStart { source, coord, .. } => {
-                mgr.request_grab(
-                    self.id(),
-                    source,
-                    coord,
-                    event::GrabMode::PanFull,
-                    Some(event::CursorIcon::Grabbing),
-                );
-                Response::None
-            }
-            _ => Response::None,
         }
     }
 }
 
-#[derive(Debug, Widget)]
-#[layout(grid)]
-#[handler(msg = event::VoidMsg)]
-struct MandlebrotWindow {
-    #[widget_core]
-    core: CoreData,
-    #[layout_data]
-    layout_data: <Self as kas::LayoutData>::Data,
-    #[widget(cspan = 2)]
-    label: Label<String>,
-    #[widget(row=1, halign=centre)]
-    iters: ReserveP<Label<String>>,
-    #[widget(row=2, use_msg = iter)]
-    slider: Slider<i32, kas::dir::Up>,
-    // extra col span allows use of Label's margin
-    #[widget(col=1, cspan=2, row=1, rspan=2, use_msg = mbrot)]
-    mbrot: Mandlebrot,
-}
-impl MandlebrotWindow {
-    fn new_window() -> Window<MandlebrotWindow> {
-        let slider = Slider::new(0, 256, 1).with_value(64);
-        let mbrot = Mandlebrot::new();
-        let w = MandlebrotWindow {
-            core: Default::default(),
-            layout_data: Default::default(),
-            label: Label::new(mbrot.loc()),
-            iters: ReserveP::new(Label::from("64"), |size_handle, axis| {
-                Label::new("000").size_rules(size_handle, axis)
-            }),
-            slider,
-            mbrot,
-        };
-        Window::new("Mandlebrot", w)
+widget! {
+    #[derive(Debug)]
+    #[layout(grid)]
+    #[handler(msg = event::VoidMsg)]
+    struct MandlebrotWindow {
+        #[widget_core]
+        core: CoreData,
+        #[layout_data]
+        layout_data: <Self as kas::LayoutData>::Data,
+        #[widget(cspan = 2)]
+        label: Label<String>,
+        #[widget(row=1, halign=centre)]
+        iters: ReserveP<Label<String>>,
+        #[widget(row=2, use_msg = iter)]
+        slider: Slider<i32, kas::dir::Up>,
+        // extra col span allows use of Label's margin
+        #[widget(col=1, cspan=2, row=1, rspan=2, use_msg = mbrot)]
+        mbrot: Mandlebrot,
     }
 
-    fn iter(&mut self, mgr: &mut Manager, iter: i32) {
-        self.mbrot.iter = iter;
-        *mgr |= self.iters.set_string(format!("{}", iter));
-    }
-    fn mbrot(&mut self, mgr: &mut Manager, _: ()) {
-        *mgr |= self.label.set_string(self.mbrot.loc());
+    impl MandlebrotWindow {
+        fn new_window() -> Window<MandlebrotWindow> {
+            let slider = Slider::new(0, 256, 1).with_value(64);
+            let mbrot = Mandlebrot::new();
+            let w = MandlebrotWindow {
+                core: Default::default(),
+                layout_data: Default::default(),
+                label: Label::new(mbrot.loc()),
+                iters: ReserveP::new(Label::from("64"), |size_handle, axis| {
+                    Label::new("000").size_rules(size_handle, axis)
+                }),
+                slider,
+                mbrot,
+            };
+            Window::new("Mandlebrot", w)
+        }
+
+        fn iter(&mut self, mgr: &mut Manager, iter: i32) {
+            self.mbrot.iter = iter;
+            *mgr |= self.iters.set_string(format!("{}", iter));
+        }
+        fn mbrot(&mut self, mgr: &mut Manager, _: ()) {
+            *mgr |= self.label.set_string(self.mbrot.loc());
+        }
     }
 }
 

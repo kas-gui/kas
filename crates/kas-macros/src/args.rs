@@ -3,20 +3,18 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use std::collections::HashMap;
-
 use proc_macro2::{Punct, Spacing, Span, TokenStream, TokenTree};
-use proc_macro_error::{emit_error, emit_warning};
+use proc_macro_error::{abort, emit_error, emit_warning};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::token::{Brace, Colon, Comma, Eq, For, Impl, Paren};
+use syn::token::{Brace, Colon, Comma, Eq, For, Impl, Paren, Semi};
 use syn::{braced, bracketed, parenthesized, parse_quote};
 use syn::{
-    Attribute, ConstParam, Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed,
-    GenericParam, Generics, Ident, Index, Lifetime, LifetimeDef, Lit, Member, Token, Type,
-    TypeParam, TypePath, TypeTraitObject,
+    AttrStyle, Attribute, ConstParam, Expr, Field, Fields, FieldsNamed, GenericParam, Generics,
+    Ident, Index, ItemImpl, Lifetime, LifetimeDef, Lit, Member, Path, Token, Type, TypeParam,
+    TypePath, TypeTraitObject, Visibility,
 };
 
 #[derive(Debug)]
@@ -26,171 +24,325 @@ pub struct Child {
 }
 
 #[derive(Debug)]
-pub struct Args {
+pub struct Widget {
+    pub attr_widget: WidgetArgs,
+    pub attr_layout: Option<LayoutArgs>,
+    pub attr_handler: Option<HandlerArgs>,
+    pub extra_attrs: Vec<Attribute>,
+
+    pub vis: Visibility,
+    pub token: Token![struct],
+    pub ident: Ident,
+    pub generics: Generics,
+    pub fields: Fields,
+    pub semi_token: Option<Semi>,
+
     pub core_data: Option<Member>,
     pub layout_data: Option<Member>,
-    pub inner: Option<(Member, Type)>,
-    pub derive: WidgetDerive,
-    pub widget: WidgetArgs,
-    pub layout: Option<LayoutArgs>,
-    pub handler: Vec<HandlerArgs>,
     pub children: Vec<Child>,
+
+    pub extra_impls: Vec<ItemImpl>,
 }
 
-pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
-    let not_struct_err = |span| {
-        Err(Error::new(
-            span,
-            "cannot derive Widget on an enum, union or unit struct",
-        ))
-    };
-    let (fields, span) = match &mut ast.data {
-        Data::Struct(data) => match &mut data.fields {
-            Fields::Named(FieldsNamed {
-                brace_token: Brace { span },
-                named: fields,
-            })
-            | Fields::Unnamed(FieldsUnnamed {
-                paren_token: Paren { span },
-                unnamed: fields,
-            }) => (fields, span),
-            Fields::Unit => return not_struct_err(data.struct_token.span()),
-        },
-        Data::Enum(data) => return not_struct_err(data.enum_token.span()),
-        Data::Union(data) => return not_struct_err(data.union_token.span()),
-    };
+impl Parse for Widget {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let mut attr_widget = None;
+        let mut attr_layout = None;
+        let mut attr_handler = None;
+        let mut extra_attrs = Vec::new();
 
-    let mut core_data = None;
-    let mut layout_data = None;
-    let mut inner = None;
-    let mut children = vec![];
-
-    for (i, field) in fields.iter_mut().enumerate() {
-        for attr in field.attrs.drain(..) {
-            if attr.path == parse_quote! { layout } || attr.path == parse_quote! { handler } {
-                // These are valid attributes according to proc_macro_derive, so we need to catch them
-                emit_error!(
-                    attr.span(),
-                    "invalid attribute on Widget field (applicable to struct only)"
-                );
-            } else if attr.path == parse_quote! { widget_core } {
-                if core_data.is_none() {
-                    core_data = Some(member(i, field.ident.clone()));
+        let mut attrs = input.call(Attribute::parse_outer)?;
+        for attr in attrs.drain(..) {
+            if attr.path == parse_quote! { widget } {
+                if attr_widget.is_none() {
+                    let _span = attr.span();
+                    let w: WidgetArgs = syn::parse2(attr.tokens)?;
+                    attr_widget = Some(w);
                 } else {
-                    emit_error!(attr.span(), "multiple fields marked with #[widget_core]");
+                    emit_error!(attr.span(), "multiple #[widget(..)] attributes on type");
                 }
-            } else if attr.path == parse_quote! { layout_data } {
-                if layout_data.is_some() {
-                    emit_error!(attr.span(), "multiple fields marked with #[layout_data]");
-                } else if field.ty != parse_quote! { <Self as kas::LayoutData>::Data }
-                    && field.ty != parse_quote! { <Self as ::kas::LayoutData>::Data }
-                    && field.ty != parse_quote! { <Self as LayoutData>::Data }
-                {
-                    emit_warning!(
-                        field.ty.span(),
-                        "expected type `<Self as kas::LayoutData>::Data`"
-                    );
+            } else if attr.path == parse_quote! { layout } {
+                if attr_layout.is_some() {
+                    emit_error!(attr.span(), "multiple #[layout(..)] attributes on type");
                 } else {
-                    layout_data = Some(member(i, field.ident.clone()));
+                    attr_layout = Some(syn::parse2(attr.tokens)?);
                 }
-            } else if attr.path == parse_quote! { widget_derive } {
-                if inner.is_none() {
-                    inner = Some((member(i, field.ident.clone()), field.ty.clone()));
+            } else if attr.path == parse_quote! { handler } {
+                if attr_handler.is_some() {
+                    emit_error!(attr.span(), "multiple #[handler(..)] attributes on type");
                 } else {
-                    emit_error!(attr.span(), "multiple fields marked with #[widget_derive]");
+                    attr_handler = Some(syn::parse2(attr.tokens)?);
                 }
-            } else if attr.path == parse_quote! { widget } {
-                let ident = member(i, field.ident.clone());
-                let args = syn::parse2(attr.tokens)?;
-                children.push(Child { ident, args });
+            } else {
+                extra_attrs.push(attr);
             }
         }
-    }
 
-    if core_data.is_none() && inner.is_none() {
-        return Err(Error::new(
-            *span,
-            "require a field with #[widget_core] or a field with #[widget_derive] or both",
-        ));
-    }
-    if core_data.is_none() && (layout_data.is_some() || !children.is_empty()) {
-        return Err(Error::new(
-            *span,
-            "require a field with #[widget_core] when using #[layout_data] or #[widget]",
-        ));
-    }
+        let vis = input.parse::<Visibility>()?;
+        let token = input.parse::<Token![struct]>()?;
+        let ident = input.parse::<Ident>()?;
 
-    let mut derive = None;
-    let mut widget = None;
-    let mut layout = None;
-    let mut handler = vec![];
+        let mut generics = input.parse::<Generics>()?;
+        let (mut fields, semi_token) = {
+            let mut lookahead = input.lookahead1();
+            if lookahead.peek(Token![where]) {
+                generics.where_clause = Some(input.parse()?);
+                lookahead = input.lookahead1();
+            }
 
-    for attr in ast.attrs.drain(..) {
-        if attr.path == parse_quote! { widget_core } || attr.path == parse_quote! { layout_data } {
-            // These are valid attributes according to proc_macro_derive, so we need to catch them
+            if generics.where_clause.is_none() && lookahead.peek(Paren) {
+                let fields = input.parse()?;
+
+                lookahead = input.lookahead1();
+                if lookahead.peek(Token![where]) {
+                    generics.where_clause = Some(input.parse()?);
+                    lookahead = input.lookahead1();
+                }
+
+                if lookahead.peek(Token![;]) {
+                    let semi = input.parse()?;
+                    (Fields::Unnamed(fields), Some(semi))
+                } else {
+                    return Err(lookahead.error());
+                }
+            } else if lookahead.peek(Brace) {
+                let content;
+                let brace_token = braced!(content in input);
+                let named = content.parse_terminated(Field::parse_named)?;
+                let fields = Fields::Named(FieldsNamed { brace_token, named });
+                (fields, None)
+            } else {
+                return Err(lookahead.error());
+            }
+        };
+
+        let mut extra_impls = Vec::new();
+        while !input.is_empty() {
+            extra_impls.push(parse_impl(Some(&ident), input)?);
+        }
+
+        let mut core_data = None;
+        let mut layout_data = None;
+        let mut children = Vec::new();
+
+        for (i, field) in fields.iter_mut().enumerate() {
+            let mut other_attrs = Vec::with_capacity(field.attrs.len());
+            for attr in field.attrs.drain(..) {
+                if attr.path == parse_quote! { widget_core } {
+                    if core_data.is_none() {
+                        core_data = Some(member(i, field.ident.clone()));
+                    } else {
+                        emit_error!(attr.span(), "multiple fields marked with #[widget_core]");
+                    }
+                } else if attr.path == parse_quote! { layout_data } {
+                    if layout_data.is_some() {
+                        emit_error!(attr.span(), "multiple fields marked with #[layout_data]");
+                    } else if field.ty != parse_quote! { <Self as kas::LayoutData>::Data }
+                        && field.ty != parse_quote! { <Self as ::kas::LayoutData>::Data }
+                        && field.ty != parse_quote! { <Self as LayoutData>::Data }
+                    {
+                        emit_warning!(
+                            field.ty.span(),
+                            "expected type `<Self as kas::LayoutData>::Data`"
+                        );
+                    } else {
+                        layout_data = Some(member(i, field.ident.clone()));
+                    }
+                } else if attr.path == parse_quote! { widget } {
+                    let ident = member(i, field.ident.clone());
+                    let args = syn::parse2(attr.tokens)?;
+                    children.push(Child { ident, args });
+                } else {
+                    other_attrs.push(attr);
+                }
+            }
+            field.attrs = other_attrs;
+        }
+
+        let attr_widget = attr_widget.unwrap_or_default();
+
+        if core_data.is_none() {
+            if attr_widget.derive.is_none() {
+                emit_error!(
+                    fields.span(),
+                    "require a field with #[widget_core] or #[widget(derive = FIELD)]",
+                );
+            }
+            if layout_data.is_some() || !children.is_empty() {
+                emit_error!(
+                    fields.span(),
+                    "require a field with #[widget_core] when using #[layout_data] or #[widget]",
+                );
+            }
+        }
+
+        if core_data.is_some() && attr_widget.derive.is_some() {
             emit_error!(
-                attr.span(),
-                "invalid attribute on Widget struct (applicable to fields only)"
+                fields.span(),
+                "usage of field with #[widget_core] conflicts with #[widget(derive=FIELD)]",
             );
-        } else if attr.path == parse_quote! { widget_derive } {
-            if inner.is_none() {
-                emit_error!(attr.span(), "usage of #[widget_derive(..)] on struct without a field marked with #[widget_derive]");
+        }
+
+        Ok(Widget {
+            attr_widget,
+            attr_layout,
+            attr_handler,
+            extra_attrs,
+            vis,
+            token,
+            ident,
+            generics,
+            fields,
+            semi_token,
+            core_data,
+            layout_data,
+            children,
+            extra_impls,
+        })
+    }
+}
+
+/// Prints out the widget struct, but not other fields
+impl ToTokens for Widget {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        tokens.append_all(self.extra_attrs.iter());
+        self.vis.to_tokens(tokens);
+        self.token.to_tokens(tokens);
+        self.ident.to_tokens(tokens);
+        self.generics.to_tokens(tokens);
+        match &self.fields {
+            Fields::Named(fields) => {
+                self.generics.where_clause.to_tokens(tokens);
+                fields.to_tokens(tokens);
             }
-            if derive.is_none() {
-                derive = Some(syn::parse2(attr.tokens)?);
+            Fields::Unnamed(fields) => {
+                fields.to_tokens(tokens);
+                self.generics.where_clause.to_tokens(tokens);
+                self.semi_token.unwrap_or_default().to_tokens(tokens);
+            }
+            Fields::Unit => {
+                unreachable!()
+                // self.generics.where_clause.to_tokens(tokens);
+                // self.semi_token.unwrap_or_default().to_tokens(tokens);
+            }
+        }
+    }
+}
+
+fn parse_impl(in_ident: Option<&Ident>, input: ParseStream) -> Result<ItemImpl> {
+    let mut attrs = input.call(Attribute::parse_outer)?;
+    let defaultness: Option<Token![default]> = input.parse()?;
+    let unsafety: Option<Token![unsafe]> = input.parse()?;
+    let impl_token: Token![impl] = input.parse()?;
+
+    let has_generics = input.peek(Token![<])
+        && (input.peek2(Token![>])
+            || input.peek2(Token![#])
+            || (input.peek2(Ident) || input.peek2(Lifetime))
+                && (input.peek3(Token![:])
+                    || input.peek3(Token![,])
+                    || input.peek3(Token![>])
+                    || input.peek3(Token![=]))
+            || input.peek2(Token![const]));
+    let mut generics: Generics = if has_generics {
+        input.parse()?
+    } else {
+        Generics::default()
+    };
+
+    let mut first_ty: Type = input.parse()?;
+    let self_ty: Type;
+    let trait_;
+
+    let is_impl_for = input.peek(Token![for]);
+    if is_impl_for {
+        let for_token: Token![for] = input.parse()?;
+        let mut first_ty_ref = &first_ty;
+        while let Type::Group(ty) = first_ty_ref {
+            first_ty_ref = &ty.elem;
+        }
+        if let Type::Path(_) = first_ty_ref {
+            while let Type::Group(ty) = first_ty {
+                first_ty = *ty.elem;
+            }
+            if let Type::Path(TypePath { qself: None, path }) = first_ty {
+                trait_ = Some((None, path, for_token));
             } else {
-                emit_error!(
-                    attr.span(),
-                    "multiple #[widget_derive(..)] attributes on type"
-                );
+                unreachable!();
             }
-        } else if attr.path == parse_quote! { widget } {
-            if widget.is_none() {
-                let _span = attr.span();
-                let w: WidgetArgs = syn::parse2(attr.tokens)?;
-                if core_data.is_none() && !w.children {
-                    emit_error!(_span, "it is required to derive WidgetChildren when deriving from an inner widget");
+        } else {
+            return Err(Error::new(for_token.span(), "for without target trait"));
+        }
+        self_ty = input.parse()?;
+    } else {
+        trait_ = None;
+        self_ty = first_ty;
+    }
+
+    generics.where_clause = input.parse()?;
+
+    if self_ty != parse_quote! { Self } {
+        if let Some(ident) = in_ident {
+            if !matches!(self_ty, Type::Path(TypePath {
+                qself: None,
+                path: Path {
+                    leading_colon: None,
+                    ref segments,
                 }
-                widget = Some(w);
-            } else {
-                emit_error!(attr.span(), "multiple #[widget(..)] attributes on type");
-            }
-        } else if attr.path == parse_quote! { layout } {
-            if layout.is_some() {
-                emit_error!(attr.span(), "multiple #[layout(..)] attributes on type");
-            } else if core_data.is_none() {
-                emit_error!(
-                    attr.span(),
-                    "require a field with #[widget_core] when using #[layout(..)]"
+            }) if segments.len() == 1 && segments.first().unwrap().ident == *ident)
+            {
+                abort!(
+                    self_ty.span(),
+                    format!(
+                        "expected `Self` or `{0}` or `{0}<...>` or `Trait for Self`, etc",
+                        ident
+                    )
                 );
-            } else {
-                layout = Some(syn::parse2(attr.tokens)?);
             }
-        } else if attr.path == parse_quote! { handler } {
-            handler.push(syn::parse2(attr.tokens)?);
+        } else {
+            abort!(self_ty.span(), "expected `Self` or `Trait for Self`");
         }
     }
 
-    if core_data.is_some() && inner.is_some() && derive.is_none() {
-        return Err(Error::new(
-            *span,
-            "usage of #[widget_derive] field with #[widget_core] field and without #[widget_derive(..)] on struct has no effect",
-        ));
+    let content;
+    let brace_token = braced!(content in input);
+    parse_attrs_inner(&content, &mut attrs)?;
+
+    let mut items = Vec::new();
+    while !content.is_empty() {
+        items.push(content.parse()?);
     }
 
-    let derive = derive.unwrap_or_default();
-    let widget = widget.unwrap_or_default();
-
-    Ok(Args {
-        core_data,
-        layout_data,
-        inner,
-        derive,
-        widget,
-        layout,
-        handler,
-        children,
+    Ok(ItemImpl {
+        attrs,
+        defaultness,
+        unsafety,
+        impl_token,
+        generics,
+        trait_,
+        self_ty: Box::new(self_ty),
+        brace_token,
+        items,
     })
+}
+
+fn parse_attrs_inner(input: ParseStream, attrs: &mut Vec<Attribute>) -> Result<()> {
+    while input.peek(Token![#]) && input.peek2(Token![!]) {
+        let pound_token = input.parse()?;
+        let style = AttrStyle::Inner(input.parse()?);
+        let content;
+        let bracket_token = bracketed!(content in input);
+        let path = content.call(Path::parse_mod_style)?;
+        let tokens = content.parse()?;
+        attrs.push(Attribute {
+            pound_token,
+            style,
+            bracket_token,
+            path,
+            tokens,
+        });
+    }
+    Ok(())
 }
 
 fn member(index: usize, ident: Option<Ident>) -> Member {
@@ -237,75 +389,25 @@ mod kw {
     custom_keyword!(handle);
     custom_keyword!(send);
     custom_keyword!(config);
-    custom_keyword!(noauto);
     custom_keyword!(children);
     custom_keyword!(column);
     custom_keyword!(draw);
-    custom_keyword!(HasBool);
-    custom_keyword!(HasStr);
-    custom_keyword!(HasString);
-    custom_keyword!(SetAccel);
-    custom_keyword!(class_traits);
-    custom_keyword!(Deref);
-    custom_keyword!(DerefMut);
+    custom_keyword!(derive);
 }
 
 #[derive(Debug, Default)]
-pub struct WidgetDerive {
-    pub has_bool: bool,
-    pub has_str: bool,
-    pub has_string: bool,
-    pub set_accel: bool,
-    pub deref: bool,
-    pub deref_mut: bool,
-}
+pub struct WidgetDerive;
 
 impl Parse for WidgetDerive {
     fn parse(input: ParseStream) -> Result<Self> {
         // Note: this parser deliberately cannot return WidgetDerive::default()
-        let mut derive = WidgetDerive::default();
+        let derive = WidgetDerive::default();
         let content;
         let _ = parenthesized!(content in input);
 
-        loop {
-            let lookahead = content.lookahead1();
-            if !derive.has_bool && lookahead.peek(kw::HasBool) {
-                let _: kw::HasBool = content.parse()?;
-                derive.has_bool = true;
-            } else if !derive.has_str && lookahead.peek(kw::HasStr) {
-                let _: kw::HasStr = content.parse()?;
-                derive.has_str = true;
-            } else if !derive.has_string && lookahead.peek(kw::HasString) {
-                let _: kw::HasString = content.parse()?;
-                derive.has_string = true;
-            } else if !derive.set_accel && lookahead.peek(kw::SetAccel) {
-                let _: kw::SetAccel = content.parse()?;
-                derive.set_accel = true;
-            } else if !derive.has_bool
-                && !derive.has_str
-                && !derive.has_string
-                && !derive.set_accel
-                && lookahead.peek(kw::class_traits)
-            {
-                let _: kw::class_traits = content.parse()?;
-                derive.has_bool = true;
-                derive.has_str = true;
-                derive.has_string = true;
-                derive.set_accel = true;
-            } else if !derive.deref && lookahead.peek(kw::Deref) {
-                let _: kw::Deref = content.parse()?;
-                derive.deref = true;
-            } else if !derive.deref_mut && lookahead.peek(kw::DerefMut) {
-                let _: kw::DerefMut = content.parse()?;
-                derive.deref_mut = true;
-            } else {
-                return Err(lookahead.error());
-            }
-
-            if content.is_empty() {
-                break;
-            }
-            let _: Comma = content.parse()?;
+        let lookahead = content.lookahead1();
+        if !content.is_empty() {
+            return Err(lookahead.error());
         }
 
         Ok(derive)
@@ -586,14 +688,14 @@ impl ToTokens for GridPos {
 #[derive(Debug)]
 pub struct WidgetArgs {
     pub config: Option<WidgetConfig>,
-    pub children: bool,
+    pub derive: Option<Member>,
 }
 
 impl Default for WidgetArgs {
     fn default() -> Self {
         WidgetArgs {
             config: Some(WidgetConfig::default()),
-            children: true,
+            derive: None,
         }
     }
 }
@@ -618,9 +720,7 @@ impl Default for WidgetConfig {
 impl Parse for WidgetArgs {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut config = None;
-        let mut have_config = false;
-        let mut children = true;
-        let mut have_children = false;
+        let mut derive = None;
 
         if !input.is_empty() {
             let content;
@@ -628,66 +728,51 @@ impl Parse for WidgetArgs {
 
             while !content.is_empty() {
                 let lookahead = content.lookahead1();
-                if lookahead.peek(kw::children) && !have_children {
-                    have_children = true;
-                    let _: kw::children = content.parse()?;
-                    let _: Eq = content.parse()?;
-                    let _: kw::noauto = content.parse()?;
-                    children = false;
-                } else if lookahead.peek(kw::config) && !have_config {
-                    have_config = true;
+                if lookahead.peek(kw::config) && config.is_none() {
                     let _: kw::config = content.parse()?;
 
-                    if content.peek(Eq) {
-                        let _: Eq = content.parse()?;
-                        let lookahead = content.lookahead1();
-                        if lookahead.peek(kw::noauto) {
-                            let _: kw::noauto = content.parse()?;
+                    let content2;
+                    let _ = parenthesized!(content2 in content);
+
+                    let mut conf = WidgetConfig::default();
+                    let mut have_key_nav = false;
+                    let mut have_hover_highlight = false;
+                    let mut have_cursor_icon = false;
+
+                    while !content2.is_empty() {
+                        let lookahead = content2.lookahead1();
+                        if lookahead.peek(kw::key_nav) && !have_key_nav {
+                            let _: kw::key_nav = content2.parse()?;
+                            let _: Eq = content2.parse()?;
+                            let value: syn::LitBool = content2.parse()?;
+                            conf.key_nav = value.value;
+                            have_key_nav = true;
+                        } else if lookahead.peek(kw::hover_highlight) && !have_hover_highlight {
+                            let _: kw::hover_highlight = content2.parse()?;
+                            let _: Eq = content2.parse()?;
+                            let value: syn::LitBool = content2.parse()?;
+                            conf.hover_highlight = value.value;
+                            have_hover_highlight = true;
+                        } else if lookahead.peek(kw::cursor_icon) && !have_cursor_icon {
+                            let _: kw::cursor_icon = content2.parse()?;
+                            let _: Eq = content2.parse()?;
+                            conf.cursor_icon = content2.parse()?;
+                            have_cursor_icon = true;
                         } else {
                             return Err(lookahead.error());
+                        };
+
+                        if content2.peek(Comma) {
+                            let _: Comma = content2.parse()?;
                         }
-                    } else if content.peek(syn::token::Paren) {
-                        let content2;
-                        let _ = parenthesized!(content2 in content);
-
-                        let mut conf = WidgetConfig::default();
-                        let mut have_key_nav = false;
-                        let mut have_hover_highlight = false;
-                        let mut have_cursor_icon = false;
-
-                        while !content2.is_empty() {
-                            let lookahead = content2.lookahead1();
-                            if lookahead.peek(kw::noauto) && !have_key_nav && !have_cursor_icon {
-                                let _: kw::noauto = content2.parse()?;
-                                break;
-                            } else if lookahead.peek(kw::key_nav) && !have_key_nav {
-                                let _: kw::key_nav = content2.parse()?;
-                                let _: Eq = content2.parse()?;
-                                let value: syn::LitBool = content2.parse()?;
-                                conf.key_nav = value.value;
-                                have_key_nav = true;
-                            } else if lookahead.peek(kw::hover_highlight) && !have_hover_highlight {
-                                let _: kw::hover_highlight = content2.parse()?;
-                                let _: Eq = content2.parse()?;
-                                let value: syn::LitBool = content2.parse()?;
-                                conf.hover_highlight = value.value;
-                                have_hover_highlight = true;
-                            } else if lookahead.peek(kw::cursor_icon) && !have_cursor_icon {
-                                let _: kw::cursor_icon = content2.parse()?;
-                                let _: Eq = content2.parse()?;
-                                conf.cursor_icon = content2.parse()?;
-                                have_cursor_icon = true;
-                            } else {
-                                return Err(lookahead.error());
-                            };
-
-                            if content2.peek(Comma) {
-                                let _: Comma = content2.parse()?;
-                            }
-                        }
-
-                        config = Some(conf);
                     }
+                    config = Some(conf);
+                } else if lookahead.peek(kw::derive) && derive.is_none() {
+                    let _: kw::derive = content.parse()?;
+                    let _: Eq = content.parse()?;
+                    let _: Token![self] = content.parse()?;
+                    let _: Token![.] = content.parse()?;
+                    derive = Some(content.parse()?);
                 } else {
                     return Err(lookahead.error());
                 }
@@ -698,11 +783,7 @@ impl Parse for WidgetArgs {
             }
         }
 
-        if !have_config {
-            config = Some(WidgetConfig::default());
-        }
-
-        Ok(WidgetArgs { config, children })
+        Ok(WidgetArgs { config, derive })
     }
 }
 
@@ -819,39 +900,25 @@ impl Parse for LayoutArgs {
 
 #[derive(Debug)]
 pub struct HandlerArgs {
-    pub handle: bool,
-    pub send: bool,
     pub msg: Type,
-    pub substitutions: HashMap<Ident, Type>,
-    pub generics: Generics,
 }
 
 impl HandlerArgs {
-    pub fn new(msg: Type, handle: bool, send: bool) -> Self {
-        HandlerArgs {
-            handle,
-            send,
-            msg,
-            substitutions: Default::default(),
-            generics: Default::default(),
-        }
+    pub fn new(msg: Type) -> Self {
+        HandlerArgs { msg }
     }
 }
 
 impl Default for HandlerArgs {
     fn default() -> Self {
         let msg = parse_quote! { ::kas::event::VoidMsg };
-        HandlerArgs::new(msg, true, true)
+        HandlerArgs::new(msg)
     }
 }
 
 impl Parse for HandlerArgs {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut have_handle = false;
-        let mut have_send = false;
-        let mut have_msg = false;
-        let mut have_gen = false;
-        let mut args = HandlerArgs::default();
+        let mut msg = None;
 
         if !input.is_empty() {
             let content;
@@ -859,59 +926,10 @@ impl Parse for HandlerArgs {
 
             while !content.is_empty() {
                 let lookahead = content.lookahead1();
-                if lookahead.peek(kw::noauto) {
-                    let _: kw::noauto = content.parse()?;
-                    args.handle = false;
-                    args.send = false;
-                } else if !have_handle && lookahead.peek(kw::handle) {
-                    let _: kw::handle = content.parse()?;
-                    let _: Eq = content.parse()?;
-                    let _: kw::noauto = content.parse()?;
-                    have_handle = true;
-                    args.handle = false;
-                } else if !have_send && lookahead.peek(kw::send) {
-                    let _: kw::send = content.parse()?;
-                    let _: Eq = content.parse()?;
-                    let _: kw::noauto = content.parse()?;
-                    have_send = true;
-                    args.send = false;
-                } else if !have_msg && lookahead.peek(kw::msg) {
-                    have_msg = true;
+                if msg.is_none() && lookahead.peek(kw::msg) {
                     let _: kw::msg = content.parse()?;
                     let _: Eq = content.parse()?;
-                    args.msg = content.parse()?;
-                } else if !have_gen && lookahead.peek(kw::generics) {
-                    have_gen = true;
-                    let _: kw::generics = content.parse()?;
-                    let _: Eq = content.parse()?;
-
-                    // Optionally, substitutions come first
-                    while content.peek(Ident) {
-                        let ident: Ident = content.parse()?;
-                        let _: Token![=>] = content.parse()?;
-                        let ty: Type = content.parse()?;
-                        args.substitutions.insert(ident, ty);
-                        let _: Comma = content.parse()?;
-                    }
-
-                    if content.peek(Token![<]) {
-                        args.generics = content.parse()?;
-                        if content.peek(Token![where]) {
-                            args.generics.where_clause = content.parse()?;
-                        }
-                    } else {
-                        return Err(Error::new(
-                            content.span(),
-                            "expected `< ... > [where ...]` or `T => Substitution ...`",
-                        ));
-                    }
-
-                    if !content.is_empty() {
-                        return Err(Error::new(
-                            content.span(),
-                            "no more content expected (`generics` must be last parameter)",
-                        ));
-                    }
+                    msg = Some(content.parse()?);
                 } else {
                     return Err(lookahead.error());
                 }
@@ -922,61 +940,11 @@ impl Parse for HandlerArgs {
             }
         }
 
-        Ok(args)
-    }
-}
-
-impl ToTokens for HandlerArgs {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        <Token![#]>::default().to_tokens(tokens);
-        syn::token::Bracket::default().surround(tokens, |tokens| {
-            kw::handler::default().to_tokens(tokens);
-            syn::token::Paren::default().surround(tokens, |tokens| {
-                if !self.handle {
-                    kw::handle::default().to_tokens(tokens);
-                    Eq::default().to_tokens(tokens);
-                    kw::noauto::default().to_tokens(tokens);
-                    Comma::default().to_tokens(tokens);
-                }
-                if !self.send {
-                    kw::send::default().to_tokens(tokens);
-                    Eq::default().to_tokens(tokens);
-                    kw::noauto::default().to_tokens(tokens);
-                    Comma::default().to_tokens(tokens);
-                }
-
-                kw::msg::default().to_tokens(tokens);
-                Eq::default().to_tokens(tokens);
-                self.msg.to_tokens(tokens);
-                Comma::default().to_tokens(tokens);
-
-                if !self.substitutions.is_empty()
-                    || !self.generics.params.is_empty()
-                    || self.generics.where_clause.is_some()
-                {
-                    kw::generics::default().to_tokens(tokens);
-                    Eq::default().to_tokens(tokens);
-
-                    for (k, v) in &self.substitutions {
-                        k.to_tokens(tokens);
-                        <Token![=>]>::default().to_tokens(tokens);
-                        v.to_tokens(tokens);
-                        Comma::default().to_tokens(tokens);
-                    }
-
-                    self.generics.to_tokens(tokens);
-                    if let Some(ref clause) = self.generics.where_clause {
-                        if self.generics.params.is_empty() {
-                            // generics doesn't print <> in this case
-                            <Token![<]>::default().to_tokens(tokens);
-                            <Token![>]>::default().to_tokens(tokens);
-                        }
-                        clause.where_token.to_tokens(tokens);
-                        clause.predicates.to_tokens(tokens);
-                    }
-                }
-            });
-        });
+        if let Some(msg) = msg {
+            Ok(HandlerArgs { msg })
+        } else {
+            Ok(HandlerArgs::default())
+        }
     }
 }
 
@@ -1009,7 +977,7 @@ pub struct MakeWidget {
     // child widgets and data fields
     pub fields: Vec<WidgetField>,
     // impl blocks on the widget
-    pub impls: Vec<(Option<TypePath>, Vec<syn::ImplItem>)>,
+    pub impls: Vec<ItemImpl>,
 }
 
 impl Parse for MakeWidget {
@@ -1051,25 +1019,9 @@ impl Parse for MakeWidget {
             let _: Comma = content.parse()?;
         }
 
-        let mut impls = vec![];
+        let mut impls = Vec::new();
         while !input.is_empty() {
-            let _: Impl = input.parse()?;
-
-            let target = if input.peek(Brace) {
-                None
-            } else {
-                Some(input.parse::<TypePath>()?)
-            };
-
-            let content;
-            let _ = braced!(content in input);
-            let mut methods = vec![];
-
-            while !content.is_empty() {
-                methods.push(content.parse::<syn::ImplItem>()?);
-            }
-
-            impls.push((target, methods));
+            impls.push(parse_impl(None, input)?);
         }
 
         Ok(MakeWidget {

@@ -145,14 +145,9 @@ impl Driver<bool> for DefaultNav {
 ///
 /// This struct implements [`Driver`], using a the parametrised widget type.
 /// This struct is only usable where no extra data (such as a label) is required.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Widget<W: kas::Widget> {
     _pd: PhantomData<W>,
-}
-impl<W: kas::Widget> Clone for Widget<W> {
-    fn clone(&self) -> Self {
-        std::default::Default::default()
-    }
 }
 impl<W: kas::Widget> std::default::Default for Widget<W> {
     fn default() -> Self {

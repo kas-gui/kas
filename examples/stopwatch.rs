@@ -19,7 +19,6 @@ fn make_window() -> Box<dyn kas::Window> {
     // Construct a row widget, with state and children
     let stopwatch = make_widget! {
         #[layout(row)]
-        #[widget(config=noauto)]
         struct {
             #[widget] display: impl HasString = Frame::new(Label::new("0.000".to_string())),
             #[widget(use_msg = reset)] _ = TextButton::new_msg("&reset", ()),
@@ -27,7 +26,7 @@ fn make_window() -> Box<dyn kas::Window> {
             saved: Duration = Duration::default(),
             start: Option<Instant> = None,
         }
-        impl {
+        impl Self {
             fn reset(&mut self, mgr: &mut Manager, _: ()) {
                 self.saved = Duration::default();
                 self.start = None;
@@ -43,12 +42,12 @@ fn make_window() -> Box<dyn kas::Window> {
                 }
             }
         }
-        impl kas::WidgetConfig {
+        impl kas::WidgetConfig for Self {
             fn configure(&mut self, mgr: &mut Manager) {
                 mgr.enable_alt_bypass(true);
             }
         }
-        impl Handler {
+        impl Handler for Self {
             type Msg = VoidMsg;
             fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<VoidMsg> {
                 match event {

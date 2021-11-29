@@ -9,40 +9,57 @@ use kas::draw::TextClass;
 use kas::text::format::{EditableText, FormattableText};
 use kas::{event, prelude::*};
 
-/// A text label
-///
-/// This type is generic over the text type. Some aliases are available:
-/// [`StrLabel`], [`StringLabel`], [`AccelLabel`].
-#[derive(Clone, Default, Debug, Widget)]
-pub struct Label<T: FormattableText + 'static> {
-    #[widget_core]
-    core: CoreData,
-    label: Text<T>,
-}
-
-impl<T: FormattableText + 'static> Layout for Label<T> {
-    #[inline]
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        size_handle.text_bound(&mut self.label, TextClass::Label, axis)
+widget! {
+    /// A text label
+    ///
+    /// This type is generic over the text type. Some aliases are available:
+    /// [`StrLabel`], [`StringLabel`], [`AccelLabel`].
+    #[derive(Clone, Default, Debug)]
+    pub struct Label<T: FormattableText + 'static> {
+        #[widget_core]
+        core: CoreData,
+        label: Text<T>,
     }
 
-    fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
-        self.core.rect = rect;
-        self.label.update_env(|env| {
-            env.set_bounds(rect.size.into());
-            env.set_align(align.unwrap_or(Align::Default, Align::Centre));
-        });
+    impl Layout for Self {
+        #[inline]
+        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+            size_handle.text_bound(&mut self.label, TextClass::Label, axis)
+        }
+
+        fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
+            self.core.rect = rect;
+            self.label.update_env(|env| {
+                env.set_bounds(rect.size.into());
+                env.set_align(align.unwrap_or(Align::Default, Align::Centre));
+            });
+        }
+
+        #[cfg(feature = "min_spec")]
+        default fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+            let state = self.input_state(mgr, disabled);
+            draw_handle.text_effects(self.core.rect.pos, &self.label, TextClass::Label, state);
+        }
+        #[cfg(not(feature = "min_spec"))]
+        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+            let state = self.input_state(mgr, disabled);
+            draw_handle.text_effects(self.core.rect.pos, &self.label, TextClass::Label, state);
+        }
     }
 
-    #[cfg(feature = "min_spec")]
-    default fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-        let state = self.input_state(mgr, disabled);
-        draw_handle.text_effects(self.core.rect.pos, &self.label, TextClass::Label, state);
+    impl HasStr for Self {
+        fn get_str(&self) -> &str {
+            self.label.as_str()
+        }
     }
-    #[cfg(not(feature = "min_spec"))]
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-        let state = self.input_state(mgr, disabled);
-        draw_handle.text_effects(self.core.rect.pos, &self.label, TextClass::Label, state);
+
+    impl HasString for Self
+    where
+        T: EditableText,
+    {
+        fn set_string(&mut self, string: String) -> TkAction {
+            kas::text::util::set_string_and_prepare(&mut self.label, string, self.core.rect.size)
+        }
     }
 }
 
@@ -123,18 +140,6 @@ impl<T: FormattableText + 'static> Label<T> {
     /// (usually done by the theme when the main loop starts).
     pub fn set_text(&mut self, text: T) -> TkAction {
         kas::text::util::set_text_and_prepare(&mut self.label, text, self.core.rect.size)
-    }
-}
-
-impl<T: FormattableText + 'static> HasStr for Label<T> {
-    fn get_str(&self) -> &str {
-        self.label.as_str()
-    }
-}
-
-impl<T: FormattableText + EditableText + 'static> HasString for Label<T> {
-    fn set_string(&mut self, string: String) -> TkAction {
-        kas::text::util::set_string_and_prepare(&mut self.label, string, self.core.rect.size)
     }
 }
 

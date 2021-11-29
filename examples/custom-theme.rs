@@ -19,18 +19,9 @@ use kas::theme::FlatTheme;
 /// A demo theme
 ///
 /// We set a custom background colour and use `FlatTheme` for everything else.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct CustomTheme {
     inner: FlatTheme,
-}
-
-// manual impl because derive macro applies incorrect bounds
-impl Clone for CustomTheme {
-    fn clone(&self) -> Self {
-        Self {
-            inner: self.inner.clone(),
-        }
-    }
 }
 
 thread_local! {
@@ -139,7 +130,7 @@ fn main() -> Result<(), kas::shell::Error> {
             struct {
                 #[widget(use_msg = handler)] _ = widgets,
             }
-            impl {
+            impl Self {
                 fn handler(&mut self, _: &mut Manager, item: Item) {
                     match item {
                         Item::White => BACKGROUND.with(|b| b.set(Rgba::WHITE)),

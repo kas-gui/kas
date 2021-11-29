@@ -45,56 +45,56 @@ impl EditGuard for Guard {
     }
 }
 
-#[derive(Debug, Widget)]
-#[widget(config=noauto)]
-#[layout(grid)]
-#[handler(handle=noauto)]
-struct TextEditPopup {
-    #[widget_core]
-    core: CoreData,
-    #[layout_data]
-    layout_data: <Self as kas::LayoutData>::Data,
-    #[widget(cspan = 3)]
-    edit: EditBox,
-    #[widget(row = 1, col = 0)]
-    fill: Filler,
-    #[widget(row=1, col=1, flatmap_msg = close)]
-    cancel: TextButton<bool>,
-    #[widget(row=1, col=2, flatmap_msg = close)]
-    save: TextButton<bool>,
-    commit: bool,
-}
-impl TextEditPopup {
-    fn new<S: ToString>(text: S) -> Self {
-        TextEditPopup {
-            core: Default::default(),
-            layout_data: Default::default(),
-            edit: EditBox::new(text).multi_line(true),
-            fill: Filler::maximize(),
-            cancel: TextButton::new_msg("&Cancel", false),
-            save: TextButton::new_msg("&Save", true),
-            commit: false,
+widget! {
+    #[derive(Debug)]
+    #[layout(grid)]
+    struct TextEditPopup {
+        #[widget_core]
+        core: CoreData,
+        #[layout_data]
+        layout_data: <Self as kas::LayoutData>::Data,
+        #[widget(cspan = 3)]
+        edit: EditBox,
+        #[widget(row = 1, col = 0)]
+        fill: Filler,
+        #[widget(row=1, col=1, flatmap_msg = close)]
+        cancel: TextButton<bool>,
+        #[widget(row=1, col=2, flatmap_msg = close)]
+        save: TextButton<bool>,
+        commit: bool,
+    }
+    impl TextEditPopup {
+        fn new<S: ToString>(text: S) -> Self {
+            TextEditPopup {
+                core: Default::default(),
+                layout_data: Default::default(),
+                edit: EditBox::new(text).multi_line(true),
+                fill: Filler::maximize(),
+                cancel: TextButton::new_msg("&Cancel", false),
+                save: TextButton::new_msg("&Save", true),
+                commit: false,
+            }
+        }
+
+        fn close(&mut self, mgr: &mut Manager, commit: bool) -> VoidResponse {
+            self.commit = commit;
+            mgr.send_action(TkAction::CLOSE);
+            Response::None
         }
     }
-
-    fn close(&mut self, mgr: &mut Manager, commit: bool) -> VoidResponse {
-        self.commit = commit;
-        mgr.send_action(TkAction::CLOSE);
-        Response::None
+    impl WidgetConfig for TextEditPopup {
+        fn configure(&mut self, mgr: &mut Manager) {
+            mgr.register_nav_fallback(self.id());
+        }
     }
-}
-impl WidgetConfig for TextEditPopup {
-    fn configure(&mut self, mgr: &mut Manager) {
-        mgr.register_nav_fallback(self.id());
-    }
-}
-impl Handler for TextEditPopup {
-    type Msg = VoidMsg;
-    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
-        match event {
-            Event::Command(Command::Escape, _) => self.close(mgr, false),
-            Event::Command(Command::Return, _) => self.close(mgr, true),
-            _ => Response::Unhandled,
+    impl Handler for TextEditPopup {
+        type Msg = VoidMsg;
+        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+            match event {
+                Event::Command(Command::Escape, _) => self.close(mgr, false),
+                Event::Command(Command::Return, _) => self.close(mgr, true),
+                _ => Response::Unhandled,
+            }
         }
     }
 }
@@ -168,13 +168,12 @@ fn main() -> Result<(), kas::shell::Error> {
 
     let popup_edit_box = make_widget! {
         #[layout(row)]
-        #[handler(handle = noauto)]
         struct {
             #[widget] label: StringLabel = Label::from("Use button to edit →"),
             #[widget(use_msg = edit)] edit = TextButton::new_msg("&Edit", ()),
             future: Option<Future<Option<String>>> = None,
         }
-        impl {
+        impl Self {
             fn edit(&mut self, mgr: &mut Manager, _: ()) {
                 if self.future.is_none() {
                     let text = self.label.get_string();
@@ -190,7 +189,7 @@ fn main() -> Result<(), kas::shell::Error> {
                 }
             }
         }
-        impl Handler {
+        impl Handler for Self {
             type Msg = VoidMsg;
             fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
                 match event {
@@ -265,7 +264,7 @@ fn main() -> Result<(), kas::shell::Error> {
             #[widget(row=12, col=0)] _ = Label::new("Child window"),
             #[widget(row=12, col=1)] _ = popup_edit_box,
         }
-        impl {
+        impl Self {
             fn handle_slider(&mut self, _: &mut Manager, msg: i32) -> Item {
                 Item::Slider(msg)
             }
@@ -298,7 +297,7 @@ fn main() -> Result<(), kas::shell::Error> {
                     for<W: Widget<Msg = Item>> ScrollBarRegion<W> =
                         ScrollBarRegion::new(widgets),
             }
-            impl {
+            impl Self {
                 fn menu(&mut self, mgr: &mut Manager, msg: Menu) {
                     match msg {
                         Menu::Theme(name) => {
