@@ -151,7 +151,6 @@ fn main() -> Result<(), kas::shell::Error> {
                 #[widget] _ = Separator::new(),
                 #[widget(use_msg = set_radio)] list: ScrollBarRegion<IndexedList<Direction, ListEntry>> =
                     ScrollBarRegion::new(list).with_bars(false, true),
-                #[widget] _ = Filler::maximize(),
                 active: usize = 0,
             }
             impl Self {
