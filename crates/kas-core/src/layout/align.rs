@@ -39,9 +39,23 @@ impl AlignHints {
     /// No hints
     pub const NONE: AlignHints = AlignHints::new(None, None);
 
+    /// Center on both axes
+    pub const CENTER: AlignHints = AlignHints::new(Some(Align::Centre), Some(Align::Centre));
+
+    /// Stretch on both axes
+    pub const STRETCH: AlignHints = AlignHints::new(Some(Align::Stretch), Some(Align::Stretch));
+
     /// Construct with optional horiz. and vert. alignment
     pub const fn new(horiz: Option<Align>, vert: Option<Align>) -> Self {
         Self { horiz, vert }
+    }
+
+    /// Combine two hints (first takes priority)
+    pub fn combine(self, rhs: AlignHints) -> Self {
+        Self {
+            horiz: self.horiz.or(rhs.horiz),
+            vert: self.vert.or(rhs.vert),
+        }
     }
 
     /// Unwrap type's alignments or substitute parameters

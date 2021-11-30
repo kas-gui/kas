@@ -206,7 +206,9 @@ widget! {
 
     impl Self {
         fn layout<'a>(&'a mut self) -> impl layout::Visitor + 'a {
-            let iter = self.widgets.iter_mut().map(|w| layout::Item::Widget(w.as_widget_mut())).enumerate();
+            let iter = self.widgets.iter_mut().map(|w| {
+                (layout::Item::Widget(w.as_widget_mut()), AlignHints::default())
+            });
             layout::List::new(&mut self.data, self.direction, iter)
         }
     }

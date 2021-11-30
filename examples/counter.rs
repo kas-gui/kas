@@ -17,7 +17,7 @@ fn main() -> Result<(), kas::shell::Error> {
         #[handler(msg = VoidMsg)]
         struct {
             layout_data2: layout::FixedRowStorage<2> = Default::default(),
-            #[widget(halign=centre)]
+            #[widget]
             display: Label<String> = Label::from("0"),
             #[widget(use_msg = update)]
             b_decr = TextButton::new_msg("−", -1),
@@ -32,12 +32,13 @@ fn main() -> Result<(), kas::shell::Error> {
             }
             fn layout<'a>(&'a mut self) -> impl layout::Visitor + 'a {
                 let arr2 = [
-                    (0, layout::Item::Widget(self.b_decr.as_widget_mut())),
-                    (1, layout::Item::Widget(self.b_incr.as_widget_mut())),
+                    (layout::Item::Widget(self.b_decr.as_widget_mut()), AlignHints::NONE),
+                    (layout::Item::Widget(self.b_incr.as_widget_mut()), AlignHints::NONE),
                 ];
+                let b_layout = Box::new(layout::List::new(&mut self.layout_data2, kas::dir::Right, arr2.into_iter()));
                 let arr = [
-                    (0, layout::Item::Widget(self.display.as_widget_mut())),
-                    (1, layout::Item::Layout(Box::new(layout::List::new(&mut self.layout_data2, kas::dir::Right, arr2.into_iter())))),
+                    (layout::Item::Widget(self.display.as_widget_mut()), AlignHints::CENTER),
+                    (layout::Item::Layout(b_layout), AlignHints::NONE),
                 ];
                 layout::List::new(&mut self.layout_data, kas::dir::Down, arr.into_iter())
             }

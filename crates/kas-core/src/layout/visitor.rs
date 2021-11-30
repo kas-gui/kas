@@ -31,10 +31,7 @@ pub enum Item<'a> {
 }
 
 /// Implement row/column layout for children
-pub struct List<'a, L: RowStorage, D: Directional, I>
-where
-    I: ExactSizeIterator<Item = (usize, Item<'a>)>,
-{
+pub struct List<'a, L, D, I> {
     data: &'a mut L,
     direction: D,
     children: I,
@@ -42,8 +39,15 @@ where
 
 impl<'a, L: RowStorage, D: Directional, I> List<'a, L, D, I>
 where
-    I: ExactSizeIterator<Item = (usize, Item<'a>)>,
+    I: ExactSizeIterator<Item = (Item<'a>, AlignHints)>,
 {
+    /// Construct
+    ///
+    /// -   `data`: associated storage type
+    /// -   `direction`: row/column direction
+    /// -   `children`: iterator over `(hints, item)` tuples where
+    ///     `hints` is optional alignment hints and
+    ///     `item` is a layout [`Item`].
     pub fn new(data: &'a mut L, direction: D, children: I) -> Self {
         List {
             data,
@@ -55,12 +59,12 @@ where
 
 impl<'a, L: RowStorage, D: Directional, I> Visitor for List<'a, L, D, I>
 where
-    I: ExactSizeIterator<Item = (usize, Item<'a>)>,
+    I: ExactSizeIterator<Item = (Item<'a>, AlignHints)>,
 {
     fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let dim = (self.direction, self.children.len());
         let mut solver = RowSolver::new(axis, dim, self.data);
-        for (n, child) in &mut self.children {
+        for (n, (child, _)) in (&mut self.children).enumerate() {
             match child {
                 Item::Widget(child) => {
                     solver.for_child(self.data, n, |axis| child.size_rules(sh, axis))
@@ -77,7 +81,8 @@ where
         let dim = (self.direction, self.children.len());
         let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, align, self.data);
 
-        for (n, child) in &mut self.children {
+        for (n, (child, hints)) in (&mut self.children).enumerate() {
+            let align = hints.combine(align);
             match child {
                 Item::Widget(child) => child.set_rect(mgr, setter.child_rect(self.data, n), align),
                 Item::Layout(mut layout) => {
