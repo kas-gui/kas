@@ -4,7 +4,7 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 use proc_macro2::{Punct, Spacing, Span, TokenStream, TokenTree};
-use proc_macro_error::{abort, emit_error, emit_warning};
+use proc_macro_error::{abort, emit_error};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
@@ -38,7 +38,6 @@ pub struct Widget {
     pub semi_token: Option<Semi>,
 
     pub core_data: Option<Member>,
-    pub layout_data: Option<Member>,
     pub children: Vec<Child>,
 
     pub extra_impls: Vec<ItemImpl>,
@@ -122,7 +121,6 @@ impl Parse for Widget {
         }
 
         let mut core_data = None;
-        let mut layout_data = None;
         let mut children = Vec::new();
 
         for (i, field) in fields.iter_mut().enumerate() {
@@ -133,20 +131,6 @@ impl Parse for Widget {
                         core_data = Some(member(i, field.ident.clone()));
                     } else {
                         emit_error!(attr.span(), "multiple fields marked with #[widget_core]");
-                    }
-                } else if attr.path == parse_quote! { layout_data } {
-                    if layout_data.is_some() {
-                        emit_error!(attr.span(), "multiple fields marked with #[layout_data]");
-                    } else if field.ty != parse_quote! { <Self as kas::LayoutData>::Data }
-                        && field.ty != parse_quote! { <Self as ::kas::LayoutData>::Data }
-                        && field.ty != parse_quote! { <Self as LayoutData>::Data }
-                    {
-                        emit_warning!(
-                            field.ty.span(),
-                            "expected type `<Self as kas::LayoutData>::Data`"
-                        );
-                    } else {
-                        layout_data = Some(member(i, field.ident.clone()));
                     }
                 } else if attr.path == parse_quote! { widget } {
                     let ident = member(i, field.ident.clone());
@@ -168,10 +152,10 @@ impl Parse for Widget {
                     "require a field with #[widget_core] or #[widget(derive = FIELD)]",
                 );
             }
-            if layout_data.is_some() || !children.is_empty() {
+            if !children.is_empty() {
                 emit_error!(
                     fields.span(),
-                    "require a field with #[widget_core] when using #[layout_data] or #[widget]",
+                    "require a field with #[widget_core] when using #[widget]",
                 );
             }
         }
@@ -195,7 +179,6 @@ impl Parse for Widget {
             fields,
             semi_token,
             core_data,
-            layout_data,
             children,
             extra_impls,
         })

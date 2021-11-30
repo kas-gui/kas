@@ -127,8 +127,6 @@ widget! {
     pub struct MenuToggle<M: 'static> {
         #[widget_core]
         core: CoreData,
-        #[layout_data]
-        layout_data: <Self as kas::LayoutData>::Data,
         #[widget]
         checkbox: CheckBoxBare<M>,
         // TODO: label should use TextClass::MenuLabel
@@ -154,7 +152,6 @@ widget! {
         pub fn new<T: Into<AccelString>>(label: T) -> Self {
             MenuToggle {
                 core: Default::default(),
-                layout_data: Default::default(),
                 checkbox: CheckBoxBare::new(),
                 label: AccelLabel::new(label.into()),
             }
@@ -172,7 +169,6 @@ widget! {
         {
             MenuToggle {
                 core: self.core,
-                layout_data: self.layout_data,
                 checkbox: self.checkbox.on_toggle(f),
                 label: self.label,
             }

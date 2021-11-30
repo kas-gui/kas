@@ -157,8 +157,6 @@ widget! {
     struct ListEntry {
         #[widget_core]
         core: CoreData,
-        #[layout_data]
-        layout_data: <Self as kas::LayoutData>::Data,
         #[widget]
         label: StringLabel,
         #[widget]
@@ -180,7 +178,6 @@ impl Driver<(usize, bool, String)> for MyDriver {
         // Default instances are not shown, so the data is unimportant
         ListEntry {
             core: Default::default(),
-            layout_data: Default::default(),
             label: Label::new(String::default()),
             radio: RadioBox::new("display this entry", self.radio_group)
                 .on_select(move |_| Some(EntryMsg::Select)),

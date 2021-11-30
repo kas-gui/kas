@@ -18,7 +18,6 @@ widget! {
     pub struct WithLabel<W: Widget, D: Directional> {
         #[widget_core]
         core: CoreData,
-        layout_data: layout::FixedRowStorage<2>,
         dir: D,
         #[widget]
         inner: W,
@@ -40,7 +39,6 @@ widget! {
         pub fn new_with_direction<T: Into<AccelString>>(direction: D, inner: W, label: T) -> Self {
             WithLabel {
                 core: Default::default(),
-                layout_data: Default::default(),
                 dir: direction,
                 inner,
                 label_pos: Default::default(),
@@ -64,29 +62,32 @@ widget! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let mut solver = layout::RowSolver::new(axis, (self.dir, 2), &mut self.layout_data);
+            let data = self.core.layout_storage::<layout::FixedRowStorage<2>>();
+            let mut solver = layout::RowSolver::new(axis, (self.dir, 2), data);
             let child = &mut self.inner;
-            solver.for_child(&mut self.layout_data, 0usize, |axis| {
+            solver.for_child(data, 0usize, |axis| {
                 child.size_rules(size_handle, axis)
             });
             let label = &mut self.label;
-            solver.for_child(&mut self.layout_data, 1usize, |axis| {
+            solver.for_child(data, 1usize, |axis| {
                 size_handle.text_bound(label, TextClass::Label, axis)
             });
-            solver.finish(&mut self.layout_data)
+            solver.finish(data)
         }
 
         fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
+            let dim = (self.dir, 2);
+            let data = self.core.layout_storage::<layout::FixedRowStorage<2>>();
             let mut setter = layout::RowSetter::<_, [i32; 2], _>::new(
                 rect,
-                (self.dir, 2),
+                dim,
                 align,
-                &mut self.layout_data,
+                data,
             );
-            let rect = setter.child_rect(&mut self.layout_data, 0);
+            let rect = setter.child_rect(data, 0);
             self.inner.set_rect(mgr, rect, align);
-            let rect = setter.child_rect(&mut self.layout_data, 1);
+            let rect = setter.child_rect(data, 1);
             self.label_pos = rect.pos;
             self.label.update_env(|env| {
                 env.set_bounds(rect.size.into());

@@ -41,7 +41,7 @@ pub use kas_core::config;
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub use kas_core::ShellWindow;
 pub use kas_core::{cast, class, dir, draw, event, geom, layout, text, updatable, util};
-pub use kas_core::{Boxed, Layout, LayoutData, Window};
+pub use kas_core::{Boxed, Layout, Window};
 pub use kas_core::{CoreData, Future, Popup, TkAction, WidgetId, WindowId};
 pub use kas_core::{Widget, WidgetChildren, WidgetConfig, WidgetCore};
 

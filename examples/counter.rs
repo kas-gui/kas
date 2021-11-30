@@ -16,6 +16,7 @@ fn main() -> Result<(), kas::shell::Error> {
     let counter = make_widget! {
         #[handler(msg = VoidMsg)]
         struct {
+            layout_data: layout::FixedRowStorage<2> = Default::default(),
             layout_data2: layout::FixedRowStorage<2> = Default::default(),
             #[widget]
             display: Label<String> = Label::from("0"),
@@ -72,11 +73,6 @@ fn main() -> Result<(), kas::shell::Error> {
                 self.b_decr.draw(draw_handle, mgr, disabled);
                 self.b_incr.draw(draw_handle, mgr, disabled);
             }
-        }
-        impl LayoutData for Self {
-            type Data = layout::FixedRowStorage<2>;
-            type Solver = layout::RowSolver<Self::Data>;
-            type Setter = layout::RowSetter<kas::dir::Down, [i32; 2], Self::Data>;
         }
     };
 

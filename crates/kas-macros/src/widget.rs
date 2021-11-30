@@ -88,6 +88,7 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
 
     let (core_data, core_data_mut) = args
         .core_data
+        .as_ref()
         .map(|cd| (quote! { &self.#cd }, quote! { &mut self.#cd }))
         .unwrap_or_else(|| {
             let inner = opt_derive.as_ref().unwrap();
@@ -260,18 +261,8 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
             }
         });
     } else if let Some(ref layout) = args.attr_layout {
-        match layout::data_type(&args.children, layout) {
-            Ok(dt) => toks.append_all(quote! {
-                impl #impl_generics ::kas::LayoutData
-                        for #name #ty_generics #where_clause
-                {
-                    #dt
-                }
-            }),
-            Err(err) => return err.to_compile_error(),
-        }
-
-        match layout::derive(&args.children, layout, &args.layout_data) {
+        let core = args.core_data.as_ref().unwrap();
+        match layout::derive(core, &args.children, layout) {
             Ok(fns) => toks.append_all(quote! {
                 impl #impl_generics ::kas::Layout
                         for #name #ty_generics #where_clause

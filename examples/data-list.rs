@@ -72,8 +72,6 @@ widget! {
     struct ListEntry {
         #[widget_core]
         core: CoreData,
-        #[layout_data]
-        layout_data: <Self as kas::LayoutData>::Data,
         #[widget]
         label: StringLabel,
         #[widget]
@@ -87,7 +85,6 @@ impl ListEntry {
     fn new(n: usize, active: bool) -> Self {
         ListEntry {
             core: Default::default(),
-            layout_data: Default::default(),
             label: Label::new(format!("Entry number {}", n + 1)),
             radio: RadioBox::new("display this entry", RADIO.with(|h| *h))
                 .with_state(active)

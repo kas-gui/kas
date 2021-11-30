@@ -465,7 +465,7 @@
 use crate::{
     event::{Handler, Response, SendEvent},
     layout::AlignHints,
-    CoreData, Layout, LayoutData, Widget, WidgetChildren, WidgetConfig, WidgetCore, WidgetId,
+    CoreData, Layout, Widget, WidgetChildren, WidgetConfig, WidgetCore, WidgetId,
 };
 
 pub use kas_core::macros::*;

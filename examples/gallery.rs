@@ -51,8 +51,6 @@ widget! {
     struct TextEditPopup {
         #[widget_core]
         core: CoreData,
-        #[layout_data]
-        layout_data: <Self as kas::LayoutData>::Data,
         #[widget(cspan = 3)]
         edit: EditBox,
         #[widget(row = 1, col = 0)]
@@ -67,7 +65,6 @@ widget! {
         fn new<S: ToString>(text: S) -> Self {
             TextEditPopup {
                 core: Default::default(),
-                layout_data: Default::default(),
                 edit: EditBox::new(text).multi_line(true),
                 fill: Filler::maximize(),
                 cancel: TextButton::new_msg("&Cancel", false),

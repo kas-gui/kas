@@ -6,9 +6,28 @@
 //! Layout solver — storage
 
 use super::SizeRules;
+use std::any::Any;
 
 /// Master trait over storage types
-pub trait Storage {}
+pub trait Storage: Any + std::fmt::Debug {
+    /// Get self as type `Any` (mutable)
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+}
+
+impl dyn Storage {
+    /// Forwards to the method defined on the type `Any`.
+    #[inline]
+    pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
+        <dyn Any>::downcast_mut::<T>(self.as_any_mut())
+    }
+}
+
+/// Empty storage type
+impl Storage for () {
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
 
 /// Requirements of row solver storage type
 ///
@@ -54,7 +73,11 @@ impl<const C: usize> Default for FixedRowStorage<C> {
     }
 }
 
-impl<const C: usize> Storage for FixedRowStorage<C> {}
+impl<const C: usize> Storage for FixedRowStorage<C> {
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
 
 impl<const C: usize> RowStorage for FixedRowStorage<C> {
     fn set_dim(&mut self, cols: usize) {
@@ -79,7 +102,11 @@ pub struct DynRowStorage {
     widths: Vec<i32>,
 }
 
-impl Storage for DynRowStorage {}
+impl Storage for DynRowStorage {
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
 
 impl RowStorage for DynRowStorage {
     fn set_dim(&mut self, cols: usize) {
@@ -182,7 +209,11 @@ impl<const C: usize, const R: usize> Default for FixedGridStorage<C, R> {
     }
 }
 
-impl<const C: usize, const R: usize> Storage for FixedGridStorage<C, R> {}
+impl<const C: usize, const R: usize> Storage for FixedGridStorage<C, R> {
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
 
 impl<const C: usize, const R: usize> GridStorage for FixedGridStorage<C, R> {
     fn set_dims(&mut self, cols: usize, rows: usize) {
@@ -230,7 +261,11 @@ pub struct DynGridStorage {
     heights: Vec<i32>,
 }
 
-impl Storage for DynGridStorage {}
+impl Storage for DynGridStorage {
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
 
 impl GridStorage for DynGridStorage {
     fn set_dims(&mut self, cols: usize, rows: usize) {

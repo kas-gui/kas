@@ -4,12 +4,12 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 use crate::args::{Child, LayoutArgs, LayoutType};
-use proc_macro2::TokenStream;
+use proc_macro2::TokenStream as Toks;
 use quote::{quote, TokenStreamExt};
 use syn::parse::{Error, Result};
 use syn::Member;
 
-pub(crate) fn data_type(children: &[Child], layout: &LayoutArgs) -> Result<TokenStream> {
+pub(crate) fn data_type(children: &[Child], layout: &LayoutArgs) -> Result<(Toks, Toks, Toks)> {
     if layout.layout == LayoutType::Single && children.len() != 1 {
         return Err(Error::new(
             layout.span,
@@ -66,71 +66,47 @@ pub(crate) fn data_type(children: &[Child], layout: &LayoutArgs) -> Result<Token
     };
 
     Ok(match layout.layout {
-        LayoutType::Single => quote! {
-            type Data = ();
-            type Solver = ::kas::layout::SingleSolver;
-            type Setter = ::kas::layout::SingleSetter;
-        },
-        l @ LayoutType::Right | l @ LayoutType::Left => quote! {
-            type Data = ::kas::layout::FixedRowStorage::<#cols>;
-            type Solver = ::kas::layout::RowSolver::<Self::Data>;
-            type Setter = ::kas::layout::RowSetter::<
-                #l,
-                #col_temp,
-                Self::Data,
-            >;
-        },
-        l @ LayoutType::Down | l @ LayoutType::Up => quote! {
-            type Data = ::kas::layout::FixedRowStorage::<#rows>;
-            type Solver = ::kas::layout::RowSolver::<Self::Data>;
-            type Setter = ::kas::layout::RowSetter::<
-                #l,
-                #row_temp,
-                Self::Data,
-            >;
-        },
-        LayoutType::Grid => quote! {
-            type Data = ::kas::layout::FixedGridStorage::<
-                #cols,
-                #rows,
-            >;
-            type Solver = ::kas::layout::GridSolver::<
-                [(::kas::layout::SizeRules, u32, u32); #col_spans],
-                [(::kas::layout::SizeRules, u32, u32); #row_spans],
-                Self::Data,
-            >;
-            type Setter = ::kas::layout::GridSetter::<
-                #col_temp,
-                #row_temp,
-                Self::Data,
-            >;
-        },
+        LayoutType::Single => (
+            quote! { () },
+            quote! { ::kas::layout::SingleSolver },
+            quote! { ::kas::layout::SingleSetter },
+        ),
+        l @ LayoutType::Right | l @ LayoutType::Left => {
+            let dt = quote! { ::kas::layout::FixedRowStorage::<#cols> };
+            let solver = quote! { ::kas::layout::RowSolver::<#dt> };
+            let setter = quote! { ::kas::layout::RowSetter::<#l, #col_temp, #dt> };
+            (dt, solver, setter)
+        }
+        l @ LayoutType::Down | l @ LayoutType::Up => {
+            let dt = quote! { ::kas::layout::FixedRowStorage::<#rows> };
+            let solver = quote! { ::kas::layout::RowSolver::<#dt> };
+            let setter = quote! { ::kas::layout::RowSetter::<#l, #row_temp, #dt> };
+            (dt, solver, setter)
+        }
+        LayoutType::Grid => {
+            let dt = quote! { ::kas::layout::FixedGridStorage::<#cols, #rows> };
+            let solver = quote! {
+                ::kas::layout::GridSolver::<
+                    [(::kas::layout::SizeRules, u32, u32); #col_spans],
+                    [(::kas::layout::SizeRules, u32, u32); #row_spans],
+                    #dt,
+                >
+            };
+            let setter = quote! { ::kas::layout::GridSetter::<#col_temp, #row_temp, #dt> };
+            (dt, solver, setter)
+        }
     })
 }
 
-pub(crate) fn derive(
-    children: &[Child],
-    layout: &LayoutArgs,
-    data_field: &Option<Member>,
-) -> Result<TokenStream> {
-    let data = if let Some(ref field) = data_field {
-        quote! { self.#field }
-    } else {
-        if layout.layout != LayoutType::Single {
-            return Err(Error::new(
-                layout.span,
-                "data field marked with #[layout_data] required when deriving Widget",
-            ));
-        }
-        quote! { () }
-    };
+pub(crate) fn derive(core: &Member, children: &[Child], layout: &LayoutArgs) -> Result<Toks> {
+    let (storage_type, solver_type, setter_type) = data_type(children, layout)?;
 
     let mut cols = 0u32;
     let mut rows = 0u32;
     let mut col_spans = 0u32;
     let mut row_spans = 0u32;
-    let mut size = TokenStream::new();
-    let mut set_rect = TokenStream::new();
+    let mut size = Toks::new();
+    let mut set_rect = Toks::new();
     let mut draw = quote! {
         use ::kas::{geom::Coord, WidgetCore};
         let rect = draw_handle.get_clip_rect();
@@ -138,7 +114,7 @@ pub(crate) fn derive(
         let pos2 = rect.pos2();
         let disabled = disabled || self.is_disabled();
     };
-    let mut find_id_child = TokenStream::new();
+    let mut find_id_child = Toks::new();
 
     for child in children.iter() {
         let ident = &child.ident;
@@ -187,7 +163,7 @@ pub(crate) fn derive(
         size.append_all(quote! {
             let child = &mut self.#ident;
             solver.for_child(
-                &mut #data,
+                data,
                 #child_info,
                 |axis| child.size_rules(sh, axis)
             );
@@ -201,7 +177,7 @@ pub(crate) fn derive(
             set_rect.append_all(quote! { align2.vert = Some(#toks); });
         }
         set_rect.append_all(quote! {
-            self.#ident.set_rect(_mgr, setter.child_rect(&mut #data, #child_info), align2);
+            self.#ident.set_rect(_mgr, setter.child_rect(data, #child_info), align2);
         });
 
         draw.append_all(quote! {
@@ -255,13 +231,14 @@ pub(crate) fn derive(
             use ::kas::WidgetCore;
             use ::kas::layout::RulesSolver;
 
-            let mut solver = <Self as ::kas::LayoutData>::Solver::new(
+            let data = self.#core.layout_storage::<#storage_type>();
+            let mut solver = #solver_type::new(
                 axis,
                 #dim,
-                &mut #data,
+                data,
             );
             #size
-            solver.finish(&mut #data)
+            solver.finish(data)
         }
 
         fn set_rect(
@@ -274,11 +251,12 @@ pub(crate) fn derive(
             use ::kas::layout::{RulesSetter};
             self.core.rect = rect;
 
-            let mut setter = <Self as ::kas::LayoutData>::Setter::new(
+            let data = self.#core.layout_storage::<#storage_type>();
+            let mut setter = #setter_type::new(
                 rect,
                 #dim,
                 align,
-                &mut #data,
+                data,
             );
             #set_rect
         }

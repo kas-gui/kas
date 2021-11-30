@@ -423,8 +423,6 @@ widget! {
     struct MandlebrotWindow {
         #[widget_core]
         core: CoreData,
-        #[layout_data]
-        layout_data: <Self as kas::LayoutData>::Data,
         #[widget(cspan = 2)]
         label: Label<String>,
         #[widget(row=1, halign=centre)]
@@ -442,7 +440,6 @@ widget! {
             let mbrot = Mandlebrot::new();
             let w = MandlebrotWindow {
                 core: Default::default(),
-                layout_data: Default::default(),
                 label: Label::new(mbrot.loc()),
                 iters: ReserveP::new(Label::from("64"), |size_handle, axis| {
                     Label::new("000").size_rules(size_handle, axis)
