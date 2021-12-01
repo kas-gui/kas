@@ -107,21 +107,7 @@ widget! {
         // macro-generated grid widgets).
         // fn spatial_nav(&self, reverse: bool, from: Option<usize>) -> Option<usize> { .. }
 
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-
-            // TODO(opt): more efficient position solver (also for drawing)?
-            // Reverse iteration since the last valid candidate should be "on top"
-            for child in self.widgets.iter().rev() {
-                if let Some(id) = child.1.find_id(coord) {
-                    return Some(id);
-                }
-            }
-
-            Some(self.id())
-        }
+        // TODO: more efficient find_id and draw?
 
         fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
             let disabled = disabled || self.is_disabled();

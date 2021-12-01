@@ -55,14 +55,6 @@ widget! {
             self.inner.set_rect(mgr, rect, align);
         }
 
-        #[inline]
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-            self.inner.find_id(coord).or(Some(self.id()))
-        }
-
         fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
             draw_handle.outer_frame(self.core_data().rect);
             let disabled = disabled || self.is_disabled();

@@ -245,13 +245,6 @@ widget! {
             None // handle is not navigable
         }
 
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-            self.handle.find_id(coord).or(Some(self.id()))
-        }
-
         fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
             let dir = self.direction.as_direction();
             let state = self.input_state(mgr, disabled) | self.handle.input_state(mgr, disabled);

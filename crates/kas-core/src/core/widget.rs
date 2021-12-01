@@ -494,27 +494,34 @@ pub trait Layout: WidgetChildren {
 
     /// Find a widget by coordinate
     ///
-    /// Used to find the widget responsible for handling events at this `coord`
-    /// — usually the leaf-most widget containing the coordinate.
+    /// This method translates from coordinates (usually from mouse input) to a
+    /// [`WidgetId`]. It is expected to do the following:
     ///
-    /// The default implementation suffices for widgets without children;
-    /// otherwise this is usually implemented as follows:
+    /// -   Return `None` if `coord` is not within `self.rect()`
+    /// -   Find the child which should respond to input at `coord`, if any, and
+    ///     call `find_id` recursively on this child
+    /// -   Otherwise return `self.id()`
     ///
-    /// 1.  return `None` if `!self.rect().contains(coord)`
-    /// 2.  for each `child`, check whether `child.find_id(coord)` returns
-    ///     `Some(id)`, and if so return this result (parents with many children
-    ///     might use a faster search strategy here)
-    /// 3.  otherwise, return `Some(self.id())`
+    /// The default implementation suffices so long as none of the following
+    /// are true:
     ///
-    /// Exceptionally, a widget may deviate from this behaviour, but only when
-    /// the coord is within the widget's own rect (example: `CheckBox` contains
-    /// an embedded `CheckBoxBare` and always forwards this child's id).
+    /// -   Child widgets should not be matched even though their area covers
+    ///     `coord`
+    /// -   Child widgets have offset not equal to [`Layout::translation`]
+    /// -   This widget has very large numbers of children such that iterating
+    ///     through all children in order is too slow.
     ///
     /// This must not be called before [`Layout::set_rect`].
     #[inline]
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
         if !self.rect().contains(coord) {
             return None;
+        }
+        let coord = coord + self.translation();
+        for n in 0..self.num_children() {
+            if let Some(id) = self.get_child(n).and_then(|w| w.find_id(coord)) {
+                return Some(id);
+            }
         }
         Some(self.id())
     }

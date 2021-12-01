@@ -48,20 +48,6 @@ fn main() -> Result<(), kas::shell::Error> {
                 self.layout().set_rect(mgr, rect, align);
             }
 
-            fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-                if !self.rect().contains(coord) {
-                    None
-                } else if let Some(id) = self.display.find_id(coord) {
-                    Some(id)
-                } else if let Some(id) = self.b_decr.find_id(coord) {
-                    Some(id)
-                } else if let Some(id) = self.b_incr.find_id(coord) {
-                    Some(id)
-                } else  {
-                    Some(self.id())
-                }
-            }
-
             fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
                 self.display.draw(draw_handle, mgr, disabled);
                 self.b_decr.draw(draw_handle, mgr, disabled);

@@ -346,16 +346,6 @@ widget! {
             self.scroll_offset()
         }
 
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-
-            self.inner
-                .find_id(coord + self.scroll_offset())
-                .or(Some(self.id()))
-        }
-
         fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
             let disabled = disabled || self.is_disabled();
             draw_handle.with_clip_region(self.core.rect, self.scroll_offset(), &mut |handle| {

@@ -55,14 +55,6 @@ widget! {
             self.inner.set_rect(mgr, rect, align);
         }
 
-        #[inline]
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-            self.inner.find_id(coord).or(Some(self.id()))
-        }
-
         fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
             let input_state = self.input_state(mgr, disabled);
             draw_handle.nav_frame(self.rect(), input_state);

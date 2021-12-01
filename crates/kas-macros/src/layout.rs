@@ -114,7 +114,6 @@ pub(crate) fn derive(core: &Member, children: &[Child], layout: &LayoutArgs) -> 
         let pos2 = rect.pos2();
         let disabled = disabled || self.is_disabled();
     };
-    let mut find_id_child = Toks::new();
 
     for child in children.iter() {
         let ident = &child.ident;
@@ -187,13 +186,6 @@ pub(crate) fn derive(core: &Member, children: &[Child], layout: &LayoutArgs) -> 
                 self.#ident.draw(draw_handle, mgr, disabled);
             }
         });
-
-        // TODO: more efficient search strategy?
-        find_id_child.append_all(quote! {
-            if let Some(id) = self.#ident.find_id(coord) {
-                return Some(id);
-            }
-        });
     }
 
     let (ucols, urows) = (cols as usize, rows as usize);
@@ -205,18 +197,6 @@ pub(crate) fn derive(core: &Member, children: &[Child], layout: &LayoutArgs) -> 
         LayoutType::Up => quote! { (::kas::dir::Up, #urows) },
         LayoutType::Grid => quote! { (#cols, #rows, #col_spans, #row_spans) },
     };
-
-    let find_id_area = layout.area.as_ref().map(|area_widget| {
-        quote! {
-            Some(self.#area_widget.id())
-        }
-    });
-    let find_id_body = find_id_area.unwrap_or_else(|| {
-        quote! {
-            #find_id_child
-            Some(self.id())
-        }
-    });
 
     if let Some(ref method) = layout.draw {
         draw = quote! {
@@ -259,15 +239,6 @@ pub(crate) fn derive(core: &Member, children: &[Child], layout: &LayoutArgs) -> 
                 data,
             );
             #set_rect
-        }
-
-        fn find_id(&self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
-            use ::kas::WidgetCore;
-            if !self.rect().contains(coord) {
-                return None;
-            }
-
-            #find_id_body
         }
 
         fn draw(

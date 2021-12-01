@@ -71,17 +71,6 @@ widget! {
             self.bar.set_rect(mgr, rect, align);
         }
 
-        #[inline]
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-            if let Some(id) = self.bar.find_id(coord) {
-                return Some(id);
-            }
-            Some(self.id())
-        }
-
         fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
             self.bar.draw(draw_handle, mgr, disabled);
         }
