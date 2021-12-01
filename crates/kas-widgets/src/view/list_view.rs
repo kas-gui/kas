@@ -517,6 +517,11 @@ widget! {
             Some(data % usize::conv(self.cur_len))
         }
 
+        #[inline]
+        fn translation(&self) -> Offset {
+            self.scroll_offset()
+        }
+
         fn find_id(&self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;

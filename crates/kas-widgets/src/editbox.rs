@@ -430,6 +430,11 @@ widget! {
             self.set_view_offset_from_edit_pos();
         }
 
+        #[inline]
+        fn translation(&self) -> Offset {
+            self.scroll_offset()
+        }
+
         fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
             let class = if self.multi_line {
                 TextClass::EditMulti

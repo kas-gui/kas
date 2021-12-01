@@ -233,8 +233,8 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
                     self.#inner.set_rect(mgr, rect, align);
                 }
                 #[inline]
-                fn translation(&self, child_index: usize) -> ::kas::geom::Offset {
-                    self.#inner.translation(child_index)
+                fn translation(&self) -> ::kas::geom::Offset {
+                    self.#inner.translation()
                 }
                 #[inline]
                 fn spatial_nav(

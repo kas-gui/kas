@@ -217,7 +217,7 @@ fn find_rect(widget: &dyn WidgetConfig, id: WidgetId) -> Option<Rect> {
             if id > w.id() {
                 continue;
             }
-            return find_rect(w, id).map(|rect| rect - widget.translation(i));
+            return find_rect(w, id).map(|rect| rect - widget.translation());
         }
         break;
     }

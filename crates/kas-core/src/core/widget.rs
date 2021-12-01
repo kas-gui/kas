@@ -441,17 +441,17 @@ pub trait Layout: WidgetChildren {
         self.core_data_mut().rect = rect;
     }
 
-    /// Get translation of a child
+    /// Get translation of children
     ///
     /// Children may live in a translated coordinate space relative to their
     /// parent. This method returns an offset which should be *added* to a
     /// coordinate to translate *into* the child's coordinate space or
     /// subtracted to translate out.
     ///
-    /// In most cases, the translation will be zero. Widgets should return
-    /// [`Offset::ZERO`] for non-existant children.
+    /// Note that this should only be non-zero for widgets themselves
+    /// implementing scrolling (and thin wrappers around these).
     #[inline]
-    fn translation(&self, _child_index: usize) -> Offset {
+    fn translation(&self) -> Offset {
         Offset::ZERO
     }
 

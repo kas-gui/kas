@@ -342,7 +342,7 @@ widget! {
         }
 
         #[inline]
-        fn translation(&self, _: usize) -> Offset {
+        fn translation(&self) -> Offset {
             self.scroll_offset()
         }
 
