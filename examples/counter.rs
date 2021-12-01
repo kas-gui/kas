@@ -6,7 +6,7 @@
 //! Counter example (simple button)
 
 use kas::layout;
-use kas::macros::make_widget;
+use kas::macros::{make_layout, make_widget};
 use kas::prelude::*;
 use kas::widgets::{Label, TextButton, Window};
 
@@ -30,29 +30,11 @@ fn main() -> Result<(), kas::shell::Error> {
                 *mgr |= self.display.set_string(self.count.to_string());
             }
             fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
-                let (data, next) = self.core.layout.storage::<layout::FixedRowStorage<2>>();
-                let (data2, _) = next.storage::<layout::FixedRowStorage<2>>();
-
-                layout::Layout::list(
-                    {
-                        let arr = [
-                            layout::Layout::single(self.display.as_widget_mut(), AlignHints::CENTER),
-                            layout::Layout::list(
-                                {
-                                    let arr = [
-                                        layout::Layout::single(self.b_decr.as_widget_mut(), AlignHints::NONE),
-                                        layout::Layout::single(self.b_incr.as_widget_mut(), AlignHints::NONE),
-                                    ]; arr.into_iter()
-                                },
-                                kas::dir::Right,
-                                data2,
-                                AlignHints::NONE,
-                            ),
-                        ]; arr.into_iter()
-                    },
-                    kas::dir::Down,
-                    data,
-                    AlignHints::NONE,
+                make_layout!(self.core;
+                    column[
+                        align(center): self.display,
+                        row[self.b_decr, self.b_incr],
+                    ]
                 )
             }
         }

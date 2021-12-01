@@ -17,6 +17,7 @@ use syn::{GenericParam, Generics, ItemStruct};
 mod args;
 mod autoimpl;
 mod layout;
+mod make_layout;
 mod make_widget;
 pub(crate) mod where_clause;
 mod widget;
@@ -183,6 +184,43 @@ pub fn widget(input: TokenStream) -> TokenStream {
 pub fn make_widget(input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(input as args::MakeWidget);
     make_widget::make_widget(args).into()
+}
+
+/// Macro to make a `kas::layout::Layout`
+///
+/// # Syntax
+///
+/// > _Align_ :\
+/// > &nbsp;&nbsp; `center` | `stretch`
+/// >
+/// > _AlignInfo_ :\
+/// > &nbsp;&nbsp; `align` `(` _Align_ `)`
+/// >
+/// > _List_ :\
+/// > &nbsp;&nbsp; `[` _Layout_ `]`
+/// >
+/// > _LayoutType_ :\
+/// > &nbsp;&nbsp; &nbsp;&nbsp; `self` `.` _Member_
+/// > | `column` _List_
+/// > | `row` _List_
+/// >
+/// > _Layout_ :\
+/// > &nbsp;&nbsp; _AlignInfo_<sup>?</sup> _LayoutType_
+/// >
+/// > _MakeLayout_:\
+/// > &nbsp;&nbsp; `(` _CoreData_ `;` _Layout_
+///
+/// # Example
+///
+/// ```none
+/// make_layout!(self.core; row[self.a, self.b])
+/// ```
+
+#[proc_macro_error]
+#[proc_macro]
+pub fn make_layout(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as make_layout::Input);
+    make_layout::make_layout(input).into()
 }
 
 /// Macro to derive `From<VoidMsg>`
