@@ -69,6 +69,8 @@ pub struct Layout<'a> {
 
 /// Items which can be placed in a layout
 enum LayoutType<'a> {
+    /// No layout
+    None,
     /// A single child widget
     Single(&'a mut dyn WidgetConfig),
     /// An embedded layout
@@ -84,6 +86,13 @@ struct List<'a, S, D, I> {
 }
 
 impl<'a> Layout<'a> {
+    /// Construct an empty layout
+    pub fn none() -> Self {
+        let layout = LayoutType::None;
+        let hints = AlignHints::NONE;
+        Layout { layout, hints }
+    }
+
     /// Construct a single-item layout
     pub fn single(widget: &'a mut dyn WidgetConfig, hints: AlignHints) -> Self {
         let layout = LayoutType::Single(widget);
@@ -108,6 +117,7 @@ impl<'a> Layout<'a> {
     /// Get size rules for the given axis
     pub fn size_rules(mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         match &mut self.layout {
+            LayoutType::None => SizeRules::EMPTY,
             LayoutType::Single(child) => child.size_rules(sh, axis),
             LayoutType::Visitor(visitor) => visitor.size_rules(sh, axis),
         }
@@ -117,6 +127,7 @@ impl<'a> Layout<'a> {
     pub fn set_rect(mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
         let align = self.hints.combine(align);
         match &mut self.layout {
+            LayoutType::None => (),
             LayoutType::Single(child) => child.set_rect(mgr, rect, align),
             LayoutType::Visitor(layout) => layout.set_rect(mgr, rect, align),
         }
