@@ -85,6 +85,12 @@ struct List<'a, S, D, I> {
     children: I,
 }
 
+impl<'a> Default for Layout<'a> {
+    fn default() -> Self {
+        Layout::none()
+    }
+}
+
 impl<'a> Layout<'a> {
     /// Construct an empty layout
     pub fn none() -> Self {

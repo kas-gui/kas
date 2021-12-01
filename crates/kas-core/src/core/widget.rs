@@ -11,7 +11,7 @@ use std::fmt;
 use crate::draw::{DrawHandle, InputState, SizeHandle};
 use crate::event::{self, ConfigureManager, Manager, ManagerState};
 use crate::geom::{Coord, Offset, Rect};
-use crate::layout::{AlignHints, AxisInfo, SizeRules};
+use crate::layout::{self, AlignHints, AxisInfo, SizeRules};
 use crate::{CoreData, TkAction, WidgetId};
 
 impl dyn WidgetCore {
@@ -361,6 +361,14 @@ pub trait WidgetConfig: Layout {
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 pub trait Layout: WidgetChildren {
+    /// Make a layout
+    ///
+    /// If used, this allows automatic implementation of `size_rules` and
+    /// `set_rect` methods. The default case is the empty layout.
+    fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
+        Default::default() // TODO: remove default impl
+    }
+
     /// Get size rules for the given axis
     ///
     /// This method takes `&mut self` to allow local caching of child widget
@@ -374,7 +382,9 @@ pub trait Layout: WidgetChildren {
     ///
     /// For widgets with children, a [`crate::layout::RulesSolver`] engine may be
     /// useful to calculate requirements of complex layouts.
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules;
+    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        self.layout().size_rules(size_handle, axis)
+    }
 
     /// Apply a given `rect` to self
     ///
@@ -393,10 +403,9 @@ pub trait Layout: WidgetChildren {
     /// One may assume that `size_rules` has been called at least once for each
     /// axis with current size information before this method, however
     /// `size_rules` might not be re-called before calling `set_rect` again.
-    #[inline]
     fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
-        let _ = (mgr, align);
         self.core_data_mut().rect = rect;
+        self.layout().set_rect(mgr, rect, align);
     }
 
     /// Get translation of children
@@ -495,7 +504,16 @@ pub trait Layout: WidgetChildren {
     ///
     /// [`WidgetCore::input_state`] may be used to obtain an [`InputState`] to
     /// determine active visual effects.
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool);
+    ///
+    /// The default impl draws all children. TODO: have default?
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        let disabled = disabled || self.is_disabled();
+        for i in 0..self.num_children() {
+            if let Some(child) = self.get_child(i) {
+                child.draw(draw_handle, mgr, disabled);
+            }
+        }
+    }
 }
 
 /// Widget trait

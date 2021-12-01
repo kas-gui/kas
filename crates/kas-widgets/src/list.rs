@@ -203,23 +203,12 @@ widget! {
         }
     }
 
-    impl Self {
+    impl Layout for Self {
         fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
             let iter = self.widgets.iter_mut().map(|w| {
                 layout::Layout::single(w.as_widget_mut(), AlignHints::NONE)
             });
             layout::Layout::list(iter, self.direction, &mut self.data, AlignHints::NONE)
-        }
-    }
-
-    impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            self.layout().size_rules(size_handle, axis)
-        }
-
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
-            self.core.rect = rect;
-            self.layout().set_rect(mgr, rect, align);
         }
 
         fn spatial_nav(

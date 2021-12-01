@@ -29,6 +29,8 @@ fn main() -> Result<(), kas::shell::Error> {
                 self.count += incr;
                 *mgr |= self.display.set_string(self.count.to_string());
             }
+        }
+        impl Layout for Self {
             fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
                 make_layout!(self.core;
                     column[
@@ -36,22 +38,6 @@ fn main() -> Result<(), kas::shell::Error> {
                         row[self.b_decr, self.b_incr],
                     ]
                 )
-            }
-        }
-        impl Layout for Self {
-            fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-                self.layout().size_rules(size_handle, axis)
-            }
-
-            fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
-                self.core.rect = rect;
-                self.layout().set_rect(mgr, rect, align);
-            }
-
-            fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-                self.display.draw(draw_handle, mgr, disabled);
-                self.b_decr.draw(draw_handle, mgr, disabled);
-                self.b_incr.draw(draw_handle, mgr, disabled);
             }
         }
     };
