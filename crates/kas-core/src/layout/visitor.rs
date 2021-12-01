@@ -54,7 +54,7 @@ impl StorageChain {
 }
 
 /// Implementation helper for layout of children
-pub trait Visitor {
+trait Visitor {
     /// Get size rules for the given axis
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules;
 
@@ -62,57 +62,76 @@ pub trait Visitor {
     fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints);
 }
 
+pub struct Layout<'a> {
+    layout: LayoutType<'a>,
+    hints: AlignHints,
+}
+
 /// Items which can be placed in a layout
-pub enum Item<'a> {
-    /// A widget
-    Widget(&'a mut dyn WidgetConfig),
+enum LayoutType<'a> {
+    /// A single child widget
+    Single(&'a mut dyn WidgetConfig),
     /// An embedded layout
-    Layout(Box<dyn Visitor + 'a>), // TODO: inline storage?
+    // TODO: why use a trait instead of enumerating all options?
+    Visitor(Box<dyn Visitor + 'a>), // TODO: inline storage?
 }
 
 /// Implement row/column layout for children
-pub struct List<'a, S, D, I> {
+struct List<'a, S, D, I> {
     data: &'a mut S,
     direction: D,
     children: I,
 }
 
-impl<'a, S: RowStorage, D: Directional, I> List<'a, S, D, I>
-where
-    I: ExactSizeIterator<Item = (Item<'a>, AlignHints)>,
-{
-    /// Construct
-    ///
-    /// -   `data`: associated storage type
-    /// -   `direction`: row/column direction
-    /// -   `children`: iterator over `(hints, item)` tuples where
-    ///     `hints` is optional alignment hints and
-    ///     `item` is a layout [`Item`].
-    pub fn new(data: &'a mut S, direction: D, children: I) -> Self {
-        List {
+impl<'a> Layout<'a> {
+    /// Construct a single-item layout
+    pub fn single(widget: &'a mut dyn WidgetConfig, hints: AlignHints) -> Self {
+        let layout = LayoutType::Single(widget);
+        Layout { layout, hints }
+    }
+
+    /// Construct a list layout using an iterator over sub-layouts
+    pub fn list<I, D, S>(list: I, direction: D, data: &'a mut S, hints: AlignHints) -> Self
+    where
+        I: ExactSizeIterator<Item = Layout<'a>> + 'a,
+        D: Directional,
+        S: RowStorage,
+    {
+        let layout = LayoutType::Visitor(Box::new(List {
             data,
             direction,
-            children,
+            children: list,
+        }));
+        Layout { layout, hints }
+    }
+
+    /// Get size rules for the given axis
+    pub fn size_rules(mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        match &mut self.layout {
+            LayoutType::Single(child) => child.size_rules(sh, axis),
+            LayoutType::Visitor(visitor) => visitor.size_rules(sh, axis),
+        }
+    }
+
+    /// Apply a given `rect` to self
+    pub fn set_rect(mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+        let align = self.hints.combine(align);
+        match &mut self.layout {
+            LayoutType::Single(child) => child.set_rect(mgr, rect, align),
+            LayoutType::Visitor(layout) => layout.set_rect(mgr, rect, align),
         }
     }
 }
 
 impl<'a, S: RowStorage, D: Directional, I> Visitor for List<'a, S, D, I>
 where
-    I: ExactSizeIterator<Item = (Item<'a>, AlignHints)>,
+    I: ExactSizeIterator<Item = Layout<'a>>,
 {
     fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let dim = (self.direction, self.children.len());
         let mut solver = RowSolver::new(axis, dim, self.data);
-        for (n, (child, _)) in (&mut self.children).enumerate() {
-            match child {
-                Item::Widget(child) => {
-                    solver.for_child(self.data, n, |axis| child.size_rules(sh, axis))
-                }
-                Item::Layout(mut layout) => {
-                    solver.for_child(self.data, n, |axis| layout.size_rules(sh, axis))
-                }
-            }
+        for (n, child) in (&mut self.children).enumerate() {
+            solver.for_child(self.data, n, |axis| child.size_rules(sh, axis));
         }
         solver.finish(self.data)
     }
@@ -121,14 +140,8 @@ where
         let dim = (self.direction, self.children.len());
         let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, align, self.data);
 
-        for (n, (child, hints)) in (&mut self.children).enumerate() {
-            let align = hints.combine(align);
-            match child {
-                Item::Widget(child) => child.set_rect(mgr, setter.child_rect(self.data, n), align),
-                Item::Layout(mut layout) => {
-                    layout.set_rect(mgr, setter.child_rect(self.data, n), align)
-                }
-            }
+        for (n, child) in (&mut self.children).enumerate() {
+            child.set_rect(mgr, setter.child_rect(self.data, n), align);
         }
     }
 }

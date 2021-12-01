@@ -5,7 +5,7 @@
 
 //! Counter example (simple button)
 
-use kas::layout::{self, Visitor as _};
+use kas::layout;
 use kas::macros::make_widget;
 use kas::prelude::*;
 use kas::widgets::{Label, TextButton, Window};
@@ -29,25 +29,31 @@ fn main() -> Result<(), kas::shell::Error> {
                 self.count += incr;
                 *mgr |= self.display.set_string(self.count.to_string());
             }
-            fn layout<'a>(&'a mut self) -> impl layout::Visitor + 'a {
+            fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
                 let (data, next) = self.core.layout.storage::<layout::FixedRowStorage<2>>();
                 let (data2, _) = next.storage::<layout::FixedRowStorage<2>>();
 
-                layout::List::new(data, kas::dir::Down, {
-                    let arr = [
-                        (layout::Item::Widget(self.display.as_widget_mut()), AlignHints::CENTER),
-                        (layout::Item::Layout(Box::new(layout::List::new(
-                            data2,
-                            kas::dir::Right,
-                            {
-                                let arr2 = [
-                                    (layout::Item::Widget(self.b_decr.as_widget_mut()), AlignHints::NONE),
-                                    (layout::Item::Widget(self.b_incr.as_widget_mut()), AlignHints::NONE),
-                                ]; arr2.into_iter()
-                            },
-                        ))), AlignHints::NONE),
-                    ]; arr.into_iter()
-                })
+                layout::Layout::list(
+                    {
+                        let arr = [
+                            layout::Layout::single(self.display.as_widget_mut(), AlignHints::CENTER),
+                            layout::Layout::list(
+                                {
+                                    let arr = [
+                                        layout::Layout::single(self.b_decr.as_widget_mut(), AlignHints::NONE),
+                                        layout::Layout::single(self.b_incr.as_widget_mut(), AlignHints::NONE),
+                                    ]; arr.into_iter()
+                                },
+                                kas::dir::Right,
+                                data2,
+                                AlignHints::NONE,
+                            ),
+                        ]; arr.into_iter()
+                    },
+                    kas::dir::Down,
+                    data,
+                    AlignHints::NONE,
+                )
             }
         }
         impl Layout for Self {

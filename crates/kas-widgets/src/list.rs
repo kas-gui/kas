@@ -6,8 +6,7 @@
 //! A row or column with run-time adjustable contents
 
 use kas::dir::{Down, Right};
-use kas::layout::{self, Visitor as _};
-use kas::{event, prelude::*};
+use kas::{event, layout, prelude::*};
 use std::ops::{Index, IndexMut};
 
 /// Support for optionally-indexed messages
@@ -205,11 +204,11 @@ widget! {
     }
 
     impl Self {
-        fn layout<'a>(&'a mut self) -> impl layout::Visitor + 'a {
+        fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
             let iter = self.widgets.iter_mut().map(|w| {
-                (layout::Item::Widget(w.as_widget_mut()), AlignHints::default())
+                layout::Layout::single(w.as_widget_mut(), AlignHints::NONE)
             });
-            layout::List::new(&mut self.data, self.direction, iter)
+            layout::Layout::list(iter, self.direction, &mut self.data, AlignHints::NONE)
         }
     }
 
