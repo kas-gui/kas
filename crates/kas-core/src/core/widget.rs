@@ -266,48 +266,6 @@ pub trait WidgetChildren: WidgetCore {
             None
         }
     }
-
-    /// Walk through all widgets, calling `f` once on each.
-    ///
-    /// This walk is iterative (nonconcurrent), depth-first, and always calls
-    /// `f` on self *after* walking through all children.
-    fn walk_children<F: FnMut(&dyn WidgetConfig)>(&self, mut f: F)
-    where
-        Self: Sized,
-    {
-        self.walk_children_dyn(&mut f)
-    }
-
-    #[doc(hidden)]
-    fn walk_children_dyn(&self, f: &mut dyn FnMut(&dyn WidgetConfig)) {
-        for i in 0..self.num_children() {
-            if let Some(w) = self.get_child(i) {
-                w.walk_children_dyn(f);
-            }
-        }
-        f(self.as_widget());
-    }
-
-    /// Walk through all widgets, calling `f` once on each.
-    ///
-    /// This walk is iterative (nonconcurrent), depth-first, and always calls
-    /// `f` on self *after* walking through all children.
-    fn walk_children_mut<F: FnMut(&mut dyn WidgetConfig)>(&mut self, mut f: F)
-    where
-        Self: Sized,
-    {
-        self.walk_children_mut_dyn(&mut f)
-    }
-
-    #[doc(hidden)]
-    fn walk_children_mut_dyn(&mut self, f: &mut dyn FnMut(&mut dyn WidgetConfig)) {
-        for i in 0..self.num_children() {
-            if let Some(w) = self.get_child_mut(i) {
-                w.walk_children_mut_dyn(f);
-            }
-        }
-        f(self.as_widget_mut());
-    }
 }
 
 /// Widget configuration
