@@ -60,6 +60,8 @@ trait Visitor {
 
     /// Apply a given `rect` to self
     fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints);
+
+    fn is_reversed(&mut self) -> bool;
 }
 
 pub struct Layout<'a> {
@@ -138,6 +140,17 @@ impl<'a> Layout<'a> {
             LayoutType::Visitor(layout) => layout.set_rect(mgr, rect, align),
         }
     }
+
+    /// Return true if layout is up/left
+    ///
+    /// This is a lazy method of implementing tab order for reversible layouts.
+    pub fn is_reversed(mut self) -> bool {
+        match &mut self.layout {
+            LayoutType::None => false,
+            LayoutType::Single(_) => false,
+            LayoutType::Visitor(layout) => layout.is_reversed(),
+        }
+    }
 }
 
 impl<'a, S: RowStorage, D: Directional, I> Visitor for List<'a, S, D, I>
@@ -160,5 +173,9 @@ where
         for (n, child) in (&mut self.children).enumerate() {
             child.set_rect(mgr, setter.child_rect(self.data, n), align);
         }
+    }
+
+    fn is_reversed(&mut self) -> bool {
+        self.direction.is_reversed()
     }
 }

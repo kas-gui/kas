@@ -211,33 +211,6 @@ widget! {
             layout::Layout::list(iter, self.direction, &mut self.data, AlignHints::NONE)
         }
 
-        fn spatial_nav(
-            &mut self,
-            _: &mut Manager,
-            reverse: bool,
-            from: Option<usize>,
-        ) -> Option<usize> {
-            if self.num_children() == 0 {
-                return None;
-            }
-
-            let last = self.num_children() - 1;
-            let reverse = reverse ^ self.direction.is_reversed();
-
-            if let Some(index) = from {
-                match reverse {
-                    false if index < last => Some(index + 1),
-                    true if 0 < index => Some(index - 1),
-                    _ => None,
-                }
-            } else {
-                match reverse {
-                    false => Some(0),
-                    true => Some(last),
-                }
-            }
-        }
-
         fn find_id(&self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;

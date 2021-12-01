@@ -445,6 +445,8 @@ pub trait Layout: WidgetChildren {
             return None;
         }
 
+        let reverse = reverse ^ self.layout().is_reversed();
+
         if let Some(index) = from {
             match reverse {
                 false if index < last => Some(index + 1),
