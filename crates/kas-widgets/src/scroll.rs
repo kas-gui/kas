@@ -342,11 +342,8 @@ widget! {
         }
 
         #[inline]
-        fn translation(&self, child_index: usize) -> Offset {
-            match child_index {
-                2 => self.scroll_offset(),
-                _ => Offset::ZERO,
-            }
+        fn translation(&self, _: usize) -> Offset {
+            self.scroll_offset()
         }
 
         fn find_id(&self, coord: Coord) -> Option<WidgetId> {
