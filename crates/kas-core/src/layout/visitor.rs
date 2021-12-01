@@ -5,13 +5,53 @@
 
 //! Layout visitor
 
-use super::{AlignHints, AxisInfo, RulesSetter, RulesSolver, SizeRules};
+use super::{AlignHints, AxisInfo, RulesSetter, RulesSolver, SizeRules, Storage};
 use super::{RowSetter, RowSolver, RowStorage};
 use crate::draw::SizeHandle;
 use crate::event::Manager;
 use crate::geom::Rect;
 use crate::{dir::Directional, WidgetConfig};
 use std::iter::ExactSizeIterator;
+
+/// Chaining layout storage
+///
+/// We support embedded layouts within a single widget which means that we must
+/// support storage for multiple layouts, though commonly zero or one layout is
+/// used. We therefore use a simple linked list.
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+#[derive(Debug)]
+pub struct StorageChain(Option<(Box<StorageChain>, Box<dyn Storage>)>);
+
+impl Default for StorageChain {
+    fn default() -> Self {
+        StorageChain(None)
+    }
+}
+
+impl StorageChain {
+    /// Access layout storage
+    ///
+    /// This storage is allocated and initialised on first access.
+    ///
+    /// Panics if the type `T` differs from the initial usage.
+    pub fn storage<T: Storage + Default>(&mut self) -> (&mut T, &mut StorageChain) {
+        if let StorageChain(Some(ref mut b)) = self {
+            let storage =
+                b.1.downcast_mut()
+                    .unwrap_or_else(|| panic!("StorageChain::storage::<T>(): incorrect type T"));
+            return (storage, &mut b.0);
+        }
+        // TODO(rust#42877): store (StorageChain, dyn Storage) tuple in a single box
+        let s = Box::new(StorageChain(None));
+        let t: Box<dyn Storage> = Box::new(T::default());
+        *self = StorageChain(Some((s, t)));
+        match self {
+            StorageChain(Some(b)) => (b.1.downcast_mut::<T>().unwrap(), &mut b.0),
+            _ => unreachable!(),
+        }
+    }
+}
 
 /// Implementation helper for layout of children
 pub trait Visitor {
@@ -31,13 +71,13 @@ pub enum Item<'a> {
 }
 
 /// Implement row/column layout for children
-pub struct List<'a, L, D, I> {
-    data: &'a mut L,
+pub struct List<'a, S, D, I> {
+    data: &'a mut S,
     direction: D,
     children: I,
 }
 
-impl<'a, L: RowStorage, D: Directional, I> List<'a, L, D, I>
+impl<'a, S: RowStorage, D: Directional, I> List<'a, S, D, I>
 where
     I: ExactSizeIterator<Item = (Item<'a>, AlignHints)>,
 {
@@ -48,7 +88,7 @@ where
     /// -   `children`: iterator over `(hints, item)` tuples where
     ///     `hints` is optional alignment hints and
     ///     `item` is a layout [`Item`].
-    pub fn new(data: &'a mut L, direction: D, children: I) -> Self {
+    pub fn new(data: &'a mut S, direction: D, children: I) -> Self {
         List {
             data,
             direction,
@@ -57,7 +97,7 @@ where
     }
 }
 
-impl<'a, L: RowStorage, D: Directional, I> Visitor for List<'a, L, D, I>
+impl<'a, S: RowStorage, D: Directional, I> Visitor for List<'a, S, D, I>
 where
     I: ExactSizeIterator<Item = (Item<'a>, AlignHints)>,
 {

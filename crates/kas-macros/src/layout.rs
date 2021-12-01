@@ -231,7 +231,7 @@ pub(crate) fn derive(core: &Member, children: &[Child], layout: &LayoutArgs) -> 
             use ::kas::WidgetCore;
             use ::kas::layout::RulesSolver;
 
-            let data = self.#core.layout_storage::<#storage_type>();
+            let (data, _) = self.#core.layout.storage::<#storage_type>();
             let mut solver = #solver_type::new(
                 axis,
                 #dim,
@@ -251,7 +251,7 @@ pub(crate) fn derive(core: &Member, children: &[Child], layout: &LayoutArgs) -> 
             use ::kas::layout::{RulesSetter};
             self.core.rect = rect;
 
-            let data = self.#core.layout_storage::<#storage_type>();
+            let (data, _) = self.#core.layout.storage::<#storage_type>();
             let mut setter = #setter_type::new(
                 rect,
                 #dim,

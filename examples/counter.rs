@@ -16,8 +16,6 @@ fn main() -> Result<(), kas::shell::Error> {
     let counter = make_widget! {
         #[handler(msg = VoidMsg)]
         struct {
-            layout_data: layout::FixedRowStorage<2> = Default::default(),
-            layout_data2: layout::FixedRowStorage<2> = Default::default(),
             #[widget]
             display: Label<String> = Label::from("0"),
             #[widget(use_msg = update)]
@@ -32,16 +30,24 @@ fn main() -> Result<(), kas::shell::Error> {
                 *mgr |= self.display.set_string(self.count.to_string());
             }
             fn layout<'a>(&'a mut self) -> impl layout::Visitor + 'a {
-                let arr2 = [
-                    (layout::Item::Widget(self.b_decr.as_widget_mut()), AlignHints::NONE),
-                    (layout::Item::Widget(self.b_incr.as_widget_mut()), AlignHints::NONE),
-                ];
-                let b_layout = Box::new(layout::List::new(&mut self.layout_data2, kas::dir::Right, arr2.into_iter()));
-                let arr = [
-                    (layout::Item::Widget(self.display.as_widget_mut()), AlignHints::CENTER),
-                    (layout::Item::Layout(b_layout), AlignHints::NONE),
-                ];
-                layout::List::new(&mut self.layout_data, kas::dir::Down, arr.into_iter())
+                let (data, next) = self.core.layout.storage::<layout::FixedRowStorage<2>>();
+                let (data2, _) = next.storage::<layout::FixedRowStorage<2>>();
+
+                layout::List::new(data, kas::dir::Down, {
+                    let arr = [
+                        (layout::Item::Widget(self.display.as_widget_mut()), AlignHints::CENTER),
+                        (layout::Item::Layout(Box::new(layout::List::new(
+                            data2,
+                            kas::dir::Right,
+                            {
+                                let arr2 = [
+                                    (layout::Item::Widget(self.b_decr.as_widget_mut()), AlignHints::NONE),
+                                    (layout::Item::Widget(self.b_incr.as_widget_mut()), AlignHints::NONE),
+                                ]; arr2.into_iter()
+                            },
+                        ))), AlignHints::NONE),
+                    ]; arr.into_iter()
+                })
             }
         }
         impl Layout for Self {

@@ -62,7 +62,7 @@ widget! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let data = self.core.layout_storage::<layout::FixedRowStorage<2>>();
+            let (data, _) = self.core.layout.storage::<layout::FixedRowStorage<2>>();
             let mut solver = layout::RowSolver::new(axis, (self.dir, 2), data);
             let child = &mut self.inner;
             solver.for_child(data, 0usize, |axis| {
@@ -78,7 +78,7 @@ widget! {
         fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             let dim = (self.dir, 2);
-            let data = self.core.layout_storage::<layout::FixedRowStorage<2>>();
+            let (data, _) = self.core.layout.storage::<layout::FixedRowStorage<2>>();
             let mut setter = layout::RowSetter::<_, [i32; 2], _>::new(
                 rect,
                 dim,
