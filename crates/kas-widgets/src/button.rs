@@ -66,6 +66,15 @@ widget! {
             self.label.set_rect(mgr, rect, align);
         }
 
+        #[inline]
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) {
+                return None;
+            }
+            // We steal click events on self.label
+            Some(self.id())
+        }
+
         fn draw(&self, theme: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             theme.button(self.core.rect, self.color, self.input_state(mgr, disabled));
             self.label.draw(theme, mgr, disabled);
@@ -177,7 +186,7 @@ widget! {
 
     impl SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<M> {
-            if id < self.label.id() {
+            if id < self.id() {
                 self.label.send(mgr, id, event).void_into()
             } else {
                 debug_assert_eq!(id, self.id());
