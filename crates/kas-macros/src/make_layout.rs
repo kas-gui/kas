@@ -22,6 +22,7 @@ mod kw {
     custom_keyword!(up);
     custom_keyword!(center);
     custom_keyword!(stretch);
+    custom_keyword!(frame);
 }
 
 pub struct Input {
@@ -31,6 +32,7 @@ pub struct Input {
 
 enum Layout {
     Single(syn::Expr, Align),
+    Frame(Box<Layout>, Align),
     List(List, Align),
 }
 
@@ -70,6 +72,12 @@ impl Parse for Layout {
 
         if lookahead.peek(Token![self]) {
             Ok(Layout::Single(input.parse()?, align))
+        } else if lookahead.peek(kw::frame) {
+            let _: kw::frame = input.parse()?;
+            let inner;
+            let _ = parenthesized!(inner in input);
+            let layout: Layout = inner.parse()?;
+            Ok(Layout::Frame(Box::new(layout), align))
         } else if lookahead.peek(kw::column) {
             let _: kw::column = input.parse()?;
             let dir = quote! { ::kas::dir::Down };
@@ -136,6 +144,14 @@ impl Layout {
             Layout::Single(expr, align) => quote! {
                 layout::Layout::single(#expr.as_widget_mut(), #align)
             },
+            Layout::Frame(layout, align) => {
+                let inner = layout.generate();
+                quote! {
+                    let (data, next) = _chain.storage::<::kas::layout::FrameStorage>();
+                    _chain = next;
+                    layout::Layout::frame(data, #inner, #align)
+                }
+            }
             Layout::List(List { dir, list }, align) => {
                 let len = list.len();
                 let storage = if len > 16 {

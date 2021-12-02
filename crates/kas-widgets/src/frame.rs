@@ -5,8 +5,8 @@
 
 //! A simple frame
 
-use kas::layout::{self, FrameStorage};
-use kas::{event, prelude::*};
+use kas::macros::make_layout;
+use kas::{event, layout, prelude::*};
 
 widget! {
     /// A frame around content
@@ -37,9 +37,7 @@ widget! {
 
     impl Layout for Self {
         fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
-            let (data, _) = self.core.layout.storage::<FrameStorage>();
-            let inner = layout::Layout::single(&mut self.inner, AlignHints::default());
-            layout::Layout::frame(data, inner, AlignHints::default())
+            make_layout!(self.core; frame(self.inner))
         }
 
         fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
