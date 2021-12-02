@@ -64,6 +64,10 @@ trait Visitor {
     fn is_reversed(&mut self) -> bool;
 }
 
+/// A layout visitor
+///
+/// This constitutes a "visitor" which iterates over each child widget. Layout
+/// algorithm details are implemented over this visitor.
 pub struct Layout<'a> {
     layout: LayoutType<'a>,
     hints: AlignHints,
