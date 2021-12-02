@@ -9,7 +9,7 @@ use std::any::Any;
 
 use super::*;
 use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{self, Event, Manager, Response};
+use crate::event::{self, Event, Manager, ManagerState, Response};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::{CoreData, WidgetId};
@@ -98,7 +98,7 @@ impl<M: 'static> Layout for Box<dyn Widget<Msg = M>> {
         self.as_mut().find_id(coord)
     }
 
-    fn draw(&self, draw: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+    fn draw(&self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         self.as_ref().draw(draw, mgr, disabled);
     }
 }

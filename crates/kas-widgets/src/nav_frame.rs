@@ -55,7 +55,7 @@ widget! {
             self.inner.set_rect(mgr, rect, align);
         }
 
-        fn draw(&self, draw: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        fn draw(&self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let input_state = self.input_state(mgr, disabled);
             draw.nav_frame(self.rect(), input_state);
             self.inner.draw(draw, mgr, input_state.disabled());

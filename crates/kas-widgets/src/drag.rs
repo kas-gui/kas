@@ -53,7 +53,7 @@ widget! {
             self.track = rect;
         }
 
-        fn draw(&self, _: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {}
+        fn draw(&self, _: &mut dyn DrawHandle, _: &ManagerState, _: bool) {}
     }
 
     impl event::Handler for DragHandle {

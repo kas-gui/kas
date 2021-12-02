@@ -54,7 +54,7 @@ widget! {
             SizeRules::extract_fixed(axis, size_handle.separator(), margins)
         }
 
-        fn draw(&self, draw: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {
+        fn draw(&self, draw: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
             draw.separator(self.core.rect);
         }
     }

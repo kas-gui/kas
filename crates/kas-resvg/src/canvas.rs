@@ -7,7 +7,7 @@
 
 use kas::draw::{ImageFormat, ImageId};
 use kas::layout::{SpriteDisplay, SpriteScaling};
-use kas::{event, prelude::*};
+use kas::prelude::*;
 use tiny_skia::{Color, Pixmap};
 
 /// Draws to a [`Canvas`]'s [`Pixmap`]
@@ -126,7 +126,7 @@ widget! {
             }
         }
 
-        fn draw(&self, draw: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {
+        fn draw(&self, draw: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
             if let Some(id) = self.image_id {
                 draw.image(id, self.rect());
             }

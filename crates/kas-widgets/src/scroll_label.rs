@@ -51,7 +51,7 @@ widget! {
             self.scroll_offset()
         }
 
-        fn draw(&self, draw: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        fn draw(&self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let class = TextClass::LabelScroll;
             let state = self.input_state(mgr, disabled);
             draw.with_clip_region(self.rect(), self.view_offset, &mut |draw| {

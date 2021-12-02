@@ -10,7 +10,7 @@
 use kas::draw::{ImageFormat, ImageId};
 use kas::geom::Vec2;
 use kas::layout::MarginSelector;
-use kas::{event, prelude::*};
+use kas::prelude::*;
 use std::path::PathBuf;
 use tiny_skia::Pixmap;
 
@@ -182,7 +182,7 @@ widget! {
             }
         }
 
-        fn draw(&self, draw: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {
+        fn draw(&self, draw: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
             if let Some(id) = self.image_id {
                 draw.image(id, self.rect());
             }

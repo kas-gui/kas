@@ -5,7 +5,7 @@
 
 //! Size reservation
 
-use kas::{event, prelude::*};
+use kas::prelude::*;
 
 /// Parameterisation of [`Reserve`] using a function pointer
 ///
@@ -84,7 +84,7 @@ widget! {
             self.inner.set_rect(mgr, rect, align);
         }
 
-        fn draw(&self, theme: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        fn draw(&self, theme: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let disabled = disabled || self.is_disabled();
             self.inner.draw(theme, mgr, disabled);
         }

@@ -6,7 +6,7 @@
 //! 2D pixmap widget
 
 use kas::layout::SpriteDisplay;
-use kas::{event, prelude::*};
+use kas::prelude::*;
 use std::path::PathBuf;
 
 widget! {
@@ -48,7 +48,7 @@ widget! {
             self.core_data_mut().rect = self.sprite.align_rect(rect, align);
         }
 
-        fn draw(&self, draw: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {
+        fn draw(&self, draw: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
             if let Some(id) = self.id {
                 draw.image(id, self.rect());
             }

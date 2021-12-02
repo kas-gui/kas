@@ -158,7 +158,7 @@ widget! {
             None
         }
 
-        fn draw(&self, draw: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        fn draw(&self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let mut state = self.input_state(mgr, disabled);
             if self.popup_id.is_some() {
                 state.insert(InputState::DEPRESS);

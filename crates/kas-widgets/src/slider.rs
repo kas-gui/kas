@@ -245,7 +245,7 @@ widget! {
             None // handle is not navigable
         }
 
-        fn draw(&self, draw: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        fn draw(&self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let dir = self.direction.as_direction();
             let state = self.input_state(mgr, disabled) | self.handle.input_state(mgr, disabled);
             draw.slider(self.core.rect, self.handle.rect(), dir, state);

@@ -6,7 +6,7 @@
 //! A simple frame
 
 use kas::macros::make_layout;
-use kas::{event, layout, prelude::*};
+use kas::{layout, prelude::*};
 
 widget! {
     /// A frame around content
@@ -40,7 +40,7 @@ widget! {
             make_layout!(self.core; frame(self.inner))
         }
 
-        fn draw(&self, draw: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        fn draw(&self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             draw.outer_frame(self.core_data().rect);
             let disabled = disabled || self.is_disabled();
             self.inner.draw(draw, mgr, disabled);
