@@ -55,13 +55,13 @@ widget! {
             None
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        fn draw(&self, theme: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
             let mut state = self.input_state(mgr, disabled);
             if self.popup_id.is_some() {
                 state.insert(InputState::DEPRESS);
             }
-            draw_handle.button(self.core.rect, None, state);
-            draw_handle.text(
+            theme.button(self.core.rect, None, state);
+            theme.text(
                 self.core.rect.pos,
                 self.label.as_ref(),
                 TextClass::Button,

@@ -252,11 +252,11 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
                 #[inline]
                 fn draw(
                     &self,
-                    draw_handle: &mut dyn ::kas::draw::DrawHandle,
+                    draw: &mut dyn ::kas::draw::DrawHandle,
                     mgr: &::kas::event::ManagerState,
                     disabled: bool,
                 ) {
-                    self.#inner.draw(draw_handle, mgr, disabled);
+                    self.#inner.draw(draw, mgr, disabled);
                 }
             }
         });

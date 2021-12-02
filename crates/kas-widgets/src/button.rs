@@ -66,9 +66,9 @@ widget! {
             self.label.set_rect(mgr, rect, align);
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-            draw_handle.button(self.core.rect, self.color, self.input_state(mgr, disabled));
-            self.label.draw(draw_handle, mgr, disabled);
+        fn draw(&self, theme: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+            theme.button(self.core.rect, self.color, self.input_state(mgr, disabled));
+            self.label.draw(theme, mgr, disabled);
         }
     }
 
@@ -248,12 +248,12 @@ widget! {
             });
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-            draw_handle.button(self.core.rect, self.color, self.input_state(mgr, disabled));
+        fn draw(&self, theme: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+            theme.button(self.core.rect, self.color, self.input_state(mgr, disabled));
             let pos = self.core.rect.pos + self.frame_offset;
             let accel = mgr.show_accel_labels();
             let state = self.input_state(mgr, disabled);
-            draw_handle.text_accel(pos, &self.label, accel, TextClass::Button, state);
+            theme.text_accel(pos, &self.label, accel, TextClass::Button, state);
         }
     }
 

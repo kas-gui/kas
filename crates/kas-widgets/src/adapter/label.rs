@@ -95,12 +95,12 @@ widget! {
             });
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&self, theme: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let disabled = disabled || self.is_disabled();
-            self.inner.draw(draw_handle, mgr, disabled);
+            self.inner.draw(theme, mgr, disabled);
             let accel = mgr.show_accel_labels();
             let state = self.input_state(mgr, disabled);
-            draw_handle.text_accel(self.label_pos, &self.label, accel, TextClass::Label, state);
+            theme.text_accel(self.label_pos, &self.label, accel, TextClass::Label, state);
         }
     }
 

@@ -109,7 +109,7 @@ pub(crate) fn derive(core: &Member, children: &[Child], layout: &LayoutArgs) -> 
     let mut set_rect = Toks::new();
     let mut draw = quote! {
         use ::kas::{geom::Coord, WidgetCore};
-        let rect = draw_handle.get_clip_rect();
+        let rect = draw.get_clip_rect();
         let pos1 = rect.pos;
         let pos2 = rect.pos2();
         let disabled = disabled || self.is_disabled();
@@ -183,7 +183,7 @@ pub(crate) fn derive(core: &Member, children: &[Child], layout: &LayoutArgs) -> 
             let c1 = self.#ident.rect().pos;
             let c2 = self.#ident.rect().pos2();
             if c1.0 <= pos2.0 && c2.0 >= pos1.0 && c1.1 <= pos2.1 && c2.1 >= pos1.1 {
-                self.#ident.draw(draw_handle, mgr, disabled);
+                self.#ident.draw(draw, mgr, disabled);
             }
         });
     }
@@ -200,7 +200,7 @@ pub(crate) fn derive(core: &Member, children: &[Child], layout: &LayoutArgs) -> 
 
     if let Some(ref method) = layout.draw {
         draw = quote! {
-            self.#method(draw_handle, mgr, disabled);
+            self.#method(draw, mgr, disabled);
         }
     };
 
@@ -243,7 +243,7 @@ pub(crate) fn derive(core: &Member, children: &[Child], layout: &LayoutArgs) -> 
 
         fn draw(
             &self,
-            draw_handle: &mut dyn ::kas::draw::DrawHandle,
+            draw: &mut dyn ::kas::draw::DrawHandle,
             mgr: &::kas::event::ManagerState,
             disabled: bool,
         ) {

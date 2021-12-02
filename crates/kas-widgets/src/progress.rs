@@ -98,10 +98,10 @@ widget! {
             self.core.rect = rect;
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let dir = self.direction.as_direction();
             let state = self.input_state(mgr, disabled);
-            draw_handle.progress_bar(self.core.rect, dir, state, self.value);
+            draw.progress_bar(self.core.rect, dir, state, self.value);
         }
     }
 }

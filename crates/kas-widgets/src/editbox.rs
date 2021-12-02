@@ -199,15 +199,15 @@ widget! {
             self.inner.set_rect(mgr, rect, align);
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        fn draw(&self, draw: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
             // We draw highlights for input state of inner:
             let disabled = disabled || self.is_disabled() || self.inner.is_disabled();
             let mut input_state = self.inner.input_state(mgr, disabled);
             if self.inner.has_error() {
                 input_state.insert(InputState::ERROR);
             }
-            draw_handle.edit_box(self.core.rect, input_state);
-            self.inner.draw(draw_handle, mgr, disabled);
+            draw.edit_box(self.core.rect, input_state);
+            self.inner.draw(draw, mgr, disabled);
         }
     }
 }
@@ -427,21 +427,21 @@ widget! {
             self.scroll_offset()
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        fn draw(&self, draw: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
             let class = if self.multi_line {
                 TextClass::EditMulti
             } else {
                 TextClass::Edit
             };
             let state = self.input_state(mgr, disabled);
-            draw_handle.with_clip_region(self.rect(), self.view_offset, &mut |draw_handle| {
+            draw.with_clip_region(self.rect(), self.view_offset, &mut |draw| {
                 if self.selection.is_empty() {
-                    draw_handle.text(self.rect().pos, self.text.as_ref(), class, state);
+                    draw.text(self.rect().pos, self.text.as_ref(), class, state);
                 } else {
                     // TODO(opt): we could cache the selection rectangles here to make
                     // drawing more efficient (self.text.highlight_lines(range) output).
                     // The same applies to the edit marker below.
-                    draw_handle.text_selected(
+                    draw.text_selected(
                         self.rect().pos,
                         &self.text,
                         self.selection.range(),
@@ -450,7 +450,7 @@ widget! {
                     );
                 }
                 if mgr.has_char_focus(self.id()).0 {
-                    draw_handle.edit_marker(
+                    draw.edit_marker(
                         self.rect().pos,
                         self.text.as_ref(),
                         class,

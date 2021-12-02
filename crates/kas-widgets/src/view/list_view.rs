@@ -536,15 +536,15 @@ widget! {
             Some(self.id())
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let disabled = disabled || self.is_disabled();
             let offset = self.scroll_offset();
-            draw_handle.with_clip_region(self.core.rect, offset, &mut |draw_handle| {
+            draw.with_clip_region(self.core.rect, offset, &mut |draw| {
                 for child in &self.widgets[..self.cur_len.cast()] {
-                    child.widget.draw(draw_handle, mgr, disabled);
+                    child.widget.draw(draw, mgr, disabled);
                     if let Some(ref key) = child.key {
                         if self.is_selected(key) {
-                            draw_handle.selection_box(child.widget.rect());
+                            draw.selection_box(child.widget.rect());
                         }
                     }
                 }

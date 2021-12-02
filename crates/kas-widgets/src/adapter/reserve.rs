@@ -84,9 +84,9 @@ widget! {
             self.inner.set_rect(mgr, rect, align);
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        fn draw(&self, theme: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
             let disabled = disabled || self.is_disabled();
-            self.inner.draw(draw_handle, mgr, disabled);
+            self.inner.draw(theme, mgr, disabled);
         }
     }
 }

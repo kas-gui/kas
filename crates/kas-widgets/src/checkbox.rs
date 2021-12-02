@@ -36,8 +36,8 @@ widget! {
             self.core.rect = rect;
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-            draw_handle.checkbox(self.core.rect, self.state, self.input_state(mgr, disabled));
+        fn draw(&self, theme: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+            theme.checkbox(self.core.rect, self.state, self.input_state(mgr, disabled));
         }
     }
 

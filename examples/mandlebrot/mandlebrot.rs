@@ -340,8 +340,8 @@ widget! {
             self.rel_width = rel_width.0 as f32;
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {
-            let draw = draw_handle.draw_device();
+        fn draw(&self, draw: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {
+            let draw = draw.draw_device();
             let draw = DrawIface::<DrawPipe<Pipe>>::downcast_from(draw).unwrap();
             let p = (self.alpha, self.delta, self.rel_width, self.iter);
             draw.draw.custom(draw.get_pass(), self.core.rect, p);

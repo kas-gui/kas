@@ -88,8 +88,8 @@ widget! {
             self.core.rect = rect;
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-            draw_handle.radiobox(self.core.rect, self.state, self.input_state(mgr, disabled));
+        fn draw(&self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+            draw.radiobox(self.core.rect, self.state, self.input_state(mgr, disabled));
         }
     }
 

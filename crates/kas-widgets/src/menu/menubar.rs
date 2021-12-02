@@ -71,8 +71,8 @@ widget! {
             self.bar.set_rect(mgr, rect, align);
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-            self.bar.draw(draw_handle, mgr, disabled);
+        fn draw(&self, draw: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+            self.bar.draw(draw, mgr, disabled);
         }
     }
 

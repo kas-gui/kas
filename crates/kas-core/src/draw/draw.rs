@@ -29,10 +29,10 @@ use std::any::Any;
 /// #     _pd: std::marker::PhantomData<DS>,
 /// # }
 /// impl CircleWidget {
-///     fn draw(&self, draw_handle: &mut dyn DrawHandle) {
+///     fn draw(&self, draw: &mut dyn DrawHandle) {
 ///         // This type assumes usage of kas_wgpu without a custom draw pipe:
 ///         type DrawIface = DrawIface<kas_wgpu::draw::DrawPipe<()>>;
-///         if let Some(mut draw) = DrawIface::downcast_from(draw_handle.draw_device()) {
+///         if let Some(mut draw) = DrawIface::downcast_from(draw.draw_device()) {
 ///             draw.circle(self.rect.into(), 0.9, Rgba::BLACK);
 ///         }
 ///     }

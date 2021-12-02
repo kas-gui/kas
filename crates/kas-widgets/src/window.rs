@@ -56,13 +56,13 @@ widget! {
         }
 
         #[inline]
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let disabled = disabled || self.is_disabled();
-            self.w.draw(draw_handle, mgr, disabled);
+            self.w.draw(draw, mgr, disabled);
             for (_, popup) in &self.popups {
                 if let Some(widget) = self.find_leaf(popup.id) {
-                    draw_handle.with_overlay(widget.rect(), &mut |draw_handle| {
-                        widget.draw(draw_handle, mgr, disabled);
+                    draw.with_overlay(widget.rect(), &mut |draw| {
+                        widget.draw(draw, mgr, disabled);
                     });
                 }
             }
