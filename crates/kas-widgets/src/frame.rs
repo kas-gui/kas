@@ -39,11 +39,5 @@ widget! {
         fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
             make_layout!(self.core; frame(self.inner))
         }
-
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-            draw.outer_frame(self.core_data().rect);
-            let disabled = disabled || self.is_disabled();
-            self.inner.draw(draw, mgr, disabled);
-        }
     }
 }

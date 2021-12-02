@@ -510,11 +510,8 @@ pub trait Layout: WidgetChildren {
     /// The default impl draws all children. TODO: have default?
     fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         let disabled = disabled || self.is_disabled();
-        for i in 0..self.num_children() {
-            if let Some(child) = self.get_child_mut(i) {
-                child.draw(draw, mgr, disabled);
-            }
-        }
+        let rect = self.rect();
+        self.layout().draw(rect, draw, mgr, disabled);
     }
 }
 

@@ -7,8 +7,8 @@
 
 use super::{AlignHints, AxisInfo, RulesSetter, RulesSolver, SizeRules, Storage};
 use super::{RowSetter, RowSolver, RowStorage};
-use crate::draw::SizeHandle;
-use crate::event::Manager;
+use crate::draw::{DrawHandle, SizeHandle};
+use crate::event::{Manager, ManagerState};
 use crate::geom::{Offset, Rect, Size};
 use crate::{dir::Directional, WidgetConfig};
 use std::any::Any;
@@ -64,6 +64,8 @@ trait Visitor {
     fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints);
 
     fn is_reversed(&mut self) -> bool;
+
+    fn draw(&mut self, rect: Rect, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool);
 }
 
 /// A layout visitor
@@ -157,6 +159,24 @@ impl<'a> Layout<'a> {
             LayoutType::Visitor(layout) => layout.is_reversed(),
         }
     }
+
+    /// Draw a widget's children
+    ///
+    /// Special: the widget's own `rect` must be passed in.
+    /// TODO: pass in CoreData instead and use to construct storage dynamically?
+    pub fn draw(
+        &mut self,
+        rect: Rect,
+        draw: &mut dyn DrawHandle,
+        mgr: &ManagerState,
+        disabled: bool,
+    ) {
+        match &mut self.layout {
+            LayoutType::None => (),
+            LayoutType::Single(child) => child.draw(draw, mgr, disabled),
+            LayoutType::Visitor(layout) => layout.draw(rect, draw, mgr, disabled),
+        }
+    }
 }
 
 /// Implement row/column layout for children
@@ -190,6 +210,18 @@ where
 
     fn is_reversed(&mut self) -> bool {
         self.direction.is_reversed()
+    }
+
+    fn draw(&mut self, rect: Rect, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        /* TODO: use position solver for large draws (requires array of widgets)
+            let solver = RowPositionSolver::new(self.direction);
+            solver.for_children(&mut self.widgets, draw.get_clip_rect(), |w| {
+                w.draw(rect, draw, mgr, disabled)
+            });
+        */
+        for mut child in &mut self.children {
+            child.draw(rect, draw, mgr, disabled);
+        }
     }
 }
 
@@ -229,5 +261,10 @@ impl<'a> Visitor for Frame<'a> {
 
     fn is_reversed(&mut self) -> bool {
         replace(&mut self.child, Layout::default()).is_reversed()
+    }
+
+    fn draw(&mut self, rect: Rect, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        draw.outer_frame(rect);
+        replace(&mut self.child, Layout::default()).draw(rect, draw, mgr, disabled);
     }
 }

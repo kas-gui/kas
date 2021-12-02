@@ -223,14 +223,6 @@ widget! {
 
             Some(self.id())
         }
-
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-            let disabled = disabled || self.is_disabled();
-            let solver = layout::RowPositionSolver::new(self.direction);
-            solver.for_children(&mut self.widgets, draw.get_clip_rect(), |w| {
-                w.draw(draw, mgr, disabled)
-            });
-        }
     }
 
     impl event::SendEvent for Self {
