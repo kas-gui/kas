@@ -94,8 +94,8 @@ impl<M: 'static> Layout for Box<dyn Widget<Msg = M>> {
         self.as_mut().set_rect(mgr, rect, align);
     }
 
-    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        self.as_ref().find_id(coord)
+    fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        self.as_mut().find_id(coord)
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {

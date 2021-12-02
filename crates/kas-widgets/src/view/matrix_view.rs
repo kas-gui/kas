@@ -474,14 +474,14 @@ widget! {
             self.scroll_offset()
         }
 
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
             }
 
             let coord = coord + self.scroll.offset();
             let num = usize::conv(self.cur_len.0) * usize::conv(self.cur_len.1);
-            for child in &self.widgets[..num] {
+            for child in &mut self.widgets[..num] {
                 if child.key.is_some() {
                     if let Some(id) = child.widget.find_id(coord) {
                         return Some(id);

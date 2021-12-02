@@ -43,12 +43,12 @@ widget! {
         }
 
         #[inline]
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
             }
-            for popup in self.popups.iter().rev() {
-                if let Some(id) = self.w.find_leaf(popup.1.id).and_then(|w| w.find_id(coord)) {
+            for popup in self.popups.iter_mut().rev() {
+                if let Some(id) = self.w.find_leaf_mut(popup.1.id).and_then(|w| w.find_id(coord)) {
                     return Some(id);
                 }
             }

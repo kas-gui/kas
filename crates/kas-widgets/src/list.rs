@@ -211,13 +211,13 @@ widget! {
             layout::Layout::list(iter, self.direction, &mut self.data, AlignHints::NONE)
         }
 
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
             }
 
             let solver = layout::RowPositionSolver::new(self.direction);
-            if let Some(child) = solver.find_child(&self.widgets, coord) {
+            if let Some(child) = solver.find_child_mut(&mut self.widgets, coord) {
                 return child.find_id(coord);
             }
 

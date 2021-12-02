@@ -184,7 +184,7 @@ widget! {
             None // handles are not navigable
         }
 
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
             }
@@ -194,12 +194,12 @@ widget! {
             // calling it twice.
 
             let solver = layout::RowPositionSolver::new(self.direction);
-            if let Some(child) = solver.find_child(&self.widgets, coord) {
+            if let Some(child) = solver.find_child_mut(&mut self.widgets, coord) {
                 return child.find_id(coord).or(Some(self.id()));
             }
 
             let solver = layout::RowPositionSolver::new(self.direction);
-            if let Some(child) = solver.find_child(&self.handles, coord) {
+            if let Some(child) = solver.find_child_mut(&mut self.handles, coord) {
                 return child.find_id(coord).or(Some(self.id()));
             }
 

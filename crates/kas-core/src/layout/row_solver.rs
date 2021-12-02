@@ -297,24 +297,43 @@ impl<D: Directional> RowPositionSolver<D> {
     ///
     /// Returns `None` when the coordinates lie within the margin area or
     /// outside of the parent widget.
-    pub fn find_child<W: Widget>(self, widgets: &[W], coord: Coord) -> Option<&W> {
-        let index = match self.binary_search(widgets, coord) {
-            Ok(i) => i,
-            Err(i) => {
-                if self.direction.is_reversed() {
-                    if i == widgets.len() || !widgets[i].rect().contains(coord) {
-                        return None;
-                    }
-                    i
+    pub fn find_child_index<W: Widget>(self, widgets: &[W], coord: Coord) -> Option<usize> {
+        match self.binary_search(widgets, coord) {
+            Ok(i) => Some(i),
+            Err(i) if self.direction.is_reversed() => {
+                if i == widgets.len() || !widgets[i].rect().contains(coord) {
+                    None
                 } else {
-                    if i == 0 || !widgets[i - 1].rect().contains(coord) {
-                        return None;
-                    }
-                    i - 1
+                    Some(i)
                 }
             }
-        };
-        Some(&widgets[index])
+            Err(i) => {
+                if i == 0 || !widgets[i - 1].rect().contains(coord) {
+                    None
+                } else {
+                    Some(i - 1)
+                }
+            }
+        }
+    }
+
+    /// Find the child containing the given coordinates
+    ///
+    /// Returns `None` when the coordinates lie within the margin area or
+    /// outside of the parent widget.
+    #[inline]
+    pub fn find_child<W: Widget>(self, widgets: &[W], coord: Coord) -> Option<&W> {
+        self.find_child_index(widgets, coord).map(|i| &widgets[i])
+    }
+
+    /// Find the child containing the given coordinates
+    ///
+    /// Returns `None` when the coordinates lie within the margin area or
+    /// outside of the parent widget.
+    #[inline]
+    pub fn find_child_mut<W: Widget>(self, widgets: &mut [W], coord: Coord) -> Option<&mut W> {
+        self.find_child_index(widgets, coord)
+            .map(|i| &mut widgets[i])
     }
 
     /// Call `f` on each child intersecting the given `rect`

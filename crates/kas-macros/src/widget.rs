@@ -246,7 +246,7 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
                     self.#inner.spatial_nav(mgr, reverse, from)
                 }
                 #[inline]
-                fn find_id(&self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
+                fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
                     self.#inner.find_id(coord)
                 }
                 #[inline]

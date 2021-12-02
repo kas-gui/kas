@@ -522,13 +522,13 @@ widget! {
             self.scroll_offset()
         }
 
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
             }
 
             let coord = coord + self.scroll.offset();
-            for child in &self.widgets[..self.cur_len.cast()] {
+            for child in &mut self.widgets[..self.cur_len.cast()] {
                 if let Some(id) = child.widget.find_id(coord) {
                     return Some(id);
                 }

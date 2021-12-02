@@ -79,7 +79,7 @@ widget! {
             }
         }
 
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if self.active < self.widgets.len() {
                 return self.widgets[self.active].find_id(coord);
             }

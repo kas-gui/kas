@@ -482,13 +482,13 @@ pub trait Layout: WidgetChildren {
     ///
     /// This must not be called before [`Layout::set_rect`].
     #[inline]
-    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+    fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
         if !self.rect().contains(coord) {
             return None;
         }
         let coord = coord + self.translation();
         for n in 0..self.num_children() {
-            if let Some(id) = self.get_child(n).and_then(|w| w.find_id(coord)) {
+            if let Some(id) = self.get_child_mut(n).and_then(|w| w.find_id(coord)) {
                 return Some(id);
             }
         }
