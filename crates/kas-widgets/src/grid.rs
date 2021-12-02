@@ -109,9 +109,9 @@ widget! {
 
         // TODO: more efficient find_id and draw?
 
-        fn draw(&self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let disabled = disabled || self.is_disabled();
-            for child in &self.widgets {
+            for child in &mut self.widgets {
                 child.1.draw(draw, mgr, disabled)
             }
         }

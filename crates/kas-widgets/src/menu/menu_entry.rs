@@ -52,7 +52,7 @@ widget! {
             });
         }
 
-        fn draw(&self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             draw.menu_entry(self.core.rect, self.input_state(mgr, disabled));
             let pos = self.core.rect.pos + self.label_off;
             draw.text_accel(
@@ -196,7 +196,7 @@ widget! {
             self
         }
 
-        fn draw(&self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let state = self.checkbox.input_state(mgr, disabled);
             draw.menu_entry(self.core.rect, state);
             self.checkbox.draw(draw, mgr, state.disabled());

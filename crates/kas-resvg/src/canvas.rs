@@ -16,7 +16,7 @@ pub trait CanvasDrawable: std::fmt::Debug + 'static {
     ///
     /// This is called whenever the [`Pixmap`] is resized. One should check the
     /// pixmap's dimensions and scale the contents appropriately.
-    fn draw(&self, pixmap: &mut Pixmap);
+    fn draw(&mut self, pixmap: &mut Pixmap);
 }
 
 widget! {
@@ -113,7 +113,7 @@ widget! {
                     mgr.draw_shared(|ds| ds.image_free(id));
                 }
                 self.pixmap = Pixmap::new(size.0, size.1);
-                let program = &self.program;
+                let program = &mut self.program;
                 self.image_id = self.pixmap.as_mut().map(|pm| {
                     program.draw(pm);
                     mgr.draw_shared(|ds| {
@@ -126,7 +126,7 @@ widget! {
             }
         }
 
-        fn draw(&self, draw: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
+        fn draw(&mut self, draw: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
             if let Some(id) = self.image_id {
                 draw.image(id, self.rect());
             }

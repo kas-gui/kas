@@ -48,7 +48,7 @@ widget! {
             self.core_data_mut().rect = self.sprite.align_rect(rect, align);
         }
 
-        fn draw(&self, draw: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
+        fn draw(&mut self, draw: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
             if let Some(id) = self.id {
                 draw.image(id, self.rect());
             }

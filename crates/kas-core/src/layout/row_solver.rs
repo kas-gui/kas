@@ -337,7 +337,12 @@ impl<D: Directional> RowPositionSolver<D> {
     }
 
     /// Call `f` on each child intersecting the given `rect`
-    pub fn for_children<W: Widget, F: FnMut(&W)>(self, widgets: &[W], rect: Rect, mut f: F) {
+    pub fn for_children<W: Widget, F: FnMut(&mut W)>(
+        self,
+        widgets: &mut [W],
+        rect: Rect,
+        mut f: F,
+    ) {
         let (pos, end) = match self.direction.is_reversed() {
             false => (rect.pos, rect.pos2()),
             true => (rect.pos2(), rect.pos),
@@ -362,7 +367,7 @@ impl<D: Directional> RowPositionSolver<D> {
             Err(_) => 0,
         };
 
-        for child in widgets[start..].iter() {
+        for child in widgets[start..].iter_mut() {
             let do_break = match self.direction.as_direction() {
                 Direction::Right => child.rect().pos.0 >= end.0,
                 Direction::Down => child.rect().pos.1 >= end.1,

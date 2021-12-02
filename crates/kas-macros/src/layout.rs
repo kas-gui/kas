@@ -242,7 +242,7 @@ pub(crate) fn derive(core: &Member, children: &[Child], layout: &LayoutArgs) -> 
         }
 
         fn draw(
-            &self,
+            &mut self,
             draw: &mut dyn ::kas::draw::DrawHandle,
             mgr: &::kas::event::ManagerState,
             disabled: bool,

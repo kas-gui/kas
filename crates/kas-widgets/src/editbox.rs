@@ -199,7 +199,7 @@ widget! {
             self.inner.set_rect(mgr, rect, align);
         }
 
-        fn draw(&self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             // We draw highlights for input state of inner:
             let disabled = disabled || self.is_disabled() || self.inner.is_disabled();
             let mut input_state = self.inner.input_state(mgr, disabled);
@@ -427,7 +427,7 @@ widget! {
             self.scroll_offset()
         }
 
-        fn draw(&self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let class = if self.multi_line {
                 TextClass::EditMulti
             } else {

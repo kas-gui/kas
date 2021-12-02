@@ -62,7 +62,7 @@ widget! {
             self.time_pos = pos;
         }
 
-        fn draw(&self, draw: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
+        fn draw(&mut self, draw: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
             let col_face = color::Rgba::grey(0.4);
             let col_time = color::Rgba::grey(0.0);
             let col_date = color::Rgba::grey(0.2);
