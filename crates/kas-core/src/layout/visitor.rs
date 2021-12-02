@@ -9,9 +9,11 @@ use super::{AlignHints, AxisInfo, RulesSetter, RulesSolver, SizeRules, Storage};
 use super::{RowSetter, RowSolver, RowStorage};
 use crate::draw::SizeHandle;
 use crate::event::Manager;
-use crate::geom::Rect;
+use crate::geom::{Offset, Rect, Size};
 use crate::{dir::Directional, WidgetConfig};
+use std::any::Any;
 use std::iter::ExactSizeIterator;
+use std::mem::replace;
 
 /// Chaining layout storage
 ///
@@ -80,15 +82,7 @@ enum LayoutType<'a> {
     /// A single child widget
     Single(&'a mut dyn WidgetConfig),
     /// An embedded layout
-    // TODO: why use a trait instead of enumerating all options?
     Visitor(Box<dyn Visitor + 'a>), // TODO: inline storage?
-}
-
-/// Implement row/column layout for children
-struct List<'a, S, D, I> {
-    data: &'a mut S,
-    direction: D,
-    children: I,
 }
 
 impl<'a> Default for Layout<'a> {
@@ -108,6 +102,14 @@ impl<'a> Layout<'a> {
     /// Construct a single-item layout
     pub fn single(widget: &'a mut dyn WidgetConfig, hints: AlignHints) -> Self {
         let layout = LayoutType::Single(widget);
+        Layout { layout, hints }
+    }
+
+    /// Construct a frame around a sub-layout
+    ///
+    /// This frame has dimensions according to [`SizeHandle::frame`].
+    pub fn frame(data: &'a mut FrameStorage, child: Self, hints: AlignHints) -> Self {
+        let layout = LayoutType::Visitor(Box::new(Frame { data, child }));
         Layout { layout, hints }
     }
 
@@ -157,6 +159,13 @@ impl<'a> Layout<'a> {
     }
 }
 
+/// Implement row/column layout for children
+struct List<'a, S, D, I> {
+    data: &'a mut S,
+    direction: D,
+    children: I,
+}
+
 impl<'a, S: RowStorage, D: Directional, I> Visitor for List<'a, S, D, I>
 where
     I: ExactSizeIterator<Item = Layout<'a>>,
@@ -181,5 +190,44 @@ where
 
     fn is_reversed(&mut self) -> bool {
         self.direction.is_reversed()
+    }
+}
+
+/// Layout storage for frame layout
+#[derive(Default, Debug)]
+pub struct FrameStorage {
+    offset: Offset,
+    size: Size,
+}
+impl Storage for FrameStorage {
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
+
+/// A frame around other content
+struct Frame<'a> {
+    data: &'a mut FrameStorage,
+    child: Layout<'a>,
+}
+
+impl<'a> Visitor for Frame<'a> {
+    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        let frame_rules = size_handle.frame(axis.is_vertical());
+        let child_rules = replace(&mut self.child, Layout::default()).size_rules(size_handle, axis);
+        let (rules, offset, size) = frame_rules.surround_as_margin(child_rules);
+        self.data.offset.set_component(axis, offset);
+        self.data.size.set_component(axis, size);
+        rules
+    }
+
+    fn set_rect(&mut self, mgr: &mut Manager, mut rect: Rect, align: AlignHints) {
+        rect.pos += self.data.offset;
+        rect.size -= self.data.size;
+        replace(&mut self.child, Layout::default()).set_rect(mgr, rect, align);
+    }
+
+    fn is_reversed(&mut self) -> bool {
+        replace(&mut self.child, Layout::default()).is_reversed()
     }
 }

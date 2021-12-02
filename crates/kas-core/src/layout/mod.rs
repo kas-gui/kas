@@ -60,7 +60,7 @@ pub use storage::{
     DynGridStorage, DynRowStorage, FixedGridStorage, FixedRowStorage, GridStorage, RowStorage,
     RowTemp, Storage,
 };
-pub use visitor::{Layout, StorageChain};
+pub use visitor::{FrameStorage, Layout, StorageChain};
 
 /// Information on which axis is being resized
 ///
