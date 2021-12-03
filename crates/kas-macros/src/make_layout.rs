@@ -6,7 +6,7 @@
 use proc_macro2::TokenStream as Toks;
 use quote::{quote, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
-use syn::{bracketed, parenthesized, Token};
+use syn::{braced, bracketed, parenthesized, LitInt, Token};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -25,6 +25,7 @@ mod kw {
     custom_keyword!(frame);
     custom_keyword!(list);
     custom_keyword!(slice);
+    custom_keyword!(grid);
 }
 
 pub struct Input {
@@ -39,6 +40,7 @@ enum Layout {
     Frame(Box<Layout>),
     List(Direction, Vec<Layout>),
     Slice(Direction, syn::Expr),
+    Grid(GridDimensions, Vec<(CellInfo, Layout)>),
 }
 
 enum Direction {
@@ -52,6 +54,68 @@ enum Direction {
 enum Align {
     Center,
     Stretch,
+}
+
+#[derive(Default)]
+struct GridDimensions {
+    rows: u32,
+    cols: u32,
+    row_spans: u32,
+    col_spans: u32,
+}
+struct CellInfo {
+    row: u32,
+    row_end: u32,
+    col: u32,
+    col_end: u32,
+}
+impl Parse for CellInfo {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let row = input.parse::<LitInt>()?.base10_parse()?;
+        let row_end = if input.peek(Token![..]) {
+            let _ = input.parse::<Token![..]>();
+            let lit = input.parse::<LitInt>()?;
+            let end = lit.base10_parse()?;
+            if row >= end {
+                return Err(Error::new(lit.span(), format!("expected value > {}", row)));
+            }
+            end
+        } else {
+            row + 1
+        };
+
+        let col = input.parse::<LitInt>()?.base10_parse()?;
+        let col_end = if input.peek(Token![..]) {
+            let _ = input.parse::<Token![..]>();
+            let lit = input.parse::<LitInt>()?;
+            let end = lit.base10_parse()?;
+            if col >= end {
+                return Err(Error::new(lit.span(), format!("expected value > {}", col)));
+            }
+            end
+        } else {
+            col + 1
+        };
+
+        Ok(CellInfo {
+            row,
+            row_end,
+            col,
+            col_end,
+        })
+    }
+}
+impl GridDimensions {
+    fn update(&mut self, cell: &CellInfo) {
+        self.rows = self.rows.max(cell.row_end);
+        self.cols = self.cols.max(cell.col_end);
+        if cell.row_end - cell.row > 1 {
+            self.row_spans += 1;
+        }
+        if cell.col_end - cell.col > 1 {
+            self.col_spans += 1;
+        }
+    }
 }
 
 impl Parse for Input {
@@ -117,6 +181,10 @@ impl Parse for Layout {
             } else {
                 Err(Error::new(input.span(), "expected `self`"))
             }
+        } else if lookahead.peek(kw::grid) {
+            let _: kw::grid = input.parse()?;
+            let _: Token![:] = input.parse()?;
+            Ok(parse_grid(input)?)
         } else {
             Err(lookahead.error())
         }
@@ -155,6 +223,29 @@ fn parse_layout_list(input: ParseStream) -> Result<Vec<Layout>> {
     }
 
     Ok(list)
+}
+
+fn parse_grid(input: ParseStream) -> Result<Layout> {
+    let inner;
+    let _ = braced!(inner in input);
+
+    let mut dim = GridDimensions::default();
+    let mut cells = vec![];
+    while !inner.is_empty() {
+        let info = inner.parse()?;
+        dim.update(&info);
+        let _: Token![,] = inner.parse()?;
+        let layout = inner.parse()?;
+        cells.push((info, layout));
+
+        if inner.is_empty() {
+            break;
+        }
+
+        let _: Token![;] = inner.parse()?;
+    }
+
+    Ok(Layout::Grid(dim, cells))
 }
 
 impl Parse for Direction {
@@ -198,6 +289,19 @@ impl quote::ToTokens for Direction {
             Direction::Down => toks.append_all(quote! { ::kas::dir::Down }),
             Direction::Expr(expr) => expr.to_tokens(toks),
         }
+    }
+}
+
+impl quote::ToTokens for GridDimensions {
+    fn to_tokens(&self, toks: &mut Toks) {
+        let (rows, cols) = (self.rows, self.cols);
+        let (row_spans, col_spans) = (self.row_spans, self.col_spans);
+        toks.append_all(quote! { ::kas::layout::GridDimensions {
+            rows: #rows,
+            cols: #cols,
+            row_spans: #row_spans,
+            col_spans: #col_spans,
+        } });
     }
 }
 
@@ -252,6 +356,35 @@ impl Layout {
                     data
                 } };
                 quote! { ::kas::layout::Layout::slice(&mut #expr, #dir, #data) }
+            }
+            Layout::Grid(dim, cells) => {
+                let (rows, cols) = (dim.rows, dim.cols);
+                let data = quote! { {
+                    let (data, next) = _chain.storage::<::kas::layout::FixedGridStorage<#rows, #cols>();
+                    _chain = next;
+                    data
+                } };
+
+                let mut items = Toks::new();
+                for item in cells {
+                    let (row, row_end) = (item.0.row, item.0.row_end);
+                    let (col, col_end) = (item.0.col, item.0.col_end);
+                    let layout = item.1.generate();
+                    items.append_all(quote! {
+                        (
+                            ::kas::layout::GridChildInfo {
+                                row: #row,
+                                row_end: #row_end,
+                                col: #col,
+                                col_end: #col_end,
+                            },
+                            #layout,
+                        )
+                    });
+                }
+                let iter = quote! { { let arr = [#items]; arr.into_iter() } };
+
+                quote! { ::kas::layout::Layout::grid(#iter, #dim, #data) }
             }
         }
     }
