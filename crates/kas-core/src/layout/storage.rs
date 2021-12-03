@@ -152,7 +152,7 @@ where
 /// Details are hidden (for internal use only).
 pub trait GridStorage: sealed::Sealed + Clone {
     #[doc(hidden)]
-    fn set_dims(&mut self, cols: usize, rows: usize);
+    fn set_dims(&mut self, rows: usize, cols: usize);
 
     #[doc(hidden)]
     fn width_rules(&mut self) -> &mut [SizeRules] {
@@ -185,9 +185,9 @@ pub trait GridStorage: sealed::Sealed + Clone {
 
 /// Fixed-length grid storage
 ///
-/// Uses const-generics arguments `C, R` (the number of columns and rows).
+/// Uses const-generics arguments `R, C` (the number of rows and columns).
 #[derive(Clone, Debug)]
-pub struct FixedGridStorage<const C: usize, const R: usize> {
+pub struct FixedGridStorage<const R: usize, const C: usize> {
     width_rules: [SizeRules; C],
     height_rules: [SizeRules; R],
     width_total: SizeRules,
@@ -196,7 +196,7 @@ pub struct FixedGridStorage<const C: usize, const R: usize> {
     heights: [i32; R],
 }
 
-impl<const C: usize, const R: usize> Default for FixedGridStorage<C, R> {
+impl<const R: usize, const C: usize> Default for FixedGridStorage<R, C> {
     fn default() -> Self {
         FixedGridStorage {
             width_rules: [SizeRules::default(); C],
@@ -209,14 +209,14 @@ impl<const C: usize, const R: usize> Default for FixedGridStorage<C, R> {
     }
 }
 
-impl<const C: usize, const R: usize> Storage for FixedGridStorage<C, R> {
+impl<const R: usize, const C: usize> Storage for FixedGridStorage<R, C> {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
 }
 
-impl<const C: usize, const R: usize> GridStorage for FixedGridStorage<C, R> {
-    fn set_dims(&mut self, cols: usize, rows: usize) {
+impl<const R: usize, const C: usize> GridStorage for FixedGridStorage<R, C> {
+    fn set_dims(&mut self, rows: usize, cols: usize) {
         assert_eq!(self.width_rules.as_ref().len(), cols);
         assert_eq!(self.height_rules.as_ref().len(), rows);
         assert_eq!(self.widths.len(), cols);
@@ -268,7 +268,7 @@ impl Storage for DynGridStorage {
 }
 
 impl GridStorage for DynGridStorage {
-    fn set_dims(&mut self, cols: usize, rows: usize) {
+    fn set_dims(&mut self, rows: usize, cols: usize) {
         self.width_rules.resize(cols, SizeRules::EMPTY);
         self.height_rules.resize(rows, SizeRules::EMPTY);
         self.widths.resize(cols, 0);
@@ -308,6 +308,6 @@ mod sealed {
     impl Sealed for super::DynRowStorage {}
     impl Sealed for Vec<i32> {}
     impl<const L: usize> Sealed for [i32; L] {}
-    impl<const C: usize, const R: usize> Sealed for super::FixedGridStorage<C, R> {}
+    impl<const R: usize, const C: usize> Sealed for super::FixedGridStorage<R, C> {}
     impl Sealed for super::DynGridStorage {}
 }

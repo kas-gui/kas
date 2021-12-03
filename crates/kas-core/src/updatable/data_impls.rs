@@ -167,8 +167,8 @@ macro_rules! impl_via_deref {
                 self.deref().row_iter_vec_from(start, limit)
             }
 
-            fn make_key(col: &Self::ColKey, row: &Self::RowKey) -> Self::Key {
-                <$t>::make_key(col, row)
+            fn make_key(row: &Self::RowKey, col: &Self::ColKey) -> Self::Key {
+                <$t>::make_key(row, col)
             }
         }
     };

@@ -54,15 +54,15 @@ pub(crate) fn data_type(children: &[Child], layout: &LayoutArgs) -> Result<(Toks
         }
     }
 
-    let col_temp = if cols > 16 {
-        quote! { Vec<i32> }
-    } else {
-        quote! { [i32; #cols] }
-    };
     let row_temp = if rows > 16 {
         quote! { Vec<i32> }
     } else {
         quote! { [i32; #rows] }
+    };
+    let col_temp = if cols > 16 {
+        quote! { Vec<i32> }
+    } else {
+        quote! { [i32; #cols] }
     };
 
     Ok(match layout.layout {
@@ -84,15 +84,15 @@ pub(crate) fn data_type(children: &[Child], layout: &LayoutArgs) -> Result<(Toks
             (dt, solver, setter)
         }
         LayoutType::Grid => {
-            let dt = quote! { ::kas::layout::FixedGridStorage::<#cols, #rows> };
+            let dt = quote! { ::kas::layout::FixedGridStorage::<#rows, #cols> };
             let solver = quote! {
                 ::kas::layout::GridSolver::<
-                    [(::kas::layout::SizeRules, u32, u32); #col_spans],
                     [(::kas::layout::SizeRules, u32, u32); #row_spans],
+                    [(::kas::layout::SizeRules, u32, u32); #col_spans],
                     #dt,
                 >
             };
-            let setter = quote! { ::kas::layout::GridSetter::<#col_temp, #row_temp, #dt> };
+            let setter = quote! { ::kas::layout::GridSetter::<#row_temp, #col_temp, #dt> };
             (dt, solver, setter)
         }
     })
@@ -188,7 +188,7 @@ pub(crate) fn derive(core: &Member, children: &[Child], layout: &LayoutArgs) -> 
         });
     }
 
-    let (ucols, urows) = (cols as usize, rows as usize);
+    let (urows, ucols) = (rows as usize, cols as usize);
     let dim = match layout.layout {
         LayoutType::Single => quote! { () },
         LayoutType::Right => quote! { (::kas::dir::Right, #ucols) },

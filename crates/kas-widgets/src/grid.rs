@@ -220,8 +220,8 @@ impl<'a, W: Widget> GridBuilder<'a, W> {
     ///
     /// The child is added to the end of the "list", thus appears last in
     /// navigation order.
-    pub fn push_cell(&mut self, col: u32, row: u32, widget: W) {
-        let info = GridChildInfo::new(col, row);
+    pub fn push_cell(&mut self, row: u32, col: u32, widget: W) {
+        let info = GridChildInfo::new(row, col);
         self.push(info, widget);
     }
 
@@ -229,43 +229,43 @@ impl<'a, W: Widget> GridBuilder<'a, W> {
     ///
     /// The child is added to the end of the "list", thus appears last in
     /// navigation order.
-    pub fn with_cell(self, col: u32, row: u32, widget: W) -> Self {
-        self.with_cell_span(col, row, 1, 1, widget)
+    pub fn with_cell(self, row: u32, col: u32, widget: W) -> Self {
+        self.with_cell_span(row, col, 1, 1, widget)
     }
 
     /// Add a child widget to the given cell, with spans
     ///
-    /// Parameters `col_span` and `row_span` are the number of columns/rows
+    /// Parameters `row_span` and `col_span` are the number of rows/columns
     /// spanned and should each be at least 1.
     ///
     /// The child is added to the end of the "list", thus appears last in
     /// navigation order.
-    pub fn push_cell_span(&mut self, col: u32, row: u32, col_span: u32, row_span: u32, widget: W) {
+    pub fn push_cell_span(&mut self, row: u32, col: u32, row_span: u32, col_span: u32, widget: W) {
         let info = GridChildInfo {
-            col,
-            col_end: col + col_span,
             row,
             row_end: row + row_span,
+            col,
+            col_end: col + col_span,
         };
         self.push(info, widget);
     }
 
     /// Add a child widget to the given cell, with spans, builder style
     ///
-    /// Parameters `col_span` and `row_span` are the number of columns/rows
+    /// Parameters `row_span` and `col_span` are the number of rows/columns
     /// spanned and should each be at least 1.
     ///
     /// The child is added to the end of the "list", thus appears last in
     /// navigation order.
     pub fn with_cell_span(
         mut self,
-        col: u32,
         row: u32,
-        col_span: u32,
+        col: u32,
         row_span: u32,
+        col_span: u32,
         widget: W,
     ) -> Self {
-        self.push_cell_span(col, row, col_span, row_span, widget);
+        self.push_cell_span(row, col, row_span, col_span, widget);
         self
     }
 
@@ -326,7 +326,7 @@ impl<'a, W: Widget> GridBuilder<'a, W> {
     }
 
     /// Get the first index of a child occupying the given cell, if any
-    pub fn find_child_cell(&self, col: u32, row: u32) -> Option<usize> {
+    pub fn find_child_cell(&self, row: u32, col: u32) -> Option<usize> {
         for (i, (info, _)) in self.0.iter().enumerate() {
             if info.col <= col && col < info.col_end && info.row <= row && row < info.row_end {
                 return Some(i);
