@@ -6,7 +6,7 @@
 //! Layout visitor
 
 use super::{AlignHints, AxisInfo, RulesSetter, RulesSolver, SizeRules, Storage};
-use super::{RowSetter, RowSolver, RowStorage};
+use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use crate::draw::{DrawHandle, SizeHandle};
 use crate::event::{Manager, ManagerState};
 use crate::geom::{Offset, Rect, Size};
@@ -115,7 +115,7 @@ impl<'a> Layout<'a> {
         Layout { layout, hints }
     }
 
-    /// Construct a list layout using an iterator over sub-layouts
+    /// Construct a row/column layout over an iterator of layouts
     pub fn list<I, D, S>(list: I, direction: D, data: &'a mut S, hints: AlignHints) -> Self
     where
         I: ExactSizeIterator<Item = Layout<'a>> + 'a,
@@ -126,6 +126,30 @@ impl<'a> Layout<'a> {
             data,
             direction,
             children: list,
+        }));
+        Layout { layout, hints }
+    }
+
+    /// Construct a row/column layout over a slice of widgets
+    ///
+    /// In contrast to [`Layout::list`], `slice` can only be used over a slice
+    /// of a single type of widget, enabling some optimisations: `O(log n)` for
+    /// `draw` and `find_id`. Some other methods, however, remain `O(n)`, thus
+    /// the optimisations are not (currently) so useful.
+    pub fn slice<W, D>(
+        slice: &'a mut [W],
+        direction: D,
+        data: &'a mut DynRowStorage,
+        hints: AlignHints,
+    ) -> Self
+    where
+        W: WidgetConfig,
+        D: Directional,
+    {
+        let layout = LayoutType::Visitor(Box::new(Slice {
+            data,
+            direction,
+            children: slice,
         }));
         Layout { layout, hints }
     }
@@ -213,15 +237,47 @@ where
     }
 
     fn draw(&mut self, rect: Rect, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-        /* TODO: use position solver for large draws (requires array of widgets)
-            let solver = RowPositionSolver::new(self.direction);
-            solver.for_children(&mut self.widgets, draw.get_clip_rect(), |w| {
-                w.draw(rect, draw, mgr, disabled)
-            });
-        */
         for mut child in &mut self.children {
             child.draw(rect, draw, mgr, disabled);
         }
+    }
+}
+
+/// A row/column over a slice
+struct Slice<'a, W: WidgetConfig, D: Directional> {
+    data: &'a mut DynRowStorage,
+    direction: D,
+    children: &'a mut [W],
+}
+
+impl<'a, W: WidgetConfig, D: Directional> Visitor for Slice<'a, W, D> {
+    fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        let dim = (self.direction, self.children.len());
+        let mut solver = RowSolver::new(axis, dim, self.data);
+        for (n, child) in self.children.iter_mut().enumerate() {
+            solver.for_child(self.data, n, |axis| child.size_rules(sh, axis));
+        }
+        solver.finish(self.data)
+    }
+
+    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+        let dim = (self.direction, self.children.len());
+        let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, align, self.data);
+
+        for (n, child) in self.children.iter_mut().enumerate() {
+            child.set_rect(mgr, setter.child_rect(self.data, n), align);
+        }
+    }
+
+    fn is_reversed(&mut self) -> bool {
+        self.direction.is_reversed()
+    }
+
+    fn draw(&mut self, _: Rect, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        let solver = RowPositionSolver::new(self.direction);
+        solver.for_children(self.children, draw.get_clip_rect(), |w| {
+            w.draw(draw, mgr, disabled)
+        });
     }
 }
 

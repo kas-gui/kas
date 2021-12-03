@@ -205,10 +205,7 @@ widget! {
 
     impl Layout for Self {
         fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
-            let iter = self.widgets.iter_mut().map(|w| {
-                layout::Layout::single(w.as_widget_mut(), AlignHints::NONE)
-            });
-            layout::Layout::list(iter, self.direction, &mut self.data, AlignHints::NONE)
+            layout::Layout::slice(&mut self.widgets, self.direction, &mut self.data, AlignHints::NONE)
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
