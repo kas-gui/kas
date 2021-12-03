@@ -80,12 +80,10 @@ widget! {
 
     impl Layout for Self {
         fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
-            let hints = AlignHints::NONE;
             layout::Layout::grid(
-                self.widgets.iter_mut().map(move |(info, w)| (*info, layout::Layout::single(w, hints))),
+                self.widgets.iter_mut().map(move |(info, w)| (*info, layout::Layout::single(w))),
                 self.dim,
                 &mut self.data,
-                hints,
             )
         }
     }

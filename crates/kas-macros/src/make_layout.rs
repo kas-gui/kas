@@ -31,9 +31,11 @@ pub struct Input {
 }
 
 enum Layout {
-    Single(syn::Expr, Align),
-    Frame(Box<Layout>, Align),
-    List(List, Align),
+    Align(Box<Layout>, Align),
+    AlignSingle(syn::Expr, Align),
+    Single(syn::Expr),
+    Frame(Box<Layout>),
+    List(List),
 }
 
 struct List {
@@ -42,7 +44,6 @@ struct List {
 }
 
 enum Align {
-    None,
     Center,
     Stretch,
 }
@@ -59,35 +60,36 @@ impl Parse for Input {
 
 impl Parse for Layout {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut align = Align::None;
-
-        let mut lookahead = input.lookahead1();
+        let lookahead = input.lookahead1();
         if lookahead.peek(kw::align) {
             let _: kw::align = input.parse()?;
-            align = parse_align(input)?;
-
+            let align = parse_align(input)?;
             let _: Token![:] = input.parse()?;
-            lookahead = input.lookahead1();
-        }
 
-        if lookahead.peek(Token![self]) {
-            Ok(Layout::Single(input.parse()?, align))
+            if input.peek(Token![self]) {
+                Ok(Layout::AlignSingle(input.parse()?, align))
+            } else {
+                let layout: Layout = input.parse()?;
+                Ok(Layout::Align(Box::new(layout), align))
+            }
+        } else if lookahead.peek(Token![self]) {
+            Ok(Layout::Single(input.parse()?))
         } else if lookahead.peek(kw::frame) {
             let _: kw::frame = input.parse()?;
             let inner;
             let _ = parenthesized!(inner in input);
             let layout: Layout = inner.parse()?;
-            Ok(Layout::Frame(Box::new(layout), align))
+            Ok(Layout::Frame(Box::new(layout)))
         } else if lookahead.peek(kw::column) {
             let _: kw::column = input.parse()?;
             let dir = quote! { ::kas::dir::Down };
             let list = parse_layout_list(input)?;
-            Ok(Layout::List(List { dir, list }, align))
+            Ok(Layout::List(List { dir, list }))
         } else if lookahead.peek(kw::row) {
             let _: kw::row = input.parse()?;
             let dir = quote! { ::kas::dir::Right };
             let list = parse_layout_list(input)?;
-            Ok(Layout::List(List { dir, list }, align))
+            Ok(Layout::List(List { dir, list }))
         } else {
             Err(lookahead.error())
         }
@@ -131,7 +133,6 @@ fn parse_layout_list(input: ParseStream) -> Result<Vec<Layout>> {
 impl quote::ToTokens for Align {
     fn to_tokens(&self, toks: &mut Toks) {
         toks.append_all(match self {
-            Align::None => quote! { ::kas::layout::AlignHints::NONE },
             Align::Center => quote! { ::kas::layout::AlignHints::CENTER },
             Align::Stretch => quote! { ::kas::layout::AlignHints::STRETCH },
         });
@@ -141,18 +142,25 @@ impl quote::ToTokens for Align {
 impl Layout {
     fn generate(&self) -> Toks {
         match self {
-            Layout::Single(expr, align) => quote! {
-                layout::Layout::single(#expr.as_widget_mut(), #align)
+            Layout::Align(layout, align) => {
+                let inner = layout.generate();
+                quote! { layout::Layout::align(#inner, #align) }
+            }
+            Layout::AlignSingle(expr, align) => {
+                quote! { layout::Layout::align_single(#expr.as_widget_mut(), #align) }
+            }
+            Layout::Single(expr) => quote! {
+                layout::Layout::single(#expr.as_widget_mut())
             },
-            Layout::Frame(layout, align) => {
+            Layout::Frame(layout) => {
                 let inner = layout.generate();
                 quote! {
                     let (data, next) = _chain.storage::<::kas::layout::FrameStorage>();
                     _chain = next;
-                    layout::Layout::frame(data, #inner, #align)
+                    layout::Layout::frame(data, #inner)
                 }
             }
-            Layout::List(List { dir, list }, align) => {
+            Layout::List(List { dir, list }) => {
                 let len = list.len();
                 let storage = if len > 16 {
                     quote! { ::kas::layout::DynRowStorage }
@@ -173,7 +181,7 @@ impl Layout {
                 }
                 let iter = quote! { { let arr = [#items]; arr.into_iter() } };
 
-                quote! { ::kas::layout::Layout::list(#iter, #dir, #data, #align) }
+                quote! { ::kas::layout::Layout::list(#iter, #dir, #data) }
             }
         }
     }

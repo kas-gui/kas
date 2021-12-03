@@ -14,7 +14,6 @@ use crate::geom::{Offset, Rect, Size};
 use crate::{dir::Directional, WidgetConfig};
 use std::any::Any;
 use std::iter::ExactSizeIterator;
-use std::mem::replace;
 
 /// Chaining layout storage
 ///
@@ -75,7 +74,6 @@ trait Visitor {
 /// algorithm details are implemented over this visitor.
 pub struct Layout<'a> {
     layout: LayoutType<'a>,
-    hints: AlignHints,
 }
 
 /// Items which can be placed in a layout
@@ -84,6 +82,10 @@ enum LayoutType<'a> {
     None,
     /// A single child widget
     Single(&'a mut dyn WidgetConfig),
+    /// A single child widget with alignment
+    AlignSingle(&'a mut dyn WidgetConfig, AlignHints),
+    /// Apply alignment hints to some sub-layout
+    AlignLayout(Box<Layout<'a>>, AlignHints),
     /// An embedded layout
     Visitor(Box<dyn Visitor + 'a>),
 }
@@ -98,26 +100,37 @@ impl<'a> Layout<'a> {
     /// Construct an empty layout
     pub fn none() -> Self {
         let layout = LayoutType::None;
-        let hints = AlignHints::NONE;
-        Layout { layout, hints }
+        Layout { layout }
     }
 
     /// Construct a single-item layout
-    pub fn single(widget: &'a mut dyn WidgetConfig, hints: AlignHints) -> Self {
+    pub fn single(widget: &'a mut dyn WidgetConfig) -> Self {
         let layout = LayoutType::Single(widget);
-        Layout { layout, hints }
+        Layout { layout }
+    }
+
+    /// Construct a single-item layout with alignment hints
+    pub fn align_single(widget: &'a mut dyn WidgetConfig, hints: AlignHints) -> Self {
+        let layout = LayoutType::AlignSingle(widget, hints);
+        Layout { layout }
+    }
+
+    /// Align a sub-layout
+    pub fn align(layout: Self, hints: AlignHints) -> Self {
+        let layout = LayoutType::AlignLayout(Box::new(layout), hints);
+        Layout { layout }
     }
 
     /// Construct a frame around a sub-layout
     ///
     /// This frame has dimensions according to [`SizeHandle::frame`].
-    pub fn frame(data: &'a mut FrameStorage, child: Self, hints: AlignHints) -> Self {
+    pub fn frame(data: &'a mut FrameStorage, child: Self) -> Self {
         let layout = LayoutType::Visitor(Box::new(Frame { data, child }));
-        Layout { layout, hints }
+        Layout { layout }
     }
 
     /// Construct a row/column layout over an iterator of layouts
-    pub fn list<I, D, S>(list: I, direction: D, data: &'a mut S, hints: AlignHints) -> Self
+    pub fn list<I, D, S>(list: I, direction: D, data: &'a mut S) -> Self
     where
         I: ExactSizeIterator<Item = Layout<'a>> + 'a,
         D: Directional,
@@ -128,7 +141,7 @@ impl<'a> Layout<'a> {
             direction,
             children: list,
         }));
-        Layout { layout, hints }
+        Layout { layout }
     }
 
     /// Construct a row/column layout over a slice of widgets
@@ -137,12 +150,7 @@ impl<'a> Layout<'a> {
     /// of a single type of widget, enabling some optimisations: `O(log n)` for
     /// `draw` and `find_id`. Some other methods, however, remain `O(n)`, thus
     /// the optimisations are not (currently) so useful.
-    pub fn slice<W, D>(
-        slice: &'a mut [W],
-        direction: D,
-        data: &'a mut DynRowStorage,
-        hints: AlignHints,
-    ) -> Self
+    pub fn slice<W, D>(slice: &'a mut [W], direction: D, data: &'a mut DynRowStorage) -> Self
     where
         W: WidgetConfig,
         D: Directional,
@@ -152,11 +160,11 @@ impl<'a> Layout<'a> {
             direction,
             children: slice,
         }));
-        Layout { layout, hints }
+        Layout { layout }
     }
 
     /// Construct a grid layout over an iterator of `(cell, layout)` items
-    pub fn grid<I, S>(iter: I, dim: GridDimensions, data: &'a mut S, hints: AlignHints) -> Self
+    pub fn grid<I, S>(iter: I, dim: GridDimensions, data: &'a mut S) -> Self
     where
         I: Iterator<Item = (GridChildInfo, Layout<'a>)> + 'a,
         S: GridStorage,
@@ -166,24 +174,41 @@ impl<'a> Layout<'a> {
             dim,
             children: iter,
         }));
-        Layout { layout, hints }
+        Layout { layout }
     }
 
     /// Get size rules for the given axis
+    #[inline]
     pub fn size_rules(mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        self.size_rules_(sh, axis)
+    }
+    fn size_rules_(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         match &mut self.layout {
             LayoutType::None => SizeRules::EMPTY,
             LayoutType::Single(child) => child.size_rules(sh, axis),
+            LayoutType::AlignSingle(child, _) => child.size_rules(sh, axis),
+            LayoutType::AlignLayout(layout, _) => layout.size_rules_(sh, axis),
             LayoutType::Visitor(visitor) => visitor.size_rules(sh, axis),
         }
     }
 
     /// Apply a given `rect` to self
+    #[inline]
     pub fn set_rect(mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
-        let align = self.hints.combine(align);
+        self.set_rect_(mgr, rect, align);
+    }
+    fn set_rect_(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
         match &mut self.layout {
             LayoutType::None => (),
             LayoutType::Single(child) => child.set_rect(mgr, rect, align),
+            LayoutType::AlignSingle(child, hints) => {
+                let align = hints.combine(align);
+                child.set_rect(mgr, rect, align);
+            }
+            LayoutType::AlignLayout(layout, hints) => {
+                let align = hints.combine(align);
+                layout.set_rect_(mgr, rect, align);
+            }
             LayoutType::Visitor(layout) => layout.set_rect(mgr, rect, align),
         }
     }
@@ -191,10 +216,16 @@ impl<'a> Layout<'a> {
     /// Return true if layout is up/left
     ///
     /// This is a lazy method of implementing tab order for reversible layouts.
+    #[inline]
     pub fn is_reversed(mut self) -> bool {
+        self.is_reversed_()
+    }
+    fn is_reversed_(&mut self) -> bool {
         match &mut self.layout {
             LayoutType::None => false,
             LayoutType::Single(_) => false,
+            LayoutType::AlignSingle(_, _) => false,
+            LayoutType::AlignLayout(layout, _) => layout.is_reversed_(),
             LayoutType::Visitor(layout) => layout.is_reversed(),
         }
     }
@@ -203,16 +234,22 @@ impl<'a> Layout<'a> {
     ///
     /// Special: the widget's own `rect` must be passed in.
     /// TODO: pass in CoreData instead and use to construct storage dynamically?
+    #[inline]
     pub fn draw(
-        &mut self,
+        mut self,
         rect: Rect,
         draw: &mut dyn DrawHandle,
         mgr: &ManagerState,
         disabled: bool,
     ) {
+        self.draw_(rect, draw, mgr, disabled);
+    }
+    fn draw_(&mut self, rect: Rect, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         match &mut self.layout {
             LayoutType::None => (),
             LayoutType::Single(child) => child.draw(draw, mgr, disabled),
+            LayoutType::AlignSingle(child, _) => child.draw(draw, mgr, disabled),
+            LayoutType::AlignLayout(layout, _) => layout.draw_(rect, draw, mgr, disabled),
             LayoutType::Visitor(layout) => layout.draw(rect, draw, mgr, disabled),
         }
     }
@@ -252,7 +289,7 @@ where
     }
 
     fn draw(&mut self, rect: Rect, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-        for mut child in &mut self.children {
+        for child in &mut self.children {
             child.draw(rect, draw, mgr, disabled);
         }
     }
@@ -328,7 +365,7 @@ where
     }
 
     fn draw(&mut self, rect: Rect, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-        for (_, mut child) in &mut self.children {
+        for (_, child) in &mut self.children {
             child.draw(rect, draw, mgr, disabled);
         }
     }
@@ -355,7 +392,7 @@ struct Frame<'a> {
 impl<'a> Visitor for Frame<'a> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let frame_rules = size_handle.frame(axis.is_vertical());
-        let child_rules = replace(&mut self.child, Layout::default()).size_rules(size_handle, axis);
+        let child_rules = self.child.size_rules_(size_handle, axis);
         let (rules, offset, size) = frame_rules.surround_as_margin(child_rules);
         self.data.offset.set_component(axis, offset);
         self.data.size.set_component(axis, size);
@@ -365,15 +402,15 @@ impl<'a> Visitor for Frame<'a> {
     fn set_rect(&mut self, mgr: &mut Manager, mut rect: Rect, align: AlignHints) {
         rect.pos += self.data.offset;
         rect.size -= self.data.size;
-        replace(&mut self.child, Layout::default()).set_rect(mgr, rect, align);
+        self.child.set_rect_(mgr, rect, align);
     }
 
     fn is_reversed(&mut self) -> bool {
-        replace(&mut self.child, Layout::default()).is_reversed()
+        self.child.is_reversed_()
     }
 
     fn draw(&mut self, rect: Rect, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         draw.outer_frame(rect);
-        replace(&mut self.child, Layout::default()).draw(rect, draw, mgr, disabled);
+        self.child.draw_(rect, draw, mgr, disabled);
     }
 }

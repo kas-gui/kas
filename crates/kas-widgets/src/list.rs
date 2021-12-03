@@ -205,7 +205,7 @@ widget! {
 
     impl Layout for Self {
         fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
-            layout::Layout::slice(&mut self.widgets, self.direction, &mut self.data, AlignHints::NONE)
+            layout::Layout::slice(&mut self.widgets, self.direction, &mut self.data)
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
