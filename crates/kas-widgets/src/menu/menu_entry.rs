@@ -8,7 +8,7 @@
 use super::Menu;
 use crate::{AccelLabel, CheckBoxBare};
 use kas::draw::TextClass;
-use kas::prelude::*;
+use kas::{layout, prelude::*};
 use std::fmt::Debug;
 
 widget! {
@@ -123,7 +123,6 @@ widget! {
     #[autoimpl(Debug)]
     #[autoimpl(HasBool on checkbox)]
     #[derive(Clone, Default)]
-    #[layout(row, area=checkbox, draw=draw)]
     pub struct MenuToggle<M: 'static> {
         #[widget_core]
         core: CoreData,
@@ -137,6 +136,27 @@ widget! {
     impl WidgetConfig for Self {
         fn configure(&mut self, mgr: &mut Manager) {
             mgr.add_accel_keys(self.checkbox.id(), self.label.keys());
+        }
+    }
+
+    impl Layout for Self {
+        fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
+            make_layout!(self.core; row: [ self.checkbox, self.label])
+        }
+
+        #[inline]
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) {
+                return None;
+            }
+            Some(self.id())
+        }
+
+        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+            let state = self.checkbox.input_state(mgr, disabled);
+            draw.menu_entry(self.core.rect, state);
+            self.checkbox.draw(draw, mgr, state.disabled());
+            self.label.draw(draw, mgr, state.disabled());
         }
     }
 
@@ -194,13 +214,6 @@ widget! {
         pub fn with_state(mut self, state: bool) -> Self {
             self.checkbox = self.checkbox.with_state(state);
             self
-        }
-
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-            let state = self.checkbox.input_state(mgr, disabled);
-            draw.menu_entry(self.core.rect, state);
-            self.checkbox.draw(draw, mgr, state.disabled());
-            self.label.draw(draw, mgr, state.disabled());
         }
     }
 }

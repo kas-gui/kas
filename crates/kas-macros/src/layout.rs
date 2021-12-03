@@ -203,12 +203,6 @@ pub(crate) fn derive(core: &Member, children: &[Child], layout: &LayoutArgs) -> 
         } },
     };
 
-    if let Some(ref method) = layout.draw {
-        draw = quote! {
-            self.#method(draw, mgr, disabled);
-        }
-    };
-
     Ok(quote! {
         fn size_rules(&mut self, sh: &mut dyn ::kas::draw::SizeHandle, axis: ::kas::layout::AxisInfo)
             -> ::kas::layout::SizeRules

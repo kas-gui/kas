@@ -481,7 +481,6 @@ pub trait Layout: WidgetChildren {
     ///     through all children in order is too slow.
     ///
     /// This must not be called before [`Layout::set_rect`].
-    #[inline]
     fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
         if !self.rect().contains(coord) {
             return None;

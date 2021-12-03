@@ -797,7 +797,6 @@ pub struct LayoutArgs {
     pub span: Span,
     pub layout: LayoutType,
     pub area: Option<Ident>,
-    pub draw: Option<Ident>,
 }
 
 impl Parse for LayoutArgs {
@@ -851,7 +850,6 @@ impl Parse for LayoutArgs {
         }
 
         let mut area = None;
-        let mut draw = None;
 
         while !content.is_empty() {
             let lookahead = content.lookahead1();
@@ -859,10 +857,6 @@ impl Parse for LayoutArgs {
                 let _: kw::area = content.parse()?;
                 let _: Eq = content.parse()?;
                 area = Some(content.parse()?);
-            } else if draw.is_none() && lookahead.peek(kw::draw) {
-                let _: kw::draw = content.parse()?;
-                let _: Eq = content.parse()?;
-                draw = Some(content.parse()?);
             } else {
                 return Err(lookahead.error());
             }
@@ -872,12 +866,7 @@ impl Parse for LayoutArgs {
             }
         }
 
-        Ok(LayoutArgs {
-            span,
-            layout,
-            area,
-            draw,
-        })
+        Ok(LayoutArgs { span, layout, area })
     }
 }
 
