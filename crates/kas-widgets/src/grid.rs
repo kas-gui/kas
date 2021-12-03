@@ -5,9 +5,8 @@
 
 //! A grid widget
 
-use kas::layout::{DynGridStorage, GridChildInfo, GridDimensions, GridSetter, GridSolver};
-use kas::layout::{RulesSetter, RulesSolver};
-use kas::{event, prelude::*};
+use kas::layout::{DynGridStorage, GridChildInfo, GridDimensions};
+use kas::{event, layout, prelude::*};
 use std::ops::{Index, IndexMut};
 
 /// A grid of boxed widgets
@@ -80,39 +79,14 @@ widget! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, &mut self.data);
-            for child in self.widgets.iter_mut() {
-                solver.for_child(&mut self.data, child.0, |axis| {
-                    child.1.size_rules(size_handle, axis)
-                });
-            }
-            solver.finish(&mut self.data)
-        }
-
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
-            self.core.rect = rect;
-            let mut setter =
-                GridSetter::<Vec<i32>, Vec<i32>, _>::new(rect, self.dim, align, &mut self.data);
-
-            for child in self.widgets.iter_mut() {
-                child
-                    .1
-                    .set_rect(mgr, setter.child_rect(&mut self.data, child.0), align);
-            }
-        }
-
-        // TODO: we should probably implement spatial_nav (the same is true for
-        // macro-generated grid widgets).
-        // fn spatial_nav(&self, reverse: bool, from: Option<usize>) -> Option<usize> { .. }
-
-        // TODO: more efficient find_id and draw?
-
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-            let disabled = disabled || self.is_disabled();
-            for child in &mut self.widgets {
-                child.1.draw(draw, mgr, disabled)
-            }
+        fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
+            let hints = AlignHints::NONE;
+            layout::Layout::grid(
+                self.widgets.iter_mut().map(move |(info, w)| (*info, layout::Layout::single(w, hints))),
+                self.dim,
+                &mut self.data,
+                hints,
+            )
         }
     }
 

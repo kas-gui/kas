@@ -7,6 +7,7 @@
 
 use super::{AlignHints, AxisInfo, RulesSetter, RulesSolver, SizeRules, Storage};
 use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
+use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
 use crate::draw::{DrawHandle, SizeHandle};
 use crate::event::{Manager, ManagerState};
 use crate::geom::{Offset, Rect, Size};
@@ -84,7 +85,7 @@ enum LayoutType<'a> {
     /// A single child widget
     Single(&'a mut dyn WidgetConfig),
     /// An embedded layout
-    Visitor(Box<dyn Visitor + 'a>), // TODO: inline storage?
+    Visitor(Box<dyn Visitor + 'a>),
 }
 
 impl<'a> Default for Layout<'a> {
@@ -150,6 +151,20 @@ impl<'a> Layout<'a> {
             data,
             direction,
             children: slice,
+        }));
+        Layout { layout, hints }
+    }
+
+    /// Construct a grid layout over an iterator of `(cell, layout)` items
+    pub fn grid<I, S>(iter: I, dim: GridDimensions, data: &'a mut S, hints: AlignHints) -> Self
+    where
+        I: Iterator<Item = (GridChildInfo, Layout<'a>)> + 'a,
+        S: GridStorage,
+    {
+        let layout = LayoutType::Visitor(Box::new(Grid {
+            data,
+            dim,
+            children: iter,
         }));
         Layout { layout, hints }
     }
@@ -278,6 +293,44 @@ impl<'a, W: WidgetConfig, D: Directional> Visitor for Slice<'a, W, D> {
         solver.for_children(self.children, draw.get_clip_rect(), |w| {
             w.draw(draw, mgr, disabled)
         });
+    }
+}
+
+/// Implement grid layout for children
+struct Grid<'a, S, I> {
+    data: &'a mut S,
+    dim: GridDimensions,
+    children: I,
+}
+
+impl<'a, S: GridStorage, I> Visitor for Grid<'a, S, I>
+where
+    I: Iterator<Item = (GridChildInfo, Layout<'a>)>,
+{
+    fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, self.data);
+        for (info, child) in &mut self.children {
+            solver.for_child(self.data, info, |axis| child.size_rules(sh, axis));
+        }
+        solver.finish(self.data)
+    }
+
+    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+        let mut setter = GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, align, self.data);
+        for (info, child) in &mut self.children {
+            child.set_rect(mgr, setter.child_rect(self.data, info), align);
+        }
+    }
+
+    fn is_reversed(&mut self) -> bool {
+        // TODO: replace is_reversed with direct implementation of spatial_nav
+        false
+    }
+
+    fn draw(&mut self, rect: Rect, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        for (_, mut child) in &mut self.children {
+            child.draw(rect, draw, mgr, disabled);
+        }
     }
 }
 
