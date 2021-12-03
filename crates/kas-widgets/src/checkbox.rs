@@ -131,7 +131,7 @@ widget! {
     #[autoimpl(Debug)]
     #[autoimpl(HasBool on checkbox)]
     #[derive(Clone, Default)]
-    #[layout(row, area=checkbox)]
+    #[layout(row, find_id=Some(self.checkbox.id()))]
     pub struct CheckBox<M: 'static> {
         #[widget_core]
         core: CoreData,

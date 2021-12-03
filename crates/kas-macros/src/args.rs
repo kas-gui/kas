@@ -342,7 +342,7 @@ fn member(index: usize, ident: Option<Ident>) -> Member {
 mod kw {
     use syn::custom_keyword;
 
-    custom_keyword!(area);
+    custom_keyword!(find_id);
     custom_keyword!(layout);
     custom_keyword!(col);
     custom_keyword!(row);
@@ -796,7 +796,7 @@ impl ToTokens for LayoutType {
 pub struct LayoutArgs {
     pub span: Span,
     pub layout: LayoutType,
-    pub area: Option<Ident>,
+    pub find_id: Option<Expr>,
 }
 
 impl Parse for LayoutArgs {
@@ -849,14 +849,14 @@ impl Parse for LayoutArgs {
             let _: Comma = content.parse()?;
         }
 
-        let mut area = None;
+        let mut find_id = None;
 
         while !content.is_empty() {
             let lookahead = content.lookahead1();
-            if area.is_none() && lookahead.peek(kw::area) {
-                let _: kw::area = content.parse()?;
+            if find_id.is_none() && lookahead.peek(kw::find_id) {
+                let _: kw::find_id = content.parse()?;
                 let _: Eq = content.parse()?;
-                area = Some(content.parse()?);
+                find_id = Some(content.parse()?);
             } else {
                 return Err(lookahead.error());
             }
@@ -866,7 +866,11 @@ impl Parse for LayoutArgs {
             }
         }
 
-        Ok(LayoutArgs { span, layout, area })
+        Ok(LayoutArgs {
+            span,
+            layout,
+            find_id,
+        })
     }
 }
 

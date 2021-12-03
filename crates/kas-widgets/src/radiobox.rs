@@ -173,7 +173,7 @@ widget! {
     #[autoimpl(Debug)]
     #[autoimpl(HasBool on radiobox)]
     #[derive(Clone)]
-    #[layout(row, area=radiobox)]
+    #[layout(row, find_id=Some(self.radiobox.id()))]
     pub struct RadioBox<M: 'static> {
         #[widget_core]
         core: CoreData,

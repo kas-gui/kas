@@ -203,6 +203,18 @@ pub(crate) fn derive(core: &Member, children: &[Child], layout: &LayoutArgs) -> 
         } },
     };
 
+    let find_id = match layout.find_id.as_ref() {
+        None => quote! {},
+        Some(find_id) => quote! {
+            fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
+                if !self.rect().contains(coord) {
+                    return None;
+                }
+                #find_id
+            }
+        },
+    };
+
     Ok(quote! {
         fn size_rules(&mut self, sh: &mut dyn ::kas::draw::SizeHandle, axis: ::kas::layout::AxisInfo)
             -> ::kas::layout::SizeRules
@@ -239,6 +251,8 @@ pub(crate) fn derive(core: &Member, children: &[Child], layout: &LayoutArgs) -> 
             );
             #set_rect
         }
+
+        #find_id
 
         fn draw(
             &mut self,
