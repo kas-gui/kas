@@ -5,7 +5,7 @@
 
 use proc_macro2::TokenStream as Toks;
 use quote::{quote, TokenStreamExt};
-use syn::parse::{Parse, ParseStream, Result};
+use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::{bracketed, parenthesized, Token};
 
 #[allow(non_camel_case_types)]
@@ -23,6 +23,8 @@ mod kw {
     custom_keyword!(center);
     custom_keyword!(stretch);
     custom_keyword!(frame);
+    custom_keyword!(list);
+    custom_keyword!(slice);
 }
 
 pub struct Input {
@@ -35,12 +37,16 @@ enum Layout {
     AlignSingle(syn::Expr, Align),
     Single(syn::Expr),
     Frame(Box<Layout>),
-    List(List),
+    List(Direction, Vec<Layout>),
+    Slice(Direction, syn::Expr),
 }
 
-struct List {
-    dir: Toks,
-    list: Vec<Layout>,
+enum Direction {
+    Left,
+    Right,
+    Up,
+    Down,
+    Expr(Toks),
 }
 
 enum Align {
@@ -82,14 +88,35 @@ impl Parse for Layout {
             Ok(Layout::Frame(Box::new(layout)))
         } else if lookahead.peek(kw::column) {
             let _: kw::column = input.parse()?;
-            let dir = quote! { ::kas::dir::Down };
+            let dir = Direction::Down;
+            let _: Token![:] = input.parse()?;
             let list = parse_layout_list(input)?;
-            Ok(Layout::List(List { dir, list }))
+            Ok(Layout::List(dir, list))
         } else if lookahead.peek(kw::row) {
             let _: kw::row = input.parse()?;
-            let dir = quote! { ::kas::dir::Right };
+            let dir = Direction::Right;
+            let _: Token![:] = input.parse()?;
             let list = parse_layout_list(input)?;
-            Ok(Layout::List(List { dir, list }))
+            Ok(Layout::List(dir, list))
+        } else if lookahead.peek(kw::list) {
+            let _: kw::list = input.parse()?;
+            let inner;
+            let _ = parenthesized!(inner in input);
+            let dir: Direction = inner.parse()?;
+            let _: Token![:] = input.parse()?;
+            let list = parse_layout_list(input)?;
+            Ok(Layout::List(dir, list))
+        } else if lookahead.peek(kw::slice) {
+            let _: kw::slice = input.parse()?;
+            let inner;
+            let _ = parenthesized!(inner in input);
+            let dir: Direction = inner.parse()?;
+            let _: Token![:] = input.parse()?;
+            if input.peek(Token![self]) {
+                Ok(Layout::Slice(dir, input.parse()?))
+            } else {
+                Err(Error::new(input.span(), "expected `self`"))
+            }
         } else {
             Err(lookahead.error())
         }
@@ -130,12 +157,47 @@ fn parse_layout_list(input: ParseStream) -> Result<Vec<Layout>> {
     Ok(list)
 }
 
+impl Parse for Direction {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let lookahead = input.lookahead1();
+        if lookahead.peek(kw::right) {
+            let _: kw::right = input.parse()?;
+            Ok(Direction::Right)
+        } else if lookahead.peek(kw::down) {
+            let _: kw::down = input.parse()?;
+            Ok(Direction::Down)
+        } else if lookahead.peek(kw::left) {
+            let _: kw::left = input.parse()?;
+            Ok(Direction::Left)
+        } else if lookahead.peek(kw::up) {
+            let _: kw::up = input.parse()?;
+            Ok(Direction::Up)
+        } else if lookahead.peek(Token![self]) {
+            Ok(Direction::Expr(input.parse()?))
+        } else {
+            Err(lookahead.error())
+        }
+    }
+}
+
 impl quote::ToTokens for Align {
     fn to_tokens(&self, toks: &mut Toks) {
         toks.append_all(match self {
             Align::Center => quote! { ::kas::layout::AlignHints::CENTER },
             Align::Stretch => quote! { ::kas::layout::AlignHints::STRETCH },
         });
+    }
+}
+
+impl quote::ToTokens for Direction {
+    fn to_tokens(&self, toks: &mut Toks) {
+        match self {
+            Direction::Left => toks.append_all(quote! { ::kas::dir::Left }),
+            Direction::Right => toks.append_all(quote! { ::kas::dir::Right }),
+            Direction::Up => toks.append_all(quote! { ::kas::dir::Up }),
+            Direction::Down => toks.append_all(quote! { ::kas::dir::Down }),
+            Direction::Expr(expr) => expr.to_tokens(toks),
+        }
     }
 }
 
@@ -160,7 +222,7 @@ impl Layout {
                     layout::Layout::frame(data, #inner)
                 }
             }
-            Layout::List(List { dir, list }) => {
+            Layout::List(dir, list) => {
                 let len = list.len();
                 let storage = if len > 16 {
                     quote! { ::kas::layout::DynRowStorage }
@@ -182,6 +244,14 @@ impl Layout {
                 let iter = quote! { { let arr = [#items]; arr.into_iter() } };
 
                 quote! { ::kas::layout::Layout::list(#iter, #dir, #data) }
+            }
+            Layout::Slice(dir, expr) => {
+                let data = quote! { {
+                    let (data, next) = _chain.storage::<::kas::layout::DynRowStorage>();
+                    _chain = next;
+                    data
+                } };
+                quote! { ::kas::layout::Layout::slice(&mut #expr, #dir, #data) }
             }
         }
     }

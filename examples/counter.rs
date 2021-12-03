@@ -33,9 +33,9 @@ fn main() -> Result<(), kas::shell::Error> {
         impl Layout for Self {
             fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
                 make_layout!(self.core;
-                    column[
+                    column: [
                         align(center): self.display,
-                        row[self.b_decr, self.b_incr],
+                        row: [self.b_decr, self.b_incr],
                     ]
                 )
             }

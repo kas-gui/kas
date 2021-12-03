@@ -188,34 +188,60 @@ pub fn make_widget(input: TokenStream) -> TokenStream {
 
 /// Macro to make a `kas::layout::Layout`
 ///
+/// Generates some type of layout, often over child widgets.
+/// The widget's core data is required (usually a field named `core`).
+///
 /// # Syntax
 ///
-/// > _Align_ :\
+/// > _AlignType_ :\
 /// > &nbsp;&nbsp; `center` | `stretch`
 /// >
-/// > _AlignInfo_ :\
-/// > &nbsp;&nbsp; `align` `(` _Align_ `)`
+/// > _Align_ :\
+/// > &nbsp;&nbsp; `align` `(` _AlignType_ `)` `:` _Layout_
+/// >
+/// > _Direction_ :\
+/// > &nbsp;&nbsp; `left` | `right` | `up` | `down` | `self` `.` _Member_
+/// >
+/// > _Field_ :\
+/// > &nbsp;&nbsp; `self` `.` _Member_ | _Expr_
+/// >
+/// > _ListPre_ :\
+/// > &nbsp;&nbsp; `column` | `row` | `list` `(` _Direction_ `)`
 /// >
 /// > _List_ :\
-/// > &nbsp;&nbsp; `[` _Layout_ `]`
+/// > &nbsp;&nbsp; _ListPre_ `:` `[` _Layout_ `]`
 /// >
-/// > _LayoutType_ :\
-/// > &nbsp;&nbsp; &nbsp;&nbsp; `self` `.` _Member_
-/// > | `column` _List_
-/// > | `row` _List_
+/// > _Slice_ :\
+/// > &nbsp;&nbsp; `slice` `(` _Direction_ `)` `:` `self` `.` _Member_
+/// >
+/// > _Frame_ :\
+/// > &nbsp;&nbsp; `frame` `(` _Layout_ `)`
 /// >
 /// > _Layout_ :\
-/// > &nbsp;&nbsp; _AlignInfo_<sup>?</sup> _LayoutType_
+/// > &nbsp;&nbsp; &nbsp;&nbsp; _Align_ | _Single_ | _List_ | _Slice_ | _Frame_
 /// >
 /// > _MakeLayout_:\
-/// > &nbsp;&nbsp; `(` _CoreData_ `;` _Layout_
+/// > &nbsp;&nbsp; `(` _CoreData_ `;` _Layout_ `)`
+///
+/// ## Notes
+///
+/// Fields are specified via `self.NAME`; referencing is implied (the macro
+/// converts to `&mut self.NAME` or a suitable method call). Embedded field
+/// access (e.g. `self.x.y`) is also supported.
+///
+/// `row` and `column` are abbreviations for `list(right)` and `list(down)`
+/// respectively.
+///
+/// _Slice_ is a variant of _List_ over a single struct field, supporting
+/// `AsMut<W>` for some widget type `W`.
+///
+/// _Member_ is a field name (struct) or number (tuple struct).
 ///
 /// # Example
 ///
 /// ```none
 /// make_layout!(self.core; row[self.a, self.b])
 /// ```
-
 #[proc_macro_error]
 #[proc_macro]
 pub fn make_layout(input: TokenStream) -> TokenStream {

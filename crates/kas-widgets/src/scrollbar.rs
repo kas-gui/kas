@@ -604,7 +604,7 @@ widget! {
             let disabled = disabled || self.is_disabled() || self.inner.is_disabled();
             // Enlarge clip region to *our* rect:
             draw.with_clip_region(self.core.rect, self.inner.scroll_offset(), &mut |handle| {
-                self.inner.inner().draw(handle, mgr, disabled)
+                self.inner.inner_mut().draw(handle, mgr, disabled)
             });
             // Use a second clip region to force draw order:
             draw.with_clip_region(self.core.rect, Offset::ZERO, &mut |draw| {

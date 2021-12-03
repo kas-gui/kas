@@ -65,7 +65,7 @@
 //! They support multiple parameters, e.g. `#[widget(config=noauto, children=noauto)]`.
 //!
 //! These attributes may be used on fields: `widget`, `widget_core`,
-//! `widget_derive`,  `layout_data`.
+//! `widget_derive`.
 //! The `widget` attribute supports multiple parameters,
 //! discussed below (e.g. `#[widget(row=1, use_msg=f)]`).
 //! Fields without attributes (plain data fields) are fine too.
@@ -160,19 +160,6 @@
 //! -   `align = ...` — one of `centre`, `center`, `stretch`
 //! -   `halign = ...` — one of `default`, `left`, `centre`, `center`, `right`, `stretch`
 //! -   `valign = ...` — one of `default`, `top`, `centre`, `center`, `bottom`, `stretch`
-//!
-//! **Layout data storage**
-//!
-//! When deriving [`Layout`], data storage is required (exception: layout
-//! `single` requires no storage, but defining it anyway is harmless).
-//! The [`LayoutData`] trait is also derived and used to specify the required
-//! data type. The `#[layout_data]` attribute is required to identify this
-//! storage, resulting in a field like the following:
-//! ```none
-//! #[layout_data] layout_data: <Self as kas::LayoutData>::Data,
-//! ```
-//! This field supports `Default` and `Clone`, thus may be constructed with
-//! `layout_data: Default::default()`.
 //!
 //! ### WidgetConfig
 //!
@@ -320,7 +307,6 @@
 //!     #[layout(column)]
 //!     struct MyWidget<W: Widget> {
 //!         #[widget_core] core: CoreData,
-//!         #[layout_data] layout_data: <Self as LayoutData>::Data,
 //!         #[widget] label: StrLabel,
 //!         #[widget(use_msg = handler)] child: W,
 //!     }
