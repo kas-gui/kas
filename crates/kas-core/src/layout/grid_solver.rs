@@ -30,6 +30,15 @@ impl<T: Clone + Default> DefaultWithLen for Vec<T> {
     }
 }
 
+/// Grid dimensions
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct GridDimensions {
+    pub cols: u32,
+    pub rows: u32,
+    pub col_spans: u32,
+    pub row_spans: u32,
+}
+
 /// Per-child information
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct GridChildInfo {
@@ -73,13 +82,13 @@ impl<CSR: DefaultWithLen, RSR: DefaultWithLen, S: GridStorage> GridSolver<CSR, R
     /// Argument order is consistent with other [`RulesSolver`]s.
     ///
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
-    /// - `dim`: number of (cols, rows, col-spans, row-spans)
+    /// - `dim`: grid dimensions
     /// - `storage`: reference to persistent storage
-    pub fn new(axis: AxisInfo, dim: (u32, u32, u32, u32), storage: &mut S) -> Self {
-        let col_spans = CSR::default_with_len(dim.2.cast());
-        let row_spans = RSR::default_with_len(dim.3.cast());
+    pub fn new(axis: AxisInfo, dim: GridDimensions, storage: &mut S) -> Self {
+        let col_spans = CSR::default_with_len(dim.col_spans.cast());
+        let row_spans = RSR::default_with_len(dim.row_spans.cast());
 
-        storage.set_dims(dim.0.cast(), dim.1.cast());
+        storage.set_dims(dim.cols.cast(), dim.rows.cast());
 
         let mut solver = GridSolver {
             axis,
@@ -263,11 +272,11 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> GridSetter<RT, CT, S> {
     /// Argument order is consistent with other [`RulesSetter`]s.
     ///
     /// -   `rect`: the [`Rect`] within which to position children
-    /// -   `(cols, rows)`: number of columns and rows
+    /// -   `dim`: grid dimensions
     /// -   `align`: alignment hints
     /// -   `storage`: access to the solver's storage
-    pub fn new(rect: Rect, dim: (u32, u32, u32, u32), align: AlignHints, storage: &mut S) -> Self {
-        let (cols, rows) = (dim.0.cast(), dim.1.cast());
+    pub fn new(rect: Rect, dim: GridDimensions, align: AlignHints, storage: &mut S) -> Self {
+        let (cols, rows) = (dim.cols.cast(), dim.rows.cast());
         let mut w_offsets = RT::default();
         w_offsets.set_len(cols);
         let mut h_offsets = CT::default();

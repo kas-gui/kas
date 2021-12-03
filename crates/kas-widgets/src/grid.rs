@@ -5,9 +5,8 @@
 
 //! A grid widget
 
-use kas::layout::{
-    DynGridStorage, GridChildInfo, GridSetter, GridSolver, RulesSetter, RulesSolver,
-};
+use kas::layout::{DynGridStorage, GridChildInfo, GridDimensions, GridSetter, GridSolver};
+use kas::layout::{RulesSetter, RulesSolver};
 use kas::{event, prelude::*};
 use std::ops::{Index, IndexMut};
 
@@ -55,7 +54,7 @@ widget! {
         core: CoreData,
         widgets: Vec<(GridChildInfo, W)>,
         data: DynGridStorage,
-        dim: (u32, u32, u32, u32),
+        dim: GridDimensions,
     }
 
     impl WidgetChildren for Self {
@@ -156,19 +155,18 @@ impl<W: Widget> Grid<W> {
     }
 
     fn calc_dim(&mut self) {
-        let (mut cols, mut rows) = (0, 0);
-        let (mut col_spans, mut row_spans) = (0, 0);
+        let mut dim = GridDimensions::default();
         for child in &self.widgets {
-            cols = cols.max(child.0.col_end);
-            rows = rows.max(child.0.row_end);
+            dim.cols = dim.cols.max(child.0.col_end);
+            dim.rows = dim.rows.max(child.0.row_end);
             if child.0.col_end - child.0.col > 1 {
-                col_spans += 1;
+                dim.col_spans += 1;
             }
             if child.0.row_end - child.0.row > 1 {
-                row_spans += 1;
+                dim.row_spans += 1;
             }
         }
-        self.dim = (cols, rows, col_spans, row_spans);
+        self.dim = dim;
     }
 
     /// Construct via a builder

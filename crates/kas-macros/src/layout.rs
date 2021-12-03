@@ -195,7 +195,12 @@ pub(crate) fn derive(core: &Member, children: &[Child], layout: &LayoutArgs) -> 
         LayoutType::Left => quote! { (::kas::dir::Left, #ucols) },
         LayoutType::Down => quote! { (::kas::dir::Down, #urows) },
         LayoutType::Up => quote! { (::kas::dir::Up, #urows) },
-        LayoutType::Grid => quote! { (#cols, #rows, #col_spans, #row_spans) },
+        LayoutType::Grid => quote! { ::kas::layout::GridDimensions {
+            cols: #cols,
+            rows: #rows,
+            col_spans: #col_spans,
+            row_spans: #row_spans
+        } },
     };
 
     if let Some(ref method) = layout.draw {

@@ -48,7 +48,7 @@ mod visitor;
 use crate::dir::{Direction, Directional};
 
 pub use align::{Align, AlignHints, CompleteAlignment};
-pub use grid_solver::{DefaultWithLen, GridChildInfo, GridSetter, GridSolver};
+pub use grid_solver::{DefaultWithLen, GridChildInfo, GridDimensions, GridSetter, GridSolver};
 pub use row_solver::{RowPositionSolver, RowSetter, RowSolver};
 pub use single_solver::{SingleSetter, SingleSolver};
 pub use size_rules::SizeRules;
