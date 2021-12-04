@@ -16,7 +16,6 @@ use syn::{GenericParam, Generics, ItemStruct};
 
 mod args;
 mod autoimpl;
-mod layout;
 mod make_layout;
 mod make_widget;
 pub(crate) mod where_clause;
@@ -173,7 +172,9 @@ fn extend_generics(generics: &mut Generics, in_generics: &Generics) {
 #[proc_macro]
 pub fn widget(input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(input as args::Widget);
-    widget::widget(args).into()
+    widget::widget(args)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into()
 }
 
 /// Macro to create a widget with anonymous type
@@ -246,7 +247,9 @@ pub fn make_widget(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn make_layout(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as make_layout::Input);
-    make_layout::make_layout(input).into()
+    make_layout::make_layout(input)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into()
 }
 
 /// Macro to derive `From<VoidMsg>`

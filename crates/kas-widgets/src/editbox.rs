@@ -361,7 +361,11 @@ widget! {
     /// line-wrapping and a larger vertical height). This mode is only recommended
     /// for short texts for performance reasons.
     #[derive(Clone, Default, Debug)]
-    #[widget(config(key_nav = true, hover_highlight = true, cursor_icon = event::CursorIcon::Text))]
+    #[widget{
+        key_nav = true;
+        hover_highlight = true;
+        cursor_icon = event::CursorIcon::Text;
+    }]
     pub struct EditField<G: EditGuard = ()> {
         #[widget_core]
         core: CoreData,

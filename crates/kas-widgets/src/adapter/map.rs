@@ -14,7 +14,9 @@ widget! {
     #[autoimpl(Deref, DerefMut on inner)]
     #[autoimpl(class_traits where W: trait on inner)]
     #[derive(Clone)]
-    #[layout(single)]
+    #[widget{
+        layout = single;
+    }]
     #[handler(msg=M)]
     pub struct MapResponse<W: Widget, M: 'static> {
         #[widget_core]

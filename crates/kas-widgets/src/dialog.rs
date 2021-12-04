@@ -17,7 +17,9 @@ use kas::WindowId;
 widget! {
     /// A simple message box.
     #[derive(Clone, Debug)]
-    #[layout(column)]
+    #[widget{
+        layout = column: *;
+    }]
     pub struct MessageBox<T: FormattableText + 'static> {
         #[widget_core]
         core: CoreData,

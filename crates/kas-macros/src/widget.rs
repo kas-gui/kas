@@ -4,14 +4,14 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 use crate::args::{Handler, Widget};
-use crate::{extend_generics, layout};
+use crate::extend_generics;
 use proc_macro2::TokenStream;
-use proc_macro_error::emit_error;
+use proc_macro_error::{emit_error, emit_warning};
 use quote::{quote, TokenStreamExt};
-use syn::parse_quote;
 use syn::spanned::Spanned;
+use syn::{parse_quote, Result};
 
-pub(crate) fn widget(mut args: Widget) -> TokenStream {
+pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
     let mut toks = quote! { #args };
 
     let name = &args.ident;
@@ -188,10 +188,9 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
     }
 
     if impl_widget_config {
-        let config = args.attr_widget.config.unwrap_or_default();
-        let key_nav = config.key_nav;
-        let hover_highlight = config.hover_highlight;
-        let cursor_icon = config.cursor_icon;
+        let key_nav = args.attr_widget.key_nav.value;
+        let hover_highlight = args.attr_widget.hover_highlight.value;
+        let cursor_icon = args.attr_widget.cursor_icon.value;
 
         toks.append_all(quote! {
             impl #impl_generics ::kas::WidgetConfig
@@ -208,6 +207,16 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
                 }
             }
         });
+    } else {
+        if let Some(span) = args.attr_widget.key_nav.span {
+            emit_warning!(span, "unused due to manual impl of `WidgetConfig`");
+        }
+        if let Some(span) = args.attr_widget.hover_highlight.span {
+            emit_warning!(span, "unused due to manual impl of `WidgetConfig`");
+        }
+        if let Some(span) = args.attr_widget.cursor_icon.span {
+            emit_warning!(span, "unused due to manual impl of `WidgetConfig`");
+        }
     }
 
     if let Some(inner) = opt_derive {
@@ -260,18 +269,35 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
                 }
             }
         });
-    } else if let Some(ref layout) = args.attr_layout {
-        let core = args.core_data.as_ref().unwrap();
-        match layout::derive(core, &args.children, layout) {
-            Ok(fns) => toks.append_all(quote! {
-                impl #impl_generics ::kas::Layout
-                        for #name #ty_generics #where_clause
-                {
-                    #fns
+    } else if let Some(layout) = args.attr_widget.layout.take() {
+        let find_id = match args.attr_widget.find_id.value {
+            None => quote! {},
+            Some(find_id) => quote! {
+                fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
+                    if !self.rect().contains(coord) {
+                        return None;
+                    }
+                    #find_id
                 }
-            }),
-            Err(err) => return err.to_compile_error(),
-        }
+            },
+        };
+
+        let core = args.core_data.as_ref().unwrap();
+        let layout = layout.generate(args.children.iter().map(|c| &c.ident))?;
+
+        toks.append_all(quote! {
+            impl #impl_generics ::kas::Layout for #name #ty_generics #where_clause {
+                fn layout<'a>(&'a mut self) -> ::kas::layout::Layout<'a> {
+                    use ::kas::WidgetCore;
+                    let mut _chain = &mut self.#core.layout;
+                    #layout
+                }
+
+                #find_id
+            }
+        });
+    } else if let Some(span) = args.attr_widget.find_id.span {
+        emit_warning!(span, "unused without generated impl of `Layout`");
     }
 
     if let Some(index) = handler_impl {
@@ -418,5 +444,5 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
         });
     }
 
-    toks
+    Ok(toks)
 }

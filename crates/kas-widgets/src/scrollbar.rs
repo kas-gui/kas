@@ -324,7 +324,9 @@ widget! {
     #[autoimpl(Deref, DerefMut on 0)]
     #[autoimpl(class_traits where W: trait on 0)]
     #[derive(Clone, Debug, Default)]
-    #[widget(derive = self.0)]
+    #[widget{
+        derive = self.0;
+    }]
     #[handler(msg = <W as event::Handler>::Msg)]
     pub struct ScrollBarRegion<W: Widget>(ScrollBars<ScrollRegion<W>>);
 

@@ -42,14 +42,20 @@ It also supports lists:
     let window = Window::new(
         "Markdown parser",
         make_widget! {
-            #[layout(grid)]
+            #[widget{
+                layout = grid: {
+                    0..2, 0: self.editor;
+                    0, 1: self.label;
+                    1, 1: self.b_update;
+                };
+            }]
             #[handler(msg = VoidMsg)]
             struct {
-                #[widget(row=0, col=0, rspan=2)] editor: EditBox =
+                #[widget] editor: EditBox =
                     EditBox::new(doc).multi_line(true),
-                #[widget(row=0, col=1)] label: ScrollBarRegion<Label<Markdown>> =
+                #[widget] label: ScrollBarRegion<Label<Markdown>> =
                     ScrollBarRegion::new(Label::new(Markdown::new(doc)?)),
-                #[widget(row=1, col=1, use_msg=update)] _ = TextButton::new_msg("&Update", ()),
+                #[widget(use_msg=update)] b_update = TextButton::new_msg("&Update", ()),
             }
             impl Self {
                 fn update(&mut self, mgr: &mut Manager, _: ()) {

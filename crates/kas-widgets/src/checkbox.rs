@@ -13,7 +13,10 @@ widget! {
     /// A bare checkbox (no label)
     #[autoimpl(Debug skip on_toggle)]
     #[derive(Clone, Default)]
-    #[widget(config(key_nav = true, hover_highlight = true))]
+    #[widget{
+        key_nav = true;
+        hover_highlight = true;
+    }]
     pub struct CheckBoxBare<M: 'static> {
         #[widget_core]
         core: CoreData,
@@ -131,7 +134,10 @@ widget! {
     #[autoimpl(Debug)]
     #[autoimpl(HasBool on checkbox)]
     #[derive(Clone, Default)]
-    #[layout(row, find_id=Some(self.checkbox.id()))]
+    #[widget{
+        layout = row: *;
+        find_id = Some(self.checkbox.id());
+    }]
     pub struct CheckBox<M: 'static> {
         #[widget_core]
         core: CoreData,

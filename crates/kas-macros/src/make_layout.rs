@@ -3,10 +3,11 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use proc_macro2::TokenStream as Toks;
+use proc_macro2::{Span, TokenStream as Toks};
 use quote::{quote, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
-use syn::{braced, bracketed, parenthesized, LitInt, Token};
+use syn::spanned::Spanned;
+use syn::{braced, bracketed, parenthesized, Expr, LitInt, Member, Token};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -26,21 +27,38 @@ mod kw {
     custom_keyword!(list);
     custom_keyword!(slice);
     custom_keyword!(grid);
+    custom_keyword!(single);
 }
 
 pub struct Input {
-    core: syn::Expr,
-    layout: Layout,
+    pub core: Expr,
+    pub layout: Tree,
+}
+
+pub struct Tree(Layout);
+impl Tree {
+    pub fn generate<'a, I: ExactSizeIterator<Item = &'a Member>>(
+        &'a self,
+        children: I,
+    ) -> Result<Toks> {
+        self.0.generate(Some(children))
+    }
 }
 
 enum Layout {
     Align(Box<Layout>, Align),
-    AlignSingle(syn::Expr, Align),
-    Single(syn::Expr),
+    AlignSingle(Expr, Align),
+    Single(Span),
+    Widget(Expr),
     Frame(Box<Layout>),
-    List(Direction, Vec<Layout>),
-    Slice(Direction, syn::Expr),
+    List(Direction, List),
+    Slice(Direction, Expr),
     Grid(GridDimensions, Vec<(CellInfo, Layout)>),
+}
+
+enum List {
+    List(Vec<Layout>),
+    Glob(Span),
 }
 
 enum Direction {
@@ -83,6 +101,8 @@ impl Parse for CellInfo {
         } else {
             row + 1
         };
+
+        let _ = input.parse::<Token![,]>()?;
 
         let col = input.parse::<LitInt>()?.base10_parse()?;
         let col_end = if input.peek(Token![..]) {
@@ -128,6 +148,12 @@ impl Parse for Input {
     }
 }
 
+impl Parse for Tree {
+    fn parse(input: ParseStream) -> Result<Self> {
+        Ok(Tree(input.parse()?))
+    }
+}
+
 impl Parse for Layout {
     fn parse(input: ParseStream) -> Result<Self> {
         let lookahead = input.lookahead1();
@@ -143,7 +169,10 @@ impl Parse for Layout {
                 Ok(Layout::Align(Box::new(layout), align))
             }
         } else if lookahead.peek(Token![self]) {
-            Ok(Layout::Single(input.parse()?))
+            Ok(Layout::Widget(input.parse()?))
+        } else if lookahead.peek(kw::single) {
+            let tok: kw::single = input.parse()?;
+            Ok(Layout::Single(tok.span()))
         } else if lookahead.peek(kw::frame) {
             let _: kw::frame = input.parse()?;
             let inner;
@@ -207,22 +236,30 @@ fn parse_align(input: ParseStream) -> Result<Align> {
     }
 }
 
-fn parse_layout_list(input: ParseStream) -> Result<Vec<Layout>> {
-    let inner;
-    let _ = bracketed!(inner in input);
+fn parse_layout_list(input: ParseStream) -> Result<List> {
+    let lookahead = input.lookahead1();
+    if lookahead.peek(Token![*]) {
+        let tok = input.parse::<Token![*]>()?;
+        Ok(List::Glob(tok.span()))
+    } else if lookahead.peek(syn::token::Bracket) {
+        let inner;
+        let _ = bracketed!(inner in input);
 
-    let mut list = vec![];
-    while !inner.is_empty() {
-        list.push(inner.parse::<Layout>()?);
+        let mut list = vec![];
+        while !inner.is_empty() {
+            list.push(inner.parse::<Layout>()?);
 
-        if inner.is_empty() {
-            break;
+            if inner.is_empty() {
+                break;
+            }
+
+            let _: Token![,] = inner.parse()?;
         }
 
-        let _: Token![,] = inner.parse()?;
+        Ok(List::List(list))
+    } else {
+        Err(lookahead.error())
     }
-
-    Ok(list)
 }
 
 fn parse_grid(input: ParseStream) -> Result<Layout> {
@@ -234,7 +271,7 @@ fn parse_grid(input: ParseStream) -> Result<Layout> {
     while !inner.is_empty() {
         let info = inner.parse()?;
         dim.update(&info);
-        let _: Token![,] = inner.parse()?;
+        let _: Token![:] = inner.parse()?;
         let layout = inner.parse()?;
         cells.push((info, layout));
 
@@ -306,28 +343,78 @@ impl quote::ToTokens for GridDimensions {
 }
 
 impl Layout {
-    fn generate(&self) -> Toks {
-        match self {
+    // Optionally pass in the list of children, but not when already in a
+    // multi-element layout (list/slice/grid).
+    fn generate<'a, I: ExactSizeIterator<Item = &'a Member>>(
+        &'a self,
+        children: Option<I>,
+    ) -> Result<Toks> {
+        Ok(match self {
             Layout::Align(layout, align) => {
-                let inner = layout.generate();
-                quote! { layout::Layout::align(#inner, #align) }
+                let inner = layout.generate(children)?;
+                quote! { ::kas::layout::Layout::align(#inner, #align) }
             }
             Layout::AlignSingle(expr, align) => {
-                quote! { layout::Layout::align_single(#expr.as_widget_mut(), #align) }
+                quote! { ::kas::layout::Layout::align_single(#expr.as_widget_mut(), #align) }
             }
-            Layout::Single(expr) => quote! {
-                layout::Layout::single(#expr.as_widget_mut())
+            Layout::Widget(expr) => quote! {
+                ::kas::layout::Layout::single(#expr.as_widget_mut())
             },
+            Layout::Single(span) => {
+                if let Some(mut iter) = children {
+                    if iter.len() != 1 {
+                        return Err(Error::new(
+                            *span,
+                            "layout `single`: widget does not have exactly one child",
+                        ));
+                    }
+                    let child = iter.next().unwrap();
+                    quote! {
+                        ::kas::layout::Layout::single(self.#child.as_widget_mut())
+                    }
+                } else {
+                    return Err(Error::new(
+                        *span,
+                        "layout `single` is unavailable in this context",
+                    ));
+                }
+            }
             Layout::Frame(layout) => {
-                let inner = layout.generate();
+                let inner = layout.generate(children)?;
                 quote! {
                     let (data, next) = _chain.storage::<::kas::layout::FrameStorage>();
                     _chain = next;
-                    layout::Layout::frame(data, #inner)
+                    ::kas::layout::Layout::frame(data, #inner)
                 }
             }
             Layout::List(dir, list) => {
-                let len = list.len();
+                let len;
+                let mut items = Toks::new();
+                match list {
+                    List::List(list) => {
+                        len = list.len();
+                        for item in list {
+                            let item = item.generate::<std::iter::Empty<&Member>>(None)?;
+                            items.append_all(quote! { #item, });
+                        }
+                    }
+                    List::Glob(span) => {
+                        if let Some(iter) = children {
+                            len = iter.len();
+                            for member in iter {
+                                items.append_all(quote! {
+                                    ::kas::layout::Layout::single(self.#member.as_widget_mut()),
+                                });
+                            }
+                        } else {
+                            return Err(Error::new(
+                                *span,
+                                "glob `*` is unavailable in this context",
+                            ));
+                        }
+                    }
+                }
+
                 let storage = if len > 16 {
                     quote! { ::kas::layout::DynRowStorage }
                 } else {
@@ -340,11 +427,6 @@ impl Layout {
                     data
                 } };
 
-                let mut items = Toks::new();
-                for item in list {
-                    let item = item.generate();
-                    items.append_all(quote! { #item, });
-                }
                 let iter = quote! { { let arr = [#items]; arr.into_iter() } };
 
                 quote! { ::kas::layout::Layout::list(#iter, #dir, #data) }
@@ -358,9 +440,9 @@ impl Layout {
                 quote! { ::kas::layout::Layout::slice(&mut #expr, #dir, #data) }
             }
             Layout::Grid(dim, cells) => {
-                let (rows, cols) = (dim.rows, dim.cols);
+                let (rows, cols) = (dim.rows as usize, dim.cols as usize);
                 let data = quote! { {
-                    let (data, next) = _chain.storage::<::kas::layout::FixedGridStorage<#rows, #cols>();
+                    let (data, next) = _chain.storage::<::kas::layout::FixedGridStorage<#rows, #cols>>();
                     _chain = next;
                     data
                 } };
@@ -369,7 +451,7 @@ impl Layout {
                 for item in cells {
                     let (row, row_end) = (item.0.row, item.0.row_end);
                     let (col, col_end) = (item.0.col, item.0.col_end);
-                    let layout = item.1.generate();
+                    let layout = item.1.generate::<std::iter::Empty<&Member>>(None)?;
                     items.append_all(quote! {
                         (
                             ::kas::layout::GridChildInfo {
@@ -379,22 +461,23 @@ impl Layout {
                                 col_end: #col_end,
                             },
                             #layout,
-                        )
+                        ),
                     });
                 }
                 let iter = quote! { { let arr = [#items]; arr.into_iter() } };
 
                 quote! { ::kas::layout::Layout::grid(#iter, #dim, #data) }
             }
-        }
+        })
     }
 }
 
-pub fn make_layout(input: Input) -> Toks {
+pub fn make_layout(input: Input) -> Result<Toks> {
     let core = &input.core;
-    let layout = input.layout.generate();
-    quote! { {
+    let layout = input.layout.0.generate::<std::iter::Empty<&Member>>(None)?;
+    Ok(quote! { {
+        use ::kas::WidgetCore;
         let mut _chain = &mut #core.layout;
         #layout
-    } }
+    } })
 }

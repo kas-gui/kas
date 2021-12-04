@@ -19,7 +19,9 @@ fn main() -> Result<(), kas::shell::Error> {
     env_logger::init();
 
     let buttons = make_widget! {
-        #[layout(row)]
+        #[widget{
+            layout = row: *;
+        }]
         #[handler(msg = Message)]
         struct {
             #[widget] _ = TextButton::new_msg("−", Message::Decr),
@@ -35,7 +37,9 @@ fn main() -> Result<(), kas::shell::Error> {
         "Slitter panes",
         make_widget! {
             // TODO: use vertical splitter
-            #[layout(column)]
+            #[widget{
+                layout = column: *;
+            }]
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget(use_msg = handle_button)] buttons -> Message = buttons,

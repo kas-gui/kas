@@ -418,20 +418,22 @@ widget! {
 
 widget! {
     #[derive(Debug)]
-    #[layout(grid)]
+    #[widget{
+        layout = grid: {
+            0, 0..2: self.label;
+            1, 0: align(center): self.iters;
+            2, 0: self.slider;
+            1..3, 1..3: self.mbrot;
+        };
+    }]
     #[handler(msg = event::VoidMsg)]
     struct MandlebrotWindow {
-        #[widget_core]
-        core: CoreData,
-        #[widget(cspan = 2)]
-        label: Label<String>,
-        #[widget(row=1, halign=centre)]
-        iters: ReserveP<Label<String>>,
-        #[widget(row=2, use_msg = iter)]
-        slider: Slider<i32, kas::dir::Up>,
+        #[widget_core] core: CoreData,
+        #[widget] label: Label<String>,
+        #[widget] iters: ReserveP<Label<String>>,
+        #[widget(use_msg = iter)] slider: Slider<i32, kas::dir::Up>,
         // extra col span allows use of Label's margin
-        #[widget(col=1, cspan=2, row=1, rspan=2, use_msg = mbrot)]
-        mbrot: Mandlebrot,
+        #[widget(use_msg = mbrot)] mbrot: Mandlebrot,
     }
 
     impl MandlebrotWindow {

@@ -15,7 +15,9 @@ widget! {
     #[autoimpl(Deref, DerefMut on inner)]
     #[autoimpl(class_traits where W: trait on inner)]
     #[derive(Clone, Debug, Default)]
-    #[widget(config(key_nav = true))]
+    #[widget{
+        key_nav = true;
+    }]
     pub struct NavFrame<W: Widget> {
         #[widget_core]
         core: CoreData,

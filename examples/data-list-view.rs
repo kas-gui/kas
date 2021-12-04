@@ -152,7 +152,9 @@ impl EditGuard for ListEntryGuard {
 widget! {
     // The list entry
     #[derive(Clone, Debug)]
-    #[layout(column)]
+    #[widget{
+        layout = column: *;
+    }]
     #[handler(msg=EntryMsg)]
     struct ListEntry {
         #[widget_core]
@@ -199,7 +201,9 @@ fn main() -> Result<(), kas::shell::Error> {
     env_logger::init();
 
     let controls = make_widget! {
-        #[layout(row)]
+        #[widget{
+            layout = row: *;
+        }]
         #[handler(msg = Control)]
         struct {
             #[widget] _ = Label::new("Number of rows:"),
@@ -239,7 +243,9 @@ fn main() -> Result<(), kas::shell::Error> {
     let window = Window::new(
         "Dynamic widget demo",
         make_widget! {
-            #[layout(column)]
+            #[widget{
+                layout = column: *;
+            }]
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget] _ = Label::new("Demonstration of dynamic widget creation / deletion"),

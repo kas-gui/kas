@@ -76,7 +76,9 @@
 //!
 //! widget! {
 //!     #[derive(Clone, Debug)]
-//!     #[layout(single)]
+//!     #[widget{
+//!         layout = single;
+//!     }]
 //!     struct WrapperWidget<W: Widget> {
 //!         #[widget_core] core: CoreData,
 //!         #[widget] child: W,
@@ -116,18 +118,14 @@
 //! by default, and the derived implementation is only useful for widgets with
 //! at least one child and which don't directly draw themselves.
 //!
-//! The trait may be derived via a `layout` attribute, e.g. `#[layout(single)]`.
+//! The trait may be derived via a `layout` property, e.g. `#[widget{ layout = single; }]`.
 //! One of the following values must appear first in the parameter list:
 //!
 //! -   `single` — the widget wraps a single child, with no border or margin
-//! -   `col`, `column` or `down` — child widgets are arranged in a vertical
-//!     column, top-to-bottom
-//! -   `up` — reversed column
-//! -   `row` or `right` — child widgets are arranged in a horizontal row,
-//!     left-to-right
-//! -   `left` — reversed row
-//! -   `grid` — child widgets are arranged in a grid; position is specified
-//!     via parameters to the `#[widget]` attribute on child fields
+//! -   `list(DIRECTION): LIST` where `DIRECTION` is one of `left`, `right`,
+//!     `up`, `down` and `LIST` is either `*` or `[ ... ]`
+//! -   `column` or `row`: these are synonyms for `list(down)` and `list(right)`
+//! -   `grid: { ... }` — child widgets are arranged in a grid (see examples)
 //!
 //! Additional parameters are optional:
 //!
@@ -220,7 +218,9 @@
 //! # use kas::{CoreData, Layout, Widget, event::Handler};
 //! widget! {
 //!     #[derive(Clone, Debug, Default)]
-//!     #[layout(single)]
+//!     #[widget{
+//!         layout = single;
+//!     }]
 //!     #[handler(msg = <W as Handler>::Msg)]
 //!     pub struct Frame<W: Widget> {
 //!         #[widget_core]
@@ -304,7 +304,9 @@
 //!
 //! widget! {
 //!     #[derive(Debug)]
-//!     #[layout(column)]
+//!     #[widget{
+//!         layout = column: *;
+//!     }]
 //!     struct MyWidget<W: Widget> {
 //!         #[widget_core] core: CoreData,
 //!         #[widget] label: StrLabel,
@@ -354,7 +356,9 @@
 //! }
 //!
 //! let button_box = make_widget!{
-//!     #[layout(row)]
+//!     #[widget{
+//!         layout = row: *;
+//!     }]
 //!     #[handler(msg = OkCancel)]
 //!     #[derive(Clone)] // optional
 //!     struct {
@@ -364,7 +368,9 @@
 //! };
 //!
 //! let window = Window::new("Question", make_widget! {
-//!     #[layout(column)]
+//!     #[widget{
+//!         layout = column: *;
+//!     }]
 //!     #[handler(msg = VoidMsg)]
 //!     struct {
 //!         #[widget] _ = Label::new("Would you like to print a message?"),

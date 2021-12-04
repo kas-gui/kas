@@ -18,7 +18,10 @@ widget! {
     /// A combobox presents a menu with a fixed set of choices when clicked.
     #[autoimpl(Debug skip on_select)]
     #[derive(Clone)]
-    #[widget(config(key_nav = true, hover_highlight = true))]
+    #[widget{
+        key_nav = true;
+        hover_highlight = true;
+    }]
     pub struct ComboBox<M: 'static> {
         #[widget_core]
         core: CoreData,
@@ -399,7 +402,9 @@ impl<M: 'static> ComboBox<M> {
 
 widget! {
     #[derive(Clone, Debug)]
-    #[layout(single)]
+    #[widget{
+        layout = single;
+    }]
     #[handler(msg=(usize, ()))]
     struct ComboPopup {
         #[widget_core]

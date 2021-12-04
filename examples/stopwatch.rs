@@ -18,7 +18,9 @@ use kas::WidgetCore;
 fn make_window() -> Box<dyn kas::Window> {
     // Construct a row widget, with state and children
     let stopwatch = make_widget! {
-        #[layout(row)]
+        #[widget{
+            layout = row: *;
+        }]
         struct {
             #[widget] display: impl HasString = Frame::new(Label::new("0.000".to_string())),
             #[widget(use_msg = reset)] _ = TextButton::new_msg("&reset", ()),
