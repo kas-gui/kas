@@ -169,7 +169,7 @@ widget! {
 }
 
 widget! {
-    /// A radiobox with optional label
+    /// A radiobox with label
     #[autoimpl(Debug)]
     #[autoimpl(HasBool on radiobox)]
     #[derive(Clone)]

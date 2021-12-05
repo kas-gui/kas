@@ -130,7 +130,7 @@ widget! {
 }
 
 widget! {
-    /// A checkable box with optional label
+    /// A checkbox with label
     #[autoimpl(Debug)]
     #[autoimpl(HasBool on checkbox)]
     #[derive(Clone, Default)]

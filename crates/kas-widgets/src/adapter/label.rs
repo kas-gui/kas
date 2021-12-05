@@ -12,6 +12,9 @@ use kas::{event, layout, prelude::*};
 
 widget! {
     /// A wrapper widget with a label
+    ///
+    /// The label supports accelerator keys, which activate `self.inner` on
+    /// usage.
     #[autoimpl(Deref, DerefMut on inner)]
     #[derive(Clone, Default, Debug)]
     #[handler(msg = W::Msg)]
@@ -46,6 +49,18 @@ widget! {
             }
         }
 
+        /// Get the direction
+        #[inline]
+        pub fn direction(&self) -> Direction {
+            self.dir.as_direction()
+        }
+
+        /// Deconstruct into `(inner, label)`
+        #[inline]
+        pub fn deconstruct(self) -> (W, Text<AccelString>) {
+            (self.inner, self.label)
+        }
+
         /// Set text in an existing `Label`
         ///
         /// Note: this must not be called before fonts have been initialised
@@ -57,6 +72,12 @@ widget! {
         /// Get the accelerator keys
         pub fn keys(&self) -> &[event::VirtualKeyCode] {
             self.label.text().keys()
+        }
+    }
+
+    impl WidgetConfig for Self {
+        fn configure(&mut self, mgr: &mut Manager) {
+            mgr.add_accel_keys(self.inner.id(), self.keys());
         }
     }
 
@@ -93,6 +114,13 @@ widget! {
                 env.set_bounds(rect.size.into());
                 env.set_align(align.unwrap_or(Align::Default, Align::Centre));
             });
+        }
+
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) {
+                return None;
+            }
+            Some(self.inner.id())
         }
 
         fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {

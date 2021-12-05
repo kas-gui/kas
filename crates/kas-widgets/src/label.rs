@@ -157,8 +157,16 @@ pub type StringLabel = Label<String>;
 
 /// A label supporting an accelerator key
 ///
-/// Accelerator keys are not useful on plain labels, but this widget may be
-/// embedded within a parent (e.g. `CheckBox` uses this).
+/// Accelerator keys are not useful on plain labels. To be useful, a parent
+/// widget must do something like:
+/// ```no_test
+/// impl WidgetConfig for Self {
+///     fn configure(&mut self, mgr: &mut Manager) {
+///         let target = self.id(); // widget receiving Event::Activate
+///         mgr.add_accel_keys(target, self.label.keys());
+///     }
+//// }
+/// ```
 pub type AccelLabel = Label<AccelString>;
 
 impl AccelLabel {
