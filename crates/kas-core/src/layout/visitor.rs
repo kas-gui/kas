@@ -65,7 +65,7 @@ trait Visitor {
 
     fn is_reversed(&mut self) -> bool;
 
-    fn draw(&mut self, rect: Rect, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool);
+    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool);
 }
 
 /// A layout visitor
@@ -231,26 +231,17 @@ impl<'a> Layout<'a> {
     }
 
     /// Draw a widget's children
-    ///
-    /// Special: the widget's own `rect` must be passed in.
-    /// TODO: pass in CoreData instead and use to construct storage dynamically?
     #[inline]
-    pub fn draw(
-        mut self,
-        rect: Rect,
-        draw: &mut dyn DrawHandle,
-        mgr: &ManagerState,
-        disabled: bool,
-    ) {
-        self.draw_(rect, draw, mgr, disabled);
+    pub fn draw(mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        self.draw_(draw, mgr, disabled);
     }
-    fn draw_(&mut self, rect: Rect, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+    fn draw_(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         match &mut self.layout {
             LayoutType::None => (),
             LayoutType::Single(child) => child.draw(draw, mgr, disabled),
             LayoutType::AlignSingle(child, _) => child.draw(draw, mgr, disabled),
-            LayoutType::AlignLayout(layout, _) => layout.draw_(rect, draw, mgr, disabled),
-            LayoutType::Visitor(layout) => layout.draw(rect, draw, mgr, disabled),
+            LayoutType::AlignLayout(layout, _) => layout.draw_(draw, mgr, disabled),
+            LayoutType::Visitor(layout) => layout.draw(draw, mgr, disabled),
         }
     }
 }
@@ -288,9 +279,9 @@ where
         self.direction.is_reversed()
     }
 
-    fn draw(&mut self, rect: Rect, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         for child in &mut self.children {
-            child.draw(rect, draw, mgr, disabled);
+            child.draw(draw, mgr, disabled);
         }
     }
 }
@@ -325,7 +316,7 @@ impl<'a, W: WidgetConfig, D: Directional> Visitor for Slice<'a, W, D> {
         self.direction.is_reversed()
     }
 
-    fn draw(&mut self, _: Rect, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         let solver = RowPositionSolver::new(self.direction);
         solver.for_children(self.children, draw.get_clip_rect(), |w| {
             w.draw(draw, mgr, disabled)
@@ -364,9 +355,9 @@ where
         false
     }
 
-    fn draw(&mut self, rect: Rect, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         for (_, child) in &mut self.children {
-            child.draw(rect, draw, mgr, disabled);
+            child.draw(draw, mgr, disabled);
         }
     }
 }
@@ -374,6 +365,10 @@ where
 /// Layout storage for frame layout
 #[derive(Default, Debug)]
 pub struct FrameStorage {
+    // NOTE: potentially rect is redundant (e.g. with widget's rect) but if we
+    // want an alternative as a generic solution then all draw methods must
+    // calculate and pass the child's rect, which is probably worse.
+    rect: Rect,
     offset: Offset,
     size: Size,
 }
@@ -400,6 +395,7 @@ impl<'a> Visitor for Frame<'a> {
     }
 
     fn set_rect(&mut self, mgr: &mut Manager, mut rect: Rect, align: AlignHints) {
+        self.data.rect = rect;
         rect.pos += self.data.offset;
         rect.size -= self.data.size;
         self.child.set_rect_(mgr, rect, align);
@@ -409,8 +405,8 @@ impl<'a> Visitor for Frame<'a> {
         self.child.is_reversed_()
     }
 
-    fn draw(&mut self, rect: Rect, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-        draw.outer_frame(rect);
-        self.child.draw_(rect, draw, mgr, disabled);
+    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        draw.outer_frame(self.data.rect);
+        self.child.draw_(draw, mgr, disabled);
     }
 }
