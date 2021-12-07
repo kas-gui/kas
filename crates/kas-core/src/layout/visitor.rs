@@ -87,6 +87,8 @@ enum LayoutType<'a> {
     AlignSingle(&'a mut dyn WidgetConfig, AlignHints),
     /// Apply alignment hints to some sub-layout
     AlignLayout(Box<Layout<'a>>, AlignHints),
+    /// Frame around content
+    Frame(Box<Layout<'a>>, &'a mut FrameStorage),
     /// An embedded layout
     Visitor(Box<dyn Visitor + 'a>),
 }
@@ -126,7 +128,7 @@ impl<'a> Layout<'a> {
     ///
     /// This frame has dimensions according to [`SizeHandle::frame`].
     pub fn frame(data: &'a mut FrameStorage, child: Self) -> Self {
-        let layout = LayoutType::Visitor(Box::new(Frame { data, child }));
+        let layout = LayoutType::Frame(Box::new(child), data);
         Layout { layout }
     }
 
@@ -195,6 +197,14 @@ impl<'a> Layout<'a> {
             LayoutType::Single(child) => child.size_rules(sh, axis),
             LayoutType::AlignSingle(child, _) => child.size_rules(sh, axis),
             LayoutType::AlignLayout(layout, _) => layout.size_rules_(sh, axis),
+            LayoutType::Frame(child, storage) => {
+                let frame_rules = sh.frame(axis.is_vertical());
+                let child_rules = child.size_rules_(sh, axis);
+                let (rules, offset, size) = frame_rules.surround_as_margin(child_rules);
+                storage.offset.set_component(axis, offset);
+                storage.size.set_component(axis, size);
+                rules
+            }
             LayoutType::Visitor(visitor) => visitor.size_rules(sh, axis),
         }
     }
@@ -204,7 +214,7 @@ impl<'a> Layout<'a> {
     pub fn set_rect(mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
         self.set_rect_(mgr, rect, align);
     }
-    fn set_rect_(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+    fn set_rect_(&mut self, mgr: &mut Manager, mut rect: Rect, align: AlignHints) {
         match &mut self.layout {
             LayoutType::None => (),
             LayoutType::Single(child) => child.set_rect(mgr, rect, align),
@@ -215,6 +225,12 @@ impl<'a> Layout<'a> {
             LayoutType::AlignLayout(layout, hints) => {
                 let align = hints.combine(align);
                 layout.set_rect_(mgr, rect, align);
+            }
+            LayoutType::Frame(child, storage) => {
+                storage.rect = rect;
+                rect.pos += storage.offset;
+                rect.size -= storage.size;
+                child.set_rect_(mgr, rect, align);
             }
             LayoutType::Visitor(layout) => layout.set_rect(mgr, rect, align),
         }
@@ -230,9 +246,10 @@ impl<'a> Layout<'a> {
     fn is_reversed_(&mut self) -> bool {
         match &mut self.layout {
             LayoutType::None => false,
-            LayoutType::Single(_) => false,
-            LayoutType::AlignSingle(_, _) => false,
-            LayoutType::AlignLayout(layout, _) => layout.is_reversed_(),
+            LayoutType::Single(_) | LayoutType::AlignSingle(_, _) => false,
+            LayoutType::AlignLayout(layout, _) | LayoutType::Frame(layout, _) => {
+                layout.is_reversed_()
+            }
             LayoutType::Visitor(layout) => layout.is_reversed(),
         }
     }
@@ -249,6 +266,10 @@ impl<'a> Layout<'a> {
             LayoutType::Single(child) => child.draw(draw, mgr, disabled),
             LayoutType::AlignSingle(child, _) => child.draw(draw, mgr, disabled),
             LayoutType::AlignLayout(layout, _) => layout.draw_(draw, mgr, state),
+            LayoutType::Frame(child, storage) => {
+                draw.outer_frame(storage.rect);
+                child.draw_(draw, mgr, state);
+            }
             LayoutType::Visitor(layout) => layout.draw(draw, mgr, state),
         }
     }
@@ -385,39 +406,6 @@ pub struct FrameStorage {
 impl Storage for FrameStorage {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
-    }
-}
-
-/// A frame around other content
-struct Frame<'a> {
-    data: &'a mut FrameStorage,
-    child: Layout<'a>,
-}
-
-impl<'a> Visitor for Frame<'a> {
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let frame_rules = size_handle.frame(axis.is_vertical());
-        let child_rules = self.child.size_rules_(size_handle, axis);
-        let (rules, offset, size) = frame_rules.surround_as_margin(child_rules);
-        self.data.offset.set_component(axis, offset);
-        self.data.size.set_component(axis, size);
-        rules
-    }
-
-    fn set_rect(&mut self, mgr: &mut Manager, mut rect: Rect, align: AlignHints) {
-        self.data.rect = rect;
-        rect.pos += self.data.offset;
-        rect.size -= self.data.size;
-        self.child.set_rect_(mgr, rect, align);
-    }
-
-    fn is_reversed(&mut self) -> bool {
-        self.child.is_reversed_()
-    }
-
-    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState) {
-        draw.outer_frame(self.data.rect);
-        self.child.draw_(draw, mgr, state);
     }
 }
 
