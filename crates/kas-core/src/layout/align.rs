@@ -25,7 +25,7 @@ pub use crate::text::Align;
 /// # let rect = Rect::new(Coord::ZERO, Size::ZERO);
 /// let pref_size = Size(30, 20); // usually size comes from SizeHandle
 /// let rect = align
-///     .complete(Align::Stretch, Align::Centre)
+///     .complete(Align::Stretch, Align::Center)
 ///     .aligned_rect(pref_size, rect);
 /// // self.core.rect = rect;
 /// ```
@@ -40,7 +40,7 @@ impl AlignHints {
     pub const NONE: AlignHints = AlignHints::new(None, None);
 
     /// Center on both axes
-    pub const CENTER: AlignHints = AlignHints::new(Some(Align::Centre), Some(Align::Centre));
+    pub const CENTER: AlignHints = AlignHints::new(Some(Align::Center), Some(Align::Center));
 
     /// Stretch on both axes
     pub const STRETCH: AlignHints = AlignHints::new(Some(Align::Stretch), Some(Align::Stretch));
@@ -88,7 +88,7 @@ impl CompleteAlignment {
         let mut size = rect.size;
         if ideal.0 < size.0 && self.halign != Align::Stretch {
             pos.0 += match self.halign {
-                Align::Centre => (size.0 - ideal.0) / 2,
+                Align::Center => (size.0 - ideal.0) / 2,
                 Align::BR => size.0 - ideal.0,
                 Align::Default | Align::TL | Align::Stretch => 0,
             };
@@ -96,7 +96,7 @@ impl CompleteAlignment {
         }
         if ideal.1 < size.1 && self.valign != Align::Stretch {
             pos.1 += match self.valign {
-                Align::Centre => (size.1 - ideal.1) / 2,
+                Align::Center => (size.1 - ideal.1) / 2,
                 Align::BR => size.1 - ideal.1,
                 Align::Default | Align::TL | Align::Stretch => 0,
             };

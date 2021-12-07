@@ -147,7 +147,7 @@ widget! {
             let size = match self.ideal_size.aspect_scale_to(rect.size) {
                 Some(size) => {
                     self.core_data_mut().rect = align
-                        .complete(Align::Centre, Align::Centre)
+                        .complete(Align::Center, Align::Center)
                         .aligned_rect(size, rect);
                     Into::<(u32, u32)>::into(size)
                 }

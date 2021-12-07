@@ -58,7 +58,7 @@ widget! {
 
         fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
             let mut rect = align
-                .complete(Align::Centre, Align::Centre)
+                .complete(Align::Center, Align::Center)
                 .aligned_rect(self.ideal_size, rect);
             self.core.rect = rect;
             rect.pos += self.frame_offset;
@@ -247,13 +247,13 @@ widget! {
 
         fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
             let rect = align
-                .complete(Align::Stretch, Align::Centre)
+                .complete(Align::Stretch, Align::Center)
                 .aligned_rect(self.ideal_size, rect);
             self.core.rect = rect;
             let size = rect.size - self.frame_size;
             self.label.update_env(|env| {
                 env.set_bounds(size.into());
-                env.set_align((Align::Centre, Align::Centre));
+                env.set_align((Align::Center, Align::Center));
             });
         }
 

@@ -145,7 +145,7 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
                 width = max_size;
                 let offset = match align {
                     Align::Default | Align::TL | Align::Stretch => 0,
-                    Align::Centre => extra / 2,
+                    Align::Center => extra / 2,
                     Align::BR => extra,
                 };
                 if is_horiz {
