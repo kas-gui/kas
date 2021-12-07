@@ -358,7 +358,6 @@ widget! {
         view_offset: Offset,
         editable: bool,
         multi_line: bool,
-        ideal_height: i32,
         text: Text<String>,
         required: Vec2,
         selection: SelectionHelper,
@@ -379,24 +378,15 @@ widget! {
             } else {
                 TextClass::Edit
             };
-            let rules = size_handle.text_bound(&mut self.text, class, axis);
-            if axis.is_vertical() {
-                self.ideal_height = rules.ideal_size();
-            }
-            rules
+            size_handle.text_bound(&mut self.text, class, axis)
         }
 
-        fn set_rect(&mut self, _: &mut Manager, mut rect: Rect, align: AlignHints) {
-            if !self.multi_line {
-                let excess = (rect.size.1 - self.ideal_height).max(0);
-                let offset = match align.vert {
-                    Some(Align::TL) => 0,
-                    Some(Align::BR) => excess,
-                    _ => excess / 2,
-                };
-                rect.pos.1 += offset;
-                rect.size.1 -= excess;
-            }
+        fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
+            let valign = if self.multi_line {
+                Align::Default
+            } else {
+                Align::Center
+            };
 
             self.core.rect = rect;
             let size = rect.size;
@@ -404,7 +394,7 @@ widget! {
             self.required = self
                 .text
                 .update_env(|env| {
-                    env.set_align(align.unwrap_or(Align::Default, Align::Default));
+                    env.set_align(align.unwrap_or(Align::Default, valign));
                     env.set_bounds(size.into());
                     env.set_wrap(multi_line);
                 })
@@ -616,7 +606,6 @@ impl EditField<()> {
             view_offset: Default::default(),
             editable: true,
             multi_line: false,
-            ideal_height: 0,
             text: Text::new(Default::default(), text),
             required: Vec2::ZERO,
             selection: SelectionHelper::new(len, len),
@@ -644,7 +633,6 @@ impl EditField<()> {
             view_offset: self.view_offset,
             editable: self.editable,
             multi_line: self.multi_line,
-            ideal_height: self.ideal_height,
             text: self.text,
             required: self.required,
             selection: self.selection,
