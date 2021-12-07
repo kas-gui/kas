@@ -31,15 +31,8 @@ widget! {
 
     impl Layout for Self {
         #[inline]
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            // Note: we do not consider popups, since they are usually temporary
-            self.w.size_rules(size_handle, axis)
-        }
-
-        #[inline]
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
-            self.core.rect = rect;
-            self.w.set_rect(mgr, rect, align);
+        fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
+            layout::Layout::single(&mut self.w)
         }
 
         #[inline]

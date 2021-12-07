@@ -6,7 +6,6 @@
 //! Wrapper adding a label
 
 use kas::draw::TextClass;
-use kas::layout::{RulesSetter, RulesSolver};
 use kas::text::util::set_text_and_prepare;
 use kas::{event, layout, prelude::*};
 
@@ -24,7 +23,8 @@ widget! {
         dir: D,
         #[widget]
         inner: W,
-        label_pos: Coord,
+        layout_store: layout::FixedRowStorage<2>,
+        label_store: layout::TextStorage,
         label: Text<AccelString>,
     }
 
@@ -44,7 +44,8 @@ widget! {
                 core: Default::default(),
                 dir: direction,
                 inner,
-                label_pos: Default::default(),
+                layout_store: Default::default(),
+                label_store: Default::default(),
                 label: Text::new_multi(label.into()),
             }
         }
@@ -82,38 +83,12 @@ widget! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let (data, _) = self.core.layout.storage::<layout::FixedRowStorage<2>>();
-            let mut solver = layout::RowSolver::new(axis, (self.dir, 2), data);
-            let child = &mut self.inner;
-            solver.for_child(data, 0usize, |axis| {
-                child.size_rules(size_handle, axis)
-            });
-            let label = &mut self.label;
-            solver.for_child(data, 1usize, |axis| {
-                size_handle.text_bound(label, TextClass::Label, axis)
-            });
-            solver.finish(data)
-        }
-
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
-            self.core.rect = rect;
-            let dim = (self.dir, 2);
-            let (data, _) = self.core.layout.storage::<layout::FixedRowStorage<2>>();
-            let mut setter = layout::RowSetter::<_, [i32; 2], _>::new(
-                rect,
-                dim,
-                align,
-                data,
-            );
-            let rect = setter.child_rect(data, 0);
-            self.inner.set_rect(mgr, rect, align);
-            let rect = setter.child_rect(data, 1);
-            self.label_pos = rect.pos;
-            self.label.update_env(|env| {
-                env.set_bounds(rect.size.into());
-                env.set_align(align.unwrap_or(Align::Default, Align::Centre));
-            });
+        fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
+            let arr = [
+                layout::Layout::single(&mut self.inner),
+                layout::Layout::text(&mut self.label_store, &mut self.label, TextClass::Label),
+            ];
+            layout::Layout::list(arr.into_iter(), self.dir, &mut self.layout_store)
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
@@ -121,14 +96,6 @@ widget! {
                 return None;
             }
             Some(self.inner.id())
-        }
-
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-            let disabled = disabled || self.is_disabled();
-            self.inner.draw(draw, mgr, disabled);
-            let accel = mgr.show_accel_labels();
-            let state = self.input_state(mgr, disabled);
-            draw.text_accel(self.label_pos, &self.label, accel, TextClass::Label, state);
         }
     }
 

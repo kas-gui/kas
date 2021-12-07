@@ -10,6 +10,7 @@ use kas::draw::TextClass;
 use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{self, Command, ScrollDelta};
 use kas::geom::Vec2;
+use kas::layout;
 use kas::prelude::*;
 use kas::text::SelectionHelper;
 use std::fmt::Debug;
@@ -177,26 +178,13 @@ widget! {
         core: CoreData,
         #[widget]
         inner: EditField<G>,
-        offset: Offset,
-        frame_size: Size,
+        layout_frame: layout::FrameStorage,
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let frame_rules = size_handle.edit_surround(axis.is_vertical());
-            let child_rules = self.inner.size_rules(size_handle, axis);
-
-            let (rules, offset, size) = frame_rules.surround_as_margin(child_rules);
-            self.offset.set_component(axis, offset);
-            self.frame_size.set_component(axis, size);
-            rules
-        }
-
-        fn set_rect(&mut self, mgr: &mut Manager, mut rect: Rect, align: AlignHints) {
-            self.core.rect = rect;
-            rect.pos += self.offset;
-            rect.size -= self.frame_size;
-            self.inner.set_rect(mgr, rect, align);
+        fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
+            let inner = layout::Layout::single(&mut self.inner);
+            layout::Layout::frame(&mut self.layout_frame, inner)
         }
 
         fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
@@ -219,8 +207,7 @@ impl EditBox<()> {
         EditBox {
             core: Default::default(),
             inner: EditField::new(text),
-            offset: Offset::ZERO,
-            frame_size: Size::ZERO,
+            layout_frame: Default::default(),
         }
     }
 
@@ -236,8 +223,7 @@ impl EditBox<()> {
         EditBox {
             core: self.core,
             inner: self.inner.with_guard(guard),
-            offset: self.offset,
-            frame_size: self.frame_size,
+            layout_frame: self.layout_frame,
         }
     }
 

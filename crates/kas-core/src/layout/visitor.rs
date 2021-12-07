@@ -8,9 +8,10 @@
 use super::{AlignHints, AxisInfo, RulesSetter, RulesSolver, SizeRules, Storage};
 use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
-use crate::draw::{DrawHandle, SizeHandle};
+use crate::draw::{DrawHandle, InputState, SizeHandle, TextClass};
 use crate::event::{Manager, ManagerState};
-use crate::geom::{Offset, Rect, Size};
+use crate::geom::{Coord, Offset, Rect, Size};
+use crate::text::{Align, TextApi, TextApiExt};
 use crate::{dir::Directional, WidgetConfig};
 use std::any::Any;
 use std::iter::ExactSizeIterator;
@@ -65,7 +66,7 @@ trait Visitor {
 
     fn is_reversed(&mut self) -> bool;
 
-    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool);
+    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState);
 }
 
 /// A layout visitor
@@ -126,6 +127,12 @@ impl<'a> Layout<'a> {
     /// This frame has dimensions according to [`SizeHandle::frame`].
     pub fn frame(data: &'a mut FrameStorage, child: Self) -> Self {
         let layout = LayoutType::Visitor(Box::new(Frame { data, child }));
+        Layout { layout }
+    }
+
+    /// Place a text element in the layout
+    pub fn text(data: &'a mut TextStorage, text: &'a mut dyn TextApi, class: TextClass) -> Self {
+        let layout = LayoutType::Visitor(Box::new(Text { data, text, class }));
         Layout { layout }
     }
 
@@ -232,16 +239,17 @@ impl<'a> Layout<'a> {
 
     /// Draw a widget's children
     #[inline]
-    pub fn draw(mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-        self.draw_(draw, mgr, disabled);
+    pub fn draw(mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState) {
+        self.draw_(draw, mgr, state);
     }
-    fn draw_(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+    fn draw_(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState) {
+        let disabled = state.contains(InputState::DISABLED);
         match &mut self.layout {
             LayoutType::None => (),
             LayoutType::Single(child) => child.draw(draw, mgr, disabled),
             LayoutType::AlignSingle(child, _) => child.draw(draw, mgr, disabled),
-            LayoutType::AlignLayout(layout, _) => layout.draw_(draw, mgr, disabled),
-            LayoutType::Visitor(layout) => layout.draw(draw, mgr, disabled),
+            LayoutType::AlignLayout(layout, _) => layout.draw_(draw, mgr, state),
+            LayoutType::Visitor(layout) => layout.draw(draw, mgr, state),
         }
     }
 }
@@ -279,9 +287,9 @@ where
         self.direction.is_reversed()
     }
 
-    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState) {
         for child in &mut self.children {
-            child.draw(draw, mgr, disabled);
+            child.draw(draw, mgr, state);
         }
     }
 }
@@ -316,10 +324,10 @@ impl<'a, W: WidgetConfig, D: Directional> Visitor for Slice<'a, W, D> {
         self.direction.is_reversed()
     }
 
-    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState) {
         let solver = RowPositionSolver::new(self.direction);
         solver.for_children(self.children, draw.get_clip_rect(), |w| {
-            w.draw(draw, mgr, disabled)
+            w.draw(draw, mgr, state.contains(InputState::DISABLED))
         });
     }
 }
@@ -355,22 +363,24 @@ where
         false
     }
 
-    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState) {
         for (_, child) in &mut self.children {
-            child.draw(draw, mgr, disabled);
+            child.draw(draw, mgr, state);
         }
     }
 }
 
 /// Layout storage for frame layout
-#[derive(Default, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct FrameStorage {
+    /// Size used by frame (sum of widths of borders)
+    pub size: Size,
+    /// Offset of frame contents from parent position
+    pub offset: Offset,
     // NOTE: potentially rect is redundant (e.g. with widget's rect) but if we
     // want an alternative as a generic solution then all draw methods must
     // calculate and pass the child's rect, which is probably worse.
     rect: Rect,
-    offset: Offset,
-    size: Size,
 }
 impl Storage for FrameStorage {
     fn as_any_mut(&mut self) -> &mut dyn Any {
@@ -405,8 +415,43 @@ impl<'a> Visitor for Frame<'a> {
         self.child.is_reversed_()
     }
 
-    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState) {
         draw.outer_frame(self.data.rect);
-        self.child.draw_(draw, mgr, disabled);
+        self.child.draw_(draw, mgr, state);
+    }
+}
+
+/// Layout storage for text element
+#[derive(Clone, Default, Debug)]
+pub struct TextStorage {
+    /// Position of text
+    pub pos: Coord,
+}
+
+struct Text<'a> {
+    data: &'a mut TextStorage,
+    text: &'a mut dyn TextApi,
+    class: TextClass,
+}
+
+impl<'a> Visitor for Text<'a> {
+    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        size_handle.text_bound(self.text, self.class, axis)
+    }
+
+    fn set_rect(&mut self, _mgr: &mut Manager, rect: Rect, align: AlignHints) {
+        self.data.pos = rect.pos;
+        self.text.update_env(|env| {
+            env.set_bounds(rect.size.into());
+            env.set_align(align.unwrap_or(Align::Default, Align::Centre));
+        });
+    }
+
+    fn is_reversed(&mut self) -> bool {
+        false
+    }
+
+    fn draw(&mut self, draw: &mut dyn DrawHandle, _mgr: &ManagerState, state: InputState) {
+        draw.text_effects(self.data.pos, self.text, self.class, state);
     }
 }
