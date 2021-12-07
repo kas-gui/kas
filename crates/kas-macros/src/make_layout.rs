@@ -24,6 +24,7 @@ mod kw {
     custom_keyword!(center);
     custom_keyword!(stretch);
     custom_keyword!(frame);
+    custom_keyword!(nav_frame);
     custom_keyword!(list);
     custom_keyword!(slice);
     custom_keyword!(grid);
@@ -51,6 +52,7 @@ enum Layout {
     Single(Span),
     Widget(Expr),
     Frame(Box<Layout>),
+    NavFrame(Box<Layout>),
     List(Direction, List),
     Slice(Direction, Expr),
     Grid(GridDimensions, Vec<(CellInfo, Layout)>),
@@ -179,6 +181,12 @@ impl Parse for Layout {
             let _ = parenthesized!(inner in input);
             let layout: Layout = inner.parse()?;
             Ok(Layout::Frame(Box::new(layout)))
+        } else if lookahead.peek(kw::nav_frame) {
+            let _: kw::nav_frame = input.parse()?;
+            let inner;
+            let _ = parenthesized!(inner in input);
+            let layout: Layout = inner.parse()?;
+            Ok(Layout::NavFrame(Box::new(layout)))
         } else if lookahead.peek(kw::column) {
             let _: kw::column = input.parse()?;
             let dir = Direction::Down;
@@ -385,6 +393,14 @@ impl Layout {
                     let (data, next) = _chain.storage::<::kas::layout::FrameStorage>();
                     _chain = next;
                     ::kas::layout::Layout::frame(data, #inner)
+                }
+            }
+            Layout::NavFrame(layout) => {
+                let inner = layout.generate(children)?;
+                quote! {
+                    let (data, next) = _chain.storage::<::kas::layout::FrameStorage>();
+                    _chain = next;
+                    ::kas::layout::Layout::nav_frame(data, #inner)
                 }
             }
             Layout::List(dir, list) => {
