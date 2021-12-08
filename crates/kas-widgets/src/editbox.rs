@@ -811,7 +811,9 @@ impl<G: EditGuard> EditField<G> {
             Command::Return if self.multi_line => {
                 Action::Insert('\n'.encode_utf8(&mut buf), LastEdit::Insert)
             }
-            Command::Tab => Action::Insert('\t'.encode_utf8(&mut buf), LastEdit::Insert),
+            // NOTE: we might choose to optionally handle Tab in the future,
+            // but without some workaround it prevents keyboard navigation.
+            // Command::Tab => Action::Insert('\t'.encode_utf8(&mut buf), LastEdit::Insert),
             Command::Left => {
                 let mut cursor = GraphemeCursor::new(pos, self.text.str_len(), true);
                 cursor
