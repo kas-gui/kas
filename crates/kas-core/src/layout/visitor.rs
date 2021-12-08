@@ -8,7 +8,7 @@
 use super::{AlignHints, AxisInfo, RulesSetter, RulesSolver, SizeRules, Storage};
 use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
-use crate::draw::{DrawHandle, InputState, SizeHandle, TextClass};
+use crate::draw::{color::Rgb, DrawHandle, InputState, SizeHandle, TextClass};
 use crate::event::{Manager, ManagerState};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::text::{Align, TextApi, TextApiExt};
@@ -91,6 +91,8 @@ enum LayoutType<'a> {
     Frame(Box<Layout<'a>>, &'a mut FrameStorage),
     /// Navigation frame around content
     NavFrame(Box<Layout<'a>>, &'a mut FrameStorage),
+    /// Button frame around content
+    Button(Box<Layout<'a>>, &'a mut FrameStorage, Option<Rgb>),
     /// An embedded layout
     Visitor(Box<dyn Visitor + 'a>),
 }
@@ -139,6 +141,12 @@ impl<'a> Layout<'a> {
     /// This frame has dimensions according to [`SizeHandle::frame`].
     pub fn nav_frame(data: &'a mut FrameStorage, child: Self) -> Self {
         let layout = LayoutType::NavFrame(Box::new(child), data);
+        Layout { layout }
+    }
+
+    /// Construct a button frame around a sub-layout
+    pub fn button(data: &'a mut FrameStorage, child: Self, color: Option<Rgb>) -> Self {
+        let layout = LayoutType::Button(Box::new(child), data, color);
         Layout { layout }
     }
 
@@ -223,6 +231,14 @@ impl<'a> Layout<'a> {
                 storage.size.set_component(axis, size);
                 rules
             }
+            LayoutType::Button(child, storage, _) => {
+                let frame_rules = sh.button_surround(axis.is_vertical());
+                let child_rules = child.size_rules_(sh, axis);
+                let (rules, offset, size) = frame_rules.surround_as_margin(child_rules);
+                storage.offset.set_component(axis, offset);
+                storage.size.set_component(axis, size);
+                rules
+            }
             LayoutType::Visitor(visitor) => visitor.size_rules(sh, axis),
         }
     }
@@ -244,7 +260,9 @@ impl<'a> Layout<'a> {
                 let align = hints.combine(align);
                 layout.set_rect_(mgr, rect, align);
             }
-            LayoutType::Frame(child, storage) | LayoutType::NavFrame(child, storage) => {
+            LayoutType::Frame(child, storage)
+            | LayoutType::NavFrame(child, storage)
+            | LayoutType::Button(child, storage, _) => {
                 storage.rect = rect;
                 rect.pos += storage.offset;
                 rect.size -= storage.size;
@@ -267,7 +285,8 @@ impl<'a> Layout<'a> {
             LayoutType::Single(_) | LayoutType::AlignSingle(_, _) => false,
             LayoutType::AlignLayout(layout, _)
             | LayoutType::Frame(layout, _)
-            | LayoutType::NavFrame(layout, _) => layout.is_reversed_(),
+            | LayoutType::NavFrame(layout, _)
+            | LayoutType::Button(layout, _, _) => layout.is_reversed_(),
             LayoutType::Visitor(layout) => layout.is_reversed(),
         }
     }
@@ -290,6 +309,10 @@ impl<'a> Layout<'a> {
             }
             LayoutType::NavFrame(child, storage) => {
                 draw.nav_frame(storage.rect, state);
+                child.draw_(draw, mgr, state);
+            }
+            LayoutType::Button(child, storage, color) => {
+                draw.button(storage.rect, *color, state);
                 child.draw_(draw, mgr, state);
             }
             LayoutType::Visitor(layout) => layout.draw(draw, mgr, state),
@@ -450,10 +473,14 @@ impl<'a> Visitor for Text<'a> {
     }
 
     fn set_rect(&mut self, _mgr: &mut Manager, rect: Rect, align: AlignHints) {
+        let halign = match self.class {
+            TextClass::Button => Align::Center,
+            _ => Align::Default,
+        };
         self.data.pos = rect.pos;
         self.text.update_env(|env| {
             env.set_bounds(rect.size.into());
-            env.set_align(align.unwrap_or(Align::Default, Align::Center));
+            env.set_align(align.unwrap_or(halign, Align::Center));
         });
     }
 

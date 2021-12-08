@@ -7,6 +7,7 @@
 
 use kas::draw::{color::Rgb, TextClass};
 use kas::event::{self, VirtualKeyCode, VirtualKeyCodes};
+use kas::layout;
 use kas::prelude::*;
 use std::rc::Rc;
 
@@ -22,9 +23,7 @@ widget! {
         #[widget_core]
         core: kas::CoreData,
         keys1: VirtualKeyCodes,
-        frame_size: Size,
-        frame_offset: Offset,
-        ideal_size: Size,
+        layout_frame: layout::FrameStorage,
         color: Option<Rgb>,
         #[widget]
         pub inner: W,
@@ -45,22 +44,9 @@ widget! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let frame_rules = size_handle.button_surround(axis.is_vertical());
-            let content_rules = self.inner.size_rules(size_handle, axis);
-
-            let (rules, offset, size) = frame_rules.surround_as_margin(content_rules);
-            self.frame_size.set_component(axis, size);
-            self.frame_offset.set_component(axis, offset);
-            self.ideal_size.set_component(axis, rules.ideal_size());
-            rules
-        }
-
-        fn set_rect(&mut self, mgr: &mut Manager, mut rect: Rect, align: AlignHints) {
-            self.core.rect = rect;
-            rect.pos += self.frame_offset;
-            rect.size -= self.frame_size;
-            self.inner.set_rect(mgr, rect, align);
+        fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
+            let inner = layout::Layout::single(&mut self.inner);
+            layout::Layout::button(&mut self.layout_frame, inner, self.color)
         }
 
         #[inline]
@@ -71,11 +57,6 @@ widget! {
             // We steal click events on self.inner
             Some(self.id())
         }
-
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-            draw.button(self.core.rect, self.color, self.input_state(mgr, disabled));
-            self.inner.draw(draw, mgr, disabled);
-        }
     }
 
     impl<W: Widget<Msg = VoidMsg>> Button<W, VoidMsg> {
@@ -85,9 +66,7 @@ widget! {
             Button {
                 core: Default::default(),
                 keys1: Default::default(),
-                frame_size: Default::default(),
-                frame_offset: Default::default(),
-                ideal_size: Default::default(),
+                layout_frame: Default::default(),
                 color: None,
                 inner,
                 on_push: None,
@@ -107,9 +86,7 @@ widget! {
             Button {
                 core: self.core,
                 keys1: self.keys1,
-                frame_size: self.frame_size,
-                frame_offset: self.frame_offset,
-                ideal_size: self.ideal_size,
+                layout_frame: self.layout_frame,
                 color: self.color,
                 inner: self.inner,
                 on_push: Some(Rc::new(f)),
@@ -206,9 +183,8 @@ widget! {
         #[widget_core]
         core: kas::CoreData,
         keys1: VirtualKeyCodes,
-        frame_size: Size,
-        frame_offset: Offset,
-        ideal_size: Size,
+        layout_frame: layout::FrameStorage,
+        layout_text: layout::TextStorage,
         color: Option<Rgb>,
         label: Text<AccelString>,
         on_push: Option<Rc<dyn Fn(&mut Manager) -> Option<M>>>,
@@ -229,32 +205,9 @@ widget! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let frame_rules = size_handle.button_surround(axis.is_vertical());
-            let content_rules = size_handle.text_bound(&mut self.label, TextClass::Button, axis);
-
-            let (rules, offset, size) = frame_rules.surround_as_margin(content_rules);
-            self.frame_size.set_component(axis, size);
-            self.frame_offset.set_component(axis, offset);
-            self.ideal_size.set_component(axis, rules.ideal_size());
-            rules
-        }
-
-        fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
-            self.core.rect = rect;
-            let size = rect.size - self.frame_size;
-            self.label.update_env(|env| {
-                env.set_bounds(size.into());
-                env.set_align(align.unwrap_or(Align::Center, Align::Center));
-            });
-        }
-
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-            draw.button(self.core.rect, self.color, self.input_state(mgr, disabled));
-            let pos = self.core.rect.pos + self.frame_offset;
-            let accel = mgr.show_accel_labels();
-            let state = self.input_state(mgr, disabled);
-            draw.text_accel(pos, &self.label, accel, TextClass::Button, state);
+        fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
+            let inner = layout::Layout::text(&mut self.layout_text, &mut self.label, TextClass::Button);
+            layout::Layout::button(&mut self.layout_frame, inner, self.color)
         }
     }
 
@@ -267,9 +220,8 @@ widget! {
             TextButton {
                 core: Default::default(),
                 keys1: Default::default(),
-                frame_size: Default::default(),
-                frame_offset: Default::default(),
-                ideal_size: Default::default(),
+                layout_frame: Default::default(),
+                layout_text: Default::default(),
                 color: None,
                 label: text,
                 on_push: None,
@@ -289,9 +241,8 @@ widget! {
             TextButton {
                 core: self.core,
                 keys1: self.keys1,
-                frame_size: self.frame_size,
-                frame_offset: self.frame_offset,
-                ideal_size: self.ideal_size,
+                layout_frame: self.layout_frame,
+                layout_text: self.layout_text,
                 color: self.color,
                 label: self.label,
                 on_push: Some(Rc::new(f)),
@@ -359,7 +310,7 @@ widget! {
             if self.label.text().keys() != string.keys() {
                 action |= TkAction::RECONFIGURE;
             }
-            let avail = self.core.rect.size.clamped_sub(self.frame_size);
+            let avail = self.core.rect.size.clamped_sub(self.layout_frame.size);
             action | kas::text::util::set_text_and_prepare(&mut self.label, string, avail)
         }
     }
