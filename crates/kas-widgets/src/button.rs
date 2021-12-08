@@ -16,9 +16,9 @@ widget! {
     /// Default alignment is centred. Content (label) alignment is derived from the
     /// button alignment.
     #[autoimpl(Debug skip on_push)]
-    #[autoimpl(class_traits where L: trait on label)]
+    #[autoimpl(class_traits where W: trait on inner)]
     #[derive(Clone)]
-    pub struct Button<L: Widget<Msg = VoidMsg>, M: 'static> {
+    pub struct Button<W: Widget<Msg = VoidMsg>, M: 'static> {
         #[widget_core]
         core: kas::CoreData,
         keys1: VirtualKeyCodes,
@@ -27,7 +27,7 @@ widget! {
         ideal_size: Size,
         color: Option<Rgb>,
         #[widget]
-        pub label: L,
+        pub inner: W,
         on_push: Option<Rc<dyn Fn(&mut Manager) -> Option<M>>>,
     }
 
@@ -47,7 +47,7 @@ widget! {
     impl Layout for Self {
         fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
             let frame_rules = size_handle.button_surround(axis.is_vertical());
-            let content_rules = self.label.size_rules(size_handle, axis);
+            let content_rules = self.inner.size_rules(size_handle, axis);
 
             let (rules, offset, size) = frame_rules.surround_as_margin(content_rules);
             self.frame_size.set_component(axis, size);
@@ -60,7 +60,7 @@ widget! {
             self.core.rect = rect;
             rect.pos += self.frame_offset;
             rect.size -= self.frame_size;
-            self.label.set_rect(mgr, rect, align);
+            self.inner.set_rect(mgr, rect, align);
         }
 
         #[inline]
@@ -68,20 +68,20 @@ widget! {
             if !self.rect().contains(coord) {
                 return None;
             }
-            // We steal click events on self.label
+            // We steal click events on self.inner
             Some(self.id())
         }
 
         fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             draw.button(self.core.rect, self.color, self.input_state(mgr, disabled));
-            self.label.draw(draw, mgr, disabled);
+            self.inner.draw(draw, mgr, disabled);
         }
     }
 
-    impl<L: Widget<Msg = VoidMsg>> Button<L, VoidMsg> {
-        /// Construct a button with given `label`
+    impl<W: Widget<Msg = VoidMsg>> Button<W, VoidMsg> {
+        /// Construct a button with given `inner` widget
         #[inline]
-        pub fn new(label: L) -> Self {
+        pub fn new(inner: W) -> Self {
             Button {
                 core: Default::default(),
                 keys1: Default::default(),
@@ -89,7 +89,7 @@ widget! {
                 frame_offset: Default::default(),
                 ideal_size: Default::default(),
                 color: None,
-                label,
+                inner,
                 on_push: None,
             }
         }
@@ -100,7 +100,7 @@ widget! {
         /// closure `f` is called. The result of `f` is converted to
         /// [`Response::Msg`] or [`Response::None`] and returned to the parent.
         #[inline]
-        pub fn on_push<M, F>(self, f: F) -> Button<L, M>
+        pub fn on_push<M, F>(self, f: F) -> Button<W, M>
         where
             F: Fn(&mut Manager) -> Option<M> + 'static,
         {
@@ -111,42 +111,40 @@ widget! {
                 frame_offset: self.frame_offset,
                 ideal_size: self.ideal_size,
                 color: self.color,
-                label: self.label,
+                inner: self.inner,
                 on_push: Some(Rc::new(f)),
             }
         }
     }
 
     impl Self {
-        /// Construct a button with a given `label` and event handler `f`
+        /// Construct a button with a given `inner` widget and event handler `f`
         ///
         /// On activation (through user input events or [`Event::Activate`]) the
         /// closure `f` is called. The result of `f` is converted to
         /// [`Response::Msg`] or [`Response::None`] and returned to the parent.
         #[inline]
-        pub fn new_on<F>(label: L, f: F) -> Self
+        pub fn new_on<F>(inner: W, f: F) -> Self
         where
             F: Fn(&mut Manager) -> Option<M> + 'static,
         {
-            Button::new(label).on_push(f)
+            Button::new(inner).on_push(f)
         }
 
-        /// Construct a button with a given `label` and payload `msg`
+        /// Construct a button with a given `inner` and payload `msg`
         ///
         /// On activation (through user input events or [`Event::Activate`]) a clone
         /// of `msg` is returned to the parent widget. Click actions must be
         /// implemented through a handler on the parent widget (or other ancestor).
         #[inline]
-        pub fn new_msg(label: L, msg: M) -> Self
+        pub fn new_msg(inner: W, msg: M) -> Self
         where
             M: Clone,
         {
-            Self::new_on(label, move |_| Some(msg.clone()))
+            Self::new_on(inner, move |_| Some(msg.clone()))
         }
 
         /// Add accelerator keys (chain style)
-        ///
-        /// These keys are added to those inferred from the label via `&` marks.
         pub fn with_keys(mut self, keys: &[VirtualKeyCode]) -> Self {
             self.keys1.clear();
             self.keys1.extend_from_slice(keys);
@@ -184,7 +182,7 @@ widget! {
     impl SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<M> {
             if id < self.id() {
-                self.label.send(mgr, id, event).void_into()
+                self.inner.send(mgr, id, event).void_into()
             } else {
                 debug_assert_eq!(id, self.id());
                 Manager::handle_generic(self, mgr, event)
