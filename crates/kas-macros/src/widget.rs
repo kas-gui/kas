@@ -6,7 +6,7 @@
 use crate::args::{Handler, Widget};
 use crate::extend_generics;
 use proc_macro2::TokenStream;
-use proc_macro_error::{emit_error, emit_warning};
+use proc_macro_error::{emit_call_site_warning, emit_error, emit_warning};
 use quote::{quote, TokenStreamExt};
 use syn::spanned::Spanned;
 use syn::{parse_quote, Result};
@@ -27,6 +27,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
 
     let mut impl_widget_children = true;
     let mut impl_widget_config = true;
+    let mut has_find_id_impl = args.attr_widget.layout.is_some();
     let mut handler_impl = None;
     let mut send_event_impl = None;
     for (index, impl_) in args.extra_impls.iter().enumerate() {
@@ -54,6 +55,23 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                 }
                 // TODO: if args.widget_attr.config.is_some() { warn unused }
                 impl_widget_config = false;
+            } else if *path == parse_quote! { ::kas::Layout }
+                || *path == parse_quote! { kas::Layout }
+                || *path == parse_quote! { Layout }
+            {
+                if args.attr_widget.layout.is_some() {
+                    emit_error!(
+                        impl_.span(),
+                        "impl conflicts with use of #[widget(layout=...;)]"
+                    );
+                }
+                for item in &impl_.items {
+                    if let syn::ImplItem::Method(method) = item {
+                        if method.sig.ident == "layout" || method.sig.ident == "find_id" {
+                            has_find_id_impl = true;
+                        }
+                    }
+                }
             } else if *path == parse_quote! { ::kas::event::Handler }
                 || *path == parse_quote! { kas::event::Handler }
                 || *path == parse_quote! { event::Handler }
@@ -81,6 +99,10 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                 send_event_impl = Some(index);
             }
         }
+    }
+
+    if !has_find_id_impl && (!impl_widget_children || !args.children.is_empty()) {
+        emit_call_site_warning!("widget appears to have children yet does not implement Layout::layout or Layout::find_id; this may cause incorrect handling of mouse/touch events");
     }
 
     let (mut impl_generics, ty_generics, mut where_clause) = args.generics.split_for_impl();

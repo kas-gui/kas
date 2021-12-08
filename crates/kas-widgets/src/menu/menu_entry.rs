@@ -127,15 +127,7 @@ widget! {
 
     impl Layout for Self {
         fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
-            make_layout!(self.core; row: [ self.checkbox, self.label])
-        }
-
-        #[inline]
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-            Some(self.id())
+            make_layout!(self.core; row: [self.checkbox, self.label])
         }
 
         fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {

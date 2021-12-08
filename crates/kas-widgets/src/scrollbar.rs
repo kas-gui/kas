@@ -230,6 +230,13 @@ widget! {
             None // handle is not navigable
         }
 
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) {
+                return None;
+            }
+            self.handle.find_id(coord).or(Some(self.id()))
+        }
+
         fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let dir = self.direction.as_direction();
             let state = self.handle.input_state(mgr, disabled);
@@ -588,6 +595,16 @@ widget! {
                     .set_rect(mgr, Rect { pos, size }, AlignHints::NONE);
                 let _ = self.vert_bar.set_limits(max_scroll_offset.1, rect.size.1);
             }
+        }
+
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) {
+                return None;
+            }
+            self.vert_bar.find_id(coord)
+                .or_else(|| self.horiz_bar.find_id(coord))
+                .or_else(|| self.inner.find_id(coord))
+                .or(Some(self.id()))
         }
 
         #[cfg(feature = "min_spec")]

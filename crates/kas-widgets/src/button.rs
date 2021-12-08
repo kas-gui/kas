@@ -48,15 +48,6 @@ widget! {
             let inner = layout::Layout::single(&mut self.inner);
             layout::Layout::button(&mut self.layout_frame, inner, self.color)
         }
-
-        #[inline]
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-            // We steal click events on self.inner
-            Some(self.id())
-        }
     }
 
     impl<W: Widget<Msg = VoidMsg>> Button<W, VoidMsg> {

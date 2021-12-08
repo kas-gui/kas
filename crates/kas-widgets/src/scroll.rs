@@ -341,6 +341,13 @@ widget! {
                 .set_sizes(rect.size, child_size + self.frame_size);
         }
 
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) {
+                return None;
+            }
+            self.inner.find_id(coord + self.translation())
+        }
+
         #[inline]
         fn translation(&self) -> Offset {
             self.scroll_offset()

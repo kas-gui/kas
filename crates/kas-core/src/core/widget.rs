@@ -463,6 +463,18 @@ pub trait Layout: WidgetChildren {
 
     /// Find a widget by coordinate
     ///
+    /// This method has a default implementation, but this may need to be
+    /// overridden if any of the following are true:
+    ///
+    /// -   [`Self::layout`] is not implemented and there are child widgets
+    /// -   Any child widget should not receive events despite having a
+    ///     placement in the layout — e.g. push-buttons (but note that
+    ///     [`kas::layout::Layout::button`] does take this into account)
+    /// -   Mouse/touch events should be passed to a child widget *outside* of
+    ///     this child's area — e.g. a label next to a checkbox
+    /// -   The child widget is in a translated coordinate space *not equal* to
+    ///     [`Self::translation`]
+    ///
     /// This method translates from coordinates (usually from mouse input) to a
     /// [`WidgetId`]. It is expected to do the following:
     ///
@@ -470,28 +482,12 @@ pub trait Layout: WidgetChildren {
     /// -   Find the child which should respond to input at `coord`, if any, and
     ///     call `find_id` recursively on this child
     /// -   Otherwise return `self.id()`
-    ///
-    /// The default implementation suffices so long as none of the following
-    /// are true:
-    ///
-    /// -   Child widgets should not be matched even though their area covers
-    ///     `coord`
-    /// -   Child widgets have offset not equal to [`Layout::translation`]
-    /// -   This widget has very large numbers of children such that iterating
-    ///     through all children in order is too slow.
-    ///
-    /// This must not be called before [`Layout::set_rect`].
     fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
         if !self.rect().contains(coord) {
             return None;
         }
         let coord = coord + self.translation();
-        for n in 0..self.num_children() {
-            if let Some(id) = self.get_child_mut(n).and_then(|w| w.find_id(coord)) {
-                return Some(id);
-            }
-        }
-        Some(self.id())
+        self.layout().find_id(coord).or(Some(self.id()))
     }
 
     /// Draw a widget and its children

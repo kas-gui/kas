@@ -12,6 +12,7 @@ use crate::draw::{color::Rgb, DrawHandle, InputState, SizeHandle, TextClass};
 use crate::event::{Manager, ManagerState};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::text::{Align, TextApi, TextApiExt};
+use crate::WidgetId;
 use crate::{dir::Directional, WidgetConfig};
 use std::any::Any;
 use std::iter::ExactSizeIterator;
@@ -65,6 +66,8 @@ trait Visitor {
     fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints);
 
     fn is_reversed(&mut self) -> bool;
+
+    fn find_id(&mut self, coord: Coord) -> Option<WidgetId>;
 
     fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState);
 }
@@ -291,6 +294,26 @@ impl<'a> Layout<'a> {
         }
     }
 
+    /// Find a widget by coordinate
+    ///
+    /// Does not return the widget's own identifier. See example usage in
+    /// [`Layout::find_id`].
+    #[inline]
+    pub fn find_id(mut self, coord: Coord) -> Option<WidgetId> {
+        self.find_id_(coord)
+    }
+    fn find_id_(&mut self, coord: Coord) -> Option<WidgetId> {
+        match &mut self.layout {
+            LayoutType::None => None,
+            LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => child.find_id(coord),
+            LayoutType::AlignLayout(layout, _) => layout.find_id_(coord),
+            LayoutType::Frame(child, _) | LayoutType::NavFrame(child, _) => child.find_id_(coord),
+            // Buttons steal clicks, hence Button never returns ID of content
+            LayoutType::Button(_, _, _) => None,
+            LayoutType::Visitor(layout) => layout.find_id(coord),
+        }
+    }
+
     /// Draw a widget's children
     #[inline]
     pub fn draw(mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState) {
@@ -300,8 +323,9 @@ impl<'a> Layout<'a> {
         let disabled = state.contains(InputState::DISABLED);
         match &mut self.layout {
             LayoutType::None => (),
-            LayoutType::Single(child) => child.draw(draw, mgr, disabled),
-            LayoutType::AlignSingle(child, _) => child.draw(draw, mgr, disabled),
+            LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => {
+                child.draw(draw, mgr, disabled)
+            }
             LayoutType::AlignLayout(layout, _) => layout.draw_(draw, mgr, state),
             LayoutType::Frame(child, storage) => {
                 draw.outer_frame(storage.rect);
@@ -353,6 +377,11 @@ where
         self.direction.is_reversed()
     }
 
+    fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        // TODO(opt): more efficient search strategy?
+        self.children.find_map(|child| child.find_id(coord))
+    }
+
     fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState) {
         for child in &mut self.children {
             child.draw(draw, mgr, state);
@@ -388,6 +417,13 @@ impl<'a, W: WidgetConfig, D: Directional> Visitor for Slice<'a, W, D> {
 
     fn is_reversed(&mut self) -> bool {
         self.direction.is_reversed()
+    }
+
+    fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        let solver = RowPositionSolver::new(self.direction);
+        solver
+            .find_child_mut(self.children, coord)
+            .and_then(|child| child.find_id(coord))
     }
 
     fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState) {
@@ -427,6 +463,11 @@ where
     fn is_reversed(&mut self) -> bool {
         // TODO: replace is_reversed with direct implementation of spatial_nav
         false
+    }
+
+    fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        // TODO(opt): more efficient search strategy?
+        self.children.find_map(|(_, child)| child.find_id(coord))
     }
 
     fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState) {
@@ -486,6 +527,10 @@ impl<'a> Visitor for Text<'a> {
 
     fn is_reversed(&mut self) -> bool {
         false
+    }
+
+    fn find_id(&mut self, _: Coord) -> Option<WidgetId> {
+        None
     }
 
     fn draw(&mut self, draw: &mut dyn DrawHandle, _mgr: &ManagerState, state: InputState) {

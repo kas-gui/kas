@@ -14,6 +14,8 @@ widget! {
     ///
     /// The label supports accelerator keys, which activate `self.inner` on
     /// usage.
+    ///
+    /// Mouse/touch input on the label sends events to the inner widget.
     #[autoimpl(Deref, DerefMut on inner)]
     #[derive(Clone, Default, Debug)]
     #[handler(msg = W::Msg)]

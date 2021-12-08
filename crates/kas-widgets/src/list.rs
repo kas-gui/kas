@@ -207,19 +207,6 @@ widget! {
         fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
             make_layout!(self.core; slice(self.direction): self.widgets)
         }
-
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-
-            let solver = layout::RowPositionSolver::new(self.direction);
-            if let Some(child) = solver.find_child_mut(&mut self.widgets, coord) {
-                return child.find_id(coord);
-            }
-
-            Some(self.id())
-        }
     }
 
     impl event::SendEvent for Self {
