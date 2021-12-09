@@ -83,6 +83,6 @@ rev = "818515e"
 
 [dependencies.winit]
 # Provides translations for several winit types
-version = "0.25"
+version = "0.26"
 optional = true
 features = ["serde"]
