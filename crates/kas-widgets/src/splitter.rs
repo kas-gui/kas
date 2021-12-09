@@ -74,7 +74,6 @@ widget! {
     #[derive(Clone, Default, Debug)]
     #[handler(msg=<W as event::Handler>::Msg)]
     pub struct Splitter<D: Directional, W: Widget> {
-        first_id: WidgetId,
         #[widget_core]
         core: CoreData,
         widgets: Vec<W>,
@@ -84,13 +83,6 @@ widget! {
     }
 
     impl WidgetChildren for Self {
-        #[inline]
-        fn first_id(&self) -> WidgetId {
-            self.first_id
-        }
-        fn record_first_id(&mut self, id: WidgetId) {
-            self.first_id = id;
-        }
         #[inline]
         fn num_children(&self) -> usize {
             self.widgets.len() + self.handles.len()
@@ -288,7 +280,6 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         let mut handles = Vec::new();
         handles.resize_with(widgets.len().saturating_sub(1), DragHandle::new);
         Splitter {
-            first_id: Default::default(),
             core: Default::default(),
             widgets,
             handles,

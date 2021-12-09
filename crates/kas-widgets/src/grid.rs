@@ -48,7 +48,6 @@ widget! {
     #[derive(Clone, Debug)]
     #[handler(msg=<W as Handler>::Msg)]
     pub struct Grid<W: Widget> {
-        first_id: WidgetId,
         #[widget_core]
         core: CoreData,
         widgets: Vec<(GridChildInfo, W)>,
@@ -57,13 +56,6 @@ widget! {
     }
 
     impl WidgetChildren for Self {
-        #[inline]
-        fn first_id(&self) -> WidgetId {
-            self.first_id
-        }
-        fn record_first_id(&mut self, id: WidgetId) {
-            self.first_id = id;
-        }
         #[inline]
         fn num_children(&self) -> usize {
             self.widgets.len()

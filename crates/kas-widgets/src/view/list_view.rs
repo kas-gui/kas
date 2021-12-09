@@ -47,7 +47,6 @@ widget! {
         T: ListData + UpdHandler<T::Key, V::Msg> + 'static,
         V: Driver<T::Item> = driver::Default,
     > {
-        first_id: WidgetId,
         #[widget_core]
         core: CoreData,
         frame_offset: Offset,
@@ -107,7 +106,6 @@ widget! {
         /// Construct a new instance with explicit direction and view
         pub fn new_with_dir_driver(direction: D, view: V, data: T) -> Self {
             ListView {
-                first_id: Default::default(),
                 core: Default::default(),
                 frame_offset: Default::default(),
                 frame_size: Default::default(),
@@ -375,13 +373,6 @@ widget! {
     }
 
     impl WidgetChildren for Self {
-        #[inline]
-        fn first_id(&self) -> WidgetId {
-            self.first_id
-        }
-        fn record_first_id(&mut self, id: WidgetId) {
-            self.first_id = id;
-        }
         #[inline]
         fn num_children(&self) -> usize {
             self.widgets.len()

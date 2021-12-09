@@ -34,7 +34,6 @@ widget! {
     #[derive(Clone, Default, Debug)]
     #[handler(msg=<W as event::Handler>::Msg)]
     pub struct Stack<W: Widget> {
-        first_id: WidgetId,
         #[widget_core]
         core: CoreData,
         widgets: Vec<W>,
@@ -42,13 +41,6 @@ widget! {
     }
 
     impl WidgetChildren for Self {
-        #[inline]
-        fn first_id(&self) -> WidgetId {
-            self.first_id
-        }
-        fn record_first_id(&mut self, id: WidgetId) {
-            self.first_id = id;
-        }
         #[inline]
         fn num_children(&self) -> usize {
             self.widgets.len()
@@ -136,7 +128,6 @@ impl<W: Widget> Stack<W> {
     /// visible; otherwise, no widget will be visible.
     pub fn new(widgets: Vec<W>, active: usize) -> Self {
         Stack {
-            first_id: Default::default(),
             core: Default::default(),
             widgets,
             active,

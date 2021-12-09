@@ -172,7 +172,6 @@ widget! {
         W: Widget,
         M: FromIndexed<<W as Handler>::Msg> + 'static,
     > {
-        first_id: WidgetId,
         #[widget_core]
         core: CoreData,
         widgets: Vec<W>,
@@ -182,13 +181,6 @@ widget! {
     }
 
     impl WidgetChildren for Self {
-        #[inline]
-        fn first_id(&self) -> WidgetId {
-            self.first_id
-        }
-        fn record_first_id(&mut self, id: WidgetId) {
-            self.first_id = id;
-        }
         #[inline]
         fn num_children(&self) -> usize {
             self.widgets.len()
@@ -261,7 +253,6 @@ widget! {
         #[inline]
         pub fn new_with_direction(direction: D, widgets: Vec<W>) -> Self {
             GenericList {
-                first_id: Default::default(),
                 core: Default::default(),
                 widgets,
                 data: Default::default(),

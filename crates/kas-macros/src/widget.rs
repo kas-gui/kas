@@ -148,12 +148,6 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
             impl #impl_generics ::kas::WidgetChildren
                 for #name #ty_generics #where_clause
             {
-                fn first_id(&self) -> ::kas::WidgetId {
-                    self.#inner.first_id()
-                }
-                fn record_first_id(&mut self, id: WidgetId) {
-                    self.#inner.record_first_id(id);
-                }
                 fn num_children(&self) -> usize {
                     self.#inner.num_children()
                 }
@@ -166,13 +160,6 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
             }
         });
     } else if impl_widget_children {
-        let first_id = if args.children.is_empty() {
-            quote! { self.id() }
-        } else {
-            let ident = &args.children[0].ident;
-            quote! { self.#ident.first_id() }
-        };
-
         let count = args.children.len();
 
         let mut get_rules = quote! {};
@@ -187,9 +174,6 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
             impl #impl_generics ::kas::WidgetChildren
                 for #name #ty_generics #where_clause
             {
-                fn first_id(&self) -> ::kas::WidgetId {
-                    #first_id
-                }
                 fn num_children(&self) -> usize {
                     #count
                 }

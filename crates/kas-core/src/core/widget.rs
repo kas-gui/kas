@@ -169,25 +169,6 @@ pub trait WidgetCore: Any + fmt::Debug {
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 pub trait WidgetChildren: WidgetCore {
-    /// Get the first identifier of self or any children
-    ///
-    /// Widget identifiers are assigned sequentially by depth-first-search,
-    /// children before parents. Any widget thus has a range of identifiers,
-    /// from the first assigned to any descendent (or self) to its own
-    /// ([`WidgetCore::id`]). This method must return the first identifier.
-    fn first_id(&self) -> WidgetId;
-
-    /// Record first identifier
-    ///
-    /// This is called during [`WidgetConfig::configure_recurse`] with the first
-    /// identifier. This may be used to implement [`WidgetChildren::first_id`],
-    /// although in many cases the first identifier can be read directly from
-    /// the first child. This method has a default implementation doing nothing.
-    ///
-    /// This method should only be called from `configure_recurse`.
-    #[inline]
-    fn record_first_id(&mut self, _id: WidgetId) {}
-
     /// Get the number of child widgets
     fn num_children(&self) -> usize;
 

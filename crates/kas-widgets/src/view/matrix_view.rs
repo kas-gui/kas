@@ -52,7 +52,6 @@ widget! {
         T: MatrixData + UpdHandler<T::Key, V::Msg> + 'static,
         V: Driver<T::Item> = driver::Default,
     > {
-        first_id: WidgetId,
         #[widget_core]
         core: CoreData,
         frame_offset: Offset,
@@ -87,7 +86,6 @@ widget! {
         /// Construct a new instance with explicit view
         pub fn new_with_driver(view: V, data: T) -> Self {
             MatrixView {
-                first_id: Default::default(),
                 core: Default::default(),
                 frame_offset: Default::default(),
                 frame_size: Default::default(),
@@ -329,13 +327,6 @@ widget! {
     }
 
     impl WidgetChildren for Self {
-        #[inline]
-        fn first_id(&self) -> WidgetId {
-            self.first_id
-        }
-        fn record_first_id(&mut self, id: WidgetId) {
-            self.first_id = id;
-        }
         #[inline]
         fn num_children(&self) -> usize {
             self.widgets.len()
