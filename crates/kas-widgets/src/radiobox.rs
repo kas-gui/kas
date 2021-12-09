@@ -8,7 +8,6 @@
 use super::AccelLabel;
 use kas::prelude::*;
 use log::trace;
-use std::convert::TryFrom;
 use std::rc::Rc;
 
 widget! {
@@ -58,8 +57,8 @@ widget! {
                     }
                 }
                 Event::HandleUpdate { payload, .. } => {
-                    let id = WidgetId::try_from(payload).unwrap();
-                    if self.state && id != self.id() {
+                    let opt_id = WidgetId::opt_from_u64(payload);
+                    if self.state && opt_id != Some(self.id()) {
                         trace!("RadioBoxBare: unset {}", self.id());
                         self.state = false;
                         mgr.redraw(self.id());

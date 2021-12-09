@@ -5,9 +5,8 @@
 
 //! Widget data types
 
-use std::convert::TryFrom;
 use std::fmt;
-use std::num::NonZeroU32;
+use std::num::NonZeroU64;
 
 #[allow(unused)]
 use super::Layout;
@@ -51,40 +50,29 @@ impl Icon {
 /// (via [`crate::TkAction::RECONFIGURE`]). Since user-code is not notified of a
 /// re-configure, user-code should not store a `WidgetId`.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct WidgetId(NonZeroU32);
+pub struct WidgetId(NonZeroU64);
 
 impl WidgetId {
-    pub(crate) const FIRST: WidgetId = WidgetId(unsafe { NonZeroU32::new_unchecked(1) });
-    const LAST: WidgetId = WidgetId(unsafe { NonZeroU32::new_unchecked(u32::MAX) });
+    pub(crate) const FIRST: WidgetId = WidgetId(unsafe { NonZeroU64::new_unchecked(1) });
+    const LAST: WidgetId = WidgetId(unsafe { NonZeroU64::new_unchecked(u64::MAX) });
 
     pub(crate) fn next(self) -> Self {
-        WidgetId(NonZeroU32::new(self.0.get() + 1).unwrap())
+        WidgetId(NonZeroU64::new(self.0.get() + 1).unwrap())
     }
-}
 
-impl TryFrom<u32> for WidgetId {
-    type Error = ();
-    fn try_from(x: u32) -> Result<WidgetId, ()> {
-        NonZeroU32::new(x).map(WidgetId).ok_or(())
-    }
-}
-
-impl TryFrom<u64> for WidgetId {
-    type Error = ();
-    fn try_from(x: u64) -> Result<WidgetId, ()> {
-        if let Ok(x) = u32::try_from(x) {
-            if let Some(nz) = NonZeroU32::new(x) {
-                return Ok(WidgetId(nz));
-            }
+    /// Convert `Option<WidgetId>` to `u64`
+    pub fn opt_to_u64(id: Option<WidgetId>) -> u64 {
+        match id {
+            None => 0,
+            Some(id) => id.into(),
         }
-        Err(())
     }
-}
 
-impl From<WidgetId> for u32 {
-    #[inline]
-    fn from(id: WidgetId) -> u32 {
-        id.0.get()
+    /// Convert `u64` to `Option<WidgetId>`
+    ///
+    /// This always "succeeds", though the result may not identify any widget.
+    pub fn opt_from_u64(n: u64) -> Option<WidgetId> {
+        NonZeroU64::new(n).map(|nz| WidgetId(nz))
     }
 }
 
