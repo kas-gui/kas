@@ -16,12 +16,14 @@ widget! {
     /// This widget houses a sequence of menu buttons, allowing input actions across
     /// menus.
     #[derive(Clone, Debug)]
+    #[widget{
+        layout = single;
+    }]
     pub struct MenuBar<W: Menu, D: Directional = kas::dir::Right> {
         #[widget_core]
         core: CoreData,
         #[widget]
         pub bar: IndexedList<D, SubMenu<D::Flipped, W>>,
-        ideal: Size,
         // Open mode. Used to close with click on root only when previously open.
         opening: bool,
         delayed_open: Option<WidgetId>,
@@ -47,43 +49,9 @@ widget! {
             MenuBar {
                 core: Default::default(),
                 bar: IndexedList::new_with_direction(direction, menus),
-                ideal: Size::ZERO,
                 opening: false,
                 delayed_open: None,
             }
-        }
-    }
-
-    // NOTE: we could use layout(single) except for alignment
-    impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let rules = self.bar.size_rules(size_handle, axis);
-            self.ideal.set_component(axis, rules.ideal_size());
-            rules
-        }
-
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
-            self.core_data_mut().rect = rect;
-            let rect = align
-                .complete(Align::Default, Align::Default)
-                .aligned_rect(self.ideal, rect);
-            let align = AlignHints::new(Some(Align::Default), Some(Align::Default));
-            self.bar.set_rect(mgr, rect, align);
-        }
-
-        #[inline]
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-            if let Some(id) = self.bar.find_id(coord) {
-                return Some(id);
-            }
-            Some(self.id())
-        }
-
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-            self.bar.draw(draw_handle, mgr, disabled);
         }
     }
 
@@ -238,17 +206,23 @@ widget! {
         fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>, set_focus: bool) {
             self.delayed_open = None;
             if let Some(id) = target {
-                // We should close other sub-menus before opening
                 let mut child = None;
+                let mut current = None;
                 for i in 0..self.bar.len() {
                     if self.bar[i].is_ancestor_of(id) {
                         child = Some(i);
-                    } else {
-                        self.bar[i].set_menu_path(mgr, None, set_focus);
+                    }
+                    if self.bar[i].menu_is_open() {
+                        current = Some(i);
                     }
                 }
                 if let Some(i) = child {
-                    self.bar[i].set_menu_path(mgr, target, set_focus);
+                    if child != current {
+                        if let Some(j) = current {
+                            self.bar[j].set_menu_path(mgr, None, set_focus);
+                        }
+                        self.bar[i].set_menu_path(mgr, target, set_focus);
+                    }
                 }
             } else {
                 for i in 0..self.bar.len() {

@@ -10,6 +10,7 @@ use kas::draw::TextClass;
 use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{self, Command, ScrollDelta};
 use kas::geom::Vec2;
+use kas::layout;
 use kas::prelude::*;
 use kas::text::SelectionHelper;
 use std::fmt::Debug;
@@ -177,45 +178,24 @@ widget! {
         core: CoreData,
         #[widget]
         inner: EditField<G>,
-        offset: Offset,
-        frame_size: Size,
+        layout_frame: layout::FrameStorage,
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let frame_rules = size_handle.edit_surround(axis.is_vertical());
-            let child_rules = self.inner.size_rules(size_handle, axis);
-
-            let (rules, offset, size) = frame_rules.surround_as_margin(child_rules);
-            self.offset.set_component(axis, offset);
-            self.frame_size.set_component(axis, size);
-            rules
+        fn layout(&mut self) -> layout::Layout<'_> {
+            let inner = layout::Layout::single(&mut self.inner);
+            layout::Layout::frame(&mut self.layout_frame, inner)
         }
 
-        fn set_rect(&mut self, mgr: &mut Manager, mut rect: Rect, align: AlignHints) {
-            self.core.rect = rect;
-            rect.pos += self.offset;
-            rect.size -= self.frame_size;
-            self.inner.set_rect(mgr, rect, align);
-        }
-
-        #[inline]
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-            Some(self.inner.id())
-        }
-
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             // We draw highlights for input state of inner:
             let disabled = disabled || self.is_disabled() || self.inner.is_disabled();
             let mut input_state = self.inner.input_state(mgr, disabled);
             if self.inner.has_error() {
                 input_state.insert(InputState::ERROR);
             }
-            draw_handle.edit_box(self.core.rect, input_state);
-            self.inner.draw(draw_handle, mgr, disabled);
+            draw.edit_box(self.core.rect, input_state);
+            self.inner.draw(draw, mgr, disabled);
         }
     }
 }
@@ -227,8 +207,7 @@ impl EditBox<()> {
         EditBox {
             core: Default::default(),
             inner: EditField::new(text),
-            offset: Offset::ZERO,
-            frame_size: Size::ZERO,
+            layout_frame: Default::default(),
         }
     }
 
@@ -244,8 +223,7 @@ impl EditBox<()> {
         EditBox {
             core: self.core,
             inner: self.inner.with_guard(guard),
-            offset: self.offset,
-            frame_size: self.frame_size,
+            layout_frame: self.layout_frame,
         }
     }
 
@@ -369,14 +347,17 @@ widget! {
     /// line-wrapping and a larger vertical height). This mode is only recommended
     /// for short texts for performance reasons.
     #[derive(Clone, Default, Debug)]
-    #[widget(config(key_nav = true, hover_highlight = true, cursor_icon = event::CursorIcon::Text))]
+    #[widget{
+        key_nav = true;
+        hover_highlight = true;
+        cursor_icon = event::CursorIcon::Text;
+    }]
     pub struct EditField<G: EditGuard = ()> {
         #[widget_core]
         core: CoreData,
         view_offset: Offset,
         editable: bool,
         multi_line: bool,
-        ideal_height: i32,
         text: Text<String>,
         required: Vec2,
         selection: SelectionHelper,
@@ -397,24 +378,15 @@ widget! {
             } else {
                 TextClass::Edit
             };
-            let rules = size_handle.text_bound(&mut self.text, class, axis);
-            if axis.is_vertical() {
-                self.ideal_height = rules.ideal_size();
-            }
-            rules
+            size_handle.text_bound(&mut self.text, class, axis)
         }
 
-        fn set_rect(&mut self, _: &mut Manager, mut rect: Rect, align: AlignHints) {
-            if !self.multi_line {
-                let excess = (rect.size.1 - self.ideal_height).max(0);
-                let offset = match align.vert {
-                    Some(Align::TL) => 0,
-                    Some(Align::BR) => excess,
-                    _ => excess / 2,
-                };
-                rect.pos.1 += offset;
-                rect.size.1 -= excess;
-            }
+        fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
+            let valign = if self.multi_line {
+                Align::Default
+            } else {
+                Align::Center
+            };
 
             self.core.rect = rect;
             let size = rect.size;
@@ -422,7 +394,7 @@ widget! {
             self.required = self
                 .text
                 .update_env(|env| {
-                    env.set_align(align.unwrap_or(Align::Default, Align::Default));
+                    env.set_align(align.unwrap_or(Align::Default, valign));
                     env.set_bounds(size.into());
                     env.set_wrap(multi_line);
                 })
@@ -430,21 +402,26 @@ widget! {
             self.set_view_offset_from_edit_pos();
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        #[inline]
+        fn translation(&self) -> Offset {
+            self.scroll_offset()
+        }
+
+        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let class = if self.multi_line {
                 TextClass::EditMulti
             } else {
                 TextClass::Edit
             };
             let state = self.input_state(mgr, disabled);
-            draw_handle.with_clip_region(self.rect(), self.view_offset, &mut |draw_handle| {
+            draw.with_clip_region(self.rect(), self.view_offset, &mut |draw| {
                 if self.selection.is_empty() {
-                    draw_handle.text(self.rect().pos, self.text.as_ref(), class, state);
+                    draw.text(self.rect().pos, self.text.as_ref(), class, state);
                 } else {
                     // TODO(opt): we could cache the selection rectangles here to make
                     // drawing more efficient (self.text.highlight_lines(range) output).
                     // The same applies to the edit marker below.
-                    draw_handle.text_selected(
+                    draw.text_selected(
                         self.rect().pos,
                         &self.text,
                         self.selection.range(),
@@ -453,7 +430,7 @@ widget! {
                     );
                 }
                 if mgr.has_char_focus(self.id()).0 {
-                    draw_handle.edit_marker(
+                    draw.edit_marker(
                         self.rect().pos,
                         self.text.as_ref(),
                         class,
@@ -629,7 +606,6 @@ impl EditField<()> {
             view_offset: Default::default(),
             editable: true,
             multi_line: false,
-            ideal_height: 0,
             text: Text::new(Default::default(), text),
             required: Vec2::ZERO,
             selection: SelectionHelper::new(len, len),
@@ -657,7 +633,6 @@ impl EditField<()> {
             view_offset: self.view_offset,
             editable: self.editable,
             multi_line: self.multi_line,
-            ideal_height: self.ideal_height,
             text: self.text,
             required: self.required,
             selection: self.selection,
@@ -836,7 +811,9 @@ impl<G: EditGuard> EditField<G> {
             Command::Return if self.multi_line => {
                 Action::Insert('\n'.encode_utf8(&mut buf), LastEdit::Insert)
             }
-            Command::Tab => Action::Insert('\t'.encode_utf8(&mut buf), LastEdit::Insert),
+            // NOTE: we might choose to optionally handle Tab in the future,
+            // but without some workaround it prevents keyboard navigation.
+            // Command::Tab => Action::Insert('\t'.encode_utf8(&mut buf), LastEdit::Insert),
             Command::Left => {
                 let mut cursor = GraphemeCursor::new(pos, self.text.str_len(), true);
                 cursor

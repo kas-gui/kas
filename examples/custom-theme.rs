@@ -109,14 +109,22 @@ fn main() -> Result<(), kas::shell::Error> {
     env_logger::init();
 
     let widgets = make_widget! {
-        #[layout(grid)]
+        #[widget{
+            layout = grid: {
+                1, 1: self.label;
+                0, 1: self.white;
+                1, 2: self.red;
+                2, 1: self.yellow;
+                1, 0: self.green;
+            };
+        }]
         #[handler(msg = Item)]
         struct {
-            #[widget(row=1, col=1)] _ = Label::new("Custom theme demo\nChoose your colour!"),
-            #[widget(row=0, col=1)] _ = TextButton::new_msg("&White", Item::White),
-            #[widget(row=1, col=2)] _ = TextButton::new_msg("&Red", Item::Red),
-            #[widget(row=2, col=1)] _ = TextButton::new_msg("&Yellow", Item::Yellow),
-            #[widget(row=1, col=0)] _ = TextButton::new_msg("&Green", Item::Green),
+            #[widget] label = Label::new("Custom theme demo\nChoose your colour!"),
+            #[widget] white = TextButton::new_msg("&White", Item::White),
+            #[widget] red = TextButton::new_msg("&Red", Item::Red),
+            #[widget] yellow = TextButton::new_msg("&Yellow", Item::Yellow),
+            #[widget] green = TextButton::new_msg("&Green", Item::Green),
         }
     };
 
@@ -125,7 +133,9 @@ fn main() -> Result<(), kas::shell::Error> {
     let window = Window::new(
         "Theme demo",
         make_widget! {
-            #[layout(single)]
+            #[widget{
+                layout = single;
+            }]
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget(use_msg = handler)] _ = widgets,

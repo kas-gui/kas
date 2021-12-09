@@ -5,30 +5,39 @@
 
 //! Counter example (simple button)
 
-use kas::macros::make_widget;
+use kas::layout;
+use kas::macros::{make_layout, make_widget};
 use kas::prelude::*;
-use kas::widgets::{row, Label, TextButton, Window};
+use kas::widgets::{Label, TextButton, Window};
 
 fn main() -> Result<(), kas::shell::Error> {
     env_logger::init();
 
     let counter = make_widget! {
-        #[layout(column)]
         #[handler(msg = VoidMsg)]
         struct {
-            #[widget(halign=centre)]
+            #[widget]
             display: Label<String> = Label::from("0"),
-            #[widget(use_msg = handle_button)]
-            buttons = row![
-                TextButton::new_msg("−", -1),
-                TextButton::new_msg("+", 1),
-            ],
+            #[widget(use_msg = update)]
+            b_decr = TextButton::new_msg("−", -1),
+            #[widget(use_msg = update)]
+            b_incr = TextButton::new_msg("+", 1),
             count: i32 = 0,
         }
         impl Self {
-            fn handle_button(&mut self, mgr: &mut Manager, incr: i32) {
+            fn update(&mut self, mgr: &mut Manager, incr: i32) {
                 self.count += incr;
                 *mgr |= self.display.set_string(self.count.to_string());
+            }
+        }
+        impl Layout for Self {
+            fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
+                make_layout!(self.core;
+                    column: [
+                        align(center): self.display,
+                        row: [self.b_decr, self.b_incr],
+                    ]
+                )
             }
         }
     };

@@ -79,17 +79,17 @@ widget! {
             }
         }
 
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if self.active < self.widgets.len() {
                 return self.widgets[self.active].find_id(coord);
             }
             None
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let disabled = disabled || self.is_disabled();
             if self.active < self.widgets.len() {
-                self.widgets[self.active].draw(draw_handle, mgr, disabled);
+                self.widgets[self.active].draw(draw, mgr, disabled);
             }
         }
     }

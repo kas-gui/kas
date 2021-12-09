@@ -184,7 +184,7 @@ widget! {
             None // handles are not navigable
         }
 
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
             }
@@ -194,30 +194,30 @@ widget! {
             // calling it twice.
 
             let solver = layout::RowPositionSolver::new(self.direction);
-            if let Some(child) = solver.find_child(&self.widgets, coord) {
+            if let Some(child) = solver.find_child_mut(&mut self.widgets, coord) {
                 return child.find_id(coord).or(Some(self.id()));
             }
 
             let solver = layout::RowPositionSolver::new(self.direction);
-            if let Some(child) = solver.find_child(&self.handles, coord) {
+            if let Some(child) = solver.find_child_mut(&mut self.handles, coord) {
                 return child.find_id(coord).or(Some(self.id()));
             }
 
             Some(self.id())
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             // as with find_id, there's not much harm in invoking the solver twice
 
             let solver = layout::RowPositionSolver::new(self.direction);
             let disabled = disabled || self.is_disabled();
-            solver.for_children(&self.widgets, draw_handle.get_clip_rect(), |w| {
-                w.draw(draw_handle, mgr, disabled)
+            solver.for_children(&mut self.widgets, draw.get_clip_rect(), |w| {
+                w.draw(draw, mgr, disabled)
             });
 
             let solver = layout::RowPositionSolver::new(self.direction);
-            solver.for_children(&self.handles, draw_handle.get_clip_rect(), |w| {
-                draw_handle.separator(w.rect())
+            solver.for_children(&mut self.handles, draw.get_clip_rect(), |w| {
+                draw.separator(w.rect())
             });
         }
     }

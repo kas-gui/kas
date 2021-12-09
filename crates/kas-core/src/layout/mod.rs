@@ -43,11 +43,12 @@ mod size_rules;
 mod size_types;
 mod sizer;
 mod storage;
+mod visitor;
 
 use crate::dir::{Direction, Directional};
 
 pub use align::{Align, AlignHints, CompleteAlignment};
-pub use grid_solver::{DefaultWithLen, GridChildInfo, GridSetter, GridSolver};
+pub use grid_solver::{DefaultWithLen, GridChildInfo, GridDimensions, GridSetter, GridSolver};
 pub use row_solver::{RowPositionSolver, RowSetter, RowSolver};
 pub use single_solver::{SingleSetter, SingleSolver};
 pub use size_rules::SizeRules;
@@ -59,6 +60,7 @@ pub use storage::{
     DynGridStorage, DynRowStorage, FixedGridStorage, FixedRowStorage, GridStorage, RowStorage,
     RowTemp, Storage,
 };
+pub use visitor::{FrameStorage, Layout, StorageChain, TextStorage};
 
 /// Information on which axis is being resized
 ///

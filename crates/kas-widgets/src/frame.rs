@@ -5,7 +5,8 @@
 
 //! A simple frame
 
-use kas::{event, prelude::*};
+use kas::macros::make_layout;
+use kas::{layout, prelude::*};
 
 widget! {
     /// A frame around content
@@ -21,8 +22,6 @@ widget! {
         core: CoreData,
         #[widget]
         pub inner: W,
-        offset: Offset,
-        size: Size,
     }
 
     impl Self {
@@ -32,41 +31,13 @@ widget! {
             Frame {
                 core: Default::default(),
                 inner,
-                offset: Offset::ZERO,
-                size: Size::ZERO,
             }
         }
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let frame_rules = size_handle.frame(axis.is_vertical());
-            let child_rules = self.inner.size_rules(size_handle, axis);
-            let (rules, offset, size) = frame_rules.surround_as_margin(child_rules);
-            self.offset.set_component(axis, offset);
-            self.size.set_component(axis, size);
-            rules
-        }
-
-        fn set_rect(&mut self, mgr: &mut Manager, mut rect: Rect, align: AlignHints) {
-            self.core.rect = rect;
-            rect.pos += self.offset;
-            rect.size -= self.size;
-            self.inner.set_rect(mgr, rect, align);
-        }
-
-        #[inline]
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-            self.inner.find_id(coord).or(Some(self.id()))
-        }
-
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-            draw_handle.outer_frame(self.core_data().rect);
-            let disabled = disabled || self.is_disabled();
-            self.inner.draw(draw_handle, mgr, disabled);
+        fn layout(&mut self) -> layout::Layout<'_> {
+            make_layout!(self.core; frame(self.inner))
         }
     }
 }

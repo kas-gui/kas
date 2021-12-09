@@ -65,7 +65,7 @@
 //! They support multiple parameters, e.g. `#[widget(config=noauto, children=noauto)]`.
 //!
 //! These attributes may be used on fields: `widget`, `widget_core`,
-//! `widget_derive`,  `layout_data`.
+//! `widget_derive`.
 //! The `widget` attribute supports multiple parameters,
 //! discussed below (e.g. `#[widget(row=1, use_msg=f)]`).
 //! Fields without attributes (plain data fields) are fine too.
@@ -76,7 +76,9 @@
 //!
 //! widget! {
 //!     #[derive(Clone, Debug)]
-//!     #[layout(single)]
+//!     #[widget{
+//!         layout = single;
+//!     }]
 //!     struct WrapperWidget<W: Widget> {
 //!         #[widget_core] core: CoreData,
 //!         #[widget] child: W,
@@ -116,18 +118,14 @@
 //! by default, and the derived implementation is only useful for widgets with
 //! at least one child and which don't directly draw themselves.
 //!
-//! The trait may be derived via a `layout` attribute, e.g. `#[layout(single)]`.
+//! The trait may be derived via a `layout` property, e.g. `#[widget{ layout = single; }]`.
 //! One of the following values must appear first in the parameter list:
 //!
 //! -   `single` — the widget wraps a single child, with no border or margin
-//! -   `col`, `column` or `down` — child widgets are arranged in a vertical
-//!     column, top-to-bottom
-//! -   `up` — reversed column
-//! -   `row` or `right` — child widgets are arranged in a horizontal row,
-//!     left-to-right
-//! -   `left` — reversed row
-//! -   `grid` — child widgets are arranged in a grid; position is specified
-//!     via parameters to the `#[widget]` attribute on child fields
+//! -   `list(DIRECTION): LIST` where `DIRECTION` is one of `left`, `right`,
+//!     `up`, `down` and `LIST` is either `*` or `[ ... ]`
+//! -   `column` or `row`: these are synonyms for `list(down)` and `list(right)`
+//! -   `grid: { ... }` — child widgets are arranged in a grid (see examples)
 //!
 //! Additional parameters are optional:
 //!
@@ -160,19 +158,6 @@
 //! -   `align = ...` — one of `centre`, `center`, `stretch`
 //! -   `halign = ...` — one of `default`, `left`, `centre`, `center`, `right`, `stretch`
 //! -   `valign = ...` — one of `default`, `top`, `centre`, `center`, `bottom`, `stretch`
-//!
-//! **Layout data storage**
-//!
-//! When deriving [`Layout`], data storage is required (exception: layout
-//! `single` requires no storage, but defining it anyway is harmless).
-//! The [`LayoutData`] trait is also derived and used to specify the required
-//! data type. The `#[layout_data]` attribute is required to identify this
-//! storage, resulting in a field like the following:
-//! ```none
-//! #[layout_data] layout_data: <Self as kas::LayoutData>::Data,
-//! ```
-//! This field supports `Default` and `Clone`, thus may be constructed with
-//! `layout_data: Default::default()`.
 //!
 //! ### WidgetConfig
 //!
@@ -233,7 +218,9 @@
 //! # use kas::{CoreData, Layout, Widget, event::Handler};
 //! widget! {
 //!     #[derive(Clone, Debug, Default)]
-//!     #[layout(single)]
+//!     #[widget{
+//!         layout = single;
+//!     }]
 //!     #[handler(msg = <W as Handler>::Msg)]
 //!     pub struct Frame<W: Widget> {
 //!         #[widget_core]
@@ -295,7 +282,9 @@
 //!     #[autoimpl(Deref, DerefMut on 0)]
 //!     #[autoimpl(class_traits where W: trait on 0)]
 //!     #[derive(Clone, Debug, Default)]
-//!     #[widget(derive = self.0)]
+//!     #[widget{
+//!         derive = self.0;
+//!     }]
 //!     #[handler(msg = <W as Handler>::Msg)]
 //!     pub struct ScrollBarRegion<W: Widget>(ScrollBars<ScrollRegion<W>>);
 //! }
@@ -310,17 +299,18 @@
 //! use kas::event::{Handler, Manager, Response, VoidMsg};
 //! use kas::macros::widget;
 //! use kas::widgets::StrLabel;
-//! use kas::{CoreData, LayoutData, Widget};
+//! use kas::{CoreData, Widget};
 //!
 //! #[derive(Debug)]
 //! enum ChildMessage { A }
 //!
 //! widget! {
 //!     #[derive(Debug)]
-//!     #[layout(column)]
+//!     #[widget{
+//!         layout = column: *;
+//!     }]
 //!     struct MyWidget<W: Widget> {
 //!         #[widget_core] core: CoreData,
-//!         #[layout_data] layout_data: <Self as LayoutData>::Data,
 //!         #[widget] label: StrLabel,
 //!         #[widget(use_msg = handler)] child: W,
 //!     }
@@ -368,7 +358,9 @@
 //! }
 //!
 //! let button_box = make_widget!{
-//!     #[layout(row)]
+//!     #[widget{
+//!         layout = row: *;
+//!     }]
 //!     #[handler(msg = OkCancel)]
 //!     #[derive(Clone)] // optional
 //!     struct {
@@ -378,7 +370,9 @@
 //! };
 //!
 //! let window = Window::new("Question", make_widget! {
-//!     #[layout(column)]
+//!     #[widget{
+//!         layout = column: *;
+//!     }]
 //!     #[handler(msg = VoidMsg)]
 //!     struct {
 //!         #[widget] _ = Label::new("Would you like to print a message?"),
@@ -465,7 +459,7 @@
 use crate::{
     event::{Handler, Response, SendEvent},
     layout::AlignHints,
-    CoreData, Layout, LayoutData, Widget, WidgetChildren, WidgetConfig, WidgetCore, WidgetId,
+    CoreData, Layout, Widget, WidgetChildren, WidgetConfig, WidgetCore, WidgetId,
 };
 
 pub use kas_core::macros::*;

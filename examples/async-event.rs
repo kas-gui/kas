@@ -63,8 +63,8 @@ widget! {
             let factor = size_handle.scale_factor();
             SizeRules::fixed_scaled(100.0, 10.0, factor)
         }
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
-            let draw = draw_handle.draw_device();
+        fn draw(&mut self, draw: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
+            let draw = draw.draw_device();
             let col = *self.colour.lock().unwrap();
             draw.rect((self.rect()).into(), col);
         }

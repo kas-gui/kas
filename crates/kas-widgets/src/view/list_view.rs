@@ -517,13 +517,18 @@ widget! {
             Some(data % usize::conv(self.cur_len))
         }
 
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        #[inline]
+        fn translation(&self) -> Offset {
+            self.scroll_offset()
+        }
+
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
             }
 
             let coord = coord + self.scroll.offset();
-            for child in &self.widgets[..self.cur_len.cast()] {
+            for child in &mut self.widgets[..self.cur_len.cast()] {
                 if let Some(id) = child.widget.find_id(coord) {
                     return Some(id);
                 }
@@ -531,15 +536,15 @@ widget! {
             Some(self.id())
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let disabled = disabled || self.is_disabled();
             let offset = self.scroll_offset();
-            draw_handle.with_clip_region(self.core.rect, offset, &mut |draw_handle| {
-                for child in &self.widgets[..self.cur_len.cast()] {
-                    child.widget.draw(draw_handle, mgr, disabled);
+            draw.with_clip_region(self.core.rect, offset, &mut |draw| {
+                for child in &mut self.widgets[..self.cur_len.cast()] {
+                    child.widget.draw(draw, mgr, disabled);
                     if let Some(ref key) = child.key {
-                        if self.is_selected(key) {
-                            draw_handle.selection_box(child.widget.rect());
+                        if self.selection.contains(key) {
+                            draw.selection_box(child.widget.rect());
                         }
                     }
                 }

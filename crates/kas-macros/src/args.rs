@@ -3,8 +3,9 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
+use crate::make_layout;
 use proc_macro2::{Punct, Spacing, Span, TokenStream, TokenTree};
-use proc_macro_error::{abort, emit_error, emit_warning};
+use proc_macro_error::{abort, emit_error};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
@@ -13,20 +14,17 @@ use syn::token::{Brace, Colon, Comma, Eq, For, Impl, Paren, Semi};
 use syn::{braced, bracketed, parenthesized, parse_quote};
 use syn::{
     AttrStyle, Attribute, ConstParam, Expr, Field, Fields, FieldsNamed, GenericParam, Generics,
-    Ident, Index, ItemImpl, Lifetime, LifetimeDef, Lit, Member, Path, Token, Type, TypeParam,
-    TypePath, TypeTraitObject, Visibility,
+    Ident, Index, ItemImpl, Lifetime, LifetimeDef, Member, Path, Token, Type, TypeParam, TypePath,
+    TypeTraitObject, Visibility,
 };
 
-#[derive(Debug)]
 pub struct Child {
     pub ident: Member,
     pub args: WidgetAttrArgs,
 }
 
-#[derive(Debug)]
 pub struct Widget {
     pub attr_widget: WidgetArgs,
-    pub attr_layout: Option<LayoutArgs>,
     pub attr_handler: Option<HandlerArgs>,
     pub extra_attrs: Vec<Attribute>,
 
@@ -38,7 +36,6 @@ pub struct Widget {
     pub semi_token: Option<Semi>,
 
     pub core_data: Option<Member>,
-    pub layout_data: Option<Member>,
     pub children: Vec<Child>,
 
     pub extra_impls: Vec<ItemImpl>,
@@ -47,7 +44,6 @@ pub struct Widget {
 impl Parse for Widget {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut attr_widget = None;
-        let mut attr_layout = None;
         let mut attr_handler = None;
         let mut extra_attrs = Vec::new();
 
@@ -60,12 +56,6 @@ impl Parse for Widget {
                     attr_widget = Some(w);
                 } else {
                     emit_error!(attr.span(), "multiple #[widget(..)] attributes on type");
-                }
-            } else if attr.path == parse_quote! { layout } {
-                if attr_layout.is_some() {
-                    emit_error!(attr.span(), "multiple #[layout(..)] attributes on type");
-                } else {
-                    attr_layout = Some(syn::parse2(attr.tokens)?);
                 }
             } else if attr.path == parse_quote! { handler } {
                 if attr_handler.is_some() {
@@ -122,7 +112,6 @@ impl Parse for Widget {
         }
 
         let mut core_data = None;
-        let mut layout_data = None;
         let mut children = Vec::new();
 
         for (i, field) in fields.iter_mut().enumerate() {
@@ -133,20 +122,6 @@ impl Parse for Widget {
                         core_data = Some(member(i, field.ident.clone()));
                     } else {
                         emit_error!(attr.span(), "multiple fields marked with #[widget_core]");
-                    }
-                } else if attr.path == parse_quote! { layout_data } {
-                    if layout_data.is_some() {
-                        emit_error!(attr.span(), "multiple fields marked with #[layout_data]");
-                    } else if field.ty != parse_quote! { <Self as kas::LayoutData>::Data }
-                        && field.ty != parse_quote! { <Self as ::kas::LayoutData>::Data }
-                        && field.ty != parse_quote! { <Self as LayoutData>::Data }
-                    {
-                        emit_warning!(
-                            field.ty.span(),
-                            "expected type `<Self as kas::LayoutData>::Data`"
-                        );
-                    } else {
-                        layout_data = Some(member(i, field.ident.clone()));
                     }
                 } else if attr.path == parse_quote! { widget } {
                     let ident = member(i, field.ident.clone());
@@ -168,10 +143,10 @@ impl Parse for Widget {
                     "require a field with #[widget_core] or #[widget(derive = FIELD)]",
                 );
             }
-            if layout_data.is_some() || !children.is_empty() {
+            if !children.is_empty() {
                 emit_error!(
                     fields.span(),
-                    "require a field with #[widget_core] when using #[layout_data] or #[widget]",
+                    "require a field with #[widget_core] when using #[widget]",
                 );
             }
         }
@@ -185,7 +160,6 @@ impl Parse for Widget {
 
         Ok(Widget {
             attr_widget,
-            attr_layout,
             attr_handler,
             extra_attrs,
             vis,
@@ -195,7 +169,6 @@ impl Parse for Widget {
             fields,
             semi_token,
             core_data,
-            layout_data,
             children,
             extra_impls,
         })
@@ -359,7 +332,7 @@ fn member(index: usize, ident: Option<Ident>) -> Member {
 mod kw {
     use syn::custom_keyword;
 
-    custom_keyword!(area);
+    custom_keyword!(find_id);
     custom_keyword!(layout);
     custom_keyword!(col);
     custom_keyword!(row);
@@ -423,8 +396,11 @@ pub enum Handler {
     Discard,
 }
 impl Handler {
-    pub fn is_none(&self) -> bool {
+    fn is_none(&self) -> bool {
         *self == Handler::None
+    }
+    fn is_some(&self) -> bool {
+        *self != Handler::None
     }
     pub fn any_ref(&self) -> Option<&Ident> {
         match self {
@@ -436,81 +412,13 @@ impl Handler {
 
 #[derive(Debug)]
 pub struct WidgetAttrArgs {
-    pub col: Option<Lit>,
-    pub row: Option<Lit>,
-    pub cspan: Option<Lit>,
-    pub rspan: Option<Lit>,
-    pub halign: Option<Ident>,
-    pub valign: Option<Ident>,
     pub update: Option<Ident>,
     pub handler: Handler,
-}
-
-#[derive(Debug)]
-pub struct GridPos(pub u32, pub u32, pub u32, pub u32);
-
-impl WidgetAttrArgs {
-    // Parse widget position, filling in missing information with defaults.
-    pub fn as_pos(&self) -> Result<GridPos> {
-        fn parse_lit(lit: &Lit) -> Result<u32> {
-            match lit {
-                Lit::Int(li) => li.base10_parse(),
-                _ => Err(Error::new(lit.span(), "expected integer literal")),
-            }
-        }
-
-        Ok(GridPos(
-            self.col.as_ref().map(parse_lit).unwrap_or(Ok(0))?,
-            self.row.as_ref().map(parse_lit).unwrap_or(Ok(0))?,
-            self.cspan.as_ref().map(parse_lit).unwrap_or(Ok(1))?,
-            self.rspan.as_ref().map(parse_lit).unwrap_or(Ok(1))?,
-        ))
-    }
-
-    fn match_align(ident: &Ident, horiz: bool) -> Result<TokenStream> {
-        Ok(match ident {
-            ident if ident == "default" => quote! { ::kas::layout::Align::Default },
-            ident if horiz && ident == "left" => quote! { ::kas::layout::Align::TL },
-            ident if !horiz && ident == "top" => quote! { ::kas::layout::Align::TL },
-            ident if ident == "centre" || ident == "center" => {
-                quote! { ::kas::layout::Align::Centre }
-            }
-            ident if horiz && ident == "right" => quote! { ::kas::layout::Align::BR },
-            ident if !horiz && ident == "bottom" => quote! { ::kas::layout::Align::BR },
-            ident if ident == "stretch" => quote! { ::kas::layout::Align::Stretch },
-            ident => {
-                return Err(Error::new(
-                    ident.span(),
-                    "expected one of `default`, `centre`, `stretch`, `top` or `bottom` (if vertical), `left` or `right` (if horizontal)",
-                ));
-            }
-        })
-    }
-    pub fn halign_toks(&self) -> Result<Option<TokenStream>> {
-        if let Some(ref ident) = self.halign {
-            Ok(Some(Self::match_align(ident, true)?))
-        } else {
-            Ok(None)
-        }
-    }
-    pub fn valign_toks(&self) -> Result<Option<TokenStream>> {
-        if let Some(ref ident) = self.valign {
-            Ok(Some(Self::match_align(ident, false)?))
-        } else {
-            Ok(None)
-        }
-    }
 }
 
 impl Parse for WidgetAttrArgs {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut args = WidgetAttrArgs {
-            col: None,
-            row: None,
-            cspan: None,
-            rspan: None,
-            halign: None,
-            valign: None,
             update: None,
             handler: Handler::None,
         };
@@ -523,45 +431,7 @@ impl Parse for WidgetAttrArgs {
 
         loop {
             let lookahead = content.lookahead1();
-            if args.col.is_none() && lookahead.peek(kw::col) {
-                let _: kw::col = content.parse()?;
-                let _: Eq = content.parse()?;
-                args.col = Some(content.parse()?);
-            } else if args.col.is_none() && lookahead.peek(kw::column) {
-                let _: kw::column = content.parse()?;
-                let _: Eq = content.parse()?;
-                args.col = Some(content.parse()?);
-            } else if args.row.is_none() && lookahead.peek(kw::row) {
-                let _: kw::row = content.parse()?;
-                let _: Eq = content.parse()?;
-                args.row = Some(content.parse()?);
-            } else if args.cspan.is_none() && lookahead.peek(kw::cspan) {
-                let _: kw::cspan = content.parse()?;
-                let _: Eq = content.parse()?;
-                args.cspan = Some(content.parse()?);
-            } else if args.rspan.is_none() && lookahead.peek(kw::rspan) {
-                let _: kw::rspan = content.parse()?;
-                let _: Eq = content.parse()?;
-                args.rspan = Some(content.parse()?);
-            } else if args.halign.is_none() && args.valign.is_none() && lookahead.peek(kw::align) {
-                let _: kw::align = content.parse()?;
-                let _: Eq = content.parse()?;
-                let ident: Ident = content.parse()?;
-                if ident == "centre" || ident == "center" || ident == "stretch" {
-                    args.halign = Some(ident.clone());
-                    args.valign = Some(ident);
-                } else {
-                    return Err(Error::new(ident.span(), "expected `centre` or `center`"));
-                }
-            } else if args.halign.is_none() && lookahead.peek(kw::halign) {
-                let _: kw::halign = content.parse()?;
-                let _: Eq = content.parse()?;
-                args.halign = Some(content.parse()?);
-            } else if args.valign.is_none() && lookahead.peek(kw::valign) {
-                let _: kw::valign = content.parse()?;
-                let _: Eq = content.parse()?;
-                args.valign = Some(content.parse()?);
-            } else if args.update.is_none() && lookahead.peek(kw::update) {
+            if args.update.is_none() && lookahead.peek(kw::update) {
                 let _: kw::update = content.parse()?;
                 let _: Eq = content.parse()?;
                 args.update = Some(content.parse()?);
@@ -602,57 +472,13 @@ impl Parse for WidgetAttrArgs {
 
 impl ToTokens for WidgetAttrArgs {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        if self.col.is_some()
-            || self.row.is_some()
-            || self.cspan.is_some()
-            || self.rspan.is_some()
-            || self.halign.is_some()
-            || self.valign.is_some()
-            || !self.handler.is_none()
-        {
-            let comma = TokenTree::from(Punct::new(',', Spacing::Alone));
+        if self.update.is_some() || self.handler.is_some() {
             let mut args = TokenStream::new();
-            if let Some(ref lit) = self.col {
-                args.append_all(quote! { col = #lit });
-            }
-            if let Some(ref lit) = self.row {
-                if !args.is_empty() {
-                    args.append(comma.clone());
-                }
-                args.append_all(quote! { row = #lit });
-            }
-            if let Some(ref lit) = self.cspan {
-                if !args.is_empty() {
-                    args.append(comma.clone());
-                }
-                args.append_all(quote! { cspan = #lit });
-            }
-            if let Some(ref lit) = self.rspan {
-                if !args.is_empty() {
-                    args.append(comma.clone());
-                }
-                args.append_all(quote! { rspan = #lit });
-            }
-            if let Some(ref ident) = self.halign {
-                if !args.is_empty() {
-                    args.append(comma.clone());
-                }
-                args.append_all(quote! { halign = #ident });
-            }
-            if let Some(ref ident) = self.valign {
-                if !args.is_empty() {
-                    args.append(comma.clone());
-                }
-                args.append_all(quote! { valign = #ident });
-            }
             if let Some(ref ident) = self.update {
-                if !args.is_empty() {
-                    args.append(comma.clone());
-                }
                 args.append_all(quote! { update = #ident });
             }
             if !self.handler.is_none() && !args.is_empty() {
-                args.append(comma);
+                args.append(TokenTree::from(Punct::new(',', Spacing::Alone)));
             }
             match &self.handler {
                 Handler::None => (),
@@ -678,222 +504,105 @@ impl ToTokens for WidgetAttr {
     }
 }
 
-impl ToTokens for GridPos {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let (c, r, cs, rs) = (&self.0, &self.1, &self.2, &self.3);
-        tokens.append_all(quote! { (#c, #r, #cs, #rs) });
-    }
+macro_rules! property {
+    ($name:ident : $ty:ty = $def:expr ; $kw:path : $input:ident => $parse:expr ;) => {
+        pub struct $name {
+            /// Some(span) if set, None if default
+            pub span: Option<Span>,
+            /// Value (default or set)
+            pub value: $ty,
+        }
+        impl Default for $name {
+            fn default() -> Self {
+                $name {
+                    span: None,
+                    value: $def,
+                }
+            }
+        }
+        impl Parse for $name {
+            fn parse($input: ParseStream) -> Result<Self> {
+                let span = Some($input.parse::<$kw>()?.span());
+                let _: Eq = $input.parse()?;
+                let value = $parse;
+                Ok($name { span, value })
+            }
+        }
+    };
 }
+property!(
+    KeyNav: bool = false;
+    kw::key_nav : input => input.parse::<syn::LitBool>()?.value;
+);
+property!(
+    HoverHighlight: bool = false;
+    kw::hover_highlight : input => input.parse::<syn::LitBool>()?.value;
+);
+property!(
+    CursorIcon: Expr = parse_quote! { ::kas::event::CursorIcon::Default };
+    kw::cursor_icon : input => input.parse()?;
+);
+property!(
+    FindId: Option<Expr> = None;
+    kw::find_id : input => Some(input.parse()?);
+);
 
-#[derive(Debug)]
+#[derive(Default)]
 pub struct WidgetArgs {
-    pub config: Option<WidgetConfig>,
+    pub key_nav: KeyNav,
+    pub hover_highlight: HoverHighlight,
+    pub cursor_icon: CursorIcon,
     pub derive: Option<Member>,
-}
-
-impl Default for WidgetArgs {
-    fn default() -> Self {
-        WidgetArgs {
-            config: Some(WidgetConfig::default()),
-            derive: None,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct WidgetConfig {
-    pub key_nav: bool,
-    pub hover_highlight: bool,
-    pub cursor_icon: Expr,
-}
-
-impl Default for WidgetConfig {
-    fn default() -> Self {
-        WidgetConfig {
-            key_nav: false,
-            hover_highlight: false,
-            cursor_icon: parse_quote! { ::kas::event::CursorIcon::Default },
-        }
-    }
+    pub layout: Option<make_layout::Tree>,
+    pub find_id: FindId,
 }
 
 impl Parse for WidgetArgs {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut config = None;
+        let mut key_nav = KeyNav::default();
+        let mut hover_highlight = HoverHighlight::default();
+        let mut cursor_icon = CursorIcon::default();
         let mut derive = None;
-
-        if !input.is_empty() {
-            let content;
-            let _ = parenthesized!(content in input);
-
-            while !content.is_empty() {
-                let lookahead = content.lookahead1();
-                if lookahead.peek(kw::config) && config.is_none() {
-                    let _: kw::config = content.parse()?;
-
-                    let content2;
-                    let _ = parenthesized!(content2 in content);
-
-                    let mut conf = WidgetConfig::default();
-                    let mut have_key_nav = false;
-                    let mut have_hover_highlight = false;
-                    let mut have_cursor_icon = false;
-
-                    while !content2.is_empty() {
-                        let lookahead = content2.lookahead1();
-                        if lookahead.peek(kw::key_nav) && !have_key_nav {
-                            let _: kw::key_nav = content2.parse()?;
-                            let _: Eq = content2.parse()?;
-                            let value: syn::LitBool = content2.parse()?;
-                            conf.key_nav = value.value;
-                            have_key_nav = true;
-                        } else if lookahead.peek(kw::hover_highlight) && !have_hover_highlight {
-                            let _: kw::hover_highlight = content2.parse()?;
-                            let _: Eq = content2.parse()?;
-                            let value: syn::LitBool = content2.parse()?;
-                            conf.hover_highlight = value.value;
-                            have_hover_highlight = true;
-                        } else if lookahead.peek(kw::cursor_icon) && !have_cursor_icon {
-                            let _: kw::cursor_icon = content2.parse()?;
-                            let _: Eq = content2.parse()?;
-                            conf.cursor_icon = content2.parse()?;
-                            have_cursor_icon = true;
-                        } else {
-                            return Err(lookahead.error());
-                        };
-
-                        if content2.peek(Comma) {
-                            let _: Comma = content2.parse()?;
-                        }
-                    }
-                    config = Some(conf);
-                } else if lookahead.peek(kw::derive) && derive.is_none() {
-                    let _: kw::derive = content.parse()?;
-                    let _: Eq = content.parse()?;
-                    let _: Token![self] = content.parse()?;
-                    let _: Token![.] = content.parse()?;
-                    derive = Some(content.parse()?);
-                } else {
-                    return Err(lookahead.error());
-                }
-
-                if content.peek(Comma) {
-                    let _: Comma = content.parse()?;
-                }
-            }
-        }
-
-        Ok(WidgetArgs { config, derive })
-    }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum LayoutType {
-    Single,
-    Right,
-    Left,
-    Down,
-    Up,
-    Grid,
-}
-
-impl ToTokens for LayoutType {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        tokens.append_all(match self {
-            LayoutType::Single | LayoutType::Grid => unreachable!(),
-            LayoutType::Right => quote! { ::kas::dir::Right },
-            LayoutType::Left => quote! { ::kas::dir::Left },
-            LayoutType::Down => quote! { ::kas::dir::Down },
-            LayoutType::Up => quote! { ::kas::dir::Up },
-        })
-    }
-}
-
-#[derive(Debug)]
-pub struct LayoutArgs {
-    pub span: Span,
-    pub layout: LayoutType,
-    pub area: Option<Ident>,
-    pub draw: Option<Ident>,
-}
-
-impl Parse for LayoutArgs {
-    fn parse(input: ParseStream) -> Result<Self> {
-        if input.is_empty() {
-            return Err(Error::new(
-                input.span(),
-                "expected attribute parameters: `(..)`",
-            ));
-        }
-
-        let span = input.span();
+        let mut layout = None;
+        let mut find_id = FindId::default();
 
         let content;
-        let _ = parenthesized!(content in input);
-
-        let lookahead = content.lookahead1();
-        let layout = if lookahead.peek(kw::single) {
-            let _: kw::single = content.parse()?;
-            LayoutType::Single
-        } else if lookahead.peek(kw::row) {
-            let _: kw::row = content.parse()?;
-            LayoutType::Right
-        } else if lookahead.peek(kw::right) {
-            let _: kw::right = content.parse()?;
-            LayoutType::Right
-        } else if lookahead.peek(kw::left) {
-            let _: kw::left = content.parse()?;
-            LayoutType::Left
-        } else if lookahead.peek(kw::col) {
-            let _: kw::col = content.parse()?;
-            LayoutType::Down
-        } else if lookahead.peek(kw::column) {
-            let _: kw::column = content.parse()?;
-            LayoutType::Down
-        } else if lookahead.peek(kw::down) {
-            let _: kw::down = content.parse()?;
-            LayoutType::Down
-        } else if lookahead.peek(kw::up) {
-            let _: kw::up = content.parse()?;
-            LayoutType::Up
-        } else if lookahead.peek(kw::grid) {
-            let _: kw::grid = content.parse()?;
-            LayoutType::Grid
-        } else {
-            return Err(lookahead.error());
-        };
-
-        if content.peek(Comma) {
-            let _: Comma = content.parse()?;
-        }
-
-        let mut area = None;
-        let mut draw = None;
+        let _ = braced!(content in input);
 
         while !content.is_empty() {
             let lookahead = content.lookahead1();
-            if area.is_none() && lookahead.peek(kw::area) {
-                let _: kw::area = content.parse()?;
+            if lookahead.peek(kw::key_nav) && key_nav.span.is_none() {
+                key_nav = content.parse()?;
+            } else if lookahead.peek(kw::hover_highlight) && hover_highlight.span.is_none() {
+                hover_highlight = content.parse()?;
+            } else if lookahead.peek(kw::cursor_icon) && cursor_icon.span.is_none() {
+                cursor_icon = content.parse()?;
+            } else if lookahead.peek(kw::derive) && derive.is_none() {
+                let _: kw::derive = content.parse()?;
                 let _: Eq = content.parse()?;
-                area = Some(content.parse()?);
-            } else if draw.is_none() && lookahead.peek(kw::draw) {
-                let _: kw::draw = content.parse()?;
+                let _: Token![self] = content.parse()?;
+                let _: Token![.] = content.parse()?;
+                derive = Some(content.parse()?);
+            } else if lookahead.peek(kw::layout) && layout.is_none() {
+                let _: kw::layout = content.parse()?;
                 let _: Eq = content.parse()?;
-                draw = Some(content.parse()?);
+                layout = Some(content.parse()?);
+            } else if content.peek(kw::find_id) {
+                find_id = content.parse()?;
             } else {
                 return Err(lookahead.error());
             }
 
-            if content.peek(Comma) {
-                let _: Comma = content.parse()?;
-            }
+            let _ = content.parse::<Token![;]>()?;
         }
 
-        Ok(LayoutArgs {
-            span,
+        Ok(WidgetArgs {
+            key_nav,
+            hover_highlight,
+            cursor_icon,
+            derive,
             layout,
-            area,
-            draw,
+            find_id,
         })
     }
 }

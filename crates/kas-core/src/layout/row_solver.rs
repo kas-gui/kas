@@ -12,7 +12,7 @@ use super::{Align, AlignHints, AxisInfo, SizeRules};
 use super::{RowStorage, RowTemp, RulesSetter, RulesSolver};
 use crate::dir::{Direction, Directional};
 use crate::geom::{Coord, Rect};
-use crate::Widget;
+use crate::WidgetConfig;
 
 /// A [`RulesSolver`] for rows (and, without loss of generality, for columns).
 ///
@@ -145,7 +145,7 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
                 width = max_size;
                 let offset = match align {
                     Align::Default | Align::TL | Align::Stretch => 0,
-                    Align::Centre => extra / 2,
+                    Align::Center => extra / 2,
                     Align::BR => extra,
                 };
                 if is_horiz {
@@ -284,7 +284,7 @@ impl<D: Directional> RowPositionSolver<D> {
         RowPositionSolver { direction }
     }
 
-    fn binary_search<W: Widget>(self, widgets: &[W], coord: Coord) -> Result<usize, usize> {
+    fn binary_search<W: WidgetConfig>(self, widgets: &[W], coord: Coord) -> Result<usize, usize> {
         match self.direction.as_direction() {
             Direction::Right => widgets.binary_search_by_key(&coord.0, |w| w.rect().pos.0),
             Direction::Down => widgets.binary_search_by_key(&coord.1, |w| w.rect().pos.1),
@@ -297,28 +297,56 @@ impl<D: Directional> RowPositionSolver<D> {
     ///
     /// Returns `None` when the coordinates lie within the margin area or
     /// outside of the parent widget.
-    pub fn find_child<W: Widget>(self, widgets: &[W], coord: Coord) -> Option<&W> {
-        let index = match self.binary_search(widgets, coord) {
-            Ok(i) => i,
-            Err(i) => {
-                if self.direction.is_reversed() {
-                    if i == widgets.len() || !widgets[i].rect().contains(coord) {
-                        return None;
-                    }
-                    i
+    pub fn find_child_index<W: WidgetConfig>(self, widgets: &[W], coord: Coord) -> Option<usize> {
+        match self.binary_search(widgets, coord) {
+            Ok(i) => Some(i),
+            Err(i) if self.direction.is_reversed() => {
+                if i == widgets.len() || !widgets[i].rect().contains(coord) {
+                    None
                 } else {
-                    if i == 0 || !widgets[i - 1].rect().contains(coord) {
-                        return None;
-                    }
-                    i - 1
+                    Some(i)
                 }
             }
-        };
-        Some(&widgets[index])
+            Err(i) => {
+                if i == 0 || !widgets[i - 1].rect().contains(coord) {
+                    None
+                } else {
+                    Some(i - 1)
+                }
+            }
+        }
+    }
+
+    /// Find the child containing the given coordinates
+    ///
+    /// Returns `None` when the coordinates lie within the margin area or
+    /// outside of the parent widget.
+    #[inline]
+    pub fn find_child<W: WidgetConfig>(self, widgets: &[W], coord: Coord) -> Option<&W> {
+        self.find_child_index(widgets, coord).map(|i| &widgets[i])
+    }
+
+    /// Find the child containing the given coordinates
+    ///
+    /// Returns `None` when the coordinates lie within the margin area or
+    /// outside of the parent widget.
+    #[inline]
+    pub fn find_child_mut<W: WidgetConfig>(
+        self,
+        widgets: &mut [W],
+        coord: Coord,
+    ) -> Option<&mut W> {
+        self.find_child_index(widgets, coord)
+            .map(|i| &mut widgets[i])
     }
 
     /// Call `f` on each child intersecting the given `rect`
-    pub fn for_children<W: Widget, F: FnMut(&W)>(self, widgets: &[W], rect: Rect, mut f: F) {
+    pub fn for_children<W: WidgetConfig, F: FnMut(&mut W)>(
+        self,
+        widgets: &mut [W],
+        rect: Rect,
+        mut f: F,
+    ) {
         let (pos, end) = match self.direction.is_reversed() {
             false => (rect.pos, rect.pos2()),
             true => (rect.pos2(), rect.pos),
@@ -343,7 +371,7 @@ impl<D: Directional> RowPositionSolver<D> {
             Err(_) => 0,
         };
 
-        for child in widgets[start..].iter() {
+        for child in widgets[start..].iter_mut() {
             let do_break = match self.direction.as_direction() {
                 Direction::Right => child.rect().pos.0 >= end.0,
                 Direction::Down => child.rect().pos.1 >= end.1,

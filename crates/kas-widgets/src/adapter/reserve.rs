@@ -5,7 +5,8 @@
 
 //! Size reservation
 
-use kas::{event, prelude::*};
+use kas::layout;
+use kas::prelude::*;
 
 /// Parameterisation of [`Reserve`] using a function pointer
 ///
@@ -73,28 +74,14 @@ widget! {
     }
 
     impl Layout for Self {
+        fn layout(&mut self) -> layout::Layout<'_> {
+            layout::Layout::single(&mut self.inner)
+        }
+
         fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
             let inner_rules = self.inner.size_rules(size_handle, axis);
             let reserve_rules = (self.reserve)(size_handle, axis);
             inner_rules.max(reserve_rules)
-        }
-
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
-            self.core.rect = rect;
-            self.inner.set_rect(mgr, rect, align);
-        }
-
-        #[inline]
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-            self.inner.find_id(coord).or(Some(self.id()))
-        }
-
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-            let disabled = disabled || self.is_disabled();
-            self.inner.draw(draw_handle, mgr, disabled);
         }
     }
 }

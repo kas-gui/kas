@@ -29,45 +29,42 @@ fn main() -> Result<(), kas::shell::Error> {
     env_logger::init();
 
     let buttons = make_widget! {
-        #[layout(grid)]
+        #[widget{
+            layout = grid: {
+                0, 0: self.b_clear; 0, 1: self.b_div; 0, 2: self.b_mul; 0, 3: self.b_sub;
+                1, 0: self.b7; 1, 1: self.b8; 1, 2: self.b9;
+                1..3, 3: align(stretch): self.b_add;
+                2, 0: self.b4; 2, 1: self.b5; 2, 2: self.b6;
+                3, 0: self.b1; 3, 1: self.b2; 3, 2: self.b3;
+                3..5, 3: align(stretch): self.b_eq;
+                4, 0..2: self.b0; 4, 2: self.b_dot;
+            };
+        }]
         #[handler(msg = Key)]
         struct {
             // Buttons get keyboard bindings through the "&" item (e.g. "&1"
             // binds both main and numpad 1 key) and via `with_keys`.
-            #[widget(col = 0, row = 0)]
-            _ = TextButton::new_msg("&clear", Key::Clear).with_keys(&[VK::Delete]),
-            #[widget(col = 1, row = 0)]
-            _ = TextButton::new_msg("&÷", Key::Divide).with_keys(&[VK::Slash]),
-            #[widget(col = 2, row = 0)]
-            _ = TextButton::new_msg("&×", Key::Multiply).with_keys(&[VK::Asterisk]),
-            #[widget(col = 3, row = 0)]
-            _ = TextButton::new_msg("&−", Key::Subtract),
-            #[widget(col = 0, row = 1)]
-            _ = TextButton::new_msg("&7", Key::Char('7')),
-            #[widget(col = 1, row = 1)]
-            _ = TextButton::new_msg("&8", Key::Char('8')),
-            #[widget(col = 2, row = 1)]
-            _ = TextButton::new_msg("&9", Key::Char('9')),
-            #[widget(col = 3, row = 1, rspan = 2, align = stretch)]
-            _ = TextButton::new_msg("&+", Key::Add),
-            #[widget(col = 0, row = 2)]
-            _ = TextButton::new_msg("&4", Key::Char('4')),
-            #[widget(col = 1, row = 2)]
-            _ = TextButton::new_msg("&5", Key::Char('5')),
-            #[widget(col = 2, row = 2)]
-            _ = TextButton::new_msg("&6", Key::Char('6')),
-            #[widget(col = 0, row = 3)]
-            _ = TextButton::new_msg("&1", Key::Char('1')),
-            #[widget(col = 1, row = 3)]
-            _ = TextButton::new_msg("&2", Key::Char('2')),
-            #[widget(col = 2, row = 3)]
-            _ = TextButton::new_msg("&3", Key::Char('3')),
-            #[widget(col = 3, row = 3, rspan = 2, align = stretch)]
-            _ = TextButton::new_msg("&=", Key::Equals).with_keys(&[VK::Return, VK::NumpadEnter]),
-            #[widget(col = 0, row = 4, cspan = 2)]
-            _ = TextButton::new_msg("&0", Key::Char('0')),
-            #[widget(col = 2, row = 4)]
-            _ = TextButton::new_msg("&.", Key::Char('.')),
+            #[widget] b_clear = TextButton::new_msg("&clear", Key::Clear)
+                .with_keys(&[VK::Delete]),
+            #[widget] b_eq = TextButton::new_msg("&=", Key::Equals)
+                .with_keys(&[VK::Return, VK::NumpadEnter]),
+            #[widget] b_sub = TextButton::new_msg("&−", Key::Subtract),
+            #[widget] b_add = TextButton::new_msg("&+", Key::Add),
+            #[widget] b_div = TextButton::new_msg("&÷", Key::Divide)
+                .with_keys(&[VK::Slash]),
+            #[widget] b_mul = TextButton::new_msg("&×", Key::Multiply)
+                .with_keys(&[VK::Asterisk]),
+            #[widget] b_dot = TextButton::new_msg("&.", Key::Char('.')),
+            #[widget] b0 = TextButton::new_msg("&0", Key::Char('0')),
+            #[widget] b1 = TextButton::new_msg("&1", Key::Char('1')),
+            #[widget] b2 = TextButton::new_msg("&2", Key::Char('2')),
+            #[widget] b3 = TextButton::new_msg("&3", Key::Char('3')),
+            #[widget] b4 = TextButton::new_msg("&4", Key::Char('4')),
+            #[widget] b5 = TextButton::new_msg("&5", Key::Char('5')),
+            #[widget] b6 = TextButton::new_msg("&6", Key::Char('6')),
+            #[widget] b7 = TextButton::new_msg("&7", Key::Char('7')),
+            #[widget] b8 = TextButton::new_msg("&8", Key::Char('8')),
+            #[widget] b9 = TextButton::new_msg("&9", Key::Char('9')),
         }
         impl kas::WidgetConfig for Self {
             fn configure(&mut self, mgr: &mut Manager) {
@@ -77,7 +74,9 @@ fn main() -> Result<(), kas::shell::Error> {
         }
     };
     let content = make_widget! {
-        #[layout(column)]
+        #[widget{
+            layout = column: *;
+        }]
         #[handler(msg = VoidMsg)]
         struct {
             #[widget] display: impl HasString = EditBox::new("0").editable(false).multi_line(true),

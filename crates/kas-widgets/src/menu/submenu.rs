@@ -10,7 +10,7 @@ use crate::Column;
 use kas::draw::TextClass;
 use kas::event::{self, Command, ConfigureManager};
 use kas::prelude::*;
-use kas::WindowId;
+use kas::{layout, WindowId};
 
 widget! {
     /// A sub-menu
@@ -21,8 +21,8 @@ widget! {
         direction: D,
         pub(crate) key_nav: bool,
         label: Text<AccelString>,
-        label_off: Offset,
-        frame_size: Size,
+        label_store: layout::TextStorage,
+        frame_store: layout::FrameStorage,
         #[widget]
         pub list: Column<W>,
         popup_id: Option<WindowId>,
@@ -64,8 +64,8 @@ widget! {
                 direction,
                 key_nav: true,
                 label: Text::new_single(label.into()),
-                label_off: Offset::ZERO,
-                frame_size: Size::ZERO,
+                label_store: Default::default(),
+                frame_store: Default::default(),
                 list: Column::new(list),
                 popup_id: None,
             }
@@ -135,22 +135,9 @@ widget! {
     }
 
     impl kas::Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let frame_rules = size_handle.menu_frame(axis.is_vertical());
-            let text_rules = size_handle.text_bound(&mut self.label, TextClass::MenuLabel, axis);
-            let (rules, offset, size) = frame_rules.surround_as_margin(text_rules);
-            self.label_off.set_component(axis, offset);
-            self.frame_size.set_component(axis, size);
-            rules
-        }
-
-        fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
-            self.core.rect = rect;
-            let size = rect.size - self.frame_size;
-            self.label.update_env(|env| {
-                env.set_bounds(size.into());
-                env.set_align(align.unwrap_or(Align::Default, Align::Centre));
-            });
+        fn layout(&mut self) -> layout::Layout<'_> {
+            let label = layout::Layout::text(&mut self.label_store, &mut self.label, TextClass::MenuLabel);
+            layout::Layout::frame(&mut self.frame_store, label)
         }
 
         fn spatial_nav(&mut self, _: &mut Manager, _: bool, _: Option<usize>) -> Option<usize> {
@@ -158,15 +145,14 @@ widget! {
             None
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let mut state = self.input_state(mgr, disabled);
             if self.popup_id.is_some() {
                 state.insert(InputState::DEPRESS);
             }
-            draw_handle.menu_entry(self.core.rect, state);
-            let pos = self.core.rect.pos + self.label_off;
-            draw_handle.text_accel(
-                pos,
+            draw.menu_entry(self.core.rect, state);
+            draw.text_accel(
+                self.label_store.pos,
                 &self.label,
                 mgr.show_accel_labels(),
                 TextClass::MenuLabel,
@@ -284,7 +270,7 @@ widget! {
             if self.label.text().keys() != string.keys() {
                 action |= TkAction::RECONFIGURE;
             }
-            let avail = self.core.rect.size.clamped_sub(self.frame_size);
+            let avail = self.core.rect.size.clamped_sub(self.frame_store.size);
             action | kas::text::util::set_text_and_prepare(&mut self.label, string, avail)
         }
     }

@@ -161,7 +161,9 @@ widget! {
     /// avoids this.
     // TODO: impl Clone
     #[derive(Debug)]
-    #[layout(single)]
+    #[widget{
+        layout = single;
+    }]
     pub struct FilterListView<
         D: Directional,
         T: ListData + UpdHandler<T::Key, V::Msg> + 'static,

@@ -10,7 +10,7 @@
 use kas::draw::{ImageFormat, ImageId};
 use kas::geom::Vec2;
 use kas::layout::MarginSelector;
-use kas::{event, prelude::*};
+use kas::prelude::*;
 use std::path::PathBuf;
 use tiny_skia::Pixmap;
 
@@ -147,7 +147,7 @@ widget! {
             let size = match self.ideal_size.aspect_scale_to(rect.size) {
                 Some(size) => {
                     self.core_data_mut().rect = align
-                        .complete(Align::Centre, Align::Centre)
+                        .complete(Align::Center, Align::Center)
                         .aligned_rect(size, rect);
                     Into::<(u32, u32)>::into(size)
                 }
@@ -182,7 +182,7 @@ widget! {
             }
         }
 
-        fn draw(&self, draw: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {
+        fn draw(&mut self, draw: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
             if let Some(id) = self.image_id {
                 draw.image(id, self.rect());
             }

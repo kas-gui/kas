@@ -6,23 +6,27 @@
 //! Wrapper adding a label
 
 use kas::draw::TextClass;
-use kas::layout::{RulesSetter, RulesSolver};
 use kas::text::util::set_text_and_prepare;
 use kas::{event, layout, prelude::*};
 
 widget! {
     /// A wrapper widget with a label
+    ///
+    /// The label supports accelerator keys, which activate `self.inner` on
+    /// usage.
+    ///
+    /// Mouse/touch input on the label sends events to the inner widget.
     #[autoimpl(Deref, DerefMut on inner)]
     #[derive(Clone, Default, Debug)]
     #[handler(msg = W::Msg)]
     pub struct WithLabel<W: Widget, D: Directional> {
         #[widget_core]
         core: CoreData,
-        layout_data: layout::FixedRowStorage<2>,
         dir: D,
         #[widget]
         inner: W,
-        label_pos: Coord,
+        layout_store: layout::FixedRowStorage<2>,
+        label_store: layout::TextStorage,
         label: Text<AccelString>,
     }
 
@@ -40,12 +44,24 @@ widget! {
         pub fn new_with_direction<T: Into<AccelString>>(direction: D, inner: W, label: T) -> Self {
             WithLabel {
                 core: Default::default(),
-                layout_data: Default::default(),
                 dir: direction,
                 inner,
-                label_pos: Default::default(),
+                layout_store: Default::default(),
+                label_store: Default::default(),
                 label: Text::new_multi(label.into()),
             }
+        }
+
+        /// Get the direction
+        #[inline]
+        pub fn direction(&self) -> Direction {
+            self.dir.as_direction()
+        }
+
+        /// Deconstruct into `(inner, label)`
+        #[inline]
+        pub fn deconstruct(self) -> (W, Text<AccelString>) {
+            (self.inner, self.label)
         }
 
         /// Set text in an existing `Label`
@@ -62,51 +78,26 @@ widget! {
         }
     }
 
+    impl WidgetConfig for Self {
+        fn configure(&mut self, mgr: &mut Manager) {
+            mgr.add_accel_keys(self.inner.id(), self.keys());
+        }
+    }
+
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let mut solver = layout::RowSolver::new(axis, (self.dir, 2), &mut self.layout_data);
-            let child = &mut self.inner;
-            solver.for_child(&mut self.layout_data, 0usize, |axis| {
-                child.size_rules(size_handle, axis)
-            });
-            let label = &mut self.label;
-            solver.for_child(&mut self.layout_data, 1usize, |axis| {
-                size_handle.text_bound(label, TextClass::Label, axis)
-            });
-            solver.finish(&mut self.layout_data)
+        fn layout(&mut self) -> layout::Layout<'_> {
+            let arr = [
+                layout::Layout::single(&mut self.inner),
+                layout::Layout::text(&mut self.label_store, &mut self.label, TextClass::Label),
+            ];
+            layout::Layout::list(arr.into_iter(), self.dir, &mut self.layout_store)
         }
 
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
-            self.core.rect = rect;
-            let mut setter = layout::RowSetter::<_, [i32; 2], _>::new(
-                rect,
-                (self.dir, 2),
-                align,
-                &mut self.layout_data,
-            );
-            let rect = setter.child_rect(&mut self.layout_data, 0);
-            self.inner.set_rect(mgr, rect, align);
-            let rect = setter.child_rect(&mut self.layout_data, 1);
-            self.label_pos = rect.pos;
-            self.label.update_env(|env| {
-                env.set_bounds(rect.size.into());
-                env.set_align(align.unwrap_or(Align::Default, Align::Centre));
-            });
-        }
-
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
             }
-            self.inner.find_id(coord).or(Some(self.id()))
-        }
-
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-            let disabled = disabled || self.is_disabled();
-            self.inner.draw(draw_handle, mgr, disabled);
-            let accel = mgr.show_accel_labels();
-            let state = self.input_state(mgr, disabled);
-            draw_handle.text_accel(self.label_pos, &self.label, accel, TextClass::Label, state);
+            Some(self.inner.id())
         }
     }
 

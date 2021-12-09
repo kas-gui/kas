@@ -67,13 +67,13 @@ widget! {
     // UpdateHandle, which is quite slow with thousands of entries!
     // (This issue does not occur when RadioBoxes are independent.)
     #[derive(Clone, Debug)]
-    #[layout(column)]
+    #[widget{
+        layout = column: *;
+    }]
     #[handler(msg=EntryMsg)]
     struct ListEntry {
         #[widget_core]
         core: CoreData,
-        #[layout_data]
-        layout_data: <Self as kas::LayoutData>::Data,
         #[widget]
         label: StringLabel,
         #[widget]
@@ -87,7 +87,6 @@ impl ListEntry {
     fn new(n: usize, active: bool) -> Self {
         ListEntry {
             core: Default::default(),
-            layout_data: Default::default(),
             label: Label::new(format!("Entry number {}", n + 1)),
             radio: RadioBox::new("display this entry", RADIO.with(|h| *h))
                 .with_state(active)
@@ -101,7 +100,9 @@ fn main() -> Result<(), kas::shell::Error> {
     env_logger::init();
 
     let controls = make_widget! {
-        #[layout(row)]
+        #[widget{
+            layout = row: *;
+        }]
         #[handler(msg = Control)]
         struct {
             #[widget] _ = Label::new("Number of rows:"),
@@ -141,7 +142,9 @@ fn main() -> Result<(), kas::shell::Error> {
     let window = Window::new(
         "Dynamic widget demo",
         make_widget! {
-            #[layout(column)]
+            #[widget{
+                layout = column: *;
+            }]
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget] _ = Label::new("Demonstration of dynamic widget creation / deletion"),
@@ -151,7 +154,6 @@ fn main() -> Result<(), kas::shell::Error> {
                 #[widget] _ = Separator::new(),
                 #[widget(use_msg = set_radio)] list: ScrollBarRegion<IndexedList<Direction, ListEntry>> =
                     ScrollBarRegion::new(list).with_bars(false, true),
-                #[widget] _ = Filler::maximize(),
                 active: usize = 0,
             }
             impl Self {

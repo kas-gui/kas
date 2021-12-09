@@ -138,12 +138,16 @@ impl SolveCache {
         widget: &mut dyn WidgetConfig,
         size_handle: &mut dyn SizeHandle,
     ) -> Self {
+        let start = std::time::Instant::now();
+
         let w = widget.size_rules(size_handle, AxisInfo::new(false, None));
         let h = widget.size_rules(size_handle, AxisInfo::new(true, Some(w.ideal_size())));
 
         let min = Size(w.min_size(), h.min_size());
         let ideal = Size(w.ideal_size(), h.ideal_size());
         let margins = Margins::hv(w.margins(), h.margins());
+
+        trace!(target: "kas_perf", "layout::find_constraints: {}ms", start.elapsed().as_millis());
         trace!(
             "layout::solve: min={:?}, ideal={:?}, margins={:?}",
             min,
@@ -187,6 +191,8 @@ impl SolveCache {
         mut rect: Rect,
         inner_margin: bool,
     ) {
+        let start = std::time::Instant::now();
+
         let mut width = rect.size.0;
         if inner_margin {
             width -= self.margins.sum_horiz();
@@ -218,8 +224,9 @@ impl SolveCache {
         }
         widget.set_rect(mgr, rect, AlignHints::NONE);
 
+        trace!(target: "kas_perf", "layout::apply_rect: {}ms", start.elapsed().as_millis());
         trace!(
-            "layout::solve_and_set for size={:?} has hierarchy:{}",
+            "layout::apply_rect: size={:?}, hierarchy:{}",
             rect.size,
             WidgetHeirarchy(widget, 0),
         );

@@ -340,8 +340,8 @@ widget! {
             self.rel_width = rel_width.0 as f32;
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {
-            let draw = draw_handle.draw_device();
+        fn draw(&mut self, draw: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
+            let draw = draw.draw_device();
             let draw = DrawIface::<DrawPipe<Pipe>>::downcast_from(draw).unwrap();
             let p = (self.alpha, self.delta, self.rel_width, self.iter);
             draw.draw.custom(draw.get_pass(), self.core.rect, p);
@@ -418,22 +418,22 @@ widget! {
 
 widget! {
     #[derive(Debug)]
-    #[layout(grid)]
+    #[widget{
+        layout = grid: {
+            0, 0..2: self.label;
+            1, 0: align(center): self.iters;
+            2, 0: self.slider;
+            1..3, 1..3: self.mbrot;
+        };
+    }]
     #[handler(msg = event::VoidMsg)]
     struct MandlebrotWindow {
-        #[widget_core]
-        core: CoreData,
-        #[layout_data]
-        layout_data: <Self as kas::LayoutData>::Data,
-        #[widget(cspan = 2)]
-        label: Label<String>,
-        #[widget(row=1, halign=centre)]
-        iters: ReserveP<Label<String>>,
-        #[widget(row=2, use_msg = iter)]
-        slider: Slider<i32, kas::dir::Up>,
+        #[widget_core] core: CoreData,
+        #[widget] label: Label<String>,
+        #[widget] iters: ReserveP<Label<String>>,
+        #[widget(use_msg = iter)] slider: Slider<i32, kas::dir::Up>,
         // extra col span allows use of Label's margin
-        #[widget(col=1, cspan=2, row=1, rspan=2, use_msg = mbrot)]
-        mbrot: Mandlebrot,
+        #[widget(use_msg = mbrot)] mbrot: Mandlebrot,
     }
 
     impl MandlebrotWindow {
@@ -442,7 +442,6 @@ widget! {
             let mbrot = Mandlebrot::new();
             let w = MandlebrotWindow {
                 core: Default::default(),
-                layout_data: Default::default(),
                 label: Label::new(mbrot.loc()),
                 iters: ReserveP::new(Label::from("64"), |size_handle, axis| {
                     Label::new("000").size_rules(size_handle, axis)

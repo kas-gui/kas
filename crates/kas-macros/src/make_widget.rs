@@ -73,12 +73,10 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> TokenStream {
     // fields of anonymous struct:
     let mut field_toks = quote! {
         #[widget_core] core: ::kas::CoreData,
-        #[layout_data] layout_data: <Self as ::kas::LayoutData>::Data,
     };
     // initialisers for these fields:
     let mut field_val_toks = quote! {
         core: Default::default(),
-        layout_data: Default::default(),
     };
     // debug impl
     let mut debug_fields = TokenStream::new();

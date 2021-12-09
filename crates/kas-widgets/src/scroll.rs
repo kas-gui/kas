@@ -341,27 +341,21 @@ widget! {
                 .set_sizes(rect.size, child_size + self.frame_size);
         }
 
-        #[inline]
-        fn translation(&self, child_index: usize) -> Offset {
-            match child_index {
-                2 => self.scroll_offset(),
-                _ => Offset::ZERO,
-            }
-        }
-
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
             }
-
-            self.inner
-                .find_id(coord + self.scroll_offset())
-                .or(Some(self.id()))
+            self.inner.find_id(coord + self.translation())
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        #[inline]
+        fn translation(&self) -> Offset {
+            self.scroll_offset()
+        }
+
+        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let disabled = disabled || self.is_disabled();
-            draw_handle.with_clip_region(self.core.rect, self.scroll_offset(), &mut |handle| {
+            draw.with_clip_region(self.core.rect, self.scroll_offset(), &mut |handle| {
                 self.inner.draw(handle, mgr, disabled)
             });
         }

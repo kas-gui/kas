@@ -33,10 +33,10 @@ pub use crate::text::AccelString;
 #[doc(no_inline)]
 pub use crate::text::{EditableTextApi, Text, TextApi, TextApiExt};
 #[doc(no_inline)]
+pub use crate::CoreData;
+#[doc(no_inline)]
 pub use crate::WidgetId;
 #[doc(no_inline)]
 pub use crate::{Boxed, TkAction};
-#[doc(no_inline)]
-pub use crate::{CoreData, LayoutData};
 #[doc(no_inline)]
 pub use crate::{Layout, Widget, WidgetChildren, WidgetConfig, WidgetCore};

@@ -750,15 +750,15 @@ where
 mod test {
     use super::*;
 
-    fn _draw_handle_ext(draw_handle: &mut dyn DrawHandle) {
+    fn _draw_handle_ext(draw: &mut dyn DrawHandle) {
         // We can't call this method without constructing an actual DrawHandle.
         // But we don't need to: we just want to test that methods are callable.
 
-        let _scale = draw_handle.size_handle().scale_factor();
+        let _scale = draw.size_handle().scale_factor();
 
         let text = crate::text::Text::new_single("sample");
         let class = TextClass::Label;
         let state = InputState::empty();
-        draw_handle.text_selected(Coord::ZERO, &text, .., class, state)
+        draw.text_selected(Coord::ZERO, &text, .., class, state)
     }
 }

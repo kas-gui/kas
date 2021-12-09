@@ -83,13 +83,13 @@ widget! {
 
         fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
             let rect = align
-                .complete(Align::Centre, Align::Centre)
+                .complete(Align::Center, Align::Center)
                 .aligned_rect(self.rect().size, rect);
             self.core.rect = rect;
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-            draw_handle.radiobox(self.core.rect, self.state, self.input_state(mgr, disabled));
+        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+            draw.radiobox(self.core.rect, self.state, self.input_state(mgr, disabled));
         }
     }
 
@@ -169,16 +169,17 @@ widget! {
 }
 
 widget! {
-    /// A radiobox with optional label
+    /// A radiobox with label
     #[autoimpl(Debug)]
     #[autoimpl(HasBool on radiobox)]
     #[derive(Clone)]
-    #[layout(row, area=radiobox)]
+    #[widget{
+        find_id = Some(self.radiobox.id());
+        layout = row: *;
+    }]
     pub struct RadioBox<M: 'static> {
         #[widget_core]
         core: CoreData,
-        #[layout_data]
-        layout_data: <Self as kas::LayoutData>::Data,
         #[widget]
         radiobox: RadioBoxBare<M>,
         #[widget]
@@ -207,7 +208,6 @@ widget! {
         pub fn new<T: Into<AccelString>>(label: T, handle: UpdateHandle) -> Self {
             RadioBox {
                 core: Default::default(),
-                layout_data: Default::default(),
                 radiobox: RadioBoxBare::new(handle),
                 label: AccelLabel::new(label.into()),
             }
@@ -227,7 +227,6 @@ widget! {
         {
             RadioBox {
                 core: self.core,
-                layout_data: self.layout_data,
                 radiobox: self.radiobox.on_select(f),
                 label: self.label,
             }

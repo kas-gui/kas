@@ -8,7 +8,7 @@
 use super::Menu;
 use crate::{AccelLabel, CheckBoxBare};
 use kas::draw::TextClass;
-use kas::prelude::*;
+use kas::{layout, prelude::*};
 use std::fmt::Debug;
 
 widget! {
@@ -18,8 +18,8 @@ widget! {
         #[widget_core]
         core: kas::CoreData,
         label: Text<AccelString>,
-        label_off: Offset,
-        frame_size: Size,
+        layout_label: layout::TextStorage,
+        layout_frame: layout::FrameStorage,
         msg: M,
     }
 
@@ -34,29 +34,15 @@ widget! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let frame_rules = size_handle.menu_frame(axis.is_vertical());
-            let text_rules = size_handle.text_bound(&mut self.label, TextClass::MenuLabel, axis);
-            let (rules, offset, size) = frame_rules.surround_as_margin(text_rules);
-            self.label_off.set_component(axis, offset);
-            self.frame_size.set_component(axis, size);
-            rules
+        fn layout(&mut self) -> layout::Layout<'_> {
+            let inner = layout::Layout::text(&mut self.layout_label, &mut self.label, TextClass::MenuLabel);
+            layout::Layout::frame(&mut self.layout_frame, inner)
         }
 
-        fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
-            self.core.rect = rect;
-            let size = rect.size - self.frame_size;
-            self.label.update_env(|env| {
-                env.set_bounds(size.into());
-                env.set_align(align.unwrap_or(Align::Default, Align::Centre));
-            });
-        }
-
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-            draw_handle.menu_entry(self.core.rect, self.input_state(mgr, disabled));
-            let pos = self.core.rect.pos + self.label_off;
-            draw_handle.text_accel(
-                pos,
+        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+            draw.menu_entry(self.core.rect, self.input_state(mgr, disabled));
+            draw.text_accel(
+                self.layout_label.pos,
                 &self.label,
                 mgr.show_accel_labels(),
                 TextClass::MenuLabel,
@@ -75,8 +61,8 @@ widget! {
             MenuEntry {
                 core: Default::default(),
                 label: Text::new_single(label.into()),
-                label_off: Offset::ZERO,
-                frame_size: Size::ZERO,
+                layout_label: Default::default(),
+                layout_frame: Default::default(),
                 msg,
             }
         }
@@ -99,7 +85,7 @@ widget! {
             if self.label.text().keys() != string.keys() {
                 action |= TkAction::RECONFIGURE;
             }
-            let avail = self.core.rect.size.clamped_sub(self.frame_size);
+            let avail = self.core.rect.size.clamped_sub(self.layout_frame.size);
             action | kas::text::util::set_text_and_prepare(&mut self.label, string, avail)
         }
     }
@@ -123,12 +109,9 @@ widget! {
     #[autoimpl(Debug)]
     #[autoimpl(HasBool on checkbox)]
     #[derive(Clone, Default)]
-    #[layout(row, area=checkbox, draw=draw)]
     pub struct MenuToggle<M: 'static> {
         #[widget_core]
         core: CoreData,
-        #[layout_data]
-        layout_data: <Self as kas::LayoutData>::Data,
         #[widget]
         checkbox: CheckBoxBare<M>,
         // TODO: label should use TextClass::MenuLabel
@@ -139,6 +122,19 @@ widget! {
     impl WidgetConfig for Self {
         fn configure(&mut self, mgr: &mut Manager) {
             mgr.add_accel_keys(self.checkbox.id(), self.label.keys());
+        }
+    }
+
+    impl Layout for Self {
+        fn layout(&mut self) -> layout::Layout<'_> {
+            make_layout!(self.core; row: [self.checkbox, self.label])
+        }
+
+        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+            let state = self.checkbox.input_state(mgr, disabled);
+            draw.menu_entry(self.core.rect, state);
+            self.checkbox.draw(draw, mgr, state.disabled());
+            self.label.draw(draw, mgr, state.disabled());
         }
     }
 
@@ -154,7 +150,6 @@ widget! {
         pub fn new<T: Into<AccelString>>(label: T) -> Self {
             MenuToggle {
                 core: Default::default(),
-                layout_data: Default::default(),
                 checkbox: CheckBoxBare::new(),
                 label: AccelLabel::new(label.into()),
             }
@@ -172,7 +167,6 @@ widget! {
         {
             MenuToggle {
                 core: self.core,
-                layout_data: self.layout_data,
                 checkbox: self.checkbox.on_toggle(f),
                 label: self.label,
             }
@@ -198,13 +192,6 @@ widget! {
         pub fn with_state(mut self, state: bool) -> Self {
             self.checkbox = self.checkbox.with_state(state);
             self
-        }
-
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-            let state = self.checkbox.input_state(mgr, disabled);
-            draw_handle.menu_entry(self.core.rect, state);
-            self.checkbox.draw(draw_handle, mgr, state.disabled());
-            self.label.draw(draw_handle, mgr, state.disabled());
         }
     }
 }

@@ -11,7 +11,7 @@ use std::fmt;
 use crate::draw::{DrawHandle, InputState, SizeHandle};
 use crate::event::{self, ConfigureManager, Manager, ManagerState};
 use crate::geom::{Coord, Offset, Rect};
-use crate::layout::{AlignHints, AxisInfo, SizeRules};
+use crate::layout::{self, AlignHints, AxisInfo, SizeRules};
 use crate::{CoreData, TkAction, WidgetId};
 
 impl dyn WidgetCore {
@@ -266,48 +266,6 @@ pub trait WidgetChildren: WidgetCore {
             None
         }
     }
-
-    /// Walk through all widgets, calling `f` once on each.
-    ///
-    /// This walk is iterative (nonconcurrent), depth-first, and always calls
-    /// `f` on self *after* walking through all children.
-    fn walk_children<F: FnMut(&dyn WidgetConfig)>(&self, mut f: F)
-    where
-        Self: Sized,
-    {
-        self.walk_children_dyn(&mut f)
-    }
-
-    #[doc(hidden)]
-    fn walk_children_dyn(&self, f: &mut dyn FnMut(&dyn WidgetConfig)) {
-        for i in 0..self.num_children() {
-            if let Some(w) = self.get_child(i) {
-                w.walk_children_dyn(f);
-            }
-        }
-        f(self.as_widget());
-    }
-
-    /// Walk through all widgets, calling `f` once on each.
-    ///
-    /// This walk is iterative (nonconcurrent), depth-first, and always calls
-    /// `f` on self *after* walking through all children.
-    fn walk_children_mut<F: FnMut(&mut dyn WidgetConfig)>(&mut self, mut f: F)
-    where
-        Self: Sized,
-    {
-        self.walk_children_mut_dyn(&mut f)
-    }
-
-    #[doc(hidden)]
-    fn walk_children_mut_dyn(&mut self, f: &mut dyn FnMut(&mut dyn WidgetConfig)) {
-        for i in 0..self.num_children() {
-            if let Some(w) = self.get_child_mut(i) {
-                w.walk_children_mut_dyn(f);
-            }
-        }
-        f(self.as_widget_mut());
-    }
 }
 
 /// Widget configuration
@@ -403,6 +361,14 @@ pub trait WidgetConfig: Layout {
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 pub trait Layout: WidgetChildren {
+    /// Make a layout
+    ///
+    /// If used, this allows automatic implementation of `size_rules` and
+    /// `set_rect` methods. The default case is the empty layout.
+    fn layout(&mut self) -> layout::Layout<'_> {
+        Default::default() // TODO: remove default impl
+    }
+
     /// Get size rules for the given axis
     ///
     /// This method takes `&mut self` to allow local caching of child widget
@@ -416,7 +382,9 @@ pub trait Layout: WidgetChildren {
     ///
     /// For widgets with children, a [`crate::layout::RulesSolver`] engine may be
     /// useful to calculate requirements of complex layouts.
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules;
+    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        self.layout().size_rules(size_handle, axis)
+    }
 
     /// Apply a given `rect` to self
     ///
@@ -435,23 +403,22 @@ pub trait Layout: WidgetChildren {
     /// One may assume that `size_rules` has been called at least once for each
     /// axis with current size information before this method, however
     /// `size_rules` might not be re-called before calling `set_rect` again.
-    #[inline]
     fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
-        let _ = (mgr, align);
         self.core_data_mut().rect = rect;
+        self.layout().set_rect(mgr, rect, align);
     }
 
-    /// Get translation of a child
+    /// Get translation of children
     ///
     /// Children may live in a translated coordinate space relative to their
     /// parent. This method returns an offset which should be *added* to a
     /// coordinate to translate *into* the child's coordinate space or
     /// subtracted to translate out.
     ///
-    /// In most cases, the translation will be zero. Widgets should return
-    /// [`Offset::ZERO`] for non-existant children.
+    /// Note that this should only be non-zero for widgets themselves
+    /// implementing scrolling (and thin wrappers around these).
     #[inline]
-    fn translation(&self, _child_index: usize) -> Offset {
+    fn translation(&self) -> Offset {
         Offset::ZERO
     }
 
@@ -478,6 +445,8 @@ pub trait Layout: WidgetChildren {
             return None;
         }
 
+        let reverse = reverse ^ self.layout().is_reversed();
+
         if let Some(index) = from {
             match reverse {
                 false if index < last => Some(index + 1),
@@ -494,29 +463,31 @@ pub trait Layout: WidgetChildren {
 
     /// Find a widget by coordinate
     ///
-    /// Used to find the widget responsible for handling events at this `coord`
-    /// — usually the leaf-most widget containing the coordinate.
+    /// This method has a default implementation, but this may need to be
+    /// overridden if any of the following are true:
     ///
-    /// The default implementation suffices for widgets without children;
-    /// otherwise this is usually implemented as follows:
+    /// -   [`Self::layout`] is not implemented and there are child widgets
+    /// -   Any child widget should not receive events despite having a
+    ///     placement in the layout — e.g. push-buttons (but note that
+    ///     [`crate::layout::Layout::button`] does take this into account)
+    /// -   Mouse/touch events should be passed to a child widget *outside* of
+    ///     this child's area — e.g. a label next to a checkbox
+    /// -   The child widget is in a translated coordinate space *not equal* to
+    ///     [`Self::translation`]
     ///
-    /// 1.  return `None` if `!self.rect().contains(coord)`
-    /// 2.  for each `child`, check whether `child.find_id(coord)` returns
-    ///     `Some(id)`, and if so return this result (parents with many children
-    ///     might use a faster search strategy here)
-    /// 3.  otherwise, return `Some(self.id())`
+    /// This method translates from coordinates (usually from mouse input) to a
+    /// [`WidgetId`]. It is expected to do the following:
     ///
-    /// Exceptionally, a widget may deviate from this behaviour, but only when
-    /// the coord is within the widget's own rect (example: `CheckBox` contains
-    /// an embedded `CheckBoxBare` and always forwards this child's id).
-    ///
-    /// This must not be called before [`Layout::set_rect`].
-    #[inline]
-    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+    /// -   Return `None` if `coord` is not within `self.rect()`
+    /// -   Find the child which should respond to input at `coord`, if any, and
+    ///     call `find_id` recursively on this child
+    /// -   Otherwise return `self.id()`
+    fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
         if !self.rect().contains(coord) {
             return None;
         }
-        Some(self.id())
+        let coord = coord + self.translation();
+        self.layout().find_id(coord).or_else(|| Some(self.id()))
     }
 
     /// Draw a widget and its children
@@ -530,7 +501,12 @@ pub trait Layout: WidgetChildren {
     ///
     /// [`WidgetCore::input_state`] may be used to obtain an [`InputState`] to
     /// determine active visual effects.
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool);
+    ///
+    /// The default impl draws all children. TODO: have default?
+    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        let state = self.input_state(mgr, disabled);
+        self.layout().draw(draw, mgr, state);
+    }
 }
 
 /// Widget trait

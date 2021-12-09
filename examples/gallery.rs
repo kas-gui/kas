@@ -47,27 +47,25 @@ impl EditGuard for Guard {
 
 widget! {
     #[derive(Debug)]
-    #[layout(grid)]
+    #[widget{
+        layout = grid: {
+            0, 0..3: self.edit;
+            1, 0: self.fill; 1, 1: self.cancel; 1, 2: self.save;
+        };
+    }]
     struct TextEditPopup {
         #[widget_core]
         core: CoreData,
-        #[layout_data]
-        layout_data: <Self as kas::LayoutData>::Data,
-        #[widget(cspan = 3)]
-        edit: EditBox,
-        #[widget(row = 1, col = 0)]
-        fill: Filler,
-        #[widget(row=1, col=1, flatmap_msg = close)]
-        cancel: TextButton<bool>,
-        #[widget(row=1, col=2, flatmap_msg = close)]
-        save: TextButton<bool>,
+        #[widget] edit: EditBox,
+        #[widget] fill: Filler,
+        #[widget(flatmap_msg = close)] cancel: TextButton<bool>,
+        #[widget(flatmap_msg = close)] save: TextButton<bool>,
         commit: bool,
     }
     impl TextEditPopup {
         fn new<S: ToString>(text: S) -> Self {
             TextEditPopup {
                 core: Default::default(),
-                layout_data: Default::default(),
                 edit: EditBox::new(text).multi_line(true),
                 fill: Filler::maximize(),
                 cancel: TextButton::new_msg("&Cancel", false),
@@ -167,7 +165,9 @@ fn main() -> Result<(), kas::shell::Error> {
     ]);
 
     let popup_edit_box = make_widget! {
-        #[layout(row)]
+        #[widget{
+            layout = row: *;
+        }]
         struct {
             #[widget] label: StringLabel = Label::from("Use button to edit →"),
             #[widget(use_msg = edit)] edit = TextButton::new_msg("&Edit", ()),
@@ -217,17 +217,35 @@ fn main() -> Result<(), kas::shell::Error> {
 
     let radio = UpdateHandle::new();
     let widgets = make_widget! {
-        #[layout(grid)]
+        // TODO: this would be better expressed with a column layout, though we
+        // want better alignment controls first (which are also needed for menus).
+        #[widget{
+            layout = grid: {
+                0, 0: self.sll; 0, 1: self.sl;
+                1, 0: self.ebl; 1, 1: self.eb;
+                2, 0: self.tbl; 2, 1: self.tb;
+                3, 0: self.bil; 3, 1: self.bi;
+                4, 0: self.cbl; 4, 1: self.cb;
+                5, 0: self.rbl; 5, 1: self.rb;
+                6, 0: self.rb2l; 6, 1: self.rb2;
+                7, 0: self.cbbl; 7, 1: self.cbb;
+                8, 0: self.sdl; 8, 1: self.sd;
+                9, 0: self.scl; 9, 1: self.sc;
+                10, 0: self.pgl; 10, 1: self.pg;
+                11, 0: self.svl; 11, 1: align(center): self.sv;
+                12, 0: self.pul; 12, 1: self.pu;
+            };
+        }]
         #[handler(msg = Item)]
         struct {
-            #[widget(row=0, col=0)] _ = Label::new("ScrollLabel"),
-            #[widget(row=0, col=1)] _ = ScrollLabel::new(text),
-            #[widget(row=1, col=0)] _ = Label::new("EditBox"),
-            #[widget(row=1, col=1)] _ = EditBox::new("edit me").with_guard(Guard),
-            #[widget(row=2, col=0)] _ = Label::new("TextButton"),
-            #[widget(row=2, col=1)] _ = TextButton::new_msg("&Press me", Item::Button),
-            #[widget(row=3, col=0)] _ = Label::new("Button<Image>"),
-            #[widget(row=3, col=1)] _ = row![
+            #[widget] sll = Label::new("ScrollLabel"),
+            #[widget] sl = ScrollLabel::new(text),
+            #[widget] ebl = Label::new("EditBox"),
+            #[widget] eb = EditBox::new("edit me").with_guard(Guard),
+            #[widget] tbl = Label::new("TextButton"),
+            #[widget] tb = TextButton::new_msg("&Press me", Item::Button),
+            #[widget] bil = Label::new("Button<Image>"),
+            #[widget] bi = row![
                 Button::new_msg(Image::new("res/sun_32.png"), Item::LightTheme)
                     .with_color(Rgb::rgb(0.3, 0.4, 0.5))
                     .with_keys(&[VK::L]),
@@ -235,34 +253,32 @@ fn main() -> Result<(), kas::shell::Error> {
                     .with_color(Rgb::grey(0.1))
                     .with_keys(&[VK::K]),
             ],
-            #[widget(row=4, col=0)] _ = Label::new("CheckBox"),
-            #[widget(row=4, col=1)] _ = CheckBox::new("&Check me")
+            #[widget] cbl = Label::new("CheckBox"),
+            #[widget] cb = CheckBox::new("&Check me")
                 .with_state(true)
                 .on_toggle(|_, check| Some(Item::Check(check))),
-            #[widget(row=5, col=0)] _ = Label::new("RadioBox"),
-            #[widget(row=5, col=1)] _ = RadioBox::new("radio box &1", radio)
+            #[widget] rbl = Label::new("RadioBox"),
+            #[widget] rb = RadioBox::new("radio box &1", radio)
                 .on_select(|_| Some(Item::Radio(1))),
-            #[widget(row=6, col=0)] _ = Label::new("RadioBox"),
-            #[widget(row=6, col=1)] _ = RadioBox::new("radio box &2", radio)
+            #[widget] rb2l = Label::new("RadioBox"),
+            #[widget] rb2 = RadioBox::new("radio box &2", radio)
                 .with_state(true)
                 .on_select(|_| Some(Item::Radio(2))),
-            #[widget(row=7, col=0)] _ = Label::new("ComboBox"),
-            #[widget(row=7, col=1)] _ =
-                ComboBox::new(&["&One", "T&wo", "Th&ree"], 0)
+            #[widget] cbbl = Label::new("ComboBox"),
+            #[widget] cbb = ComboBox::new(&["&One", "T&wo", "Th&ree"], 0)
                 .on_select(|_, index| Some(Item::Combo((index + 1).cast()))),
-            #[widget(row=8, col=0)] _ = Label::new("Slider"),
-            #[widget(row=8, col=1, map_msg = handle_slider)] s =
+            #[widget] sdl = Label::new("Slider"),
+            #[widget(map_msg = handle_slider)] sd =
                 Slider::<i32, Right>::new(0, 10, 1).with_value(0),
-            #[widget(row=9, col=0)] _ = Label::new("ScrollBar"),
-            #[widget(row=9, col=1, map_msg = handle_scroll)] sc: ScrollBar<Right> =
+            #[widget] scl = Label::new("ScrollBar"),
+            #[widget(map_msg = handle_scroll)] sc: ScrollBar<Right> =
                 ScrollBar::new().with_limits(100, 20),
-            #[widget(row=10, col=1)] pg: ProgressBar<Right> = ProgressBar::new(),
-            #[widget(row=10, col=0)] _ = Label::new("ProgressBar"),
-            #[widget(row=11, col=0)] _ = Label::new("SVG"),
-            #[widget(row=11, col=1, align=centre)] _ =
-                Svg::from_path_and_factors("res/rustacean-flat-happy.svg", 0.1, 0.3),
-            #[widget(row=12, col=0)] _ = Label::new("Child window"),
-            #[widget(row=12, col=1)] _ = popup_edit_box,
+            #[widget] pg: ProgressBar<Right> = ProgressBar::new(),
+            #[widget] pgl = Label::new("ProgressBar"),
+            #[widget] svl = Label::new("SVG"),
+            #[widget] sv = Svg::from_path_and_factors("res/rustacean-flat-happy.svg", 0.1, 0.3),
+            #[widget] pul = Label::new("Child window"),
+            #[widget] pu = popup_edit_box,
         }
         impl Self {
             fn handle_slider(&mut self, _: &mut Manager, msg: i32) -> Item {
@@ -277,7 +293,9 @@ fn main() -> Result<(), kas::shell::Error> {
     };
 
     let head = make_widget! {
-        #[layout(row)]
+        #[widget{
+            layout = row: *;
+        }]
         #[handler(msg = VoidMsg)]
         struct {
             #[widget] _ = Label::new("Widget Gallery"),
@@ -288,11 +306,17 @@ fn main() -> Result<(), kas::shell::Error> {
     let mut window = Window::new(
         "Widget Gallery",
         make_widget! {
-            #[layout(column)]
+            #[widget{
+                layout = column: [
+                    self.menubar,
+                    align(center): self.head,
+                    self.gallery,
+                ];
+            }]
             #[handler(msg = VoidMsg)]
             struct {
-                #[widget(use_msg = menu)] _ = menubar,
-                #[widget(halign = centre)] _ = Frame::new(head),
+                #[widget(use_msg = menu)] menubar = menubar,
+                #[widget] head = Frame::new(head),
                 #[widget(use_msg = activations)] gallery:
                     for<W: Widget<Msg = Item>> ScrollBarRegion<W> =
                         ScrollBarRegion::new(widgets),

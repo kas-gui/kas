@@ -11,7 +11,9 @@ use kas::widgets::{Column, Label, StrLabel, Window};
 
 widget! {
     #[derive(Clone, Debug)]
-    #[layout(single)]
+    #[widget{
+        layout = single;
+    }]
     struct CursorWidget {
         #[widget_core]
         core: CoreData,

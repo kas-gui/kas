@@ -31,24 +31,17 @@ widget! {
 
     impl Layout for Self {
         #[inline]
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            // Note: we do not consider popups, since they are usually temporary
-            self.w.size_rules(size_handle, axis)
+        fn layout(&mut self) -> layout::Layout<'_> {
+            layout::Layout::single(&mut self.w)
         }
 
         #[inline]
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
-            self.core.rect = rect;
-            self.w.set_rect(mgr, rect, align);
-        }
-
-        #[inline]
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
             }
-            for popup in self.popups.iter().rev() {
-                if let Some(id) = self.w.find_leaf(popup.1.id).and_then(|w| w.find_id(coord)) {
+            for popup in self.popups.iter_mut().rev() {
+                if let Some(id) = self.w.find_leaf_mut(popup.1.id).and_then(|w| w.find_id(coord)) {
                     return Some(id);
                 }
             }
@@ -56,13 +49,13 @@ widget! {
         }
 
         #[inline]
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let disabled = disabled || self.is_disabled();
-            self.w.draw(draw_handle, mgr, disabled);
+            self.w.draw(draw, mgr, disabled);
             for (_, popup) in &self.popups {
-                if let Some(widget) = self.find_leaf(popup.id) {
-                    draw_handle.with_overlay(widget.rect(), &mut |draw_handle| {
-                        widget.draw(draw_handle, mgr, disabled);
+                if let Some(widget) = self.w.find_leaf_mut(popup.id) {
+                    draw.with_overlay(widget.rect(), &mut |draw| {
+                        widget.draw(draw, mgr, disabled);
                     });
                 }
             }
@@ -217,7 +210,7 @@ fn find_rect(widget: &dyn WidgetConfig, id: WidgetId) -> Option<Rect> {
             if id > w.id() {
                 continue;
             }
-            return find_rect(w, id).map(|rect| rect - widget.translation(i));
+            return find_rect(w, id).map(|rect| rect - widget.translation());
         }
         break;
     }

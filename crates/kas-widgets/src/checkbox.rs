@@ -13,7 +13,10 @@ widget! {
     /// A bare checkbox (no label)
     #[autoimpl(Debug skip on_toggle)]
     #[derive(Clone, Default)]
-    #[widget(config(key_nav = true, hover_highlight = true))]
+    #[widget{
+        key_nav = true;
+        hover_highlight = true;
+    }]
     pub struct CheckBoxBare<M: 'static> {
         #[widget_core]
         core: CoreData,
@@ -31,13 +34,13 @@ widget! {
 
         fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
             let rect = align
-                .complete(Align::Centre, Align::Centre)
+                .complete(Align::Center, Align::Center)
                 .aligned_rect(self.rect().size, rect);
             self.core.rect = rect;
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-            draw_handle.checkbox(self.core.rect, self.state, self.input_state(mgr, disabled));
+        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+            draw.checkbox(self.core.rect, self.state, self.input_state(mgr, disabled));
         }
     }
 
@@ -127,16 +130,17 @@ widget! {
 }
 
 widget! {
-    /// A checkable box with optional label
+    /// A checkbox with label
     #[autoimpl(Debug)]
     #[autoimpl(HasBool on checkbox)]
     #[derive(Clone, Default)]
-    #[layout(row, area=checkbox)]
+    #[widget{
+        layout = row: *;
+        find_id = Some(self.checkbox.id());
+    }]
     pub struct CheckBox<M: 'static> {
         #[widget_core]
         core: CoreData,
-        #[layout_data]
-        layout_data: <Self as kas::LayoutData>::Data,
         #[widget]
         checkbox: CheckBoxBare<M>,
         #[widget]
@@ -162,7 +166,6 @@ widget! {
         pub fn new<T: Into<AccelString>>(label: T) -> Self {
             CheckBox {
                 core: Default::default(),
-                layout_data: Default::default(),
                 checkbox: CheckBoxBare::new(),
                 label: AccelLabel::new(label.into()),
             }
@@ -180,7 +183,6 @@ widget! {
         {
             CheckBox {
                 core: self.core,
-                layout_data: self.layout_data,
                 checkbox: self.checkbox.on_toggle(f),
                 label: self.label,
             }

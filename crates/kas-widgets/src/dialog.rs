@@ -17,12 +17,12 @@ use kas::WindowId;
 widget! {
     /// A simple message box.
     #[derive(Clone, Debug)]
-    #[layout(column)]
+    #[widget{
+        layout = column: *;
+    }]
     pub struct MessageBox<T: FormattableText + 'static> {
         #[widget_core]
         core: CoreData,
-        #[layout_data]
-        layout_data: <Self as kas::LayoutData>::Data,
         title: String,
         #[widget]
         label: Label<T>,
@@ -34,7 +34,6 @@ widget! {
         pub fn new<A: ToString>(title: A, message: T) -> Self {
             MessageBox {
                 core: Default::default(),
-                layout_data: Default::default(),
                 title: title.to_string(),
                 label: Label::new(message),
                 button: TextButton::new_msg("Ok", ()).with_keys(&[

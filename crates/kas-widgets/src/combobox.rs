@@ -8,6 +8,7 @@
 use super::{IndexedColumn, MenuEntry};
 use kas::draw::TextClass;
 use kas::event::{self, Command, GrabMode};
+use kas::layout;
 use kas::prelude::*;
 use kas::WindowId;
 use std::rc::Rc;
@@ -18,12 +19,16 @@ widget! {
     /// A combobox presents a menu with a fixed set of choices when clicked.
     #[autoimpl(Debug skip on_select)]
     #[derive(Clone)]
-    #[widget(config(key_nav = true, hover_highlight = true))]
+    #[widget{
+        key_nav = true;
+        hover_highlight = true;
+    }]
     pub struct ComboBox<M: 'static> {
         #[widget_core]
         core: CoreData,
         label: Text<String>,
-        frame_size: Size,
+        layout_frame: layout::FrameStorage,
+        layout_text: layout::TextStorage,
         #[widget]
         popup: ComboPopup,
         active: usize,
@@ -33,21 +38,9 @@ widget! {
     }
 
     impl kas::Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let frame_rules = size_handle.button_surround(axis.is_vertical());
-            let content_rules = size_handle.text_bound(&mut self.label, TextClass::Button, axis);
-
-            let (rules, _offset, size) = frame_rules.surround_as_margin(content_rules);
-            self.frame_size.set_component(axis, size);
-            rules
-        }
-
-        fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
-            self.core.rect = rect;
-            self.label.update_env(|env| {
-                env.set_bounds(rect.size.into());
-                env.set_align(align.unwrap_or(Align::Centre, Align::Centre));
-            });
+        fn layout(&mut self) -> layout::Layout<'_> {
+            let inner = layout::Layout::text(&mut self.layout_text, &mut self.label, TextClass::Button);
+            layout::Layout::button(&mut self.layout_frame, inner, None)
         }
 
         fn spatial_nav(&mut self, _: &mut Manager, _: bool, _: Option<usize>) -> Option<usize> {
@@ -55,18 +48,12 @@ widget! {
             None
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let mut state = self.input_state(mgr, disabled);
             if self.popup_id.is_some() {
                 state.insert(InputState::DEPRESS);
             }
-            draw_handle.button(self.core.rect, None, state);
-            draw_handle.text(
-                self.core.rect.pos,
-                self.label.as_ref(),
-                TextClass::Button,
-                state,
-            );
+            self.layout().draw(draw, mgr, state);
         }
     }
 
@@ -209,7 +196,8 @@ impl ComboBox<VoidMsg> {
         ComboBox {
             core: Default::default(),
             label,
-            frame_size: Default::default(),
+            layout_frame: Default::default(),
+            layout_text: Default::default(),
             popup: ComboPopup {
                 core: Default::default(),
                 inner: IndexedColumn::new(entries),
@@ -234,7 +222,8 @@ impl ComboBox<VoidMsg> {
         ComboBox {
             core: self.core,
             label: self.label,
-            frame_size: self.frame_size,
+            layout_frame: self.layout_frame,
+            layout_text: self.layout_text,
             popup: self.popup,
             active: self.active,
             opening: self.opening,
@@ -264,7 +253,7 @@ impl<M: 'static> ComboBox<M> {
             } else {
                 "".to_string()
             };
-            let avail = self.core.rect.size.clamped_sub(self.frame_size);
+            let avail = self.core.rect.size.clamped_sub(self.layout_frame.size);
             kas::text::util::set_text_and_prepare(&mut self.label, string, avail)
         } else {
             TkAction::empty()
@@ -399,7 +388,9 @@ impl<M: 'static> ComboBox<M> {
 
 widget! {
     #[derive(Clone, Debug)]
-    #[layout(single)]
+    #[widget{
+        layout = single;
+    }]
     #[handler(msg=(usize, ()))]
     struct ComboPopup {
         #[widget_core]

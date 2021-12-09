@@ -9,7 +9,7 @@ use std::any::Any;
 
 use super::*;
 use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{self, Event, Manager, Response};
+use crate::event::{self, Event, Manager, ManagerState, Response};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::{CoreData, WidgetId};
@@ -67,13 +67,6 @@ impl<M: 'static> WidgetChildren for Box<dyn Widget<Msg = M>> {
     fn find_leaf_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
         self.as_mut().find_leaf_mut(id)
     }
-
-    fn walk_children_dyn(&self, f: &mut dyn FnMut(&dyn WidgetConfig)) {
-        self.as_ref().walk_children_dyn(f);
-    }
-    fn walk_children_mut_dyn(&mut self, f: &mut dyn FnMut(&mut dyn WidgetConfig)) {
-        self.as_mut().walk_children_mut_dyn(f);
-    }
 }
 
 impl<M: 'static> WidgetConfig for Box<dyn Widget<Msg = M>> {
@@ -101,12 +94,12 @@ impl<M: 'static> Layout for Box<dyn Widget<Msg = M>> {
         self.as_mut().set_rect(mgr, rect, align);
     }
 
-    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        self.as_ref().find_id(coord)
+    fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        self.as_mut().find_id(coord)
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-        self.as_ref().draw(draw_handle, mgr, disabled);
+    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        self.as_mut().draw(draw, mgr, disabled);
     }
 }
 

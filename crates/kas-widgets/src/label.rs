@@ -31,19 +31,19 @@ widget! {
             self.core.rect = rect;
             self.label.update_env(|env| {
                 env.set_bounds(rect.size.into());
-                env.set_align(align.unwrap_or(Align::Default, Align::Centre));
+                env.set_align(align.unwrap_or(Align::Default, Align::Center));
             });
         }
 
         #[cfg(feature = "min_spec")]
-        default fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        default fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let state = self.input_state(mgr, disabled);
-            draw_handle.text_effects(self.core.rect.pos, &self.label, TextClass::Label, state);
+            draw.text_effects(self.core.rect.pos, &self.label, TextClass::Label, state);
         }
         #[cfg(not(feature = "min_spec"))]
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let state = self.input_state(mgr, disabled);
-            draw_handle.text_effects(self.core.rect.pos, &self.label, TextClass::Label, state);
+            draw.text_effects(self.core.rect.pos, &self.label, TextClass::Label, state);
         }
     }
 
@@ -65,10 +65,10 @@ widget! {
 
 #[cfg(feature = "min_spec")]
 impl Layout for AccelLabel {
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         let state = self.input_state(mgr, disabled);
         let accel = mgr.show_accel_labels();
-        draw_handle.text_accel(
+        draw.text_accel(
             self.core.rect.pos,
             &self.label,
             accel,
@@ -81,9 +81,9 @@ impl Layout for AccelLabel {
 // Str/String representations have no effects, so use simpler draw call
 #[cfg(feature = "min_spec")]
 impl<'a> Layout for Label<&'a str> {
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         let state = self.input_state(mgr, disabled);
-        draw_handle.text(
+        draw.text(
             self.core.rect.pos,
             self.label.as_ref(),
             TextClass::Label,
@@ -93,9 +93,9 @@ impl<'a> Layout for Label<&'a str> {
 }
 #[cfg(feature = "min_spec")]
 impl Layout for StringLabel {
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         let state = self.input_state(mgr, disabled);
-        draw_handle.text(
+        draw.text(
             self.core.rect.pos,
             self.label.as_ref(),
             TextClass::Label,
@@ -157,8 +157,16 @@ pub type StringLabel = Label<String>;
 
 /// A label supporting an accelerator key
 ///
-/// Accelerator keys are not useful on plain labels, but this widget may be
-/// embedded within a parent (e.g. `CheckBox` uses this).
+/// Accelerator keys are not useful on plain labels. To be useful, a parent
+/// widget must do something like:
+/// ```no_test
+/// impl WidgetConfig for Self {
+///     fn configure(&mut self, mgr: &mut Manager) {
+///         let target = self.id(); // widget receiving Event::Activate
+///         mgr.add_accel_keys(target, self.label.keys());
+///     }
+//// }
+/// ```
 pub type AccelLabel = Label<AccelString>;
 
 impl AccelLabel {

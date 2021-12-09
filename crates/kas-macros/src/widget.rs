@@ -4,14 +4,14 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 use crate::args::{Handler, Widget};
-use crate::{extend_generics, layout};
+use crate::extend_generics;
 use proc_macro2::TokenStream;
-use proc_macro_error::emit_error;
+use proc_macro_error::{emit_call_site_warning, emit_error, emit_warning};
 use quote::{quote, TokenStreamExt};
-use syn::parse_quote;
 use syn::spanned::Spanned;
+use syn::{parse_quote, Result};
 
-pub(crate) fn widget(mut args: Widget) -> TokenStream {
+pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
     let mut toks = quote! { #args };
 
     let name = &args.ident;
@@ -27,6 +27,7 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
 
     let mut impl_widget_children = true;
     let mut impl_widget_config = true;
+    let mut has_find_id_impl = args.attr_widget.layout.is_some();
     let mut handler_impl = None;
     let mut send_event_impl = None;
     for (index, impl_) in args.extra_impls.iter().enumerate() {
@@ -54,6 +55,23 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
                 }
                 // TODO: if args.widget_attr.config.is_some() { warn unused }
                 impl_widget_config = false;
+            } else if *path == parse_quote! { ::kas::Layout }
+                || *path == parse_quote! { kas::Layout }
+                || *path == parse_quote! { Layout }
+            {
+                if args.attr_widget.layout.is_some() {
+                    emit_error!(
+                        impl_.span(),
+                        "impl conflicts with use of #[widget(layout=...;)]"
+                    );
+                }
+                for item in &impl_.items {
+                    if let syn::ImplItem::Method(method) = item {
+                        if method.sig.ident == "layout" || method.sig.ident == "find_id" {
+                            has_find_id_impl = true;
+                        }
+                    }
+                }
             } else if *path == parse_quote! { ::kas::event::Handler }
                 || *path == parse_quote! { kas::event::Handler }
                 || *path == parse_quote! { event::Handler }
@@ -83,11 +101,16 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
         }
     }
 
+    if !has_find_id_impl && (!impl_widget_children || !args.children.is_empty()) {
+        emit_call_site_warning!("widget appears to have children yet does not implement Layout::layout or Layout::find_id; this may cause incorrect handling of mouse/touch events");
+    }
+
     let (mut impl_generics, ty_generics, mut where_clause) = args.generics.split_for_impl();
     let widget_name = name.to_string();
 
     let (core_data, core_data_mut) = args
         .core_data
+        .as_ref()
         .map(|cd| (quote! { &self.#cd }, quote! { &mut self.#cd }))
         .unwrap_or_else(|| {
             let inner = opt_derive.as_ref().unwrap();
@@ -187,10 +210,9 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
     }
 
     if impl_widget_config {
-        let config = args.attr_widget.config.unwrap_or_default();
-        let key_nav = config.key_nav;
-        let hover_highlight = config.hover_highlight;
-        let cursor_icon = config.cursor_icon;
+        let key_nav = args.attr_widget.key_nav.value;
+        let hover_highlight = args.attr_widget.hover_highlight.value;
+        let cursor_icon = args.attr_widget.cursor_icon.value;
 
         toks.append_all(quote! {
             impl #impl_generics ::kas::WidgetConfig
@@ -207,6 +229,16 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
                 }
             }
         });
+    } else {
+        if let Some(span) = args.attr_widget.key_nav.span {
+            emit_warning!(span, "unused due to manual impl of `WidgetConfig`");
+        }
+        if let Some(span) = args.attr_widget.hover_highlight.span {
+            emit_warning!(span, "unused due to manual impl of `WidgetConfig`");
+        }
+        if let Some(span) = args.attr_widget.cursor_icon.span {
+            emit_warning!(span, "unused due to manual impl of `WidgetConfig`");
+        }
     }
 
     if let Some(inner) = opt_derive {
@@ -232,8 +264,8 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
                     self.#inner.set_rect(mgr, rect, align);
                 }
                 #[inline]
-                fn translation(&self, child_index: usize) -> ::kas::geom::Offset {
-                    self.#inner.translation(child_index)
+                fn translation(&self) -> ::kas::geom::Offset {
+                    self.#inner.translation()
                 }
                 #[inline]
                 fn spatial_nav(
@@ -245,42 +277,49 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
                     self.#inner.spatial_nav(mgr, reverse, from)
                 }
                 #[inline]
-                fn find_id(&self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
+                fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
                     self.#inner.find_id(coord)
                 }
                 #[inline]
                 fn draw(
-                    &self,
-                    draw_handle: &mut dyn ::kas::draw::DrawHandle,
+                    &mut self,
+                    draw: &mut dyn ::kas::draw::DrawHandle,
                     mgr: &::kas::event::ManagerState,
                     disabled: bool,
                 ) {
-                    self.#inner.draw(draw_handle, mgr, disabled);
+                    self.#inner.draw(draw, mgr, disabled);
                 }
             }
         });
-    } else if let Some(ref layout) = args.attr_layout {
-        match layout::data_type(&args.children, layout) {
-            Ok(dt) => toks.append_all(quote! {
-                impl #impl_generics ::kas::LayoutData
-                        for #name #ty_generics #where_clause
-                {
-                    #dt
+    } else if let Some(layout) = args.attr_widget.layout.take() {
+        let find_id = match args.attr_widget.find_id.value {
+            None => quote! {},
+            Some(find_id) => quote! {
+                fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
+                    if !self.rect().contains(coord) {
+                        return None;
+                    }
+                    #find_id
                 }
-            }),
-            Err(err) => return err.to_compile_error(),
-        }
+            },
+        };
 
-        match layout::derive(&args.children, layout, &args.layout_data) {
-            Ok(fns) => toks.append_all(quote! {
-                impl #impl_generics ::kas::Layout
-                        for #name #ty_generics #where_clause
-                {
-                    #fns
+        let core = args.core_data.as_ref().unwrap();
+        let layout = layout.generate(args.children.iter().map(|c| &c.ident))?;
+
+        toks.append_all(quote! {
+            impl #impl_generics ::kas::Layout for #name #ty_generics #where_clause {
+                fn layout<'a>(&'a mut self) -> ::kas::layout::Layout<'a> {
+                    use ::kas::WidgetCore;
+                    let mut _chain = &mut self.#core.layout;
+                    #layout
                 }
-            }),
-            Err(err) => return err.to_compile_error(),
-        }
+
+                #find_id
+            }
+        });
+    } else if let Some(span) = args.attr_widget.find_id.span {
+        emit_warning!(span, "unused without generated impl of `Layout`");
     }
 
     if let Some(index) = handler_impl {
@@ -427,5 +466,5 @@ pub(crate) fn widget(mut args: Widget) -> TokenStream {
         });
     }
 
-    toks
+    Ok(toks)
 }

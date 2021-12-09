@@ -5,10 +5,8 @@
 
 //! A grid widget
 
-use kas::layout::{
-    DynGridStorage, GridChildInfo, GridSetter, GridSolver, RulesSetter, RulesSolver,
-};
-use kas::{event, prelude::*};
+use kas::layout::{DynGridStorage, GridChildInfo, GridDimensions};
+use kas::{event, layout, prelude::*};
 use std::ops::{Index, IndexMut};
 
 /// A grid of boxed widgets
@@ -55,7 +53,7 @@ widget! {
         core: CoreData,
         widgets: Vec<(GridChildInfo, W)>,
         data: DynGridStorage,
-        dim: (u32, u32, u32, u32),
+        dim: GridDimensions,
     }
 
     impl WidgetChildren for Self {
@@ -81,53 +79,12 @@ widget! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, &mut self.data);
-            for child in self.widgets.iter_mut() {
-                solver.for_child(&mut self.data, child.0, |axis| {
-                    child.1.size_rules(size_handle, axis)
-                });
-            }
-            solver.finish(&mut self.data)
-        }
-
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
-            self.core.rect = rect;
-            let mut setter =
-                GridSetter::<Vec<i32>, Vec<i32>, _>::new(rect, self.dim, align, &mut self.data);
-
-            for child in self.widgets.iter_mut() {
-                child
-                    .1
-                    .set_rect(mgr, setter.child_rect(&mut self.data, child.0), align);
-            }
-        }
-
-        // TODO: we should probably implement spatial_nav (the same is true for
-        // macro-generated grid widgets).
-        // fn spatial_nav(&self, reverse: bool, from: Option<usize>) -> Option<usize> { .. }
-
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-
-            // TODO(opt): more efficient position solver (also for drawing)?
-            // Reverse iteration since the last valid candidate should be "on top"
-            for child in self.widgets.iter().rev() {
-                if let Some(id) = child.1.find_id(coord) {
-                    return Some(id);
-                }
-            }
-
-            Some(self.id())
-        }
-
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-            let disabled = disabled || self.is_disabled();
-            for child in &self.widgets {
-                child.1.draw(draw_handle, mgr, disabled)
-            }
+        fn layout(&mut self) -> layout::Layout<'_> {
+            layout::Layout::grid(
+                self.widgets.iter_mut().map(move |(info, w)| (*info, layout::Layout::single(w))),
+                self.dim,
+                &mut self.data,
+            )
         }
     }
 
@@ -170,19 +127,18 @@ impl<W: Widget> Grid<W> {
     }
 
     fn calc_dim(&mut self) {
-        let (mut cols, mut rows) = (0, 0);
-        let (mut col_spans, mut row_spans) = (0, 0);
+        let mut dim = GridDimensions::default();
         for child in &self.widgets {
-            cols = cols.max(child.0.col_end);
-            rows = rows.max(child.0.row_end);
+            dim.cols = dim.cols.max(child.0.col_end);
+            dim.rows = dim.rows.max(child.0.row_end);
             if child.0.col_end - child.0.col > 1 {
-                col_spans += 1;
+                dim.col_spans += 1;
             }
             if child.0.row_end - child.0.row > 1 {
-                row_spans += 1;
+                dim.row_spans += 1;
             }
         }
-        self.dim = (cols, rows, col_spans, row_spans);
+        self.dim = dim;
     }
 
     /// Construct via a builder
@@ -264,8 +220,8 @@ impl<'a, W: Widget> GridBuilder<'a, W> {
     ///
     /// The child is added to the end of the "list", thus appears last in
     /// navigation order.
-    pub fn push_cell(&mut self, col: u32, row: u32, widget: W) {
-        let info = GridChildInfo::new(col, row);
+    pub fn push_cell(&mut self, row: u32, col: u32, widget: W) {
+        let info = GridChildInfo::new(row, col);
         self.push(info, widget);
     }
 
@@ -273,43 +229,43 @@ impl<'a, W: Widget> GridBuilder<'a, W> {
     ///
     /// The child is added to the end of the "list", thus appears last in
     /// navigation order.
-    pub fn with_cell(self, col: u32, row: u32, widget: W) -> Self {
-        self.with_cell_span(col, row, 1, 1, widget)
+    pub fn with_cell(self, row: u32, col: u32, widget: W) -> Self {
+        self.with_cell_span(row, col, 1, 1, widget)
     }
 
     /// Add a child widget to the given cell, with spans
     ///
-    /// Parameters `col_span` and `row_span` are the number of columns/rows
+    /// Parameters `row_span` and `col_span` are the number of rows/columns
     /// spanned and should each be at least 1.
     ///
     /// The child is added to the end of the "list", thus appears last in
     /// navigation order.
-    pub fn push_cell_span(&mut self, col: u32, row: u32, col_span: u32, row_span: u32, widget: W) {
+    pub fn push_cell_span(&mut self, row: u32, col: u32, row_span: u32, col_span: u32, widget: W) {
         let info = GridChildInfo {
-            col,
-            col_end: col + col_span,
             row,
             row_end: row + row_span,
+            col,
+            col_end: col + col_span,
         };
         self.push(info, widget);
     }
 
     /// Add a child widget to the given cell, with spans, builder style
     ///
-    /// Parameters `col_span` and `row_span` are the number of columns/rows
+    /// Parameters `row_span` and `col_span` are the number of rows/columns
     /// spanned and should each be at least 1.
     ///
     /// The child is added to the end of the "list", thus appears last in
     /// navigation order.
     pub fn with_cell_span(
         mut self,
-        col: u32,
         row: u32,
-        col_span: u32,
+        col: u32,
         row_span: u32,
+        col_span: u32,
         widget: W,
     ) -> Self {
-        self.push_cell_span(col, row, col_span, row_span, widget);
+        self.push_cell_span(row, col, row_span, col_span, widget);
         self
     }
 
@@ -370,7 +326,7 @@ impl<'a, W: Widget> GridBuilder<'a, W> {
     }
 
     /// Get the first index of a child occupying the given cell, if any
-    pub fn find_child_cell(&self, col: u32, row: u32) -> Option<usize> {
+    pub fn find_child_cell(&self, row: u32, col: u32) -> Option<usize> {
         for (i, (info, _)) in self.0.iter().enumerate() {
             if info.col <= col && col < info.col_end && info.row <= row && row < info.row_end {
                 return Some(i);

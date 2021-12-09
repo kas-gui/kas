@@ -25,7 +25,9 @@ widget! {
     /// [`driver`] module or a custom implementation may be used.
     #[autoimpl(Debug skip view)]
     #[derive(Clone)]
-    #[layout(single)]
+    #[widget{
+        layout = single;
+    }]
     pub struct SingleView<
         T: SingleData + UpdHandler<(), V::Msg> + 'static,
         V: Driver<T::Item> = driver::Default,

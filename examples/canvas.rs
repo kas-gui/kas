@@ -13,7 +13,7 @@ use kas::widgets::Window;
 #[derive(Debug)]
 struct Program;
 impl CanvasDrawable for Program {
-    fn draw(&self, pixmap: &mut Pixmap) {
+    fn draw(&mut self, pixmap: &mut Pixmap) {
         let size = (200.0, 200.0);
         let scale = Transform::from_scale(
             f32::conv(pixmap.width()) / size.0,

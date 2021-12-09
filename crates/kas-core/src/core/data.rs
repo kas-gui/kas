@@ -14,7 +14,8 @@ use super::Layout;
 use super::Widget;
 use crate::event::{self, Manager};
 use crate::geom::Rect;
-use crate::{dir::Direction, layout, WindowId};
+use crate::layout::StorageChain;
+use crate::{dir::Direction, WindowId};
 
 #[cfg(feature = "winit")]
 pub use winit::window::Icon;
@@ -115,31 +116,25 @@ fn size_of_option_widget_id() {
 /// Common widget data
 ///
 /// All widgets should embed a `#[widget_core] core: CoreData` field.
-#[derive(Clone, Default, Debug)]
+#[derive(Default, Debug)]
 pub struct CoreData {
+    pub layout: StorageChain,
     pub rect: Rect,
     pub id: WidgetId,
     pub disabled: bool,
 }
 
-/// Trait to describe the type needed by the layout implementation.
-///
-/// The (non-trivial) [`layout`] engines require a storage field within their
-/// widget. For manual [`Layout`] implementations this may be specified
-/// directly, but to allow the `derive(Widget)` macro to specify the appropriate
-/// data type, a widget should include a field of the following form:
-/// ```none
-/// #[layout_data] layout_data: <Self as kas::LayoutData>::Data,
-/// ```
-///
-/// Ideally we would use an inherent associated type on the struct in question,
-/// but until rust-lang#8995 is implemented that is not possible. We also cannot
-/// place this associated type on the [`Widget`] trait itself, since then uses
-/// of the trait would require parameterisation. Thus, this trait.
-pub trait LayoutData {
-    type Data: Clone + fmt::Debug + Default;
-    type Solver: layout::RulesSolver;
-    type Setter: layout::RulesSetter;
+/// Note: the clone has default-initialised layout storage and identifier.
+/// Configuration and layout solving is required as for any other widget.
+impl Clone for CoreData {
+    fn clone(&self) -> Self {
+        CoreData {
+            layout: StorageChain::default(),
+            rect: self.rect,
+            id: WidgetId::default(),
+            disabled: self.disabled,
+        }
+    }
 }
 
 /// A widget which escapes its parent's rect

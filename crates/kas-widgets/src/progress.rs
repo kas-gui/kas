@@ -93,15 +93,15 @@ widget! {
             let mut ideal_size = Size::splat(self.width);
             ideal_size.set_component(self.direction, i32::MAX);
             let rect = align
-                .complete(Align::Centre, Align::Centre)
+                .complete(Align::Center, Align::Center)
                 .aligned_rect(ideal_size, rect);
             self.core.rect = rect;
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let dir = self.direction.as_direction();
             let state = self.input_state(mgr, disabled);
-            draw_handle.progress_bar(self.core.rect, dir, state, self.value);
+            draw.progress_bar(self.core.rect, dir, state, self.value);
         }
     }
 }

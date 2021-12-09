@@ -18,6 +18,12 @@ use log::{debug, trace};
 use std::time::Instant;
 use UpdatableHandler as UpdHandler;
 
+#[derive(Clone, Copy, Debug, Default)]
+struct Dim {
+    rows: i32,
+    cols: i32,
+}
+
 #[derive(Clone, Debug, Default)]
 struct WidgetData<K, W> {
     key: Option<K>,
@@ -55,10 +61,9 @@ widget! {
         data: T,
         widgets: Vec<WidgetData<T::Key, V::Widget>>,
         align_hints: AlignHints,
-        // TODO: the following three all have units of "the number of rows/cols"
-        ideal_len: Size,
-        alloc_len: Size,
-        cur_len: Size,
+        ideal_len: Dim,
+        alloc_len: Dim,
+        cur_len: Dim,
         child_size_min: Size,
         child_size_ideal: Size,
         child_inter_margin: Size,
@@ -90,9 +95,9 @@ widget! {
                 data,
                 widgets: Default::default(),
                 align_hints: Default::default(),
-                ideal_len: Size(5, 3),
-                alloc_len: Size::ZERO,
-                cur_len: Size::ZERO,
+                ideal_len: Dim { rows: 3, cols: 5 },
+                alloc_len: Dim::default(),
+                cur_len: Dim::default(),
                 child_size_min: Size::ZERO,
                 child_size_ideal: Size::ZERO,
                 child_inter_margin: Size::ZERO,
@@ -238,8 +243,8 @@ widget! {
         ///
         /// This affects the (ideal) size request and whether children are sized
         /// according to their ideal or minimum size but not the minimum size.
-        pub fn with_num_visible(mut self, cols: i32, rows: i32) -> Self {
-            self.ideal_len = Size(cols, rows);
+        pub fn with_num_visible(mut self, rows: i32, cols: i32) -> Self {
+            self.ideal_len = Dim { rows, cols };
             self
         }
 
@@ -257,11 +262,14 @@ widget! {
             let first_row = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
             let cols = self
                 .data
-                .col_iter_vec_from(first_col, self.alloc_len.0.cast());
+                .col_iter_vec_from(first_col, self.alloc_len.cols.cast());
             let rows = self
                 .data
-                .row_iter_vec_from(first_row, self.alloc_len.1.cast());
-            self.cur_len = Size(cols.len().cast(), rows.len().cast());
+                .row_iter_vec_from(first_row, self.alloc_len.rows.cast());
+            self.cur_len = Dim {
+                rows: rows.len().cast(),
+                cols: cols.len().cast(),
+            };
 
             let pos_start = self.core.rect.pos + self.frame_offset;
             let mut rect = Rect::new(pos_start, self.child_size);
@@ -273,7 +281,7 @@ widget! {
                     let ri = first_row + rn;
                     let i = (ci % cols.len()) + (ri % rows.len()) * cols.len();
                     let w = &mut self.widgets[i];
-                    let key = T::make_key(col, row);
+                    let key = T::make_key(row, col);
                     if w.key.as_ref() != Some(&key) {
                         if let Some(item) = self.data.get_cloned(&key) {
                             w.key = Some(key.clone());
@@ -369,7 +377,11 @@ widget! {
             self.child_inter_margin
                 .set_component(axis, (m.0 + m.1).max(inner_margin));
 
-            rules.multiply_with_margin(2, self.ideal_len.extract(axis));
+            let ideal_len = match axis.is_vertical() {
+                false => self.ideal_len.cols,
+                true => self.ideal_len.rows,
+            };
+            rules.multiply_with_margin(2, ideal_len);
             rules.set_stretch(rules.stretch().max(Stretch::High));
 
             let (rules, offset, size) = frame.surround_with_margin(rules);
@@ -382,12 +394,12 @@ widget! {
             self.core.rect = rect;
 
             let mut child_size = rect.size - self.frame_size;
-            if child_size.0 >= self.ideal_len.0 * self.child_size_ideal.0 {
+            if child_size.0 >= self.ideal_len.cols * self.child_size_ideal.0 {
                 child_size.0 = self.child_size_ideal.0;
             } else {
                 child_size.0 = self.child_size_min.0;
             }
-            if child_size.1 >= self.ideal_len.1 * self.child_size_ideal.1 {
+            if child_size.1 >= self.ideal_len.rows * self.child_size_ideal.1 {
                 child_size.1 = self.child_size_ideal.1;
             } else {
                 child_size.1 = self.child_size_min.1;
@@ -397,7 +409,10 @@ widget! {
 
             let skip = child_size + self.child_inter_margin;
             let vis_len = (rect.size + skip - Size::splat(1)).cwise_div(skip) + Size::splat(1);
-            self.alloc_len = vis_len;
+            self.alloc_len = Dim {
+                cols: vis_len.0,
+                rows: vis_len.1,
+            };
 
             let old_num = self.widgets.len();
             let num = usize::conv(vis_len.0) * usize::conv(vis_len.1);
@@ -432,7 +447,7 @@ widget! {
         ) -> Option<usize> {
             let _ = mgr; // TODO: this needs a rewrite like ListView::spatial_nav
 
-            let cur_len = usize::conv(self.cur_len.0) * usize::conv(self.cur_len.1);
+            let cur_len = usize::conv(self.cur_len.cols) * usize::conv(self.cur_len.rows);
             if cur_len == 0 {
                 return None;
             }
@@ -460,7 +475,7 @@ widget! {
                 let offset = self.scroll_offset();
                 let ci = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
                 let ri = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
-                let (cols, rows): (usize, usize) = (self.cur_len.0.cast(), self.cur_len.1.cast());
+                let (rows, cols): (usize, usize) = (self.cur_len.rows.cast(), self.cur_len.cols.cast());
                 let mut data = (ci % cols) * rows + (ri % rows);
                 if reverse {
                     data += last;
@@ -469,14 +484,19 @@ widget! {
             }
         }
 
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        #[inline]
+        fn translation(&self) -> Offset {
+            self.scroll_offset()
+        }
+
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
             }
 
             let coord = coord + self.scroll.offset();
-            let num = usize::conv(self.cur_len.0) * usize::conv(self.cur_len.1);
-            for child in &self.widgets[..num] {
+            let num = usize::conv(self.cur_len.cols) * usize::conv(self.cur_len.rows);
+            for child in &mut self.widgets[..num] {
                 if child.key.is_some() {
                     if let Some(id) = child.widget.find_id(coord) {
                         return Some(id);
@@ -486,16 +506,16 @@ widget! {
             Some(self.id())
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let disabled = disabled || self.is_disabled();
             let offset = self.scroll_offset();
-            let num = usize::conv(self.cur_len.0) * usize::conv(self.cur_len.1);
-            draw_handle.with_clip_region(self.core.rect, offset, &mut |draw_handle| {
-                for child in &self.widgets[..num] {
+            let num = usize::conv(self.cur_len.cols) * usize::conv(self.cur_len.rows);
+            draw.with_clip_region(self.core.rect, offset, &mut |draw| {
+                for child in &mut self.widgets[..num] {
                     if let Some(ref key) = child.key {
-                        child.widget.draw(draw_handle, mgr, disabled);
-                        if self.is_selected(key) {
-                            draw_handle.selection_box(child.widget.rect());
+                        child.widget.draw(draw, mgr, disabled);
+                        if self.selection.contains(key) {
+                            draw.selection_box(child.widget.rect());
                         }
                     }
                 }
@@ -659,7 +679,7 @@ widget! {
             let id = self.id();
             let (action, response) = if let Event::Command(cmd, _) = event {
                 // Simplified version of logic in update_widgets
-                let (cols, rows): (usize, usize) = (self.cur_len.0.cast(), self.cur_len.1.cast());
+                let (cols, rows): (usize, usize) = (self.cur_len.cols.cast(), self.cur_len.rows.cast());
 
                 let skip = self.child_size + self.child_inter_margin;
                 let offset = self.scroll_offset();

@@ -32,7 +32,9 @@ fn main() -> Result<(), kas::shell::Error> {
 
     let r = UpdateHandle::new();
     let selection_mode = make_widget! {
-        #[layout(right)]
+        #[widget{
+            layout = list(right): *;
+        }]
         #[handler(msg = SelectionMode)]
         struct {
             #[widget] _ = Label::new("Selection:"),
@@ -50,7 +52,9 @@ fn main() -> Result<(), kas::shell::Error> {
     let window = Window::new(
         "Filter-list",
         make_widget! {
-            #[layout(down)]
+            #[widget{
+                layout = list(down): *;
+            }]
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget(use_msg = set_selection_mode)] _ = selection_mode,

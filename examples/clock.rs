@@ -12,7 +12,7 @@ use log::info;
 use std::f32::consts::PI;
 use std::time::Duration;
 
-use kas::draw::{color, DrawIface, DrawRounded, PassType, TextClass};
+use kas::draw::{color, Draw, DrawIface, DrawRounded, PassType};
 use kas::geom::{Offset, Quad, Vec2};
 use kas::shell::draw::DrawPipe;
 use kas::text::util::set_text_and_prepare;
@@ -62,17 +62,18 @@ widget! {
             self.time_pos = pos;
         }
 
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, draw: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
             let col_face = color::Rgba::grey(0.4);
+            let col_time = color::Rgba::grey(0.0);
+            let col_date = color::Rgba::grey(0.2);
             let col_hands = color::Rgba8Srgb::rgb(124, 124, 170).into();
             let col_secs = color::Rgba8Srgb::rgb(203, 124, 124).into();
-            let text_class = TextClass::Label;
-            let state = self.input_state(mgr, disabled);
 
             // We use the low-level draw device to draw our clock. This means it is
             // not themeable, but gives us much more flexible draw routines.
-            let draw = draw_handle.draw_device();
-            // Use use DrawRounded methods, thus must downcast:
+            let draw = draw.draw_device();
+            // Rust does not (yet!) support downcast to trait-object, thus we must use the shell's
+            // DrawPipe (which is otherwise an implementation detail). This supports DrawRounded.
             let mut draw = DrawIface::<DrawPipe<()>>::downcast_from(draw).unwrap();
 
             let rect = self.core.rect;
@@ -92,6 +93,9 @@ widget! {
                 draw.rounded_line(centre + v * (r - l), centre + v * r, w, col_face);
             }
 
+            draw.text(self.date_pos.into(), self.date.as_ref(), col_date);
+            draw.text(self.time_pos.into(), self.time.as_ref(), col_time);
+
             // We use a new pass to control the draw order (force in front).
             let mut draw = draw.new_pass(rect, Offset::ZERO, PassType::Clip);
             let mut line_seg = |t: f32, r1: f32, r2: f32, w, col| {
@@ -107,9 +111,6 @@ widget! {
             line_seg(a_hour, 0.0, half * 0.55, half * 0.03, col_hands);
             line_seg(a_min, 0.0, half * 0.8, half * 0.015, col_hands);
             line_seg(a_sec, 0.0, half * 0.9, half * 0.005, col_secs);
-
-            draw_handle.text(self.date_pos, self.date.as_ref(), text_class, state);
-            draw_handle.text(self.time_pos, self.time.as_ref(), text_class, state);
         }
     }
 
@@ -146,7 +147,7 @@ widget! {
     impl Clock {
         fn new() -> Self {
             let env = kas::text::Environment {
-                align: (Align::Centre, Align::Centre),
+                align: (Align::Center, Align::Center),
                 dpp: 1.0,
                 ..Default::default()
             };

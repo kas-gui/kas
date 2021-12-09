@@ -152,13 +152,13 @@ impl EditGuard for ListEntryGuard {
 widget! {
     // The list entry
     #[derive(Clone, Debug)]
-    #[layout(column)]
+    #[widget{
+        layout = column: *;
+    }]
     #[handler(msg=EntryMsg)]
     struct ListEntry {
         #[widget_core]
         core: CoreData,
-        #[layout_data]
-        layout_data: <Self as kas::LayoutData>::Data,
         #[widget]
         label: StringLabel,
         #[widget]
@@ -180,7 +180,6 @@ impl Driver<(usize, bool, String)> for MyDriver {
         // Default instances are not shown, so the data is unimportant
         ListEntry {
             core: Default::default(),
-            layout_data: Default::default(),
             label: Label::new(String::default()),
             radio: RadioBox::new("display this entry", self.radio_group)
                 .on_select(move |_| Some(EntryMsg::Select)),
@@ -202,7 +201,9 @@ fn main() -> Result<(), kas::shell::Error> {
     env_logger::init();
 
     let controls = make_widget! {
-        #[layout(row)]
+        #[widget{
+            layout = row: *;
+        }]
         #[handler(msg = Control)]
         struct {
             #[widget] _ = Label::new("Number of rows:"),
@@ -242,7 +243,9 @@ fn main() -> Result<(), kas::shell::Error> {
     let window = Window::new(
         "Dynamic widget demo",
         make_widget! {
-            #[layout(column)]
+            #[widget{
+                layout = column: *;
+            }]
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget] _ = Label::new("Demonstration of dynamic widget creation / deletion"),

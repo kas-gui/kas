@@ -18,15 +18,24 @@ fn main() -> Result<(), kas::shell::Error> {
     let window = Window::new(
         "Layout demo",
         make_widget! {
-            #[layout(grid)]
+            #[widget{
+                layout = grid: {
+                    0, 1: self.title;
+                    0, 2: self.check;
+                    1, 0..3: self.lipsum;
+                    2, 0: align(center): self.abc;
+                    2..4, 1..3: align(stretch): self.crasit;
+                    3, 0: self.edit;
+                };
+            }]
             #[handler(msg = VoidMsg)]
             struct {
-                #[widget(row=0, col=1)] _ = Label::new("Layout demo"),
-                #[widget(row=1, col=0, cspan=3)] _ = Label::new(lipsum),
-                #[widget(row=2, col=0, halign=centre)] _ = Label::new("abc אבג def"),
-                #[widget(row=2, col=1, cspan=2, rspan=2, halign=stretch)] _ = ScrollLabel::new(crasit),
-                #[widget(row=3, col=0)] _ = EditBox::new("A small\nsample\nof text").multi_line(true),
-                #[widget(row=0, col=2)] _ = CheckBoxBare::new(),
+                #[widget] title = Label::new("Layout demo"),
+                #[widget] lipsum = Label::new(lipsum),
+                #[widget] abc = Label::new("abc אבג def"),
+                #[widget] crasit = ScrollLabel::new(crasit),
+                #[widget] edit = EditBox::new("A small\nsample\nof text").multi_line(true),
+                #[widget] check = CheckBoxBare::new(),
             }
         },
     );

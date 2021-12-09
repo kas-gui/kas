@@ -6,8 +6,7 @@
 //! A row or column with run-time adjustable contents
 
 use kas::dir::{Down, Right};
-use kas::layout::{self, RulesSetter, RulesSolver};
-use kas::{event, prelude::*};
+use kas::{event, layout, prelude::*};
 use std::ops::{Index, IndexMut};
 
 /// Support for optionally-indexed messages
@@ -205,73 +204,8 @@ widget! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let dim = (self.direction, self.widgets.len());
-            let mut solver = layout::RowSolver::new(axis, dim, &mut self.data);
-            for (n, child) in self.widgets.iter_mut().enumerate() {
-                solver.for_child(&mut self.data, n, |axis| {
-                    child.size_rules(size_handle, axis)
-                });
-            }
-            solver.finish(&mut self.data)
-        }
-
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
-            self.core.rect = rect;
-            let dim = (self.direction, self.widgets.len());
-            let mut setter = layout::RowSetter::<D, Vec<i32>, _>::new(rect, dim, align, &mut self.data);
-
-            for (n, child) in self.widgets.iter_mut().enumerate() {
-                child.set_rect(mgr, setter.child_rect(&mut self.data, n), align);
-            }
-        }
-
-        fn spatial_nav(
-            &mut self,
-            _: &mut Manager,
-            reverse: bool,
-            from: Option<usize>,
-        ) -> Option<usize> {
-            if self.num_children() == 0 {
-                return None;
-            }
-
-            let last = self.num_children() - 1;
-            let reverse = reverse ^ self.direction.is_reversed();
-
-            if let Some(index) = from {
-                match reverse {
-                    false if index < last => Some(index + 1),
-                    true if 0 < index => Some(index - 1),
-                    _ => None,
-                }
-            } else {
-                match reverse {
-                    false => Some(0),
-                    true => Some(last),
-                }
-            }
-        }
-
-        fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-
-            let solver = layout::RowPositionSolver::new(self.direction);
-            if let Some(child) = solver.find_child(&self.widgets, coord) {
-                return child.find_id(coord);
-            }
-
-            Some(self.id())
-        }
-
-        fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-            let disabled = disabled || self.is_disabled();
-            let solver = layout::RowPositionSolver::new(self.direction);
-            solver.for_children(&self.widgets, draw_handle.get_clip_rect(), |w| {
-                w.draw(draw_handle, mgr, disabled)
-            });
+        fn layout(&mut self) -> layout::Layout<'_> {
+            make_layout!(self.core; slice(self.direction): self.widgets)
         }
     }
 

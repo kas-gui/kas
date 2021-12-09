@@ -5,7 +5,7 @@
 
 //! Filler widget
 
-use kas::{event, prelude::*};
+use kas::prelude::*;
 
 widget! {
     /// A space filler
@@ -30,7 +30,7 @@ widget! {
             SizeRules::empty(stretch)
         }
 
-        fn draw(&self, _: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {}
+        fn draw(&mut self, _: &mut dyn DrawHandle, _: &ManagerState, _: bool) {}
     }
 }
 
