@@ -469,7 +469,7 @@ pub trait Layout: WidgetChildren {
     /// -   [`Self::layout`] is not implemented and there are child widgets
     /// -   Any child widget should not receive events despite having a
     ///     placement in the layout — e.g. push-buttons (but note that
-    ///     [`kas::layout::Layout::button`] does take this into account)
+    ///     [`crate::layout::Layout::button`] does take this into account)
     /// -   Mouse/touch events should be passed to a child widget *outside* of
     ///     this child's area — e.g. a label next to a checkbox
     /// -   The child widget is in a translated coordinate space *not equal* to

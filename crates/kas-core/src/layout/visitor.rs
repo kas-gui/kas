@@ -148,6 +148,9 @@ impl<'a> Layout<'a> {
     }
 
     /// Construct a button frame around a sub-layout
+    ///
+    /// Generates a button frame containing the child node. Mouse/touch input
+    /// on the button reports input to `self`, not to the child node.
     pub fn button(data: &'a mut FrameStorage, child: Self, color: Option<Rgb>) -> Self {
         let layout = LayoutType::Button(Box::new(child), data, color);
         Layout { layout }
