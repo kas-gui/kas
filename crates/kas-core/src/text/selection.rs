@@ -121,7 +121,7 @@ impl SelectionHelper {
                     let pos = start + index;
                     (pos >= range.end).then(|| pos)
                 })
-                .unwrap_or_else(|| string.len());
+                .unwrap_or(string.len());
         } else {
             start = text.find_line(range.start).map(|r| r.1.start).unwrap_or(0);
             end = text
