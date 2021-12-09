@@ -711,7 +711,7 @@ widget! {
                 let solver = self.position_solver(mgr);
                 let cur = mgr
                     .nav_focus()
-                    .and_then(|id| self.find_child(id))
+                    .and_then(|id| self.find_child_index(id))
                     .map(|index| solver.child_to_data(index));
                 let last = self.data.len().wrapping_sub(1);
                 let is_vert = self.direction.is_vertical();

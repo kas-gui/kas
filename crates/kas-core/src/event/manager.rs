@@ -270,7 +270,7 @@ impl<'a> Manager<'a> {
             if let Some(id) = w_id {
                 let mut icon = widget.cursor_icon();
                 let mut widget = widget.as_widget();
-                while let Some(child) = widget.find_child(id) {
+                while let Some(child) = widget.find_child_index(id) {
                     widget = widget.get_child(child).unwrap();
                     let child_icon = widget.cursor_icon();
                     if child_icon != CursorIcon::Default {

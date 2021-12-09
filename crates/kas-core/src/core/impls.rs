@@ -58,8 +58,8 @@ impl<M: 'static> WidgetChildren for Box<dyn Widget<Msg = M>> {
         self.as_mut().get_child_mut(index)
     }
 
-    fn find_child(&self, id: WidgetId) -> Option<usize> {
-        self.as_ref().find_child(id)
+    fn find_child_index(&self, id: WidgetId) -> Option<usize> {
+        self.as_ref().find_child_index(id)
     }
     fn find_leaf(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
         self.as_ref().find_leaf(id)

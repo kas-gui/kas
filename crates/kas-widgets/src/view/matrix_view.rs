@@ -690,7 +690,7 @@ widget! {
 
                 let cur = mgr
                     .nav_focus()
-                    .and_then(|id| self.find_child(id))
+                    .and_then(|id| self.find_child_index(id))
                     .map(|index| {
                         let mut col_index = col_start + index % cols;
                         let mut row_index = row_start + index / cols;

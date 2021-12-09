@@ -424,18 +424,6 @@ widget! {
                 list: &mut self.widgets,
             }
         }
-
-        /// Get the index of the child which is an ancestor of `id`, if any
-        pub fn find_child_index(&self, id: WidgetId) -> Option<usize> {
-            if id >= self.first_id {
-                for (i, child) in self.widgets.iter().enumerate() {
-                    if id <= child.id() {
-                        return Some(i);
-                    }
-                }
-            }
-            None
-        }
     }
 
     impl Index<usize> for Self {

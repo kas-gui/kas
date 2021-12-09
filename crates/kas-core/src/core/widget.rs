@@ -222,7 +222,7 @@ pub trait WidgetChildren: WidgetCore {
     ///
     /// This requires that the widget tree has already been configured by
     /// [`event::ManagerState::configure`].
-    fn find_child(&self, id: WidgetId) -> Option<usize> {
+    fn find_child_index(&self, id: WidgetId) -> Option<usize> {
         if id < self.first_id() || id >= self.id() {
             return None;
         }
@@ -244,7 +244,7 @@ pub trait WidgetChildren: WidgetCore {
     /// This requires that the widget tree has already been configured by
     /// [`event::ManagerState::configure`].
     fn find_leaf(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
-        if let Some(child) = self.find_child(id) {
+        if let Some(child) = self.find_child_index(id) {
             self.get_child(child).unwrap().find_leaf(id)
         } else if id == self.id() {
             return Some(self.as_widget());
@@ -258,7 +258,7 @@ pub trait WidgetChildren: WidgetCore {
     /// This requires that the widget tree has already been configured by
     /// [`ManagerState::configure`].
     fn find_leaf_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
-        if let Some(child) = self.find_child(id) {
+        if let Some(child) = self.find_child_index(id) {
             self.get_child_mut(child).unwrap().find_leaf_mut(id)
         } else if id == self.id() {
             return Some(self.as_widget_mut());
