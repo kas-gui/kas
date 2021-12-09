@@ -282,7 +282,9 @@
 //!     #[autoimpl(Deref, DerefMut on 0)]
 //!     #[autoimpl(class_traits where W: trait on 0)]
 //!     #[derive(Clone, Debug, Default)]
-//!     #[widget(derive = self.0)]
+//!     #[widget{
+//!         derive = self.0;
+//!     }]
 //!     #[handler(msg = <W as Handler>::Msg)]
 //!     pub struct ScrollBarRegion<W: Widget>(ScrollBars<ScrollRegion<W>>);
 //! }
@@ -297,7 +299,7 @@
 //! use kas::event::{Handler, Manager, Response, VoidMsg};
 //! use kas::macros::widget;
 //! use kas::widgets::StrLabel;
-//! use kas::{CoreData, LayoutData, Widget};
+//! use kas::{CoreData, Widget};
 //!
 //! #[derive(Debug)]
 //! enum ChildMessage { A }
