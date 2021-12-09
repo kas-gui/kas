@@ -396,8 +396,11 @@ pub enum Handler {
     Discard,
 }
 impl Handler {
-    pub fn is_none(&self) -> bool {
+    fn is_none(&self) -> bool {
         *self == Handler::None
+    }
+    fn is_some(&self) -> bool {
+        *self != Handler::None
     }
     pub fn any_ref(&self) -> Option<&Ident> {
         match self {
@@ -469,7 +472,7 @@ impl Parse for WidgetAttrArgs {
 
 impl ToTokens for WidgetAttrArgs {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        if !self.update.is_none() || !self.handler.is_none() {
+        if self.update.is_some() || self.handler.is_some() {
             let mut args = TokenStream::new();
             if let Some(ref ident) = self.update {
                 args.append_all(quote! { update = #ident });

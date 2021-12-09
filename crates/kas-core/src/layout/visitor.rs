@@ -24,14 +24,8 @@ use std::iter::ExactSizeIterator;
 /// used. We therefore use a simple linked list.
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct StorageChain(Option<(Box<StorageChain>, Box<dyn Storage>)>);
-
-impl Default for StorageChain {
-    fn default() -> Self {
-        StorageChain(None)
-    }
-}
 
 impl StorageChain {
     /// Access layout storage

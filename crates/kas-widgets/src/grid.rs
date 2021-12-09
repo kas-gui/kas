@@ -79,7 +79,7 @@ widget! {
     }
 
     impl Layout for Self {
-        fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
+        fn layout(&mut self) -> layout::Layout<'_> {
             layout::Layout::grid(
                 self.widgets.iter_mut().map(move |(info, w)| (*info, layout::Layout::single(w))),
                 self.dim,

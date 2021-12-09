@@ -38,7 +38,7 @@ widget! {
     }
 
     impl kas::Layout for Self {
-        fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
+        fn layout(&mut self) -> layout::Layout<'_> {
             let inner = layout::Layout::text(&mut self.layout_text, &mut self.label, TextClass::Button);
             layout::Layout::button(&mut self.layout_frame, inner, None)
         }

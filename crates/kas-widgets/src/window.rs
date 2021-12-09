@@ -31,7 +31,7 @@ widget! {
 
     impl Layout for Self {
         #[inline]
-        fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
+        fn layout(&mut self) -> layout::Layout<'_> {
             layout::Layout::single(&mut self.w)
         }
 

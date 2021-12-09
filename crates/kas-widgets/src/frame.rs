@@ -36,7 +36,7 @@ widget! {
     }
 
     impl Layout for Self {
-        fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
+        fn layout(&mut self) -> layout::Layout<'_> {
             make_layout!(self.core; frame(self.inner))
         }
     }

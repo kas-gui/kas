@@ -34,7 +34,7 @@ widget! {
     }
 
     impl Layout for Self {
-        fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
+        fn layout(&mut self) -> layout::Layout<'_> {
             let inner = layout::Layout::text(&mut self.layout_label, &mut self.label, TextClass::MenuLabel);
             layout::Layout::frame(&mut self.layout_frame, inner)
         }
@@ -126,7 +126,7 @@ widget! {
     }
 
     impl Layout for Self {
-        fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
+        fn layout(&mut self) -> layout::Layout<'_> {
             make_layout!(self.core; row: [self.checkbox, self.label])
         }
 

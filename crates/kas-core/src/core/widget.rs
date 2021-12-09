@@ -365,7 +365,7 @@ pub trait Layout: WidgetChildren {
     ///
     /// If used, this allows automatic implementation of `size_rules` and
     /// `set_rect` methods. The default case is the empty layout.
-    fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
+    fn layout(&mut self) -> layout::Layout<'_> {
         Default::default() // TODO: remove default impl
     }
 
@@ -487,7 +487,7 @@ pub trait Layout: WidgetChildren {
             return None;
         }
         let coord = coord + self.translation();
-        self.layout().find_id(coord).or(Some(self.id()))
+        self.layout().find_id(coord).or_else(|| Some(self.id()))
     }
 
     /// Draw a widget and its children

@@ -85,7 +85,7 @@ widget! {
     }
 
     impl Layout for Self {
-        fn layout<'a>(&'a mut self) -> layout::Layout<'a> {
+        fn layout(&mut self) -> layout::Layout<'_> {
             let arr = [
                 layout::Layout::single(&mut self.inner),
                 layout::Layout::text(&mut self.label_store, &mut self.label, TextClass::Label),
