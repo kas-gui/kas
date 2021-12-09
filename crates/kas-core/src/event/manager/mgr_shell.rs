@@ -33,7 +33,7 @@ impl ManagerState {
         ManagerState {
             config,
             scale_factor,
-            end_id: Default::default(),
+            widget_count: 0,
             modifiers: ModifiersState::empty(),
             char_focus: false,
             sel_focus: None,
@@ -84,7 +84,8 @@ impl ManagerState {
         // Re-assigning WidgetIds might invalidate state; to avoid this we map
         // existing ids to new ids
         let mut renames = HashMap::new();
-        let mut id = WidgetId::FIRST;
+        let mut count = 0;
+        let id = WidgetId::ROOT;
 
         // We re-create these instead of renaming IDs:
         debug_assert!(self.accel_stack.is_empty());
@@ -102,7 +103,9 @@ impl ManagerState {
         self.with(shell, |mgr| {
             mgr.push_accel_layer(false);
             widget.configure_recurse(ConfigureManager {
-                id: &mut id,
+                count: &mut count,
+                used: false,
+                id,
                 map: &mut renames,
                 mgr,
             });
@@ -114,10 +117,10 @@ impl ManagerState {
         });
         if self.action.contains(TkAction::RECONFIGURE) {
             warn!("Detected TkAction::RECONFIGURE during configure. This may cause a reconfigure-loop.");
-            if id == self.end_id {
+            if count == self.widget_count {
                 panic!("Reconfigure occurred with the same number of widgets — we are probably stuck in a reconfigure-loop.");
             }
-            self.end_id = id;
+            self.widget_count = count;
         }
 
         // Update input state to account for renamed widgets. Assumption: none
@@ -191,7 +194,7 @@ impl ManagerState {
                 }
             }
         }
-        self.time_updates.sort_by(|a, b| b.cmp(a)); // reverse sort
+        self.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
 
         for (handle, mut ids) in old_handle_updates.drain() {
             let new_ids = self
@@ -390,7 +393,7 @@ impl<'a> Manager<'a> {
             self.send_event(widget, update.1, Event::TimerUpdate(update.2));
         }
 
-        self.state.time_updates.sort_by(|a, b| b.cmp(a)); // reverse sort
+        self.state.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
     }
 
     /// Update widgets due to handle

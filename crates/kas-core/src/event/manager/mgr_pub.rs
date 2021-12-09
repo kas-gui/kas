@@ -168,7 +168,7 @@ impl<'a> Manager<'a> {
             break;
         }
 
-        self.state.time_updates.sort_by(|a, b| b.cmp(a)); // reverse sort
+        self.state.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
     }
 
     /// Subscribe to an update handle

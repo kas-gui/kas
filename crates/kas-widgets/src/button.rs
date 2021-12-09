@@ -149,11 +149,14 @@ widget! {
 
     impl SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<M> {
-            if id < self.id() {
-                self.inner.send(mgr, id, event).void_into()
-            } else {
-                debug_assert_eq!(id, self.id());
+            if self.is_disabled() {
+                return Response::Unhandled;
+            }
+            if id == self.id() {
                 Manager::handle_generic(self, mgr, event)
+            } else {
+                debug_assert!(self.inner.id().is_ancestor_of(id));
+                self.inner.send(mgr, id, event).void_into()
             }
         }
     }

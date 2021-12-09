@@ -121,9 +121,9 @@ widget! {
 
     impl WidgetConfig for Self {
         fn configure_recurse(&mut self, mut cmgr: ConfigureManager) {
+            self.core_data_mut().id = cmgr.get_id(self.id());
             cmgr.mgr().push_accel_layer(true);
-            self.list.configure_recurse(cmgr.child());
-            self.core_data_mut().id = cmgr.next_id(self.id());
+            self.list.configure_recurse(cmgr.child(0));
             let mgr = cmgr.mgr();
             mgr.pop_accel_layer(self.id());
             mgr.add_accel_keys(self.id(), self.label.text().keys());
@@ -188,7 +188,9 @@ widget! {
                 return Response::Unhandled;
             }
 
-            if id <= self.list.id() {
+            if id == self.id() {
+                Manager::handle_generic(self, mgr, event)
+            } else {
                 let r = self.list.send(mgr, id, event.clone());
 
                 match r {
@@ -210,8 +212,6 @@ widget! {
                         r
                     }
                 }
-            } else {
-                Manager::handle_generic(self, mgr, event)
             }
         }
     }

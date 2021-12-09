@@ -193,7 +193,7 @@ pub trait WidgetChildren: WidgetCore {
     /// This function assumes that `id` is a valid widget.
     #[inline]
     fn is_ancestor_of(&self, id: WidgetId) -> bool {
-        id <= self.id() && self.first_id() <= id
+        self.id().is_ancestor_of(id)
     }
 
     /// Find the child which is an ancestor of this `id`, if any
@@ -203,21 +203,9 @@ pub trait WidgetChildren: WidgetCore {
     ///
     /// This requires that the widget tree has already been configured by
     /// [`event::ManagerState::configure`].
+    #[inline]
     fn find_child_index(&self, id: WidgetId) -> Option<usize> {
-        if id < self.first_id() || id >= self.id() {
-            return None;
-        }
-
-        let (mut start, mut end) = (0, self.num_children());
-        while start + 1 < end {
-            let mid = start + (end - start) / 2;
-            if id <= self.get_child(mid - 1).unwrap().id() {
-                end = mid;
-            } else {
-                start = mid;
-            }
-        }
-        Some(start)
+        self.id().index_of_child(id)
     }
 
     /// Find the leaf (lowest descendant) with this `id`, if any
@@ -289,13 +277,12 @@ pub trait WidgetConfig: Layout {
     /// method but instead use [`WidgetConfig::configure`]; the exception is
     /// widgets with pop-ups.
     fn configure_recurse(&mut self, mut cmgr: ConfigureManager) {
-        self.record_first_id(cmgr.peek_next());
+        self.core_data_mut().id = cmgr.get_id(self.id());
         for i in 0..self.num_children() {
             if let Some(w) = self.get_child_mut(i) {
-                w.configure_recurse(cmgr.child());
+                w.configure_recurse(cmgr.child(i));
             }
         }
-        self.core_data_mut().id = cmgr.next_id(self.id());
         self.configure(cmgr.mgr());
     }
 

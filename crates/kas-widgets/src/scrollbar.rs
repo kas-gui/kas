@@ -250,17 +250,18 @@ widget! {
                 return Response::Unhandled;
             }
 
-            let offset = if id <= self.handle.id() {
-                match self.handle.send(mgr, id, event).try_into() {
-                    Ok(res) => return res,
-                    Err(offset) => offset,
-                }
-            } else {
+            let offset = if id == self.id() {
                 match event {
                     Event::PressStart { source, coord, .. } => {
                         self.handle.handle_press_on_track(mgr, source, coord)
                     }
                     _ => return Response::Unhandled,
+                }
+            } else {
+                debug_assert!(self.handle.id().is_ancestor_of(id));
+                match self.handle.send(mgr, id, event).try_into() {
+                    Ok(res) => return res,
+                    Err(offset) => offset,
                 }
             };
 
@@ -643,26 +644,24 @@ widget! {
                 return Response::Unhandled;
             }
 
-            if id <= self.horiz_bar.id() {
-                self.horiz_bar
+            match self.id().index_of_child(id) {
+                Some(0) => self.horiz_bar
                     .send(mgr, id, event)
                     .try_into()
                     .unwrap_or_else(|msg| {
                         let offset = Offset(msg, self.inner.scroll_offset().1);
                         self.inner.set_scroll_offset(mgr, offset);
                         Response::None
-                    })
-            } else if id <= self.vert_bar.id() {
-                self.vert_bar
+                    }),
+                Some(1) => self.vert_bar
                     .send(mgr, id, event)
                     .try_into()
                     .unwrap_or_else(|msg| {
                         let offset = Offset(self.inner.scroll_offset().0, msg);
                         self.inner.set_scroll_offset(mgr, offset);
                         Response::None
-                    })
-            } else if id <= self.inner.id() {
-                match self.inner.send(mgr, id, event) {
+                    }),
+                Some(2) => match self.inner.send(mgr, id, event) {
                     Response::Focus(rect) => {
                         // We assume that the scrollable inner already updated its
                         // offset; we just update the bar positions
@@ -672,9 +671,11 @@ widget! {
                     }
                     r => r,
                 }
-            } else {
-                debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
-                self.handle(mgr, event)
+                _ if id == self.id() => self.handle(mgr, event),
+                _ => {
+                    debug_assert!(false, "SendEvent::send: bad WidgetId");
+                    Response::None
+                }
             }
         }
     }

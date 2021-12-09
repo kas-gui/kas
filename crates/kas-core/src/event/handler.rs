@@ -95,26 +95,19 @@ pub trait SendEvent: Handler {
     /// if self.is_disabled() {
     ///     return Response::Unhandled;
     /// }
-    /// if id <= self.child1.id() {
-    ///     self.child1.event(mgr, id, event).into()
-    /// } else if id <= self.child2.id() {
-    ///     self.child2.event(mgr, id, event).into()
-    /// } ... {
-    /// } else {
-    ///     debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
-    ///     Manager::handle_generic(self, mgr, event)
+    /// match self.id().index_of_child(id) {
+    ///     Some(0) => self.child0.send(mgr, id, event).into(),
+    ///     Some(1) => self.child1.send(mgr, id, event).into(),
+    ///     // ...
+    ///     _ => {
+    ///         debug_assert_eq!(self.id(), id);
+    ///         Manager::handle_generic(self, mgr, event),
+    ///     }
     /// }
-    /// ```
-    /// Parents which don't handle any events themselves may simplify this:
-    /// ```no_test
-    /// if !self.is_disabled() && id <= self.w.id() {
-    ///     return self.w.send(mgr, id, event);
-    /// }
-    /// Response::Unhandled
     /// ```
     ///
-    /// When the child's [`Handler::Msg`] type is not [`VoidMsg`], its response
-    /// messages can be handled here (in place of `.into()` above).
+    /// When the child's [`Handler::Msg`] type is not something which converts
+    /// into the widget's own message type, it must be handled here (in place of `.into()`).
     ///
     /// The example above uses [`Manager::handle_generic`], which is an optional
     /// tool able to perform some simplifications on events. It is also valid to

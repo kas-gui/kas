@@ -64,10 +64,11 @@ widget! {
 
     impl SendEvent for Self where W::Msg: Into<VoidMsg> {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            if !self.is_disabled() && id <= self.w.id() {
+            if self.is_disabled() || id == self.id() {
+                Response::Unhandled
+            } else {
                 return self.w.send(mgr, id, event).into();
             }
-            Response::Unhandled
         }
     }
 
@@ -199,22 +200,18 @@ impl<W: Widget> Window<W> {
 
 // This is like WidgetChildren::find, but returns a translated Rect.
 fn find_rect(widget: &dyn WidgetConfig, id: WidgetId) -> Option<Rect> {
-    if id == widget.id() {
-        return Some(widget.rect());
-    } else if id > widget.id() {
-        return None;
-    }
-
-    for i in 0..widget.num_children() {
-        if let Some(w) = widget.get_child(i) {
-            if id > w.id() {
-                continue;
+    let wid = widget.id();
+    match wid.index_of_child(id) {
+        Some(i) => {
+            if let Some(w) = widget.get_child(i) {
+                find_rect(w, id).map(|rect| rect - widget.translation())
+            } else {
+                None
             }
-            return find_rect(w, id).map(|rect| rect - widget.translation());
         }
-        break;
+        None if wid == id => Some(widget.rect()),
+        _ => None,
     }
-    None
 }
 
 impl<W: Widget> Window<W> {

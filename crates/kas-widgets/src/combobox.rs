@@ -147,7 +147,11 @@ widget! {
                 return Response::Unhandled;
             }
 
-            if id <= self.popup.id() {
+            if id == self.id() {
+                Manager::handle_generic(self, mgr, event)
+            } else {
+                debug_assert!(self.popup.id().is_ancestor_of(id));
+
                 if let Event::NavFocus(key_focus) = event {
                     if self.popup_id.is_none() {
                         // Steal focus since child is invisible
@@ -160,8 +164,6 @@ widget! {
 
                 let r = self.popup.send(mgr, id, event.clone());
                 self.map_response(mgr, id, event, r)
-            } else {
-                Manager::handle_generic(self, mgr, event)
             }
         }
     }

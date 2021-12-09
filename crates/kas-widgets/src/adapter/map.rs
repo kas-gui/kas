@@ -54,7 +54,9 @@ widget! {
                 return Response::Unhandled;
             }
 
-            if id < self.id() {
+            if id == self.id() {
+                self.handle(mgr, event)
+            } else {
                 let r = self.inner.send(mgr, id, event);
                 r.try_into().unwrap_or_else(|msg| {
                     log::trace!(
@@ -65,9 +67,6 @@ widget! {
                     );
                     (self.map)(mgr, msg)
                 })
-            } else {
-                debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
-                self.handle(mgr, event)
             }
         }
     }

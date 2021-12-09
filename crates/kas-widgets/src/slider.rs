@@ -268,7 +268,7 @@ widget! {
                 return Response::Unhandled;
             }
 
-            let offset = if id <= self.handle.id() {
+            let offset = if self.handle.id().is_ancestor_of(id) {
                 match event {
                     Event::NavFocus(key_focus) => {
                         mgr.set_nav_focus(self.id(), key_focus);
@@ -280,6 +280,7 @@ widget! {
                     },
                 }
             } else {
+                debug_assert_eq!(id, self.id());
                 match event {
                     Event::NavFocus(true) => {
                         return Response::Focus(self.rect());

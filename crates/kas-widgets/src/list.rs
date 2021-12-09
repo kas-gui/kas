@@ -204,8 +204,8 @@ widget! {
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if !self.is_disabled() {
-                for (i, child) in self.widgets.iter_mut().enumerate() {
-                    if id <= child.id() {
+                if let Some(index) = self.id().index_of_child(id) {
+                    if let Some(child) = self.widgets.get_mut(index) {
                         let r = child.send(mgr, id, event);
                         return match Response::try_from(r) {
                             Ok(r) => r,
@@ -216,7 +216,7 @@ widget! {
                                     id,
                                     kas::util::TryFormat(&msg)
                                 );
-                                Response::Msg(FromIndexed::from_indexed(i, msg))
+                                Response::Msg(FromIndexed::from_indexed(index, msg))
                             }
                         };
                     }

@@ -131,7 +131,9 @@ widget! {
                 return Response::Unhandled;
             }
 
-            if id < self.id() {
+            if id == self.id() {
+                self.handle(mgr, event)
+            } else {
                 let r = self.child.send(mgr, id, event);
                 if matches!(&r, Response::Update | Response::Msg(_)) {
                     if let Some(value) = self.view.get(&self.child) {
@@ -152,9 +154,6 @@ widget! {
                     }
                 }
                 r
-            } else {
-                debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
-                self.handle(mgr, event)
             }
         }
     }

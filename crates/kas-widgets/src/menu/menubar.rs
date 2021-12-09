@@ -183,8 +183,10 @@ widget! {
                 return Response::Unhandled;
             }
 
-            if id <= self.bar.id() {
-                return match self.bar.send(mgr, id, event.clone()) {
+            if id == self.id() {
+                self.handle(mgr, event)
+            } else {
+                match self.bar.send(mgr, id, event.clone()) {
                     Response::Unhandled => self.handle(mgr, event),
                     r => r.try_into().unwrap_or_else(|(_, msg)| {
                         log::trace!(
@@ -195,10 +197,8 @@ widget! {
                         );
                         Response::Msg(msg)
                     }),
-                };
+                }
             }
-
-            self.handle(mgr, event)
         }
     }
 

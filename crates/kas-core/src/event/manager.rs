@@ -102,7 +102,7 @@ enum Pending {
 pub struct ManagerState {
     config: Rc<RefCell<Config>>,
     scale_factor: f32,
-    end_id: WidgetId,
+    widget_count: usize,
     modifiers: ModifiersState,
     /// char focus is on same widget as sel_focus; otherwise its value is ignored
     char_focus: bool,
@@ -519,37 +519,45 @@ impl<'a> Manager<'a> {
 
 /// Helper used during widget configuration
 pub struct ConfigureManager<'a: 'b, 'b> {
-    id: &'b mut WidgetId,
+    count: &'b mut usize,
+    used: bool,
+    id: WidgetId,
     map: &'b mut HashMap<WidgetId, WidgetId>,
     mgr: &'b mut Manager<'a>,
 }
 
 impl<'a: 'b, 'b> ConfigureManager<'a, 'b> {
     /// Reborrow self to pass to a child
-    pub fn child<'c>(&'c mut self) -> ConfigureManager<'a, 'c>
+    ///
+    /// The child's `index` becomes part of the identifier, and hence must be
+    /// unique.
+    pub fn child<'c>(&'c mut self, index: usize) -> ConfigureManager<'a, 'c>
     where
         'b: 'c,
     {
         ConfigureManager {
-            id: &mut *self.id,
+            count: &mut *self.count,
+            used: false,
+            id: self.id.make_child(index),
             map: &mut *self.map,
             mgr: &mut *self.mgr,
         }
     }
 
-    /// Get the next [`WidgetId`], without advancing the counter
-    pub fn peek_next(&self) -> WidgetId {
-        *self.id
-    }
-
-    /// Get a new [`WidgetId`] for the widget
+    /// Get [`WidgetId`] for self
+    ///
+    /// Do not call more than once on each instance. Create a new instance with
+    /// [`Self::child`].
     ///
     /// Pass the old ID (`self.id()`), even if not yet configured.
-    pub fn next_id(&mut self, old_id: WidgetId) -> WidgetId {
-        let id = *self.id;
-        *self.id = id.next();
-        self.map.insert(old_id, id);
-        id
+    pub fn get_id(&mut self, old_id: WidgetId) -> WidgetId {
+        assert!(
+            !self.used,
+            "multiple use of ConfigureManager::get_id without construction of child"
+        );
+        self.used = true;
+        self.map.insert(old_id, self.id);
+        self.id
     }
 
     /// Get access to the wrapped [`Manager`]

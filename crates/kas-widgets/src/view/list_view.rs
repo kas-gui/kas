@@ -549,20 +549,13 @@ widget! {
                 return Response::Unhandled;
             }
 
-            if id < self.id() {
+            if let Some(index) = self.id().index_of_child(id) {
                 let child_event = self.scroll.offset_event(event.clone());
-                let index;
-                let response = 'outer: loop {
-                    // We forward events to all children, even if not visible
-                    // (e.g. these may be subscribed to an UpdateHandle).
-                    for (i, child) in self.widgets.iter_mut().enumerate() {
-                        if id <= child.widget.id() {
-                            index = i;
-                            let r = child.widget.send(mgr, id, child_event);
-                            break 'outer (child.key.clone(), r);
-                        }
-                    }
-                    debug_assert!(false, "SendEvent::send: bad WidgetId");
+                let response;
+                if let Some(child) = self.widgets.get_mut(index) {
+                    let r = child.widget.send(mgr, id, child_event);
+                    response = (child.key.clone(), r);
+                } else {
                     return Response::Unhandled;
                 };
                 if matches!(&response.1, Response::Update | Response::Msg(_)) {

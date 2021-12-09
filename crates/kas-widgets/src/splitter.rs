@@ -217,29 +217,23 @@ widget! {
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if !self.is_disabled() && !self.widgets.is_empty() {
-                assert!(self.handles.len() + 1 == self.widgets.len());
-                let mut n = 0;
-                loop {
-                    assert!(n < self.widgets.len());
-                    if id <= self.widgets[n].id() {
-                        return self.widgets[n].send(mgr, id, event);
-                    }
-
-                    if n >= self.handles.len() {
-                        break;
-                    }
-                    if id <= self.handles[n].id() {
-                        return self.handles[n]
-                            .send(mgr, id, event)
-                            .try_into()
-                            .unwrap_or_else(|_| {
+                if let Some(index) = self.id().index_of_child(id) {
+                    if (index & 1) == 0 {
+                        if let Some(w) = self.widgets.get_mut(index >> 1) {
+                            return w.send(mgr, id, event);
+                        }
+                    } else {
+                        let n = index >> 1;
+                        if let Some(h) = self.handles.get_mut(n) {
+                            let r = h.send(mgr, id, event);
+                            return r.try_into().unwrap_or_else(|_| {
                                 // Message is the new offset relative to the track;
                                 // the handle has already adjusted its position
                                 self.adjust_size(mgr, n);
                                 Response::None
                             });
+                        }
                     }
-                    n += 1;
                 }
             }
 
