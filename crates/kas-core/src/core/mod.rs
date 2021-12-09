@@ -8,9 +8,11 @@
 mod data;
 mod impls;
 mod widget;
+mod widget_id;
 
 pub use data::*;
 pub use widget::*;
+pub use widget_id::WidgetId;
 
 /// Provides a convenient `.boxed()` method on implementors
 pub trait Boxed<T: ?Sized> {
