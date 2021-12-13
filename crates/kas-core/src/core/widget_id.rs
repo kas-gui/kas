@@ -23,7 +23,7 @@ use std::sync::Mutex;
 /// Identifiers are assigned when configured and when re-configured
 /// (via [`crate::TkAction::RECONFIGURE`]). Since user-code is not notified of a
 /// re-configure, user-code should not store a `WidgetId`.
-#[derive(Clone, Copy, Debug, Hash, Eq)]
+#[derive(Clone, Copy, Hash, Eq)]
 pub struct WidgetId(NonZeroU64);
 
 /// The first byte (head) controls interpretation of the rest
@@ -89,7 +89,35 @@ impl WidgetId {
 
     /// Returns true if `self` equals `id` or if `id` is a descendant of `self`
     pub fn is_ancestor_of(self, id: Self) -> bool {
-        self.index_of_child(id).is_some()
+        let self_id = self.0.get();
+        let child_id = id.0.get();
+        if (child_id & USE_BITS) != 0 {
+            let self_blocks = block_len(self_id);
+            let child_blocks = block_len(child_id);
+            if (self_id & USE_BITS) == 0 || self_blocks > child_blocks {
+                return false;
+            }
+
+            let shift = 4 * (BLOCKS - self_blocks);
+            return (self_id & MASK_REST) >> shift == (child_id & MASK_REST) >> shift;
+        }
+
+        if (child_id & USE_DB) == 0 {
+            return false;
+        }
+
+        let db = DB.lock().unwrap();
+        let child_i = usize::conv(child_id & MASK_REST);
+
+        if (self_id & USE_BITS) != 0 {
+            let iter = BitsIter::new(self_id);
+            iter.zip(db[child_i].iter()).all(|(a, b)| a == *b)
+        } else if (self_id & USE_DB) != 0 {
+            let self_i = usize::conv(self_id & MASK_REST);
+            db[child_i].starts_with(&db[self_i])
+        } else {
+            false
+        }
     }
 
     /// Get index of `child` relative to `self`
@@ -243,6 +271,13 @@ impl Default for WidgetId {
     }
 }
 
+impl fmt::Debug for WidgetId {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "WidgetId({})", self)
+    }
+}
+
 impl fmt::Display for WidgetId {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let self_id = self.0.get();
@@ -311,6 +346,9 @@ mod test {
             if v != x {
                 panic!("test({:?}, {:x}): found {:x}", seq, x, v);
             }
+
+            // Every id is its own ancestor:
+            assert!(id.is_ancestor_of(id));
         }
 
         test(&[], USE_BITS);
@@ -353,7 +391,7 @@ mod test {
             println!("id2={} val={:x} from {:?}", id2, u64::from(id2), seq2);
             let next = seq2.iter().next().cloned();
             assert_eq!(id.index_of_child(id2), next);
-            assert_eq!(id.is_ancestor_of(id2), next.is_some());
+            assert_eq!(id.is_ancestor_of(id2), next.is_some() || id == id2);
         }
 
         test(&[], &[]);
@@ -365,6 +403,7 @@ mod test {
         test(&[9, 9, 9, 9, 9, 9, 9], &[]);
         test(&[9, 9, 9, 9, 9, 9, 9], &[6]);
         test(&[9, 9, 9, 9, 9, 9, 9, 9], &[3]);
+        test(&[0, 2, 2, 0, 17], &[0]);
     }
 
     #[test]
