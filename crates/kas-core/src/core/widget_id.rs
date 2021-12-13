@@ -5,7 +5,7 @@
 
 //! Widget identifiers
 
-use crate::cast::Conv;
+use crate::cast::{Cast, Conv};
 use std::fmt;
 use std::iter::once;
 use std::mem::size_of;
@@ -54,7 +54,7 @@ fn next_from_bits(mut x: u64) -> (usize, u8) {
         y = (y << 3) | ((x & TAKE) >> 60);
         c += 1;
     }
-    (y as usize, c)
+    (y.cast(), c)
 }
 
 struct BitsIter(u8, u64);
