@@ -268,15 +268,10 @@ impl<'a> Manager<'a> {
             self.state.hover = w_id;
 
             if let Some(id) = w_id {
-                let mut icon = widget.cursor_icon();
-                let mut widget = widget.as_widget();
-                while let Some(child) = widget.find_child_index(id) {
-                    widget = widget.get_child(child).unwrap();
-                    let child_icon = widget.cursor_icon();
-                    if child_icon != CursorIcon::Default {
-                        icon = child_icon;
-                    }
-                }
+                let icon = widget
+                    .find_leaf(id)
+                    .map(|w| w.cursor_icon())
+                    .unwrap_or_default();
                 if icon != self.state.hover_icon {
                     self.state.hover_icon = icon;
                     if self.state.mouse_grab.is_none() {

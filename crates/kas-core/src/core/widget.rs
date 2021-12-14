@@ -305,6 +305,10 @@ pub trait WidgetConfig: Layout {
 
     /// Which cursor icon should be used on hover?
     ///
+    /// The "hovered" widget is determined by [`Layout::find_id`], thus is the
+    /// same widget which would receive click events. Other widgets do not
+    /// affect the cursor icon used.
+    ///
     /// Defaults to [`event::CursorIcon::Default`].
     #[inline]
     fn cursor_icon(&self) -> event::CursorIcon {
