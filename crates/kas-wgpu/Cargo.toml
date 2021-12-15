@@ -32,6 +32,9 @@ stack_dst = ["kas-theme/stack_dst"]
 # Use kas-theme's unsize feature (nightly-only)
 unsize = ["kas-theme/unsize"]
 
+# Support web target (experimental)
+web = ["wgpu/spirv-web"]
+
 [dependencies]
 bytemuck = "1.7.0"
 futures = "0.3"

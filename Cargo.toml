@@ -86,6 +86,9 @@ stack_dst = ["kas-core/stack_dst", "kas-theme/stack_dst", "kas-wgpu/stack_dst"]
 # Use the unstable 'unsize' feature
 unsize = ["kas-theme/unsize", "kas-wgpu/unsize"]
 
+# Support web target (experimental)
+web = ["kas-wgpu/web"]
+
 winit = ["kas-core/winit"]
 
 [dependencies]
