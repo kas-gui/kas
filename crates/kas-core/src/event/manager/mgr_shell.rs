@@ -5,11 +5,11 @@
 
 //! Event manager — shell API
 
+use instant::{Duration, Instant};
 use log::*;
 use smallvec::SmallVec;
 use std::collections::HashMap;
 use std::mem::swap;
-use std::time::{Duration, Instant};
 
 use super::*;
 use crate::cast::Conv;

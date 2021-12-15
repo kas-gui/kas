@@ -8,13 +8,13 @@
 // Without winit, several things go unused
 #![cfg_attr(not(feature = "winit"), allow(unused))]
 
+use instant::Instant;
 use linear_map::{set::LinearSet, LinearMap};
 use log::trace;
 use smallvec::SmallVec;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::time::Instant;
 use std::u16;
 
 use super::*;

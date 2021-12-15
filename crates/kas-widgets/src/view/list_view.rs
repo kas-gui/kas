@@ -9,13 +9,13 @@ use super::{driver, Driver, PressPhase, SelectionError, SelectionMode};
 #[allow(unused)] // doc links
 use crate::ScrollBars;
 use crate::{ScrollComponent, Scrollable};
+use instant::Instant;
 use kas::event::{ChildMsg, Command, CursorIcon, GrabMode, PressSource};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
 use kas::updatable::{ListData, UpdatableHandler};
 use linear_map::set::LinearSet;
 use log::{debug, trace};
-use std::time::Instant;
 use UpdatableHandler as UpdHandler;
 
 #[derive(Clone, Debug, Default)]

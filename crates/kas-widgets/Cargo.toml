@@ -29,6 +29,7 @@ unicode-segmentation = "1.7"
 linear-map = "1.2.0"
 thiserror = "1.0.23"
 image = "0.23.14"
+instant = "0.1.12"
 kas-macros = { version = "0.10.0", path = "../kas-macros" }
 
 # We must rename this package since macros expect kas to be in scope:
