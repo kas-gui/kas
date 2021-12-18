@@ -396,7 +396,7 @@ widget! {
                     self.update_view(mgr);
                     Response::Update
                 }
-                _ => Response::Unhandled,
+                _ => Response::Unused,
             }
         }
     }

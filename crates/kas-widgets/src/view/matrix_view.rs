@@ -517,7 +517,7 @@ widget! {
     impl SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
-                return Response::Unhandled;
+                return Response::Unused;
             }
 
             if let Some(index) = self.id().index_of_child(id) {
@@ -527,7 +527,7 @@ widget! {
                     let r = child.widget.send(mgr, id, child_event);
                     response = (child.key.clone(), r);
                 } else {
-                    return Response::Unhandled;
+                    return Response::Unused;
                 };
                 if matches!(&response.1, Response::Update | Response::Msg(_)) {
                     let wd = &self.widgets[index];
@@ -540,7 +540,7 @@ widget! {
                     }
                 }
                 match response {
-                    (key, Response::Unhandled) => {
+                    (key, Response::Unused) => {
                         if let Event::PressStart { source, coord, .. } = event {
                             if source.is_primary() {
                                 // We request a grab with our ID, hence the

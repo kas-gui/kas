@@ -96,7 +96,7 @@ widget! {
         fn handle(&mut self, _: &mut Manager, event: Event) -> Response<M> {
             match event {
                 Event::Activate => self.msg.clone().into(),
-                _ => Response::Unhandled,
+                _ => Response::Unused,
             }
         }
     }

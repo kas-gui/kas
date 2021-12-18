@@ -18,23 +18,24 @@ use crate::geom::{Offset, Rect};
 #[derive(Clone, Debug)]
 #[must_use]
 pub enum Response<M> {
-    /// Unhandled event
+    /// Event was unused
     ///
-    /// Indicates that the event was not consumed. An ancestor or the event
-    /// manager is thus able to make use of this event.
-    Unhandled,
-    /// Event is consumed; no active response
+    /// Unused events may be used by a parent/ancestor widget or passed to
+    /// another handler until used.
+    Unused,
+    /// Event is used, no other result
     ///
-    /// This implies that the event was consumed, but does not affect parents.
-    /// Note that we consider "view changes" (i.e. scrolling) to not be of
-    /// external interest.
+    /// All variants besides `Unused` indicate that the event was used. This
+    /// variant is used when no further action happens.
     Used,
     /// Pan scrollable regions by the given delta
     ///
     /// With the usual scroll offset conventions, this delta must be subtracted
     /// from the scroll offset.
     Pan(Offset),
-    /// (Keyboard) focus has changed. This region should be made visible.
+    /// (Keyboard) focus has changed
+    ///
+    /// This region (in the child's coordinate space) should be made visible.
     Focus(Rect),
     /// Widget wishes to be selected (or have selection status toggled)
     Select,
@@ -78,10 +79,10 @@ impl<M> Response<M> {
         matches!(self, Response::Used)
     }
 
-    /// True if variant is `Unhandled`
+    /// True if variant is `Unused`
     #[inline]
-    pub fn is_unhandled(&self) -> bool {
-        matches!(self, Response::Unhandled)
+    pub fn is_unused(&self) -> bool {
+        matches!(self, Response::Unused)
     }
 
     /// True if variant is `Msg`
@@ -119,7 +120,7 @@ impl<M> Response<M> {
     pub fn try_from<N>(r: Response<N>) -> Result<Self, N> {
         use Response::*;
         match r {
-            Unhandled => Ok(Unhandled),
+            Unused => Ok(Unused),
             Used => Ok(Used),
             Pan(delta) => Ok(Pan(delta)),
             Focus(rect) => Ok(Focus(rect)),

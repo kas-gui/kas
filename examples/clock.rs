@@ -139,7 +139,7 @@ widget! {
                     mgr.update_on_timer(Duration::new(0, ns), self.id(), 0);
                     Response::Used
                 }
-                _ => Response::Unhandled,
+                _ => Response::Unused,
             }
         }
     }

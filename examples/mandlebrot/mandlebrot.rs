@@ -365,7 +365,7 @@ widget! {
                                 Command::Down => DVec2(0.0, d),
                                 Command::Left => DVec2(-d, 0.0),
                                 Command::Right => DVec2(d, 0.0),
-                                _ => return Response::Unhandled,
+                                _ => return Response::Unused,
                             };
                             self.delta += self.alpha.complex_mul(delta);
                         }
@@ -410,7 +410,7 @@ widget! {
                     );
                     Response::Used
                 }
-                _ => Response::Unhandled,
+                _ => Response::Unused,
             }
         }
     }

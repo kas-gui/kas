@@ -79,7 +79,7 @@ widget! {
                     mgr.redraw(self.id());
                     Response::Used
                 }
-                _ => Response::Unhandled,
+                _ => Response::Unused,
             }
         }
     }

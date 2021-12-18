@@ -67,7 +67,7 @@ widget! {
                         Response::Used
                     }
                 }
-                _ => Response::Unhandled,
+                _ => Response::Unused,
             }
         }
     }

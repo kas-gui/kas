@@ -60,11 +60,11 @@ pub trait Handler: WidgetConfig {
     /// Handle an event and return a user-defined message
     ///
     /// Widgets should handle any events applicable to themselves here, and
-    /// return all other events via [`Response::Unhandled`].
+    /// return all other events via [`Response::Unused`].
     #[inline]
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
         let _ = (mgr, event);
-        Response::Unhandled
+        Response::Unused
     }
 }
 
@@ -93,7 +93,7 @@ pub trait SendEvent: Handler {
     /// The following logic is recommended for routing events:
     /// ```no_test
     /// if self.is_disabled() {
-    ///     return Response::Unhandled;
+    ///     return Response::Unused;
     /// }
     /// match self.id().index_of_child(id) {
     ///     Some(0) => self.child0.send(mgr, id, event).into(),

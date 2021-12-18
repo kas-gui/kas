@@ -32,7 +32,7 @@ pub enum Event {
     /// This represents a control or navigation action, usually from the
     /// keyboard. It is sent to whichever widget is "most appropriate", then
     /// potentially to the "next most appropriate" target if the first returns
-    /// [`Response::Unhandled`], until handled or no more appropriate targets
+    /// [`Response::Unused`], until handled or no more appropriate targets
     /// are available (the exact logic is encoded in `Manager::start_key_event`).
     ///
     /// In some cases keys are remapped, e.g. a widget with selection focus but
@@ -193,7 +193,7 @@ pub enum Command {
     ///
     /// Each press of this key should somehow relax control. It is expected that
     /// widgets receiving this key repeatedly eventually (soon) have no more
-    /// use for this themselves and return it via [`Response::Unhandled`].
+    /// use for this themselves and return it via [`Response::Unused`].
     ///
     /// This is in some cases remapped to [`Command::Deselect`].
     Escape,

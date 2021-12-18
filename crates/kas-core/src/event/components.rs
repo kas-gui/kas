@@ -38,7 +38,7 @@ pub enum TextInputAction {
     /// No action (event consumed)
     None,
     /// Event not used
-    Unhandled,
+    Unused,
     /// Pan text using the given `delta`
     Pan(Offset),
     /// Keyboard focus should be requested (if not already active)
@@ -129,12 +129,12 @@ impl TextInput {
                         Action::Cursor(coord, false, !mgr.modifiers().shift(), 1)
                     }
                     // Note: if the TimerUpdate were from another requester it
-                    // should technically be Unhandled, but it doesn't matter
+                    // should technically be Unused, but it doesn't matter
                     // so long as other consumers match this first.
                     _ => Action::None,
                 }
             }
-            _ => Action::Unhandled,
+            _ => Action::Unused,
         }
     }
 }

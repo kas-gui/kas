@@ -247,7 +247,7 @@ widget! {
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
-                return Response::Unhandled;
+                return Response::Unused;
             }
 
             let offset = if id == self.id() {
@@ -255,7 +255,7 @@ widget! {
                     Event::PressStart { source, coord, .. } => {
                         self.handle.handle_press_on_track(mgr, source, coord)
                     }
-                    _ => return Response::Unhandled,
+                    _ => return Response::Unused,
                 }
             } else {
                 debug_assert!(self.handle.id().is_ancestor_of(id));
@@ -641,7 +641,7 @@ widget! {
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
-                return Response::Unhandled;
+                return Response::Unused;
             }
 
             match self.id().index_of_child(id) {
@@ -674,7 +674,7 @@ widget! {
                 _ if id == self.id() => self.handle(mgr, event),
                 _ => {
                     debug_assert!(false, "SendEvent::send: bad WidgetId");
-                    Response::Unhandled
+                    Response::Unused
                 }
             }
         }

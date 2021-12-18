@@ -62,7 +62,7 @@ fn make_window() -> Box<dyn kas::Window> {
                         }
                         Response::Used
                     }
-                    _ => Response::Unhandled,
+                    _ => Response::Unused,
                 }
             }
         }

@@ -170,7 +170,7 @@ widget! {
                         Response::Used
                     }
                     // TODO: scroll by command
-                    _ => Response::Unhandled,
+                    _ => Response::Unused,
                 },
                 Event::LostSelFocus => {
                     self.selection.set_empty();
@@ -193,7 +193,7 @@ widget! {
                 }
                 event => match self.input_handler.handle(mgr, self.id(), event) {
                     TextInputAction::None | TextInputAction::Focus => Response::Used,
-                    TextInputAction::Unhandled => Response::Unhandled,
+                    TextInputAction::Unused => Response::Unused,
                     TextInputAction::Pan(delta) => match self.pan_delta(mgr, delta) {
                         delta if delta == Offset::ZERO => Response::Used,
                         delta => Response::Pan(delta),

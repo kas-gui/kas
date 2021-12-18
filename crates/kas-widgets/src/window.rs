@@ -65,7 +65,7 @@ widget! {
     impl SendEvent for Self where W::Msg: Into<VoidMsg> {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() || id == self.id() {
-                Response::Unhandled
+                Response::Unused
             } else {
                 return self.w.send(mgr, id, event).into();
             }

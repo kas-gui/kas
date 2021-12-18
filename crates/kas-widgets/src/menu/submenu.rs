@@ -100,7 +100,7 @@ widget! {
                         self.close_menu(mgr, true);
                         Response::Used
                     } else {
-                        Response::Unhandled
+                        Response::Unused
                     }
                 } else if matches!(cmd, Command::Home | Command::End) {
                     mgr.clear_nav_focus();
@@ -108,13 +108,13 @@ widget! {
                     mgr.next_nav_focus(self, rev, true);
                     Response::Used
                 } else {
-                    Response::Unhandled
+                    Response::Unused
                 }
             } else if Some(self.direction.as_direction()) == cmd.as_direction() {
                 self.open_menu(mgr, true);
                 Response::Used
             } else {
-                Response::Unhandled
+                Response::Unused
             }
         }
     }
@@ -178,7 +178,7 @@ widget! {
                     Response::Used
                 }
                 Event::Command(cmd, _) => self.handle_dir_key(mgr, cmd),
-                _ => Response::Unhandled,
+                _ => Response::Unused,
             }
         }
     }
@@ -186,7 +186,7 @@ widget! {
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
-                return Response::Unhandled;
+                return Response::Unused;
             }
 
             if id == self.id() {
@@ -195,11 +195,11 @@ widget! {
                 let r = self.list.send(mgr, id, event.clone());
 
                 match r {
-                    Response::Unhandled => match event {
+                    Response::Unused => match event {
                         Event::Command(cmd, _) if self.popup_id.is_some() => {
                             self.handle_dir_key(mgr, cmd)
                         }
-                        _ => Response::Unhandled,
+                        _ => Response::Unused,
                     },
                     Response::Used => Response::Used,
                     Response::Pan(delta) => Response::Pan(delta),

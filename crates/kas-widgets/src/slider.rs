@@ -265,7 +265,7 @@ widget! {
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
-                return Response::Unhandled;
+                return Response::Unused;
             }
 
             let offset = if self.handle.id().is_ancestor_of(id) {
@@ -312,7 +312,7 @@ widget! {
                             }
                             Command::Home => self.range.0,
                             Command::End => self.range.1,
-                            _ => return Response::Unhandled,
+                            _ => return Response::Unused,
                         };
                         let action = self.set_value(v);
                         return if action.is_empty() {
@@ -325,7 +325,7 @@ widget! {
                     Event::PressStart { source, coord, .. } => {
                         self.handle.handle_press_on_track(mgr, source, coord)
                     }
-                    _ => return Response::Unhandled,
+                    _ => return Response::Unused,
                 }
             };
 

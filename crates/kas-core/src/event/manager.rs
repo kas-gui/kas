@@ -486,7 +486,7 @@ impl<'a> Manager<'a> {
         let _ = widget.send(self, id, event);
     }
 
-    // Similar to send_event, but return true only if response != Response::Unhandled
+    // Similar to send_event, but return true only if response != Response::Unused
     fn try_send_event<W: Widget + ?Sized>(
         &mut self,
         widget: &mut W,
@@ -495,7 +495,7 @@ impl<'a> Manager<'a> {
     ) -> bool {
         trace!("Send to {}: {:?}", id, event);
         let r = widget.send(self, id, event);
-        !matches!(r, Response::Unhandled)
+        !matches!(r, Response::Unused)
     }
 
     fn send_popup_first<W: Widget + ?Sized>(&mut self, widget: &mut W, id: WidgetId, event: Event) {
@@ -503,7 +503,7 @@ impl<'a> Manager<'a> {
         {
             trace!("Send to popup parent: {}: {:?}", parent, event);
             match widget.send(self, parent, event.clone()) {
-                Response::Unhandled => (),
+                Response::Unused => (),
                 _ => return,
             }
             self.close_window(wid, false);

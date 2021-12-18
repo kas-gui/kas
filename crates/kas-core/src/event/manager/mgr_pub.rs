@@ -499,7 +499,7 @@ impl<'a> Manager<'a> {
     ///
     /// Since these events are *requested*, the widget should consume them even
     /// if not required, although in practice this
-    /// only affects parents intercepting [`Response::Unhandled`] events.
+    /// only affects parents intercepting [`Response::Unused`] events.
     ///
     /// This method normally succeeds, but fails when
     /// multiple widgets attempt a grab the same press source simultaneously

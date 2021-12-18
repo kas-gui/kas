@@ -426,8 +426,8 @@ impl<'a> Manager<'a> {
         use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent::*};
 
         // Note: since <W as Handler>::Msg = VoidMsg, only two values of
-        // Response are possible: None and Unhandled. We don't have any use for
-        // Unhandled events here, so we can freely ignore all responses.
+        // Response are possible: Used and Unused. We don't have any use for
+        // Unused events here, so we can freely ignore all responses.
 
         match event {
             CloseRequested => self.send_action(TkAction::CLOSE),

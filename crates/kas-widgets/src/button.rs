@@ -142,7 +142,7 @@ widget! {
         fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
             match event {
                 Event::Activate => Response::used_or_msg(self.on_push.as_ref().and_then(|f| f(mgr))),
-                _ => Response::Unhandled,
+                _ => Response::Unused,
             }
         }
     }
@@ -150,7 +150,7 @@ widget! {
     impl SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<M> {
             if self.is_disabled() {
-                return Response::Unhandled;
+                return Response::Unused;
             }
             if id == self.id() {
                 Manager::handle_generic(self, mgr, event)
@@ -320,7 +320,7 @@ widget! {
         fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
             match event {
                 Event::Activate => Response::used_or_msg(self.on_push.as_ref().and_then(|f| f(mgr))),
-                _ => Response::Unhandled,
+                _ => Response::Unused,
             }
         }
     }

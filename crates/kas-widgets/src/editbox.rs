@@ -33,7 +33,7 @@ impl Default for LastEdit {
 
 enum EditAction {
     None,
-    Unhandled,
+    Unused,
     Activate,
     Edit,
 }
@@ -509,16 +509,16 @@ widget! {
                     if self.has_key_focus {
                         match self.control_key(mgr, cmd, shift) {
                             EditAction::None => Response::Used,
-                            EditAction::Unhandled => Response::Unhandled,
+                            EditAction::Unused => Response::Unused,
                             EditAction::Activate => Response::used_or_msg(G::activate(self, mgr)),
                             EditAction::Edit => Response::update_or_msg(G::edit(self, mgr)),
                         }
                     } else {
-                        Response::Unhandled
+                        Response::Unused
                     }
                 }
                 Event::ReceivedCharacter(c) => match self.received_char(mgr, c) {
-                    false => Response::Unhandled,
+                    false => Response::Unused,
                     true => Response::update_or_msg(G::edit(self, mgr)),
                 },
                 Event::Scroll(delta) => {
@@ -537,7 +537,7 @@ widget! {
                 }
                 event => match self.input_handler.handle(mgr, self.id(), event) {
                     TextInputAction::None => Response::Used,
-                    TextInputAction::Unhandled => Response::Unhandled,
+                    TextInputAction::Unused => Response::Unused,
                     TextInputAction::Pan(delta) => match self.pan_delta(mgr, delta) {
                         delta if delta == Offset::ZERO => Response::Used,
                         delta => Response::Pan(delta),
@@ -782,7 +782,7 @@ impl<G: EditGuard> EditField<G> {
 
     fn control_key(&mut self, mgr: &mut Manager, key: Command, mut shift: bool) -> EditAction {
         if !self.editable {
-            return EditAction::Unhandled;
+            return EditAction::Unused;
         }
 
         let mut buf = [0u8; 4];
@@ -793,7 +793,7 @@ impl<G: EditGuard> EditField<G> {
 
         enum Action<'a> {
             None,
-            Unhandled,
+            Unused,
             Activate,
             Edit,
             Insert(&'a str, LastEdit),
@@ -1009,12 +1009,12 @@ impl<G: EditGuard> EditField<G> {
                 }
                 Action::Edit
             }
-            _ => Action::Unhandled,
+            _ => Action::Unused,
         };
 
         let result = match action {
             Action::None => EditAction::None,
-            Action::Unhandled => EditAction::Unhandled,
+            Action::Unused => EditAction::Unused,
             Action::Activate => EditAction::Activate,
             Action::Edit => EditAction::Edit,
             Action::Insert(s, edit) => {

@@ -96,7 +96,7 @@ widget! {
                         if let Some(id) = self.popup_id {
                             mgr.close_window(id, false);
                         }
-                        Response::Unhandled
+                        Response::Unused
                     }
                 }
                 Event::PressMove {
@@ -140,7 +140,7 @@ widget! {
                     self.popup_id = None;
                     Response::Used
                 }
-                _ => Response::Unhandled,
+                _ => Response::Unused,
             }
         }
     }
@@ -148,7 +148,7 @@ widget! {
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
-                return Response::Unhandled;
+                return Response::Unused;
             }
 
             if id == self.id() {
@@ -339,7 +339,7 @@ impl<M: 'static> ComboBox<M> {
         r: Response<(usize, ())>,
     ) -> Response<M> {
         match r {
-            Response::Unhandled => match event {
+            Response::Unused => match event {
                 Event::Command(cmd, _) => {
                     let next = |mgr: &mut Manager, s, clr, rev| {
                         if clr {
@@ -353,10 +353,10 @@ impl<M: 'static> ComboBox<M> {
                         Command::Down => next(mgr, self, false, false),
                         Command::Home => next(mgr, self, true, false),
                         Command::End => next(mgr, self, true, true),
-                        _ => Response::Unhandled,
+                        _ => Response::Unused,
                     }
                 }
-                _ => Response::Unhandled,
+                _ => Response::Unused,
             },
             Response::Used => Response::Used,
             Response::Pan(delta) => Response::Pan(delta),

@@ -97,7 +97,7 @@ widget! {
                         Response::Used
                     } else {
                         self.delayed_open = None;
-                        Response::Unhandled
+                        Response::Unused
                     }
                 }
                 Event::PressMove {
@@ -174,10 +174,10 @@ widget! {
                             mgr.next_nav_focus(self, reverse, true);
                             Response::Used
                         }
-                        None => Response::Unhandled,
+                        None => Response::Unused,
                     }
                 }
-                _ => Response::Unhandled,
+                _ => Response::Unused,
             }
         }
     }
@@ -185,14 +185,14 @@ widget! {
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
-                return Response::Unhandled;
+                return Response::Unused;
             }
 
             if id == self.id() {
                 self.handle(mgr, event)
             } else {
                 match self.bar.send(mgr, id, event.clone()) {
-                    Response::Unhandled => self.handle(mgr, event),
+                    Response::Unused => self.handle(mgr, event),
                     r => r.try_into().unwrap_or_else(|(_, msg)| {
                         log::trace!(
                             "Received by {} from {}: {:?}",

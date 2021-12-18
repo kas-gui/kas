@@ -413,7 +413,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
             quote! {
                 use ::kas::{WidgetCore, event::Response};
                 if self.is_disabled() {
-                    return Response::Unhandled;
+                    return Response::Unused;
                 }
 
                 let self_id = self.id();
@@ -422,7 +422,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                     _ if id == self_id => ::kas::event::Manager::handle_generic(self, mgr, event),
                     _ => {
                         debug_assert!(false, "SendEvent::send: bad WidgetId");
-                        Response::Unhandled
+                        Response::Unused
                     }
                 }
             }

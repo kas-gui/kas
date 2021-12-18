@@ -88,7 +88,7 @@ widget! {
                     self.press_source = None;
                     Response::Used
                 }
-                _ => Response::Unhandled,
+                _ => Response::Unused,
             }
         }
     }
