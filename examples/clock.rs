@@ -137,7 +137,7 @@ widget! {
                     let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
                     info!("Requesting update in {}ns", ns);
                     mgr.update_on_timer(Duration::new(0, ns), self.id(), 0);
-                    Response::None
+                    Response::Used
                 }
                 _ => Response::Unhandled,
             }

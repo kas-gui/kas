@@ -269,7 +269,7 @@ widget! {
                 mgr.redraw(self.handle.id());
                 Response::Msg(self.value)
             } else {
-                Response::None
+                Response::Used
             }
         }
     }
@@ -651,7 +651,7 @@ widget! {
                     .unwrap_or_else(|msg| {
                         let offset = Offset(msg, self.inner.scroll_offset().1);
                         self.inner.set_scroll_offset(mgr, offset);
-                        Response::None
+                        Response::Used
                     }),
                 Some(1) => self.vert_bar
                     .send(mgr, id, event)
@@ -659,7 +659,7 @@ widget! {
                     .unwrap_or_else(|msg| {
                         let offset = Offset(self.inner.scroll_offset().0, msg);
                         self.inner.set_scroll_offset(mgr, offset);
-                        Response::None
+                        Response::Used
                     }),
                 Some(2) => match self.inner.send(mgr, id, event) {
                     Response::Focus(rect) => {
@@ -674,7 +674,7 @@ widget! {
                 _ if id == self.id() => self.handle(mgr, event),
                 _ => {
                     debug_assert!(false, "SendEvent::send: bad WidgetId");
-                    Response::None
+                    Response::Unhandled
                 }
             }
         }

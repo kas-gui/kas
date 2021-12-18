@@ -31,12 +31,12 @@ pub trait WidgetExt: Widget {
     /// Construct a wrapper widget which discards messages from this widget
     ///
     /// Responses from this widget with a message payload are mapped to
-    /// [`Response::None`].
+    /// [`Response::Used`].
     fn map_msg_discard<M>(self) -> MapResponse<Self, M>
     where
         Self: Sized,
     {
-        MapResponse::new(self, |_, _| Response::None)
+        MapResponse::new(self, |_, _| Response::Used)
     }
 
     /// Construct a wrapper widget which maps message responses from this widget

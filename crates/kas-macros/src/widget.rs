@@ -376,7 +376,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                         r.try_into().unwrap_or_else(|msg| {
                             #log_msg
                             let _: () = self.#f(mgr, msg);
-                            Response::None
+                            Response::Used
                         })
                     },
                     Handler::Map(f) => quote! {
@@ -395,7 +395,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                         r.try_into().unwrap_or_else(|msg| {
                             #log_msg
                             let _ = msg;
-                            Response::None
+                            Response::Used
                         })
                     },
                     Handler::None => quote! { r.into() },
@@ -422,7 +422,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                     _ if id == self_id => ::kas::event::Manager::handle_generic(self, mgr, event),
                     _ => {
                         debug_assert!(false, "SendEvent::send: bad WidgetId");
-                        Response::None
+                        Response::Unhandled
                     }
                 }
             }

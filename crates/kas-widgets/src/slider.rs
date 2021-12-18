@@ -272,7 +272,7 @@ widget! {
                 match event {
                     Event::NavFocus(key_focus) => {
                         mgr.set_nav_focus(self.id(), key_focus);
-                        return Response::None; // NavFocus event will be sent to self
+                        return Response::Used; // NavFocus event will be sent to self
                     }
                     event => match self.handle.send(mgr, id, event).try_into() {
                         Ok(res) => return res,
@@ -286,7 +286,7 @@ widget! {
                         return Response::Focus(self.rect());
                     }
                     Event::NavFocus(false) => {
-                        return Response::None;
+                        return Response::Used;
                     }
                     Event::Command(cmd, _) => {
                         let rev = self.direction.is_reversed();
@@ -316,7 +316,7 @@ widget! {
                         };
                         let action = self.set_value(v);
                         return if action.is_empty() {
-                            Response::None
+                            Response::Used
                         } else {
                             mgr.send_action(action);
                             Response::Msg(self.value)
@@ -332,7 +332,7 @@ widget! {
             let r = if self.set_offset(offset) {
                 Response::Msg(self.value)
             } else {
-                Response::None
+                Response::Used
             };
             *mgr |= self.handle.set_offset(self.offset()).1;
             r

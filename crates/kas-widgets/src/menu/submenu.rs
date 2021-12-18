@@ -95,10 +95,10 @@ widget! {
                     if dir.is_vertical() == self.list.direction().is_vertical() {
                         let rev = dir.is_reversed() ^ self.list.direction().is_reversed();
                         mgr.next_nav_focus(self, rev, true);
-                        Response::None
+                        Response::Used
                     } else if dir == self.direction.as_direction().reversed() {
                         self.close_menu(mgr, true);
-                        Response::None
+                        Response::Used
                     } else {
                         Response::Unhandled
                     }
@@ -106,13 +106,13 @@ widget! {
                     mgr.clear_nav_focus();
                     let rev = cmd == Command::End;
                     mgr.next_nav_focus(self, rev, true);
-                    Response::None
+                    Response::Used
                 } else {
                     Response::Unhandled
                 }
             } else if Some(self.direction.as_direction()) == cmd.as_direction() {
                 self.open_menu(mgr, true);
-                Response::None
+                Response::Used
             } else {
                 Response::Unhandled
             }
@@ -170,15 +170,16 @@ widget! {
                     if self.popup_id.is_none() {
                         self.open_menu(mgr, true);
                     }
+                    Response::Used
                 }
                 Event::PopupRemoved(id) => {
                     debug_assert_eq!(Some(id), self.popup_id);
                     self.popup_id = None;
+                    Response::Used
                 }
-                Event::Command(cmd, _) => return self.handle_dir_key(mgr, cmd),
-                _ => return Response::Unhandled,
+                Event::Command(cmd, _) => self.handle_dir_key(mgr, cmd),
+                _ => Response::Unhandled,
             }
-            Response::None
         }
     }
 
@@ -194,18 +195,18 @@ widget! {
                 let r = self.list.send(mgr, id, event.clone());
 
                 match r {
-                    Response::None => Response::None,
-                    Response::Pan(delta) => Response::Pan(delta),
-                    Response::Focus(rect) => Response::Focus(rect),
                     Response::Unhandled => match event {
                         Event::Command(cmd, _) if self.popup_id.is_some() => {
                             self.handle_dir_key(mgr, cmd)
                         }
                         _ => Response::Unhandled,
                     },
+                    Response::Used => Response::Used,
+                    Response::Pan(delta) => Response::Pan(delta),
+                    Response::Focus(rect) => Response::Focus(rect),
                     Response::Select => {
                         self.set_menu_path(mgr, Some(id), true);
-                        Response::None
+                        Response::Used
                     }
                     r @ (Response::Update | Response::Msg(_)) => {
                         self.close_menu(mgr, true);

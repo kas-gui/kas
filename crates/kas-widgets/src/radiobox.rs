@@ -53,7 +53,7 @@ widget! {
                         mgr.trigger_update(self.handle, self.id().into());
                         Response::update_or_msg(self.on_select.as_ref().and_then(|f| f(mgr)))
                     } else {
-                        Response::None
+                        Response::Used
                     }
                 }
                 Event::HandleUpdate { payload, .. } => {
@@ -64,7 +64,7 @@ widget! {
                         mgr.redraw(self.id());
                         Response::Update
                     } else {
-                        Response::None
+                        Response::Used
                     }
                 }
                 _ => Response::Unhandled,

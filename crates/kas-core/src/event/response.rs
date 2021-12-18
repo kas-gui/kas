@@ -18,17 +18,17 @@ use crate::geom::{Offset, Rect};
 #[derive(Clone, Debug)]
 #[must_use]
 pub enum Response<M> {
-    /// Nothing of external interest
-    ///
-    /// This implies that the event was consumed, but does not affect parents.
-    /// Note that we consider "view changes" (i.e. scrolling) to not be of
-    /// external interest.
-    None,
     /// Unhandled event
     ///
     /// Indicates that the event was not consumed. An ancestor or the event
     /// manager is thus able to make use of this event.
     Unhandled,
+    /// Event is consumed; no active response
+    ///
+    /// This implies that the event was consumed, but does not affect parents.
+    /// Note that we consider "view changes" (i.e. scrolling) to not be of
+    /// external interest.
+    Used,
     /// Pan scrollable regions by the given delta
     ///
     /// With the usual scroll offset conventions, this delta must be subtracted
@@ -56,9 +56,9 @@ pub enum Response<M> {
 impl<M> Response<M> {
     /// Construct `None` or `Msg(msg)`
     #[inline]
-    pub fn none_or_msg(opt_msg: Option<M>) -> Self {
+    pub fn used_or_msg(opt_msg: Option<M>) -> Self {
         match opt_msg {
-            None => Response::None,
+            None => Response::Used,
             Some(msg) => Response::Msg(msg),
         }
     }
@@ -72,10 +72,10 @@ impl<M> Response<M> {
         }
     }
 
-    /// True if variant is `None`
+    /// True if variant is `Used`
     #[inline]
-    pub fn is_none(&self) -> bool {
-        matches!(self, Response::None)
+    pub fn is_used(&self) -> bool {
+        matches!(self, Response::Used)
     }
 
     /// True if variant is `Unhandled`
@@ -119,8 +119,8 @@ impl<M> Response<M> {
     pub fn try_from<N>(r: Response<N>) -> Result<Self, N> {
         use Response::*;
         match r {
-            None => Ok(None),
             Unhandled => Ok(Unhandled),
+            Used => Ok(Used),
             Pan(delta) => Ok(Pan(delta)),
             Focus(rect) => Ok(Focus(rect)),
             Select => Ok(Select),
@@ -140,7 +140,7 @@ impl<M> Response<M> {
 impl VoidResponse {
     /// Convert a `Response<VoidMsg>` to another `Response`
     pub fn void_into<M>(self) -> Response<M> {
-        self.try_into().unwrap_or(Response::None)
+        self.try_into().unwrap_or(Response::Used)
     }
 }
 

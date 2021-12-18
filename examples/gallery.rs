@@ -77,7 +77,7 @@ widget! {
         fn close(&mut self, mgr: &mut Manager, commit: bool) -> VoidResponse {
             self.commit = commit;
             mgr.send_action(TkAction::CLOSE);
-            Response::None
+            Response::Used
         }
     }
     impl WidgetConfig for TextEditPopup {
@@ -202,7 +202,7 @@ fn main() -> Result<(), kas::shell::Error> {
                                 *mgr |= self.label.set_string(text);
                             }
                         }
-                        Response::None
+                        Response::Used
                     }
                     _ => Response::Unhandled,
                 }

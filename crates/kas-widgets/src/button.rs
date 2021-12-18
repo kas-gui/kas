@@ -68,7 +68,7 @@ widget! {
         ///
         /// On activation (through user input events or [`Event::Activate`]) the
         /// closure `f` is called. The result of `f` is converted to
-        /// [`Response::Msg`] or [`Response::None`] and returned to the parent.
+        /// [`Response::Msg`] or [`Response::Used`] and returned to the parent.
         #[inline]
         pub fn on_push<M, F>(self, f: F) -> Button<W, M>
         where
@@ -90,7 +90,7 @@ widget! {
         ///
         /// On activation (through user input events or [`Event::Activate`]) the
         /// closure `f` is called. The result of `f` is converted to
-        /// [`Response::Msg`] or [`Response::None`] and returned to the parent.
+        /// [`Response::Msg`] or [`Response::Used`] and returned to the parent.
         #[inline]
         pub fn new_on<F>(inner: W, f: F) -> Self
         where
@@ -141,7 +141,7 @@ widget! {
 
         fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
             match event {
-                Event::Activate => Response::none_or_msg(self.on_push.as_ref().and_then(|f| f(mgr))),
+                Event::Activate => Response::used_or_msg(self.on_push.as_ref().and_then(|f| f(mgr))),
                 _ => Response::Unhandled,
             }
         }
@@ -226,7 +226,7 @@ widget! {
         ///
         /// On activation (through user input events or [`Event::Activate`]) the
         /// closure `f` is called. The result of `f` is converted to
-        /// [`Response::Msg`] or [`Response::None`] and returned to the parent.
+        /// [`Response::Msg`] or [`Response::Used`] and returned to the parent.
         #[inline]
         pub fn on_push<M, F>(self, f: F) -> TextButton<M>
         where
@@ -249,7 +249,7 @@ widget! {
         ///
         /// On activation (through user input events or [`Event::Activate`]) the
         /// closure `f` is called. The result of `f` is converted to
-        /// [`Response::Msg`] or [`Response::None`] and returned to the parent.
+        /// [`Response::Msg`] or [`Response::Used`] and returned to the parent.
         #[inline]
         pub fn new_on<S: Into<AccelString>, F>(label: S, f: F) -> Self
         where
@@ -319,7 +319,7 @@ widget! {
 
         fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
             match event {
-                Event::Activate => Response::none_or_msg(self.on_push.as_ref().and_then(|f| f(mgr))),
+                Event::Activate => Response::used_or_msg(self.on_push.as_ref().and_then(|f| f(mgr))),
                 _ => Response::Unhandled,
             }
         }

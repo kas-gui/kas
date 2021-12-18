@@ -60,7 +60,7 @@ pub trait EditGuard: Debug + Sized + 'static {
     ///
     /// This function is called when the widget is "activated", for example by
     /// the Enter/Return key for single-line edit boxes. Its return value is
-    /// converted to [`Response::None`] or [`Response::Msg`].
+    /// converted to [`Response::Used`] or [`Response::Msg`].
     ///
     /// Note that activation events cannot edit the contents.
     fn activate(edit: &mut EditField<Self>, mgr: &mut Manager) -> Option<Self::Msg> {
@@ -78,7 +78,7 @@ pub trait EditGuard: Debug + Sized + 'static {
     /// Focus-lost guard
     ///
     /// This function is called when the widget loses keyboard input focus. Its
-    /// return value is converted to [`Response::None`] or [`Response::Msg`].
+    /// return value is converted to [`Response::Used`] or [`Response::Msg`].
     fn focus_lost(edit: &mut EditField<Self>, mgr: &mut Manager) -> Option<Self::Msg> {
         let _ = (edit, mgr);
         None
@@ -489,18 +489,18 @@ widget! {
                     request_focus(self, mgr);
                     Response::Focus(self.rect())
                 }
-                Event::NavFocus(false) => Response::None,
+                Event::NavFocus(false) => Response::Used,
                 Event::LostCharFocus => {
                     self.has_key_focus = false;
                     mgr.redraw(self.id());
                     G::focus_lost(self, mgr)
                         .map(|msg| msg.into())
-                        .unwrap_or(Response::None)
+                        .unwrap_or(Response::Used)
                 }
                 Event::LostSelFocus => {
                     self.selection.set_empty();
                     mgr.redraw(self.id());
-                    Response::None
+                    Response::Used
                 }
                 Event::Command(cmd, shift) => {
                     // Note: we can receive a Command without char focus, but should
@@ -508,9 +508,9 @@ widget! {
                     request_focus(self, mgr);
                     if self.has_key_focus {
                         match self.control_key(mgr, cmd, shift) {
-                            EditAction::None => Response::None,
+                            EditAction::None => Response::Used,
                             EditAction::Unhandled => Response::Unhandled,
-                            EditAction::Activate => Response::none_or_msg(G::activate(self, mgr)),
+                            EditAction::Activate => Response::used_or_msg(G::activate(self, mgr)),
                             EditAction::Edit => Response::update_or_msg(G::edit(self, mgr)),
                         }
                     } else {
@@ -531,20 +531,20 @@ widget! {
                         ScrollDelta::PixelDelta(coord) => coord,
                     };
                     match self.pan_delta(mgr, delta2) {
-                        delta if delta == Offset::ZERO => Response::None,
+                        delta if delta == Offset::ZERO => Response::Used,
                         delta => Response::Pan(delta),
                     }
                 }
                 event => match self.input_handler.handle(mgr, self.id(), event) {
-                    TextInputAction::None => Response::None,
+                    TextInputAction::None => Response::Used,
                     TextInputAction::Unhandled => Response::Unhandled,
                     TextInputAction::Pan(delta) => match self.pan_delta(mgr, delta) {
-                        delta if delta == Offset::ZERO => Response::None,
+                        delta if delta == Offset::ZERO => Response::Used,
                         delta => Response::Pan(delta),
                     },
                     TextInputAction::Focus => {
                         request_focus(self, mgr);
-                        Response::None
+                        Response::Used
                     }
                     TextInputAction::Cursor(coord, anchor, clear, repeats) => {
                         request_focus(self, mgr);
@@ -560,7 +560,7 @@ widget! {
                                 self.selection.expand(&self.text, repeats);
                             }
                         }
-                        Response::None
+                        Response::Used
                     }
                 },
             }

@@ -408,9 +408,9 @@ widget! {
                         event::GrabMode::PanFull,
                         Some(event::CursorIcon::Grabbing),
                     );
-                    Response::None
+                    Response::Used
                 }
-                _ => Response::None,
+                _ => Response::Unhandled,
             }
         }
     }

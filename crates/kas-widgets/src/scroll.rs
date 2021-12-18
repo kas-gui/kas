@@ -159,9 +159,9 @@ impl ScrollComponent {
     /// ```
     ///
     /// If the returned [`TkAction`] is `None`, the scroll offset has not changed and
-    /// the returned [`Response`] is either `None` or `Unhandled(..)`.
+    /// the returned [`Response`] is either `Used` or `Unhandled`.
     /// If the returned [`TkAction`] is not `None`, the scroll offset has been
-    /// updated and the second return value is `Response::None`.
+    /// updated and the second return value is `Response::Used`.
     #[inline]
     pub fn scroll_by_event<PS: FnMut(PressSource, WidgetId, Coord)>(
         &mut self,
@@ -170,7 +170,7 @@ impl ScrollComponent {
         mut on_press_start: PS,
     ) -> (TkAction, Response<VoidMsg>) {
         let mut action = TkAction::empty();
-        let mut response = Response::None;
+        let mut response = Response::Used;
 
         match event {
             Event::Command(Command::Home, _) => {
@@ -373,7 +373,7 @@ widget! {
                     Response::Unhandled => (),
                     Response::Pan(delta) => {
                         return match self.scroll_by_delta(mgr, delta) {
-                            delta if delta == Offset::ZERO => Response::None,
+                            delta if delta == Offset::ZERO => Response::Used,
                             delta => Response::Pan(delta),
                         };
                     }

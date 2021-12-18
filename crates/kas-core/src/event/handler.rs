@@ -133,13 +133,13 @@ impl<'a> Manager<'a> {
             match event {
                 Event::PressStart { source, coord, .. } if source.is_primary() => {
                     mgr.request_grab(widget.id(), source, coord, GrabMode::Grab, None);
-                    return Response::None;
+                    return Response::Used;
                 }
                 Event::PressMove { source, cur_id, .. } => {
                     let cond = cur_id == Some(widget.id());
                     let target = if cond { cur_id } else { None };
                     mgr.set_grab_depress(source, target);
-                    return Response::None;
+                    return Response::Used;
                 }
                 Event::PressEnd { end_id, .. } if end_id == Some(widget.id()) => {
                     event = Event::Activate;

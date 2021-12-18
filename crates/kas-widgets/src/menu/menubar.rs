@@ -64,6 +64,7 @@ widget! {
                     if let Some(id) = self.delayed_open {
                         self.set_menu_path(mgr, Some(id), false);
                     }
+                    Response::Used
                 }
                 Event::PressStart {
                     source,
@@ -93,9 +94,10 @@ widget! {
                                 mgr.update_on_timer(delay, self.id(), 0);
                             }
                         }
+                        Response::Used
                     } else {
                         self.delayed_open = None;
-                        return Response::Unhandled;
+                        Response::Unhandled
                     }
                 }
                 Event::PressMove {
@@ -119,6 +121,7 @@ widget! {
                             }
                         }
                     }
+                    Response::Used
                 }
                 Event::PressEnd { coord, end_id, .. } => {
                     if end_id.map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
@@ -144,6 +147,7 @@ widget! {
                         // not on the menu
                         self.set_menu_path(mgr, None, false);
                     }
+                    Response::Used
                 }
                 Event::Command(cmd, _) => {
                     // Arrow keys can switch to the next / previous menu
@@ -164,16 +168,17 @@ widget! {
                                     break;
                                 }
                             }
+                            Response::Used
                         }
                         Some(_) => {
                             mgr.next_nav_focus(self, reverse, true);
+                            Response::Used
                         }
-                        None => return Response::Unhandled,
+                        None => Response::Unhandled,
                     }
                 }
-                _ => return Response::Unhandled,
+                _ => Response::Unhandled,
             }
-            Response::None
         }
     }
 

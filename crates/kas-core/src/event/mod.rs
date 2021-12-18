@@ -173,13 +173,17 @@ impl<K, M> From<VoidMsg> for ChildMsg<K, M> {
     }
 }
 
+/// Convert Response<ChildMsg<_, M>> to Response<M>
+///
+/// `ChildMsg::Child(_, msg)`  translates to `Response::Msg(msg)`; other
+/// variants translate to `Response::Used`.
 impl<K, M> From<Response<ChildMsg<K, M>>> for Response<M> {
     fn from(r: Response<ChildMsg<K, M>>) -> Self {
         match Response::try_from(r) {
             Ok(r) => r,
             Err(msg) => match msg {
                 ChildMsg::Child(_, msg) => Response::Msg(msg),
-                _ => Response::None,
+                _ => Response::Used,
             },
         }
     }

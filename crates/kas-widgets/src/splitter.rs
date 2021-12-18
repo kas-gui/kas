@@ -230,7 +230,7 @@ widget! {
                                 // Message is the new offset relative to the track;
                                 // the handle has already adjusted its position
                                 self.adjust_size(mgr, n);
-                                Response::None
+                                Response::Used
                             });
                         }
                     }

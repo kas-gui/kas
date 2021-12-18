@@ -540,7 +540,6 @@ widget! {
                     }
                 }
                 match response {
-                    (_, Response::None) => return Response::None,
                     (key, Response::Unhandled) => {
                         if let Event::PressStart { source, coord, .. } = event {
                             if source.is_primary() {
@@ -551,13 +550,14 @@ widget! {
                                     self.press_phase = PressPhase::Start(coord);
                                     self.press_target = key;
                                 }
-                                return Response::None;
+                                return Response::Used;
                             }
                         }
                     }
+                    (_, Response::Used) => return Response::Used,
                     (_, Response::Pan(delta)) => {
                         return match self.scroll_by_delta(mgr, delta) {
-                            delta if delta == Offset::ZERO => Response::None,
+                            delta if delta == Offset::ZERO => Response::Used,
                             delta => Response::Pan(delta),
                         };
                     }
@@ -569,7 +569,7 @@ widget! {
                     }
                     (Some(key), Response::Select) => {
                         return match self.sel_mode {
-                            SelectionMode::None => Response::None,
+                            SelectionMode::None => Response::Used,
                             SelectionMode::Single => {
                                 self.selection.clear();
                                 self.selection.insert(key.clone());
@@ -585,8 +585,8 @@ widget! {
                             }
                         };
                     }
-                    (None, Response::Select) => return Response::None,
-                    (_, Response::Update) => return Response::None,
+                    (None, Response::Select) => return Response::Used,
+                    (_, Response::Update) => return Response::Used,
                     (key, Response::Msg(msg)) => {
                         trace!(
                             "Received by {} from {:?}: {:?}",
@@ -601,7 +601,7 @@ widget! {
                             return Response::Msg(ChildMsg::Child(key, msg));
                         } else {
                             log::warn!("MatrixView: response from widget with no key");
-                            return Response::None;
+                            return Response::Used;
                         }
                     }
                 }
@@ -623,23 +623,23 @@ widget! {
                                 mgr.update_grab_cursor(self.id(), CursorIcon::Grabbing);
                                 // fall through to scroll handler
                             }
-                            _ => return Response::None,
+                            _ => return Response::Used,
                         }
                     }
                     Event::PressEnd { source, .. } if self.press_event == Some(source) => {
                         self.press_event = None;
                         if self.press_phase == PressPhase::Pan {
-                            return Response::None;
+                            return Response::Used;
                         }
                         return match self.sel_mode {
-                            SelectionMode::None => Response::None,
+                            SelectionMode::None => Response::Used,
                             SelectionMode::Single => {
                                 self.selection.clear();
                                 if let Some(ref key) = self.press_target {
                                     self.selection.insert(key.clone());
                                     ChildMsg::Select(key.clone()).into()
                                 } else {
-                                    Response::None
+                                    Response::Used
                                 }
                             }
                             SelectionMode::Multiple => {
@@ -651,7 +651,7 @@ widget! {
                                         ChildMsg::Select(key.clone()).into()
                                     }
                                 } else {
-                                    Response::None
+                                    Response::Used
                                 }
                             }
                         };
@@ -712,7 +712,7 @@ widget! {
                     let index = (ci % cols) + (ri % rows) * cols;
                     mgr.set_nav_focus(self.widgets[index].widget.id(), true);
                 }
-                (TkAction::empty(), Response::None)
+                (TkAction::empty(), Response::Used)
             } else {
                 self.scroll
                     .scroll_by_event(event, self.core.rect.size, |source, _, coord| {
