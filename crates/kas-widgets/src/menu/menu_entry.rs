@@ -130,6 +130,13 @@ widget! {
             make_layout!(self.core; row: [self.checkbox, self.label])
         }
 
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) {
+                return None;
+            }
+            Some(self.checkbox.id())
+        }
+
         fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
             let state = self.checkbox.input_state(mgr, disabled);
             draw.menu_entry(self.core.rect, state);
