@@ -71,6 +71,12 @@ pub enum CursorIcon {
     RowResize,
 }
 
+impl Default for CursorIcon {
+    fn default() -> Self {
+        CursorIcon::Default
+    }
+}
+
 /// Describes a button of a mouse controller.
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
