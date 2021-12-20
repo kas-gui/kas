@@ -573,14 +573,6 @@ impl<'a> Manager<'a> {
                 } else if let Some(start_id) = self.state.hover {
                     // No mouse grab but have a hover target
                     if state == ElementState::Pressed {
-                        let source = PressSource::Mouse(button, self.state.last_click_repetitions);
-                        let event = Event::PressStart {
-                            source,
-                            start_id,
-                            coord,
-                        };
-                        self.send_popup_first(widget, start_id, event);
-
                         if self.state.config.borrow().mouse_nav_focus() {
                             if let Some(w) = widget.find_leaf(start_id) {
                                 if w.key_nav() {
@@ -588,6 +580,14 @@ impl<'a> Manager<'a> {
                                 }
                             }
                         }
+
+                        let source = PressSource::Mouse(button, self.state.last_click_repetitions);
+                        let event = Event::PressStart {
+                            source,
+                            start_id,
+                            coord,
+                        };
+                        self.send_popup_first(widget, start_id, event);
                     }
                 }
             }
@@ -599,13 +599,6 @@ impl<'a> Manager<'a> {
                 match touch.phase {
                     TouchPhase::Started => {
                         if let Some(start_id) = widget.find_id(coord) {
-                            let event = Event::PressStart {
-                                source,
-                                start_id,
-                                coord,
-                            };
-                            self.send_popup_first(widget, start_id, event);
-
                             if self.state.config.borrow().touch_nav_focus() {
                                 if let Some(w) = widget.find_leaf(start_id) {
                                     if w.key_nav() {
@@ -613,6 +606,13 @@ impl<'a> Manager<'a> {
                                     }
                                 }
                             }
+
+                            let event = Event::PressStart {
+                                source,
+                                start_id,
+                                coord,
+                            };
+                            self.send_popup_first(widget, start_id, event);
                         }
                     }
                     TouchPhase::Moved => {
