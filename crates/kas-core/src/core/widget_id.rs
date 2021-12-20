@@ -273,6 +273,20 @@ impl std::cmp::PartialEq for WidgetId {
     }
 }
 
+impl std::cmp::PartialEq<Option<WidgetId>> for WidgetId {
+    #[inline]
+    fn eq(&self, rhs: &Option<WidgetId>) -> bool {
+        rhs.map(|id| id == *self).unwrap_or(false)
+    }
+}
+
+impl<'a> std::cmp::PartialEq<Option<&'a WidgetId>> for WidgetId {
+    #[inline]
+    fn eq(&self, rhs: &Option<&'a WidgetId>) -> bool {
+        rhs.map(|id| id == self).unwrap_or(false)
+    }
+}
+
 impl From<WidgetId> for u64 {
     #[inline]
     fn from(id: WidgetId) -> u64 {
@@ -385,7 +399,7 @@ mod test {
         fn as_vec(x: u64) -> Vec<usize> {
             BitsIter::new(x).collect()
         }
-        assert_eq!(as_vec(USE_BITS), vec![]);
+        assert_eq!(as_vec(USE_BITS), Vec::<usize>::new());
         assert_eq!(as_vec(0x81_31_0000_0000_0000), vec![3]);
         assert_eq!(as_vec(0x87_1A_9300_7F00_0000), vec![1, 139, 0, 0, 7]);
     }

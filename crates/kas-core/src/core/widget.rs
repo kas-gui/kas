@@ -215,7 +215,7 @@ pub trait WidgetChildren: WidgetCore {
     fn find_leaf(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
         if let Some(child) = self.find_child_index(id) {
             self.get_child(child).unwrap().find_leaf(id)
-        } else if id == self.id() {
+        } else if self.eq_id(id) {
             return Some(self.as_widget());
         } else {
             None
@@ -229,7 +229,7 @@ pub trait WidgetChildren: WidgetCore {
     fn find_leaf_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
         if let Some(child) = self.find_child_index(id) {
             self.get_child_mut(child).unwrap().find_leaf_mut(id)
-        } else if id == self.id() {
+        } else if self.eq_id(id) {
             return Some(self.as_widget_mut());
         } else {
             None
@@ -511,3 +511,19 @@ pub trait Layout: WidgetChildren {
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 pub trait Widget: event::SendEvent {}
+
+/// Extension trait over widgets
+pub trait WidgetExt: WidgetCore {
+    /// Test widget identifier for equality
+    ///
+    /// This method may be used to test against `WidgetId`, `Option<WidgetId>`
+    /// and `Option<&WidgetId>`.
+    #[inline]
+    fn eq_id<T>(&self, rhs: T) -> bool
+    where
+        WidgetId: PartialEq<T>,
+    {
+        self.core_data().id == rhs
+    }
+}
+impl<W: WidgetCore + ?Sized> WidgetExt for W {}

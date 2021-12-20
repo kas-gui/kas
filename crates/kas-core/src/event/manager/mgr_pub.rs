@@ -14,7 +14,7 @@ use crate::draw::{DrawShared, SizeHandle, ThemeApi};
 use crate::geom::{Coord, Offset, Vec2};
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
-use crate::{TkAction, WidgetId, WindowId};
+use crate::{TkAction, WidgetExt, WidgetId, WindowId};
 
 impl<'a> std::ops::BitOrAssign<TkAction> for Manager<'a> {
     #[inline]
@@ -696,7 +696,7 @@ impl<'a> Manager<'a> {
             if widget.is_disabled() {
                 return None;
             } else if last == usize::MAX {
-                if focus != Some(widget.id()) && widget.key_nav() {
+                if !widget.eq_id(focus) && widget.key_nav() {
                     return Some(widget.id());
                 }
                 return None;
@@ -705,7 +705,7 @@ impl<'a> Manager<'a> {
             let mut child = None;
             if let Some(id) = focus {
                 // Checking is_ancestor_of is just an optimisation
-                if widget.is_ancestor_of(id) && id != widget.id() {
+                if widget.is_ancestor_of(id) && !widget.eq_id(id) {
                     // TODO(opt): add WidgetChildren::find_ancestor_of method to
                     // allow optimisations for widgets with many children?
                     for index in 0..=last {
@@ -734,7 +734,7 @@ impl<'a> Manager<'a> {
                     {
                         return Some(id);
                     }
-                } else if focus != Some(widget.id()) && widget.key_nav() {
+                } else if !widget.eq_id(focus) && widget.key_nav() {
                     return Some(widget.id());
                 }
 
@@ -771,7 +771,7 @@ impl<'a> Manager<'a> {
                         }
                         child = Some(index);
                     } else {
-                        return if focus != Some(widget.id()) && widget.key_nav() {
+                        return if !widget.eq_id(focus) && widget.key_nav() {
                             Some(widget.id())
                         } else {
                             None

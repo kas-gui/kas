@@ -385,7 +385,7 @@ widget! {
                     r => return r,
                 }
             } else {
-                debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
+                debug_assert!(self.eq_id(id), "SendEvent::send: bad WidgetId");
             };
 
             let id = self.id();

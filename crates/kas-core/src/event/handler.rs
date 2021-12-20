@@ -8,7 +8,7 @@
 use super::*;
 #[allow(unused)]
 use crate::Widget; // for doc-links
-use crate::{WidgetConfig, WidgetId};
+use crate::{WidgetConfig, WidgetExt, WidgetId};
 
 /// Event handling for a [`Widget`]
 ///
@@ -136,12 +136,12 @@ impl<'a> Manager<'a> {
                     return Response::Used;
                 }
                 Event::PressMove { source, cur_id, .. } => {
-                    let cond = cur_id == Some(widget.id());
+                    let cond = widget.eq_id(cur_id);
                     let target = if cond { cur_id } else { None };
                     mgr.set_grab_depress(source, target);
                     return Response::Used;
                 }
-                Event::PressEnd { end_id, .. } if end_id == Some(widget.id()) => {
+                Event::PressEnd { end_id, .. } if widget.eq_id(end_id) => {
                     event = Event::Activate;
                 }
                 _ => (),

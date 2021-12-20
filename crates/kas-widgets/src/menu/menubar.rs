@@ -82,7 +82,7 @@ widget! {
                                 if self
                                     .bar
                                     .iter()
-                                    .any(|w| w.id() == start_id && !w.menu_is_open())
+                                    .any(|w| w.eq_id(start_id) && !w.menu_is_open())
                                 {
                                     self.opening = true;
                                     self.set_menu_path(mgr, Some(start_id), false);
@@ -108,7 +108,7 @@ widget! {
                 } => {
                     mgr.set_grab_depress(source, cur_id);
                     if let Some(id) = cur_id {
-                        if id != self.id() && self.is_ancestor_of(id) {
+                        if !self.eq_id(id) && self.is_ancestor_of(id) {
                             // We instantly open a sub-menu on motion over the bar,
                             // but delay when over a sub-menu (most intuitive?)
                             if self.rect().contains(coord) {
@@ -133,7 +133,7 @@ widget! {
                             if !self.opening {
                                 self.delayed_open = None;
                                 for i in 0..self.bar.len() {
-                                    if self.bar[i].id() == id {
+                                    if self.bar[i].eq_id(id) {
                                         self.bar[i].set_menu_path(mgr, None, false);
                                     }
                                 }
@@ -188,7 +188,7 @@ widget! {
                 return Response::Unused;
             }
 
-            if id == self.id() {
+            if self.eq_id(id) {
                 self.handle(mgr, event)
             } else {
                 match self.bar.send(mgr, id, event.clone()) {

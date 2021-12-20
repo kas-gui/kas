@@ -58,7 +58,7 @@ widget! {
                 }
                 Event::HandleUpdate { payload, .. } => {
                     let opt_id = WidgetId::opt_from_u64(payload);
-                    if self.state && opt_id != Some(self.id()) {
+                    if self.state && !self.eq_id(opt_id) {
                         trace!("RadioBoxBare: unset {}", self.id());
                         self.state = false;
                         mgr.redraw(self.id());

@@ -5,14 +5,13 @@
 
 //! Trait impls
 
-use std::any::Any;
-
 use super::*;
 use crate::draw::{DrawHandle, SizeHandle};
 use crate::event::{self, Event, Manager, ManagerState, Response};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::{CoreData, WidgetId};
+use std::any::Any;
 
 impl<M: 'static> WidgetCore for Box<dyn Widget<Msg = M>> {
     fn as_any(&self) -> &dyn Any {

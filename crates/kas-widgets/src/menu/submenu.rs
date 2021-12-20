@@ -189,7 +189,7 @@ widget! {
                 return Response::Unused;
             }
 
-            if id == self.id() {
+            if self.eq_id(id) {
                 Manager::handle_generic(self, mgr, event)
             } else {
                 let r = self.list.send(mgr, id, event.clone());
@@ -240,7 +240,7 @@ widget! {
                         }
                     } else {
                         self.open_menu(mgr, set_focus);
-                        if id != self.id() {
+                        if !self.eq_id(id) {
                             for i in 0..self.list.len() {
                                 self.list[i].set_menu_path(mgr, target, set_focus);
                             }

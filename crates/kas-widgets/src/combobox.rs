@@ -118,7 +118,7 @@ widget! {
                 }
                 Event::PressEnd { end_id, .. } => {
                     if let Some(id) = end_id {
-                        if id == self.id() {
+                        if self.eq_id(id) {
                             if self.opening {
                                 if self.popup_id.is_none() {
                                     open_popup(self, mgr, false);
@@ -151,7 +151,7 @@ widget! {
                 return Response::Unused;
             }
 
-            if id == self.id() {
+            if self.eq_id(id) {
                 Manager::handle_generic(self, mgr, event)
             } else {
                 debug_assert!(self.popup.id().is_ancestor_of(id));

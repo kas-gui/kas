@@ -131,7 +131,7 @@ widget! {
                 return Response::Unused;
             }
 
-            if id == self.id() {
+            if self.eq_id(id) {
                 self.handle(mgr, event)
             } else {
                 let r = self.child.send(mgr, id, event);

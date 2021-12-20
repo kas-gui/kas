@@ -606,7 +606,7 @@ widget! {
                     }
                 }
             } else {
-                debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
+                debug_assert!(self.eq_id(id), "SendEvent::send: bad WidgetId");
                 match event {
                     Event::HandleUpdate { .. } => {
                         self.update_view(mgr);
