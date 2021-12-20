@@ -247,13 +247,28 @@ impl std::cmp::PartialEq for WidgetId {
         let rhs_id = rhs.0.get();
         match (self_id & MASK_HEAD, rhs_id & MASK_HEAD) {
             (USE_DB, USE_DB) => {
+                if self_id == rhs_id {
+                    return true;
+                }
+
                 let db = DB.lock().unwrap();
 
                 let self_i = usize::conv(self_id & MASK_REST);
                 let child_i = usize::conv(rhs_id & MASK_REST);
                 db[self_i] == db[child_i]
             }
-            _ => self_id == rhs_id,
+            _ => {
+                // Note: we implement Eq to allow use of WidgetId as map keys,
+                // thus WidgetId::INVALID must compare equal to itself. This
+                // comparison is considered an error, but should be handled
+                // acceptably anyway (hence only report in debug builds).
+                debug_assert!(
+                    (self_id & MASK_HEAD) != 0 && (rhs_id & MASK_HEAD) != 0,
+                    "WidgetId::eq on INVALID id"
+                );
+
+                self_id == rhs_id
+            }
         }
     }
 }
@@ -310,6 +325,46 @@ mod test {
     fn size_of_option_widget_id() {
         use std::mem::size_of;
         assert_eq!(size_of::<WidgetId>(), size_of::<Option<WidgetId>>());
+    }
+
+    #[test]
+    fn test_partial_eq() {
+        assert_eq!(WidgetId::ROOT, WidgetId::ROOT);
+        let c1 = WidgetId::ROOT.make_child(0).make_child(15);
+        let c2 = WidgetId::ROOT.make_child(1).make_child(15);
+        let c3 = WidgetId::ROOT.make_child(0).make_child(14);
+        let c4 = WidgetId::ROOT.make_child(0).make_child(15);
+        println!("c1: {}", c1);
+        assert!(c1 != c2);
+        assert!(c1 != c3);
+        assert!(c2 != c3);
+        assert_eq!(c1, c4);
+        assert!(c1 != WidgetId::ROOT);
+
+        // Note: this probably doesn't exist; we should avoid lookups
+        let db57 = WidgetId(NonZeroU64::new(USE_DB | 57).unwrap());
+        println!("db57: {}", db57);
+        assert_eq!(db57, db57);
+        assert!(db57 != c1);
+        assert!(db57 != WidgetId::ROOT);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_partial_eq_invalid_1() {
+        assert_eq!(WidgetId::INVALID, WidgetId::INVALID);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_partial_eq_invalid_2() {
+        assert_eq!(WidgetId::ROOT, WidgetId::INVALID);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_partial_eq_invalid_3() {
+        assert_eq!(WidgetId::INVALID, WidgetId::ROOT);
     }
 
     #[test]
