@@ -41,7 +41,6 @@ widget! {
     /// This widget is [`Scrollable`], supporting keyboard, wheel and drag
     /// scrolling. You may wish to wrap this widget with [`ScrollBars`].
     #[derive(Clone, Debug)]
-    #[handler(msg=ChildMsg<T::Key, <V::Widget as Handler>::Msg>)]
     pub struct ListView<
         D: Directional,
         T: ListData + UpdHandler<T::Key, V::Msg> + 'static,
@@ -543,6 +542,117 @@ widget! {
         }
     }
 
+    impl Handler for Self {
+        type Msg = ChildMsg<T::Key, <V::Widget as Handler>::Msg>;
+
+        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+            let self_id = self.id();
+            match event {
+                Event::HandleUpdate { .. } => {
+                    // TODO(opt): use the update payload to indicate which widgets need updating?
+                    self.update_view(mgr);
+                    return Response::Update;
+                }
+                Event::PressMove { source, coord, .. } if self.press_event == Some(source) => {
+                    if let PressPhase::Start(start_coord) = self.press_phase {
+                        if mgr.config_test_pan_thresh(coord - start_coord) {
+                            self.press_phase = PressPhase::Pan;
+                        }
+                    }
+                    match self.press_phase {
+                        PressPhase::Pan => {
+                            mgr.update_grab_cursor(self_id, CursorIcon::Grabbing);
+                            // fall through to scroll handler
+                        }
+                        _ => return Response::Used,
+                    }
+                }
+                Event::PressEnd { source, .. } if self.press_event == Some(source) => {
+                    self.press_event = None;
+                    if self.press_phase == PressPhase::Pan {
+                        return Response::Used;
+                    }
+                    return match self.sel_mode {
+                        SelectionMode::None => Response::Used,
+                        SelectionMode::Single => {
+                            self.selection.clear();
+                            if let Some(ref key) = self.press_target {
+                                self.selection.insert(key.clone());
+                                ChildMsg::Select(key.clone()).into()
+                            } else {
+                                Response::Used
+                            }
+                        }
+                        SelectionMode::Multiple => {
+                            if let Some(ref key) = self.press_target {
+                                if self.selection.remove(key) {
+                                    ChildMsg::Deselect(key.clone()).into()
+                                } else {
+                                    self.selection.insert(key.clone());
+                                    ChildMsg::Select(key.clone()).into()
+                                }
+                            } else {
+                                Response::Used
+                            }
+                        }
+                    };
+                }
+                Event::Command(cmd, _) => {
+                    let solver = self.position_solver(mgr);
+                    let cur = mgr
+                        .nav_focus()
+                        .and_then(|id| self.find_child_index(id))
+                        .map(|index| solver.child_to_data(index));
+                    let last = self.data.len().wrapping_sub(1);
+                    let is_vert = self.direction.is_vertical();
+                    let len = solver.cur_len;
+
+                    let data = match (cmd, cur) {
+                        _ if last == usize::MAX => None,
+                        _ if !self.widgets[0].widget.key_nav() => None,
+                        (Command::Home, _) => Some(0),
+                        (Command::End, _) => Some(last),
+                        (Command::Left, Some(cur)) if !is_vert && cur > 0 => Some(cur - 1),
+                        (Command::Up, Some(cur)) if is_vert && cur > 0 => Some(cur - 1),
+                        (Command::Right, Some(cur)) if !is_vert && cur < last => Some(cur + 1),
+                        (Command::Down, Some(cur)) if is_vert && cur < last => Some(cur + 1),
+                        (Command::PageUp, Some(cur)) if cur > 0 => Some(cur.saturating_sub(len / 2)),
+                        (Command::PageDown, Some(cur)) if cur < last => Some((cur + len / 2).min(last)),
+                        _ => None,
+                    };
+                    return if let Some(index) = data {
+                        // Set nav focus to index and update scroll position
+                        let (rect, action) = self.scroll.focus_rect(solver.rect(index), self.core.rect);
+                        if !action.is_empty() {
+                            *mgr |= action;
+                            self.update_widgets(mgr);
+                        }
+                        let len = usize::conv(self.cur_len);
+                        mgr.set_nav_focus(self.widgets[index % len].widget.id(), true);
+                        Response::Focus(rect)
+                    } else {
+                        Response::Used
+                    };
+                }
+                _ => (), // fall through to scroll handler
+            }
+
+            let (action, response) =
+                self.scroll
+                    .scroll_by_event(event, self.core.rect.size, |source, _, coord| {
+                        if source.is_primary() && mgr.config_enable_mouse_pan() {
+                            let icon = Some(CursorIcon::Grabbing);
+                            mgr.request_grab(self_id, source, coord, GrabMode::Grab, icon);
+                        }
+                    });
+            if !action.is_empty() {
+                *mgr |= action;
+                self.update_widgets(mgr);
+            }
+            response.void_into()
+        }
+    }
+
     impl SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
@@ -558,6 +668,7 @@ widget! {
                 } else {
                     return Response::Unused;
                 };
+
                 if matches!(&response.1, Response::Update | Response::Msg(_)) {
                     let wd = &self.widgets[index];
                     if let Some(key) = wd.key.as_ref() {
@@ -568,36 +679,41 @@ widget! {
                         }
                     }
                 }
+
                 match response {
                     (key, Response::Unused) => {
                         if let Event::PressStart { source, coord, .. } = event {
                             if source.is_primary() {
                                 // We request a grab with our ID, hence the
-                                // PressMove/PressEnd events are matched below.
+                                // PressMove/PressEnd events are matched in handle().
                                 if mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None) {
                                     self.press_event = Some(source);
                                     self.press_phase = PressPhase::Start(coord);
                                     self.press_target = key;
                                 }
-                                return Response::Used;
+                                Response::Used
+                            } else {
+                                Response::Unused
                             }
+                        } else {
+                            self.handle(mgr, event)
                         }
                     }
-                    (_, Response::Used) => return Response::Used,
+                    (_, Response::Used) => Response::Used,
                     (_, Response::Pan(delta)) => {
-                        return match self.scroll_by_delta(mgr, delta) {
+                        match self.scroll_by_delta(mgr, delta) {
                             delta if delta == Offset::ZERO => Response::Used,
                             delta => Response::Pan(delta),
-                        };
+                        }
                     }
                     (_, Response::Focus(rect)) => {
                         let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
                         *mgr |= action;
                         self.update_widgets(mgr);
-                        return Response::Focus(rect);
+                        Response::Focus(rect)
                     }
                     (Some(key), Response::Select) => {
-                        return match self.sel_mode {
+                        match self.sel_mode {
                             SelectionMode::None => Response::Used,
                             SelectionMode::Single => {
                                 self.selection.clear();
@@ -612,10 +728,10 @@ widget! {
                                     Response::Msg(ChildMsg::Select(key))
                                 }
                             }
-                        };
+                        }
                     }
-                    (None, Response::Select) => return Response::Used,
-                    (_, Response::Update) => return Response::Used,
+                    (None, Response::Select) => Response::Used,
+                    (_, Response::Update) => Response::Used,
                     (key, Response::Msg(msg)) => {
                         trace!(
                             "Received by {} from {:?}: {:?}",
@@ -627,120 +743,16 @@ widget! {
                             if let Some(handle) = self.data.handle(&key, &msg) {
                                 mgr.trigger_update(handle, 0);
                             }
-                            return Response::Msg(ChildMsg::Child(key, msg));
+                            Response::Msg(ChildMsg::Child(key, msg))
                         } else {
                             log::warn!("ListView: response from widget with no key");
-                            return Response::Used;
+                            Response::Used
                         }
                     }
                 }
             } else {
                 debug_assert!(self.eq_id(id), "SendEvent::send: bad WidgetId");
-                match event {
-                    Event::HandleUpdate { .. } => {
-                        // TODO(opt): use the update payload to indicate which widgets need updating?
-                        self.update_view(mgr);
-                        return Response::Update;
-                    }
-                    Event::PressMove { source, coord, .. } if self.press_event == Some(source) => {
-                        if let PressPhase::Start(start_coord) = self.press_phase {
-                            if mgr.config_test_pan_thresh(coord - start_coord) {
-                                self.press_phase = PressPhase::Pan;
-                            }
-                        }
-                        match self.press_phase {
-                            PressPhase::Pan => {
-                                mgr.update_grab_cursor(self.id(), CursorIcon::Grabbing);
-                                // fall through to scroll handler
-                            }
-                            _ => return Response::Used,
-                        }
-                    }
-                    Event::PressEnd { source, .. } if self.press_event == Some(source) => {
-                        self.press_event = None;
-                        if self.press_phase == PressPhase::Pan {
-                            return Response::Used;
-                        }
-                        return match self.sel_mode {
-                            SelectionMode::None => Response::Used,
-                            SelectionMode::Single => {
-                                self.selection.clear();
-                                if let Some(ref key) = self.press_target {
-                                    self.selection.insert(key.clone());
-                                    ChildMsg::Select(key.clone()).into()
-                                } else {
-                                    Response::Used
-                                }
-                            }
-                            SelectionMode::Multiple => {
-                                if let Some(ref key) = self.press_target {
-                                    if self.selection.remove(key) {
-                                        ChildMsg::Deselect(key.clone()).into()
-                                    } else {
-                                        self.selection.insert(key.clone());
-                                        ChildMsg::Select(key.clone()).into()
-                                    }
-                                } else {
-                                    Response::Used
-                                }
-                            }
-                        };
-                    }
-                    _ => (), // fall through to scroll handler
-                }
-            };
-
-            let id = self.id();
-            if let Event::Command(cmd, _) = event {
-                let solver = self.position_solver(mgr);
-                let cur = mgr
-                    .nav_focus()
-                    .and_then(|id| self.find_child_index(id))
-                    .map(|index| solver.child_to_data(index));
-                let last = self.data.len().wrapping_sub(1);
-                let is_vert = self.direction.is_vertical();
-                let len = solver.cur_len;
-
-                let data = match (cmd, cur) {
-                    _ if last == usize::MAX => None,
-                    _ if !self.widgets[0].widget.key_nav() => None,
-                    (Command::Home, _) => Some(0),
-                    (Command::End, _) => Some(last),
-                    (Command::Left, Some(cur)) if !is_vert && cur > 0 => Some(cur - 1),
-                    (Command::Up, Some(cur)) if is_vert && cur > 0 => Some(cur - 1),
-                    (Command::Right, Some(cur)) if !is_vert && cur < last => Some(cur + 1),
-                    (Command::Down, Some(cur)) if is_vert && cur < last => Some(cur + 1),
-                    (Command::PageUp, Some(cur)) if cur > 0 => Some(cur.saturating_sub(len / 2)),
-                    (Command::PageDown, Some(cur)) if cur < last => Some((cur + len / 2).min(last)),
-                    _ => None,
-                };
-                if let Some(index) = data {
-                    // Set nav focus to index and update scroll position
-                    let (rect, action) = self.scroll.focus_rect(solver.rect(index), self.core.rect);
-                    if !action.is_empty() {
-                        *mgr |= action;
-                        self.update_widgets(mgr);
-                    }
-                    let len = usize::conv(self.cur_len);
-                    mgr.set_nav_focus(self.widgets[index % len].widget.id(), true);
-                    Response::Focus(rect)
-                } else {
-                    Response::Used
-                }
-            } else {
-                let (action, response) =
-                    self.scroll
-                        .scroll_by_event(event, self.core.rect.size, |source, _, coord| {
-                            if source.is_primary() && mgr.config_enable_mouse_pan() {
-                                let icon = Some(CursorIcon::Grabbing);
-                                mgr.request_grab(id, source, coord, GrabMode::Grab, icon);
-                            }
-                        });
-                if !action.is_empty() {
-                    *mgr |= action;
-                    self.update_widgets(mgr);
-                }
-                response.void_into()
+                self.handle(mgr, event)
             }
         }
     }
