@@ -208,13 +208,13 @@ pub trait WidgetChildren: WidgetCore {
         self.id().index_of_child(id)
     }
 
-    /// Find the leaf (lowest descendant) with this `id`, if any
+    /// Find the descendant with this `id`, if any
     ///
     /// This requires that the widget tree has already been configured by
     /// [`event::ManagerState::configure`].
-    fn find_leaf(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
+    fn find_widget(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
         if let Some(child) = self.find_child_index(id) {
-            self.get_child(child).unwrap().find_leaf(id)
+            self.get_child(child).unwrap().find_widget(id)
         } else if self.eq_id(id) {
             return Some(self.as_widget());
         } else {
@@ -222,13 +222,13 @@ pub trait WidgetChildren: WidgetCore {
         }
     }
 
-    /// Find the leaf (lowest descendant) with this `id`, if any
+    /// Find the descendant with this `id`, if any
     ///
     /// This requires that the widget tree has already been configured by
     /// [`ManagerState::configure`].
-    fn find_leaf_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
+    fn find_widget_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
         if let Some(child) = self.find_child_index(id) {
-            self.get_child_mut(child).unwrap().find_leaf_mut(id)
+            self.get_child_mut(child).unwrap().find_widget_mut(id)
         } else if self.eq_id(id) {
             return Some(self.as_widget_mut());
         } else {

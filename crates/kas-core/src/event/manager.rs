@@ -249,7 +249,7 @@ impl<'a> Manager<'a> {
             trace!("Manager: hover = {:?}", w_id);
             if let Some(id) = self.state.hover {
                 if widget
-                    .find_leaf(id)
+                    .find_widget(id)
                     .map(|w| w.hover_highlight())
                     .unwrap_or(false)
                 {
@@ -258,7 +258,7 @@ impl<'a> Manager<'a> {
             }
             if let Some(id) = w_id {
                 if widget
-                    .find_leaf(id)
+                    .find_widget(id)
                     .map(|w| w.hover_highlight())
                     .unwrap_or(false)
                 {
@@ -269,7 +269,7 @@ impl<'a> Manager<'a> {
 
             if let Some(id) = w_id {
                 let icon = widget
-                    .find_leaf(id)
+                    .find_widget(id)
                     .map(|w| w.cursor_icon())
                     .unwrap_or_default();
                 if icon != self.state.hover_icon {
@@ -371,7 +371,7 @@ impl<'a> Manager<'a> {
         }
 
         if let Some(id) = target {
-            if widget.find_leaf(id).map(|w| w.key_nav()).unwrap_or(false) {
+            if widget.find_widget(id).map(|w| w.key_nav()).unwrap_or(false) {
                 self.set_nav_focus(id, true);
             }
             self.add_key_depress(scancode, id);

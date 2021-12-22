@@ -674,7 +674,7 @@ impl<'a> Manager<'a> {
         key_focus: bool,
     ) -> bool {
         if let Some(id) = self.state.popups.last().map(|(_, p, _)| p.id) {
-            if let Some(w) = widget.find_leaf_mut(id) {
+            if let Some(w) = widget.find_widget_mut(id) {
                 widget = w;
             } else {
                 // This is a corner-case. Do nothing.

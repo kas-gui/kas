@@ -302,7 +302,7 @@ impl ManagerState {
         while let Some(id) = mgr.state.new_popups.pop() {
             while let Some((_, popup, _)) = mgr.state.popups.last() {
                 if widget
-                    .find_leaf(popup.parent)
+                    .find_widget(popup.parent)
                     .map(|w| w.is_ancestor_of(id))
                     .unwrap_or(false)
                 {
@@ -574,7 +574,7 @@ impl<'a> Manager<'a> {
                     // No mouse grab but have a hover target
                     if state == ElementState::Pressed {
                         if self.state.config.borrow().mouse_nav_focus() {
-                            if let Some(w) = widget.find_leaf(start_id) {
+                            if let Some(w) = widget.find_widget(start_id) {
                                 if w.key_nav() {
                                     self.set_nav_focus(w.id(), false);
                                 }
@@ -600,7 +600,7 @@ impl<'a> Manager<'a> {
                     TouchPhase::Started => {
                         if let Some(start_id) = widget.find_id(coord) {
                             if self.state.config.borrow().touch_nav_focus() {
-                                if let Some(w) = widget.find_leaf(start_id) {
+                                if let Some(w) = widget.find_widget(start_id) {
                                     if w.key_nav() {
                                         self.set_nav_focus(w.id(), false);
                                     }
