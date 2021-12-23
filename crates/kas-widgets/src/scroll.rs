@@ -367,7 +367,7 @@ widget! {
                 return Response::Unused;
             }
 
-            if self.inner.id().is_ancestor_of(id) {
+            if self.inner.id().is_ancestor_of(&id) {
                 let child_event = self.scroll.offset_event(event.clone());
                 match self.inner.send(mgr, id, child_event) {
                     Response::Unused => (),

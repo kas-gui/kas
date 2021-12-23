@@ -270,7 +270,7 @@ widget! {
                 return Response::Unused;
             }
 
-            let offset = if self.handle.id().is_ancestor_of(id) {
+            let offset = if self.handle.id().is_ancestor_of(&id) {
                 match event {
                     Event::NavFocus(key_focus) => {
                         mgr.set_nav_focus(self.id(), key_focus);

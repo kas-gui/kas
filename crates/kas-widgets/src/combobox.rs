@@ -85,7 +85,7 @@ widget! {
                     start_id,
                     coord,
                 } => {
-                    if self.is_ancestor_of(start_id) {
+                    if self.is_ancestor_of(&start_id) {
                         if source.is_primary() {
                             mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None);
                             mgr.set_grab_depress(source, Some(start_id));
@@ -125,7 +125,7 @@ widget! {
                                 }
                                 return Response::Used;
                             }
-                        } else if self.popup_id.is_some() && self.popup.is_ancestor_of(id) {
+                        } else if self.popup_id.is_some() && self.popup.is_ancestor_of(&id) {
                             let r = self.popup.send(mgr, id, Event::Activate);
                             return self.map_response(mgr, id, event, r);
                         }
@@ -154,7 +154,7 @@ widget! {
             if self.eq_id(id) {
                 Manager::handle_generic(self, mgr, event)
             } else {
-                debug_assert!(self.popup.id().is_ancestor_of(id));
+                debug_assert!(self.popup.id().is_ancestor_of(&id));
 
                 if let Event::NavFocus(key_focus) = event {
                     if self.popup_id.is_none() {
@@ -365,7 +365,7 @@ impl<M: 'static> ComboBox<M> {
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id, true);
                 }
-                if let Some(index) = self.popup.inner.find_child_index(id) {
+                if let Some(index) = self.popup.inner.find_child_index(&id) {
                     if index != self.active {
                         *mgr |= self.set_active(index);
                         return if let Some(ref f) = self.on_select {

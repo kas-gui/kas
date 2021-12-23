@@ -42,8 +42,8 @@ impl ManagerState {
     ///
     /// Note that `char_focus` implies `sel_focus`.
     #[inline]
-    pub fn has_char_focus(&self, w_id: WidgetId) -> (bool, bool) {
-        if let Some(id) = self.sel_focus {
+    pub fn has_char_focus(&self, w_id: &WidgetId) -> (bool, bool) {
+        if let Some(id) = self.sel_focus.as_ref() {
             if id == w_id {
                 return (self.char_focus, true);
             }
@@ -53,29 +53,34 @@ impl ManagerState {
 
     /// Get whether this widget has keyboard navigation focus
     #[inline]
-    pub fn nav_focus(&self, w_id: WidgetId) -> bool {
-        self.nav_focus == Some(w_id)
+    pub fn nav_focus(&self, w_id: &WidgetId) -> bool {
+        *w_id == self.nav_focus
     }
 
     /// Get whether the widget is under the mouse cursor
     #[inline]
-    pub fn is_hovered(&self, w_id: WidgetId) -> bool {
-        self.mouse_grab.is_none() && self.hover == Some(w_id)
+    pub fn is_hovered(&self, w_id: &WidgetId) -> bool {
+        self.mouse_grab.is_none() && *w_id == self.hover
     }
 
     /// Check whether the given widget is visually depressed
     #[inline]
-    pub fn is_depressed(&self, w_id: WidgetId) -> bool {
+    pub fn is_depressed(&self, w_id: &WidgetId) -> bool {
         for (_, id) in &self.key_depress {
             if *id == w_id {
                 return true;
             }
         }
-        if self.mouse_grab.as_ref().and_then(|grab| grab.depress) == Some(w_id) {
+        if self
+            .mouse_grab
+            .as_ref()
+            .map(|grab| *w_id == grab.depress)
+            .unwrap_or(false)
+        {
             return true;
         }
         for grab in self.touch_grab.values() {
-            if grab.depress == Some(w_id) {
+            if *w_id == grab.depress {
                 return true;
             }
         }
@@ -617,8 +622,9 @@ impl<'a> Manager<'a> {
     /// Get the current keyboard navigation focus, if any
     ///
     /// This is the widget selected by navigating the UI with the Tab key.
-    pub fn nav_focus(&self) -> Option<WidgetId> {
-        self.state.nav_focus
+    #[inline]
+    pub fn nav_focus(&self) -> Option<&WidgetId> {
+        self.state.nav_focus.as_ref()
     }
 
     /// Clear keyboard navigation focus
@@ -674,7 +680,7 @@ impl<'a> Manager<'a> {
         key_focus: bool,
     ) -> bool {
         if let Some(id) = self.state.popups.last().map(|(_, p, _)| p.id) {
-            if let Some(w) = widget.find_widget_mut(id) {
+            if let Some(w) = widget.find_widget_mut(&id) {
                 widget = w;
             } else {
                 // This is a corner-case. Do nothing.
@@ -689,7 +695,7 @@ impl<'a> Manager<'a> {
         fn nav(
             mgr: &mut Manager,
             widget: &mut dyn WidgetConfig,
-            focus: Option<WidgetId>,
+            focus: Option<&WidgetId>,
             rev: bool,
         ) -> Option<WidgetId> {
             let last = widget.num_children().wrapping_sub(1);
@@ -705,13 +711,13 @@ impl<'a> Manager<'a> {
             let mut child = None;
             if let Some(id) = focus {
                 // Checking is_ancestor_of is just an optimisation
-                if widget.is_ancestor_of(id) && !widget.eq_id(id) {
+                if widget.is_ancestor_of(&id) && !widget.eq_id(id) {
                     // TODO(opt): add WidgetChildren::find_ancestor_of method to
                     // allow optimisations for widgets with many children?
                     for index in 0..=last {
                         if widget
                             .get_child(index)
-                            .map(|w| w.is_ancestor_of(id))
+                            .map(|w| w.is_ancestor_of(&id))
                             .unwrap_or(false)
                         {
                             child = Some(index);
@@ -784,7 +790,8 @@ impl<'a> Manager<'a> {
         // Whether to restart from the beginning on failure
         let restart = self.state.nav_focus.is_some();
 
-        let mut opt_id = nav(self, widget, self.state.nav_focus, reverse);
+        let focus = self.state.nav_focus.clone();
+        let mut opt_id = nav(self, widget, focus.as_ref(), reverse);
         if restart && opt_id.is_none() {
             opt_id = nav(self, widget, None, reverse);
         }

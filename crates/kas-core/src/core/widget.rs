@@ -66,6 +66,12 @@ pub trait WidgetCore: Any + fmt::Debug {
         self.core_data().id
     }
 
+    /// Get the widget's numeric identifier
+    #[inline]
+    fn id_ref(&self) -> &WidgetId {
+        &self.core_data().id
+    }
+
     /// Get whether the widget is disabled
     #[inline]
     fn is_disabled(&self) -> bool {
@@ -130,19 +136,19 @@ pub trait WidgetCore: Any + fmt::Debug {
     /// widgets are unaffected), unless [`WidgetConfig::hover_highlight`]
     /// returns true.
     fn input_state(&self, mgr: &ManagerState, disabled: bool) -> InputState {
-        let id = self.core_data().id;
+        let id = &self.core_data().id;
         let (char_focus, sel_focus) = mgr.has_char_focus(id);
         let mut state = InputState::empty();
         if self.core_data().disabled || disabled {
             state |= InputState::DISABLED;
         }
-        if mgr.is_hovered(id) {
+        if mgr.is_hovered(&id) {
             state |= InputState::HOVER;
         }
-        if mgr.is_depressed(id) {
+        if mgr.is_depressed(&id) {
             state |= InputState::DEPRESS;
         }
-        if mgr.nav_focus(id) {
+        if mgr.nav_focus(&id) {
             state |= InputState::NAV_FOCUS;
         }
         if char_focus {
@@ -193,7 +199,7 @@ pub trait WidgetChildren: WidgetCore {
     ///
     /// This function assumes that `id` is a valid widget.
     #[inline]
-    fn is_ancestor_of(&self, id: WidgetId) -> bool {
+    fn is_ancestor_of(&self, id: &WidgetId) -> bool {
         self.id().is_ancestor_of(id)
     }
 
@@ -205,7 +211,7 @@ pub trait WidgetChildren: WidgetCore {
     /// This requires that the widget tree has already been configured by
     /// [`event::ManagerState::configure`].
     #[inline]
-    fn find_child_index(&self, id: WidgetId) -> Option<usize> {
+    fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
         self.id().index_of_child(id)
     }
 
@@ -213,7 +219,7 @@ pub trait WidgetChildren: WidgetCore {
     ///
     /// This requires that the widget tree has already been configured by
     /// [`event::ManagerState::configure`].
-    fn find_widget(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
+    fn find_widget(&self, id: &WidgetId) -> Option<&dyn WidgetConfig> {
         if let Some(child) = self.find_child_index(id) {
             self.get_child(child).unwrap().find_widget(id)
         } else if self.eq_id(id) {
@@ -227,7 +233,7 @@ pub trait WidgetChildren: WidgetCore {
     ///
     /// This requires that the widget tree has already been configured by
     /// [`ManagerState::configure`].
-    fn find_widget_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
+    fn find_widget_mut(&mut self, id: &WidgetId) -> Option<&mut dyn WidgetConfig> {
         if let Some(child) = self.find_child_index(id) {
             self.get_child_mut(child).unwrap().find_widget_mut(id)
         } else if self.eq_id(id) {

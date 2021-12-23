@@ -431,7 +431,7 @@ widget! {
                         state,
                     );
                 }
-                if mgr.has_char_focus(self.id()).0 {
+                if mgr.has_char_focus(self.id_ref()).0 {
                     draw.edit_marker(
                         self.rect().pos,
                         self.text.as_ref(),

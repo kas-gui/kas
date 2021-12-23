@@ -112,12 +112,12 @@ impl WidgetId {
     /// Default-constructed identifiers are invalid. Comparing invalid ids is
     /// considered a logic error and thus will panic in debug builds.
     /// This method may be used to check an identifier's validity.
-    pub fn is_valid(self) -> bool {
+    pub fn is_valid(&self) -> bool {
         self.0.get() != !0
     }
 
     /// Returns true if `self` equals `id` or if `id` is a descendant of `self`
-    pub fn is_ancestor_of(self, id: Self) -> bool {
+    pub fn is_ancestor_of(&self, id: &Self) -> bool {
         let self_id = self.0.get();
         let child_id = id.0.get();
         if (child_id & USE_BITS) != 0 {
@@ -149,7 +149,7 @@ impl WidgetId {
     /// Get index of `child` relative to `self`
     ///
     /// Returns `None` if `child` is not a descendant of `self`.
-    pub fn index_of_child(self, child: Self) -> Option<usize> {
+    pub fn index_of_child(&self, child: &Self) -> Option<usize> {
         let self_id = self.0.get();
         let child_id = child.0.get();
         if (child_id & USE_BITS) != 0 {
@@ -197,7 +197,7 @@ impl WidgetId {
     /// Note: this is not a getter method. Calling multiple times with the same
     /// `index` may or may not return the same value!
     #[must_use]
-    pub fn make_child(self, index: usize) -> Self {
+    pub fn make_child(&self, index: usize) -> Self {
         let self_id = self.0.get();
         let mut path = None;
         if (self_id & USE_BITS) != 0 {
@@ -316,7 +316,7 @@ impl PartialEq for WidgetId {
 impl PartialEq<Option<WidgetId>> for WidgetId {
     #[inline]
     fn eq(&self, rhs: &Option<WidgetId>) -> bool {
-        rhs.map(|id| id == *self).unwrap_or(false)
+        rhs.as_ref().map(|id| id == self).unwrap_or(false)
     }
 }
 
@@ -324,6 +324,20 @@ impl<'a> PartialEq<Option<&'a WidgetId>> for WidgetId {
     #[inline]
     fn eq(&self, rhs: &Option<&'a WidgetId>) -> bool {
         rhs.map(|id| id == self).unwrap_or(false)
+    }
+}
+
+impl<'a> std::cmp::PartialEq<&'a WidgetId> for WidgetId {
+    #[inline]
+    fn eq(&self, rhs: &&WidgetId) -> bool {
+        self == *rhs
+    }
+}
+
+impl<'a> std::cmp::PartialEq<&'a Option<WidgetId>> for WidgetId {
+    #[inline]
+    fn eq(&self, rhs: &&Option<WidgetId>) -> bool {
+        self == *rhs
     }
 }
 
@@ -480,7 +494,7 @@ mod test {
             }
 
             // Every id is its own ancestor:
-            assert!(id.is_ancestor_of(id));
+            assert!(id.is_ancestor_of(&id));
         }
 
         test(&[], USE_BITS);
@@ -525,8 +539,8 @@ mod test {
             }
             println!("id2={} val={:x} from {:?}", id2, id2.as_u64(), seq2);
             let next = seq2.iter().next().cloned();
-            assert_eq!(id.index_of_child(id2), next);
-            assert_eq!(id.is_ancestor_of(id2), next.is_some() || id == id2);
+            assert_eq!(id.index_of_child(&id2), next);
+            assert_eq!(id.is_ancestor_of(&id2), next.is_some() || id == id2);
         }
 
         test(&[], &[]);
@@ -554,8 +568,8 @@ mod test {
                 id2 = id2.make_child(*x);
             }
             println!("id2={} val={:x} from {:?}", id2, id2.as_u64(), seq2);
-            assert_eq!(id.index_of_child(id2), None);
-            assert_eq!(id.is_ancestor_of(id2), false);
+            assert_eq!(id.index_of_child(&id2), None);
+            assert_eq!(id.is_ancestor_of(&id2), false);
         }
 
         test(&[0], &[]);

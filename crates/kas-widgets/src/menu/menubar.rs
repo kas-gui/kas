@@ -62,7 +62,7 @@ widget! {
             match event {
                 Event::TimerUpdate(0) => {
                     if let Some(id) = self.delayed_open {
-                        self.set_menu_path(mgr, Some(id), false);
+                        self.set_menu_path(mgr, Some(&id), false);
                     }
                     Response::Used
                 }
@@ -71,7 +71,7 @@ widget! {
                     start_id,
                     coord,
                 } => {
-                    if self.is_ancestor_of(start_id) {
+                    if self.is_ancestor_of(&start_id) {
                         if source.is_primary()
                             && mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None)
                         {
@@ -85,7 +85,7 @@ widget! {
                                     .any(|w| w.eq_id(start_id) && !w.menu_is_open())
                                 {
                                     self.opening = true;
-                                    self.set_menu_path(mgr, Some(start_id), false);
+                                    self.set_menu_path(mgr, Some(&start_id), false);
                                 } else {
                                     self.set_menu_path(mgr, None, false);
                                 }
@@ -108,11 +108,11 @@ widget! {
                 } => {
                     mgr.set_grab_depress(source, cur_id);
                     if let Some(id) = cur_id {
-                        if !self.eq_id(id) && self.is_ancestor_of(id) {
+                        if !self.eq_id(id) && self.is_ancestor_of(&id) {
                             // We instantly open a sub-menu on motion over the bar,
                             // but delay when over a sub-menu (most intuitive?)
                             if self.rect().contains(coord) {
-                                self.set_menu_path(mgr, Some(id), false);
+                                self.set_menu_path(mgr, Some(&id), false);
                             } else {
                                 mgr.set_nav_focus(id, false);
                                 self.delayed_open = Some(id);
@@ -124,7 +124,7 @@ widget! {
                     Response::Used
                 }
                 Event::PressEnd { coord, end_id, .. } => {
-                    if end_id.map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
+                    if end_id.map(|id| self.is_ancestor_of(&id)).unwrap_or(false) {
                         // end_id is a child of self
                         let id = end_id.unwrap();
 
@@ -164,7 +164,7 @@ widget! {
                                     j = j.rem_euclid(self.bar.len().cast());
                                     self.bar[i].set_menu_path(mgr, None, true);
                                     let w = &mut self.bar[usize::conv(j)];
-                                    w.set_menu_path(mgr, Some(w.id()), true);
+                                    w.set_menu_path(mgr, Some(&w.id()), true);
                                     break;
                                 }
                             }
@@ -208,7 +208,7 @@ widget! {
     }
 
     impl Menu for Self {
-        fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>, set_focus: bool) {
+        fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<&WidgetId>, set_focus: bool) {
             self.delayed_open = None;
             if let Some(id) = target {
                 let mut child = None;

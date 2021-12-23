@@ -249,7 +249,7 @@ impl<'a> Manager<'a> {
             trace!("Manager: hover = {:?}", w_id);
             if let Some(id) = self.state.hover {
                 if widget
-                    .find_widget(id)
+                    .find_widget(&id)
                     .map(|w| w.hover_highlight())
                     .unwrap_or(false)
                 {
@@ -260,7 +260,7 @@ impl<'a> Manager<'a> {
 
             if let Some(id) = w_id {
                 let mut icon = Default::default();
-                if let Some(w) = widget.find_widget(id) {
+                if let Some(w) = widget.find_widget(&id) {
                     if w.hover_highlight() {
                         self.redraw(id);
                     }
@@ -365,7 +365,11 @@ impl<'a> Manager<'a> {
         }
 
         if let Some(id) = target {
-            if widget.find_widget(id).map(|w| w.key_nav()).unwrap_or(false) {
+            if widget
+                .find_widget(&id)
+                .map(|w| w.key_nav())
+                .unwrap_or(false)
+            {
                 self.set_nav_focus(id, true);
             }
             self.add_key_depress(scancode, id);

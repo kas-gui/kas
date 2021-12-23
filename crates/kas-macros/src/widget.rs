@@ -417,7 +417,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                 }
 
                 let self_id = self.id();
-                match self_id.index_of_child(id) {
+                match self_id.index_of_child(&id) {
                     #ev_to_num
                     _ if id == self_id => ::kas::event::Manager::handle_generic(self, mgr, event),
                     _ => {
