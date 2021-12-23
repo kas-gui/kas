@@ -110,14 +110,14 @@ widget! {
                     }
                     let cond = self.popup.inner.rect().contains(coord);
                     let target = if cond { cur_id } else { None };
-                    mgr.set_grab_depress(source, target);
+                    mgr.set_grab_depress(source, target.clone());
                     if let Some(id) = target {
                         mgr.set_nav_focus(id, false);
                     }
                     Response::Used
                 }
-                Event::PressEnd { end_id, .. } => {
-                    if let Some(id) = end_id {
+                Event::PressEnd { ref end_id, .. } => {
+                    if let Some(ref id) = end_id {
                         if self.eq_id(id) {
                             if self.opening {
                                 if self.popup_id.is_none() {
@@ -126,8 +126,8 @@ widget! {
                                 return Response::Used;
                             }
                         } else if self.popup_id.is_some() && self.popup.is_ancestor_of(&id) {
-                            let r = self.popup.send(mgr, id, Event::Activate);
-                            return self.map_response(mgr, id, event, r);
+                            let r = self.popup.send(mgr, id.clone(), Event::Activate);
+                            return self.map_response(mgr, id.clone(), event, r);
                         }
                     }
                     if let Some(id) = self.popup_id {
@@ -151,7 +151,7 @@ widget! {
                 return Response::Unused;
             }
 
-            if self.eq_id(id) {
+            if self.eq_id(&id) {
                 Manager::handle_generic(self, mgr, event)
             } else {
                 debug_assert!(self.popup.id().is_ancestor_of(&id));
@@ -166,7 +166,7 @@ widget! {
                     return Response::Used;
                 }
 
-                let r = self.popup.send(mgr, id, event.clone());
+                let r = self.popup.send(mgr, id.clone(), event.clone());
                 self.map_response(mgr, id, event, r)
             }
         }

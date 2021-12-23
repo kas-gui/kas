@@ -252,7 +252,7 @@ widget! {
                 return Response::Unused;
             }
 
-            let offset = if self.eq_id(id) {
+            let offset = if self.eq_id(&id) {
                 match event {
                     Event::PressStart { source, coord, .. } => {
                         self.handle.handle_press_on_track(mgr, source, coord)

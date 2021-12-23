@@ -519,7 +519,6 @@ widget! {
         type Msg = ChildMsg<T::Key, <V::Widget as Handler>::Msg>;
 
         fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
-            let self_id = self.id();
             match event {
                 Event::HandleUpdate { .. } => {
                     self.update_view(mgr);
@@ -533,7 +532,7 @@ widget! {
                     }
                     match self.press_phase {
                         PressPhase::Pan => {
-                            mgr.update_grab_cursor(self_id, CursorIcon::Grabbing);
+                            mgr.update_grab_cursor(self.id(), CursorIcon::Grabbing);
                             // fall through to scroll handler
                         }
                         _ => return Response::Used,
@@ -625,6 +624,7 @@ widget! {
                 _ => (), // fall through to scroll handler
             }
 
+            let self_id = self.id();
             let (action, response) = self.scroll
                 .scroll_by_event(event, self.core.rect.size, |source, _, coord| {
                     if source.is_primary() && mgr.config_enable_mouse_pan() {

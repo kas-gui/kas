@@ -63,7 +63,7 @@ pub trait WidgetCore: Any + fmt::Debug {
     /// Get the widget's numeric identifier
     #[inline]
     fn id(&self) -> WidgetId {
-        self.core_data().id
+        self.core_data().id.clone()
     }
 
     /// Get the widget's numeric identifier

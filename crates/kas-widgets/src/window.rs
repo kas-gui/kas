@@ -64,7 +64,7 @@ widget! {
 
     impl SendEvent for Self where W::Msg: Into<VoidMsg> {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            if self.is_disabled() || self.eq_id(id) {
+            if self.is_disabled() || self.eq_id(&id) {
                 Response::Unused
             } else {
                 self.w.send(mgr, id, event).into()
@@ -221,7 +221,7 @@ impl<W: Widget> Window<W> {
         let r = self.core.rect;
         let popup = &mut self.popups[index].1;
 
-        let c = find_rect(self.w.as_widget(), popup.parent).unwrap();
+        let c = find_rect(self.w.as_widget(), popup.parent.clone()).unwrap();
         let widget = self.w.find_widget_mut(&popup.id).unwrap();
         let mut cache = mgr.size_handle(|sh| layout::SolveCache::find_constraints(widget, sh));
         let ideal = cache.ideal(false);

@@ -154,7 +154,7 @@ widget! {
             if self.is_disabled() {
                 return Response::Unused;
             }
-            if self.eq_id(id) {
+            if self.eq_id(&id) {
                 Manager::handle_generic(self, mgr, event)
             } else {
                 debug_assert!(self.inner.id().is_ancestor_of(&id));

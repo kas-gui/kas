@@ -127,13 +127,19 @@ impl ManagerState {
         // of this state is adjusted within widget configure methods.
         // TODO(safety): ensure these fields cannot be updated by configure?
 
-        self.sel_focus = self.sel_focus.and_then(|id| renames.get(&id).cloned());
-        self.nav_focus = self.nav_focus.and_then(|id| renames.get(&id).cloned());
-        self.mouse_grab = self.mouse_grab.as_ref().and_then(|grab| {
+        self.sel_focus = self
+            .sel_focus
+            .take()
+            .and_then(|id| renames.get(&id).cloned());
+        self.nav_focus = self
+            .nav_focus
+            .take()
+            .and_then(|id| renames.get(&id).cloned());
+        self.mouse_grab = self.mouse_grab.take().and_then(|grab| {
             renames.get(&grab.start_id).map(|id| MouseGrab {
                 button: grab.button,
                 repetitions: grab.repetitions,
-                start_id: *id,
+                start_id: id.clone(),
                 depress: grab.depress.and_then(|id| renames.get(&id).cloned()),
                 mode: grab.mode,
                 pan_grab: grab.pan_grab,
@@ -143,7 +149,7 @@ impl ManagerState {
         let mut i = 0;
         while i < self.pan_grab.len() {
             if let Some(id) = renames.get(&self.pan_grab[i].id) {
-                self.pan_grab[i].id = *id;
+                self.pan_grab[i].id = id.clone();
                 i += 1;
             } else {
                 self.remove_pan(i);
@@ -152,8 +158,8 @@ impl ManagerState {
 
         self.touch_grab.retain(|_, grab| {
             if let Some(id) = renames.get(&grab.start_id) {
-                grab.start_id = *id;
-                if let Some(cur_id) = grab.cur_id {
+                grab.start_id = id.clone();
+                if let Some(ref cur_id) = grab.cur_id {
                     grab.cur_id = renames.get(&cur_id).cloned();
                 }
                 true
@@ -164,7 +170,7 @@ impl ManagerState {
 
         self.key_depress.retain(|_, depress_id| {
             if let Some(id) = renames.get(depress_id) {
-                *depress_id = *id;
+                *depress_id = id.clone();
                 true
             } else {
                 false
@@ -209,7 +215,7 @@ impl ManagerState {
         self.pending.retain(|item| match item {
             Pending::LostCharFocus(id) => {
                 if let Some(new_id) = renames.get(id) {
-                    *item = Pending::LostCharFocus(*new_id);
+                    *item = Pending::LostCharFocus(new_id.clone());
                     true
                 } else {
                     false
@@ -217,7 +223,7 @@ impl ManagerState {
             }
             Pending::LostSelFocus(id) => {
                 if let Some(new_id) = renames.get(id) {
-                    *item = Pending::LostSelFocus(*new_id);
+                    *item = Pending::LostSelFocus(new_id.clone());
                     true
                 } else {
                     false
@@ -225,7 +231,7 @@ impl ManagerState {
             }
             Pending::SetNavFocus(id, key_focus) => {
                 if let Some(new_id) = renames.get(id) {
-                    *item = Pending::SetNavFocus(*new_id, *key_focus);
+                    *item = Pending::SetNavFocus(new_id.clone(), *key_focus);
                     true
                 } else {
                     false
@@ -350,7 +356,7 @@ impl ManagerState {
                 delta = (q1 - alpha.complex_mul(p1) + q2 - alpha.complex_mul(p2)) * 0.5;
             }
 
-            let id = grab.id;
+            let id = grab.id.clone();
             if alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO {
                 let event = Event::Pan { alpha, delta };
                 mgr.send_event(widget, id, event);
@@ -480,14 +486,14 @@ impl<'a> Manager<'a> {
                 // Update hovered widget
                 let cur_id = widget.find_id(coord);
                 let delta = coord - self.state.last_mouse_coord;
-                self.set_hover(widget, cur_id);
+                self.set_hover(widget, cur_id.clone());
 
                 if let Some(grab) = self.mouse_grab() {
                     if grab.mode == GrabMode::Grab {
                         let source = PressSource::Mouse(grab.button, grab.repetitions);
                         let event = Event::PressMove {
                             source,
-                            cur_id,
+                            cur_id: cur_id.clone(),
                             coord,
                             delta,
                         };
@@ -497,7 +503,8 @@ impl<'a> Manager<'a> {
                     {
                         pan.coords[usize::conv(grab.pan_grab.1)].1 = coord;
                     }
-                } else if let Some(id) = self.state.popups.last().map(|(_, p, _)| p.parent) {
+                } else if let Some(id) = self.state.popups.last().map(|(_, p, _)| p.parent.clone())
+                {
                     let source = PressSource::Mouse(FAKE_MOUSE_BUTTON, 0);
                     let event = Event::PressMove {
                         source,
@@ -535,7 +542,7 @@ impl<'a> Manager<'a> {
                         ScrollDelta::PixelDelta(Offset(coord.0, coord.1))
                     }
                 });
-                if let Some(id) = self.state.hover {
+                if let Some(id) = self.state.hover.clone() {
                     self.send_event(widget, id, event);
                 }
             }
@@ -560,7 +567,7 @@ impl<'a> Manager<'a> {
                         let source = PressSource::Mouse(button, grab.repetitions);
                         let event = Event::PressEnd {
                             source,
-                            end_id: self.state.hover,
+                            end_id: self.state.hover.clone(),
                             coord,
                         };
                         self.send_event(widget, grab.start_id, event);
@@ -570,7 +577,7 @@ impl<'a> Manager<'a> {
                     if state == ElementState::Released {
                         self.end_mouse_grab(button);
                     }
-                } else if let Some(start_id) = self.state.hover {
+                } else if let Some(start_id) = self.state.hover.clone() {
                     // No mouse grab but have a hover target
                     if state == ElementState::Pressed {
                         if self.state.config.borrow().mouse_nav_focus() {
@@ -584,7 +591,7 @@ impl<'a> Manager<'a> {
                         let source = PressSource::Mouse(button, self.state.last_click_repetitions);
                         let event = Event::PressStart {
                             source,
-                            start_id,
+                            start_id: start_id.clone(),
                             coord,
                         };
                         self.send_popup_first(widget, start_id, event);
@@ -609,7 +616,7 @@ impl<'a> Manager<'a> {
 
                             let event = Event::PressStart {
                                 source,
-                                start_id,
+                                start_id: start_id.clone(),
                                 coord,
                             };
                             self.send_popup_first(widget, start_id, event);
@@ -622,17 +629,16 @@ impl<'a> Manager<'a> {
                         let mut pan_grab = None;
                         if let Some(grab) = self.get_touch(touch.id) {
                             if grab.mode == GrabMode::Grab {
-                                let id = grab.start_id;
+                                let id = grab.start_id.clone();
                                 let event = Event::PressMove {
                                     source,
-                                    cur_id,
+                                    cur_id: cur_id.clone(),
                                     coord,
                                     delta: coord - grab.coord,
                                 };
                                 // Only when 'depressed' status changes:
                                 let redraw = grab.cur_id != cur_id
-                                    && (grab.cur_id == Some(grab.start_id)
-                                        || cur_id == Some(grab.start_id));
+                                    && (grab.start_id == grab.cur_id || grab.start_id == cur_id);
 
                                 grab.cur_id = cur_id;
                                 grab.coord = coord;
@@ -663,7 +669,7 @@ impl<'a> Manager<'a> {
                             if grab.mode == GrabMode::Grab {
                                 let event = Event::PressEnd {
                                     source,
-                                    end_id: grab.cur_id,
+                                    end_id: grab.cur_id.clone(),
                                     coord,
                                 };
                                 if let Some(cur_id) = grab.cur_id {

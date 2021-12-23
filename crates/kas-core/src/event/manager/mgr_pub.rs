@@ -239,8 +239,10 @@ impl<'a> Manager<'a> {
     pub fn add_popup(&mut self, popup: crate::Popup) -> Option<WindowId> {
         let opt_id = self.shell.add_popup(popup.clone());
         if let Some(id) = opt_id {
-            self.state.new_popups.push(popup.id);
-            self.state.popups.push((id, popup, self.state.nav_focus));
+            self.state.new_popups.push(popup.id.clone());
+            self.state
+                .popups
+                .push((id, popup, self.state.nav_focus.clone()));
             self.clear_nav_focus();
         }
         opt_id
@@ -438,7 +440,7 @@ impl<'a> Manager<'a> {
     pub fn add_accel_keys(&mut self, id: WidgetId, keys: &[VirtualKeyCode]) {
         if let Some(last) = self.state.accel_stack.last_mut() {
             for key in keys {
-                last.1.insert(*key, id);
+                last.1.insert(*key, id.clone());
             }
         }
     }
@@ -520,7 +522,7 @@ impl<'a> Manager<'a> {
         mode: GrabMode,
         cursor: Option<CursorIcon>,
     ) -> bool {
-        let start_id = id;
+        let start_id = id.clone();
         let mut pan_grab = (u16::MAX, 0);
         match source {
             PressSource::Mouse(button, repetitions) => {
@@ -528,13 +530,13 @@ impl<'a> Manager<'a> {
                     return false;
                 }
                 if mode != GrabMode::Grab {
-                    pan_grab = self.state.set_pan_on(id, mode, false, coord);
+                    pan_grab = self.state.set_pan_on(id.clone(), mode, false, coord);
                 }
                 trace!("Manager: start mouse grab by {}", start_id);
                 self.state.mouse_grab = Some(MouseGrab {
                     button,
                     repetitions,
-                    start_id,
+                    start_id: start_id.clone(),
                     depress: Some(id),
                     mode,
                     pan_grab,
@@ -548,14 +550,14 @@ impl<'a> Manager<'a> {
                     return false;
                 }
                 if mode != GrabMode::Grab {
-                    pan_grab = self.state.set_pan_on(id, mode, true, coord);
+                    pan_grab = self.state.set_pan_on(id.clone(), mode, true, coord);
                 }
                 trace!("Manager: start touch grab by {}", start_id);
                 self.state.touch_grab.insert(
                     touch_id,
                     TouchGrab {
-                        start_id,
-                        depress: Some(id),
+                        start_id: start_id.clone(),
+                        depress: Some(id.clone()),
                         cur_id: Some(id),
                         coord,
                         mode,
@@ -602,13 +604,13 @@ impl<'a> Manager<'a> {
             PressSource::Mouse(_, _) => {
                 if let Some(grab) = self.state.mouse_grab.as_mut() {
                     redraw = grab.depress != target;
-                    grab.depress = target;
+                    grab.depress = target.clone();
                 }
             }
             PressSource::Touch(id) => {
                 if let Some(grab) = self.state.touch_grab.get_mut(&id) {
                     redraw = grab.depress != target;
-                    grab.depress = target;
+                    grab.depress = target.clone();
                 }
             }
         }
@@ -629,7 +631,7 @@ impl<'a> Manager<'a> {
 
     /// Clear keyboard navigation focus
     pub fn clear_nav_focus(&mut self) {
-        if let Some(id) = self.state.nav_focus {
+        if let Some(id) = self.state.nav_focus.clone() {
             self.redraw(id);
         }
         self.state.nav_focus = None;
@@ -649,12 +651,12 @@ impl<'a> Manager<'a> {
     /// be true if focussing in response to keyboard input, false if reacting to
     /// mouse or touch input.
     pub fn set_nav_focus(&mut self, id: WidgetId, key_focus: bool) {
-        if self.state.nav_focus != Some(id) {
-            self.redraw(id);
-            if self.state.sel_focus != Some(id) {
+        if id != self.state.nav_focus {
+            self.redraw(id.clone());
+            if id != self.state.sel_focus {
                 self.clear_char_focus();
             }
-            self.state.nav_focus = Some(id);
+            self.state.nav_focus = Some(id.clone());
             trace!("Manager: nav_focus = Some({})", id);
             self.state.pending.push(Pending::SetNavFocus(id, key_focus));
         }
@@ -679,7 +681,7 @@ impl<'a> Manager<'a> {
         reverse: bool,
         key_focus: bool,
     ) -> bool {
-        if let Some(id) = self.state.popups.last().map(|(_, p, _)| p.id) {
+        if let Some(id) = self.state.popups.last().map(|(_, p, _)| p.id.clone()) {
             if let Some(w) = widget.find_widget_mut(&id) {
                 widget = w;
             } else {
@@ -797,18 +799,19 @@ impl<'a> Manager<'a> {
         }
 
         trace!("Manager: nav_focus = {:?}", opt_id);
-        self.state.nav_focus = opt_id;
+        self.state.nav_focus = opt_id.clone();
 
         if let Some(id) = opt_id {
-            if self.state.sel_focus != Some(id) {
+            if id != self.state.sel_focus {
                 self.clear_char_focus();
             }
             self.state.pending.push(Pending::SetNavFocus(id, key_focus));
+            true
         } else {
             // Most likely an error occurred
             self.clear_char_focus();
             self.state.nav_focus = None;
+            false
         }
-        opt_id.is_some()
     }
 }

@@ -138,7 +138,7 @@ impl ManagerState {
     #[inline]
     fn char_focus(&self) -> Option<WidgetId> {
         if self.char_focus {
-            self.sel_focus
+            self.sel_focus.clone()
         } else {
             None
         }
@@ -247,7 +247,7 @@ impl<'a> Manager<'a> {
     fn set_hover<W: Widget + ?Sized>(&mut self, widget: &W, w_id: Option<WidgetId>) {
         if self.state.hover != w_id {
             trace!("Manager: hover = {:?}", w_id);
-            if let Some(id) = self.state.hover {
+            if let Some(id) = self.state.hover.take() {
                 if widget
                     .find_widget(&id)
                     .map(|w| w.hover_highlight())
@@ -256,7 +256,7 @@ impl<'a> Manager<'a> {
                     self.redraw(id);
                 }
             }
-            self.state.hover = w_id;
+            self.state.hover = w_id.clone();
 
             if let Some(id) = w_id {
                 let mut icon = Default::default();
@@ -299,7 +299,7 @@ impl<'a> Manager<'a> {
 
         if let Some(cmd) = opt_command {
             if self.state.char_focus {
-                if let Some(id) = self.state.sel_focus {
+                if let Some(id) = self.state.sel_focus.clone() {
                     if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
                         return;
                     }
@@ -307,28 +307,28 @@ impl<'a> Manager<'a> {
             }
 
             if !self.state.modifiers.alt() {
-                if let Some(id) = self.state.nav_focus {
+                if let Some(id) = self.state.nav_focus.clone() {
                     if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
                         return;
                     }
                 }
             }
 
-            if let Some(id) = self.state.popups.last().map(|popup| popup.1.parent) {
+            if let Some(id) = self.state.popups.last().map(|popup| popup.1.parent.clone()) {
                 if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
                     return;
                 }
             }
 
             if self.state.sel_focus != self.state.nav_focus && cmd.suitable_for_sel_focus() {
-                if let Some(id) = self.state.sel_focus {
+                if let Some(id) = self.state.sel_focus.clone() {
                     if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
                         return;
                     }
                 }
             }
 
-            if let Some(id) = self.state.nav_fallback {
+            if let Some(id) = self.state.nav_fallback.clone() {
                 if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
                     return;
                 }
@@ -339,7 +339,7 @@ impl<'a> Manager<'a> {
         let mut target = None;
         let mut n = 0;
         for (i, id) in (self.state.popups.iter().rev())
-            .map(|(_, popup, _)| popup.parent)
+            .map(|(_, popup, _)| popup.parent.clone())
             .chain(std::iter::once(widget.id()))
             .enumerate()
         {
@@ -370,9 +370,9 @@ impl<'a> Manager<'a> {
                 .map(|w| w.key_nav())
                 .unwrap_or(false)
             {
-                self.set_nav_focus(id, true);
+                self.set_nav_focus(id.clone(), true);
             }
-            self.add_key_depress(scancode, id);
+            self.add_key_depress(scancode, id.clone());
             self.send_event(widget, id, Event::Activate);
         } else if vkey == VK::Tab {
             self.clear_char_focus();
@@ -382,9 +382,9 @@ impl<'a> Manager<'a> {
                 self.close_window(id, true);
             }
         } else if !self.state.char_focus {
-            if let Some(id) = self.state.nav_focus {
+            if let Some(id) = self.state.nav_focus.clone() {
                 if vkey == VK::Space || vkey == VK::Return || vkey == VK::NumpadEnter {
-                    self.add_key_depress(scancode, id);
+                    self.add_key_depress(scancode, id.clone());
                     self.send_event(widget, id, Event::Activate);
                 }
             }
@@ -396,7 +396,7 @@ impl<'a> Manager<'a> {
             return;
         }
 
-        self.state.key_depress.insert(scancode, id);
+        self.state.key_depress.insert(scancode, id.clone());
         self.redraw(id);
     }
 
@@ -458,17 +458,17 @@ impl<'a> Manager<'a> {
             char_focus
         );
         // The widget probably already has nav focus, but anyway:
-        self.set_nav_focus(wid, true);
+        self.set_nav_focus(wid.clone(), true);
 
-        if self.state.sel_focus == Some(wid) {
+        if wid == self.state.sel_focus {
             self.state.char_focus = self.state.char_focus || char_focus;
             return;
         }
 
-        if let Some(id) = self.state.sel_focus {
+        if let Some(id) = self.state.sel_focus.clone() {
             if self.state.char_focus {
                 // If widget has char focus, this is lost
-                self.state.pending.push(Pending::LostCharFocus(id));
+                self.state.pending.push(Pending::LostCharFocus(id.clone()));
             }
 
             // Selection focus is lost if another widget receives char focus
@@ -497,7 +497,11 @@ impl<'a> Manager<'a> {
     }
 
     fn send_popup_first<W: Widget + ?Sized>(&mut self, widget: &mut W, id: WidgetId, event: Event) {
-        while let Some((wid, parent)) = self.state.popups.last().map(|(wid, p, _)| (*wid, p.parent))
+        while let Some((wid, parent)) = self
+            .state
+            .popups
+            .last()
+            .map(|(wid, p, _)| (*wid, p.parent.clone()))
         {
             trace!("Send to popup parent: {}: {:?}", parent, event);
             match widget.send(self, parent, event.clone()) {
@@ -550,9 +554,9 @@ impl<'a: 'b, 'b> ConfigureManager<'a, 'b> {
         );
         self.used = true;
         if old_id.is_valid() {
-            self.map.insert(old_id, self.id);
+            self.map.insert(old_id, self.id.clone());
         }
-        self.id
+        self.id.clone()
     }
 
     /// Get access to the wrapped [`Manager`]

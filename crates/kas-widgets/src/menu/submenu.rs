@@ -189,10 +189,10 @@ widget! {
                 return Response::Unused;
             }
 
-            if self.eq_id(id) {
+            if self.eq_id(&id) {
                 Manager::handle_generic(self, mgr, event)
             } else {
-                let r = self.list.send(mgr, id, event.clone());
+                let r = self.list.send(mgr, id.clone(), event.clone());
 
                 match r {
                     Response::Unused => match event {

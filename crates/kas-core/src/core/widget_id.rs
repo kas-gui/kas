@@ -28,7 +28,7 @@ use std::sync::Mutex;
 /// Identifiers are assigned when configured and when re-configured
 /// (via [`crate::TkAction::RECONFIGURE`]). Since user-code is not notified of a
 /// re-configure, user-code should not store a `WidgetId`.
-#[derive(Clone, Copy, Eq)]
+#[derive(Clone, Eq)]
 pub struct WidgetId(NonZeroU64);
 
 /// Invalid (default) identifier
@@ -533,7 +533,7 @@ mod test {
                 id = id.make_child(*x);
             }
             println!("id={} val={:x} from {:?}", id, id.as_u64(), seq);
-            let mut id2 = id;
+            let mut id2 = id.clone();
             for x in seq2 {
                 id2 = id2.make_child(*x);
             }
