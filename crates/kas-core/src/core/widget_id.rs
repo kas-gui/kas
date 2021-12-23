@@ -26,17 +26,18 @@ use std::sync::Mutex;
 #[derive(Clone, Copy, Hash, Eq)]
 pub struct WidgetId(NonZeroU64);
 
-/// The first byte (head) controls interpretation of the rest
-const MASK_HEAD: u64 = 0xC000_0000_0000_0000;
+/// Invalid (default) identifier
+const INVALID: u64 = !0;
+
+/// `x & USE_BITS != 0`: rest is a sequence of 4-bit blocks; len is number of blocks used
+const USE_BITS: u64 = 0x8000_0000_0000_0000;
+
 const MASK_LEN: u64 = 0x0F00_0000_0000_0000;
 const SHIFT_LEN: u8 = 56;
 const BLOCKS: u8 = 14;
-const MASK_REST: u64 = 0x00FF_FFFF_FFFF_FFFF;
+const MASK_BITS: u64 = 0x00FF_FFFF_FFFF_FFFF;
 
-/// `(x & MASK_HEAD) == USE_BITS`: rest is a sequence of 4-bit blocks; len is number of blocks used
-const USE_BITS: u64 = 0x8000_0000_0000_0000;
-/// `(x & MASK_HEAD) == USE_DB`: rest is index in DB
-const USE_DB: u64 = 0x4000_0000_0000_0000;
+const MASK_PTR: u64 = 0x7FFF_FFFF_FFFF_FFFF;
 
 fn encode(index: usize) -> (u64, u8) {
     debug_assert!(8 * size_of::<usize>() as u32 - index.leading_zeros() <= 64);
@@ -99,7 +100,7 @@ impl WidgetId {
     /// Identifier of the window
     pub(crate) const ROOT: WidgetId = WidgetId(unsafe { NonZeroU64::new_unchecked(USE_BITS) });
 
-    const INVALID: WidgetId = WidgetId(unsafe { NonZeroU64::new_unchecked(MASK_REST) });
+    const INVALID: WidgetId = WidgetId(unsafe { NonZeroU64::new_unchecked(INVALID) });
 
     /// Is the identifier valid?
     ///
@@ -107,7 +108,7 @@ impl WidgetId {
     /// considered a logic error and thus will panic in debug builds.
     /// This method may be used to check an identifier's validity.
     pub fn is_valid(self) -> bool {
-        self.0.get() & MASK_HEAD != 0
+        self.0.get() != !0
     }
 
     /// Returns true if `self` equals `id` or if `id` is a descendant of `self`
@@ -117,29 +118,26 @@ impl WidgetId {
         if (child_id & USE_BITS) != 0 {
             let self_blocks = block_len(self_id);
             let child_blocks = block_len(child_id);
+            if self_id == !0 || child_id == !0 {
+                return false; // invalid
+            }
             if (self_id & USE_BITS) == 0 || self_blocks > child_blocks {
-                return false;
+                return false; // assumption: parent uses bits when child does
             }
 
             let shift = 4 * (BLOCKS - self_blocks);
-            return (self_id & MASK_REST) >> shift == (child_id & MASK_REST) >> shift;
-        }
-
-        if (child_id & USE_DB) == 0 {
-            return false;
+            return (self_id & MASK_BITS) >> shift == (child_id & MASK_BITS) >> shift;
         }
 
         let db = DB.lock().unwrap();
-        let child_i = usize::conv(child_id & MASK_REST);
+        let child_i = usize::conv(child_id & MASK_PTR);
 
         if (self_id & USE_BITS) != 0 {
             let iter = BitsIter::new(self_id);
             iter.zip(db[child_i].iter()).all(|(a, b)| a == *b)
-        } else if (self_id & USE_DB) != 0 {
-            let self_i = usize::conv(self_id & MASK_REST);
-            db[child_i].starts_with(&db[self_i])
         } else {
-            false
+            let self_i = usize::conv(self_id & MASK_PTR);
+            db[child_i].starts_with(&db[self_i])
         }
     }
 
@@ -152,25 +150,24 @@ impl WidgetId {
         if (child_id & USE_BITS) != 0 {
             let self_blocks = block_len(self_id);
             let child_blocks = block_len(child_id);
+            if self_id == !0 || child_id == !0 {
+                return None; // invalid
+            }
             if (self_id & USE_BITS) == 0 || self_blocks >= child_blocks {
                 return None;
             }
 
             let shift = 4 * (BLOCKS - self_blocks);
-            let child_rest = child_id & MASK_REST;
-            if (self_id & MASK_REST) >> shift != child_rest >> shift {
+            let child_rest = child_id & MASK_BITS;
+            if (self_id & MASK_BITS) >> shift != child_rest >> shift {
                 return None;
             }
 
             return Some(next_from_bits(child_rest << 8 + 4 * self_blocks).0);
         }
 
-        if (child_id & USE_DB) == 0 {
-            return None;
-        }
-
         let db = DB.lock().unwrap();
-        let child_slice = &db[usize::conv(child_id & MASK_REST)];
+        let child_slice = &db[usize::conv(child_id & MASK_PTR)];
 
         if (self_id & USE_BITS) != 0 {
             let iter = BitsIter::new(self_id);
@@ -180,15 +177,13 @@ impl WidgetId {
             } else {
                 None
             }
-        } else if (self_id & USE_DB) != 0 {
-            let self_slice = &db[usize::conv(self_id & MASK_REST)];
+        } else {
+            let self_slice = &db[usize::conv(self_id & MASK_PTR)];
             if child_slice.starts_with(self_slice) {
                 child_slice[self_slice.len()..].iter().next().cloned()
             } else {
                 None
             }
-        } else {
-            None
         }
     }
 
@@ -200,6 +195,10 @@ impl WidgetId {
         let self_id = self.0.get();
         let mut path = None;
         if (self_id & USE_BITS) != 0 {
+            if self_id == !0 {
+                panic!("WidgetId::make_child: invalid id");
+            }
+
             // TODO(opt): this bit-packing approach is designed for space-optimisation, but it may
             // be better to use a simpler, less-compressed approach, possibly with u128 type.
             let block_len = block_len(self_id);
@@ -212,32 +211,28 @@ impl WidgetId {
                 debug_assert_eq!(used_blocks, ((req_bits + 2) / 3).max(1));
                 let len = (block_len as u64 + used_blocks as u64) << SHIFT_LEN;
                 let rest = bits << 4 * avail_blocks - bit_len;
-                let id = USE_BITS | len | (self_id & MASK_REST) | rest;
+                let id = USE_BITS | len | (self_id & MASK_BITS) | rest;
                 return WidgetId(NonZeroU64::new(id).unwrap());
             } else {
                 path = Some(BitsIter::new(self_id).chain(once(index)).collect());
             }
         }
 
-        if (self_id & (USE_BITS | USE_DB)) == 0 {
-            panic!("WidgetId::make_child: cannot make child of {}", self);
-        }
-
         let mut db = DB.lock().unwrap();
 
         let path = path.unwrap_or_else(|| {
-            let i = usize::conv(self_id & MASK_REST);
+            let i = usize::conv(self_id & MASK_PTR);
             db[i].iter().cloned().chain(once(index)).collect()
         });
 
         let id = u64::conv(db.len());
         // We can quite safely assume this:
-        debug_assert_eq!(id & MASK_HEAD, 0);
-        let id = id & MASK_REST;
+        debug_assert_eq!(id & USE_BITS, 0);
+        let id = id & MASK_PTR;
 
         db.push(path);
 
-        WidgetId(NonZeroU64::new(USE_DB | id).unwrap())
+        WidgetId(NonZeroU64::new(id).unwrap())
     }
 
     /// Convert to a `u64`
@@ -276,15 +271,16 @@ impl std::cmp::PartialEq for WidgetId {
         let lhs = self.0.get();
         let rhs = rhs.0.get();
 
-        let head = (lhs & MASK_HEAD, rhs & MASK_HEAD);
+        if lhs == !0 || rhs == !0 {
+            panic!("WidgetId::eq: invalid id");
+        }
 
-        // Shortcut: at least one is valid, both equal
-        if head.0 != 0 && lhs == rhs {
+        if lhs == rhs {
             return true;
         }
 
-        // Shortcut: non-equal, no external storage
-        if head.0 == USE_BITS && head.1 == USE_BITS {
+        let use_bits = (lhs & USE_BITS, rhs & USE_BITS);
+        if use_bits.0 != 0 && use_bits.1 != 0 {
             return false;
         }
 
@@ -292,27 +288,19 @@ impl std::cmp::PartialEq for WidgetId {
 
         let (mut lbi, mut rbi);
         let (mut lvi, mut rvi);
-        let lpath: &mut dyn Iterator<Item = usize> = match head.0 {
-            USE_BITS => {
-                lbi = BitsIter::new(lhs);
-                &mut lbi
-            }
-            USE_DB => {
-                lvi = db[usize::conv(lhs & MASK_REST)].iter().cloned();
-                &mut lvi
-            }
-            _ => panic!("WidgetId::eq: invalid id"),
+        let lpath: &mut dyn Iterator<Item = usize> = if use_bits.0 != 0 {
+            lbi = BitsIter::new(lhs);
+            &mut lbi
+        } else {
+            lvi = db[usize::conv(lhs & MASK_PTR)].iter().cloned();
+            &mut lvi
         };
-        let rpath: &mut dyn Iterator<Item = usize> = match head.1 {
-            USE_BITS => {
-                rbi = BitsIter::new(rhs);
-                &mut rbi
-            }
-            USE_DB => {
-                rvi = db[usize::conv(rhs & MASK_REST)].iter().cloned();
-                &mut rvi
-            }
-            _ => panic!("WidgetId::eq: invalid id"),
+        let rpath: &mut dyn Iterator<Item = usize> = if use_bits.1 != 0 {
+            rbi = BitsIter::new(rhs);
+            &mut rbi
+        } else {
+            rvi = db[usize::conv(rhs & MASK_PTR)].iter().cloned();
+            &mut rvi
         };
 
         lpath.eq(rpath)
@@ -349,27 +337,25 @@ impl fmt::Debug for WidgetId {
 impl fmt::Display for WidgetId {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let self_id = self.0.get();
-        match self_id & MASK_HEAD {
-            USE_BITS => {
-                let len = block_len(self_id);
-                if len == 0 {
-                    write!(f, "#")
-                } else {
-                    let bits = (self_id & MASK_REST) >> (4 * (BLOCKS - len));
-                    write!(f, "#{1:0>0$x}", len as usize, bits)
-                }
+        if self_id == !0 {
+            write!(f, "#INVALID")
+        } else if self_id & USE_BITS != 0 {
+            let len = block_len(self_id);
+            if len == 0 {
+                write!(f, "#")
+            } else {
+                let bits = (self_id & MASK_BITS) >> (4 * (BLOCKS - len));
+                write!(f, "#{1:0>0$x}", len as usize, bits)
             }
-            USE_DB => {
-                write!(f, "#")?;
-                let db = DB.lock().unwrap();
-                let seq = &db[usize::conv(self_id & MASK_REST)];
-                for index in seq {
-                    let (bits, bit_len) = encode(*index);
-                    write!(f, "{1:0>0$x}", bit_len as usize / 4, bits)?;
-                }
-                Ok(())
+        } else {
+            write!(f, "#")?;
+            let db = DB.lock().unwrap();
+            let seq = &db[usize::conv(self_id & MASK_PTR)];
+            for index in seq {
+                let (bits, bit_len) = encode(*index);
+                write!(f, "{1:0>0$x}", bit_len as usize / 4, bits)?;
             }
-            _ => write!(f, "#INVALID"),
+            Ok(())
         }
     }
 }
@@ -405,7 +391,7 @@ mod test {
         fn make_db(v: Vec<usize>) -> WidgetId {
             let mut db = DB.lock().unwrap();
             let id = u64::conv(db.len());
-            let id = USE_DB | (id & MASK_REST);
+            let id = id & MASK_PTR;
             db.push(v);
             WidgetId(NonZeroU64::new(id).unwrap())
         }
