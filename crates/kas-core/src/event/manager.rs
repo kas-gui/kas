@@ -256,22 +256,16 @@ impl<'a> Manager<'a> {
                     self.redraw(id);
                 }
             }
-            if let Some(id) = w_id {
-                if widget
-                    .find_widget(id)
-                    .map(|w| w.hover_highlight())
-                    .unwrap_or(false)
-                {
-                    self.redraw(id);
-                }
-            }
             self.state.hover = w_id;
 
             if let Some(id) = w_id {
-                let icon = widget
-                    .find_widget(id)
-                    .map(|w| w.cursor_icon())
-                    .unwrap_or_default();
+                let mut icon = Default::default();
+                if let Some(w) = widget.find_widget(id) {
+                    if w.hover_highlight() {
+                        self.redraw(id);
+                    }
+                    icon = w.cursor_icon();
+                }
                 if icon != self.state.hover_icon {
                     self.state.hover_icon = icon;
                     if self.state.mouse_grab.is_none() {
