@@ -38,6 +38,20 @@ const USE_BITS: u64 = 0x8000_0000_0000_0000;
 /// `(x & MASK_HEAD) == USE_DB`: rest is index in DB
 const USE_DB: u64 = 0x4000_0000_0000_0000;
 
+fn encode(index: usize) -> (u64, u8) {
+    debug_assert!(8 * size_of::<usize>() as u32 - index.leading_zeros() <= 64);
+    let mut x = index as u64 & 0x0000_FFFF_FFFF_FFFF;
+    let mut y = x & 7;
+    x >>= 3;
+    let mut shift = 4;
+    while x != 0 {
+        y |= (8 | (x & 7)) << shift;
+        x >>= 3;
+        shift += 4;
+    }
+    (y, shift)
+}
+
 #[inline]
 fn block_len(x: u64) -> u8 {
     ((x & MASK_LEN) >> SHIFT_LEN) as u8
@@ -192,20 +206,12 @@ impl WidgetId {
             let avail_blocks = BLOCKS - block_len;
             let req_bits = 8 * size_of::<usize>() as u8 - index.leading_zeros() as u8;
             if req_bits <= 3 * avail_blocks {
-                let mut x = index as u64;
-                let mut y = x & 7;
-                x >>= 3;
-                let mut shift = 4;
-                while x != 0 {
-                    y |= (8 | (x & 7)) << shift;
-                    x >>= 3;
-                    shift += 4;
-                }
+                let (bits, bit_len) = encode(index);
                 // Note: zero is encoded with 1 block to force bump to len
-                let used_blocks = shift / 4;
+                let used_blocks = bit_len / 4;
                 debug_assert_eq!(used_blocks, ((req_bits + 2) / 3).max(1));
                 let len = (block_len as u64 + used_blocks as u64) << SHIFT_LEN;
-                let rest = y << 4 * avail_blocks - shift;
+                let rest = bits << 4 * avail_blocks - bit_len;
                 let id = USE_BITS | len | (self_id & MASK_REST) | rest;
                 return WidgetId(NonZeroU64::new(id).unwrap());
             } else {
@@ -267,33 +273,49 @@ impl WidgetId {
 
 impl std::cmp::PartialEq for WidgetId {
     fn eq(&self, rhs: &Self) -> bool {
-        let self_id = self.0.get();
-        let rhs_id = rhs.0.get();
-        match (self_id & MASK_HEAD, rhs_id & MASK_HEAD) {
-            (USE_DB, USE_DB) => {
-                if self_id == rhs_id {
-                    return true;
-                }
+        let lhs = self.0.get();
+        let rhs = rhs.0.get();
 
-                let db = DB.lock().unwrap();
+        let head = (lhs & MASK_HEAD, rhs & MASK_HEAD);
 
-                let self_i = usize::conv(self_id & MASK_REST);
-                let child_i = usize::conv(rhs_id & MASK_REST);
-                db[self_i] == db[child_i]
-            }
-            _ => {
-                // Note: we implement Eq to allow use of WidgetId as map keys,
-                // thus WidgetId::INVALID must compare equal to itself. This
-                // comparison is considered an error, but should be handled
-                // acceptably anyway (hence only report in debug builds).
-                debug_assert!(
-                    (self_id & MASK_HEAD) != 0 && (rhs_id & MASK_HEAD) != 0,
-                    "WidgetId::eq on INVALID id"
-                );
-
-                self_id == rhs_id
-            }
+        // Shortcut: at least one is valid, both equal
+        if head.0 != 0 && lhs == rhs {
+            return true;
         }
+
+        // Shortcut: non-equal, no external storage
+        if head.0 == USE_BITS && head.1 == USE_BITS {
+            return false;
+        }
+
+        let db = DB.lock().unwrap();
+
+        let (mut lbi, mut rbi);
+        let (mut lvi, mut rvi);
+        let lpath: &mut dyn Iterator<Item = usize> = match head.0 {
+            USE_BITS => {
+                lbi = BitsIter::new(lhs);
+                &mut lbi
+            }
+            USE_DB => {
+                lvi = db[usize::conv(lhs & MASK_REST)].iter().cloned();
+                &mut lvi
+            }
+            _ => panic!("WidgetId::eq: invalid id"),
+        };
+        let rpath: &mut dyn Iterator<Item = usize> = match head.1 {
+            USE_BITS => {
+                rbi = BitsIter::new(rhs);
+                &mut rbi
+            }
+            USE_DB => {
+                rvi = db[usize::conv(rhs & MASK_REST)].iter().cloned();
+                &mut rvi
+            }
+            _ => panic!("WidgetId::eq: invalid id"),
+        };
+
+        lpath.eq(rpath)
     }
 }
 
@@ -331,15 +353,23 @@ impl fmt::Display for WidgetId {
             USE_BITS => {
                 let len = block_len(self_id);
                 if len == 0 {
-                    write!(f, "ROOT")
+                    write!(f, "#")
                 } else {
                     let bits = (self_id & MASK_REST) >> (4 * (BLOCKS - len));
-                    write!(f, "BITS#{1:0>0$x}", len as usize, bits)
+                    write!(f, "#{1:0>0$x}", len as usize, bits)
                 }
             }
-            // TODO: encode as above?
-            USE_DB => write!(f, "DB#{}", self_id & MASK_REST),
-            _ => write!(f, "INVALID"),
+            USE_DB => {
+                write!(f, "#")?;
+                let db = DB.lock().unwrap();
+                let seq = &db[usize::conv(self_id & MASK_REST)];
+                for index in seq {
+                    let (bits, bit_len) = encode(*index);
+                    write!(f, "{1:0>0$x}", bit_len as usize / 4, bits)?;
+                }
+                Ok(())
+            }
+            _ => write!(f, "#INVALID"),
         }
     }
 }
@@ -372,12 +402,19 @@ mod test {
         assert_eq!(c1, c4);
         assert!(c1 != WidgetId::ROOT);
 
-        // Note: this probably doesn't exist; we should avoid lookups
-        let db57 = WidgetId(NonZeroU64::new(USE_DB | 57).unwrap());
-        println!("db57: {}", db57);
-        assert_eq!(db57, db57);
-        assert!(db57 != c1);
-        assert!(db57 != WidgetId::ROOT);
+        fn make_db(v: Vec<usize>) -> WidgetId {
+            let mut db = DB.lock().unwrap();
+            let id = u64::conv(db.len());
+            let id = USE_DB | (id & MASK_REST);
+            db.push(v);
+            WidgetId(NonZeroU64::new(id).unwrap())
+        }
+        let d1 = make_db(vec![0, 15]);
+        let d2 = make_db(vec![1, 15]);
+        assert_eq!(c1, d1);
+        assert_eq!(c2, d2);
+        assert!(d1 != d2);
+        assert!(d1 != WidgetId::ROOT);
     }
 
     #[test]
@@ -454,12 +491,15 @@ mod test {
             format!("{}", id)
         }
 
-        assert_eq!(from_seq(&[]), "ROOT");
-        assert_eq!(from_seq(&[0]), "BITS#0");
-        assert_eq!(from_seq(&[1, 2, 3]), "BITS#123");
-        assert_eq!(from_seq(&[5, 9, 13]), "BITS#59195");
-        assert_eq!(from_seq(&[321]), "BITS#d81");
-        assert!(from_seq(&[313553, 13513, 13511631]).starts_with("DB#"));
+        assert_eq!(from_seq(&[]), "#");
+        assert_eq!(from_seq(&[0]), "#0");
+        assert_eq!(from_seq(&[1, 2, 3]), "#123");
+        assert_eq!(from_seq(&[5, 9, 13]), "#59195");
+        assert_eq!(from_seq(&[321]), "#d81");
+        assert_eq!(
+            from_seq(&[313553, 13513, 13511631]),
+            "#99ccba1bab91ebcadf97"
+        )
     }
 
     #[test]
