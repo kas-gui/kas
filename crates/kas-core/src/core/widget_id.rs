@@ -87,6 +87,15 @@ impl WidgetId {
 
     const INVALID: WidgetId = WidgetId(unsafe { NonZeroU64::new_unchecked(MASK_REST) });
 
+    /// Is the identifier valid?
+    ///
+    /// Default-constructed identifiers are invalid. Comparing invalid ids is
+    /// considered a logic error and thus will panic in debug builds.
+    /// This method may be used to check an identifier's validity.
+    pub fn is_valid(self) -> bool {
+        self.0.get() & MASK_HEAD != 0
+    }
+
     /// Returns true if `self` equals `id` or if `id` is a descendant of `self`
     pub fn is_ancestor_of(self, id: Self) -> bool {
         let self_id = self.0.get();

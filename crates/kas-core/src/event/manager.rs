@@ -551,7 +551,9 @@ impl<'a: 'b, 'b> ConfigureManager<'a, 'b> {
             "multiple use of ConfigureManager::get_id without construction of child"
         );
         self.used = true;
-        self.map.insert(old_id, self.id);
+        if old_id.is_valid() {
+            self.map.insert(old_id, self.id);
+        }
         self.id
     }
 
