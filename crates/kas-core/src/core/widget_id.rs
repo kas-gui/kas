@@ -234,11 +234,26 @@ impl WidgetId {
         WidgetId(NonZeroU64::new(USE_DB | id).unwrap())
     }
 
+    /// Convert to a `u64`
+    ///
+    /// This value should not be interpreted, except as follows:
+    ///
+    /// -   it is guaranteed non-zero
+    /// -   it may be passed to [`Self::opt_from_u64`]
+    pub fn as_u64(&self) -> u64 {
+        self.0.get().into()
+    }
+
     /// Convert `Option<WidgetId>` to `u64`
-    pub fn opt_to_u64(id: Option<WidgetId>) -> u64 {
+    ///
+    /// This value should not be interpreted, except as follows:
+    ///
+    /// -   it is zero if and only if `id == None`
+    /// -   it may be passed to [`Self::opt_from_u64`]
+    pub fn opt_to_u64(id: Option<&WidgetId>) -> u64 {
         match id {
             None => 0,
-            Some(id) => id.into(),
+            Some(id) => id.as_u64(),
         }
     }
 
@@ -293,13 +308,6 @@ impl<'a> std::cmp::PartialEq<Option<&'a WidgetId>> for WidgetId {
     #[inline]
     fn eq(&self, rhs: &Option<&'a WidgetId>) -> bool {
         rhs.map(|id| id == self).unwrap_or(false)
-    }
-}
-
-impl From<WidgetId> for u64 {
-    #[inline]
-    fn from(id: WidgetId) -> u64 {
-        id.0.get().into()
     }
 }
 
@@ -420,7 +428,7 @@ mod test {
             for x in seq {
                 id = id.make_child(*x);
             }
-            let v = u64::from(id);
+            let v = id.as_u64();
             if v != x {
                 panic!("test({:?}, {:x}): found {:x}", seq, x, v);
             }
@@ -461,12 +469,12 @@ mod test {
             for x in seq {
                 id = id.make_child(*x);
             }
-            println!("id={} val={:x} from {:?}", id, u64::from(id), seq);
+            println!("id={} val={:x} from {:?}", id, id.as_u64(), seq);
             let mut id2 = id;
             for x in seq2 {
                 id2 = id2.make_child(*x);
             }
-            println!("id2={} val={:x} from {:?}", id2, u64::from(id2), seq2);
+            println!("id2={} val={:x} from {:?}", id2, id2.as_u64(), seq2);
             let next = seq2.iter().next().cloned();
             assert_eq!(id.index_of_child(id2), next);
             assert_eq!(id.is_ancestor_of(id2), next.is_some() || id == id2);
@@ -491,12 +499,12 @@ mod test {
             for x in seq {
                 id = id.make_child(*x);
             }
-            println!("id={} val={:x} from {:?}", id, u64::from(id), seq);
+            println!("id={} val={:x} from {:?}", id, id.as_u64(), seq);
             let mut id2 = WidgetId::ROOT;
             for x in seq2 {
                 id2 = id2.make_child(*x);
             }
-            println!("id2={} val={:x} from {:?}", id2, u64::from(id2), seq2);
+            println!("id2={} val={:x} from {:?}", id2, id2.as_u64(), seq2);
             assert_eq!(id.index_of_child(id2), None);
             assert_eq!(id.is_ancestor_of(id2), false);
         }

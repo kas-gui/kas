@@ -50,7 +50,7 @@ widget! {
                         trace!("RadioBoxBare: set {}", self.id());
                         self.state = true;
                         mgr.redraw(self.id());
-                        mgr.trigger_update(self.handle, self.id().into());
+                        mgr.trigger_update(self.handle, self.id().as_u64());
                         Response::update_or_msg(self.on_select.as_ref().and_then(|f| f(mgr)))
                     } else {
                         Response::Used
