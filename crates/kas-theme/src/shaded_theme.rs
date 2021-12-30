@@ -38,6 +38,7 @@ impl ShadedTheme {
     /// Set font size
     ///
     /// Units: Points per Em (standard unit of font size)
+    #[must_use]
     pub fn with_font_size(mut self, pt_size: f32) -> Self {
         self.flat.config.set_font_size(pt_size);
         self
@@ -46,6 +47,7 @@ impl ShadedTheme {
     /// Set the colour scheme
     ///
     /// If no scheme by this name is found the scheme is left unchanged.
+    #[must_use]
     pub fn with_colours(mut self, scheme: &str) -> Self {
         self.flat.config.set_active_scheme(scheme);
         if let Some(scheme) = self.flat.config.get_color_scheme(scheme) {

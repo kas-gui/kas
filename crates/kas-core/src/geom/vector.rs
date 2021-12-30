@@ -60,6 +60,7 @@ impl Quad {
     ///
     /// In debug mode, this asserts `a.le(b)` after shrinking.
     #[inline]
+    #[must_use = "method does not modify self but returns a new value"]
     pub fn shrink(&self, value: f32) -> Quad {
         let a = self.a + value;
         let b = self.b - value;
@@ -71,6 +72,7 @@ impl Quad {
     ///
     /// In debug mode, this asserts `a.le(b)` after shrinking.
     #[inline]
+    #[must_use = "method does not modify self but returns a new value"]
     pub fn grow(&self, value: f32) -> Quad {
         let a = self.a - value;
         let b = self.b + value;
@@ -82,6 +84,7 @@ impl Quad {
     ///
     /// In debug mode, this asserts `a.le(b)` after shrinking.
     #[inline]
+    #[must_use = "method does not modify self but returns a new value"]
     pub fn shrink_vec(&self, value: Vec2) -> Quad {
         let a = self.a + value;
         let b = self.b - value;
@@ -174,42 +177,49 @@ macro_rules! impl_vec2 {
 
             /// Return the minimum, componentwise
             #[inline]
+            #[must_use = "method does not modify self but returns a new value"]
             pub fn min(self, other: Self) -> Self {
                 $T(self.0.min(other.0), self.1.min(other.1))
             }
 
             /// Return the maximum, componentwise
             #[inline]
+            #[must_use = "method does not modify self but returns a new value"]
             pub fn max(self, other: Self) -> Self {
                 $T(self.0.max(other.0), self.1.max(other.1))
             }
 
             /// Take the absolute value of each component
             #[inline]
+            #[must_use = "method does not modify self but returns a new value"]
             pub fn abs(self) -> Self {
                 $T(self.0.abs(), self.1.abs())
             }
 
             /// Take the floor of each component
             #[inline]
+            #[must_use = "method does not modify self but returns a new value"]
             pub fn floor(self) -> Self {
                 $T(self.0.floor(), self.1.floor())
             }
 
             /// Take the ceiling of each component
             #[inline]
+            #[must_use = "method does not modify self but returns a new value"]
             pub fn ceil(self) -> Self {
                 $T(self.0.ceil(), self.1.ceil())
             }
 
             /// Round each component to the nearest integer
             #[inline]
+            #[must_use = "method does not modify self but returns a new value"]
             pub fn round(self) -> Self {
                 $T(self.0.round(), self.1.round())
             }
 
             /// For each component, return `±1` with the same sign as `self`.
             #[inline]
+            #[must_use = "method does not modify self but returns a new value"]
             pub fn sign(self) -> Self {
                 let one: $f = 1.0;
                 $T(one.copysign(self.0), one.copysign(self.1))
@@ -241,6 +251,7 @@ macro_rules! impl_vec2 {
 
             /// Multiply two vectors as if they are complex numbers
             #[inline]
+            #[must_use = "method does not modify self but returns a new value"]
             pub fn complex_mul(self, rhs: Self) -> Self {
                 $T(
                     self.0 * rhs.0 - self.1 * rhs.1,
@@ -250,12 +261,14 @@ macro_rules! impl_vec2 {
 
             /// Divide by a second vector as if they are complex numbers
             #[inline]
+            #[must_use = "method does not modify self but returns a new value"]
             pub fn complex_div(self, rhs: Self) -> Self {
                 self.complex_mul(rhs.complex_inv())
             }
 
             /// Take the complex reciprocal
             #[inline]
+            #[must_use = "method does not modify self but returns a new value"]
             pub fn complex_inv(self) -> Self {
                 let ssi = 1.0 / self.sum_square();
                 $T(self.0 * ssi, -self.1 * ssi)

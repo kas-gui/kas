@@ -64,6 +64,7 @@ widget! {
         ///
         /// See [`ScrollBar::set_limits`].
         #[inline]
+        #[must_use]
         pub fn with_limits(mut self, max_value: i32, handle_value: i32) -> Self {
             let _ = self.set_limits(max_value, handle_value);
             self
@@ -71,6 +72,7 @@ widget! {
 
         /// Set the initial value
         #[inline]
+        #[must_use]
         pub fn with_value(mut self, value: i32) -> Self {
             self.value = value.clamp(0, self.max_value);
             self
@@ -353,6 +355,7 @@ widget! {
         /// This has the side-effect of reserving enough space for scroll bars even
         /// when not required.
         #[inline]
+        #[must_use]
         pub fn with_auto_bars(self, enable: bool) -> Self {
             ScrollBarRegion(self.0.with_auto_bars(enable))
         }
@@ -361,6 +364,7 @@ widget! {
         ///
         /// Calling this method also disables automatic scroll bars.
         #[inline]
+        #[must_use]
         pub fn with_bars(self, horiz: bool, vert: bool) -> Self {
             ScrollBarRegion(self.0.with_bars(horiz, vert))
         }
@@ -467,6 +471,7 @@ widget! {
         /// This has the side-effect of reserving enough space for scroll bars even
         /// when not required.
         #[inline]
+        #[must_use]
         pub fn with_auto_bars(mut self, enable: bool) -> Self {
             self.auto_bars = enable;
             self
@@ -476,6 +481,7 @@ widget! {
         ///
         /// Calling this method also disables automatic scroll bars.
         #[inline]
+        #[must_use]
         pub fn with_bars(mut self, horiz: bool, vert: bool) -> Self {
             self.auto_bars = false;
             self.show_bars = (horiz, vert);

@@ -286,6 +286,7 @@ impl EditBox<()> {
 impl<G: EditGuard> EditBox<G> {
     /// Set whether this `EditBox` is editable (inline)
     #[inline]
+    #[must_use]
     pub fn editable(mut self, editable: bool) -> Self {
         self.inner = self.inner.editable(editable);
         self
@@ -305,6 +306,7 @@ impl<G: EditGuard> EditBox<G> {
 
     /// Set whether this `EditBox` shows multiple text lines
     #[inline]
+    #[must_use]
     pub fn multi_line(mut self, multi_line: bool) -> Self {
         self.inner = self.inner.multi_line(multi_line);
         self
@@ -707,6 +709,7 @@ impl EditField<()> {
 impl<G: EditGuard> EditField<G> {
     /// Set whether this `EditField` is editable (inline)
     #[inline]
+    #[must_use]
     pub fn editable(mut self, editable: bool) -> Self {
         self.editable = editable;
         self
@@ -724,6 +727,7 @@ impl<G: EditGuard> EditField<G> {
 
     /// Set whether this `EditField` shows multiple text lines
     #[inline]
+    #[must_use]
     pub fn multi_line(mut self, multi_line: bool) -> Self {
         self.multi_line = multi_line;
         self

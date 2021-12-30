@@ -248,6 +248,7 @@ impl SizeRules {
 
     /// Use the maximum size of `self` and `rhs`.
     #[inline]
+    #[must_use = "method does not modify self but returns a new value"]
     pub fn max(self, rhs: Self) -> SizeRules {
         SizeRules {
             a: self.a.max(rhs.a),
@@ -302,6 +303,7 @@ impl SizeRules {
     /// Note also that appending [`SizeRules::EMPTY`] does include interior
     /// margins (those between `EMPTY` and the other rules) within the result.
     #[inline]
+    #[must_use = "method does not modify self but returns a new value"]
     pub fn appended(self, rhs: SizeRules) -> Self {
         let c: i32 = self.m.1.max(rhs.m.0).into();
         SizeRules {

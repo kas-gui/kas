@@ -70,6 +70,7 @@ widget! {
 
         /// Adjust scaling
         #[inline]
+        #[must_use]
         pub fn with_scaling(mut self, f: impl FnOnce(SpriteDisplay) -> SpriteDisplay) -> Self {
             self.sprite = f(self.sprite);
             self

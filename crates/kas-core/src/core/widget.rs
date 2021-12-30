@@ -94,6 +94,7 @@ pub trait WidgetCore: Any + fmt::Debug {
     /// let entry = MenuEntry::new("Disabled Item", ()).with_disabled(true);
     /// ```
     #[inline]
+    #[must_use]
     fn with_disabled(mut self, disabled: bool) -> Self
     where
         Self: Sized,

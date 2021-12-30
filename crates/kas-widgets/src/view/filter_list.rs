@@ -284,6 +284,7 @@ widget! {
             self.list.set_selection_mode(mode)
         }
         /// Set the selection mode (inline)
+        #[must_use]
         pub fn with_selection_mode(mut self, mode: SelectionMode) -> Self {
             let _ = self.set_selection_mode(mode);
             self
@@ -345,6 +346,7 @@ widget! {
         ///
         /// This affects the (ideal) size request and whether children are sized
         /// according to their ideal or minimum size but not the minimum size.
+        #[must_use]
         pub fn with_num_visible(mut self, number: i32) -> Self {
             self.list = self.list.with_num_visible(number);
             self

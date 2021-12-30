@@ -149,6 +149,7 @@ widget! {
 
         /// Set the initial state of the radiobox.
         #[inline]
+        #[must_use]
         pub fn with_state(mut self, state: bool) -> Self {
             self.state = state;
             self
@@ -276,6 +277,7 @@ widget! {
 
         /// Set the initial state of the radiobox.
         #[inline]
+        #[must_use]
         pub fn with_state(mut self, state: bool) -> Self {
             self.radiobox = self.radiobox.with_state(state);
             self

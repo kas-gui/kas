@@ -196,6 +196,7 @@ impl WidgetId {
     ///
     /// Note: this is not a getter method. Calling multiple times with the same
     /// `index` may or may not return the same value!
+    #[must_use]
     pub fn make_child(self, index: usize) -> Self {
         let self_id = self.0.get();
         let mut path = None;

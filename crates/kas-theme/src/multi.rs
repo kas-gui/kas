@@ -51,6 +51,7 @@ impl<DS> MultiThemeBuilder<DS> {
     /// Note: the constraints of this method vary depending on the `unsize`
     /// feature.
     #[cfg(feature = "unsize")]
+    #[must_use]
     pub fn add<S: ToString, U>(mut self, name: S, theme: U) -> Self
     where
         U: Unsize<dyn ThemeDst<DS>>,
@@ -67,6 +68,7 @@ impl<DS> MultiThemeBuilder<DS> {
     /// Note: the constraints of this method vary depending on the `unsize`
     /// feature.
     #[cfg(not(feature = "unsize"))]
+    #[must_use]
     pub fn add<S: ToString, T>(mut self, name: S, theme: T) -> Self
     where
         DS: DrawSharedImpl,

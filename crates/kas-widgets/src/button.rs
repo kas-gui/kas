@@ -113,6 +113,7 @@ widget! {
         }
 
         /// Add accelerator keys (chain style)
+        #[must_use]
         pub fn with_keys(mut self, keys: &[VirtualKeyCode]) -> Self {
             self.keys1.clear();
             self.keys1.extend_from_slice(keys);
@@ -125,6 +126,7 @@ widget! {
         }
 
         /// Set button color (chain style)
+        #[must_use]
         pub fn with_color(mut self, color: Rgb) -> Self {
             self.color = Some(color);
             self
@@ -274,6 +276,7 @@ widget! {
         /// Add accelerator keys (chain style)
         ///
         /// These keys are added to those inferred from the label via `&` marks.
+        #[must_use]
         pub fn with_keys(mut self, keys: &[VirtualKeyCode]) -> Self {
             self.keys1.clear();
             self.keys1.extend_from_slice(keys);
@@ -286,6 +289,7 @@ widget! {
         }
 
         /// Set button color (chain style)
+        #[must_use]
         pub fn with_color(mut self, color: Rgb) -> Self {
             self.color = Some(color);
             self

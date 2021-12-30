@@ -91,6 +91,7 @@ widget! {
     impl Self {
         /// Set the initial state of the checkbox.
         #[inline]
+        #[must_use]
         pub fn with_state(mut self, state: bool) -> Self {
             self.state = state;
             self
@@ -208,6 +209,7 @@ widget! {
 
         /// Set the initial state of the checkbox.
         #[inline]
+        #[must_use]
         pub fn with_state(mut self, state: bool) -> Self {
             self.checkbox = self.checkbox.with_state(state);
             self

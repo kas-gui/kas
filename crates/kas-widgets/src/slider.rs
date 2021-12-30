@@ -30,6 +30,7 @@ pub trait SliderType:
     ///
     /// Also note that this method is not required to preserve precision
     /// (e.g. `u128::mul_64` may drop some low-order bits with large numbers).
+    #[must_use]
     fn mul_f64(self, scalar: f64) -> Self;
 }
 
@@ -143,6 +144,7 @@ widget! {
 
         /// Set the initial value
         #[inline]
+        #[must_use]
         pub fn with_value(mut self, mut value: T) -> Self {
             if value < self.range.0 {
                 value = self.range.0;
