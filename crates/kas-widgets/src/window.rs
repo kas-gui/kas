@@ -67,7 +67,7 @@ widget! {
             if self.is_disabled() || self.eq_id(id) {
                 Response::Unused
             } else {
-                return self.w.send(mgr, id, event).into();
+                self.w.send(mgr, id, event).into()
             }
         }
     }

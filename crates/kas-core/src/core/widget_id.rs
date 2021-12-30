@@ -5,8 +5,13 @@
 
 //! Widget identifiers
 
+// x << a + b is x << (a + b)
+#![allow(clippy::precedence)]
+
 use crate::cast::{Cast, Conv};
+use std::cmp::PartialEq;
 use std::fmt;
+use std::hash::{Hash, Hasher};
 use std::iter::once;
 use std::mem::size_of;
 use std::num::NonZeroU64;
@@ -23,7 +28,7 @@ use std::sync::Mutex;
 /// Identifiers are assigned when configured and when re-configured
 /// (via [`crate::TkAction::RECONFIGURE`]). Since user-code is not notified of a
 /// re-configure, user-code should not store a `WidgetId`.
-#[derive(Clone, Copy, Hash, Eq)]
+#[derive(Clone, Copy, Eq)]
 pub struct WidgetId(NonZeroU64);
 
 /// Invalid (default) identifier
@@ -242,7 +247,7 @@ impl WidgetId {
     /// -   it is guaranteed non-zero
     /// -   it may be passed to [`Self::opt_from_u64`]
     pub fn as_u64(&self) -> u64 {
-        self.0.get().into()
+        self.0.get()
     }
 
     /// Convert `Option<WidgetId>` to `u64`
@@ -262,11 +267,11 @@ impl WidgetId {
     ///
     /// This always "succeeds", though the result may not identify any widget.
     pub fn opt_from_u64(n: u64) -> Option<WidgetId> {
-        NonZeroU64::new(n).map(|nz| WidgetId(nz))
+        NonZeroU64::new(n).map(WidgetId)
     }
 }
 
-impl std::cmp::PartialEq for WidgetId {
+impl PartialEq for WidgetId {
     fn eq(&self, rhs: &Self) -> bool {
         let lhs = self.0.get();
         let rhs = rhs.0.get();
@@ -307,17 +312,34 @@ impl std::cmp::PartialEq for WidgetId {
     }
 }
 
-impl std::cmp::PartialEq<Option<WidgetId>> for WidgetId {
+impl PartialEq<Option<WidgetId>> for WidgetId {
     #[inline]
     fn eq(&self, rhs: &Option<WidgetId>) -> bool {
         rhs.map(|id| id == *self).unwrap_or(false)
     }
 }
 
-impl<'a> std::cmp::PartialEq<Option<&'a WidgetId>> for WidgetId {
+impl<'a> PartialEq<Option<&'a WidgetId>> for WidgetId {
     #[inline]
     fn eq(&self, rhs: &Option<&'a WidgetId>) -> bool {
         rhs.map(|id| id == self).unwrap_or(false)
+    }
+}
+
+impl Hash for WidgetId {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let x = self.0.get();
+        if x & USE_BITS != 0 {
+            // Assuming the USE_BITS representation is used whenever possible
+            // (true outside of tests), we can simply hash the bit value.
+            // (Otherwise we must use BitsIter, handling INVALID and ROOT as special cases.)
+            x.hash(state);
+        } else {
+            let db = DB.lock().unwrap();
+            for index in db[usize::conv(x & MASK_PTR)].iter() {
+                index.hash(state);
+            }
+        }
     }
 }
 
