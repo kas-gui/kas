@@ -8,7 +8,7 @@
 // x << a + b is x << (a + b)
 #![allow(clippy::precedence)]
 
-use crate::cast::Cast;
+use crate::cast::{Cast, Conv};
 use std::cmp::{Eq, PartialEq};
 use std::hash::{Hash, Hasher};
 use std::iter::once;
@@ -29,7 +29,6 @@ const SHIFT_LEN: u8 = 4;
 const BLOCKS: u8 = 14;
 const MASK_BITS: u64 = 0xFFFF_FFFF_FFFF_FF00;
 
-// TODO: test on 32-bit
 #[cfg(target_pointer_width = "32")]
 const MASK_PTR: usize = 0xFFFF_FFFC;
 #[cfg(target_pointer_width = "64")]
@@ -40,25 +39,9 @@ const MASK_PTR: usize = 0xFFFF_FFFF_FFFF_FFFC;
 /// Use `Self::get_ptr` to determine the variant used. When reading a pointer,
 /// mask with MASK_PTR.
 ///
-/// `self.x & USE_BITS` is the "flag bit" determining the variant used. This
-/// overlaps with the pointer's lowest bit (which must be zero due to alignment)
-/// or padding (depending on Endianness and implementation).
-/// Note: we shouldn't need `repr(C)`, but the alternative is unspecified.
-#[repr(C)]
-union IntOrPtr {
-    // 8 bytes, platform endianness
-    x: NonZeroU64,
-    // 4 or 8 bytes, platform endianness
-    // 4-LE: overlaps least significant half of x
-    // 4-BE: overlaps most significant half of x
-    // 8 bytes: exactly overlaps x
-    //
-    // This is a *thin* pointer to a ref-counted [usize] slice.
-    // slice[0] is ref_count
-    // slice[1] is length (excluding ref_count and length)
-    // slice[2..2+length] is the rest
-    p: *mut usize,
-}
+/// `self.0 & USE_BITS` is the "flag bit" determining the variant used. This
+/// overlaps with the pointer's lowest bit (which must be zero due to alignment).
+struct IntOrPtr(NonZeroU64);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Variant<'a> {
@@ -68,22 +51,16 @@ enum Variant<'a> {
 }
 
 impl IntOrPtr {
-    const ROOT: Self = IntOrPtr {
-        x: unsafe { NonZeroU64::new_unchecked(USE_BITS) },
-    };
-    const INVALID: Self = IntOrPtr {
-        x: unsafe { NonZeroU64::new_unchecked(INVALID) },
-    };
+    const ROOT: Self = IntOrPtr(unsafe { NonZeroU64::new_unchecked(USE_BITS) });
+    const INVALID: Self = IntOrPtr(unsafe { NonZeroU64::new_unchecked(INVALID) });
 
     #[inline]
     fn get_ptr(&self) -> Option<*mut usize> {
-        unsafe {
-            if self.x.get() & USE_BITS == 0 {
-                let p = self.p as usize & MASK_PTR;
-                Some(p as *mut usize)
-            } else {
-                None
-            }
+        if self.0.get() & USE_BITS == 0 {
+            let p = usize::conv(self.0.get()) & MASK_PTR;
+            Some(p as *mut usize)
+        } else {
+            None
         }
     }
 
@@ -93,7 +70,7 @@ impl IntOrPtr {
     fn new_int(x: u64) -> Self {
         assert!(x & USE_BITS != 0);
         let x = NonZeroU64::new(x).unwrap();
-        let u = IntOrPtr { x };
+        let u = IntOrPtr(x);
         assert!(u.get_ptr().is_none());
         u
     }
@@ -107,8 +84,8 @@ impl IntOrPtr {
         let p = Box::leak(b) as *mut [usize] as *mut usize;
         let p = p as usize;
         debug_assert_eq!(p & 3, 0);
-        let p = (p | USE_PTR) as *mut usize;
-        let u = IntOrPtr { p };
+        let p = p | USE_PTR;
+        let u = IntOrPtr(NonZeroU64::new(p.cast()).unwrap());
         assert!(u.get_ptr().is_some());
         u
     }
@@ -120,19 +97,16 @@ impl IntOrPtr {
                 let p = p.offset(2);
                 let slice = slice::from_raw_parts(p, len);
                 Variant::Slice(slice)
-            } else if self.x.get() == INVALID {
+            } else if self.0.get() == INVALID {
                 Variant::Invalid
             } else {
-                Variant::Int(self.x.get())
+                Variant::Int(self.0.get())
             }
         }
     }
 
     fn as_u64(&self) -> u64 {
-        unsafe {
-            // We simply read x. Not portable, but doesn't need to be.
-            self.x.get()
-        }
+        self.0.get()
     }
 
     // Compatible with values geneated by `Self::as_u64`
@@ -144,24 +118,21 @@ impl IntOrPtr {
             let v = n & 3;
             assert!(v == 1 || v == 2, "WidgetId::opt_from_u64: invalid value");
             let x = NonZeroU64::new(n).unwrap();
-            Some(IntOrPtr { x })
+            Some(IntOrPtr(x))
         }
     }
 }
 
 impl Clone for IntOrPtr {
     fn clone(&self) -> Self {
-        unsafe {
-            if let Some(p) = self.get_ptr() {
+        if let Some(p) = self.get_ptr() {
+            unsafe {
                 let ref_count = p;
                 // TODO: should be atomic!
                 *ref_count += 1;
-                IntOrPtr { p }
-            } else {
-                let x = self.x;
-                IntOrPtr { x }
             }
         }
+        IntOrPtr(self.0)
     }
 }
 
@@ -212,10 +183,12 @@ impl<'a> Iterator for PathIter<'a> {
 /// Widget identifier
 ///
 /// All widgets are assigned an identifier which is unique within the window.
-/// This type may be tested for equality and order.
+/// This type may be tested for equality, ancestry, and to determine the "index"
+/// of a child.
 ///
-/// This type is small and cheap to copy. Internally it is "NonZero", thus
-/// `Option<WidgetId>` is a free extension (requires no extra memory).
+/// This type is small (64-bit) and non-zero: `Option<WidgetId>` has the same
+/// size as `WidgetId`. It is also very cheap to `Clone`: usually only one `if`
+/// check, and in the worst case a pointer dereference and ref-count increment.
 ///
 /// Identifiers are assigned when configured and when re-configured
 /// (via [`crate::TkAction::RECONFIGURE`]). Since user-code is not notified of a
@@ -544,7 +517,7 @@ mod test {
     fn size_of_option_widget_id() {
         use std::mem::size_of;
         assert_eq!(size_of::<WidgetId>(), 8);
-        // TODO: assert_eq!(size_of::<WidgetId>(), size_of::<Option<WidgetId>>());
+        assert_eq!(size_of::<WidgetId>(), size_of::<Option<WidgetId>>());
     }
 
     #[test]
