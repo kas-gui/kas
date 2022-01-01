@@ -12,8 +12,10 @@ use crate::cast::{Cast, Conv};
 use std::cmp::{Eq, PartialEq};
 use std::hash::{Hash, Hasher};
 use std::iter::once;
+use std::marker::PhantomData;
 use std::mem::size_of;
 use std::num::NonZeroU64;
+use std::rc::Rc;
 use std::{fmt, slice};
 
 /// Invalid (default) identifier
@@ -41,7 +43,10 @@ const MASK_PTR: usize = 0xFFFF_FFFF_FFFF_FFFC;
 ///
 /// `self.0 & USE_BITS` is the "flag bit" determining the variant used. This
 /// overlaps with the pointer's lowest bit (which must be zero due to alignment).
-struct IntOrPtr(NonZeroU64);
+///
+/// `PhantomData<Rc<()>>` is used to impl !Send and !Sync. We need atomic
+/// reference counting to support those.
+struct IntOrPtr(NonZeroU64, PhantomData<Rc<()>>);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Variant<'a> {
@@ -51,8 +56,8 @@ enum Variant<'a> {
 }
 
 impl IntOrPtr {
-    const ROOT: Self = IntOrPtr(unsafe { NonZeroU64::new_unchecked(USE_BITS) });
-    const INVALID: Self = IntOrPtr(unsafe { NonZeroU64::new_unchecked(INVALID) });
+    const ROOT: Self = IntOrPtr(unsafe { NonZeroU64::new_unchecked(USE_BITS) }, PhantomData);
+    const INVALID: Self = IntOrPtr(unsafe { NonZeroU64::new_unchecked(INVALID) }, PhantomData);
 
     #[inline]
     fn get_ptr(&self) -> Option<*mut usize> {
@@ -70,7 +75,7 @@ impl IntOrPtr {
     fn new_int(x: u64) -> Self {
         assert!(x & USE_BITS != 0);
         let x = NonZeroU64::new(x).unwrap();
-        let u = IntOrPtr(x);
+        let u = IntOrPtr(x, PhantomData);
         assert!(u.get_ptr().is_none());
         u
     }
@@ -85,7 +90,7 @@ impl IntOrPtr {
         let p = p as usize;
         debug_assert_eq!(p & 3, 0);
         let p = p | USE_PTR;
-        let u = IntOrPtr(NonZeroU64::new(p.cast()).unwrap());
+        let u = IntOrPtr(NonZeroU64::new(p.cast()).unwrap(), PhantomData);
         assert!(u.get_ptr().is_some());
         u
     }
@@ -118,7 +123,7 @@ impl IntOrPtr {
             let v = n & 3;
             assert!(v == 1 || v == 2, "WidgetId::opt_from_u64: invalid value");
             let x = NonZeroU64::new(n).unwrap();
-            Some(IntOrPtr(x))
+            Some(IntOrPtr(x, PhantomData))
         }
     }
 }
@@ -127,24 +132,28 @@ impl Clone for IntOrPtr {
     fn clone(&self) -> Self {
         if let Some(p) = self.get_ptr() {
             unsafe {
-                let ref_count = p;
-                // TODO: should be atomic!
-                *ref_count += 1;
+                let ref_count = *p;
+
+                // Copy behaviour of Rc::clone:
+                if ref_count == 0 || ref_count == usize::MAX {
+                    std::process::abort();
+                }
+
+                *p = ref_count + 1;
             }
         }
-        IntOrPtr(self.0)
+        IntOrPtr(self.0, PhantomData)
     }
 }
 
-// TODO: check not send & not sync
 impl Drop for IntOrPtr {
     fn drop(&mut self) {
         if let Some(p) = self.get_ptr() {
             unsafe {
-                let ref_count = p;
-                // TODO: should be atomic!
-                *ref_count -= 1;
-                if *ref_count == 0 {
+                let ref_count = *p;
+                if ref_count > 1 {
+                    *p = ref_count - 1;
+                } else {
                     // len+2 because path len does not include ref_count or len "fields"
                     let len = *p.offset(1) + 2;
                     let slice = slice::from_raw_parts_mut(p, len);
@@ -189,6 +198,9 @@ impl<'a> Iterator for PathIter<'a> {
 /// This type is small (64-bit) and non-zero: `Option<WidgetId>` has the same
 /// size as `WidgetId`. It is also very cheap to `Clone`: usually only one `if`
 /// check, and in the worst case a pointer dereference and ref-count increment.
+///
+/// `WidgetId` is neither `Send` nor `Sync` since it may use non-atomic
+/// reference counting internally.
 ///
 /// Identifiers are assigned when configured and when re-configured
 /// (via [`crate::TkAction::RECONFIGURE`]). Since user-code is not notified of a
