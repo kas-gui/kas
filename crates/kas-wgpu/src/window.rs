@@ -138,6 +138,12 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
                 self.mgr.with(&mut tkw, |mgr| {
                     mgr.handle_winit(widget, event);
                 });
+
+                if self.mgr.action.contains(TkAction::RECONFIGURE) {
+                    // Reconfigure must happen before further event handling
+                    self.reconfigure(shared);
+                    self.mgr.action.remove(TkAction::RECONFIGURE);
+                }
             }
         }
     }

@@ -130,7 +130,9 @@ pub struct ManagerState {
     // or sorted Vec with binary search yielding a range
     handle_updates: HashMap<UpdateHandle, LinearSet<WidgetId>>,
     pending: SmallVec<[Pending; 8]>,
-    action: TkAction,
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    pub action: TkAction,
 }
 
 /// internals
