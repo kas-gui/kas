@@ -170,7 +170,7 @@ widget! {
 
 #[derive(Debug)]
 struct MyDriver {
-    radio_group: UpdateHandle,
+    radio_group: RadioBoxGroup,
 }
 impl Driver<(usize, bool, String)> for MyDriver {
     type Msg = EntryMsg;
@@ -181,7 +181,7 @@ impl Driver<(usize, bool, String)> for MyDriver {
         ListEntry {
             core: Default::default(),
             label: Label::new(String::default()),
-            radio: RadioBox::new("display this entry", self.radio_group)
+            radio: RadioBox::new("display this entry", self.radio_group.clone())
                 .on_select(move |_| Some(EntryMsg::Select)),
             entry: EditBox::new(String::default()).with_guard(ListEntryGuard),
         }
@@ -234,7 +234,7 @@ fn main() -> Result<(), kas::shell::Error> {
     };
 
     let driver = MyDriver {
-        radio_group: UpdateHandle::new(),
+        radio_group: Default::default(),
     };
     let data = MyData::new(3);
     type MyList = ListView<Direction, MyData, MyDriver>;

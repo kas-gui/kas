@@ -97,7 +97,7 @@ pub use list::*;
 pub use menu::*;
 pub use nav_frame::NavFrame;
 pub use progress::ProgressBar;
-pub use radiobox::{RadioBox, RadioBoxBare};
+pub use radiobox::{RadioBox, RadioBoxBare, RadioBoxGroup};
 pub use scroll::{ScrollComponent, ScrollRegion};
 pub use scroll_label::ScrollLabel;
 pub use scrollbar::{ScrollBar, ScrollBarRegion, ScrollBars, Scrollable};

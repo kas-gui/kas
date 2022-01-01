@@ -9,7 +9,8 @@
 //! allowing referal to e.g. `driver::Default`.
 
 use crate::{
-    CheckBoxBare, EditBox, EditField, EditGuard, Label, NavFrame, ProgressBar, SliderType,
+    CheckBoxBare, EditBox, EditField, EditGuard, Label, NavFrame, ProgressBar, RadioBoxGroup,
+    SliderType,
 };
 use kas::prelude::*;
 use std::fmt::Debug;
@@ -246,19 +247,19 @@ impl Driver<bool> for CheckBox {
 /// [`crate::RadioBoxBare`] view widget constructor
 #[derive(Clone, Debug, Default)]
 pub struct RadioBoxBare {
-    handle: UpdateHandle,
+    group: RadioBoxGroup,
 }
 impl RadioBoxBare {
-    /// Construct, with given `handle`
-    pub fn new(handle: UpdateHandle) -> Self {
-        RadioBoxBare { handle }
+    /// Construct, with given `group`
+    pub fn new(group: RadioBoxGroup) -> Self {
+        RadioBoxBare { group }
     }
 }
 impl Driver<bool> for RadioBoxBare {
     type Msg = bool;
     type Widget = crate::RadioBoxBare<bool>;
     fn new(&self) -> Self::Widget {
-        crate::RadioBoxBare::new(self.handle).on_select(|_| Some(true))
+        crate::RadioBoxBare::new(self.group.clone()).on_select(|_| Some(true))
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
@@ -272,20 +273,20 @@ impl Driver<bool> for RadioBoxBare {
 #[derive(Clone, Debug, Default)]
 pub struct RadioBox {
     label: AccelString,
-    handle: UpdateHandle,
+    group: RadioBoxGroup,
 }
 impl RadioBox {
-    /// Construct, with given `label` and `handle`
-    pub fn new<T: Into<AccelString>>(label: T, handle: UpdateHandle) -> Self {
+    /// Construct, with given `label` and `group`
+    pub fn new<T: Into<AccelString>>(label: T, group: RadioBoxGroup) -> Self {
         let label = label.into();
-        RadioBox { label, handle }
+        RadioBox { label, group }
     }
 }
 impl Driver<bool> for RadioBox {
     type Msg = bool;
     type Widget = crate::RadioBox<bool>;
     fn new(&self) -> Self::Widget {
-        crate::RadioBox::new(self.label.clone(), self.handle).on_select(|_| Some(true))
+        crate::RadioBox::new(self.label.clone(), self.group.clone()).on_select(|_| Some(true))
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
