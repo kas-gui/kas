@@ -5,7 +5,7 @@
 
 //! Event manager — public API
 
-use log::{debug, error, trace};
+use log::{debug, trace};
 use std::time::{Duration, Instant};
 use std::u16;
 
@@ -700,39 +700,11 @@ impl<'a> Manager<'a> {
             focus: Option<&WidgetId>,
             rev: bool,
         ) -> Option<WidgetId> {
-            let last = widget.num_children().wrapping_sub(1);
             if widget.is_disabled() {
                 return None;
-            } else if last == usize::MAX {
-                if !widget.eq_id(focus) && widget.key_nav() {
-                    return Some(widget.id());
-                }
-                return None;
             }
 
-            let mut child = None;
-            if let Some(id) = focus {
-                // Checking is_ancestor_of is just an optimisation
-                if widget.is_ancestor_of(&id) && !widget.eq_id(id) {
-                    // TODO(opt): add WidgetChildren::find_ancestor_of method to
-                    // allow optimisations for widgets with many children?
-                    for index in 0..=last {
-                        if widget
-                            .get_child(index)
-                            .map(|w| w.is_ancestor_of(&id))
-                            .unwrap_or(false)
-                        {
-                            child = Some(index);
-                            break;
-                        }
-                    }
-
-                    if child.is_none() {
-                        error!("unable to find widget {}", id);
-                        return None;
-                    }
-                }
-            }
+            let mut child = focus.and_then(|id| widget.find_child_index(id));
 
             if !rev {
                 if let Some(index) = child {
