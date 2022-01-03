@@ -205,8 +205,8 @@ pub trait WidgetChildren: WidgetCore {
 
     /// Find the child which is an ancestor of this `id`, if any
     ///
-    /// This child may then be accessed via [`Self::get_child`] or
-    /// [`Self::get_child_mut`].
+    /// Warning: the return value is not guaranteed to be a valid child, thus
+    /// calls to methods like [`Self::get_child`] must handle `None` return.
     ///
     /// This requires that the widget tree has already been configured by
     /// [`event::ManagerState::configure`].
@@ -220,8 +220,9 @@ pub trait WidgetChildren: WidgetCore {
     /// This requires that the widget tree has already been configured by
     /// [`event::ManagerState::configure`].
     fn find_widget(&self, id: &WidgetId) -> Option<&dyn WidgetConfig> {
-        if let Some(child) = self.find_child_index(id) {
-            self.get_child(child).unwrap().find_widget(id)
+        if let Some(index) = self.find_child_index(id) {
+            self.get_child(index)
+                .and_then(|child| child.find_widget(id))
         } else if self.eq_id(id) {
             return Some(self.as_widget());
         } else {
@@ -234,8 +235,9 @@ pub trait WidgetChildren: WidgetCore {
     /// This requires that the widget tree has already been configured by
     /// [`ManagerState::configure`].
     fn find_widget_mut(&mut self, id: &WidgetId) -> Option<&mut dyn WidgetConfig> {
-        if let Some(child) = self.find_child_index(id) {
-            self.get_child_mut(child).unwrap().find_widget_mut(id)
+        if let Some(index) = self.find_child_index(id) {
+            self.get_child_mut(index)
+                .and_then(|child| child.find_widget_mut(id))
         } else if self.eq_id(id) {
             return Some(self.as_widget_mut());
         } else {

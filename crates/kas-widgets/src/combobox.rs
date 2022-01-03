@@ -252,7 +252,7 @@ impl<M: 'static> ComboBox<M> {
     /// Set the active choice
     #[inline]
     pub fn set_active(&mut self, index: usize) -> TkAction {
-        if self.active != index {
+        if self.active != index && index < self.popup.inner.len() {
             self.active = index;
             let string = if index < self.len() {
                 self.popup.inner[index].get_string()
