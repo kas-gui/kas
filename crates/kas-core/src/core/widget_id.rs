@@ -410,7 +410,9 @@ impl WidgetId {
 
     /// Convert `u64` to `Option<WidgetId>`
     ///
-    /// **Safety:** this may only be called with the output of [`Self::as_u64`],
+    /// # Safety
+    ///
+    /// This may only be called with the output of [`Self::as_u64`],
     /// [`Self::opt_from_u64`], or `0`.
     ///
     /// This always "succeeds", though the result may not identify any widget.

@@ -142,13 +142,13 @@ pub trait WidgetCore: Any + fmt::Debug {
         if self.core_data().disabled || disabled {
             state |= InputState::DISABLED;
         }
-        if mgr.is_hovered(&id) {
+        if mgr.is_hovered(id) {
             state |= InputState::HOVER;
         }
-        if mgr.is_depressed(&id) {
+        if mgr.is_depressed(id) {
             state |= InputState::DEPRESS;
         }
-        if mgr.nav_focus(&id) {
+        if mgr.nav_focus(id) {
             state |= InputState::NAV_FOCUS;
         }
         if char_focus {

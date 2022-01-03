@@ -367,7 +367,7 @@ impl<'a> Manager<'a> {
                         let source = PressSource::Mouse(grab.button, grab.repetitions);
                         let event = Event::PressMove {
                             source,
-                            cur_id: cur_id.clone(),
+                            cur_id,
                             coord,
                             delta,
                         };

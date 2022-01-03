@@ -125,7 +125,7 @@ widget! {
                                 }
                                 return Response::Used;
                             }
-                        } else if self.popup_id.is_some() && self.popup.is_ancestor_of(&id) {
+                        } else if self.popup_id.is_some() && self.popup.is_ancestor_of(id) {
                             let r = self.popup.send(mgr, id.clone(), Event::Activate);
                             return self.map_response(mgr, id.clone(), event, r);
                         }

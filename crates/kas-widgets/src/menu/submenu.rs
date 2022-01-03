@@ -224,12 +224,12 @@ widget! {
 
         fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<&WidgetId>, set_focus: bool) {
             match target {
-                Some(id) if self.is_ancestor_of(&id) => {
+                Some(id) if self.is_ancestor_of(id) => {
                     if self.popup_id.is_some() {
                         // We should close other sub-menus before opening
                         let mut child = None;
                         for i in 0..self.list.len() {
-                            if self.list[i].is_ancestor_of(&id) {
+                            if self.list[i].is_ancestor_of(id) {
                                 child = Some(i);
                             } else {
                                 self.list[i].set_menu_path(mgr, None, set_focus);
