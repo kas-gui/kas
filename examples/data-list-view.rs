@@ -104,6 +104,10 @@ impl ListData for MyData {
     type Key = usize;
     type Item = (usize, bool, String);
 
+    fn version(&self) -> u64 {
+        0
+    }
+
     fn len(&self) -> usize {
         self.len
     }

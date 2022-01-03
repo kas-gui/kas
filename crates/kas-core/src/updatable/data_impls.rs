@@ -14,6 +14,10 @@ impl<T: Clone + Debug> ListData for [T] {
     type Key = usize;
     type Item = T;
 
+    fn version(&self) -> u64 {
+        0
+    }
+
     fn len(&self) -> usize {
         (*self).len()
     }
@@ -53,6 +57,10 @@ impl<T: Clone + Debug> ListDataMut for [T] {
 impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> ListData for std::collections::BTreeMap<K, T> {
     type Key = K;
     type Item = T;
+
+    fn version(&self) -> u64 {
+        0
+    }
 
     fn len(&self) -> usize {
         (*self).len()
@@ -96,6 +104,9 @@ macro_rules! impl_via_deref {
     ($t: ident: $derived:ty) => {
         impl<$t: SingleData + ?Sized> SingleData for $derived {
             type Item = $t::Item;
+            fn version(&self) -> u64 {
+                self.deref().version()
+            }
             fn get_cloned(&self) -> Self::Item {
                 self.deref().get_cloned()
             }
@@ -107,6 +118,10 @@ macro_rules! impl_via_deref {
         impl<$t: ListData + ?Sized> ListData for $derived {
             type Key = $t::Key;
             type Item = $t::Item;
+
+            fn version(&self) -> u64 {
+                self.deref().version()
+            }
 
             fn len(&self) -> usize {
                 self.deref().len()
@@ -135,6 +150,10 @@ macro_rules! impl_via_deref {
             type RowKey = $t::RowKey;
             type Key = $t::Key;
             type Item = $t::Item;
+
+            fn version(&self) -> u64 {
+                self.deref().version()
+            }
 
             fn col_len(&self) -> usize {
                 self.deref().col_len()

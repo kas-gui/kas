@@ -41,7 +41,7 @@ struct FilteredList<T: ListData, F: Filter<T::Item>> {
     ///
     /// If adjusting this, one should call [`FilteredList::refresh`] after.
     filter: F,
-    view: RefCell<Vec<T::Key>>, // TODO: does this need to be in a RefCell?
+    view: RefCell<Vec<T::Key>>,
 }
 
 impl<T: ListData, F: Filter<T::Item>> FilteredList<T, F> {
@@ -89,6 +89,11 @@ impl<K, M, T: ListData + UpdatableHandler<K, M> + 'static, F: Filter<T::Item>>
 impl<T: ListData + 'static, F: Filter<T::Item>> ListData for FilteredList<T, F> {
     type Key = T::Key;
     type Item = T::Item;
+
+    fn version(&self) -> u64 {
+        // Updates to self always update data, so we don't need a new version number
+        self.data.version()
+    }
 
     fn len(&self) -> usize {
         self.view.borrow().len()

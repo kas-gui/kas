@@ -20,13 +20,13 @@ pub trait Filter<T>: Updatable + 'static {
 
 /// Filter: target contains self (case-sensitive string match)
 #[derive(Debug, Default, Clone)]
-pub struct ContainsString(Rc<(UpdateHandle, RefCell<String>)>);
+pub struct ContainsString(Rc<(UpdateHandle, RefCell<(String, u64)>)>);
 
 impl ContainsString {
     /// Construct with given string
     pub fn new<S: ToString>(s: S) -> Self {
         let handle = UpdateHandle::new();
-        let data = RefCell::new(s.to_string());
+        let data = RefCell::new((s.to_string(), 0));
         ContainsString(Rc::new((handle, data)))
     }
 }
@@ -47,17 +47,24 @@ impl UpdatableHandler<(), VoidMsg> for ContainsString {
 }
 impl SingleData for ContainsString {
     type Item = String;
+    fn version(&self) -> u64 {
+        (self.0).1.borrow().1
+    }
     fn get_cloned(&self) -> Self::Item {
-        (self.0).1.borrow().to_owned()
+        (self.0).1.borrow().0.to_owned()
     }
     fn update(&self, value: Self::Item) -> Option<UpdateHandle> {
-        *(self.0).1.borrow_mut() = value;
+        let mut cell = (self.0).1.borrow_mut();
+        cell.0 = value;
+        cell.1 += 1;
         Some((self.0).0)
     }
 }
 impl SingleDataMut for ContainsString {
     fn set(&mut self, value: Self::Item) {
-        *(self.0).1.borrow_mut() = value;
+        let mut cell = (self.0).1.borrow_mut();
+        cell.0 = value;
+        cell.1 += 1;
     }
 }
 
@@ -80,7 +87,7 @@ impl Filter<String> for ContainsString {
 //
 // [question on StackOverflow]: https://stackoverflow.com/questions/47298336/case-insensitive-string-matching-in-rust
 #[derive(Debug, Default, Clone)]
-pub struct ContainsCaseInsensitive(Rc<(UpdateHandle, RefCell<(String, String)>)>);
+pub struct ContainsCaseInsensitive(Rc<(UpdateHandle, RefCell<(String, String, u64)>)>);
 
 impl ContainsCaseInsensitive {
     /// Construct with given string
@@ -88,7 +95,7 @@ impl ContainsCaseInsensitive {
         let handle = UpdateHandle::new();
         let s = s.to_string();
         let u = s.to_uppercase();
-        let data = RefCell::new((s, u));
+        let data = RefCell::new((s, u, 0));
         ContainsCaseInsensitive(Rc::new((handle, data)))
     }
 }
@@ -109,6 +116,9 @@ impl UpdatableHandler<(), VoidMsg> for ContainsCaseInsensitive {
 }
 impl SingleData for ContainsCaseInsensitive {
     type Item = String;
+    fn version(&self) -> u64 {
+        (self.0).1.borrow().2
+    }
     fn get_cloned(&self) -> Self::Item {
         (self.0).1.borrow().0.clone()
     }
@@ -116,6 +126,7 @@ impl SingleData for ContainsCaseInsensitive {
         let mut cell = (self.0).1.borrow_mut();
         cell.0 = value;
         cell.1 = cell.0.to_uppercase();
+        cell.2 += 1;
         Some((self.0).0)
     }
 }
@@ -124,6 +135,7 @@ impl SingleDataMut for ContainsCaseInsensitive {
         let mut cell = (self.0).1.borrow_mut();
         cell.0 = value;
         cell.1 = cell.0.to_uppercase();
+        cell.2 += 1;
     }
 }
 
