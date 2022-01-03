@@ -350,14 +350,18 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
             let mut ev_to_num = TokenStream::new();
             for (i, child) in args.children.iter().enumerate() {
                 #[cfg(feature = "log")]
+                let id = quote! { id.clone() };
+                #[cfg(feature = "log")]
                 let log_msg = quote! {
-                    log::trace!(
+                    ::log::trace!(
                         "Received by {} from {}: {:?}",
                         self.id(),
                         id,
                         ::kas::util::TryFormat(&msg)
                     );
                 };
+                #[cfg(not(feature = "log"))]
+                let id = quote! { id };
                 #[cfg(not(feature = "log"))]
                 let log_msg = quote! {};
 
@@ -403,7 +407,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
 
                 ev_to_num.append_all(quote! {
                     Some(#i) => {
-                        let r = self.#ident.send(mgr, id, event);
+                        let r = self.#ident.send(mgr, #id, event);
                         #update
                         #handler
                     }
