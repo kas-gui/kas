@@ -5,8 +5,8 @@
 
 //! Event manager — public API
 
+use instant::{Duration, Instant};
 use log::{debug, error, trace};
-use std::time::{Duration, Instant};
 use std::u16;
 
 use super::*;

@@ -5,10 +5,10 @@
 
 //! Event loop and handling
 
+use instant::Instant;
 use log::{debug, error};
 use smallvec::SmallVec;
 use std::collections::HashMap;
-use std::time::Instant;
 
 use winit::event::{Event, StartCause};
 use winit::event_loop::{ControlFlow, EventLoopWindowTarget};

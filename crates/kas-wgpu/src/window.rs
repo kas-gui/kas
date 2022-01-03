@@ -5,8 +5,8 @@
 
 //! `Window` and `WindowList` types
 
+use instant::Instant;
 use log::{debug, error, info, trace};
-use std::time::Instant;
 
 use kas::cast::Cast;
 use kas::draw::{DrawIface, DrawShared, PassId, SizeHandle, ThemeApi};
