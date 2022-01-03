@@ -28,7 +28,7 @@
 //!
 //! The [`Response`] enum has a few variants; most important is `Msg(msg)`
 //! which passes a user-defined payload up to a parent widget. The
-//! `Unhandled(event)` and `Focus(rect)` variants may be trapped by any parent
+//! `Unused` and `Focus(rect)` variants may be trapped by any parent
 //! for secondary purposes, e.g. to adjust a `ScrollRegion`.
 //!
 //! ## Mouse and touch events
@@ -51,7 +51,7 @@
 //!
 //! When a pop-up widget is created, this forces keyboard focus to that widget
 //! and receives a "weak" grab on press actions, meaning that the widget
-//! receives this input first, but if returned via `Response::Unhandled` the
+//! receives this input first, but if returned via `Response::Unused` the
 //! input passes immediately to the next target. This allows pop-up menus to
 //! get first chance of handling input and to dismiss themselves when input is
 //! for other widgets without blocking other widgets from accepting that input.
@@ -173,13 +173,17 @@ impl<K, M> From<VoidMsg> for ChildMsg<K, M> {
     }
 }
 
+/// Convert Response<ChildMsg<_, M>> to Response<M>
+///
+/// `ChildMsg::Child(_, msg)`  translates to `Response::Msg(msg)`; other
+/// variants translate to `Response::Used`.
 impl<K, M> From<Response<ChildMsg<K, M>>> for Response<M> {
     fn from(r: Response<ChildMsg<K, M>>) -> Self {
         match Response::try_from(r) {
             Ok(r) => r,
             Err(msg) => match msg {
                 ChildMsg::Child(_, msg) => Response::Msg(msg),
-                _ => Response::None,
+                _ => Response::Used,
             },
         }
     }

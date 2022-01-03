@@ -51,10 +51,12 @@ widget! {
     impl SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
-                return Response::Unhandled;
+                return Response::Unused;
             }
 
-            if id < self.id() {
+            if self.eq_id(id) {
+                self.handle(mgr, event)
+            } else {
                 let r = self.inner.send(mgr, id, event);
                 r.try_into().unwrap_or_else(|msg| {
                     log::trace!(
@@ -65,9 +67,6 @@ widget! {
                     );
                     (self.map)(mgr, msg)
                 })
-            } else {
-                debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
-                self.handle(mgr, event)
             }
         }
     }

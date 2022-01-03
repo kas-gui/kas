@@ -102,7 +102,7 @@ enum Pending {
 pub struct ManagerState {
     config: Rc<RefCell<Config>>,
     scale_factor: f32,
-    end_id: WidgetId,
+    widget_count: usize,
     modifiers: ModifiersState,
     /// char focus is on same widget as sel_focus; otherwise its value is ignored
     char_focus: bool,
@@ -249,16 +249,7 @@ impl<'a> Manager<'a> {
             trace!("Manager: hover = {:?}", w_id);
             if let Some(id) = self.state.hover {
                 if widget
-                    .find_leaf(id)
-                    .map(|w| w.hover_highlight())
-                    .unwrap_or(false)
-                {
-                    self.redraw(id);
-                }
-            }
-            if let Some(id) = w_id {
-                if widget
-                    .find_leaf(id)
+                    .find_widget(id)
                     .map(|w| w.hover_highlight())
                     .unwrap_or(false)
                 {
@@ -268,14 +259,12 @@ impl<'a> Manager<'a> {
             self.state.hover = w_id;
 
             if let Some(id) = w_id {
-                let mut icon = widget.cursor_icon();
-                let mut widget = widget.as_widget();
-                while let Some(child) = widget.find_child(id) {
-                    widget = widget.get_child(child).unwrap();
-                    let child_icon = widget.cursor_icon();
-                    if child_icon != CursorIcon::Default {
-                        icon = child_icon;
+                let mut icon = Default::default();
+                if let Some(w) = widget.find_widget(id) {
+                    if w.hover_highlight() {
+                        self.redraw(id);
                     }
+                    icon = w.cursor_icon();
                 }
                 if icon != self.state.hover_icon {
                     self.state.hover_icon = icon;
@@ -376,7 +365,7 @@ impl<'a> Manager<'a> {
         }
 
         if let Some(id) = target {
-            if widget.find_leaf(id).map(|w| w.key_nav()).unwrap_or(false) {
+            if widget.find_widget(id).map(|w| w.key_nav()).unwrap_or(false) {
                 self.set_nav_focus(id, true);
             }
             self.add_key_depress(scancode, id);
@@ -491,7 +480,7 @@ impl<'a> Manager<'a> {
         let _ = widget.send(self, id, event);
     }
 
-    // Similar to send_event, but return true only if response != Response::Unhandled
+    // Similar to send_event, but return true only if response != Response::Unused
     fn try_send_event<W: Widget + ?Sized>(
         &mut self,
         widget: &mut W,
@@ -500,7 +489,7 @@ impl<'a> Manager<'a> {
     ) -> bool {
         trace!("Send to {}: {:?}", id, event);
         let r = widget.send(self, id, event);
-        !matches!(r, Response::Unhandled)
+        !matches!(r, Response::Unused)
     }
 
     fn send_popup_first<W: Widget + ?Sized>(&mut self, widget: &mut W, id: WidgetId, event: Event) {
@@ -508,7 +497,7 @@ impl<'a> Manager<'a> {
         {
             trace!("Send to popup parent: {}: {:?}", parent, event);
             match widget.send(self, parent, event.clone()) {
-                Response::Unhandled => (),
+                Response::Unused => (),
                 _ => return,
             }
             self.close_window(wid, false);
@@ -519,37 +508,47 @@ impl<'a> Manager<'a> {
 
 /// Helper used during widget configuration
 pub struct ConfigureManager<'a: 'b, 'b> {
-    id: &'b mut WidgetId,
+    count: &'b mut usize,
+    used: bool,
+    id: WidgetId,
     map: &'b mut HashMap<WidgetId, WidgetId>,
     mgr: &'b mut Manager<'a>,
 }
 
 impl<'a: 'b, 'b> ConfigureManager<'a, 'b> {
     /// Reborrow self to pass to a child
-    pub fn child<'c>(&'c mut self) -> ConfigureManager<'a, 'c>
+    ///
+    /// The child's `index` becomes part of the identifier, and hence must be
+    /// unique.
+    pub fn child<'c>(&'c mut self, index: usize) -> ConfigureManager<'a, 'c>
     where
         'b: 'c,
     {
         ConfigureManager {
-            id: &mut *self.id,
+            count: &mut *self.count,
+            used: false,
+            id: self.id.make_child(index),
             map: &mut *self.map,
             mgr: &mut *self.mgr,
         }
     }
 
-    /// Get the next [`WidgetId`], without advancing the counter
-    pub fn peek_next(&self) -> WidgetId {
-        *self.id
-    }
-
-    /// Get a new [`WidgetId`] for the widget
+    /// Get [`WidgetId`] for self
+    ///
+    /// Do not call more than once on each instance. Create a new instance with
+    /// [`Self::child`].
     ///
     /// Pass the old ID (`self.id()`), even if not yet configured.
-    pub fn next_id(&mut self, old_id: WidgetId) -> WidgetId {
-        let id = *self.id;
-        *self.id = id.next();
-        self.map.insert(old_id, id);
-        id
+    pub fn get_id(&mut self, old_id: WidgetId) -> WidgetId {
+        assert!(
+            !self.used,
+            "multiple use of ConfigureManager::get_id without construction of child"
+        );
+        self.used = true;
+        if old_id.is_valid() {
+            self.map.insert(old_id, self.id);
+        }
+        self.id
     }
 
     /// Get access to the wrapped [`Manager`]

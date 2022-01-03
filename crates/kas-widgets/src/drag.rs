@@ -67,18 +67,18 @@ widget! {
             match event {
                 Event::PressStart { source, coord, .. } => {
                     if !self.grab_press(mgr, source, coord) {
-                        return Response::None;
+                        return Response::Used;
                     }
 
                     // Event delivery implies coord is over the handle.
                     self.press_coord = coord - self.offset();
-                    Response::None
+                    Response::Used
                 }
                 Event::PressMove { source, coord, .. } if Some(source) == self.press_source => {
                     let offset = coord - self.press_coord;
                     let (offset, action) = self.set_offset(offset);
                     if action.is_empty() {
-                        Response::None
+                        Response::Used
                     } else {
                         mgr.send_action(action);
                         Response::Msg(offset)
@@ -86,9 +86,9 @@ widget! {
                 }
                 Event::PressEnd { source, .. } if Some(source) == self.press_source => {
                     self.press_source = None;
-                    Response::None
+                    Response::Used
                 }
-                _ => Response::Unhandled,
+                _ => Response::Unused,
             }
         }
     }

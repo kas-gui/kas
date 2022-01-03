@@ -51,12 +51,14 @@ macro_rules! impl_common {
 
             /// Return the minimum, componentwise
             #[inline]
+            #[must_use = "method does not modify self but returns a new value"]
             pub fn min(self, other: Self) -> Self {
                 Self(self.0.min(other.0), self.1.min(other.1))
             }
 
             /// Return the maximum, componentwise
             #[inline]
+            #[must_use = "method does not modify self but returns a new value"]
             pub fn max(self, other: Self) -> Self {
                 Self(self.0.max(other.0), self.1.max(other.1))
             }
@@ -65,24 +67,28 @@ macro_rules! impl_common {
             ///
             /// In the case that `min > max`, the `min` value is returned.
             #[inline]
+            #[must_use = "method does not modify self but returns a new value"]
             pub fn clamp(self, min: Self, max: Self) -> Self {
                 self.min(max).max(min)
             }
 
             /// Return the transpose (swap x and y values)
             #[inline]
+            #[must_use = "method does not modify self but returns a new value"]
             pub fn transpose(self) -> Self {
                 Self(self.1, self.0)
             }
 
             /// Return the result of component-wise multiplication
             #[inline]
+            #[must_use = "method does not modify self but returns a new value"]
             pub fn cwise_mul(self, rhs: Self) -> Self {
                 Self(self.0 * rhs.0, self.1 * rhs.1)
             }
 
             /// Return the result of component-wise division
             #[inline]
+            #[must_use = "method does not modify self but returns a new value"]
             pub fn cwise_div(self, rhs: Self) -> Self {
                 Self(self.0 / rhs.0, self.1 / rhs.1)
             }
@@ -297,6 +303,7 @@ impl Size {
 
     /// Subtraction, clamping the result to 0 or greater
     #[inline]
+    #[must_use = "method does not modify self but returns a new value"]
     pub fn clamped_sub(self, rhs: Self) -> Self {
         // This impl should aid vectorisation. We avoid Sub impl because of its check.
         Size(self.0 - rhs.0, self.1 - rhs.1).max(Size::ZERO)
@@ -624,6 +631,7 @@ impl Rect {
 
     /// Shrink self in all directions by the given `n`
     #[inline]
+    #[must_use = "method does not modify self but returns a new value"]
     pub fn shrink(&self, n: i32) -> Rect {
         let pos = self.pos + Offset::splat(n);
         let size = self.size.clamped_sub(Size::splat(n + n));
@@ -632,6 +640,7 @@ impl Rect {
 
     /// Expand self in all directions by the given `n`
     #[inline]
+    #[must_use = "method does not modify self but returns a new value"]
     pub fn expand(&self, n: i32) -> Rect {
         debug_assert!(n >= 0);
         let pos = self.pos - Offset::splat(n);

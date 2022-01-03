@@ -48,7 +48,6 @@ widget! {
     #[derive(Clone, Debug)]
     #[handler(msg=<W as Handler>::Msg)]
     pub struct Grid<W: Widget> {
-        first_id: WidgetId,
         #[widget_core]
         core: CoreData,
         widgets: Vec<(GridChildInfo, W)>,
@@ -57,13 +56,6 @@ widget! {
     }
 
     impl WidgetChildren for Self {
-        #[inline]
-        fn first_id(&self) -> WidgetId {
-            self.first_id
-        }
-        fn record_first_id(&mut self, id: WidgetId) {
-            self.first_id = id;
-        }
         #[inline]
         fn num_children(&self) -> usize {
             self.widgets.len()
@@ -91,9 +83,9 @@ widget! {
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if !self.is_disabled() {
-                for child in self.widgets.iter_mut() {
-                    if id <= child.1.id() {
-                        let r = child.1.send(mgr, id, event);
+                if let Some(index) = self.id().index_of_child(id) {
+                    if let Some((_, child)) = self.widgets.get_mut(index) {
+                        let r = child.send(mgr, id, event);
                         return match Response::try_from(r) {
                             Ok(r) => r,
                             Err(msg) => {
@@ -110,7 +102,7 @@ widget! {
                 }
             }
 
-            Response::Unhandled
+            Response::Unused
         }
     }
 }

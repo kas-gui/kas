@@ -156,26 +156,26 @@ widget! {
                     Command::Escape | Command::Deselect if !self.selection.is_empty() => {
                         self.selection.set_empty();
                         mgr.redraw(self.id());
-                        Response::None
+                        Response::Used
                     }
                     Command::SelectAll => {
                         self.selection.set_sel_pos(0);
                         self.selection.set_edit_pos(self.text.str_len());
                         mgr.redraw(self.id());
-                        Response::None
+                        Response::Used
                     }
                     Command::Cut | Command::Copy => {
                         let range = self.selection.range();
                         mgr.set_clipboard((self.text.as_str()[range]).to_string());
-                        Response::None
+                        Response::Used
                     }
                     // TODO: scroll by command
-                    _ => Response::Unhandled,
+                    _ => Response::Unused,
                 },
                 Event::LostSelFocus => {
                     self.selection.set_empty();
                     mgr.redraw(self.id());
-                    Response::None
+                    Response::Used
                 }
                 Event::Scroll(delta) => {
                     let delta2 = match delta {
@@ -187,15 +187,15 @@ widget! {
                         ScrollDelta::PixelDelta(coord) => coord,
                     };
                     match self.pan_delta(mgr, delta2) {
-                        delta if delta == Offset::ZERO => Response::None,
+                        delta if delta == Offset::ZERO => Response::Used,
                         delta => Response::Pan(delta),
                     }
                 }
                 event => match self.input_handler.handle(mgr, self.id(), event) {
-                    TextInputAction::None | TextInputAction::Focus => Response::None,
-                    TextInputAction::Unhandled => Response::Unhandled,
+                    TextInputAction::None | TextInputAction::Focus => Response::Used,
+                    TextInputAction::Unused => Response::Unused,
                     TextInputAction::Pan(delta) => match self.pan_delta(mgr, delta) {
-                        delta if delta == Offset::ZERO => Response::None,
+                        delta if delta == Offset::ZERO => Response::Used,
                         delta => Response::Pan(delta),
                     },
                     TextInputAction::Cursor(coord, anchor, clear, repeats) => {
@@ -211,7 +211,7 @@ widget! {
                                 self.selection.expand(&self.text, repeats);
                             }
                         }
-                        Response::None
+                        Response::Used
                     }
                 },
             }

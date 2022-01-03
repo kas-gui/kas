@@ -94,6 +94,7 @@ pub trait WidgetCore: Any + fmt::Debug {
     /// let entry = MenuEntry::new("Disabled Item", ()).with_disabled(true);
     /// ```
     #[inline]
+    #[must_use]
     fn with_disabled(mut self, disabled: bool) -> Self
     where
         Self: Sized,
@@ -169,25 +170,6 @@ pub trait WidgetCore: Any + fmt::Debug {
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 pub trait WidgetChildren: WidgetCore {
-    /// Get the first identifier of self or any children
-    ///
-    /// Widget identifiers are assigned sequentially by depth-first-search,
-    /// children before parents. Any widget thus has a range of identifiers,
-    /// from the first assigned to any descendent (or self) to its own
-    /// ([`WidgetCore::id`]). This method must return the first identifier.
-    fn first_id(&self) -> WidgetId;
-
-    /// Record first identifier
-    ///
-    /// This is called during [`WidgetConfig::configure_recurse`] with the first
-    /// identifier. This may be used to implement [`WidgetChildren::first_id`],
-    /// although in many cases the first identifier can be read directly from
-    /// the first child. This method has a default implementation doing nothing.
-    ///
-    /// This method should only be called from `configure_recurse`.
-    #[inline]
-    fn record_first_id(&mut self, _id: WidgetId) {}
-
     /// Get the number of child widgets
     fn num_children(&self) -> usize;
 
@@ -212,7 +194,7 @@ pub trait WidgetChildren: WidgetCore {
     /// This function assumes that `id` is a valid widget.
     #[inline]
     fn is_ancestor_of(&self, id: WidgetId) -> bool {
-        id <= self.id() && self.first_id() <= id
+        self.id().is_ancestor_of(id)
     }
 
     /// Find the child which is an ancestor of this `id`, if any
@@ -222,45 +204,33 @@ pub trait WidgetChildren: WidgetCore {
     ///
     /// This requires that the widget tree has already been configured by
     /// [`event::ManagerState::configure`].
-    fn find_child(&self, id: WidgetId) -> Option<usize> {
-        if id < self.first_id() || id >= self.id() {
-            return None;
-        }
-
-        let (mut start, mut end) = (0, self.num_children());
-        while start + 1 < end {
-            let mid = start + (end - start) / 2;
-            if id <= self.get_child(mid - 1).unwrap().id() {
-                end = mid;
-            } else {
-                start = mid;
-            }
-        }
-        Some(start)
+    #[inline]
+    fn find_child_index(&self, id: WidgetId) -> Option<usize> {
+        self.id().index_of_child(id)
     }
 
-    /// Find the leaf (lowest descendant) with this `id`, if any
+    /// Find the descendant with this `id`, if any
     ///
     /// This requires that the widget tree has already been configured by
     /// [`event::ManagerState::configure`].
-    fn find_leaf(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
-        if let Some(child) = self.find_child(id) {
-            self.get_child(child).unwrap().find_leaf(id)
-        } else if id == self.id() {
+    fn find_widget(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
+        if let Some(child) = self.find_child_index(id) {
+            self.get_child(child).unwrap().find_widget(id)
+        } else if self.eq_id(id) {
             return Some(self.as_widget());
         } else {
             None
         }
     }
 
-    /// Find the leaf (lowest descendant) with this `id`, if any
+    /// Find the descendant with this `id`, if any
     ///
     /// This requires that the widget tree has already been configured by
     /// [`ManagerState::configure`].
-    fn find_leaf_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
-        if let Some(child) = self.find_child(id) {
-            self.get_child_mut(child).unwrap().find_leaf_mut(id)
-        } else if id == self.id() {
+    fn find_widget_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
+        if let Some(child) = self.find_child_index(id) {
+            self.get_child_mut(child).unwrap().find_widget_mut(id)
+        } else if self.eq_id(id) {
             return Some(self.as_widget_mut());
         } else {
             None
@@ -308,13 +278,12 @@ pub trait WidgetConfig: Layout {
     /// method but instead use [`WidgetConfig::configure`]; the exception is
     /// widgets with pop-ups.
     fn configure_recurse(&mut self, mut cmgr: ConfigureManager) {
-        self.record_first_id(cmgr.peek_next());
+        self.core_data_mut().id = cmgr.get_id(self.id());
         for i in 0..self.num_children() {
             if let Some(w) = self.get_child_mut(i) {
-                w.configure_recurse(cmgr.child());
+                w.configure_recurse(cmgr.child(i));
             }
         }
-        self.core_data_mut().id = cmgr.next_id(self.id());
         self.configure(cmgr.mgr());
     }
 
@@ -336,6 +305,10 @@ pub trait WidgetConfig: Layout {
     }
 
     /// Which cursor icon should be used on hover?
+    ///
+    /// The "hovered" widget is determined by [`Layout::find_id`], thus is the
+    /// same widget which would receive click events. Other widgets do not
+    /// affect the cursor icon used.
     ///
     /// Defaults to [`event::CursorIcon::Default`].
     #[inline]
@@ -539,3 +512,19 @@ pub trait Layout: WidgetChildren {
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 pub trait Widget: event::SendEvent {}
+
+/// Extension trait over widgets
+pub trait WidgetExt: WidgetCore {
+    /// Test widget identifier for equality
+    ///
+    /// This method may be used to test against `WidgetId`, `Option<WidgetId>`
+    /// and `Option<&WidgetId>`.
+    #[inline]
+    fn eq_id<T>(&self, rhs: T) -> bool
+    where
+        WidgetId: PartialEq<T>,
+    {
+        self.core_data().id == rhs
+    }
+}
+impl<W: WidgetCore + ?Sized> WidgetExt for W {}

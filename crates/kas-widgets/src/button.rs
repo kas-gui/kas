@@ -68,7 +68,7 @@ widget! {
         ///
         /// On activation (through user input events or [`Event::Activate`]) the
         /// closure `f` is called. The result of `f` is converted to
-        /// [`Response::Msg`] or [`Response::None`] and returned to the parent.
+        /// [`Response::Msg`] or [`Response::Used`] and returned to the parent.
         #[inline]
         pub fn on_push<M, F>(self, f: F) -> Button<W, M>
         where
@@ -90,7 +90,7 @@ widget! {
         ///
         /// On activation (through user input events or [`Event::Activate`]) the
         /// closure `f` is called. The result of `f` is converted to
-        /// [`Response::Msg`] or [`Response::None`] and returned to the parent.
+        /// [`Response::Msg`] or [`Response::Used`] and returned to the parent.
         #[inline]
         pub fn new_on<F>(inner: W, f: F) -> Self
         where
@@ -113,6 +113,7 @@ widget! {
         }
 
         /// Add accelerator keys (chain style)
+        #[must_use]
         pub fn with_keys(mut self, keys: &[VirtualKeyCode]) -> Self {
             self.keys1.clear();
             self.keys1.extend_from_slice(keys);
@@ -125,6 +126,7 @@ widget! {
         }
 
         /// Set button color (chain style)
+        #[must_use]
         pub fn with_color(mut self, color: Rgb) -> Self {
             self.color = Some(color);
             self
@@ -141,19 +143,22 @@ widget! {
 
         fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
             match event {
-                Event::Activate => Response::none_or_msg(self.on_push.as_ref().and_then(|f| f(mgr))),
-                _ => Response::Unhandled,
+                Event::Activate => Response::used_or_msg(self.on_push.as_ref().and_then(|f| f(mgr))),
+                _ => Response::Unused,
             }
         }
     }
 
     impl SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<M> {
-            if id < self.id() {
-                self.inner.send(mgr, id, event).void_into()
-            } else {
-                debug_assert_eq!(id, self.id());
+            if self.is_disabled() {
+                return Response::Unused;
+            }
+            if self.eq_id(id) {
                 Manager::handle_generic(self, mgr, event)
+            } else {
+                debug_assert!(self.inner.id().is_ancestor_of(id));
+                self.inner.send(mgr, id, event).void_into()
             }
         }
     }
@@ -223,7 +228,7 @@ widget! {
         ///
         /// On activation (through user input events or [`Event::Activate`]) the
         /// closure `f` is called. The result of `f` is converted to
-        /// [`Response::Msg`] or [`Response::None`] and returned to the parent.
+        /// [`Response::Msg`] or [`Response::Used`] and returned to the parent.
         #[inline]
         pub fn on_push<M, F>(self, f: F) -> TextButton<M>
         where
@@ -246,7 +251,7 @@ widget! {
         ///
         /// On activation (through user input events or [`Event::Activate`]) the
         /// closure `f` is called. The result of `f` is converted to
-        /// [`Response::Msg`] or [`Response::None`] and returned to the parent.
+        /// [`Response::Msg`] or [`Response::Used`] and returned to the parent.
         #[inline]
         pub fn new_on<S: Into<AccelString>, F>(label: S, f: F) -> Self
         where
@@ -271,6 +276,7 @@ widget! {
         /// Add accelerator keys (chain style)
         ///
         /// These keys are added to those inferred from the label via `&` marks.
+        #[must_use]
         pub fn with_keys(mut self, keys: &[VirtualKeyCode]) -> Self {
             self.keys1.clear();
             self.keys1.extend_from_slice(keys);
@@ -283,6 +289,7 @@ widget! {
         }
 
         /// Set button color (chain style)
+        #[must_use]
         pub fn with_color(mut self, color: Rgb) -> Self {
             self.color = Some(color);
             self
@@ -316,8 +323,8 @@ widget! {
 
         fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
             match event {
-                Event::Activate => Response::none_or_msg(self.on_push.as_ref().and_then(|f| f(mgr))),
-                _ => Response::Unhandled,
+                Event::Activate => Response::used_or_msg(self.on_push.as_ref().and_then(|f| f(mgr))),
+                _ => Response::Unused,
             }
         }
     }

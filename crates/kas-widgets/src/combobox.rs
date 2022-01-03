@@ -78,6 +78,7 @@ widget! {
                     } else {
                         open_popup(self, mgr, true);
                     }
+                    Response::Used
                 }
                 Event::PressStart {
                     source,
@@ -90,11 +91,12 @@ widget! {
                             mgr.set_grab_depress(source, Some(start_id));
                             self.opening = self.popup_id.is_none();
                         }
+                        Response::Used
                     } else {
                         if let Some(id) = self.popup_id {
                             mgr.close_window(id, false);
                         }
-                        return Response::Unhandled;
+                        Response::Unused
                     }
                 }
                 Event::PressMove {
@@ -112,15 +114,16 @@ widget! {
                     if let Some(id) = target {
                         mgr.set_nav_focus(id, false);
                     }
+                    Response::Used
                 }
                 Event::PressEnd { end_id, .. } => {
                     if let Some(id) = end_id {
-                        if id == self.id() {
+                        if self.eq_id(id) {
                             if self.opening {
                                 if self.popup_id.is_none() {
                                     open_popup(self, mgr, false);
                                 }
-                                return Response::None;
+                                return Response::Used;
                             }
                         } else if self.popup_id.is_some() && self.popup.is_ancestor_of(id) {
                             let r = self.popup.send(mgr, id, Event::Activate);
@@ -130,24 +133,29 @@ widget! {
                     if let Some(id) = self.popup_id {
                         mgr.close_window(id, true);
                     }
+                    Response::Used
                 }
                 Event::PopupRemoved(id) => {
                     debug_assert_eq!(Some(id), self.popup_id);
                     self.popup_id = None;
+                    Response::Used
                 }
-                _ => return Response::Unhandled,
+                _ => Response::Unused,
             }
-            Response::None
         }
     }
 
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
-                return Response::Unhandled;
+                return Response::Unused;
             }
 
-            if id <= self.popup.id() {
+            if self.eq_id(id) {
+                Manager::handle_generic(self, mgr, event)
+            } else {
+                debug_assert!(self.popup.id().is_ancestor_of(id));
+
                 if let Event::NavFocus(key_focus) = event {
                     if self.popup_id.is_none() {
                         // Steal focus since child is invisible
@@ -155,13 +163,11 @@ widget! {
                     }
                     // Don't bother sending Response::Focus here since NavFocus will
                     // be sent to this widget, and handle_generic will respond.
-                    return Response::None;
+                    return Response::Used;
                 }
 
                 let r = self.popup.send(mgr, id, event.clone());
                 self.map_response(mgr, id, event, r)
-            } else {
-                Manager::handle_generic(self, mgr, event)
             }
         }
     }
@@ -333,26 +339,26 @@ impl<M: 'static> ComboBox<M> {
         r: Response<(usize, ())>,
     ) -> Response<M> {
         match r {
-            Response::None => Response::None,
-            Response::Unhandled => match event {
+            Response::Unused => match event {
                 Event::Command(cmd, _) => {
                     let next = |mgr: &mut Manager, s, clr, rev| {
                         if clr {
                             mgr.clear_nav_focus();
                         }
                         mgr.next_nav_focus(s, rev, true);
-                        Response::None
+                        Response::Used
                     };
                     match cmd {
                         Command::Up => next(mgr, self, false, true),
                         Command::Down => next(mgr, self, false, false),
                         Command::Home => next(mgr, self, true, false),
                         Command::End => next(mgr, self, true, true),
-                        _ => Response::Unhandled,
+                        _ => Response::Unused,
                     }
                 }
-                _ => Response::Unhandled,
+                _ => Response::Unused,
             },
+            Response::Used => Response::Used,
             Response::Pan(delta) => Response::Pan(delta),
             Response::Focus(x) => Response::Focus(x),
             Response::Update | Response::Select => {
@@ -369,7 +375,7 @@ impl<M: 'static> ComboBox<M> {
                         };
                     }
                 }
-                Response::None
+                Response::Used
             }
             Response::Msg((index, ())) => {
                 *mgr |= self.set_active(index);

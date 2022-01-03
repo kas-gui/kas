@@ -13,6 +13,7 @@ widget! {
     #[derive(Clone, Debug)]
     #[widget{
         layout = single;
+        find_id = Some(self.id());
     }]
     struct CursorWidget {
         #[widget_core]

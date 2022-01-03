@@ -14,7 +14,7 @@ use crate::draw::{DrawShared, SizeHandle, ThemeApi};
 use crate::geom::{Coord, Offset, Vec2};
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
-use crate::{TkAction, WidgetId, WindowId};
+use crate::{TkAction, WidgetExt, WidgetId, WindowId};
 
 impl<'a> std::ops::BitOrAssign<TkAction> for Manager<'a> {
     #[inline]
@@ -168,7 +168,7 @@ impl<'a> Manager<'a> {
             break;
         }
 
-        self.state.time_updates.sort_by(|a, b| b.cmp(a)); // reverse sort
+        self.state.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
     }
 
     /// Subscribe to an update handle
@@ -499,7 +499,7 @@ impl<'a> Manager<'a> {
     ///
     /// Since these events are *requested*, the widget should consume them even
     /// if not required, although in practice this
-    /// only affects parents intercepting [`Response::Unhandled`] events.
+    /// only affects parents intercepting [`Response::Unused`] events.
     ///
     /// This method normally succeeds, but fails when
     /// multiple widgets attempt a grab the same press source simultaneously
@@ -674,7 +674,7 @@ impl<'a> Manager<'a> {
         key_focus: bool,
     ) -> bool {
         if let Some(id) = self.state.popups.last().map(|(_, p, _)| p.id) {
-            if let Some(w) = widget.find_leaf_mut(id) {
+            if let Some(w) = widget.find_widget_mut(id) {
                 widget = w;
             } else {
                 // This is a corner-case. Do nothing.
@@ -696,7 +696,7 @@ impl<'a> Manager<'a> {
             if widget.is_disabled() {
                 return None;
             } else if last == usize::MAX {
-                if focus != Some(widget.id()) && widget.key_nav() {
+                if !widget.eq_id(focus) && widget.key_nav() {
                     return Some(widget.id());
                 }
                 return None;
@@ -705,7 +705,7 @@ impl<'a> Manager<'a> {
             let mut child = None;
             if let Some(id) = focus {
                 // Checking is_ancestor_of is just an optimisation
-                if widget.is_ancestor_of(id) && id != widget.id() {
+                if widget.is_ancestor_of(id) && !widget.eq_id(id) {
                     // TODO(opt): add WidgetChildren::find_ancestor_of method to
                     // allow optimisations for widgets with many children?
                     for index in 0..=last {
@@ -734,7 +734,7 @@ impl<'a> Manager<'a> {
                     {
                         return Some(id);
                     }
-                } else if focus != Some(widget.id()) && widget.key_nav() {
+                } else if !widget.eq_id(focus) && widget.key_nav() {
                     return Some(widget.id());
                 }
 
@@ -771,7 +771,7 @@ impl<'a> Manager<'a> {
                         }
                         child = Some(index);
                     } else {
-                        return if focus != Some(widget.id()) && widget.key_nav() {
+                        return if !widget.eq_id(focus) && widget.key_nav() {
                             Some(widget.id())
                         } else {
                             None

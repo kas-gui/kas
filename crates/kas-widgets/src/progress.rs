@@ -48,6 +48,7 @@ widget! {
 
         /// Set the initial value
         #[inline]
+        #[must_use]
         pub fn with_value(mut self, value: f32) -> Self {
             self.value = value.max(0.0).min(1.0);
             self

@@ -33,7 +33,7 @@ impl ManagerState {
         ManagerState {
             config,
             scale_factor,
-            end_id: Default::default(),
+            widget_count: 0,
             modifiers: ModifiersState::empty(),
             char_focus: false,
             sel_focus: None,
@@ -84,7 +84,8 @@ impl ManagerState {
         // Re-assigning WidgetIds might invalidate state; to avoid this we map
         // existing ids to new ids
         let mut renames = HashMap::new();
-        let mut id = WidgetId::FIRST;
+        let mut count = 0;
+        let id = WidgetId::ROOT;
 
         // We re-create these instead of renaming IDs:
         debug_assert!(self.accel_stack.is_empty());
@@ -102,7 +103,9 @@ impl ManagerState {
         self.with(shell, |mgr| {
             mgr.push_accel_layer(false);
             widget.configure_recurse(ConfigureManager {
-                id: &mut id,
+                count: &mut count,
+                used: false,
+                id,
                 map: &mut renames,
                 mgr,
             });
@@ -114,10 +117,10 @@ impl ManagerState {
         });
         if self.action.contains(TkAction::RECONFIGURE) {
             warn!("Detected TkAction::RECONFIGURE during configure. This may cause a reconfigure-loop.");
-            if id == self.end_id {
+            if count == self.widget_count {
                 panic!("Reconfigure occurred with the same number of widgets — we are probably stuck in a reconfigure-loop.");
             }
-            self.end_id = id;
+            self.widget_count = count;
         }
 
         // Update input state to account for renamed widgets. Assumption: none
@@ -191,7 +194,7 @@ impl ManagerState {
                 }
             }
         }
-        self.time_updates.sort_by(|a, b| b.cmp(a)); // reverse sort
+        self.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
 
         for (handle, mut ids) in old_handle_updates.drain() {
             let new_ids = self
@@ -299,7 +302,7 @@ impl ManagerState {
         while let Some(id) = mgr.state.new_popups.pop() {
             while let Some((_, popup, _)) = mgr.state.popups.last() {
                 if widget
-                    .find_leaf(popup.parent)
+                    .find_widget(popup.parent)
                     .map(|w| w.is_ancestor_of(id))
                     .unwrap_or(false)
                 {
@@ -390,7 +393,7 @@ impl<'a> Manager<'a> {
             self.send_event(widget, update.1, Event::TimerUpdate(update.2));
         }
 
-        self.state.time_updates.sort_by(|a, b| b.cmp(a)); // reverse sort
+        self.state.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
     }
 
     /// Update widgets due to handle
@@ -423,8 +426,8 @@ impl<'a> Manager<'a> {
         use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent::*};
 
         // Note: since <W as Handler>::Msg = VoidMsg, only two values of
-        // Response are possible: None and Unhandled. We don't have any use for
-        // Unhandled events here, so we can freely ignore all responses.
+        // Response are possible: Used and Unused. We don't have any use for
+        // Unused events here, so we can freely ignore all responses.
 
         match event {
             CloseRequested => self.send_action(TkAction::CLOSE),
@@ -570,6 +573,14 @@ impl<'a> Manager<'a> {
                 } else if let Some(start_id) = self.state.hover {
                     // No mouse grab but have a hover target
                     if state == ElementState::Pressed {
+                        if self.state.config.borrow().mouse_nav_focus() {
+                            if let Some(w) = widget.find_widget(start_id) {
+                                if w.key_nav() {
+                                    self.set_nav_focus(w.id(), false);
+                                }
+                            }
+                        }
+
                         let source = PressSource::Mouse(button, self.state.last_click_repetitions);
                         let event = Event::PressStart {
                             source,
@@ -577,14 +588,6 @@ impl<'a> Manager<'a> {
                             coord,
                         };
                         self.send_popup_first(widget, start_id, event);
-
-                        if self.state.config.borrow().mouse_nav_focus() {
-                            if let Some(w) = widget.find_leaf(start_id) {
-                                if w.key_nav() {
-                                    self.set_nav_focus(w.id(), false);
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -596,20 +599,20 @@ impl<'a> Manager<'a> {
                 match touch.phase {
                     TouchPhase::Started => {
                         if let Some(start_id) = widget.find_id(coord) {
+                            if self.state.config.borrow().touch_nav_focus() {
+                                if let Some(w) = widget.find_widget(start_id) {
+                                    if w.key_nav() {
+                                        self.set_nav_focus(w.id(), false);
+                                    }
+                                }
+                            }
+
                             let event = Event::PressStart {
                                 source,
                                 start_id,
                                 coord,
                             };
                             self.send_popup_first(widget, start_id, event);
-
-                            if self.state.config.borrow().touch_nav_focus() {
-                                if let Some(w) = widget.find_leaf(start_id) {
-                                    if w.key_nav() {
-                                        self.set_nav_focus(w.id(), false);
-                                    }
-                                }
-                            }
                         }
                     }
                     TouchPhase::Moved => {

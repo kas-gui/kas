@@ -30,6 +30,7 @@ pub trait SliderType:
     ///
     /// Also note that this method is not required to preserve precision
     /// (e.g. `u128::mul_64` may drop some low-order bits with large numbers).
+    #[must_use]
     fn mul_f64(self, scalar: f64) -> Self;
 }
 
@@ -143,6 +144,7 @@ widget! {
 
         /// Set the initial value
         #[inline]
+        #[must_use]
         pub fn with_value(mut self, mut value: T) -> Self {
             if value < self.range.0 {
                 value = self.range.0;
@@ -265,14 +267,14 @@ widget! {
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
-                return Response::Unhandled;
+                return Response::Unused;
             }
 
-            let offset = if id <= self.handle.id() {
+            let offset = if self.handle.id().is_ancestor_of(id) {
                 match event {
                     Event::NavFocus(key_focus) => {
                         mgr.set_nav_focus(self.id(), key_focus);
-                        return Response::None; // NavFocus event will be sent to self
+                        return Response::Used; // NavFocus event will be sent to self
                     }
                     event => match self.handle.send(mgr, id, event).try_into() {
                         Ok(res) => return res,
@@ -280,12 +282,13 @@ widget! {
                     },
                 }
             } else {
+                debug_assert_eq!(id, self.id());
                 match event {
                     Event::NavFocus(true) => {
                         return Response::Focus(self.rect());
                     }
                     Event::NavFocus(false) => {
-                        return Response::None;
+                        return Response::Used;
                     }
                     Event::Command(cmd, _) => {
                         let rev = self.direction.is_reversed();
@@ -311,11 +314,11 @@ widget! {
                             }
                             Command::Home => self.range.0,
                             Command::End => self.range.1,
-                            _ => return Response::Unhandled,
+                            _ => return Response::Unused,
                         };
                         let action = self.set_value(v);
                         return if action.is_empty() {
-                            Response::None
+                            Response::Used
                         } else {
                             mgr.send_action(action);
                             Response::Msg(self.value)
@@ -324,14 +327,14 @@ widget! {
                     Event::PressStart { source, coord, .. } => {
                         self.handle.handle_press_on_track(mgr, source, coord)
                     }
-                    _ => return Response::Unhandled,
+                    _ => return Response::Unused,
                 }
             };
 
             let r = if self.set_offset(offset) {
                 Response::Msg(self.value)
             } else {
-                Response::None
+                Response::Used
             };
             *mgr |= self.handle.set_offset(self.offset()).1;
             r

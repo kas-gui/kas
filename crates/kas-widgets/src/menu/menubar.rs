@@ -64,6 +64,7 @@ widget! {
                     if let Some(id) = self.delayed_open {
                         self.set_menu_path(mgr, Some(id), false);
                     }
+                    Response::Used
                 }
                 Event::PressStart {
                     source,
@@ -81,7 +82,7 @@ widget! {
                                 if self
                                     .bar
                                     .iter()
-                                    .any(|w| w.id() == start_id && !w.menu_is_open())
+                                    .any(|w| w.eq_id(start_id) && !w.menu_is_open())
                                 {
                                     self.opening = true;
                                     self.set_menu_path(mgr, Some(start_id), false);
@@ -93,9 +94,10 @@ widget! {
                                 mgr.update_on_timer(delay, self.id(), 0);
                             }
                         }
+                        Response::Used
                     } else {
                         self.delayed_open = None;
-                        return Response::Unhandled;
+                        Response::Unused
                     }
                 }
                 Event::PressMove {
@@ -106,7 +108,7 @@ widget! {
                 } => {
                     mgr.set_grab_depress(source, cur_id);
                     if let Some(id) = cur_id {
-                        if id != self.id() && self.is_ancestor_of(id) {
+                        if !self.eq_id(id) && self.is_ancestor_of(id) {
                             // We instantly open a sub-menu on motion over the bar,
                             // but delay when over a sub-menu (most intuitive?)
                             if self.rect().contains(coord) {
@@ -119,6 +121,7 @@ widget! {
                             }
                         }
                     }
+                    Response::Used
                 }
                 Event::PressEnd { coord, end_id, .. } => {
                     if end_id.map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
@@ -130,7 +133,7 @@ widget! {
                             if !self.opening {
                                 self.delayed_open = None;
                                 for i in 0..self.bar.len() {
-                                    if self.bar[i].id() == id {
+                                    if self.bar[i].eq_id(id) {
                                         self.bar[i].set_menu_path(mgr, None, false);
                                     }
                                 }
@@ -144,6 +147,7 @@ widget! {
                         // not on the menu
                         self.set_menu_path(mgr, None, false);
                     }
+                    Response::Used
                 }
                 Event::Command(cmd, _) => {
                     // Arrow keys can switch to the next / previous menu
@@ -164,28 +168,31 @@ widget! {
                                     break;
                                 }
                             }
+                            Response::Used
                         }
                         Some(_) => {
                             mgr.next_nav_focus(self, reverse, true);
+                            Response::Used
                         }
-                        None => return Response::Unhandled,
+                        None => Response::Unused,
                     }
                 }
-                _ => return Response::Unhandled,
+                _ => Response::Unused,
             }
-            Response::None
         }
     }
 
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
-                return Response::Unhandled;
+                return Response::Unused;
             }
 
-            if id <= self.bar.id() {
-                return match self.bar.send(mgr, id, event.clone()) {
-                    Response::Unhandled => self.handle(mgr, event),
+            if self.eq_id(id) {
+                self.handle(mgr, event)
+            } else {
+                match self.bar.send(mgr, id, event.clone()) {
+                    Response::Unused => self.handle(mgr, event),
                     r => r.try_into().unwrap_or_else(|(_, msg)| {
                         log::trace!(
                             "Received by {} from {}: {:?}",
@@ -195,10 +202,8 @@ widget! {
                         );
                         Response::Msg(msg)
                     }),
-                };
+                }
             }
-
-            self.handle(mgr, event)
         }
     }
 

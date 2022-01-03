@@ -47,12 +47,10 @@ widget! {
     /// This widget is [`Scrollable`], supporting keyboard, wheel and drag
     /// scrolling. You may wish to wrap this widget with [`ScrollBars`].
     #[derive(Clone, Debug)]
-    #[handler(msg=ChildMsg<T::Key, <V::Widget as Handler>::Msg>)]
     pub struct MatrixView<
         T: MatrixData + UpdHandler<T::Key, V::Msg> + 'static,
         V: Driver<T::Item> = driver::Default,
     > {
-        first_id: WidgetId,
         #[widget_core]
         core: CoreData,
         frame_offset: Offset,
@@ -87,7 +85,6 @@ widget! {
         /// Construct a new instance with explicit view
         pub fn new_with_driver(view: V, data: T) -> Self {
             MatrixView {
-                first_id: Default::default(),
                 core: Default::default(),
                 frame_offset: Default::default(),
                 frame_size: Default::default(),
@@ -172,6 +169,7 @@ widget! {
             }
         }
         /// Set the selection mode (inline)
+        #[must_use]
         pub fn with_selection_mode(mut self, mode: SelectionMode) -> Self {
             let _ = self.set_selection_mode(mode);
             self
@@ -243,6 +241,7 @@ widget! {
         ///
         /// This affects the (ideal) size request and whether children are sized
         /// according to their ideal or minimum size but not the minimum size.
+        #[must_use]
         pub fn with_num_visible(mut self, rows: i32, cols: i32) -> Self {
             self.ideal_len = Dim { rows, cols };
             self
@@ -329,13 +328,6 @@ widget! {
     }
 
     impl WidgetChildren for Self {
-        #[inline]
-        fn first_id(&self) -> WidgetId {
-            self.first_id
-        }
-        fn record_first_id(&mut self, id: WidgetId) {
-            self.first_id = id;
-        }
         #[inline]
         fn num_children(&self) -> usize {
             self.widgets.len()
@@ -523,28 +515,150 @@ widget! {
         }
     }
 
+    impl Handler for Self {
+        type Msg = ChildMsg<T::Key, <V::Widget as Handler>::Msg>;
+
+        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+            let self_id = self.id();
+            match event {
+                Event::HandleUpdate { .. } => {
+                    self.update_view(mgr);
+                    return Response::Update;
+                }
+                Event::PressMove { source, coord, .. } if self.press_event == Some(source) => {
+                    if let PressPhase::Start(start_coord) = self.press_phase {
+                        if mgr.config_test_pan_thresh(coord - start_coord) {
+                            self.press_phase = PressPhase::Pan;
+                        }
+                    }
+                    match self.press_phase {
+                        PressPhase::Pan => {
+                            mgr.update_grab_cursor(self_id, CursorIcon::Grabbing);
+                            // fall through to scroll handler
+                        }
+                        _ => return Response::Used,
+                    }
+                }
+                Event::PressEnd { source, .. } if self.press_event == Some(source) => {
+                    self.press_event = None;
+                    if self.press_phase == PressPhase::Pan {
+                        return Response::Used;
+                    }
+                    return match self.sel_mode {
+                        SelectionMode::None => Response::Used,
+                        SelectionMode::Single => {
+                            self.selection.clear();
+                            if let Some(ref key) = self.press_target {
+                                self.selection.insert(key.clone());
+                                ChildMsg::Select(key.clone()).into()
+                            } else {
+                                Response::Used
+                            }
+                        }
+                        SelectionMode::Multiple => {
+                            if let Some(ref key) = self.press_target {
+                                if self.selection.remove(key) {
+                                    ChildMsg::Deselect(key.clone()).into()
+                                } else {
+                                    self.selection.insert(key.clone());
+                                    ChildMsg::Select(key.clone()).into()
+                                }
+                            } else {
+                                Response::Used
+                            }
+                        }
+                    };
+                }
+                Event::Command(cmd, _) => {
+                    // Simplified version of logic in update_widgets
+                    let (cols, rows): (usize, usize) = (self.cur_len.cols.cast(), self.cur_len.rows.cast());
+
+                    let skip = self.child_size + self.child_inter_margin;
+                    let offset = self.scroll_offset();
+                    let first_col = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
+                    let first_row = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
+                    let col_start = (first_col / cols) * cols;
+                    let row_start = (first_row / rows) * rows;
+
+                    let cur = mgr
+                        .nav_focus()
+                        .and_then(|id| self.find_child_index(id))
+                        .map(|index| {
+                            let mut col_index = col_start + index % cols;
+                            let mut row_index = row_start + index / cols;
+                            if col_index < first_col {
+                                col_index += cols;
+                            }
+                            if row_index < first_row {
+                                row_index += rows;
+                            }
+                            (col_index, row_index)
+                        });
+                    let last_col = self.data.col_len().wrapping_sub(1);
+                    let last_row = self.data.row_len().wrapping_sub(1);
+
+                    let data = match (cmd, cur) {
+                        _ if last_col == usize::MAX || last_row == usize::MAX => None,
+                        _ if !self.widgets[0].widget.key_nav() => None,
+                        (Command::Home, _) => Some((0, 0)),
+                        (Command::End, _) => Some((last_col, last_row)),
+                        (Command::Left, Some((ci, ri))) if ci > 0 => Some((ci - 1, ri)),
+                        (Command::Up, Some((ci, ri))) if ri > 0 => Some((ci, ri - 1)),
+                        (Command::Right, Some((ci, ri))) if ci < last_col => Some((ci + 1, ri)),
+                        (Command::Down, Some((ci, ri))) if ri < last_row => Some((ci, ri + 1)),
+                        (Command::PageUp, Some((ci, ri))) if ri > 0 => {
+                            Some((ci, ri.saturating_sub(rows / 2)))
+                        }
+                        (Command::PageDown, Some((ci, ri))) if ri < last_row => {
+                            Some((ci, (ri + rows / 2).min(last_row)))
+                        }
+                        _ => None,
+                    };
+                    if let Some((ci, ri)) = data {
+                        // Set nav focus to index and update scroll position
+                        // Note: we update nav focus before updating widgets; this is fine
+                        let index = (ci % cols) + (ri % rows) * cols;
+                        mgr.set_nav_focus(self.widgets[index].widget.id(), true);
+                    }
+                    return Response::Used;
+                }
+                _ => (), // fall through to scroll handler
+            }
+
+            let (action, response) = self.scroll
+                .scroll_by_event(event, self.core.rect.size, |source, _, coord| {
+                    if source.is_primary() && mgr.config_enable_mouse_pan() {
+                        let icon = Some(CursorIcon::Grabbing);
+                        mgr.request_grab(self_id, source, coord, GrabMode::Grab, icon);
+                    }
+                });
+
+            if !action.is_empty() {
+                *mgr |= action;
+                self.update_widgets(mgr);
+                Response::Focus(self.rect())
+            } else {
+                response.void_into()
+            }
+        }
+    }
+
     impl SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
-                return Response::Unhandled;
+                return Response::Unused;
             }
 
-            if id < self.id() {
+            if let Some(index) = self.id().index_of_child(id) {
                 let child_event = self.scroll.offset_event(event.clone());
-                let index;
-                let response = 'outer: loop {
-                    // We forward events to all children, even if not visible
-                    // (e.g. these may be subscribed to an UpdateHandle).
-                    for (i, child) in self.widgets.iter_mut().enumerate() {
-                        if id <= child.widget.id() {
-                            index = i;
-                            let r = child.widget.send(mgr, id, child_event);
-                            break 'outer (child.key.clone(), r);
-                        }
-                    }
-                    debug_assert!(false, "SendEvent::send: bad WidgetId");
-                    return Response::Unhandled;
+                let response;
+                if let Some(child) = self.widgets.get_mut(index) {
+                    let r = child.widget.send(mgr, id, child_event);
+                    response = (child.key.clone(), r);
+                } else {
+                    return Response::Unused;
                 };
+
                 if matches!(&response.1, Response::Update | Response::Msg(_)) {
                     let wd = &self.widgets[index];
                     if let Some(key) = wd.key.as_ref() {
@@ -555,37 +669,42 @@ widget! {
                         }
                     }
                 }
+
                 match response {
-                    (_, Response::None) => return Response::None,
-                    (key, Response::Unhandled) => {
+                    (key, Response::Unused) => {
                         if let Event::PressStart { source, coord, .. } = event {
                             if source.is_primary() {
                                 // We request a grab with our ID, hence the
-                                // PressMove/PressEnd events are matched below.
+                                // PressMove/PressEnd events are matched in handle().
                                 if mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None) {
                                     self.press_event = Some(source);
                                     self.press_phase = PressPhase::Start(coord);
                                     self.press_target = key;
                                 }
-                                return Response::None;
+                                Response::Used
+                            } else {
+                                Response::Unused
                             }
+                        } else {
+                            self.handle(mgr, event)
                         }
                     }
+                    (_, Response::Used) => Response::Used,
                     (_, Response::Pan(delta)) => {
-                        return match self.scroll_by_delta(mgr, delta) {
-                            delta if delta == Offset::ZERO => Response::None,
+                        match self.scroll_by_delta(mgr, delta) {
+                            delta if delta == Offset::ZERO => Response::Used,
                             delta => Response::Pan(delta),
-                        };
+                        }
                     }
                     (_, Response::Focus(rect)) => {
                         let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
                         *mgr |= action;
                         self.update_widgets(mgr);
-                        return Response::Focus(rect);
+                        Response::Focus(rect)
                     }
                     (Some(key), Response::Select) => {
-                        return match self.sel_mode {
-                            SelectionMode::None => Response::None,
+                        match self.sel_mode {
+                            SelectionMode::None => Response::Used,
                             SelectionMode::Single => {
                                 self.selection.clear();
                                 self.selection.insert(key.clone());
@@ -599,10 +718,10 @@ widget! {
                                     Response::Msg(ChildMsg::Select(key))
                                 }
                             }
-                        };
+                        }
                     }
-                    (None, Response::Select) => return Response::None,
-                    (_, Response::Update) => return Response::None,
+                    (None, Response::Select) => Response::Used,
+                    (_, Response::Update) => Response::Used,
                     (key, Response::Msg(msg)) => {
                         trace!(
                             "Received by {} from {:?}: {:?}",
@@ -614,136 +733,16 @@ widget! {
                             if let Some(handle) = self.data.handle(&key, &msg) {
                                 mgr.trigger_update(handle, 0);
                             }
-                            return Response::Msg(ChildMsg::Child(key, msg));
+                            Response::Msg(ChildMsg::Child(key, msg))
                         } else {
                             log::warn!("MatrixView: response from widget with no key");
-                            return Response::None;
+                            Response::Used
                         }
                     }
                 }
             } else {
-                debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
-                match event {
-                    Event::HandleUpdate { .. } => {
-                        self.update_view(mgr);
-                        return Response::Update;
-                    }
-                    Event::PressMove { source, coord, .. } if self.press_event == Some(source) => {
-                        if let PressPhase::Start(start_coord) = self.press_phase {
-                            if mgr.config_test_pan_thresh(coord - start_coord) {
-                                self.press_phase = PressPhase::Pan;
-                            }
-                        }
-                        match self.press_phase {
-                            PressPhase::Pan => {
-                                mgr.update_grab_cursor(self.id(), CursorIcon::Grabbing);
-                                // fall through to scroll handler
-                            }
-                            _ => return Response::None,
-                        }
-                    }
-                    Event::PressEnd { source, .. } if self.press_event == Some(source) => {
-                        self.press_event = None;
-                        if self.press_phase == PressPhase::Pan {
-                            return Response::None;
-                        }
-                        return match self.sel_mode {
-                            SelectionMode::None => Response::None,
-                            SelectionMode::Single => {
-                                self.selection.clear();
-                                if let Some(ref key) = self.press_target {
-                                    self.selection.insert(key.clone());
-                                    ChildMsg::Select(key.clone()).into()
-                                } else {
-                                    Response::None
-                                }
-                            }
-                            SelectionMode::Multiple => {
-                                if let Some(ref key) = self.press_target {
-                                    if self.selection.remove(key) {
-                                        ChildMsg::Deselect(key.clone()).into()
-                                    } else {
-                                        self.selection.insert(key.clone());
-                                        ChildMsg::Select(key.clone()).into()
-                                    }
-                                } else {
-                                    Response::None
-                                }
-                            }
-                        };
-                    }
-                    _ => (), // fall through to scroll handler
-                }
-            };
-
-            let id = self.id();
-            let (action, response) = if let Event::Command(cmd, _) = event {
-                // Simplified version of logic in update_widgets
-                let (cols, rows): (usize, usize) = (self.cur_len.cols.cast(), self.cur_len.rows.cast());
-
-                let skip = self.child_size + self.child_inter_margin;
-                let offset = self.scroll_offset();
-                let first_col = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
-                let first_row = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
-                let col_start = (first_col / cols) * cols;
-                let row_start = (first_row / rows) * rows;
-
-                let cur = mgr
-                    .nav_focus()
-                    .and_then(|id| self.find_child(id))
-                    .map(|index| {
-                        let mut col_index = col_start + index % cols;
-                        let mut row_index = row_start + index / cols;
-                        if col_index < first_col {
-                            col_index += cols;
-                        }
-                        if row_index < first_row {
-                            row_index += rows;
-                        }
-                        (col_index, row_index)
-                    });
-                let last_col = self.data.col_len().wrapping_sub(1);
-                let last_row = self.data.row_len().wrapping_sub(1);
-
-                let data = match (cmd, cur) {
-                    _ if last_col == usize::MAX || last_row == usize::MAX => None,
-                    _ if !self.widgets[0].widget.key_nav() => None,
-                    (Command::Home, _) => Some((0, 0)),
-                    (Command::End, _) => Some((last_col, last_row)),
-                    (Command::Left, Some((ci, ri))) if ci > 0 => Some((ci - 1, ri)),
-                    (Command::Up, Some((ci, ri))) if ri > 0 => Some((ci, ri - 1)),
-                    (Command::Right, Some((ci, ri))) if ci < last_col => Some((ci + 1, ri)),
-                    (Command::Down, Some((ci, ri))) if ri < last_row => Some((ci, ri + 1)),
-                    (Command::PageUp, Some((ci, ri))) if ri > 0 => {
-                        Some((ci, ri.saturating_sub(rows / 2)))
-                    }
-                    (Command::PageDown, Some((ci, ri))) if ri < last_row => {
-                        Some((ci, (ri + rows / 2).min(last_row)))
-                    }
-                    _ => None,
-                };
-                if let Some((ci, ri)) = data {
-                    // Set nav focus to index and update scroll position
-                    // Note: we update nav focus before updating widgets; this is fine
-                    let index = (ci % cols) + (ri % rows) * cols;
-                    mgr.set_nav_focus(self.widgets[index].widget.id(), true);
-                }
-                (TkAction::empty(), Response::None)
-            } else {
-                self.scroll
-                    .scroll_by_event(event, self.core.rect.size, |source, _, coord| {
-                        if source.is_primary() && mgr.config_enable_mouse_pan() {
-                            let icon = Some(CursorIcon::Grabbing);
-                            mgr.request_grab(id, source, coord, GrabMode::Grab, icon);
-                        }
-                    })
-            };
-            if !action.is_empty() {
-                *mgr |= action;
-                self.update_widgets(mgr);
-                Response::Focus(self.rect())
-            } else {
-                response.void_into()
+                debug_assert!(self.eq_id(id), "SendEvent::send: bad WidgetId");
+                self.handle(mgr, event)
             }
         }
     }

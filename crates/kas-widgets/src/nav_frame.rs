@@ -43,7 +43,7 @@ widget! {
         fn handle(&mut self, _mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
             match event {
                 Event::Activate => Response::Select,
-                _ => Response::Unhandled,
+                _ => Response::Unused,
             }
         }
     }

@@ -5,14 +5,13 @@
 
 //! Trait impls
 
-use std::any::Any;
-
 use super::*;
 use crate::draw::{DrawHandle, SizeHandle};
 use crate::event::{self, Event, Manager, ManagerState, Response};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::{CoreData, WidgetId};
+use std::any::Any;
 
 impl<M: 'static> WidgetCore for Box<dyn Widget<Msg = M>> {
     fn as_any(&self) -> &dyn Any {
@@ -42,12 +41,6 @@ impl<M: 'static> WidgetCore for Box<dyn Widget<Msg = M>> {
 }
 
 impl<M: 'static> WidgetChildren for Box<dyn Widget<Msg = M>> {
-    fn first_id(&self) -> WidgetId {
-        self.as_ref().first_id()
-    }
-    fn record_first_id(&mut self, id: WidgetId) {
-        self.as_mut().record_first_id(id)
-    }
     fn num_children(&self) -> usize {
         self.as_ref().num_children()
     }
@@ -58,14 +51,14 @@ impl<M: 'static> WidgetChildren for Box<dyn Widget<Msg = M>> {
         self.as_mut().get_child_mut(index)
     }
 
-    fn find_child(&self, id: WidgetId) -> Option<usize> {
-        self.as_ref().find_child(id)
+    fn find_child_index(&self, id: WidgetId) -> Option<usize> {
+        self.as_ref().find_child_index(id)
     }
-    fn find_leaf(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
-        self.as_ref().find_leaf(id)
+    fn find_widget(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
+        self.as_ref().find_widget(id)
     }
-    fn find_leaf_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
-        self.as_mut().find_leaf_mut(id)
+    fn find_widget_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
+        self.as_mut().find_widget_mut(id)
     }
 }
 

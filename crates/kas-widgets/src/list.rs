@@ -172,7 +172,6 @@ widget! {
         W: Widget,
         M: FromIndexed<<W as Handler>::Msg> + 'static,
     > {
-        first_id: WidgetId,
         #[widget_core]
         core: CoreData,
         widgets: Vec<W>,
@@ -182,13 +181,6 @@ widget! {
     }
 
     impl WidgetChildren for Self {
-        #[inline]
-        fn first_id(&self) -> WidgetId {
-            self.first_id
-        }
-        fn record_first_id(&mut self, id: WidgetId) {
-            self.first_id = id;
-        }
         #[inline]
         fn num_children(&self) -> usize {
             self.widgets.len()
@@ -212,8 +204,8 @@ widget! {
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if !self.is_disabled() {
-                for (i, child) in self.widgets.iter_mut().enumerate() {
-                    if id <= child.id() {
+                if let Some(index) = self.id().index_of_child(id) {
+                    if let Some(child) = self.widgets.get_mut(index) {
                         let r = child.send(mgr, id, event);
                         return match Response::try_from(r) {
                             Ok(r) => r,
@@ -224,14 +216,14 @@ widget! {
                                     id,
                                     kas::util::TryFormat(&msg)
                                 );
-                                Response::Msg(FromIndexed::from_indexed(i, msg))
+                                Response::Msg(FromIndexed::from_indexed(index, msg))
                             }
                         };
                     }
                 }
             }
 
-            Response::Unhandled
+            Response::Unused
         }
     }
 
@@ -261,7 +253,6 @@ widget! {
         #[inline]
         pub fn new_with_direction(direction: D, widgets: Vec<W>) -> Self {
             GenericList {
-                first_id: Default::default(),
                 core: Default::default(),
                 widgets,
                 data: Default::default(),
@@ -423,18 +414,6 @@ widget! {
             ListIterMut {
                 list: &mut self.widgets,
             }
-        }
-
-        /// Get the index of the child which is an ancestor of `id`, if any
-        pub fn find_child_index(&self, id: WidgetId) -> Option<usize> {
-            if id >= self.first_id {
-                for (i, child) in self.widgets.iter().enumerate() {
-                    if id <= child.id() {
-                        return Some(i);
-                    }
-                }
-            }
-            None
         }
     }
 

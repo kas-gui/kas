@@ -41,7 +41,7 @@ widget! {
                 return None;
             }
             for popup in self.popups.iter_mut().rev() {
-                if let Some(id) = self.w.find_leaf_mut(popup.1.id).and_then(|w| w.find_id(coord)) {
+                if let Some(id) = self.w.find_widget_mut(popup.1.id).and_then(|w| w.find_id(coord)) {
                     return Some(id);
                 }
             }
@@ -53,7 +53,7 @@ widget! {
             let disabled = disabled || self.is_disabled();
             self.w.draw(draw, mgr, disabled);
             for (_, popup) in &self.popups {
-                if let Some(widget) = self.w.find_leaf_mut(popup.id) {
+                if let Some(widget) = self.w.find_widget_mut(popup.id) {
                     draw.with_overlay(widget.rect(), &mut |draw| {
                         widget.draw(draw, mgr, disabled);
                     });
@@ -64,10 +64,11 @@ widget! {
 
     impl SendEvent for Self where W::Msg: Into<VoidMsg> {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            if !self.is_disabled() && id <= self.w.id() {
-                return self.w.send(mgr, id, event).into();
+            if self.is_disabled() || self.eq_id(id) {
+                Response::Unused
+            } else {
+                self.w.send(mgr, id, event).into()
             }
-            Response::Unhandled
         }
     }
 
@@ -199,22 +200,18 @@ impl<W: Widget> Window<W> {
 
 // This is like WidgetChildren::find, but returns a translated Rect.
 fn find_rect(widget: &dyn WidgetConfig, id: WidgetId) -> Option<Rect> {
-    if id == widget.id() {
-        return Some(widget.rect());
-    } else if id > widget.id() {
-        return None;
-    }
-
-    for i in 0..widget.num_children() {
-        if let Some(w) = widget.get_child(i) {
-            if id > w.id() {
-                continue;
+    let wid = widget.id();
+    match wid.index_of_child(id) {
+        Some(i) => {
+            if let Some(w) = widget.get_child(i) {
+                find_rect(w, id).map(|rect| rect - widget.translation())
+            } else {
+                None
             }
-            return find_rect(w, id).map(|rect| rect - widget.translation());
         }
-        break;
+        None if wid == id => Some(widget.rect()),
+        _ => None,
     }
-    None
 }
 
 impl<W: Widget> Window<W> {
@@ -225,7 +222,7 @@ impl<W: Widget> Window<W> {
         let popup = &mut self.popups[index].1;
 
         let c = find_rect(self.w.as_widget(), popup.parent).unwrap();
-        let widget = self.w.find_leaf_mut(popup.id).unwrap();
+        let widget = self.w.find_widget_mut(popup.id).unwrap();
         let mut cache = mgr.size_handle(|sh| layout::SolveCache::find_constraints(widget, sh));
         let ideal = cache.ideal(false);
         let m = cache.margins();

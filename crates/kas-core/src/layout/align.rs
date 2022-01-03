@@ -51,6 +51,7 @@ impl AlignHints {
     }
 
     /// Combine two hints (first takes priority)
+    #[must_use = "method does not modify self but returns a new value"]
     pub fn combine(self, rhs: AlignHints) -> Self {
         Self {
             horiz: self.horiz.or(rhs.horiz),

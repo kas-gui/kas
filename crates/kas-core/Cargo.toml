@@ -59,6 +59,7 @@ macros_log = ["kas-macros/log"]
 
 [dependencies]
 easy-cast = "0.4.2"
+lazy_static = "1.4"
 log = "0.4"
 smallvec = "1.6.1"
 stack_dst = { version = "0.6", optional = true }

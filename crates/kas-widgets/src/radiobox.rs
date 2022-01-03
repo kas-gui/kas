@@ -8,7 +8,6 @@
 use super::AccelLabel;
 use kas::prelude::*;
 use log::trace;
-use std::convert::TryFrom;
 use std::rc::Rc;
 
 widget! {
@@ -51,24 +50,24 @@ widget! {
                         trace!("RadioBoxBare: set {}", self.id());
                         self.state = true;
                         mgr.redraw(self.id());
-                        mgr.trigger_update(self.handle, self.id().into());
+                        mgr.trigger_update(self.handle, self.id().as_u64());
                         Response::update_or_msg(self.on_select.as_ref().and_then(|f| f(mgr)))
                     } else {
-                        Response::None
+                        Response::Used
                     }
                 }
                 Event::HandleUpdate { payload, .. } => {
-                    let id = WidgetId::try_from(payload).unwrap();
-                    if self.state && id != self.id() {
+                    let opt_id = WidgetId::opt_from_u64(payload);
+                    if self.state && !self.eq_id(opt_id) {
                         trace!("RadioBoxBare: unset {}", self.id());
                         self.state = false;
                         mgr.redraw(self.id());
                         Response::Update
                     } else {
-                        Response::None
+                        Response::Used
                     }
                 }
-                _ => Response::Unhandled,
+                _ => Response::Unused,
             }
         }
     }
@@ -150,6 +149,7 @@ widget! {
 
         /// Set the initial state of the radiobox.
         #[inline]
+        #[must_use]
         pub fn with_state(mut self, state: bool) -> Self {
             self.state = state;
             self
@@ -277,6 +277,7 @@ widget! {
 
         /// Set the initial state of the radiobox.
         #[inline]
+        #[must_use]
         pub fn with_state(mut self, state: bool) -> Self {
             self.radiobox = self.radiobox.with_state(state);
             self

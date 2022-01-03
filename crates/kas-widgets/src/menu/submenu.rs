@@ -95,35 +95,35 @@ widget! {
                     if dir.is_vertical() == self.list.direction().is_vertical() {
                         let rev = dir.is_reversed() ^ self.list.direction().is_reversed();
                         mgr.next_nav_focus(self, rev, true);
-                        Response::None
+                        Response::Used
                     } else if dir == self.direction.as_direction().reversed() {
                         self.close_menu(mgr, true);
-                        Response::None
+                        Response::Used
                     } else {
-                        Response::Unhandled
+                        Response::Unused
                     }
                 } else if matches!(cmd, Command::Home | Command::End) {
                     mgr.clear_nav_focus();
                     let rev = cmd == Command::End;
                     mgr.next_nav_focus(self, rev, true);
-                    Response::None
+                    Response::Used
                 } else {
-                    Response::Unhandled
+                    Response::Unused
                 }
             } else if Some(self.direction.as_direction()) == cmd.as_direction() {
                 self.open_menu(mgr, true);
-                Response::None
+                Response::Used
             } else {
-                Response::Unhandled
+                Response::Unused
             }
         }
     }
 
     impl WidgetConfig for Self {
         fn configure_recurse(&mut self, mut cmgr: ConfigureManager) {
+            self.core_data_mut().id = cmgr.get_id(self.id());
             cmgr.mgr().push_accel_layer(true);
-            self.list.configure_recurse(cmgr.child());
-            self.core_data_mut().id = cmgr.next_id(self.id());
+            self.list.configure_recurse(cmgr.child(0));
             let mgr = cmgr.mgr();
             mgr.pop_accel_layer(self.id());
             mgr.add_accel_keys(self.id(), self.label.text().keys());
@@ -170,48 +170,49 @@ widget! {
                     if self.popup_id.is_none() {
                         self.open_menu(mgr, true);
                     }
+                    Response::Used
                 }
                 Event::PopupRemoved(id) => {
                     debug_assert_eq!(Some(id), self.popup_id);
                     self.popup_id = None;
+                    Response::Used
                 }
-                Event::Command(cmd, _) => return self.handle_dir_key(mgr, cmd),
-                _ => return Response::Unhandled,
+                Event::Command(cmd, _) => self.handle_dir_key(mgr, cmd),
+                _ => Response::Unused,
             }
-            Response::None
         }
     }
 
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
-                return Response::Unhandled;
+                return Response::Unused;
             }
 
-            if id <= self.list.id() {
+            if self.eq_id(id) {
+                Manager::handle_generic(self, mgr, event)
+            } else {
                 let r = self.list.send(mgr, id, event.clone());
 
                 match r {
-                    Response::None => Response::None,
-                    Response::Pan(delta) => Response::Pan(delta),
-                    Response::Focus(rect) => Response::Focus(rect),
-                    Response::Unhandled => match event {
+                    Response::Unused => match event {
                         Event::Command(cmd, _) if self.popup_id.is_some() => {
                             self.handle_dir_key(mgr, cmd)
                         }
-                        _ => Response::Unhandled,
+                        _ => Response::Unused,
                     },
+                    Response::Used => Response::Used,
+                    Response::Pan(delta) => Response::Pan(delta),
+                    Response::Focus(rect) => Response::Focus(rect),
                     Response::Select => {
                         self.set_menu_path(mgr, Some(id), true);
-                        Response::None
+                        Response::Used
                     }
                     r @ (Response::Update | Response::Msg(_)) => {
                         self.close_menu(mgr, true);
                         r
                     }
                 }
-            } else {
-                Manager::handle_generic(self, mgr, event)
             }
         }
     }
@@ -239,7 +240,7 @@ widget! {
                         }
                     } else {
                         self.open_menu(mgr, set_focus);
-                        if id != self.id() {
+                        if !self.eq_id(id) {
                             for i in 0..self.list.len() {
                                 self.list[i].set_menu_path(mgr, target, set_focus);
                             }

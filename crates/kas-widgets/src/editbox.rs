@@ -33,7 +33,7 @@ impl Default for LastEdit {
 
 enum EditAction {
     None,
-    Unhandled,
+    Unused,
     Activate,
     Edit,
 }
@@ -60,7 +60,7 @@ pub trait EditGuard: Debug + Sized + 'static {
     ///
     /// This function is called when the widget is "activated", for example by
     /// the Enter/Return key for single-line edit boxes. Its return value is
-    /// converted to [`Response::None`] or [`Response::Msg`].
+    /// converted to [`Response::Used`] or [`Response::Msg`].
     ///
     /// Note that activation events cannot edit the contents.
     fn activate(edit: &mut EditField<Self>, mgr: &mut Manager) -> Option<Self::Msg> {
@@ -78,7 +78,7 @@ pub trait EditGuard: Debug + Sized + 'static {
     /// Focus-lost guard
     ///
     /// This function is called when the widget loses keyboard input focus. Its
-    /// return value is converted to [`Response::None`] or [`Response::Msg`].
+    /// return value is converted to [`Response::Used`] or [`Response::Msg`].
     fn focus_lost(edit: &mut EditField<Self>, mgr: &mut Manager) -> Option<Self::Msg> {
         let _ = (edit, mgr);
         None
@@ -286,6 +286,7 @@ impl EditBox<()> {
 impl<G: EditGuard> EditBox<G> {
     /// Set whether this `EditBox` is editable (inline)
     #[inline]
+    #[must_use]
     pub fn editable(mut self, editable: bool) -> Self {
         self.inner = self.inner.editable(editable);
         self
@@ -305,6 +306,7 @@ impl<G: EditGuard> EditBox<G> {
 
     /// Set whether this `EditBox` shows multiple text lines
     #[inline]
+    #[must_use]
     pub fn multi_line(mut self, multi_line: bool) -> Self {
         self.inner = self.inner.multi_line(multi_line);
         self
@@ -489,18 +491,18 @@ widget! {
                     request_focus(self, mgr);
                     Response::Focus(self.rect())
                 }
-                Event::NavFocus(false) => Response::None,
+                Event::NavFocus(false) => Response::Used,
                 Event::LostCharFocus => {
                     self.has_key_focus = false;
                     mgr.redraw(self.id());
                     G::focus_lost(self, mgr)
                         .map(|msg| msg.into())
-                        .unwrap_or(Response::None)
+                        .unwrap_or(Response::Used)
                 }
                 Event::LostSelFocus => {
                     self.selection.set_empty();
                     mgr.redraw(self.id());
-                    Response::None
+                    Response::Used
                 }
                 Event::Command(cmd, shift) => {
                     // Note: we can receive a Command without char focus, but should
@@ -508,17 +510,17 @@ widget! {
                     request_focus(self, mgr);
                     if self.has_key_focus {
                         match self.control_key(mgr, cmd, shift) {
-                            EditAction::None => Response::None,
-                            EditAction::Unhandled => Response::Unhandled,
-                            EditAction::Activate => Response::none_or_msg(G::activate(self, mgr)),
+                            EditAction::None => Response::Used,
+                            EditAction::Unused => Response::Unused,
+                            EditAction::Activate => Response::used_or_msg(G::activate(self, mgr)),
                             EditAction::Edit => Response::update_or_msg(G::edit(self, mgr)),
                         }
                     } else {
-                        Response::Unhandled
+                        Response::Unused
                     }
                 }
                 Event::ReceivedCharacter(c) => match self.received_char(mgr, c) {
-                    false => Response::Unhandled,
+                    false => Response::Unused,
                     true => Response::update_or_msg(G::edit(self, mgr)),
                 },
                 Event::Scroll(delta) => {
@@ -531,20 +533,20 @@ widget! {
                         ScrollDelta::PixelDelta(coord) => coord,
                     };
                     match self.pan_delta(mgr, delta2) {
-                        delta if delta == Offset::ZERO => Response::None,
+                        delta if delta == Offset::ZERO => Response::Used,
                         delta => Response::Pan(delta),
                     }
                 }
                 event => match self.input_handler.handle(mgr, self.id(), event) {
-                    TextInputAction::None => Response::None,
-                    TextInputAction::Unhandled => Response::Unhandled,
+                    TextInputAction::None => Response::Used,
+                    TextInputAction::Unused => Response::Unused,
                     TextInputAction::Pan(delta) => match self.pan_delta(mgr, delta) {
-                        delta if delta == Offset::ZERO => Response::None,
+                        delta if delta == Offset::ZERO => Response::Used,
                         delta => Response::Pan(delta),
                     },
                     TextInputAction::Focus => {
                         request_focus(self, mgr);
-                        Response::None
+                        Response::Used
                     }
                     TextInputAction::Cursor(coord, anchor, clear, repeats) => {
                         request_focus(self, mgr);
@@ -560,7 +562,7 @@ widget! {
                                 self.selection.expand(&self.text, repeats);
                             }
                         }
-                        Response::None
+                        Response::Used
                     }
                 },
             }
@@ -707,6 +709,7 @@ impl EditField<()> {
 impl<G: EditGuard> EditField<G> {
     /// Set whether this `EditField` is editable (inline)
     #[inline]
+    #[must_use]
     pub fn editable(mut self, editable: bool) -> Self {
         self.editable = editable;
         self
@@ -724,6 +727,7 @@ impl<G: EditGuard> EditField<G> {
 
     /// Set whether this `EditField` shows multiple text lines
     #[inline]
+    #[must_use]
     pub fn multi_line(mut self, multi_line: bool) -> Self {
         self.multi_line = multi_line;
         self
@@ -782,7 +786,7 @@ impl<G: EditGuard> EditField<G> {
 
     fn control_key(&mut self, mgr: &mut Manager, key: Command, mut shift: bool) -> EditAction {
         if !self.editable {
-            return EditAction::Unhandled;
+            return EditAction::Unused;
         }
 
         let mut buf = [0u8; 4];
@@ -793,7 +797,7 @@ impl<G: EditGuard> EditField<G> {
 
         enum Action<'a> {
             None,
-            Unhandled,
+            Unused,
             Activate,
             Edit,
             Insert(&'a str, LastEdit),
@@ -1009,12 +1013,12 @@ impl<G: EditGuard> EditField<G> {
                 }
                 Action::Edit
             }
-            _ => Action::Unhandled,
+            _ => Action::Unused,
         };
 
         let result = match action {
             Action::None => EditAction::None,
-            Action::Unhandled => EditAction::Unhandled,
+            Action::Unused => EditAction::Unused,
             Action::Activate => EditAction::Activate,
             Action::Edit => EditAction::Edit,
             Action::Insert(s, edit) => {

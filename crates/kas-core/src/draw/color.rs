@@ -65,11 +65,13 @@ impl Rgba {
     }
 
     /// Average three colour components (desaturate)
+    #[must_use = "method does not modify self but returns a new value"]
     pub fn average(self) -> Self {
         Self::ga(self.sum() * (1.0 / 3.0), self.a)
     }
 
     /// Multiply and clamp three colour components
+    #[must_use = "method does not modify self but returns a new value"]
     pub fn multiply(self, x: f32) -> Self {
         debug_assert!(x >= 0.0);
         Self {
@@ -81,6 +83,7 @@ impl Rgba {
     }
 
     /// Clamp each colour component to at least `min`
+    #[must_use = "method does not modify self but returns a new value"]
     pub fn max(self, min: f32) -> Self {
         debug_assert!(min <= 1.0);
         Self {
@@ -144,11 +147,13 @@ impl Rgb {
     }
 
     /// Average three colour components (desaturate)
+    #[must_use = "method does not modify self but returns a new value"]
     pub fn average(self) -> Self {
         Self::grey(self.sum() * (1.0 / 3.0))
     }
 
     /// Multiply and clamp three colour components
+    #[must_use = "method does not modify self but returns a new value"]
     pub fn multiply(self, x: f32) -> Self {
         debug_assert!(x >= 0.0);
         Self {
@@ -159,6 +164,7 @@ impl Rgb {
     }
 
     /// Clamp each colour component to at least `min`
+    #[must_use = "method does not modify self but returns a new value"]
     pub fn max(self, min: f32) -> Self {
         debug_assert!(min <= 1.0);
         Self {

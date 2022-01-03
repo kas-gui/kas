@@ -159,9 +159,9 @@ impl ScrollComponent {
     /// ```
     ///
     /// If the returned [`TkAction`] is `None`, the scroll offset has not changed and
-    /// the returned [`Response`] is either `None` or `Unhandled(..)`.
+    /// the returned [`Response`] is either `Used` or `Unused`.
     /// If the returned [`TkAction`] is not `None`, the scroll offset has been
-    /// updated and the second return value is `Response::None`.
+    /// updated and the second return value is `Response::Used`.
     #[inline]
     pub fn scroll_by_event<PS: FnMut(PressSource, WidgetId, Coord)>(
         &mut self,
@@ -170,7 +170,7 @@ impl ScrollComponent {
         mut on_press_start: PS,
     ) -> (TkAction, Response<VoidMsg>) {
         let mut action = TkAction::empty();
-        let mut response = Response::None;
+        let mut response = Response::Used;
 
         match event {
             Event::Command(Command::Home, _) => {
@@ -187,7 +187,7 @@ impl ScrollComponent {
                     Command::Down => LineDelta(0.0, -1.0),
                     Command::PageUp => PixelDelta(Offset(0, window_size.1 / 2)),
                     Command::PageDown => PixelDelta(Offset(0, -(window_size.1 / 2))),
-                    _ => return (action, Response::Unhandled),
+                    _ => return (action, Response::Unused),
                 };
 
                 let d = match delta {
@@ -228,7 +228,7 @@ impl ScrollComponent {
                 }
             }
             Event::PressEnd { .. } => (), // consume due to request
-            _ => response = Response::Unhandled,
+            _ => response = Response::Unused,
         }
         (action, response)
     }
@@ -364,16 +364,16 @@ widget! {
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
-                return Response::Unhandled;
+                return Response::Unused;
             }
 
-            if id <= self.inner.id() {
+            if self.inner.id().is_ancestor_of(id) {
                 let child_event = self.scroll.offset_event(event.clone());
                 match self.inner.send(mgr, id, child_event) {
-                    Response::Unhandled => (),
+                    Response::Unused => (),
                     Response::Pan(delta) => {
                         return match self.scroll_by_delta(mgr, delta) {
-                            delta if delta == Offset::ZERO => Response::None,
+                            delta if delta == Offset::ZERO => Response::Used,
                             delta => Response::Pan(delta),
                         };
                     }
@@ -385,7 +385,7 @@ widget! {
                     r => return r,
                 }
             } else {
-                debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
+                debug_assert!(self.eq_id(id), "SendEvent::send: bad WidgetId");
             };
 
             let id = self.id();

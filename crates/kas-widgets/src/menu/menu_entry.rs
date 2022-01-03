@@ -96,7 +96,7 @@ widget! {
         fn handle(&mut self, _: &mut Manager, event: Event) -> Response<M> {
             match event {
                 Event::Activate => self.msg.clone().into(),
-                _ => Response::Unhandled,
+                _ => Response::Unused,
             }
         }
     }
@@ -128,6 +128,13 @@ widget! {
     impl Layout for Self {
         fn layout(&mut self) -> layout::Layout<'_> {
             make_layout!(self.core; row: [self.checkbox, self.label])
+        }
+
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) {
+                return None;
+            }
+            Some(self.checkbox.id())
         }
 
         fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
@@ -189,6 +196,7 @@ widget! {
 
         /// Set the initial state of the checkbox.
         #[inline]
+        #[must_use]
         pub fn with_state(mut self, state: bool) -> Self {
             self.checkbox = self.checkbox.with_state(state);
             self

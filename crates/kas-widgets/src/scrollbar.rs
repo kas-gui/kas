@@ -64,6 +64,7 @@ widget! {
         ///
         /// See [`ScrollBar::set_limits`].
         #[inline]
+        #[must_use]
         pub fn with_limits(mut self, max_value: i32, handle_value: i32) -> Self {
             let _ = self.set_limits(max_value, handle_value);
             self
@@ -71,6 +72,7 @@ widget! {
 
         /// Set the initial value
         #[inline]
+        #[must_use]
         pub fn with_value(mut self, value: i32) -> Self {
             self.value = value.clamp(0, self.max_value);
             self
@@ -247,20 +249,21 @@ widget! {
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
-                return Response::Unhandled;
+                return Response::Unused;
             }
 
-            let offset = if id <= self.handle.id() {
-                match self.handle.send(mgr, id, event).try_into() {
-                    Ok(res) => return res,
-                    Err(offset) => offset,
-                }
-            } else {
+            let offset = if self.eq_id(id) {
                 match event {
                     Event::PressStart { source, coord, .. } => {
                         self.handle.handle_press_on_track(mgr, source, coord)
                     }
-                    _ => return Response::Unhandled,
+                    _ => return Response::Unused,
+                }
+            } else {
+                debug_assert!(self.handle.id().is_ancestor_of(id));
+                match self.handle.send(mgr, id, event).try_into() {
+                    Ok(res) => return res,
+                    Err(offset) => offset,
                 }
             };
 
@@ -268,7 +271,7 @@ widget! {
                 mgr.redraw(self.handle.id());
                 Response::Msg(self.value)
             } else {
-                Response::None
+                Response::Used
             }
         }
     }
@@ -352,6 +355,7 @@ widget! {
         /// This has the side-effect of reserving enough space for scroll bars even
         /// when not required.
         #[inline]
+        #[must_use]
         pub fn with_auto_bars(self, enable: bool) -> Self {
             ScrollBarRegion(self.0.with_auto_bars(enable))
         }
@@ -360,6 +364,7 @@ widget! {
         ///
         /// Calling this method also disables automatic scroll bars.
         #[inline]
+        #[must_use]
         pub fn with_bars(self, horiz: bool, vert: bool) -> Self {
             ScrollBarRegion(self.0.with_bars(horiz, vert))
         }
@@ -466,6 +471,7 @@ widget! {
         /// This has the side-effect of reserving enough space for scroll bars even
         /// when not required.
         #[inline]
+        #[must_use]
         pub fn with_auto_bars(mut self, enable: bool) -> Self {
             self.auto_bars = enable;
             self
@@ -475,6 +481,7 @@ widget! {
         ///
         /// Calling this method also disables automatic scroll bars.
         #[inline]
+        #[must_use]
         pub fn with_bars(mut self, horiz: bool, vert: bool) -> Self {
             self.auto_bars = false;
             self.show_bars = (horiz, vert);
@@ -640,29 +647,27 @@ widget! {
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
-                return Response::Unhandled;
+                return Response::Unused;
             }
 
-            if id <= self.horiz_bar.id() {
-                self.horiz_bar
+            match self.id().index_of_child(id) {
+                Some(0) => self.horiz_bar
                     .send(mgr, id, event)
                     .try_into()
                     .unwrap_or_else(|msg| {
                         let offset = Offset(msg, self.inner.scroll_offset().1);
                         self.inner.set_scroll_offset(mgr, offset);
-                        Response::None
-                    })
-            } else if id <= self.vert_bar.id() {
-                self.vert_bar
+                        Response::Used
+                    }),
+                Some(1) => self.vert_bar
                     .send(mgr, id, event)
                     .try_into()
                     .unwrap_or_else(|msg| {
                         let offset = Offset(self.inner.scroll_offset().0, msg);
                         self.inner.set_scroll_offset(mgr, offset);
-                        Response::None
-                    })
-            } else if id <= self.inner.id() {
-                match self.inner.send(mgr, id, event) {
+                        Response::Used
+                    }),
+                Some(2) => match self.inner.send(mgr, id, event) {
                     Response::Focus(rect) => {
                         // We assume that the scrollable inner already updated its
                         // offset; we just update the bar positions
@@ -672,9 +677,11 @@ widget! {
                     }
                     r => r,
                 }
-            } else {
-                debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
-                self.handle(mgr, event)
+                _ if self.eq_id(id) => self.handle(mgr, event),
+                _ => {
+                    debug_assert!(false, "SendEvent::send: bad WidgetId");
+                    Response::Unused
+                }
             }
         }
     }

@@ -120,7 +120,7 @@ widget! {
                     *mgr |= self.view.set(&mut self.child, value);
                     Response::Update
                 }
-                _ => Response::Unhandled,
+                _ => Response::Unused,
             }
         }
     }
@@ -128,10 +128,12 @@ widget! {
     impl SendEvent for Self {
         fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
-                return Response::Unhandled;
+                return Response::Unused;
             }
 
-            if id < self.id() {
+            if self.eq_id(id) {
+                self.handle(mgr, event)
+            } else {
                 let r = self.child.send(mgr, id, event);
                 if matches!(&r, Response::Update | Response::Msg(_)) {
                     if let Some(value) = self.view.get(&self.child) {
@@ -152,9 +154,6 @@ widget! {
                     }
                 }
                 r
-            } else {
-                debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
-                self.handle(mgr, event)
             }
         }
     }

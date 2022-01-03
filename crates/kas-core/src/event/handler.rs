@@ -8,7 +8,7 @@
 use super::*;
 #[allow(unused)]
 use crate::Widget; // for doc-links
-use crate::{WidgetConfig, WidgetId};
+use crate::{WidgetConfig, WidgetExt, WidgetId};
 
 /// Event handling for a [`Widget`]
 ///
@@ -60,11 +60,11 @@ pub trait Handler: WidgetConfig {
     /// Handle an event and return a user-defined message
     ///
     /// Widgets should handle any events applicable to themselves here, and
-    /// return all other events via [`Response::Unhandled`].
+    /// return all other events via [`Response::Unused`].
     #[inline]
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
         let _ = (mgr, event);
-        Response::Unhandled
+        Response::Unused
     }
 }
 
@@ -93,28 +93,21 @@ pub trait SendEvent: Handler {
     /// The following logic is recommended for routing events:
     /// ```no_test
     /// if self.is_disabled() {
-    ///     return Response::Unhandled;
+    ///     return Response::Unused;
     /// }
-    /// if id <= self.child1.id() {
-    ///     self.child1.event(mgr, id, event).into()
-    /// } else if id <= self.child2.id() {
-    ///     self.child2.event(mgr, id, event).into()
-    /// } ... {
-    /// } else {
-    ///     debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
-    ///     Manager::handle_generic(self, mgr, event)
+    /// match self.id().index_of_child(id) {
+    ///     Some(0) => self.child0.send(mgr, id, event).into(),
+    ///     Some(1) => self.child1.send(mgr, id, event).into(),
+    ///     // ...
+    ///     _ => {
+    ///         debug_assert_eq!(self.id(), id);
+    ///         Manager::handle_generic(self, mgr, event),
+    ///     }
     /// }
-    /// ```
-    /// Parents which don't handle any events themselves may simplify this:
-    /// ```no_test
-    /// if !self.is_disabled() && id <= self.w.id() {
-    ///     return self.w.send(mgr, id, event);
-    /// }
-    /// Response::Unhandled
     /// ```
     ///
-    /// When the child's [`Handler::Msg`] type is not [`VoidMsg`], its response
-    /// messages can be handled here (in place of `.into()` above).
+    /// When the child's [`Handler::Msg`] type is not something which converts
+    /// into the widget's own message type, it must be handled here (in place of `.into()`).
     ///
     /// The example above uses [`Manager::handle_generic`], which is an optional
     /// tool able to perform some simplifications on events. It is also valid to
@@ -140,15 +133,15 @@ impl<'a> Manager<'a> {
             match event {
                 Event::PressStart { source, coord, .. } if source.is_primary() => {
                     mgr.request_grab(widget.id(), source, coord, GrabMode::Grab, None);
-                    return Response::None;
+                    return Response::Used;
                 }
                 Event::PressMove { source, cur_id, .. } => {
-                    let cond = cur_id == Some(widget.id());
+                    let cond = widget.eq_id(cur_id);
                     let target = if cond { cur_id } else { None };
                     mgr.set_grab_depress(source, target);
-                    return Response::None;
+                    return Response::Used;
                 }
-                Event::PressEnd { end_id, .. } if end_id == Some(widget.id()) => {
+                Event::PressEnd { end_id, .. } if widget.eq_id(end_id) => {
                     event = Event::Activate;
                 }
                 _ => (),

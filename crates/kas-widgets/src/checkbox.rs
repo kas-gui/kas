@@ -91,6 +91,7 @@ widget! {
     impl Self {
         /// Set the initial state of the checkbox.
         #[inline]
+        #[must_use]
         pub fn with_state(mut self, state: bool) -> Self {
             self.state = state;
             self
@@ -123,7 +124,7 @@ widget! {
                     mgr.redraw(self.id());
                     Response::update_or_msg(self.on_toggle.as_ref().and_then(|f| f(mgr, self.state)))
                 }
-                _ => Response::Unhandled,
+                _ => Response::Unused,
             }
         }
     }
@@ -208,6 +209,7 @@ widget! {
 
         /// Set the initial state of the checkbox.
         #[inline]
+        #[must_use]
         pub fn with_state(mut self, state: bool) -> Self {
             self.checkbox = self.checkbox.with_state(state);
             self

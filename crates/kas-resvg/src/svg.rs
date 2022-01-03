@@ -61,12 +61,14 @@ widget! {
         }
 
         /// Set margins
+        #[must_use]
         pub fn with_margins(mut self, margins: MarginSelector) -> Self {
             self.margins = margins;
             self
         }
 
         /// Set stretch policy
+        #[must_use]
         pub fn with_stretch(mut self, stretch: Stretch) -> Self {
             self.stretch = stretch;
             self

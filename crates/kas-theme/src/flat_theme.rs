@@ -66,6 +66,7 @@ impl FlatTheme {
     ///
     /// Units: Points per Em (standard unit of font size)
     #[inline]
+    #[must_use]
     pub fn with_font_size(mut self, pt_size: f32) -> Self {
         self.config.set_font_size(pt_size);
         self
@@ -75,6 +76,7 @@ impl FlatTheme {
     ///
     /// If no scheme by this name is found the scheme is left unchanged.
     #[inline]
+    #[must_use]
     pub fn with_colours(mut self, name: &str) -> Self {
         if let Some(scheme) = self.config.get_color_scheme(name) {
             self.config.set_active_scheme(name);

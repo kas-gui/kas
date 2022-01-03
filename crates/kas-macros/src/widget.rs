@@ -148,12 +148,6 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
             impl #impl_generics ::kas::WidgetChildren
                 for #name #ty_generics #where_clause
             {
-                fn first_id(&self) -> ::kas::WidgetId {
-                    self.#inner.first_id()
-                }
-                fn record_first_id(&mut self, id: WidgetId) {
-                    self.#inner.record_first_id(id);
-                }
                 fn num_children(&self) -> usize {
                     self.#inner.num_children()
                 }
@@ -166,13 +160,6 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
             }
         });
     } else if impl_widget_children {
-        let first_id = if args.children.is_empty() {
-            quote! { self.id() }
-        } else {
-            let ident = &args.children[0].ident;
-            quote! { self.#ident.first_id() }
-        };
-
         let count = args.children.len();
 
         let mut get_rules = quote! {};
@@ -187,9 +174,6 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
             impl #impl_generics ::kas::WidgetChildren
                 for #name #ty_generics #where_clause
             {
-                fn first_id(&self) -> ::kas::WidgetId {
-                    #first_id
-                }
                 fn num_children(&self) -> usize {
                     #count
                 }
@@ -364,7 +348,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
             quote! { self.#inner.send(mgr, id, event) }
         } else {
             let mut ev_to_num = TokenStream::new();
-            for child in args.children.iter() {
+            for (i, child) in args.children.iter().enumerate() {
                 #[cfg(feature = "log")]
                 let log_msg = quote! {
                     log::trace!(
@@ -392,7 +376,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                         r.try_into().unwrap_or_else(|msg| {
                             #log_msg
                             let _: () = self.#f(mgr, msg);
-                            Response::None
+                            Response::Used
                         })
                     },
                     Handler::Map(f) => quote! {
@@ -411,30 +395,35 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                         r.try_into().unwrap_or_else(|msg| {
                             #log_msg
                             let _ = msg;
-                            Response::None
+                            Response::Used
                         })
                     },
                     Handler::None => quote! { r.into() },
                 };
 
                 ev_to_num.append_all(quote! {
-                    if id <= self.#ident.id() {
+                    Some(#i) => {
                         let r = self.#ident.send(mgr, id, event);
                         #update
                         #handler
-                    } else
+                    }
                 });
             }
 
             quote! {
                 use ::kas::{WidgetCore, event::Response};
                 if self.is_disabled() {
-                    return Response::Unhandled;
+                    return Response::Unused;
                 }
 
-                #ev_to_num {
-                    debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
-                    ::kas::event::Manager::handle_generic(self, mgr, event)
+                let self_id = self.id();
+                match self_id.index_of_child(id) {
+                    #ev_to_num
+                    _ if id == self_id => ::kas::event::Manager::handle_generic(self, mgr, event),
+                    _ => {
+                        debug_assert!(false, "SendEvent::send: bad WidgetId");
+                        Response::Unused
+                    }
                 }
             }
         };

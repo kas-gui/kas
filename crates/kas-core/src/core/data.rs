@@ -5,13 +5,9 @@
 
 //! Widget data types
 
-use std::convert::TryFrom;
-use std::fmt;
-use std::num::NonZeroU32;
-
 #[allow(unused)]
 use super::Layout;
-use super::Widget;
+use super::{Widget, WidgetId};
 use crate::event::{self, Manager};
 use crate::geom::Rect;
 use crate::layout::StorageChain;
@@ -37,80 +33,6 @@ impl Icon {
         let _ = (rgba, width, height);
         Result::<Self, std::convert::Infallible>::Ok(Icon)
     }
-}
-
-/// Widget identifier
-///
-/// All widgets are assigned an identifier which is unique within the window.
-/// This type may be tested for equality and order.
-///
-/// This type is small and cheap to copy. Internally it is "NonZero", thus
-/// `Option<WidgetId>` is a free extension (requires no extra memory).
-///
-/// Identifiers are assigned when configured and when re-configured
-/// (via [`crate::TkAction::RECONFIGURE`]). Since user-code is not notified of a
-/// re-configure, user-code should not store a `WidgetId`.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct WidgetId(NonZeroU32);
-
-impl WidgetId {
-    pub(crate) const FIRST: WidgetId = WidgetId(unsafe { NonZeroU32::new_unchecked(1) });
-    const LAST: WidgetId = WidgetId(unsafe { NonZeroU32::new_unchecked(u32::MAX) });
-
-    pub(crate) fn next(self) -> Self {
-        WidgetId(NonZeroU32::new(self.0.get() + 1).unwrap())
-    }
-}
-
-impl TryFrom<u32> for WidgetId {
-    type Error = ();
-    fn try_from(x: u32) -> Result<WidgetId, ()> {
-        NonZeroU32::new(x).map(WidgetId).ok_or(())
-    }
-}
-
-impl TryFrom<u64> for WidgetId {
-    type Error = ();
-    fn try_from(x: u64) -> Result<WidgetId, ()> {
-        if let Ok(x) = u32::try_from(x) {
-            if let Some(nz) = NonZeroU32::new(x) {
-                return Ok(WidgetId(nz));
-            }
-        }
-        Err(())
-    }
-}
-
-impl From<WidgetId> for u32 {
-    #[inline]
-    fn from(id: WidgetId) -> u32 {
-        id.0.get()
-    }
-}
-
-impl From<WidgetId> for u64 {
-    #[inline]
-    fn from(id: WidgetId) -> u64 {
-        id.0.get().into()
-    }
-}
-
-impl Default for WidgetId {
-    fn default() -> Self {
-        WidgetId::LAST
-    }
-}
-
-impl fmt::Display for WidgetId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "#{}", self.0)
-    }
-}
-
-#[test]
-fn size_of_option_widget_id() {
-    use std::mem::size_of;
-    assert_eq!(size_of::<WidgetId>(), size_of::<Option<WidgetId>>());
 }
 
 /// Common widget data

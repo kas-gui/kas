@@ -60,9 +60,9 @@ fn make_window() -> Box<dyn kas::Window> {
                             *mgr |= self.display.set_string(text);
                             mgr.update_on_timer(Duration::new(0, 1), self.id(), 0);
                         }
-                        Response::None
+                        Response::Used
                     }
-                    _ => Response::Unhandled,
+                    _ => Response::Unused,
                 }
             }
         }

@@ -77,9 +77,9 @@ widget! {
                     // Note: event has `handle` and `payload` params.
                     // We only need to request a redraw.
                     mgr.redraw(self.id());
-                    Response::None
+                    Response::Used
                 }
-                _ => Response::Unhandled,
+                _ => Response::Unused,
             }
         }
     }
