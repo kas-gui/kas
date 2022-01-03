@@ -284,7 +284,7 @@ pub trait WidgetConfig: Layout {
     /// method but instead use [`WidgetConfig::configure`]; the exception is
     /// widgets with pop-ups.
     fn configure_recurse(&mut self, mut cmgr: ConfigureManager) {
-        self.core_data_mut().id = cmgr.get_id(self.id());
+        self.core_data_mut().id = cmgr.get_id();
         for i in 0..self.num_children() {
             if let Some(w) = self.get_child_mut(i) {
                 w.configure_recurse(cmgr.child(i));

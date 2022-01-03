@@ -8,7 +8,6 @@
 use log::*;
 use smallvec::SmallVec;
 use std::collections::HashMap;
-use std::mem::swap;
 use std::time::{Duration, Instant};
 
 use super::*;
@@ -81,22 +80,14 @@ impl ManagerState {
         debug!("Manager::configure");
         self.action = TkAction::empty();
 
-        // Re-assigning WidgetIds might invalidate state; to avoid this we map
-        // existing ids to new ids
-        let mut renames = HashMap::new();
         let mut count = 0;
         let id = WidgetId::ROOT;
 
-        // We re-create these instead of renaming IDs:
+        // These are recreated during configure:
         debug_assert!(self.accel_stack.is_empty());
         self.accel_stack.clear();
         self.accel_layers.clear();
         self.nav_fallback = None;
-        // These we merge later:
-        let mut old_time_updates = Default::default();
-        swap(&mut self.time_updates, &mut old_time_updates);
-        let mut old_handle_updates = Default::default();
-        swap(&mut self.handle_updates, &mut old_handle_updates);
 
         // Enumerate and configure all widgets:
         let coord = self.last_mouse_coord;
@@ -106,7 +97,6 @@ impl ManagerState {
                 count: &mut count,
                 used: false,
                 id,
-                map: &mut renames,
                 mgr,
             });
             mgr.pop_accel_layer(widget.id());
@@ -122,122 +112,6 @@ impl ManagerState {
             }
             self.widget_count = count;
         }
-
-        // Update input state to account for renamed widgets. Assumption: none
-        // of this state is adjusted within widget configure methods.
-        // TODO(safety): ensure these fields cannot be updated by configure?
-
-        self.sel_focus = self
-            .sel_focus
-            .take()
-            .and_then(|id| renames.get(&id).cloned());
-        self.nav_focus = self
-            .nav_focus
-            .take()
-            .and_then(|id| renames.get(&id).cloned());
-        self.mouse_grab = self.mouse_grab.take().and_then(|grab| {
-            renames.get(&grab.start_id).map(|id| MouseGrab {
-                button: grab.button,
-                repetitions: grab.repetitions,
-                start_id: id.clone(),
-                depress: grab.depress.and_then(|id| renames.get(&id).cloned()),
-                mode: grab.mode,
-                pan_grab: grab.pan_grab,
-            })
-        });
-
-        let mut i = 0;
-        while i < self.pan_grab.len() {
-            if let Some(id) = renames.get(&self.pan_grab[i].id) {
-                self.pan_grab[i].id = id.clone();
-                i += 1;
-            } else {
-                self.remove_pan(i);
-            }
-        }
-
-        self.touch_grab.retain(|_, grab| {
-            if let Some(id) = renames.get(&grab.start_id) {
-                grab.start_id = id.clone();
-                if let Some(ref cur_id) = grab.cur_id {
-                    grab.cur_id = renames.get(&cur_id).cloned();
-                }
-                true
-            } else {
-                false
-            }
-        });
-
-        self.key_depress.retain(|_, depress_id| {
-            if let Some(id) = renames.get(depress_id) {
-                *depress_id = id.clone();
-                true
-            } else {
-                false
-            }
-        });
-
-        // We have to handle time_updates and handle_updates carefully since
-        // these may be set during configure, *and* may carry old state forward
-        // which must be renamed.
-        'old: for (time, old_id, payload) in old_time_updates.drain(..) {
-            if let Some(new_id) = renames.get(&old_id).cloned() {
-                // Insert into our data structure. We sort everything below.
-                'insert: loop {
-                    for row in &mut self.time_updates {
-                        if row.1 == new_id {
-                            if row.0 <= time {
-                                continue 'old;
-                            } else {
-                                row.0 = time;
-                                break 'insert;
-                            }
-                        }
-                    }
-
-                    self.time_updates.push((time, new_id, payload));
-                    break;
-                }
-            }
-        }
-        self.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
-
-        for (handle, mut ids) in old_handle_updates.drain() {
-            let new_ids = self
-                .handle_updates
-                .entry(handle)
-                .or_insert_with(Default::default);
-            for id in ids.drain().filter_map(|id| renames.get(&id)).cloned() {
-                new_ids.insert(id);
-            }
-        }
-
-        self.pending.retain(|item| match item {
-            Pending::LostCharFocus(id) => {
-                if let Some(new_id) = renames.get(id) {
-                    *item = Pending::LostCharFocus(new_id.clone());
-                    true
-                } else {
-                    false
-                }
-            }
-            Pending::LostSelFocus(id) => {
-                if let Some(new_id) = renames.get(id) {
-                    *item = Pending::LostSelFocus(new_id.clone());
-                    true
-                } else {
-                    false
-                }
-            }
-            Pending::SetNavFocus(id, key_focus) => {
-                if let Some(new_id) = renames.get(id) {
-                    *item = Pending::SetNavFocus(new_id.clone(), *key_focus);
-                    true
-                } else {
-                    false
-                }
-            }
-        });
     }
 
     /// Update the widgets under the cursor and touch events

@@ -521,7 +521,6 @@ pub struct ConfigureManager<'a: 'b, 'b> {
     count: &'b mut usize,
     used: bool,
     id: WidgetId,
-    map: &'b mut HashMap<WidgetId, WidgetId>,
     mgr: &'b mut Manager<'a>,
 }
 
@@ -538,7 +537,6 @@ impl<'a: 'b, 'b> ConfigureManager<'a, 'b> {
             count: &mut *self.count,
             used: false,
             id: self.id.make_child(index),
-            map: &mut *self.map,
             mgr: &mut *self.mgr,
         }
     }
@@ -547,17 +545,12 @@ impl<'a: 'b, 'b> ConfigureManager<'a, 'b> {
     ///
     /// Do not call more than once on each instance. Create a new instance with
     /// [`Self::child`].
-    ///
-    /// Pass the old ID (`self.id()`), even if not yet configured.
-    pub fn get_id(&mut self, old_id: WidgetId) -> WidgetId {
+    pub fn get_id(&mut self) -> WidgetId {
         assert!(
             !self.used,
             "multiple use of ConfigureManager::get_id without construction of child"
         );
         self.used = true;
-        if old_id.is_valid() {
-            self.map.insert(old_id, self.id.clone());
-        }
         self.id.clone()
     }
 

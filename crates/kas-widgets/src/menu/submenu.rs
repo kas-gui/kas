@@ -121,7 +121,7 @@ widget! {
 
     impl WidgetConfig for Self {
         fn configure_recurse(&mut self, mut cmgr: ConfigureManager) {
-            self.core_data_mut().id = cmgr.get_id(self.id());
+            self.core_data_mut().id = cmgr.get_id();
             cmgr.mgr().push_accel_layer(true);
             self.list.configure_recurse(cmgr.child(0));
             let mgr = cmgr.mgr();
