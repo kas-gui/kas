@@ -97,7 +97,7 @@ widget! {
                 let fontdb = fonts_db.db();
                 let font_family = fonts_db
                     .font_family_from_alias("SERIF")
-                    .unwrap_or_else(String::new);
+                    .unwrap_or_default();
                 let font_size = mgr.size_handle(|sh| sh.pixels_from_em(1.0)) as f64;
 
                 // TODO: some options here should be configurable
