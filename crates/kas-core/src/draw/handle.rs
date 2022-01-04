@@ -282,7 +282,7 @@ pub trait SizeHandle {
 /// See also [`SizeHandle`].
 pub trait DrawHandle {
     /// Access a [`SizeHandle`]
-    fn size_handle(&mut self) -> &mut dyn SizeHandle;
+    fn size_handle(&self) -> &dyn SizeHandle;
 
     /// Access the low-level draw device
     fn draw_device(&mut self) -> &mut dyn Draw;
@@ -551,8 +551,8 @@ impl<S: SizeHandle + ?Sized, R: Deref<Target = S>> SizeHandle for R {
 }
 
 impl<H: DrawHandle> DrawHandle for Box<H> {
-    fn size_handle(&mut self) -> &mut dyn SizeHandle {
-        self.deref_mut().size_handle()
+    fn size_handle(&self) -> &dyn SizeHandle {
+        self.deref().size_handle()
     }
     fn draw_device(&mut self) -> &mut dyn Draw {
         self.deref_mut().draw_device()
@@ -651,8 +651,8 @@ impl<'a, S> DrawHandle for stack_dst::ValueA<dyn DrawHandle + 'a, S>
 where
     S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>,
 {
-    fn size_handle(&mut self) -> &mut dyn SizeHandle {
-        self.deref_mut().size_handle()
+    fn size_handle(&self) -> &dyn SizeHandle {
+        self.deref().size_handle()
     }
     fn draw_device(&mut self) -> &mut dyn Draw {
         self.deref_mut().draw_device()

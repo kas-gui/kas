@@ -221,7 +221,7 @@ impl<'a, DS: DrawSharedImpl> draw::DrawHandle for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl + DrawShadedImpl,
 {
-    fn size_handle(&mut self) -> &mut dyn SizeHandle {
+    fn size_handle(&self) -> &dyn SizeHandle {
         self.w
     }
 
