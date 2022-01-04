@@ -252,7 +252,7 @@ where
                 a = a * SHADOW_HOVER;
                 b = b * SHADOW_HOVER;
             }
-            let shadow_outer = Quad::with_coords(a + inner.a, b + inner.b);
+            let shadow_outer = Quad::from_coords(a + inner.a, b + inner.b);
             let col1 = if self.cols.is_dark {
                 col_frame
             } else {
@@ -420,7 +420,7 @@ where
         for (p1, p2) in &text.highlight_lines(range.clone()) {
             let p1 = Vec2::from(*p1);
             let p2 = Vec2::from(*p2);
-            let quad = Quad::with_coords(pos + p1, pos + p2);
+            let quad = Quad::from_coords(pos + p1, pos + p2);
             self.draw.rect(quad, self.cols.text_sel_bg);
         }
 
@@ -455,16 +455,16 @@ where
             p1.1 -= cursor.ascent;
             p2.1 -= cursor.descent;
             p2.0 += width;
-            let quad = Quad::with_coords(p1, p2);
+            let quad = Quad::from_coords(p1, p2);
             self.draw.rect(quad, col);
 
             if cursor.embedding_level() > 0 {
                 // Add a hat to indicate directionality.
                 let height = width;
                 let quad = if cursor.is_ltr() {
-                    Quad::with_coords(Vec2(p2.0, p1.1), Vec2(p2.0 + width, p1.1 + height))
+                    Quad::from_coords(Vec2(p2.0, p1.1), Vec2(p2.0 + width, p1.1 + height))
                 } else {
-                    Quad::with_coords(Vec2(p1.0 - width, p1.1), Vec2(p1.0, p1.1 + height))
+                    Quad::from_coords(Vec2(p1.0 - width, p1.1), Vec2(p1.0, p1.1 + height))
                 };
                 self.draw.rect(quad, col);
             }
@@ -519,8 +519,8 @@ where
 
             const F: f32 = 0.6;
             let (sa, sb) = (self.w.dims.shadow_a * F, self.w.dims.shadow_b * F);
-            let outer = Quad::with_coords(a + sa, b + sb);
-            let inner = Quad::with_coords(a, b);
+            let outer = Quad::from_coords(a + sa, b + sb);
+            let inner = Quad::from_coords(a, b);
             let col1 = if self.cols.is_dark { col } else { Rgba::BLACK };
             let mut col2 = col1;
             col2.a = 0.0;
@@ -554,7 +554,7 @@ where
             }
             a = a * mult;
             b = b * mult;
-            let shadow_outer = Quad::with_coords(a + outer.a, b + outer.b);
+            let shadow_outer = Quad::from_coords(a + outer.a, b + outer.b);
             let col1 = if self.cols.is_dark { col } else { Rgba::BLACK };
             let mut col2 = col1;
             col2.a = 0.0;
@@ -641,7 +641,7 @@ where
             }
             a = a * mult;
             b = b * mult;
-            let shadow_outer = Quad::with_coords(a + outer.a, b + outer.b);
+            let shadow_outer = Quad::from_coords(a + outer.a, b + outer.b);
             let col1 = if self.cols.is_dark { col } else { Rgba::BLACK };
             let mut col2 = col1;
             col2.a = 0.0;

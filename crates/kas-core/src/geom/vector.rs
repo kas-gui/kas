@@ -25,13 +25,13 @@ pub struct Quad {
 impl Quad {
     /// Construct with two coords
     #[inline]
-    pub fn with_coords(a: Vec2, b: Vec2) -> Self {
+    pub fn from_coords(a: Vec2, b: Vec2) -> Self {
         Quad { a, b }
     }
 
     /// Construct with position and size
     #[inline]
-    pub fn with_pos_and_size(pos: Vec2, size: Vec2) -> Self {
+    pub fn from_pos_and_size(pos: Vec2, size: Vec2) -> Self {
         Quad {
             a: pos,
             b: pos + size,
@@ -99,7 +99,7 @@ impl Quad {
         let x = (self.b.0.min(rhs.b.0) - a.0).max(0.0);
         let y = (self.b.1.min(rhs.b.1) - a.1).max(0.0);
         if x * y > 0.0 {
-            Some(Quad::with_pos_and_size(a, Vec2(x, y)))
+            Some(Quad::from_pos_and_size(a, Vec2(x, y)))
         } else {
             None
         }

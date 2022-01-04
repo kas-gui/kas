@@ -301,7 +301,7 @@ impl Window {
             let for_rect = |x1, x2, y: f32, h: f32, _, _| {
                 let y = y.ceil();
                 let y2 = y + h.ceil();
-                let quad = Quad::with_coords(pos + Vec2(x1, y), pos + Vec2(x2, y2));
+                let quad = Quad::from_coords(pos + Vec2(x1, y), pos + Vec2(x2, y2));
                 rects.push(quad);
             };
             text.glyphs_with_effects(effects, (), for_glyph, for_rect);
@@ -352,7 +352,7 @@ impl Window {
         let for_rect = |x1, x2, y: f32, h: f32, _, col: Rgba| {
             let y = y.ceil();
             let y2 = y + h.ceil();
-            let quad = Quad::with_coords(pos + Vec2(x1, y), pos + Vec2(x2, y2));
+            let quad = Quad::from_coords(pos + Vec2(x1, y), pos + Vec2(x2, y2));
             rects.push((quad, col));
         };
 
