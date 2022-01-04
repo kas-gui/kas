@@ -122,6 +122,7 @@ widget! {
         ///
         /// No handler is called on deselection, but [`Response::Update`] is returned.
         #[inline]
+        #[must_use]
         pub fn on_select<M, F>(self, f: F) -> RadioBoxBare<M>
         where
             F: Fn(&mut Manager) -> Option<M> + 'static,
@@ -228,6 +229,7 @@ widget! {
         ///
         /// No handler is called on deselection, but [`Response::Update`] is returned.
         #[inline]
+        #[must_use]
         pub fn on_select<M, F>(self, f: F) -> RadioBox<M>
         where
             F: Fn(&mut Manager) -> Option<M> + 'static,

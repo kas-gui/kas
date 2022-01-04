@@ -20,6 +20,7 @@ pub trait WidgetExt: Widget {
     /// Construct a wrapper widget which maps messages from this widget
     ///
     /// Responses from this widget with a message payload are mapped with `f`.
+    #[must_use]
     fn map_msg<F, M>(self, f: F) -> MapResponse<Self, M>
     where
         F: Fn(&mut Manager, Self::Msg) -> M + 'static,
@@ -32,6 +33,7 @@ pub trait WidgetExt: Widget {
     ///
     /// Responses from this widget with a message payload are mapped to
     /// [`Response::Used`].
+    #[must_use]
     fn map_msg_discard<M>(self) -> MapResponse<Self, M>
     where
         Self: Sized,
@@ -42,6 +44,7 @@ pub trait WidgetExt: Widget {
     /// Construct a wrapper widget which maps message responses from this widget
     ///
     /// Responses from this widget with a message payload are mapped with `f`.
+    #[must_use]
     fn map_response<F, M>(self, f: F) -> MapResponse<Self, M>
     where
         F: Fn(&mut Manager, Self::Msg) -> Response<M> + 'static,
@@ -77,6 +80,7 @@ pub trait WidgetExt: Widget {
     ///```
     /// The resulting `SizeRules` will be the max of those for the inner widget
     /// and the result of the `reserve` closure.
+    #[must_use]
     fn with_reserve<R>(self, r: R) -> Reserve<Self, R>
     where
         R: FnMut(&mut dyn SizeHandle, AxisInfo) -> SizeRules + 'static,
@@ -86,6 +90,7 @@ pub trait WidgetExt: Widget {
     }
 
     /// Construct a wrapper widget adding a label
+    #[must_use]
     fn with_label<D, T>(self, direction: D, label: T) -> WithLabel<Self, D>
     where
         D: Directional,

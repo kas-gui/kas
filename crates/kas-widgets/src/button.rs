@@ -70,6 +70,7 @@ widget! {
         /// closure `f` is called. The result of `f` is converted to
         /// [`Response::Msg`] or [`Response::Used`] and returned to the parent.
         #[inline]
+        #[must_use]
         pub fn on_push<M, F>(self, f: F) -> Button<W, M>
         where
             F: Fn(&mut Manager) -> Option<M> + 'static,
@@ -230,6 +231,7 @@ widget! {
         /// closure `f` is called. The result of `f` is converted to
         /// [`Response::Msg`] or [`Response::Used`] and returned to the parent.
         #[inline]
+        #[must_use]
         pub fn on_push<M, F>(self, f: F) -> TextButton<M>
         where
             F: Fn(&mut Manager) -> Option<M> + 'static,

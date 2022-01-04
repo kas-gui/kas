@@ -61,6 +61,7 @@ widget! {
         /// closure `f` is called. The result of `f` is converted to
         /// [`Response::Msg`] or [`Response::Update`] and returned to the parent.
         #[inline]
+        #[must_use]
         pub fn on_toggle<M, F>(self, f: F) -> CheckBoxBare<M>
         where
             F: Fn(&mut Manager, bool) -> Option<M> + 'static,
@@ -178,6 +179,7 @@ widget! {
         /// closure `f` is called. The result of `f` is converted to
         /// [`Response::Msg`] or [`Response::Update`] and returned to the parent.
         #[inline]
+        #[must_use]
         pub fn on_toggle<M, F>(self, f: F) -> CheckBox<M>
         where
             F: Fn(&mut Manager, bool) -> Option<M> + 'static,

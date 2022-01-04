@@ -219,6 +219,7 @@ impl EditBox<()> {
     /// This method calls [`EditGuard::update`] after applying `guard` to `self`
     /// and discards any message emitted.
     #[inline]
+    #[must_use]
     pub fn with_guard<G: EditGuard>(self, guard: G) -> EditBox<G> {
         EditBox {
             core: self.core,
@@ -235,6 +236,7 @@ impl EditBox<()> {
     ///
     /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
     /// previously assigned to the `EditBox` will be replaced.
+    #[must_use]
     pub fn on_activate<F, M: 'static>(self, f: F) -> EditBox<EditActivate<F, M>>
     where
         F: FnMut(&str, &mut Manager) -> Option<M> + 'static,
@@ -250,6 +252,7 @@ impl EditBox<()> {
     ///
     /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
     /// previously assigned to the `EditBox` will be replaced.
+    #[must_use]
     pub fn on_afl<F, M: 'static>(self, f: F) -> EditBox<EditAFL<F, M>>
     where
         F: FnMut(&str, &mut Manager) -> Option<M> + 'static,
@@ -264,6 +267,7 @@ impl EditBox<()> {
     ///
     /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
     /// previously assigned to the `EditBox` will be replaced.
+    #[must_use]
     pub fn on_edit<F, M: 'static>(self, f: F) -> EditBox<EditEdit<F, M>>
     where
         F: FnMut(&str, &mut Manager) -> Option<M> + 'static,
@@ -278,6 +282,7 @@ impl EditBox<()> {
     ///
     /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
     /// previously assigned to the `EditBox` will be replaced.
+    #[must_use]
     pub fn on_update<F: FnMut(&str) + 'static>(self, f: F) -> EditBox<EditUpdate<F>> {
         self.with_guard(EditUpdate(f))
     }
@@ -629,6 +634,7 @@ impl EditField<()> {
     /// This method calls [`EditGuard::update`] after applying `guard` to `self`
     /// and discards any message emitted.
     #[inline]
+    #[must_use]
     pub fn with_guard<G: EditGuard>(self, guard: G) -> EditField<G> {
         let mut edit = EditField {
             core: self.core,
@@ -658,6 +664,7 @@ impl EditField<()> {
     ///
     /// This method is a parametisation of [`EditField::with_guard`]. Any guard
     /// previously assigned to the `EditField` will be replaced.
+    #[must_use]
     pub fn on_activate<F: FnMut(&str, &mut Manager) -> Option<M> + 'static, M: 'static>(
         self,
         f: F,
@@ -673,6 +680,7 @@ impl EditField<()> {
     ///
     /// This method is a parametisation of [`EditField::with_guard`]. Any guard
     /// previously assigned to the `EditField` will be replaced.
+    #[must_use]
     pub fn on_afl<F: FnMut(&str, &mut Manager) -> Option<M> + 'static, M: 'static>(
         self,
         f: F,
@@ -687,6 +695,7 @@ impl EditField<()> {
     ///
     /// This method is a parametisation of [`EditField::with_guard`]. Any guard
     /// previously assigned to the `EditField` will be replaced.
+    #[must_use]
     pub fn on_edit<F: FnMut(&str, &mut Manager) -> Option<M> + 'static, M: 'static>(
         self,
         f: F,
@@ -701,6 +710,7 @@ impl EditField<()> {
     ///
     /// This method is a parametisation of [`EditField::with_guard`]. Any guard
     /// previously assigned to the `EditField` will be replaced.
+    #[must_use]
     pub fn on_update<F: FnMut(&str) + 'static>(self, f: F) -> EditField<EditUpdate<F>> {
         self.with_guard(EditUpdate(f))
     }

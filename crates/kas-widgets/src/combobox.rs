@@ -221,6 +221,7 @@ impl ComboBox<VoidMsg> {
     /// index. The result of `f` is converted to [`Response::Msg`] or
     /// [`Response::Update`] and returned to the parent.
     #[inline]
+    #[must_use]
     pub fn on_select<M, F>(self, f: F) -> ComboBox<M>
     where
         F: Fn(&mut Manager, usize) -> Option<M> + 'static,
@@ -331,6 +332,7 @@ impl<M: 'static> ComboBox<M> {
 }
 
 impl<M: 'static> ComboBox<M> {
+    #[must_use]
     fn map_response(
         &mut self,
         mgr: &mut Manager,

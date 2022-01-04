@@ -221,6 +221,7 @@ impl<'a, W: Widget> GridBuilder<'a, W> {
     ///
     /// The child is added to the end of the "list", thus appears last in
     /// navigation order.
+    #[must_use]
     pub fn with_cell(self, row: u32, col: u32, widget: W) -> Self {
         self.with_cell_span(row, col, 1, 1, widget)
     }
@@ -249,6 +250,7 @@ impl<'a, W: Widget> GridBuilder<'a, W> {
     ///
     /// The child is added to the end of the "list", thus appears last in
     /// navigation order.
+    #[must_use]
     pub fn with_cell_span(
         mut self,
         row: u32,
