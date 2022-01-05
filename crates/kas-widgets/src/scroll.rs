@@ -6,10 +6,10 @@
 //! Scroll region
 
 use super::Scrollable;
-use kas::draw::TextClass;
 use kas::event::ScrollDelta::{LineDelta, PixelDelta};
 use kas::event::{self, Command, PressSource};
 use kas::prelude::*;
+use kas::theme::TextClass;
 use std::fmt::Debug;
 
 /// Logic for a scroll region

@@ -6,7 +6,7 @@
 //! Colour schemes
 
 use kas::draw::color::{Rgba, Rgba8Srgb};
-use kas::draw::InputState;
+use kas::theme::InputState;
 use std::str::FromStr;
 
 const MULT_DEPRESS: f32 = 0.75;

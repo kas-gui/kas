@@ -11,9 +11,10 @@ use std::ops::Range;
 use crate::{dim, ColorsLinear, Config, FlatTheme, Theme};
 use crate::{DrawShaded, DrawShadedImpl};
 use kas::dir::{Direction, Directional};
-use kas::draw::{self, color::Rgba, *};
+use kas::draw::{color::Rgba, *};
 use kas::geom::*;
 use kas::text::{AccelString, Text, TextApi, TextDisplay};
+use kas::theme::{self, InputState, SizeHandle, TextClass, ThemeControl};
 use kas::TkAction;
 
 /// A theme using simple shading to give apparent depth to elements
@@ -217,7 +218,7 @@ where
     }
 }
 
-impl<'a, DS: DrawSharedImpl> draw::DrawHandle for DrawHandle<'a, DS>
+impl<'a, DS: DrawSharedImpl> theme::DrawHandle for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl + DrawShadedImpl,
 {
@@ -234,7 +235,7 @@ where
         inner_rect: Rect,
         offset: Offset,
         class: PassType,
-        f: &mut dyn FnMut(&mut dyn draw::DrawHandle),
+        f: &mut dyn FnMut(&mut dyn theme::DrawHandle),
     ) {
         let mut shadow = Default::default();
         let mut outer_rect = inner_rect;

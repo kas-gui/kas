@@ -7,7 +7,7 @@
 
 use super::color::Rgba;
 #[allow(unused)]
-use super::{DrawHandle, DrawRounded, DrawRoundedImpl};
+use super::{DrawRounded, DrawRoundedImpl};
 use super::{DrawSharedImpl, ImageId, PassId, PassType, SharedState};
 use crate::geom::{Offset, Quad, Rect, Vec2};
 #[allow(unused)]
@@ -21,8 +21,8 @@ use std::any::Any;
 /// functionality over this object.
 ///
 /// This type is used to present a unified mid-level draw interface, as
-/// available from [`DrawHandle::draw_device`]. A concrete `DrawIface` object may be
-/// obtained via downcast, e.g.:
+/// available from [`crate::theme::DrawHandle::draw_device`].
+/// A concrete `DrawIface` object may be obtained via downcast, e.g.:
 /// ```ignore
 /// # use kas::draw::{DrawIface, DrawRoundedImpl, DrawSharedImpl, DrawHandle, DrawRounded, color::Rgba};
 /// # use kas::geom::Rect;

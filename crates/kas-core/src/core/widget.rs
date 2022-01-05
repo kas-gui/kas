@@ -8,10 +8,10 @@
 use std::any::Any;
 use std::fmt;
 
-use crate::draw::{DrawHandle, InputState, SizeHandle};
 use crate::event::{self, ConfigureManager, Manager, ManagerState};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{self, AlignHints, AxisInfo, SizeRules};
+use crate::theme::{DrawHandle, InputState, SizeHandle};
 use crate::{CoreData, TkAction, WidgetId};
 
 impl dyn WidgetCore {
@@ -406,7 +406,7 @@ pub trait Layout: WidgetChildren {
     ///
     /// Affects event handling via [`Self::find_id`] and affects the positioning
     /// of pop-up menus. [`Self::draw`] must be implemented directly using
-    /// [`crate::draw::DrawHandleExt::with_clip_region`] to offset contents.
+    /// [`crate::theme::DrawHandleExt::with_clip_region`] to offset contents.
     #[inline]
     fn translation(&self) -> Offset {
         Offset::ZERO

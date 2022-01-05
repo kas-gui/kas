@@ -233,7 +233,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                 #[inline]
                 fn size_rules(
                     &mut self,
-                    size_handle: &mut dyn ::kas::draw::SizeHandle,
+                    size_handle: &mut dyn ::kas::theme::SizeHandle,
                     axis: ::kas::layout::AxisInfo,
                 ) -> ::kas::layout::SizeRules {
                     self.#inner.size_rules(size_handle, axis)
@@ -267,7 +267,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                 #[inline]
                 fn draw(
                     &mut self,
-                    draw: &mut dyn ::kas::draw::DrawHandle,
+                    draw: &mut dyn ::kas::theme::DrawHandle,
                     mgr: &::kas::event::ManagerState,
                     disabled: bool,
                 ) {

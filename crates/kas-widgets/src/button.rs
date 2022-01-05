@@ -5,10 +5,11 @@
 
 //! Push-buttons
 
-use kas::draw::{color::Rgb, TextClass};
+use kas::draw::color::Rgb;
 use kas::event::{self, VirtualKeyCode, VirtualKeyCodes};
 use kas::layout;
 use kas::prelude::*;
+use kas::theme::TextClass;
 use std::rc::Rc;
 
 widget! {

@@ -6,10 +6,10 @@
 //! Combobox
 
 use super::{IndexedColumn, MenuEntry};
-use kas::draw::TextClass;
 use kas::event::{self, Command, GrabMode};
 use kas::layout;
 use kas::prelude::*;
+use kas::theme::TextClass;
 use kas::WindowId;
 use std::rc::Rc;
 

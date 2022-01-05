@@ -7,9 +7,9 @@
 
 use super::Menu;
 use crate::Column;
-use kas::draw::TextClass;
 use kas::event::{self, Command, ConfigureManager};
 use kas::prelude::*;
+use kas::theme::TextClass;
 use kas::{layout, WindowId};
 
 widget! {

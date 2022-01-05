@@ -41,18 +41,16 @@ pub mod color;
 mod draw;
 mod draw_rounded;
 mod draw_shared;
-mod handle;
 mod images;
-mod theme;
 
 use crate::cast::Cast;
+#[allow(unused)]
+use crate::theme::DrawHandle;
 
 pub use draw::{Draw, DrawIface, DrawImpl};
 pub use draw_rounded::{DrawRounded, DrawRoundedImpl};
 pub use draw_shared::{DrawShared, DrawSharedImpl, SharedState};
-pub use handle::{DrawHandle, DrawHandleExt, InputState, SizeHandle, TextClass};
 pub use images::{ImageError, ImageFormat, ImageId};
-pub use theme::ThemeControl;
 
 /// Draw pass identifier
 ///

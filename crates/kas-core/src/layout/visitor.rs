@@ -8,10 +8,11 @@
 use super::{AlignHints, AxisInfo, RulesSetter, RulesSolver, SizeRules, Storage};
 use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
-use crate::draw::{color::Rgb, DrawHandle, InputState, SizeHandle, TextClass};
+use crate::draw::color::Rgb;
 use crate::event::{Manager, ManagerState};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::text::{Align, TextApi, TextApiExt};
+use crate::theme::{DrawHandle, InputState, SizeHandle, TextClass};
 use crate::WidgetId;
 use crate::{dir::Directional, WidgetConfig};
 use std::any::Any;

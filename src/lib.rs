@@ -50,8 +50,15 @@ pub use kas_widgets as widgets;
 #[cfg(any(feature = "canvas", feature = "svg"))]
 pub use kas_resvg as resvg;
 
-#[cfg(feature = "theme")]
-pub use kas_theme as theme;
+/// Themes
+///
+/// This module merges [`kas_core::theme`] and (with the `theme` feature) [`kas_theme`].
+pub mod theme {
+    pub use kas_core::theme::*;
+
+    #[cfg(feature = "theme")]
+    pub use kas_theme::*;
+}
 
 #[cfg(feature = "wgpu")]
 pub use kas_wgpu as shell;

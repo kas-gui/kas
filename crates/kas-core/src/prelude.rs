@@ -15,9 +15,7 @@ pub use crate::class::*;
 #[doc(no_inline)]
 pub use crate::dir::{Direction, Directional};
 #[doc(no_inline)]
-pub use crate::draw::{
-    DrawHandle, DrawHandleExt, DrawShared, ImageId, InputState, SizeHandle, ThemeControl,
-};
+pub use crate::draw::{DrawShared, ImageId};
 #[doc(no_inline)]
 pub use crate::event::{
     Event, Handler, Manager, ManagerState, Response, SendEvent, UpdateHandle, VoidMsg,
@@ -32,6 +30,8 @@ pub use crate::macros::*;
 pub use crate::text::AccelString;
 #[doc(no_inline)]
 pub use crate::text::{EditableTextApi, Text, TextApi, TextApiExt};
+#[doc(no_inline)]
+pub use crate::theme::{DrawHandle, DrawHandleExt, InputState, SizeHandle, ThemeControl};
 #[doc(no_inline)]
 pub use crate::CoreData;
 #[doc(no_inline)]

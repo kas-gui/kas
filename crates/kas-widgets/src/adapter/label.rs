@@ -5,8 +5,8 @@
 
 //! Wrapper adding a label
 
-use kas::draw::TextClass;
 use kas::text::util::set_text_and_prepare;
+use kas::theme::TextClass;
 use kas::{event, layout, prelude::*};
 
 widget! {

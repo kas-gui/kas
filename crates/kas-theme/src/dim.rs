@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Common implementation of [`kas::draw::SizeHandle`]
+//! Common implementation of [`kas::theme::SizeHandle`]
 
 use linear_map::LinearMap;
 use std::any::Any;
@@ -11,10 +11,10 @@ use std::f32;
 use std::rc::Rc;
 
 use kas::cast::{Cast, CastFloat, ConvFloat};
-use kas::draw::{SizeHandle, TextClass};
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, Stretch};
 use kas::text::{fonts::FontId, TextApi, TextApiExt};
+use kas::theme::{SizeHandle, TextClass};
 
 /// Parameterisation of [`Dimensions`]
 ///

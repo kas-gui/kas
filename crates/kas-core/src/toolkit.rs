@@ -12,9 +12,10 @@
 //! constructing and using an event manager ([`crate::event::ManagerState`]).
 //! The shell also provides the entrypoint, a type named `Toolkit`.
 
-use crate::draw::{DrawShared, SizeHandle, ThemeControl};
+use crate::draw::DrawShared;
 use crate::event;
 use crate::event::UpdateHandle;
+use crate::theme::{SizeHandle, ThemeControl};
 use std::num::NonZeroU32;
 
 /// Identifier for a window or pop-up

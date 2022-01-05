@@ -34,6 +34,7 @@ pub mod geom;
 pub mod layout;
 pub mod prelude;
 pub mod text;
+pub mod theme;
 pub mod updatable;
 pub mod util;
 

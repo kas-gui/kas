@@ -7,10 +7,10 @@
 
 use super::{MapResponse, Reserve, WithLabel};
 use kas::dir::Directional;
-use kas::draw::SizeHandle;
 use kas::event::{Manager, Response};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::text::AccelString;
+use kas::theme::SizeHandle;
 #[allow(unused)]
 use kas::Layout;
 use kas::Widget;

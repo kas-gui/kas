@@ -12,7 +12,7 @@ use crate::geom::{Rect, Size, Vec2};
 
 // for doc use
 #[allow(unused)]
-use crate::draw::SizeHandle;
+use crate::theme::SizeHandle;
 
 /// Margin sizes
 ///

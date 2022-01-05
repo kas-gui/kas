@@ -9,10 +9,11 @@ use log::{debug, error, info, trace};
 use std::time::Instant;
 
 use kas::cast::Cast;
-use kas::draw::{DrawIface, DrawShared, PassId, SizeHandle, ThemeControl};
+use kas::draw::{DrawIface, DrawShared, PassId};
 use kas::event::{CursorIcon, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
+use kas::theme::{SizeHandle, ThemeControl};
 use kas::{TkAction, WindowId};
 use kas_theme::{Theme, Window as _};
 use winit::dpi::PhysicalSize;

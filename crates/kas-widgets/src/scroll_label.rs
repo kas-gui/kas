@@ -6,13 +6,13 @@
 //! Scrollable and selectable label
 
 use super::Scrollable;
-use kas::draw::TextClass;
 use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{self, Command, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
 use kas::text::SelectionHelper;
+use kas::theme::TextClass;
 
 widget! {
     /// A text label supporting scrolling and selection

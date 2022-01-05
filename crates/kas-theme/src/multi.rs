@@ -10,7 +10,8 @@ use std::collections::HashMap;
 use std::marker::Unsize;
 
 use crate::{Config, StackDst, Theme, ThemeDst, Window};
-use kas::draw::{color, DrawHandle, DrawIface, DrawSharedImpl, SharedState, ThemeControl};
+use kas::draw::{color, DrawIface, DrawSharedImpl, SharedState};
+use kas::theme::{DrawHandle, ThemeControl};
 use kas::TkAction;
 
 #[cfg(feature = "unsize")]

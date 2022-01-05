@@ -7,7 +7,7 @@
 
 use super::Menu;
 use crate::{AccelLabel, CheckBoxBare};
-use kas::draw::TextClass;
+use kas::theme::TextClass;
 use kas::{layout, prelude::*};
 use std::fmt::Debug;
 

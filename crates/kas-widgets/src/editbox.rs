@@ -6,13 +6,13 @@
 //! Text widgets
 
 use super::Scrollable;
-use kas::draw::TextClass;
 use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{self, Command, ScrollDelta};
 use kas::geom::Vec2;
 use kas::layout;
 use kas::prelude::*;
 use kas::text::SelectionHelper;
+use kas::theme::TextClass;
 use std::fmt::Debug;
 use std::ops::Range;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};

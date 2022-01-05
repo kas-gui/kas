@@ -9,9 +9,9 @@ use log::trace;
 use std::fmt;
 
 use super::{AlignHints, AxisInfo, Margins, SizeRules};
-use crate::draw::SizeHandle;
 use crate::event::Manager;
 use crate::geom::{Rect, Size};
+use crate::theme::SizeHandle;
 use crate::{Widget, WidgetConfig};
 
 /// A [`SizeRules`] solver for layouts

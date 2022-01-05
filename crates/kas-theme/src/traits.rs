@@ -5,9 +5,8 @@
 
 //! Theme traits
 
-use kas::draw::{
-    color, DrawHandle, DrawIface, DrawSharedImpl, SharedState, SizeHandle, ThemeControl,
-};
+use kas::draw::{color, DrawIface, DrawSharedImpl, SharedState};
+use kas::theme::{DrawHandle, SizeHandle, ThemeControl};
 use kas::TkAction;
 use std::any::Any;
 use std::ops::{Deref, DerefMut};

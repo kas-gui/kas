@@ -6,8 +6,8 @@
 //! Theme configuration
 
 use crate::{ColorsSrgb, ThemeConfig};
-use kas::draw::TextClass;
 use kas::text::fonts::{fonts, AddMode, FontSelector};
+use kas::theme::TextClass;
 use kas::TkAction;
 use std::collections::BTreeMap;
 

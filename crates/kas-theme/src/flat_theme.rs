@@ -15,10 +15,11 @@ use std::rc::Rc;
 use crate::{dim, ColorsLinear, Config, Theme};
 use kas::cast::Cast;
 use kas::dir::{Direction, Directional};
-use kas::draw::{self, color::Rgba, *};
+use kas::draw::{color::Rgba, *};
 use kas::geom::*;
 use kas::text::format::FormattableText;
 use kas::text::{fonts, AccelString, Effect, Text, TextApi, TextDisplay};
+use kas::theme::{self, InputState, SizeHandle, TextClass, ThemeControl};
 use kas::TkAction;
 
 // Used to ensure a rectangular background is inside a circular corner.
@@ -273,7 +274,7 @@ where
     }
 }
 
-impl<'a, DS: DrawSharedImpl> draw::DrawHandle for DrawHandle<'a, DS>
+impl<'a, DS: DrawSharedImpl> theme::DrawHandle for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl,
 {
@@ -290,7 +291,7 @@ where
         inner_rect: Rect,
         offset: Offset,
         class: PassType,
-        f: &mut dyn FnMut(&mut dyn draw::DrawHandle),
+        f: &mut dyn FnMut(&mut dyn theme::DrawHandle),
     ) {
         let mut frame_rect = Default::default();
         let mut shadow = Default::default();

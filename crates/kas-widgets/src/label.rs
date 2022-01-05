@@ -5,8 +5,8 @@
 
 //! Text widgets
 
-use kas::draw::TextClass;
 use kas::text::format::{EditableText, FormattableText};
+use kas::theme::TextClass;
 use kas::{event, prelude::*};
 
 widget! {

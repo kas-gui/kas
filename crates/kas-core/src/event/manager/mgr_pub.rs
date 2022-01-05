@@ -10,8 +10,9 @@ use std::time::{Duration, Instant};
 use std::u16;
 
 use super::*;
-use crate::draw::{DrawShared, SizeHandle, ThemeControl};
+use crate::draw::DrawShared;
 use crate::geom::{Coord, Offset, Vec2};
+use crate::theme::{SizeHandle, ThemeControl};
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
 use crate::{TkAction, WidgetExt, WidgetId, WindowId};
