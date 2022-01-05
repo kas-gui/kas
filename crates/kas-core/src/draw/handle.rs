@@ -285,6 +285,10 @@ pub trait DrawHandle {
     fn size_handle(&self) -> &dyn SizeHandle;
 
     /// Access the low-level draw device
+    ///
+    /// Note: this drawing API is modular, with limited functionality in the
+    /// base trait [`Draw`]. To access further functionality, it is necessary
+    /// to downcast with [`crate::draw::DrawIface::downcast_from`].
     fn draw_device(&mut self) -> &mut dyn Draw;
 
     /// Add a draw pass
@@ -327,9 +331,10 @@ pub trait DrawHandle {
     /// of size `inner_margin` that is expected to be present around this box.
     fn selection_box(&mut self, rect: Rect);
 
-    /// Draw some text using the standard font
+    /// Draw text
     ///
-    /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
+    /// [`SizeHandle::text_bound`] should be called prior to this method to
+    /// select a font, font size and wrap options (based on the [`TextClass`]).
     fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, state: InputState);
 
     /// Draw text with effects
@@ -337,13 +342,17 @@ pub trait DrawHandle {
     /// [`DrawHandle::text`] already supports *font* effects: bold,
     /// emphasis, text size. In addition, this method supports underline and
     /// strikethrough effects.
+    ///
+    /// [`SizeHandle::text_bound`] should be called prior to this method to
+    /// select a font, font size and wrap options (based on the [`TextClass`]).
     fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass, state: InputState);
 
     /// Draw an `AccelString` text
     ///
     /// The `text` is drawn within the rect from `pos` to `text.env().bounds`.
     ///
-    /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
+    /// [`SizeHandle::text_bound`] should be called prior to this method to
+    /// select a font, font size and wrap options (based on the [`TextClass`]).
     fn text_accel(
         &mut self,
         pos: Coord,
@@ -366,6 +375,9 @@ pub trait DrawHandle {
     );
 
     /// Draw an edit marker at the given `byte` index on this `text`
+    ///
+    /// [`SizeHandle::text_bound`] should be called prior to this method to
+    /// select a font, font size and wrap options (based on the [`TextClass`]).
     fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize);
 
     /// Draw the background of a menu entry

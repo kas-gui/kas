@@ -10,6 +10,8 @@ use super::color::Rgba;
 use super::{DrawHandle, DrawRounded, DrawRoundedImpl};
 use super::{DrawSharedImpl, ImageId, PassId, PassType, SharedState};
 use crate::geom::{Offset, Quad, Rect, Vec2};
+#[allow(unused)]
+use crate::text::TextApi;
 use crate::text::{Effect, TextDisplay};
 use std::any::Any;
 
@@ -58,6 +60,13 @@ pub struct DrawIface<'a, DS: DrawSharedImpl> {
 
 impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
     /// Attempt to downcast a `&mut dyn Draw` to a concrete [`DrawIface`] object
+    ///
+    /// Note: Rust does not (yet) support trait-object-downcast: it not possible
+    /// to cast from `&mut dyn Draw` to (for example) `&mut dyn DrawRounded`.
+    /// Instead, the target type must be the implementing object, which is
+    /// provided by the shell (e.g. `kas_wgpu`). See documentation on this type
+    /// for an example, or see examine
+    /// [`clock.rs`](https://github.com/kas-gui/kas/blob/master/examples/clock.rs).
     pub fn downcast_from(obj: &'a mut dyn Draw) -> Option<Self> {
         let pass = obj.get_pass();
         let (draw, shared) = obj.get_fields_as_any_mut();
@@ -108,8 +117,10 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
 /// Most methods draw some feature. Exceptions are those starting with `get_`
 /// and [`Self::new_dyn_pass`].
 ///
-/// It is expected that extension traits are used for additional draw methods,
-/// for example [`DrawRounded`]. Traits may be defined in external crates.
+/// Additional draw routines are available through extension traits, depending
+/// on the shell. Since Rust does not (yet) support trait-object-downcast,
+/// accessing these requires reconstruction of the implementing type via
+/// [`DrawIface::downcast_from`].
 pub trait Draw {
     /// Get the current draw pass
     fn get_pass(&self) -> PassId;
@@ -168,12 +179,18 @@ pub trait Draw {
     fn image(&mut self, id: ImageId, rect: Quad);
 
     /// Draw text with a colour
+    ///
+    /// It is required to call [`TextDisplay::prepare`] or [`TextApi::prepare`]
+    /// prior to this method to select a font, font size and perform layout.
     fn text(&mut self, pos: Vec2, text: &TextDisplay, col: Rgba);
 
-    /// Draw text with a colour and effects
+    /// Draw text with a single color and effects
     ///
     /// The effects list does not contain colour information, but may contain
     /// underlining/strikethrough information. It may be empty.
+    ///
+    /// It is required to call [`TextDisplay::prepare`] or [`TextApi::prepare`]
+    /// prior to this method to select a font, font size and perform layout.
     fn text_col_effects(
         &mut self,
         pos: Vec2,
@@ -182,11 +199,14 @@ pub trait Draw {
         effects: &[Effect<()>],
     );
 
-    /// Draw text with effects
+    /// Draw text with effects (including colors)
     ///
     /// The `effects` list provides both underlining and colour information.
     /// If the `effects` list is empty or the first entry has `start > 0`, a
     /// default entity will be assumed.
+    ///
+    /// It is required to call [`TextDisplay::prepare`] or [`TextApi::prepare`]
+    /// prior to this method to select a font, font size and perform layout.
     fn text_effects(&mut self, pos: Vec2, text: &TextDisplay, effects: &[Effect<Rgba>]);
 }
 

@@ -5,36 +5,18 @@
 
 //! # Draw APIs
 //!
-//! Multiple drawing APIs are available. Each has a slightly different purpose.
+//! Multiple drawing APIs are available. Each has a slightly different purpose:
 //!
-//! ### High-level themeable interface
+//! -   High-level "themed widget components" are available through
+//!     [`DrawHandle`]. This is the primary drawing interface for widgets.
+//! -   Basic drawing components (shapes) are available through [`DrawIface`]
+//!     in this module. This can be accessed via [`DrawHandle::draw_device`].
+//! -   The shell may support custom graphics pipelines, for example
+//!     [`kas-wgpu::draw::CustomPipe`](https://docs.rs/kas-wgpu/*/kas_wgpu/draw/trait.CustomPipe.html)
+//!     (used by the [Mandlebrot example](https://github.com/kas-gui/kas/tree/master/examples/mandlebrot)).
 //!
-//! When widgets are sized or drawn, they are provided a [`SizeHandle`] or a
-//! [`DrawHandle`] trait object. A [`SizeHandle`] may also be obtained through
-//! [`crate::event::Manager::size_handle`].
-//!
-//! These traits are implemented by the theme of choice, providing a high-level
-//! themed API over "widget features".
-//!
-//! [`SizeHandle`] is the only part of the API providing sizing data. If drawing
-//! via a lower-level API, it may still be necessary to query the scale factor
-//! or some feature size via [`SizeHandle`].
-//!
-//! ### Medium-level drawing interfaces
-//!
-//! The theme draws widget components over a [`DrawIface`] object.
-//! Widgets may access this same API via [`DrawHandle::draw_device`].
-//!
-//! The traits [`Draw`] and [`DrawRounded`] provide functinality over a
-//! [`DrawIface`] object. Additional interfaces may be defined in external crates.
-//!
-//! ### Low-level interface
-//!
-//! There is no universal graphics API, hence none is provided by this crate.
-//! Instead, shells may provide their own extensions allowing direct access
-//! to the host graphics API, for example
-//! [`kas-wgpu::draw::CustomPipe`](https://docs.rs/kas-wgpu/*/kas_wgpu/draw/trait.CustomPipe.html).
-//! The `mandlebrot` example demonstrates use of a custom draw pipe.
+//! Text may be drawn by either [`DrawHandle`] or [`DrawIface`] with a slightly
+//! different API (using theme properties or directly specifying colors and effects).
 //!
 //! ## Draw order
 //!
