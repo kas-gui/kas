@@ -12,7 +12,7 @@
 //! constructing and using an event manager ([`crate::event::ManagerState`]).
 //! The shell also provides the entrypoint, a type named `Toolkit`.
 
-use crate::draw::{DrawShared, SizeHandle, ThemeApi};
+use crate::draw::{DrawShared, SizeHandle, ThemeControl};
 use crate::event;
 use crate::event::UpdateHandle;
 use std::num::NonZeroU32;
@@ -136,7 +136,7 @@ pub trait ShellWindow {
     ///
     /// Note: theme adjustments apply to all windows, as does the [`TkAction`]
     /// returned from the closure.
-    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeApi) -> TkAction);
+    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeControl) -> TkAction);
 
     /// Access a [`SizeHandle`]
     ///

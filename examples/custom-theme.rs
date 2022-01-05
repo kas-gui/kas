@@ -83,7 +83,7 @@ where
     }
 }
 
-impl ThemeApi for CustomTheme {
+impl ThemeControl for CustomTheme {
     fn set_font_size(&mut self, size: f32) -> TkAction {
         self.inner.set_font_size(size)
     }

@@ -52,7 +52,7 @@ pub use draw_rounded::{DrawRounded, DrawRoundedImpl};
 pub use draw_shared::{DrawShared, DrawSharedImpl, SharedState};
 pub use handle::{DrawHandle, DrawHandleExt, InputState, SizeHandle, TextClass};
 pub use images::{ImageError, ImageFormat, ImageId};
-pub use theme::ThemeApi;
+pub use theme::ThemeControl;
 
 /// Draw pass identifier
 ///

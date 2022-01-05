@@ -15,7 +15,7 @@ use std::ops::{Deref, DerefMut};
 /// All methods return a [`TkAction`] to enable correct action when a theme
 /// is updated via [`Manager::adjust_theme`]. When adjusting a theme before
 /// the UI is started, this return value can be safely ignored.
-pub trait ThemeApi {
+pub trait ThemeControl {
     /// Set font size
     ///
     /// Units: Points per Em (standard unit of font size)
@@ -38,7 +38,7 @@ pub trait ThemeApi {
     }
 }
 
-impl<T: ThemeApi> ThemeApi for Box<T> {
+impl<T: ThemeControl> ThemeControl for Box<T> {
     fn set_font_size(&mut self, size: f32) -> TkAction {
         self.deref_mut().set_font_size(size)
     }

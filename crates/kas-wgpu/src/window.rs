@@ -9,7 +9,7 @@ use log::{debug, error, info, trace};
 use std::time::Instant;
 
 use kas::cast::Cast;
-use kas::draw::{DrawIface, DrawShared, PassId, SizeHandle, ThemeApi};
+use kas::draw::{DrawIface, DrawShared, PassId, SizeHandle, ThemeControl};
 use kas::event::{CursorIcon, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
@@ -457,7 +457,7 @@ where
         self.shared.set_clipboard(content);
     }
 
-    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeApi) -> TkAction) {
+    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeControl) -> TkAction) {
         let action = f(&mut self.shared.theme);
         self.shared.pending.push(PendingAction::TkAction(action));
     }

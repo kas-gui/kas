@@ -10,7 +10,9 @@ use std::borrow::Cow;
 use std::ops::{Deref, DerefMut};
 
 use super::{StackDst, Theme, Window};
-use kas::draw::{color, DrawHandle, DrawIface, DrawSharedImpl, SharedState, SizeHandle, ThemeApi};
+use kas::draw::{
+    color, DrawHandle, DrawIface, DrawSharedImpl, SharedState, SizeHandle, ThemeControl,
+};
 use kas::TkAction;
 
 /// An optionally-owning (boxed) reference
@@ -37,7 +39,7 @@ impl<T: ?Sized> AsRef<T> for MaybeBoxed<'_, T> {
 /// [`Theme`]. It is intended only for use where a less parameterised
 /// trait is required.
 #[cfg_attr(doc_cfg, doc(cfg(feature = "stack_dst")))]
-pub trait ThemeDst<DS: DrawSharedImpl>: ThemeApi {
+pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
     /// Get current config
     fn config(&self) -> MaybeBoxed<dyn Any>;
 

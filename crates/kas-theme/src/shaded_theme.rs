@@ -147,7 +147,7 @@ where
     }
 }
 
-impl ThemeApi for ShadedTheme {
+impl ThemeControl for ShadedTheme {
     fn set_font_size(&mut self, pt_size: f32) -> TkAction {
         self.flat.set_font_size(pt_size)
     }

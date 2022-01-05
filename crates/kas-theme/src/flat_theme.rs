@@ -208,7 +208,7 @@ where
     }
 }
 
-impl ThemeApi for FlatTheme {
+impl ThemeControl for FlatTheme {
     fn set_font_size(&mut self, pt_size: f32) -> TkAction {
         self.config.set_font_size(pt_size);
         TkAction::RESIZE | TkAction::THEME_UPDATE
