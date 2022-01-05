@@ -12,7 +12,7 @@ use crate::geom::{Rect, Size, Vec2};
 
 // for doc use
 #[allow(unused)]
-use crate::theme::SizeHandle;
+use crate::theme::SizeMgr;
 
 /// Margin sizes
 ///
@@ -110,14 +110,14 @@ impl Default for MarginSelector {
 
 impl MarginSelector {
     /// Convert to fixed [`Margins`]
-    pub fn select(&self, sh: &dyn SizeHandle) -> Margins {
+    pub fn select(&self, mgr: SizeMgr) -> Margins {
         match self {
-            MarginSelector::Outer => sh.outer_margins(),
-            MarginSelector::Inner => Margins::from(sh.inner_margin()),
-            MarginSelector::Text => sh.text_margins(),
+            MarginSelector::Outer => mgr.outer_margins(),
+            MarginSelector::Inner => Margins::from(mgr.inner_margin()),
+            MarginSelector::Text => mgr.text_margins(),
             MarginSelector::Fixed(fixed) => *fixed,
             MarginSelector::ScaledSplat(m) => {
-                Margins::splat(u16::conv_nearest(m * sh.scale_factor()))
+                Margins::splat(u16::conv_nearest(m * mgr.scale_factor()))
             }
         }
     }
@@ -206,13 +206,13 @@ impl SpriteDisplay {
     /// Generates `size_rules` based on size
     ///
     /// Set [`Self::size`] before calling this.
-    pub fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let margins = self.margins.select(sh).extract(axis);
+    pub fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        let margins = self.margins.select(mgr.re()).extract(axis);
         let size = self.size.extract(axis);
         let size = match self.scaling {
             SpriteScaling::Original => size,
-            SpriteScaling::Integer => i32::conv_nearest(sh.scale_factor()) * size,
-            SpriteScaling::Real => (sh.scale_factor() * f32::conv(size)).cast_nearest(),
+            SpriteScaling::Integer => i32::conv_nearest(mgr.scale_factor()) * size,
+            SpriteScaling::Real => (mgr.scale_factor() * f32::conv(size)).cast_nearest(),
         };
         SizeRules::new(size, size, margins, self.stretch)
     }

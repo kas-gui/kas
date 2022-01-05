@@ -12,7 +12,7 @@ use std::u16;
 use super::*;
 use crate::draw::DrawShared;
 use crate::geom::{Coord, Offset, Vec2};
-use crate::theme::{SizeHandle, ThemeControl};
+use crate::theme::{SizeMgr, ThemeControl};
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
 use crate::{TkAction, WidgetExt, WidgetId, WindowId};
@@ -335,18 +335,16 @@ impl<'a> Manager<'a> {
         self.shell.adjust_theme(&mut f);
     }
 
-    /// Access a [`SizeHandle`]
-    pub fn size_handle<F: FnMut(&mut dyn SizeHandle) -> T, T>(&mut self, mut f: F) -> T {
+    /// Access a [`SizeMgr`]
+    pub fn size_mgr<F: FnMut(SizeMgr) -> T, T>(&mut self, mut f: F) -> T {
         let mut result = None;
         self.shell.size_handle(&mut |size_handle| {
-            result = Some(f(size_handle));
+            result = Some(f(SizeMgr::new(&*size_handle)));
         });
         result.expect("ShellWindow::size_handle impl failed to call function argument")
     }
 
     /// Access a [`DrawShared`]
-    ///
-    /// This can be accessed through [`Self::size_handle`]; this method is merely a shortcut.
     pub fn draw_shared<F: FnMut(&mut dyn DrawShared) -> T, T>(&mut self, mut f: F) -> T {
         let mut result = None;
         self.shell.draw_shared(&mut |draw_shared| {

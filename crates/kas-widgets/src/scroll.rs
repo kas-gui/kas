@@ -316,10 +316,10 @@ widget! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let mut rules = self.inner.size_rules(size_handle, axis);
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            let mut rules = self.inner.size_rules(size_mgr.re(), axis);
             self.min_child_size.set_component(axis, rules.min_size());
-            let line_height = size_handle.line_height(TextClass::Label);
+            let line_height = size_mgr.line_height(TextClass::Label);
             self.scroll.set_scroll_rate(3.0 * f32::conv(line_height));
             rules.reduce_min_to(line_height);
 

@@ -354,13 +354,13 @@ widget! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
-            let inner_margin = size_handle.inner_margin().extract(axis);
+            let inner_margin = size_mgr.inner_margin().extract(axis);
             let frame = kas::layout::FrameRules::new_sym(0, inner_margin, 0);
 
             // We use a default-generated widget to generate size rules
-            let mut rules = self.view.new().size_rules(size_handle, axis);
+            let mut rules = self.view.new().size_rules(size_mgr.re(), axis);
 
             self.child_size_min.set_component(axis, rules.min_size());
             self.child_size_ideal
@@ -412,12 +412,12 @@ widget! {
                 debug!("allocating widgets (old len = {}, new = {})", old_num, num);
                 *mgr |= TkAction::RECONFIGURE;
                 self.widgets.reserve(num - old_num);
-                mgr.size_handle(|size_handle| {
+                mgr.size_mgr(|size_mgr| {
                     for _ in old_num..num {
                         let mut widget = self.view.new();
                         solve_size_rules(
                             &mut widget,
-                            size_handle,
+                            size_mgr.re(),
                             Some(child_size.0),
                             Some(child_size.1),
                         );

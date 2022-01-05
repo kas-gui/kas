@@ -21,7 +21,7 @@ widget! {
     }
 
     impl Layout for Filler {
-        fn size_rules(&mut self, _: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, _: SizeMgr, axis: AxisInfo) -> SizeRules {
             let stretch = if axis.is_horizontal() {
                 self.horiz
             } else {

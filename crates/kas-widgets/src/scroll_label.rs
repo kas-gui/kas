@@ -31,8 +31,8 @@ widget! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            size_handle.text_bound(&mut self.text, TextClass::LabelScroll, axis)
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            size_mgr.text_bound(&mut self.text, TextClass::LabelScroll, axis)
         }
 
         fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {

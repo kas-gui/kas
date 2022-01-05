@@ -223,8 +223,8 @@ widget! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let (size, min_len) = size_handle.slider();
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            let (size, min_len) = size_mgr.slider();
             let margins = (0, 0);
             if self.direction.is_vertical() == axis.is_vertical() {
                 SizeRules::new(min_len, min_len, margins, Stretch::High)
@@ -236,7 +236,7 @@ widget! {
         fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             self.handle.set_rect(mgr, rect, align);
-            let min_handle_size = mgr.size_handle(|sh| (sh.slider().0).0);
+            let min_handle_size = mgr.size_mgr(|size| (size.slider().0).0);
             let mut size = rect.size;
             if self.direction.is_horizontal() {
                 size.0 = min_handle_size.min(rect.size.0);

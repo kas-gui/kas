@@ -23,8 +23,8 @@ widget! {
 
     impl Layout for Self {
         #[inline]
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            size_handle.text_bound(&mut self.label, TextClass::Label, axis)
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            size_mgr.text_bound(&mut self.label, TextClass::Label, axis)
         }
 
         fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {

@@ -11,7 +11,7 @@ use std::fmt;
 use crate::event::{self, ConfigureManager, Manager, ManagerState};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{self, AlignHints, AxisInfo, SizeRules};
-use crate::theme::{DrawHandle, InputState, SizeHandle};
+use crate::theme::{DrawHandle, InputState, SizeMgr};
 use crate::{CoreData, TkAction, WidgetId};
 
 impl dyn WidgetCore {
@@ -371,8 +371,8 @@ pub trait Layout: WidgetChildren {
     /// This method may be implemented through [`Self::layout`] or directly.
     /// A [`crate::layout::RulesSolver`] engine may be useful to calculate
     /// requirements of complex layouts.
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        self.layout().size_rules(size_handle, axis)
+    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        self.layout().size_rules(size_mgr, axis)
     }
 
     /// Apply a given `rect` to self

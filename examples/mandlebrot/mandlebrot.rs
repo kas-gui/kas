@@ -323,10 +323,10 @@ widget! {
     }
 
     impl Layout for Mandlebrot {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, a: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, size_mgr: SizeMgr, a: AxisInfo) -> SizeRules {
             let min = if a.is_horizontal() { 300.0 } else { 200.0 };
             let ideal = min * 10.0; // prefer big but not larger than screen size
-            let sf = size_handle.scale_factor();
+            let sf = size_mgr.scale_factor();
             SizeRules::new_scaled(min, ideal, 0.0, Stretch::High, sf)
         }
 
@@ -443,8 +443,8 @@ widget! {
             let w = MandlebrotWindow {
                 core: Default::default(),
                 label: Label::new(mbrot.loc()),
-                iters: ReserveP::new(Label::from("64"), |size_handle, axis| {
-                    Label::new("000").size_rules(size_handle, axis)
+                iters: ReserveP::new(Label::from("64"), |size_mgr, axis| {
+                    Label::new("000").size_rules(size_mgr, axis)
                 }),
                 slider,
                 mbrot,

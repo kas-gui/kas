@@ -8,11 +8,11 @@
 use std::convert::AsRef;
 use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 
-use super::{InputState, SizeHandle, TextClass};
 use crate::dir::Direction;
 use crate::draw::{color::Rgb, Draw, ImageId, PassType};
 use crate::geom::{Coord, Offset, Rect};
 use crate::text::{AccelString, Text, TextApi, TextDisplay};
+use crate::theme::{InputState, SizeHandle, SizeMgr, TextClass};
 
 /// A handle to the active theme, used for drawing
 ///
@@ -22,16 +22,23 @@ use crate::text::{AccelString, Text, TextApi, TextDisplay};
 ///
 /// Most methods draw some feature. Exceptions:
 ///
-/// -   [`Self::size_handle`] provides access to a [`SizeHandle`]
+/// -   [`Self::size_mgr`] provides access to a [`SizeMgr`]
 /// -   [`Self::draw_device`] provides a lower-level interface for draw operations
 /// -   [`Self::new_pass`], [`DrawHandleExt::with_clip_region`],
 ///     [`DrawHandleExt::with_overlay`] construct new draw passes
 /// -   [`Self::get_clip_rect`] returns the clip rect
 ///
-/// See also [`SizeHandle`].
+/// See also [`SizeMgr`].
 pub trait DrawHandle {
     /// Access a [`SizeHandle`]
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn size_handle(&self) -> &dyn SizeHandle;
+
+    /// Access a [`SizeMgr`]
+    fn size_mgr(&self) -> SizeMgr {
+        SizeMgr::new(self.size_handle())
+    }
 
     /// Access the low-level draw device
     ///
@@ -61,7 +68,7 @@ pub trait DrawHandle {
 
     /// Draw a frame inside the given `rect`
     ///
-    /// The frame dimensions equal those of [`SizeHandle::frame`] on each side.
+    /// The frame dimensions equal those of [`SizeMgr::frame`] on each side.
     fn outer_frame(&mut self, rect: Rect);
 
     /// Draw a separator in the given `rect`
@@ -82,7 +89,7 @@ pub trait DrawHandle {
 
     /// Draw text
     ///
-    /// [`SizeHandle::text_bound`] should be called prior to this method to
+    /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, state: InputState);
 
@@ -92,7 +99,7 @@ pub trait DrawHandle {
     /// emphasis, text size. In addition, this method supports underline and
     /// strikethrough effects.
     ///
-    /// [`SizeHandle::text_bound`] should be called prior to this method to
+    /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass, state: InputState);
 
@@ -100,7 +107,7 @@ pub trait DrawHandle {
     ///
     /// The `text` is drawn within the rect from `pos` to `text.env().bounds`.
     ///
-    /// [`SizeHandle::text_bound`] should be called prior to this method to
+    /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     fn text_accel(
         &mut self,
@@ -125,7 +132,7 @@ pub trait DrawHandle {
 
     /// Draw an edit marker at the given `byte` index on this `text`
     ///
-    /// [`SizeHandle::text_bound`] should be called prior to this method to
+    /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize);
 
@@ -356,7 +363,7 @@ mod test {
         // We can't call this method without constructing an actual DrawHandle.
         // But we don't need to: we just want to test that methods are callable.
 
-        let _scale = draw.size_handle().scale_factor();
+        let _scale = draw.size_mgr().scale_factor();
 
         let text = crate::text::Text::new_single("sample");
         let class = TextClass::Label;

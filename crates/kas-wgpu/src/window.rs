@@ -13,7 +13,7 @@ use kas::draw::{DrawIface, DrawShared, PassId};
 use kas::event::{CursorIcon, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
-use kas::theme::{SizeHandle, ThemeControl};
+use kas::theme::{SizeHandle, SizeMgr, ThemeControl};
 use kas::{TkAction, WindowId};
 use kas_theme::{Theme, Window as _};
 use winit::dpi::PhysicalSize;
@@ -58,8 +58,8 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let mut tkw = TkWindow::new(shared, None, &mut theme_window);
         mgr.configure(&mut tkw, &mut *widget);
 
-        let mut size_handle = theme_window.size_handle();
-        let solve_cache = SolveCache::find_constraints(widget.as_widget_mut(), &mut size_handle);
+        let size_mgr = SizeMgr::new(theme_window.size_handle());
+        let solve_cache = SolveCache::find_constraints(widget.as_widget_mut(), size_mgr);
         // Opening a zero-size window causes a crash, so force at least 1x1:
         let ideal = solve_cache.ideal(true).max(Size(1, 1));
 

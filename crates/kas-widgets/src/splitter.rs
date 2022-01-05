@@ -106,13 +106,13 @@ widget! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             if self.widgets.is_empty() {
                 return SizeRules::EMPTY;
             }
             assert_eq!(self.handles.len() + 1, self.widgets.len());
 
-            let handle_size = size_handle.separator().extract(axis);
+            let handle_size = size_mgr.separator().extract(axis);
 
             let dim = (self.direction, self.num_children());
             let mut solver = layout::RowSolver::new(axis, dim, &mut self.data);
@@ -122,7 +122,7 @@ widget! {
                 assert!(n < self.widgets.len());
                 let widgets = &mut self.widgets;
                 solver.for_child(&mut self.data, n << 1, |axis| {
-                    widgets[n].size_rules(size_handle, axis)
+                    widgets[n].size_rules(size_mgr.re(), axis)
                 });
 
                 if n >= self.handles.len() {

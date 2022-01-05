@@ -32,9 +32,9 @@ widget! {
     }
 
     impl Layout for Clock {
-        fn size_rules(&mut self, sh: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, size_mgr: SizeMgr, _: AxisInfo) -> SizeRules {
             // We want a square shape and can resize freely. Numbers are arbitrary.
-            let size: i32 = sh.pixels_from_virtual(100.0).cast_nearest();
+            let size: i32 = size_mgr.pixels_from_virtual(100.0).cast_nearest();
             SizeRules::new(size, 2 * size, (0, 0), Stretch::High)
         }
 

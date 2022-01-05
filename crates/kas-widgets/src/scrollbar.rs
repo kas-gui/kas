@@ -205,8 +205,8 @@ widget! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let (size, min_len) = size_handle.scrollbar();
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            let (size, min_len) = size_mgr.scrollbar();
             self.min_handle_len = size.0;
             let margins = (0, 0);
             if self.direction.is_vertical() == axis.is_vertical() {
@@ -558,12 +558,12 @@ widget! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let mut rules = self.inner.size_rules(size_handle, axis);
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            let mut rules = self.inner.size_rules(size_mgr.re(), axis);
             if axis.is_horizontal() && (self.auto_bars || self.show_bars.1) {
-                rules.append(self.vert_bar.size_rules(size_handle, axis));
+                rules.append(self.vert_bar.size_rules(size_mgr.re(), axis));
             } else if axis.is_vertical() && (self.auto_bars || self.show_bars.0) {
-                rules.append(self.horiz_bar.size_rules(size_handle, axis));
+                rules.append(self.horiz_bar.size_rules(size_mgr.re(), axis));
             }
             rules
         }
@@ -573,7 +573,7 @@ widget! {
             let pos = rect.pos;
             let mut child_size = rect.size;
 
-            let bar_width = mgr.size_handle(|sh| (sh.scrollbar().0).1);
+            let bar_width = mgr.size_mgr(|size| (size.scrollbar().0).1);
             if self.auto_bars {
                 self.show_bars = self.inner.scroll_axes(child_size);
             }

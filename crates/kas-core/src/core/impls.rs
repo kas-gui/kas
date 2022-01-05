@@ -9,7 +9,7 @@ use super::*;
 use crate::event::{self, Event, Manager, ManagerState, Response};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
-use crate::theme::{DrawHandle, SizeHandle};
+use crate::theme::{DrawHandle, SizeMgr};
 use crate::{CoreData, WidgetId};
 use std::any::Any;
 
@@ -79,8 +79,8 @@ impl<M: 'static> WidgetConfig for Box<dyn Widget<Msg = M>> {
 }
 
 impl<M: 'static> Layout for Box<dyn Widget<Msg = M>> {
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        self.as_mut().size_rules(size_handle, axis)
+    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        self.as_mut().size_rules(size_mgr, axis)
     }
 
     fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {

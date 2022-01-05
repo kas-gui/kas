@@ -49,7 +49,7 @@ widget! {
     ///     `set_rect` (otherwise the handle's offset will not be updated)
     /// 3.  `draw` does nothing: the parent is expected to do all drawing
     impl Layout for DragHandle {
-        fn size_rules(&mut self, _: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, _: SizeMgr, _: AxisInfo) -> SizeRules {
             SizeRules::EMPTY
         }
 

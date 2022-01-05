@@ -98,7 +98,7 @@ widget! {
                 let font_family = fonts_db
                     .font_family_from_alias("SERIF")
                     .unwrap_or_default();
-                let font_size = mgr.size_handle(|sh| sh.pixels_from_em(1.0)) as f64;
+                let font_size = mgr.size_mgr(|size| size.pixels_from_em(1.0)) as f64;
 
                 // TODO: some options here should be configurable
                 let opts = usvg::OptionsRef {
@@ -126,8 +126,8 @@ widget! {
     }
 
     impl Layout for Svg {
-        fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let margins = self.margins.select(sh);
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            let margins = self.margins.select(size_mgr);
             if axis.is_horizontal() {
                 SizeRules::new(
                     self.min_size.0,

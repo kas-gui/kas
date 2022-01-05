@@ -23,7 +23,7 @@ pub use crate::text::Align;
 /// # use kas_core::geom::*;
 /// # let align = AlignHints::NONE;
 /// # let rect = Rect::new(Coord::ZERO, Size::ZERO);
-/// let pref_size = Size(30, 20); // usually size comes from SizeHandle
+/// let pref_size = Size(30, 20); // usually size comes from SizeMgr
 /// let rect = align
 ///     .complete(Align::Stretch, Align::Center)
 ///     .aligned_rect(pref_size, rect);

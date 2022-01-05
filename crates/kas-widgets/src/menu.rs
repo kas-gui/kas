@@ -108,8 +108,8 @@ impl<M: 'static> WidgetConfig for Box<dyn Menu<Msg = M>> {
 }
 
 impl<M: 'static> Layout for Box<dyn Menu<Msg = M>> {
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        self.as_mut().size_rules(size_handle, axis)
+    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        self.as_mut().size_rules(size_mgr, axis)
     }
 
     fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {

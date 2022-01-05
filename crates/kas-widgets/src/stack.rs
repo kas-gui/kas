@@ -56,10 +56,10 @@ widget! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             let mut rules = SizeRules::EMPTY;
             for child in &mut self.widgets {
-                rules = rules.max(child.size_rules(size_handle, axis));
+                rules = rules.max(child.size_rules(size_mgr.re(), axis));
             }
             rules
         }

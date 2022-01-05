@@ -231,12 +231,11 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                     for #name #ty_generics #where_clause
             {
                 #[inline]
-                fn size_rules(
-                    &mut self,
-                    size_handle: &mut dyn ::kas::theme::SizeHandle,
+                fn size_rules(&mut self,
+                    size_mgr: ::kas::theme::SizeMgr,
                     axis: ::kas::layout::AxisInfo,
                 ) -> ::kas::layout::SizeRules {
-                    self.#inner.size_rules(size_handle, axis)
+                    self.#inner.size_rules(size_mgr, axis)
                 }
                 #[inline]
                 fn set_rect(

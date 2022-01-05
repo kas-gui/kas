@@ -80,10 +80,10 @@ widget! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let size = size_handle.radiobox();
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            let size = size_mgr.radiobox();
             self.core.rect.size = size;
-            let margins = size_handle.outer_margins();
+            let margins = size_mgr.outer_margins();
             SizeRules::extract_fixed(axis, size, margins)
         }
 

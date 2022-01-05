@@ -9,7 +9,7 @@ mod draw;
 mod size;
 
 pub use draw::{DrawHandle, DrawHandleExt};
-pub use size::SizeHandle;
+pub use size::{SizeHandle, SizeMgr};
 
 #[allow(unused)]
 use crate::event::Manager;

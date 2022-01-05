@@ -59,8 +59,8 @@ widget! {
         }
     }
     impl Layout for ColourSquare {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {
-            let factor = size_handle.scale_factor();
+        fn size_rules(&mut self, size_mgr: SizeMgr, _: AxisInfo) -> SizeRules {
+            let factor = size_mgr.scale_factor();
             SizeRules::fixed_scaled(100.0, 10.0, factor)
         }
         fn draw(&mut self, draw: &mut dyn DrawHandle, _: &ManagerState, _: bool) {

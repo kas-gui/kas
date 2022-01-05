@@ -76,8 +76,8 @@ widget! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let mut size = size_handle.progress_bar();
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            let mut size = size_mgr.progress_bar();
             if self.direction.is_vertical() {
                 size = size.transpose();
             }

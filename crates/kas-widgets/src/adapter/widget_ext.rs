@@ -10,7 +10,7 @@ use kas::dir::Directional;
 use kas::event::{Manager, Response};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::text::AccelString;
-use kas::theme::SizeHandle;
+use kas::theme::SizeMgr;
 #[allow(unused)]
 use kas::Layout;
 use kas::Widget;
@@ -63,8 +63,8 @@ pub trait WidgetExt: Widget {
     /// use kas_widgets::Label;
     /// use kas::prelude::*;
     ///
-    /// let label = Label::new("0").with_reserve(|size_handle, axis| {
-    ///     Label::new("00000").size_rules(size_handle, axis)
+    /// let label = Label::new("0").with_reserve(|size_mgr, axis| {
+    ///     Label::new("00000").size_rules(size_mgr, axis)
     /// });
     ///```
     /// Alternatively one may use virtual pixels:
@@ -73,8 +73,8 @@ pub trait WidgetExt: Widget {
     /// use kas_widgets::Filler;
     /// use kas::prelude::*;
     ///
-    /// let label = Filler::new().with_reserve(|size_handle, axis| {
-    ///     let size = size_handle.pixels_from_em(5.0);
+    /// let label = Filler::new().with_reserve(|size_mgr, axis| {
+    ///     let size = size_mgr.pixels_from_em(5.0);
     ///     SizeRules::fixed(size.cast_nearest(), (0, 0))
     /// });
     ///```
@@ -83,7 +83,7 @@ pub trait WidgetExt: Widget {
     #[must_use]
     fn with_reserve<R>(self, r: R) -> Reserve<Self, R>
     where
-        R: FnMut(&mut dyn SizeHandle, AxisInfo) -> SizeRules + 'static,
+        R: FnMut(SizeMgr, AxisInfo) -> SizeRules + 'static,
         Self: Sized,
     {
         Reserve::new(self, r)

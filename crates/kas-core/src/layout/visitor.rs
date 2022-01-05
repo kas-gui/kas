@@ -12,7 +12,7 @@ use crate::draw::color::Rgb;
 use crate::event::{Manager, ManagerState};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::text::{Align, TextApi, TextApiExt};
-use crate::theme::{DrawHandle, InputState, SizeHandle, TextClass};
+use crate::theme::{DrawHandle, InputState, SizeMgr, TextClass};
 use crate::WidgetId;
 use crate::{dir::Directional, WidgetConfig};
 use std::any::Any;
@@ -55,7 +55,7 @@ impl StorageChain {
 /// Implementation helper for layout of children
 trait Visitor {
     /// Get size rules for the given axis
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules;
+    fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
 
     /// Apply a given `rect` to self
     fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints);
@@ -128,7 +128,7 @@ impl<'a> Layout<'a> {
 
     /// Construct a frame around a sub-layout
     ///
-    /// This frame has dimensions according to [`SizeHandle::frame`].
+    /// This frame has dimensions according to [`SizeMgr::frame`].
     pub fn frame(data: &'a mut FrameStorage, child: Self) -> Self {
         let layout = LayoutType::Frame(Box::new(child), data);
         Layout { layout }
@@ -136,7 +136,7 @@ impl<'a> Layout<'a> {
 
     /// Construct a navigation frame around a sub-layout
     ///
-    /// This frame has dimensions according to [`SizeHandle::frame`].
+    /// This frame has dimensions according to [`SizeMgr::frame`].
     pub fn nav_frame(data: &'a mut FrameStorage, child: Self) -> Self {
         let layout = LayoutType::NavFrame(Box::new(child), data);
         Layout { layout }
@@ -207,40 +207,40 @@ impl<'a> Layout<'a> {
 
     /// Get size rules for the given axis
     #[inline]
-    pub fn size_rules(mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        self.size_rules_(sh, axis)
+    pub fn size_rules(mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        self.size_rules_(mgr, axis)
     }
-    fn size_rules_(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+    fn size_rules_(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         match &mut self.layout {
             LayoutType::None => SizeRules::EMPTY,
-            LayoutType::Single(child) => child.size_rules(sh, axis),
-            LayoutType::AlignSingle(child, _) => child.size_rules(sh, axis),
-            LayoutType::AlignLayout(layout, _) => layout.size_rules_(sh, axis),
+            LayoutType::Single(child) => child.size_rules(mgr, axis),
+            LayoutType::AlignSingle(child, _) => child.size_rules(mgr, axis),
+            LayoutType::AlignLayout(layout, _) => layout.size_rules_(mgr, axis),
             LayoutType::Frame(child, storage) => {
-                let frame_rules = sh.frame(axis.is_vertical());
-                let child_rules = child.size_rules_(sh, axis);
+                let frame_rules = mgr.frame(axis.is_vertical());
+                let child_rules = child.size_rules_(mgr, axis);
                 let (rules, offset, size) = frame_rules.surround_as_margin(child_rules);
                 storage.offset.set_component(axis, offset);
                 storage.size.set_component(axis, size);
                 rules
             }
             LayoutType::NavFrame(child, storage) => {
-                let frame_rules = sh.nav_frame(axis.is_vertical());
-                let child_rules = child.size_rules_(sh, axis);
+                let frame_rules = mgr.nav_frame(axis.is_vertical());
+                let child_rules = child.size_rules_(mgr, axis);
                 let (rules, offset, size) = frame_rules.surround_as_margin(child_rules);
                 storage.offset.set_component(axis, offset);
                 storage.size.set_component(axis, size);
                 rules
             }
             LayoutType::Button(child, storage, _) => {
-                let frame_rules = sh.button_surround(axis.is_vertical());
-                let child_rules = child.size_rules_(sh, axis);
+                let frame_rules = mgr.button_surround(axis.is_vertical());
+                let child_rules = child.size_rules_(mgr, axis);
                 let (rules, offset, size) = frame_rules.surround_as_margin(child_rules);
                 storage.offset.set_component(axis, offset);
                 storage.size.set_component(axis, size);
                 rules
             }
-            LayoutType::Visitor(visitor) => visitor.size_rules(sh, axis),
+            LayoutType::Visitor(visitor) => visitor.size_rules(mgr, axis),
         }
     }
 
@@ -353,11 +353,11 @@ impl<'a, S: RowStorage, D: Directional, I> Visitor for List<'a, S, D, I>
 where
     I: ExactSizeIterator<Item = Layout<'a>>,
 {
-    fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+    fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         let dim = (self.direction, self.children.len());
         let mut solver = RowSolver::new(axis, dim, self.data);
         for (n, child) in (&mut self.children).enumerate() {
-            solver.for_child(self.data, n, |axis| child.size_rules(sh, axis));
+            solver.for_child(self.data, n, |axis| child.size_rules(mgr.re(), axis));
         }
         solver.finish(self.data)
     }
@@ -395,11 +395,11 @@ struct Slice<'a, W: WidgetConfig, D: Directional> {
 }
 
 impl<'a, W: WidgetConfig, D: Directional> Visitor for Slice<'a, W, D> {
-    fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+    fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         let dim = (self.direction, self.children.len());
         let mut solver = RowSolver::new(axis, dim, self.data);
         for (n, child) in self.children.iter_mut().enumerate() {
-            solver.for_child(self.data, n, |axis| child.size_rules(sh, axis));
+            solver.for_child(self.data, n, |axis| child.size_rules(mgr.re(), axis));
         }
         solver.finish(self.data)
     }
@@ -443,10 +443,10 @@ impl<'a, S: GridStorage, I> Visitor for Grid<'a, S, I>
 where
     I: Iterator<Item = (GridChildInfo, Layout<'a>)>,
 {
-    fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+    fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, self.data);
         for (info, child) in &mut self.children {
-            solver.for_child(self.data, info, |axis| child.size_rules(sh, axis));
+            solver.for_child(self.data, info, |axis| child.size_rules(mgr.re(), axis));
         }
         solver.finish(self.data)
     }
@@ -507,8 +507,8 @@ struct Text<'a> {
 }
 
 impl<'a> Visitor for Text<'a> {
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        size_handle.text_bound(self.text, self.class, axis)
+    fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        mgr.text_bound(self.text, self.class, axis)
     }
 
     fn set_rect(&mut self, _mgr: &mut Manager, rect: Rect, align: AlignHints) {

@@ -40,8 +40,8 @@ widget! {
     }
 
     impl Layout for Image {
-        fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            self.sprite.size_rules(sh, axis)
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            self.sprite.size_rules(size_mgr, axis)
         }
 
         fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
