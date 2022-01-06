@@ -228,10 +228,6 @@ widget! {
             let _ = self.update_handle();
         }
 
-        fn spatial_nav(&mut self, _: &mut EventMgr, _: bool, _: Option<usize>) -> Option<usize> {
-            None // handle is not navigable
-        }
-
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;

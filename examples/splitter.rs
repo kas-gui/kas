@@ -30,7 +30,7 @@ fn main() -> Result<(), kas::shell::Error> {
     };
     let mut panes = RowSplitter::<EditField>::default();
     let _ = panes.resize_with(2, |n| {
-        EditField::new(format!("Pane {}", n)).multi_line(true)
+        EditField::new(format!("Pane {}", n + 1)).multi_line(true)
     });
 
     let window = Window::new(

@@ -29,7 +29,6 @@ widget! {
     #[derive(Clone, Debug, Default)]
     #[widget{
         hover_highlight = true;
-        key_nav = true;
         cursor_icon = event::CursorIcon::Grab;
     }]
     pub struct DragHandle {
