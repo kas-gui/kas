@@ -222,8 +222,8 @@ impl<'a, DS: DrawSharedImpl> theme::DrawHandle for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl + DrawShadedImpl,
 {
-    fn size_handle(&self) -> &dyn SizeHandle {
-        self.w
+    fn size_and_draw_shared(&mut self) -> (&dyn SizeHandle, &mut dyn DrawShared) {
+        (self.w, self.draw.shared)
     }
 
     fn draw_device(&mut self) -> &mut dyn Draw {

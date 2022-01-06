@@ -9,9 +9,10 @@ use std::convert::AsRef;
 use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 
 use crate::dir::Direction;
-use crate::draw::{color::Rgb, Draw, ImageId, PassType};
+use crate::draw::{color::Rgb, Draw, DrawShared, ImageId, PassType};
 use crate::event::EventState;
 use crate::geom::{Coord, Offset, Rect};
+use crate::layout::SetRectMgr;
 use crate::text::{AccelString, Text, TextApi, TextDisplay};
 use crate::theme::{InputState, SizeHandle, SizeMgr, TextClass};
 use crate::WidgetCore;
@@ -65,8 +66,14 @@ impl<'a> DrawMgr<'a> {
     }
 
     /// Access a [`SizeMgr`]
-    pub fn size_mgr(&self) -> SizeMgr {
-        SizeMgr::new(self.0.size_handle())
+    pub fn size_mgr(&mut self) -> SizeMgr {
+        SizeMgr::new(self.0.size_and_draw_shared().0)
+    }
+
+    /// Access a [`SetRectMgr`]
+    pub fn set_rect_mgr(&mut self) -> SetRectMgr {
+        let (sh, ds) = self.0.size_and_draw_shared();
+        SetRectMgr::new(sh, ds)
     }
 
     /// Access the low-level draw device
@@ -295,8 +302,8 @@ impl<'a> DrawMgr<'a> {
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait DrawHandle {
-    /// Access a [`SizeHandle`]
-    fn size_handle(&self) -> &dyn SizeHandle;
+    /// Access a [`SizeHandle`] and a [`DrawShared`]
+    fn size_and_draw_shared(&mut self) -> (&dyn SizeHandle, &mut dyn DrawShared);
 
     /// Access the low-level draw device
     ///
@@ -445,8 +452,8 @@ pub trait DrawHandle {
 macro_rules! impl_ {
     (($($args:tt)*) DrawHandle for $ty:ty) => {
         impl<$($args)*> DrawHandle for $ty {
-            fn size_handle(&self) -> &dyn SizeHandle {
-                self.deref().size_handle()
+            fn size_and_draw_shared(&mut self) -> (&dyn SizeHandle, &mut dyn DrawShared) {
+                self.deref_mut().size_and_draw_shared()
             }
             fn draw_device(&mut self) -> &mut dyn Draw {
                 self.deref_mut().draw_device()
