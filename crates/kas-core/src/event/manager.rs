@@ -27,7 +27,7 @@ use crate::{ShellWindow, TkAction, Widget, WidgetId, WindowId};
 mod mgr_pub;
 mod mgr_shell;
 
-/// Controls the types of events delivered by [`Manager::request_grab`]
+/// Controls the types of events delivered by [`EventMgr::request_grab`]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum GrabMode {
     /// Deliver [`Event::PressMove`] and [`Event::PressEnd`] for each press
@@ -84,7 +84,7 @@ enum Pending {
 /// Event manager state
 ///
 /// This struct encapsulates window-specific event-handling state and handling.
-/// Most operations are only available via a [`Manager`] handle, though some
+/// Most operations are only available via a [`EventMgr`] handle, though some
 /// are available on this struct.
 ///
 /// Besides event handling, this struct also configures widgets.
@@ -99,7 +99,7 @@ enum Pending {
 // for each widget during drawing. Most fields contain only a few values, hence
 // `SmallVec` is used to keep contents in local memory.
 #[derive(Debug)]
-pub struct ManagerState {
+pub struct EventState {
     config: Rc<RefCell<Config>>,
     scale_factor: f32,
     widget_count: usize,
@@ -136,7 +136,7 @@ pub struct ManagerState {
 }
 
 /// internals
-impl ManagerState {
+impl EventState {
     #[inline]
     fn char_focus(&self) -> Option<WidgetId> {
         if self.char_focus {
@@ -173,7 +173,7 @@ impl ManagerState {
         let n = 1;
         let mut coords: [(Coord, Coord); MAX_PAN_GRABS] = Default::default();
         coords[0] = (coord, coord);
-        trace!("Manager: start pan grab {} on {}", self.pan_grab.len(), id);
+        trace!("EventMgr: start pan grab {} on {}", self.pan_grab.len(), id);
         self.pan_grab.push(PanGrab {
             id,
             mode,
@@ -185,7 +185,7 @@ impl ManagerState {
     }
 
     fn remove_pan(&mut self, index: usize) {
-        trace!("Manager: end pan grab {}", index);
+        trace!("EventMgr: end pan grab {}", index);
         self.pan_grab.remove(index);
         if let Some(grab) = &mut self.mouse_grab {
             let p0 = grab.pan_grab.0;
@@ -231,24 +231,24 @@ impl ManagerState {
 
 /// Manager of event-handling and toolkit actions
 ///
-/// A `Manager` is in fact a handle around [`ManagerState`] and [`ShellWindow`]
+/// An `EventMgr` is in fact a handle around [`EventState`] and [`ShellWindow`]
 /// in order to provide a convenient user-interface during event processing.
 ///
 /// It exposes two interfaces: one aimed at users implementing widgets and UIs
 /// and one aimed at shells. The latter is hidden
 /// from documentation unless the `internal_doc` feature is enabled.
 #[must_use]
-pub struct Manager<'a> {
-    state: &'a mut ManagerState,
+pub struct EventMgr<'a> {
+    state: &'a mut EventState,
     shell: &'a mut dyn ShellWindow,
     action: TkAction,
 }
 
 /// Internal methods
-impl<'a> Manager<'a> {
+impl<'a> EventMgr<'a> {
     fn set_hover<W: Widget + ?Sized>(&mut self, widget: &W, w_id: Option<WidgetId>) {
         if self.state.hover != w_id {
-            trace!("Manager: hover = {:?}", w_id);
+            trace!("EventMgr: hover = {:?}", w_id);
             if let Some(id) = self.state.hover.take() {
                 if widget
                     .find_widget(&id)
@@ -283,7 +283,7 @@ impl<'a> Manager<'a> {
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
         trace!(
-            "Manager::start_key_event: widget={}, vkey={:?}, scancode={}",
+            "EventMgr::start_key_event: widget={}, vkey={:?}, scancode={}",
             widget.id(),
             vkey,
             scancode
@@ -424,7 +424,7 @@ impl<'a> Manager<'a> {
             return;
         }
         if let Some(grab) = self.state.mouse_grab.take() {
-            trace!("Manager: end mouse grab by {}", grab.start_id);
+            trace!("EventMgr: end mouse grab by {}", grab.start_id);
             self.shell.set_cursor_icon(self.state.hover_icon);
             self.redraw(grab.start_id);
             self.state.remove_pan_grab(grab.pan_grab);
@@ -438,13 +438,13 @@ impl<'a> Manager<'a> {
 
     fn remove_touch(&mut self, touch_id: u64) -> Option<TouchGrab> {
         self.state.touch_grab.remove(&touch_id).map(|grab| {
-            trace!("Manager: end touch grab by {}", grab.start_id);
+            trace!("EventMgr: end touch grab by {}", grab.start_id);
             grab
         })
     }
 
     fn clear_char_focus(&mut self) {
-        trace!("Manager::clear_char_focus");
+        trace!("EventMgr::clear_char_focus");
         if let Some(id) = self.state.char_focus() {
             // If widget has char focus, this is lost
             self.state.char_focus = false;
@@ -455,7 +455,7 @@ impl<'a> Manager<'a> {
     // Set selection focus to `wid`; if `char_focus` also set that
     fn set_sel_focus(&mut self, wid: WidgetId, char_focus: bool) {
         trace!(
-            "Manager::set_sel_focus: wid={}, char_focus={}",
+            "EventMgr::set_sel_focus: wid={}, char_focus={}",
             wid,
             char_focus
         );
@@ -521,7 +521,7 @@ pub struct ConfigureManager<'a: 'b, 'b> {
     count: &'b mut usize,
     used: bool,
     id: WidgetId,
-    mgr: &'b mut Manager<'a>,
+    mgr: &'b mut EventMgr<'a>,
 }
 
 impl<'a: 'b, 'b> ConfigureManager<'a, 'b> {
@@ -554,8 +554,8 @@ impl<'a: 'b, 'b> ConfigureManager<'a, 'b> {
         self.id.clone()
     }
 
-    /// Get access to the wrapped [`Manager`]
-    pub fn mgr(&mut self) -> &mut Manager<'a> {
+    /// Get access to the wrapped [`EventMgr`]
+    pub fn mgr(&mut self) -> &mut EventMgr<'a> {
         self.mgr
     }
 }

@@ -11,7 +11,7 @@
 //! Probably this question requires seeing more examples/applications to answer.
 
 #[allow(unused)]
-use crate::event::Manager;
+use crate::event::EventMgr;
 use crate::event::UpdateHandle;
 use crate::updatable::*;
 use std::cell::RefCell;

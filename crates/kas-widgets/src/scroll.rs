@@ -132,7 +132,7 @@ impl ScrollComponent {
     /// the `on_press_start` closure activates a mouse/touch grab.
     ///
     /// Behaviour on [`Event::PressStart`] is configurable: the closure is called on
-    /// this event and should call [`Manager::request_grab`] if the press should
+    /// this event and should call [`EventMgr::request_grab`] if the press should
     /// scroll by drag. This allows control of which mouse button(s) are used and
     /// whether any modifiers must be pressed. For example:
     /// ```
@@ -141,7 +141,7 @@ impl ScrollComponent {
     /// fn dummy_event_handler(
     ///     id: WidgetId,
     ///     scroll: &mut kas_widgets::ScrollComponent,
-    ///     mgr: &mut Manager,
+    ///     mgr: &mut EventMgr,
     ///     event: Event
     /// )
     ///     -> Response<Msg>
@@ -303,14 +303,14 @@ widget! {
         }
 
         #[inline]
-        fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
             *mgr |= self.scroll.set_offset(offset);
             self.scroll.offset()
         }
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             mgr.register_nav_fallback(self.id());
         }
     }
@@ -331,7 +331,7 @@ widget! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut EventMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             let child_size = (rect.size - self.frame_size).max(self.min_child_size);
             let child_rect = Rect::new(rect.pos + self.offset, child_size);
@@ -362,7 +362,7 @@ widget! {
     }
 
     impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
                 return Response::Unused;
             }

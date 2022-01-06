@@ -35,7 +35,7 @@ widget! {
             size_mgr.text_bound(&mut self.text, TextClass::LabelScroll, axis)
         }
 
-        fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, _: &mut EventMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             let size = rect.size;
             self.required = self
@@ -89,7 +89,7 @@ widget! {
             }
         }
 
-        fn set_edit_pos_from_coord(&mut self, mgr: &mut Manager, coord: Coord) {
+        fn set_edit_pos_from_coord(&mut self, mgr: &mut EventMgr, coord: Coord) {
             let rel_pos = (coord - self.rect().pos + self.view_offset).into();
             self.selection
                 .set_edit_pos(self.text.text_index_nearest(rel_pos));
@@ -98,7 +98,7 @@ widget! {
         }
 
         // Pan by given delta. Return remaining (unused) delta.
-        fn pan_delta(&mut self, mgr: &mut Manager, delta: Offset) -> Offset {
+        fn pan_delta(&mut self, mgr: &mut EventMgr, delta: Offset) -> Offset {
             let new_offset = (self.view_offset - delta).clamp(Offset::ZERO, self.max_scroll_offset());
             if new_offset != self.view_offset {
                 let delta = delta - (self.view_offset - new_offset);
@@ -150,7 +150,7 @@ widget! {
     impl event::Handler for Self {
         type Msg = VoidMsg;
 
-        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
             match event {
                 Event::Command(cmd, _) => match cmd {
                     Command::Escape | Command::Deselect if !self.selection.is_empty() => {
@@ -234,7 +234,7 @@ widget! {
             self.view_offset
         }
 
-        fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
             let new_offset = offset.clamp(Offset::ZERO, self.max_scroll_offset());
             if new_offset != self.view_offset {
                 self.view_offset = new_offset;

@@ -24,7 +24,7 @@ widget! {
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             mgr.add_accel_keys(self.id(), self.label.text().keys());
         }
 
@@ -94,7 +94,7 @@ widget! {
     impl Handler for Self {
         type Msg = M;
 
-        fn handle(&mut self, _: &mut Manager, event: Event) -> Response<M> {
+        fn handle(&mut self, _: &mut EventMgr, event: Event) -> Response<M> {
             match event {
                 Event::Activate => self.msg.clone().into(),
                 _ => Response::Unused,
@@ -121,7 +121,7 @@ widget! {
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             mgr.add_accel_keys(self.checkbox.id(), self.label.keys());
         }
     }
@@ -172,7 +172,7 @@ widget! {
         #[must_use]
         pub fn on_toggle<M, F>(self, f: F) -> MenuToggle<M>
         where
-            F: Fn(&mut Manager, bool) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr, bool) -> Option<M> + 'static,
         {
             MenuToggle {
                 core: self.core,
@@ -191,7 +191,7 @@ widget! {
         #[inline]
         pub fn new_on<T: Into<AccelString>, F>(label: T, f: F) -> Self
         where
-            F: Fn(&mut Manager, bool) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr, bool) -> Option<M> + 'static,
         {
             MenuToggle::new(label).on_toggle(f)
         }

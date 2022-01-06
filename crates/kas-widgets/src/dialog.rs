@@ -44,13 +44,13 @@ widget! {
             }
         }
 
-        fn handle_button(&mut self, mgr: &mut Manager, _: ()) {
+        fn handle_button(&mut self, mgr: &mut EventMgr, _: ()) {
             mgr.send_action(TkAction::CLOSE);
         }
     }
 
     impl kas::WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             mgr.enable_alt_bypass(true);
         }
     }
@@ -69,11 +69,11 @@ widget! {
         }
 
         // do not support overlays (yet?)
-        fn add_popup(&mut self, _: &mut Manager, _: WindowId, _: kas::Popup) {
+        fn add_popup(&mut self, _: &mut EventMgr, _: WindowId, _: kas::Popup) {
             panic!("MessageBox does not (currently) support pop-ups");
         }
 
-        fn remove_popup(&mut self, _: &mut Manager, _: WindowId) {}
-        fn resize_popups(&mut self, _: &mut Manager) {}
+        fn remove_popup(&mut self, _: &mut EventMgr, _: WindowId) {}
+        fn resize_popups(&mut self, _: &mut EventMgr) {}
     }
 }

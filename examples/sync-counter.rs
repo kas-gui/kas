@@ -5,7 +5,7 @@
 
 //! A counter synchronised between multiple windows
 
-use kas::event::{Manager, VoidMsg};
+use kas::event::{EventMgr, VoidMsg};
 use kas::macros::make_widget;
 use kas::updatable::SharedRc;
 use kas::widgets::view::SingleView;
@@ -32,7 +32,7 @@ fn main() -> Result<(), kas::shell::Error> {
                 #[widget(use_msg = update)] b_incr = TextButton::new_msg("+", 1),
             }
             impl Self {
-                fn update(&mut self, mgr: &mut Manager, msg: i32) {
+                fn update(&mut self, mgr: &mut EventMgr, msg: i32) {
                     self.counter.update_value(mgr, |v| v + msg);
                 }
             }

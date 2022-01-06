@@ -63,7 +63,7 @@ widget! {
     }
 
     impl SendEvent for Self where W::Msg: Into<VoidMsg> {
-        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() || self.eq_id(&id) {
                 Response::Unused
             } else {
@@ -85,14 +85,14 @@ widget! {
             self.restrict_dimensions
         }
 
-        fn add_popup(&mut self, mgr: &mut Manager, id: WindowId, popup: kas::Popup) {
+        fn add_popup(&mut self, mgr: &mut EventMgr, id: WindowId, popup: kas::Popup) {
             let index = self.popups.len();
             self.popups.push((id, popup));
             self.resize_popup(mgr, index);
             mgr.send_action(TkAction::REDRAW);
         }
 
-        fn remove_popup(&mut self, mgr: &mut Manager, id: WindowId) {
+        fn remove_popup(&mut self, mgr: &mut EventMgr, id: WindowId) {
             for i in 0..self.popups.len() {
                 if id == self.popups[i].0 {
                     self.popups.remove(i);
@@ -102,13 +102,13 @@ widget! {
             }
         }
 
-        fn resize_popups(&mut self, mgr: &mut Manager) {
+        fn resize_popups(&mut self, mgr: &mut EventMgr) {
             for i in 0..self.popups.len() {
                 self.resize_popup(mgr, i);
             }
         }
 
-        fn handle_closure(&mut self, mgr: &mut Manager) {
+        fn handle_closure(&mut self, mgr: &mut EventMgr) {
             if let Some((mut consume, update)) = self.drop.take() {
                 consume(&mut self.w);
                 mgr.trigger_update(update, 0);
@@ -154,7 +154,7 @@ impl<W: Widget> Window<W> {
     /// The closure `consume` is called when the window is destroyed, and yields
     /// a user-defined value. This value is returned through the returned
     /// [`Future`] object. In order to be notified when the future
-    /// completes, its owner should call [`Manager::update_on_handle`] with the
+    /// completes, its owner should call [`EventMgr::update_on_handle`] with the
     /// returned [`UpdateHandle`].
     ///
     /// Currently it is not possible for this closure to actually drop the
@@ -217,7 +217,7 @@ fn find_rect(widget: &dyn WidgetConfig, id: WidgetId) -> Option<Rect> {
 }
 
 impl<W: Widget> Window<W> {
-    fn resize_popup(&mut self, mgr: &mut Manager, index: usize) {
+    fn resize_popup(&mut self, mgr: &mut EventMgr, index: usize) {
         // Notation: p=point/coord, s=size, m=margin
         // r=window/root rect, c=anchor rect
         let r = self.core.rect;

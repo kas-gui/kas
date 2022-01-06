@@ -50,7 +50,7 @@ struct ListEntryGuard;
 impl EditGuard for ListEntryGuard {
     type Msg = EntryMsg;
 
-    fn edit(entry: &mut EditField<Self>, _: &mut Manager) -> Option<Self::Msg> {
+    fn edit(entry: &mut EditField<Self>, _: &mut EventMgr) -> Option<Self::Msg> {
         Some(EntryMsg::Update(entry.get_string()))
     }
 }
@@ -115,11 +115,11 @@ fn main() -> Result<(), kas::shell::Error> {
             n: usize = 3,
         }
         impl Self {
-            fn activate(&mut self, _: &mut Manager, n: usize) -> Control {
+            fn activate(&mut self, _: &mut EventMgr, n: usize) -> Control {
                 self.n = n;
                 Control::Set(n)
             }
-            fn button(&mut self, mgr: &mut Manager, msg: Button) -> Control {
+            fn button(&mut self, mgr: &mut EventMgr, msg: Button) -> Control {
                 let n = match msg {
                     Button::Set => self.n,
                     Button::Decr => self.n.saturating_sub(1),
@@ -157,7 +157,7 @@ fn main() -> Result<(), kas::shell::Error> {
                 active: usize = 0,
             }
             impl Self {
-                fn control(&mut self, mgr: &mut Manager, control: Control) {
+                fn control(&mut self, mgr: &mut EventMgr, control: Control) {
                     match control {
                         Control::Set(len) => {
                             let active = self.active;
@@ -173,7 +173,7 @@ fn main() -> Result<(), kas::shell::Error> {
                         }
                     }
                 }
-                fn set_radio(&mut self, mgr: &mut Manager, msg: (usize, EntryMsg)) {
+                fn set_radio(&mut self, mgr: &mut EventMgr, msg: (usize, EntryMsg)) {
                     let n = msg.0;
                     match msg.1 {
                         EntryMsg::Select => {

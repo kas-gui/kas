@@ -25,11 +25,11 @@ const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 /// Shell API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-impl ManagerState {
+impl EventState {
     /// Construct an event manager per-window data struct
     #[inline]
     pub fn new(config: Rc<RefCell<Config>>, scale_factor: f32) -> Self {
-        ManagerState {
+        EventState {
             config,
             scale_factor,
             widget_count: 0,
@@ -71,13 +71,13 @@ impl ManagerState {
     ///
     /// This method calls [`WidgetConfig::configure_recurse`] in order to assign
     /// [`WidgetId`] identifiers and call widgets' [`WidgetConfig::configure`]
-    /// method. Additionally, it updates the [`ManagerState`] to account for
+    /// method. Additionally, it updates the [`EventState`] to account for
     /// renamed and removed widgets.
     pub fn configure<W>(&mut self, shell: &mut dyn ShellWindow, widget: &mut W)
     where
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
-        debug!("Manager::configure");
+        debug!("EventMgr::configure");
         self.action = TkAction::empty();
 
         let mut count = 0;
@@ -120,7 +120,7 @@ impl ManagerState {
         shell: &mut dyn ShellWindow,
         widget: &mut W,
     ) {
-        trace!("Manager::region_moved");
+        trace!("EventMgr::region_moved");
         // Note: redraw is already implied.
 
         // Update hovered widget
@@ -146,15 +146,15 @@ impl ManagerState {
         self.action = self.action.max(action);
     }
 
-    /// Construct a [`Manager`] referring to this state
+    /// Construct a [`EventMgr`] referring to this state
     ///
-    /// Invokes the given closure on this [`Manager`].
+    /// Invokes the given closure on this [`EventMgr`].
     #[inline]
     pub fn with<F>(&mut self, shell: &mut dyn ShellWindow, f: F)
     where
-        F: FnOnce(&mut Manager),
+        F: FnOnce(&mut EventMgr),
     {
-        let mut mgr = Manager {
+        let mut mgr = EventMgr {
             state: self,
             shell,
             action: TkAction::empty(),
@@ -170,7 +170,7 @@ impl ManagerState {
     where
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
-        let mut mgr = Manager {
+        let mut mgr = EventMgr {
             state: self,
             shell,
             action: TkAction::empty(),
@@ -258,7 +258,7 @@ impl ManagerState {
 /// Shell API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-impl<'a> Manager<'a> {
+impl<'a> EventMgr<'a> {
     /// Update widgets due to timer
     pub fn update_timer<W: Widget + ?Sized>(&mut self, widget: &mut W) {
         let now = Instant::now();

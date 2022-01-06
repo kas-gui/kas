@@ -39,7 +39,7 @@ pub trait Handler: WidgetConfig {
 
     /// Generic handler: translate presses to activations
     ///
-    /// This is configuration for [`Manager::handle_generic`], and can be used
+    /// This is configuration for [`EventMgr::handle_generic`], and can be used
     /// to translate *press* (click/touch) events into [`Event::Activate`].
     // NOTE: not an associated constant because these are not object-safe
     #[inline]
@@ -62,7 +62,7 @@ pub trait Handler: WidgetConfig {
     /// Widgets should handle any events applicable to themselves here, and
     /// return all other events via [`Response::Unused`].
     #[inline]
-    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+    fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
         let _ = (mgr, event);
         Response::Unused
     }
@@ -101,7 +101,7 @@ pub trait SendEvent: Handler {
     ///     // ...
     ///     _ => {
     ///         debug_assert_eq!(self.id(), id);
-    ///         Manager::handle_generic(self, mgr, event),
+    ///         EventMgr::handle_generic(self, mgr, event),
     ///     }
     /// }
     /// ```
@@ -109,20 +109,20 @@ pub trait SendEvent: Handler {
     /// When the child's [`Handler::Msg`] type is not something which converts
     /// into the widget's own message type, it must be handled here (in place of `.into()`).
     ///
-    /// The example above uses [`Manager::handle_generic`], which is an optional
+    /// The example above uses [`EventMgr::handle_generic`], which is an optional
     /// tool able to perform some simplifications on events. It is also valid to
     /// call [`Handler::handle`] directly or simply to embed handling logic here.
-    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg>;
+    fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg>;
 }
 
-impl<'a> Manager<'a> {
+impl<'a> EventMgr<'a> {
     /// Generic event simplifier
     ///
     /// This is a free function often called from [`SendEvent::send`] to
     /// simplify certain events and then invoke [`Handler::handle`].
     pub fn handle_generic<W>(
         widget: &mut W,
-        mgr: &mut Manager,
+        mgr: &mut EventMgr,
         mut event: Event,
     ) -> Response<<W as Handler>::Msg>
     where

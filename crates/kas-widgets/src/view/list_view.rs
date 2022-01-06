@@ -150,7 +150,7 @@ widget! {
         /// This method updates the shared data, if supported (see
         /// [`ListData::update`]). Other widgets sharing this data are notified
         /// of the update, if data is changed.
-        pub fn set_value(&self, mgr: &mut Manager, key: &T::Key, data: T::Item) {
+        pub fn set_value(&self, mgr: &mut EventMgr, key: &T::Key, data: T::Item) {
             if let Some(handle) = self.data.update(key, data) {
                 mgr.trigger_update(handle, 0);
             }
@@ -161,7 +161,7 @@ widget! {
         /// This is purely a convenience method over [`ListView::set_value`].
         /// It does nothing if no value is found at `key`.
         /// It notifies other widgets of updates to the shared data.
-        pub fn update_value<F: Fn(T::Item) -> T::Item>(&self, mgr: &mut Manager, key: &T::Key, f: F) {
+        pub fn update_value<F: Fn(T::Item) -> T::Item>(&self, mgr: &mut EventMgr, key: &T::Key, f: F) {
             if let Some(item) = self.get_value(key) {
                 self.set_value(mgr, key, f(item));
             }
@@ -245,7 +245,7 @@ widget! {
         }
 
         /// Manually trigger an update to handle changed data
-        pub fn update_view(&mut self, mgr: &mut Manager) {
+        pub fn update_view(&mut self, mgr: &mut EventMgr) {
             let data = &self.data;
             self.selection.retain(|key| data.contains_key(key));
             for w in &mut self.widgets {
@@ -274,7 +274,7 @@ widget! {
 
         /// Construct a position solver. Note: this does more work and updates to
         /// self than is necessary in several cases where it is used.
-        fn position_solver(&mut self, mgr: &mut Manager) -> PositionSolver {
+        fn position_solver(&mut self, mgr: &mut EventMgr) -> PositionSolver {
             let data_len = self.data.len();
             let data_len32 = i32::conv(data_len);
             let view_size = self.rect().size;
@@ -313,7 +313,7 @@ widget! {
             }
         }
 
-        fn update_widgets(&mut self, mgr: &mut Manager) {
+        fn update_widgets(&mut self, mgr: &mut EventMgr) {
             let time = Instant::now();
             let solver = self.position_solver(mgr);
 
@@ -366,7 +366,7 @@ widget! {
         }
 
         #[inline]
-        fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
             *mgr |= self.scroll.set_offset(offset);
             self.update_widgets(mgr);
             self.scroll.offset()
@@ -391,7 +391,7 @@ widget! {
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             if let Some(handle) = self.data.update_handle() {
                 mgr.update_on_handle(handle, self.id());
             }
@@ -421,7 +421,7 @@ widget! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, mut align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut EventMgr, rect: Rect, mut align: AlignHints) {
             self.core.rect = rect;
 
             let mut child_size = rect.size - self.frame_size;
@@ -475,7 +475,7 @@ widget! {
 
         fn spatial_nav(
             &mut self,
-            mgr: &mut Manager,
+            mgr: &mut EventMgr,
             reverse: bool,
             from: Option<usize>,
         ) -> Option<usize> {
@@ -547,7 +547,7 @@ widget! {
     impl Handler for Self {
         type Msg = ChildMsg<T::Key, <V::Widget as Handler>::Msg>;
 
-        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
             match event {
                 Event::HandleUpdate { .. } => {
                     // TODO(opt): use the update payload to indicate which widgets need updating?
@@ -656,7 +656,7 @@ widget! {
     }
 
     impl SendEvent for Self {
-        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
                 return Response::Unused;
             }

@@ -8,7 +8,7 @@
 use std::any::Any;
 use std::fmt;
 
-use crate::event::{self, ConfigureManager, Manager};
+use crate::event::{self, ConfigureManager, EventMgr};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{self, AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
@@ -154,7 +154,7 @@ pub trait WidgetChildren: WidgetCore {
     ///
     /// Warning: directly adjusting a widget without requiring reconfigure or
     /// redraw may break the UI. If a widget is replaced, a reconfigure **must**
-    /// be requested. This can be done via [`Manager::send_action`].
+    /// be requested. This can be done via [`EventMgr::send_action`].
     /// This method may be removed in the future.
     fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig>;
 
@@ -172,7 +172,7 @@ pub trait WidgetChildren: WidgetCore {
     /// calls to methods like [`Self::get_child`] must handle `None` return.
     ///
     /// This requires that the widget tree has already been configured by
-    /// [`event::ManagerState::configure`].
+    /// [`event::EventState::configure`].
     #[inline]
     fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
         self.id().index_of_child(id)
@@ -181,7 +181,7 @@ pub trait WidgetChildren: WidgetCore {
     /// Find the descendant with this `id`, if any
     ///
     /// This requires that the widget tree has already been configured by
-    /// [`event::ManagerState::configure`].
+    /// [`event::EventState::configure`].
     fn find_widget(&self, id: &WidgetId) -> Option<&dyn WidgetConfig> {
         if let Some(index) = self.find_child_index(id) {
             self.get_child(index)
@@ -196,7 +196,7 @@ pub trait WidgetChildren: WidgetCore {
     /// Find the descendant with this `id`, if any
     ///
     /// This requires that the widget tree has already been configured by
-    /// [`ManagerState::configure`].
+    /// [`EventState::configure`].
     fn find_widget_mut(&mut self, id: &WidgetId) -> Option<&mut dyn WidgetConfig> {
         if let Some(index) = self.find_child_index(id) {
             self.get_child_mut(index)
@@ -241,7 +241,7 @@ pub trait WidgetConfig: Layout {
     /// KAS has a crude mechanism to detect this and panic.
     ///
     /// The default implementation of this method does nothing.
-    fn configure(&mut self, _: &mut Manager) {}
+    fn configure(&mut self, _: &mut EventMgr) {}
 
     /// Configure self and children
     ///
@@ -357,7 +357,7 @@ pub trait Layout: WidgetChildren {
     ///
     /// One may assume that `size_rules` has been called at least once for each
     /// axis with current size information before this method.
-    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut EventMgr, rect: Rect, align: AlignHints) {
         self.core_data_mut().rect = rect;
         self.layout().set_rect(mgr, rect, align);
     }
@@ -388,7 +388,7 @@ pub trait Layout: WidgetChildren {
     /// children in order.
     fn spatial_nav(
         &mut self,
-        mgr: &mut Manager,
+        mgr: &mut EventMgr,
         reverse: bool,
         from: Option<usize>,
     ) -> Option<usize> {

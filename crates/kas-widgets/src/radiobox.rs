@@ -23,11 +23,11 @@ widget! {
         core: CoreData,
         state: bool,
         group: SharedRc<WidgetId>,
-        on_select: Option<Rc<dyn Fn(&mut Manager) -> Option<M>>>,
+        on_select: Option<Rc<dyn Fn(&mut EventMgr) -> Option<M>>>,
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             if let Some(handle) = self.group.update_handle() {
                 mgr.update_on_handle(handle, self.id());
             }
@@ -49,7 +49,7 @@ widget! {
             true
         }
 
-        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<M> {
             match event {
                 Event::Activate => {
                     if !self.state {
@@ -87,7 +87,7 @@ widget! {
             SizeRules::extract_fixed(axis, size, margins)
         }
 
-        fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, _: &mut EventMgr, rect: Rect, align: AlignHints) {
             let rect = align
                 .complete(Align::Center, Align::Center)
                 .aligned_rect(self.rect().size, rect);
@@ -125,7 +125,7 @@ widget! {
         #[must_use]
         pub fn on_select<M, F>(self, f: F) -> RadioBoxBare<M>
         where
-            F: Fn(&mut Manager) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr) -> Option<M> + 'static,
         {
             RadioBoxBare {
                 core: self.core,
@@ -150,7 +150,7 @@ widget! {
         #[inline]
         pub fn new_on<F>(group: SharedRc<WidgetId>, f: F) -> Self
         where
-            F: Fn(&mut Manager) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr) -> Option<M> + 'static,
         {
             RadioBoxBare::new(group).on_select(f)
         }
@@ -199,7 +199,7 @@ widget! {
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             mgr.add_accel_keys(self.radiobox.id(), self.label.keys());
         }
     }
@@ -232,7 +232,7 @@ widget! {
         #[must_use]
         pub fn on_select<M, F>(self, f: F) -> RadioBox<M>
         where
-            F: Fn(&mut Manager) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr) -> Option<M> + 'static,
         {
             RadioBox {
                 core: self.core,
@@ -259,7 +259,7 @@ widget! {
         #[inline]
         pub fn new_on<T: Into<AccelString>, F>(label: T, group: SharedRc<WidgetId>, f: F) -> Self
         where
-            F: Fn(&mut Manager) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr) -> Option<M> + 'static,
         {
             RadioBox::new(label, group).on_select(f)
         }

@@ -22,7 +22,7 @@
 //!
 //! Events then process from root to leaf. [`SendEvent::send`] is responsible
 //! for forwarding an event to the appropriate child. Once the target widget is
-//! reached, `send` (usually) calls [`Manager::handle_generic`] which may apply
+//! reached, `send` (usually) calls [`EventMgr::handle_generic`] which may apply
 //! some transformations to events, then calls [`Handler::handle`] on target
 //! widget. Finally, a [`Response`] is emitted.
 //!
@@ -38,7 +38,7 @@
 //! events, which may occur with any number of mouse buttons pressed.
 //!
 //! Motion and release events are only delivered when a "press grab" is active.
-//! This is achieved by calling [`Manager::request_grab`] and allows receiving
+//! This is achieved by calling [`EventMgr::request_grab`] and allows receiving
 //! both relative and absolute press coordinates.
 //! A special "pan" grab allows receiving two-finger scroll/scale/rotate input.
 //!
@@ -62,7 +62,7 @@
 //!
 //! Widgets do not usually track input events for the purpose of drawn effects
 //! such as mouse-hover. Instead, a widget calls [`WidgetCore::input_state`]
-//! with a reference to the [`ManagerState`] (which is passed to
+//! with a reference to the [`EventState`] (which is passed to
 //! [`Layout::draw`] calls) in order to obtain an [`InputState`] instance.
 //!
 //! [`WidgetId`]: crate::WidgetId
@@ -96,7 +96,7 @@ pub use config::Config;
 pub use enums::{CursorIcon, ModifiersState, MouseButton, VirtualKeyCode};
 pub use events::*;
 pub use handler::{Handler, SendEvent};
-pub use manager::{ConfigureManager, GrabMode, Manager, ManagerState};
+pub use manager::{ConfigureManager, EventMgr, EventState, GrabMode};
 pub use response::Response;
 pub use update::UpdateHandle;
 

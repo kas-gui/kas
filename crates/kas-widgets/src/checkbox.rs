@@ -21,7 +21,7 @@ widget! {
         #[widget_core]
         core: CoreData,
         state: bool,
-        on_toggle: Option<Rc<dyn Fn(&mut Manager, bool) -> Option<M>>>,
+        on_toggle: Option<Rc<dyn Fn(&mut EventMgr, bool) -> Option<M>>>,
     }
 
     impl Layout for Self {
@@ -32,7 +32,7 @@ widget! {
             SizeRules::extract_fixed(axis, size, margins)
         }
 
-        fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, _: &mut EventMgr, rect: Rect, align: AlignHints) {
             let rect = align
                 .complete(Align::Center, Align::Center)
                 .aligned_rect(self.rect().size, rect);
@@ -64,7 +64,7 @@ widget! {
         #[must_use]
         pub fn on_toggle<M, F>(self, f: F) -> CheckBoxBare<M>
         where
-            F: Fn(&mut Manager, bool) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr, bool) -> Option<M> + 'static,
         {
             CheckBoxBare {
                 core: self.core,
@@ -83,7 +83,7 @@ widget! {
         #[inline]
         pub fn new_on<F>(f: F) -> Self
         where
-            F: Fn(&mut Manager, bool) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr, bool) -> Option<M> + 'static,
         {
             CheckBoxBare::new().on_toggle(f)
         }
@@ -118,7 +118,7 @@ widget! {
             true
         }
 
-        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<M> {
             match event {
                 Event::Activate => {
                     self.state = !self.state;
@@ -150,7 +150,7 @@ widget! {
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             mgr.add_accel_keys(self.checkbox.id(), self.label.keys());
         }
     }
@@ -182,7 +182,7 @@ widget! {
         #[must_use]
         pub fn on_toggle<M, F>(self, f: F) -> CheckBox<M>
         where
-            F: Fn(&mut Manager, bool) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr, bool) -> Option<M> + 'static,
         {
             CheckBox {
                 core: self.core,
@@ -204,7 +204,7 @@ widget! {
         #[inline]
         pub fn new_on<T: Into<AccelString>, F>(label: T, f: F) -> Self
         where
-            F: Fn(&mut Manager, bool) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr, bool) -> Option<M> + 'static,
         {
             CheckBox::new(label).on_toggle(f)
         }

@@ -217,7 +217,7 @@ widget! {
             }
         }
 
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut EventMgr, rect: Rect, align: AlignHints) {
             let mut ideal_size = Size::splat(self.width);
             ideal_size.set_component(self.direction, i32::MAX);
             let rect = align
@@ -228,7 +228,7 @@ widget! {
             let _ = self.update_handle();
         }
 
-        fn spatial_nav(&mut self, _: &mut Manager, _: bool, _: Option<usize>) -> Option<usize> {
+        fn spatial_nav(&mut self, _: &mut EventMgr, _: bool, _: Option<usize>) -> Option<usize> {
             None // handle is not navigable
         }
 
@@ -247,7 +247,7 @@ widget! {
     }
 
     impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
                 return Response::Unused;
             }
@@ -312,13 +312,13 @@ pub trait Scrollable: Widget {
     ///
     /// The offset is clamped to the available scroll range and applied. The
     /// resulting offset is returned.
-    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset;
+    fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset;
 
     /// Scroll by a delta
     ///
     /// Returns the remaining (unused) delta.
     #[inline]
-    fn scroll_by_delta(&mut self, mgr: &mut Manager, delta: Offset) -> Offset {
+    fn scroll_by_delta(&mut self, mgr: &mut EventMgr, delta: Offset) -> Offset {
         let old_offset = self.scroll_offset();
         let new_offset = self.set_scroll_offset(mgr, old_offset - delta);
         delta - old_offset + new_offset
@@ -413,7 +413,7 @@ widget! {
             self.0.inner.scroll_offset()
         }
         #[inline]
-        fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
             self.0.set_scroll_offset(mgr, offset)
         }
     }
@@ -544,7 +544,7 @@ widget! {
         fn scroll_offset(&self) -> Offset {
             self.inner.scroll_offset()
         }
-        fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
             let offset = self.inner.set_scroll_offset(mgr, offset);
             *mgr |= self.horiz_bar.set_value(offset.0) | self.vert_bar.set_value(offset.1);
             offset
@@ -552,7 +552,7 @@ widget! {
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             mgr.register_nav_fallback(self.id());
         }
     }
@@ -568,7 +568,7 @@ widget! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut EventMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             let pos = rect.pos;
             let mut child_size = rect.size;
@@ -645,7 +645,7 @@ widget! {
     }
 
     impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
                 return Response::Unused;
             }

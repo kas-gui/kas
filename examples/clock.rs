@@ -39,7 +39,7 @@ widget! {
         }
 
         #[inline]
-        fn set_rect(&mut self, _: &mut Manager, rect: Rect, _align: AlignHints) {
+        fn set_rect(&mut self, _: &mut EventMgr, rect: Rect, _align: AlignHints) {
             // Force to square
             let size = rect.size.0.min(rect.size.1);
             let size = Size::splat(size);
@@ -115,7 +115,7 @@ widget! {
     }
 
     impl WidgetConfig for Clock {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             mgr.update_on_timer(Duration::new(0, 0), self.id(), 0);
         }
     }
@@ -124,7 +124,7 @@ widget! {
         type Msg = event::VoidMsg;
 
         #[inline]
-        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
             match event {
                 Event::TimerUpdate(0) => {
                     self.now = Local::now();

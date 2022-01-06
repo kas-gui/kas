@@ -10,7 +10,7 @@ use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 
 use crate::dir::Direction;
 use crate::draw::{color::Rgb, Draw, ImageId, PassType};
-use crate::event::ManagerState;
+use crate::event::EventState;
 use crate::geom::{Coord, Offset, Rect};
 use crate::text::{AccelString, Text, TextApi, TextDisplay};
 use crate::theme::{InputState, SizeHandle, SizeMgr, TextClass};
@@ -29,13 +29,13 @@ use crate::WidgetCore;
 /// -   [`Self::with_clip_region`] constructs a new pass with clipping
 /// -   [`Self::with_overlay`] constructs a new pass for an overlay (e.g. pop-up menu or tooltip)
 /// -   [`Self::get_clip_rect`] returns the current clip rect
-pub struct DrawMgr<'a>(&'a mut dyn DrawHandle, &'a ManagerState);
+pub struct DrawMgr<'a>(&'a mut dyn DrawHandle, &'a EventState);
 
 impl<'a> DrawMgr<'a> {
-    /// Construct from a [`DrawMgr`] and [`ManagerState`]
+    /// Construct from a [`DrawMgr`] and [`EventState`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn new(h: &'a mut dyn DrawHandle, mgr: &'a ManagerState) -> Self {
+    pub fn new(h: &'a mut dyn DrawHandle, mgr: &'a EventState) -> Self {
         DrawMgr(h, mgr)
     }
 
@@ -55,7 +55,7 @@ impl<'a> DrawMgr<'a> {
     }
 
     /// Access event-management state
-    pub fn ev_state(&self) -> &ManagerState {
+    pub fn ev_state(&self) -> &EventState {
         self.1
     }
 

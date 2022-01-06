@@ -22,7 +22,7 @@ widget! {
     }
 
     impl WidgetConfig for Image {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             if self.do_load {
                 self.do_load = false;
                 match mgr.draw_shared(|ds| {
@@ -44,7 +44,7 @@ widget! {
             self.sprite.size_rules(size_mgr, axis)
         }
 
-        fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, _: &mut EventMgr, rect: Rect, align: AlignHints) {
             self.core_data_mut().rect = self.sprite.align_rect(rect, align);
         }
 
@@ -85,7 +85,7 @@ impl Image {
     }
 
     /// Set image path
-    pub fn set_path<P: Into<PathBuf>>(&mut self, mgr: &mut Manager, path: P) {
+    pub fn set_path<P: Into<PathBuf>>(&mut self, mgr: &mut EventMgr, path: P) {
         self.path = path.into();
         self.do_load = false;
         let mut size = Size::ZERO;
@@ -109,7 +109,7 @@ impl Image {
     }
 
     /// Remove image (set empty)
-    pub fn clear(&mut self, mgr: &mut Manager) {
+    pub fn clear(&mut self, mgr: &mut EventMgr) {
         if let Some(id) = self.id.take() {
             self.do_load = false;
             mgr.draw_shared(|ds| ds.image_free(id));

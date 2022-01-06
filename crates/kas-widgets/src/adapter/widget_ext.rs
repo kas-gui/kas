@@ -7,7 +7,7 @@
 
 use super::{MapResponse, Reserve, WithLabel};
 use kas::dir::Directional;
-use kas::event::{Manager, Response};
+use kas::event::{EventMgr, Response};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::text::AccelString;
 use kas::theme::SizeMgr;
@@ -23,7 +23,7 @@ pub trait WidgetExt: Widget {
     #[must_use]
     fn map_msg<F, M>(self, f: F) -> MapResponse<Self, M>
     where
-        F: Fn(&mut Manager, Self::Msg) -> M + 'static,
+        F: Fn(&mut EventMgr, Self::Msg) -> M + 'static,
         Self: Sized,
     {
         MapResponse::new(self, move |mgr, msg| Response::Msg(f(mgr, msg)))
@@ -47,7 +47,7 @@ pub trait WidgetExt: Widget {
     #[must_use]
     fn map_response<F, M>(self, f: F) -> MapResponse<Self, M>
     where
-        F: Fn(&mut Manager, Self::Msg) -> Response<M> + 'static,
+        F: Fn(&mut EventMgr, Self::Msg) -> Response<M> + 'static,
         Self: Sized,
     {
         MapResponse::new(self, f)

@@ -233,7 +233,7 @@ widget! {
             }
         }
 
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut EventMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             self.handle.set_rect(mgr, rect, align);
             let min_handle_size = mgr.size_mgr(|size| (size.slider().0).0);
@@ -246,7 +246,7 @@ widget! {
             let _ = self.handle.set_size_and_offset(size, self.offset());
         }
 
-        fn spatial_nav(&mut self, _: &mut Manager, _: bool, _: Option<usize>) -> Option<usize> {
+        fn spatial_nav(&mut self, _: &mut EventMgr, _: bool, _: Option<usize>) -> Option<usize> {
             None // handle is not navigable
         }
 
@@ -265,7 +265,7 @@ widget! {
     }
 
     impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
                 return Response::Unused;
             }

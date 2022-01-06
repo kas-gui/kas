@@ -37,7 +37,7 @@ pub trait Menu: Widget {
     /// When opening menus and `set_focus` is true, the first navigable child
     /// of the newly opened menu will be given focus. This is used for keyboard
     /// navigation only.
-    fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<&WidgetId>, set_focus: bool) {
+    fn set_menu_path(&mut self, mgr: &mut EventMgr, target: Option<&WidgetId>, set_focus: bool) {
         let _ = (mgr, target, set_focus);
     }
 }
@@ -92,7 +92,7 @@ impl<M: 'static> WidgetChildren for Box<dyn Menu<Msg = M>> {
 }
 
 impl<M: 'static> WidgetConfig for Box<dyn Menu<Msg = M>> {
-    fn configure(&mut self, mgr: &mut Manager) {
+    fn configure(&mut self, mgr: &mut EventMgr) {
         self.as_mut().configure(mgr);
     }
 
@@ -112,7 +112,7 @@ impl<M: 'static> Layout for Box<dyn Menu<Msg = M>> {
         self.as_mut().size_rules(size_mgr, axis)
     }
 
-    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut EventMgr, rect: Rect, align: AlignHints) {
         self.as_mut().set_rect(mgr, rect, align);
     }
 
@@ -132,13 +132,13 @@ impl<M: 'static> event::Handler for Box<dyn Menu<Msg = M>> {
         self.as_ref().activation_via_press()
     }
 
-    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+    fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
         self.as_mut().handle(mgr, event)
     }
 }
 
 impl<M: 'static> event::SendEvent for Box<dyn Menu<Msg = M>> {
-    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+    fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
         self.as_mut().send(mgr, id, event)
     }
 }
@@ -149,7 +149,7 @@ impl<M: 'static> Menu for Box<dyn Menu<Msg = M>> {
     fn menu_is_open(&self) -> bool {
         self.deref().menu_is_open()
     }
-    fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<&WidgetId>, set_focus: bool) {
+    fn set_menu_path(&mut self, mgr: &mut EventMgr, target: Option<&WidgetId>, set_focus: bool) {
         self.deref_mut().set_menu_path(mgr, target, set_focus)
     }
 }

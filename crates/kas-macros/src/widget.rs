@@ -240,7 +240,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                 #[inline]
                 fn set_rect(
                     &mut self,
-                    mgr: &mut ::kas::event::Manager,
+                    mgr: &mut ::kas::event::EventMgr,
                     rect: ::kas::geom::Rect,
                     align: ::kas::layout::AlignHints,
                 ) {
@@ -253,7 +253,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                 #[inline]
                 fn spatial_nav(
                     &mut self,
-                    mgr: &mut ::kas::event::Manager,
+                    mgr: &mut ::kas::event::EventMgr,
                     reverse: bool,
                     from: Option<usize>,
                 ) -> Option<usize> {
@@ -319,7 +319,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                     self.#inner.activation_via_press()
                 }
                 #[inline]
-                fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+                fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
                     self.#inner.handle(mgr, event)
                 }
             }
@@ -421,7 +421,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                 let self_id = self.id();
                 match self_id.index_of_child(&id) {
                     #ev_to_num
-                    _ if id == self_id => ::kas::event::Manager::handle_generic(self, mgr, event),
+                    _ if id == self_id => ::kas::event::EventMgr::handle_generic(self, mgr, event),
                     _ => {
                         debug_assert!(false, "SendEvent::send: bad WidgetId");
                         Response::Unused
@@ -436,7 +436,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
             {
                 fn send(
                     &mut self,
-                    mgr: &mut ::kas::event::Manager,
+                    mgr: &mut ::kas::event::EventMgr,
                     id: ::kas::WidgetId,
                     event: ::kas::event::Event
                 ) -> ::kas::event::Response<Self::Msg>

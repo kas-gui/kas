@@ -12,7 +12,7 @@ pub use draw::{DrawHandle, DrawMgr};
 pub use size::{SizeHandle, SizeMgr};
 
 #[allow(unused)]
-use crate::event::Manager;
+use crate::event::EventMgr;
 use crate::TkAction;
 use std::ops::{Deref, DerefMut};
 
@@ -127,7 +127,7 @@ impl Default for TextClass {
 /// Interface through which a theme can be adjusted at run-time
 ///
 /// All methods return a [`TkAction`] to enable correct action when a theme
-/// is updated via [`Manager::adjust_theme`]. When adjusting a theme before
+/// is updated via [`EventMgr::adjust_theme`]. When adjusting a theme before
 /// the UI is started, this return value can be safely ignored.
 pub trait ThemeControl {
     /// Set font size

@@ -86,7 +86,7 @@ widget! {
     }
 
     impl WidgetConfig for Svg {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             if self.tree.is_none() {
                 // TODO: maybe we should use a singleton to deduplicate loading by
                 // path? Probably not much use for duplicate SVG widgets however.
@@ -145,7 +145,7 @@ widget! {
             }
         }
 
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut EventMgr, rect: Rect, align: AlignHints) {
             let size = match self.ideal_size.aspect_scale_to(rect.size) {
                 Some(size) => {
                     self.core_data_mut().rect = align

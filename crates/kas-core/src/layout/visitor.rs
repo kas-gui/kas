@@ -9,7 +9,7 @@ use super::{AlignHints, AxisInfo, RulesSetter, RulesSolver, SizeRules, Storage};
 use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
 use crate::draw::color::Rgb;
-use crate::event::Manager;
+use crate::event::EventMgr;
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::text::{Align, TextApi, TextApiExt};
 use crate::theme::{DrawMgr, InputState, SizeMgr, TextClass};
@@ -58,7 +58,7 @@ trait Visitor {
     fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
 
     /// Apply a given `rect` to self
-    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints);
+    fn set_rect(&mut self, mgr: &mut EventMgr, rect: Rect, align: AlignHints);
 
     fn is_reversed(&mut self) -> bool;
 
@@ -246,10 +246,10 @@ impl<'a> Layout<'a> {
 
     /// Apply a given `rect` to self
     #[inline]
-    pub fn set_rect(mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+    pub fn set_rect(mut self, mgr: &mut EventMgr, rect: Rect, align: AlignHints) {
         self.set_rect_(mgr, rect, align);
     }
-    fn set_rect_(&mut self, mgr: &mut Manager, mut rect: Rect, align: AlignHints) {
+    fn set_rect_(&mut self, mgr: &mut EventMgr, mut rect: Rect, align: AlignHints) {
         match &mut self.layout {
             LayoutType::None => (),
             LayoutType::Single(child) => child.set_rect(mgr, rect, align),
@@ -362,7 +362,7 @@ where
         solver.finish(self.data)
     }
 
-    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut EventMgr, rect: Rect, align: AlignHints) {
         let dim = (self.direction, self.children.len());
         let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, align, self.data);
 
@@ -404,7 +404,7 @@ impl<'a, W: WidgetConfig, D: Directional> Visitor for Slice<'a, W, D> {
         solver.finish(self.data)
     }
 
-    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut EventMgr, rect: Rect, align: AlignHints) {
         let dim = (self.direction, self.children.len());
         let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, align, self.data);
 
@@ -451,7 +451,7 @@ where
         solver.finish(self.data)
     }
 
-    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut EventMgr, rect: Rect, align: AlignHints) {
         let mut setter = GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, align, self.data);
         for (info, child) in &mut self.children {
             child.set_rect(mgr, setter.child_rect(self.data, info), align);
@@ -511,7 +511,7 @@ impl<'a> Visitor for Text<'a> {
         mgr.text_bound(self.text, self.class, axis)
     }
 
-    fn set_rect(&mut self, _mgr: &mut Manager, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, _mgr: &mut EventMgr, rect: Rect, align: AlignHints) {
         let halign = match self.class {
             TextClass::Button => Align::Center,
             _ => Align::Default,

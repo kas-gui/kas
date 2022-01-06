@@ -317,7 +317,7 @@ widget! {
     }
 
     impl WidgetConfig for Mandlebrot {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             mgr.register_nav_fallback(self.id());
         }
     }
@@ -331,7 +331,7 @@ widget! {
         }
 
         #[inline]
-        fn set_rect(&mut self, _: &mut Manager, rect: Rect, _: AlignHints) {
+        fn set_rect(&mut self, _: &mut EventMgr, rect: Rect, _: AlignHints) {
             self.core.rect = rect;
             let size = DVec2::from(rect.size);
             let rel_width = DVec2(size.0 / size.1, 1.0);
@@ -351,7 +351,7 @@ widget! {
     impl event::Handler for Mandlebrot {
         type Msg = ();
 
-        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
             match event {
                 Event::Command(cmd, _) => {
                     match cmd {
@@ -452,11 +452,11 @@ widget! {
             Window::new("Mandlebrot", w)
         }
 
-        fn iter(&mut self, mgr: &mut Manager, iter: i32) {
+        fn iter(&mut self, mgr: &mut EventMgr, iter: i32) {
             self.mbrot.iter = iter;
             *mgr |= self.iters.set_string(format!("{}", iter));
         }
-        fn mbrot(&mut self, mgr: &mut Manager, _: ()) {
+        fn mbrot(&mut self, mgr: &mut EventMgr, _: ()) {
             *mgr |= self.label.set_string(self.mbrot.loc());
         }
     }

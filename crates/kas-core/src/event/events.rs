@@ -9,7 +9,7 @@
 use serde::{Deserialize, Serialize};
 
 #[allow(unused)]
-use super::{GrabMode, Manager, Response, SendEvent}; // for doc-links
+use super::{EventMgr, GrabMode, Response, SendEvent}; // for doc-links
 use super::{MouseButton, UpdateHandle, VirtualKeyCode};
 
 use crate::geom::{Coord, DVec2, Offset};
@@ -33,7 +33,7 @@ pub enum Event {
     /// keyboard. It is sent to whichever widget is "most appropriate", then
     /// potentially to the "next most appropriate" target if the first returns
     /// [`Response::Unused`], until handled or no more appropriate targets
-    /// are available (the exact logic is encoded in `Manager::start_key_event`).
+    /// are available (the exact logic is encoded in `EventMgr::start_key_event`).
     ///
     /// In some cases keys are remapped, e.g. a widget with selection focus but
     /// not character or navigation focus may receive [`Command::Deselect`]
@@ -51,7 +51,7 @@ pub enum Event {
     /// Widget receives a character of text input
     ///
     /// This is only received by a widget with character focus (see
-    /// [`Manager::request_char_focus`]). There is no overlap with
+    /// [`EventMgr::request_char_focus`]). There is no overlap with
     /// [`Event::Command`]: key presses result in at most one of these events
     /// being sent to a widget.
     ReceivedCharacter(char),
@@ -119,7 +119,7 @@ pub enum Event {
     },
     /// Movement of mouse or a touch press
     ///
-    /// Received only given a [press grab](Manager::request_grab).
+    /// Received only given a [press grab](EventMgr::request_grab).
     PressMove {
         source: PressSource,
         cur_id: Option<WidgetId>,
@@ -128,7 +128,7 @@ pub enum Event {
     },
     /// End of a click/touch press
     ///
-    /// Received only given a [press grab](Manager::request_grab).
+    /// Received only given a [press grab](EventMgr::request_grab).
     ///
     /// When `end_id == None`, this is a "cancelled press": the end of the press
     /// is outside the application window.
@@ -140,15 +140,15 @@ pub enum Event {
     /// Update from a timer
     ///
     /// This event is received after requesting timed wake-up(s)
-    /// (see [`Manager::update_on_timer`]).
+    /// (see [`EventMgr::update_on_timer`]).
     ///
     /// The `u64` payload may be used to identify the corresponding
-    /// [`Manager::update_on_timer`] call.
+    /// [`EventMgr::update_on_timer`] call.
     TimerUpdate(u64),
     /// Update triggerred via an [`UpdateHandle`]
     ///
     /// This event may be received after registering an [`UpdateHandle`] via
-    /// [`Manager::update_on_handle`].
+    /// [`EventMgr::update_on_handle`].
     ///
     /// A user-defined payload is passed. Interpretation of this payload is
     /// user-defined and unfortunately not type safe.
@@ -156,7 +156,7 @@ pub enum Event {
     /// Notification that a popup has been destroyed
     ///
     /// This is sent to the popup's parent after a popup has been removed.
-    /// Since popups may be removed directly by the Manager, the parent should
+    /// Since popups may be removed directly by the EventMgr, the parent should
     /// clean up any associated state here.
     PopupRemoved(WindowId),
     /// Sent when a widget receives keyboard navigation focus
@@ -170,7 +170,7 @@ pub enum Event {
     /// This should not be done when `key_focus` is false to avoid moving
     /// widgets during interaction via mouse or finger.
     ///
-    /// Widgets using [`Manager::handle_generic`] should note that this event
+    /// Widgets using [`EventMgr::handle_generic`] should note that this event
     /// is trapped and responded to (in line with the above recommendation).
     /// If the widget needs to react to `NavFocus`, the event must be matched
     /// *before* calling `handle_generic`, which might require a custom

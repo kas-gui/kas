@@ -250,7 +250,7 @@
 //! ```
 //!
 //! A handler is a method on the parent struct with signature
-//! `fn f(&mut self, mgr: &mut Manager, msg: M) -> T`
+//! `fn f(&mut self, mgr: &mut EventMgr, msg: M) -> T`
 //! (where `M` is the child's message type). The return type `T` depends on
 //! the keyword used:
 //!
@@ -267,7 +267,7 @@
 //! Widgets may return [`Response::Update`] on some interactions instead of
 //! [`Response::Msg`]. It is possible to observe such a response:
 //!
-//! -   `#[widget(update = f)]` where `f` has signature `fn f(&mut self, mgr: &mut Manager)`
+//! -   `#[widget(update = f)]` where `f` has signature `fn f(&mut self, mgr: &mut EventMgr)`
 //!
 //! ### Deriving `Widget` from a field
 //!
@@ -296,7 +296,7 @@
 //! The example below includes multiple children and custom event handling.
 //!
 //! ```
-//! use kas::event::{Handler, Manager, Response, VoidMsg};
+//! use kas::event::{Handler, EventMgr, Response, VoidMsg};
 //! use kas::macros::widget;
 //! use kas::widgets::StrLabel;
 //! use kas::{CoreData, Widget};
@@ -320,7 +320,7 @@
 //!     }
 //!
 //!     impl Self {
-//!         fn handler(&mut self, mgr: &mut Manager, msg: ChildMessage) {
+//!         fn handler(&mut self, mgr: &mut EventMgr, msg: ChildMessage) {
 //!             match msg {
 //!                 ChildMessage::A => { println!("handling ChildMessage::A"); }
 //!             }
@@ -380,7 +380,7 @@
 //!         message: String = message.into(),
 //!     }
 //!     impl Self {
-//!         fn buttons(&mut self, mgr: &mut Manager, msg: OkCancel) {
+//!         fn buttons(&mut self, mgr: &mut EventMgr, msg: OkCancel) {
 //!             match msg {
 //!                 OkCancel::Ok => {
 //!                     println!("Message: {}", self.message);

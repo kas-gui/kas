@@ -20,7 +20,7 @@ use crate::text::TextApiExt;
 /// Size and scale interface
 ///
 /// This interface is provided to widgets in [`crate::Layout::size_rules`].
-/// It may also be accessed through [`crate::event::Manager::size_mgr`] and
+/// It may also be accessed through [`crate::event::EventMgr::size_mgr`] and
 /// [`DrawMgr::size_mgr`].
 ///
 /// Most methods get or calculate the size of some feature. These same features

@@ -10,7 +10,7 @@ use std::str::FromStr;
 
 use kas::class::HasString;
 use kas::event::VirtualKeyCode as VK;
-use kas::event::{Manager, VoidMsg};
+use kas::event::{EventMgr, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widgets::{EditBox, TextButton, Window};
 
@@ -67,7 +67,7 @@ fn main() -> Result<(), kas::shell::Error> {
             #[widget] b9 = TextButton::new_msg("&9", Key::Char('9')),
         }
         impl kas::WidgetConfig for Self {
-            fn configure(&mut self, mgr: &mut Manager) {
+            fn configure(&mut self, mgr: &mut EventMgr) {
                 // Enable key bindings without Alt held:
                 mgr.enable_alt_bypass(true);
             }
@@ -84,7 +84,7 @@ fn main() -> Result<(), kas::shell::Error> {
             calc: Calculator = Calculator::new(),
         }
         impl Self {
-            fn handle_button(&mut self, mgr: &mut Manager, msg: Key) {
+            fn handle_button(&mut self, mgr: &mut EventMgr, msg: Key) {
                 if self.calc.handle(msg) {
                     *mgr |= self.display.set_string(self.calc.display());
                 }

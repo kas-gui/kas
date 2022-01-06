@@ -58,7 +58,7 @@ widget! {
     impl<W: Menu<Msg = M>, D: Directional, M: 'static> event::Handler for MenuBar<W, D> {
         type Msg = M;
 
-        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
             match event {
                 Event::TimerUpdate(0) => {
                     if let Some(id) = self.delayed_open.clone() {
@@ -183,7 +183,7 @@ widget! {
     }
 
     impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
                 return Response::Unused;
             }
@@ -208,7 +208,7 @@ widget! {
     }
 
     impl Menu for Self {
-        fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<&WidgetId>, set_focus: bool) {
+        fn set_menu_path(&mut self, mgr: &mut EventMgr, target: Option<&WidgetId>, set_focus: bool) {
             self.delayed_open = None;
             if let Some(id) = target {
                 let mut child = None;

@@ -71,7 +71,7 @@ widget! {
             }
         }
 
-        fn open_menu(&mut self, mgr: &mut Manager, set_focus: bool) {
+        fn open_menu(&mut self, mgr: &mut EventMgr, set_focus: bool) {
             if self.popup_id.is_none() {
                 self.popup_id = mgr.add_popup(kas::Popup {
                     id: self.list.id(),
@@ -83,13 +83,13 @@ widget! {
                 }
             }
         }
-        fn close_menu(&mut self, mgr: &mut Manager, restore_focus: bool) {
+        fn close_menu(&mut self, mgr: &mut EventMgr, restore_focus: bool) {
             if let Some(id) = self.popup_id {
                 mgr.close_window(id, restore_focus);
             }
         }
 
-        fn handle_dir_key(&mut self, mgr: &mut Manager, cmd: Command) -> Response<W::Msg> {
+        fn handle_dir_key(&mut self, mgr: &mut EventMgr, cmd: Command) -> Response<W::Msg> {
             if self.menu_is_open() {
                 if let Some(dir) = cmd.as_direction() {
                     if dir.is_vertical() == self.list.direction().is_vertical() {
@@ -140,7 +140,7 @@ widget! {
             layout::Layout::frame(&mut self.frame_store, label)
         }
 
-        fn spatial_nav(&mut self, _: &mut Manager, _: bool, _: Option<usize>) -> Option<usize> {
+        fn spatial_nav(&mut self, _: &mut EventMgr, _: bool, _: Option<usize>) -> Option<usize> {
             // We have no child within our rect
             None
         }
@@ -164,7 +164,7 @@ widget! {
     impl<D: Directional, M: 'static, W: Menu<Msg = M>> event::Handler for SubMenu<D, W> {
         type Msg = M;
 
-        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<M> {
             match event {
                 Event::Activate => {
                     if self.popup_id.is_none() {
@@ -184,13 +184,13 @@ widget! {
     }
 
     impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
                 return Response::Unused;
             }
 
             if self.eq_id(&id) {
-                Manager::handle_generic(self, mgr, event)
+                EventMgr::handle_generic(self, mgr, event)
             } else {
                 let r = self.list.send(mgr, id.clone(), event.clone());
 
@@ -222,7 +222,7 @@ widget! {
             self.popup_id.is_some()
         }
 
-        fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<&WidgetId>, set_focus: bool) {
+        fn set_menu_path(&mut self, mgr: &mut EventMgr, target: Option<&WidgetId>, set_focus: bool) {
             match target {
                 Some(id) if self.is_ancestor_of(id) => {
                     if self.popup_id.is_some() {

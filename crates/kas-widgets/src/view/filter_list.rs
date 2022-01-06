@@ -259,7 +259,7 @@ widget! {
         /// This method updates the shared data, if supported (see
         /// [`ListData::update`]). Other widgets sharing this data are notified
         /// of the update, if data is changed.
-        pub fn set_value(&self, mgr: &mut Manager, key: &T::Key, data: T::Item) {
+        pub fn set_value(&self, mgr: &mut EventMgr, key: &T::Key, data: T::Item) {
             if let Some(handle) = self.data().update(key, data) {
                 mgr.trigger_update(handle, 0);
             }
@@ -270,7 +270,7 @@ widget! {
         /// This is purely a convenience method over [`FilterListView::set_value`].
         /// It does nothing if no value is found at `key`.
         /// It notifies other widgets of updates to the shared data.
-        pub fn update_value<G: Fn(T::Item) -> T::Item>(&self, mgr: &mut Manager, key: &T::Key, f: G) {
+        pub fn update_value<G: Fn(T::Item) -> T::Item>(&self, mgr: &mut EventMgr, key: &T::Key, f: G) {
             if let Some(item) = self.get_value(key) {
                 self.set_value(mgr, key, f(item));
             }
@@ -333,7 +333,7 @@ widget! {
         }
 
         /// Manually trigger an update to handle changed data or filter
-        pub fn update_view(&mut self, mgr: &mut Manager) {
+        pub fn update_view(&mut self, mgr: &mut EventMgr) {
             self.list.data().refresh();
             self.list.update_view(mgr)
         }
@@ -372,13 +372,13 @@ widget! {
         }
 
         #[inline]
-        fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
             self.list.set_scroll_offset(mgr, offset)
         }
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             // We must refresh the filtered list when the underlying list changes
             if let Some(handle) = self.list.data().data.update_handle() {
                 mgr.update_on_handle(handle, self.id());
@@ -393,7 +393,7 @@ widget! {
     impl Handler for Self {
         type Msg = ChildMsg<T::Key, <V::Widget as Handler>::Msg>;
 
-        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
             match event {
                 Event::HandleUpdate { .. } => {
                     self.update_view(mgr);

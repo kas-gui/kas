@@ -141,7 +141,7 @@ fn main() -> Result<(), kas::shell::Error> {
                 #[widget(use_msg = handler)] _ = widgets,
             }
             impl Self {
-                fn handler(&mut self, _: &mut Manager, item: Item) {
+                fn handler(&mut self, _: &mut EventMgr, item: Item) {
                     match item {
                         Item::White => BACKGROUND.with(|b| b.set(Rgba::WHITE)),
                         Item::Red => BACKGROUND.with(|b| b.set(Rgba::rgb(0.9, 0.2, 0.2))),

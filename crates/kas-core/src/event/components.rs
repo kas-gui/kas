@@ -5,7 +5,7 @@
 
 //! Event handling components
 
-use super::{Event, GrabMode, Manager, PressSource};
+use super::{Event, EventMgr, GrabMode, PressSource};
 use crate::geom::{Coord, Offset};
 #[allow(unused)]
 use crate::text::SelectionHelper;
@@ -66,7 +66,7 @@ impl TextInput {
     ///
     /// Consumes the following events: `PressStart`, `PressMove`, `PressEnd`,
     /// `TimerUpdate(1 << 60)`. May request press grabs and timer updates.
-    pub fn handle(&mut self, mgr: &mut Manager, w_id: WidgetId, event: Event) -> TextInputAction {
+    pub fn handle(&mut self, mgr: &mut EventMgr, w_id: WidgetId, event: Event) -> TextInputAction {
         use TextInputAction as Action;
         match event {
             Event::PressStart { source, coord, .. } if source.is_primary() => {

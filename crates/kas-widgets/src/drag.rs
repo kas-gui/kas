@@ -53,7 +53,7 @@ widget! {
             SizeRules::EMPTY
         }
 
-        fn set_rect(&mut self, _: &mut Manager, rect: Rect, _: AlignHints) {
+        fn set_rect(&mut self, _: &mut EventMgr, rect: Rect, _: AlignHints) {
             self.track = rect;
         }
 
@@ -63,7 +63,7 @@ widget! {
     impl event::Handler for DragHandle {
         type Msg = Offset;
 
-        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
             match event {
                 Event::PressStart { source, coord, .. } => {
                     if !self.grab_press(mgr, source, coord) {
@@ -158,7 +158,7 @@ impl DragHandle {
     /// This method moves the handle immediately and returns the new offset.
     pub fn handle_press_on_track(
         &mut self,
-        mgr: &mut Manager,
+        mgr: &mut EventMgr,
         source: PressSource,
         coord: Coord,
     ) -> Offset {
@@ -175,7 +175,7 @@ impl DragHandle {
         offset
     }
 
-    fn grab_press(&mut self, mgr: &mut Manager, source: PressSource, coord: Coord) -> bool {
+    fn grab_press(&mut self, mgr: &mut EventMgr, source: PressSource, coord: Coord) -> bool {
         let cur = Some(event::CursorIcon::Grabbing);
         if mgr.request_grab(self.id(), source, coord, event::GrabMode::Grab, cur) {
             // Interacting with a scrollbar with multiple presses

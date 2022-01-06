@@ -27,7 +27,7 @@ widget! {
             size_mgr.text_bound(&mut self.label, TextClass::Label, axis)
         }
 
-        fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, _: &mut EventMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             self.label.update_env(|env| {
                 env.set_bounds(rect.size.into());
@@ -65,7 +65,7 @@ widget! {
 
 #[cfg(feature = "min_spec")]
 impl Layout for AccelLabel {
-    fn draw(&mut self, mut draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
+    fn draw(&mut self, mut draw: DrawMgr, mgr: &EventState, disabled: bool) {
         let state = self.input_state(mgr, disabled);
         let accel = mgr.show_accel_labels();
         draw.text_accel(
@@ -81,7 +81,7 @@ impl Layout for AccelLabel {
 // Str/String representations have no effects, so use simpler draw call
 #[cfg(feature = "min_spec")]
 impl<'a> Layout for Label<&'a str> {
-    fn draw(&mut self, mut draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
+    fn draw(&mut self, mut draw: DrawMgr, mgr: &EventState, disabled: bool) {
         let state = self.input_state(mgr, disabled);
         draw.text(
             self.core.rect.pos,
@@ -93,7 +93,7 @@ impl<'a> Layout for Label<&'a str> {
 }
 #[cfg(feature = "min_spec")]
 impl Layout for StringLabel {
-    fn draw(&mut self, mut draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
+    fn draw(&mut self, mut draw: DrawMgr, mgr: &EventState, disabled: bool) {
         let state = self.input_state(mgr, disabled);
         draw.text(
             self.core.rect.pos,
@@ -161,7 +161,7 @@ pub type StringLabel = Label<String>;
 /// widget must do something like:
 /// ```no_test
 /// impl WidgetConfig for Self {
-///     fn configure(&mut self, mgr: &mut Manager) {
+///     fn configure(&mut self, mgr: &mut EventMgr) {
 ///         let target = self.id(); // widget receiving Event::Activate
 ///         mgr.add_accel_keys(target, self.label.keys());
 ///     }

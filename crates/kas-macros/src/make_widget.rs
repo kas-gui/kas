@@ -45,7 +45,7 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> TokenStream {
                         if sig.inputs.len() != 3 {
                             abort!(
                                 sig.span(),
-                                "handler functions must have signature: fn handler(&mut self, mgr: &mut Manager, msg: T)"
+                                "handler functions must have signature: fn handler(&mut self, mgr: &mut EventMgr, msg: T)"
                             );
                         }
                         let arg = sig.inputs.last().unwrap();

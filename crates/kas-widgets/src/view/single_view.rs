@@ -88,7 +88,7 @@ widget! {
         /// This method updates the shared data, if supported (see
         /// [`SingleData::update`]). Other widgets sharing this data are notified
         /// of the update, if data is changed.
-        pub fn set_value(&self, mgr: &mut Manager, data: T::Item) {
+        pub fn set_value(&self, mgr: &mut EventMgr, data: T::Item) {
             if let Some(handle) = self.data.update(data) {
                 mgr.trigger_update(handle, 0);
             }
@@ -98,13 +98,13 @@ widget! {
         ///
         /// This is purely a convenience method over [`SingleView::set_value`].
         /// It notifies other widgets of updates to the shared data.
-        pub fn update_value<F: Fn(T::Item) -> T::Item>(&self, mgr: &mut Manager, f: F) {
+        pub fn update_value<F: Fn(T::Item) -> T::Item>(&self, mgr: &mut EventMgr, f: F) {
             self.set_value(mgr, f(self.get_value()));
         }
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             if let Some(handle) = self.data.update_handle() {
                 mgr.update_on_handle(handle, self.id());
             }
@@ -113,7 +113,7 @@ widget! {
 
     impl Handler for Self {
         type Msg = <V::Widget as Handler>::Msg;
-        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
             match event {
                 Event::HandleUpdate { .. } => {
                     let value = self.data.get_cloned();
@@ -126,7 +126,7 @@ widget! {
     }
 
     impl SendEvent for Self {
-        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
                 return Response::Unused;
             }

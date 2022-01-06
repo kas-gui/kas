@@ -90,7 +90,7 @@ widget! {
         /// (re)created: on start and on resizing.
         ///
         /// This method does nothing before a backing pixmap has been created.
-        pub fn redraw(&mut self, mgr: &mut Manager) {
+        pub fn redraw(&mut self, mgr: &mut EventMgr) {
             if let Some((pm, id)) = self.pixmap.as_mut().zip(self.image_id) {
                 pm.fill(Color::TRANSPARENT);
                 self.program.draw(pm);
@@ -104,7 +104,7 @@ widget! {
             self.sprite.size_rules(size_mgr, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut EventMgr, rect: Rect, align: AlignHints) {
             self.core.rect = self.sprite.align_rect(rect, align);
             let size: (u32, u32) = self.core.rect.size.into();
 

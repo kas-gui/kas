@@ -10,7 +10,7 @@ use std::time::Instant;
 
 use kas::cast::Cast;
 use kas::draw::{DrawIface, DrawShared, PassId};
-use kas::event::{CursorIcon, ManagerState, UpdateHandle};
+use kas::event::{CursorIcon, EventState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
 use kas::theme::{DrawMgr, SizeHandle, SizeMgr, ThemeControl};
@@ -30,7 +30,7 @@ use crate::ProxyAction;
 pub(crate) struct Window<C: CustomPipe, T: Theme<DrawPipe<C>>> {
     pub(crate) widget: Box<dyn kas::Window>,
     pub(crate) window_id: WindowId,
-    mgr: ManagerState,
+    mgr: EventState,
     solve_cache: SolveCache,
     /// The winit window
     pub(crate) window: winit::window::Window,
@@ -54,7 +54,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let scale_factor = shared.scale_factor as f32;
         let mut theme_window = shared.theme.new_window(scale_factor);
 
-        let mut mgr = ManagerState::new(shared.config.clone(), scale_factor);
+        let mut mgr = EventState::new(shared.config.clone(), scale_factor);
         let mut tkw = TkWindow::new(shared, None, &mut theme_window);
         mgr.configure(&mut tkw, &mut *widget);
 

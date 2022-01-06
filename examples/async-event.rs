@@ -53,7 +53,7 @@ widget! {
         handle: UpdateHandle,
     }
     impl WidgetConfig for ColourSquare {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             // register to receive updates on this handle
             mgr.update_on_handle(self.handle, self.id());
         }
@@ -71,7 +71,7 @@ widget! {
     }
     impl Handler for ColourSquare {
         type Msg = VoidMsg;
-        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<VoidMsg> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<VoidMsg> {
             match event {
                 Event::HandleUpdate { .. } => {
                     // Note: event has `handle` and `payload` params.
