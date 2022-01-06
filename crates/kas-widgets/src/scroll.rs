@@ -353,9 +353,9 @@ widget! {
             self.scroll_offset()
         }
 
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
             let disabled = disabled || self.is_disabled();
-            draw.with_clip_region(self.core.rect, self.scroll_offset(), &mut |handle| {
+            draw.with_clip_region(self.core.rect, self.scroll_offset(), |handle| {
                 self.inner.draw(handle, mgr, disabled)
             });
         }

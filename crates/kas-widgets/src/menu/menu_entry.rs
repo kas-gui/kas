@@ -39,7 +39,7 @@ widget! {
             layout::Layout::frame(&mut self.layout_frame, inner)
         }
 
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
             draw.menu_entry(self.core.rect, self.input_state(mgr, disabled));
             draw.text_accel(
                 self.layout_label.pos,
@@ -137,11 +137,11 @@ widget! {
             Some(self.checkbox.id())
         }
 
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
             let state = self.checkbox.input_state(mgr, disabled);
             draw.menu_entry(self.core.rect, state);
-            self.checkbox.draw(draw, mgr, state.disabled());
-            self.label.draw(draw, mgr, state.disabled());
+            self.checkbox.draw(draw.re(), mgr, state.disabled());
+            self.label.draw(draw.re(), mgr, state.disabled());
         }
     }
 

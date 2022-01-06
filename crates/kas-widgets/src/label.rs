@@ -36,12 +36,12 @@ widget! {
         }
 
         #[cfg(feature = "min_spec")]
-        default fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        default fn draw(&mut self, mut draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
             let state = self.input_state(mgr, disabled);
             draw.text_effects(self.core.rect.pos, &self.label, TextClass::Label, state);
         }
         #[cfg(not(feature = "min_spec"))]
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
             let state = self.input_state(mgr, disabled);
             draw.text_effects(self.core.rect.pos, &self.label, TextClass::Label, state);
         }
@@ -65,7 +65,7 @@ widget! {
 
 #[cfg(feature = "min_spec")]
 impl Layout for AccelLabel {
-    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+    fn draw(&mut self, mut draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
         let state = self.input_state(mgr, disabled);
         let accel = mgr.show_accel_labels();
         draw.text_accel(
@@ -81,7 +81,7 @@ impl Layout for AccelLabel {
 // Str/String representations have no effects, so use simpler draw call
 #[cfg(feature = "min_spec")]
 impl<'a> Layout for Label<&'a str> {
-    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+    fn draw(&mut self, mut draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
         let state = self.input_state(mgr, disabled);
         draw.text(
             self.core.rect.pos,
@@ -93,7 +93,7 @@ impl<'a> Layout for Label<&'a str> {
 }
 #[cfg(feature = "min_spec")]
 impl Layout for StringLabel {
-    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+    fn draw(&mut self, mut draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
         let state = self.input_state(mgr, disabled);
         draw.text(
             self.core.rect.pos,

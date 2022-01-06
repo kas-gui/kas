@@ -11,7 +11,7 @@ use std::fmt;
 use crate::event::{self, ConfigureManager, Manager, ManagerState};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{self, AlignHints, AxisInfo, SizeRules};
-use crate::theme::{DrawHandle, InputState, SizeMgr};
+use crate::theme::{DrawMgr, InputState, SizeMgr};
 use crate::{CoreData, TkAction, WidgetId};
 
 impl dyn WidgetCore {
@@ -406,7 +406,7 @@ pub trait Layout: WidgetChildren {
     ///
     /// Affects event handling via [`Self::find_id`] and affects the positioning
     /// of pop-up menus. [`Self::draw`] must be implemented directly using
-    /// [`crate::theme::DrawHandleExt::with_clip_region`] to offset contents.
+    /// [`crate::theme::DrawMgr::with_clip_region`] to offset contents.
     #[inline]
     fn translation(&self) -> Offset {
         Offset::ZERO
@@ -495,7 +495,7 @@ pub trait Layout: WidgetChildren {
     /// determine active visual effects.
     ///
     /// The default impl draws all children. TODO: have default?
-    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+    fn draw(&mut self, draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
         let state = self.input_state(mgr, disabled);
         self.layout().draw(draw, mgr, state);
     }

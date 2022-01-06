@@ -8,7 +8,7 @@
 mod draw;
 mod size;
 
-pub use draw::{DrawHandle, DrawHandleExt};
+pub use draw::{DrawHandle, DrawMgr};
 pub use size::{SizeHandle, SizeMgr};
 
 #[allow(unused)]
@@ -19,7 +19,7 @@ use std::ops::{Deref, DerefMut};
 bitflags! {
     /// Input and highlighting state of a widget
     ///
-    /// This struct is used to adjust the appearance of [`DrawHandle`]'s primitives.
+    /// This struct is used to adjust the appearance of [`DrawMgr`]'s primitives.
     #[derive(Default)]
     pub struct InputState: u8 {
         /// Disabled widgets are not responsive to input and usually drawn in grey.

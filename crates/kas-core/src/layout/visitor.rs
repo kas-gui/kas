@@ -12,7 +12,7 @@ use crate::draw::color::Rgb;
 use crate::event::{Manager, ManagerState};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::text::{Align, TextApi, TextApiExt};
-use crate::theme::{DrawHandle, InputState, SizeMgr, TextClass};
+use crate::theme::{DrawMgr, InputState, SizeMgr, TextClass};
 use crate::WidgetId;
 use crate::{dir::Directional, WidgetConfig};
 use std::any::Any;
@@ -64,7 +64,7 @@ trait Visitor {
 
     fn find_id(&mut self, coord: Coord) -> Option<WidgetId>;
 
-    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState);
+    fn draw(&mut self, draw: DrawMgr, mgr: &ManagerState, state: InputState);
 }
 
 /// A layout visitor
@@ -314,10 +314,10 @@ impl<'a> Layout<'a> {
 
     /// Draw a widget's children
     #[inline]
-    pub fn draw(mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState) {
+    pub fn draw(mut self, draw: DrawMgr, mgr: &ManagerState, state: InputState) {
         self.draw_(draw, mgr, state);
     }
-    fn draw_(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState) {
+    fn draw_(&mut self, mut draw: DrawMgr, mgr: &ManagerState, state: InputState) {
         let disabled = state.contains(InputState::DISABLED);
         match &mut self.layout {
             LayoutType::None => (),
@@ -380,9 +380,9 @@ where
         self.children.find_map(|child| child.find_id(coord))
     }
 
-    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState) {
+    fn draw(&mut self, mut draw: DrawMgr, mgr: &ManagerState, state: InputState) {
         for child in &mut self.children {
-            child.draw(draw, mgr, state);
+            child.draw(draw.re(), mgr, state);
         }
     }
 }
@@ -424,10 +424,10 @@ impl<'a, W: WidgetConfig, D: Directional> Visitor for Slice<'a, W, D> {
             .and_then(|child| child.find_id(coord))
     }
 
-    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState) {
+    fn draw(&mut self, mut draw: DrawMgr, mgr: &ManagerState, state: InputState) {
         let solver = RowPositionSolver::new(self.direction);
         solver.for_children(self.children, draw.get_clip_rect(), |w| {
-            w.draw(draw, mgr, state.contains(InputState::DISABLED))
+            w.draw(draw.re(), mgr, state.contains(InputState::DISABLED))
         });
     }
 }
@@ -468,9 +468,9 @@ where
         self.children.find_map(|(_, child)| child.find_id(coord))
     }
 
-    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState) {
+    fn draw(&mut self, mut draw: DrawMgr, mgr: &ManagerState, state: InputState) {
         for (_, child) in &mut self.children {
-            child.draw(draw, mgr, state);
+            child.draw(draw.re(), mgr, state);
         }
     }
 }
@@ -531,7 +531,7 @@ impl<'a> Visitor for Text<'a> {
         None
     }
 
-    fn draw(&mut self, draw: &mut dyn DrawHandle, _mgr: &ManagerState, state: InputState) {
+    fn draw(&mut self, mut draw: DrawMgr, _mgr: &ManagerState, state: InputState) {
         draw.text_effects(self.data.pos, self.text, self.class, state);
     }
 }

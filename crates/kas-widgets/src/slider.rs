@@ -257,7 +257,7 @@ widget! {
             self.handle.find_id(coord).or(Some(self.id()))
         }
 
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
             let dir = self.direction.as_direction();
             let state = self.input_state(mgr, disabled) | self.handle.input_state(mgr, disabled);
             draw.slider(self.core.rect, self.handle.rect(), dir, state);

@@ -120,7 +120,7 @@ impl<M: 'static> Layout for Box<dyn Menu<Msg = M>> {
         self.as_mut().find_id(coord)
     }
 
-    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+    fn draw(&mut self, draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
         self.as_mut().draw(draw, mgr, disabled);
     }
 }

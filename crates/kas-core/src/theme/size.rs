@@ -8,7 +8,7 @@
 use std::ops::Deref;
 
 #[allow(unused)]
-use super::DrawHandle;
+use super::DrawMgr;
 use super::TextClass;
 use crate::geom::Size;
 use crate::layout::{AxisInfo, FrameRules, Margins, SizeRules};
@@ -21,10 +21,10 @@ use crate::text::TextApiExt;
 ///
 /// This interface is provided to widgets in [`crate::Layout::size_rules`].
 /// It may also be accessed through [`crate::event::Manager::size_mgr`] and
-/// [`DrawHandle::size_mgr`].
+/// [`DrawMgr::size_mgr`].
 ///
-/// All methods get or calculate the size of some feature. These same features
-/// may be drawn through [`DrawHandle`].
+/// Most methods get or calculate the size of some feature. These same features
+/// may be drawn through [`DrawMgr`].
 pub struct SizeMgr<'a>(&'a dyn SizeHandle);
 
 impl<'a> SizeMgr<'a> {
@@ -180,12 +180,12 @@ impl<'a> SizeMgr<'a> {
         self.0.edit_surround(is_vert)
     }
 
-    /// Size of the element drawn by [`DrawHandle::checkbox`].
+    /// Size of the element drawn by [`DrawMgr::checkbox`].
     pub fn checkbox(&self) -> Size {
         self.0.checkbox()
     }
 
-    /// Size of the element drawn by [`DrawHandle::radiobox`].
+    /// Size of the element drawn by [`DrawMgr::radiobox`].
     pub fn radiobox(&self) -> Size {
         self.0.radiobox()
     }
@@ -305,10 +305,10 @@ pub trait SizeHandle {
     /// may be. The margin included here should be large enough!
     fn edit_surround(&self, vert: bool) -> FrameRules;
 
-    /// Size of the element drawn by [`DrawHandle::checkbox`].
+    /// Size of the element drawn by [`DrawMgr::checkbox`].
     fn checkbox(&self) -> Size;
 
-    /// Size of the element drawn by [`DrawHandle::radiobox`].
+    /// Size of the element drawn by [`DrawMgr::radiobox`].
     fn radiobox(&self) -> Size;
 
     /// Dimensions for a scrollbar

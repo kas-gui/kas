@@ -13,7 +13,7 @@ use kas::draw::{DrawIface, DrawShared, PassId};
 use kas::event::{CursorIcon, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
-use kas::theme::{SizeHandle, SizeMgr, ThemeControl};
+use kas::theme::{DrawMgr, SizeHandle, SizeMgr, ThemeControl};
 use kas::{TkAction, WindowId};
 use kas_theme::{Theme, Window as _};
 use winit::dpi::PhysicalSize;
@@ -335,12 +335,14 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             unsafe {
                 // Safety: lifetimes do not escape the returned draw_handle value.
                 let mut draw_handle = shared.theme.draw_handle(draw, &mut self.theme_window);
-                self.widget.draw(&mut draw_handle, &self.mgr, false);
+                let draw_mgr = DrawMgr::new(&mut draw_handle);
+                self.widget.draw(draw_mgr, &self.mgr, false);
             }
             #[cfg(feature = "gat")]
             {
                 let mut draw_handle = shared.theme.draw_handle(draw, &mut self.theme_window);
-                self.widget.draw(&mut draw_handle, &self.mgr, false);
+                let draw_mgr = DrawMgr::new(&mut draw_handle);
+                self.widget.draw(draw_mgr, &self.mgr, false);
             }
         }
 

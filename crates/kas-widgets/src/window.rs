@@ -49,12 +49,12 @@ widget! {
         }
 
         #[inline]
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
             let disabled = disabled || self.is_disabled();
-            self.w.draw(draw, mgr, disabled);
+            self.w.draw(draw.re(), mgr, disabled);
             for (_, popup) in &self.popups {
                 if let Some(widget) = self.w.find_widget_mut(&popup.id) {
-                    draw.with_overlay(widget.rect(), &mut |draw| {
+                    draw.with_overlay(widget.rect(), |draw| {
                         widget.draw(draw, mgr, disabled);
                     });
                 }

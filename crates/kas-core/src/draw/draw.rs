@@ -21,17 +21,17 @@ use std::any::Any;
 /// functionality over this object.
 ///
 /// This type is used to present a unified mid-level draw interface, as
-/// available from [`crate::theme::DrawHandle::draw_device`].
+/// available from [`crate::theme::DrawMgr::draw_device`].
 /// A concrete `DrawIface` object may be obtained via downcast, e.g.:
 /// ```ignore
-/// # use kas::draw::{DrawIface, DrawRoundedImpl, DrawSharedImpl, DrawHandle, DrawRounded, color::Rgba};
+/// # use kas::draw::{DrawIface, DrawRoundedImpl, DrawSharedImpl, DrawMgr, DrawRounded, color::Rgba};
 /// # use kas::geom::Rect;
 /// # struct CircleWidget<DS> {
 /// #     rect: Rect,
 /// #     _pd: std::marker::PhantomData<DS>,
 /// # }
 /// impl CircleWidget {
-///     fn draw(&mut self, draw: &mut dyn DrawHandle) {
+///     fn draw(&mut self, mut draw: DrawMgr) {
 ///         // This type assumes usage of kas_wgpu without a custom draw pipe:
 ///         type DrawIface = DrawIface<kas_wgpu::draw::DrawPipe<()>>;
 ///         if let Some(mut draw) = DrawIface::downcast_from(draw.draw_device()) {

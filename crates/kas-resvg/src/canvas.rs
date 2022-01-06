@@ -127,7 +127,7 @@ widget! {
             }
         }
 
-        fn draw(&mut self, draw: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, _: &ManagerState, _: bool) {
             if let Some(id) = self.image_id {
                 draw.image(id, self.rect());
             }

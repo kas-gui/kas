@@ -239,7 +239,7 @@ widget! {
             self.handle.find_id(coord).or(Some(self.id()))
         }
 
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
             let dir = self.direction.as_direction();
             let state = self.handle.input_state(mgr, disabled);
             draw.scrollbar(self.core.rect, self.handle.rect(), dir, state);
@@ -519,15 +519,15 @@ widget! {
             &mut self.inner
         }
 
-        fn draw_(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw_(&mut self, mut draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
             let disabled = disabled || self.is_disabled();
             if self.show_bars.0 {
-                self.horiz_bar.draw(draw, mgr, disabled);
+                self.horiz_bar.draw(draw.re(), mgr, disabled);
             }
             if self.show_bars.1 {
-                self.vert_bar.draw(draw, mgr, disabled);
+                self.vert_bar.draw(draw.re(), mgr, disabled);
             }
-            self.inner.draw(draw, mgr, disabled);
+            self.inner.draw(draw.re(), mgr, disabled);
         }
     }
 
@@ -615,30 +615,30 @@ widget! {
         }
 
         #[cfg(feature = "min_spec")]
-        default fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        default fn draw(&mut self, draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
             self.draw_(draw, mgr, disabled);
         }
         #[cfg(not(feature = "min_spec"))]
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
             self.draw_(draw, mgr, disabled);
         }
     }
 
     #[cfg(feature = "min_spec")]
     impl<W: Widget> Layout for ScrollBars<ScrollRegion<W>> {
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
             let disabled = disabled || self.is_disabled() || self.inner.is_disabled();
             // Enlarge clip region to *our* rect:
-            draw.with_clip_region(self.core.rect, self.inner.scroll_offset(), &mut |handle| {
+            draw.with_clip_region(self.core.rect, self.inner.scroll_offset(), |handle| {
                 self.inner.inner_mut().draw(handle, mgr, disabled)
             });
             // Use a second clip region to force draw order:
-            draw.with_clip_region(self.core.rect, Offset::ZERO, &mut |draw| {
+            draw.with_clip_region(self.core.rect, Offset::ZERO, |mut draw| {
                 if self.show_bars.0 {
-                    self.horiz_bar.draw(draw, mgr, disabled);
+                    self.horiz_bar.draw(draw.re(), mgr, disabled);
                 }
                 if self.show_bars.1 {
-                    self.vert_bar.draw(draw, mgr, disabled);
+                    self.vert_bar.draw(draw.re(), mgr, disabled);
                 }
             });
         }
