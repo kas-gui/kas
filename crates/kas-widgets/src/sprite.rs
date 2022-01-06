@@ -44,7 +44,7 @@ widget! {
             self.sprite.size_rules(size_mgr, axis)
         }
 
-        fn set_rect(&mut self, _: &mut EventMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.core_data_mut().rect = self.sprite.align_rect(rect, align);
         }
 
@@ -85,23 +85,21 @@ impl Image {
     }
 
     /// Set image path
-    pub fn set_path<P: Into<PathBuf>>(&mut self, mgr: &mut EventMgr, path: P) {
+    pub fn set_path<P: Into<PathBuf>>(&mut self, mgr: &mut SetRectMgr, path: P) {
         self.path = path.into();
         self.do_load = false;
         let mut size = Size::ZERO;
-        mgr.draw_shared(|ds| {
-            if let Some(id) = self.id {
-                ds.image_free(id);
+        if let Some(id) = self.id {
+            mgr.draw_shared().image_free(id);
+        }
+        match mgr.draw_shared().image_from_path(&self.path) {
+            Ok(id) => {
+                self.id = Some(id);
+                size = mgr.draw_shared().image_size(id).unwrap_or(Size::ZERO);
             }
-            match ds.image_from_path(&self.path) {
-                Ok(id) => {
-                    self.id = Some(id);
-                    size = ds.image_size(id).unwrap_or(Size::ZERO);
-                }
-                Err(error) => self.handle_load_fail(&error),
-            };
-        });
-        mgr.redraw(self.id());
+            Err(error) => self.handle_load_fail(&error),
+        };
+        *mgr |= TkAction::REDRAW;
         if size != self.sprite.size {
             self.sprite.size = size;
             *mgr |= TkAction::RESIZE;
@@ -109,10 +107,10 @@ impl Image {
     }
 
     /// Remove image (set empty)
-    pub fn clear(&mut self, mgr: &mut EventMgr) {
+    pub fn clear(&mut self, mgr: &mut SetRectMgr) {
         if let Some(id) = self.id.take() {
             self.do_load = false;
-            mgr.draw_shared(|ds| ds.image_free(id));
+            mgr.draw_shared().image_free(id);
         }
     }
 

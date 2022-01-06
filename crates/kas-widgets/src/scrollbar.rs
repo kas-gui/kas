@@ -217,7 +217,7 @@ widget! {
             }
         }
 
-        fn set_rect(&mut self, mgr: &mut EventMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             let mut ideal_size = Size::splat(self.width);
             ideal_size.set_component(self.direction, i32::MAX);
             let rect = align
@@ -568,12 +568,12 @@ widget! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut EventMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             let pos = rect.pos;
             let mut child_size = rect.size;
 
-            let bar_width = mgr.size_mgr(|size| (size.scrollbar().0).1);
+            let bar_width = (mgr.size_mgr().scrollbar().0).1;
             if self.auto_bars {
                 self.show_bars = self.inner.scroll_axes(child_size);
             }

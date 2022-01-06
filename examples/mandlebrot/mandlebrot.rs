@@ -331,7 +331,7 @@ widget! {
         }
 
         #[inline]
-        fn set_rect(&mut self, _: &mut EventMgr, rect: Rect, _: AlignHints) {
+        fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, _: AlignHints) {
             self.core.rect = rect;
             let size = DVec2::from(rect.size);
             let rel_width = DVec2(size.0 / size.1, 1.0);

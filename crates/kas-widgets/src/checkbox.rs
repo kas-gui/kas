@@ -32,7 +32,7 @@ widget! {
             SizeRules::extract_fixed(axis, size, margins)
         }
 
-        fn set_rect(&mut self, _: &mut EventMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             let rect = align
                 .complete(Align::Center, Align::Center)
                 .aligned_rect(self.rect().size, rect);

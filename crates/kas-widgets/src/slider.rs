@@ -233,10 +233,10 @@ widget! {
             }
         }
 
-        fn set_rect(&mut self, mgr: &mut EventMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             self.handle.set_rect(mgr, rect, align);
-            let min_handle_size = mgr.size_mgr(|size| (size.slider().0).0);
+            let min_handle_size = (mgr.size_mgr().slider().0).0;
             let mut size = rect.size;
             if self.direction.is_horizontal() {
                 size.0 = min_handle_size.min(rect.size.0);

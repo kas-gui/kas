@@ -35,7 +35,7 @@ widget! {
             size_mgr.text_bound(&mut self.text, TextClass::LabelScroll, axis)
         }
 
-        fn set_rect(&mut self, _: &mut EventMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             let size = rect.size;
             self.required = self

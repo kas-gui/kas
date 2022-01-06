@@ -112,7 +112,7 @@ impl<M: 'static> Layout for Box<dyn Menu<Msg = M>> {
         self.as_mut().size_rules(size_mgr, axis)
     }
 
-    fn set_rect(&mut self, mgr: &mut EventMgr, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
         self.as_mut().set_rect(mgr, rect, align);
     }
 

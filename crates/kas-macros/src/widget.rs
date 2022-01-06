@@ -240,7 +240,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                 #[inline]
                 fn set_rect(
                     &mut self,
-                    mgr: &mut ::kas::event::EventMgr,
+                    mgr: &mut ::kas::layout::SetRectMgr,
                     rect: ::kas::geom::Rect,
                     align: ::kas::layout::AlignHints,
                 ) {

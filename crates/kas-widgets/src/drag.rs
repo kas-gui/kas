@@ -53,7 +53,7 @@ widget! {
             SizeRules::EMPTY
         }
 
-        fn set_rect(&mut self, _: &mut EventMgr, rect: Rect, _: AlignHints) {
+        fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, _: AlignHints) {
             self.track = rect;
         }
 

@@ -8,8 +8,7 @@
 use log::trace;
 use std::fmt;
 
-use super::{AlignHints, AxisInfo, Margins, SizeRules};
-use crate::event::EventMgr;
+use super::{AlignHints, AxisInfo, Margins, SetRectMgr, SizeRules};
 use crate::geom::{Rect, Size};
 use crate::theme::SizeMgr;
 use crate::{Widget, WidgetConfig};
@@ -184,7 +183,7 @@ impl SolveCache {
     pub fn apply_rect(
         &mut self,
         widget: &mut dyn WidgetConfig,
-        mgr: &mut EventMgr,
+        mgr: &mut SetRectMgr,
         mut rect: Rect,
         inner_margin: bool,
     ) {
@@ -198,20 +197,18 @@ impl SolveCache {
         // We call size_rules not because we want the result, but because our
         // spec requires that we do so before calling set_rect.
         if self.refresh_rules || width != self.last_width {
-            mgr.size_mgr(|size_mgr| {
-                if self.refresh_rules {
-                    let w = widget.size_rules(size_mgr.re(), AxisInfo::new(false, None));
-                    self.min.0 = w.min_size();
-                    self.ideal.0 = w.ideal_size();
-                    self.margins.horiz = w.margins();
-                }
+            if self.refresh_rules {
+                let w = widget.size_rules(mgr.size_mgr(), AxisInfo::new(false, None));
+                self.min.0 = w.min_size();
+                self.ideal.0 = w.ideal_size();
+                self.margins.horiz = w.margins();
+            }
 
-                let h = widget.size_rules(size_mgr.re(), AxisInfo::new(true, Some(width)));
-                self.min.1 = h.min_size();
-                self.ideal.1 = h.ideal_size();
-                self.margins.vert = h.margins();
-                self.last_width = width;
-            });
+            let h = widget.size_rules(mgr.size_mgr(), AxisInfo::new(true, Some(width)));
+            self.min.1 = h.min_size();
+            self.ideal.1 = h.ideal_size();
+            self.margins.vert = h.margins();
+            self.last_width = width;
         }
 
         if inner_margin {

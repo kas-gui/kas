@@ -39,7 +39,7 @@ widget! {
         }
 
         #[inline]
-        fn set_rect(&mut self, _: &mut EventMgr, rect: Rect, _align: AlignHints) {
+        fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, _align: AlignHints) {
             // Force to square
             let size = rect.size.0.min(rect.size.1);
             let size = Size::splat(size);

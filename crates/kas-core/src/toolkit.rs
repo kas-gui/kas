@@ -139,19 +139,12 @@ pub trait ShellWindow {
     /// returned from the closure.
     fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeControl) -> TkAction);
 
-    /// Access a [`SizeHandle`]
+    /// Access a [`SizeHandle`] and a [`DrawShared`]
     ///
     /// Implementations should call the given function argument once; not doing
     /// so is memory-safe but will cause a panic when `size_handle` is called.
     /// User-code *must not* depend on `f` being called for memory safety.
-    fn size_handle(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle));
-
-    /// Access a [`DrawShared`]
-    ///
-    /// Implementations should call the given function argument once; not doing
-    /// so is memory-safe but will cause a panic when `draw_shared` is called.
-    /// User-code *must not* depend on `f` being called for memory safety.
-    fn draw_shared(&mut self, f: &mut dyn FnMut(&mut dyn DrawShared));
+    fn size_and_draw_shared(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle, &mut dyn DrawShared));
 
     /// Set the mouse cursor
     fn set_cursor_icon(&mut self, icon: event::CursorIcon);

@@ -74,6 +74,6 @@ widget! {
         }
 
         fn remove_popup(&mut self, _: &mut EventMgr, _: WindowId) {}
-        fn resize_popups(&mut self, _: &mut EventMgr) {}
+        fn resize_popups(&mut self, _: &mut SetRectMgr) {}
     }
 }

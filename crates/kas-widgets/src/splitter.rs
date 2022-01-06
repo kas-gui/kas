@@ -136,7 +136,7 @@ widget! {
             solver.finish(&mut self.data)
         }
 
-        fn set_rect(&mut self, mgr: &mut EventMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             if self.widgets.is_empty() {
                 return;
@@ -229,7 +229,7 @@ widget! {
                             return r.try_into().unwrap_or_else(|_| {
                                 // Message is the new offset relative to the track;
                                 // the handle has already adjusted its position
-                                self.adjust_size(mgr, n);
+                                mgr.set_rect_mgr(|mgr| self.adjust_size(mgr, n));
                                 Response::Used
                             });
                         }
@@ -282,7 +282,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         }
     }
 
-    fn adjust_size(&mut self, mgr: &mut EventMgr, n: usize) {
+    fn adjust_size(&mut self, mgr: &mut SetRectMgr, n: usize) {
         assert!(n < self.handles.len());
         assert_eq!(self.widgets.len(), self.handles.len() + 1);
         let index = 2 * n + 1;

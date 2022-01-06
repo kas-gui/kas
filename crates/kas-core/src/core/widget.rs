@@ -10,7 +10,7 @@ use std::fmt;
 
 use crate::event::{self, ConfigureManager, EventMgr};
 use crate::geom::{Coord, Offset, Rect};
-use crate::layout::{self, AlignHints, AxisInfo, SizeRules};
+use crate::layout::{self, AlignHints, AxisInfo, SetRectMgr, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::{CoreData, TkAction, WidgetId};
 
@@ -357,7 +357,7 @@ pub trait Layout: WidgetChildren {
     ///
     /// One may assume that `size_rules` has been called at least once for each
     /// axis with current size information before this method.
-    fn set_rect(&mut self, mgr: &mut EventMgr, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
         self.core_data_mut().rect = rect;
         self.layout().set_rect(mgr, rect, align);
     }

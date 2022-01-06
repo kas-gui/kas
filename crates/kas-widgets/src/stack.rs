@@ -64,7 +64,7 @@ widget! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut EventMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             for child in &mut self.widgets {
                 child.set_rect(mgr, rect, align);

@@ -90,11 +90,11 @@ widget! {
         /// (re)created: on start and on resizing.
         ///
         /// This method does nothing before a backing pixmap has been created.
-        pub fn redraw(&mut self, mgr: &mut EventMgr) {
+        pub fn redraw(&mut self, mgr: &mut SetRectMgr) {
             if let Some((pm, id)) = self.pixmap.as_mut().zip(self.image_id) {
                 pm.fill(Color::TRANSPARENT);
                 self.program.draw(pm);
-                mgr.draw_shared(|ds| ds.image_upload(id, pm.data(), ImageFormat::Rgba8));
+                mgr.draw_shared().image_upload(id, pm.data(), ImageFormat::Rgba8);
             }
         }
     }
@@ -104,25 +104,23 @@ widget! {
             self.sprite.size_rules(size_mgr, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut EventMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.core.rect = self.sprite.align_rect(rect, align);
             let size: (u32, u32) = self.core.rect.size.into();
 
             let pm_size = self.pixmap.as_ref().map(|pm| (pm.width(), pm.height()));
             if pm_size.unwrap_or((0, 0)) != size {
                 if let Some(id) = self.image_id {
-                    mgr.draw_shared(|ds| ds.image_free(id));
+                    mgr.draw_shared().image_free(id);
                 }
                 self.pixmap = Pixmap::new(size.0, size.1);
                 let program = &mut self.program;
                 self.image_id = self.pixmap.as_mut().map(|pm| {
                     program.draw(pm);
-                    mgr.draw_shared(|ds| {
-                        let (w, h) = (pm.width(), pm.height());
-                        let id = ds.image_alloc((w, h)).unwrap();
-                        ds.image_upload(id, pm.data(), ImageFormat::Rgba8);
-                        id
-                    })
+                    let (w, h) = (pm.width(), pm.height());
+                    let id = mgr.draw_shared().image_alloc((w, h)).unwrap();
+                    mgr.draw_shared().image_upload(id, pm.data(), ImageFormat::Rgba8);
+                    id
                 });
             }
         }

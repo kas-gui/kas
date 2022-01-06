@@ -251,7 +251,7 @@ widget! {
             for w in &mut self.widgets {
                 w.key = None;
             }
-            self.update_widgets(mgr);
+            mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
             // Force SET_SIZE so that scroll-bar wrappers get updated
             trace!("update_view triggers SET_SIZE");
             *mgr |= TkAction::SET_SIZE;
@@ -274,7 +274,7 @@ widget! {
 
         /// Construct a position solver. Note: this does more work and updates to
         /// self than is necessary in several cases where it is used.
-        fn position_solver(&mut self, mgr: &mut EventMgr) -> PositionSolver {
+        fn position_solver(&mut self, mgr: &mut SetRectMgr) -> PositionSolver {
             let data_len = self.data.len();
             let data_len32 = i32::conv(data_len);
             let view_size = self.rect().size;
@@ -313,7 +313,7 @@ widget! {
             }
         }
 
-        fn update_widgets(&mut self, mgr: &mut EventMgr) {
+        fn update_widgets(&mut self, mgr: &mut SetRectMgr) {
             let time = Instant::now();
             let solver = self.position_solver(mgr);
 
@@ -368,7 +368,7 @@ widget! {
         #[inline]
         fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
             *mgr |= self.scroll.set_offset(offset);
-            self.update_widgets(mgr);
+            mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
             self.scroll.offset()
         }
     }
@@ -421,7 +421,7 @@ widget! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut EventMgr, rect: Rect, mut align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, mut align: AlignHints) {
             self.core.rect = rect;
 
             let mut child_size = rect.size - self.frame_size;
@@ -454,18 +454,16 @@ widget! {
                 debug!("allocating widgets (old len = {}, new = {})", old_num, num);
                 *mgr |= TkAction::RECONFIGURE;
                 self.widgets.reserve(num - old_num);
-                mgr.size_mgr(|size_mgr| {
-                    for _ in old_num..num {
-                        let mut widget = self.view.new();
-                        solve_size_rules(
-                            &mut widget,
-                            size_mgr.re(),
-                            Some(child_size.0),
-                            Some(child_size.1),
-                        );
-                        self.widgets.push(WidgetData { key: None, widget });
-                    }
-                });
+                for _ in old_num..num {
+                    let mut widget = self.view.new();
+                    solve_size_rules(
+                        &mut widget,
+                        mgr.size_mgr(),
+                        Some(child_size.0),
+                        Some(child_size.1),
+                    );
+                    self.widgets.push(WidgetData { key: None, widget });
+                }
             } else if num + 64 <= old_num {
                 // Free memory (rarely useful?)
                 self.widgets.truncate(num);
@@ -483,7 +481,7 @@ widget! {
                 return None;
             }
 
-            let solver = self.position_solver(mgr);
+            let solver = mgr.set_rect_mgr(|mgr| self.position_solver(mgr));
             let last_data = self.data.len() - 1;
             let data = if let Some(index) = from {
                 let data = solver.child_to_data(index);
@@ -503,7 +501,7 @@ widget! {
             let (_, action) = self.scroll.focus_rect(solver.rect(data), self.core.rect);
             if !action.is_empty() {
                 *mgr |= action;
-                self.update_widgets(mgr);
+                mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
             }
 
             Some(data % usize::conv(self.cur_len))
@@ -599,7 +597,7 @@ widget! {
                     };
                 }
                 Event::Command(cmd, _) => {
-                    let solver = self.position_solver(mgr);
+                    let solver = mgr.set_rect_mgr(|mgr| self.position_solver(mgr));
                     let cur = mgr
                         .nav_focus()
                         .and_then(|id| self.find_child_index(id))
@@ -626,7 +624,7 @@ widget! {
                         let (rect, action) = self.scroll.focus_rect(solver.rect(index), self.core.rect);
                         if !action.is_empty() {
                             *mgr |= action;
-                            self.update_widgets(mgr);
+                            mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
                         }
                         let len = usize::conv(self.cur_len);
                         mgr.set_nav_focus(self.widgets[index % len].widget.id(), true);
@@ -649,7 +647,7 @@ widget! {
                     });
             if !action.is_empty() {
                 *mgr |= action;
-                self.update_widgets(mgr);
+                mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
             }
             response.void_into()
         }
@@ -711,7 +709,7 @@ widget! {
                     (_, Response::Focus(rect)) => {
                         let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
                         *mgr |= action;
-                        self.update_widgets(mgr);
+                        mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
                         Response::Focus(rect)
                     }
                     (Some(key), Response::Select) => {

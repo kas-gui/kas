@@ -388,7 +388,7 @@ widget! {
             size_mgr.text_bound(&mut self.text, class, axis)
         }
 
-        fn set_rect(&mut self, _: &mut EventMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             let valign = if self.multi_line {
                 Align::Default
             } else {

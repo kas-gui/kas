@@ -10,7 +10,7 @@ use super::Layout;
 use super::{Widget, WidgetId};
 use crate::event::{self, EventMgr};
 use crate::geom::Rect;
-use crate::layout::StorageChain;
+use crate::layout::{SetRectMgr, StorageChain};
 use crate::{dir::Direction, WindowId};
 
 #[cfg(feature = "winit")]
@@ -115,7 +115,7 @@ pub trait Window: Widget<Msg = event::VoidMsg> {
     ///
     /// This is called immediately after [`Layout::set_rect`] to resize
     /// existing pop-ups.
-    fn resize_popups(&mut self, mgr: &mut EventMgr);
+    fn resize_popups(&mut self, mgr: &mut SetRectMgr);
 
     /// Trigger closure of a pop-up
     ///

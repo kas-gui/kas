@@ -145,7 +145,7 @@ widget! {
             }
         }
 
-        fn set_rect(&mut self, mgr: &mut EventMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             let size = match self.ideal_size.aspect_scale_to(rect.size) {
                 Some(size) => {
                     self.core_data_mut().rect = align
@@ -164,7 +164,7 @@ widget! {
             let pm_size = self.pixmap.as_ref().map(|pm| (pm.width(), pm.height()));
             if pm_size.unwrap_or((0, 0)) != size {
                 if let Some(id) = self.image_id {
-                    mgr.draw_shared(|ds| ds.image_free(id));
+                    mgr.draw_shared().image_free(id);
                 }
                 self.pixmap = Pixmap::new(size.0, size.1);
                 if let Some(tree) = self.tree.as_ref() {
@@ -174,11 +174,9 @@ widget! {
                         // alas, we cannot tell resvg to skip the aspect-ratio-scaling!
                         resvg::render(tree, usvg::FitTo::Height(h), pm.as_mut());
 
-                        mgr.draw_shared(|ds| {
-                            let id = ds.image_alloc((w, h)).unwrap();
-                            ds.image_upload(id, pm.data(), ImageFormat::Rgba8);
-                            id
-                        })
+                        let id = mgr.draw_shared().image_alloc((w, h)).unwrap();
+                        mgr.draw_shared().image_upload(id, pm.data(), ImageFormat::Rgba8);
+                        id
                     });
                 }
             }

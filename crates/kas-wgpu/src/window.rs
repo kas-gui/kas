@@ -12,7 +12,7 @@ use kas::cast::Cast;
 use kas::draw::{DrawIface, DrawShared, PassId};
 use kas::event::{CursorIcon, EventState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
-use kas::layout::SolveCache;
+use kas::layout::{SetRectMgr, SolveCache};
 use kas::theme::{DrawMgr, SizeHandle, SizeMgr, ThemeControl};
 use kas::{TkAction, WindowId};
 use kas_theme::{Theme, Window as _};
@@ -275,13 +275,11 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let rect = Rect::new(Coord::ZERO, self.sc_size());
         debug!("Resizing window to rect = {:?}", rect);
 
-        let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let solve_cache = &mut self.solve_cache;
         let widget = &mut self.widget;
-        self.mgr.with(&mut tkw, |mgr| {
-            solve_cache.apply_rect(widget.as_widget_mut(), mgr, rect, true);
-            widget.resize_popups(mgr);
-        });
+        let mut mgr = SetRectMgr::new(self.theme_window.size_handle(), &mut shared.draw);
+        solve_cache.apply_rect(widget.as_widget_mut(), &mut mgr, rect, true);
+        widget.resize_popups(&mut mgr);
 
         let restrict_dimensions = self.widget.restrict_dimensions();
         if restrict_dimensions.0 {
@@ -465,14 +463,13 @@ where
         self.shared.pending.push(PendingAction::TkAction(action));
     }
 
-    fn size_handle(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
+    fn size_and_draw_shared(
+        &mut self,
+        f: &mut dyn FnMut(&mut dyn SizeHandle, &mut dyn DrawShared),
+    ) {
         use kas_theme::Window;
         let mut size_handle = self.theme_window.size_handle();
-        f(&mut size_handle);
-    }
-
-    fn draw_shared(&mut self, f: &mut dyn FnMut(&mut dyn DrawShared)) {
-        f(&mut self.shared.draw);
+        f(&mut size_handle, &mut self.shared.draw);
     }
 
     #[inline]
