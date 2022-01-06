@@ -223,7 +223,6 @@ where
 
     /// Add a boxed window directly, inline
     #[inline]
-    #[must_use]
     pub fn with_boxed(mut self, widget: Box<dyn kas::Window>) -> Result<Self, Error> {
         self.add_boxed(widget)?;
         Ok(self)

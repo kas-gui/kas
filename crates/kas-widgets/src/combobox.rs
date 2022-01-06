@@ -332,7 +332,6 @@ impl<M: 'static> ComboBox<M> {
 }
 
 impl<M: 'static> ComboBox<M> {
-    #[must_use]
     fn map_response(
         &mut self,
         mgr: &mut EventMgr,
