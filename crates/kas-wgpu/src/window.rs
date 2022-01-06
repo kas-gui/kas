@@ -189,8 +189,8 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         if action.contains(TkAction::REGION_MOVED) {
             let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
             self.mgr.region_moved(&mut tkw, &mut *self.widget);
-            self.window.request_redraw();
-        } else if action.contains(TkAction::REDRAW) {
+        }
+        if !action.is_empty() {
             self.window.request_redraw();
         }
     }
@@ -280,6 +280,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let mut mgr = SetRectMgr::new(self.theme_window.size_handle(), &mut shared.draw);
         solve_cache.apply_rect(widget.as_widget_mut(), &mut mgr, rect, true);
         widget.resize_popups(&mut mgr);
+        self.mgr.send_action(mgr.take_action());
 
         let restrict_dimensions = self.widget.restrict_dimensions();
         if restrict_dimensions.0 {
@@ -333,15 +334,22 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             unsafe {
                 // Safety: lifetimes do not escape the returned draw_handle value.
                 let mut draw_handle = shared.theme.draw_handle(draw, &mut self.theme_window);
-                let draw_mgr = DrawMgr::new(&mut draw_handle, &self.mgr);
+                let draw_mgr = DrawMgr::new(&mut draw_handle, &mut self.mgr);
                 self.widget.draw(draw_mgr, false);
             }
             #[cfg(feature = "gat")]
             {
                 let mut draw_handle = shared.theme.draw_handle(draw, &mut self.theme_window);
-                let draw_mgr = DrawMgr::new(&mut draw_handle, &self.mgr);
+                let draw_mgr = DrawMgr::new(&mut draw_handle, &mut self.mgr);
                 self.widget.draw(draw_mgr, false);
             }
+        }
+
+        // Ignore REDRAW since we're doing that anyway. Anything else, just start over.
+        let action = self.mgr.action - TkAction::REDRAW;
+        if !action.is_empty() {
+            self.mgr.action = TkAction::empty();
+            return self.handle_action(shared, action);
         }
 
         let time2 = Instant::now();

@@ -386,7 +386,9 @@ impl<'a> EventMgr<'a> {
         let mut result = None;
         self.shell
             .size_and_draw_shared(&mut |size_handle, draw_shared| {
-                result = Some(f(&mut SetRectMgr::new(size_handle, draw_shared)));
+                let mut mgr = SetRectMgr::new(size_handle, draw_shared);
+                result = Some(f(&mut mgr));
+                self.action |= mgr.take_action();
             });
         result.expect("ShellWindow::size_handle impl failed to call function argument")
     }

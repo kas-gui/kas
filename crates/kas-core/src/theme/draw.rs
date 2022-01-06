@@ -15,7 +15,7 @@ use crate::geom::{Coord, Offset, Rect};
 use crate::layout::SetRectMgr;
 use crate::text::{AccelString, Text, TextApi, TextDisplay};
 use crate::theme::{InputState, SizeHandle, SizeMgr, TextClass};
-use crate::WidgetCore;
+use crate::{WidgetCore, TkAction};
 
 /// Draw interface
 ///
@@ -30,13 +30,13 @@ use crate::WidgetCore;
 /// -   [`Self::with_clip_region`] constructs a new pass with clipping
 /// -   [`Self::with_overlay`] constructs a new pass for an overlay (e.g. pop-up menu or tooltip)
 /// -   [`Self::get_clip_rect`] returns the current clip rect
-pub struct DrawMgr<'a>(&'a mut dyn DrawHandle, &'a EventState);
+pub struct DrawMgr<'a>(&'a mut dyn DrawHandle, &'a mut EventState);
 
 impl<'a> DrawMgr<'a> {
     /// Construct from a [`DrawMgr`] and [`EventState`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn new(h: &'a mut dyn DrawHandle, mgr: &'a EventState) -> Self {
+    pub fn new(h: &'a mut dyn DrawHandle, mgr: &'a mut EventState) -> Self {
         DrawMgr(h, mgr)
     }
 
@@ -71,9 +71,12 @@ impl<'a> DrawMgr<'a> {
     }
 
     /// Access a [`SetRectMgr`]
-    pub fn set_rect_mgr(&mut self) -> SetRectMgr {
+    pub fn set_rect_mgr<F: FnMut(&mut SetRectMgr) -> T, T>(&mut self, mut f: F) -> T {
         let (sh, ds) = self.0.size_and_draw_shared();
-        SetRectMgr::new(sh, ds)
+        let mut mgr = SetRectMgr::new(sh, ds);
+        let t = f(&mut mgr);
+        self.1.send_action(mgr.take_action());
+        t
     }
 
     /// Access the low-level draw device
@@ -295,6 +298,13 @@ impl<'a> DrawMgr<'a> {
     /// Draw an image
     pub fn image(&mut self, id: ImageId, rect: Rect) {
         self.0.image(id, rect);
+    }
+}
+
+impl<'a> std::ops::BitOrAssign<TkAction> for DrawMgr<'a> {
+    #[inline]
+    fn bitor_assign(&mut self, action: TkAction) {
+        self.1.send_action(action);
     }
 }
 

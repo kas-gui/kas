@@ -145,15 +145,28 @@ impl Directional for AxisInfo {
     }
 }
 
+/// Manager available to [`Layout::set_rect`]
+///
+/// This type is functionally a superset of [`SizeMgr`] and subset of
+/// [`DrawMgr`], with support for the appropriate conversions.
 #[must_use]
 pub struct SetRectMgr<'a>(&'a dyn SizeHandle, &'a mut dyn DrawShared, TkAction);
 
 impl<'a> SetRectMgr<'a> {
-    /// Construct from ...
+    /// Construct from a [`SizeHandle`] and a [`DrawShared`]
+    ///
+    /// Note: the embedded [`TkAction`] should be extracted after usage.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub fn new(size: &'a dyn SizeHandle, draw: &'a mut dyn DrawShared) -> Self {
         SetRectMgr(size, draw, TkAction::empty())
+    }
+
+    /// Deconstruct
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    pub fn take_action(self) -> TkAction {
+        self.2
     }
 
     /// Access a [`SizeMgr`]
