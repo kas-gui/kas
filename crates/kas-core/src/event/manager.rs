@@ -54,12 +54,33 @@ struct MouseGrab {
 
 #[derive(Clone, Debug)]
 struct TouchGrab {
+    id: u64,
     start_id: WidgetId,
     depress: Option<WidgetId>,
     cur_id: Option<WidgetId>,
+    last_move: Coord,
     coord: Coord,
     mode: GrabMode,
     pan_grab: (u16, u16),
+}
+
+impl TouchGrab {
+    fn flush_move(&mut self) -> Option<(WidgetId, Event)> {
+        if self.last_move != self.coord {
+            let delta = self.coord - self.last_move;
+            let target = self.start_id.clone();
+            let event = Event::PressMove {
+                source: PressSource::Touch(self.id),
+                cur_id: self.cur_id.clone(),
+                coord: self.coord,
+                delta,
+            };
+            self.last_move = self.coord;
+            Some((target, event))
+        } else {
+            None
+        }
+    }
 }
 
 const MAX_PAN_GRABS: usize = 2;
@@ -117,7 +138,7 @@ pub struct EventState {
     last_click_repetitions: u32,
     last_click_timeout: Instant,
     mouse_grab: Option<MouseGrab>,
-    touch_grab: LinearMap<u64, TouchGrab>,
+    touch_grab: SmallVec<[TouchGrab; 8]>,
     pan_grab: SmallVec<[PanGrab; 4]>,
     accel_stack: Vec<(bool, HashMap<VirtualKeyCode, WidgetId>)>,
     accel_layers: HashMap<WidgetId, (bool, HashMap<VirtualKeyCode, WidgetId>)>,
@@ -194,9 +215,9 @@ impl EventState {
             }
         }
         for grab in self.touch_grab.iter_mut() {
-            let p0 = grab.1.pan_grab.0;
+            let p0 = grab.pan_grab.0;
             if usize::from(p0) >= index && p0 != u16::MAX {
-                grab.1.pan_grab.0 = p0 - 1;
+                grab.pan_grab.0 = p0 - 1;
             }
         }
     }
@@ -217,7 +238,6 @@ impl EventState {
 
         // Note: the fact that grab.n > 0 implies source is a touch event!
         for grab in self.touch_grab.iter_mut() {
-            let grab = grab.1;
             if grab.pan_grab.0 == g.0 && grab.pan_grab.1 > g.1 {
                 grab.pan_grab.1 -= 1;
                 if usize::from(grab.pan_grab.1) == MAX_PAN_GRABS - 1 {
@@ -433,14 +453,25 @@ impl<'a> EventMgr<'a> {
 
     #[inline]
     fn get_touch(&mut self, touch_id: u64) -> Option<&mut TouchGrab> {
-        self.state.touch_grab.get_mut(&touch_id)
+        for grab in self.state.touch_grab.iter_mut() {
+            if grab.id == touch_id {
+                return Some(grab);
+            }
+        }
+        None
     }
 
     fn remove_touch(&mut self, touch_id: u64) -> Option<TouchGrab> {
-        self.state.touch_grab.remove(&touch_id).map(|grab| {
-            trace!("EventMgr: end touch grab by {}", grab.start_id);
-            grab
-        })
+        for i in 0..self.state.touch_grab.len() {
+            if self.state.touch_grab[i].id == touch_id {
+                trace!(
+                    "EventMgr: end touch grab by {}",
+                    self.state.touch_grab[i].start_id
+                );
+                return Some(self.state.touch_grab.remove(i));
+            }
+        }
+        None
     }
 
     fn clear_char_focus(&mut self) {

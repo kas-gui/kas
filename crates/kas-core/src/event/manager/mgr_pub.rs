@@ -81,7 +81,7 @@ impl EventState {
         {
             return true;
         }
-        for grab in self.touch_grab.values() {
+        for grab in self.touch_grab.iter() {
             if *w_id == grab.depress {
                 return true;
             }
@@ -601,17 +601,16 @@ impl<'a> EventMgr<'a> {
                     pan_grab = self.state.set_pan_on(id.clone(), mode, true, coord);
                 }
                 trace!("EventMgr: start touch grab by {}", start_id);
-                self.state.touch_grab.insert(
-                    touch_id,
-                    TouchGrab {
-                        start_id: start_id.clone(),
-                        depress: Some(id.clone()),
-                        cur_id: Some(id),
-                        coord,
-                        mode,
-                        pan_grab,
-                    },
-                );
+                self.state.touch_grab.push(TouchGrab {
+                    id: touch_id,
+                    start_id: start_id.clone(),
+                    depress: Some(id.clone()),
+                    cur_id: Some(id),
+                    last_move: coord,
+                    coord,
+                    mode,
+                    pan_grab,
+                });
             }
         }
 
@@ -656,7 +655,7 @@ impl<'a> EventMgr<'a> {
                 }
             }
             PressSource::Touch(id) => {
-                if let Some(grab) = self.state.touch_grab.get_mut(&id) {
+                if let Some(grab) = self.get_touch(id) {
                     redraw = grab.depress != target;
                     grab.depress = target.clone();
                 }

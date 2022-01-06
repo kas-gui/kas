@@ -15,7 +15,7 @@ use crate::geom::{Coord, Offset, Rect};
 use crate::layout::SetRectMgr;
 use crate::text::{AccelString, Text, TextApi, TextDisplay};
 use crate::theme::{InputState, SizeHandle, SizeMgr, TextClass};
-use crate::{WidgetCore, TkAction};
+use crate::{TkAction, WidgetCore};
 
 /// Draw interface
 ///

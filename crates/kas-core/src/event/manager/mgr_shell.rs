@@ -128,7 +128,7 @@ impl EventState {
         self.with(shell, |mgr| mgr.set_hover(widget, hover));
 
         for grab in self.touch_grab.iter_mut() {
-            grab.1.cur_id = widget.find_id(grab.1.coord);
+            grab.cur_id = widget.find_id(grab.coord);
         }
     }
 
@@ -191,6 +191,12 @@ impl EventState {
                 let (wid, popup, _old_nav_focus) = mgr.state.popups.pop().unwrap();
                 mgr.send_event(widget, popup.parent, Event::PopupRemoved(wid));
                 // Don't restore old nav focus: assume new focus will be set by new popup
+            }
+        }
+
+        for i in 0..mgr.state.touch_grab.len() {
+            if let Some((id, event)) = mgr.state.touch_grab[i].flush_move() {
+                mgr.send_event(widget, id, event);
             }
         }
 
@@ -499,35 +505,23 @@ impl<'a> EventMgr<'a> {
                     TouchPhase::Moved => {
                         let cur_id = widget.find_id(coord);
 
-                        let mut r = None;
+                        let mut redraw = false;
                         let mut pan_grab = None;
                         if let Some(grab) = self.get_touch(touch.id) {
                             if grab.mode == GrabMode::Grab {
-                                let id = grab.start_id.clone();
-                                let event = Event::PressMove {
-                                    source,
-                                    cur_id: cur_id.clone(),
-                                    coord,
-                                    delta: coord - grab.coord,
-                                };
                                 // Only when 'depressed' status changes:
-                                let redraw = grab.cur_id != cur_id
+                                redraw = grab.cur_id != cur_id
                                     && (grab.start_id == grab.cur_id || grab.start_id == cur_id);
 
                                 grab.cur_id = cur_id;
                                 grab.coord = coord;
-
-                                r = Some((id, event, redraw));
                             } else {
                                 pan_grab = Some(grab.pan_grab);
                             }
                         }
 
-                        if let Some((id, event, redraw)) = r {
-                            if redraw {
-                                self.send_action(TkAction::REDRAW);
-                            }
-                            self.send_event(widget, id, event);
+                        if redraw {
+                            self.send_action(TkAction::REDRAW);
                         } else if let Some(pan_grab) = pan_grab {
                             if usize::conv(pan_grab.1) < MAX_PAN_GRABS {
                                 if let Some(pan) =
@@ -539,7 +533,11 @@ impl<'a> EventMgr<'a> {
                         }
                     }
                     TouchPhase::Ended => {
-                        if let Some(grab) = self.remove_touch(touch.id) {
+                        if let Some(mut grab) = self.remove_touch(touch.id) {
+                            if let Some((id, event)) = grab.flush_move() {
+                                self.send_event(widget, id, event);
+                            }
+
                             if grab.mode == GrabMode::Grab {
                                 let event = Event::PressEnd {
                                     source,
@@ -556,7 +554,11 @@ impl<'a> EventMgr<'a> {
                         }
                     }
                     TouchPhase::Cancelled => {
-                        if let Some(grab) = self.remove_touch(touch.id) {
+                        if let Some(mut grab) = self.remove_touch(touch.id) {
+                            if let Some((id, event)) = grab.flush_move() {
+                                self.send_event(widget, id, event);
+                            }
+
                             let event = Event::PressEnd {
                                 source,
                                 end_id: None,
