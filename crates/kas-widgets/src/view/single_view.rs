@@ -131,10 +131,10 @@ widget! {
                 return Response::Unused;
             }
 
-            if self.eq_id(id) {
+            if self.eq_id(&id) {
                 self.handle(mgr, event)
             } else {
-                let r = self.child.send(mgr, id, event);
+                let r = self.child.send(mgr, id.clone(), event);
                 if matches!(&r, Response::Update | Response::Msg(_)) {
                     if let Some(value) = self.view.get(&self.child) {
                         if let Some(handle) = self.data.update(value) {

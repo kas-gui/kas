@@ -77,10 +77,6 @@ impl<T: ListData, F: Filter<T::Item>> Updatable for FilteredList<T, F> {
     fn update_handle(&self) -> Option<UpdateHandle> {
         self.filter.update_handle()
     }
-
-    fn update_self(&self) -> Option<UpdateHandle> {
-        self.refresh()
-    }
 }
 impl<K, M, T: ListData + UpdatableHandler<K, M> + 'static, F: Filter<T::Item>>
     UpdatableHandler<K, M> for FilteredList<T, F>

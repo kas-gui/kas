@@ -215,7 +215,7 @@ fn main() -> Result<(), kas::shell::Error> {
 Пример текста на нескольких языках.
 טקסט לדוגמא במספר שפות.";
 
-    let radio = UpdateHandle::new();
+    let radio = RadioBoxGroup::default();
     let widgets = make_widget! {
         // TODO: this would be better expressed with a column layout, though we
         // want better alignment controls first (which are also needed for menus).
@@ -258,7 +258,7 @@ fn main() -> Result<(), kas::shell::Error> {
                 .with_state(true)
                 .on_toggle(|_, check| Some(Item::Check(check))),
             #[widget] rbl = Label::new("RadioBox"),
-            #[widget] rb = RadioBox::new("radio box &1", radio)
+            #[widget] rb = RadioBox::new("radio box &1", radio.clone())
                 .on_select(|_| Some(Item::Radio(1))),
             #[widget] rb2l = Label::new("RadioBox"),
             #[widget] rb2 = RadioBox::new("radio box &2", radio)

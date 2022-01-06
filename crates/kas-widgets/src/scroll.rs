@@ -163,11 +163,11 @@ impl ScrollComponent {
     /// If the returned [`TkAction`] is not `None`, the scroll offset has been
     /// updated and the second return value is `Response::Used`.
     #[inline]
-    pub fn scroll_by_event<PS: FnMut(PressSource, WidgetId, Coord)>(
+    pub fn scroll_by_event<PS: FnOnce(PressSource, WidgetId, Coord)>(
         &mut self,
         event: Event,
         window_size: Size,
-        mut on_press_start: PS,
+        on_press_start: PS,
     ) -> (TkAction, Response<VoidMsg>) {
         let mut action = TkAction::empty();
         let mut response = Response::Used;
@@ -367,7 +367,7 @@ widget! {
                 return Response::Unused;
             }
 
-            if self.inner.id().is_ancestor_of(id) {
+            if self.inner.id().is_ancestor_of(&id) {
                 let child_event = self.scroll.offset_event(event.clone());
                 match self.inner.send(mgr, id, child_event) {
                     Response::Unused => (),

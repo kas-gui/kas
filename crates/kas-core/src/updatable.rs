@@ -40,11 +40,6 @@ pub trait Updatable: Debug {
     /// other users of the data of the update, and return that here.
     /// If the data is constant (not updatable) this may simply return `None`.
     fn update_handle(&self) -> Option<UpdateHandle>;
-
-    /// Update self from an update handle
-    fn update_self(&self) -> Option<UpdateHandle> {
-        None
-    }
 }
 
 /// Trait for data objects which can handle messages
@@ -99,9 +94,6 @@ macro_rules! impl_via_deref {
         impl<$t: Updatable + ?Sized> Updatable for $derived {
             fn update_handle(&self) -> Option<UpdateHandle> {
                 self.deref().update_handle()
-            }
-            fn update_self(&self) -> Option<UpdateHandle> {
-                self.deref().update_self()
             }
         }
         impl<K, M, $t: UpdatableHandler<K, M> + ?Sized> UpdatableHandler<K, M> for $derived {

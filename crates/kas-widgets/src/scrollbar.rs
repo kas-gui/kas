@@ -252,7 +252,7 @@ widget! {
                 return Response::Unused;
             }
 
-            let offset = if self.eq_id(id) {
+            let offset = if self.eq_id(&id) {
                 match event {
                     Event::PressStart { source, coord, .. } => {
                         self.handle.handle_press_on_track(mgr, source, coord)
@@ -260,7 +260,7 @@ widget! {
                     _ => return Response::Unused,
                 }
             } else {
-                debug_assert!(self.handle.id().is_ancestor_of(id));
+                debug_assert!(self.handle.id().is_ancestor_of(&id));
                 match self.handle.send(mgr, id, event).try_into() {
                     Ok(res) => return res,
                     Err(offset) => offset,
@@ -650,7 +650,7 @@ widget! {
                 return Response::Unused;
             }
 
-            match self.id().index_of_child(id) {
+            match self.id().index_of_child(&id) {
                 Some(0) => self.horiz_bar
                     .send(mgr, id, event)
                     .try_into()

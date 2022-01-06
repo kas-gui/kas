@@ -54,10 +54,10 @@ widget! {
                 return Response::Unused;
             }
 
-            if self.eq_id(id) {
+            if self.eq_id(&id) {
                 self.handle(mgr, event)
             } else {
-                let r = self.inner.send(mgr, id, event);
+                let r = self.inner.send(mgr, id.clone(), event);
                 r.try_into().unwrap_or_else(|msg| {
                     log::trace!(
                         "Received by {} from {}: {:?}",

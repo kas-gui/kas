@@ -21,7 +21,7 @@ use kas::prelude::*;
 use kas::widgets::*;
 
 thread_local! {
-    pub static RADIO: UpdateHandle = UpdateHandle::new();
+    pub static RADIO: RadioBoxGroup = Default::default();
 }
 
 #[derive(Clone, Debug, VoidMsg)]
@@ -88,7 +88,7 @@ impl ListEntry {
         ListEntry {
             core: Default::default(),
             label: Label::new(format!("Entry number {}", n + 1)),
-            radio: RadioBox::new("display this entry", RADIO.with(|h| *h))
+            radio: RadioBox::new("display this entry", RADIO.with(|g| g.clone()))
                 .with_state(active)
                 .on_select(move |_| Some(EntryMsg::Select)),
             entry: EditBox::new(format!("Entry #{}", n + 1)).with_guard(ListEntryGuard),

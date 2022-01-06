@@ -121,7 +121,7 @@ widget! {
 
     impl WidgetConfig for Self {
         fn configure_recurse(&mut self, mut cmgr: ConfigureManager) {
-            self.core_data_mut().id = cmgr.get_id(self.id());
+            self.core_data_mut().id = cmgr.get_id();
             cmgr.mgr().push_accel_layer(true);
             self.list.configure_recurse(cmgr.child(0));
             let mgr = cmgr.mgr();
@@ -189,10 +189,10 @@ widget! {
                 return Response::Unused;
             }
 
-            if self.eq_id(id) {
+            if self.eq_id(&id) {
                 Manager::handle_generic(self, mgr, event)
             } else {
-                let r = self.list.send(mgr, id, event.clone());
+                let r = self.list.send(mgr, id.clone(), event.clone());
 
                 match r {
                     Response::Unused => match event {
@@ -205,7 +205,7 @@ widget! {
                     Response::Pan(delta) => Response::Pan(delta),
                     Response::Focus(rect) => Response::Focus(rect),
                     Response::Select => {
-                        self.set_menu_path(mgr, Some(id), true);
+                        self.set_menu_path(mgr, Some(&id), true);
                         Response::Used
                     }
                     r @ (Response::Update | Response::Msg(_)) => {
@@ -222,7 +222,7 @@ widget! {
             self.popup_id.is_some()
         }
 
-        fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>, set_focus: bool) {
+        fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<&WidgetId>, set_focus: bool) {
             match target {
                 Some(id) if self.is_ancestor_of(id) => {
                     if self.popup_id.is_some() {

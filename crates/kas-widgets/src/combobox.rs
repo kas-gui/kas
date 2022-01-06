@@ -85,7 +85,7 @@ widget! {
                     start_id,
                     coord,
                 } => {
-                    if self.is_ancestor_of(start_id) {
+                    if self.is_ancestor_of(&start_id) {
                         if source.is_primary() {
                             mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None);
                             mgr.set_grab_depress(source, Some(start_id));
@@ -110,14 +110,14 @@ widget! {
                     }
                     let cond = self.popup.inner.rect().contains(coord);
                     let target = if cond { cur_id } else { None };
-                    mgr.set_grab_depress(source, target);
+                    mgr.set_grab_depress(source, target.clone());
                     if let Some(id) = target {
                         mgr.set_nav_focus(id, false);
                     }
                     Response::Used
                 }
-                Event::PressEnd { end_id, .. } => {
-                    if let Some(id) = end_id {
+                Event::PressEnd { ref end_id, .. } => {
+                    if let Some(ref id) = end_id {
                         if self.eq_id(id) {
                             if self.opening {
                                 if self.popup_id.is_none() {
@@ -126,8 +126,8 @@ widget! {
                                 return Response::Used;
                             }
                         } else if self.popup_id.is_some() && self.popup.is_ancestor_of(id) {
-                            let r = self.popup.send(mgr, id, Event::Activate);
-                            return self.map_response(mgr, id, event, r);
+                            let r = self.popup.send(mgr, id.clone(), Event::Activate);
+                            return self.map_response(mgr, id.clone(), event, r);
                         }
                     }
                     if let Some(id) = self.popup_id {
@@ -151,10 +151,10 @@ widget! {
                 return Response::Unused;
             }
 
-            if self.eq_id(id) {
+            if self.eq_id(&id) {
                 Manager::handle_generic(self, mgr, event)
             } else {
-                debug_assert!(self.popup.id().is_ancestor_of(id));
+                debug_assert!(self.popup.id().is_ancestor_of(&id));
 
                 if let Event::NavFocus(key_focus) = event {
                     if self.popup_id.is_none() {
@@ -166,7 +166,7 @@ widget! {
                     return Response::Used;
                 }
 
-                let r = self.popup.send(mgr, id, event.clone());
+                let r = self.popup.send(mgr, id.clone(), event.clone());
                 self.map_response(mgr, id, event, r)
             }
         }
@@ -252,7 +252,7 @@ impl<M: 'static> ComboBox<M> {
     /// Set the active choice
     #[inline]
     pub fn set_active(&mut self, index: usize) -> TkAction {
-        if self.active != index {
+        if self.active != index && index < self.popup.inner.len() {
             self.active = index;
             let string = if index < self.len() {
                 self.popup.inner[index].get_string()
@@ -365,7 +365,7 @@ impl<M: 'static> ComboBox<M> {
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id, true);
                 }
-                if let Some(index) = self.popup.inner.find_child_index(id) {
+                if let Some(index) = self.popup.inner.find_child_index(&id) {
                     if index != self.active {
                         *mgr |= self.set_active(index);
                         return if let Some(ref f) = self.on_select {

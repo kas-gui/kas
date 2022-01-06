@@ -70,7 +70,7 @@ impl TextInput {
         use TextInputAction as Action;
         match event {
             Event::PressStart { source, coord, .. } if source.is_primary() => {
-                let grab = mgr.request_grab(w_id, source, coord, GrabMode::Grab, None);
+                let grab = mgr.request_grab(w_id.clone(), source, coord, GrabMode::Grab, None);
                 match source {
                     PressSource::Touch(touch_id) => {
                         if grab && self.touch_phase == TouchPhase::None {

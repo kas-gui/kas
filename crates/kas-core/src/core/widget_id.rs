@@ -9,41 +9,206 @@
 #![allow(clippy::precedence)]
 
 use crate::cast::{Cast, Conv};
-use std::cmp::PartialEq;
-use std::fmt;
+use std::cmp::{Eq, PartialEq};
 use std::hash::{Hash, Hasher};
 use std::iter::once;
+use std::marker::PhantomData;
 use std::mem::size_of;
 use std::num::NonZeroU64;
-use std::sync::Mutex;
-
-/// Widget identifier
-///
-/// All widgets are assigned an identifier which is unique within the window.
-/// This type may be tested for equality and order.
-///
-/// This type is small and cheap to copy. Internally it is "NonZero", thus
-/// `Option<WidgetId>` is a free extension (requires no extra memory).
-///
-/// Identifiers are assigned when configured and when re-configured
-/// (via [`crate::TkAction::RECONFIGURE`]). Since user-code is not notified of a
-/// re-configure, user-code should not store a `WidgetId`.
-#[derive(Clone, Copy, Eq)]
-pub struct WidgetId(NonZeroU64);
+use std::rc::Rc;
+use std::{fmt, slice};
 
 /// Invalid (default) identifier
 const INVALID: u64 = !0;
 
 /// `x & USE_BITS != 0`: rest is a sequence of 4-bit blocks; len is number of blocks used
-const USE_BITS: u64 = 0x8000_0000_0000_0000;
+const USE_BITS: u64 = 0x01;
+/// Set when using a pointer as a safety feature.
+const USE_PTR: usize = 0x02;
 
-const MASK_LEN: u64 = 0x0F00_0000_0000_0000;
-const SHIFT_LEN: u8 = 56;
+const MASK_LEN: u64 = 0xF0;
+const SHIFT_LEN: u8 = 4;
 const BLOCKS: u8 = 14;
-const MASK_BITS: u64 = 0x00FF_FFFF_FFFF_FFFF;
+const MASK_BITS: u64 = 0xFFFF_FFFF_FFFF_FF00;
 
-const MASK_PTR: u64 = 0x7FFF_FFFF_FFFF_FFFF;
+#[cfg(target_pointer_width = "32")]
+const MASK_PTR: usize = 0xFFFF_FFFC;
+#[cfg(target_pointer_width = "64")]
+const MASK_PTR: usize = 0xFFFF_FFFF_FFFF_FFFC;
 
+/// Integer or pointer to a reference-counted slice.
+///
+/// Use `Self::get_ptr` to determine the variant used. When reading a pointer,
+/// mask with MASK_PTR.
+///
+/// `self.0 & USE_BITS` is the "flag bit" determining the variant used. This
+/// overlaps with the pointer's lowest bit (which must be zero due to alignment).
+///
+/// `PhantomData<Rc<()>>` is used to impl !Send and !Sync. We need atomic
+/// reference counting to support those.
+struct IntOrPtr(NonZeroU64, PhantomData<Rc<()>>);
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum Variant<'a> {
+    Invalid,
+    Int(u64),
+    Slice(&'a [usize]),
+}
+
+impl IntOrPtr {
+    const ROOT: Self = IntOrPtr(unsafe { NonZeroU64::new_unchecked(USE_BITS) }, PhantomData);
+    const INVALID: Self = IntOrPtr(unsafe { NonZeroU64::new_unchecked(INVALID) }, PhantomData);
+
+    #[inline]
+    fn get_ptr(&self) -> Option<*mut usize> {
+        if self.0.get() & USE_BITS == 0 {
+            let p = usize::conv(self.0.get()) & MASK_PTR;
+            Some(p as *mut usize)
+        } else {
+            None
+        }
+    }
+
+    /// Construct from an integer
+    ///
+    /// Note: requires `x & USE_BITS != 0`.
+    fn new_int(x: u64) -> Self {
+        assert!(x & USE_BITS != 0);
+        let x = NonZeroU64::new(x).unwrap();
+        let u = IntOrPtr(x, PhantomData);
+        assert!(u.get_ptr().is_none());
+        u
+    }
+
+    /// Construct as a slice from an iterator
+    fn new_iter<I: Clone + Iterator<Item = usize>>(iter: I) -> Self {
+        let ref_count = 1;
+        let len = iter.clone().count();
+        let v: Vec<usize> = once(ref_count).chain(once(len)).chain(iter).collect();
+        let b = v.into_boxed_slice();
+        let p = Box::leak(b) as *mut [usize] as *mut usize;
+        let p = p as usize;
+        debug_assert_eq!(p & 3, 0);
+        let p = p | USE_PTR;
+        let u = IntOrPtr(NonZeroU64::new(p.cast()).unwrap(), PhantomData);
+        assert!(u.get_ptr().is_some());
+        u
+    }
+
+    fn get(&self) -> Variant {
+        unsafe {
+            if let Some(p) = self.get_ptr() {
+                let len = *p.offset(1);
+                let p = p.offset(2);
+                let slice = slice::from_raw_parts(p, len);
+                Variant::Slice(slice)
+            } else if self.0.get() == INVALID {
+                Variant::Invalid
+            } else {
+                Variant::Int(self.0.get())
+            }
+        }
+    }
+
+    fn as_u64(&self) -> u64 {
+        self.0.get()
+    }
+
+    // Compatible with values geneated by `Self::as_u64`
+    unsafe fn opt_from_u64(n: u64) -> Option<IntOrPtr> {
+        if n == 0 {
+            None
+        } else {
+            // We expect either USE_BITS or USE_PTR here; anything else indicates an error
+            let v = n & 3;
+            assert!(v == 1 || v == 2, "WidgetId::opt_from_u64: invalid value");
+            let x = NonZeroU64::new(n).unwrap();
+            Some(IntOrPtr(x, PhantomData))
+        }
+    }
+}
+
+impl Clone for IntOrPtr {
+    fn clone(&self) -> Self {
+        if let Some(p) = self.get_ptr() {
+            unsafe {
+                let ref_count = *p;
+
+                // Copy behaviour of Rc::clone:
+                if ref_count == 0 || ref_count == usize::MAX {
+                    std::process::abort();
+                }
+
+                *p = ref_count + 1;
+            }
+        }
+        IntOrPtr(self.0, PhantomData)
+    }
+}
+
+impl Drop for IntOrPtr {
+    fn drop(&mut self) {
+        if let Some(p) = self.get_ptr() {
+            unsafe {
+                let ref_count = *p;
+                if ref_count > 1 {
+                    *p = ref_count - 1;
+                } else {
+                    // len+2 because path len does not include ref_count or len "fields"
+                    let len = *p.offset(1) + 2;
+                    let slice = slice::from_raw_parts_mut(p, len);
+                    let _ = Box::<[usize]>::from_raw(slice);
+                }
+            }
+        }
+    }
+}
+
+enum PathIter<'a> {
+    Bits(BitsIter),
+    Slice(std::iter::Cloned<std::slice::Iter<'a, usize>>),
+}
+
+impl<'a> Iterator for PathIter<'a> {
+    type Item = usize;
+
+    #[inline]
+    fn next(&mut self) -> Option<usize> {
+        match self {
+            PathIter::Bits(bits) => bits.next(),
+            PathIter::Slice(slice) => slice.next(),
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self {
+            PathIter::Bits(bits) => bits.size_hint(),
+            PathIter::Slice(slice) => slice.size_hint(),
+        }
+    }
+}
+
+/// Widget identifier
+///
+/// All widgets are assigned an identifier which is unique within the window.
+/// This type may be tested for equality, ancestry, and to determine the "index"
+/// of a child.
+///
+/// This type is small (64-bit) and non-zero: `Option<WidgetId>` has the same
+/// size as `WidgetId`. It is also very cheap to `Clone`: usually only one `if`
+/// check, and in the worst case a pointer dereference and ref-count increment.
+///
+/// `WidgetId` is neither `Send` nor `Sync` since it may use non-atomic
+/// reference counting internally.
+///
+/// Identifiers are assigned when configured and when re-configured
+/// (via [`crate::TkAction::RECONFIGURE`]). Since user-code is not notified of a
+/// re-configure, user-code should not store a `WidgetId`.
+#[derive(Clone)]
+pub struct WidgetId(IntOrPtr);
+
+// Encode lowest 48 bits of index into the low bits of a u64, returning also the encoded bit-length
 fn encode(index: usize) -> (u64, u8) {
     debug_assert!(8 * size_of::<usize>() as u32 - index.leading_zeros() <= 64);
     let mut x = index as u64 & 0x0000_FFFF_FFFF_FFFF;
@@ -63,7 +228,7 @@ fn block_len(x: u64) -> u8 {
     ((x & MASK_LEN) >> SHIFT_LEN) as u8
 }
 
-// Returns usize read from x plus blocks used
+// Returns usize read from highest bits of x plus blocks used
 fn next_from_bits(mut x: u64) -> (usize, u8) {
     const TAKE: u64 = 0x7000_0000_0000_0000;
     const HIGH: u64 = 0x8000_0000_0000_0000;
@@ -77,12 +242,13 @@ fn next_from_bits(mut x: u64) -> (usize, u8) {
     (y.cast(), c)
 }
 
+#[derive(Clone, Debug)]
 struct BitsIter(u8, u64);
 impl BitsIter {
     fn new(bits: u64) -> Self {
         assert!((bits & USE_BITS) != 0);
-        let len = (bits & MASK_LEN) >> SHIFT_LEN;
-        BitsIter(len as u8, bits << (64 - SHIFT_LEN))
+        let len = block_len(bits);
+        BitsIter(len as u8, bits & MASK_BITS)
     }
 }
 impl Iterator for BitsIter {
@@ -103,91 +269,85 @@ impl Iterator for BitsIter {
 
 impl WidgetId {
     /// Identifier of the window
-    pub(crate) const ROOT: WidgetId = WidgetId(unsafe { NonZeroU64::new_unchecked(USE_BITS) });
+    pub(crate) const ROOT: Self = WidgetId(IntOrPtr::ROOT);
 
-    const INVALID: WidgetId = WidgetId(unsafe { NonZeroU64::new_unchecked(INVALID) });
+    const INVALID: Self = WidgetId(IntOrPtr::INVALID);
 
     /// Is the identifier valid?
     ///
     /// Default-constructed identifiers are invalid. Comparing invalid ids is
     /// considered a logic error and thus will panic in debug builds.
     /// This method may be used to check an identifier's validity.
-    pub fn is_valid(self) -> bool {
-        self.0.get() != !0
+    pub fn is_valid(&self) -> bool {
+        self.0.get() != Variant::Invalid
     }
 
     /// Returns true if `self` equals `id` or if `id` is a descendant of `self`
-    pub fn is_ancestor_of(self, id: Self) -> bool {
-        let self_id = self.0.get();
-        let child_id = id.0.get();
-        if (child_id & USE_BITS) != 0 {
-            let self_blocks = block_len(self_id);
-            let child_blocks = block_len(child_id);
-            if self_id == !0 || child_id == !0 {
-                return false; // invalid
+    pub fn is_ancestor_of(&self, id: &Self) -> bool {
+        match (self.0.get(), id.0.get()) {
+            (Variant::Invalid, _) | (_, Variant::Invalid) => false,
+            (Variant::Slice(_), Variant::Int(_)) => {
+                // This combo will never be created where id is a child.
+                false
             }
-            if (self_id & USE_BITS) == 0 || self_blocks > child_blocks {
-                return false; // assumption: parent uses bits when child does
+            (Variant::Int(self_x), Variant::Int(child_x)) => {
+                let self_blocks = block_len(self_x);
+                let child_blocks = block_len(child_x);
+                if self_blocks > child_blocks {
+                    return false;
+                }
+
+                // self_blocks == 0 for ROOT, otherwise > 0
+                let shift = 4 * (BLOCKS - self_blocks) + 8;
+                shift == 64 || self_x >> shift == child_x >> shift
             }
-
-            let shift = 4 * (BLOCKS - self_blocks);
-            return (self_id & MASK_BITS) >> shift == (child_id & MASK_BITS) >> shift;
-        }
-
-        let db = DB.lock().unwrap();
-        let child_i = usize::conv(child_id & MASK_PTR);
-
-        if (self_id & USE_BITS) != 0 {
-            let iter = BitsIter::new(self_id);
-            iter.zip(db[child_i].iter()).all(|(a, b)| a == *b)
-        } else {
-            let self_i = usize::conv(self_id & MASK_PTR);
-            db[child_i].starts_with(&db[self_i])
+            (Variant::Int(self_x), Variant::Slice(child)) => {
+                let iter = BitsIter::new(self_x);
+                iter.zip(child.iter()).all(|(a, b)| a == *b)
+            }
+            (Variant::Slice(self_path), Variant::Slice(child)) => child.starts_with(self_path),
         }
     }
 
     /// Get index of `child` relative to `self`
     ///
     /// Returns `None` if `child` is not a descendant of `self`.
-    pub fn index_of_child(self, child: Self) -> Option<usize> {
-        let self_id = self.0.get();
-        let child_id = child.0.get();
-        if (child_id & USE_BITS) != 0 {
-            let self_blocks = block_len(self_id);
-            let child_blocks = block_len(child_id);
-            if self_id == !0 || child_id == !0 {
-                return None; // invalid
-            }
-            if (self_id & USE_BITS) == 0 || self_blocks >= child_blocks {
-                return None;
-            }
+    pub fn index_of_child(&self, child: &Self) -> Option<usize> {
+        match (self.0.get(), child.0.get()) {
+            (Variant::Invalid, _) | (_, Variant::Invalid) => None,
+            (Variant::Slice(_), Variant::Int(_)) => None,
+            (Variant::Int(self_x), Variant::Int(child_x)) => {
+                let self_blocks = block_len(self_x);
+                let child_blocks = block_len(child_x);
+                if self_blocks >= child_blocks {
+                    return None;
+                }
 
-            let shift = 4 * (BLOCKS - self_blocks);
-            let child_rest = child_id & MASK_BITS;
-            if (self_id & MASK_BITS) >> shift != child_rest >> shift {
-                return None;
+                // self_blocks == 0 for ROOT, otherwise > 0
+                let shift = 4 * (BLOCKS - self_blocks) + 8;
+                if shift != 64 && self_x >> shift != child_x >> shift {
+                    return None;
+                }
+
+                debug_assert!(child_blocks > 0);
+                let next_bits = (child_x & MASK_BITS) << (4 * self_blocks);
+                Some(next_from_bits(next_bits).0)
             }
-
-            return Some(next_from_bits(child_rest << 8 + 4 * self_blocks).0);
-        }
-
-        let db = DB.lock().unwrap();
-        let child_slice = &db[usize::conv(child_id & MASK_PTR)];
-
-        if (self_id & USE_BITS) != 0 {
-            let iter = BitsIter::new(self_id);
-            let mut child_iter = child_slice.iter();
-            if iter.zip(&mut child_iter).all(|(a, b)| a == *b) {
-                child_iter.next().cloned()
-            } else {
-                None
+            (Variant::Int(self_x), Variant::Slice(child_path)) => {
+                let iter = BitsIter::new(self_x);
+                let mut child_iter = child_path.iter();
+                if iter.zip(&mut child_iter).all(|(a, b)| a == *b) {
+                    child_iter.next().cloned()
+                } else {
+                    None
+                }
             }
-        } else {
-            let self_slice = &db[usize::conv(self_id & MASK_PTR)];
-            if child_slice.starts_with(self_slice) {
-                child_slice[self_slice.len()..].iter().next().cloned()
-            } else {
-                None
+            (Variant::Slice(self_path), Variant::Slice(child_path)) => {
+                if child_path.starts_with(self_path) {
+                    child_path[self_path.len()..].iter().next().cloned()
+                } else {
+                    None
+                }
             }
         }
     }
@@ -197,48 +357,32 @@ impl WidgetId {
     /// Note: this is not a getter method. Calling multiple times with the same
     /// `index` may or may not return the same value!
     #[must_use]
-    pub fn make_child(self, index: usize) -> Self {
-        let self_id = self.0.get();
-        let mut path = None;
-        if (self_id & USE_BITS) != 0 {
-            if self_id == !0 {
-                panic!("WidgetId::make_child: invalid id");
-            }
-
-            // TODO(opt): this bit-packing approach is designed for space-optimisation, but it may
-            // be better to use a simpler, less-compressed approach, possibly with u128 type.
-            let block_len = block_len(self_id);
-            let avail_blocks = BLOCKS - block_len;
-            let req_bits = 8 * size_of::<usize>() as u8 - index.leading_zeros() as u8;
-            if req_bits <= 3 * avail_blocks {
-                let (bits, bit_len) = encode(index);
+    pub fn make_child(&self, index: usize) -> Self {
+        match self.0.get() {
+            Variant::Invalid => panic!("WidgetId::make_child: invalid id"),
+            Variant::Int(self_x) => {
+                // TODO(opt): this bit-packing approach is designed for space-optimisation, but it may
+                // be better to use a simpler, less-compressed approach, possibly with u128 type.
+                let block_len = block_len(self_x);
+                let avail_blocks = BLOCKS - block_len;
                 // Note: zero is encoded with 1 block to force bump to len
-                let used_blocks = bit_len / 4;
-                debug_assert_eq!(used_blocks, ((req_bits + 2) / 3).max(1));
-                let len = (block_len as u64 + used_blocks as u64) << SHIFT_LEN;
-                let rest = bits << 4 * avail_blocks - bit_len;
-                let id = USE_BITS | len | (self_id & MASK_BITS) | rest;
-                return WidgetId(NonZeroU64::new(id).unwrap());
-            } else {
-                path = Some(BitsIter::new(self_id).chain(once(index)).collect());
+                let req_bits = (8 * size_of::<usize>() as u8 - index.leading_zeros() as u8).max(1);
+                if req_bits <= 3 * avail_blocks {
+                    let (bits, bit_len) = encode(index);
+                    let used_blocks = bit_len / 4;
+                    debug_assert_eq!(used_blocks, (req_bits + 2) / 3);
+                    let len = (block_len as u64 + used_blocks as u64) << SHIFT_LEN;
+                    let rest = bits << 4 * avail_blocks - bit_len + 8;
+                    let id = (self_x & MASK_BITS) | rest | len | USE_BITS;
+                    WidgetId(IntOrPtr::new_int(id))
+                } else {
+                    WidgetId(IntOrPtr::new_iter(BitsIter::new(self_x).chain(once(index))))
+                }
+            }
+            Variant::Slice(path) => {
+                WidgetId(IntOrPtr::new_iter(path.iter().cloned().chain(once(index))))
             }
         }
-
-        let mut db = DB.lock().unwrap();
-
-        let path = path.unwrap_or_else(|| {
-            let i = usize::conv(self_id & MASK_PTR);
-            db[i].iter().cloned().chain(once(index)).collect()
-        });
-
-        let id = u64::conv(db.len());
-        // We can quite safely assume this:
-        debug_assert_eq!(id & USE_BITS, 0);
-        let id = id & MASK_PTR;
-
-        db.push(path);
-
-        WidgetId(NonZeroU64::new(id).unwrap())
     }
 
     /// Convert to a `u64`
@@ -248,7 +392,7 @@ impl WidgetId {
     /// -   it is guaranteed non-zero
     /// -   it may be passed to [`Self::opt_from_u64`]
     pub fn as_u64(&self) -> u64 {
-        self.0.get()
+        self.0.as_u64()
     }
 
     /// Convert `Option<WidgetId>` to `u64`
@@ -260,63 +404,63 @@ impl WidgetId {
     pub fn opt_to_u64(id: Option<&WidgetId>) -> u64 {
         match id {
             None => 0,
-            Some(id) => id.as_u64(),
+            Some(id) => id.0.as_u64(),
         }
     }
 
     /// Convert `u64` to `Option<WidgetId>`
     ///
+    /// # Safety
+    ///
+    /// This may only be called with the output of [`Self::as_u64`],
+    /// [`Self::opt_from_u64`], or `0`.
+    ///
     /// This always "succeeds", though the result may not identify any widget.
-    pub fn opt_from_u64(n: u64) -> Option<WidgetId> {
-        NonZeroU64::new(n).map(WidgetId)
+    pub unsafe fn opt_from_u64(n: u64) -> Option<WidgetId> {
+        IntOrPtr::opt_from_u64(n).map(WidgetId)
+    }
+
+    /// Construct an iterator, returning indices
+    ///
+    /// This represents the widget's "path" from the root (window).
+    pub fn iter_path(&self) -> impl Iterator<Item = usize> + '_ {
+        match self.0.get() {
+            Variant::Invalid => panic!("WidgetId::iter_path on invalid"),
+            Variant::Int(x) => PathIter::Bits(BitsIter::new(x)),
+            Variant::Slice(path) => PathIter::Slice(path.iter().cloned()),
+        }
     }
 }
 
 impl PartialEq for WidgetId {
     fn eq(&self, rhs: &Self) -> bool {
-        let lhs = self.0.get();
-        let rhs = rhs.0.get();
-
-        if lhs == !0 || rhs == !0 {
-            panic!("WidgetId::eq: invalid id");
+        match (self.0.get(), rhs.0.get()) {
+            (Variant::Invalid, _) | (_, Variant::Invalid) => panic!("WidgetId::eq: invalid id"),
+            (Variant::Int(x), Variant::Int(y)) => x == y,
+            _ => self.iter_path().eq(rhs.iter_path()),
         }
+    }
+}
+impl Eq for WidgetId {}
 
-        if lhs == rhs {
-            return true;
+impl Hash for WidgetId {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self.0.get() {
+            Variant::Invalid => (),
+            Variant::Int(x) => {
+                x.hash(state);
+            }
+            Variant::Slice(path) => {
+                path.hash(state);
+            }
         }
-
-        let use_bits = (lhs & USE_BITS, rhs & USE_BITS);
-        if use_bits.0 != 0 && use_bits.1 != 0 {
-            return false;
-        }
-
-        let db = DB.lock().unwrap();
-
-        let (mut lbi, mut rbi);
-        let (mut lvi, mut rvi);
-        let lpath: &mut dyn Iterator<Item = usize> = if use_bits.0 != 0 {
-            lbi = BitsIter::new(lhs);
-            &mut lbi
-        } else {
-            lvi = db[usize::conv(lhs & MASK_PTR)].iter().cloned();
-            &mut lvi
-        };
-        let rpath: &mut dyn Iterator<Item = usize> = if use_bits.1 != 0 {
-            rbi = BitsIter::new(rhs);
-            &mut rbi
-        } else {
-            rvi = db[usize::conv(rhs & MASK_PTR)].iter().cloned();
-            &mut rvi
-        };
-
-        lpath.eq(rpath)
     }
 }
 
 impl PartialEq<Option<WidgetId>> for WidgetId {
     #[inline]
     fn eq(&self, rhs: &Option<WidgetId>) -> bool {
-        rhs.map(|id| id == *self).unwrap_or(false)
+        rhs.as_ref().map(|id| id == self).unwrap_or(false)
     }
 }
 
@@ -327,20 +471,17 @@ impl<'a> PartialEq<Option<&'a WidgetId>> for WidgetId {
     }
 }
 
-impl Hash for WidgetId {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        let x = self.0.get();
-        if x & USE_BITS != 0 {
-            // Assuming the USE_BITS representation is used whenever possible
-            // (true outside of tests), we can simply hash the bit value.
-            // (Otherwise we must use BitsIter, handling INVALID and ROOT as special cases.)
-            x.hash(state);
-        } else {
-            let db = DB.lock().unwrap();
-            for index in db[usize::conv(x & MASK_PTR)].iter() {
-                index.hash(state);
-            }
-        }
+impl<'a> PartialEq<&'a WidgetId> for WidgetId {
+    #[inline]
+    fn eq(&self, rhs: &&WidgetId) -> bool {
+        self == *rhs
+    }
+}
+
+impl<'a> PartialEq<&'a Option<WidgetId>> for WidgetId {
+    #[inline]
+    fn eq(&self, rhs: &&Option<WidgetId>) -> bool {
+        self == *rhs
     }
 }
 
@@ -359,32 +500,27 @@ impl fmt::Debug for WidgetId {
 
 impl fmt::Display for WidgetId {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let self_id = self.0.get();
-        if self_id == !0 {
-            write!(f, "#INVALID")
-        } else if self_id & USE_BITS != 0 {
-            let len = block_len(self_id);
-            if len == 0 {
-                write!(f, "#")
-            } else {
-                let bits = (self_id & MASK_BITS) >> (4 * (BLOCKS - len));
-                write!(f, "#{1:0>0$x}", len as usize, bits)
+        match self.0.get() {
+            Variant::Invalid => write!(f, "#INVALID"),
+            Variant::Int(x) => {
+                let len = block_len(x);
+                if len == 0 {
+                    write!(f, "#")
+                } else {
+                    let bits = x >> (4 * (BLOCKS - len) + 8);
+                    write!(f, "#{1:0>0$x}", len as usize, bits)
+                }
             }
-        } else {
-            write!(f, "#")?;
-            let db = DB.lock().unwrap();
-            let seq = &db[usize::conv(self_id & MASK_PTR)];
-            for index in seq {
-                let (bits, bit_len) = encode(*index);
-                write!(f, "{1:0>0$x}", bit_len as usize / 4, bits)?;
+            Variant::Slice(path) => {
+                write!(f, "#")?;
+                for index in path {
+                    let (bits, bit_len) = encode(*index);
+                    write!(f, "{1:0>0$x}", bit_len as usize / 4, bits)?;
+                }
+                Ok(())
             }
-            Ok(())
         }
     }
-}
-
-lazy_static::lazy_static! {
-    static ref DB: Mutex<Vec<Vec<usize>>> = Mutex::new(vec![vec![]]);
 }
 
 #[cfg(test)]
@@ -394,6 +530,7 @@ mod test {
     #[test]
     fn size_of_option_widget_id() {
         use std::mem::size_of;
+        assert_eq!(size_of::<WidgetId>(), 8);
         assert_eq!(size_of::<WidgetId>(), size_of::<Option<WidgetId>>());
     }
 
@@ -411,15 +548,8 @@ mod test {
         assert_eq!(c1, c4);
         assert!(c1 != WidgetId::ROOT);
 
-        fn make_db(v: Vec<usize>) -> WidgetId {
-            let mut db = DB.lock().unwrap();
-            let id = u64::conv(db.len());
-            let id = id & MASK_PTR;
-            db.push(v);
-            WidgetId(NonZeroU64::new(id).unwrap())
-        }
-        let d1 = make_db(vec![0, 15]);
-        let d2 = make_db(vec![1, 15]);
+        let d1 = WidgetId(IntOrPtr::new_iter([0, 15].iter().cloned()));
+        let d2 = WidgetId(IntOrPtr::new_iter([1, 15].iter().cloned()));
         assert_eq!(c1, d1);
         assert_eq!(c2, d2);
         assert!(d1 != d2);
@@ -463,16 +593,16 @@ mod test {
             BitsIter::new(x).collect()
         }
         assert_eq!(as_vec(USE_BITS), Vec::<usize>::new());
-        assert_eq!(as_vec(0x81_31_0000_0000_0000), vec![3]);
-        assert_eq!(as_vec(0x87_1A_9300_7F00_0000), vec![1, 139, 0, 0, 7]);
+        assert_eq!(as_vec(0x3100_0000_0000_0011), vec![3]);
+        assert_eq!(as_vec(0x1A93_007F_0000_0071), vec![1, 139, 0, 0, 7]);
     }
 
     #[test]
     fn test_make_child() {
         fn test(seq: &[usize], x: u64) {
             let mut id = WidgetId::ROOT;
-            for x in seq {
-                id = id.make_child(*x);
+            for index in seq {
+                id = id.make_child(*index);
             }
             let v = id.as_u64();
             if v != x {
@@ -480,14 +610,14 @@ mod test {
             }
 
             // Every id is its own ancestor:
-            assert!(id.is_ancestor_of(id));
+            assert!(id.is_ancestor_of(&id));
         }
 
         test(&[], USE_BITS);
-        test(&[0, 0, 0], USE_BITS | (3 << 56));
-        test(&[0, 1, 0], USE_BITS | (3 << 56) | (1 << 48));
-        test(&[9, 0, 1, 300], 0x879101cd40000000);
-        test(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0], 0x8e12345679091920);
+        test(&[0, 0, 0], (3 << 4) | USE_BITS);
+        test(&[0, 1, 0], (3 << 4) | (1 << 56) | USE_BITS);
+        test(&[9, 0, 1, 300], 0x9101cd4000000071);
+        test(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0], 0x12345679091920e1);
     }
 
     #[test]
@@ -519,14 +649,14 @@ mod test {
                 id = id.make_child(*x);
             }
             println!("id={} val={:x} from {:?}", id, id.as_u64(), seq);
-            let mut id2 = id;
+            let mut id2 = id.clone();
             for x in seq2 {
                 id2 = id2.make_child(*x);
             }
             println!("id2={} val={:x} from {:?}", id2, id2.as_u64(), seq2);
             let next = seq2.iter().next().cloned();
-            assert_eq!(id.index_of_child(id2), next);
-            assert_eq!(id.is_ancestor_of(id2), next.is_some() || id == id2);
+            assert_eq!(id.is_ancestor_of(&id2), next.is_some() || id == id2);
+            assert_eq!(id.index_of_child(&id2), next);
         }
 
         test(&[], &[]);
@@ -554,8 +684,8 @@ mod test {
                 id2 = id2.make_child(*x);
             }
             println!("id2={} val={:x} from {:?}", id2, id2.as_u64(), seq2);
-            assert_eq!(id.index_of_child(id2), None);
-            assert_eq!(id.is_ancestor_of(id2), false);
+            assert_eq!(id.is_ancestor_of(&id2), false);
+            assert_eq!(id.index_of_child(&id2), None);
         }
 
         test(&[0], &[]);

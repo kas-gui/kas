@@ -10,7 +10,7 @@ use kas::event::ChildMsg;
 use kas::prelude::*;
 use kas::updatable::filter::ContainsCaseInsensitive;
 use kas::widgets::view::{driver, FilterListView, SelectionMode, SingleView};
-use kas::widgets::{EditBox, Label, RadioBox, ScrollBars, Window};
+use kas::widgets::{EditBox, Label, RadioBox, RadioBoxGroup, ScrollBars, Window};
 
 const MONTHS: &[&str] = &[
     "January",
@@ -30,7 +30,7 @@ const MONTHS: &[&str] = &[
 fn main() -> Result<(), kas::shell::Error> {
     env_logger::init();
 
-    let r = UpdateHandle::new();
+    let r = RadioBoxGroup::default();
     let selection_mode = make_widget! {
         #[widget{
             layout = list(right): *;
@@ -38,8 +38,8 @@ fn main() -> Result<(), kas::shell::Error> {
         #[handler(msg = SelectionMode)]
         struct {
             #[widget] _ = Label::new("Selection:"),
-            #[widget] _ = RadioBox::new_msg("none", r, SelectionMode::None).with_state(true),
-            #[widget] _ = RadioBox::new_msg("single", r, SelectionMode::Single),
+            #[widget] _ = RadioBox::new_msg("none", r.clone(), SelectionMode::None).with_state(true),
+            #[widget] _ = RadioBox::new_msg("single", r.clone(), SelectionMode::Single),
             #[widget] _ = RadioBox::new_msg("multiple", r, SelectionMode::Multiple),
         }
     };

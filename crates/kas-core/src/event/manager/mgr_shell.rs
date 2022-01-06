@@ -8,7 +8,6 @@
 use log::*;
 use smallvec::SmallVec;
 use std::collections::HashMap;
-use std::mem::swap;
 use std::time::{Duration, Instant};
 
 use super::*;
@@ -81,22 +80,14 @@ impl ManagerState {
         debug!("Manager::configure");
         self.action = TkAction::empty();
 
-        // Re-assigning WidgetIds might invalidate state; to avoid this we map
-        // existing ids to new ids
-        let mut renames = HashMap::new();
         let mut count = 0;
         let id = WidgetId::ROOT;
 
-        // We re-create these instead of renaming IDs:
+        // These are recreated during configure:
         debug_assert!(self.accel_stack.is_empty());
         self.accel_stack.clear();
         self.accel_layers.clear();
         self.nav_fallback = None;
-        // These we merge later:
-        let mut old_time_updates = Default::default();
-        swap(&mut self.time_updates, &mut old_time_updates);
-        let mut old_handle_updates = Default::default();
-        swap(&mut self.handle_updates, &mut old_handle_updates);
 
         // Enumerate and configure all widgets:
         let coord = self.last_mouse_coord;
@@ -106,7 +97,6 @@ impl ManagerState {
                 count: &mut count,
                 used: false,
                 id,
-                map: &mut renames,
                 mgr,
             });
             mgr.pop_accel_layer(widget.id());
@@ -122,116 +112,6 @@ impl ManagerState {
             }
             self.widget_count = count;
         }
-
-        // Update input state to account for renamed widgets. Assumption: none
-        // of this state is adjusted within widget configure methods.
-        // TODO(safety): ensure these fields cannot be updated by configure?
-
-        self.sel_focus = self.sel_focus.and_then(|id| renames.get(&id).cloned());
-        self.nav_focus = self.nav_focus.and_then(|id| renames.get(&id).cloned());
-        self.mouse_grab = self.mouse_grab.as_ref().and_then(|grab| {
-            renames.get(&grab.start_id).map(|id| MouseGrab {
-                button: grab.button,
-                repetitions: grab.repetitions,
-                start_id: *id,
-                depress: grab.depress.and_then(|id| renames.get(&id).cloned()),
-                mode: grab.mode,
-                pan_grab: grab.pan_grab,
-            })
-        });
-
-        let mut i = 0;
-        while i < self.pan_grab.len() {
-            if let Some(id) = renames.get(&self.pan_grab[i].id) {
-                self.pan_grab[i].id = *id;
-                i += 1;
-            } else {
-                self.remove_pan(i);
-            }
-        }
-
-        self.touch_grab.retain(|_, grab| {
-            if let Some(id) = renames.get(&grab.start_id) {
-                grab.start_id = *id;
-                if let Some(cur_id) = grab.cur_id {
-                    grab.cur_id = renames.get(&cur_id).cloned();
-                }
-                true
-            } else {
-                false
-            }
-        });
-
-        self.key_depress.retain(|_, depress_id| {
-            if let Some(id) = renames.get(depress_id) {
-                *depress_id = *id;
-                true
-            } else {
-                false
-            }
-        });
-
-        // We have to handle time_updates and handle_updates carefully since
-        // these may be set during configure, *and* may carry old state forward
-        // which must be renamed.
-        'old: for (time, old_id, payload) in old_time_updates.drain(..) {
-            if let Some(new_id) = renames.get(&old_id).cloned() {
-                // Insert into our data structure. We sort everything below.
-                'insert: loop {
-                    for row in &mut self.time_updates {
-                        if row.1 == new_id {
-                            if row.0 <= time {
-                                continue 'old;
-                            } else {
-                                row.0 = time;
-                                break 'insert;
-                            }
-                        }
-                    }
-
-                    self.time_updates.push((time, new_id, payload));
-                    break;
-                }
-            }
-        }
-        self.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
-
-        for (handle, mut ids) in old_handle_updates.drain() {
-            let new_ids = self
-                .handle_updates
-                .entry(handle)
-                .or_insert_with(Default::default);
-            for id in ids.drain().filter_map(|id| renames.get(&id)).cloned() {
-                new_ids.insert(id);
-            }
-        }
-
-        self.pending.retain(|item| match item {
-            Pending::LostCharFocus(id) => {
-                if let Some(new_id) = renames.get(id) {
-                    *item = Pending::LostCharFocus(*new_id);
-                    true
-                } else {
-                    false
-                }
-            }
-            Pending::LostSelFocus(id) => {
-                if let Some(new_id) = renames.get(id) {
-                    *item = Pending::LostSelFocus(*new_id);
-                    true
-                } else {
-                    false
-                }
-            }
-            Pending::SetNavFocus(id, key_focus) => {
-                if let Some(new_id) = renames.get(id) {
-                    *item = Pending::SetNavFocus(*new_id, *key_focus);
-                    true
-                } else {
-                    false
-                }
-            }
-        });
     }
 
     /// Update the widgets under the cursor and touch events
@@ -302,8 +182,8 @@ impl ManagerState {
         while let Some(id) = mgr.state.new_popups.pop() {
             while let Some((_, popup, _)) = mgr.state.popups.last() {
                 if widget
-                    .find_widget(popup.parent)
-                    .map(|w| w.is_ancestor_of(id))
+                    .find_widget(&popup.parent)
+                    .map(|w| w.is_ancestor_of(&id))
                     .unwrap_or(false)
                 {
                     break;
@@ -350,7 +230,7 @@ impl ManagerState {
                 delta = (q1 - alpha.complex_mul(p1) + q2 - alpha.complex_mul(p2)) * 0.5;
             }
 
-            let id = grab.id;
+            let id = grab.id.clone();
             if alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO {
                 let event = Event::Pan { alpha, delta };
                 mgr.send_event(widget, id, event);
@@ -480,7 +360,7 @@ impl<'a> Manager<'a> {
                 // Update hovered widget
                 let cur_id = widget.find_id(coord);
                 let delta = coord - self.state.last_mouse_coord;
-                self.set_hover(widget, cur_id);
+                self.set_hover(widget, cur_id.clone());
 
                 if let Some(grab) = self.mouse_grab() {
                     if grab.mode == GrabMode::Grab {
@@ -497,7 +377,8 @@ impl<'a> Manager<'a> {
                     {
                         pan.coords[usize::conv(grab.pan_grab.1)].1 = coord;
                     }
-                } else if let Some(id) = self.state.popups.last().map(|(_, p, _)| p.parent) {
+                } else if let Some(id) = self.state.popups.last().map(|(_, p, _)| p.parent.clone())
+                {
                     let source = PressSource::Mouse(FAKE_MOUSE_BUTTON, 0);
                     let event = Event::PressMove {
                         source,
@@ -535,7 +416,7 @@ impl<'a> Manager<'a> {
                         ScrollDelta::PixelDelta(Offset(coord.0, coord.1))
                     }
                 });
-                if let Some(id) = self.state.hover {
+                if let Some(id) = self.state.hover.clone() {
                     self.send_event(widget, id, event);
                 }
             }
@@ -560,7 +441,7 @@ impl<'a> Manager<'a> {
                         let source = PressSource::Mouse(button, grab.repetitions);
                         let event = Event::PressEnd {
                             source,
-                            end_id: self.state.hover,
+                            end_id: self.state.hover.clone(),
                             coord,
                         };
                         self.send_event(widget, grab.start_id, event);
@@ -570,11 +451,11 @@ impl<'a> Manager<'a> {
                     if state == ElementState::Released {
                         self.end_mouse_grab(button);
                     }
-                } else if let Some(start_id) = self.state.hover {
+                } else if let Some(start_id) = self.state.hover.clone() {
                     // No mouse grab but have a hover target
                     if state == ElementState::Pressed {
                         if self.state.config.borrow().mouse_nav_focus() {
-                            if let Some(w) = widget.find_widget(start_id) {
+                            if let Some(w) = widget.find_widget(&start_id) {
                                 if w.key_nav() {
                                     self.set_nav_focus(w.id(), false);
                                 }
@@ -584,7 +465,7 @@ impl<'a> Manager<'a> {
                         let source = PressSource::Mouse(button, self.state.last_click_repetitions);
                         let event = Event::PressStart {
                             source,
-                            start_id,
+                            start_id: start_id.clone(),
                             coord,
                         };
                         self.send_popup_first(widget, start_id, event);
@@ -600,7 +481,7 @@ impl<'a> Manager<'a> {
                     TouchPhase::Started => {
                         if let Some(start_id) = widget.find_id(coord) {
                             if self.state.config.borrow().touch_nav_focus() {
-                                if let Some(w) = widget.find_widget(start_id) {
+                                if let Some(w) = widget.find_widget(&start_id) {
                                     if w.key_nav() {
                                         self.set_nav_focus(w.id(), false);
                                     }
@@ -609,7 +490,7 @@ impl<'a> Manager<'a> {
 
                             let event = Event::PressStart {
                                 source,
-                                start_id,
+                                start_id: start_id.clone(),
                                 coord,
                             };
                             self.send_popup_first(widget, start_id, event);
@@ -622,17 +503,16 @@ impl<'a> Manager<'a> {
                         let mut pan_grab = None;
                         if let Some(grab) = self.get_touch(touch.id) {
                             if grab.mode == GrabMode::Grab {
-                                let id = grab.start_id;
+                                let id = grab.start_id.clone();
                                 let event = Event::PressMove {
                                     source,
-                                    cur_id,
+                                    cur_id: cur_id.clone(),
                                     coord,
                                     delta: coord - grab.coord,
                                 };
                                 // Only when 'depressed' status changes:
                                 let redraw = grab.cur_id != cur_id
-                                    && (grab.cur_id == Some(grab.start_id)
-                                        || cur_id == Some(grab.start_id));
+                                    && (grab.start_id == grab.cur_id || grab.start_id == cur_id);
 
                                 grab.cur_id = cur_id;
                                 grab.coord = coord;
@@ -663,7 +543,7 @@ impl<'a> Manager<'a> {
                             if grab.mode == GrabMode::Grab {
                                 let event = Event::PressEnd {
                                     source,
-                                    end_id: grab.cur_id,
+                                    end_id: grab.cur_id.clone(),
                                     coord,
                                 };
                                 if let Some(cur_id) = grab.cur_id {

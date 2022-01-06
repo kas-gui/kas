@@ -37,7 +37,7 @@ pub trait Menu: Widget {
     /// When opening menus and `set_focus` is true, the first navigable child
     /// of the newly opened menu will be given focus. This is used for keyboard
     /// navigation only.
-    fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>, set_focus: bool) {
+    fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<&WidgetId>, set_focus: bool) {
         let _ = (mgr, target, set_focus);
     }
 }
@@ -80,13 +80,13 @@ impl<M: 'static> WidgetChildren for Box<dyn Menu<Msg = M>> {
         self.as_mut().get_child_mut(index)
     }
 
-    fn find_child_index(&self, id: WidgetId) -> Option<usize> {
+    fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
         self.as_ref().find_child_index(id)
     }
-    fn find_widget(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
+    fn find_widget(&self, id: &WidgetId) -> Option<&dyn WidgetConfig> {
         self.as_ref().find_widget(id)
     }
-    fn find_widget_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
+    fn find_widget_mut(&mut self, id: &WidgetId) -> Option<&mut dyn WidgetConfig> {
         self.as_mut().find_widget_mut(id)
     }
 }
@@ -149,7 +149,7 @@ impl<M: 'static> Menu for Box<dyn Menu<Msg = M>> {
     fn menu_is_open(&self) -> bool {
         self.deref().menu_is_open()
     }
-    fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>, set_focus: bool) {
+    fn set_menu_path(&mut self, mgr: &mut Manager, target: Option<&WidgetId>, set_focus: bool) {
         self.deref_mut().set_menu_path(mgr, target, set_focus)
     }
 }

@@ -7,8 +7,12 @@
 
 use super::AccelLabel;
 use kas::prelude::*;
+use kas::updatable::{SharedRc, SingleData, Updatable};
 use log::trace;
 use std::rc::Rc;
+
+/// Type of radiobox group
+pub type RadioBoxGroup = SharedRc<WidgetId>;
 
 widget! {
     /// A bare radiobox (no label)
@@ -18,13 +22,15 @@ widget! {
         #[widget_core]
         core: CoreData,
         state: bool,
-        handle: UpdateHandle,
+        group: SharedRc<WidgetId>,
         on_select: Option<Rc<dyn Fn(&mut Manager) -> Option<M>>>,
     }
 
     impl WidgetConfig for Self {
         fn configure(&mut self, mgr: &mut Manager) {
-            mgr.update_on_handle(self.handle, self.id());
+            if let Some(handle) = self.group.update_handle() {
+                mgr.update_on_handle(handle, self.id());
+            }
         }
 
         fn key_nav(&self) -> bool {
@@ -50,15 +56,16 @@ widget! {
                         trace!("RadioBoxBare: set {}", self.id());
                         self.state = true;
                         mgr.redraw(self.id());
-                        mgr.trigger_update(self.handle, self.id().as_u64());
+                        if let Some(handle) = self.group.update(self.id()) {
+                            mgr.trigger_update(handle, 0);
+                        }
                         Response::update_or_msg(self.on_select.as_ref().and_then(|f| f(mgr)))
                     } else {
                         Response::Used
                     }
                 }
-                Event::HandleUpdate { payload, .. } => {
-                    let opt_id = WidgetId::opt_from_u64(payload);
-                    if self.state && !self.eq_id(opt_id) {
+                Event::HandleUpdate { .. } => {
+                    if self.state && !self.eq_id(self.group.get_cloned()) {
                         trace!("RadioBoxBare: unset {}", self.id());
                         self.state = false;
                         mgr.redraw(self.id());
@@ -96,13 +103,13 @@ widget! {
         /// Construct a radiobox
         ///
         /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
-        /// same `handle` will be considered part of a single group.
+        /// same `group` will be considered part of a single group.
         #[inline]
-        pub fn new(handle: UpdateHandle) -> Self {
+        pub fn new(group: SharedRc<WidgetId>) -> Self {
             RadioBoxBare {
                 core: Default::default(),
                 state: false,
-                handle,
+                group,
                 on_select: None,
             }
         }
@@ -122,17 +129,17 @@ widget! {
             RadioBoxBare {
                 core: self.core,
                 state: self.state,
-                handle: self.handle,
+                group: self.group,
                 on_select: Some(Rc::new(f)),
             }
         }
     }
 
     impl Self {
-        /// Construct a radiobox with given `handle` and event handler `f`
+        /// Construct a radiobox with given `group` and event handler `f`
         ///
         /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
-        /// same `handle` will be considered part of a single group.
+        /// same `group` will be considered part of a single group.
         ///
         /// On selection (through user input events or [`Event::Activate`]) the
         /// closure `f` is called. The result of `f` is converted to
@@ -140,11 +147,11 @@ widget! {
         ///
         /// No handler is called on deselection, but [`Response::Update`] is returned.
         #[inline]
-        pub fn new_on<F>(handle: UpdateHandle, f: F) -> Self
+        pub fn new_on<F>(group: SharedRc<WidgetId>, f: F) -> Self
         where
             F: Fn(&mut Manager) -> Option<M> + 'static,
         {
-            RadioBoxBare::new(handle).on_select(f)
+            RadioBoxBare::new(group).on_select(f)
         }
 
         /// Set the initial state of the radiobox.
@@ -197,18 +204,18 @@ widget! {
     }
 
     impl RadioBox<VoidMsg> {
-        /// Construct a radiobox with a given `label` and `handle`
+        /// Construct a radiobox with a given `label` and `group`
         ///
         /// RadioBox labels are optional; if no label is desired, use an empty
         /// string.
         ///
         /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
-        /// same `handle` will be considered part of a single group.
+        /// same `group` will be considered part of a single group.
         #[inline]
-        pub fn new<T: Into<AccelString>>(label: T, handle: UpdateHandle) -> Self {
+        pub fn new<T: Into<AccelString>>(label: T, group: SharedRc<WidgetId>) -> Self {
             RadioBox {
                 core: Default::default(),
-                radiobox: RadioBoxBare::new(handle),
+                radiobox: RadioBoxBare::new(group),
                 label: AccelLabel::new(label.into()),
             }
         }
@@ -234,13 +241,13 @@ widget! {
     }
 
     impl Self {
-        /// Construct a radiobox with given `label`, `handle` and event handler `f`
+        /// Construct a radiobox with given `label`, `group` and event handler `f`
         ///
         /// RadioBox labels are optional; if no label is desired, use an empty
         /// string.
         ///
         /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
-        /// same `handle` will be considered part of a single group.
+        /// same `group` will be considered part of a single group.
         ///
         /// On selection (through user input events or [`Event::Activate`]) the
         /// closure `f` is called. The result of `f` is converted to
@@ -248,31 +255,31 @@ widget! {
         ///
         /// No handler is called on deselection, but [`Response::Update`] is returned.
         #[inline]
-        pub fn new_on<T: Into<AccelString>, F>(label: T, handle: UpdateHandle, f: F) -> Self
+        pub fn new_on<T: Into<AccelString>, F>(label: T, group: SharedRc<WidgetId>, f: F) -> Self
         where
             F: Fn(&mut Manager) -> Option<M> + 'static,
         {
-            RadioBox::new(label, handle).on_select(f)
+            RadioBox::new(label, group).on_select(f)
         }
 
-        /// Construct a radiobox with given `label`, `handle` and payload `msg`
+        /// Construct a radiobox with given `label`, `group` and payload `msg`
         ///
         /// RadioBox labels are optional; if no label is desired, use an empty
         /// string.
         ///
         /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
-        /// same `handle` will be considered part of a single group.
+        /// same `group` will be considered part of a single group.
         ///
         /// On selection (through user input events or [`Event::Activate`]) a clone
         /// of `msg` is returned to the parent widget via [`Response::Msg`].
         ///
         /// No handler is called on deselection, but [`Response::Update`] is returned.
         #[inline]
-        pub fn new_msg<S: Into<AccelString>>(label: S, handle: UpdateHandle, msg: M) -> Self
+        pub fn new_msg<S: Into<AccelString>>(label: S, group: SharedRc<WidgetId>, msg: M) -> Self
         where
             M: Clone,
         {
-            Self::new_on(label, handle, move |_| Some(msg.clone()))
+            Self::new_on(label, group, move |_| Some(msg.clone()))
         }
 
         /// Set the initial state of the radiobox.
