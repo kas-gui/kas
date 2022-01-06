@@ -173,7 +173,7 @@ where
         'b: 'c,
     {
         super::flat_theme::DrawHandle {
-            draw: self.draw.reborrow(),
+            draw: self.draw.re(),
             w: self.w,
             cols: self.cols,
         }

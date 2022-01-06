@@ -43,7 +43,7 @@ use std::any::Any;
 ///
 /// Note that this object is little more than a mutable reference to the shell's
 /// per-window draw state. As such, it is normal to pass *a new copy* created
-/// via [`DrawIface::reborrow`] as a method argument. (Note that Rust automatically
+/// via [`DrawIface::re`] as a method argument. (Note that Rust automatically
 /// "reborrows" reference types passed as method arguments, but cannot do so
 /// automatically for structs containing references.)
 pub struct DrawIface<'a, DS: DrawSharedImpl> {
@@ -76,7 +76,7 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
     }
 
     /// Reborrow with a new lifetime
-    pub fn reborrow<'b>(&'b mut self) -> DrawIface<'b, DS>
+    pub fn re<'b>(&'b mut self) -> DrawIface<'b, DS>
     where
         'a: 'b,
     {
