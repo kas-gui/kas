@@ -187,15 +187,15 @@ widget! {
             layout::Layout::frame(&mut self.layout_frame, inner)
         }
 
-        fn draw(&mut self, mut draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
             // We draw highlights for input state of inner:
             let disabled = disabled || self.is_disabled() || self.inner.is_disabled();
-            let mut input_state = self.inner.input_state(mgr, disabled);
+            let mut input_state = draw.input_state(&self.inner, disabled);
             if self.inner.has_error() {
                 input_state.insert(InputState::ERROR);
             }
             draw.edit_box(self.core.rect, input_state);
-            self.inner.draw(draw, mgr, disabled);
+            self.inner.draw(draw, disabled);
         }
     }
 }
@@ -414,13 +414,13 @@ widget! {
             self.scroll_offset()
         }
 
-        fn draw(&mut self, mut draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
             let class = if self.multi_line {
                 TextClass::EditMulti
             } else {
                 TextClass::Edit
             };
-            let state = self.input_state(mgr, disabled);
+            let state = draw.input_state(self, disabled);
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
                 if self.selection.is_empty() {
                     draw.text(self.rect().pos, self.text.as_ref(), class, state);
@@ -436,7 +436,7 @@ widget! {
                         state,
                     );
                 }
-                if mgr.has_char_focus(self.id_ref()).0 {
+                if draw.ev_state().has_char_focus(self.id_ref()).0 {
                     draw.edit_marker(
                         self.rect().pos,
                         self.text.as_ref(),

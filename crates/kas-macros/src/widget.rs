@@ -267,10 +267,9 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                 fn draw(
                     &mut self,
                     draw: ::kas::theme::DrawMgr,
-                    mgr: &::kas::event::ManagerState,
                     disabled: bool,
                 ) {
-                    self.#inner.draw(draw, mgr, disabled);
+                    self.#inner.draw(draw, disabled);
                 }
             }
         });

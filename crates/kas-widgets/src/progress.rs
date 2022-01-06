@@ -99,9 +99,9 @@ widget! {
             self.core.rect = rect;
         }
 
-        fn draw(&mut self, mut draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
             let dir = self.direction.as_direction();
-            let state = self.input_state(mgr, disabled);
+            let state = draw.input_state(self, disabled);
             draw.progress_bar(self.core.rect, dir, state, self.value);
         }
     }

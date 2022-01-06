@@ -145,8 +145,8 @@ widget! {
             None
         }
 
-        fn draw(&mut self, mut draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
-            let mut state = self.input_state(mgr, disabled);
+        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
+            let mut state = draw.input_state(self, disabled);
             if self.popup_id.is_some() {
                 state.insert(InputState::DEPRESS);
             }
@@ -154,7 +154,7 @@ widget! {
             draw.text_accel(
                 self.label_store.pos,
                 &self.label,
-                mgr.show_accel_labels(),
+                draw.ev_state().show_accel_labels(),
                 TextClass::MenuLabel,
                 state,
             );

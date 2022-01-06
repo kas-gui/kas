@@ -48,12 +48,12 @@ widget! {
             None
         }
 
-        fn draw(&mut self, draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
-            let mut state = self.input_state(mgr, disabled);
+        fn draw(&mut self, draw: DrawMgr, disabled: bool) {
+            let mut state = draw.input_state(self, disabled);
             if self.popup_id.is_some() {
                 state.insert(InputState::DEPRESS);
             }
-            self.layout().draw(draw, mgr, state);
+            self.layout().draw(draw, state);
         }
     }
 

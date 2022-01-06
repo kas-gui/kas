@@ -78,10 +78,10 @@ widget! {
             None
         }
 
-        fn draw(&mut self, draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, draw: DrawMgr, disabled: bool) {
             let disabled = disabled || self.is_disabled();
             if self.active < self.widgets.len() {
-                self.widgets[self.active].draw(draw, mgr, disabled);
+                self.widgets[self.active].draw(draw, disabled);
             }
         }
     }

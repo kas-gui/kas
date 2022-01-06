@@ -10,9 +10,11 @@ use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 
 use crate::dir::Direction;
 use crate::draw::{color::Rgb, Draw, ImageId, PassType};
+use crate::event::ManagerState;
 use crate::geom::{Coord, Offset, Rect};
 use crate::text::{AccelString, Text, TextApi, TextDisplay};
 use crate::theme::{InputState, SizeHandle, SizeMgr, TextClass};
+use crate::WidgetCore;
 
 /// Draw interface
 ///
@@ -27,13 +29,14 @@ use crate::theme::{InputState, SizeHandle, SizeMgr, TextClass};
 /// -   [`Self::with_clip_region`] constructs a new pass with clipping
 /// -   [`Self::with_overlay`] constructs a new pass for an overlay (e.g. pop-up menu or tooltip)
 /// -   [`Self::get_clip_rect`] returns the current clip rect
-pub struct DrawMgr<'a>(&'a mut dyn DrawHandle);
+pub struct DrawMgr<'a>(&'a mut dyn DrawHandle, &'a ManagerState);
 
 impl<'a> DrawMgr<'a> {
+    /// Construct from a [`DrawMgr`] and [`ManagerState`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn new(h: &'a mut dyn DrawHandle) -> Self {
-        DrawMgr(h)
+    pub fn new(h: &'a mut dyn DrawHandle, mgr: &'a ManagerState) -> Self {
+        DrawMgr(h, mgr)
     }
 
     /// Reborrow with a new lifetime
@@ -48,7 +51,17 @@ impl<'a> DrawMgr<'a> {
     where
         'a: 'b,
     {
-        DrawMgr(self.0)
+        DrawMgr(self.0, self.1)
+    }
+
+    /// Access event-management state
+    pub fn ev_state(&self) -> &ManagerState {
+        self.1
+    }
+
+    /// Shortcut: calculate [`InputState`] for a widget
+    pub fn input_state<W: WidgetCore + ?Sized>(&self, w: &W, disabled: bool) -> InputState {
+        self.1.draw_state(w.core_data(), disabled)
     }
 
     /// Access a [`SizeMgr`]
@@ -70,8 +83,9 @@ impl<'a> DrawMgr<'a> {
     /// Adds a new draw pass of type [`PassType::Clip`], with draw operations
     /// clipped to `rect` and translated by `offset.
     pub fn with_clip_region<F: FnMut(DrawMgr)>(&mut self, rect: Rect, offset: Offset, mut f: F) {
-        self.0
-            .new_pass(rect, offset, PassType::Clip, &mut |draw| f(DrawMgr(draw)));
+        self.0.new_pass(rect, offset, PassType::Clip, &mut |draw| {
+            f(DrawMgr(draw, self.1))
+        });
     }
 
     /// Draw to a new pass as an overlay (e.g. for pop-up menus)
@@ -85,7 +99,7 @@ impl<'a> DrawMgr<'a> {
     pub fn with_overlay<F: FnMut(DrawMgr)>(&mut self, rect: Rect, mut f: F) {
         self.0
             .new_pass(rect, Offset::ZERO, PassType::Overlay, &mut |draw| {
-                f(DrawMgr(draw))
+                f(DrawMgr(draw, self.1))
             });
     }
 

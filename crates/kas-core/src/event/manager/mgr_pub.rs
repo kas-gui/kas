@@ -15,7 +15,7 @@ use crate::geom::{Coord, Offset, Vec2};
 use crate::theme::{SizeMgr, ThemeControl};
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
-use crate::{TkAction, WidgetExt, WidgetId, WindowId};
+use crate::{CoreData, TkAction, WidgetExt, WidgetId, WindowId};
 
 impl<'a> std::ops::BitOrAssign<TkAction> for Manager<'a> {
     #[inline]
@@ -86,6 +86,42 @@ impl ManagerState {
             }
         }
         false
+    }
+
+    /// Construct [`InputState`]
+    ///
+    /// The `disabled` flag is inherited from parents. [`InputState::disabled`]
+    /// will be true if either `disabled` or `self.is_disabled()` are true.
+    ///
+    /// The error state defaults to `false` since most widgets don't support
+    /// this.
+    ///
+    /// Note: most state changes should automatically cause a redraw, but change
+    /// in `hover` status will not (since this happens frequently and many
+    /// widgets are unaffected), unless [`WidgetConfig::hover_highlight`]
+    /// returns true.
+    pub fn draw_state(&self, core: &CoreData, disabled: bool) -> InputState {
+        let (char_focus, sel_focus) = self.has_char_focus(&core.id);
+        let mut state = InputState::empty();
+        if core.disabled || disabled {
+            state |= InputState::DISABLED;
+        }
+        if self.is_hovered(&core.id) {
+            state |= InputState::HOVER;
+        }
+        if self.is_depressed(&core.id) {
+            state |= InputState::DEPRESS;
+        }
+        if self.nav_focus(&core.id) {
+            state |= InputState::NAV_FOCUS;
+        }
+        if char_focus {
+            state |= InputState::CHAR_FOCUS;
+        }
+        if sel_focus {
+            state |= InputState::SEL_FOCUS;
+        }
+        state
     }
 }
 

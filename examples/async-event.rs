@@ -63,7 +63,7 @@ widget! {
             let factor = size_mgr.scale_factor();
             SizeRules::fixed_scaled(100.0, 10.0, factor)
         }
-        fn draw(&mut self, mut draw: DrawMgr, _: &ManagerState, _: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, _: bool) {
             let draw = draw.draw_device();
             let col = *self.colour.lock().unwrap();
             draw.rect((self.rect()).into(), col);

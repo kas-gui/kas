@@ -36,13 +36,13 @@ widget! {
         }
 
         #[cfg(feature = "min_spec")]
-        default fn draw(&mut self, mut draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
-            let state = self.input_state(mgr, disabled);
+        default fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
+            let state = draw.input_state(self, disabled);
             draw.text_effects(self.core.rect.pos, &self.label, TextClass::Label, state);
         }
         #[cfg(not(feature = "min_spec"))]
-        fn draw(&mut self, mut draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
-            let state = self.input_state(mgr, disabled);
+        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
+            let state = draw.input_state(self, disabled);
             draw.text_effects(self.core.rect.pos, &self.label, TextClass::Label, state);
         }
     }

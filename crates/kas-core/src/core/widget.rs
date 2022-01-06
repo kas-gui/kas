@@ -8,10 +8,10 @@
 use std::any::Any;
 use std::fmt;
 
-use crate::event::{self, ConfigureManager, Manager, ManagerState};
+use crate::event::{self, ConfigureManager, Manager};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{self, AlignHints, AxisInfo, SizeRules};
-use crate::theme::{DrawMgr, InputState, SizeMgr};
+use crate::theme::{DrawMgr, SizeMgr};
 use crate::{CoreData, TkAction, WidgetId};
 
 impl dyn WidgetCore {
@@ -122,43 +122,6 @@ pub trait WidgetCore: Any + fmt::Debug {
     fn as_widget(&self) -> &dyn WidgetConfig;
     /// Erase type
     fn as_widget_mut(&mut self) -> &mut dyn WidgetConfig;
-
-    /// Construct [`InputState`]
-    ///
-    /// The `disabled` flag is inherited from parents. [`InputState::disabled`]
-    /// will be true if either `disabled` or `self.is_disabled()` are true.
-    ///
-    /// The error state defaults to `false` since most widgets don't support
-    /// this.
-    ///
-    /// Note: most state changes should automatically cause a redraw, but change
-    /// in `hover` status will not (since this happens frequently and many
-    /// widgets are unaffected), unless [`WidgetConfig::hover_highlight`]
-    /// returns true.
-    fn input_state(&self, mgr: &ManagerState, disabled: bool) -> InputState {
-        let id = &self.core_data().id;
-        let (char_focus, sel_focus) = mgr.has_char_focus(id);
-        let mut state = InputState::empty();
-        if self.core_data().disabled || disabled {
-            state |= InputState::DISABLED;
-        }
-        if mgr.is_hovered(id) {
-            state |= InputState::HOVER;
-        }
-        if mgr.is_depressed(id) {
-            state |= InputState::DEPRESS;
-        }
-        if mgr.nav_focus(id) {
-            state |= InputState::NAV_FOCUS;
-        }
-        if char_focus {
-            state |= InputState::CHAR_FOCUS;
-        }
-        if sel_focus {
-            state |= InputState::SEL_FOCUS;
-        }
-        state
-    }
 }
 
 /// Listing of a widget's children
@@ -494,10 +457,10 @@ pub trait Layout: WidgetChildren {
     /// [`WidgetCore::input_state`] may be used to obtain an [`InputState`] to
     /// determine active visual effects.
     ///
-    /// The default impl draws all children. TODO: have default?
-    fn draw(&mut self, draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
-        let state = self.input_state(mgr, disabled);
-        self.layout().draw(draw, mgr, state);
+    /// The default impl draws elements as defined by [`Self::layout`].
+    fn draw(&mut self, draw: DrawMgr, disabled: bool) {
+        let state = draw.input_state(self, disabled);
+        self.layout().draw(draw, state);
     }
 }
 

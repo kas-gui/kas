@@ -6,7 +6,7 @@
 //! Trait impls
 
 use super::*;
-use crate::event::{self, Event, Manager, ManagerState, Response};
+use crate::event::{self, Event, Manager, Response};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
@@ -91,8 +91,8 @@ impl<M: 'static> Layout for Box<dyn Widget<Msg = M>> {
         self.as_mut().find_id(coord)
     }
 
-    fn draw(&mut self, draw: DrawMgr, mgr: &ManagerState, disabled: bool) {
-        self.as_mut().draw(draw, mgr, disabled);
+    fn draw(&mut self, draw: DrawMgr, disabled: bool) {
+        self.as_mut().draw(draw, disabled);
     }
 }
 
