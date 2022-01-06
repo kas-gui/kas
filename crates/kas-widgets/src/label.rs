@@ -65,9 +65,9 @@ widget! {
 
 #[cfg(feature = "min_spec")]
 impl Layout for AccelLabel {
-    fn draw(&mut self, mut draw: DrawMgr, mgr: &EventState, disabled: bool) {
-        let state = self.input_state(mgr, disabled);
-        let accel = mgr.show_accel_labels();
+    fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
+        let state = draw.input_state(self, disabled);
+        let accel = draw.ev_state().show_accel_labels();
         draw.text_accel(
             self.core.rect.pos,
             &self.label,
@@ -81,8 +81,8 @@ impl Layout for AccelLabel {
 // Str/String representations have no effects, so use simpler draw call
 #[cfg(feature = "min_spec")]
 impl<'a> Layout for Label<&'a str> {
-    fn draw(&mut self, mut draw: DrawMgr, mgr: &EventState, disabled: bool) {
-        let state = self.input_state(mgr, disabled);
+    fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
+        let state = draw.input_state(self, disabled);
         draw.text(
             self.core.rect.pos,
             self.label.as_ref(),
@@ -93,8 +93,8 @@ impl<'a> Layout for Label<&'a str> {
 }
 #[cfg(feature = "min_spec")]
 impl Layout for StringLabel {
-    fn draw(&mut self, mut draw: DrawMgr, mgr: &EventState, disabled: bool) {
-        let state = self.input_state(mgr, disabled);
+    fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
+        let state = draw.input_state(self, disabled);
         draw.text(
             self.core.rect.pos,
             self.label.as_ref(),

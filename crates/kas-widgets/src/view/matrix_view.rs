@@ -431,7 +431,7 @@ widget! {
 
         fn spatial_nav(
             &mut self,
-            mgr: &mut EventMgr,
+            mgr: &mut SetRectMgr,
             reverse: bool,
             from: Option<usize>,
         ) -> Option<usize> {

@@ -473,7 +473,7 @@ widget! {
 
         fn spatial_nav(
             &mut self,
-            mgr: &mut EventMgr,
+            mgr: &mut SetRectMgr,
             reverse: bool,
             from: Option<usize>,
         ) -> Option<usize> {
@@ -481,7 +481,7 @@ widget! {
                 return None;
             }
 
-            let solver = mgr.set_rect_mgr(|mgr| self.position_solver(mgr));
+            let solver = self.position_solver(mgr);
             let last_data = self.data.len() - 1;
             let data = if let Some(index) = from {
                 let data = solver.child_to_data(index);
@@ -501,7 +501,7 @@ widget! {
             let (_, action) = self.scroll.focus_rect(solver.rect(data), self.core.rect);
             if !action.is_empty() {
                 *mgr |= action;
-                mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
+                self.update_widgets(mgr);
             }
 
             Some(data % usize::conv(self.cur_len))

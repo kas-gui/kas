@@ -140,7 +140,7 @@ widget! {
             layout::Layout::frame(&mut self.frame_store, label)
         }
 
-        fn spatial_nav(&mut self, _: &mut EventMgr, _: bool, _: Option<usize>) -> Option<usize> {
+        fn spatial_nav(&mut self, _: &mut SetRectMgr, _: bool, _: Option<usize>) -> Option<usize> {
             // We have no child within our rect
             None
         }

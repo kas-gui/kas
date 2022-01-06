@@ -58,13 +58,6 @@
 //! (This "weak grab" behaviour is intentional to align UI response with a
 //! user's intuition that any visible non-grey part of the UI is interactive.)
 //!
-//! ## Drawing
-//!
-//! Widgets do not usually track input events for the purpose of drawn effects
-//! such as mouse-hover. Instead, a widget calls [`WidgetCore::input_state`]
-//! with a reference to the [`EventState`] (which is passed to
-//! [`Layout::draw`] calls) in order to obtain an [`InputState`] instance.
-//!
 //! [`WidgetId`]: crate::WidgetId
 
 mod config;

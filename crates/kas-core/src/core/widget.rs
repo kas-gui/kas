@@ -8,6 +8,8 @@
 use std::any::Any;
 use std::fmt;
 
+#[allow(unused)]
+use crate::event::EventState;
 use crate::event::{self, ConfigureManager, EventMgr};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{self, AlignHints, AxisInfo, SetRectMgr, SizeRules};
@@ -172,7 +174,7 @@ pub trait WidgetChildren: WidgetCore {
     /// calls to methods like [`Self::get_child`] must handle `None` return.
     ///
     /// This requires that the widget tree has already been configured by
-    /// [`event::EventState::configure`].
+    /// [`EventState::configure`].
     #[inline]
     fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
         self.id().index_of_child(id)
@@ -181,7 +183,7 @@ pub trait WidgetChildren: WidgetCore {
     /// Find the descendant with this `id`, if any
     ///
     /// This requires that the widget tree has already been configured by
-    /// [`event::EventState::configure`].
+    /// [`EventState::configure`].
     fn find_widget(&self, id: &WidgetId) -> Option<&dyn WidgetConfig> {
         if let Some(index) = self.find_child_index(id) {
             self.get_child(index)
@@ -388,7 +390,7 @@ pub trait Layout: WidgetChildren {
     /// children in order.
     fn spatial_nav(
         &mut self,
-        mgr: &mut EventMgr,
+        mgr: &mut SetRectMgr,
         reverse: bool,
         from: Option<usize>,
     ) -> Option<usize> {
@@ -454,8 +456,8 @@ pub trait Layout: WidgetChildren {
     /// use `let disabled = disabled || self.is_disabled();` to determine its
     /// own disabled state, then pass this value on to children.
     ///
-    /// [`WidgetCore::input_state`] may be used to obtain an [`InputState`] to
-    /// determine active visual effects.
+    /// [`DrawMgr::input_state`] may be used to obtain an
+    /// [`crate::theme::InputState`] to determine active visual effects.
     ///
     /// The default impl draws elements as defined by [`Self::layout`].
     fn draw(&mut self, draw: DrawMgr, disabled: bool) {

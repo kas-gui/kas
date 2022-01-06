@@ -741,7 +741,7 @@ impl<'a> EventMgr<'a> {
         self.state.send_action(TkAction::REDRAW);
 
         fn nav(
-            mgr: &mut EventMgr,
+            mgr: &mut SetRectMgr,
             widget: &mut dyn WidgetConfig,
             focus: Option<&WidgetId>,
             rev: bool,
@@ -811,10 +811,13 @@ impl<'a> EventMgr<'a> {
         let restart = self.state.nav_focus.is_some();
 
         let focus = self.state.nav_focus.clone();
-        let mut opt_id = nav(self, widget, focus.as_ref(), reverse);
-        if restart && opt_id.is_none() {
-            opt_id = nav(self, widget, None, reverse);
-        }
+        let mut opt_id = None;
+        self.set_rect_mgr(|mgr| {
+            opt_id = nav(mgr, widget, focus.as_ref(), reverse);
+            if restart && opt_id.is_none() {
+                opt_id = nav(mgr, widget, None, reverse);
+            }
+        });
 
         trace!("EventMgr: nav_focus = {:?}", opt_id);
         self.state.nav_focus = opt_id.clone();

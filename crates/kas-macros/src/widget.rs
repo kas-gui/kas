@@ -253,7 +253,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                 #[inline]
                 fn spatial_nav(
                     &mut self,
-                    mgr: &mut ::kas::event::EventMgr,
+                    mgr: &mut ::kas::layout::SetRectMgr,
                     reverse: bool,
                     from: Option<usize>,
                 ) -> Option<usize> {
