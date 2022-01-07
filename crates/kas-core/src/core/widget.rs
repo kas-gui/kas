@@ -120,10 +120,23 @@ pub trait WidgetCore: Any + fmt::Debug {
     /// Get the name of the widget struct
     fn widget_name(&self) -> &'static str;
 
+    /// Display as "Widget#Id"
+    #[inline]
+    fn identify(&self) -> IdentifyWidget {
+        IdentifyWidget(self.widget_name(), self.id())
+    }
+
     /// Erase type
     fn as_widget(&self) -> &dyn WidgetConfig;
     /// Erase type
     fn as_widget_mut(&mut self) -> &mut dyn WidgetConfig;
+}
+
+pub struct IdentifyWidget(&'static str, WidgetId);
+impl fmt::Display for IdentifyWidget {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{}{}", self.0, self.1)
+    }
 }
 
 /// Listing of a widget's children

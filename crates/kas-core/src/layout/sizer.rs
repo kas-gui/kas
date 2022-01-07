@@ -234,10 +234,9 @@ impl<'a> fmt::Display for WidgetHeirarchy<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(
             f,
-            "\n{}{}\t{}\tpos={:?}\tsize={:?}",
-            "- ".repeat(self.1),
-            self.0.id(),
-            self.0.widget_name(),
+            "\n{}{}\tpos={:?}\tsize={:?}",
+            "| ".repeat(self.1),
+            self.0.identify(),
             self.0.rect().pos,
             self.0.rect().size,
         )?;
