@@ -275,14 +275,25 @@ impl<'a> EventMgr<'a> {
     /// that `Some` result does not guarantee the operation succeeded).
     #[inline]
     pub fn add_popup(&mut self, popup: crate::Popup) -> Option<WindowId> {
+        trace!("Manager::add_popup({:?})", popup);
+        let new_id = &popup.id;
+        while let Some((_, popup, _)) = self.state.popups.last() {
+            if popup.parent.is_ancestor_of(new_id) {
+                break;
+            }
+            let (wid, popup, _old_nav_focus) = self.state.popups.pop().unwrap();
+            self.shell.close_window(wid);
+            self.state.popup_removed.push((popup.parent, wid));
+            // Don't restore old nav focus: assume new focus will be set by new popup
+        }
+
         let opt_id = self.shell.add_popup(popup.clone());
         if let Some(id) = opt_id {
-            self.state.new_popups.push(popup.id.clone());
             self.state
                 .popups
                 .push((id, popup, self.state.nav_focus.clone()));
-            self.clear_nav_focus();
         }
+        self.clear_nav_focus();
         opt_id
     }
 

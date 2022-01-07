@@ -51,7 +51,6 @@ impl EventState {
             accel_stack: vec![],
             accel_layers: HashMap::new(),
             popups: Default::default(),
-            new_popups: Default::default(),
             popup_removed: Default::default(),
             time_updates: vec![],
             handle_updates: HashMap::new(),
@@ -178,20 +177,6 @@ impl EventState {
 
         while let Some((parent, wid)) = mgr.state.popup_removed.pop() {
             mgr.send_event(widget, parent, Event::PopupRemoved(wid));
-        }
-        while let Some(id) = mgr.state.new_popups.pop() {
-            while let Some((_, popup, _)) = mgr.state.popups.last() {
-                if widget
-                    .find_widget(&popup.parent)
-                    .map(|w| w.is_ancestor_of(&id))
-                    .unwrap_or(false)
-                {
-                    break;
-                }
-                let (wid, popup, _old_nav_focus) = mgr.state.popups.pop().unwrap();
-                mgr.send_event(widget, popup.parent, Event::PopupRemoved(wid));
-                // Don't restore old nav focus: assume new focus will be set by new popup
-            }
         }
 
         for i in 0..mgr.state.touch_grab.len() {
