@@ -225,36 +225,19 @@ widget! {
         fn set_menu_path(&mut self, mgr: &mut EventMgr, target: Option<&WidgetId>, set_focus: bool) {
             match target {
                 Some(id) if self.is_ancestor_of(id) => {
-                    if self.popup_id.is_some() {
-                        // We should close other sub-menus before opening
-                        let mut child = None;
+                    if !self.popup_id.is_some() {
+                        self.open_menu(mgr, set_focus);
+                    }
+                    if !self.eq_id(id) {
                         for i in 0..self.list.len() {
-                            if self.list[i].is_ancestor_of(id) {
-                                child = Some(i);
-                            } else {
-                                self.list[i].set_menu_path(mgr, None, set_focus);
-                            }
-                        }
-                        if let Some(i) = child {
                             self.list[i].set_menu_path(mgr, target, set_focus);
                         }
-                    } else {
-                        self.open_menu(mgr, set_focus);
-                        if !self.eq_id(id) {
-                            for i in 0..self.list.len() {
-                                self.list[i].set_menu_path(mgr, target, set_focus);
-                            }
-                        }
                     }
                 }
-                _ => {
-                    if self.popup_id.is_some() {
-                        for i in 0..self.list.len() {
-                            self.list[i].set_menu_path(mgr, None, set_focus);
-                        }
-                        self.close_menu(mgr, set_focus);
-                    }
+                _ if self.popup_id.is_some() => {
+                    self.close_menu(mgr, set_focus);
                 }
+                _ => (),
             }
         }
     }

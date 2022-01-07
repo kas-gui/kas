@@ -60,9 +60,11 @@ widget! {
 
         fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
             match event {
-                Event::TimerUpdate(0) => {
+                Event::TimerUpdate(id_code) => {
                     if let Some(id) = self.delayed_open.clone() {
-                        self.set_menu_path(mgr, Some(&id), false);
+                        if id.as_u64() == id_code {
+                            self.set_menu_path(mgr, Some(&id), false);
+                        }
                     }
                     Response::Used
                 }
@@ -77,7 +79,6 @@ widget! {
                         {
                             mgr.set_grab_depress(source, Some(start_id.clone()));
                             self.opening = false;
-                            let delay = mgr.config().menu_delay();
                             if self.rect().contains(coord) {
                                 if self
                                     .bar
@@ -90,8 +91,9 @@ widget! {
                                     self.set_menu_path(mgr, None, false);
                                 }
                             } else {
+                                let delay = mgr.config().menu_delay();
+                                mgr.update_on_timer(delay, self.id(), start_id.as_u64());
                                 self.delayed_open = Some(start_id);
-                                mgr.update_on_timer(delay, self.id(), 0);
                             }
                         }
                         Response::Used
@@ -108,16 +110,18 @@ widget! {
                 } => {
                     mgr.set_grab_depress(source, cur_id.clone());
                     if let Some(id) = cur_id {
-                        if !self.eq_id(&id) && self.is_ancestor_of(&id) {
+                        if self.bar.is_strict_ancestor_of(&id) {
                             // We instantly open a sub-menu on motion over the bar,
                             // but delay when over a sub-menu (most intuitive?)
-                            if self.rect().contains(coord) {
+                            if self.rect().contains(coord) && !self.bar.eq_id(&id) {
                                 self.set_menu_path(mgr, Some(&id), false);
                             } else {
-                                mgr.set_nav_focus(id.clone(), false);
-                                self.delayed_open = Some(id);
-                                let delay = mgr.config().menu_delay();
-                                mgr.update_on_timer(delay, self.id(), 0);
+                                if id != self.delayed_open {
+                                    mgr.set_nav_focus(id.clone(), false);
+                                    let delay = mgr.config().menu_delay();
+                                    mgr.update_on_timer(delay, self.id(), id.as_u64());
+                                    self.delayed_open = Some(id);
+                                }
                             }
                         }
                     }
@@ -209,30 +213,10 @@ widget! {
 
     impl Menu for Self {
         fn set_menu_path(&mut self, mgr: &mut EventMgr, target: Option<&WidgetId>, set_focus: bool) {
+            log::trace!("{}::set_menu_path: target={:?}, set_focus={}", self.identify(), target, set_focus);
             self.delayed_open = None;
-            if let Some(id) = target {
-                let mut child = None;
-                let mut current = None;
-                for i in 0..self.bar.len() {
-                    if self.bar[i].is_ancestor_of(id) {
-                        child = Some(i);
-                    }
-                    if self.bar[i].menu_is_open() {
-                        current = Some(i);
-                    }
-                }
-                if let Some(i) = child {
-                    if child != current {
-                        if let Some(j) = current {
-                            self.bar[j].set_menu_path(mgr, None, set_focus);
-                        }
-                        self.bar[i].set_menu_path(mgr, target, set_focus);
-                    }
-                }
-            } else {
-                for i in 0..self.bar.len() {
-                    self.bar[i].set_menu_path(mgr, None, set_focus);
-                }
+            for i in 0..self.bar.len() {
+                self.bar[i].set_menu_path(mgr, target, set_focus);
             }
         }
     }

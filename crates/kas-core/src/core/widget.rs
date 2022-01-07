@@ -173,12 +173,20 @@ pub trait WidgetChildren: WidgetCore {
     /// This method may be removed in the future.
     fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig>;
 
-    /// Check whether `id` is a descendant
+    /// Check whether `id` is self or a descendant
     ///
     /// This function assumes that `id` is a valid widget.
     #[inline]
     fn is_ancestor_of(&self, id: &WidgetId) -> bool {
         self.id().is_ancestor_of(id)
+    }
+
+    /// Check whether `id` is not self and is a descendant
+    ///
+    /// This function assumes that `id` is a valid widget.
+    #[inline]
+    fn is_strict_ancestor_of(&self, id: &WidgetId) -> bool {
+        !self.eq_id(id) && self.id().is_ancestor_of(id)
     }
 
     /// Find the child which is an ancestor of this `id`, if any

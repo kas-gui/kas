@@ -391,6 +391,10 @@ impl WidgetId {
     ///
     /// -   it is guaranteed non-zero
     /// -   it may be passed to [`Self::opt_from_u64`]
+    /// -   comparing two `u64` values generated this way will mostly work as
+    ///     an equality check of the source [`WidgetId`], but can return false
+    ///     negatives (only if each id was generated through separate calls to
+    ///     [`Self::make_child`])
     pub fn as_u64(&self) -> u64 {
         self.0.as_u64()
     }
@@ -401,6 +405,10 @@ impl WidgetId {
     ///
     /// -   it is zero if and only if `id == None`
     /// -   it may be passed to [`Self::opt_from_u64`]
+    /// -   comparing two `u64` values generated this way will mostly work as
+    ///     an equality check of the source [`WidgetId`], but can return false
+    ///     negatives (only if each id was generated through separate calls to
+    ///     [`Self::make_child`])
     pub fn opt_to_u64(id: Option<&WidgetId>) -> u64 {
         match id {
             None => 0,
