@@ -179,6 +179,10 @@ impl EventState {
             mgr.send_event(widget, parent, Event::PopupRemoved(wid));
         }
 
+        if let Some((id, event)) = mgr.mouse_grab().and_then(|g| g.flush_move()) {
+            mgr.send_event(widget, id, event);
+        }
+
         for i in 0..mgr.state.touch_grab.len() {
             if let Some((id, event)) = mgr.state.touch_grab[i].flush_move() {
                 mgr.send_event(widget, id, event);
@@ -353,16 +357,11 @@ impl<'a> EventMgr<'a> {
                 let delta = coord - self.state.last_mouse_coord;
                 self.set_hover(widget, cur_id.clone());
 
-                if let Some(grab) = self.mouse_grab() {
+                if let Some(grab) = self.state.mouse_grab.as_mut() {
                     if grab.mode == GrabMode::Grab {
-                        let source = PressSource::Mouse(grab.button, grab.repetitions);
-                        let event = Event::PressMove {
-                            source,
-                            cur_id,
-                            coord,
-                            delta,
-                        };
-                        self.send_event(widget, grab.start_id, event);
+                        grab.cur_id = cur_id;
+                        grab.coord = coord;
+                        grab.delta += delta;
                     } else if let Some(pan) =
                         self.state.pan_grab.get_mut(usize::conv(grab.pan_grab.0))
                     {
@@ -396,6 +395,10 @@ impl<'a> EventMgr<'a> {
                 }
             }
             MouseWheel { delta, .. } => {
+                if let Some((id, event)) = self.mouse_grab().and_then(|g| g.flush_move()) {
+                    self.send_event(widget, id, event);
+                }
+
                 self.state.last_click_button = FAKE_MOUSE_BUTTON;
 
                 let event = Event::Scroll(match delta {
@@ -412,6 +415,10 @@ impl<'a> EventMgr<'a> {
                 }
             }
             MouseInput { state, button, .. } => {
+                if let Some((id, event)) = self.mouse_grab().and_then(|g| g.flush_move()) {
+                    self.send_event(widget, id, event);
+                }
+
                 let coord = self.state.last_mouse_coord;
 
                 if state == ElementState::Pressed {
@@ -425,7 +432,7 @@ impl<'a> EventMgr<'a> {
                     self.state.last_click_timeout = now + DOUBLE_CLICK_TIMEOUT;
                 }
 
-                if let Some(grab) = self.mouse_grab() {
+                if let Some(grab) = self.state.mouse_grab.clone() {
                     if grab.mode == GrabMode::Grab {
                         // Mouse grab active: send events there
                         debug_assert_eq!(state, ElementState::Released);

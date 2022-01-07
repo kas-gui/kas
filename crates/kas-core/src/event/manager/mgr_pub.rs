@@ -268,6 +268,9 @@ impl<'a> EventMgr<'a> {
     /// window without borders and with precise placement, or may be a layer
     /// drawn in an existing window.
     ///
+    /// The parent of a popup automatically receives mouse-motion events
+    /// ([`Event::PressMove`]) which may be used to navigate menus.
+    ///
     /// A pop-up may be closed by calling [`EventMgr::close_window`] with
     /// the [`WindowId`] returned by this method.
     ///
@@ -596,9 +599,12 @@ impl<'a> EventMgr<'a> {
                     button,
                     repetitions,
                     start_id: start_id.clone(),
+                    cur_id: Some(start_id.clone()),
                     depress: Some(id),
                     mode,
                     pan_grab,
+                    coord,
+                    delta: Offset::ZERO,
                 });
                 if let Some(icon) = cursor {
                     self.shell.set_cursor_icon(icon);

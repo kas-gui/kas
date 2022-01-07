@@ -19,7 +19,7 @@ use std::u16;
 
 use super::*;
 use crate::cast::Cast;
-use crate::geom::Coord;
+use crate::geom::{Coord, Offset};
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
 use crate::{ShellWindow, TkAction, Widget, WidgetId, WindowId};
@@ -47,9 +47,29 @@ struct MouseGrab {
     button: MouseButton,
     repetitions: u32,
     start_id: WidgetId,
+    cur_id: Option<WidgetId>,
     depress: Option<WidgetId>,
     mode: GrabMode,
     pan_grab: (u16, u16),
+    coord: Coord,
+    delta: Offset,
+}
+
+impl MouseGrab {
+    fn flush_move(&mut self) -> Option<(WidgetId, Event)> {
+        if self.delta != Offset::ZERO {
+            let event = Event::PressMove {
+                source: PressSource::Mouse(self.button, self.repetitions),
+                cur_id: self.cur_id.clone(),
+                coord: self.coord,
+                delta: self.delta,
+            };
+            self.delta = Offset::ZERO;
+            Some((self.start_id.clone(), event))
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -428,8 +448,8 @@ impl<'a> EventMgr<'a> {
         }
     }
 
-    fn mouse_grab(&self) -> Option<MouseGrab> {
-        self.state.mouse_grab.clone()
+    fn mouse_grab(&mut self) -> Option<&mut MouseGrab> {
+        self.state.mouse_grab.as_mut()
     }
 
     fn end_mouse_grab(&mut self, button: MouseButton) {
