@@ -225,7 +225,7 @@ widget! {
         fn set_menu_path(&mut self, mgr: &mut EventMgr, target: Option<&WidgetId>, set_focus: bool) {
             match target {
                 Some(id) if self.is_ancestor_of(id) => {
-                    if !self.popup_id.is_some() {
+                    if self.popup_id.is_none() {
                         self.open_menu(mgr, set_focus);
                     }
                     if !self.eq_id(id) {

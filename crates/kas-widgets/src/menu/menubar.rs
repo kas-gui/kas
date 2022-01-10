@@ -115,13 +115,11 @@ widget! {
                             // but delay when over a sub-menu (most intuitive?)
                             if self.rect().contains(coord) && !self.bar.eq_id(&id) {
                                 self.set_menu_path(mgr, Some(&id), false);
-                            } else {
-                                if id != self.delayed_open {
-                                    mgr.set_nav_focus(id.clone(), false);
-                                    let delay = mgr.config().menu_delay();
-                                    mgr.update_on_timer(delay, self.id(), id.as_u64());
-                                    self.delayed_open = Some(id);
-                                }
+                            } else if id != self.delayed_open {
+                                mgr.set_nav_focus(id.clone(), false);
+                                let delay = mgr.config().menu_delay();
+                                mgr.update_on_timer(delay, self.id(), id.as_u64());
+                                self.delayed_open = Some(id);
                             }
                         }
                     }

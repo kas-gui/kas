@@ -50,7 +50,7 @@ jobs:
       - name: Test examples/mandlebrot
         run: cargo test --manifest-path examples/mandlebrot/Cargo.toml --all-features
       - name: Clippy
-        run: cargo +nightly clippy --all --features nightly -- -D warnings
+        run: cargo clippy --all --features nightly
 
   test:
     name: Test
@@ -72,6 +72,7 @@ jobs:
           profile: minimal
           toolchain: ${{ matrix.toolchain }}
           override: true
+          components: clippy
       - name: Install dependencies
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install -y libxkbcommon-dev libxcb-shape0-dev libxcb-xfixes0-dev
@@ -94,3 +95,6 @@ jobs:
         run: cargo test
       - name: Test examples/mandlebrot
         run: cargo test --manifest-path examples/mandlebrot/Cargo.toml
+      - name: Clippy (stable)
+        if: matrix.os == 'macos-latest'
+        run: cargo clippy --all -- -D warnings -A unknown_lints
