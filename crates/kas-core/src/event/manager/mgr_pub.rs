@@ -159,7 +159,7 @@ impl<'a> EventMgr<'a> {
     /// Returns true when `dist` is large enough to switch to pan mode.
     #[inline]
     pub fn config_test_pan_thresh(&self, dist: Offset) -> bool {
-        let thresh = self.config().pan_dist_thresh() * self.scale_factor();
+        let thresh = self.config().pan_dist_thresh();
         Vec2::from(dist).sum_square() >= thresh * thresh
     }
 

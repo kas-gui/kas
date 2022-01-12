@@ -26,6 +26,8 @@ pub struct Config {
 
     #[cfg_attr(feature = "config", serde(default = "defaults::pan_dist_thresh"))]
     pan_dist_thresh: f32,
+    #[cfg_attr(feature = "config", serde(skip))]
+    scaled_pan_dist_thresh: f32,
 
     #[cfg_attr(feature = "config", serde(default = "defaults::mouse_pan"))]
     mouse_pan: MousePan,
@@ -47,6 +49,7 @@ impl Default for Config {
             menu_delay_ns: defaults::menu_delay_ns(),
             touch_text_sel_delay_ns: defaults::touch_text_sel_delay_ns(),
             pan_dist_thresh: defaults::pan_dist_thresh(),
+            scaled_pan_dist_thresh: defaults::pan_dist_thresh(),
             mouse_pan: defaults::mouse_pan(),
             mouse_text_pan: defaults::mouse_text_pan(),
             mouse_nav_focus: defaults::mouse_nav_focus(),
@@ -58,6 +61,11 @@ impl Default for Config {
 
 /// Getters
 impl Config {
+    /// Set scale factor
+    pub fn set_scale_factor(&mut self, factor: f32) {
+        self.scaled_pan_dist_thresh = self.pan_dist_thresh * factor;
+    }
+
     /// Delay before opening/closing menus on mouse hover
     #[inline]
     pub fn menu_delay(&self) -> Duration {
@@ -77,7 +85,7 @@ impl Config {
     /// We currently recommend the L-inf distance metric (max of abs of values).
     #[inline]
     pub fn pan_dist_thresh(&self) -> f32 {
-        self.pan_dist_thresh
+        self.scaled_pan_dist_thresh
     }
 
     /// When to pan general widgets (unhandled events) with the mouse

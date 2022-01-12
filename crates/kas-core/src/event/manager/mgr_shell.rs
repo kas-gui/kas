@@ -29,6 +29,7 @@ impl EventState {
     /// Construct an event manager per-window data struct
     #[inline]
     pub fn new(config: Rc<RefCell<Config>>, scale_factor: f32) -> Self {
+        config.borrow_mut().set_scale_factor(scale_factor);
         EventState {
             config,
             scale_factor,
@@ -59,8 +60,10 @@ impl EventState {
         }
     }
 
+    /// Update scale factor
     pub fn set_scale_factor(&mut self, scale_factor: f32) {
         self.scale_factor = scale_factor;
+        self.config.borrow_mut().set_scale_factor(scale_factor);
     }
 
     /// Configure event manager for a widget tree.
