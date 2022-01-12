@@ -295,7 +295,7 @@ impl ScrollComponent {
                 };
                 let old_offset = self.offset;
                 action = self.set_offset(old_offset - d);
-                let delta = old_offset - self.offset;
+                let delta = d - (old_offset - self.offset);
                 if delta != Offset::ZERO {
                     response = Response::Pan(delta);
                 }
@@ -309,7 +309,7 @@ impl ScrollComponent {
                 self.glide.move_delta(delta);
                 let old_offset = self.offset;
                 action = self.set_offset(old_offset - delta);
-                delta -= old_offset - self.offset;
+                delta = old_offset - self.offset;
                 if delta != Offset::ZERO {
                     response = Response::Pan(delta);
                 }

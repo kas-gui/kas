@@ -663,15 +663,14 @@ widget! {
                         self.inner.set_scroll_offset(mgr, offset);
                         Response::Used
                     }),
-                Some(2) => match self.inner.send(mgr, id, event) {
-                    Response::Focus(rect) => {
-                        // We assume that the scrollable inner already updated its
-                        // offset; we just update the bar positions
+                Some(2) => {
+                    let r = self.inner.send(mgr, id, event);
+                    // We assume the inner already updated its positions; this is just to set bars
+                    if matches!(r, Response::Pan(_) | Response::Focus(_)) {
                         let offset = self.inner.scroll_offset();
                         *mgr |= self.horiz_bar.set_value(offset.0) | self.vert_bar.set_value(offset.1);
-                        Response::Focus(rect)
                     }
-                    r => r,
+                    r
                 }
                 _ if self.eq_id(id) => self.handle(mgr, event),
                 _ => {
