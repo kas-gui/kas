@@ -685,6 +685,23 @@ impl<'a> EventMgr<'a> {
         redraw
     }
 
+    /// Returns true if `id` or any descendant has a mouse or touch grab
+    pub fn any_pin_on(&self, id: &WidgetId) -> bool {
+        if self
+            .state
+            .mouse_grab
+            .as_ref()
+            .map(|grab| grab.start_id == id)
+            .unwrap_or(false)
+        {
+            return true;
+        }
+        if self.state.touch_grab.iter().any(|grab| grab.start_id == id) {
+            return true;
+        }
+        false
+    }
+
     /// Get the current keyboard navigation focus, if any
     ///
     /// This is the widget selected by navigating the UI with the Tab key.

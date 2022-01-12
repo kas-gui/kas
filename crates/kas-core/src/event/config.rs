@@ -24,6 +24,20 @@ pub struct Config {
     )]
     touch_text_sel_delay_ns: u32,
 
+    #[cfg_attr(
+        feature = "config",
+        serde(default = "defaults::scroll_flick_timeout_ns")
+    )]
+    scroll_flick_timeout_ns: u32,
+
+    #[cfg_attr(feature = "config", serde(default = "defaults::scroll_flick_mul"))]
+    scroll_flick_mul: f32,
+
+    #[cfg_attr(feature = "config", serde(default = "defaults::scroll_flick_sub"))]
+    scroll_flick_sub: f32,
+    #[cfg_attr(feature = "config", serde(skip))]
+    scaled_scroll_flick_sub: f32,
+
     #[cfg_attr(feature = "config", serde(default = "defaults::pan_dist_thresh"))]
     pan_dist_thresh: f32,
     #[cfg_attr(feature = "config", serde(skip))]
@@ -48,6 +62,10 @@ impl Default for Config {
         Config {
             menu_delay_ns: defaults::menu_delay_ns(),
             touch_text_sel_delay_ns: defaults::touch_text_sel_delay_ns(),
+            scroll_flick_timeout_ns: defaults::scroll_flick_timeout_ns(),
+            scroll_flick_mul: defaults::scroll_flick_mul(),
+            scroll_flick_sub: defaults::scroll_flick_sub(),
+            scaled_scroll_flick_sub: defaults::scroll_flick_sub(),
             pan_dist_thresh: defaults::pan_dist_thresh(),
             scaled_pan_dist_thresh: defaults::pan_dist_thresh(),
             mouse_pan: defaults::mouse_pan(),
@@ -63,6 +81,7 @@ impl Default for Config {
 impl Config {
     /// Set scale factor
     pub fn set_scale_factor(&mut self, factor: f32) {
+        self.scaled_scroll_flick_sub = self.scroll_flick_sub * factor;
         self.scaled_pan_dist_thresh = self.pan_dist_thresh * factor;
     }
 
@@ -76,6 +95,26 @@ impl Config {
     #[inline]
     pub fn touch_text_sel_delay(&self) -> Duration {
         Duration::from_nanos(self.touch_text_sel_delay_ns.cast())
+    }
+
+    /// Controls activation of glide/momentum scrolling
+    ///
+    /// This is the maximum time between the last press-movement and final
+    /// release to activate momentum scrolling mode. The last few `PressMove`
+    /// events within this time window are used to calculate the initial speed.
+    #[inline]
+    pub fn scroll_flick_timeout(&self) -> Duration {
+        Duration::from_nanos(self.scroll_flick_timeout_ns.cast())
+    }
+
+    /// Scroll flick decay
+    ///
+    /// This has two components: `(mul, sub)`. The `mul` factor describes
+    /// exponential decay as `v = v * mul.pow(elapsed_seconds)`. The `sub`
+    /// factor describes linear decay: `v = v - sub * elapsed_seconds`.
+    #[inline]
+    pub fn scroll_flick_decay(&self) -> (f32, f32) {
+        (self.scroll_flick_mul, self.scaled_scroll_flick_sub)
     }
 
     /// Drag distance threshold before panning (scrolling) starts
@@ -169,6 +208,15 @@ mod defaults {
     }
     pub fn touch_text_sel_delay_ns() -> u32 {
         1_000_000_000
+    }
+    pub fn scroll_flick_timeout_ns() -> u32 {
+        25_000000
+    }
+    pub fn scroll_flick_mul() -> f32 {
+        0.5
+    }
+    pub fn scroll_flick_sub() -> f32 {
+        100.0
     }
     pub fn pan_dist_thresh() -> f32 {
         2.1

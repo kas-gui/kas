@@ -8,9 +8,81 @@
 use super::Scrollable;
 use kas::event::ScrollDelta::{LineDelta, PixelDelta};
 use kas::event::{self, Command, PressSource};
+use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::theme::TextClass;
 use std::fmt::Debug;
+use std::time::{Duration, Instant};
+
+#[derive(Clone, Debug, PartialEq)]
+enum Glide {
+    None,
+    Drag(u8, [(Instant, Offset); 4]),
+    Glide(Instant, Vec2, Vec2),
+}
+
+impl Glide {
+    fn move_delta(&mut self, delta: Offset) {
+        match self {
+            Glide::Drag(next, samples) => {
+                samples[*next as usize] = (Instant::now(), delta);
+                *next = (*next + 1) % 4;
+            }
+            _ => {
+                let x = (Instant::now(), delta);
+                *self = Glide::Drag(1, [x; 4]);
+            }
+        }
+    }
+
+    fn opt_start(&mut self, timeout: Duration) -> bool {
+        if let Glide::Drag(_, samples) = self {
+            let now = Instant::now();
+            let start = now - timeout;
+            let mut delta = Offset::ZERO;
+            let mut t0 = now;
+            for (time, d) in samples {
+                if *time >= start {
+                    t0 = t0.min(*time);
+                    delta += *d;
+                }
+            }
+            let dur = now - t0;
+            let v = Vec2::from(delta) / dur.as_secs_f32();
+            if dur >= Duration::from_millis(1) && v != Vec2::ZERO {
+                *self = Glide::Glide(now, v, Vec2::ZERO);
+                true
+            } else {
+                *self = Glide::None;
+                false
+            }
+        } else {
+            false
+        }
+    }
+
+    fn step(&mut self, (decay_mul, decay_sub): (f32, f32)) -> Option<Offset> {
+        if let Glide::Glide(start, v, rest) = self {
+            let now = Instant::now();
+            let dur = (now - *start).as_secs_f32();
+            let d = *v * dur + *rest;
+            let rest = d.fract();
+            let delta = Offset::from(d.trunc());
+
+            if v.max_abs_comp() >= 1.0 {
+                let mut v = *v * decay_mul.powf(dur);
+                v = v - v.abs().min(Vec2::splat(decay_sub * dur)) * v.sign();
+                *self = Glide::Glide(now, v, rest);
+                Some(delta)
+            } else {
+                *self = Glide::None;
+                None
+            }
+        } else {
+            None
+        }
+    }
+}
 
 /// Logic for a scroll region
 ///
@@ -20,6 +92,7 @@ pub struct ScrollComponent {
     max_offset: Offset,
     offset: Offset,
     scroll_rate: f32,
+    glide: Glide,
 }
 
 impl Default for ScrollComponent {
@@ -29,6 +102,7 @@ impl Default for ScrollComponent {
             max_offset: Offset::ZERO,
             offset: Offset::ZERO,
             scroll_rate: 30.0,
+            glide: Glide::None,
         }
     }
 }
@@ -163,9 +237,11 @@ impl ScrollComponent {
     /// If the returned [`TkAction`] is not `None`, the scroll offset has been
     /// updated and the second return value is `Response::Used`.
     #[inline]
-    pub fn scroll_by_event<PS: FnOnce(PressSource, WidgetId, Coord)>(
+    pub fn scroll_by_event<PS: FnOnce(&mut EventMgr, PressSource, WidgetId, Coord)>(
         &mut self,
+        mgr: &mut EventMgr,
         event: Event,
+        id: WidgetId,
         window_size: Size,
         on_press_start: PS,
     ) -> (TkAction, Response<VoidMsg>) {
@@ -173,6 +249,16 @@ impl ScrollComponent {
         let mut response = Response::Used;
 
         match event {
+            Event::TimerUpdate(0) => {
+                // Momentum/glide scrolling: update per arbitrary step time until movment stops.
+                let decay = mgr.config().scroll_flick_decay();
+                if let Some(delta) = self.glide.step(decay) {
+                    let old_offset = self.offset;
+                    action = self.set_offset(old_offset - delta);
+                    mgr.update_on_timer(Duration::from_millis(3), id, 0);
+                    response = Response::Pan(old_offset - self.offset);
+                }
+            }
             Event::Command(Command::Home, _) => {
                 action = self.set_offset(Offset::ZERO);
             }
@@ -209,7 +295,7 @@ impl ScrollComponent {
                 };
                 let old_offset = self.offset;
                 action = self.set_offset(old_offset - d);
-                let delta = d - (old_offset - self.offset);
+                let delta = old_offset - self.offset;
                 if delta != Offset::ZERO {
                     response = Response::Pan(delta);
                 }
@@ -218,8 +304,9 @@ impl ScrollComponent {
                 source,
                 start_id,
                 coord,
-            } => on_press_start(source, start_id, coord),
+            } => on_press_start(mgr, source, start_id, coord),
             Event::PressMove { mut delta, .. } => {
+                self.glide.move_delta(delta);
                 let old_offset = self.offset;
                 action = self.set_offset(old_offset - delta);
                 delta -= old_offset - self.offset;
@@ -227,7 +314,11 @@ impl ScrollComponent {
                     response = Response::Pan(delta);
                 }
             }
-            Event::PressEnd { .. } => (), // consume due to request
+            Event::PressEnd { .. } => {
+                if self.glide.opt_start(mgr.config().scroll_flick_timeout()) {
+                    mgr.update_on_timer(Duration::new(0, 0), id, 0);
+                }
+            }
             _ => response = Response::Unused,
         }
         (action, response)
@@ -391,7 +482,7 @@ widget! {
             let id = self.id();
             let (action, response) =
                 self.scroll
-                    .scroll_by_event(event, self.core.rect.size, |source, _, coord| {
+                    .scroll_by_event(mgr, event, self.id(), self.core.rect.size, |mgr, source, _, coord| {
                         if source.is_primary() && mgr.config_enable_mouse_pan() {
                             let icon = Some(event::CursorIcon::Grabbing);
                             mgr.request_grab(id, source, coord, event::GrabMode::Grab, icon);

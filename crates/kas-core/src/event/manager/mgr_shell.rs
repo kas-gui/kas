@@ -435,7 +435,7 @@ impl<'a> EventMgr<'a> {
                     self.state.last_click_timeout = now + DOUBLE_CLICK_TIMEOUT;
                 }
 
-                if let Some(grab) = self.state.mouse_grab.clone() {
+                if let Some(grab) = self.state.mouse_grab.take() {
                     if grab.mode == GrabMode::Grab {
                         // Mouse grab active: send events there
                         debug_assert_eq!(state, ElementState::Released);

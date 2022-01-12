@@ -175,6 +175,12 @@ macro_rules! impl_vec2 {
                 self.0.min(self.1)
             }
 
+            /// Take the maximum of absolute values of components
+            #[inline]
+            pub fn max_abs_comp(self) -> $f {
+                self.0.abs().max(self.1.abs())
+            }
+
             /// Return the minimum, componentwise
             #[inline]
             #[must_use = "method does not modify self but returns a new value"]
@@ -215,6 +221,20 @@ macro_rules! impl_vec2 {
             #[must_use = "method does not modify self but returns a new value"]
             pub fn round(self) -> Self {
                 $T(self.0.round(), self.1.round())
+            }
+
+            /// Take the trunc of each component
+            #[inline]
+            #[must_use = "method does not modify self but returns a new value"]
+            pub fn trunc(self) -> Self {
+                $T(self.0.trunc(), self.1.trunc())
+            }
+
+            /// Take the fract of each component
+            #[inline]
+            #[must_use = "method does not modify self but returns a new value"]
+            pub fn fract(self) -> Self {
+                $T(self.0.fract(), self.1.fract())
             }
 
             /// For each component, return `±1` with the same sign as `self`.
