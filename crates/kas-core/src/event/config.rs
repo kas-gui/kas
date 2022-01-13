@@ -18,12 +18,12 @@ use std::time::Duration;
 ///
 /// This is serializable (using `feature = "config"`) with the following fields:
 ///
-/// > `menu_delay_ns`: `u32` \
-/// > `touch_text_sel_delay_ns`: `u32` \
-/// > `scroll_flick_timeout_ns`: `u32` \
-/// > `scroll_flick_mul`: `f32` \
-/// > `scroll_flick_sub`: `f32` \
-/// > `pan_dist_thresh`: `f32` \
+/// > `menu_delay_ms`: `u32` (milliseconds) \
+/// > `touch_text_sel_delay_ms`: `u32` (milliseconds) \
+/// > `scroll_flick_timeout_ms`: `u32` (milliseconds) \
+/// > `scroll_flick_mul`: `f32` (unitless) \
+/// > `scroll_flick_sub`: `f32` (pixels) \
+/// > `pan_dist_thresh`: `f32` (pixels) \
 /// > `mouse_pan`: [`MousePan`] \
 /// > `mouse_text_pan`: [`MousePan`] \
 /// > `mouse_nav_focus`: `bool` \
@@ -32,20 +32,20 @@ use std::time::Duration;
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "config", derive(Serialize, Deserialize))]
 pub struct Config {
-    #[cfg_attr(feature = "config", serde(default = "defaults::menu_delay_ns"))]
-    menu_delay_ns: u32,
+    #[cfg_attr(feature = "config", serde(default = "defaults::menu_delay_ms"))]
+    menu_delay_ms: u32,
 
     #[cfg_attr(
         feature = "config",
-        serde(default = "defaults::touch_text_sel_delay_ns")
+        serde(default = "defaults::touch_text_sel_delay_ms")
     )]
-    touch_text_sel_delay_ns: u32,
+    touch_text_sel_delay_ms: u32,
 
     #[cfg_attr(
         feature = "config",
-        serde(default = "defaults::scroll_flick_timeout_ns")
+        serde(default = "defaults::scroll_flick_timeout_ms")
     )]
-    scroll_flick_timeout_ns: u32,
+    scroll_flick_timeout_ms: u32,
 
     #[cfg_attr(feature = "config", serde(default = "defaults::scroll_flick_mul"))]
     scroll_flick_mul: f32,
@@ -77,9 +77,9 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Config {
-            menu_delay_ns: defaults::menu_delay_ns(),
-            touch_text_sel_delay_ns: defaults::touch_text_sel_delay_ns(),
-            scroll_flick_timeout_ns: defaults::scroll_flick_timeout_ns(),
+            menu_delay_ms: defaults::menu_delay_ms(),
+            touch_text_sel_delay_ms: defaults::touch_text_sel_delay_ms(),
+            scroll_flick_timeout_ms: defaults::scroll_flick_timeout_ms(),
             scroll_flick_mul: defaults::scroll_flick_mul(),
             scroll_flick_sub: defaults::scroll_flick_sub(),
             scaled_scroll_flick_sub: defaults::scroll_flick_sub(),
@@ -107,13 +107,13 @@ impl Config {
     /// Delay before opening/closing menus on mouse hover
     #[inline]
     pub fn menu_delay(&self) -> Duration {
-        Duration::from_nanos(self.menu_delay_ns.cast())
+        Duration::from_millis(self.menu_delay_ms.cast())
     }
 
     /// Delay before switching from panning to text-selection mode
     #[inline]
     pub fn touch_text_sel_delay(&self) -> Duration {
-        Duration::from_nanos(self.touch_text_sel_delay_ns.cast())
+        Duration::from_millis(self.touch_text_sel_delay_ms.cast())
     }
 
     /// Controls activation of glide/momentum scrolling
@@ -123,7 +123,7 @@ impl Config {
     /// events within this time window are used to calculate the initial speed.
     #[inline]
     pub fn scroll_flick_timeout(&self) -> Duration {
-        Duration::from_nanos(self.scroll_flick_timeout_ns.cast())
+        Duration::from_millis(self.scroll_flick_timeout_ms.cast())
     }
 
     /// Scroll flick decay
@@ -226,14 +226,14 @@ impl MousePan {
 mod defaults {
     use super::MousePan;
 
-    pub fn menu_delay_ns() -> u32 {
-        250_000_000
+    pub fn menu_delay_ms() -> u32 {
+        250
     }
-    pub fn touch_text_sel_delay_ns() -> u32 {
-        1_000_000_000
+    pub fn touch_text_sel_delay_ms() -> u32 {
+        1000
     }
-    pub fn scroll_flick_timeout_ns() -> u32 {
-        25_000000
+    pub fn scroll_flick_timeout_ms() -> u32 {
+        25
     }
     pub fn scroll_flick_mul() -> f32 {
         0.5
