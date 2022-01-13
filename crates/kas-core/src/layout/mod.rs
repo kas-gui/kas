@@ -148,7 +148,7 @@ impl Directional for AxisInfo {
 /// Manager available to [`Layout::set_rect`]
 ///
 /// This type is functionally a superset of [`SizeMgr`] and subset of
-/// [`DrawMgr`], with support for the appropriate conversions.
+/// [`crate::theme::DrawMgr`], with support for the appropriate conversions.
 #[must_use]
 pub struct SetRectMgr<'a>(&'a dyn SizeHandle, &'a mut dyn DrawShared, TkAction);
 

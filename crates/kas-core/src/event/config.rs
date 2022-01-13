@@ -5,13 +5,30 @@
 
 //! Event handling configuration
 
-use super::{shortcuts::Shortcuts, ModifiersState};
+mod shortcuts;
+pub use shortcuts::Shortcuts;
+
+use super::ModifiersState;
 use crate::cast::Cast;
 #[cfg(feature = "config")]
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 /// Event handling configuration
+///
+/// This is serializable (using `feature = "config"`) with the following fields:
+///
+/// > `menu_delay_ns`: `u32` \
+/// > `touch_text_sel_delay_ns`: `u32` \
+/// > `scroll_flick_timeout_ns`: `u32` \
+/// > `scroll_flick_mul`: `f32` \
+/// > `scroll_flick_sub`: `f32` \
+/// > `pan_dist_thresh`: `f32` \
+/// > `mouse_pan`: [`MousePan`] \
+/// > `mouse_text_pan`: [`MousePan`] \
+/// > `mouse_nav_focus`: `bool` \
+/// > `touch_nav_focus`: `bool` \
+/// > `shortcuts`: [`Shortcuts`]
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "config", derive(Serialize, Deserialize))]
 pub struct Config {
@@ -80,6 +97,8 @@ impl Default for Config {
 /// Getters
 impl Config {
     /// Set scale factor
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub fn set_scale_factor(&mut self, factor: f32) {
         self.scaled_scroll_flick_sub = self.scroll_flick_sub * factor;
         self.scaled_pan_dist_thresh = self.pan_dist_thresh * factor;
@@ -112,6 +131,8 @@ impl Config {
     /// This has two components: `(mul, sub)`. The `mul` factor describes
     /// exponential decay as `v = v * mul.pow(elapsed_seconds)`. The `sub`
     /// factor describes linear decay: `v = v - sub * elapsed_seconds`.
+    ///
+    /// The `sub` factor is affected by the window's scale factor.
     #[inline]
     pub fn scroll_flick_decay(&self) -> (f32, f32) {
         (self.scroll_flick_mul, self.scaled_scroll_flick_sub)
@@ -122,6 +143,8 @@ impl Config {
     /// When the distance moved is greater than this threshold, panning should
     /// start; otherwise the system should wait for the text-selection timer.
     /// We currently recommend the L-inf distance metric (max of abs of values).
+    ///
+    /// This is affected by the window's scale factor.
     #[inline]
     pub fn pan_dist_thresh(&self) -> f32 {
         self.scaled_pan_dist_thresh

@@ -5,7 +5,7 @@
 
 //! Shortcut matching
 
-use super::{Command, ModifiersState, VirtualKeyCode};
+use crate::event::{Command, ModifiersState, VirtualKeyCode};
 use linear_map::LinearMap;
 #[cfg(feature = "config")]
 use serde::de::{self, Deserialize, Deserializer, MapAccess, Unexpected, Visitor};

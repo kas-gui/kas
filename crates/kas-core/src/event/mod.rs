@@ -60,14 +60,13 @@
 //!
 //! [`WidgetId`]: crate::WidgetId
 
-mod config;
+pub mod config;
 #[cfg(not(feature = "winit"))]
 mod enums;
 mod events;
 mod handler;
 mod manager;
 mod response;
-mod shortcuts;
 mod update;
 
 pub mod components;
@@ -84,6 +83,7 @@ pub use winit::event::{ModifiersState, MouseButton, VirtualKeyCode};
 #[cfg(feature = "winit")]
 pub use winit::window::CursorIcon;
 
+#[doc(no_inline)]
 pub use config::Config;
 #[cfg(not(feature = "winit"))]
 pub use enums::{CursorIcon, ModifiersState, MouseButton, VirtualKeyCode};
