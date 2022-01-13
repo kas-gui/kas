@@ -76,8 +76,8 @@ widget! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let mut size = size_handle.progress_bar();
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            let mut size = size_mgr.progress_bar();
             if self.direction.is_vertical() {
                 size = size.transpose();
             }
@@ -90,7 +90,7 @@ widget! {
             }
         }
 
-        fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             let mut ideal_size = Size::splat(self.width);
             ideal_size.set_component(self.direction, i32::MAX);
             let rect = align
@@ -99,9 +99,9 @@ widget! {
             self.core.rect = rect;
         }
 
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
             let dir = self.direction.as_direction();
-            let state = self.input_state(mgr, disabled);
+            let state = draw.input_state(self, disabled);
             draw.progress_bar(self.core.rect, dir, state, self.value);
         }
     }

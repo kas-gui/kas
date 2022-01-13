@@ -5,10 +5,11 @@
 
 //! Push-buttons
 
-use kas::draw::{color::Rgb, TextClass};
+use kas::draw::color::Rgb;
 use kas::event::{self, VirtualKeyCode, VirtualKeyCodes};
 use kas::layout;
 use kas::prelude::*;
+use kas::theme::TextClass;
 use std::rc::Rc;
 
 widget! {
@@ -27,11 +28,11 @@ widget! {
         color: Option<Rgb>,
         #[widget]
         pub inner: W,
-        on_push: Option<Rc<dyn Fn(&mut Manager) -> Option<M>>>,
+        on_push: Option<Rc<dyn Fn(&mut EventMgr) -> Option<M>>>,
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             mgr.add_accel_keys(self.id(), &self.keys1);
         }
 
@@ -70,9 +71,10 @@ widget! {
         /// closure `f` is called. The result of `f` is converted to
         /// [`Response::Msg`] or [`Response::Used`] and returned to the parent.
         #[inline]
+        #[must_use]
         pub fn on_push<M, F>(self, f: F) -> Button<W, M>
         where
-            F: Fn(&mut Manager) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr) -> Option<M> + 'static,
         {
             Button {
                 core: self.core,
@@ -94,7 +96,7 @@ widget! {
         #[inline]
         pub fn new_on<F>(inner: W, f: F) -> Self
         where
-            F: Fn(&mut Manager) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr) -> Option<M> + 'static,
         {
             Button::new(inner).on_push(f)
         }
@@ -141,7 +143,7 @@ widget! {
             true
         }
 
-        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<M> {
             match event {
                 Event::Activate => Response::used_or_msg(self.on_push.as_ref().and_then(|f| f(mgr))),
                 _ => Response::Unused,
@@ -150,12 +152,12 @@ widget! {
     }
 
     impl SendEvent for Self {
-        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<M> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<M> {
             if self.is_disabled() {
                 return Response::Unused;
             }
             if self.eq_id(&id) {
-                Manager::handle_generic(self, mgr, event)
+                EventMgr::handle_generic(self, mgr, event)
             } else {
                 debug_assert!(self.inner.id().is_ancestor_of(&id));
                 self.inner.send(mgr, id, event).void_into()
@@ -183,11 +185,11 @@ widget! {
         layout_text: layout::TextStorage,
         color: Option<Rgb>,
         label: Text<AccelString>,
-        on_push: Option<Rc<dyn Fn(&mut Manager) -> Option<M>>>,
+        on_push: Option<Rc<dyn Fn(&mut EventMgr) -> Option<M>>>,
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             mgr.add_accel_keys(self.id(), &self.keys1);
             mgr.add_accel_keys(self.id(), self.label.text().keys());
         }
@@ -230,9 +232,10 @@ widget! {
         /// closure `f` is called. The result of `f` is converted to
         /// [`Response::Msg`] or [`Response::Used`] and returned to the parent.
         #[inline]
+        #[must_use]
         pub fn on_push<M, F>(self, f: F) -> TextButton<M>
         where
-            F: Fn(&mut Manager) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr) -> Option<M> + 'static,
         {
             TextButton {
                 core: self.core,
@@ -255,7 +258,7 @@ widget! {
         #[inline]
         pub fn new_on<S: Into<AccelString>, F>(label: S, f: F) -> Self
         where
-            F: Fn(&mut Manager) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr) -> Option<M> + 'static,
         {
             TextButton::new(label).on_push(f)
         }
@@ -321,7 +324,7 @@ widget! {
             true
         }
 
-        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<M> {
             match event {
                 Event::Activate => Response::used_or_msg(self.on_push.as_ref().and_then(|f| f(mgr))),
                 _ => Response::Unused,

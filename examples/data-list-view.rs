@@ -104,6 +104,10 @@ impl ListData for MyData {
     type Key = usize;
     type Item = (usize, bool, String);
 
+    fn version(&self) -> u64 {
+        0
+    }
+
     fn len(&self) -> usize {
         self.len
     }
@@ -144,7 +148,7 @@ struct ListEntryGuard;
 impl EditGuard for ListEntryGuard {
     type Msg = EntryMsg;
 
-    fn edit(entry: &mut EditField<Self>, _: &mut Manager) -> Option<Self::Msg> {
+    fn edit(entry: &mut EditField<Self>, _: &mut EventMgr) -> Option<Self::Msg> {
         Some(EntryMsg::Update(entry.get_string()))
     }
 }
@@ -216,11 +220,11 @@ fn main() -> Result<(), kas::shell::Error> {
             n: usize = 3,
         }
         impl Self {
-            fn activate(&mut self, _: &mut Manager, n: usize) -> Control {
+            fn activate(&mut self, _: &mut EventMgr, n: usize) -> Control {
                 self.n = n;
                 Control::Set(n)
             }
-            fn button(&mut self, mgr: &mut Manager, msg: Button) -> Control {
+            fn button(&mut self, mgr: &mut EventMgr, msg: Button) -> Control {
                 let n = match msg {
                     Button::Decr => self.n.saturating_sub(1),
                     Button::Incr => self.n.saturating_add(1),
@@ -257,7 +261,7 @@ fn main() -> Result<(), kas::shell::Error> {
                     ScrollBars::new(list).with_bars(false, true),
             }
             impl Self {
-                fn control(&mut self, mgr: &mut Manager, control: Control) {
+                fn control(&mut self, mgr: &mut EventMgr, control: Control) {
                     match control {
                         Control::Set(len) => {
                             let (opt_text, handle) = self.list.data_mut().set_len(len);
@@ -272,7 +276,7 @@ fn main() -> Result<(), kas::shell::Error> {
                         }
                     }
                 }
-                fn set_radio(&mut self, mgr: &mut Manager, msg: ChildMsg<usize, EntryMsg>) {
+                fn set_radio(&mut self, mgr: &mut EventMgr, msg: ChildMsg<usize, EntryMsg>) {
                     match msg {
                         ChildMsg::Select(_) | ChildMsg::Deselect(_) => (),
                         ChildMsg::Child(n, EntryMsg::Select) => {

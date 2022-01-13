@@ -21,26 +21,26 @@ widget! {
         #[widget_core]
         core: CoreData,
         state: bool,
-        on_toggle: Option<Rc<dyn Fn(&mut Manager, bool) -> Option<M>>>,
+        on_toggle: Option<Rc<dyn Fn(&mut EventMgr, bool) -> Option<M>>>,
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let size = size_handle.checkbox();
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            let size = size_mgr.checkbox();
             self.core.rect.size = size;
-            let margins = size_handle.outer_margins();
+            let margins = size_mgr.outer_margins();
             SizeRules::extract_fixed(axis, size, margins)
         }
 
-        fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             let rect = align
                 .complete(Align::Center, Align::Center)
                 .aligned_rect(self.rect().size, rect);
             self.core.rect = rect;
         }
 
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-            draw.checkbox(self.core.rect, self.state, self.input_state(mgr, disabled));
+        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
+            draw.checkbox(self.core.rect, self.state, draw.input_state(self, disabled));
         }
     }
 
@@ -61,9 +61,10 @@ widget! {
         /// closure `f` is called. The result of `f` is converted to
         /// [`Response::Msg`] or [`Response::Update`] and returned to the parent.
         #[inline]
+        #[must_use]
         pub fn on_toggle<M, F>(self, f: F) -> CheckBoxBare<M>
         where
-            F: Fn(&mut Manager, bool) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr, bool) -> Option<M> + 'static,
         {
             CheckBoxBare {
                 core: self.core,
@@ -82,7 +83,7 @@ widget! {
         #[inline]
         pub fn new_on<F>(f: F) -> Self
         where
-            F: Fn(&mut Manager, bool) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr, bool) -> Option<M> + 'static,
         {
             CheckBoxBare::new().on_toggle(f)
         }
@@ -117,7 +118,7 @@ widget! {
             true
         }
 
-        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<M> {
             match event {
                 Event::Activate => {
                     self.state = !self.state;
@@ -149,7 +150,7 @@ widget! {
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             mgr.add_accel_keys(self.checkbox.id(), self.label.keys());
         }
     }
@@ -178,9 +179,10 @@ widget! {
         /// closure `f` is called. The result of `f` is converted to
         /// [`Response::Msg`] or [`Response::Update`] and returned to the parent.
         #[inline]
+        #[must_use]
         pub fn on_toggle<M, F>(self, f: F) -> CheckBox<M>
         where
-            F: Fn(&mut Manager, bool) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr, bool) -> Option<M> + 'static,
         {
             CheckBox {
                 core: self.core,
@@ -202,7 +204,7 @@ widget! {
         #[inline]
         pub fn new_on<T: Into<AccelString>, F>(label: T, f: F) -> Self
         where
-            F: Fn(&mut Manager, bool) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr, bool) -> Option<M> + 'static,
         {
             CheckBox::new(label).on_toggle(f)
         }

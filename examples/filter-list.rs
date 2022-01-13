@@ -69,10 +69,10 @@ fn main() -> Result<(), kas::shell::Error> {
                     ScrollBars::new(FilterListView::new(data, filter)),
             }
             impl Self {
-                fn set_selection_mode(&mut self, mgr: &mut Manager, mode: SelectionMode) {
+                fn set_selection_mode(&mut self, mgr: &mut EventMgr, mode: SelectionMode) {
                     *mgr |= self.list.set_selection_mode(mode);
                 }
-                fn select(&mut self, _: &mut Manager, msg: ChildMsg<usize, VoidMsg>) {
+                fn select(&mut self, _: &mut EventMgr, msg: ChildMsg<usize, VoidMsg>) {
                     println!("Selection message: {:?}", msg);
                 }
             }

@@ -23,11 +23,11 @@ widget! {
         core: CoreData,
         state: bool,
         group: SharedRc<WidgetId>,
-        on_select: Option<Rc<dyn Fn(&mut Manager) -> Option<M>>>,
+        on_select: Option<Rc<dyn Fn(&mut EventMgr) -> Option<M>>>,
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             if let Some(handle) = self.group.update_handle() {
                 mgr.update_on_handle(handle, self.id());
             }
@@ -49,7 +49,7 @@ widget! {
             true
         }
 
-        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<M> {
             match event {
                 Event::Activate => {
                     if !self.state {
@@ -80,22 +80,22 @@ widget! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let size = size_handle.radiobox();
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            let size = size_mgr.radiobox();
             self.core.rect.size = size;
-            let margins = size_handle.outer_margins();
+            let margins = size_mgr.outer_margins();
             SizeRules::extract_fixed(axis, size, margins)
         }
 
-        fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             let rect = align
                 .complete(Align::Center, Align::Center)
                 .aligned_rect(self.rect().size, rect);
             self.core.rect = rect;
         }
 
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-            draw.radiobox(self.core.rect, self.state, self.input_state(mgr, disabled));
+        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
+            draw.radiobox(self.core.rect, self.state, draw.input_state(self, disabled));
         }
     }
 
@@ -122,9 +122,10 @@ widget! {
         ///
         /// No handler is called on deselection, but [`Response::Update`] is returned.
         #[inline]
+        #[must_use]
         pub fn on_select<M, F>(self, f: F) -> RadioBoxBare<M>
         where
-            F: Fn(&mut Manager) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr) -> Option<M> + 'static,
         {
             RadioBoxBare {
                 core: self.core,
@@ -149,7 +150,7 @@ widget! {
         #[inline]
         pub fn new_on<F>(group: SharedRc<WidgetId>, f: F) -> Self
         where
-            F: Fn(&mut Manager) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr) -> Option<M> + 'static,
         {
             RadioBoxBare::new(group).on_select(f)
         }
@@ -198,7 +199,7 @@ widget! {
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             mgr.add_accel_keys(self.radiobox.id(), self.label.keys());
         }
     }
@@ -228,9 +229,10 @@ widget! {
         ///
         /// No handler is called on deselection, but [`Response::Update`] is returned.
         #[inline]
+        #[must_use]
         pub fn on_select<M, F>(self, f: F) -> RadioBox<M>
         where
-            F: Fn(&mut Manager) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr) -> Option<M> + 'static,
         {
             RadioBox {
                 core: self.core,
@@ -257,7 +259,7 @@ widget! {
         #[inline]
         pub fn new_on<T: Into<AccelString>, F>(label: T, group: SharedRc<WidgetId>, f: F) -> Self
         where
-            F: Fn(&mut Manager) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr) -> Option<M> + 'static,
         {
             RadioBox::new(label, group).on_select(f)
         }

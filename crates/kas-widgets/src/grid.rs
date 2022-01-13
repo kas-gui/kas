@@ -81,7 +81,7 @@ widget! {
     }
 
     impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if !self.is_disabled() {
                 if let Some(index) = self.id().index_of_child(&id) {
                     if let Some((_, child)) = self.widgets.get_mut(index) {
@@ -221,6 +221,7 @@ impl<'a, W: Widget> GridBuilder<'a, W> {
     ///
     /// The child is added to the end of the "list", thus appears last in
     /// navigation order.
+    #[must_use]
     pub fn with_cell(self, row: u32, col: u32, widget: W) -> Self {
         self.with_cell_span(row, col, 1, 1, widget)
     }
@@ -249,6 +250,7 @@ impl<'a, W: Widget> GridBuilder<'a, W> {
     ///
     /// The child is added to the end of the "list", thus appears last in
     /// navigation order.
+    #[must_use]
     pub fn with_cell_span(
         mut self,
         row: u32,

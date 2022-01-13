@@ -10,7 +10,8 @@ use std::collections::HashMap;
 use std::marker::Unsize;
 
 use crate::{Config, StackDst, Theme, ThemeDst, Window};
-use kas::draw::{color, DrawHandle, DrawIface, DrawSharedImpl, SharedState, ThemeApi};
+use kas::draw::{color, DrawIface, DrawSharedImpl, SharedState};
+use kas::theme::{DrawHandle, ThemeControl};
 use kas::TkAction;
 
 #[cfg(feature = "unsize")]
@@ -178,7 +179,7 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
     }
 }
 
-impl<DS> ThemeApi for MultiTheme<DS> {
+impl<DS> ThemeControl for MultiTheme<DS> {
     fn set_font_size(&mut self, size: f32) -> TkAction {
         // Slightly inefficient, but sufficient: update both
         // (Otherwise we would have to call set_scheme in set_theme too.)

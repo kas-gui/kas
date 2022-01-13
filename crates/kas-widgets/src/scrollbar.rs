@@ -205,8 +205,8 @@ widget! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let (size, min_len) = size_handle.scrollbar();
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            let (size, min_len) = size_mgr.scrollbar();
             self.min_handle_len = size.0;
             let margins = (0, 0);
             if self.direction.is_vertical() == axis.is_vertical() {
@@ -217,7 +217,7 @@ widget! {
             }
         }
 
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             let mut ideal_size = Size::splat(self.width);
             ideal_size.set_component(self.direction, i32::MAX);
             let rect = align
@@ -228,10 +228,6 @@ widget! {
             let _ = self.update_handle();
         }
 
-        fn spatial_nav(&mut self, _: &mut Manager, _: bool, _: Option<usize>) -> Option<usize> {
-            None // handle is not navigable
-        }
-
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
@@ -239,15 +235,15 @@ widget! {
             self.handle.find_id(coord).or(Some(self.id()))
         }
 
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
             let dir = self.direction.as_direction();
-            let state = self.handle.input_state(mgr, disabled);
+            let state = draw.input_state(&self.handle, disabled);
             draw.scrollbar(self.core.rect, self.handle.rect(), dir, state);
         }
     }
 
     impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
                 return Response::Unused;
             }
@@ -312,13 +308,13 @@ pub trait Scrollable: Widget {
     ///
     /// The offset is clamped to the available scroll range and applied. The
     /// resulting offset is returned.
-    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset;
+    fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset;
 
     /// Scroll by a delta
     ///
     /// Returns the remaining (unused) delta.
     #[inline]
-    fn scroll_by_delta(&mut self, mgr: &mut Manager, delta: Offset) -> Offset {
+    fn scroll_by_delta(&mut self, mgr: &mut EventMgr, delta: Offset) -> Offset {
         let old_offset = self.scroll_offset();
         let new_offset = self.set_scroll_offset(mgr, old_offset - delta);
         delta - old_offset + new_offset
@@ -413,7 +409,7 @@ widget! {
             self.0.inner.scroll_offset()
         }
         #[inline]
-        fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
             self.0.set_scroll_offset(mgr, offset)
         }
     }
@@ -519,15 +515,15 @@ widget! {
             &mut self.inner
         }
 
-        fn draw_(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw_(&mut self, mut draw: DrawMgr, disabled: bool) {
             let disabled = disabled || self.is_disabled();
             if self.show_bars.0 {
-                self.horiz_bar.draw(draw, mgr, disabled);
+                self.horiz_bar.draw(draw.re(), disabled);
             }
             if self.show_bars.1 {
-                self.vert_bar.draw(draw, mgr, disabled);
+                self.vert_bar.draw(draw.re(), disabled);
             }
-            self.inner.draw(draw, mgr, disabled);
+            self.inner.draw(draw.re(), disabled);
         }
     }
 
@@ -544,7 +540,7 @@ widget! {
         fn scroll_offset(&self) -> Offset {
             self.inner.scroll_offset()
         }
-        fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
             let offset = self.inner.set_scroll_offset(mgr, offset);
             *mgr |= self.horiz_bar.set_value(offset.0) | self.vert_bar.set_value(offset.1);
             offset
@@ -552,28 +548,28 @@ widget! {
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             mgr.register_nav_fallback(self.id());
         }
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let mut rules = self.inner.size_rules(size_handle, axis);
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            let mut rules = self.inner.size_rules(size_mgr.re(), axis);
             if axis.is_horizontal() && (self.auto_bars || self.show_bars.1) {
-                rules.append(self.vert_bar.size_rules(size_handle, axis));
+                rules.append(self.vert_bar.size_rules(size_mgr.re(), axis));
             } else if axis.is_vertical() && (self.auto_bars || self.show_bars.0) {
-                rules.append(self.horiz_bar.size_rules(size_handle, axis));
+                rules.append(self.horiz_bar.size_rules(size_mgr.re(), axis));
             }
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             let pos = rect.pos;
             let mut child_size = rect.size;
 
-            let bar_width = mgr.size_handle(|sh| (sh.scrollbar().0).1);
+            let bar_width = (mgr.size_mgr().scrollbar().0).1;
             if self.auto_bars {
                 self.show_bars = self.inner.scroll_axes(child_size);
             }
@@ -615,37 +611,37 @@ widget! {
         }
 
         #[cfg(feature = "min_spec")]
-        default fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-            self.draw_(draw, mgr, disabled);
+        default fn draw(&mut self, draw: DrawMgr, disabled: bool) {
+            self.draw_(draw, disabled);
         }
         #[cfg(not(feature = "min_spec"))]
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-            self.draw_(draw, mgr, disabled);
+        fn draw(&mut self, draw: DrawMgr, disabled: bool) {
+            self.draw_(draw, disabled);
         }
     }
 
     #[cfg(feature = "min_spec")]
     impl<W: Widget> Layout for ScrollBars<ScrollRegion<W>> {
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
             let disabled = disabled || self.is_disabled() || self.inner.is_disabled();
             // Enlarge clip region to *our* rect:
-            draw.with_clip_region(self.core.rect, self.inner.scroll_offset(), &mut |handle| {
-                self.inner.inner_mut().draw(handle, mgr, disabled)
+            draw.with_clip_region(self.core.rect, self.inner.scroll_offset(), |handle| {
+                self.inner.inner_mut().draw(handle, disabled)
             });
             // Use a second clip region to force draw order:
-            draw.with_clip_region(self.core.rect, Offset::ZERO, &mut |draw| {
+            draw.with_clip_region(self.core.rect, Offset::ZERO, |mut draw| {
                 if self.show_bars.0 {
-                    self.horiz_bar.draw(draw, mgr, disabled);
+                    self.horiz_bar.draw(draw.re(), disabled);
                 }
                 if self.show_bars.1 {
-                    self.vert_bar.draw(draw, mgr, disabled);
+                    self.vert_bar.draw(draw.re(), disabled);
                 }
             });
         }
     }
 
     impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
                 return Response::Unused;
             }

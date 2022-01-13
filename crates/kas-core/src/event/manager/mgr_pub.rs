@@ -10,13 +10,15 @@ use std::time::{Duration, Instant};
 use std::u16;
 
 use super::*;
-use crate::draw::{DrawShared, SizeHandle, ThemeApi};
+use crate::draw::DrawShared;
 use crate::geom::{Coord, Offset, Vec2};
+use crate::layout::SetRectMgr;
+use crate::theme::{SizeMgr, ThemeControl};
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
-use crate::{TkAction, WidgetExt, WidgetId, WindowId};
+use crate::{CoreData, TkAction, WidgetExt, WidgetId, WindowId};
 
-impl<'a> std::ops::BitOrAssign<TkAction> for Manager<'a> {
+impl<'a> std::ops::BitOrAssign<TkAction> for EventMgr<'a> {
     #[inline]
     fn bitor_assign(&mut self, action: TkAction) {
         self.send_action(action);
@@ -24,7 +26,7 @@ impl<'a> std::ops::BitOrAssign<TkAction> for Manager<'a> {
 }
 
 /// Public API (around event manager state)
-impl ManagerState {
+impl EventState {
     /// True when accelerator key labels should be shown
     ///
     /// (True when Alt is held and no widget has character focus.)
@@ -79,17 +81,53 @@ impl ManagerState {
         {
             return true;
         }
-        for grab in self.touch_grab.values() {
+        for grab in self.touch_grab.iter() {
             if *w_id == grab.depress {
                 return true;
             }
         }
         false
     }
+
+    /// Construct [`InputState`]
+    ///
+    /// The `disabled` flag is inherited from parents. [`InputState::disabled`]
+    /// will be true if either `disabled` or `self.is_disabled()` are true.
+    ///
+    /// The error state defaults to `false` since most widgets don't support
+    /// this.
+    ///
+    /// Note: most state changes should automatically cause a redraw, but change
+    /// in `hover` status will not (since this happens frequently and many
+    /// widgets are unaffected), unless [`WidgetConfig::hover_highlight`]
+    /// returns true.
+    pub fn draw_state(&self, core: &CoreData, disabled: bool) -> InputState {
+        let (char_focus, sel_focus) = self.has_char_focus(&core.id);
+        let mut state = InputState::empty();
+        if core.disabled || disabled {
+            state |= InputState::DISABLED;
+        }
+        if self.is_hovered(&core.id) {
+            state |= InputState::HOVER;
+        }
+        if self.is_depressed(&core.id) {
+            state |= InputState::DEPRESS;
+        }
+        if self.nav_focus(&core.id) {
+            state |= InputState::NAV_FOCUS;
+        }
+        if char_focus {
+            state |= InputState::CHAR_FOCUS;
+        }
+        if sel_focus {
+            state |= InputState::SEL_FOCUS;
+        }
+        state
+    }
 }
 
 /// Public API (around toolkit and shell functionality)
-impl<'a> Manager<'a> {
+impl<'a> EventMgr<'a> {
     /// Get the current modifier state
     #[inline]
     pub fn modifiers(&self) -> ModifiersState {
@@ -152,7 +190,7 @@ impl<'a> Manager<'a> {
     /// widgets are reconfigured.
     pub fn update_on_timer(&mut self, delay: Duration, w_id: WidgetId, payload: u64) {
         trace!(
-            "Manager::update_on_timer: queing update for {} at now+{}ms",
+            "EventMgr::update_on_timer: queing update for {} at now+{}ms",
             w_id,
             delay.as_millis()
         );
@@ -179,13 +217,13 @@ impl<'a> Manager<'a> {
     /// Subscribe to an update handle
     ///
     /// All widgets subscribed to an update handle will be sent
-    /// [`Event::HandleUpdate`] when [`Manager::trigger_update`]
+    /// [`Event::HandleUpdate`] when [`EventMgr::trigger_update`]
     /// is called with the corresponding handle.
     ///
     /// This should be called from [`WidgetConfig::configure`].
     pub fn update_on_handle(&mut self, handle: UpdateHandle, w_id: WidgetId) {
         trace!(
-            "Manager::update_on_handle: update {} on handle {:?}",
+            "EventMgr::update_on_handle: update {} on handle {:?}",
             w_id,
             handle
         );
@@ -230,21 +268,35 @@ impl<'a> Manager<'a> {
     /// window without borders and with precise placement, or may be a layer
     /// drawn in an existing window.
     ///
-    /// A pop-up may be closed by calling [`Manager::close_window`] with
+    /// The parent of a popup automatically receives mouse-motion events
+    /// ([`Event::PressMove`]) which may be used to navigate menus.
+    ///
+    /// A pop-up may be closed by calling [`EventMgr::close_window`] with
     /// the [`WindowId`] returned by this method.
     ///
     /// Returns `None` if window creation is not currently available (but note
     /// that `Some` result does not guarantee the operation succeeded).
     #[inline]
     pub fn add_popup(&mut self, popup: crate::Popup) -> Option<WindowId> {
+        trace!("Manager::add_popup({:?})", popup);
+        let new_id = &popup.id;
+        while let Some((_, popup, _)) = self.state.popups.last() {
+            if popup.parent.is_ancestor_of(new_id) {
+                break;
+            }
+            let (wid, popup, _old_nav_focus) = self.state.popups.pop().unwrap();
+            self.shell.close_window(wid);
+            self.state.popup_removed.push((popup.parent, wid));
+            // Don't restore old nav focus: assume new focus will be set by new popup
+        }
+
         let opt_id = self.shell.add_popup(popup.clone());
         if let Some(id) = opt_id {
-            self.state.new_popups.push(popup.id.clone());
             self.state
                 .popups
                 .push((id, popup, self.state.nav_focus.clone()));
-            self.clear_nav_focus();
         }
+        self.clear_nav_focus();
         opt_id
     }
 
@@ -330,25 +382,35 @@ impl<'a> Manager<'a> {
 
     /// Adjust the theme
     #[inline]
-    pub fn adjust_theme<F: FnMut(&mut dyn ThemeApi) -> TkAction>(&mut self, mut f: F) {
+    pub fn adjust_theme<F: FnMut(&mut dyn ThemeControl) -> TkAction>(&mut self, mut f: F) {
         self.shell.adjust_theme(&mut f);
     }
 
-    /// Access a [`SizeHandle`]
-    pub fn size_handle<F: FnMut(&mut dyn SizeHandle) -> T, T>(&mut self, mut f: F) -> T {
+    /// Access a [`SizeMgr`]
+    pub fn size_mgr<F: FnMut(SizeMgr) -> T, T>(&mut self, mut f: F) -> T {
         let mut result = None;
-        self.shell.size_handle(&mut |size_handle| {
-            result = Some(f(size_handle));
+        self.shell.size_and_draw_shared(&mut |size_handle, _| {
+            result = Some(f(SizeMgr::new(size_handle)));
         });
         result.expect("ShellWindow::size_handle impl failed to call function argument")
     }
 
+    /// Access a [`SetRectMgr`]
+    pub fn set_rect_mgr<F: FnMut(&mut SetRectMgr) -> T, T>(&mut self, mut f: F) -> T {
+        let mut result = None;
+        self.shell
+            .size_and_draw_shared(&mut |size_handle, draw_shared| {
+                let mut mgr = SetRectMgr::new(size_handle, draw_shared);
+                result = Some(f(&mut mgr));
+                self.action |= mgr.take_action();
+            });
+        result.expect("ShellWindow::size_handle impl failed to call function argument")
+    }
+
     /// Access a [`DrawShared`]
-    ///
-    /// This can be accessed through [`Self::size_handle`]; this method is merely a shortcut.
     pub fn draw_shared<F: FnMut(&mut dyn DrawShared) -> T, T>(&mut self, mut f: F) -> T {
         let mut result = None;
-        self.shell.draw_shared(&mut |draw_shared| {
+        self.shell.size_and_draw_shared(&mut |_, draw_shared| {
             result = Some(f(draw_shared));
         });
         result.expect("ShellWindow::draw_shared impl failed to call function argument")
@@ -356,7 +418,7 @@ impl<'a> Manager<'a> {
 }
 
 /// Public API (around event manager state)
-impl<'a> Manager<'a> {
+impl<'a> EventMgr<'a> {
     /// Attempts to set a fallback to receive [`Event::Command`]
     ///
     /// In case a navigation key is pressed (see [`Command`]) but no widget has
@@ -369,20 +431,20 @@ impl<'a> Manager<'a> {
     /// respond to navigation keys when no widget has focus.
     pub fn register_nav_fallback(&mut self, id: WidgetId) {
         if self.state.nav_fallback.is_none() {
-            debug!("Manager: nav_fallback = {}", id);
+            debug!("EventMgr: nav_fallback = {}", id);
             self.state.nav_fallback = Some(id);
         }
     }
 
     /// Add a new accelerator key layer and make it current
     ///
-    /// This method affects the behaviour of [`Manager::add_accel_keys`] by
+    /// This method affects the behaviour of [`EventMgr::add_accel_keys`] by
     /// adding a new *layer* and making this new layer *current*.
     ///
     /// This method should only be called by parents of a pop-up: layers over
     /// the base layer are *only* activated by an open pop-up.
     ///
-    /// [`Manager::pop_accel_layer`] must be called after child widgets have
+    /// [`EventMgr::pop_accel_layer`] must be called after child widgets have
     /// been configured to finish configuration of this new layer and to make
     /// the previous layer current.
     ///
@@ -395,7 +457,7 @@ impl<'a> Manager<'a> {
     /// Enable `alt_bypass` for the current layer
     ///
     /// This may be called by a child widget during configure, e.g. to enable
-    /// alt-bypass for the base layer. See also [`Manager::push_accel_layer`].
+    /// alt-bypass for the base layer. See also [`EventMgr::push_accel_layer`].
     pub fn enable_alt_bypass(&mut self, alt_bypass: bool) {
         if let Some(layer) = self.state.accel_stack.last_mut() {
             layer.0 = alt_bypass;
@@ -404,7 +466,7 @@ impl<'a> Manager<'a> {
 
     /// Finish configuration of an accelerator key layer
     ///
-    /// This must be called after [`Manager::push_accel_layer`], after
+    /// This must be called after [`EventMgr::push_accel_layer`], after
     /// configuration of any children using this layer.
     ///
     /// The `id` must be that of the widget which created this layer.
@@ -430,7 +492,7 @@ impl<'a> Manager<'a> {
     /// see [`crate::text::AccelString`].
     ///
     /// Accelerator keys may be added to the base layer or to a new layer
-    /// associated with a pop-up (see [`Manager::push_accel_layer`]).
+    /// associated with a pop-up (see [`EventMgr::push_accel_layer`]).
     /// The top-most active layer gets first priority in matching input, but
     /// does not block previous layers.
     ///
@@ -490,7 +552,7 @@ impl<'a> Manager<'a> {
     ///
     /// Each grab can optionally visually depress one widget, and initially
     /// depresses the widget owning the grab (the `id` passed here). Call
-    /// [`Manager::set_grab_depress`] to update the grab's depress target.
+    /// [`EventMgr::set_grab_depress`] to update the grab's depress target.
     /// This is cleared automatically when the grab ends.
     ///
     /// Behaviour depends on the `mode`:
@@ -532,14 +594,17 @@ impl<'a> Manager<'a> {
                 if mode != GrabMode::Grab {
                     pan_grab = self.state.set_pan_on(id.clone(), mode, false, coord);
                 }
-                trace!("Manager: start mouse grab by {}", start_id);
+                trace!("EventMgr: start mouse grab by {}", start_id);
                 self.state.mouse_grab = Some(MouseGrab {
                     button,
                     repetitions,
                     start_id: start_id.clone(),
+                    cur_id: Some(start_id.clone()),
                     depress: Some(id),
                     mode,
                     pan_grab,
+                    coord,
+                    delta: Offset::ZERO,
                 });
                 if let Some(icon) = cursor {
                     self.shell.set_cursor_icon(icon);
@@ -552,18 +617,17 @@ impl<'a> Manager<'a> {
                 if mode != GrabMode::Grab {
                     pan_grab = self.state.set_pan_on(id.clone(), mode, true, coord);
                 }
-                trace!("Manager: start touch grab by {}", start_id);
-                self.state.touch_grab.insert(
-                    touch_id,
-                    TouchGrab {
-                        start_id: start_id.clone(),
-                        depress: Some(id.clone()),
-                        cur_id: Some(id),
-                        coord,
-                        mode,
-                        pan_grab,
-                    },
-                );
+                trace!("EventMgr: start touch grab by {}", start_id);
+                self.state.touch_grab.push(TouchGrab {
+                    id: touch_id,
+                    start_id: start_id.clone(),
+                    depress: Some(id.clone()),
+                    cur_id: Some(id),
+                    last_move: coord,
+                    coord,
+                    mode,
+                    pan_grab,
+                });
             }
         }
 
@@ -574,7 +638,7 @@ impl<'a> Manager<'a> {
     /// Update the mouse cursor used during a grab
     ///
     /// This only succeeds if widget `id` has an active mouse-grab (see
-    /// [`Manager::request_grab`]). The cursor will be reset when the mouse-grab
+    /// [`EventMgr::request_grab`]). The cursor will be reset when the mouse-grab
     /// ends.
     pub fn update_grab_cursor(&mut self, id: WidgetId, icon: CursorIcon) {
         if let Some(ref grab) = self.state.mouse_grab {
@@ -587,7 +651,7 @@ impl<'a> Manager<'a> {
     /// Set a grab's depress target
     ///
     /// When a grab on mouse or touch input is in effect
-    /// ([`Manager::request_grab`]), the widget owning the grab may set itself
+    /// ([`EventMgr::request_grab`]), the widget owning the grab may set itself
     /// or any other widget as *depressed* ("pushed down"). Each grab depresses
     /// at most one widget, thus setting a new depress target clears any
     /// existing target. Initially a grab depresses its owner.
@@ -608,14 +672,14 @@ impl<'a> Manager<'a> {
                 }
             }
             PressSource::Touch(id) => {
-                if let Some(grab) = self.state.touch_grab.get_mut(&id) {
+                if let Some(grab) = self.get_touch(id) {
                     redraw = grab.depress != target;
                     grab.depress = target.clone();
                 }
             }
         }
         if redraw {
-            trace!("Manager: set_grab_depress on target={:?}", target);
+            trace!("EventMgr: set_grab_depress on target={:?}", target);
             self.state.send_action(TkAction::REDRAW);
         }
         redraw
@@ -636,7 +700,7 @@ impl<'a> Manager<'a> {
         }
         self.state.nav_focus = None;
         self.clear_char_focus();
-        trace!("Manager: nav_focus = None");
+        trace!("EventMgr: nav_focus = None");
     }
 
     /// Set the keyboard navigation focus directly
@@ -657,7 +721,7 @@ impl<'a> Manager<'a> {
                 self.clear_char_focus();
             }
             self.state.nav_focus = Some(id.clone());
-            trace!("Manager: nav_focus = Some({})", id);
+            trace!("EventMgr: nav_focus = Some({})", id);
             self.state.pending.push(Pending::SetNavFocus(id, key_focus));
         }
     }
@@ -695,7 +759,7 @@ impl<'a> Manager<'a> {
         self.state.send_action(TkAction::REDRAW);
 
         fn nav(
-            mgr: &mut Manager,
+            mgr: &mut SetRectMgr,
             widget: &mut dyn WidgetConfig,
             focus: Option<&WidgetId>,
             rev: bool,
@@ -765,12 +829,15 @@ impl<'a> Manager<'a> {
         let restart = self.state.nav_focus.is_some();
 
         let focus = self.state.nav_focus.clone();
-        let mut opt_id = nav(self, widget, focus.as_ref(), reverse);
-        if restart && opt_id.is_none() {
-            opt_id = nav(self, widget, None, reverse);
-        }
+        let mut opt_id = None;
+        self.set_rect_mgr(|mgr| {
+            opt_id = nav(mgr, widget, focus.as_ref(), reverse);
+            if restart && opt_id.is_none() {
+                opt_id = nav(mgr, widget, None, reverse);
+            }
+        });
 
-        trace!("Manager: nav_focus = {:?}", opt_id);
+        trace!("EventMgr: nav_focus = {:?}", opt_id);
         self.state.nav_focus = opt_id.clone();
 
         if let Some(id) = opt_id {

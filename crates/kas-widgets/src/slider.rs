@@ -223,8 +223,8 @@ widget! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let (size, min_len) = size_handle.slider();
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            let (size, min_len) = size_mgr.slider();
             let margins = (0, 0);
             if self.direction.is_vertical() == axis.is_vertical() {
                 SizeRules::new(min_len, min_len, margins, Stretch::High)
@@ -233,10 +233,10 @@ widget! {
             }
         }
 
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             self.handle.set_rect(mgr, rect, align);
-            let min_handle_size = mgr.size_handle(|sh| (sh.slider().0).0);
+            let min_handle_size = (mgr.size_mgr().slider().0).0;
             let mut size = rect.size;
             if self.direction.is_horizontal() {
                 size.0 = min_handle_size.min(rect.size.0);
@@ -246,10 +246,6 @@ widget! {
             let _ = self.handle.set_size_and_offset(size, self.offset());
         }
 
-        fn spatial_nav(&mut self, _: &mut Manager, _: bool, _: Option<usize>) -> Option<usize> {
-            None // handle is not navigable
-        }
-
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
@@ -257,15 +253,15 @@ widget! {
             self.handle.find_id(coord).or(Some(self.id()))
         }
 
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
             let dir = self.direction.as_direction();
-            let state = self.input_state(mgr, disabled) | self.handle.input_state(mgr, disabled);
+            let state = draw.input_state(self, disabled) | draw.input_state(&self.handle, disabled);
             draw.slider(self.core.rect, self.handle.rect(), dir, state);
         }
     }
 
     impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
                 return Response::Unused;
             }

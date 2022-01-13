@@ -231,17 +231,16 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                     for #name #ty_generics #where_clause
             {
                 #[inline]
-                fn size_rules(
-                    &mut self,
-                    size_handle: &mut dyn ::kas::draw::SizeHandle,
+                fn size_rules(&mut self,
+                    size_mgr: ::kas::theme::SizeMgr,
                     axis: ::kas::layout::AxisInfo,
                 ) -> ::kas::layout::SizeRules {
-                    self.#inner.size_rules(size_handle, axis)
+                    self.#inner.size_rules(size_mgr, axis)
                 }
                 #[inline]
                 fn set_rect(
                     &mut self,
-                    mgr: &mut ::kas::event::Manager,
+                    mgr: &mut ::kas::layout::SetRectMgr,
                     rect: ::kas::geom::Rect,
                     align: ::kas::layout::AlignHints,
                 ) {
@@ -254,7 +253,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                 #[inline]
                 fn spatial_nav(
                     &mut self,
-                    mgr: &mut ::kas::event::Manager,
+                    mgr: &mut ::kas::layout::SetRectMgr,
                     reverse: bool,
                     from: Option<usize>,
                 ) -> Option<usize> {
@@ -267,11 +266,10 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                 #[inline]
                 fn draw(
                     &mut self,
-                    draw: &mut dyn ::kas::draw::DrawHandle,
-                    mgr: &::kas::event::ManagerState,
+                    draw: ::kas::theme::DrawMgr,
                     disabled: bool,
                 ) {
-                    self.#inner.draw(draw, mgr, disabled);
+                    self.#inner.draw(draw, disabled);
                 }
             }
         });
@@ -321,7 +319,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                     self.#inner.activation_via_press()
                 }
                 #[inline]
-                fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+                fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
                     self.#inner.handle(mgr, event)
                 }
             }
@@ -423,7 +421,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                 let self_id = self.id();
                 match self_id.index_of_child(&id) {
                     #ev_to_num
-                    _ if id == self_id => ::kas::event::Manager::handle_generic(self, mgr, event),
+                    _ if id == self_id => ::kas::event::EventMgr::handle_generic(self, mgr, event),
                     _ => {
                         debug_assert!(false, "SendEvent::send: bad WidgetId");
                         Response::Unused
@@ -438,7 +436,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
             {
                 fn send(
                     &mut self,
-                    mgr: &mut ::kas::event::Manager,
+                    mgr: &mut ::kas::event::EventMgr,
                     id: ::kas::WidgetId,
                     event: ::kas::event::Event
                 ) -> ::kas::event::Response<Self::Msg>

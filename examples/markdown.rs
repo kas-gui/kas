@@ -6,7 +6,7 @@
 //! Markdown parsing demo
 
 use kas::class::HasStr;
-use kas::event::{Manager, VoidMsg};
+use kas::event::{EventMgr, VoidMsg};
 use kas::macros::make_widget;
 use kas::text::format::Markdown;
 use kas::widgets::{EditBox, Label, ScrollBarRegion, TextButton, Window};
@@ -58,7 +58,7 @@ It also supports lists:
                 #[widget(use_msg=update)] b_update = TextButton::new_msg("&Update", ()),
             }
             impl Self {
-                fn update(&mut self, mgr: &mut Manager, _: ()) {
+                fn update(&mut self, mgr: &mut EventMgr, _: ()) {
                     let text = match Markdown::new(self.editor.get_str()) {
                         Ok(text) => text,
                         Err(err) => {

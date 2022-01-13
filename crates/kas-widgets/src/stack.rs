@@ -56,15 +56,15 @@ widget! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             let mut rules = SizeRules::EMPTY;
             for child in &mut self.widgets {
-                rules = rules.max(child.size_rules(size_handle, axis));
+                rules = rules.max(child.size_rules(size_mgr.re(), axis));
             }
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             for child in &mut self.widgets {
                 child.set_rect(mgr, rect, align);
@@ -78,16 +78,16 @@ widget! {
             None
         }
 
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, draw: DrawMgr, disabled: bool) {
             let disabled = disabled || self.is_disabled();
             if self.active < self.widgets.len() {
-                self.widgets[self.active].draw(draw, mgr, disabled);
+                self.widgets[self.active].draw(draw, disabled);
             }
         }
     }
 
     impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if !self.is_disabled() {
                 if let Some(index) = self.id().index_of_child(&id) {
                     if let Some(child) = self.widgets.get_mut(index) {
@@ -194,7 +194,7 @@ impl<W: Widget> Stack<W> {
 
     /// Remove all child widgets
     ///
-    /// Triggers a [reconfigure action](Manager::send_action) if any widget is
+    /// Triggers a [reconfigure action](EventMgr::send_action) if any widget is
     /// removed.
     pub fn clear(&mut self) -> TkAction {
         let action = match self.widgets.is_empty() {
@@ -207,7 +207,7 @@ impl<W: Widget> Stack<W> {
 
     /// Append a child widget
     ///
-    /// Triggers a [reconfigure action](Manager::send_action).
+    /// Triggers a [reconfigure action](EventMgr::send_action).
     pub fn push(&mut self, widget: W) -> TkAction {
         self.widgets.push(widget);
         TkAction::RECONFIGURE
@@ -218,7 +218,7 @@ impl<W: Widget> Stack<W> {
     /// Returns `None` if there are no children. Otherwise, this
     /// triggers a reconfigure before the next draw operation.
     ///
-    /// Triggers a [reconfigure action](Manager::send_action) if any widget is
+    /// Triggers a [reconfigure action](EventMgr::send_action) if any widget is
     /// removed.
     pub fn pop(&mut self) -> (Option<W>, TkAction) {
         let action = match self.widgets.is_empty() {
@@ -232,7 +232,7 @@ impl<W: Widget> Stack<W> {
     ///
     /// Panics if `index > len`.
     ///
-    /// Triggers a [reconfigure action](Manager::send_action).
+    /// Triggers a [reconfigure action](EventMgr::send_action).
     pub fn insert(&mut self, index: usize, widget: W) -> TkAction {
         self.widgets.insert(index, widget);
         TkAction::RECONFIGURE
@@ -242,7 +242,7 @@ impl<W: Widget> Stack<W> {
     ///
     /// Panics if `index` is out of bounds.
     ///
-    /// Triggers a [reconfigure action](Manager::send_action).
+    /// Triggers a [reconfigure action](EventMgr::send_action).
     pub fn remove(&mut self, index: usize) -> (W, TkAction) {
         let r = self.widgets.remove(index);
         (r, TkAction::RECONFIGURE)
@@ -252,7 +252,7 @@ impl<W: Widget> Stack<W> {
     ///
     /// Panics if `index` is out of bounds.
     ///
-    /// Triggers a [reconfigure action](Manager::send_action).
+    /// Triggers a [reconfigure action](EventMgr::send_action).
     // TODO: in theory it is possible to avoid a reconfigure where both widgets
     // have no children and have compatible size. Is this a good idea and can
     // we somehow test "has compatible size"?
@@ -263,7 +263,7 @@ impl<W: Widget> Stack<W> {
 
     /// Append child widgets from an iterator
     ///
-    /// Triggers a [reconfigure action](Manager::send_action) if any widgets
+    /// Triggers a [reconfigure action](EventMgr::send_action) if any widgets
     /// are added.
     pub fn extend<T: IntoIterator<Item = W>>(&mut self, iter: T) -> TkAction {
         let len = self.widgets.len();
@@ -276,7 +276,7 @@ impl<W: Widget> Stack<W> {
 
     /// Resize, using the given closure to construct new widgets
     ///
-    /// Triggers a [reconfigure action](Manager::send_action).
+    /// Triggers a [reconfigure action](EventMgr::send_action).
     pub fn resize_with<F: Fn(usize) -> W>(&mut self, len: usize, f: F) -> TkAction {
         let l0 = self.widgets.len();
         if l0 == len {
@@ -296,7 +296,7 @@ impl<W: Widget> Stack<W> {
     ///
     /// See documentation of [`Vec::retain`].
     ///
-    /// Triggers a [reconfigure action](Manager::send_action) if any widgets
+    /// Triggers a [reconfigure action](EventMgr::send_action) if any widgets
     /// are removed.
     pub fn retain<F: FnMut(&W) -> bool>(&mut self, f: F) -> TkAction {
         let len = self.widgets.len();

@@ -317,21 +317,21 @@ widget! {
     }
 
     impl WidgetConfig for Mandlebrot {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             mgr.register_nav_fallback(self.id());
         }
     }
 
     impl Layout for Mandlebrot {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, a: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, size_mgr: SizeMgr, a: AxisInfo) -> SizeRules {
             let min = if a.is_horizontal() { 300.0 } else { 200.0 };
             let ideal = min * 10.0; // prefer big but not larger than screen size
-            let sf = size_handle.scale_factor();
+            let sf = size_mgr.scale_factor();
             SizeRules::new_scaled(min, ideal, 0.0, Stretch::High, sf)
         }
 
         #[inline]
-        fn set_rect(&mut self, _: &mut Manager, rect: Rect, _: AlignHints) {
+        fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, _: AlignHints) {
             self.core.rect = rect;
             let size = DVec2::from(rect.size);
             let rel_width = DVec2(size.0 / size.1, 1.0);
@@ -340,7 +340,7 @@ widget! {
             self.rel_width = rel_width.0 as f32;
         }
 
-        fn draw(&mut self, draw: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, _: bool) {
             let draw = draw.draw_device();
             let draw = DrawIface::<DrawPipe<Pipe>>::downcast_from(draw).unwrap();
             let p = (self.alpha, self.delta, self.rel_width, self.iter);
@@ -351,7 +351,7 @@ widget! {
     impl event::Handler for Mandlebrot {
         type Msg = ();
 
-        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
             match event {
                 Event::Command(cmd, _) => {
                     match cmd {
@@ -443,8 +443,8 @@ widget! {
             let w = MandlebrotWindow {
                 core: Default::default(),
                 label: Label::new(mbrot.loc()),
-                iters: ReserveP::new(Label::from("64"), |size_handle, axis| {
-                    Label::new("000").size_rules(size_handle, axis)
+                iters: ReserveP::new(Label::from("64"), |size_mgr, axis| {
+                    Label::new("000").size_rules(size_mgr, axis)
                 }),
                 slider,
                 mbrot,
@@ -452,11 +452,11 @@ widget! {
             Window::new("Mandlebrot", w)
         }
 
-        fn iter(&mut self, mgr: &mut Manager, iter: i32) {
+        fn iter(&mut self, mgr: &mut EventMgr, iter: i32) {
             self.mbrot.iter = iter;
             *mgr |= self.iters.set_string(format!("{}", iter));
         }
-        fn mbrot(&mut self, mgr: &mut Manager, _: ()) {
+        fn mbrot(&mut self, mgr: &mut EventMgr, _: ()) {
             *mgr |= self.label.set_string(self.mbrot.loc());
         }
     }

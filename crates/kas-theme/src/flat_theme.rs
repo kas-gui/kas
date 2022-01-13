@@ -15,10 +15,11 @@ use std::rc::Rc;
 use crate::{dim, ColorsLinear, Config, Theme};
 use kas::cast::Cast;
 use kas::dir::{Direction, Directional};
-use kas::draw::{self, color::Rgba, *};
+use kas::draw::{color::Rgba, *};
 use kas::geom::*;
 use kas::text::format::FormattableText;
 use kas::text::{fonts, AccelString, Effect, Text, TextApi, TextDisplay};
+use kas::theme::{self, InputState, SizeHandle, TextClass, ThemeControl};
 use kas::TkAction;
 
 // Used to ensure a rectangular background is inside a circular corner.
@@ -208,7 +209,7 @@ where
     }
 }
 
-impl ThemeApi for FlatTheme {
+impl ThemeControl for FlatTheme {
     fn set_font_size(&mut self, pt_size: f32) -> TkAction {
         self.config.set_font_size(pt_size);
         TkAction::RESIZE | TkAction::THEME_UPDATE
@@ -252,7 +253,7 @@ where
                 a = a * SHADOW_HOVER;
                 b = b * SHADOW_HOVER;
             }
-            let shadow_outer = Quad::with_coords(a + inner.a, b + inner.b);
+            let shadow_outer = Quad::from_coords(a + inner.a, b + inner.b);
             let col1 = if self.cols.is_dark {
                 col_frame
             } else {
@@ -273,12 +274,12 @@ where
     }
 }
 
-impl<'a, DS: DrawSharedImpl> draw::DrawHandle for DrawHandle<'a, DS>
+impl<'a, DS: DrawSharedImpl> theme::DrawHandle for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl,
 {
-    fn size_handle(&mut self) -> &mut dyn SizeHandle {
-        self.w
+    fn size_and_draw_shared(&mut self) -> (&dyn SizeHandle, &mut dyn DrawShared) {
+        (self.w, self.draw.shared)
     }
 
     fn draw_device(&mut self) -> &mut dyn Draw {
@@ -290,7 +291,7 @@ where
         inner_rect: Rect,
         offset: Offset,
         class: PassType,
-        f: &mut dyn FnMut(&mut dyn draw::DrawHandle),
+        f: &mut dyn FnMut(&mut dyn theme::DrawHandle),
     ) {
         let mut frame_rect = Default::default();
         let mut shadow = Default::default();
@@ -420,7 +421,7 @@ where
         for (p1, p2) in &text.highlight_lines(range.clone()) {
             let p1 = Vec2::from(*p1);
             let p2 = Vec2::from(*p2);
-            let quad = Quad::with_coords(pos + p1, pos + p2);
+            let quad = Quad::from_coords(pos + p1, pos + p2);
             self.draw.rect(quad, self.cols.text_sel_bg);
         }
 
@@ -455,16 +456,16 @@ where
             p1.1 -= cursor.ascent;
             p2.1 -= cursor.descent;
             p2.0 += width;
-            let quad = Quad::with_coords(p1, p2);
+            let quad = Quad::from_coords(p1, p2);
             self.draw.rect(quad, col);
 
             if cursor.embedding_level() > 0 {
                 // Add a hat to indicate directionality.
                 let height = width;
                 let quad = if cursor.is_ltr() {
-                    Quad::with_coords(Vec2(p2.0, p1.1), Vec2(p2.0 + width, p1.1 + height))
+                    Quad::from_coords(Vec2(p2.0, p1.1), Vec2(p2.0 + width, p1.1 + height))
                 } else {
-                    Quad::with_coords(Vec2(p1.0 - width, p1.1), Vec2(p1.0, p1.1 + height))
+                    Quad::from_coords(Vec2(p1.0 - width, p1.1), Vec2(p1.0, p1.1 + height))
                 };
                 self.draw.rect(quad, col);
             }
@@ -519,8 +520,8 @@ where
 
             const F: f32 = 0.6;
             let (sa, sb) = (self.w.dims.shadow_a * F, self.w.dims.shadow_b * F);
-            let outer = Quad::with_coords(a + sa, b + sb);
-            let inner = Quad::with_coords(a, b);
+            let outer = Quad::from_coords(a + sa, b + sb);
+            let inner = Quad::from_coords(a, b);
             let col1 = if self.cols.is_dark { col } else { Rgba::BLACK };
             let mut col2 = col1;
             col2.a = 0.0;
@@ -554,7 +555,7 @@ where
             }
             a = a * mult;
             b = b * mult;
-            let shadow_outer = Quad::with_coords(a + outer.a, b + outer.b);
+            let shadow_outer = Quad::from_coords(a + outer.a, b + outer.b);
             let col1 = if self.cols.is_dark { col } else { Rgba::BLACK };
             let mut col2 = col1;
             col2.a = 0.0;
@@ -641,7 +642,7 @@ where
             }
             a = a * mult;
             b = b * mult;
-            let shadow_outer = Quad::with_coords(a + outer.a, b + outer.b);
+            let shadow_outer = Quad::from_coords(a + outer.a, b + outer.b);
             let col1 = if self.cols.is_dark { col } else { Rgba::BLACK };
             let mut col2 = col1;
             col2.a = 0.0;

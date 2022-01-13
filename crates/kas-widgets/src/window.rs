@@ -49,13 +49,13 @@ widget! {
         }
 
         #[inline]
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
             let disabled = disabled || self.is_disabled();
-            self.w.draw(draw, mgr, disabled);
+            self.w.draw(draw.re(), disabled);
             for (_, popup) in &self.popups {
                 if let Some(widget) = self.w.find_widget_mut(&popup.id) {
-                    draw.with_overlay(widget.rect(), &mut |draw| {
-                        widget.draw(draw, mgr, disabled);
+                    draw.with_overlay(widget.rect(), |draw| {
+                        widget.draw(draw, disabled);
                     });
                 }
             }
@@ -63,7 +63,7 @@ widget! {
     }
 
     impl SendEvent for Self where W::Msg: Into<VoidMsg> {
-        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() || self.eq_id(&id) {
                 Response::Unused
             } else {
@@ -85,14 +85,14 @@ widget! {
             self.restrict_dimensions
         }
 
-        fn add_popup(&mut self, mgr: &mut Manager, id: WindowId, popup: kas::Popup) {
+        fn add_popup(&mut self, mgr: &mut EventMgr, id: WindowId, popup: kas::Popup) {
             let index = self.popups.len();
             self.popups.push((id, popup));
-            self.resize_popup(mgr, index);
+            mgr.set_rect_mgr(|mgr| self.resize_popup(mgr, index));
             mgr.send_action(TkAction::REDRAW);
         }
 
-        fn remove_popup(&mut self, mgr: &mut Manager, id: WindowId) {
+        fn remove_popup(&mut self, mgr: &mut EventMgr, id: WindowId) {
             for i in 0..self.popups.len() {
                 if id == self.popups[i].0 {
                     self.popups.remove(i);
@@ -102,13 +102,13 @@ widget! {
             }
         }
 
-        fn resize_popups(&mut self, mgr: &mut Manager) {
+        fn resize_popups(&mut self, mgr: &mut SetRectMgr) {
             for i in 0..self.popups.len() {
                 self.resize_popup(mgr, i);
             }
         }
 
-        fn handle_closure(&mut self, mgr: &mut Manager) {
+        fn handle_closure(&mut self, mgr: &mut EventMgr) {
             if let Some((mut consume, update)) = self.drop.take() {
                 consume(&mut self.w);
                 mgr.trigger_update(update, 0);
@@ -153,7 +153,7 @@ impl<W: Widget> Window<W> {
     /// The closure `consume` is called when the window is destroyed, and yields
     /// a user-defined value. This value is returned through the returned
     /// [`Future`] object. In order to be notified when the future
-    /// completes, its owner should call [`Manager::update_on_handle`] with the
+    /// completes, its owner should call [`EventMgr::update_on_handle`] with the
     /// returned [`UpdateHandle`].
     ///
     /// Currently it is not possible for this closure to actually drop the
@@ -215,7 +215,7 @@ fn find_rect(widget: &dyn WidgetConfig, id: WidgetId) -> Option<Rect> {
 }
 
 impl<W: Widget> Window<W> {
-    fn resize_popup(&mut self, mgr: &mut Manager, index: usize) {
+    fn resize_popup(&mut self, mgr: &mut SetRectMgr, index: usize) {
         // Notation: p=point/coord, s=size, m=margin
         // r=window/root rect, c=anchor rect
         let r = self.core.rect;
@@ -223,7 +223,7 @@ impl<W: Widget> Window<W> {
 
         let c = find_rect(self.w.as_widget(), popup.parent.clone()).unwrap();
         let widget = self.w.find_widget_mut(&popup.id).unwrap();
-        let mut cache = mgr.size_handle(|sh| layout::SolveCache::find_constraints(widget, sh));
+        let mut cache = layout::SolveCache::find_constraints(widget, mgr.size_mgr());
         let ideal = cache.ideal(false);
         let m = cache.margins();
 

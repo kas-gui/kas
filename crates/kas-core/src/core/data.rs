@@ -8,9 +8,9 @@
 #[allow(unused)]
 use super::Layout;
 use super::{Widget, WidgetId};
-use crate::event::{self, Manager};
+use crate::event::{self, EventMgr};
 use crate::geom::Rect;
-use crate::layout::StorageChain;
+use crate::layout::{SetRectMgr, StorageChain};
 use crate::{dir::Direction, WindowId};
 
 #[cfg(feature = "winit")]
@@ -68,7 +68,7 @@ impl Clone for CoreData {
 ///
 /// A pop-up is in some ways an ordinary child widget and in some ways not.
 /// The pop-up widget should be a permanent child of its parent, but is not
-/// visible until [`Manager::add_popup`] is called.
+/// visible until [`EventMgr::add_popup`] is called.
 ///
 /// A pop-up widget's rect is not contained by its parent, therefore the parent
 /// must not call any [`Layout`] methods on the pop-up (whether or not it is
@@ -109,21 +109,21 @@ pub trait Window: Widget<Msg = event::VoidMsg> {
     /// Add a pop-up as a layer in the current window
     ///
     /// Each [`Popup`] is assigned a [`WindowId`]; both are passed.
-    fn add_popup(&mut self, mgr: &mut Manager, id: WindowId, popup: Popup);
+    fn add_popup(&mut self, mgr: &mut EventMgr, id: WindowId, popup: Popup);
 
     /// Resize popups
     ///
     /// This is called immediately after [`Layout::set_rect`] to resize
     /// existing pop-ups.
-    fn resize_popups(&mut self, mgr: &mut Manager);
+    fn resize_popups(&mut self, mgr: &mut SetRectMgr);
 
     /// Trigger closure of a pop-up
     ///
     /// If the given `id` refers to a pop-up, it should be closed.
-    fn remove_popup(&mut self, mgr: &mut Manager, id: WindowId);
+    fn remove_popup(&mut self, mgr: &mut EventMgr, id: WindowId);
 
     /// Handle closure of self
     ///
     /// This allows for actions on destruction, but doesn't need to do anything.
-    fn handle_closure(&mut self, _mgr: &mut Manager) {}
+    fn handle_closure(&mut self, _mgr: &mut EventMgr) {}
 }

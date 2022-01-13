@@ -5,7 +5,8 @@
 
 //! Theme traits
 
-use kas::draw::{color, DrawHandle, DrawIface, DrawSharedImpl, SharedState, SizeHandle, ThemeApi};
+use kas::draw::{color, DrawIface, DrawSharedImpl, SharedState};
+use kas::theme::{DrawHandle, SizeHandle, ThemeControl};
 use kas::TkAction;
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
@@ -41,7 +42,7 @@ pub trait ThemeConfig:
 ///
 /// Objects of this type are copied within each window's data structure. For
 /// large resources (e.g. fonts and icons) consider using external storage.
-pub trait Theme<DS: DrawSharedImpl>: ThemeApi {
+pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
     /// The associated config type
     type Config: ThemeConfig;
 

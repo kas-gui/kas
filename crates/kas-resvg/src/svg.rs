@@ -86,7 +86,7 @@ widget! {
     }
 
     impl WidgetConfig for Svg {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             if self.tree.is_none() {
                 // TODO: maybe we should use a singleton to deduplicate loading by
                 // path? Probably not much use for duplicate SVG widgets however.
@@ -98,7 +98,7 @@ widget! {
                 let font_family = fonts_db
                     .font_family_from_alias("SERIF")
                     .unwrap_or_default();
-                let font_size = mgr.size_handle(|sh| sh.pixels_from_em(1.0)) as f64;
+                let font_size = mgr.size_mgr(|size| size.pixels_from_em(1.0)) as f64;
 
                 // TODO: some options here should be configurable
                 let opts = usvg::OptionsRef {
@@ -126,8 +126,8 @@ widget! {
     }
 
     impl Layout for Svg {
-        fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let margins = self.margins.select(sh);
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            let margins = self.margins.select(size_mgr);
             if axis.is_horizontal() {
                 SizeRules::new(
                     self.min_size.0,
@@ -145,7 +145,7 @@ widget! {
             }
         }
 
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             let size = match self.ideal_size.aspect_scale_to(rect.size) {
                 Some(size) => {
                     self.core_data_mut().rect = align
@@ -164,7 +164,7 @@ widget! {
             let pm_size = self.pixmap.as_ref().map(|pm| (pm.width(), pm.height()));
             if pm_size.unwrap_or((0, 0)) != size {
                 if let Some(id) = self.image_id {
-                    mgr.draw_shared(|ds| ds.image_free(id));
+                    mgr.draw_shared().image_free(id);
                 }
                 self.pixmap = Pixmap::new(size.0, size.1);
                 if let Some(tree) = self.tree.as_ref() {
@@ -174,17 +174,15 @@ widget! {
                         // alas, we cannot tell resvg to skip the aspect-ratio-scaling!
                         resvg::render(tree, usvg::FitTo::Height(h), pm.as_mut());
 
-                        mgr.draw_shared(|ds| {
-                            let id = ds.image_alloc((w, h)).unwrap();
-                            ds.image_upload(id, pm.data(), ImageFormat::Rgba8);
-                            id
-                        })
+                        let id = mgr.draw_shared().image_alloc((w, h)).unwrap();
+                        mgr.draw_shared().image_upload(id, pm.data(), ImageFormat::Rgba8);
+                        id
                     });
                 }
             }
         }
 
-        fn draw(&mut self, draw: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, _: bool) {
             if let Some(id) = self.image_id {
                 draw.image(id, self.rect());
             }

@@ -5,8 +5,8 @@
 
 //! Wrapper adding a label
 
-use kas::draw::TextClass;
 use kas::text::util::set_text_and_prepare;
+use kas::theme::TextClass;
 use kas::{event, layout, prelude::*};
 
 widget! {
@@ -79,7 +79,7 @@ widget! {
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             mgr.add_accel_keys(self.inner.id(), self.keys());
         }
     }

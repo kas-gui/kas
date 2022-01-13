@@ -8,7 +8,7 @@
 use std::time::{Duration, Instant};
 
 use kas::class::HasString;
-use kas::event::{Event, Handler, Manager, Response, VoidMsg};
+use kas::event::{Event, EventMgr, Handler, Response, VoidMsg};
 use kas::macros::make_widget;
 use kas::widgets::{Frame, Label, TextButton, Window};
 use kas::WidgetCore;
@@ -29,12 +29,12 @@ fn make_window() -> Box<dyn kas::Window> {
             start: Option<Instant> = None,
         }
         impl Self {
-            fn reset(&mut self, mgr: &mut Manager, _: ()) {
+            fn reset(&mut self, mgr: &mut EventMgr, _: ()) {
                 self.saved = Duration::default();
                 self.start = None;
                 *mgr |= self.display.set_str("0.000");
             }
-            fn start(&mut self, mgr: &mut Manager, _: ()) {
+            fn start(&mut self, mgr: &mut EventMgr, _: ()) {
                 if let Some(start) = self.start {
                     self.saved += Instant::now() - start;
                     self.start = None;
@@ -45,13 +45,13 @@ fn make_window() -> Box<dyn kas::Window> {
             }
         }
         impl kas::WidgetConfig for Self {
-            fn configure(&mut self, mgr: &mut Manager) {
+            fn configure(&mut self, mgr: &mut EventMgr) {
                 mgr.enable_alt_bypass(true);
             }
         }
         impl Handler for Self {
             type Msg = VoidMsg;
-            fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<VoidMsg> {
+            fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<VoidMsg> {
                 match event {
                     Event::TimerUpdate(0) => {
                         if let Some(start) = self.start {

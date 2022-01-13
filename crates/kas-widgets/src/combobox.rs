@@ -6,10 +6,10 @@
 //! Combobox
 
 use super::{IndexedColumn, MenuEntry};
-use kas::draw::TextClass;
 use kas::event::{self, Command, GrabMode};
 use kas::layout;
 use kas::prelude::*;
+use kas::theme::TextClass;
 use kas::WindowId;
 use std::rc::Rc;
 
@@ -34,7 +34,7 @@ widget! {
         active: usize,
         opening: bool,
         popup_id: Option<WindowId>,
-        on_select: Option<Rc<dyn Fn(&mut Manager, usize) -> Option<M>>>,
+        on_select: Option<Rc<dyn Fn(&mut EventMgr, usize) -> Option<M>>>,
     }
 
     impl kas::Layout for Self {
@@ -43,25 +43,25 @@ widget! {
             layout::Layout::button(&mut self.layout_frame, inner, None)
         }
 
-        fn spatial_nav(&mut self, _: &mut Manager, _: bool, _: Option<usize>) -> Option<usize> {
+        fn spatial_nav(&mut self, _: &mut SetRectMgr, _: bool, _: Option<usize>) -> Option<usize> {
             // We have no child within our rect
             None
         }
 
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-            let mut state = self.input_state(mgr, disabled);
+        fn draw(&mut self, draw: DrawMgr, disabled: bool) {
+            let mut state = draw.input_state(self, disabled);
             if self.popup_id.is_some() {
                 state.insert(InputState::DEPRESS);
             }
-            self.layout().draw(draw, mgr, state);
+            self.layout().draw(draw, state);
         }
     }
 
     impl event::Handler for Self {
         type Msg = M;
 
-        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
-            let open_popup = |s: &mut Self, mgr: &mut Manager, key_focus: bool| {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<M> {
+            let open_popup = |s: &mut Self, mgr: &mut EventMgr, key_focus: bool| {
                 s.popup_id = mgr.add_popup(kas::Popup {
                     id: s.popup.id(),
                     parent: s.id(),
@@ -146,13 +146,13 @@ widget! {
     }
 
     impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
                 return Response::Unused;
             }
 
             if self.eq_id(&id) {
-                Manager::handle_generic(self, mgr, event)
+                EventMgr::handle_generic(self, mgr, event)
             } else {
                 debug_assert!(self.popup.id().is_ancestor_of(&id));
 
@@ -221,9 +221,10 @@ impl ComboBox<VoidMsg> {
     /// index. The result of `f` is converted to [`Response::Msg`] or
     /// [`Response::Update`] and returned to the parent.
     #[inline]
+    #[must_use]
     pub fn on_select<M, F>(self, f: F) -> ComboBox<M>
     where
-        F: Fn(&mut Manager, usize) -> Option<M> + 'static,
+        F: Fn(&mut EventMgr, usize) -> Option<M> + 'static,
     {
         ComboBox {
             core: self.core,
@@ -280,14 +281,14 @@ impl<M: 'static> ComboBox<M> {
 
     /// Remove all choices
     ///
-    /// Triggers a [reconfigure action](Manager::send_action).
+    /// Triggers a [reconfigure action](EventMgr::send_action).
     pub fn clear(&mut self) -> TkAction {
         self.popup.inner.clear()
     }
 
     /// Add a choice to the combobox, in last position
     ///
-    /// Triggers a [reconfigure action](Manager::send_action).
+    /// Triggers a [reconfigure action](EventMgr::send_action).
     pub fn push<T: Into<AccelString>>(&mut self, label: T) -> TkAction {
         let column = &mut self.popup.inner;
         column.push(MenuEntry::new(label, ()))
@@ -296,7 +297,7 @@ impl<M: 'static> ComboBox<M> {
 
     /// Pops the last choice from the combobox
     ///
-    /// Triggers a [reconfigure action](Manager::send_action).
+    /// Triggers a [reconfigure action](EventMgr::send_action).
     pub fn pop(&mut self) -> (Option<()>, TkAction) {
         let r = self.popup.inner.pop();
         (r.0.map(|_| ()), r.1)
@@ -306,7 +307,7 @@ impl<M: 'static> ComboBox<M> {
     ///
     /// Panics if `index > len`.
     ///
-    /// Triggers a [reconfigure action](Manager::send_action).
+    /// Triggers a [reconfigure action](EventMgr::send_action).
     pub fn insert<T: Into<AccelString>>(&mut self, index: usize, label: T) -> TkAction {
         let column = &mut self.popup.inner;
         column.insert(index, MenuEntry::new(label, ()))
@@ -317,7 +318,7 @@ impl<M: 'static> ComboBox<M> {
     ///
     /// Panics if `index` is out of bounds.
     ///
-    /// Triggers a [reconfigure action](Manager::send_action).
+    /// Triggers a [reconfigure action](EventMgr::send_action).
     pub fn remove(&mut self, index: usize) -> TkAction {
         self.popup.inner.remove(index).1
     }
@@ -333,7 +334,7 @@ impl<M: 'static> ComboBox<M> {
 impl<M: 'static> ComboBox<M> {
     fn map_response(
         &mut self,
-        mgr: &mut Manager,
+        mgr: &mut EventMgr,
         id: WidgetId,
         event: Event,
         r: Response<(usize, ())>,
@@ -341,7 +342,7 @@ impl<M: 'static> ComboBox<M> {
         match r {
             Response::Unused => match event {
                 Event::Command(cmd, _) => {
-                    let next = |mgr: &mut Manager, s, clr, rev| {
+                    let next = |mgr: &mut EventMgr, s, clr, rev| {
                         if clr {
                             mgr.clear_nav_focus();
                         }

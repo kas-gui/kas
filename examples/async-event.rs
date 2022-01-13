@@ -53,17 +53,17 @@ widget! {
         handle: UpdateHandle,
     }
     impl WidgetConfig for ColourSquare {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             // register to receive updates on this handle
             mgr.update_on_handle(self.handle, self.id());
         }
     }
     impl Layout for ColourSquare {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {
-            let factor = size_handle.scale_factor();
+        fn size_rules(&mut self, size_mgr: SizeMgr, _: AxisInfo) -> SizeRules {
+            let factor = size_mgr.scale_factor();
             SizeRules::fixed_scaled(100.0, 10.0, factor)
         }
-        fn draw(&mut self, draw: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, _: bool) {
             let draw = draw.draw_device();
             let col = *self.colour.lock().unwrap();
             draw.rect((self.rect()).into(), col);
@@ -71,7 +71,7 @@ widget! {
     }
     impl Handler for ColourSquare {
         type Msg = VoidMsg;
-        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<VoidMsg> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<VoidMsg> {
             match event {
                 Event::HandleUpdate { .. } => {
                     // Note: event has `handle` and `payload` params.

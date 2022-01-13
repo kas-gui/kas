@@ -7,10 +7,10 @@
 
 use super::{MapResponse, Reserve, WithLabel};
 use kas::dir::Directional;
-use kas::draw::SizeHandle;
-use kas::event::{Manager, Response};
+use kas::event::{EventMgr, Response};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::text::AccelString;
+use kas::theme::SizeMgr;
 #[allow(unused)]
 use kas::Layout;
 use kas::Widget;
@@ -20,9 +20,10 @@ pub trait WidgetExt: Widget {
     /// Construct a wrapper widget which maps messages from this widget
     ///
     /// Responses from this widget with a message payload are mapped with `f`.
+    #[must_use]
     fn map_msg<F, M>(self, f: F) -> MapResponse<Self, M>
     where
-        F: Fn(&mut Manager, Self::Msg) -> M + 'static,
+        F: Fn(&mut EventMgr, Self::Msg) -> M + 'static,
         Self: Sized,
     {
         MapResponse::new(self, move |mgr, msg| Response::Msg(f(mgr, msg)))
@@ -32,6 +33,7 @@ pub trait WidgetExt: Widget {
     ///
     /// Responses from this widget with a message payload are mapped to
     /// [`Response::Used`].
+    #[must_use]
     fn map_msg_discard<M>(self) -> MapResponse<Self, M>
     where
         Self: Sized,
@@ -42,9 +44,10 @@ pub trait WidgetExt: Widget {
     /// Construct a wrapper widget which maps message responses from this widget
     ///
     /// Responses from this widget with a message payload are mapped with `f`.
+    #[must_use]
     fn map_response<F, M>(self, f: F) -> MapResponse<Self, M>
     where
-        F: Fn(&mut Manager, Self::Msg) -> Response<M> + 'static,
+        F: Fn(&mut EventMgr, Self::Msg) -> Response<M> + 'static,
         Self: Sized,
     {
         MapResponse::new(self, f)
@@ -60,8 +63,8 @@ pub trait WidgetExt: Widget {
     /// use kas_widgets::Label;
     /// use kas::prelude::*;
     ///
-    /// let label = Label::new("0").with_reserve(|size_handle, axis| {
-    ///     Label::new("00000").size_rules(size_handle, axis)
+    /// let label = Label::new("0").with_reserve(|size_mgr, axis| {
+    ///     Label::new("00000").size_rules(size_mgr, axis)
     /// });
     ///```
     /// Alternatively one may use virtual pixels:
@@ -70,22 +73,24 @@ pub trait WidgetExt: Widget {
     /// use kas_widgets::Filler;
     /// use kas::prelude::*;
     ///
-    /// let label = Filler::new().with_reserve(|size_handle, axis| {
-    ///     let size = size_handle.pixels_from_em(5.0);
+    /// let label = Filler::new().with_reserve(|size_mgr, axis| {
+    ///     let size = size_mgr.pixels_from_em(5.0);
     ///     SizeRules::fixed(size.cast_nearest(), (0, 0))
     /// });
     ///```
     /// The resulting `SizeRules` will be the max of those for the inner widget
     /// and the result of the `reserve` closure.
+    #[must_use]
     fn with_reserve<R>(self, r: R) -> Reserve<Self, R>
     where
-        R: FnMut(&mut dyn SizeHandle, AxisInfo) -> SizeRules + 'static,
+        R: FnMut(SizeMgr, AxisInfo) -> SizeRules + 'static,
         Self: Sized,
     {
         Reserve::new(self, r)
     }
 
     /// Construct a wrapper widget adding a label
+    #[must_use]
     fn with_label<D, T>(self, direction: D, label: T) -> WithLabel<Self, D>
     where
         D: Directional,

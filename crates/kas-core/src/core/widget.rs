@@ -8,10 +8,12 @@
 use std::any::Any;
 use std::fmt;
 
-use crate::draw::{DrawHandle, InputState, SizeHandle};
-use crate::event::{self, ConfigureManager, Manager, ManagerState};
+#[allow(unused)]
+use crate::event::EventState;
+use crate::event::{self, ConfigureManager, EventMgr};
 use crate::geom::{Coord, Offset, Rect};
-use crate::layout::{self, AlignHints, AxisInfo, SizeRules};
+use crate::layout::{self, AlignHints, AxisInfo, SetRectMgr, SizeRules};
+use crate::theme::{DrawMgr, SizeMgr};
 use crate::{CoreData, TkAction, WidgetId};
 
 impl dyn WidgetCore {
@@ -118,46 +120,22 @@ pub trait WidgetCore: Any + fmt::Debug {
     /// Get the name of the widget struct
     fn widget_name(&self) -> &'static str;
 
+    /// Display as "Widget#Id"
+    #[inline]
+    fn identify(&self) -> IdentifyWidget {
+        IdentifyWidget(self.widget_name(), self.id())
+    }
+
     /// Erase type
     fn as_widget(&self) -> &dyn WidgetConfig;
     /// Erase type
     fn as_widget_mut(&mut self) -> &mut dyn WidgetConfig;
+}
 
-    /// Construct [`InputState`]
-    ///
-    /// The `disabled` flag is inherited from parents. [`InputState::disabled`]
-    /// will be true if either `disabled` or `self.is_disabled()` are true.
-    ///
-    /// The error state defaults to `false` since most widgets don't support
-    /// this.
-    ///
-    /// Note: most state changes should automatically cause a redraw, but change
-    /// in `hover` status will not (since this happens frequently and many
-    /// widgets are unaffected), unless [`WidgetConfig::hover_highlight`]
-    /// returns true.
-    fn input_state(&self, mgr: &ManagerState, disabled: bool) -> InputState {
-        let id = &self.core_data().id;
-        let (char_focus, sel_focus) = mgr.has_char_focus(id);
-        let mut state = InputState::empty();
-        if self.core_data().disabled || disabled {
-            state |= InputState::DISABLED;
-        }
-        if mgr.is_hovered(id) {
-            state |= InputState::HOVER;
-        }
-        if mgr.is_depressed(id) {
-            state |= InputState::DEPRESS;
-        }
-        if mgr.nav_focus(id) {
-            state |= InputState::NAV_FOCUS;
-        }
-        if char_focus {
-            state |= InputState::CHAR_FOCUS;
-        }
-        if sel_focus {
-            state |= InputState::SEL_FOCUS;
-        }
-        state
+pub struct IdentifyWidget(&'static str, WidgetId);
+impl fmt::Display for IdentifyWidget {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{}{}", self.0, self.1)
     }
 }
 
@@ -191,16 +169,24 @@ pub trait WidgetChildren: WidgetCore {
     ///
     /// Warning: directly adjusting a widget without requiring reconfigure or
     /// redraw may break the UI. If a widget is replaced, a reconfigure **must**
-    /// be requested. This can be done via [`Manager::send_action`].
+    /// be requested. This can be done via [`EventMgr::send_action`].
     /// This method may be removed in the future.
     fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig>;
 
-    /// Check whether `id` is a descendant
+    /// Check whether `id` is self or a descendant
     ///
     /// This function assumes that `id` is a valid widget.
     #[inline]
     fn is_ancestor_of(&self, id: &WidgetId) -> bool {
         self.id().is_ancestor_of(id)
+    }
+
+    /// Check whether `id` is not self and is a descendant
+    ///
+    /// This function assumes that `id` is a valid widget.
+    #[inline]
+    fn is_strict_ancestor_of(&self, id: &WidgetId) -> bool {
+        !self.eq_id(id) && self.id().is_ancestor_of(id)
     }
 
     /// Find the child which is an ancestor of this `id`, if any
@@ -209,7 +195,7 @@ pub trait WidgetChildren: WidgetCore {
     /// calls to methods like [`Self::get_child`] must handle `None` return.
     ///
     /// This requires that the widget tree has already been configured by
-    /// [`event::ManagerState::configure`].
+    /// [`EventState::configure`].
     #[inline]
     fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
         self.id().index_of_child(id)
@@ -218,7 +204,7 @@ pub trait WidgetChildren: WidgetCore {
     /// Find the descendant with this `id`, if any
     ///
     /// This requires that the widget tree has already been configured by
-    /// [`event::ManagerState::configure`].
+    /// [`EventState::configure`].
     fn find_widget(&self, id: &WidgetId) -> Option<&dyn WidgetConfig> {
         if let Some(index) = self.find_child_index(id) {
             self.get_child(index)
@@ -233,7 +219,7 @@ pub trait WidgetChildren: WidgetCore {
     /// Find the descendant with this `id`, if any
     ///
     /// This requires that the widget tree has already been configured by
-    /// [`ManagerState::configure`].
+    /// [`EventState::configure`].
     fn find_widget_mut(&mut self, id: &WidgetId) -> Option<&mut dyn WidgetConfig> {
         if let Some(index) = self.find_child_index(id) {
             self.get_child_mut(index)
@@ -278,7 +264,7 @@ pub trait WidgetConfig: Layout {
     /// KAS has a crude mechanism to detect this and panic.
     ///
     /// The default implementation of this method does nothing.
-    fn configure(&mut self, _: &mut Manager) {}
+    fn configure(&mut self, _: &mut EventMgr) {}
 
     /// Configure self and children
     ///
@@ -328,76 +314,85 @@ pub trait WidgetConfig: Layout {
 /// Positioning and drawing routines for widgets
 ///
 /// This trait is part of the [`Widget`] family. It may be derived by
-/// [`derive(Widget)`], but is not by default.
+/// the [`crate::macros::widget`] macro, but is not by default.
 ///
-/// This trait contains methods concerned with positioning of contents
-/// as well as low-level event handling.
+/// Implementations of this trait should *either* define [`Self::layout`]
+/// (optionally with other methods as required) *or* define at least
+/// [`Self::size_rules`] and [`Self::draw`].
 ///
-/// For parent widgets, the implementation will often be derived (see
-/// [`kas::macros`](https://docs.rs/kas/latest/kas/macros/));
-/// otherwise, a layout engine may be used (see
-/// [`crate::layout`]). For leaf widgets, it is implemented directly.
+/// Layout solving happens in two steps:
 ///
-/// For a description of the widget size model, see [`SizeRules`].
+/// 1.  [`Self::size_rules`] calculates size requirements recursively
+/// 2.  [`Self::set_rect`] applies the result recursively
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 pub trait Layout: WidgetChildren {
-    /// Make a layout
+    /// Describe layout
     ///
-    /// If used, this allows automatic implementation of `size_rules` and
-    /// `set_rect` methods. The default case is the empty layout.
+    /// This is purely a helper method used to implement other methods:
+    /// [`Self::size_rules`], [`Self::set_rect`], [`Self::find_id`], [`Self::draw`].
+    /// If those methods are implemented directly (or their default
+    /// implementation over the default "empty" layout provided by this method
+    /// suffices), then this method need not be implemented.
+    ///
+    /// The default implementation is for an empty layout (zero size required,
+    /// no child elements, no graphics).
     fn layout(&mut self) -> layout::Layout<'_> {
         Default::default() // TODO: remove default impl
     }
 
     /// Get size rules for the given axis
     ///
-    /// This method takes `&mut self` to allow local caching of child widget
-    /// configuration for future `size_rules` and `set_rect` calls.
-    /// Fields written by `set_rect` should not be used for this cache since
-    /// `set_rect` may be called multiple times without re-calling `size_rules`.
+    /// For a description of the widget size model, see [`SizeRules`].
     ///
-    /// To allow automatic flow of content over new lines, the width is sized
-    /// first, followed by the height; when sizing for height, [`AxisInfo`]
-    /// contains the size of the *other* axis (i.e. the width).
+    /// Typically, this method is called twice: first for the horizontal axis,
+    /// second for the vertical axis (with resolved width available through
+    /// the `axis` parameter allowing content wrapping). On re-sizing, the
+    /// first or both method calls may be skipped.
     ///
-    /// For widgets with children, a [`crate::layout::RulesSolver`] engine may be
-    /// useful to calculate requirements of complex layouts.
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        self.layout().size_rules(size_handle, axis)
+    /// This method takes `&mut self` since it may be necessary to store child
+    /// element size rules in order to calculate layout by `size_rules` on the
+    /// second axis and by `set_rect`.
+    ///
+    /// This method may be implemented through [`Self::layout`] or directly.
+    /// A [`crate::layout::RulesSolver`] engine may be useful to calculate
+    /// requirements of complex layouts.
+    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        self.layout().size_rules(size_mgr, axis)
     }
 
     /// Apply a given `rect` to self
     ///
-    /// For widgets without children, the trivial default implementation of this
-    /// method often suffices, though some widgets choose to align themselves
-    /// within this space. Alignment may be applied in one of two ways:
+    /// This method applies the layout resolved by [`Self::size_rules`].
     ///
-    /// 1.  Shrinking to ideal area and aligning within available space (e.g.
+    /// This method may be implemented through [`Self::layout`] or directly.
+    /// For widgets without children, typically this method only stores the
+    /// calculated `rect`, which is done by the default implementation (even
+    /// with the default empty layout for [`Self::layout`]).
+    ///
+    /// This method may also be useful for alignment, which may be applied in
+    /// one of two ways:
+    ///
+    /// 1.  Shrinking `rect` to the "ideal size" and aligning within (see
+    ///     [`crate::layout::CompleteAlignment::aligned_rect`] or example usage in
     ///     `CheckBoxBare` widget)
-    /// 2.  Filling available space and applying alignment to contents (e.g.
-    ///     `Label` widget)
-    ///
-    /// For widgets with children, a [`crate::layout::RulesSetter`] engine may be
-    /// useful (used with a corresponding [`crate::layout::RulesSolver`]).
+    /// 2.  Applying alignment to contents (see for example `Label` widget)
     ///
     /// One may assume that `size_rules` has been called at least once for each
-    /// axis with current size information before this method, however
-    /// `size_rules` might not be re-called before calling `set_rect` again.
-    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+    /// axis with current size information before this method.
+    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
         self.core_data_mut().rect = rect;
         self.layout().set_rect(mgr, rect, align);
     }
 
-    /// Get translation of children
+    /// Get translation of children relative to this widget
     ///
-    /// Children may live in a translated coordinate space relative to their
-    /// parent. This method returns an offset which should be *added* to a
-    /// coordinate to translate *into* the child's coordinate space or
-    /// subtracted to translate out.
+    /// Usually this is zero; only widgets with scrollable or offset content
+    /// need implement this.
     ///
-    /// Note that this should only be non-zero for widgets themselves
-    /// implementing scrolling (and thin wrappers around these).
+    /// Affects event handling via [`Self::find_id`] and affects the positioning
+    /// of pop-up menus. [`Self::draw`] must be implemented directly using
+    /// [`crate::theme::DrawMgr::with_clip_region`] to offset contents.
     #[inline]
     fn translation(&self) -> Offset {
         Offset::ZERO
@@ -416,7 +411,7 @@ pub trait Layout: WidgetChildren {
     /// children in order.
     fn spatial_nav(
         &mut self,
-        mgr: &mut Manager,
+        mgr: &mut SetRectMgr,
         reverse: bool,
         from: Option<usize>,
     ) -> Option<usize> {
@@ -442,22 +437,24 @@ pub trait Layout: WidgetChildren {
         }
     }
 
-    /// Find a widget by coordinate
+    /// Translate a coordinate to a [`WidgetId`]
     ///
-    /// This method has a default implementation, but this may need to be
-    /// overridden if any of the following are true:
+    /// This method is used in event handling, translating a mouse click or
+    /// touch input to a widget and resolving a [`WidgetConfig::cursor_icon`].
+    /// Usually, this is the widget which draws the target coordinate, but
+    /// stealing focus is permitted: e.g. the `Button` widget handles clicks on
+    /// inner content, while the `CheckBox` widget forwards click events to its
+    /// `CheckBoxBare` component.
+    ///
+    /// The default implementation suffices unless:
     ///
     /// -   [`Self::layout`] is not implemented and there are child widgets
-    /// -   Any child widget should not receive events despite having a
-    ///     placement in the layout — e.g. push-buttons (but note that
-    ///     [`crate::layout::Layout::button`] does take this into account)
-    /// -   Mouse/touch events should be passed to a child widget *outside* of
-    ///     this child's area — e.g. a label next to a checkbox
+    /// -   Event stealing from child widgets is desired (but note that
+    ///     [`crate::layout::Layout::button`] does this already)
     /// -   The child widget is in a translated coordinate space *not equal* to
     ///     [`Self::translation`]
     ///
-    /// This method translates from coordinates (usually from mouse input) to a
-    /// [`WidgetId`]. It is expected to do the following:
+    /// To implement directly:
     ///
     /// -   Return `None` if `coord` is not within `self.rect()`
     /// -   Find the child which should respond to input at `coord`, if any, and
@@ -480,13 +477,13 @@ pub trait Layout: WidgetChildren {
     /// use `let disabled = disabled || self.is_disabled();` to determine its
     /// own disabled state, then pass this value on to children.
     ///
-    /// [`WidgetCore::input_state`] may be used to obtain an [`InputState`] to
-    /// determine active visual effects.
+    /// [`DrawMgr::input_state`] may be used to obtain an
+    /// [`crate::theme::InputState`] to determine active visual effects.
     ///
-    /// The default impl draws all children. TODO: have default?
-    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-        let state = self.input_state(mgr, disabled);
-        self.layout().draw(draw, mgr, state);
+    /// The default impl draws elements as defined by [`Self::layout`].
+    fn draw(&mut self, draw: DrawMgr, disabled: bool) {
+        let state = draw.input_state(self, disabled);
+        self.layout().draw(draw, state);
     }
 }
 

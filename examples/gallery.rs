@@ -34,11 +34,11 @@ struct Guard;
 impl EditGuard for Guard {
     type Msg = Item;
 
-    fn activate(edit: &mut EditField<Self>, _: &mut Manager) -> Option<Self::Msg> {
+    fn activate(edit: &mut EditField<Self>, _: &mut EventMgr) -> Option<Self::Msg> {
         Some(Item::Edit(edit.get_string()))
     }
 
-    fn edit(edit: &mut EditField<Self>, _: &mut Manager) -> Option<Self::Msg> {
+    fn edit(edit: &mut EditField<Self>, _: &mut EventMgr) -> Option<Self::Msg> {
         // 7a is the colour of *magic*!
         edit.set_error_state(edit.get_str().len() % (7 + 1) == 0);
         None
@@ -74,20 +74,20 @@ widget! {
             }
         }
 
-        fn close(&mut self, mgr: &mut Manager, commit: bool) -> VoidResponse {
+        fn close(&mut self, mgr: &mut EventMgr, commit: bool) -> VoidResponse {
             self.commit = commit;
             mgr.send_action(TkAction::CLOSE);
             Response::Used
         }
     }
     impl WidgetConfig for TextEditPopup {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             mgr.register_nav_fallback(self.id());
         }
     }
     impl Handler for TextEditPopup {
         type Msg = VoidMsg;
-        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
             match event {
                 Event::Command(Command::Escape, _) => self.close(mgr, false),
                 Event::Command(Command::Return, _) => self.close(mgr, true),
@@ -174,7 +174,7 @@ fn main() -> Result<(), kas::shell::Error> {
             future: Option<Future<Option<String>>> = None,
         }
         impl Self {
-            fn edit(&mut self, mgr: &mut Manager, _: ()) {
+            fn edit(&mut self, mgr: &mut EventMgr, _: ()) {
                 if self.future.is_none() {
                     let text = self.label.get_string();
                     let mut window = Window::new("Edit text", TextEditPopup::new(text));
@@ -191,7 +191,7 @@ fn main() -> Result<(), kas::shell::Error> {
         }
         impl Handler for Self {
             type Msg = VoidMsg;
-            fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+            fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
                 match event {
                     Event::HandleUpdate { .. } => {
                         // There should be no other source of this event,
@@ -281,10 +281,10 @@ fn main() -> Result<(), kas::shell::Error> {
             #[widget] pu = popup_edit_box,
         }
         impl Self {
-            fn handle_slider(&mut self, _: &mut Manager, msg: i32) -> Item {
+            fn handle_slider(&mut self, _: &mut EventMgr, msg: i32) -> Item {
                 Item::Slider(msg)
             }
-            fn handle_scroll(&mut self, mgr: &mut Manager, msg: i32) -> Item {
+            fn handle_scroll(&mut self, mgr: &mut EventMgr, msg: i32) -> Item {
                 let ratio = msg as f32 / self.sc.max_value() as f32;
                 *mgr |= self.pg.set_value(ratio);
                 Item::Scroll(msg)
@@ -322,7 +322,7 @@ fn main() -> Result<(), kas::shell::Error> {
                         ScrollBarRegion::new(widgets),
             }
             impl Self {
-                fn menu(&mut self, mgr: &mut Manager, msg: Menu) {
+                fn menu(&mut self, mgr: &mut EventMgr, msg: Menu) {
                     match msg {
                         Menu::Theme(name) => {
                             println!("Theme: {:?}", name);
@@ -343,7 +343,7 @@ fn main() -> Result<(), kas::shell::Error> {
                         }
                     }
                 }
-                fn activations(&mut self, mgr: &mut Manager, item: Item) {
+                fn activations(&mut self, mgr: &mut EventMgr, item: Item) {
                     match item {
                         Item::Button => println!("Clicked!"),
                         Item::LightTheme => mgr.adjust_theme(|theme| theme.set_scheme("light")),

@@ -23,7 +23,7 @@ widget! {
         core: kas::CoreData,
         #[widget]
         inner: W,
-        map: Rc<dyn Fn(&mut Manager, W::Msg) -> Response<M>>,
+        map: Rc<dyn Fn(&mut EventMgr, W::Msg) -> Response<M>>,
     }
 
     impl Self {
@@ -31,7 +31,7 @@ widget! {
         ///
         /// Any response from the child widget with a message payload is mapped
         /// through the closure `f`.
-        pub fn new<F: Fn(&mut Manager, W::Msg) -> Response<M> + 'static>(child: W, f: F) -> Self {
+        pub fn new<F: Fn(&mut EventMgr, W::Msg) -> Response<M> + 'static>(child: W, f: F) -> Self {
             Self::new_rc(child, Rc::new(f))
         }
 
@@ -39,7 +39,7 @@ widget! {
         ///
         /// Any response from the child widget with a message payload is mapped
         /// through the closure `f`.
-        pub fn new_rc(child: W, f: Rc<dyn Fn(&mut Manager, W::Msg) -> Response<M>>) -> Self {
+        pub fn new_rc(child: W, f: Rc<dyn Fn(&mut EventMgr, W::Msg) -> Response<M>>) -> Self {
             MapResponse {
                 core: Default::default(),
                 inner: child,
@@ -49,7 +49,7 @@ widget! {
     }
 
     impl SendEvent for Self {
-        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
                 return Response::Unused;
             }

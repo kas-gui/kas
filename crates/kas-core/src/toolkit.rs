@@ -9,12 +9,13 @@
 //! KAS shell, though it is not the only interface. A KAS shell connects to the
 //! operating system (or further abstraction layers) by implementing
 //! [`ShellWindow`], the family of draw traits in [`crate::draw`], and
-//! constructing and using an event manager ([`crate::event::ManagerState`]).
+//! constructing and using an event manager ([`crate::event::EventState`]).
 //! The shell also provides the entrypoint, a type named `Toolkit`.
 
-use crate::draw::{DrawShared, SizeHandle, ThemeApi};
+use crate::draw::DrawShared;
 use crate::event;
 use crate::event::UpdateHandle;
+use crate::theme::{SizeHandle, ThemeControl};
 use std::num::NonZeroU32;
 
 /// Identifier for a window or pop-up
@@ -38,11 +39,11 @@ bitflags! {
     /// Action required after processing
     ///
     /// This type is returned by many widgets on modification to self and is tracked
-    /// internally by [`event::Manager`] to determine which updates are needed to
+    /// internally by [`event::EventMgr`] to determine which updates are needed to
     /// the UI.
     ///
     /// Two `TkAction` values may be combined via bit-or (`a | b`). Bit-or
-    /// assignments are supported by both `TkAction` and [`event::Manager`].
+    /// assignments are supported by both `TkAction` and [`event::EventMgr`].
     ///
     /// Users receiving a value of this type from a widget update method should
     /// generally call `*mgr |= action;` during event handling. Prior to
@@ -52,7 +53,7 @@ bitflags! {
     pub struct TkAction: u32 {
         /// The whole window requires redrawing
         ///
-        /// Note that [`event::Manager::redraw`] can instead be used for more
+        /// Note that [`event::EventMgr::redraw`] can instead be used for more
         /// selective redrawing.
         const REDRAW = 1 << 0;
         /// Some widgets within a region moved
@@ -136,21 +137,14 @@ pub trait ShellWindow {
     ///
     /// Note: theme adjustments apply to all windows, as does the [`TkAction`]
     /// returned from the closure.
-    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeApi) -> TkAction);
+    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeControl) -> TkAction);
 
-    /// Access a [`SizeHandle`]
+    /// Access a [`SizeHandle`] and a [`DrawShared`]
     ///
     /// Implementations should call the given function argument once; not doing
     /// so is memory-safe but will cause a panic when `size_handle` is called.
     /// User-code *must not* depend on `f` being called for memory safety.
-    fn size_handle(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle));
-
-    /// Access a [`DrawShared`]
-    ///
-    /// Implementations should call the given function argument once; not doing
-    /// so is memory-safe but will cause a panic when `draw_shared` is called.
-    /// User-code *must not* depend on `f` being called for memory safety.
-    fn draw_shared(&mut self, f: &mut dyn FnMut(&mut dyn DrawShared));
+    fn size_and_draw_shared(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle, &mut dyn DrawShared));
 
     /// Set the mouse cursor
     fn set_cursor_icon(&mut self, icon: event::CursorIcon);

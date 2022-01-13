@@ -5,13 +5,13 @@
 
 //! Layout visitor
 
-use super::{AlignHints, AxisInfo, RulesSetter, RulesSolver, SizeRules, Storage};
+use super::{AlignHints, AxisInfo, RulesSetter, RulesSolver, SetRectMgr, SizeRules, Storage};
 use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
-use crate::draw::{color::Rgb, DrawHandle, InputState, SizeHandle, TextClass};
-use crate::event::{Manager, ManagerState};
+use crate::draw::color::Rgb;
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::text::{Align, TextApi, TextApiExt};
+use crate::theme::{DrawMgr, InputState, SizeMgr, TextClass};
 use crate::WidgetId;
 use crate::{dir::Directional, WidgetConfig};
 use std::any::Any;
@@ -54,16 +54,16 @@ impl StorageChain {
 /// Implementation helper for layout of children
 trait Visitor {
     /// Get size rules for the given axis
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules;
+    fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
 
     /// Apply a given `rect` to self
-    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints);
+    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints);
 
     fn is_reversed(&mut self) -> bool;
 
     fn find_id(&mut self, coord: Coord) -> Option<WidgetId>;
 
-    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState);
+    fn draw(&mut self, draw: DrawMgr, state: InputState);
 }
 
 /// A layout visitor
@@ -127,7 +127,7 @@ impl<'a> Layout<'a> {
 
     /// Construct a frame around a sub-layout
     ///
-    /// This frame has dimensions according to [`SizeHandle::frame`].
+    /// This frame has dimensions according to [`SizeMgr::frame`].
     pub fn frame(data: &'a mut FrameStorage, child: Self) -> Self {
         let layout = LayoutType::Frame(Box::new(child), data);
         Layout { layout }
@@ -135,7 +135,7 @@ impl<'a> Layout<'a> {
 
     /// Construct a navigation frame around a sub-layout
     ///
-    /// This frame has dimensions according to [`SizeHandle::frame`].
+    /// This frame has dimensions according to [`SizeMgr::frame`].
     pub fn nav_frame(data: &'a mut FrameStorage, child: Self) -> Self {
         let layout = LayoutType::NavFrame(Box::new(child), data);
         Layout { layout }
@@ -206,49 +206,49 @@ impl<'a> Layout<'a> {
 
     /// Get size rules for the given axis
     #[inline]
-    pub fn size_rules(mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        self.size_rules_(sh, axis)
+    pub fn size_rules(mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        self.size_rules_(mgr, axis)
     }
-    fn size_rules_(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+    fn size_rules_(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         match &mut self.layout {
             LayoutType::None => SizeRules::EMPTY,
-            LayoutType::Single(child) => child.size_rules(sh, axis),
-            LayoutType::AlignSingle(child, _) => child.size_rules(sh, axis),
-            LayoutType::AlignLayout(layout, _) => layout.size_rules_(sh, axis),
+            LayoutType::Single(child) => child.size_rules(mgr, axis),
+            LayoutType::AlignSingle(child, _) => child.size_rules(mgr, axis),
+            LayoutType::AlignLayout(layout, _) => layout.size_rules_(mgr, axis),
             LayoutType::Frame(child, storage) => {
-                let frame_rules = sh.frame(axis.is_vertical());
-                let child_rules = child.size_rules_(sh, axis);
+                let frame_rules = mgr.frame(axis.is_vertical());
+                let child_rules = child.size_rules_(mgr, axis);
                 let (rules, offset, size) = frame_rules.surround_as_margin(child_rules);
                 storage.offset.set_component(axis, offset);
                 storage.size.set_component(axis, size);
                 rules
             }
             LayoutType::NavFrame(child, storage) => {
-                let frame_rules = sh.nav_frame(axis.is_vertical());
-                let child_rules = child.size_rules_(sh, axis);
+                let frame_rules = mgr.nav_frame(axis.is_vertical());
+                let child_rules = child.size_rules_(mgr, axis);
                 let (rules, offset, size) = frame_rules.surround_as_margin(child_rules);
                 storage.offset.set_component(axis, offset);
                 storage.size.set_component(axis, size);
                 rules
             }
             LayoutType::Button(child, storage, _) => {
-                let frame_rules = sh.button_surround(axis.is_vertical());
-                let child_rules = child.size_rules_(sh, axis);
+                let frame_rules = mgr.button_surround(axis.is_vertical());
+                let child_rules = child.size_rules_(mgr, axis);
                 let (rules, offset, size) = frame_rules.surround_as_margin(child_rules);
                 storage.offset.set_component(axis, offset);
                 storage.size.set_component(axis, size);
                 rules
             }
-            LayoutType::Visitor(visitor) => visitor.size_rules(sh, axis),
+            LayoutType::Visitor(visitor) => visitor.size_rules(mgr, axis),
         }
     }
 
     /// Apply a given `rect` to self
     #[inline]
-    pub fn set_rect(mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+    pub fn set_rect(mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
         self.set_rect_(mgr, rect, align);
     }
-    fn set_rect_(&mut self, mgr: &mut Manager, mut rect: Rect, align: AlignHints) {
+    fn set_rect_(&mut self, mgr: &mut SetRectMgr, mut rect: Rect, align: AlignHints) {
         match &mut self.layout {
             LayoutType::None => (),
             LayoutType::Single(child) => child.set_rect(mgr, rect, align),
@@ -313,30 +313,30 @@ impl<'a> Layout<'a> {
 
     /// Draw a widget's children
     #[inline]
-    pub fn draw(mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState) {
-        self.draw_(draw, mgr, state);
+    pub fn draw(mut self, draw: DrawMgr, state: InputState) {
+        self.draw_(draw, state);
     }
-    fn draw_(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState) {
+    fn draw_(&mut self, mut draw: DrawMgr, state: InputState) {
         let disabled = state.contains(InputState::DISABLED);
         match &mut self.layout {
             LayoutType::None => (),
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => {
-                child.draw(draw, mgr, disabled)
+                child.draw(draw, disabled)
             }
-            LayoutType::AlignLayout(layout, _) => layout.draw_(draw, mgr, state),
+            LayoutType::AlignLayout(layout, _) => layout.draw_(draw, state),
             LayoutType::Frame(child, storage) => {
                 draw.outer_frame(storage.rect);
-                child.draw_(draw, mgr, state);
+                child.draw_(draw, state);
             }
             LayoutType::NavFrame(child, storage) => {
                 draw.nav_frame(storage.rect, state);
-                child.draw_(draw, mgr, state);
+                child.draw_(draw, state);
             }
             LayoutType::Button(child, storage, color) => {
                 draw.button(storage.rect, *color, state);
-                child.draw_(draw, mgr, state);
+                child.draw_(draw, state);
             }
-            LayoutType::Visitor(layout) => layout.draw(draw, mgr, state),
+            LayoutType::Visitor(layout) => layout.draw(draw, state),
         }
     }
 }
@@ -352,16 +352,16 @@ impl<'a, S: RowStorage, D: Directional, I> Visitor for List<'a, S, D, I>
 where
     I: ExactSizeIterator<Item = Layout<'a>>,
 {
-    fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+    fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         let dim = (self.direction, self.children.len());
         let mut solver = RowSolver::new(axis, dim, self.data);
         for (n, child) in (&mut self.children).enumerate() {
-            solver.for_child(self.data, n, |axis| child.size_rules(sh, axis));
+            solver.for_child(self.data, n, |axis| child.size_rules(mgr.re(), axis));
         }
         solver.finish(self.data)
     }
 
-    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
         let dim = (self.direction, self.children.len());
         let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, align, self.data);
 
@@ -379,9 +379,9 @@ where
         self.children.find_map(|child| child.find_id(coord))
     }
 
-    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState) {
+    fn draw(&mut self, mut draw: DrawMgr, state: InputState) {
         for child in &mut self.children {
-            child.draw(draw, mgr, state);
+            child.draw(draw.re(), state);
         }
     }
 }
@@ -394,16 +394,16 @@ struct Slice<'a, W: WidgetConfig, D: Directional> {
 }
 
 impl<'a, W: WidgetConfig, D: Directional> Visitor for Slice<'a, W, D> {
-    fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+    fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         let dim = (self.direction, self.children.len());
         let mut solver = RowSolver::new(axis, dim, self.data);
         for (n, child) in self.children.iter_mut().enumerate() {
-            solver.for_child(self.data, n, |axis| child.size_rules(sh, axis));
+            solver.for_child(self.data, n, |axis| child.size_rules(mgr.re(), axis));
         }
         solver.finish(self.data)
     }
 
-    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
         let dim = (self.direction, self.children.len());
         let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, align, self.data);
 
@@ -423,10 +423,10 @@ impl<'a, W: WidgetConfig, D: Directional> Visitor for Slice<'a, W, D> {
             .and_then(|child| child.find_id(coord))
     }
 
-    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState) {
+    fn draw(&mut self, mut draw: DrawMgr, state: InputState) {
         let solver = RowPositionSolver::new(self.direction);
         solver.for_children(self.children, draw.get_clip_rect(), |w| {
-            w.draw(draw, mgr, state.contains(InputState::DISABLED))
+            w.draw(draw.re(), state.contains(InputState::DISABLED))
         });
     }
 }
@@ -442,15 +442,15 @@ impl<'a, S: GridStorage, I> Visitor for Grid<'a, S, I>
 where
     I: Iterator<Item = (GridChildInfo, Layout<'a>)>,
 {
-    fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+    fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, self.data);
         for (info, child) in &mut self.children {
-            solver.for_child(self.data, info, |axis| child.size_rules(sh, axis));
+            solver.for_child(self.data, info, |axis| child.size_rules(mgr.re(), axis));
         }
         solver.finish(self.data)
     }
 
-    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
         let mut setter = GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, align, self.data);
         for (info, child) in &mut self.children {
             child.set_rect(mgr, setter.child_rect(self.data, info), align);
@@ -467,9 +467,9 @@ where
         self.children.find_map(|(_, child)| child.find_id(coord))
     }
 
-    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, state: InputState) {
+    fn draw(&mut self, mut draw: DrawMgr, state: InputState) {
         for (_, child) in &mut self.children {
-            child.draw(draw, mgr, state);
+            child.draw(draw.re(), state);
         }
     }
 }
@@ -506,11 +506,11 @@ struct Text<'a> {
 }
 
 impl<'a> Visitor for Text<'a> {
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        size_handle.text_bound(self.text, self.class, axis)
+    fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        mgr.text_bound(self.text, self.class, axis)
     }
 
-    fn set_rect(&mut self, _mgr: &mut Manager, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, _mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
         let halign = match self.class {
             TextClass::Button => Align::Center,
             _ => Align::Default,
@@ -530,7 +530,7 @@ impl<'a> Visitor for Text<'a> {
         None
     }
 
-    fn draw(&mut self, draw: &mut dyn DrawHandle, _mgr: &ManagerState, state: InputState) {
+    fn draw(&mut self, mut draw: DrawMgr, state: InputState) {
         draw.text_effects(self.data.pos, self.text, self.class, state);
     }
 }

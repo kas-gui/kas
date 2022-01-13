@@ -46,6 +46,9 @@ mod storage;
 mod visitor;
 
 use crate::dir::{Direction, Directional};
+use crate::draw::DrawShared;
+use crate::theme::{SizeHandle, SizeMgr};
+use crate::TkAction;
 
 pub use align::{Align, AlignHints, CompleteAlignment};
 pub use grid_solver::{DefaultWithLen, GridChildInfo, GridDimensions, GridSetter, GridSolver};
@@ -139,5 +142,47 @@ impl Directional for AxisInfo {
             false => Direction::Right,
             true => Direction::Down,
         }
+    }
+}
+
+/// Manager available to [`Layout::set_rect`]
+///
+/// This type is functionally a superset of [`SizeMgr`] and subset of
+/// [`DrawMgr`], with support for the appropriate conversions.
+#[must_use]
+pub struct SetRectMgr<'a>(&'a dyn SizeHandle, &'a mut dyn DrawShared, TkAction);
+
+impl<'a> SetRectMgr<'a> {
+    /// Construct from a [`SizeHandle`] and a [`DrawShared`]
+    ///
+    /// Note: the embedded [`TkAction`] should be extracted after usage.
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    pub fn new(size: &'a dyn SizeHandle, draw: &'a mut dyn DrawShared) -> Self {
+        SetRectMgr(size, draw, TkAction::empty())
+    }
+
+    /// Deconstruct
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    pub fn take_action(self) -> TkAction {
+        self.2
+    }
+
+    /// Access a [`SizeMgr`]
+    pub fn size_mgr(&self) -> SizeMgr<'a> {
+        SizeMgr::new(self.0)
+    }
+
+    /// Access a [`DrawShared`]
+    pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
+        self.1
+    }
+}
+
+impl<'a> std::ops::BitOrAssign<TkAction> for SetRectMgr<'a> {
+    #[inline]
+    fn bitor_assign(&mut self, action: TkAction) {
+        self.2 |= action;
     }
 }

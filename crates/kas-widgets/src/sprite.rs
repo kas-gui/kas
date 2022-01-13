@@ -22,7 +22,7 @@ widget! {
     }
 
     impl WidgetConfig for Image {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             if self.do_load {
                 self.do_load = false;
                 match mgr.draw_shared(|ds| {
@@ -40,15 +40,15 @@ widget! {
     }
 
     impl Layout for Image {
-        fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            self.sprite.size_rules(sh, axis)
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            self.sprite.size_rules(size_mgr, axis)
         }
 
-        fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.core_data_mut().rect = self.sprite.align_rect(rect, align);
         }
 
-        fn draw(&mut self, draw: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, _: bool) {
             if let Some(id) = self.id {
                 draw.image(id, self.rect());
             }
@@ -85,23 +85,21 @@ impl Image {
     }
 
     /// Set image path
-    pub fn set_path<P: Into<PathBuf>>(&mut self, mgr: &mut Manager, path: P) {
+    pub fn set_path<P: Into<PathBuf>>(&mut self, mgr: &mut SetRectMgr, path: P) {
         self.path = path.into();
         self.do_load = false;
         let mut size = Size::ZERO;
-        mgr.draw_shared(|ds| {
-            if let Some(id) = self.id {
-                ds.image_free(id);
+        if let Some(id) = self.id {
+            mgr.draw_shared().image_free(id);
+        }
+        match mgr.draw_shared().image_from_path(&self.path) {
+            Ok(id) => {
+                self.id = Some(id);
+                size = mgr.draw_shared().image_size(id).unwrap_or(Size::ZERO);
             }
-            match ds.image_from_path(&self.path) {
-                Ok(id) => {
-                    self.id = Some(id);
-                    size = ds.image_size(id).unwrap_or(Size::ZERO);
-                }
-                Err(error) => self.handle_load_fail(&error),
-            };
-        });
-        mgr.redraw(self.id());
+            Err(error) => self.handle_load_fail(&error),
+        };
+        *mgr |= TkAction::REDRAW;
         if size != self.sprite.size {
             self.sprite.size = size;
             *mgr |= TkAction::RESIZE;
@@ -109,10 +107,10 @@ impl Image {
     }
 
     /// Remove image (set empty)
-    pub fn clear(&mut self, mgr: &mut Manager) {
+    pub fn clear(&mut self, mgr: &mut SetRectMgr) {
         if let Some(id) = self.id.take() {
             self.do_load = false;
-            mgr.draw_shared(|ds| ds.image_free(id));
+            mgr.draw_shared().image_free(id);
         }
     }
 

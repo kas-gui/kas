@@ -25,11 +25,11 @@ const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 /// Shell API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-impl ManagerState {
+impl EventState {
     /// Construct an event manager per-window data struct
     #[inline]
     pub fn new(config: Rc<RefCell<Config>>, scale_factor: f32) -> Self {
-        ManagerState {
+        EventState {
             config,
             scale_factor,
             widget_count: 0,
@@ -51,7 +51,6 @@ impl ManagerState {
             accel_stack: vec![],
             accel_layers: HashMap::new(),
             popups: Default::default(),
-            new_popups: Default::default(),
             popup_removed: Default::default(),
             time_updates: vec![],
             handle_updates: HashMap::new(),
@@ -71,13 +70,13 @@ impl ManagerState {
     ///
     /// This method calls [`WidgetConfig::configure_recurse`] in order to assign
     /// [`WidgetId`] identifiers and call widgets' [`WidgetConfig::configure`]
-    /// method. Additionally, it updates the [`ManagerState`] to account for
+    /// method. Additionally, it updates the [`EventState`] to account for
     /// renamed and removed widgets.
     pub fn configure<W>(&mut self, shell: &mut dyn ShellWindow, widget: &mut W)
     where
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
-        debug!("Manager::configure");
+        debug!("EventMgr::configure");
         self.action = TkAction::empty();
 
         let mut count = 0;
@@ -120,7 +119,7 @@ impl ManagerState {
         shell: &mut dyn ShellWindow,
         widget: &mut W,
     ) {
-        trace!("Manager::region_moved");
+        trace!("EventMgr::region_moved");
         // Note: redraw is already implied.
 
         // Update hovered widget
@@ -128,7 +127,7 @@ impl ManagerState {
         self.with(shell, |mgr| mgr.set_hover(widget, hover));
 
         for grab in self.touch_grab.iter_mut() {
-            grab.1.cur_id = widget.find_id(grab.1.coord);
+            grab.cur_id = widget.find_id(grab.coord);
         }
     }
 
@@ -146,15 +145,15 @@ impl ManagerState {
         self.action = self.action.max(action);
     }
 
-    /// Construct a [`Manager`] referring to this state
+    /// Construct a [`EventMgr`] referring to this state
     ///
-    /// Invokes the given closure on this [`Manager`].
+    /// Invokes the given closure on this [`EventMgr`].
     #[inline]
     pub fn with<F>(&mut self, shell: &mut dyn ShellWindow, f: F)
     where
-        F: FnOnce(&mut Manager),
+        F: FnOnce(&mut EventMgr),
     {
-        let mut mgr = Manager {
+        let mut mgr = EventMgr {
             state: self,
             shell,
             action: TkAction::empty(),
@@ -170,7 +169,7 @@ impl ManagerState {
     where
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
-        let mut mgr = Manager {
+        let mut mgr = EventMgr {
             state: self,
             shell,
             action: TkAction::empty(),
@@ -179,18 +178,14 @@ impl ManagerState {
         while let Some((parent, wid)) = mgr.state.popup_removed.pop() {
             mgr.send_event(widget, parent, Event::PopupRemoved(wid));
         }
-        while let Some(id) = mgr.state.new_popups.pop() {
-            while let Some((_, popup, _)) = mgr.state.popups.last() {
-                if widget
-                    .find_widget(&popup.parent)
-                    .map(|w| w.is_ancestor_of(&id))
-                    .unwrap_or(false)
-                {
-                    break;
-                }
-                let (wid, popup, _old_nav_focus) = mgr.state.popups.pop().unwrap();
-                mgr.send_event(widget, popup.parent, Event::PopupRemoved(wid));
-                // Don't restore old nav focus: assume new focus will be set by new popup
+
+        if let Some((id, event)) = mgr.mouse_grab().and_then(|g| g.flush_move()) {
+            mgr.send_event(widget, id, event);
+        }
+
+        for i in 0..mgr.state.touch_grab.len() {
+            if let Some((id, event)) = mgr.state.touch_grab[i].flush_move() {
+                mgr.send_event(widget, id, event);
             }
         }
 
@@ -258,7 +253,7 @@ impl ManagerState {
 /// Shell API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-impl<'a> Manager<'a> {
+impl<'a> EventMgr<'a> {
     /// Update widgets due to timer
     pub fn update_timer<W: Widget + ?Sized>(&mut self, widget: &mut W) {
         let now = Instant::now();
@@ -362,16 +357,11 @@ impl<'a> Manager<'a> {
                 let delta = coord - self.state.last_mouse_coord;
                 self.set_hover(widget, cur_id.clone());
 
-                if let Some(grab) = self.mouse_grab() {
+                if let Some(grab) = self.state.mouse_grab.as_mut() {
                     if grab.mode == GrabMode::Grab {
-                        let source = PressSource::Mouse(grab.button, grab.repetitions);
-                        let event = Event::PressMove {
-                            source,
-                            cur_id,
-                            coord,
-                            delta,
-                        };
-                        self.send_event(widget, grab.start_id, event);
+                        grab.cur_id = cur_id;
+                        grab.coord = coord;
+                        grab.delta += delta;
                     } else if let Some(pan) =
                         self.state.pan_grab.get_mut(usize::conv(grab.pan_grab.0))
                     {
@@ -405,6 +395,10 @@ impl<'a> Manager<'a> {
                 }
             }
             MouseWheel { delta, .. } => {
+                if let Some((id, event)) = self.mouse_grab().and_then(|g| g.flush_move()) {
+                    self.send_event(widget, id, event);
+                }
+
                 self.state.last_click_button = FAKE_MOUSE_BUTTON;
 
                 let event = Event::Scroll(match delta {
@@ -421,6 +415,10 @@ impl<'a> Manager<'a> {
                 }
             }
             MouseInput { state, button, .. } => {
+                if let Some((id, event)) = self.mouse_grab().and_then(|g| g.flush_move()) {
+                    self.send_event(widget, id, event);
+                }
+
                 let coord = self.state.last_mouse_coord;
 
                 if state == ElementState::Pressed {
@@ -434,7 +432,7 @@ impl<'a> Manager<'a> {
                     self.state.last_click_timeout = now + DOUBLE_CLICK_TIMEOUT;
                 }
 
-                if let Some(grab) = self.mouse_grab() {
+                if let Some(grab) = self.state.mouse_grab.clone() {
                     if grab.mode == GrabMode::Grab {
                         // Mouse grab active: send events there
                         debug_assert_eq!(state, ElementState::Released);
@@ -499,35 +497,23 @@ impl<'a> Manager<'a> {
                     TouchPhase::Moved => {
                         let cur_id = widget.find_id(coord);
 
-                        let mut r = None;
+                        let mut redraw = false;
                         let mut pan_grab = None;
                         if let Some(grab) = self.get_touch(touch.id) {
                             if grab.mode == GrabMode::Grab {
-                                let id = grab.start_id.clone();
-                                let event = Event::PressMove {
-                                    source,
-                                    cur_id: cur_id.clone(),
-                                    coord,
-                                    delta: coord - grab.coord,
-                                };
                                 // Only when 'depressed' status changes:
-                                let redraw = grab.cur_id != cur_id
+                                redraw = grab.cur_id != cur_id
                                     && (grab.start_id == grab.cur_id || grab.start_id == cur_id);
 
                                 grab.cur_id = cur_id;
                                 grab.coord = coord;
-
-                                r = Some((id, event, redraw));
                             } else {
                                 pan_grab = Some(grab.pan_grab);
                             }
                         }
 
-                        if let Some((id, event, redraw)) = r {
-                            if redraw {
-                                self.send_action(TkAction::REDRAW);
-                            }
-                            self.send_event(widget, id, event);
+                        if redraw {
+                            self.send_action(TkAction::REDRAW);
                         } else if let Some(pan_grab) = pan_grab {
                             if usize::conv(pan_grab.1) < MAX_PAN_GRABS {
                                 if let Some(pan) =
@@ -539,7 +525,11 @@ impl<'a> Manager<'a> {
                         }
                     }
                     TouchPhase::Ended => {
-                        if let Some(grab) = self.remove_touch(touch.id) {
+                        if let Some(mut grab) = self.remove_touch(touch.id) {
+                            if let Some((id, event)) = grab.flush_move() {
+                                self.send_event(widget, id, event);
+                            }
+
                             if grab.mode == GrabMode::Grab {
                                 let event = Event::PressEnd {
                                     source,
@@ -556,7 +546,11 @@ impl<'a> Manager<'a> {
                         }
                     }
                     TouchPhase::Cancelled => {
-                        if let Some(grab) = self.remove_touch(touch.id) {
+                        if let Some(mut grab) = self.remove_touch(touch.id) {
+                            if let Some((id, event)) = grab.flush_move() {
+                                self.send_event(widget, id, event);
+                            }
+
                             let event = Event::PressEnd {
                                 source,
                                 end_id: None,

@@ -6,10 +6,10 @@
 //! Scroll region
 
 use super::Scrollable;
-use kas::draw::TextClass;
 use kas::event::ScrollDelta::{LineDelta, PixelDelta};
 use kas::event::{self, Command, PressSource};
 use kas::prelude::*;
+use kas::theme::TextClass;
 use std::fmt::Debug;
 
 /// Logic for a scroll region
@@ -132,7 +132,7 @@ impl ScrollComponent {
     /// the `on_press_start` closure activates a mouse/touch grab.
     ///
     /// Behaviour on [`Event::PressStart`] is configurable: the closure is called on
-    /// this event and should call [`Manager::request_grab`] if the press should
+    /// this event and should call [`EventMgr::request_grab`] if the press should
     /// scroll by drag. This allows control of which mouse button(s) are used and
     /// whether any modifiers must be pressed. For example:
     /// ```
@@ -141,7 +141,7 @@ impl ScrollComponent {
     /// fn dummy_event_handler(
     ///     id: WidgetId,
     ///     scroll: &mut kas_widgets::ScrollComponent,
-    ///     mgr: &mut Manager,
+    ///     mgr: &mut EventMgr,
     ///     event: Event
     /// )
     ///     -> Response<Msg>
@@ -303,23 +303,23 @@ widget! {
         }
 
         #[inline]
-        fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
             *mgr |= self.scroll.set_offset(offset);
             self.scroll.offset()
         }
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             mgr.register_nav_fallback(self.id());
         }
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let mut rules = self.inner.size_rules(size_handle, axis);
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            let mut rules = self.inner.size_rules(size_mgr.re(), axis);
             self.min_child_size.set_component(axis, rules.min_size());
-            let line_height = size_handle.line_height(TextClass::Label);
+            let line_height = size_mgr.line_height(TextClass::Label);
             self.scroll.set_scroll_rate(3.0 * f32::conv(line_height));
             rules.reduce_min_to(line_height);
 
@@ -331,7 +331,7 @@ widget! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             let child_size = (rect.size - self.frame_size).max(self.min_child_size);
             let child_rect = Rect::new(rect.pos + self.offset, child_size);
@@ -353,16 +353,16 @@ widget! {
             self.scroll_offset()
         }
 
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
             let disabled = disabled || self.is_disabled();
-            draw.with_clip_region(self.core.rect, self.scroll_offset(), &mut |handle| {
-                self.inner.draw(handle, mgr, disabled)
+            draw.with_clip_region(self.core.rect, self.scroll_offset(), |handle| {
+                self.inner.draw(handle, disabled)
             });
         }
     }
 
     impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
                 return Response::Unused;
             }

@@ -32,14 +32,14 @@ widget! {
     }
 
     impl Layout for Clock {
-        fn size_rules(&mut self, sh: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, size_mgr: SizeMgr, _: AxisInfo) -> SizeRules {
             // We want a square shape and can resize freely. Numbers are arbitrary.
-            let size: i32 = sh.pixels_from_virtual(100.0).cast_nearest();
+            let size: i32 = size_mgr.pixels_from_virtual(100.0).cast_nearest();
             SizeRules::new(size, 2 * size, (0, 0), Stretch::High)
         }
 
         #[inline]
-        fn set_rect(&mut self, _: &mut Manager, rect: Rect, _align: AlignHints) {
+        fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, _align: AlignHints) {
             // Force to square
             let size = rect.size.0.min(rect.size.1);
             let size = Size::splat(size);
@@ -62,7 +62,7 @@ widget! {
             self.time_pos = pos;
         }
 
-        fn draw(&mut self, draw: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, _: bool) {
             let col_face = color::Rgba::grey(0.4);
             let col_time = color::Rgba::grey(0.0);
             let col_date = color::Rgba::grey(0.2);
@@ -115,7 +115,7 @@ widget! {
     }
 
     impl WidgetConfig for Clock {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             mgr.update_on_timer(Duration::new(0, 0), self.id(), 0);
         }
     }
@@ -124,7 +124,7 @@ widget! {
         type Msg = event::VoidMsg;
 
         #[inline]
-        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
             match event {
                 Event::TimerUpdate(0) => {
                     self.now = Local::now();

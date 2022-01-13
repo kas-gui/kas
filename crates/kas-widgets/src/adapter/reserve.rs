@@ -14,7 +14,7 @@ use kas::prelude::*;
 /// required (e.g. in a struct field) is only possible by making the containing
 /// struct generic over this field, which may be undesirable. As an alternative
 /// a function pointer may be preferred.
-pub type ReserveP<W> = Reserve<W, fn(&mut dyn SizeHandle, AxisInfo) -> SizeRules>;
+pub type ReserveP<W> = Reserve<W, fn(SizeMgr, AxisInfo) -> SizeRules>;
 
 widget! {
     /// A generic widget for size reservations
@@ -27,7 +27,7 @@ widget! {
     #[autoimpl(class_traits where W: trait on inner)]
     #[derive(Clone, Default)]
     #[handler(msg = <W as Handler>::Msg)]
-    pub struct Reserve<W: Widget, R: FnMut(&mut dyn SizeHandle, AxisInfo) -> SizeRules + 'static> {
+    pub struct Reserve<W: Widget, R: FnMut(SizeMgr, AxisInfo) -> SizeRules + 'static> {
         #[widget_core]
         core: CoreData,
         #[widget]
@@ -46,8 +46,8 @@ widget! {
         /// use kas_widgets::Label;
         /// use kas::prelude::*;
         ///
-        /// let label = Reserve::new(Label::new("0"), |size_handle, axis| {
-        ///     Label::new("00000").size_rules(size_handle, axis)
+        /// let label = Reserve::new(Label::new("0"), |size_mgr, axis| {
+        ///     Label::new("00000").size_rules(size_mgr, axis)
         /// });
         ///```
         /// Alternatively one may use virtual pixels:
@@ -56,8 +56,8 @@ widget! {
         /// use kas_widgets::Filler;
         /// use kas::prelude::*;
         ///
-        /// let label = Reserve::new(Filler::new(), |size_handle, axis| {
-        ///     let size = i32::conv_ceil(size_handle.scale_factor() * 100.0);
+        /// let label = Reserve::new(Filler::new(), |size_mgr, axis| {
+        ///     let size = i32::conv_ceil(size_mgr.scale_factor() * 100.0);
         ///     SizeRules::fixed(size, (0, 0))
         /// });
         ///```
@@ -78,9 +78,9 @@ widget! {
             layout::Layout::single(&mut self.inner)
         }
 
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-            let inner_rules = self.inner.size_rules(size_handle, axis);
-            let reserve_rules = (self.reserve)(size_handle, axis);
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            let inner_rules = self.inner.size_rules(size_mgr.re(), axis);
+            let reserve_rules = (self.reserve)(size_mgr.re(), axis);
             inner_rules.max(reserve_rules)
         }
     }

@@ -130,7 +130,7 @@ widget! {
         /// This method updates the shared data, if supported (see
         /// [`MatrixData::update`]). Other widgets sharing this data are notified
         /// of the update, if data is changed.
-        pub fn set_value(&self, mgr: &mut Manager, key: &T::Key, data: T::Item) {
+        pub fn set_value(&self, mgr: &mut EventMgr, key: &T::Key, data: T::Item) {
             if let Some(handle) = self.data.update(key, data) {
                 mgr.trigger_update(handle, 0);
             }
@@ -141,7 +141,7 @@ widget! {
         /// This is purely a convenience method over [`MatrixView::set_value`].
         /// It does nothing if no value is found at `key`.
         /// It notifies other widgets of updates to the shared data.
-        pub fn update_value<F: Fn(T::Item) -> T::Item>(&self, mgr: &mut Manager, key: &T::Key, f: F) {
+        pub fn update_value<F: Fn(T::Item) -> T::Item>(&self, mgr: &mut EventMgr, key: &T::Key, f: F) {
             if let Some(item) = self.get_value(key) {
                 self.set_value(mgr, key, f(item));
             }
@@ -225,13 +225,13 @@ widget! {
         }
 
         /// Manually trigger an update to handle changed data
-        pub fn update_view(&mut self, mgr: &mut Manager) {
+        pub fn update_view(&mut self, mgr: &mut EventMgr) {
             let data = &self.data;
             self.selection.retain(|key| data.contains(key));
             for w in &mut self.widgets {
                 w.key = None;
             }
-            self.update_widgets(mgr);
+            mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
             // Force SET_SIZE so that scroll-bar wrappers get updated
             trace!("update_view triggers SET_SIZE");
             *mgr |= TkAction::SET_SIZE;
@@ -247,7 +247,7 @@ widget! {
             self
         }
 
-        fn update_widgets(&mut self, mgr: &mut Manager) {
+        fn update_widgets(&mut self, mgr: &mut SetRectMgr) {
             let time = Instant::now();
 
             let data_len = Size(self.data.col_len().cast(), self.data.row_len().cast());
@@ -320,9 +320,9 @@ widget! {
         }
 
         #[inline]
-        fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset {
+        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
             *mgr |= self.scroll.set_offset(offset);
-            self.update_widgets(mgr);
+            mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
             self.scroll.offset()
         }
     }
@@ -345,7 +345,7 @@ widget! {
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut Manager) {
+        fn configure(&mut self, mgr: &mut EventMgr) {
             if let Some(handle) = self.data.update_handle() {
                 mgr.update_on_handle(handle, self.id());
             }
@@ -354,13 +354,13 @@ widget! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
-            let inner_margin = size_handle.inner_margin().extract(axis);
+            let inner_margin = size_mgr.inner_margin().extract(axis);
             let frame = kas::layout::FrameRules::new_sym(0, inner_margin, 0);
 
             // We use a default-generated widget to generate size rules
-            let mut rules = self.view.new().size_rules(size_handle, axis);
+            let mut rules = self.view.new().size_rules(size_mgr.re(), axis);
 
             self.child_size_min.set_component(axis, rules.min_size());
             self.child_size_ideal
@@ -382,7 +382,7 @@ widget! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
 
             let mut child_size = rect.size - self.frame_size;
@@ -412,18 +412,16 @@ widget! {
                 debug!("allocating widgets (old len = {}, new = {})", old_num, num);
                 *mgr |= TkAction::RECONFIGURE;
                 self.widgets.reserve(num - old_num);
-                mgr.size_handle(|size_handle| {
-                    for _ in old_num..num {
-                        let mut widget = self.view.new();
-                        solve_size_rules(
-                            &mut widget,
-                            size_handle,
-                            Some(child_size.0),
-                            Some(child_size.1),
-                        );
-                        self.widgets.push(WidgetData { key: None, widget });
-                    }
-                });
+                for _ in old_num..num {
+                    let mut widget = self.view.new();
+                    solve_size_rules(
+                        &mut widget,
+                        mgr.size_mgr(),
+                        Some(child_size.0),
+                        Some(child_size.1),
+                    );
+                    self.widgets.push(WidgetData { key: None, widget });
+                }
             } else if num + 64 <= self.widgets.len() {
                 // Free memory (rarely useful?)
                 self.widgets.truncate(num);
@@ -433,7 +431,7 @@ widget! {
 
         fn spatial_nav(
             &mut self,
-            mgr: &mut Manager,
+            mgr: &mut SetRectMgr,
             reverse: bool,
             from: Option<usize>,
         ) -> Option<usize> {
@@ -498,14 +496,14 @@ widget! {
             Some(self.id())
         }
 
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
             let disabled = disabled || self.is_disabled();
             let offset = self.scroll_offset();
             let num = usize::conv(self.cur_len.cols) * usize::conv(self.cur_len.rows);
-            draw.with_clip_region(self.core.rect, offset, &mut |draw| {
+            draw.with_clip_region(self.core.rect, offset, |mut draw| {
                 for child in &mut self.widgets[..num] {
                     if let Some(ref key) = child.key {
-                        child.widget.draw(draw, mgr, disabled);
+                        child.widget.draw(draw.re(), disabled);
                         if self.selection.contains(key) {
                             draw.selection_box(child.widget.rect());
                         }
@@ -518,7 +516,7 @@ widget! {
     impl Handler for Self {
         type Msg = ChildMsg<T::Key, <V::Widget as Handler>::Msg>;
 
-        fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
             match event {
                 Event::HandleUpdate { .. } => {
                     self.update_view(mgr);
@@ -635,7 +633,7 @@ widget! {
 
             if !action.is_empty() {
                 *mgr |= action;
-                self.update_widgets(mgr);
+                mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
                 Response::Focus(self.rect())
             } else {
                 response.void_into()
@@ -644,7 +642,7 @@ widget! {
     }
 
     impl SendEvent for Self {
-        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.is_disabled() {
                 return Response::Unused;
             }
@@ -699,7 +697,7 @@ widget! {
                     (_, Response::Focus(rect)) => {
                         let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
                         *mgr |= action;
-                        self.update_widgets(mgr);
+                        mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
                         Response::Focus(rect)
                     }
                     (Some(key), Response::Select) => {

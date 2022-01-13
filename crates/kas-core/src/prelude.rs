@@ -15,23 +15,23 @@ pub use crate::class::*;
 #[doc(no_inline)]
 pub use crate::dir::{Direction, Directional};
 #[doc(no_inline)]
-pub use crate::draw::{
-    DrawHandle, DrawHandleExt, DrawShared, ImageId, InputState, SizeHandle, ThemeApi,
-};
+pub use crate::draw::{DrawShared, ImageId};
 #[doc(no_inline)]
 pub use crate::event::{
-    Event, Handler, Manager, ManagerState, Response, SendEvent, UpdateHandle, VoidMsg,
+    Event, EventMgr, EventState, Handler, Response, SendEvent, UpdateHandle, VoidMsg,
 };
 #[doc(no_inline)]
 pub use crate::geom::{Coord, Offset, Rect, Size};
 #[doc(no_inline)]
-pub use crate::layout::{Align, AlignHints, AxisInfo, SizeRules, Stretch};
+pub use crate::layout::{Align, AlignHints, AxisInfo, SetRectMgr, SizeRules, Stretch};
 #[doc(no_inline)]
 pub use crate::macros::*;
 #[doc(no_inline)]
 pub use crate::text::AccelString;
 #[doc(no_inline)]
 pub use crate::text::{EditableTextApi, Text, TextApi, TextApiExt};
+#[doc(no_inline)]
+pub use crate::theme::{DrawMgr, InputState, SizeMgr, ThemeControl};
 #[doc(no_inline)]
 pub use crate::CoreData;
 #[doc(no_inline)]

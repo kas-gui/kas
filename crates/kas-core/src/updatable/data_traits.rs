@@ -19,6 +19,12 @@ pub trait SingleData: Debug {
     /// Output type
     type Item: Clone;
 
+    /// Get the data version
+    ///
+    /// This number starts from 0 and is increased by every call to `update` on
+    /// this data structure.
+    fn version(&self) -> u64;
+
     // TODO(gat): add get<'a>(&self) -> Self::ItemRef<'a> and get_mut
 
     /// Get data (clone)
@@ -30,8 +36,8 @@ pub trait SingleData: Debug {
     /// widgets. If implemented, then [`Updatable::update_handle`] should
     /// return a copy of the same update handle.
     ///
-    /// Returns an [`UpdateHandle`] if an update occurred. Returns `None` if
-    /// updates are unsupported.
+    /// Updates the [`Self::version`] number and returns an [`UpdateHandle`] if
+    /// an update occurred. Returns `None` if updates are unsupported.
     ///
     /// This method takes only `&self`, thus some mechanism such as [`RefCell`]
     /// is required to obtain `&mut` and lower to [`SingleDataMut::set`]. The
@@ -44,7 +50,7 @@ pub trait SingleDataMut: SingleData {
     /// Set data, given a mutable (unique) reference
     ///
     /// It can be assumed that no synchronisation is required when a mutable
-    /// reference can be obtained.
+    /// reference can be obtained. The `version` number need not be affected.
     fn set(&mut self, value: Self::Item);
 }
 
@@ -56,6 +62,12 @@ pub trait ListData: Debug {
 
     /// Item type
     type Item: Clone;
+
+    /// Get the data version
+    ///
+    /// This number starts from 0 and is increased by every call to `update` on
+    /// this data structure.
+    fn version(&self) -> u64;
 
     /// Number of data items available
     ///
@@ -76,8 +88,8 @@ pub trait ListData: Debug {
     /// widgets. If implemented, then [`Updatable::update_handle`] should
     /// return a copy of the same update handle.
     ///
-    /// Returns an [`UpdateHandle`] if an update occurred. Returns `None` if
-    /// updates are unsupported.
+    /// Updates the [`Self::version`] number and returns an [`UpdateHandle`] if
+    /// an update occurred. Returns `None` if updates are unsupported.
     ///
     /// This method takes only `&self`, thus some mechanism such as [`RefCell`]
     /// is required to obtain `&mut` and lower to [`ListDataMut::set`]. The
@@ -103,6 +115,9 @@ pub trait ListData: Debug {
 /// Trait for writable data lists
 pub trait ListDataMut: ListData {
     /// Set data for an existing key
+    ///
+    /// It can be assumed that no synchronisation is required when a mutable
+    /// reference can be obtained. The `version` number need not be affected.
     fn set(&mut self, key: &Self::Key, item: Self::Item);
 }
 
@@ -118,6 +133,12 @@ pub trait MatrixData: Debug {
     type Key: Clone + Debug + PartialEq + Eq;
     /// Item type
     type Item: Clone;
+
+    /// Get the data version
+    ///
+    /// This number starts from 0 and is increased by every call to `update` on
+    /// this data structure.
+    fn version(&self) -> u64;
 
     /// Number of columns available
     ///
@@ -143,8 +164,8 @@ pub trait MatrixData: Debug {
     /// widgets. If implemented, then [`Updatable::update_handle`] should
     /// return a copy of the same update handle.
     ///
-    /// Returns an [`UpdateHandle`] if an update occurred. Returns `None` if
-    /// updates are unsupported.
+    /// Updates the [`Self::version`] number and returns an [`UpdateHandle`] if
+    /// an update occurred. Returns `None` if updates are unsupported.
     ///
     /// This method takes only `&self`, thus some mechanism such as [`RefCell`]
     /// is required to obtain `&mut` and lower to [`ListDataMut::set`]. The
@@ -185,5 +206,8 @@ pub trait MatrixData: Debug {
 /// Trait for writable data matrices
 pub trait MatrixDataMut: MatrixData {
     /// Set data for an existing cell
+    ///
+    /// It can be assumed that no synchronisation is required when a mutable
+    /// reference can be obtained. The `version` number need not be affected.
     fn set(&mut self, key: &Self::Key, item: Self::Item);
 }

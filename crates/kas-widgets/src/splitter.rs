@@ -106,13 +106,13 @@ widget! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             if self.widgets.is_empty() {
                 return SizeRules::EMPTY;
             }
             assert_eq!(self.handles.len() + 1, self.widgets.len());
 
-            let handle_size = size_handle.separator().extract(axis);
+            let handle_size = size_mgr.separator().extract(axis);
 
             let dim = (self.direction, self.num_children());
             let mut solver = layout::RowSolver::new(axis, dim, &mut self.data);
@@ -122,7 +122,7 @@ widget! {
                 assert!(n < self.widgets.len());
                 let widgets = &mut self.widgets;
                 solver.for_child(&mut self.data, n << 1, |axis| {
-                    widgets[n].size_rules(size_handle, axis)
+                    widgets[n].size_rules(size_mgr.re(), axis)
                 });
 
                 if n >= self.handles.len() {
@@ -136,7 +136,7 @@ widget! {
             solver.finish(&mut self.data)
         }
 
-        fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             if self.widgets.is_empty() {
                 return;
@@ -172,10 +172,6 @@ widget! {
             }
         }
 
-        fn spatial_nav(&mut self, _: &mut Manager, _: bool, _: Option<usize>) -> Option<usize> {
-            None // handles are not navigable
-        }
-
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
@@ -198,13 +194,13 @@ widget! {
             Some(self.id())
         }
 
-        fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
             // as with find_id, there's not much harm in invoking the solver twice
 
             let solver = layout::RowPositionSolver::new(self.direction);
             let disabled = disabled || self.is_disabled();
             solver.for_children(&mut self.widgets, draw.get_clip_rect(), |w| {
-                w.draw(draw, mgr, disabled)
+                w.draw(draw.re(), disabled)
             });
 
             let solver = layout::RowPositionSolver::new(self.direction);
@@ -215,7 +211,7 @@ widget! {
     }
 
     impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if !self.is_disabled() && !self.widgets.is_empty() {
                 if let Some(index) = self.id().index_of_child(&id) {
                     if (index & 1) == 0 {
@@ -229,7 +225,7 @@ widget! {
                             return r.try_into().unwrap_or_else(|_| {
                                 // Message is the new offset relative to the track;
                                 // the handle has already adjusted its position
-                                self.adjust_size(mgr, n);
+                                mgr.set_rect_mgr(|mgr| self.adjust_size(mgr, n));
                                 Response::Used
                             });
                         }
@@ -282,7 +278,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         }
     }
 
-    fn adjust_size(&mut self, mgr: &mut Manager, n: usize) {
+    fn adjust_size(&mut self, mgr: &mut SetRectMgr, n: usize) {
         assert!(n < self.handles.len());
         assert_eq!(self.widgets.len(), self.handles.len() + 1);
         let index = 2 * n + 1;
@@ -342,7 +338,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
 
     /// Remove all child widgets
     ///
-    /// Triggers a [reconfigure action](Manager::send_action) if any widget is
+    /// Triggers a [reconfigure action](EventMgr::send_action) if any widget is
     /// removed.
     pub fn clear(&mut self) -> TkAction {
         let action = match self.widgets.is_empty() {
@@ -356,7 +352,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
 
     /// Append a child widget
     ///
-    /// Triggers a [reconfigure action](Manager::send_action).
+    /// Triggers a [reconfigure action](EventMgr::send_action).
     pub fn push(&mut self, widget: W) -> TkAction {
         if !self.widgets.is_empty() {
             self.handles.push(DragHandle::new());
@@ -370,7 +366,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// Returns `None` if there are no children. Otherwise, this
     /// triggers a reconfigure before the next draw operation.
     ///
-    /// Triggers a [reconfigure action](Manager::send_action) if any widget is
+    /// Triggers a [reconfigure action](EventMgr::send_action) if any widget is
     /// removed.
     pub fn pop(&mut self) -> (Option<W>, TkAction) {
         let action = match self.widgets.is_empty() {
@@ -385,7 +381,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     ///
     /// Panics if `index > len`.
     ///
-    /// Triggers a [reconfigure action](Manager::send_action).
+    /// Triggers a [reconfigure action](EventMgr::send_action).
     pub fn insert(&mut self, index: usize, widget: W) -> TkAction {
         if !self.widgets.is_empty() {
             self.handles.push(DragHandle::new());
@@ -398,7 +394,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     ///
     /// Panics if `index` is out of bounds.
     ///
-    /// Triggers a [reconfigure action](Manager::send_action).
+    /// Triggers a [reconfigure action](EventMgr::send_action).
     pub fn remove(&mut self, index: usize) -> (W, TkAction) {
         let _ = self.handles.pop();
         let r = self.widgets.remove(index);
@@ -409,7 +405,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     ///
     /// Panics if `index` is out of bounds.
     ///
-    /// Triggers a [reconfigure action](Manager::send_action).
+    /// Triggers a [reconfigure action](EventMgr::send_action).
     // TODO: in theory it is possible to avoid a reconfigure where both widgets
     // have no children and have compatible size. Is this a good idea and can
     // we somehow test "has compatible size"?
@@ -420,7 +416,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
 
     /// Append child widgets from an iterator
     ///
-    /// Triggers a [reconfigure action](Manager::send_action) if any widgets
+    /// Triggers a [reconfigure action](EventMgr::send_action) if any widgets
     /// are added.
     pub fn extend<T: IntoIterator<Item = W>>(&mut self, iter: T) -> TkAction {
         let len = self.widgets.len();
@@ -435,7 +431,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
 
     /// Resize, using the given closure to construct new widgets
     ///
-    /// Triggers a [reconfigure action](Manager::send_action).
+    /// Triggers a [reconfigure action](EventMgr::send_action).
     pub fn resize_with<F: Fn(usize) -> W>(&mut self, len: usize, f: F) -> TkAction {
         let l0 = self.widgets.len();
         if l0 == len {
@@ -457,7 +453,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     ///
     /// See documentation of [`Vec::retain`].
     ///
-    /// Triggers a [reconfigure action](Manager::send_action) if any widgets
+    /// Triggers a [reconfigure action](EventMgr::send_action) if any widgets
     /// are removed.
     pub fn retain<F: FnMut(&W) -> bool>(&mut self, f: F) -> TkAction {
         let len = self.widgets.len();

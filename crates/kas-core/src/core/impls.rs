@@ -6,10 +6,10 @@
 //! Trait impls
 
 use super::*;
-use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{self, Event, Manager, ManagerState, Response};
+use crate::event::{self, Event, EventMgr, Response};
 use crate::geom::{Coord, Rect};
-use crate::layout::{AlignHints, AxisInfo, SizeRules};
+use crate::layout::{AlignHints, AxisInfo, SetRectMgr, SizeRules};
+use crate::theme::{DrawMgr, SizeMgr};
 use crate::{CoreData, WidgetId};
 use std::any::Any;
 
@@ -63,7 +63,7 @@ impl<M: 'static> WidgetChildren for Box<dyn Widget<Msg = M>> {
 }
 
 impl<M: 'static> WidgetConfig for Box<dyn Widget<Msg = M>> {
-    fn configure(&mut self, mgr: &mut Manager) {
+    fn configure(&mut self, mgr: &mut EventMgr) {
         self.as_mut().configure(mgr);
     }
 
@@ -79,11 +79,11 @@ impl<M: 'static> WidgetConfig for Box<dyn Widget<Msg = M>> {
 }
 
 impl<M: 'static> Layout for Box<dyn Widget<Msg = M>> {
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        self.as_mut().size_rules(size_handle, axis)
+    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        self.as_mut().size_rules(size_mgr, axis)
     }
 
-    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
         self.as_mut().set_rect(mgr, rect, align);
     }
 
@@ -91,8 +91,8 @@ impl<M: 'static> Layout for Box<dyn Widget<Msg = M>> {
         self.as_mut().find_id(coord)
     }
 
-    fn draw(&mut self, draw: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-        self.as_mut().draw(draw, mgr, disabled);
+    fn draw(&mut self, draw: DrawMgr, disabled: bool) {
+        self.as_mut().draw(draw, disabled);
     }
 }
 
@@ -103,13 +103,13 @@ impl<M: 'static> event::Handler for Box<dyn Widget<Msg = M>> {
         self.as_ref().activation_via_press()
     }
 
-    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+    fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
         self.as_mut().handle(mgr, event)
     }
 }
 
 impl<M: 'static> event::SendEvent for Box<dyn Widget<Msg = M>> {
-    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+    fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
         self.as_mut().send(mgr, id, event)
     }
 }

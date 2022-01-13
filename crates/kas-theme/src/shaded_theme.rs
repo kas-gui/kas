@@ -11,9 +11,10 @@ use std::ops::Range;
 use crate::{dim, ColorsLinear, Config, FlatTheme, Theme};
 use crate::{DrawShaded, DrawShadedImpl};
 use kas::dir::{Direction, Directional};
-use kas::draw::{self, color::Rgba, *};
+use kas::draw::{color::Rgba, *};
 use kas::geom::*;
 use kas::text::{AccelString, Text, TextApi, TextDisplay};
+use kas::theme::{self, InputState, SizeHandle, TextClass, ThemeControl};
 use kas::TkAction;
 
 /// A theme using simple shading to give apparent depth to elements
@@ -147,7 +148,7 @@ where
     }
 }
 
-impl ThemeApi for ShadedTheme {
+impl ThemeControl for ShadedTheme {
     fn set_font_size(&mut self, pt_size: f32) -> TkAction {
         self.flat.set_font_size(pt_size)
     }
@@ -172,7 +173,7 @@ where
         'b: 'c,
     {
         super::flat_theme::DrawHandle {
-            draw: self.draw.reborrow(),
+            draw: self.draw.re(),
             w: self.w,
             cols: self.cols,
         }
@@ -217,12 +218,12 @@ where
     }
 }
 
-impl<'a, DS: DrawSharedImpl> draw::DrawHandle for DrawHandle<'a, DS>
+impl<'a, DS: DrawSharedImpl> theme::DrawHandle for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl + DrawShadedImpl,
 {
-    fn size_handle(&mut self) -> &mut dyn SizeHandle {
-        self.w
+    fn size_and_draw_shared(&mut self) -> (&dyn SizeHandle, &mut dyn DrawShared) {
+        (self.w, self.draw.shared)
     }
 
     fn draw_device(&mut self) -> &mut dyn Draw {
@@ -234,7 +235,7 @@ where
         inner_rect: Rect,
         offset: Offset,
         class: PassType,
-        f: &mut dyn FnMut(&mut dyn draw::DrawHandle),
+        f: &mut dyn FnMut(&mut dyn theme::DrawHandle),
     ) {
         let mut shadow = Default::default();
         let mut outer_rect = inner_rect;

@@ -9,10 +9,11 @@ use log::{debug, error, info, trace};
 use std::time::Instant;
 
 use kas::cast::Cast;
-use kas::draw::{DrawIface, DrawShared, PassId, SizeHandle, ThemeApi};
-use kas::event::{CursorIcon, ManagerState, UpdateHandle};
+use kas::draw::{DrawIface, DrawShared, PassId};
+use kas::event::{CursorIcon, EventState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
-use kas::layout::SolveCache;
+use kas::layout::{SetRectMgr, SolveCache};
+use kas::theme::{DrawMgr, SizeHandle, SizeMgr, ThemeControl};
 use kas::{TkAction, WindowId};
 use kas_theme::{Theme, Window as _};
 use winit::dpi::PhysicalSize;
@@ -29,7 +30,7 @@ use crate::ProxyAction;
 pub(crate) struct Window<C: CustomPipe, T: Theme<DrawPipe<C>>> {
     pub(crate) widget: Box<dyn kas::Window>,
     pub(crate) window_id: WindowId,
-    mgr: ManagerState,
+    mgr: EventState,
     solve_cache: SolveCache,
     /// The winit window
     pub(crate) window: winit::window::Window,
@@ -53,12 +54,12 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let scale_factor = shared.scale_factor as f32;
         let mut theme_window = shared.theme.new_window(scale_factor);
 
-        let mut mgr = ManagerState::new(shared.config.clone(), scale_factor);
+        let mut mgr = EventState::new(shared.config.clone(), scale_factor);
         let mut tkw = TkWindow::new(shared, None, &mut theme_window);
         mgr.configure(&mut tkw, &mut *widget);
 
-        let mut size_handle = theme_window.size_handle();
-        let solve_cache = SolveCache::find_constraints(widget.as_widget_mut(), &mut size_handle);
+        let size_mgr = SizeMgr::new(theme_window.size_handle());
+        let solve_cache = SolveCache::find_constraints(widget.as_widget_mut(), size_mgr);
         // Opening a zero-size window causes a crash, so force at least 1x1:
         let ideal = solve_cache.ideal(true).max(Size(1, 1));
 
@@ -188,8 +189,8 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         if action.contains(TkAction::REGION_MOVED) {
             let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
             self.mgr.region_moved(&mut tkw, &mut *self.widget);
-            self.window.request_redraw();
-        } else if action.contains(TkAction::REDRAW) {
+        }
+        if !action.is_empty() {
             self.window.request_redraw();
         }
     }
@@ -274,13 +275,12 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let rect = Rect::new(Coord::ZERO, self.sc_size());
         debug!("Resizing window to rect = {:?}", rect);
 
-        let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let solve_cache = &mut self.solve_cache;
         let widget = &mut self.widget;
-        self.mgr.with(&mut tkw, |mgr| {
-            solve_cache.apply_rect(widget.as_widget_mut(), mgr, rect, true);
-            widget.resize_popups(mgr);
-        });
+        let mut mgr = SetRectMgr::new(self.theme_window.size_handle(), &mut shared.draw);
+        solve_cache.apply_rect(widget.as_widget_mut(), &mut mgr, rect, true);
+        widget.resize_popups(&mut mgr);
+        self.mgr.send_action(mgr.take_action());
 
         let restrict_dimensions = self.widget.restrict_dimensions();
         if restrict_dimensions.0 {
@@ -334,13 +334,22 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             unsafe {
                 // Safety: lifetimes do not escape the returned draw_handle value.
                 let mut draw_handle = shared.theme.draw_handle(draw, &mut self.theme_window);
-                self.widget.draw(&mut draw_handle, &self.mgr, false);
+                let draw_mgr = DrawMgr::new(&mut draw_handle, &mut self.mgr);
+                self.widget.draw(draw_mgr, false);
             }
             #[cfg(feature = "gat")]
             {
                 let mut draw_handle = shared.theme.draw_handle(draw, &mut self.theme_window);
-                self.widget.draw(&mut draw_handle, &self.mgr, false);
+                let draw_mgr = DrawMgr::new(&mut draw_handle, &mut self.mgr);
+                self.widget.draw(draw_mgr, false);
             }
+        }
+
+        // Ignore REDRAW since we're doing that anyway. Anything else, just start over.
+        let action = self.mgr.action - TkAction::REDRAW;
+        if !action.is_empty() {
+            self.mgr.action = TkAction::empty();
+            return self.handle_action(shared, action);
         }
 
         let time2 = Instant::now();
@@ -457,19 +466,18 @@ where
         self.shared.set_clipboard(content);
     }
 
-    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeApi) -> TkAction) {
+    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeControl) -> TkAction) {
         let action = f(&mut self.shared.theme);
         self.shared.pending.push(PendingAction::TkAction(action));
     }
 
-    fn size_handle(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
+    fn size_and_draw_shared(
+        &mut self,
+        f: &mut dyn FnMut(&mut dyn SizeHandle, &mut dyn DrawShared),
+    ) {
         use kas_theme::Window;
         let mut size_handle = self.theme_window.size_handle();
-        f(&mut size_handle);
-    }
-
-    fn draw_shared(&mut self, f: &mut dyn FnMut(&mut dyn DrawShared)) {
-        f(&mut self.shared.draw);
+        f(&mut size_handle, &mut self.shared.draw);
     }
 
     #[inline]
