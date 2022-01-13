@@ -12,6 +12,8 @@ use super::ModifiersState;
 use crate::cast::Cast;
 #[cfg(feature = "config")]
 use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::time::Duration;
 
 /// Event handling configuration
@@ -52,13 +54,9 @@ pub struct Config {
 
     #[cfg_attr(feature = "config", serde(default = "defaults::scroll_flick_sub"))]
     scroll_flick_sub: f32,
-    #[cfg_attr(feature = "config", serde(skip))]
-    scaled_scroll_flick_sub: f32,
 
     #[cfg_attr(feature = "config", serde(default = "defaults::pan_dist_thresh"))]
     pan_dist_thresh: f32,
-    #[cfg_attr(feature = "config", serde(skip))]
-    scaled_pan_dist_thresh: f32,
 
     #[cfg_attr(feature = "config", serde(default = "defaults::mouse_pan"))]
     mouse_pan: MousePan,
@@ -82,9 +80,7 @@ impl Default for Config {
             scroll_flick_timeout_ms: defaults::scroll_flick_timeout_ms(),
             scroll_flick_mul: defaults::scroll_flick_mul(),
             scroll_flick_sub: defaults::scroll_flick_sub(),
-            scaled_scroll_flick_sub: defaults::scroll_flick_sub(),
             pan_dist_thresh: defaults::pan_dist_thresh(),
-            scaled_pan_dist_thresh: defaults::pan_dist_thresh(),
             mouse_pan: defaults::mouse_pan(),
             mouse_text_pan: defaults::mouse_text_pan(),
             mouse_nav_focus: defaults::mouse_nav_focus(),
@@ -94,26 +90,47 @@ impl Default for Config {
     }
 }
 
-/// Getters
-impl Config {
+/// Wrapper around [`Config`] to handle window-specific scaling
+#[derive(Clone, Debug)]
+pub struct WindowConfig {
+    config: Rc<RefCell<Config>>,
+    scroll_flick_sub: f32,
+    pan_dist_thresh: f32,
+}
+
+impl WindowConfig {
+    /// Construct
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    pub fn new(config: Rc<RefCell<Config>>, scale_factor: f32) -> Self {
+        let mut w = WindowConfig {
+            config,
+            scroll_flick_sub: f32::NAN,
+            pan_dist_thresh: f32::NAN,
+        };
+        w.set_scale_factor(scale_factor);
+        w
+    }
+
     /// Set scale factor
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn set_scale_factor(&mut self, factor: f32) {
-        self.scaled_scroll_flick_sub = self.scroll_flick_sub * factor;
-        self.scaled_pan_dist_thresh = self.pan_dist_thresh * factor;
+    pub fn set_scale_factor(&mut self, scale_factor: f32) {
+        let base = self.config.borrow();
+        self.scroll_flick_sub = base.scroll_flick_sub * scale_factor;
+        self.pan_dist_thresh = base.pan_dist_thresh * scale_factor;
     }
 
     /// Delay before opening/closing menus on mouse hover
     #[inline]
     pub fn menu_delay(&self) -> Duration {
-        Duration::from_millis(self.menu_delay_ms.cast())
+        Duration::from_millis(self.config.borrow().menu_delay_ms.cast())
     }
 
     /// Delay before switching from panning to text-selection mode
     #[inline]
     pub fn touch_text_sel_delay(&self) -> Duration {
-        Duration::from_millis(self.touch_text_sel_delay_ms.cast())
+        Duration::from_millis(self.config.borrow().touch_text_sel_delay_ms.cast())
     }
 
     /// Controls activation of glide/momentum scrolling
@@ -123,7 +140,7 @@ impl Config {
     /// events within this time window are used to calculate the initial speed.
     #[inline]
     pub fn scroll_flick_timeout(&self) -> Duration {
-        Duration::from_millis(self.scroll_flick_timeout_ms.cast())
+        Duration::from_millis(self.config.borrow().scroll_flick_timeout_ms.cast())
     }
 
     /// Scroll flick decay
@@ -135,7 +152,7 @@ impl Config {
     /// The `sub` factor is affected by the window's scale factor.
     #[inline]
     pub fn scroll_flick_decay(&self) -> (f32, f32) {
-        (self.scroll_flick_mul, self.scaled_scroll_flick_sub)
+        (self.config.borrow().scroll_flick_mul, self.scroll_flick_sub)
     }
 
     /// Drag distance threshold before panning (scrolling) starts
@@ -147,37 +164,37 @@ impl Config {
     /// This is affected by the window's scale factor.
     #[inline]
     pub fn pan_dist_thresh(&self) -> f32 {
-        self.scaled_pan_dist_thresh
+        self.pan_dist_thresh
     }
 
     /// When to pan general widgets (unhandled events) with the mouse
     #[inline]
     pub fn mouse_pan(&self) -> MousePan {
-        self.mouse_pan
+        self.config.borrow().mouse_pan
     }
 
     /// When to pan text fields with the mouse
     #[inline]
     pub fn mouse_text_pan(&self) -> MousePan {
-        self.mouse_text_pan
+        self.config.borrow().mouse_text_pan
     }
 
     /// Whether mouse clicks set keyboard navigation focus
     #[inline]
     pub fn mouse_nav_focus(&self) -> bool {
-        self.mouse_nav_focus
+        self.config.borrow().mouse_nav_focus
     }
 
     /// Whether touchscreen events set keyboard navigation focus
     #[inline]
     pub fn touch_nav_focus(&self) -> bool {
-        self.touch_nav_focus
+        self.config.borrow().touch_nav_focus
     }
 
-    /// Read shortcut config
-    #[inline]
-    pub fn shortcuts(&self) -> &Shortcuts {
-        &self.shortcuts
+    /// Access shortcut config
+    pub fn shortcuts<F: FnOnce(&Shortcuts) -> T, T>(&self, f: F) -> T {
+        let base = self.config.borrow();
+        f(&base.shortcuts)
     }
 }
 
