@@ -201,9 +201,6 @@ widget! {
                         }
                         _ => Response::Unused,
                     },
-                    Response::Used => Response::Used,
-                    Response::Pan(delta) => Response::Pan(delta),
-                    Response::Focus(rect) => Response::Focus(rect),
                     Response::Select => {
                         self.set_menu_path(mgr, Some(&id), true);
                         Response::Used
@@ -212,6 +209,7 @@ widget! {
                         self.close_menu(mgr, true);
                         r
                     }
+                    r => r,
                 }
             }
         }

@@ -253,10 +253,9 @@ impl ScrollComponent {
                 // Momentum/glide scrolling: update per arbitrary step time until movment stops.
                 let decay = mgr.config().scroll_flick_decay();
                 if let Some(delta) = self.glide.step(decay) {
-                    let old_offset = self.offset;
-                    action = self.set_offset(old_offset - delta);
+                    action = self.set_offset(self.offset - delta);
                     mgr.update_on_timer(Duration::from_millis(3), id, 0);
-                    response = Response::Pan(old_offset - self.offset);
+                    response = Response::Scrolled;
                 }
             }
             Event::Command(Command::Home, _) => {
@@ -296,9 +295,11 @@ impl ScrollComponent {
                 let old_offset = self.offset;
                 action = self.set_offset(old_offset - d);
                 let delta = d - (old_offset - self.offset);
-                if delta != Offset::ZERO {
-                    response = Response::Pan(delta);
-                }
+                response = if delta != Offset::ZERO {
+                    Response::Pan(delta)
+                } else {
+                    Response::Scrolled
+                };
             }
             Event::PressStart {
                 source,
@@ -310,9 +311,11 @@ impl ScrollComponent {
                 let old_offset = self.offset;
                 action = self.set_offset(old_offset - delta);
                 delta = old_offset - self.offset;
-                if delta != Offset::ZERO {
-                    response = Response::Pan(delta);
-                }
+                response = if delta != Offset::ZERO {
+                    Response::Pan(delta)
+                } else {
+                    Response::Scrolled
+                };
             }
             Event::PressEnd { .. } => {
                 if self.glide.opt_start(mgr.config().scroll_flick_timeout()) {
@@ -464,7 +467,7 @@ widget! {
                     Response::Unused => (),
                     Response::Pan(delta) => {
                         return match self.scroll_by_delta(mgr, delta) {
-                            delta if delta == Offset::ZERO => Response::Used,
+                            delta if delta == Offset::ZERO => Response::Scrolled,
                             delta => Response::Pan(delta),
                         };
                     }

@@ -701,12 +701,11 @@ widget! {
                         }
                     }
                     (_, Response::Used) => Response::Used,
-                    (_, Response::Pan(delta)) => {
-                        match self.scroll_by_delta(mgr, delta) {
-                            delta if delta == Offset::ZERO => Response::Used,
-                            delta => Response::Pan(delta),
-                        }
+                    (_, Response::Pan(delta)) => match self.scroll_by_delta(mgr, delta) {
+                        delta if delta == Offset::ZERO => Response::Scrolled,
+                        delta => Response::Pan(delta),
                     }
+                    (_, Response::Scrolled) => Response::Scrolled,
                     (_, Response::Focus(rect)) => {
                         let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
                         *mgr |= action;

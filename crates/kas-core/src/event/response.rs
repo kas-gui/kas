@@ -30,9 +30,16 @@ pub enum Response<M> {
     Used,
     /// Pan scrollable regions by the given delta
     ///
+    /// This may be returned to scroll the closest scrollable ancestor region.
+    /// This region should attempt to scroll self by this offset, then, if all
+    /// the offset was used, return `Response::Scrolled`, otherwise return
+    /// `Response::Pan(d)` with the unused offset `d`.
+    ///
     /// With the usual scroll offset conventions, this delta must be subtracted
     /// from the scroll offset.
     Pan(Offset),
+    /// Notify that an inner region scrolled
+    Scrolled,
     /// (Keyboard) focus has changed
     ///
     /// This region (in the child's coordinate space) should be made visible.
@@ -123,6 +130,7 @@ impl<M> Response<M> {
             Unused => Ok(Unused),
             Used => Ok(Used),
             Pan(delta) => Ok(Pan(delta)),
+            Scrolled => Ok(Scrolled),
             Focus(rect) => Ok(Focus(rect)),
             Select => Ok(Select),
             Update => Ok(Update),

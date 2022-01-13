@@ -666,7 +666,7 @@ widget! {
                 Some(2) => {
                     let r = self.inner.send(mgr, id, event);
                     // We assume the inner already updated its positions; this is just to set bars
-                    if matches!(r, Response::Pan(_) | Response::Focus(_)) {
+                    if matches!(r, Response::Pan(_) | Response::Scrolled | Response::Focus(_)) {
                         let offset = self.inner.scroll_offset();
                         *mgr |= self.horiz_bar.set_value(offset.0) | self.vert_bar.set_value(offset.1);
                     }

@@ -359,9 +359,6 @@ impl<M: 'static> ComboBox<M> {
                 }
                 _ => Response::Unused,
             },
-            Response::Used => Response::Used,
-            Response::Pan(delta) => Response::Pan(delta),
-            Response::Focus(x) => Response::Focus(x),
             Response::Update | Response::Select => {
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id, true);
@@ -378,7 +375,7 @@ impl<M: 'static> ComboBox<M> {
                 }
                 Response::Used
             }
-            Response::Msg((index, ())) => {
+            r => r.try_into().unwrap_or_else(|(index, ())| {
                 *mgr |= self.set_active(index);
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id, true);
@@ -388,7 +385,7 @@ impl<M: 'static> ComboBox<M> {
                 } else {
                     Response::Update
                 }
-            }
+            }),
         }
     }
 }

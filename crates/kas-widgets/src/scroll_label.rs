@@ -97,16 +97,18 @@ widget! {
             mgr.redraw(self.id());
         }
 
-        // Pan by given delta. Return remaining (unused) delta.
-        fn pan_delta(&mut self, mgr: &mut EventMgr, delta: Offset) -> Offset {
+        // Pan by given delta. Return `Response::Scrolled` or `Response::Pan(remaining)`.
+        fn pan_delta<U>(&mut self, mgr: &mut EventMgr, mut delta: Offset) -> Response<U> {
             let new_offset = (self.view_offset - delta).clamp(Offset::ZERO, self.max_scroll_offset());
             if new_offset != self.view_offset {
-                let delta = delta - (self.view_offset - new_offset);
+                delta -= self.view_offset - new_offset;
                 self.view_offset = new_offset;
                 mgr.redraw(self.id());
-                delta
+            }
+            if delta == Offset::ZERO {
+                Response::Scrolled
             } else {
-                delta
+                Response::Pan(delta)
             }
         }
 
@@ -186,18 +188,12 @@ widget! {
                         }
                         ScrollDelta::PixelDelta(coord) => coord,
                     };
-                    match self.pan_delta(mgr, delta2) {
-                        delta if delta == Offset::ZERO => Response::Used,
-                        delta => Response::Pan(delta),
-                    }
+                    self.pan_delta(mgr, delta2)
                 }
                 event => match self.input_handler.handle(mgr, self.id(), event) {
                     TextInputAction::None | TextInputAction::Focus => Response::Used,
                     TextInputAction::Unused => Response::Unused,
-                    TextInputAction::Pan(delta) => match self.pan_delta(mgr, delta) {
-                        delta if delta == Offset::ZERO => Response::Used,
-                        delta => Response::Pan(delta),
-                    },
+                    TextInputAction::Pan(delta) => self.pan_delta(mgr, delta),
                     TextInputAction::Cursor(coord, anchor, clear, repeats) => {
                         if (clear && repeats <= 1) || mgr.request_sel_focus(self.id()) {
                             self.set_edit_pos_from_coord(mgr, coord);
