@@ -221,12 +221,16 @@ impl ScrollComponent {
     ///     -> Response<Msg>
     /// {
     ///     let window_size = Size(100, 80);
-    ///     let (action, response) = scroll.scroll_by_event(event, window_size, |source, _, coord| {
-    ///         if source.is_primary() {
+    ///     let (action, response) = scroll.scroll_by_event(
+    ///         mgr,
+    ///         event,
+    ///         id.clone(),
+    ///         window_size,
+    ///         |mgr, source, _, coord| if source.is_primary() {
     ///             let icon = Some(kas::event::CursorIcon::Grabbing);
     ///             mgr.request_grab(id, source, coord, kas::event::GrabMode::Grab, icon);
     ///         }
-    ///     });
+    ///     );
     ///     *mgr |= action;
     ///     response.void_into()
     /// }
