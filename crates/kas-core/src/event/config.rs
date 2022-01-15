@@ -23,14 +23,16 @@ use std::time::Duration;
 /// > `menu_delay_ms`: `u32` (milliseconds) \
 /// > `touch_text_sel_delay_ms`: `u32` (milliseconds) \
 /// > `scroll_flick_timeout_ms`: `u32` (milliseconds) \
-/// > `scroll_flick_mul`: `f32` (unitless) \
-/// > `scroll_flick_sub`: `f32` (pixels) \
+/// > `scroll_flick_mul`: `f32` (unitless, applied each second) \
+/// > `scroll_flick_sub`: `f32` (pixels per second) \
 /// > `pan_dist_thresh`: `f32` (pixels) \
 /// > `mouse_pan`: [`MousePan`] \
 /// > `mouse_text_pan`: [`MousePan`] \
 /// > `mouse_nav_focus`: `bool` \
 /// > `touch_nav_focus`: `bool` \
 /// > `shortcuts`: [`Shortcuts`]
+///
+/// For descriptions of configuration effects, see [`WindowConfig`] methods.
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "config", derive(Serialize, Deserialize))]
 pub struct Config {
@@ -143,13 +145,16 @@ impl WindowConfig {
         Duration::from_millis(self.config.borrow().scroll_flick_timeout_ms.cast())
     }
 
-    /// Scroll flick decay
+    /// Scroll flick velocity decay: `(mul, sub)`
     ///
-    /// This has two components: `(mul, sub)`. The `mul` factor describes
-    /// exponential decay as `v = v * mul.pow(elapsed_seconds)`. The `sub`
-    /// factor describes linear decay: `v = v - sub * elapsed_seconds`.
+    /// The `mul` factor describes exponential decay: effectively, velocity is
+    /// multiplied by `mul` every second. This is the dominant decay factor at
+    /// high speeds; `mul = 1.0` implies no decay while `mul = 0.0` implies an
+    /// instant stop.
     ///
-    /// The `sub` factor is affected by the window's scale factor.
+    /// The `sub` factor describes linear decay: effectively, speed is reduced
+    /// by `sub` every second. This is the dominant decay factor at low speeds.
+    /// Units are pixels/second (output is adjusted for the window's scale factor).
     #[inline]
     pub fn scroll_flick_decay(&self) -> (f32, f32) {
         (self.config.borrow().scroll_flick_mul, self.scroll_flick_sub)
@@ -161,7 +166,7 @@ impl WindowConfig {
     /// start; otherwise the system should wait for the text-selection timer.
     /// We currently recommend the L-inf distance metric (max of abs of values).
     ///
-    /// This is affected by the window's scale factor.
+    /// Units are pixels (output is adjusted for the window's scale factor).
     #[inline]
     pub fn pan_dist_thresh(&self) -> f32 {
         self.pan_dist_thresh

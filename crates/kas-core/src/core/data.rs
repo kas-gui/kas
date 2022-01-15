@@ -16,6 +16,7 @@ use crate::{dir::Direction, WindowId};
 #[cfg(feature = "winit")]
 pub use winit::window::Icon;
 
+/// An icon used for the window titlebar, taskbar, etc.
 #[cfg(not(feature = "winit"))]
 #[derive(Clone)]
 pub struct Icon;
