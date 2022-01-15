@@ -224,11 +224,12 @@ impl ScrollComponent {
     /// The `on_press_start` closure may choose to request a mouse grab only
     /// given certain conditions, e.g. only on the primary mouse button:
     /// ```
-    /// # use kas::prelude::*;
+    /// # use kas_core::prelude::*;
+    /// # use kas_core::event::{self, components::ScrollComponent};
     /// # type Msg = ();
     /// fn dummy_event_handler(
     ///     id: WidgetId,
-    ///     scroll: &mut kas_widgets::ScrollComponent,
+    ///     scroll: &mut ScrollComponent,
     ///     mgr: &mut EventMgr,
     ///     event: Event
     /// )
@@ -241,8 +242,8 @@ impl ScrollComponent {
     ///         id.clone(),
     ///         window_size,
     ///         |mgr, source, _, coord| if source.is_primary() {
-    ///             let icon = Some(kas::event::CursorIcon::Grabbing);
-    ///             mgr.request_grab(id, source, coord, kas::event::GrabMode::Grab, icon);
+    ///             let icon = Some(event::CursorIcon::Grabbing);
+    ///             mgr.request_grab(id, source, coord, event::GrabMode::Grab, icon);
     ///         }
     ///     );
     ///     *mgr |= action;
