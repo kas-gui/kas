@@ -456,12 +456,11 @@ impl TextInput {
                 }
             }
             Event::PressEnd { source, .. } => {
-                if self.glide.opt_start(mgr.config().scroll_flick_timeout()) {
-                    if matches!(source, PressSource::Touch(id) if self.touch_phase == TouchPhase::Pan(id))
-                        || matches!(source, PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan())
-                    {
-                        mgr.update_on_timer(Duration::new(0, 0), w_id, PAYLOAD_GLIDE);
-                    }
+                if self.glide.opt_start(mgr.config().scroll_flick_timeout())
+                    && (matches!(source, PressSource::Touch(id) if self.touch_phase == TouchPhase::Pan(id))
+                        || matches!(source, PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan()))
+                {
+                    mgr.update_on_timer(Duration::new(0, 0), w_id, PAYLOAD_GLIDE);
                 }
                 match self.touch_phase {
                     TouchPhase::Start(id, ..) | TouchPhase::Pan(id) | TouchPhase::Cursor(id)
