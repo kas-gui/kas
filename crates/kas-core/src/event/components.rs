@@ -14,7 +14,9 @@ use crate::text::SelectionHelper;
 use crate::{TkAction, WidgetId};
 use std::time::{Duration, Instant};
 
-const TIMER_ID: u64 = 1 << 60;
+const PAYLOAD_SELECT: u64 = 1 << 60;
+const PAYLOAD_GLIDE: u64 = (1 << 60) + 1;
+const GLIDE_POLL_MS: u64 = 3;
 
 #[derive(Clone, Debug, PartialEq)]
 enum Glide {
@@ -261,15 +263,6 @@ impl ScrollComponent {
         let mut response = Response::Used;
 
         match event {
-            Event::TimerUpdate(0) => {
-                // Momentum/glide scrolling: update per arbitrary step time until movment stops.
-                let decay = mgr.config().scroll_flick_decay();
-                if let Some(delta) = self.glide.step(decay) {
-                    action = self.set_offset(self.offset - delta);
-                    mgr.update_on_timer(Duration::from_millis(3), id, 0);
-                    response = Response::Scrolled;
-                }
-            }
             Event::Command(Command::Home, _) => {
                 action = self.set_offset(Offset::ZERO);
             }
@@ -331,7 +324,16 @@ impl ScrollComponent {
             }
             Event::PressEnd { .. } => {
                 if self.glide.opt_start(mgr.config().scroll_flick_timeout()) {
-                    mgr.update_on_timer(Duration::new(0, 0), id, 0);
+                    mgr.update_on_timer(Duration::new(0, 0), id, PAYLOAD_GLIDE);
+                }
+            }
+            Event::TimerUpdate(pl) if pl == PAYLOAD_GLIDE => {
+                // Momentum/glide scrolling: update per arbitrary step time until movment stops.
+                let decay = mgr.config().scroll_flick_decay();
+                if let Some(delta) = self.glide.step(decay) {
+                    action = self.set_offset(self.offset - delta);
+                    mgr.update_on_timer(Duration::from_millis(GLIDE_POLL_MS), id, PAYLOAD_GLIDE);
+                    response = Response::Scrolled;
                 }
             }
             _ => response = Response::Unused,
@@ -449,7 +451,7 @@ impl TextInput {
                     if matches!(source, PressSource::Touch(id) if self.touch_phase == TouchPhase::Pan(id))
                         || matches!(source, PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan())
                     {
-                        mgr.update_on_timer(Duration::new(0, 0), w_id, 0);
+                        mgr.update_on_timer(Duration::new(0, 0), w_id, PAYLOAD_GLIDE);
                     }
                 }
                 match self.touch_phase {
@@ -462,7 +464,7 @@ impl TextInput {
                 }
                 Action::None
             }
-            Event::TimerUpdate(TIMER_ID) => {
+            Event::TimerUpdate(pl) if pl == PAYLOAD_SELECT => {
                 match self.touch_phase {
                     TouchPhase::Start(touch_id, coord) => {
                         self.touch_phase = TouchPhase::Cursor(touch_id);
@@ -474,11 +476,11 @@ impl TextInput {
                     _ => Action::None,
                 }
             }
-            Event::TimerUpdate(0) => {
+            Event::TimerUpdate(pl) if pl == PAYLOAD_GLIDE => {
                 // Momentum/glide scrolling: update per arbitrary step time until movment stops.
                 let decay = mgr.config().scroll_flick_decay();
                 if let Some(delta) = self.glide.step(decay) {
-                    mgr.update_on_timer(Duration::from_millis(3), w_id, 0);
+                    mgr.update_on_timer(Duration::from_millis(GLIDE_POLL_MS), w_id, 0);
                     Action::Pan(delta)
                 } else {
                     Action::None
