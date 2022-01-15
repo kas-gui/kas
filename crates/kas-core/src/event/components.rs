@@ -23,6 +23,12 @@ enum Glide {
     Glide(Instant, Vec2, Vec2),
 }
 
+impl Default for Glide {
+    fn default() -> Self {
+        Glide::None
+    }
+}
+
 impl Glide {
     fn move_delta(&mut self, delta: Offset) {
         match self {
@@ -352,6 +358,7 @@ impl Default for TouchPhase {
 #[derive(Clone, Debug, Default)]
 pub struct TextInput {
     touch_phase: TouchPhase,
+    glide: Glide,
 }
 
 /// Result of [`TextInput::handle`]
@@ -412,27 +419,39 @@ impl TextInput {
                 coord,
                 delta,
                 ..
-            } => match source {
-                PressSource::Touch(touch_id) => match self.touch_phase {
-                    TouchPhase::None => {
-                        self.touch_phase = TouchPhase::Pan(touch_id);
+            } => {
+                self.glide.move_delta(delta);
+                match source {
+                    PressSource::Touch(touch_id) => match self.touch_phase {
+                        TouchPhase::None => {
+                            self.touch_phase = TouchPhase::Pan(touch_id);
+                            Action::Pan(delta)
+                        }
+                        TouchPhase::Start(id, start_coord) if id == touch_id => {
+                            if mgr.config_test_pan_thresh(coord - start_coord) {
+                                self.touch_phase = TouchPhase::Pan(id);
+                                Action::Pan(delta)
+                            } else {
+                                Action::None
+                            }
+                        }
+                        TouchPhase::Pan(id) if id == touch_id => Action::Pan(delta),
+                        _ => Action::Cursor(coord, false, false, 1),
+                    },
+                    PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan() => {
                         Action::Pan(delta)
                     }
-                    TouchPhase::Start(id, start_coord) if id == touch_id => {
-                        if mgr.config_test_pan_thresh(coord - start_coord) {
-                            self.touch_phase = TouchPhase::Pan(id);
-                            Action::Pan(delta)
-                        } else {
-                            Action::None
-                        }
-                    }
-                    TouchPhase::Pan(id) if id == touch_id => Action::Pan(delta),
-                    _ => Action::Cursor(coord, false, false, 1),
-                },
-                PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan() => Action::Pan(delta),
-                PressSource::Mouse(_, repeats) => Action::Cursor(coord, false, false, repeats),
-            },
+                    PressSource::Mouse(_, repeats) => Action::Cursor(coord, false, false, repeats),
+                }
+            }
             Event::PressEnd { source, .. } => {
+                if self.glide.opt_start(mgr.config().scroll_flick_timeout()) {
+                    if matches!(source, PressSource::Touch(id) if self.touch_phase == TouchPhase::Pan(id))
+                        || matches!(source, PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan())
+                    {
+                        mgr.update_on_timer(Duration::new(0, 0), w_id, 0);
+                    }
+                }
                 match self.touch_phase {
                     TouchPhase::Start(id, ..) | TouchPhase::Pan(id) | TouchPhase::Cursor(id)
                         if source == PressSource::Touch(id) =>
@@ -453,6 +472,16 @@ impl TextInput {
                     // should technically be Unused, but it doesn't matter
                     // so long as other consumers match this first.
                     _ => Action::None,
+                }
+            }
+            Event::TimerUpdate(0) => {
+                // Momentum/glide scrolling: update per arbitrary step time until movment stops.
+                let decay = mgr.config().scroll_flick_decay();
+                if let Some(delta) = self.glide.step(decay) {
+                    mgr.update_on_timer(Duration::from_millis(3), w_id, 0);
+                    Action::Pan(delta)
+                } else {
+                    Action::None
                 }
             }
             _ => Action::Unused,
