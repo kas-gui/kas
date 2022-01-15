@@ -211,14 +211,18 @@ impl ScrollComponent {
 
     /// Use an event to scroll, if possible
     ///
-    /// Handles keyboard (Home/End, Page Up/Down and arrow keys), mouse wheel
-    /// and touchpad scroll events. Also handles mouse/touch drag events *if*
-    /// the `on_press_start` closure activates a mouse/touch grab.
+    /// Consumes the following events: `Command`, `Scroll`, `PressStart`,
+    /// `PressMove`, `PressEnd`, `TimerUpdate(pl)` where `pl == (1<<60) + 1`.
+    /// May request timer updates.
     ///
-    /// Behaviour on [`Event::PressStart`] is configurable: the closure is called on
-    /// this event and should call [`EventMgr::request_grab`] if the press should
-    /// scroll by drag. This allows control of which mouse button(s) are used and
-    /// whether any modifiers must be pressed. For example:
+    /// Implements scroll by Home/End, Page Up/Down and arrow keys, by mouse
+    /// wheel and touchpad.
+    ///
+    /// If the `on_press_start` closure requests a mouse grab, this also
+    /// implements scrolling on `PressMove` mouse/touch events. On release
+    /// (`PressEnd`), given sufficient speed, momentum scrolling commences.
+    /// The `on_press_start` closure may choose to request a mouse grab only
+    /// given certain conditions, e.g. only on the primary mouse button:
     /// ```
     /// # use kas::prelude::*;
     /// # type Msg = ();
@@ -395,7 +399,11 @@ impl TextInput {
     /// Handle input events
     ///
     /// Consumes the following events: `PressStart`, `PressMove`, `PressEnd`,
-    /// `TimerUpdate(1 << 60)`. May request press grabs and timer updates.
+    /// `TimerUpdate(pl)` where `pl == 1<<60 || pl == (1<<60)+1`.
+    /// May request press grabs and timer updates.
+    ///
+    /// Implements scrolling and text selection behaviour, excluding handling of
+    /// [`Event::Scroll`].
     pub fn handle(&mut self, mgr: &mut EventMgr, w_id: WidgetId, event: Event) -> TextInputAction {
         use TextInputAction as Action;
         match event {
@@ -406,7 +414,7 @@ impl TextInput {
                         if grab && self.touch_phase == TouchPhase::None {
                             self.touch_phase = TouchPhase::Start(touch_id, coord);
                             let delay = mgr.config().touch_text_sel_delay();
-                            mgr.update_on_timer(delay, w_id, TIMER_ID);
+                            mgr.update_on_timer(delay, w_id, PAYLOAD_SELECT);
                         }
                         Action::Focus
                     }
