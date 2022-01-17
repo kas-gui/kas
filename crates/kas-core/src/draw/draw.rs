@@ -91,7 +91,7 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
     ///
     /// Adds a new draw pass. Passes affect draw order (operations in new passes
     /// happen after their parent pass), may clip drawing to a "clip rect"
-    /// (see [`DrawIface::get_clip_rect`]) and may offset (translate) draw
+    /// (see [`Draw::get_clip_rect`]) and may offset (translate) draw
     /// operations.
     ///
     /// Case `class == PassType::Clip`: the new pass is derived from
@@ -134,7 +134,7 @@ pub trait Draw {
     ///
     /// Adds a new draw pass. Passes affect draw order (operations in new passes
     /// happen after their parent pass), may clip drawing to a "clip rect"
-    /// (see [`DrawIface::get_clip_rect`]) and may offset (translate) draw
+    /// (see [`Draw::get_clip_rect`]) and may offset (translate) draw
     /// operations.
     ///
     /// Case `class == PassType::Clip`: the new pass is derived from

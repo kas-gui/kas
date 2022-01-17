@@ -17,6 +17,7 @@ use std::rc::Rc;
 use std::time::Instant;
 use std::u16;
 
+use super::config::WindowConfig;
 use super::*;
 use crate::cast::Cast;
 use crate::geom::{Coord, Offset};
@@ -141,7 +142,7 @@ enum Pending {
 // `SmallVec` is used to keep contents in local memory.
 #[derive(Debug)]
 pub struct EventState {
-    config: Rc<RefCell<Config>>,
+    config: WindowConfig,
     scale_factor: f32,
     widget_count: usize,
     modifiers: ModifiersState,
@@ -334,9 +335,7 @@ impl<'a> EventMgr<'a> {
         let opt_command = self
             .state
             .config
-            .borrow()
-            .shortcuts()
-            .get(self.state.modifiers, vkey);
+            .shortcuts(|s| s.get(self.state.modifiers, vkey));
 
         if let Some(cmd) = opt_command {
             if self.state.char_focus {

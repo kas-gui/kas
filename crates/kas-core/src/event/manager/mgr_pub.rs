@@ -136,20 +136,24 @@ impl<'a> EventMgr<'a> {
 
     /// Access event-handling configuration
     #[inline]
-    pub fn config(&self) -> impl std::ops::Deref<Target = Config> + '_ {
-        self.state.config.borrow()
+    pub fn config(&self) -> &WindowConfig {
+        &self.state.config
     }
 
     /// Is mouse panning enabled?
     #[inline]
     pub fn config_enable_mouse_pan(&self) -> bool {
-        self.config().mouse_pan().is_enabled_with(self.modifiers())
+        self.state
+            .config
+            .mouse_pan()
+            .is_enabled_with(self.modifiers())
     }
 
     /// Is mouse text panning enabled?
     #[inline]
     pub fn config_enable_mouse_text_pan(&self) -> bool {
-        self.config()
+        self.state
+            .config
             .mouse_text_pan()
             .is_enabled_with(self.modifiers())
     }
@@ -159,7 +163,7 @@ impl<'a> EventMgr<'a> {
     /// Returns true when `dist` is large enough to switch to pan mode.
     #[inline]
     pub fn config_test_pan_thresh(&self, dist: Offset) -> bool {
-        let thresh = self.config().pan_dist_thresh() * self.scale_factor();
+        let thresh = self.state.config.pan_dist_thresh();
         Vec2::from(dist).sum_square() >= thresh * thresh
     }
 
@@ -683,6 +687,23 @@ impl<'a> EventMgr<'a> {
             self.state.send_action(TkAction::REDRAW);
         }
         redraw
+    }
+
+    /// Returns true if `id` or any descendant has a mouse or touch grab
+    pub fn any_pin_on(&self, id: &WidgetId) -> bool {
+        if self
+            .state
+            .mouse_grab
+            .as_ref()
+            .map(|grab| grab.start_id == id)
+            .unwrap_or(false)
+        {
+            return true;
+        }
+        if self.state.touch_grab.iter().any(|grab| grab.start_id == id) {
+            return true;
+        }
+        false
     }
 
     /// Get the current keyboard navigation focus, if any

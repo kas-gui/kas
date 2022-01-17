@@ -30,7 +30,7 @@ impl EventState {
     #[inline]
     pub fn new(config: Rc<RefCell<Config>>, scale_factor: f32) -> Self {
         EventState {
-            config,
+            config: WindowConfig::new(config, scale_factor),
             scale_factor,
             widget_count: 0,
             modifiers: ModifiersState::empty(),
@@ -59,8 +59,10 @@ impl EventState {
         }
     }
 
+    /// Update scale factor
     pub fn set_scale_factor(&mut self, scale_factor: f32) {
         self.scale_factor = scale_factor;
+        self.config.set_scale_factor(scale_factor);
     }
 
     /// Configure event manager for a widget tree.
@@ -432,7 +434,7 @@ impl<'a> EventMgr<'a> {
                     self.state.last_click_timeout = now + DOUBLE_CLICK_TIMEOUT;
                 }
 
-                if let Some(grab) = self.state.mouse_grab.clone() {
+                if let Some(grab) = self.state.mouse_grab.take() {
                     if grab.mode == GrabMode::Grab {
                         // Mouse grab active: send events there
                         debug_assert_eq!(state, ElementState::Released);
@@ -452,7 +454,7 @@ impl<'a> EventMgr<'a> {
                 } else if let Some(start_id) = self.state.hover.clone() {
                     // No mouse grab but have a hover target
                     if state == ElementState::Pressed {
-                        if self.state.config.borrow().mouse_nav_focus() {
+                        if self.state.config.mouse_nav_focus() {
                             if let Some(w) = widget.find_widget(&start_id) {
                                 if w.key_nav() {
                                     self.set_nav_focus(w.id(), false);
@@ -478,7 +480,7 @@ impl<'a> EventMgr<'a> {
                 match touch.phase {
                     TouchPhase::Started => {
                         if let Some(start_id) = widget.find_id(coord) {
-                            if self.state.config.borrow().touch_nav_focus() {
+                            if self.state.config.touch_nav_focus() {
                                 if let Some(w) = widget.find_widget(&start_id) {
                                     if w.key_nav() {
                                         self.set_nav_focus(w.id(), false);

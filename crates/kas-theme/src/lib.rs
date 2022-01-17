@@ -30,7 +30,6 @@ mod theme_dst;
 mod traits;
 
 pub mod dim;
-pub use kas;
 
 pub use colors::{Colors, ColorsLinear, ColorsSrgb};
 pub use config::{Config, RasterConfig};

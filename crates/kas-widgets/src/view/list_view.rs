@@ -8,7 +8,8 @@
 use super::{driver, Driver, PressPhase, SelectionError, SelectionMode};
 #[allow(unused)] // doc links
 use crate::ScrollBars;
-use crate::{ScrollComponent, Scrollable};
+use crate::Scrollable;
+use kas::event::components::ScrollComponent;
 use kas::event::{ChildMsg, Command, CursorIcon, GrabMode, PressSource};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
@@ -569,32 +570,33 @@ widget! {
                 Event::PressEnd { source, .. } if self.press_event == Some(source) => {
                     self.press_event = None;
                     if self.press_phase == PressPhase::Pan {
-                        return Response::Used;
-                    }
-                    return match self.sel_mode {
-                        SelectionMode::None => Response::Used,
-                        SelectionMode::Single => {
-                            self.selection.clear();
-                            if let Some(ref key) = self.press_target {
-                                self.selection.insert(key.clone());
-                                ChildMsg::Select(key.clone()).into()
-                            } else {
-                                Response::Used
-                            }
-                        }
-                        SelectionMode::Multiple => {
-                            if let Some(ref key) = self.press_target {
-                                if self.selection.remove(key) {
-                                    ChildMsg::Deselect(key.clone()).into()
-                                } else {
+                        // fall through to scroll handler
+                    } else {
+                        return match self.sel_mode {
+                            SelectionMode::None => Response::Used,
+                            SelectionMode::Single => {
+                                self.selection.clear();
+                                if let Some(ref key) = self.press_target {
                                     self.selection.insert(key.clone());
                                     ChildMsg::Select(key.clone()).into()
+                                } else {
+                                    Response::Used
                                 }
-                            } else {
-                                Response::Used
                             }
-                        }
-                    };
+                            SelectionMode::Multiple => {
+                                if let Some(ref key) = self.press_target {
+                                    if self.selection.remove(key) {
+                                        ChildMsg::Deselect(key.clone()).into()
+                                    } else {
+                                        self.selection.insert(key.clone());
+                                        ChildMsg::Select(key.clone()).into()
+                                    }
+                                } else {
+                                    Response::Used
+                                }
+                            }
+                        };
+                    }
                 }
                 Event::Command(cmd, _) => {
                     let solver = mgr.set_rect_mgr(|mgr| self.position_solver(mgr));
@@ -639,7 +641,7 @@ widget! {
             let self_id = self.id();
             let (action, response) =
                 self.scroll
-                    .scroll_by_event(event, self.core.rect.size, |source, _, coord| {
+                    .scroll_by_event(mgr, event, self.id(), self.core.rect.size, |mgr, source, _, coord| {
                         if source.is_primary() && mgr.config_enable_mouse_pan() {
                             let icon = Some(CursorIcon::Grabbing);
                             mgr.request_grab(self_id, source, coord, GrabMode::Grab, icon);
@@ -700,12 +702,11 @@ widget! {
                         }
                     }
                     (_, Response::Used) => Response::Used,
-                    (_, Response::Pan(delta)) => {
-                        match self.scroll_by_delta(mgr, delta) {
-                            delta if delta == Offset::ZERO => Response::Used,
-                            delta => Response::Pan(delta),
-                        }
+                    (_, Response::Pan(delta)) => match self.scroll_by_delta(mgr, delta) {
+                        delta if delta == Offset::ZERO => Response::Scrolled,
+                        delta => Response::Pan(delta),
                     }
+                    (_, Response::Scrolled) => Response::Scrolled,
                     (_, Response::Focus(rect)) => {
                         let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
                         *mgr |= action;

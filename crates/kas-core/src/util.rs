@@ -5,7 +5,18 @@
 
 //! Utilities
 
+use crate::WidgetId;
 use std::fmt;
+
+/// Helper to display widget identification (e.g. `MyWidget#01`)
+///
+/// Constructed by [`crate::WidgetCore::identify`].
+pub struct IdentifyWidget(pub(crate) &'static str, pub(crate) WidgetId);
+impl fmt::Display for IdentifyWidget {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{}{}", self.0, self.1)
+    }
+}
 
 /// Format for types supporting Debug
 ///
