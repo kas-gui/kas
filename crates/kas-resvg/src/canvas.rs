@@ -11,12 +11,24 @@ use kas::prelude::*;
 use tiny_skia::{Color, Pixmap};
 
 /// Draws to a [`Canvas`]'s [`Pixmap`]
-pub trait CanvasDrawable: std::fmt::Debug + 'static {
-    /// Draw
+pub trait CanvasProgram: std::fmt::Debug + 'static {
+    /// Draw image
     ///
-    /// This is called whenever the [`Pixmap`] is resized. One should check the
-    /// pixmap's dimensions and scale the contents appropriately.
+    /// This method should draw an image to the canvas. It is called when the
+    /// pixmap is created and resized, when [`Canvas::redraw`] is called, and
+    /// when requested by [`CanvasProgram::do_redraw_animate`].
     fn draw(&mut self, pixmap: &mut Pixmap);
+
+    /// On draw
+    ///
+    /// This is called just before each time the [`Canvas`] widget is drawn,
+    /// and returns a tuple, `(redraw, animate)`:
+    ///
+    /// -   if `redraw`, then [`Self::draw`] is called
+    /// -   if `animate`, then a new animation frame is requested after this one
+    fn do_redraw_animate(&mut self) -> (bool, bool) {
+        (false, false)
+    }
 }
 
 widget! {
@@ -36,7 +48,7 @@ widget! {
     /// [`Canvas::redraw`] must be called to update the pixmap.
     #[cfg_attr(doc_cfg, doc(cfg(feature = "canvas")))]
     #[derive(Clone, Debug,)]
-    pub struct Canvas<P: CanvasDrawable> {
+    pub struct Canvas<P: CanvasProgram> {
         #[widget_core]
         core: CoreData,
         sprite: SpriteDisplay,
@@ -126,6 +138,13 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr, _: bool) {
+            let (redraw, animate) = self.program.do_redraw_animate();
+            if redraw {
+                draw.set_rect_mgr(|mgr| self.redraw(mgr));
+            }
+            if animate {
+                draw |= TkAction::ANIMATE;
+            }
             if let Some(id) = self.image_id {
                 draw.image(id, self.rect());
             }

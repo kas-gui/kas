@@ -79,6 +79,11 @@ impl<'a> DrawMgr<'a> {
         t
     }
 
+    /// Access a [`DrawShared`]
+    pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
+        self.0.size_and_draw_shared().1
+    }
+
     /// Access the low-level draw device
     ///
     /// Note: this drawing API is modular, with limited functionality in the

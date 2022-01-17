@@ -345,12 +345,8 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             }
         }
 
-        // Ignore REDRAW since we're doing that anyway. Anything else, just start over.
-        let action = self.mgr.action - TkAction::REDRAW;
-        if !action.is_empty() {
-            self.mgr.action = TkAction::empty();
-            return self.handle_action(shared, action);
-        }
+        // Ignore REDRAW since we're doing that anyway. Other actions will be handled by the event loop.
+        self.mgr.action -= TkAction::REDRAW;
 
         let time2 = Instant::now();
         let frame = match self.surface.get_current_texture() {

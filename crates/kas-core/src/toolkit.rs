@@ -56,6 +56,11 @@ bitflags! {
         /// Note that [`event::EventMgr::redraw`] can instead be used for more
         /// selective redrawing.
         const REDRAW = 1 << 0;
+        /// An animation is active; redraw for the next monitor frame
+        ///
+        /// This should be requested during draw. If encountered during event
+        /// handling, it is handled identically to `REDRAW`.
+        const ANIMATE = 1 << 1;
         /// Some widgets within a region moved
         ///
         /// Used when a pop-up is closed or a region adjusted (e.g. scroll or switch
@@ -63,7 +68,7 @@ bitflags! {
         /// Identifier is that of the parent widget/window encapsulating the region.
         ///
         /// Implies window redraw.
-        const REGION_MOVED = 1 << 1;
+        const REGION_MOVED = 1 << 4;
         /*
         /// A pop-up opened/closed/needs resizing
         Popup,

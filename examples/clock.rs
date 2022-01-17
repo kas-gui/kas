@@ -4,6 +4,10 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Clock example
+//!
+//! Note that two forms of animation are possible: setting `draw |= TkAction::ANIMATE`
+//! in `fn Clock::draw`, or using `Event::TimerUpdate`. We use the latter since
+//! it lets us draw at 1 FPS with exactly the right frame time.
 
 extern crate chrono;
 
