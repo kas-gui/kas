@@ -220,7 +220,7 @@ available.
 External dependencies
 ----------------------
 
-### WebGPU and CPU rasterisation
+### WGPU and CPU rasterisation
 
 Currently, KAS can only draw via `wgpu`, which currently does not support OpenGL
 or CPU-rendered graphics, making KAS unusable on many older systems.

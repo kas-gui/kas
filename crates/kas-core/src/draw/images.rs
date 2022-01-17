@@ -81,7 +81,7 @@ impl Images {
             .with_guessed_format()?
             .decode()?;
         // TODO(opt): we convert to RGBA8 since this is the only format common
-        // to both the image crate and WGPU. It may not be optimal however.
+        // to both the image and wgpu crates. It may not be optimal however.
         // It also assumes that the image colour space is sRGB.
         let image = image.into_rgba8();
         let size = image.dimensions();

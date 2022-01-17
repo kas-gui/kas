@@ -166,10 +166,10 @@ times, and report the best `real` time of the three. **Machine:** 5800X, Fedora
 
 #### Graphics
 
-KAS uses [WebGPU] for rendering, which targets Vulkan and OpenGL on Linux and
+KAS uses [WGPU] for rendering, which targets Vulkan and OpenGL on Linux and
 Android, Vulkan, DX12 and DX11 on Windows, and finally Metal on MacOS and iOS.
 This should satisfy *most* devices, albeit support may be incomplete (refer to
-[WebGPU] documentation).
+[WGPU] documentation).
 
 To force use of a specific backend, set `KAS_BACKENDS`, for example:
 ```
@@ -217,7 +217,7 @@ Crates and features
 -   [KAS-text]: provides text layout and font management
 -   `kas-widgets`: the standard widget library
 -   `kas-theme`: theming support for KAS (API, two themes, config support)
--   `kas-wgpu`: provides windowing via [winit] and rendering via [WebGPU]
+-   `kas-wgpu`: provides windowing via [winit] and rendering via [WGPU]
 -   `kas-dylib`: support for dynamic linking
 -   <https://docs.rs/easy-cast>: spin-off crate for checked casts
 
@@ -250,7 +250,7 @@ For full documentation of feature flags, see the [`Cargo.toml`](Cargo.toml).
 
 [KAS-text]: https://github.com/kas-gui/kas-text/
 [winit]: https://github.com/rust-windowing/winit/
-[WebGPU]: https://github.com/gfx-rs/wgpu
+[WGPU]: https://github.com/gfx-rs/wgpu
 [`kas_wgpu::Options`]: https://docs.rs/kas-wgpu/latest/kas_wgpu/options/struct.Options.html
 
 
