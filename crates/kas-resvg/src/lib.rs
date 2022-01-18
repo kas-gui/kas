@@ -18,7 +18,7 @@ pub use tiny_skia;
 #[cfg(feature = "canvas")]
 mod canvas;
 #[cfg(feature = "canvas")]
-pub use canvas::{Canvas, CanvasDrawable};
+pub use canvas::{Canvas, CanvasProgram};
 
 #[cfg(feature = "svg")]
 mod svg;

@@ -16,7 +16,7 @@
 //! See also these external crates:
 //!
 //! -   `kas-theme` - [crates.io](https://crates.io/crates/kas-theme) - [docs.rs](https://docs.rs/kas-theme) - theme API + themes
-//! -   `kas-wgpu` - [crates.io](https://crates.io/crates/kas-wgpu) - [docs.rs](https://docs.rs/kas-wgpu) - WebGPU + winit integration
+//! -   `kas-wgpu` - [crates.io](https://crates.io/crates/kas-wgpu) - [docs.rs](https://docs.rs/kas-wgpu) - wgpu + winit backend
 //!
 //! Also refer to:
 //!

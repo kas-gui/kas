@@ -8,8 +8,9 @@
 use super::Error;
 use kas::draw::DrawSharedImpl;
 use kas_theme::{Theme, ThemeConfig};
-use log::warn;
+use log::error;
 use std::env::var;
+use std::num::NonZeroU32;
 use std::path::PathBuf;
 pub use wgpu::{Backends, PowerPreference};
 
@@ -39,6 +40,8 @@ pub struct Options {
     pub theme_config_path: PathBuf,
     /// Config mode. Default: Read.
     pub config_mode: ConfigMode,
+    /// Maximum frame rate (frames per second)
+    pub fps_limit: Option<NonZeroU32>,
     /// Adapter power preference. Default value: low power.
     pub power_preference: PowerPreference,
     /// Adapter backend. Default value: PRIMARY (Vulkan/Metal/DX12).
@@ -53,6 +56,7 @@ impl Default for Options {
             config_path: PathBuf::new(),
             theme_config_path: PathBuf::new(),
             config_mode: ConfigMode::Read,
+            fps_limit: NonZeroU32::new(60),
             power_preference: PowerPreference::LowPower,
             backends: Backends::all(),
             wgpu_trace_path: None,
@@ -93,6 +97,9 @@ impl Options {
     /// allowing changes to be written out.
     ///
     /// # Graphics options
+    ///
+    /// The `KAS_FPS_LIMIT` variable may be used to limit the number of frames
+    /// per second. The default is 60. The value `0` disables this limit.
     ///
     /// The `KAS_POWER_PREFERENCE` variable supports:
     ///
@@ -137,10 +144,20 @@ impl Options {
                 "READWRITE" => ConfigMode::ReadWrite,
                 "WRITEDEFAULT" => ConfigMode::WriteDefault,
                 other => {
-                    warn!("Unexpected environment value: KAS_CONFIG_MODE={}", other);
+                    error!(
+                        "Bad env var: KAS_CONFIG_MODE={}; use READ, READWRITE or WRITEDEFAULT",
+                        other
+                    );
                     options.config_mode
                 }
             };
+        }
+
+        if let Ok(v) = var("KAS_FPS_LIMIT") {
+            match v.parse::<u32>() {
+                Ok(x) => options.fps_limit = NonZeroU32::new(x),
+                Err(e) => error!("Bad env var: KAS_FPS_LIMIT={}: {}", v, e),
+            }
         }
 
         if let Ok(mut v) = var("KAS_POWER_PREFERENCE") {
@@ -149,8 +166,8 @@ impl Options {
                 "DEFAULT" | "LOWPOWER" => PowerPreference::LowPower,
                 "HIGHPERFORMANCE" => PowerPreference::HighPerformance,
                 other => {
-                    warn!(
-                        "Unexpected environment value: KAS_POWER_PREFERENCE={}",
+                    error!(
+                        "Bad env var: KAS_POWER_PREFERENCE={}; use DEFAULT, LOWPOWER or HIGHPERFORMANCE",
                         other
                     );
                     options.power_preference
@@ -171,7 +188,7 @@ impl Options {
                 "SECONDARY" => Backends::SECONDARY,
                 "FALLBACK" => Backends::empty(),
                 other => {
-                    warn!("Unexpected environment value: KAS_BACKENDS={}", other);
+                    error!("Bad env var: KAS_BACKENDS={}; use VULKAN, GL, METAL, DX11, DX12, BROWSER_WEBGPU, PRIMARY, SECONDARY or FALLBACK", other);
                     options.backends
                 }
             }

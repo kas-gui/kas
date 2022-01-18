@@ -3,9 +3,9 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! KAS shell over [winit] and [WebGPU]
+//! KAS shell over [winit] and [WGPU]
 //!
-//! This crate implements a KAS shell (backend) using [WebGPU] for
+//! This crate implements a KAS shell (backend) using [WGPU] for
 //! GPU-accelerated rendering and [winit] for windowing, thus it should be
 //! portable to most desktop and potentially also mobile platforms.
 //!
@@ -18,7 +18,7 @@
 //! By default, some environment variables are read for configuration.
 //! See [`options::Options::from_env`] for documentation.
 //!
-//! [WebGPU]: https://github.com/gfx-rs/wgpu-rs
+//! [WGPU]: https://github.com/gfx-rs/wgpu
 //! [winit]: https://github.com/rust-windowing/winit
 //! [clipboard]: https://crates.io/crates/clipboard
 
@@ -86,7 +86,7 @@ fn warn_about_error(msg: &str, mut error: &dyn std::error::Error) {
     }
 }
 
-/// A toolkit over winit and WebGPU
+/// A toolkit over Winit and WGPU
 ///
 /// Constructing the toolkit with [`Toolkit::new`] or [`Toolkit::new_custom`]
 /// reads configuration (depending on passed options or environment variables)

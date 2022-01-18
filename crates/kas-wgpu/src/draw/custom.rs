@@ -49,7 +49,7 @@ pub trait CustomPipeBuilder {
 ///
 /// A "draw pipe" consists of draw primitives (usually triangles), resources
 /// (textures), shaders, and pipe configuration (e.g. blending mode).
-/// A custom pipe allows direct use of the WebGPU graphics stack.
+/// A custom pipe allows direct use of the `wgpu` graphics stack.
 ///
 /// To use this, pass the corresponding [`CustomPipeBuilder`] to
 /// [`crate::Toolkit::new_custom`].
