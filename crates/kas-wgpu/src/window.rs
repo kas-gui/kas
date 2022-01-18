@@ -38,6 +38,8 @@ pub(crate) struct Window<C: CustomPipe, T: Theme<DrawPipe<C>>> {
     sc_desc: wgpu::SurfaceConfiguration,
     draw: DrawWindow<C::Window>,
     theme_window: T::Window,
+    frame_start: Instant,
+    next_frame_time: Option<Instant>,
 }
 
 // Public functions, for use by the toolkit
@@ -106,6 +108,8 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             sc_desc,
             draw,
             theme_window,
+            frame_start: time,
+            next_frame_time: Some(time),
         };
         r.apply_size(shared);
 
@@ -160,7 +164,21 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         }
         self.handle_action(shared, action);
 
-        (action, self.mgr.next_resume())
+        let mut resume = self.mgr.next_resume();
+
+        if let Some(time) = self.next_frame_time {
+            if time <= Instant::now() {
+                self.window.request_redraw();
+                self.next_frame_time = None;
+            } else {
+                resume = match resume {
+                    Some(t) => Some(t.min(time)),
+                    None => Some(time),
+                };
+            }
+        }
+
+        (action, resume)
     }
 
     /// Handle an action (excludes handling of CLOSE and EXIT)
@@ -184,14 +202,13 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             let widget = &mut self.widget;
             self.mgr.with(&mut tkw, |mgr| widget.resize_popups(mgr));
             self.mgr.region_moved(&mut tkw, &mut *self.widget);
-            self.window.request_redraw();
         } else*/
         if action.contains(TkAction::REGION_MOVED) {
             let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
             self.mgr.region_moved(&mut tkw, &mut *self.widget);
         }
-        if !action.is_empty() {
-            self.window.request_redraw();
+        if !action.is_empty() && self.next_frame_time.is_none() {
+            self.next_frame_time = Some(self.frame_start + shared.frame_dur);
         }
     }
 
@@ -293,6 +310,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         };
 
         self.window.request_redraw();
+        self.next_frame_time = None;
         trace!("apply_size completed in {}µs", time.elapsed().as_micros());
     }
 
@@ -321,7 +339,8 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
     }
 
     pub(crate) fn do_draw(&mut self, shared: &mut SharedState<C, T>) {
-        let time = Instant::now();
+        let start = Instant::now();
+        self.frame_start = start;
 
         {
             let draw = DrawIface {
@@ -371,8 +390,8 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         // swap' is mostly about sync, 'render' is time to feed the GPU.
         trace!(
             "do_draw completed in {}µs ({}μs widgets, {}µs text, {}µs render)",
-            (end - time).as_micros(),
-            (time2 - time).as_micros(),
+            (end - start).as_micros(),
+            (time2 - start).as_micros(),
             self.draw.text.dur_micros(),
             (end - time2).as_micros()
         );

@@ -9,9 +9,11 @@ use log::info;
 use std::cell::RefCell;
 use std::num::NonZeroU32;
 use std::rc::Rc;
+use std::time::Duration;
 
 use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe, DrawWindow};
 use crate::{warn_about_error, Error, Options, WindowId};
+use kas::cast::Conv;
 use kas::draw;
 use kas::event::UpdateHandle;
 use kas::TkAction;
@@ -32,6 +34,7 @@ pub struct SharedState<C: CustomPipe, T> {
     /// Newly created windows need to know the scale_factor *before* they are
     /// created. This is used to estimate ideal window size.
     pub scale_factor: f64,
+    pub frame_dur: Duration,
     window_id: u32,
     options: Options,
 }
@@ -67,6 +70,11 @@ where
 
         theme.init(&mut draw);
 
+        let mut frame_dur = Duration::new(0, 0);
+        if let Some(limit) = options.fps_limit {
+            frame_dur = Duration::from_secs_f64(1.0 / f64::conv(limit.get()));
+        }
+
         Ok(SharedState {
             #[cfg(feature = "clipboard")]
             clipboard: None,
@@ -76,6 +84,7 @@ where
             config,
             pending: vec![],
             scale_factor,
+            frame_dur,
             window_id: 0,
             options,
         })
