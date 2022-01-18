@@ -605,14 +605,24 @@ where
             outer = outer.shrink_vec(Vec2(0.0, outer.size().1 * (1.0 / 3.0)));
             first = outer;
             second = outer;
-            first.b.0 = mid.0;
-            second.a.0 = mid.0;
+            if !dir.is_reversed() {
+                first.b.0 = mid.0;
+                second.a.0 = mid.0;
+            } else {
+                first.a.0 = mid.0;
+                second.b.0 = mid.0;
+            }
         } else {
             outer = outer.shrink_vec(Vec2(outer.size().0 * (1.0 / 3.0), 0.0));
             first = outer;
             second = outer;
-            first.b.1 = mid.1;
-            second.a.1 = mid.1;
+            if !dir.is_reversed() {
+                first.b.1 = mid.1;
+                second.a.1 = mid.1;
+            } else {
+                first.a.1 = mid.1;
+                second.b.1 = mid.1;
+            }
         };
 
         let dist = outer.size().min_comp() / 2.0;
