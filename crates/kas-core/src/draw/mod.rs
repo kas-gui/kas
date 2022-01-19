@@ -51,6 +51,33 @@ pub use draw::{Draw, DrawIface, DrawImpl};
 pub use draw_rounded::{DrawRounded, DrawRoundedImpl};
 pub use draw_shared::{DrawShared, DrawSharedImpl, SharedState};
 pub use images::{ImageError, ImageFormat, ImageId};
+use std::time::Instant;
+
+/// Animation status
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub enum AnimationState {
+    /// No frames are queued
+    None,
+    /// Animation in progress: draw at the next frame time
+    Animate,
+    /// Timed-animation in progress: draw at the given time
+    Timed(Instant),
+}
+
+impl AnimationState {
+    /// Merge two states (take earliest)
+    pub fn merge_in(&mut self, rhs: AnimationState) {
+        use AnimationState::*;
+        *self = match (*self, rhs) {
+            (Animate, _) | (_, Animate) => Animate,
+            (Timed(t1), Timed(t2)) => Timed(t1.min(t2)),
+            (Timed(t), _) | (_, Timed(t)) => Timed(t),
+            (None, None) => None,
+        }
+    }
+}
 
 /// Draw pass identifier
 ///

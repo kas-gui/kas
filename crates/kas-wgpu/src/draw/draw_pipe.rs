@@ -102,6 +102,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let custom = self.custom.new_window(&self.device);
 
         DrawWindow {
+            animation: AnimationState::None,
             scale: Default::default(),
             clip_regions: vec![Default::default()],
             images: Default::default(),
@@ -379,6 +380,10 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
 }
 
 impl<CW: CustomWindow> DrawImpl for DrawWindow<CW> {
+    fn animation_mut(&mut self) -> &mut AnimationState {
+        &mut self.animation
+    }
+
     fn new_pass(
         &mut self,
         parent_pass: PassId,

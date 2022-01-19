@@ -143,7 +143,7 @@ widget! {
                 draw.set_rect_mgr(|mgr| self.redraw(mgr));
             }
             if animate {
-                draw |= TkAction::ANIMATE;
+                draw.draw_device().animate();
             }
             if let Some(id) = self.image_id {
                 draw.image(id, self.rect());

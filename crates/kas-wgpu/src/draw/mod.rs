@@ -19,6 +19,7 @@ mod shaded_square;
 mod shaders;
 mod text_pipe;
 
+use kas::draw::AnimationState;
 use kas::geom::{Offset, Rect};
 use shaders::ShaderManager;
 use wgpu::TextureFormat;
@@ -53,6 +54,7 @@ pub struct DrawPipe<C> {
 
 /// Per-window pipeline data
 pub struct DrawWindow<CW: CustomWindow> {
+    pub(crate) animation: AnimationState,
     scale: Scale,
     clip_regions: Vec<(Rect, Offset)>,
     images: images::Window,

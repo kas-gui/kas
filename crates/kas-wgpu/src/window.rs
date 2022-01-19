@@ -9,7 +9,7 @@ use log::{debug, error, info, trace};
 use std::time::Instant;
 
 use kas::cast::Cast;
-use kas::draw::{DrawIface, DrawShared, PassId};
+use kas::draw::{AnimationState, DrawIface, DrawShared, PassId};
 use kas::event::{CursorIcon, EventState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{SetRectMgr, SolveCache};
@@ -38,8 +38,8 @@ pub(crate) struct Window<C: CustomPipe, T: Theme<DrawPipe<C>>> {
     sc_desc: wgpu::SurfaceConfiguration,
     draw: DrawWindow<C::Window>,
     theme_window: T::Window,
-    frame_start: Instant,
-    next_frame_time: Option<Instant>,
+    next_avail_frame_time: Instant,
+    queued_frame_time: Option<Instant>,
 }
 
 // Public functions, for use by the toolkit
@@ -108,8 +108,8 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             sc_desc,
             draw,
             theme_window,
-            frame_start: time,
-            next_frame_time: Some(time),
+            next_avail_frame_time: time,
+            queued_frame_time: Some(time),
         };
         r.apply_size(shared);
 
@@ -166,7 +166,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
         let mut resume = self.mgr.next_resume();
 
-        if let Some(time) = self.next_frame_time {
+        if let Some(time) = self.queued_frame_time {
             if time <= Instant::now() {
                 self.window.request_redraw();
             } else {
@@ -203,8 +203,8 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
             self.mgr.region_moved(&mut tkw, &mut *self.widget);
         }
-        if !action.is_empty() && self.next_frame_time.is_none() {
-            self.next_frame_time = Some(self.frame_start + shared.frame_dur);
+        if !action.is_empty() {
+            self.queued_frame_time = Some(self.next_avail_frame_time);
         }
     }
 
@@ -335,7 +335,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
     pub(crate) fn do_draw(&mut self, shared: &mut SharedState<C, T>) {
         let start = Instant::now();
-        self.frame_start = start;
+        self.next_avail_frame_time = start + shared.frame_dur;
 
         {
             let draw = DrawIface {
@@ -359,12 +359,13 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             }
         }
 
-        self.next_frame_time = None;
-        if self.mgr.action.contains(TkAction::ANIMATE) {
-            self.next_frame_time = Some(self.frame_start + shared.frame_dur);
-        }
-        // We've just drawn and just handled ANIMATE.
-        self.mgr.action -= TkAction::REDRAW | TkAction::ANIMATE;
+        self.queued_frame_time = match self.draw.animation {
+            AnimationState::None => None,
+            AnimationState::Animate => Some(self.next_avail_frame_time),
+            AnimationState::Timed(time) => Some(time),
+        };
+        self.draw.animation = AnimationState::None;
+        self.mgr.action -= TkAction::REDRAW; // we just drew
 
         let time2 = Instant::now();
         let frame = match self.surface.get_current_texture() {
@@ -397,7 +398,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
     }
 
     pub(crate) fn next_resume(&self) -> Option<Instant> {
-        self.next_frame_time
+        self.queued_frame_time
     }
 }
 

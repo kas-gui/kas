@@ -5,7 +5,7 @@
 
 //! Clock example
 //!
-//! Note that two forms of animation are possible: setting `draw |= TkAction::ANIMATE`
+//! Note that two forms of animation are possible: calling `draw.draw_device().animate();`
 //! in `fn Clock::draw`, or using `Event::TimerUpdate`. We use the latter since
 //! it lets us draw at 1 FPS with exactly the right frame time.
 
