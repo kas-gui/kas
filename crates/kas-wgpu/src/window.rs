@@ -169,12 +169,8 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         if let Some(time) = self.next_frame_time {
             if time <= Instant::now() {
                 self.window.request_redraw();
-                self.next_frame_time = None;
             } else {
-                resume = match resume {
-                    Some(t) => Some(t.min(time)),
-                    None => Some(time),
-                };
+                resume = resume.map(|t| t.min(time)).or(Some(time));
             }
         }
 
@@ -310,7 +306,6 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         };
 
         self.window.request_redraw();
-        self.next_frame_time = None;
         trace!("apply_size completed in {}µs", time.elapsed().as_micros());
     }
 
@@ -364,8 +359,12 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             }
         }
 
-        // Ignore REDRAW since we're doing that anyway. Other actions will be handled by the event loop.
-        self.mgr.action -= TkAction::REDRAW;
+        self.next_frame_time = None;
+        if self.mgr.action.contains(TkAction::ANIMATE) {
+            self.next_frame_time = Some(self.frame_start + shared.frame_dur);
+        }
+        // We've just drawn and just handled ANIMATE.
+        self.mgr.action -= TkAction::REDRAW | TkAction::ANIMATE;
 
         let time2 = Instant::now();
         let frame = match self.surface.get_current_texture() {
@@ -377,9 +376,9 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
                 return;
             }
         };
+        // TODO: check frame.suboptimal ?
         let view = frame.texture.create_view(&Default::default());
 
-        // TODO: check frame.optimal ?
         let clear_color = to_wgpu_color(shared.theme.clear_color());
         shared.render(&mut self.draw, &view, clear_color);
 
@@ -395,6 +394,10 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             self.draw.text.dur_micros(),
             (end - time2).as_micros()
         );
+    }
+
+    pub(crate) fn next_resume(&self) -> Option<Instant> {
+        self.next_frame_time
     }
 }
 
