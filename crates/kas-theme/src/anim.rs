@@ -6,7 +6,7 @@
 //! Animation helpers
 
 use std::collections::HashMap;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 /// State of edit cursor
 #[derive(Clone, Copy, Debug)]
@@ -20,4 +20,14 @@ pub struct TextCursor {
 #[derive(Debug, Default)]
 pub struct AnimState {
     pub text_cursor: HashMap<u64, TextCursor>,
+}
+
+impl AnimState {
+    /// Garbage collect
+    ///
+    /// It is recommended to call this method sometimes.
+    pub fn garbage_collect(&mut self, longest_animation: Duration) {
+        let old = Instant::now() - longest_animation;
+        self.text_cursor.retain(|_, v| v.time >= old);
+    }
 }

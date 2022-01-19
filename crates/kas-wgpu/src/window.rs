@@ -6,7 +6,7 @@
 //! `Window` and `WindowList` types
 
 use log::{debug, error, info, trace};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use kas::cast::Cast;
 use kas::draw::{AnimationState, DrawIface, DrawShared, PassId};
@@ -38,6 +38,7 @@ pub(crate) struct Window<C: CustomPipe, T: Theme<DrawPipe<C>>> {
     sc_desc: wgpu::SurfaceConfiguration,
     draw: DrawWindow<C::Window>,
     theme_window: T::Window,
+    time_last_gc: Instant,
     next_avail_frame_time: Instant,
     queued_frame_time: Option<Instant>,
 }
@@ -108,6 +109,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             sc_desc,
             draw,
             theme_window,
+            time_last_gc: time,
             next_avail_frame_time: time,
             queued_frame_time: Some(time),
         };
@@ -357,6 +359,11 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
                 let draw_mgr = DrawMgr::new(&mut draw_handle, &mut self.mgr);
                 self.widget.draw(draw_mgr, false);
             }
+        }
+
+        if self.time_last_gc < start + Duration::from_secs(8) {
+            self.time_last_gc = start;
+            self.theme_window.garbage_collect();
         }
 
         self.queued_frame_time = match self.draw.animation {

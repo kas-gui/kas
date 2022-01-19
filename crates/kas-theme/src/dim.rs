@@ -145,6 +145,10 @@ impl Window {
 }
 
 impl crate::Window for Window {
+    fn garbage_collect(&mut self) {
+        self.anim.garbage_collect(self.cursor_blink_rate);
+    }
+
     fn size_handle(&self) -> &dyn SizeHandle {
         self
     }
