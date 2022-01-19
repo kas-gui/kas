@@ -445,7 +445,7 @@ where
         self.draw.text_effects(pos, text, &effects);
     }
 
-    fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, _: TextClass, byte: usize) {
+    fn text_cursor(&mut self, pos: Coord, text: &TextDisplay, _: TextClass, byte: usize) {
         let width = self.w.dims.font_marker_width;
         let pos = Vec2::from(pos);
 

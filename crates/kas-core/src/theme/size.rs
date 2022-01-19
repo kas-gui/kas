@@ -163,8 +163,8 @@ impl<'a> SizeMgr<'a> {
     }
 
     /// Width of an edit marker
-    pub fn edit_marker_width(&self) -> f32 {
-        self.0.edit_marker_width()
+    pub fn text_cursor_width(&self) -> f32 {
+        self.0.text_cursor_width()
     }
 
     /// Size of the sides of a button.
@@ -294,7 +294,7 @@ pub trait SizeHandle {
     fn text_bound(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules;
 
     /// Width of an edit marker
-    fn edit_marker_width(&self) -> f32;
+    fn text_cursor_width(&self) -> f32;
 
     /// Size of the sides of a button.
     fn button_surround(&self, vert: bool) -> FrameRules;
@@ -385,8 +385,8 @@ macro_rules! impl_ {
             fn text_bound(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules {
                 self.deref().text_bound(text, class, axis)
             }
-            fn edit_marker_width(&self) -> f32 {
-                self.deref().edit_marker_width()
+            fn text_cursor_width(&self) -> f32 {
+                self.deref().text_cursor_width()
             }
 
             fn button_surround(&self, vert: bool) -> FrameRules {

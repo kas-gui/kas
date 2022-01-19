@@ -330,8 +330,8 @@ where
             .text_selected_range(pos, text, range, class, state);
     }
 
-    fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
-        self.as_flat().edit_marker(pos, text, class, byte);
+    fn text_cursor(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
+        self.as_flat().text_cursor(pos, text, class, byte);
     }
 
     fn menu_entry(&mut self, rect: Rect, state: InputState) {

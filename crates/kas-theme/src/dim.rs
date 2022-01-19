@@ -256,7 +256,7 @@ impl SizeHandle for Window {
         }
     }
 
-    fn edit_marker_width(&self) -> f32 {
+    fn text_cursor_width(&self) -> f32 {
         self.dims.font_marker_width
     }
 

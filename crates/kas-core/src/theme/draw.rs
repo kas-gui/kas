@@ -232,8 +232,8 @@ impl<'a> DrawMgr<'a> {
     ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
-        self.0.edit_marker(pos, text, class, byte);
+    pub fn text_cursor(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
+        self.0.text_cursor(pos, text, class, byte);
     }
 
     /// Draw the background of a menu entry
@@ -410,7 +410,7 @@ pub trait DrawHandle {
     ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize);
+    fn text_cursor(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize);
 
     /// Draw the background of a menu entry
     fn menu_entry(&mut self, rect: Rect, state: InputState);
@@ -530,8 +530,8 @@ macro_rules! impl_ {
                 self.deref_mut()
                     .text_selected_range(pos, text, range, class, state);
             }
-            fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
-                self.deref_mut().edit_marker(pos, text, class, byte)
+            fn text_cursor(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
+                self.deref_mut().text_cursor(pos, text, class, byte)
             }
             fn menu_entry(&mut self, rect: Rect, state: InputState) {
                 self.deref_mut().menu_entry(rect, state)
