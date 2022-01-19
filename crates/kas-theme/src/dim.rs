@@ -9,6 +9,7 @@ use linear_map::LinearMap;
 use std::any::Any;
 use std::f32;
 use std::rc::Rc;
+use std::time::Duration;
 
 use kas::cast::{Cast, CastFloat, ConvFloat};
 use kas::geom::{Size, Vec2};
@@ -119,23 +120,27 @@ impl Dimensions {
 pub struct Window {
     pub dims: Dimensions,
     pub fonts: Rc<LinearMap<TextClass, FontId>>,
+    pub anim: crate::anim::AnimState,
+    pub cursor_blink_rate: Duration,
 }
 
 impl Window {
     pub fn new(
         dims: &Parameters,
-        pt_size: f32,
+        config: &crate::Config,
         scale_factor: f32,
         fonts: Rc<LinearMap<TextClass, FontId>>,
     ) -> Self {
         Window {
-            dims: Dimensions::new(dims, pt_size, scale_factor),
+            dims: Dimensions::new(dims, config.font_size(), scale_factor),
             fonts,
+            anim: Default::default(),
+            cursor_blink_rate: config.cursor_blink_rate(),
         }
     }
 
-    pub fn update(&mut self, dims: &Parameters, pt_size: f32, scale_factor: f32) {
-        self.dims = Dimensions::new(dims, pt_size, scale_factor);
+    pub fn update(&mut self, dims: &Parameters, config: &crate::Config, scale_factor: f32) {
+        self.dims = Dimensions::new(dims, config.font_size(), scale_factor);
     }
 }
 

@@ -8,11 +8,13 @@
 //! Widget size and appearance can be modified through themes.
 
 use linear_map::LinearMap;
+use std::collections::hash_map::Entry;
 use std::f32;
 use std::ops::Range;
 use std::rc::Rc;
+use std::time::Instant;
 
-use crate::{dim, ColorsLinear, Config, Theme};
+use crate::{anim, dim, ColorsLinear, Config, Theme};
 use kas::cast::Cast;
 use kas::dir::{Direction, Directional};
 use kas::draw::{color::Rgba, *};
@@ -166,11 +168,11 @@ where
 
     fn new_window(&self, dpi_factor: f32) -> Self::Window {
         let fonts = self.fonts.as_ref().unwrap().clone();
-        dim::Window::new(&self.dims, self.config.font_size(), dpi_factor, fonts)
+        dim::Window::new(&self.dims, &self.config, dpi_factor, fonts)
     }
 
     fn update_window(&self, w: &mut Self::Window, dpi_factor: f32) {
-        w.update(&self.dims, self.config.font_size(), dpi_factor);
+        w.update(&self.dims, &self.config, dpi_factor);
     }
 
     #[cfg(not(feature = "gat"))]
@@ -445,7 +447,27 @@ where
         self.draw.text_effects(pos, text, &effects);
     }
 
-    fn text_cursor(&mut self, pos: Coord, text: &TextDisplay, _: TextClass, byte: usize) {
+    fn text_cursor(&mut self, wid: u64, pos: Coord, text: &TextDisplay, _: TextClass, byte: usize) {
+        match self.w.anim.text_cursor.entry(wid) {
+            Entry::Occupied(entry) if entry.get().byte == byte => {
+                let entry = entry.into_mut();
+                if entry.time < Instant::now() {
+                    entry.state = !entry.state;
+                    entry.time += self.w.cursor_blink_rate;
+                }
+                self.draw.animate_at(entry.time);
+                if !entry.state {
+                    return;
+                }
+            }
+            entry => {
+                let time = Instant::now() + self.w.cursor_blink_rate;
+                let state = true;
+                entry.insert_entry(anim::TextCursor { byte, state, time });
+                self.draw.animate_at(time);
+            }
+        }
+
         let width = self.w.dims.font_marker_width;
         let pos = Vec2::from(pos);
 

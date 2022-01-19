@@ -18,6 +18,7 @@
 #![cfg_attr(feature = "gat", feature(generic_associated_types))]
 #![cfg_attr(feature = "unsize", feature(unsize))]
 
+mod anim;
 mod colors;
 mod config;
 mod draw_shaded;

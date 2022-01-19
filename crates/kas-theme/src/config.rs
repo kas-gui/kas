@@ -10,6 +10,7 @@ use kas::text::fonts::{fonts, AddMode, FontSelector};
 use kas::theme::TextClass;
 use kas::TkAction;
 use std::collections::BTreeMap;
+use std::time::Duration;
 
 /// Event handling configuration
 #[derive(Clone, Debug, PartialEq)]
@@ -29,7 +30,7 @@ pub struct Config {
     /// All colour schemes
     /// TODO: possibly we should not save default schemes and merge when
     /// loading (perhaps via a `PartialConfig` type).
-    #[cfg_attr(feature = "config", serde(default = "defaults::color_schemes",))]
+    #[cfg_attr(feature = "config", serde(default = "defaults::color_schemes"))]
     color_schemes: BTreeMap<String, ColorsSrgb>,
 
     /// Font aliases, used when searching for a font family matching the key.
@@ -39,6 +40,10 @@ pub struct Config {
     /// Standard fonts
     #[cfg_attr(feature = "config", serde(default))]
     fonts: BTreeMap<TextClass, FontSelector<'static>>,
+
+    /// Text cursor blink rate: delay between switching states
+    #[cfg_attr(feature = "config", serde(default = "defaults::cursor_blink_rate_ms"))]
+    cursor_blink_rate_ms: u32,
 
     /// Text glyph rastering settings
     #[cfg_attr(feature = "config", serde(default))]
@@ -54,6 +59,7 @@ impl Default for Config {
             color_schemes: defaults::color_schemes(),
             font_aliases: Default::default(),
             fonts: defaults::fonts(),
+            cursor_blink_rate_ms: defaults::cursor_blink_rate_ms(),
             raster: Default::default(),
         }
     }
@@ -156,6 +162,12 @@ impl Config {
     pub fn iter_fonts(&self) -> impl Iterator<Item = (&TextClass, &FontSelector<'static>)> {
         self.fonts.iter()
     }
+
+    /// Get the cursor blink rate (delay)
+    #[inline]
+    pub fn cursor_blink_rate(&self) -> Duration {
+        Duration::from_millis(self.cursor_blink_rate_ms as u64)
+    }
 }
 
 /// Setters
@@ -256,6 +268,10 @@ mod defaults {
             (TextClass::EditMulti, selector),
         ];
         list.iter().cloned().collect()
+    }
+
+    pub fn cursor_blink_rate_ms() -> u32 {
+        600
     }
 
     pub fn scale_steps() -> u8 {

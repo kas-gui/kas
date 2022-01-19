@@ -25,6 +25,10 @@ use crate::{TkAction, WidgetCore};
 /// Most methods draw some feature. Corresponding size properties may be
 /// obtained through a [`SizeMgr`], e.g. through [`Self::size_mgr`].
 ///
+/// Draw methods take a `wid: u64` parameter. This is used to identify the
+/// widget being drawn, allowing themes to animate transitions. Pass the value
+/// of [`WidgetCore::id_u64`] or [`crate::WidgetId::as_u64`].
+///
 /// Other notable methods:
 ///
 /// -   [`Self::with_clip_region`] constructs a new pass with clipping
@@ -232,8 +236,15 @@ impl<'a> DrawMgr<'a> {
     ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text_cursor(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
-        self.0.text_cursor(pos, text, class, byte);
+    pub fn text_cursor(
+        &mut self,
+        wid: u64,
+        pos: Coord,
+        text: &TextDisplay,
+        class: TextClass,
+        byte: usize,
+    ) {
+        self.0.text_cursor(wid, pos, text, class, byte);
     }
 
     /// Draw the background of a menu entry
@@ -410,7 +421,14 @@ pub trait DrawHandle {
     ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    fn text_cursor(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize);
+    fn text_cursor(
+        &mut self,
+        wid: u64,
+        pos: Coord,
+        text: &TextDisplay,
+        class: TextClass,
+        byte: usize,
+    );
 
     /// Draw the background of a menu entry
     fn menu_entry(&mut self, rect: Rect, state: InputState);
@@ -530,8 +548,8 @@ macro_rules! impl_ {
                 self.deref_mut()
                     .text_selected_range(pos, text, range, class, state);
             }
-            fn text_cursor(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
-                self.deref_mut().text_cursor(pos, text, class, byte)
+            fn text_cursor(&mut self, wid: u64, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
+                self.deref_mut().text_cursor(wid, pos, text, class, byte)
             }
             fn menu_entry(&mut self, rect: Rect, state: InputState) {
                 self.deref_mut().menu_entry(rect, state)

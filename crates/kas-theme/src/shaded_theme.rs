@@ -105,11 +105,11 @@ where
 
     fn new_window(&self, dpi_factor: f32) -> Self::Window {
         let fonts = self.flat.fonts.as_ref().unwrap().clone();
-        dim::Window::new(&DIMS, self.flat.config.font_size(), dpi_factor, fonts)
+        dim::Window::new(&DIMS, &self.flat.config, dpi_factor, fonts)
     }
 
     fn update_window(&self, w: &mut Self::Window, dpi_factor: f32) {
-        w.update(&DIMS, self.flat.config.font_size(), dpi_factor);
+        w.update(&DIMS, &self.flat.config, dpi_factor);
     }
 
     #[cfg(not(feature = "gat"))]
@@ -330,8 +330,15 @@ where
             .text_selected_range(pos, text, range, class, state);
     }
 
-    fn text_cursor(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
-        self.as_flat().text_cursor(pos, text, class, byte);
+    fn text_cursor(
+        &mut self,
+        wid: u64,
+        pos: Coord,
+        text: &TextDisplay,
+        class: TextClass,
+        byte: usize,
+    ) {
+        self.as_flat().text_cursor(wid, pos, text, class, byte);
     }
 
     fn menu_entry(&mut self, rect: Rect, state: InputState) {

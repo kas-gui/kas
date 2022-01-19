@@ -75,6 +75,15 @@ pub trait WidgetCore: Any + fmt::Debug {
         &self.core_data().id
     }
 
+    /// Get the `u64` version of the widget identifier
+    ///
+    /// This may be used to approximately test identity (see notes on
+    /// [`WidgetId::as_u64`]).
+    #[inline]
+    fn id_u64(&self) -> u64 {
+        self.core_data().id.as_u64()
+    }
+
     /// Get whether the widget is disabled
     #[inline]
     fn is_disabled(&self) -> bool {
