@@ -212,18 +212,23 @@ widget! {
         /// Clear all selected items
         ///
         /// Does not send [`ChildMsg`] responses.
-        pub fn clear_selected(&mut self) {
-            self.selection.clear();
+        pub fn clear_selected(&mut self) -> TkAction {
+            if self.selection.is_empty() {
+                TkAction::empty()
+            } else {
+                self.selection.clear();
+                TkAction::REDRAW
+            }
         }
 
         /// Directly select an item
         ///
-        /// Returns `true` if selected, `false` if already selected.
-        /// Fails if selection mode does not permit selection or if the key is
-        /// invalid.
+        /// Returns `TkAction::REDRAW` if newly selected, `TkAction::empty()` if
+        /// already selected. Fails if selection mode does not permit selection
+        /// or if the key is invalid.
         ///
         /// Does not send [`ChildMsg`] responses.
-        pub fn select(&mut self, key: T::Key) -> Result<bool, SelectionError> {
+        pub fn select(&mut self, key: T::Key) -> Result<TkAction, SelectionError> {
             match self.sel_mode {
                 SelectionMode::None => return Err(SelectionError::Disabled),
                 SelectionMode::Single => self.selection.clear(),
@@ -232,17 +237,23 @@ widget! {
             if !self.data.contains_key(&key) {
                 return Err(SelectionError::Key);
             }
-            Ok(self.selection.insert(key))
+            match self.selection.insert(key) {
+                true => Ok(TkAction::REDRAW),
+                false => Ok(TkAction::empty()),
+            }
         }
 
         /// Directly deselect an item
         ///
-        /// Returns `true` if deselected, `false` if not previously selected.
-        /// Also returns `false` on invalid keys.
+        /// Returns `TkAction::REDRAW` if deselected, `TkAction::empty()` if not
+        /// previously selected or if the key is invalid.
         ///
         /// Does not send [`ChildMsg`] responses.
-        pub fn deselect(&mut self, key: &T::Key) -> bool {
-            self.selection.remove(key)
+        pub fn deselect(&mut self, key: &T::Key) -> TkAction {
+            match self.selection.remove(key) {
+                true => TkAction::REDRAW,
+                false => TkAction::empty(),
+            }
         }
 
         /// Manually trigger an update to handle changed data
@@ -575,6 +586,7 @@ widget! {
                         return match self.sel_mode {
                             SelectionMode::None => Response::Used,
                             SelectionMode::Single => {
+                                mgr.redraw(self.id());
                                 self.selection.clear();
                                 if let Some(ref key) = self.press_target {
                                     self.selection.insert(key.clone());
@@ -585,6 +597,7 @@ widget! {
                             }
                             SelectionMode::Multiple => {
                                 if let Some(ref key) = self.press_target {
+                                    mgr.redraw(self.id());
                                     if self.selection.remove(key) {
                                         ChildMsg::Deselect(key.clone()).into()
                                     } else {
@@ -717,11 +730,13 @@ widget! {
                         match self.sel_mode {
                             SelectionMode::None => Response::Used,
                             SelectionMode::Single => {
+                                mgr.redraw(self.id());
                                 self.selection.clear();
                                 self.selection.insert(key.clone());
                                 Response::Msg(ChildMsg::Select(key))
                             }
                             SelectionMode::Multiple => {
+                                mgr.redraw(self.id());
                                 if self.selection.remove(&key) {
                                     Response::Msg(ChildMsg::Deselect(key))
                                 } else {
