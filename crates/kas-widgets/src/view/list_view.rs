@@ -583,20 +583,27 @@ widget! {
                     if self.press_phase == PressPhase::Pan {
                         // fall through to scroll handler
                     } else {
-                        return match self.sel_mode {
-                            SelectionMode::None => Response::Used,
-                            SelectionMode::Single => {
-                                mgr.redraw(self.id());
-                                self.selection.clear();
-                                if let Some(ref key) = self.press_target {
-                                    self.selection.insert(key.clone());
-                                    ChildMsg::Select(key.clone()).into()
-                                } else {
-                                    Response::Used
+                        if let Some(ref key) = self.press_target {
+                            if mgr.config().mouse_nav_focus() {
+                                for w in &self.widgets {
+                                    if w.key.as_ref().map(|k| k == key).unwrap_or(false) {
+                                        if w.widget.key_nav() {
+                                            mgr.set_nav_focus(w.widget.id(), false);
+                                        }
+                                        break;
+                                    }
                                 }
                             }
-                            SelectionMode::Multiple => {
-                                if let Some(ref key) = self.press_target {
+
+                            return match self.sel_mode {
+                                SelectionMode::None => Response::Used,
+                                SelectionMode::Single => {
+                                    mgr.redraw(self.id());
+                                    self.selection.clear();
+                                    self.selection.insert(key.clone());
+                                    ChildMsg::Select(key.clone()).into()
+                                }
+                                SelectionMode::Multiple => {
                                     mgr.redraw(self.id());
                                     if self.selection.remove(key) {
                                         ChildMsg::Deselect(key.clone()).into()
@@ -604,11 +611,11 @@ widget! {
                                         self.selection.insert(key.clone());
                                         ChildMsg::Select(key.clone()).into()
                                     }
-                                } else {
-                                    Response::Used
                                 }
                             }
-                        };
+                        } else {
+                            return Response::Used;
+                        }
                     }
                 }
                 Event::Command(cmd, _) => {
