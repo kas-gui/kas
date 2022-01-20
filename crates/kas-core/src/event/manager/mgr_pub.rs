@@ -45,12 +45,8 @@ impl EventState {
     /// Note that `char_focus` implies `sel_focus`.
     #[inline]
     pub fn has_char_focus(&self, w_id: &WidgetId) -> (bool, bool) {
-        if let Some(id) = self.sel_focus.as_ref() {
-            if id == w_id {
-                return (self.char_focus, true);
-            }
-        }
-        (false, false)
+        let sel_focus = *w_id == self.sel_focus;
+        (sel_focus && self.char_focus, sel_focus)
     }
 
     /// Get whether this widget has keyboard navigation focus
