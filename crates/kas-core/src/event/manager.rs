@@ -451,24 +451,6 @@ impl<'a> EventMgr<'a> {
         self.state.mouse_grab.as_mut()
     }
 
-    fn end_mouse_grab(&mut self, button: MouseButton) {
-        if self
-            .state
-            .mouse_grab
-            .as_ref()
-            .map(|grab| grab.button != button)
-            .unwrap_or(true)
-        {
-            return;
-        }
-        if let Some(grab) = self.state.mouse_grab.take() {
-            trace!("EventMgr: end mouse grab by {}", grab.start_id);
-            self.shell.set_cursor_icon(self.state.hover_icon);
-            self.redraw(grab.start_id);
-            self.state.remove_pan_grab(grab.pan_grab);
-        }
-    }
-
     #[inline]
     fn get_touch(&mut self, touch_id: u64) -> Option<&mut TouchGrab> {
         for grab in self.state.touch_grab.iter_mut() {

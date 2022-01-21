@@ -7,7 +7,7 @@
 
 use std::fmt::Debug;
 
-use kas::event::{self, PressSource};
+use kas::event::{CursorIcon, GrabMode, PressSource};
 use kas::prelude::*;
 
 widget! {
@@ -29,14 +29,14 @@ widget! {
     #[derive(Clone, Debug, Default)]
     #[widget{
         hover_highlight = true;
-        cursor_icon = event::CursorIcon::Grab;
+        cursor_icon = CursorIcon::Grab;
     }]
     pub struct DragHandle {
         #[widget_core]
         core: CoreData,
         // The track is the area within which this DragHandle may move
         track: Rect,
-        press_source: Option<event::PressSource>,
+        press_source: Option<PressSource>,
         press_coord: Coord,
     }
 
@@ -59,7 +59,7 @@ widget! {
         fn draw(&mut self, _: DrawMgr) {}
     }
 
-    impl event::Handler for DragHandle {
+    impl Handler for DragHandle {
         type Msg = Offset;
 
         fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
@@ -175,8 +175,8 @@ impl DragHandle {
     }
 
     fn grab_press(&mut self, mgr: &mut EventMgr, source: PressSource, coord: Coord) -> bool {
-        let cur = Some(event::CursorIcon::Grabbing);
-        if mgr.request_grab(self.id(), source, coord, event::GrabMode::Grab, cur) {
+        let cur = Some(CursorIcon::Grabbing);
+        if mgr.request_grab(self.id(), source, coord, GrabMode::Grab, cur) {
             // Interacting with a scrollbar with multiple presses
             // does not make sense. Any other gets aborted.
             self.press_source = Some(source);

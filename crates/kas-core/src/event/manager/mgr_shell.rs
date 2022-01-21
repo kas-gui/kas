@@ -435,22 +435,28 @@ impl<'a> EventMgr<'a> {
                 }
 
                 if let Some(grab) = self.state.mouse_grab.take() {
-                    if grab.mode == GrabMode::Grab {
-                        // Mouse grab active: send events there
+                    if grab.button == button {
                         debug_assert_eq!(state, ElementState::Released);
-                        let source = PressSource::Mouse(button, grab.repetitions);
-                        let event = Event::PressEnd {
-                            source,
-                            end_id: self.state.hover.clone(),
-                            coord,
-                        };
-                        self.send_event(widget, grab.start_id, event);
+                        if grab.mode == GrabMode::Grab {
+                            // Mouse grab active: send events there
+                            let source = PressSource::Mouse(button, grab.repetitions);
+                            let event = Event::PressEnd {
+                                source,
+                                end_id: self.state.hover.clone(),
+                                coord,
+                            };
+                            self.send_event(widget, grab.start_id.clone(), event);
+                        }
                         // Pan events do not receive Start/End notifications
-                    };
 
-                    if state == ElementState::Released {
-                        self.end_mouse_grab(button);
+                        trace!("EventMgr: end mouse grab by {}", grab.start_id);
+                        self.shell.set_cursor_icon(self.state.hover_icon);
+                        self.redraw(grab.start_id);
+                        self.state.remove_pan_grab(grab.pan_grab);
                     }
+
+                    // We ignore other mouse buttons during a grab (this may be
+                    // revised in the future).
                 } else if let Some(start_id) = self.state.hover.clone() {
                     // No mouse grab but have a hover target
                     if state == ElementState::Pressed {
