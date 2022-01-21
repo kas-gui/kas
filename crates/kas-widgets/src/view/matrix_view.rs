@@ -508,14 +508,14 @@ widget! {
             Some(self.id())
         }
 
-        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
-            let disabled = disabled || self.is_disabled();
+        fn draw(&mut self, mut draw: DrawMgr) {
+            let mut draw = draw.with_core(self.core_data());
             let offset = self.scroll_offset();
             let num = usize::conv(self.cur_len.cols) * usize::conv(self.cur_len.rows);
             draw.with_clip_region(self.core.rect, offset, |mut draw| {
                 for child in &mut self.widgets[..num] {
                     if let Some(ref key) = child.key {
-                        child.widget.draw(draw.re(), disabled);
+                        child.widget.draw(draw.re());
                         if self.selection.contains(key) {
                             draw.selection_box(child.widget.rect());
                         }

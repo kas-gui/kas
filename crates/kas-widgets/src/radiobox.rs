@@ -94,8 +94,9 @@ widget! {
             self.core.rect = rect;
         }
 
-        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
-            draw.radiobox(self.core.rect, self.state, draw.input_state(self, disabled));
+        fn draw(&mut self, mut draw: DrawMgr) {
+            let mut draw = draw.with_core(self.core_data());
+            draw.radiobox(self.core.rect, self.state);
         }
     }
 

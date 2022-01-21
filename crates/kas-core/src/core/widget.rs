@@ -484,9 +484,9 @@ pub trait Layout: WidgetChildren {
     /// [`crate::theme::InputState`] to determine active visual effects.
     ///
     /// The default impl draws elements as defined by [`Self::layout`].
-    fn draw(&mut self, draw: DrawMgr, disabled: bool) {
-        let state = draw.input_state(self, disabled);
-        self.layout().draw(draw, state);
+    fn draw(&mut self, mut draw: DrawMgr) {
+        let draw = draw.with_core(self.core_data());
+        self.layout().draw(draw);
     }
 }
 

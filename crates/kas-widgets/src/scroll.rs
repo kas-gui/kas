@@ -130,10 +130,10 @@ widget! {
             self.scroll_offset()
         }
 
-        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
-            let disabled = disabled || self.is_disabled();
-            draw.with_clip_region(self.core.rect, self.scroll_offset(), |handle| {
-                self.inner.draw(handle, disabled)
+        fn draw(&mut self, mut draw: DrawMgr) {
+            let mut draw = draw.with_core(self.core_data());
+            draw.with_clip_region(self.core.rect, self.scroll_offset(), |mut draw| {
+                self.inner.draw(draw.re())
             });
         }
     }

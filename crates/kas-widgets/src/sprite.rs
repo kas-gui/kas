@@ -48,7 +48,8 @@ widget! {
             self.core_data_mut().rect = self.sprite.align_rect(rect, align);
         }
 
-        fn draw(&mut self, mut draw: DrawMgr, _: bool) {
+        fn draw(&mut self, mut draw: DrawMgr) {
+            let mut draw = draw.with_core(self.core_data());
             if let Some(id) = self.id {
                 draw.image(id, self.rect());
             }

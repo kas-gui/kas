@@ -56,7 +56,7 @@ widget! {
             self.track = rect;
         }
 
-        fn draw(&mut self, _: DrawMgr, _: bool) {}
+        fn draw(&mut self, _: DrawMgr) {}
     }
 
     impl event::Handler for DragHandle {

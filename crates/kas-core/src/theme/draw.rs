@@ -15,77 +15,50 @@ use crate::geom::{Coord, Offset, Rect};
 use crate::layout::SetRectMgr;
 use crate::text::{AccelString, Text, TextApi, TextDisplay};
 use crate::theme::{InputState, SizeHandle, SizeMgr, TextClass};
-use crate::{TkAction, WidgetCore};
+use crate::{CoreData, TkAction};
 
 /// Draw interface
 ///
 /// This interface is provided to widgets in [`crate::Layout::draw`].
 /// Lower-level interfaces may be accessed through [`Self::draw_device`].
 ///
-/// Most methods draw some feature. Corresponding size properties may be
-/// obtained through a [`SizeMgr`], e.g. through [`Self::size_mgr`].
-///
-/// Draw methods take a `wid: u64` parameter. This is used to identify the
-/// widget being drawn, allowing themes to animate transitions. Pass the value
-/// of [`WidgetCore::id_u64`] or [`crate::WidgetId::as_u64`].
-///
-/// Other notable methods:
-///
-/// -   [`Self::with_clip_region`] constructs a new pass with clipping
-/// -   [`Self::with_overlay`] constructs a new pass for an overlay (e.g. pop-up menu or tooltip)
-/// -   [`Self::get_clip_rect`] returns the current clip rect
-pub struct DrawMgr<'a>(&'a mut dyn DrawHandle, &'a mut EventState);
+/// Use [`DrawMgr::with_ctx`] to access draw methods.
+pub struct DrawMgr<'a> {
+    h: &'a mut dyn DrawHandle,
+    ev: &'a mut EventState,
+    disabled: bool,
+}
 
 impl<'a> DrawMgr<'a> {
     /// Construct from a [`DrawMgr`] and [`EventState`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn new(h: &'a mut dyn DrawHandle, mgr: &'a mut EventState) -> Self {
-        DrawMgr(h, mgr)
-    }
-
-    /// Reborrow with a new lifetime
-    ///
-    /// Rust allows references like `&T` or `&mut T` to be "reborrowed" through
-    /// coercion: essentially, the pointer is copied under a new, shorter, lifetime.
-    /// Until rfcs#1403 lands, reborrows on user types require a method call.
-    ///
-    /// Calling this method is zero-cost.
-    #[inline(always)]
-    pub fn re<'b>(&'b mut self) -> DrawMgr<'b>
-    where
-        'a: 'b,
-    {
-        DrawMgr(self.0, self.1)
+    pub fn new(h: &'a mut dyn DrawHandle, ev: &'a mut EventState, disabled: bool) -> Self {
+        DrawMgr { h, ev, disabled }
     }
 
     /// Access event-management state
     pub fn ev_state(&self) -> &EventState {
-        self.1
-    }
-
-    /// Shortcut: calculate [`InputState`] for a widget
-    pub fn input_state<W: WidgetCore + ?Sized>(&self, w: &W, disabled: bool) -> InputState {
-        self.1.draw_state(w.core_data(), disabled)
+        self.ev
     }
 
     /// Access a [`SizeMgr`]
     pub fn size_mgr(&mut self) -> SizeMgr {
-        SizeMgr::new(self.0.size_and_draw_shared().0)
+        SizeMgr::new(self.h.size_and_draw_shared().0)
     }
 
     /// Access a [`SetRectMgr`]
     pub fn set_rect_mgr<F: FnMut(&mut SetRectMgr) -> T, T>(&mut self, mut f: F) -> T {
-        let (sh, ds) = self.0.size_and_draw_shared();
+        let (sh, ds) = self.h.size_and_draw_shared();
         let mut mgr = SetRectMgr::new(sh, ds);
         let t = f(&mut mgr);
-        self.1.send_action(mgr.take_action());
+        self.ev.send_action(mgr.take_action());
         t
     }
 
     /// Access a [`DrawShared`]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
-        self.0.size_and_draw_shared().1
+        self.h.size_and_draw_shared().1
     }
 
     /// Access the low-level draw device
@@ -94,16 +67,109 @@ impl<'a> DrawMgr<'a> {
     /// base trait [`Draw`]. To access further functionality, it is necessary
     /// to downcast with [`crate::draw::DrawIface::downcast_from`].
     pub fn draw_device(&mut self) -> &mut dyn Draw {
-        self.0.draw_device()
+        self.h.draw_device()
+    }
+
+    /// Add context to allow draw operations
+    pub fn with_core<'b>(&'b mut self, core: &CoreData) -> DrawCtx<'b> {
+        let state = self.ev.draw_state(core, self.disabled);
+        let (h, ev) = (&mut *self.h, &mut *self.ev);
+        DrawCtx { h, ev, state }
+    }
+}
+
+/// Draw interface (with context)
+///
+/// This interface is provided to widgets in [`crate::Layout::draw`].
+/// Lower-level interfaces may be accessed through [`Self::draw_device`].
+///
+/// Most methods draw some feature. Corresponding size properties may be
+/// obtained through a [`SizeMgr`], e.g. through [`Self::size_mgr`].
+pub struct DrawCtx<'a> {
+    h: &'a mut dyn DrawHandle,
+    ev: &'a mut EventState,
+    /// Input state for drawn objects
+    ///
+    /// Normally this is derived automatically, but it may be adjusted.
+    pub state: InputState,
+}
+
+impl<'a> DrawCtx<'a> {
+    /// Reborrow as a [`DrawMgr`] with a new lifetime
+    ///
+    /// Rust allows references like `&T` or `&mut T` to be "reborrowed" through
+    /// coercion: essentially, the pointer is copied under a new, shorter, lifetime.
+    /// Until rfcs#1403 lands, reborrows on user types require a method call.
+    #[inline(always)]
+    pub fn re<'b>(&'b mut self) -> DrawMgr<'b>
+    where
+        'a: 'b,
+    {
+        DrawMgr {
+            h: self.h,
+            ev: self.ev,
+            disabled: self.state.contains(InputState::DISABLED),
+        }
+    }
+
+    /// Reborrow as a [`DrawCtx`] with a new lifetime
+    ///
+    /// Usually one uses [`Self::re`] to construct a [`DrawMgr`] to pass to a
+    /// child widget. This `re_ctx` may be useful within a single widget.
+    #[inline(always)]
+    pub fn re_ctx<'b>(&'b mut self) -> DrawCtx<'b>
+    where
+        'a: 'b,
+    {
+        DrawCtx {
+            h: self.h,
+            ev: self.ev,
+            state: self.state,
+        }
+    }
+
+    /// Access event-management state
+    pub fn ev_state(&self) -> &EventState {
+        self.ev
+    }
+
+    /// Access a [`SizeMgr`]
+    pub fn size_mgr(&mut self) -> SizeMgr {
+        SizeMgr::new(self.h.size_and_draw_shared().0)
+    }
+
+    /// Access a [`SetRectMgr`]
+    pub fn set_rect_mgr<F: FnMut(&mut SetRectMgr) -> T, T>(&mut self, mut f: F) -> T {
+        let (sh, ds) = self.h.size_and_draw_shared();
+        let mut mgr = SetRectMgr::new(sh, ds);
+        let t = f(&mut mgr);
+        self.ev.send_action(mgr.take_action());
+        t
+    }
+
+    /// Access a [`DrawShared`]
+    pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
+        self.h.size_and_draw_shared().1
+    }
+
+    /// Access the low-level draw device
+    ///
+    /// Note: this drawing API is modular, with limited functionality in the
+    /// base trait [`Draw`]. To access further functionality, it is necessary
+    /// to downcast with [`crate::draw::DrawIface::downcast_from`].
+    pub fn draw_device(&mut self) -> &mut dyn Draw {
+        self.h.draw_device()
     }
 
     /// Draw to a new pass with clipping and offset (e.g. for scrolling)
     ///
     /// Adds a new draw pass of type [`PassType::Clip`], with draw operations
     /// clipped to `rect` and translated by `offset.
-    pub fn with_clip_region<F: FnMut(DrawMgr)>(&mut self, rect: Rect, offset: Offset, mut f: F) {
-        self.0.new_pass(rect, offset, PassType::Clip, &mut |draw| {
-            f(DrawMgr(draw, self.1))
+    pub fn with_clip_region<F: FnMut(DrawCtx)>(&mut self, rect: Rect, offset: Offset, mut f: F) {
+        let ev = &mut *self.ev;
+        let state = self.state;
+        self.h.new_pass(rect, offset, PassType::Clip, &mut |h| {
+            f(DrawCtx { h, ev, state })
         });
     }
 
@@ -115,10 +181,12 @@ impl<'a> DrawMgr<'a> {
     /// The theme is permitted to enlarge the `rect` for the purpose of drawing
     /// a frame or shadow around this overlay, thus the
     /// [`DrawMgr::get_clip_rect`] may be larger than expected.
-    pub fn with_overlay<F: FnMut(DrawMgr)>(&mut self, rect: Rect, mut f: F) {
-        self.0
-            .new_pass(rect, Offset::ZERO, PassType::Overlay, &mut |draw| {
-                f(DrawMgr(draw, self.1))
+    pub fn with_overlay<F: FnMut(DrawCtx)>(&mut self, rect: Rect, mut f: F) {
+        let ev = &mut *self.ev;
+        let state = self.state;
+        self.h
+            .new_pass(rect, Offset::ZERO, PassType::Overlay, &mut |h| {
+                f(DrawCtx { h, ev, state })
             });
     }
 
@@ -129,27 +197,27 @@ impl<'a> DrawMgr<'a> {
     /// [overlay](DrawMgr::with_overlay). This may be used to cull hidden
     /// items from lists inside a scrollable view.
     pub fn get_clip_rect(&self) -> Rect {
-        self.0.get_clip_rect()
+        self.h.get_clip_rect()
     }
 
     /// Draw a frame inside the given `rect`
     ///
     /// The frame dimensions equal those of [`SizeMgr::frame`] on each side.
     pub fn outer_frame(&mut self, rect: Rect) {
-        self.0.outer_frame(rect)
+        self.h.outer_frame(rect)
     }
 
     /// Draw a separator in the given `rect`
     pub fn separator(&mut self, rect: Rect) {
-        self.0.separator(rect);
+        self.h.separator(rect);
     }
 
     /// Draw a navigation highlight frame in the given `rect`
     ///
     /// This is a margin area which may have a some type of navigation highlight
     /// drawn in it, or may be empty.
-    pub fn nav_frame(&mut self, rect: Rect, state: InputState) {
-        self.0.nav_frame(rect, state);
+    pub fn nav_frame(&mut self, rect: Rect) {
+        self.h.nav_frame(rect, self.state);
     }
 
     /// Draw a selection box
@@ -158,15 +226,15 @@ impl<'a> DrawMgr<'a> {
     /// the selection indicator is drawn *outside* of this rect, within a margin
     /// of size `inner_margin` that is expected to be present around this box.
     pub fn selection_box(&mut self, rect: Rect) {
-        self.0.selection_box(rect);
+        self.h.selection_box(rect);
     }
 
     /// Draw text
     ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, state: InputState) {
-        self.0.text(pos, text, class, state);
+    pub fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass) {
+        self.h.text(pos, text, class, self.state);
     }
 
     /// Draw text with effects
@@ -177,14 +245,8 @@ impl<'a> DrawMgr<'a> {
     ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text_effects(
-        &mut self,
-        pos: Coord,
-        text: &dyn TextApi,
-        class: TextClass,
-        state: InputState,
-    ) {
-        self.0.text_effects(pos, text, class, state);
+    pub fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
+        self.h.text_effects(pos, text, class, self.state);
     }
 
     /// Draw an `AccelString` text
@@ -199,9 +261,8 @@ impl<'a> DrawMgr<'a> {
         text: &Text<AccelString>,
         accel: bool,
         class: TextClass,
-        state: InputState,
     ) {
-        self.0.text_accel(pos, text, accel, class, state);
+        self.h.text_accel(pos, text, accel, class, self.state);
     }
 
     /// Draw some text using the standard font, with a subset selected
@@ -215,7 +276,6 @@ impl<'a> DrawMgr<'a> {
         text: T,
         range: R,
         class: TextClass,
-        state: InputState,
     ) {
         let start = match range.start_bound() {
             Bound::Included(n) => *n,
@@ -228,8 +288,8 @@ impl<'a> DrawMgr<'a> {
             Bound::Unbounded => usize::MAX,
         };
         let range = Range { start, end };
-        self.0
-            .text_selected_range(pos, text.as_ref(), range, class, state);
+        self.h
+            .text_selected_range(pos, text.as_ref(), range, class, self.state);
     }
 
     /// Draw an edit marker at the given `byte` index on this `text`
@@ -244,25 +304,31 @@ impl<'a> DrawMgr<'a> {
         class: TextClass,
         byte: usize,
     ) {
-        self.0.text_cursor(wid, pos, text, class, byte);
+        self.h.text_cursor(wid, pos, text, class, byte);
     }
 
     /// Draw the background of a menu entry
-    pub fn menu_entry(&mut self, rect: Rect, state: InputState) {
-        self.0.menu_entry(rect, state);
+    pub fn menu_entry(&mut self, rect: Rect) {
+        self.h.menu_entry(rect, self.state);
     }
 
     /// Draw button sides, background and margin-area highlight
     ///
     /// Optionally, a specific colour may be used.
     // TODO: Allow theme-provided named colours?
-    pub fn button(&mut self, rect: Rect, col: Option<Rgb>, state: InputState) {
-        self.0.button(rect, col, state);
+    pub fn button(&mut self, rect: Rect, col: Option<Rgb>) {
+        self.h.button(rect, col, self.state);
     }
 
     /// Draw edit box sides, background and margin-area highlight
-    pub fn edit_box(&mut self, rect: Rect, state: InputState) {
-        self.0.edit_box(rect, state);
+    ///
+    /// If `error` is true, the background will be an error colour.
+    pub fn edit_box(&mut self, rect: Rect, error: bool) {
+        let mut state = self.state;
+        if error {
+            state.insert(InputState::ERROR);
+        }
+        self.h.edit_box(rect, state);
     }
 
     /// Draw UI element: checkbox
@@ -270,15 +336,15 @@ impl<'a> DrawMgr<'a> {
     /// The checkbox is a small, usually square, box with or without a check
     /// mark. A checkbox widget may include a text label, but that label is not
     /// part of this element.
-    pub fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState) {
-        self.0.checkbox(rect, checked, state);
+    pub fn checkbox(&mut self, rect: Rect, checked: bool) {
+        self.h.checkbox(rect, checked, self.state);
     }
 
     /// Draw UI element: radiobox
     ///
     /// This is similar in appearance to a checkbox.
-    pub fn radiobox(&mut self, rect: Rect, checked: bool, state: InputState) {
-        self.0.radiobox(rect, checked, state);
+    pub fn radiobox(&mut self, rect: Rect, checked: bool) {
+        self.h.radiobox(rect, checked, self.state);
     }
 
     /// Draw UI element: scrollbar
@@ -287,8 +353,8 @@ impl<'a> DrawMgr<'a> {
     /// -   `h_rect`: area of slider handle
     /// -   `dir`: direction of bar
     /// -   `state`: highlighting information
-    pub fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
-        self.0.scrollbar(rect, h_rect, dir, state);
+    pub fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction) {
+        self.h.scrollbar(rect, h_rect, dir, self.state);
     }
 
     /// Draw UI element: slider
@@ -297,8 +363,8 @@ impl<'a> DrawMgr<'a> {
     /// -   `h_rect`: area of slider handle
     /// -   `dir`: direction of slider (currently only LTR or TTB)
     /// -   `state`: highlighting information
-    pub fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
-        self.0.slider(rect, h_rect, dir, state);
+    pub fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction) {
+        self.h.slider(rect, h_rect, dir, self.state);
     }
 
     /// Draw UI element: progress bar
@@ -307,20 +373,20 @@ impl<'a> DrawMgr<'a> {
     /// -   `dir`: direction of progress bar
     /// -   `state`: highlighting information
     /// -   `value`: progress value, between 0.0 and 1.0
-    pub fn progress_bar(&mut self, rect: Rect, dir: Direction, state: InputState, value: f32) {
-        self.0.progress_bar(rect, dir, state, value);
+    pub fn progress_bar(&mut self, rect: Rect, dir: Direction, value: f32) {
+        self.h.progress_bar(rect, dir, self.state, value);
     }
 
     /// Draw an image
     pub fn image(&mut self, id: ImageId, rect: Rect) {
-        self.0.image(id, rect);
+        self.h.image(id, rect);
     }
 }
 
 impl<'a> std::ops::BitOrAssign<TkAction> for DrawMgr<'a> {
     #[inline]
     fn bitor_assign(&mut self, action: TkAction) {
-        self.1.send_action(action);
+        self.ev.send_action(action);
     }
 }
 
@@ -338,7 +404,7 @@ pub trait DrawHandle {
     /// to downcast with [`crate::draw::DrawIface::downcast_from`].
     fn draw_device(&mut self) -> &mut dyn Draw;
 
-    /// Add a draw pass
+    /// Construct a new pass
     fn new_pass(
         &mut self,
         rect: Rect,
