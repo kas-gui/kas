@@ -457,9 +457,9 @@ impl<'a> EventMgr<'a> {
 
                     // We ignore other mouse buttons during a grab (this may be
                     // revised in the future).
-                } else if let Some(start_id) = self.state.hover.clone() {
-                    // No mouse grab but have a hover target
-                    if state == ElementState::Pressed {
+                } else if state == ElementState::Pressed {
+                    if let Some(start_id) = self.state.hover.clone() {
+                        // No mouse grab but have a hover target
                         if self.state.config.mouse_nav_focus() {
                             if let Some(w) = widget.find_widget(&start_id) {
                                 if w.key_nav() {
@@ -467,15 +467,15 @@ impl<'a> EventMgr<'a> {
                                 }
                             }
                         }
-
-                        let source = PressSource::Mouse(button, self.state.last_click_repetitions);
-                        let event = Event::PressStart {
-                            source,
-                            start_id: start_id.clone(),
-                            coord,
-                        };
-                        self.send_popup_first(widget, start_id, event);
                     }
+
+                    let source = PressSource::Mouse(button, self.state.last_click_repetitions);
+                    let event = Event::PressStart {
+                        source,
+                        start_id: self.state.hover.clone(),
+                        coord,
+                    };
+                    self.send_popup_first(widget, self.state.hover.clone(), event);
                 }
             }
             // TouchpadPressure { pressure: f32, stage: i64, },
@@ -485,22 +485,23 @@ impl<'a> EventMgr<'a> {
                 let coord = touch.location.into();
                 match touch.phase {
                     TouchPhase::Started => {
-                        if let Some(start_id) = widget.find_id(coord) {
+                        let start_id = widget.find_id(coord);
+                        if let Some(id) = start_id.as_ref() {
                             if self.state.config.touch_nav_focus() {
-                                if let Some(w) = widget.find_widget(&start_id) {
+                                if let Some(w) = widget.find_widget(id) {
                                     if w.key_nav() {
                                         self.set_nav_focus(w.id(), false);
                                     }
                                 }
                             }
-
-                            let event = Event::PressStart {
-                                source,
-                                start_id: start_id.clone(),
-                                coord,
-                            };
-                            self.send_popup_first(widget, start_id, event);
                         }
+
+                        let event = Event::PressStart {
+                            source,
+                            start_id: start_id.clone(),
+                            coord,
+                        };
+                        self.send_popup_first(widget, start_id, event);
                     }
                     TouchPhase::Moved => {
                         let cur_id = widget.find_id(coord);

@@ -114,7 +114,7 @@ pub enum Event {
     /// A mouse button was pressed or touch event started
     PressStart {
         source: PressSource,
-        start_id: WidgetId,
+        start_id: Option<WidgetId>,
         coord: Coord,
     },
     /// Movement of mouse or a touch press

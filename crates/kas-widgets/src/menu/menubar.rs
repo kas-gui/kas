@@ -73,11 +73,11 @@ widget! {
                     start_id,
                     coord,
                 } => {
-                    if self.is_ancestor_of(&start_id) {
+                    if start_id.as_ref().map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
                         if source.is_primary()
                             && mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None)
                         {
-                            mgr.set_grab_depress(source, Some(start_id.clone()));
+                            mgr.set_grab_depress(source, start_id.clone());
                             self.opening = false;
                             if self.rect().contains(coord) {
                                 if self
@@ -86,14 +86,14 @@ widget! {
                                     .any(|w| w.eq_id(&start_id) && !w.menu_is_open())
                                 {
                                     self.opening = true;
-                                    self.set_menu_path(mgr, Some(&start_id), false);
+                                    self.set_menu_path(mgr, start_id.as_ref(), false);
                                 } else {
                                     self.set_menu_path(mgr, None, false);
                                 }
                             } else {
                                 let delay = mgr.config().menu_delay();
-                                mgr.update_on_timer(delay, self.id(), start_id.as_u64());
-                                self.delayed_open = Some(start_id);
+                                mgr.update_on_timer(delay, self.id(), WidgetId::opt_to_u64(start_id.as_ref()));
+                                self.delayed_open = start_id;
                             }
                         }
                         Response::Used

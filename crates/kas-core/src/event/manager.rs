@@ -529,7 +529,10 @@ impl<'a> EventMgr<'a> {
         !matches!(r, Response::Unused)
     }
 
-    fn send_popup_first<W: Widget + ?Sized>(&mut self, widget: &mut W, id: WidgetId, event: Event) {
+    fn send_popup_first<W>(&mut self, widget: &mut W, id: Option<WidgetId>, event: Event)
+    where
+        W: Widget + ?Sized,
+    {
         while let Some((wid, parent)) = self
             .state
             .popups
@@ -543,7 +546,9 @@ impl<'a> EventMgr<'a> {
             }
             self.close_window(wid, false);
         }
-        self.send_event(widget, id, event);
+        if let Some(id) = id {
+            self.send_event(widget, id, event);
+        }
     }
 }
 

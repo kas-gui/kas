@@ -256,7 +256,7 @@ impl ScrollComponent {
     /// If the returned [`TkAction`] is not `None`, the scroll offset has been
     /// updated and the second return value is `Response::Used`.
     #[inline]
-    pub fn scroll_by_event<PS: FnOnce(&mut EventMgr, PressSource, WidgetId, Coord)>(
+    pub fn scroll_by_event<PS: FnOnce(&mut EventMgr, PressSource, Option<WidgetId>, Coord)>(
         &mut self,
         mgr: &mut EventMgr,
         event: Event,

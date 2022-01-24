@@ -85,10 +85,10 @@ widget! {
                     start_id,
                     coord,
                 } => {
-                    if self.is_ancestor_of(&start_id) {
+                    if start_id.as_ref().map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
                         if source.is_primary() {
                             mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None);
-                            mgr.set_grab_depress(source, Some(start_id));
+                            mgr.set_grab_depress(source, start_id);
                             self.opening = self.popup_id.is_none();
                         }
                         Response::Used
