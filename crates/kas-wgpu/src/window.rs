@@ -171,6 +171,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         if let Some(time) = self.queued_frame_time {
             if time <= Instant::now() {
                 self.window.request_redraw();
+                self.queued_frame_time = None;
             } else {
                 resume = resume.map(|t| t.min(time)).or(Some(time));
             }
@@ -225,7 +226,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         self.mgr.with(&mut tkw, |mgr| {
             mgr.update_timer(widget);
         });
-        self.mgr.next_resume()
+        self.next_resume()
     }
 
     pub fn update_handle(
@@ -369,7 +370,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         self.queued_frame_time = match self.draw.animation {
             AnimationState::None => None,
             AnimationState::Animate => Some(self.next_avail_frame_time),
-            AnimationState::Timed(time) => Some(time),
+            AnimationState::Timed(time) => Some(time.max(self.next_avail_frame_time)),
         };
         self.draw.animation = AnimationState::None;
         self.mgr.action -= TkAction::REDRAW; // we just drew
@@ -405,7 +406,12 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
     }
 
     pub(crate) fn next_resume(&self) -> Option<Instant> {
-        self.queued_frame_time
+        match (self.mgr.next_resume(), self.queued_frame_time) {
+            (Some(t1), Some(t2)) => Some(t1.min(t2)),
+            (Some(t), None) => Some(t),
+            (None, Some(t)) => Some(t),
+            (None, None) => None,
+        }
     }
 }
 
