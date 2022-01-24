@@ -546,9 +546,12 @@ impl<'a> EventMgr<'a> {
     /// Request a grab on the given input `source`
     ///
     /// On success, this method returns true and corresponding mouse/touch
-    /// events will be forwarded to widget `id`. The grab terminates
-    /// automatically when the press is released.
-    /// Returns false when the grab-request fails.
+    /// events will be forwarded to widget `id`. This excludes events from a
+    /// different mouse button or a different finger.
+    /// The grab terminates automatically when the press is released.
+    ///
+    /// Returns false when the grab-request fails (this should never be the
+    /// case, but we reserve the option to change this in a future version).
     ///
     /// Each grab can optionally visually depress one widget, and initially
     /// depresses the widget owning the grab (the `id` passed here). Call
@@ -589,6 +592,8 @@ impl<'a> EventMgr<'a> {
         match source {
             PressSource::Mouse(button, repetitions) => {
                 if self.state.mouse_grab.is_some() {
+                    #[cfg(debug_assertions)]
+                    log::warn!("request_grab failed: existing mouse grab!");
                     return false;
                 }
                 if mode != GrabMode::Grab {
@@ -612,6 +617,8 @@ impl<'a> EventMgr<'a> {
             }
             PressSource::Touch(touch_id) => {
                 if self.get_touch(touch_id).is_some() {
+                    #[cfg(debug_assertions)]
+                    log::warn!("request_grab failed: existing touch grab!");
                     return false;
                 }
                 if mode != GrabMode::Grab {
