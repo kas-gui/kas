@@ -141,9 +141,12 @@ impl<'a> EventMgr<'a> {
                     mgr.set_grab_depress(source, target);
                     return Response::Used;
                 }
-                Event::PressEnd { end_id, .. } if widget.eq_id(&end_id) => {
+                Event::PressEnd {
+                    end_id, success, ..
+                } if success && widget.eq_id(&end_id) => {
                     event = Event::Activate;
                 }
+                Event::PressEnd { .. } => return Response::Used,
                 _ => (),
             };
         }

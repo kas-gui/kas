@@ -125,7 +125,7 @@ widget! {
                     }
                     Response::Used
                 }
-                Event::PressEnd { coord, end_id, .. } => {
+                Event::PressEnd { coord, end_id, success, .. } if success => {
                     if end_id.as_ref().map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
                         // end_id is a child of self
                         let id = end_id.unwrap();
@@ -151,6 +151,7 @@ widget! {
                     }
                     Response::Used
                 }
+                Event::PressEnd { .. } => Response::Used,
                 Event::Command(cmd, _) => {
                     // Arrow keys can switch to the next / previous menu
                     // as well as to the first / last item of an open menu.

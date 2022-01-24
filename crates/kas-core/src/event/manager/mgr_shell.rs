@@ -435,29 +435,26 @@ impl<'a> EventMgr<'a> {
                 }
 
                 if let Some(grab) = self.state.mouse_grab.take() {
-                    if grab.button == button {
-                        debug_assert_eq!(state, ElementState::Released);
-                        if grab.mode == GrabMode::Grab {
-                            // Mouse grab active: send events there
-                            let source = PressSource::Mouse(button, grab.repetitions);
-                            let event = Event::PressEnd {
-                                source,
-                                end_id: self.state.hover.clone(),
-                                coord,
-                            };
-                            self.send_event(widget, grab.start_id.clone(), event);
-                        }
-                        // Pan events do not receive Start/End notifications
-
-                        trace!("EventMgr: end mouse grab by {}", grab.start_id);
-                        self.shell.set_cursor_icon(self.state.hover_icon);
-                        self.redraw(grab.start_id);
-                        self.state.remove_pan_grab(grab.pan_grab);
+                    if grab.mode == GrabMode::Grab {
+                        // Mouse grab active: send events there
+                        // Note: any button release may end the grab (intended).
+                        let event = Event::PressEnd {
+                            source: PressSource::Mouse(grab.button, grab.repetitions),
+                            end_id: self.state.hover.clone(),
+                            coord,
+                            success: state == ElementState::Released,
+                        };
+                        self.send_event(widget, grab.start_id.clone(), event);
                     }
+                    // Pan events do not receive Start/End notifications
 
-                    // We ignore other mouse buttons during a grab (this may be
-                    // revised in the future).
-                } else if state == ElementState::Pressed {
+                    trace!("EventMgr: end mouse grab by {}", grab.start_id);
+                    self.shell.set_cursor_icon(self.state.hover_icon);
+                    self.redraw(grab.start_id);
+                    self.state.remove_pan_grab(grab.pan_grab);
+                }
+
+                if state == ElementState::Pressed {
                     if let Some(start_id) = self.state.hover.clone() {
                         // No mouse grab but have a hover target
                         if self.state.config.mouse_nav_focus() {
@@ -494,14 +491,14 @@ impl<'a> EventMgr<'a> {
                                     }
                                 }
                             }
-                        }
 
-                        let event = Event::PressStart {
-                            source,
-                            start_id: start_id.clone(),
-                            coord,
-                        };
-                        self.send_popup_first(widget, start_id, event);
+                            let event = Event::PressStart {
+                                source,
+                                start_id: start_id.clone(),
+                                coord,
+                            };
+                            self.send_popup_first(widget, start_id, event);
+                        }
                     }
                     TouchPhase::Moved => {
                         let cur_id = widget.find_id(coord);
@@ -544,6 +541,7 @@ impl<'a> EventMgr<'a> {
                                     source,
                                     end_id: grab.cur_id.clone(),
                                     coord,
+                                    success: true,
                                 };
                                 if let Some(cur_id) = grab.cur_id {
                                     self.redraw(cur_id);
@@ -562,13 +560,15 @@ impl<'a> EventMgr<'a> {
 
                             let event = Event::PressEnd {
                                 source,
-                                end_id: None,
+                                end_id: grab.cur_id.clone(),
                                 coord,
+                                success: false,
                             };
                             if let Some(cur_id) = grab.cur_id {
                                 self.redraw(cur_id);
                             }
                             self.send_event(widget, grab.start_id, event);
+                            self.state.remove_pan_grab(grab.pan_grab);
                         }
                     }
                 }

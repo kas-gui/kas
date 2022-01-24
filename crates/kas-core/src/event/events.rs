@@ -148,6 +148,13 @@ pub enum Event {
     },
     /// End of a click/touch press
     ///
+    /// If `success`, this is a button-release or touch finish; otherwise this
+    /// is a cancelled/interrupted grab. "Activation events" (e.g. clicking of a
+    /// button or menu item) should only happen on `success`. "Movement events"
+    /// such as panning, moving a slider or opening a menu should not be undone
+    /// when cancelling: the panned item or slider should be released as is, or
+    /// the menu should remain open.
+    ///
     /// This event is sent in exactly one case:
     ///
     /// 1.  Given a grab ([`EventMgr::request_grab`]), release/cancel events
@@ -159,6 +166,7 @@ pub enum Event {
         source: PressSource,
         end_id: Option<WidgetId>,
         coord: Coord,
+        success: bool,
     },
     /// Update from a timer
     ///

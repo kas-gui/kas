@@ -116,7 +116,7 @@ widget! {
                     }
                     Response::Used
                 }
-                Event::PressEnd { ref end_id, .. } => {
+                Event::PressEnd { ref end_id, success, .. } if success => {
                     if let Some(ref id) = end_id {
                         if self.eq_id(id) {
                             if self.opening {
@@ -135,6 +135,7 @@ widget! {
                     }
                     Response::Used
                 }
+                Event::PressEnd { .. } =>Response::Used,
                 Event::PopupRemoved(id) => {
                     debug_assert_eq!(Some(id), self.popup_id);
                     self.popup_id = None;
