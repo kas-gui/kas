@@ -6,7 +6,7 @@
 //! Event handling components
 
 use super::ScrollDelta::{LineDelta, PixelDelta};
-use super::{Command, Event, EventMgr, GrabMode, PressSource, Response, VoidMsg};
+use super::{Command, Event, EventMgr, PressSource, Response, VoidMsg};
 use crate::cast::CastFloat;
 use crate::geom::{Coord, Offset, Rect, Size, Vec2};
 #[allow(unused)]
@@ -243,7 +243,7 @@ impl ScrollComponent {
     ///         window_size,
     ///         |mgr, source, _, coord| if source.is_primary() {
     ///             let icon = Some(event::CursorIcon::Grabbing);
-    ///             mgr.request_grab(id, source, coord, event::GrabMode::Grab, icon);
+    ///             mgr.grab_press_unique(id, source, coord, icon);
     ///         }
     ///     );
     ///     *mgr |= action;
@@ -410,7 +410,7 @@ impl TextInput {
         use TextInputAction as Action;
         match event {
             Event::PressStart { source, coord, .. } if source.is_primary() => {
-                let grab = mgr.request_grab(w_id.clone(), source, coord, GrabMode::Grab, None);
+                mgr.grab_press_unique(w_id.clone(), source, coord, None);
                 match source {
                     PressSource::Touch(touch_id) => {
                         self.touch_phase = TouchPhase::Start(touch_id, coord);

@@ -132,7 +132,7 @@ impl<'a> EventMgr<'a> {
             // Translate press events
             match event {
                 Event::PressStart { source, coord, .. } if source.is_primary() => {
-                    mgr.request_grab(widget.id(), source, coord, GrabMode::Grab, None);
+                    mgr.grab_press(widget.id(), source, coord, GrabMode::Grab, None);
                     return Response::Used;
                 }
                 Event::PressMove { source, cur_id, .. } => {

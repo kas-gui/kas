@@ -7,7 +7,7 @@
 
 use super::{Menu, SubMenu};
 use crate::IndexedList;
-use kas::event::{self, Command, GrabMode};
+use kas::event::{self, Command};
 use kas::prelude::*;
 
 widget! {
@@ -74,9 +74,8 @@ widget! {
                     coord,
                 } => {
                     if start_id.as_ref().map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
-                        if source.is_primary()
-                            && mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None)
-                        {
+                        if source.is_primary() {
+                            mgr.grab_press_unique(self.id(), source, coord, None);
                             mgr.set_grab_depress(source, start_id.clone());
                             self.opening = false;
                             if self.rect().contains(coord) {

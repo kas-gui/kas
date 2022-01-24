@@ -401,7 +401,7 @@ widget! {
                     Response::Msg(())
                 }
                 Event::PressStart { source, coord, .. } => {
-                    mgr.request_grab(
+                    mgr.grab_press(
                         self.id(),
                         source,
                         coord,

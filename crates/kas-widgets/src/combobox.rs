@@ -6,7 +6,7 @@
 //! Combobox
 
 use super::{IndexedColumn, MenuEntry};
-use kas::event::{self, Command, GrabMode};
+use kas::event::{self, Command};
 use kas::layout;
 use kas::prelude::*;
 use kas::theme::TextClass;
@@ -87,7 +87,7 @@ widget! {
                 } => {
                     if start_id.as_ref().map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
                         if source.is_primary() {
-                            mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None);
+                            mgr.grab_press_unique(self.id(), source, coord, None);
                             mgr.set_grab_depress(source, start_id);
                             self.opening = self.popup_id.is_none();
                         }

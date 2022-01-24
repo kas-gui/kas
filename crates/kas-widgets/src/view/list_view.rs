@@ -10,7 +10,7 @@ use super::{driver, Driver, PressPhase, SelectionError, SelectionMode};
 use crate::ScrollBars;
 use crate::Scrollable;
 use kas::event::components::ScrollComponent;
-use kas::event::{ChildMsg, Command, CursorIcon, GrabMode, PressSource};
+use kas::event::{ChildMsg, Command, CursorIcon};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
 use kas::updatable::{ListData, UpdatableHandler};
@@ -68,7 +68,6 @@ widget! {
         sel_mode: SelectionMode,
         // TODO(opt): replace selection list with RangeOrSet type?
         selection: LinearSet<T::Key>,
-        press_event: Option<PressSource>,
         press_phase: PressPhase,
         press_target: Option<T::Key>,
     }
@@ -123,7 +122,6 @@ widget! {
                 scroll: Default::default(),
                 sel_mode: SelectionMode::None,
                 selection: Default::default(),
-                press_event: None,
                 press_phase: PressPhase::None,
                 press_target: None,
             }
@@ -564,7 +562,7 @@ widget! {
                     self.update_view(mgr);
                     return Response::Update;
                 }
-                Event::PressMove { source, coord, .. } if self.press_event == Some(source) => {
+                Event::PressMove { coord, .. } => {
                     if let PressPhase::Start(start_coord) = self.press_phase {
                         if mgr.config_test_pan_thresh(coord - start_coord) {
                             self.press_phase = PressPhase::Pan;
@@ -578,11 +576,10 @@ widget! {
                         _ => return Response::Used,
                     }
                 }
-                Event::PressEnd { source, .. } if self.press_event == Some(source) => {
-                    self.press_event = None;
+                Event::PressEnd { ref end_id, .. } => {
                     if self.press_phase == PressPhase::Pan {
                         // fall through to scroll handler
-                    } else {
+                    } else if end_id.is_some() {
                         if let Some(ref key) = self.press_target {
                             if mgr.config().mouse_nav_focus() {
                                 for w in &self.widgets {
@@ -613,9 +610,10 @@ widget! {
                                     }
                                 }
                             }
-                        } else {
-                            return Response::Used;
                         }
+                        return Response::Used;
+                    } else {
+                        return Response::Used;
                     }
                 }
                 Event::Command(cmd, _) => {
@@ -664,7 +662,7 @@ widget! {
                     .scroll_by_event(mgr, event, self.id(), self.core.rect.size, |mgr, source, _, coord| {
                         if source.is_primary() && mgr.config_enable_mouse_pan() {
                             let icon = Some(CursorIcon::Grabbing);
-                            mgr.request_grab(self_id, source, coord, GrabMode::Grab, icon);
+                            mgr.grab_press_unique(self_id, source, coord, icon);
                         }
                     });
             if !action.is_empty() {
@@ -708,11 +706,9 @@ widget! {
                             if source.is_primary() {
                                 // We request a grab with our ID, hence the
                                 // PressMove/PressEnd events are matched in handle().
-                                if mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None) {
-                                    self.press_event = Some(source);
-                                    self.press_phase = PressPhase::Start(coord);
-                                    self.press_target = key;
-                                }
+                                mgr.grab_press_unique(self.id(), source, coord, None);
+                                self.press_phase = PressPhase::Start(coord);
+                                self.press_target = key;
                                 Response::Used
                             } else {
                                 Response::Unused

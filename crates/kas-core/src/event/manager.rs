@@ -28,10 +28,10 @@ use crate::{ShellWindow, TkAction, Widget, WidgetId, WindowId};
 mod mgr_pub;
 mod mgr_shell;
 
-/// Controls the types of events delivered by [`EventMgr::request_grab`]
+/// Controls the types of events delivered by [`EventMgr::grab_press`]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum GrabMode {
-    /// Deliver [`Event::PressMove`] and [`Event::PressEnd`] for each press
+    /// Deliver [`Event::PressMove`] and [`Event::PressEnd`] for each grabbed press
     Grab,
     /// Deliver [`Event::Pan`] events, with scaling and rotation
     PanFull,

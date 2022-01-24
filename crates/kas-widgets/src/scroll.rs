@@ -171,7 +171,7 @@ widget! {
                     .scroll_by_event(mgr, event, self.id(), self.core.rect.size, |mgr, source, _, coord| {
                         if source.is_primary() && mgr.config_enable_mouse_pan() {
                             let icon = Some(event::CursorIcon::Grabbing);
-                            mgr.request_grab(id, source, coord, event::GrabMode::Grab, icon);
+                            mgr.grab_press_unique(id, source, coord, icon);
                         }
                     });
             if !action.is_empty() {

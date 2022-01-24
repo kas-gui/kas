@@ -132,7 +132,7 @@ pub enum Event {
     ///
     /// This event is sent in exactly two cases, in this order:
     ///
-    /// 1.  Given a grab ([`EventMgr::request_grab`]), motion events for the
+    /// 1.  Given a grab ([`EventMgr::grab_press`]), motion events for the
     ///     grabbed mouse pointer or touched finger will be sent.
     /// 2.  When a pop-up layer is active ([`EventMgr::add_popup`]), the owner
     ///     of the top-most layer will receive this event. If the event is not
@@ -157,7 +157,7 @@ pub enum Event {
     ///
     /// This event is sent in exactly one case:
     ///
-    /// 1.  Given a grab ([`EventMgr::request_grab`]), release/cancel events
+    /// 1.  Given a grab ([`EventMgr::grab_press`]), release/cancel events
     ///     for the same mouse button or touched finger will be sent.
     ///
     /// If `cur_id` is `None`, no widget was found at the coordinate (either
