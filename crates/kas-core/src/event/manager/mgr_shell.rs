@@ -444,7 +444,7 @@ impl<'a> EventMgr<'a> {
                             coord,
                             success: state == ElementState::Released,
                         };
-                        self.send_event(widget, grab.start_id.clone(), event);
+                        self.send_event(widget, grab.start_id, event);
                     }
                     // Pan events do not receive Start/End notifications
                 }
