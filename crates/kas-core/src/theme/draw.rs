@@ -74,7 +74,8 @@ impl<'a> DrawMgr<'a> {
     pub fn with_core<'b>(&'b mut self, core: &CoreData) -> DrawCtx<'b> {
         let state = self.ev.draw_state(core, self.disabled);
         let (h, ev) = (&mut *self.h, &mut *self.ev);
-        DrawCtx { h, ev, state }
+        let wid = core.id.as_u64();
+        DrawCtx { h, ev, wid, state }
     }
 }
 
@@ -88,6 +89,7 @@ impl<'a> DrawMgr<'a> {
 pub struct DrawCtx<'a> {
     h: &'a mut dyn DrawHandle,
     ev: &'a mut EventState,
+    wid: u64,
     /// Input state for drawn objects
     ///
     /// Normally this is derived automatically, but it may be adjusted.
@@ -124,6 +126,7 @@ impl<'a> DrawCtx<'a> {
         DrawCtx {
             h: self.h,
             ev: self.ev,
+            wid: self.wid,
             state: self.state,
         }
     }
@@ -167,9 +170,10 @@ impl<'a> DrawCtx<'a> {
     /// clipped to `rect` and translated by `offset.
     pub fn with_clip_region<F: FnMut(DrawCtx)>(&mut self, rect: Rect, offset: Offset, mut f: F) {
         let ev = &mut *self.ev;
+        let wid = self.wid;
         let state = self.state;
         self.h.new_pass(rect, offset, PassType::Clip, &mut |h| {
-            f(DrawCtx { h, ev, state })
+            f(DrawCtx { h, ev, wid, state })
         });
     }
 
@@ -183,10 +187,11 @@ impl<'a> DrawCtx<'a> {
     /// [`DrawMgr::get_clip_rect`] may be larger than expected.
     pub fn with_overlay<F: FnMut(DrawCtx)>(&mut self, rect: Rect, mut f: F) {
         let ev = &mut *self.ev;
+        let wid = self.wid;
         let state = self.state;
         self.h
             .new_pass(rect, Offset::ZERO, PassType::Overlay, &mut |h| {
-                f(DrawCtx { h, ev, state })
+                f(DrawCtx { h, ev, wid, state })
             });
     }
 
@@ -296,15 +301,8 @@ impl<'a> DrawCtx<'a> {
     ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text_cursor(
-        &mut self,
-        wid: u64,
-        pos: Coord,
-        text: &TextDisplay,
-        class: TextClass,
-        byte: usize,
-    ) {
-        self.h.text_cursor(wid, pos, text, class, byte);
+    pub fn text_cursor(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
+        self.h.text_cursor(self.wid, pos, text, class, byte);
     }
 
     /// Draw the background of a menu entry
