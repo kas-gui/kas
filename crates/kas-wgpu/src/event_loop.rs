@@ -181,20 +181,22 @@ where
 
             RedrawRequested(id) => {
                 if let Some(window) = self.windows.get_mut(&id) {
-                    window.do_draw(&mut self.shared);
+                    if window.do_draw(&mut self.shared) {
+                        *control_flow = ControlFlow::Poll;
+                    }
                 }
             }
 
             RedrawEventsCleared => {
-                self.resumes.clear();
-                for (window_id, window) in self.windows.iter() {
-                    if let Some(instant) = window.next_resume() {
-                        self.resumes.push((instant, *window_id));
-                    }
-                }
-                self.resumes.sort_by_key(|item| item.0);
-
                 if matches!(control_flow, ControlFlow::Wait | ControlFlow::WaitUntil(_)) {
+                    self.resumes.clear();
+                    for (window_id, window) in self.windows.iter() {
+                        if let Some(instant) = window.next_resume() {
+                            self.resumes.push((instant, *window_id));
+                        }
+                    }
+                    self.resumes.sort_by_key(|item| item.0);
+
                     *control_flow = match self.resumes.first() {
                         Some((instant, _)) => ControlFlow::WaitUntil(*instant),
                         None => ControlFlow::Wait,

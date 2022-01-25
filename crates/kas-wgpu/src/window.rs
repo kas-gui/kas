@@ -336,7 +336,8 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         );
     }
 
-    pub(crate) fn do_draw(&mut self, shared: &mut SharedState<C, T>) {
+    // Draw. Return true when further event processing is needed immediately.
+    pub(crate) fn do_draw(&mut self, shared: &mut SharedState<C, T>) -> bool {
         let start = Instant::now();
         self.next_avail_frame_time = start + shared.frame_dur;
 
@@ -374,6 +375,10 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         };
         self.draw.animation = AnimationState::None;
         self.mgr.action -= TkAction::REDRAW; // we just drew
+        if !self.mgr.action.is_empty() {
+            info!("do_draw: abort and enqueue `Self::update` due to non-empty actions");
+            return true;
+        }
 
         let time2 = Instant::now();
         let frame = match self.surface.get_current_texture() {
@@ -382,7 +387,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
                 error!("Failed to get frame texture: {}", e);
                 // It may be possible to recover by calling surface.configure(...) then retrying
                 // surface.get_current_texture(), but is doing so ever useful?
-                return;
+                return true;
             }
         };
         // TODO: check frame.suboptimal ?
@@ -403,6 +408,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             self.draw.text.dur_micros(),
             (end - time2).as_micros()
         );
+        false
     }
 
     pub(crate) fn next_resume(&self) -> Option<Instant> {
