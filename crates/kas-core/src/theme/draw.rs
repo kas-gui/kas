@@ -669,10 +669,10 @@ mod test {
         // But we don't need to: we just want to test that methods are callable.
 
         let _scale = draw.size_mgr().scale_factor();
+        let mut draw = draw.with_core(&Default::default());
 
         let text = crate::text::Text::new_single("sample");
         let class = TextClass::Label;
-        let state = InputState::empty();
-        draw.text_selected(Coord::ZERO, &text, .., class, state)
+        draw.text_selected(Coord::ZERO, &text, .., class)
     }
 }
