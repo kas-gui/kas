@@ -623,9 +623,9 @@ widget! {
     #[cfg(feature = "min_spec")]
     impl<W: Widget> Layout for ScrollBars<ScrollRegion<W>> {
         fn draw(&mut self, mut draw: DrawMgr) {
-            let draw = draw.with_core(self.core_data());
+            let mut draw = draw.with_core(self.core_data());
             // Enlarge clip region to *our* rect:
-            draw.with_clip_region(self.core.rect, self.inner.scroll_offset(), |draw| {
+            draw.with_clip_region(self.core.rect, self.inner.scroll_offset(), |mut draw| {
                 self.inner.inner_mut().draw(draw.re())
             });
             // Use a second clip region to force draw order:

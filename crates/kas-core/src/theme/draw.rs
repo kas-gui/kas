@@ -22,7 +22,7 @@ use crate::{CoreData, TkAction};
 /// This interface is provided to widgets in [`crate::Layout::draw`].
 /// Lower-level interfaces may be accessed through [`Self::draw_device`].
 ///
-/// Use [`DrawMgr::with_ctx`] to access draw methods.
+/// Use [`DrawMgr::with_core`] to access draw methods.
 pub struct DrawMgr<'a> {
     h: &'a mut dyn DrawHandle,
     ev: &'a mut EventState,
@@ -184,7 +184,7 @@ impl<'a> DrawCtx<'a> {
     ///
     /// The theme is permitted to enlarge the `rect` for the purpose of drawing
     /// a frame or shadow around this overlay, thus the
-    /// [`DrawMgr::get_clip_rect`] may be larger than expected.
+    /// [`DrawCtx::get_clip_rect`] may be larger than expected.
     pub fn with_overlay<F: FnMut(DrawCtx)>(&mut self, rect: Rect, mut f: F) {
         let ev = &mut *self.ev;
         let wid = self.wid;
@@ -198,8 +198,8 @@ impl<'a> DrawCtx<'a> {
     /// Target area for drawing
     ///
     /// Drawing is restricted to this [`Rect`], which may be the whole window, a
-    /// [clip region](DrawMgr::with_clip_region) or an
-    /// [overlay](DrawMgr::with_overlay). This may be used to cull hidden
+    /// [clip region](DrawCtx::with_clip_region) or an
+    /// [overlay](DrawCtx::with_overlay). This may be used to cull hidden
     /// items from lists inside a scrollable view.
     pub fn get_clip_rect(&self) -> Rect {
         self.h.get_clip_rect()
@@ -244,7 +244,7 @@ impl<'a> DrawCtx<'a> {
 
     /// Draw text with effects
     ///
-    /// [`DrawMgr::text`] already supports *font* effects: bold,
+    /// [`DrawCtx::text`] already supports *font* effects: bold,
     /// emphasis, text size. In addition, this method supports underline and
     /// strikethrough effects.
     ///
@@ -273,7 +273,7 @@ impl<'a> DrawCtx<'a> {
     /// Draw some text using the standard font, with a subset selected
     ///
     /// Other than visually highlighting the selection, this method behaves
-    /// identically to [`DrawMgr::text`]. It is likely to be replaced in the
+    /// identically to [`DrawCtx::text`]. It is likely to be replaced in the
     /// future by a higher-level API.
     pub fn text_selected<T: AsRef<TextDisplay>, R: RangeBounds<usize>>(
         &mut self,
@@ -382,6 +382,13 @@ impl<'a> DrawCtx<'a> {
 }
 
 impl<'a> std::ops::BitOrAssign<TkAction> for DrawMgr<'a> {
+    #[inline]
+    fn bitor_assign(&mut self, action: TkAction) {
+        self.ev.send_action(action);
+    }
+}
+
+impl<'a> std::ops::BitOrAssign<TkAction> for DrawCtx<'a> {
     #[inline]
     fn bitor_assign(&mut self, action: TkAction) {
         self.ev.send_action(action);
