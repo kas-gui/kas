@@ -253,7 +253,7 @@ impl EventState {
                 grab.coords[i] = grab.coords[i + 1];
             }
         } else {
-            return; // shouldn't happen
+            return;
         }
 
         // Note: the fact that grab.n > 0 implies source is a touch event!
@@ -451,6 +451,19 @@ impl<'a> EventMgr<'a> {
         self.state.mouse_grab.as_mut()
     }
 
+    // Clears mouse grab and pan grab, resets cursor and redraws
+    fn remove_mouse_grab(&mut self) -> Option<MouseGrab> {
+        if let Some(grab) = self.state.mouse_grab.take() {
+            trace!("EventMgr: end mouse grab by {}", grab.start_id);
+            self.shell.set_cursor_icon(self.state.hover_icon);
+            self.send_action(TkAction::REDRAW); // redraw(..)
+            self.state.remove_pan_grab(grab.pan_grab);
+            Some(grab)
+        } else {
+            None
+        }
+    }
+
     #[inline]
     fn get_touch(&mut self, touch_id: u64) -> Option<&mut TouchGrab> {
         for grab in self.state.touch_grab.iter_mut() {
@@ -461,14 +474,15 @@ impl<'a> EventMgr<'a> {
         None
     }
 
+    // Clears touch grab and pan grab and redraws
     fn remove_touch(&mut self, touch_id: u64) -> Option<TouchGrab> {
         for i in 0..self.state.touch_grab.len() {
             if self.state.touch_grab[i].id == touch_id {
-                trace!(
-                    "EventMgr: end touch grab by {}",
-                    self.state.touch_grab[i].start_id
-                );
-                return Some(self.state.touch_grab.remove(i));
+                let grab = self.state.touch_grab.remove(i);
+                trace!("EventMgr: end touch grab by {}", grab.start_id);
+                self.send_action(TkAction::REDRAW); // redraw(..)
+                self.state.remove_pan_grab(grab.pan_grab);
+                return Some(grab);
             }
         }
         None

@@ -587,7 +587,7 @@ impl<'a> EventMgr<'a> {
         let mut pan_grab = (u16::MAX, 0);
         match source {
             PressSource::Mouse(button, repetitions) => {
-                if self.state.mouse_grab.take().is_some() {
+                if self.remove_mouse_grab().is_some() {
                     #[cfg(debug_assertions)]
                     log::error!("grab_press: existing mouse grab!");
                 }
@@ -648,7 +648,7 @@ impl<'a> EventMgr<'a> {
         cursor: Option<CursorIcon>,
     ) {
         if id == self.state.mouse_grab.as_ref().map(|grab| &grab.start_id) {
-            self.state.mouse_grab = None;
+            self.remove_mouse_grab();
         }
         self.state.touch_grab.retain(|grab| id != grab.start_id);
 

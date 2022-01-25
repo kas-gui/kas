@@ -434,7 +434,7 @@ impl<'a> EventMgr<'a> {
                     self.state.last_click_timeout = now + DOUBLE_CLICK_TIMEOUT;
                 }
 
-                if let Some(grab) = self.state.mouse_grab.take() {
+                if let Some(grab) = self.remove_mouse_grab() {
                     if grab.mode == GrabMode::Grab {
                         // Mouse grab active: send events there
                         // Note: any button release may end the grab (intended).
@@ -447,11 +447,6 @@ impl<'a> EventMgr<'a> {
                         self.send_event(widget, grab.start_id.clone(), event);
                     }
                     // Pan events do not receive Start/End notifications
-
-                    trace!("EventMgr: end mouse grab by {}", grab.start_id);
-                    self.shell.set_cursor_icon(self.state.hover_icon);
-                    self.redraw(grab.start_id);
-                    self.state.remove_pan_grab(grab.pan_grab);
                 }
 
                 if state == ElementState::Pressed {
@@ -530,7 +525,7 @@ impl<'a> EventMgr<'a> {
                             }
                         }
                     }
-                    TouchPhase::Ended => {
+                    ev @ (TouchPhase::Ended | TouchPhase::Cancelled) => {
                         if let Some(mut grab) = self.remove_touch(touch.id) {
                             if let Some((id, event)) = grab.flush_move() {
                                 self.send_event(widget, id, event);
@@ -541,34 +536,10 @@ impl<'a> EventMgr<'a> {
                                     source,
                                     end_id: grab.cur_id.clone(),
                                     coord,
-                                    success: true,
+                                    success: ev == TouchPhase::Ended,
                                 };
-                                if let Some(cur_id) = grab.cur_id {
-                                    self.redraw(cur_id);
-                                }
                                 self.send_event(widget, grab.start_id, event);
-                            } else {
-                                self.state.remove_pan_grab(grab.pan_grab);
                             }
-                        }
-                    }
-                    TouchPhase::Cancelled => {
-                        if let Some(mut grab) = self.remove_touch(touch.id) {
-                            if let Some((id, event)) = grab.flush_move() {
-                                self.send_event(widget, id, event);
-                            }
-
-                            let event = Event::PressEnd {
-                                source,
-                                end_id: grab.cur_id.clone(),
-                                coord,
-                                success: false,
-                            };
-                            if let Some(cur_id) = grab.cur_id {
-                                self.redraw(cur_id);
-                            }
-                            self.send_event(widget, grab.start_id, event);
-                            self.state.remove_pan_grab(grab.pan_grab);
                         }
                     }
                 }
