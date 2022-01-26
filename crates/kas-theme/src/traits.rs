@@ -132,6 +132,12 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
 /// The main reason for this separation is to allow proper handling of
 /// multi-window applications across screens with differing DPIs.
 pub trait Window: 'static {
+    /// Garbage collect
+    ///
+    /// It is recommended to call this method sometimes (every few seconds
+    /// or redraws, whichever is longer).
+    fn garbage_collect(&mut self);
+
     /// Construct a [`SizeHandle`] object
     fn size_handle(&self) -> &dyn SizeHandle;
 
@@ -191,6 +197,10 @@ impl<T: Theme<DS>, DS: DrawSharedImpl> Theme<DS> for Box<T> {
 }
 
 impl<W: Window> Window for Box<W> {
+    fn garbage_collect(&mut self) {
+        self.deref_mut().garbage_collect();
+    }
+
     fn size_handle(&self) -> &dyn SizeHandle {
         self.deref().size_handle()
     }

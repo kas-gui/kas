@@ -54,7 +54,8 @@ widget! {
             SizeRules::extract_fixed(axis, size_mgr.separator(), margins)
         }
 
-        fn draw(&mut self, mut draw: DrawMgr, _: bool) {
+        fn draw(&mut self, mut draw: DrawMgr) {
+            let mut draw = draw.with_core(self.core_data());
             draw.separator(self.core.rect);
         }
     }

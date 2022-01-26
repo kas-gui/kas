@@ -5,7 +5,7 @@
 
 //! Drawing APIs — draw interface
 
-use super::color::Rgba;
+use super::{color::Rgba, AnimationState};
 #[allow(unused)]
 use super::{DrawRounded, DrawRoundedImpl};
 use super::{DrawSharedImpl, ImageId, PassId, PassType, SharedState};
@@ -14,6 +14,7 @@ use crate::geom::{Offset, Quad, Rect, Vec2};
 use crate::text::TextApi;
 use crate::text::{Effect, TextDisplay};
 use std::any::Any;
+use std::time::Instant;
 
 /// Draw interface object
 ///
@@ -122,6 +123,18 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
 /// accessing these requires reconstruction of the implementing type via
 /// [`DrawIface::downcast_from`].
 pub trait Draw {
+    /// Request redraw at the next frame time
+    ///
+    /// Animations should call this each frame until complete.
+    fn animate(&mut self);
+
+    /// Request a redraw at a specific time
+    ///
+    /// This may be used for animations with delays, e.g. flashing. Calling this
+    /// method only ensures that the *next* draw happens *no later* than `time`,
+    /// thus the method should be called again in each following frame.
+    fn animate_at(&mut self, time: Instant);
+
     /// Get the current draw pass
     fn get_pass(&self) -> PassId;
 
@@ -211,6 +224,16 @@ pub trait Draw {
 }
 
 impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
+    fn animate(&mut self) {
+        self.draw.animation_mut().merge_in(AnimationState::Animate);
+    }
+
+    fn animate_at(&mut self, time: Instant) {
+        self.draw
+            .animation_mut()
+            .merge_in(AnimationState::Timed(time));
+    }
+
     fn get_pass(&self) -> PassId {
         self.pass
     }
@@ -290,6 +313,9 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait DrawImpl: Any {
+    /// Get animation status
+    fn animation_mut(&mut self) -> &mut AnimationState;
+
     /// Add a draw pass
     ///
     /// Adds a new draw pass. Passes affect draw order (operations in new passes

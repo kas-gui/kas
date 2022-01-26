@@ -187,15 +187,11 @@ widget! {
             layout::Layout::frame(&mut self.layout_frame, inner)
         }
 
-        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
-            // We draw highlights for input state of inner:
-            let disabled = disabled || self.is_disabled() || self.inner.is_disabled();
-            let mut input_state = draw.input_state(&self.inner, disabled);
-            if self.inner.has_error() {
-                input_state.insert(InputState::ERROR);
-            }
-            draw.edit_box(self.core.rect, input_state);
-            self.inner.draw(draw, disabled);
+        fn draw(&mut self, mut draw: DrawMgr) {
+            let mut draw = draw.with_core(self.core_data());
+            let error = self.inner.has_error();
+            draw.re().with_core(self.inner.core_data()).edit_box(self.core.rect, error);
+            self.inner.draw(draw.re());
         }
     }
 }
@@ -414,16 +410,16 @@ widget! {
             self.scroll_offset()
         }
 
-        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
+        fn draw(&mut self, mut draw: DrawMgr) {
             let class = if self.multi_line {
                 TextClass::EditMulti
             } else {
                 TextClass::Edit
             };
-            let state = draw.input_state(self, disabled);
+            let mut draw = draw.with_core(self.core_data());
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
                 if self.selection.is_empty() {
-                    draw.text(self.rect().pos, self.text.as_ref(), class, state);
+                    draw.text(self.rect().pos, self.text.as_ref(), class);
                 } else {
                     // TODO(opt): we could cache the selection rectangles here to make
                     // drawing more efficient (self.text.highlight_lines(range) output).
@@ -433,11 +429,10 @@ widget! {
                         &self.text,
                         self.selection.range(),
                         class,
-                        state,
                     );
                 }
                 if draw.ev_state().has_char_focus(self.id_ref()).0 {
-                    draw.edit_marker(
+                    draw.text_cursor(
                         self.rect().pos,
                         self.text.as_ref(),
                         class,

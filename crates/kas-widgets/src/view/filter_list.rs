@@ -307,28 +307,28 @@ widget! {
         /// Clear all selected items
         ///
         /// Does not send [`ChildMsg`] responses.
-        pub fn clear_selected(&mut self) {
+        pub fn clear_selected(&mut self) -> TkAction {
             self.list.clear_selected()
         }
 
         /// Directly select an item
         ///
-        /// Returns `true` if selected, `false` if already selected.
-        /// Fails if selection mode does not permit selection or if the key is
-        /// invalid or filtered out.
+        /// Returns `TkAction::REDRAW` if newly selected, `TkAction::empty()` if
+        /// already selected. Fails if selection mode does not permit selection
+        /// or if the key is invalid.
         ///
         /// Does not send [`ChildMsg`] responses.
-        pub fn select(&mut self, key: T::Key) -> Result<bool, SelectionError> {
+        pub fn select(&mut self, key: T::Key) -> Result<TkAction, SelectionError> {
             self.list.select(key)
         }
 
         /// Directly deselect an item
         ///
-        /// Returns `true` if deselected, `false` if not previously selected.
-        /// Also returns `false` on invalid and filtered-out keys.
+        /// Returns `TkAction::REDRAW` if deselected, `TkAction::empty()` if not
+        /// previously selected or if the key is invalid.
         ///
         /// Does not send [`ChildMsg`] responses.
-        pub fn deselect(&mut self, key: &T::Key) -> bool {
+        pub fn deselect(&mut self, key: &T::Key) -> TkAction {
             self.list.deselect(key)
         }
 

@@ -8,7 +8,7 @@
 mod draw;
 mod size;
 
-pub use draw::{DrawHandle, DrawMgr};
+pub use draw::{DrawCtx, DrawHandle, DrawMgr};
 pub use size::{SizeHandle, SizeMgr};
 
 #[allow(unused)]

@@ -7,7 +7,7 @@
 
 use std::fmt::Debug;
 
-use kas::event::{self, PressSource};
+use kas::event::{CursorIcon, PressSource};
 use kas::prelude::*;
 
 widget! {
@@ -29,14 +29,13 @@ widget! {
     #[derive(Clone, Debug, Default)]
     #[widget{
         hover_highlight = true;
-        cursor_icon = event::CursorIcon::Grab;
+        cursor_icon = CursorIcon::Grab;
     }]
     pub struct DragHandle {
         #[widget_core]
         core: CoreData,
         // The track is the area within which this DragHandle may move
         track: Rect,
-        press_source: Option<event::PressSource>,
         press_coord: Coord,
     }
 
@@ -56,24 +55,22 @@ widget! {
             self.track = rect;
         }
 
-        fn draw(&mut self, _: DrawMgr, _: bool) {}
+        fn draw(&mut self, _: DrawMgr) {}
     }
 
-    impl event::Handler for DragHandle {
+    impl Handler for DragHandle {
         type Msg = Offset;
 
         fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
             match event {
                 Event::PressStart { source, coord, .. } => {
-                    if !self.grab_press(mgr, source, coord) {
-                        return Response::Used;
-                    }
+                    mgr.grab_press_unique(self.id(), source, coord, Some(CursorIcon::Grabbing));
 
                     // Event delivery implies coord is over the handle.
                     self.press_coord = coord - self.offset();
                     Response::Used
                 }
-                Event::PressMove { source, coord, .. } if Some(source) == self.press_source => {
+                Event::PressMove { coord, .. } => {
                     let offset = coord - self.press_coord;
                     let (offset, action) = self.set_offset(offset);
                     if action.is_empty() {
@@ -83,10 +80,7 @@ widget! {
                         Response::Msg(offset)
                     }
                 }
-                Event::PressEnd { source, .. } if Some(source) == self.press_source => {
-                    self.press_source = None;
-                    Response::Used
-                }
+                Event::PressEnd { .. } => Response::Used,
                 _ => Response::Unused,
             }
         }
@@ -99,7 +93,6 @@ impl DragHandle {
         DragHandle {
             core: Default::default(),
             track: Default::default(),
-            press_source: None,
             press_coord: Coord::ZERO,
         }
     }
@@ -161,9 +154,7 @@ impl DragHandle {
         source: PressSource,
         coord: Coord,
     ) -> Offset {
-        if !self.grab_press(mgr, source, coord) {
-            return self.offset();
-        }
+        mgr.grab_press_unique(self.id(), source, coord, Some(CursorIcon::Grabbing));
 
         self.press_coord = self.track.pos + self.core.rect.size / 2;
 
@@ -172,17 +163,5 @@ impl DragHandle {
         debug_assert!(action == TkAction::REDRAW);
         mgr.send_action(action);
         offset
-    }
-
-    fn grab_press(&mut self, mgr: &mut EventMgr, source: PressSource, coord: Coord) -> bool {
-        let cur = Some(event::CursorIcon::Grabbing);
-        if mgr.request_grab(self.id(), source, coord, event::GrabMode::Grab, cur) {
-            // Interacting with a scrollbar with multiple presses
-            // does not make sense. Any other gets aborted.
-            self.press_source = Some(source);
-            true
-        } else {
-            false
-        }
     }
 }

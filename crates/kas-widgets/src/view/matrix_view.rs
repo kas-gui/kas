@@ -10,7 +10,7 @@ use super::{driver, Driver, PressPhase, SelectionError, SelectionMode};
 use crate::ScrollBars;
 use crate::Scrollable;
 use kas::event::components::ScrollComponent;
-use kas::event::{ChildMsg, Command, CursorIcon, GrabMode, PressSource};
+use kas::event::{ChildMsg, Command, CursorIcon};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
 use kas::updatable::{MatrixData, UpdatableHandler};
@@ -71,7 +71,6 @@ widget! {
         sel_mode: SelectionMode,
         // TODO(opt): replace selection list with RangeOrSet type?
         selection: LinearSet<T::Key>,
-        press_event: Option<PressSource>,
         press_phase: PressPhase,
         press_target: Option<T::Key>,
     }
@@ -103,7 +102,6 @@ widget! {
                 scroll: Default::default(),
                 sel_mode: SelectionMode::None,
                 selection: Default::default(),
-                press_event: None,
                 press_phase: PressPhase::None,
                 press_target: None,
             }
@@ -192,18 +190,23 @@ widget! {
         /// Clear all selected items
         ///
         /// Does not send [`ChildMsg`] responses.
-        pub fn clear_selected(&mut self) {
-            self.selection.clear();
+        pub fn clear_selected(&mut self) -> TkAction {
+            if self.selection.is_empty() {
+                TkAction::empty()
+            } else {
+                self.selection.clear();
+                TkAction::REDRAW
+            }
         }
 
         /// Directly select an item
         ///
-        /// Returns `true` if selected, `false` if already selected.
-        /// Fails if selection mode does not permit selection or if the key is
-        /// invalid.
+        /// Returns `TkAction::REDRAW` if newly selected, `TkAction::empty()` if
+        /// already selected. Fails if selection mode does not permit selection
+        /// or if the key is invalid.
         ///
         /// Does not send [`ChildMsg`] responses.
-        pub fn select(&mut self, key: T::Key) -> Result<bool, SelectionError> {
+        pub fn select(&mut self, key: T::Key) -> Result<TkAction, SelectionError> {
             match self.sel_mode {
                 SelectionMode::None => return Err(SelectionError::Disabled),
                 SelectionMode::Single => self.selection.clear(),
@@ -212,17 +215,23 @@ widget! {
             if !self.data.contains(&key) {
                 return Err(SelectionError::Key);
             }
-            Ok(self.selection.insert(key))
+            match self.selection.insert(key) {
+                true => Ok(TkAction::REDRAW),
+                false => Ok(TkAction::empty()),
+            }
         }
 
         /// Directly deselect an item
         ///
-        /// Returns `true` if deselected, `false` if not previously selected.
-        /// Also returns `false` on invalid keys.
+        /// Returns `TkAction::REDRAW` if deselected, `TkAction::empty()` if not
+        /// previously selected or if the key is invalid.
         ///
         /// Does not send [`ChildMsg`] responses.
-        pub fn deselect(&mut self, key: &T::Key) -> bool {
-            self.selection.remove(key)
+        pub fn deselect(&mut self, key: &T::Key) -> TkAction {
+            match self.selection.remove(key) {
+                true => TkAction::REDRAW,
+                false => TkAction::empty(),
+            }
         }
 
         /// Manually trigger an update to handle changed data
@@ -497,14 +506,14 @@ widget! {
             Some(self.id())
         }
 
-        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
-            let disabled = disabled || self.is_disabled();
+        fn draw(&mut self, mut draw: DrawMgr) {
+            let mut draw = draw.with_core(self.core_data());
             let offset = self.scroll_offset();
             let num = usize::conv(self.cur_len.cols) * usize::conv(self.cur_len.rows);
             draw.with_clip_region(self.core.rect, offset, |mut draw| {
                 for child in &mut self.widgets[..num] {
                     if let Some(ref key) = child.key {
-                        child.widget.draw(draw.re(), disabled);
+                        child.widget.draw(draw.re());
                         if self.selection.contains(key) {
                             draw.selection_box(child.widget.rect());
                         }
@@ -523,7 +532,7 @@ widget! {
                     self.update_view(mgr);
                     return Response::Update;
                 }
-                Event::PressMove { source, coord, .. } if self.press_event == Some(source) => {
+                Event::PressMove { coord, .. } => {
                     if let PressPhase::Start(start_coord) = self.press_phase {
                         if mgr.config_test_pan_thresh(coord - start_coord) {
                             self.press_phase = PressPhase::Pan;
@@ -537,35 +546,44 @@ widget! {
                         _ => return Response::Used,
                     }
                 }
-                Event::PressEnd { source, .. } if self.press_event == Some(source) => {
-                    self.press_event = None;
+                Event::PressEnd { ref end_id, .. } => {
                     if self.press_phase == PressPhase::Pan {
                         // fall through to scroll handler
-                    } else {
-                        return match self.sel_mode {
-                            SelectionMode::None => Response::Used,
-                            SelectionMode::Single => {
-                                self.selection.clear();
-                                if let Some(ref key) = self.press_target {
-                                    self.selection.insert(key.clone());
-                                    ChildMsg::Select(key.clone()).into()
-                                } else {
-                                    Response::Used
+                    } else if end_id.is_some() {
+                        if let Some(ref key) = self.press_target {
+                            if mgr.config().mouse_nav_focus() {
+                                for w in &self.widgets {
+                                    if w.key.as_ref().map(|k| k == key).unwrap_or(false) {
+                                        if w.widget.key_nav() {
+                                            mgr.set_nav_focus(w.widget.id(), false);
+                                        }
+                                        break;
+                                    }
                                 }
                             }
-                            SelectionMode::Multiple => {
-                                if let Some(ref key) = self.press_target {
+
+                            return match self.sel_mode {
+                                SelectionMode::None => Response::Used,
+                                SelectionMode::Single => {
+                                    mgr.redraw(self.id());
+                                    self.selection.clear();
+                                    self.selection.insert(key.clone());
+                                    ChildMsg::Select(key.clone()).into()
+                                }
+                                SelectionMode::Multiple => {
+                                    mgr.redraw(self.id());
                                     if self.selection.remove(key) {
                                         ChildMsg::Deselect(key.clone()).into()
                                     } else {
                                         self.selection.insert(key.clone());
                                         ChildMsg::Select(key.clone()).into()
                                     }
-                                } else {
-                                    Response::Used
                                 }
                             }
-                        };
+                        }
+                        return Response::Used;
+                    } else {
+                        return Response::Used;
                     }
                 }
                 Event::Command(cmd, _) => {
@@ -629,7 +647,7 @@ widget! {
                 .scroll_by_event(mgr, event, self.id(), self.core.rect.size, |mgr, source, _, coord| {
                     if source.is_primary() && mgr.config_enable_mouse_pan() {
                         let icon = Some(CursorIcon::Grabbing);
-                        mgr.request_grab(self_id, source, coord, GrabMode::Grab, icon);
+                        mgr.grab_press_unique(self_id, source, coord, icon);
                     }
                 });
 
@@ -676,11 +694,9 @@ widget! {
                             if source.is_primary() {
                                 // We request a grab with our ID, hence the
                                 // PressMove/PressEnd events are matched in handle().
-                                if mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None) {
-                                    self.press_event = Some(source);
-                                    self.press_phase = PressPhase::Start(coord);
-                                    self.press_target = key;
-                                }
+                                mgr.grab_press_unique(self.id(), source, coord, None);
+                                self.press_phase = PressPhase::Start(coord);
+                                self.press_target = key;
                                 Response::Used
                             } else {
                                 Response::Unused
@@ -705,11 +721,13 @@ widget! {
                         match self.sel_mode {
                             SelectionMode::None => Response::Used,
                             SelectionMode::Single => {
+                                mgr.redraw(self.id());
                                 self.selection.clear();
                                 self.selection.insert(key.clone());
                                 Response::Msg(ChildMsg::Select(key))
                             }
                             SelectionMode::Multiple => {
+                                mgr.redraw(self.id());
                                 if self.selection.remove(&key) {
                                     Response::Msg(ChildMsg::Deselect(key))
                                 } else {

@@ -6,10 +6,10 @@
 //! `Window` and `WindowList` types
 
 use log::{debug, error, info, trace};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use kas::cast::Cast;
-use kas::draw::{DrawIface, DrawShared, PassId};
+use kas::draw::{AnimationState, DrawIface, DrawShared, PassId};
 use kas::event::{CursorIcon, EventState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{SetRectMgr, SolveCache};
@@ -38,8 +38,9 @@ pub(crate) struct Window<C: CustomPipe, T: Theme<DrawPipe<C>>> {
     sc_desc: wgpu::SurfaceConfiguration,
     draw: DrawWindow<C::Window>,
     theme_window: T::Window,
-    frame_start: Instant,
-    next_frame_time: Option<Instant>,
+    time_last_gc: Instant,
+    next_avail_frame_time: Instant,
+    queued_frame_time: Option<Instant>,
 }
 
 // Public functions, for use by the toolkit
@@ -108,8 +109,9 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             sc_desc,
             draw,
             theme_window,
-            frame_start: time,
-            next_frame_time: Some(time),
+            time_last_gc: time,
+            next_avail_frame_time: time,
+            queued_frame_time: Some(time),
         };
         r.apply_size(shared);
 
@@ -166,15 +168,12 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
         let mut resume = self.mgr.next_resume();
 
-        if let Some(time) = self.next_frame_time {
+        if let Some(time) = self.queued_frame_time {
             if time <= Instant::now() {
                 self.window.request_redraw();
-                self.next_frame_time = None;
+                self.queued_frame_time = None;
             } else {
-                resume = match resume {
-                    Some(t) => Some(t.min(time)),
-                    None => Some(time),
-                };
+                resume = resume.map(|t| t.min(time)).or(Some(time));
             }
         }
 
@@ -207,8 +206,8 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
             self.mgr.region_moved(&mut tkw, &mut *self.widget);
         }
-        if !action.is_empty() && self.next_frame_time.is_none() {
-            self.next_frame_time = Some(self.frame_start + shared.frame_dur);
+        if !action.is_empty() {
+            self.queued_frame_time = Some(self.next_avail_frame_time);
         }
     }
 
@@ -227,7 +226,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         self.mgr.with(&mut tkw, |mgr| {
             mgr.update_timer(widget);
         });
-        self.mgr.next_resume()
+        self.next_resume()
     }
 
     pub fn update_handle(
@@ -310,7 +309,6 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         };
 
         self.window.request_redraw();
-        self.next_frame_time = None;
         trace!("apply_size completed in {}µs", time.elapsed().as_micros());
     }
 
@@ -338,9 +336,10 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         );
     }
 
-    pub(crate) fn do_draw(&mut self, shared: &mut SharedState<C, T>) {
+    // Draw. Return true when further event processing is needed immediately.
+    pub(crate) fn do_draw(&mut self, shared: &mut SharedState<C, T>) -> bool {
         let start = Instant::now();
-        self.frame_start = start;
+        self.next_avail_frame_time = start + shared.frame_dur;
 
         {
             let draw = DrawIface {
@@ -353,19 +352,33 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             unsafe {
                 // Safety: lifetimes do not escape the returned draw_handle value.
                 let mut draw_handle = shared.theme.draw_handle(draw, &mut self.theme_window);
-                let draw_mgr = DrawMgr::new(&mut draw_handle, &mut self.mgr);
-                self.widget.draw(draw_mgr, false);
+                let draw_mgr = DrawMgr::new(&mut draw_handle, &mut self.mgr, false);
+                self.widget.draw(draw_mgr);
             }
             #[cfg(feature = "gat")]
             {
                 let mut draw_handle = shared.theme.draw_handle(draw, &mut self.theme_window);
-                let draw_mgr = DrawMgr::new(&mut draw_handle, &mut self.mgr);
-                self.widget.draw(draw_mgr, false);
+                let draw_mgr = DrawMgr::new(&mut draw_handle, &mut self.mgr, false);
+                self.widget.draw(draw_mgr);
             }
         }
 
-        // Ignore REDRAW since we're doing that anyway. Other actions will be handled by the event loop.
-        self.mgr.action -= TkAction::REDRAW;
+        if self.time_last_gc < start + Duration::from_secs(8) {
+            self.time_last_gc = start;
+            self.theme_window.garbage_collect();
+        }
+
+        self.queued_frame_time = match self.draw.animation {
+            AnimationState::None => None,
+            AnimationState::Animate => Some(self.next_avail_frame_time),
+            AnimationState::Timed(time) => Some(time.max(self.next_avail_frame_time)),
+        };
+        self.draw.animation = AnimationState::None;
+        self.mgr.action -= TkAction::REDRAW; // we just drew
+        if !self.mgr.action.is_empty() {
+            info!("do_draw: abort and enqueue `Self::update` due to non-empty actions");
+            return true;
+        }
 
         let time2 = Instant::now();
         let frame = match self.surface.get_current_texture() {
@@ -374,12 +387,12 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
                 error!("Failed to get frame texture: {}", e);
                 // It may be possible to recover by calling surface.configure(...) then retrying
                 // surface.get_current_texture(), but is doing so ever useful?
-                return;
+                return true;
             }
         };
+        // TODO: check frame.suboptimal ?
         let view = frame.texture.create_view(&Default::default());
 
-        // TODO: check frame.optimal ?
         let clear_color = to_wgpu_color(shared.theme.clear_color());
         shared.render(&mut self.draw, &view, clear_color);
 
@@ -395,6 +408,16 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             self.draw.text.dur_micros(),
             (end - time2).as_micros()
         );
+        false
+    }
+
+    pub(crate) fn next_resume(&self) -> Option<Instant> {
+        match (self.mgr.next_resume(), self.queued_frame_time) {
+            (Some(t1), Some(t2)) => Some(t1.min(t2)),
+            (Some(t), None) => Some(t),
+            (None, Some(t)) => Some(t),
+            (None, None) => None,
+        }
     }
 }
 

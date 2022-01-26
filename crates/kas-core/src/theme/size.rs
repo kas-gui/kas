@@ -7,9 +7,9 @@
 
 use std::ops::Deref;
 
-#[allow(unused)]
-use super::DrawMgr;
 use super::TextClass;
+#[allow(unused)]
+use super::{DrawCtx, DrawMgr};
 use crate::geom::Size;
 use crate::layout::{AxisInfo, FrameRules, Margins, SizeRules};
 use crate::text::TextApi;
@@ -20,11 +20,11 @@ use crate::text::TextApiExt;
 /// Size and scale interface
 ///
 /// This interface is provided to widgets in [`crate::Layout::size_rules`].
-/// It may also be accessed through [`crate::event::EventMgr::size_mgr`] and
-/// [`DrawMgr::size_mgr`].
+/// It may also be accessed through [`crate::event::EventMgr::size_mgr`],
+/// [`DrawMgr::size_mgr`] and [`DrawCtx::size_mgr`].
 ///
 /// Most methods get or calculate the size of some feature. These same features
-/// may be drawn through [`DrawMgr`].
+/// may be drawn through [`DrawCtx`].
 pub struct SizeMgr<'a>(&'a dyn SizeHandle);
 
 impl<'a> SizeMgr<'a> {
@@ -163,8 +163,8 @@ impl<'a> SizeMgr<'a> {
     }
 
     /// Width of an edit marker
-    pub fn edit_marker_width(&self) -> f32 {
-        self.0.edit_marker_width()
+    pub fn text_cursor_width(&self) -> f32 {
+        self.0.text_cursor_width()
     }
 
     /// Size of the sides of a button.
@@ -180,12 +180,12 @@ impl<'a> SizeMgr<'a> {
         self.0.edit_surround(is_vert)
     }
 
-    /// Size of the element drawn by [`DrawMgr::checkbox`].
+    /// Size of the element drawn by [`DrawCtx::checkbox`].
     pub fn checkbox(&self) -> Size {
         self.0.checkbox()
     }
 
-    /// Size of the element drawn by [`DrawMgr::radiobox`].
+    /// Size of the element drawn by [`DrawCtx::radiobox`].
     pub fn radiobox(&self) -> Size {
         self.0.radiobox()
     }
@@ -294,7 +294,7 @@ pub trait SizeHandle {
     fn text_bound(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules;
 
     /// Width of an edit marker
-    fn edit_marker_width(&self) -> f32;
+    fn text_cursor_width(&self) -> f32;
 
     /// Size of the sides of a button.
     fn button_surround(&self, vert: bool) -> FrameRules;
@@ -305,10 +305,10 @@ pub trait SizeHandle {
     /// may be. The margin included here should be large enough!
     fn edit_surround(&self, vert: bool) -> FrameRules;
 
-    /// Size of the element drawn by [`DrawMgr::checkbox`].
+    /// Size of the element drawn by [`DrawCtx::checkbox`].
     fn checkbox(&self) -> Size;
 
-    /// Size of the element drawn by [`DrawMgr::radiobox`].
+    /// Size of the element drawn by [`DrawCtx::radiobox`].
     fn radiobox(&self) -> Size;
 
     /// Dimensions for a scrollbar
@@ -385,8 +385,8 @@ macro_rules! impl_ {
             fn text_bound(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules {
                 self.deref().text_bound(text, class, axis)
             }
-            fn edit_marker_width(&self) -> f32 {
-                self.deref().edit_marker_width()
+            fn text_cursor_width(&self) -> f32 {
+                self.deref().text_cursor_width()
             }
 
             fn button_surround(&self, vert: bool) -> FrameRules {

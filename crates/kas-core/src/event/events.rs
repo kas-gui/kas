@@ -112,14 +112,34 @@ pub enum Event {
         delta: DVec2,
     },
     /// A mouse button was pressed or touch event started
+    ///
+    /// This event is sent in exactly two cases, in this order:
+    ///
+    /// 1.  When a pop-up layer is active ([`EventMgr::add_popup`]), the owner
+    ///     of the top-most layer will receive this event. If the event is not
+    ///     used, then the pop-up will be closed and the event sent again.
+    /// 2.  If a widget is found under the mouse when pressed or where a touch
+    ///     event starts, this event is sent to the widget.
+    ///
+    /// If `start_id` is `None`, then no widget was found at the coordinate and
+    /// the event will only be delivered to pop-up layer owners.
     PressStart {
         source: PressSource,
-        start_id: WidgetId,
+        start_id: Option<WidgetId>,
         coord: Coord,
     },
     /// Movement of mouse or a touch press
     ///
-    /// Received only given a [press grab](EventMgr::request_grab).
+    /// This event is sent in exactly two cases, in this order:
+    ///
+    /// 1.  Given a grab ([`EventMgr::grab_press`]), motion events for the
+    ///     grabbed mouse pointer or touched finger will be sent.
+    /// 2.  When a pop-up layer is active ([`EventMgr::add_popup`]), the owner
+    ///     of the top-most layer will receive this event. If the event is not
+    ///     used, then the pop-up will be closed and the event sent again.
+    ///
+    /// If `cur_id` is `None`, no widget was found at the coordinate (either
+    /// outside the window or [`crate::Layout::find_id`] failed).
     PressMove {
         source: PressSource,
         cur_id: Option<WidgetId>,
@@ -128,14 +148,25 @@ pub enum Event {
     },
     /// End of a click/touch press
     ///
-    /// Received only given a [press grab](EventMgr::request_grab).
+    /// If `success`, this is a button-release or touch finish; otherwise this
+    /// is a cancelled/interrupted grab. "Activation events" (e.g. clicking of a
+    /// button or menu item) should only happen on `success`. "Movement events"
+    /// such as panning, moving a slider or opening a menu should not be undone
+    /// when cancelling: the panned item or slider should be released as is, or
+    /// the menu should remain open.
     ///
-    /// When `end_id == None`, this is a "cancelled press": the end of the press
-    /// is outside the application window.
+    /// This event is sent in exactly one case:
+    ///
+    /// 1.  Given a grab ([`EventMgr::grab_press`]), release/cancel events
+    ///     for the same mouse button or touched finger will be sent.
+    ///
+    /// If `cur_id` is `None`, no widget was found at the coordinate (either
+    /// outside the window or [`crate::Layout::find_id`] failed).
     PressEnd {
         source: PressSource,
         end_id: Option<WidgetId>,
         coord: Coord,
+        success: bool,
     },
     /// Update from a timer
     ///

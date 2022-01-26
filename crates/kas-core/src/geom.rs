@@ -142,7 +142,7 @@ macro_rules! impl_common {
 ///
 /// A coordinate (or point) is an absolute position. One cannot add a point to
 /// a point. The difference between two points is an [`Offset`].
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Coord(pub i32, pub i32);
 
@@ -278,7 +278,7 @@ impl<X: Pixel> From<Coord> for PhysicalPosition<X> {
 /// (similar to overflow checks on integers).
 ///
 /// This may be converted to [`Offset`] with `from` / `into`.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Size(pub i32, pub i32);
 
@@ -479,7 +479,7 @@ impl From<Size> for winit::dpi::Size {
 /// negative. It can be multiplied by a scalar.
 ///
 /// This may be converted to [`Size`] with `from` / `into`.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Offset(pub i32, pub i32);
 
@@ -583,7 +583,7 @@ impl From<Offset> for kas_text::Vec2 {
 ///
 /// The region is defined by a point `pos` and an extent `size`, allowing easy
 /// translations. It is empty unless `size` is positive on both axes.
-#[derive(Clone, Copy, Default, Debug, PartialEq)]
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Rect {
     pub pos: Coord,

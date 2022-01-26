@@ -99,10 +99,10 @@ widget! {
             self.core.rect = rect;
         }
 
-        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
+        fn draw(&mut self, mut draw: DrawMgr) {
+            let mut draw = draw.with_core(self.core_data());
             let dir = self.direction.as_direction();
-            let state = draw.input_state(self, disabled);
-            draw.progress_bar(self.core.rect, dir, state, self.value);
+            draw.progress_bar(self.core.rect, dir, self.value);
         }
     }
 }

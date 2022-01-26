@@ -30,7 +30,7 @@ widget! {
             SizeRules::empty(stretch)
         }
 
-        fn draw(&mut self, _: DrawMgr, _: bool) {}
+        fn draw(&mut self, _: DrawMgr) {}
     }
 }
 

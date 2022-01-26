@@ -36,14 +36,14 @@ widget! {
         }
 
         #[cfg(feature = "min_spec")]
-        default fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
-            let state = draw.input_state(self, disabled);
-            draw.text_effects(self.core.rect.pos, &self.label, TextClass::Label, state);
+        default fn draw(&mut self, mut draw: DrawMgr) {
+            let mut draw = draw.with_core(self.core_data());
+            draw.text_effects(self.core.rect.pos, &self.label, TextClass::Label);
         }
         #[cfg(not(feature = "min_spec"))]
-        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
-            let state = draw.input_state(self, disabled);
-            draw.text_effects(self.core.rect.pos, &self.label, TextClass::Label, state);
+        fn draw(&mut self, mut draw: DrawMgr) {
+            let mut draw = draw.with_core(self.core_data());
+            draw.text_effects(self.core.rect.pos, &self.label, TextClass::Label);
         }
     }
 
@@ -65,42 +65,26 @@ widget! {
 
 #[cfg(feature = "min_spec")]
 impl Layout for AccelLabel {
-    fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
-        let state = draw.input_state(self, disabled);
+    fn draw(&mut self, mut draw: DrawMgr) {
+        let mut draw = draw.with_core(self.core_data());
         let accel = draw.ev_state().show_accel_labels();
-        draw.text_accel(
-            self.core.rect.pos,
-            &self.label,
-            accel,
-            TextClass::Label,
-            state,
-        );
+        draw.text_accel(self.core.rect.pos, &self.label, accel, TextClass::Label);
     }
 }
 
 // Str/String representations have no effects, so use simpler draw call
 #[cfg(feature = "min_spec")]
 impl<'a> Layout for Label<&'a str> {
-    fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
-        let state = draw.input_state(self, disabled);
-        draw.text(
-            self.core.rect.pos,
-            self.label.as_ref(),
-            TextClass::Label,
-            state,
-        );
+    fn draw(&mut self, mut draw: DrawMgr) {
+        let mut draw = draw.with_core(self.core_data());
+        draw.text(self.core.rect.pos, self.label.as_ref(), TextClass::Label);
     }
 }
 #[cfg(feature = "min_spec")]
 impl Layout for StringLabel {
-    fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
-        let state = draw.input_state(self, disabled);
-        draw.text(
-            self.core.rect.pos,
-            self.label.as_ref(),
-            TextClass::Label,
-            state,
-        );
+    fn draw(&mut self, mut draw: DrawMgr) {
+        let mut draw = draw.with_core(self.core_data());
+        draw.text(self.core.rect.pos, self.label.as_ref(), TextClass::Label);
     }
 }
 

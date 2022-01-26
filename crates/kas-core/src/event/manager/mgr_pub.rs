@@ -45,12 +45,8 @@ impl EventState {
     /// Note that `char_focus` implies `sel_focus`.
     #[inline]
     pub fn has_char_focus(&self, w_id: &WidgetId) -> (bool, bool) {
-        if let Some(id) = self.sel_focus.as_ref() {
-            if id == w_id {
-                return (self.char_focus, true);
-            }
-        }
-        (false, false)
+        let sel_focus = *w_id == self.sel_focus;
+        (sel_focus && self.char_focus, sel_focus)
     }
 
     /// Get whether this widget has keyboard navigation focus
@@ -547,23 +543,29 @@ impl<'a> EventMgr<'a> {
         true
     }
 
-    /// Request a grab on the given input `source`
+    /// Grab "press" events for `source` (a mouse or finger)
     ///
-    /// On success, this method returns true and corresponding mouse/touch
-    /// events will be forwarded to widget `id`. The grab terminates
-    /// automatically when the press is released.
-    /// Returns false when the grab-request fails.
+    /// When a "press" source is "grabbed", events for this source will be sent
+    /// to the grabbing widget. Notes:
+    ///
+    /// -   For mouse sources, a click-press event from another button will
+    ///     cancel this grab; [`Event::PressEnd`] will be sent (with mode
+    ///     [`GrabMode::Grab`]), then [`Event::PressStart`] will be sent to the
+    ///     widget under the mouse like normal.
+    /// -   For touch-screen sources, events are delivered until the finger is
+    ///     removed or the touch is cancelled (e.g. by dragging off-screen).
+    /// -   [`Self::grab_press_unique`] is a variant of this method which
+    ///     cancels grabs of other sources by the same widget.
     ///
     /// Each grab can optionally visually depress one widget, and initially
     /// depresses the widget owning the grab (the `id` passed here). Call
     /// [`EventMgr::set_grab_depress`] to update the grab's depress target.
     /// This is cleared automatically when the grab ends.
     ///
-    /// Behaviour depends on the `mode`:
+    /// The events sent depends on the `mode`:
     ///
     /// -   [`GrabMode::Grab`]: simple / low-level interpretation of input
     ///     which delivers [`Event::PressMove`] and [`Event::PressEnd`] events.
-    ///     Multiple event sources may be grabbed simultaneously.
     /// -   All other [`GrabMode`] values: generates [`Event::Pan`] events.
     ///     Requesting additional grabs on the same widget from the same source
     ///     (i.e. multiple touches) allows generation of rotation and scale
@@ -573,27 +575,21 @@ impl<'a> EventMgr<'a> {
     /// Since these events are *requested*, the widget should consume them even
     /// if not required, although in practice this
     /// only affects parents intercepting [`Response::Unused`] events.
-    ///
-    /// This method normally succeeds, but fails when
-    /// multiple widgets attempt a grab the same press source simultaneously
-    /// (only the first grab is successful).
-    ///
-    /// This method automatically cancels any active character grab
-    /// on other widgets and updates keyboard navigation focus.
-    pub fn request_grab(
+    pub fn grab_press(
         &mut self,
         id: WidgetId,
         source: PressSource,
         coord: Coord,
         mode: GrabMode,
         cursor: Option<CursorIcon>,
-    ) -> bool {
+    ) {
         let start_id = id.clone();
         let mut pan_grab = (u16::MAX, 0);
         match source {
             PressSource::Mouse(button, repetitions) => {
-                if self.state.mouse_grab.is_some() {
-                    return false;
+                if self.remove_mouse_grab().is_some() {
+                    #[cfg(debug_assertions)]
+                    log::error!("grab_press: existing mouse grab!");
                 }
                 if mode != GrabMode::Grab {
                     pan_grab = self.state.set_pan_on(id.clone(), mode, false, coord);
@@ -615,8 +611,9 @@ impl<'a> EventMgr<'a> {
                 }
             }
             PressSource::Touch(touch_id) => {
-                if self.get_touch(touch_id).is_some() {
-                    return false;
+                if self.remove_touch(touch_id).is_some() {
+                    #[cfg(debug_assertions)]
+                    log::error!("grab_press: existing touch grab!");
                 }
                 if mode != GrabMode::Grab {
                     pan_grab = self.state.set_pan_on(id.clone(), mode, true, coord);
@@ -636,13 +633,32 @@ impl<'a> EventMgr<'a> {
         }
 
         self.redraw(start_id);
-        true
+    }
+
+    /// A variant of [`Self::grab_press`], where a unique grab is desired
+    ///
+    /// This removes any existing press-grabs by widget `id`, then calls
+    /// [`Self::grab_press`] with `mode = GrabMode::Grab` to create a new grab.
+    /// Previous grabs are discarded without delivering [`Event::PressEnd`].
+    pub fn grab_press_unique(
+        &mut self,
+        id: WidgetId,
+        source: PressSource,
+        coord: Coord,
+        cursor: Option<CursorIcon>,
+    ) {
+        if id == self.state.mouse_grab.as_ref().map(|grab| &grab.start_id) {
+            self.remove_mouse_grab();
+        }
+        self.state.touch_grab.retain(|grab| id != grab.start_id);
+
+        self.grab_press(id, source, coord, GrabMode::Grab, cursor);
     }
 
     /// Update the mouse cursor used during a grab
     ///
     /// This only succeeds if widget `id` has an active mouse-grab (see
-    /// [`EventMgr::request_grab`]). The cursor will be reset when the mouse-grab
+    /// [`EventMgr::grab_press`]). The cursor will be reset when the mouse-grab
     /// ends.
     pub fn update_grab_cursor(&mut self, id: WidgetId, icon: CursorIcon) {
         if let Some(ref grab) = self.state.mouse_grab {
@@ -655,7 +671,7 @@ impl<'a> EventMgr<'a> {
     /// Set a grab's depress target
     ///
     /// When a grab on mouse or touch input is in effect
-    /// ([`EventMgr::request_grab`]), the widget owning the grab may set itself
+    /// ([`EventMgr::grab_press`]), the widget owning the grab may set itself
     /// or any other widget as *depressed* ("pushed down"). Each grab depresses
     /// at most one widget, thus setting a new depress target clears any
     /// existing target. Initially a grab depresses its owner.

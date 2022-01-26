@@ -8,13 +8,13 @@
 use std::any::Any;
 use std::fmt;
 
-#[allow(unused)]
-use crate::event::EventState;
 use crate::event::{self, ConfigureManager, EventMgr};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{self, AlignHints, AxisInfo, SetRectMgr, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::util::IdentifyWidget;
+#[allow(unused)]
+use crate::{event::EventState, theme::DrawCtx};
 use crate::{CoreData, TkAction, WidgetId};
 
 impl dyn WidgetCore {
@@ -73,6 +73,15 @@ pub trait WidgetCore: Any + fmt::Debug {
     #[inline]
     fn id_ref(&self) -> &WidgetId {
         &self.core_data().id
+    }
+
+    /// Get the `u64` version of the widget identifier
+    ///
+    /// This may be used to approximately test identity (see notes on
+    /// [`WidgetId::as_u64`]).
+    #[inline]
+    fn id_u64(&self) -> u64 {
+        self.core_data().id.as_u64()
     }
 
     /// Get whether the widget is disabled
@@ -386,7 +395,7 @@ pub trait Layout: WidgetChildren {
     ///
     /// Affects event handling via [`Self::find_id`] and affects the positioning
     /// of pop-up menus. [`Self::draw`] must be implemented directly using
-    /// [`crate::theme::DrawMgr::with_clip_region`] to offset contents.
+    /// [`DrawCtx::with_clip_region`] to offset contents.
     #[inline]
     fn translation(&self) -> Offset {
         Offset::ZERO
@@ -467,17 +476,13 @@ pub trait Layout: WidgetChildren {
     /// This method is invoked each frame to draw visible widgets. It should
     /// draw itself and recurse into all visible children.
     ///
-    /// The `disabled` argument is passed in from the *parent*; a widget should
-    /// use `let disabled = disabled || self.is_disabled();` to determine its
-    /// own disabled state, then pass this value on to children.
-    ///
-    /// [`DrawMgr::input_state`] may be used to obtain an
-    /// [`crate::theme::InputState`] to determine active visual effects.
+    /// One should use `let draw = draw.with_core(self.core_data());` to obtain
+    /// a [`DrawCtx`], enabling further drawing.
     ///
     /// The default impl draws elements as defined by [`Self::layout`].
-    fn draw(&mut self, draw: DrawMgr, disabled: bool) {
-        let state = draw.input_state(self, disabled);
-        self.layout().draw(draw, state);
+    fn draw(&mut self, mut draw: DrawMgr) {
+        let draw = draw.with_core(self.core_data());
+        self.layout().draw(draw);
     }
 }
 

@@ -6,7 +6,7 @@
 //! Combobox
 
 use super::{IndexedColumn, MenuEntry};
-use kas::event::{self, Command, GrabMode};
+use kas::event::{self, Command};
 use kas::layout;
 use kas::prelude::*;
 use kas::theme::TextClass;
@@ -48,12 +48,12 @@ widget! {
             None
         }
 
-        fn draw(&mut self, draw: DrawMgr, disabled: bool) {
-            let mut state = draw.input_state(self, disabled);
+        fn draw(&mut self, mut draw: DrawMgr) {
+            let mut draw = draw.with_core(self.core_data());
             if self.popup_id.is_some() {
-                state.insert(InputState::DEPRESS);
+                draw.state.insert(InputState::DEPRESS);
             }
-            self.layout().draw(draw, state);
+            self.layout().draw(draw);
         }
     }
 
@@ -85,10 +85,10 @@ widget! {
                     start_id,
                     coord,
                 } => {
-                    if self.is_ancestor_of(&start_id) {
+                    if start_id.as_ref().map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
                         if source.is_primary() {
-                            mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None);
-                            mgr.set_grab_depress(source, Some(start_id));
+                            mgr.grab_press_unique(self.id(), source, coord, None);
+                            mgr.set_grab_depress(source, start_id);
                             self.opening = self.popup_id.is_none();
                         }
                         Response::Used
@@ -116,7 +116,7 @@ widget! {
                     }
                     Response::Used
                 }
-                Event::PressEnd { ref end_id, .. } => {
+                Event::PressEnd { ref end_id, success, .. } if success => {
                     if let Some(ref id) = end_id {
                         if self.eq_id(id) {
                             if self.opening {
@@ -135,6 +135,7 @@ widget! {
                     }
                     Response::Used
                 }
+                Event::PressEnd { .. } =>Response::Used,
                 Event::PopupRemoved(id) => {
                     debug_assert_eq!(Some(id), self.popup_id);
                     self.popup_id = None;

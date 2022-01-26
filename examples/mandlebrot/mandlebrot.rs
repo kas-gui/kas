@@ -340,7 +340,7 @@ widget! {
             self.rel_width = rel_width.0 as f32;
         }
 
-        fn draw(&mut self, mut draw: DrawMgr, _: bool) {
+        fn draw(&mut self, mut draw: DrawMgr) {
             let draw = draw.draw_device();
             let draw = DrawIface::<DrawPipe<Pipe>>::downcast_from(draw).unwrap();
             let p = (self.alpha, self.delta, self.rel_width, self.iter);
@@ -401,7 +401,7 @@ widget! {
                     Response::Msg(())
                 }
                 Event::PressStart { source, coord, .. } => {
-                    mgr.request_grab(
+                    mgr.grab_press(
                         self.id(),
                         source,
                         coord,

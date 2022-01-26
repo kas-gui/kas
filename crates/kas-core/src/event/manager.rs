@@ -28,10 +28,10 @@ use crate::{ShellWindow, TkAction, Widget, WidgetId, WindowId};
 mod mgr_pub;
 mod mgr_shell;
 
-/// Controls the types of events delivered by [`EventMgr::request_grab`]
+/// Controls the types of events delivered by [`EventMgr::grab_press`]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum GrabMode {
-    /// Deliver [`Event::PressMove`] and [`Event::PressEnd`] for each press
+    /// Deliver [`Event::PressMove`] and [`Event::PressEnd`] for each grabbed press
     Grab,
     /// Deliver [`Event::Pan`] events, with scaling and rotation
     PanFull,
@@ -253,7 +253,7 @@ impl EventState {
                 grab.coords[i] = grab.coords[i + 1];
             }
         } else {
-            return; // shouldn't happen
+            return;
         }
 
         // Note: the fact that grab.n > 0 implies source is a touch event!
@@ -451,21 +451,16 @@ impl<'a> EventMgr<'a> {
         self.state.mouse_grab.as_mut()
     }
 
-    fn end_mouse_grab(&mut self, button: MouseButton) {
-        if self
-            .state
-            .mouse_grab
-            .as_ref()
-            .map(|grab| grab.button != button)
-            .unwrap_or(true)
-        {
-            return;
-        }
+    // Clears mouse grab and pan grab, resets cursor and redraws
+    fn remove_mouse_grab(&mut self) -> Option<MouseGrab> {
         if let Some(grab) = self.state.mouse_grab.take() {
             trace!("EventMgr: end mouse grab by {}", grab.start_id);
             self.shell.set_cursor_icon(self.state.hover_icon);
-            self.redraw(grab.start_id);
+            self.send_action(TkAction::REDRAW); // redraw(..)
             self.state.remove_pan_grab(grab.pan_grab);
+            Some(grab)
+        } else {
+            None
         }
     }
 
@@ -479,14 +474,15 @@ impl<'a> EventMgr<'a> {
         None
     }
 
+    // Clears touch grab and pan grab and redraws
     fn remove_touch(&mut self, touch_id: u64) -> Option<TouchGrab> {
         for i in 0..self.state.touch_grab.len() {
             if self.state.touch_grab[i].id == touch_id {
-                trace!(
-                    "EventMgr: end touch grab by {}",
-                    self.state.touch_grab[i].start_id
-                );
-                return Some(self.state.touch_grab.remove(i));
+                let grab = self.state.touch_grab.remove(i);
+                trace!("EventMgr: end touch grab by {}", grab.start_id);
+                self.send_action(TkAction::REDRAW); // redraw(..)
+                self.state.remove_pan_grab(grab.pan_grab);
+                return Some(grab);
             }
         }
         None
@@ -547,7 +543,10 @@ impl<'a> EventMgr<'a> {
         !matches!(r, Response::Unused)
     }
 
-    fn send_popup_first<W: Widget + ?Sized>(&mut self, widget: &mut W, id: WidgetId, event: Event) {
+    fn send_popup_first<W>(&mut self, widget: &mut W, id: Option<WidgetId>, event: Event)
+    where
+        W: Widget + ?Sized,
+    {
         while let Some((wid, parent)) = self
             .state
             .popups
@@ -561,7 +560,9 @@ impl<'a> EventMgr<'a> {
             }
             self.close_window(wid, false);
         }
-        self.send_event(widget, id, event);
+        if let Some(id) = id {
+            self.send_event(widget, id, event);
+        }
     }
 }
 

@@ -130,10 +130,10 @@ widget! {
             self.scroll_offset()
         }
 
-        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
-            let disabled = disabled || self.is_disabled();
-            draw.with_clip_region(self.core.rect, self.scroll_offset(), |handle| {
-                self.inner.draw(handle, disabled)
+        fn draw(&mut self, mut draw: DrawMgr) {
+            let mut draw = draw.with_core(self.core_data());
+            draw.with_clip_region(self.core.rect, self.scroll_offset(), |mut draw| {
+                self.inner.draw(draw.re())
             });
         }
     }
@@ -171,7 +171,7 @@ widget! {
                     .scroll_by_event(mgr, event, self.id(), self.core.rect.size, |mgr, source, _, coord| {
                         if source.is_primary() && mgr.config_enable_mouse_pan() {
                             let icon = Some(event::CursorIcon::Grabbing);
-                            mgr.request_grab(id, source, coord, event::GrabMode::Grab, icon);
+                            mgr.grab_press_unique(id, source, coord, icon);
                         }
                     });
             if !action.is_empty() {

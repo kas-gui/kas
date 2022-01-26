@@ -133,6 +133,7 @@ where
             MainEventsCleared => {
                 let mut close_all = false;
                 let mut to_close = SmallVec::<[ww::WindowId; 4]>::new();
+                self.resumes.clear();
                 for (window_id, window) in self.windows.iter_mut() {
                     let (action, resume) = window.update(&mut self.shared);
                     if action.contains(TkAction::EXIT) {
@@ -141,16 +142,7 @@ where
                         to_close.push(*window_id);
                     }
                     if let Some(instant) = resume {
-                        if let Some((i, _)) = self
-                            .resumes
-                            .iter()
-                            .enumerate()
-                            .find(|item| (item.1).1 == *window_id)
-                        {
-                            self.resumes[i].0 = instant;
-                        } else {
-                            self.resumes.push((instant, *window_id));
-                        }
+                        self.resumes.push((instant, *window_id));
                     }
                 }
 
@@ -189,11 +181,30 @@ where
 
             RedrawRequested(id) => {
                 if let Some(window) = self.windows.get_mut(&id) {
-                    window.do_draw(&mut self.shared);
+                    if window.do_draw(&mut self.shared) {
+                        *control_flow = ControlFlow::Poll;
+                    }
                 }
             }
 
-            RedrawEventsCleared | LoopDestroyed | Suspended | Resumed => return,
+            RedrawEventsCleared => {
+                if matches!(control_flow, ControlFlow::Wait | ControlFlow::WaitUntil(_)) {
+                    self.resumes.clear();
+                    for (window_id, window) in self.windows.iter() {
+                        if let Some(instant) = window.next_resume() {
+                            self.resumes.push((instant, *window_id));
+                        }
+                    }
+                    self.resumes.sort_by_key(|item| item.0);
+
+                    *control_flow = match self.resumes.first() {
+                        Some((instant, _)) => ControlFlow::WaitUntil(*instant),
+                        None => ControlFlow::Wait,
+                    };
+                }
+            }
+
+            LoopDestroyed | Suspended | Resumed => return,
         };
 
         // Create and init() any new windows.

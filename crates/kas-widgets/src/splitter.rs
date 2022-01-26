@@ -194,13 +194,13 @@ widget! {
             Some(self.id())
         }
 
-        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
+        fn draw(&mut self, mut draw: DrawMgr) {
+            let mut draw = draw.with_core(self.core_data());
             // as with find_id, there's not much harm in invoking the solver twice
 
             let solver = layout::RowPositionSolver::new(self.direction);
-            let disabled = disabled || self.is_disabled();
             solver.for_children(&mut self.widgets, draw.get_clip_rect(), |w| {
-                w.draw(draw.re(), disabled)
+                w.draw(draw.re())
             });
 
             let solver = layout::RowPositionSolver::new(self.direction);

@@ -91,8 +91,8 @@ impl<M: 'static> Layout for Box<dyn Widget<Msg = M>> {
         self.as_mut().find_id(coord)
     }
 
-    fn draw(&mut self, draw: DrawMgr, disabled: bool) {
-        self.as_mut().draw(draw, disabled);
+    fn draw(&mut self, draw: DrawMgr) {
+        self.as_mut().draw(draw);
     }
 }
 

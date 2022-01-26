@@ -145,18 +145,17 @@ widget! {
             None
         }
 
-        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
-            let mut state = draw.input_state(self, disabled);
+        fn draw(&mut self, mut draw: DrawMgr) {
+            let mut draw = draw.with_core(self.core_data());
             if self.popup_id.is_some() {
-                state.insert(InputState::DEPRESS);
+                draw.state.insert(InputState::DEPRESS);
             }
-            draw.menu_entry(self.core.rect, state);
+            draw.menu_entry(self.core.rect);
             draw.text_accel(
                 self.label_store.pos,
                 &self.label,
                 draw.ev_state().show_accel_labels(),
                 TextClass::MenuLabel,
-                state,
             );
         }
     }

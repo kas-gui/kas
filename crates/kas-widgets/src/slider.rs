@@ -253,10 +253,13 @@ widget! {
             self.handle.find_id(coord).or(Some(self.id()))
         }
 
-        fn draw(&mut self, mut draw: DrawMgr, disabled: bool) {
+        fn draw(&mut self, mut draw: DrawMgr) {
+            let mut draw = draw.with_core(self.core_data());
+            if draw.ev_state().is_hovered(self.handle.id_ref()) {
+                draw.state.insert(InputState::HOVER);
+            }
             let dir = self.direction.as_direction();
-            let state = draw.input_state(self, disabled) | draw.input_state(&self.handle, disabled);
-            draw.slider(self.core.rect, self.handle.rect(), dir, state);
+            draw.slider(self.core.rect, self.handle.rect(), dir);
         }
     }
 

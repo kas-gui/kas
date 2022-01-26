@@ -5,7 +5,7 @@
 
 //! Clock example
 //!
-//! Note that two forms of animation are possible: setting `draw |= TkAction::ANIMATE`
+//! Note that two forms of animation are possible: calling `draw.draw_device().animate();`
 //! in `fn Clock::draw`, or using `Event::TimerUpdate`. We use the latter since
 //! it lets us draw at 1 FPS with exactly the right frame time.
 
@@ -66,7 +66,7 @@ widget! {
             self.time_pos = pos;
         }
 
-        fn draw(&mut self, mut draw: DrawMgr, _: bool) {
+        fn draw(&mut self, mut draw: DrawMgr) {
             let col_face = color::Rgba::grey(0.4);
             let col_time = color::Rgba::grey(0.0);
             let col_date = color::Rgba::grey(0.2);

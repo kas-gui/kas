@@ -434,26 +434,24 @@ impl<'a> EventMgr<'a> {
                     self.state.last_click_timeout = now + DOUBLE_CLICK_TIMEOUT;
                 }
 
-                if let Some(grab) = self.state.mouse_grab.take() {
+                if let Some(grab) = self.remove_mouse_grab() {
                     if grab.mode == GrabMode::Grab {
                         // Mouse grab active: send events there
-                        debug_assert_eq!(state, ElementState::Released);
-                        let source = PressSource::Mouse(button, grab.repetitions);
+                        // Note: any button release may end the grab (intended).
                         let event = Event::PressEnd {
-                            source,
+                            source: PressSource::Mouse(grab.button, grab.repetitions),
                             end_id: self.state.hover.clone(),
                             coord,
+                            success: state == ElementState::Released,
                         };
                         self.send_event(widget, grab.start_id, event);
-                        // Pan events do not receive Start/End notifications
-                    };
-
-                    if state == ElementState::Released {
-                        self.end_mouse_grab(button);
                     }
-                } else if let Some(start_id) = self.state.hover.clone() {
-                    // No mouse grab but have a hover target
-                    if state == ElementState::Pressed {
+                    // Pan events do not receive Start/End notifications
+                }
+
+                if state == ElementState::Pressed {
+                    if let Some(start_id) = self.state.hover.clone() {
+                        // No mouse grab but have a hover target
                         if self.state.config.mouse_nav_focus() {
                             if let Some(w) = widget.find_widget(&start_id) {
                                 if w.key_nav() {
@@ -461,15 +459,15 @@ impl<'a> EventMgr<'a> {
                                 }
                             }
                         }
-
-                        let source = PressSource::Mouse(button, self.state.last_click_repetitions);
-                        let event = Event::PressStart {
-                            source,
-                            start_id: start_id.clone(),
-                            coord,
-                        };
-                        self.send_popup_first(widget, start_id, event);
                     }
+
+                    let source = PressSource::Mouse(button, self.state.last_click_repetitions);
+                    let event = Event::PressStart {
+                        source,
+                        start_id: self.state.hover.clone(),
+                        coord,
+                    };
+                    self.send_popup_first(widget, self.state.hover.clone(), event);
                 }
             }
             // TouchpadPressure { pressure: f32, stage: i64, },
@@ -479,9 +477,10 @@ impl<'a> EventMgr<'a> {
                 let coord = touch.location.into();
                 match touch.phase {
                     TouchPhase::Started => {
-                        if let Some(start_id) = widget.find_id(coord) {
+                        let start_id = widget.find_id(coord);
+                        if let Some(id) = start_id.as_ref() {
                             if self.state.config.touch_nav_focus() {
-                                if let Some(w) = widget.find_widget(&start_id) {
+                                if let Some(w) = widget.find_widget(id) {
                                     if w.key_nav() {
                                         self.set_nav_focus(w.id(), false);
                                     }
@@ -526,7 +525,7 @@ impl<'a> EventMgr<'a> {
                             }
                         }
                     }
-                    TouchPhase::Ended => {
+                    ev @ (TouchPhase::Ended | TouchPhase::Cancelled) => {
                         if let Some(mut grab) = self.remove_touch(touch.id) {
                             if let Some((id, event)) = grab.flush_move() {
                                 self.send_event(widget, id, event);
@@ -537,31 +536,10 @@ impl<'a> EventMgr<'a> {
                                     source,
                                     end_id: grab.cur_id.clone(),
                                     coord,
+                                    success: ev == TouchPhase::Ended,
                                 };
-                                if let Some(cur_id) = grab.cur_id {
-                                    self.redraw(cur_id);
-                                }
                                 self.send_event(widget, grab.start_id, event);
-                            } else {
-                                self.state.remove_pan_grab(grab.pan_grab);
                             }
-                        }
-                    }
-                    TouchPhase::Cancelled => {
-                        if let Some(mut grab) = self.remove_touch(touch.id) {
-                            if let Some((id, event)) = grab.flush_move() {
-                                self.send_event(widget, id, event);
-                            }
-
-                            let event = Event::PressEnd {
-                                source,
-                                end_id: None,
-                                coord,
-                            };
-                            if let Some(cur_id) = grab.cur_id {
-                                self.redraw(cur_id);
-                            }
-                            self.send_event(widget, grab.start_id, event);
                         }
                     }
                 }

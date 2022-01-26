@@ -38,7 +38,7 @@
 //! events, which may occur with any number of mouse buttons pressed.
 //!
 //! Motion and release events are only delivered when a "press grab" is active.
-//! This is achieved by calling [`EventMgr::request_grab`] and allows receiving
+//! This is achieved by calling [`EventMgr::grab_press`] and allows receiving
 //! both relative and absolute press coordinates.
 //! A special "pan" grab allows receiving two-finger scroll/scale/rotate input.
 //!

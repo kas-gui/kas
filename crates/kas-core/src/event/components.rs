@@ -6,7 +6,7 @@
 //! Event handling components
 
 use super::ScrollDelta::{LineDelta, PixelDelta};
-use super::{Command, Event, EventMgr, GrabMode, PressSource, Response, VoidMsg};
+use super::{Command, Event, EventMgr, PressSource, Response, VoidMsg};
 use crate::cast::CastFloat;
 use crate::geom::{Coord, Offset, Rect, Size, Vec2};
 #[allow(unused)]
@@ -243,7 +243,7 @@ impl ScrollComponent {
     ///         window_size,
     ///         |mgr, source, _, coord| if source.is_primary() {
     ///             let icon = Some(event::CursorIcon::Grabbing);
-    ///             mgr.request_grab(id, source, coord, event::GrabMode::Grab, icon);
+    ///             mgr.grab_press_unique(id, source, coord, icon);
     ///         }
     ///     );
     ///     *mgr |= action;
@@ -256,7 +256,7 @@ impl ScrollComponent {
     /// If the returned [`TkAction`] is not `None`, the scroll offset has been
     /// updated and the second return value is `Response::Used`.
     #[inline]
-    pub fn scroll_by_event<PS: FnOnce(&mut EventMgr, PressSource, WidgetId, Coord)>(
+    pub fn scroll_by_event<PS: FnOnce(&mut EventMgr, PressSource, Option<WidgetId>, Coord)>(
         &mut self,
         mgr: &mut EventMgr,
         event: Event,
@@ -349,7 +349,6 @@ impl ScrollComponent {
 
 #[derive(Clone, Debug, PartialEq)]
 enum TouchPhase {
-    None,
     Start(u64, Coord), // id, coord
     Pan(u64),          // id
     Cursor(u64),       // id
@@ -357,7 +356,9 @@ enum TouchPhase {
 
 impl Default for TouchPhase {
     fn default() -> Self {
-        TouchPhase::None
+        // The value doesn't matter much: it'll be replaced on PressStart and we
+        // don't get events before then.
+        TouchPhase::Start(!0, Coord::ZERO)
     }
 }
 
@@ -409,14 +410,12 @@ impl TextInput {
         use TextInputAction as Action;
         match event {
             Event::PressStart { source, coord, .. } if source.is_primary() => {
-                let grab = mgr.request_grab(w_id.clone(), source, coord, GrabMode::Grab, None);
+                mgr.grab_press_unique(w_id.clone(), source, coord, None);
                 match source {
                     PressSource::Touch(touch_id) => {
-                        if grab && self.touch_phase == TouchPhase::None {
-                            self.touch_phase = TouchPhase::Start(touch_id, coord);
-                            let delay = mgr.config().touch_text_sel_delay();
-                            mgr.update_on_timer(delay, w_id, PAYLOAD_SELECT);
-                        }
+                        self.touch_phase = TouchPhase::Start(touch_id, coord);
+                        let delay = mgr.config().touch_text_sel_delay();
+                        mgr.update_on_timer(delay, w_id, PAYLOAD_SELECT);
                         Action::Focus
                     }
                     PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan() => Action::Focus,
@@ -434,12 +433,9 @@ impl TextInput {
                 self.glide.move_delta(delta);
                 match source {
                     PressSource::Touch(touch_id) => match self.touch_phase {
-                        TouchPhase::None => {
-                            self.touch_phase = TouchPhase::Pan(touch_id);
-                            Action::Pan(delta)
-                        }
                         TouchPhase::Start(id, start_coord) if id == touch_id => {
-                            if mgr.config_test_pan_thresh(coord - start_coord) {
+                            let delta = coord - start_coord;
+                            if mgr.config_test_pan_thresh(delta) {
                                 self.touch_phase = TouchPhase::Pan(id);
                                 Action::Pan(delta)
                             } else {
@@ -462,21 +458,13 @@ impl TextInput {
                 {
                     mgr.update_on_timer(Duration::new(0, 0), w_id, PAYLOAD_GLIDE);
                 }
-                match self.touch_phase {
-                    TouchPhase::Start(id, ..) | TouchPhase::Pan(id) | TouchPhase::Cursor(id)
-                        if source == PressSource::Touch(id) =>
-                    {
-                        self.touch_phase = TouchPhase::None;
-                    }
-                    _ => (),
-                }
                 Action::None
             }
             Event::TimerUpdate(pl) if pl == PAYLOAD_SELECT => {
                 match self.touch_phase {
                     TouchPhase::Start(touch_id, coord) => {
                         self.touch_phase = TouchPhase::Cursor(touch_id);
-                        Action::Cursor(coord, false, !mgr.modifiers().shift(), 1)
+                        Action::Cursor(coord, true, !mgr.modifiers().shift(), 1)
                     }
                     // Note: if the TimerUpdate were from another requester it
                     // should technically be Unused, but it doesn't matter
