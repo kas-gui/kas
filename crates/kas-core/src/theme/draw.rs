@@ -342,7 +342,7 @@ impl<'a> DrawCtx<'a> {
     ///
     /// This is similar in appearance to a checkbox.
     pub fn radiobox(&mut self, rect: Rect, checked: bool) {
-        self.h.radiobox(rect, checked, self.state);
+        self.h.radiobox(self.wid, rect, checked, self.state);
     }
 
     /// Draw UI element: scrollbar
@@ -523,7 +523,7 @@ pub trait DrawHandle {
     /// Draw UI element: radiobox
     ///
     /// This is similar in appearance to a checkbox.
-    fn radiobox(&mut self, rect: Rect, checked: bool, state: InputState);
+    fn radiobox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState);
 
     /// Draw UI element: scrollbar
     ///
@@ -634,8 +634,8 @@ macro_rules! impl_ {
             fn checkbox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState) {
                 self.deref_mut().checkbox(wid, rect, checked, state)
             }
-            fn radiobox(&mut self, rect: Rect, checked: bool, state: InputState) {
-                self.deref_mut().radiobox(rect, checked, state)
+            fn radiobox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState) {
+                self.deref_mut().radiobox(wid, rect, checked, state)
             }
             fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
                 self.deref_mut().scrollbar(rect, h_rect, dir, state)

@@ -548,16 +548,17 @@ where
         let inner = self.button_frame(outer, col_frame, self.cols.edit_bg(state), state);
 
         if anim_fade < 1.0 {
-            let mut inner = inner.shrink((2 * self.w.dims.inner_margin) as f32);
-            let x = inner.size() * (anim_fade / 2.0);
-            inner.a += x;
-            inner.b -= x;
+            let inner = inner.shrink((2 * self.w.dims.inner_margin) as f32);
+            let v = inner.size() * (anim_fade / 2.0);
+            let inner = Quad::from_coords(inner.a + v, inner.b - v);
             let col = self.cols.check_mark_state(state);
             self.draw.rect(inner, col);
         }
     }
 
-    fn radiobox(&mut self, rect: Rect, checked: bool, state: InputState) {
+    fn radiobox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState) {
+        let anim_fade = self.w.anim.fade_bool_1m(&mut self.draw.draw, wid, checked);
+
         let outer = Quad::from(rect);
         let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
 
@@ -582,9 +583,11 @@ where
         let r = 1.0 - F * self.w.dims.button_frame as f32 / rect.size.0 as f32;
         self.draw.circle(outer, r, col);
 
-        if checked {
+        if anim_fade < 1.0 {
             let r = self.w.dims.button_frame + 2 * self.w.dims.inner_margin as i32;
             let inner = outer.shrink(r as f32);
+            let v = inner.size() * (anim_fade / 2.0);
+            let inner = Quad::from_coords(inner.a + v, inner.b - v);
             let col = self.cols.check_mark_state(state);
             self.draw.circle(inner, 0.0, col);
         }
