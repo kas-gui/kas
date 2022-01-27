@@ -16,6 +16,7 @@ const TIMEOUT: Duration = Duration::from_secs(8);
 #[derive(Debug)]
 struct Config {
     cursor_blink_rate: Duration,
+    fade_dur: Duration,
 }
 
 /// State holding theme animation data
@@ -25,6 +26,7 @@ pub struct AnimState<D> {
     now: Instant, // frame start time
     time_next_gc: Instant,
     text_cursor: HashMap<u64, TextCursor>,
+    fade_bool: HashMap<u64, FadeBool>,
     _d: PhantomData<D>,
 }
 
@@ -32,6 +34,7 @@ impl<D> AnimState<D> {
     pub fn new(config: &super::Config) -> Self {
         let c = Config {
             cursor_blink_rate: config.cursor_blink_rate(),
+            fade_dur: config.transition_fade_duration(),
         };
         let now = Instant::now();
         AnimState {
@@ -39,6 +42,7 @@ impl<D> AnimState<D> {
             now,
             time_next_gc: now + TIMEOUT,
             text_cursor: Default::default(),
+            fade_bool: Default::default(),
             _d: PhantomData,
         }
     }
@@ -54,6 +58,7 @@ impl<D> AnimState<D> {
         self.time_next_gc = self.now + TIMEOUT;
         let old = self.now - TIMEOUT;
         self.text_cursor.retain(|_, v| v.time >= old);
+        self.fade_bool.retain(|_, v| v.time >= old);
     }
 }
 
@@ -84,5 +89,55 @@ impl<D: DrawImpl> AnimState<D> {
                 true
             }
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+struct FadeBool {
+    state: bool,
+    time: Instant,
+    time_end: Instant,
+}
+impl<D: DrawImpl> AnimState<D> {
+    /// Fade over a boolean transition
+    ///
+    /// Normally returns `1.0` if `state` else `0.0`, but within a short time
+    /// after a state change will linearly transition between these values.
+    #[inline]
+    pub fn fade_bool(&mut self, draw: &mut D, wid: u64, state: bool) -> f32 {
+        1.0 - self.fade_bool_1m(draw, wid, state)
+    }
+
+    /// `1.0 - self.fade_bool(..)`
+    pub fn fade_bool_1m(&mut self, draw: &mut D, wid: u64, state: bool) -> f32 {
+        let mut out_state = state;
+        match self.fade_bool.entry(wid) {
+            Entry::Occupied(entry) => {
+                let entry = entry.into_mut();
+                entry.time = self.now;
+                if entry.state != state {
+                    out_state = entry.state;
+                    entry.state = state;
+                    entry.time_end = self.now + self.c.fade_dur;
+                    draw.animate();
+                } else if self.now < entry.time_end {
+                    let rem = entry.time_end - self.now;
+                    let mut f = rem.as_secs_f32() / self.c.fade_dur.as_secs_f32();
+                    if !state {
+                        f = 1.0 - f;
+                    }
+                    draw.animate();
+                    return f;
+                }
+            }
+            entry => {
+                entry.insert_entry(FadeBool {
+                    state,
+                    time: self.now,
+                    time_end: self.now,
+                });
+            }
+        }
+        !out_state as u8 as f32
     }
 }

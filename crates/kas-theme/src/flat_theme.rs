@@ -539,14 +539,19 @@ where
         }
     }
 
-    fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState) {
+    fn checkbox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState) {
+        let anim_fade = self.w.anim.fade_bool_1m(&mut self.draw.draw, wid, checked);
+
         let outer = Quad::from(rect);
 
         let col_frame = self.cols.nav_region(state).unwrap_or(self.cols.frame);
         let inner = self.button_frame(outer, col_frame, self.cols.edit_bg(state), state);
 
-        if checked {
-            let inner = inner.shrink((2 * self.w.dims.inner_margin) as f32);
+        if anim_fade < 1.0 {
+            let mut inner = inner.shrink((2 * self.w.dims.inner_margin) as f32);
+            let x = inner.size() * (anim_fade / 2.0);
+            inner.a += x;
+            inner.b -= x;
             let col = self.cols.check_mark_state(state);
             self.draw.rect(inner, col);
         }

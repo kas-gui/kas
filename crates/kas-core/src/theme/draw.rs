@@ -335,7 +335,7 @@ impl<'a> DrawCtx<'a> {
     /// mark. A checkbox widget may include a text label, but that label is not
     /// part of this element.
     pub fn checkbox(&mut self, rect: Rect, checked: bool) {
-        self.h.checkbox(rect, checked, self.state);
+        self.h.checkbox(self.wid, rect, checked, self.state);
     }
 
     /// Draw UI element: radiobox
@@ -518,7 +518,7 @@ pub trait DrawHandle {
     /// The checkbox is a small, usually square, box with or without a check
     /// mark. A checkbox widget may include a text label, but that label is not
     /// part of this element.
-    fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState);
+    fn checkbox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState);
 
     /// Draw UI element: radiobox
     ///
@@ -631,8 +631,8 @@ macro_rules! impl_ {
             fn edit_box(&mut self, rect: Rect, state: InputState) {
                 self.deref_mut().edit_box(rect, state)
             }
-            fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState) {
-                self.deref_mut().checkbox(rect, checked, state)
+            fn checkbox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState) {
+                self.deref_mut().checkbox(wid, rect, checked, state)
             }
             fn radiobox(&mut self, rect: Rect, checked: bool, state: InputState) {
                 self.deref_mut().radiobox(rect, checked, state)

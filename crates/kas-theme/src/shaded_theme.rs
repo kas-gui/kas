@@ -370,7 +370,7 @@ where
         self.draw_edit_box(rect, bg_col, self.cols.nav_region(state));
     }
 
-    fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState) {
+    fn checkbox(&mut self, _wid: u64, rect: Rect, checked: bool, state: InputState) {
         let bg_col = self.cols.edit_bg(state);
         let nav_col = self.cols.nav_region(state).or(Some(bg_col));
 
