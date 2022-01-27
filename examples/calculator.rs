@@ -25,7 +25,7 @@ enum Key {
     Char(char),
 }
 
-fn main() -> Result<(), kas::shell::Error> {
+fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
     let buttons = make_widget! {

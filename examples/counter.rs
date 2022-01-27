@@ -10,7 +10,7 @@ use kas::macros::{make_layout, make_widget};
 use kas::prelude::*;
 use kas::widgets::{Label, TextButton, Window};
 
-fn main() -> Result<(), kas::shell::Error> {
+fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
     let counter = make_widget! {

@@ -73,7 +73,7 @@ fn make_window() -> Box<dyn kas::Window> {
     Box::new(window)
 }
 
-fn main() -> Result<(), kas::shell::Error> {
+fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
     let theme = kas::theme::ShadedTheme::new()

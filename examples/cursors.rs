@@ -40,7 +40,7 @@ macro_rules! cursor {
     };
 }
 
-fn main() -> Result<(), kas::shell::Error> {
+fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
     // These are winit::window::CursorIcon enum variants

@@ -82,7 +82,7 @@ impl CanvasProgram for Program {
     }
 }
 
-fn main() -> Result<(), kas::shell::Error> {
+fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
     let canvas = Canvas::new(Program(Instant::now()), Size(400, 400));

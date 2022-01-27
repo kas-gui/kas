@@ -11,7 +11,7 @@ use kas::updatable::SharedRc;
 use kas::widgets::view::SingleView;
 use kas::widgets::{TextButton, Window};
 
-fn main() -> Result<(), kas::shell::Error> {
+fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
     let window = Window::new(
