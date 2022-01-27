@@ -9,8 +9,8 @@ use linear_map::LinearMap;
 use std::any::Any;
 use std::f32;
 use std::rc::Rc;
-use std::time::Duration;
 
+use crate::anim::AnimState;
 use kas::cast::{Cast, CastFloat, ConvFloat};
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, Stretch};
@@ -117,14 +117,13 @@ impl Dimensions {
 }
 
 /// A convenient implementation of [`crate::Window`]
-pub struct Window {
+pub struct Window<D> {
     pub dims: Dimensions,
     pub fonts: Rc<LinearMap<TextClass, FontId>>,
-    pub anim: crate::anim::AnimState,
-    pub cursor_blink_rate: Duration,
+    pub anim: AnimState<D>,
 }
 
-impl Window {
+impl<D> Window<D> {
     pub fn new(
         dims: &Parameters,
         config: &crate::Config,
@@ -134,8 +133,7 @@ impl Window {
         Window {
             dims: Dimensions::new(dims, config.font_size(), scale_factor),
             fonts,
-            anim: Default::default(),
-            cursor_blink_rate: config.cursor_blink_rate(),
+            anim: AnimState::new(config),
         }
     }
 
@@ -144,11 +142,7 @@ impl Window {
     }
 }
 
-impl crate::Window for Window {
-    fn garbage_collect(&mut self) {
-        self.anim.garbage_collect(self.cursor_blink_rate);
-    }
-
+impl<D: 'static> crate::Window for Window<D> {
     fn size_handle(&self) -> &dyn SizeHandle {
         self
     }
@@ -158,7 +152,7 @@ impl crate::Window for Window {
     }
 }
 
-impl SizeHandle for Window {
+impl<D: 'static> SizeHandle for Window<D> {
     fn scale_factor(&self) -> f32 {
         self.dims.scale_factor
     }

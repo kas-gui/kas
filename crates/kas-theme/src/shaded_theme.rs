@@ -75,7 +75,7 @@ const DIMS: dim::Parameters = dim::Parameters {
 
 pub struct DrawHandle<'a, DS: DrawSharedImpl> {
     draw: DrawIface<'a, DS>,
-    w: &'a mut dim::Window,
+    w: &'a mut dim::Window<DS::Draw>,
     cols: &'a ColorsLinear,
 }
 
@@ -84,7 +84,7 @@ where
     DS::Draw: DrawRoundedImpl + DrawShadedImpl,
 {
     type Config = Config;
-    type Window = dim::Window;
+    type Window = dim::Window<DS::Draw>;
 
     #[cfg(not(feature = "gat"))]
     type DrawHandle = DrawHandle<'static, DS>;
@@ -114,6 +114,8 @@ where
 
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(&self, draw: DrawIface<DS>, w: &mut Self::Window) -> Self::DrawHandle {
+        w.anim.update();
+
         unsafe fn extend_lifetime<'b, T: ?Sized>(r: &'b T) -> &'static T {
             std::mem::transmute::<&'b T, &'static T>(r)
         }
@@ -136,6 +138,8 @@ where
         draw: DrawIface<'a, DS>,
         w: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
+        w.anim.update();
+
         DrawHandle {
             draw,
             w,

@@ -168,11 +168,6 @@ impl Config {
     pub fn cursor_blink_rate(&self) -> Duration {
         Duration::from_millis(self.cursor_blink_rate_ms as u64)
     }
-
-    /// Get the longest animation time
-    pub fn longest_animation(&self) -> Duration {
-        self.cursor_blink_rate()
-    }
 }
 
 /// Setters

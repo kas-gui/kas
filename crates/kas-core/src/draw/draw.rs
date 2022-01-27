@@ -225,13 +225,11 @@ pub trait Draw {
 
 impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
     fn animate(&mut self) {
-        self.draw.animation_mut().merge_in(AnimationState::Animate);
+        self.draw.animate();
     }
 
     fn animate_at(&mut self, time: Instant) {
-        self.draw
-            .animation_mut()
-            .merge_in(AnimationState::Timed(time));
+        self.draw.animate_at(time);
     }
 
     fn get_pass(&self) -> PassId {
@@ -315,6 +313,22 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
 pub trait DrawImpl: Any {
     /// Get animation status
     fn animation_mut(&mut self) -> &mut AnimationState;
+
+    /// Request redraw at the next frame time
+    ///
+    /// Animations should call this each frame until complete.
+    fn animate(&mut self) {
+        self.animation_mut().merge_in(AnimationState::Animate);
+    }
+
+    /// Request a redraw at a specific time
+    ///
+    /// This may be used for animations with delays, e.g. flashing. Calling this
+    /// method only ensures that the *next* draw happens *no later* than `time`,
+    /// thus the method should be called again in each following frame.
+    fn animate_at(&mut self, time: Instant) {
+        self.animation_mut().merge_in(AnimationState::Timed(time));
+    }
 
     /// Add a draw pass
     ///
