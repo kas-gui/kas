@@ -247,7 +247,6 @@ where
         state: InputState,
     ) -> Quad {
         let inner = outer.shrink(self.w.dims.button_frame as f32);
-        let col_bg = ColorsLinear::adjust_for_state(col_bg, state);
 
         if !(state.disabled() || state.depress()) {
             let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
@@ -511,6 +510,7 @@ where
         } else {
             col.map(|c| c.into()).unwrap_or(self.cols.background)
         };
+        let col_bg = ColorsLinear::adjust_for_state(col_bg, state);
         let col_frame = self.cols.nav_region(state).unwrap_or(self.cols.frame);
         self.button_frame(outer, col_frame, col_bg, state);
     }
@@ -559,8 +559,9 @@ where
         let col_frame = self.cols.nav_region(state).unwrap_or(self.cols.frame);
         let inner = self.button_frame(outer, col_frame, self.cols.edit_bg(state), state);
 
-        if let Some(col) = self.cols.check_mark_state(state, checked) {
+        if checked {
             let inner = inner.shrink((2 * self.w.dims.inner_margin) as f32);
+            let col = self.cols.check_mark_state(state);
             self.draw.rect(inner, col);
         }
     }
@@ -590,9 +591,10 @@ where
         let r = 1.0 - F * self.w.dims.button_frame as f32 / rect.size.0 as f32;
         self.draw.circle(outer, r, col);
 
-        if let Some(col) = self.cols.check_mark_state(state, checked) {
+        if checked {
             let r = self.w.dims.button_frame + 2 * self.w.dims.inner_margin as i32;
             let inner = outer.shrink(r as f32);
+            let col = self.cols.check_mark_state(state);
             self.draw.circle(inner, 0.0, col);
         }
     }

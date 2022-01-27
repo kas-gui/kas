@@ -190,13 +190,17 @@ impl ColorsLinear {
 
     /// Get colour of a text area, depending on state
     pub fn edit_bg(&self, state: InputState) -> Rgba {
-        if state.disabled() {
+        let mut col = if state.disabled() {
             self.edit_bg_disabled
         } else if state.error() {
             self.edit_bg_error
         } else {
             self.edit_bg
+        };
+        if state.depress() {
+            col = col.multiply(MULT_DEPRESS);
         }
+        col
     }
 
     /// Get colour for navigation highlight region, if any
@@ -221,14 +225,9 @@ impl ColorsLinear {
     }
 
     /// Get colour for a checkbox mark, depending on state
-    pub fn check_mark_state(&self, state: InputState, checked: bool) -> Option<Rgba> {
-        if checked {
-            Some(Self::adjust_for_state(self.accent, state))
-        } else if state.depress() {
-            Some(self.accent.multiply(MULT_DEPRESS))
-        } else {
-            None
-        }
+    #[inline]
+    pub fn check_mark_state(&self, state: InputState) -> Rgba {
+        Self::adjust_for_state(self.accent, state)
     }
 
     /// Get background highlight colour of a menu entry, if any

@@ -360,7 +360,8 @@ where
         }
     }
 
-    fn edit_box(&mut self, rect: Rect, state: InputState) {
+    fn edit_box(&mut self, rect: Rect, mut state: InputState) {
+        state.remove(InputState::DEPRESS);
         let bg_col = self.cols.edit_bg(state);
         self.draw_edit_box(rect, bg_col, self.cols.nav_region(state));
     }
@@ -371,7 +372,8 @@ where
 
         let inner = self.draw_edit_box(rect, bg_col, nav_col);
 
-        if let Some(col) = self.cols.check_mark_state(state, checked) {
+        if checked {
+            let col = self.cols.check_mark_state(state);
             self.draw.shaded_square(inner, (0.0, 0.4), col);
         }
     }
@@ -382,7 +384,8 @@ where
 
         let inner = self.draw_edit_box(rect, bg_col, nav_col);
 
-        if let Some(col) = self.cols.check_mark_state(state, checked) {
+        if checked {
+            let col = self.cols.check_mark_state(state);
             self.draw.shaded_circle(inner, (0.0, 1.0), col);
         }
     }
