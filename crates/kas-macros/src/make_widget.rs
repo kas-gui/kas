@@ -4,14 +4,13 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 use crate::args::{ChildType, Handler, MakeWidget};
-use crate::extend_generics;
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::abort;
 use quote::{quote, TokenStreamExt};
 use std::fmt::Write;
 use syn::parse_quote;
 use syn::spanned::Spanned;
-use syn::{Generics, Ident, ItemImpl, Type, TypePath, WhereClause};
+use syn::{Ident, ItemImpl, Type, TypePath, WhereClause};
 
 pub(crate) fn make_widget(mut args: MakeWidget) -> TokenStream {
     let mut find_handler_ty_buf: Vec<(Ident, Type)> = vec![];
@@ -82,7 +81,6 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> TokenStream {
     let mut debug_fields = TokenStream::new();
 
     let msg;
-    let mut handler_generics = Generics::default();
     if let Some(h) = args.handler {
         msg = h.msg;
     } else {
@@ -119,13 +117,13 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> TokenStream {
         }
     };
 
-    if handler_generics.where_clause.is_none() {
-        handler_generics.where_clause = Some(WhereClause {
+    if args.generics.where_clause.is_none() {
+        args.generics.where_clause = Some(WhereClause {
             where_token: Default::default(),
             predicates: Default::default(),
         });
     }
-    let handler_clauses = &mut handler_generics.where_clause.as_mut().unwrap().predicates;
+    let clauses = &mut args.generics.where_clause.as_mut().unwrap().predicates;
 
     let extra_attrs = args.extra_attrs;
 
@@ -156,12 +154,11 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> TokenStream {
 
                 if let Some(ref wattr) = attr {
                     if let Some(tyr) = gen_msg {
-                        handler_clauses.push(parse_quote! { #ty: ::kas::Widget<Msg = #tyr> });
+                        clauses.push(parse_quote! { #ty: ::kas::Widget<Msg = #tyr> });
                     } else if let Some(handler) = wattr.args.handler.any_ref() {
                         // Message passed to a method; exact type required
                         if let Some(ty_bound) = find_handler_ty(handler, &args.impls) {
-                            handler_clauses
-                                .push(parse_quote! { #ty: ::kas::Widget<Msg = #ty_bound> });
+                            clauses.push(parse_quote! { #ty: ::kas::Widget<Msg = #ty_bound> });
                         } else {
                             return quote! {}; // exit after emitting error
                         }
@@ -169,7 +166,7 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> TokenStream {
                         // No type bound on discarded message
                     } else {
                         // Message converted via Into
-                        handler_clauses
+                        clauses
                             .push(parse_quote! { <#ty as ::kas::event::Handler>::Msg: Into<#msg> });
                     }
 
@@ -200,15 +197,14 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> TokenStream {
             .append_all(quote! { write!(f, ", {}: {:?}", stringify!(#ident), self.#ident)?; });
     }
 
-    if handler_clauses.is_empty() {
-        handler_generics.where_clause = None;
+    if clauses.is_empty() {
+        args.generics.where_clause = None;
     }
-
     let (impl_generics, ty_generics, where_clause) = args.generics.split_for_impl();
 
     let mut impl_handler = true;
     let mut impls = quote! {};
-    for mut impl_ in args.impls {
+    for impl_ in args.impls {
         if let Some((_, ref path, _)) = impl_.trait_ {
             if *path == parse_quote! { ::kas::event::Handler }
                 || *path == parse_quote! { kas::event::Handler }
@@ -216,7 +212,6 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> TokenStream {
                 || *path == parse_quote! { Handler }
             {
                 impl_handler = false;
-                extend_generics(&mut impl_.generics, &handler_generics);
             }
         }
 
@@ -226,13 +221,10 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> TokenStream {
     }
 
     let handler = if impl_handler {
-        extend_generics(&mut handler_generics, &args.generics);
-        let (handler_generics, _, handler_where_clause) = handler_generics.split_for_impl();
-
         quote! {
-            impl #handler_generics ::kas::event::Handler
+            impl #impl_generics ::kas::event::Handler
             for AnonWidget #ty_generics
-            #handler_where_clause
+            #where_clause
             {
                 type Msg = #msg;
             }
