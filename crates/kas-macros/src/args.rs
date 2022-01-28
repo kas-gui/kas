@@ -4,9 +4,9 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 use crate::make_layout;
-use proc_macro2::{Punct, Spacing, Span, TokenStream, TokenTree};
+use proc_macro2::{Span, TokenStream};
 use proc_macro_error::{abort, emit_error};
-use quote::{quote, ToTokens, TokenStreamExt};
+use quote::{ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
@@ -18,11 +18,13 @@ use syn::{
     TypeTraitObject, Visibility,
 };
 
+#[derive(Debug)]
 pub struct Child {
     pub ident: Member,
     pub args: WidgetAttrArgs,
 }
 
+#[derive(Debug)]
 pub struct Widget {
     pub attr_widget: WidgetArgs,
     pub attr_handler: Option<HandlerArgs>,
@@ -399,9 +401,6 @@ impl Handler {
     fn is_none(&self) -> bool {
         *self == Handler::None
     }
-    fn is_some(&self) -> bool {
-        *self != Handler::None
-    }
     pub fn any_ref(&self) -> Option<&Ident> {
         match self {
             Handler::None | Handler::Discard => None,
@@ -470,42 +469,9 @@ impl Parse for WidgetAttrArgs {
     }
 }
 
-impl ToTokens for WidgetAttrArgs {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        if self.update.is_some() || self.handler.is_some() {
-            let mut args = TokenStream::new();
-            if let Some(ref ident) = self.update {
-                args.append_all(quote! { update = #ident });
-            }
-            if !self.handler.is_none() && !args.is_empty() {
-                args.append(TokenTree::from(Punct::new(',', Spacing::Alone)));
-            }
-            match &self.handler {
-                Handler::None => (),
-                Handler::Use(f) => args.append_all(quote! { use_msg = #f }),
-                Handler::Map(f) => args.append_all(quote! { map_msg = #f }),
-                Handler::FlatMap(f) => args.append_all(quote! { flatmap_msg = #f }),
-                Handler::Discard => args.append_all(quote! { discard_msg }),
-            }
-            tokens.append_all(quote! { ( #args ) });
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct WidgetAttr {
-    pub args: WidgetAttrArgs,
-}
-
-impl ToTokens for WidgetAttr {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let args = &self.args;
-        tokens.append_all(quote! { #[widget #args] });
-    }
-}
-
 macro_rules! property {
     ($name:ident : $ty:ty = $def:expr ; $kw:path : $input:ident => $parse:expr ;) => {
+        #[derive(Debug)]
         pub struct $name {
             /// Some(span) if set, None if default
             pub span: Option<Span>,
@@ -547,7 +513,7 @@ property!(
     kw::find_id : input => Some(input.parse()?);
 );
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct WidgetArgs {
     pub key_nav: KeyNav,
     pub hover_highlight: HoverHighlight,
@@ -669,7 +635,7 @@ pub enum ChildType {
 
 #[derive(Debug)]
 pub struct WidgetField {
-    pub widget_attr: Option<WidgetAttr>,
+    pub widget_attr: Option<WidgetAttrArgs>,
     pub ident: Option<Ident>,
     pub ty: ChildType,
     pub value: Expr,
@@ -677,69 +643,75 @@ pub struct WidgetField {
 
 #[derive(Debug)]
 pub struct MakeWidget {
-    // handler attribute
-    pub handler: Option<HandlerArgs>,
-    // additional attributes
-    pub extra_attrs: TokenStream,
+    pub attr_widget: WidgetArgs,
+    pub attr_handler: Option<HandlerArgs>,
+    pub extra_attrs: Vec<Attribute>,
+
+    pub token: Token![struct],
     pub generics: Generics,
-    pub struct_span: Span,
-    // child widgets and data fields
-    pub fields: Vec<WidgetField>,
-    // impl blocks on the widget
-    pub impls: Vec<ItemImpl>,
+
+    pub brace_token: Brace,
+    pub fields: Punctuated<WidgetField, Comma>,
+
+    pub extra_impls: Vec<ItemImpl>,
 }
 
 impl Parse for MakeWidget {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut handler = None;
-        let mut extra_attrs = TokenStream::new();
+        let mut attr_widget = None;
+        let mut attr_handler = None;
+        let mut extra_attrs = Vec::new();
+
         let mut attrs = input.call(Attribute::parse_outer)?;
         for attr in attrs.drain(..) {
-            if attr.path == parse_quote! { handler } {
-                if handler.is_some() {
-                    return Err(Error::new(
-                        attr.span(),
-                        "multiple `handler` attributes not supported by make_widget!",
-                    ));
+            if attr.path == parse_quote! { widget } {
+                if attr_widget.is_none() {
+                    let _span = attr.span();
+                    let w: WidgetArgs = syn::parse2(attr.tokens)?;
+                    attr_widget = Some(w);
+                } else {
+                    emit_error!(attr.span(), "multiple #[widget(..)] attributes on type");
                 }
-                handler = Some(syn::parse2(attr.tokens)?);
+            } else if attr.path == parse_quote! { handler } {
+                if attr_handler.is_some() {
+                    emit_error!(attr.span(), "multiple #[handler(..)] attributes on type");
+                } else {
+                    attr_handler = Some(syn::parse2(attr.tokens)?);
+                }
             } else {
-                extra_attrs.append_all(quote! { #attr });
+                extra_attrs.push(attr);
             }
         }
+        let token = input.parse::<Token![struct]>()?;
 
-        let s: Token![struct] = input.parse()?;
-
-        let mut generics: syn::Generics = input.parse()?;
-        if input.peek(syn::token::Where) {
+        let mut generics = input.parse::<Generics>()?;
+        if input.peek(Token![where]) {
             generics.where_clause = Some(input.parse()?);
         }
 
         let content;
-        let _ = braced!(content in input);
-        let mut fields = vec![];
+        let brace_token = braced!(content in input);
+        let fields = content.parse_terminated(WidgetField::parse)?;
 
-        while !content.is_empty() {
-            fields.push(content.parse::<WidgetField>()?);
-
-            if content.is_empty() {
-                break;
-            }
-            let _: Comma = content.parse()?;
-        }
-
-        let mut impls = Vec::new();
+        let mut extra_impls = Vec::new();
         while !input.is_empty() {
-            impls.push(parse_impl(None, input)?);
+            extra_impls.push(parse_impl(None, input)?);
         }
+
+        let attr_widget = attr_widget.unwrap_or_default();
 
         Ok(MakeWidget {
-            handler,
+            attr_widget,
+            attr_handler,
             extra_attrs,
+
+            token,
             generics,
-            struct_span: s.span(),
+
+            brace_token,
             fields,
-            impls,
+
+            extra_impls,
         })
     }
 }
@@ -752,7 +724,7 @@ impl Parse for WidgetField {
             let _ = bracketed!(inner in input);
             let _: kw::widget = inner.parse()?;
             let args = inner.parse::<WidgetAttrArgs>()?;
-            Some(WidgetAttr { args })
+            Some(args)
         } else {
             None
         };

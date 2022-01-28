@@ -184,7 +184,9 @@ pub fn widget(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn make_widget(input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(input as args::MakeWidget);
-    make_widget::make_widget(args).into()
+    make_widget::make_widget(args)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into()
 }
 
 /// Macro to make a `kas::layout::Layout`

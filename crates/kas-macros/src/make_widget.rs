@@ -3,23 +3,25 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::args::{ChildType, Handler, MakeWidget};
+use crate::args::{Child, ChildType, Handler, MakeWidget};
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::abort;
 use quote::{quote, TokenStreamExt};
 use std::fmt::Write;
 use syn::parse_quote;
+use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::{Ident, ItemImpl, Type, TypePath, WhereClause};
+use syn::token::Comma;
+use syn::{Field, Ident, ItemImpl, Result, Type, TypePath, Visibility, WhereClause};
 
-pub(crate) fn make_widget(mut args: MakeWidget) -> TokenStream {
+pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
     let mut find_handler_ty_buf: Vec<(Ident, Type)> = vec![];
     // find type of handler's message; return None on error
-    let mut find_handler_ty = |handler: &Ident, impls: &Vec<ItemImpl>| -> Option<Type> {
+    let mut find_handler_ty = |handler: &Ident, impls: &Vec<ItemImpl>| -> Type {
         // check the buffer in case we did this already
         for (ident, ty) in &find_handler_ty_buf {
             if ident == handler {
-                return Some(ty.clone());
+                return ty.clone();
             }
         }
 
@@ -60,7 +62,7 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> TokenStream {
         }
         if let Some(x) = x {
             find_handler_ty_buf.push((handler.clone(), x.1.clone()));
-            Some(x.1)
+            x.1
         } else {
             abort!(handler.span(), "no methods with this name found");
         }
@@ -68,26 +70,41 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> TokenStream {
 
     // Used to make fresh identifiers for generic types
     let mut name_buf = String::with_capacity(32);
+    let mut make_ident = move |args: std::fmt::Arguments| -> Ident {
+        name_buf.clear();
+        name_buf.write_fmt(args).unwrap();
+        Ident::new(&name_buf, Span::call_site())
+    };
+
+    let core_ident: Ident = parse_quote! { core };
+    let mut children = vec![];
 
     // fields of anonymous struct:
-    let mut field_toks = quote! {
-        #[widget_core] core: ::kas::CoreData,
-    };
+    let mut fields = Punctuated::<Field, Comma>::new();
+    fields.push_value(Field {
+        attrs: vec![],
+        vis: Visibility::Inherited,
+        ident: Some(core_ident.clone()),
+        colon_token: Default::default(),
+        ty: parse_quote! { ::kas::CoreData },
+    });
+    fields.push_punct(Default::default());
+
     // initialisers for these fields:
     let mut field_val_toks = quote! {
         core: Default::default(),
     };
-    // debug impl
-    let mut debug_fields = TokenStream::new();
 
+    let mut impl_handler = false;
     let msg;
-    if let Some(h) = args.handler {
+    if let Some(h) = args.attr_handler {
+        impl_handler = true;
         msg = h.msg;
     } else {
         // A little magic: try to deduce parameters, applying defaults otherwise
         let mut opt_msg = None;
         let msg_ident: Ident = parse_quote! { Msg };
-        for impl_ in &args.impls {
+        for impl_ in &args.extra_impls {
             if let Some((_, ref name, _)) = impl_.trait_ {
                 if *name == parse_quote! { Handler } || *name == parse_quote! { ::kas::Handler } {
                     for item in &impl_.items {
@@ -111,7 +128,7 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> TokenStream {
             // We could default to msg=VoidMsg here. If error messages weren't
             // so terrible this might even be a good idea!
             abort!(
-                args.struct_span,
+                args.token.span,
                 "make_widget: cannot discover msg type from #[handler] attr or Handler impl"
             );
         }
@@ -125,20 +142,12 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> TokenStream {
     }
     let clauses = &mut args.generics.where_clause.as_mut().unwrap().predicates;
 
-    let extra_attrs = args.extra_attrs;
+    for (index, pair) in args.fields.into_pairs().enumerate() {
+        let (field, opt_comma) = pair.into_tuple();
 
-    for (index, field) in args.fields.drain(..).enumerate() {
-        let attr = field.widget_attr;
-
-        let ident = match &field.ident {
-            Some(ref ident) => ident.clone(),
-            None => {
-                name_buf.clear();
-                name_buf
-                    .write_fmt(format_args!("mw_anon_{}", index))
-                    .unwrap();
-                Ident::new(&name_buf, Span::call_site())
-            }
+        let ident = match field.ident {
+            Some(ident) => ident,
+            None => make_ident(format_args!("mw_anon_{}", index)),
         };
 
         let ty: Type = match field.ty {
@@ -148,21 +157,16 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> TokenStream {
                 ty.clone()
             }
             ChildType::Generic(gen_msg, gen_bound) => {
-                name_buf.clear();
-                name_buf.write_fmt(format_args!("MWAnon{}", index)).unwrap();
-                let ty = Ident::new(&name_buf, Span::call_site());
+                let ty = make_ident(format_args!("MWAnon{}", index));
 
-                if let Some(ref wattr) = attr {
+                if let Some(ref wattr) = field.widget_attr {
                     if let Some(tyr) = gen_msg {
                         clauses.push(parse_quote! { #ty: ::kas::Widget<Msg = #tyr> });
-                    } else if let Some(handler) = wattr.args.handler.any_ref() {
+                    } else if let Some(handler) = wattr.handler.any_ref() {
                         // Message passed to a method; exact type required
-                        if let Some(ty_bound) = find_handler_ty(handler, &args.impls) {
-                            clauses.push(parse_quote! { #ty: ::kas::Widget<Msg = #ty_bound> });
-                        } else {
-                            return quote! {}; // exit after emitting error
-                        }
-                    } else if wattr.args.handler == Handler::Discard {
+                        let ty_bound = find_handler_ty(handler, &args.extra_impls);
+                        clauses.push(parse_quote! { #ty: ::kas::Widget<Msg = #ty_bound> });
+                    } else if wattr.handler == Handler::Discard {
                         // No type bound on discarded message
                     } else {
                         // Message converted via Into
@@ -189,12 +193,24 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> TokenStream {
             }
         };
 
-        let value = &field.value;
+        if let Some(args) = field.widget_attr {
+            let ident = syn::Member::Named(ident.clone());
+            children.push(Child { ident, args });
+        }
 
-        field_toks.append_all(quote! { #attr #ident: #ty, });
+        let value = &field.value;
         field_val_toks.append_all(quote! { #ident: #value, });
-        debug_fields
-            .append_all(quote! { write!(f, ", {}: {:?}", stringify!(#ident), self.#ident)?; });
+
+        fields.push_value(Field {
+            attrs: vec![],
+            vis: Visibility::Inherited,
+            ident: Some(ident),
+            colon_token: Default::default(),
+            ty,
+        });
+        if let Some(comma) = opt_comma {
+            fields.push_punct(comma);
+        }
     }
 
     if clauses.is_empty() {
@@ -202,56 +218,48 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> TokenStream {
     }
     let (impl_generics, ty_generics, where_clause) = args.generics.split_for_impl();
 
-    let mut impl_handler = true;
-    let mut impls = quote! {};
-    for impl_ in args.impls {
-        if let Some((_, ref path, _)) = impl_.trait_ {
-            if *path == parse_quote! { ::kas::event::Handler }
-                || *path == parse_quote! { kas::event::Handler }
-                || *path == parse_quote! { event::Handler }
-                || *path == parse_quote! { Handler }
-            {
-                impl_handler = false;
-            }
-        }
-
-        impls.append_all(quote! {
-            #impl_
-        });
-    }
-
-    let handler = if impl_handler {
-        quote! {
+    if impl_handler {
+        args.extra_impls.push(parse_quote! {
             impl #impl_generics ::kas::event::Handler
             for AnonWidget #ty_generics
             #where_clause
             {
                 type Msg = #msg;
             }
-        }
-    } else {
-        quote! {}
-    };
+        });
+    }
 
-    // TODO: we should probably not rely on recursive macro expansion here!
-    // (I.e. use direct code generation for Widget derivation, instead of derive.)
+    args.extra_attrs
+        .insert(0, parse_quote! { #[derive(Debug)] });
+
+    let widget = crate::widget::widget(crate::args::Widget {
+        attr_widget: args.attr_widget,
+        attr_handler: None,
+        extra_attrs: args.extra_attrs,
+
+        vis: Visibility::Inherited,
+        token: args.token,
+        ident: parse_quote! { AnonWidget },
+        generics: args.generics,
+        fields: syn::Fields::Named(syn::FieldsNamed {
+            brace_token: args.brace_token,
+            named: fields,
+        }),
+        semi_token: None,
+
+        core_data: Some(syn::Member::Named(core_ident)),
+        children,
+
+        extra_impls: args.extra_impls,
+    })?;
+
     let toks = quote! { {
-        ::kas::macros::widget! {
-            #[derive(Debug)]
-            #extra_attrs
-            struct AnonWidget #impl_generics #where_clause {
-                #field_toks
-            }
-
-            #handler
-
-            #impls
-        }
+        #widget
 
         AnonWidget {
             #field_val_toks
         }
     } };
 
-    toks
+    Ok(toks)
 }
