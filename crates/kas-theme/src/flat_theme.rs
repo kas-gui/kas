@@ -449,7 +449,7 @@ where
     }
 
     fn text_cursor(&mut self, wid: u64, pos: Coord, text: &TextDisplay, _: TextClass, byte: usize) {
-        if !self.w.anim.text_cursor(&mut self.draw.draw, wid, byte) {
+        if !self.w.anim.text_cursor(self.draw.draw, wid, byte) {
             return;
         }
 
@@ -540,7 +540,7 @@ where
     }
 
     fn checkbox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState) {
-        let anim_fade = self.w.anim.fade_bool_1m(&mut self.draw.draw, wid, checked);
+        let anim_fade = self.w.anim.fade_bool_1m(self.draw.draw, wid, checked);
 
         let outer = Quad::from(rect);
 
@@ -557,7 +557,7 @@ where
     }
 
     fn radiobox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState) {
-        let anim_fade = self.w.anim.fade_bool_1m(&mut self.draw.draw, wid, checked);
+        let anim_fade = self.w.anim.fade_bool_1m(self.draw.draw, wid, checked);
 
         let outer = Quad::from(rect);
         let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);

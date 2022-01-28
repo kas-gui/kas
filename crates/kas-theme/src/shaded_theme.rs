@@ -371,7 +371,7 @@ where
     }
 
     fn checkbox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState) {
-        let anim_fade = self.w.anim.fade_bool_1m(&mut self.draw.draw, wid, checked);
+        let anim_fade = self.w.anim.fade_bool_1m(self.draw.draw, wid, checked);
 
         let bg_col = self.cols.edit_bg(state);
         let nav_col = self.cols.nav_region(state).or(Some(bg_col));
@@ -387,7 +387,7 @@ where
     }
 
     fn radiobox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState) {
-        let anim_fade = self.w.anim.fade_bool_1m(&mut self.draw.draw, wid, checked);
+        let anim_fade = self.w.anim.fade_bool_1m(self.draw.draw, wid, checked);
 
         let bg_col = self.cols.edit_bg(state);
         let nav_col = self.cols.nav_region(state).or(Some(bg_col));
