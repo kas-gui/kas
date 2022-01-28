@@ -10,7 +10,7 @@ use quote::{quote, quote_spanned, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::token::Comma;
-use syn::{Field, Fields, Ident, ItemStruct, LitInt, Member, Token};
+use syn::{Field, Fields, Ident, ItemStruct, Member, Token};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -164,16 +164,22 @@ impl Parse for AutoImpl {
 
         if matches!(mode, Mode::One) {
             let _: kw::on = input.parse()?;
+            let _ = input.parse::<Token![self]>()?;
+            let _ = input.parse::<Token![.]>()?;
             on = Some(input.parse()?);
             lookahead = input.lookahead1();
         } else if lookahead.peek(kw::skip) {
             let _: kw::skip = input.parse()?;
+            let _ = input.parse::<Token![self]>()?;
+            let _ = input.parse::<Token![.]>()?;
             skip.push(input.parse()?);
             empty_or_trailing = false;
             while !input.is_empty() {
                 let lookahead = input.lookahead1();
                 if empty_or_trailing {
-                    if lookahead.peek(Ident) || lookahead.peek(LitInt) {
+                    if lookahead.peek(Token![self]) {
+                        let _ = input.parse::<Token![self]>()?;
+                        let _ = input.parse::<Token![.]>()?;
                         skip.push(input.parse()?);
                         empty_or_trailing = false;
                         continue;

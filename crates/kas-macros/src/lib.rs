@@ -56,7 +56,7 @@ mod widget;
 /// # Multi-field traits
 ///
 /// Some trait implementations make use of all fields by default. Individual
-/// fields may be skipped via the `skip x, y` syntax (after any `where`
+/// fields may be skipped via the `skip self.x, self.y` syntax (after any `where`
 /// clauses). The following traits may be derived this way:
 ///
 /// -   `Clone` — implements `std::clone::Clone`; skipped fields are
@@ -66,7 +66,7 @@ mod widget;
 /// # Single-field traits
 ///
 /// Other trait implementations make use of a single field, identified via the
-/// `on x` syntax (after any `where` clauses). The following traits may be
+/// `on self.x` syntax (after any `where` clauses). The following traits may be
 /// derived in this way:
 ///
 /// -   `Deref` — implements `std::ops::Deref`
@@ -91,7 +91,7 @@ mod widget;
 /// use kas_macros::autoimpl;
 /// use std::fmt::Debug;
 ///
-/// #[autoimpl(Debug where X: Debug skip z)]
+/// #[autoimpl(Debug where X: Debug skip self.z)]
 /// struct S<X, Z> {
 ///     x: X,
 ///     y: String,
@@ -102,7 +102,7 @@ mod widget;
 /// Implement `Deref` and `DerefMut`, dereferencing to the given field:
 /// ```rust
 /// # use kas_macros::autoimpl;
-/// #[autoimpl(Deref, DerefMut on 0)]
+/// #[autoimpl(Deref, DerefMut on self.0)]
 /// struct MyWrapper<T>(T);
 /// ```
 #[proc_macro_attribute]

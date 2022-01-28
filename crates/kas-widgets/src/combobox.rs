@@ -17,7 +17,7 @@ widget! {
     /// A pop-up multiple choice menu
     ///
     /// A combobox presents a menu with a fixed set of choices when clicked.
-    #[autoimpl(Debug skip on_select)]
+    #[autoimpl(Debug skip self.on_select)]
     #[derive(Clone)]
     #[widget{
         key_nav = true;

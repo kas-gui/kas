@@ -11,7 +11,7 @@ use std::rc::Rc;
 
 widget! {
     /// A bare checkbox (no label)
-    #[autoimpl(Debug skip on_toggle)]
+    #[autoimpl(Debug skip self.on_toggle)]
     #[derive(Clone, Default)]
     #[widget{
         key_nav = true;
@@ -134,7 +134,7 @@ widget! {
 widget! {
     /// A checkbox with label
     #[autoimpl(Debug)]
-    #[autoimpl(HasBool on checkbox)]
+    #[autoimpl(HasBool on self.checkbox)]
     #[derive(Clone, Default)]
     #[widget{
         layout = row: *;

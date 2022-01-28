@@ -279,8 +279,8 @@
 //! # use kas::prelude::*;
 //! # use kas::widgets::{ScrollBars, ScrollRegion};
 //! widget! {
-//!     #[autoimpl(Deref, DerefMut on 0)]
-//!     #[autoimpl(class_traits where W: trait on 0)]
+//!     #[autoimpl(Deref, DerefMut on self.0)]
+//!     #[autoimpl(class_traits where W: trait on self.0)]
 //!     #[derive(Clone, Debug, Default)]
 //!     #[widget{
 //!         derive = self.0;

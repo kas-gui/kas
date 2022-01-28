@@ -107,7 +107,7 @@ widget! {
 widget! {
     /// A menu entry which can be toggled
     #[autoimpl(Debug)]
-    #[autoimpl(HasBool on checkbox)]
+    #[autoimpl(HasBool on self.checkbox)]
     #[derive(Clone, Default)]
     pub struct MenuToggle<M: 'static> {
         #[widget_core]

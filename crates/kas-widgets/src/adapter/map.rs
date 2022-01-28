@@ -10,9 +10,9 @@ use std::rc::Rc;
 
 widget! {
     /// Wrapper to map messages from the inner widget
-    #[autoimpl(Debug skip map)]
-    #[autoimpl(Deref, DerefMut on inner)]
-    #[autoimpl(class_traits where W: trait on inner)]
+    #[autoimpl(Debug skip self.map)]
+    #[autoimpl(Deref, DerefMut on self.inner)]
+    #[autoimpl(class_traits where W: trait on self.inner)]
     #[derive(Clone)]
     #[widget{
         layout = single;

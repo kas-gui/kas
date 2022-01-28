@@ -111,7 +111,7 @@ impl EditGuard for () {
 }
 
 /// An [`EditGuard`] impl which calls a closure when activated
-#[autoimpl(Debug skip 0)]
+#[autoimpl(Debug skip self.0)]
 #[derive(Clone)]
 pub struct EditActivate<F: FnMut(&str, &mut EventMgr) -> Option<M>, M>(pub F);
 impl<F, M: 'static> EditGuard for EditActivate<F, M>
@@ -125,7 +125,7 @@ where
 }
 
 /// An [`EditGuard`] impl which calls a closure when activated or focus is lost
-#[autoimpl(Debug skip 0)]
+#[autoimpl(Debug skip self.0)]
 #[derive(Clone)]
 pub struct EditAFL<F: FnMut(&str, &mut EventMgr) -> Option<M>, M>(pub F);
 impl<F, M: 'static> EditGuard for EditAFL<F, M>
@@ -142,7 +142,7 @@ where
 }
 
 /// An [`EditGuard`] impl which calls a closure when edited
-#[autoimpl(Debug skip 0)]
+#[autoimpl(Debug skip self.0)]
 #[derive(Clone)]
 pub struct EditEdit<F: FnMut(&str, &mut EventMgr) -> Option<M>, M>(pub F);
 impl<F, M: 'static> EditGuard for EditEdit<F, M>
@@ -156,7 +156,7 @@ where
 }
 
 /// An [`EditGuard`] impl which calls a closure when updated
-#[autoimpl(Debug skip 0)]
+#[autoimpl(Debug skip self.0)]
 #[derive(Clone)]
 pub struct EditUpdate<F: FnMut(&str)>(pub F);
 impl<F: FnMut(&str) + 'static> EditGuard for EditUpdate<F> {
@@ -170,7 +170,7 @@ widget! {
     /// A text-edit box
     ///
     /// This is just a wrapper around [`EditField`] adding a frame.
-    #[autoimpl(Deref, DerefMut, HasStr, HasString on inner)]
+    #[autoimpl(Deref, DerefMut, HasStr, HasString on self.inner)]
     #[derive(Clone, Default, Debug)]
     #[handler(msg = G::Msg)]
     pub struct EditBox<G: EditGuard = ()> {
