@@ -421,8 +421,8 @@ pub trait DrawHandle {
     /// Target area for drawing
     ///
     /// Drawing is restricted to this [`Rect`], which may be the whole window, a
-    /// [clip region](DrawMgr::with_clip_region) or an
-    /// [overlay](DrawMgr::with_overlay). This may be used to cull hidden
+    /// [clip region](DrawCtx::with_clip_region) or an
+    /// [overlay](DrawCtx::with_overlay). This may be used to cull hidden
     /// items from lists inside a scrollable view.
     fn get_clip_rect(&self) -> Rect;
 
@@ -478,7 +478,7 @@ pub trait DrawHandle {
         state: InputState,
     );
 
-    /// Method used to implement [`DrawMgr::text_selected`]
+    /// Method used to implement [`DrawCtx::text_selected`]
     fn text_selected_range(
         &mut self,
         pos: Coord,

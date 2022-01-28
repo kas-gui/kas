@@ -86,7 +86,7 @@ fn warn_about_error(msg: &str, mut error: &dyn std::error::Error) {
     }
 }
 
-/// A `Result` type representing `T` or [`Error`]
+/// A `Result` type representing `T` or [`enum@Error`]
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// A toolkit over Winit and WGPU
