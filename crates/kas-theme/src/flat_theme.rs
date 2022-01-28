@@ -8,13 +8,11 @@
 //! Widget size and appearance can be modified through themes.
 
 use linear_map::LinearMap;
-use std::collections::hash_map::Entry;
 use std::f32;
 use std::ops::Range;
 use std::rc::Rc;
-use std::time::Instant;
 
-use crate::{anim, dim, ColorsLinear, Config, Theme};
+use crate::{dim, ColorsLinear, Config, Theme};
 use kas::cast::Cast;
 use kas::dir::{Direction, Directional};
 use kas::draw::{color::Rgba, *};
@@ -125,7 +123,7 @@ const DARK_SHADOW_OFFSET: Vec2 = Vec2::ZERO;
 
 pub struct DrawHandle<'a, DS: DrawSharedImpl> {
     pub(crate) draw: DrawIface<'a, DS>,
-    pub(crate) w: &'a mut dim::Window,
+    pub(crate) w: &'a mut dim::Window<DS::Draw>,
     pub(crate) cols: &'a ColorsLinear,
 }
 
@@ -134,7 +132,7 @@ where
     DS::Draw: DrawRoundedImpl,
 {
     type Config = Config;
-    type Window = dim::Window;
+    type Window = dim::Window<DS::Draw>;
 
     #[cfg(not(feature = "gat"))]
     type DrawHandle = DrawHandle<'static, DS>;
@@ -177,6 +175,8 @@ where
 
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(&self, draw: DrawIface<DS>, w: &mut Self::Window) -> Self::DrawHandle {
+        w.anim.update();
+
         unsafe fn extend_lifetime<'b, T: ?Sized>(r: &'b T) -> &'static T {
             std::mem::transmute::<&'b T, &'static T>(r)
         }
@@ -199,6 +199,8 @@ where
         draw: DrawIface<'a, DS>,
         w: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
+        w.anim.update();
+
         DrawHandle {
             draw,
             w,
@@ -247,7 +249,6 @@ where
         state: InputState,
     ) -> Quad {
         let inner = outer.shrink(self.w.dims.button_frame as f32);
-        let col_bg = ColorsLinear::adjust_for_state(col_bg, state);
 
         if !(state.disabled() || state.depress()) {
             let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
@@ -448,24 +449,8 @@ where
     }
 
     fn text_cursor(&mut self, wid: u64, pos: Coord, text: &TextDisplay, _: TextClass, byte: usize) {
-        match self.w.anim.text_cursor.entry(wid) {
-            Entry::Occupied(entry) if entry.get().byte == byte => {
-                let entry = entry.into_mut();
-                if entry.time < Instant::now() {
-                    entry.state = !entry.state;
-                    entry.time += self.w.cursor_blink_rate;
-                }
-                self.draw.animate_at(entry.time);
-                if !entry.state {
-                    return;
-                }
-            }
-            entry => {
-                let time = Instant::now() + self.w.cursor_blink_rate;
-                let state = true;
-                entry.insert_entry(anim::TextCursor { byte, state, time });
-                self.draw.animate_at(time);
-            }
+        if !self.w.anim.text_cursor(self.draw.draw, wid, byte) {
+            return;
         }
 
         let width = self.w.dims.font_marker_width;
@@ -511,6 +496,7 @@ where
         } else {
             col.map(|c| c.into()).unwrap_or(self.cols.background)
         };
+        let col_bg = ColorsLinear::adjust_for_state(col_bg, state);
         let col_frame = self.cols.nav_region(state).unwrap_or(self.cols.frame);
         self.button_frame(outer, col_frame, col_bg, state);
     }
@@ -553,19 +539,26 @@ where
         }
     }
 
-    fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState) {
+    fn checkbox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState) {
+        let anim_fade = self.w.anim.fade_bool_1m(self.draw.draw, wid, checked);
+
         let outer = Quad::from(rect);
 
         let col_frame = self.cols.nav_region(state).unwrap_or(self.cols.frame);
         let inner = self.button_frame(outer, col_frame, self.cols.edit_bg(state), state);
 
-        if let Some(col) = self.cols.check_mark_state(state, checked) {
+        if anim_fade < 1.0 {
             let inner = inner.shrink((2 * self.w.dims.inner_margin) as f32);
+            let v = inner.size() * (anim_fade / 2.0);
+            let inner = Quad::from_coords(inner.a + v, inner.b - v);
+            let col = self.cols.check_mark_state(state);
             self.draw.rect(inner, col);
         }
     }
 
-    fn radiobox(&mut self, rect: Rect, checked: bool, state: InputState) {
+    fn radiobox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState) {
+        let anim_fade = self.w.anim.fade_bool_1m(self.draw.draw, wid, checked);
+
         let outer = Quad::from(rect);
         let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
 
@@ -590,9 +583,12 @@ where
         let r = 1.0 - F * self.w.dims.button_frame as f32 / rect.size.0 as f32;
         self.draw.circle(outer, r, col);
 
-        if let Some(col) = self.cols.check_mark_state(state, checked) {
+        if anim_fade < 1.0 {
             let r = self.w.dims.button_frame + 2 * self.w.dims.inner_margin as i32;
             let inner = outer.shrink(r as f32);
+            let v = inner.size() * (anim_fade / 2.0);
+            let inner = Quad::from_coords(inner.a + v, inner.b - v);
+            let col = self.cols.check_mark_state(state);
             self.draw.circle(inner, 0.0, col);
         }
     }

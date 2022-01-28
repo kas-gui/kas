@@ -27,7 +27,7 @@ const MONTHS: &[&str] = &[
     "December",
 ];
 
-fn main() -> Result<(), kas::shell::Error> {
+fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
     let r = RadioBoxGroup::default();

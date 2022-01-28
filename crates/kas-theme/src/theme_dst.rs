@@ -205,10 +205,6 @@ impl<'a, DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T {
 }
 
 impl Window for StackDst<dyn Window> {
-    fn garbage_collect(&mut self) {
-        self.deref_mut().garbage_collect();
-    }
-
     fn size_handle(&self) -> &dyn SizeHandle {
         self.deref().size_handle()
     }

@@ -45,6 +45,10 @@ pub struct Config {
     #[cfg_attr(feature = "config", serde(default = "defaults::cursor_blink_rate_ms"))]
     cursor_blink_rate_ms: u32,
 
+    /// Transition duration used in animations
+    #[cfg_attr(feature = "config", serde(default = "defaults::transition_fade_ms"))]
+    transition_fade_ms: u32,
+
     /// Text glyph rastering settings
     #[cfg_attr(feature = "config", serde(default))]
     raster: RasterConfig,
@@ -60,6 +64,7 @@ impl Default for Config {
             font_aliases: Default::default(),
             fonts: defaults::fonts(),
             cursor_blink_rate_ms: defaults::cursor_blink_rate_ms(),
+            transition_fade_ms: defaults::transition_fade_ms(),
             raster: Default::default(),
         }
     }
@@ -169,9 +174,10 @@ impl Config {
         Duration::from_millis(self.cursor_blink_rate_ms as u64)
     }
 
-    /// Get the longest animation time
-    pub fn longest_animation(&self) -> Duration {
-        self.cursor_blink_rate()
+    /// Get the fade duration used in transition animations
+    #[inline]
+    pub fn transition_fade_duration(&self) -> Duration {
+        Duration::from_millis(self.transition_fade_ms as u64)
     }
 }
 
@@ -277,6 +283,10 @@ mod defaults {
 
     pub fn cursor_blink_rate_ms() -> u32 {
         600
+    }
+
+    pub fn transition_fade_ms() -> u32 {
+        150
     }
 
     pub fn scale_steps() -> u8 {

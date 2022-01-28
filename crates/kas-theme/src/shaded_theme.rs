@@ -75,7 +75,7 @@ const DIMS: dim::Parameters = dim::Parameters {
 
 pub struct DrawHandle<'a, DS: DrawSharedImpl> {
     draw: DrawIface<'a, DS>,
-    w: &'a mut dim::Window,
+    w: &'a mut dim::Window<DS::Draw>,
     cols: &'a ColorsLinear,
 }
 
@@ -84,7 +84,7 @@ where
     DS::Draw: DrawRoundedImpl + DrawShadedImpl,
 {
     type Config = Config;
-    type Window = dim::Window;
+    type Window = dim::Window<DS::Draw>;
 
     #[cfg(not(feature = "gat"))]
     type DrawHandle = DrawHandle<'static, DS>;
@@ -114,6 +114,8 @@ where
 
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(&self, draw: DrawIface<DS>, w: &mut Self::Window) -> Self::DrawHandle {
+        w.anim.update();
+
         unsafe fn extend_lifetime<'b, T: ?Sized>(r: &'b T) -> &'static T {
             std::mem::transmute::<&'b T, &'static T>(r)
         }
@@ -136,6 +138,8 @@ where
         draw: DrawIface<'a, DS>,
         w: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
+        w.anim.update();
+
         DrawHandle {
             draw,
             w,
@@ -360,29 +364,40 @@ where
         }
     }
 
-    fn edit_box(&mut self, rect: Rect, state: InputState) {
+    fn edit_box(&mut self, rect: Rect, mut state: InputState) {
+        state.remove(InputState::DEPRESS);
         let bg_col = self.cols.edit_bg(state);
         self.draw_edit_box(rect, bg_col, self.cols.nav_region(state));
     }
 
-    fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState) {
+    fn checkbox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState) {
+        let anim_fade = self.w.anim.fade_bool_1m(self.draw.draw, wid, checked);
+
         let bg_col = self.cols.edit_bg(state);
         let nav_col = self.cols.nav_region(state).or(Some(bg_col));
 
         let inner = self.draw_edit_box(rect, bg_col, nav_col);
 
-        if let Some(col) = self.cols.check_mark_state(state, checked) {
+        if anim_fade < 1.0 {
+            let v = inner.size() * (anim_fade / 2.0);
+            let inner = Quad::from_coords(inner.a + v, inner.b - v);
+            let col = self.cols.check_mark_state(state);
             self.draw.shaded_square(inner, (0.0, 0.4), col);
         }
     }
 
-    fn radiobox(&mut self, rect: Rect, checked: bool, state: InputState) {
+    fn radiobox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState) {
+        let anim_fade = self.w.anim.fade_bool_1m(self.draw.draw, wid, checked);
+
         let bg_col = self.cols.edit_bg(state);
         let nav_col = self.cols.nav_region(state).or(Some(bg_col));
 
         let inner = self.draw_edit_box(rect, bg_col, nav_col);
 
-        if let Some(col) = self.cols.check_mark_state(state, checked) {
+        if anim_fade < 1.0 {
+            let v = inner.size() * (anim_fade / 2.0);
+            let inner = Quad::from_coords(inner.a + v, inner.b - v);
+            let col = self.cols.check_mark_state(state);
             self.draw.shaded_circle(inner, (0.0, 1.0), col);
         }
     }

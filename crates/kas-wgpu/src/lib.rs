@@ -86,6 +86,9 @@ fn warn_about_error(msg: &str, mut error: &dyn std::error::Error) {
     }
 }
 
+/// A `Result` type representing `T` or [`enum@Error`]
+pub type Result<T> = std::result::Result<T, Error>;
+
 /// A toolkit over Winit and WGPU
 ///
 /// Constructing the toolkit with [`Toolkit::new`] or [`Toolkit::new_custom`]
@@ -113,7 +116,7 @@ where
     /// of [`Options::from_env`]. KAS config is provided by
     /// [`Options::read_config`].
     #[inline]
-    pub fn new(theme: T) -> Result<Self, Error> {
+    pub fn new(theme: T) -> Result<Self> {
         Self::new_custom((), theme, Options::from_env())
     }
 }
@@ -137,7 +140,7 @@ where
         custom: CB,
         mut theme: T,
         options: Options,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self> {
         let el = EventLoop::with_user_event();
 
         options.init_theme_config(&mut theme)?;
@@ -170,7 +173,7 @@ where
         theme: T,
         options: Options,
         config: Rc<RefCell<kas::event::Config>>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self> {
         let el = EventLoop::with_user_event();
         let scale_factor = find_scale_factor(&el);
         Ok(Toolkit {
@@ -198,7 +201,7 @@ where
     ///
     /// Note: typically, one should have `W: Clone`, enabling multiple usage.
     #[inline]
-    pub fn add<W: kas::Window + 'static>(&mut self, window: W) -> Result<WindowId, Error> {
+    pub fn add<W: kas::Window + 'static>(&mut self, window: W) -> Result<WindowId> {
         self.add_boxed(Box::new(window))
     }
 
@@ -208,13 +211,13 @@ where
     ///
     /// Note: typically, one should have `W: Clone`, enabling multiple usage.
     #[inline]
-    pub fn with<W: kas::Window + 'static>(mut self, window: W) -> Result<Self, Error> {
+    pub fn with<W: kas::Window + 'static>(mut self, window: W) -> Result<Self> {
         self.add_boxed(Box::new(window))?;
         Ok(self)
     }
 
     /// Add a boxed window directly
-    pub fn add_boxed(&mut self, widget: Box<dyn kas::Window>) -> Result<WindowId, Error> {
+    pub fn add_boxed(&mut self, widget: Box<dyn kas::Window>) -> Result<WindowId> {
         let id = self.shared.next_window_id();
         let win = Window::new(&mut self.shared, &self.el, id, widget)?;
         self.windows.push(win);
@@ -223,7 +226,7 @@ where
 
     /// Add a boxed window directly, inline
     #[inline]
-    pub fn with_boxed(mut self, widget: Box<dyn kas::Window>) -> Result<Self, Error> {
+    pub fn with_boxed(mut self, widget: Box<dyn kas::Window>) -> Result<Self> {
         self.add_boxed(widget)?;
         Ok(self)
     }
@@ -268,21 +271,25 @@ pub struct ClosedError;
 
 impl ToolkitProxy {
     /// Close a specific window.
-    pub fn close(&self, id: WindowId) -> Result<(), ClosedError> {
+    pub fn close(&self, id: WindowId) -> std::result::Result<(), ClosedError> {
         self.proxy
             .send_event(ProxyAction::Close(id))
             .map_err(|_| ClosedError)
     }
 
     /// Close all windows and terminate the UI.
-    pub fn close_all(&self) -> Result<(), ClosedError> {
+    pub fn close_all(&self) -> std::result::Result<(), ClosedError> {
         self.proxy
             .send_event(ProxyAction::CloseAll)
             .map_err(|_| ClosedError)
     }
 
     /// Trigger an update handle
-    pub fn trigger_update(&self, handle: UpdateHandle, payload: u64) -> Result<(), ClosedError> {
+    pub fn trigger_update(
+        &self,
+        handle: UpdateHandle,
+        payload: u64,
+    ) -> std::result::Result<(), ClosedError> {
         self.proxy
             .send_event(ProxyAction::Update(handle, payload))
             .map_err(|_| ClosedError)

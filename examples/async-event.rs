@@ -15,7 +15,7 @@ use kas::draw::color::Rgba;
 use kas::prelude::*;
 use kas::widgets::Window;
 
-fn main() -> Result<(), kas::shell::Error> {
+fn main() -> kas::shell::Result<()> {
     env_logger::init();
     let theme = kas::theme::FlatTheme::new();
     let toolkit = kas::shell::Toolkit::new(theme)?;

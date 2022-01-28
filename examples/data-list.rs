@@ -96,7 +96,7 @@ impl ListEntry {
     }
 }
 
-fn main() -> Result<(), kas::shell::Error> {
+fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
     let controls = make_widget! {
