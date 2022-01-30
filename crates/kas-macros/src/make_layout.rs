@@ -36,6 +36,7 @@ pub struct Input {
     pub layout: Tree,
 }
 
+#[derive(Debug)]
 pub struct Tree(Layout);
 impl Tree {
     pub fn generate<'a, I: ExactSizeIterator<Item = &'a Member>>(
@@ -46,6 +47,7 @@ impl Tree {
     }
 }
 
+#[derive(Debug)]
 enum Layout {
     Align(Box<Layout>, Align),
     AlignSingle(Expr, Align),
@@ -58,11 +60,13 @@ enum Layout {
     Grid(GridDimensions, Vec<(CellInfo, Layout)>),
 }
 
+#[derive(Debug)]
 enum List {
     List(Vec<Layout>),
     Glob(Span),
 }
 
+#[derive(Debug)]
 enum Direction {
     Left,
     Right,
@@ -71,18 +75,20 @@ enum Direction {
     Expr(Toks),
 }
 
+#[derive(Debug)]
 enum Align {
     Center,
     Stretch,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct GridDimensions {
     rows: u32,
     cols: u32,
     row_spans: u32,
     col_spans: u32,
 }
+#[derive(Debug)]
 struct CellInfo {
     row: u32,
     row_end: u32,
