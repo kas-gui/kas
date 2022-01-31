@@ -219,6 +219,8 @@ impl Config {
 /// acceptable (equivalent to touch scrolling).
 #[derive(Clone, Copy, Debug, Hash, PartialEq)]
 #[cfg_attr(feature = "config", derive(Serialize, Deserialize))]
+#[derive(num_enum::IntoPrimitive, num_enum::TryFromPrimitive)]
+#[repr(u8)]
 pub enum MousePan {
     /// Disable
     Never,
