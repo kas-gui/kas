@@ -297,7 +297,7 @@ impl ScrollComponent {
             Event::Scroll(delta) => {
                 let d = match delta {
                     LineDelta(x, y) => Offset(
-                        (-self.scroll_rate * x).cast_nearest(),
+                        (self.scroll_rate * x).cast_nearest(),
                         (self.scroll_rate * y).cast_nearest(),
                     ),
                     PixelDelta(d) => d,

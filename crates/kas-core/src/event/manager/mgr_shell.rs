@@ -403,13 +403,25 @@ impl<'a> EventMgr<'a> {
 
                 self.state.last_click_button = FAKE_MOUSE_BUTTON;
 
+                // Shift key forces horisontal scrolling
+                let shift_pressed = self.state.modifiers.shift();
+
                 let event = Event::Scroll(match delta {
-                    MouseScrollDelta::LineDelta(x, y) => ScrollDelta::LineDelta(x, y),
+                    MouseScrollDelta::LineDelta(x, y) =>
+                        if shift_pressed {
+                            ScrollDelta::LineDelta(y, x)
+                        } else {
+                            ScrollDelta::LineDelta(x, y)
+                        },
                     MouseScrollDelta::PixelDelta(pos) => {
                         // The delta is given as a PhysicalPosition, so we need
                         // to convert to our vector type (Offset) here.
                         let coord = Coord::from(pos);
-                        ScrollDelta::PixelDelta(Offset(coord.0, coord.1))
+                        if shift_pressed {
+                            ScrollDelta::PixelDelta(Offset(coord.1, coord.0))
+                        } else {
+                            ScrollDelta::PixelDelta(Offset(coord.0, coord.1))
+                        }
                     }
                 });
                 if let Some(id) = self.state.hover.clone() {
