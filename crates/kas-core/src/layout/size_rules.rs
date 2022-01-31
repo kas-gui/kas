@@ -632,7 +632,7 @@ impl SizeRules {
                 }
             }
 
-            while excess > 0 {
+            while excess > 0 && largest > 0 {
                 let step = (excess / num_equal).min(largest - next_largest);
                 if step == 0 {
                     for n in 0..N {
