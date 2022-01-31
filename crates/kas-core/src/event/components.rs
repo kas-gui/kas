@@ -414,7 +414,7 @@ impl TextInput {
                 match source {
                     PressSource::Touch(touch_id) => {
                         self.touch_phase = TouchPhase::Start(touch_id, coord);
-                        let delay = mgr.config().touch_text_sel_delay();
+                        let delay = mgr.config().touch_select_delay();
                         mgr.update_on_timer(delay, w_id, PAYLOAD_SELECT);
                         Action::Focus
                     }
