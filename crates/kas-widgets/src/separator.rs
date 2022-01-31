@@ -9,7 +9,7 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 
 use crate::Menu;
-use kas::{event, prelude::*};
+use kas::{event::VoidMsg, prelude::*};
 
 widget! {
     /// A separator
@@ -17,13 +17,13 @@ widget! {
     /// This widget draws a bar when in a list.
     #[derive(Clone, Debug, Default)]
     #[handler(msg=M)]
-    pub struct Separator<M: Debug + 'static> {
+    pub struct Separator<M: Debug + 'static = VoidMsg> {
         #[widget_core]
         core: CoreData,
         _msg: PhantomData<M>,
     }
 
-    impl Separator<event::VoidMsg> {
+    impl Separator<VoidMsg> {
         /// Construct a frame, with void message type
         #[inline]
         pub fn new() -> Self {
