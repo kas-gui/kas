@@ -147,7 +147,8 @@ type AccelLayer = (bool, HashMap<VirtualKeyCode, WidgetId>);
 pub struct EventState {
     config: WindowConfig,
     scale_factor: f32,
-    widget_count: usize,
+    configure_active: bool,
+    configure_count: usize,
     modifiers: ModifiersState,
     /// char focus is on same widget as sel_focus; otherwise its value is ignored
     char_focus: bool,

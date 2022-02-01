@@ -150,12 +150,9 @@ pub trait WidgetCore: Any + fmt::Debug {
 /// [`derive(Widget)`] unless `#[widget(children = noauto)]` is used.
 ///
 /// Dynamic widgets must implement this trait manually, since [`derive(Widget)`]
-/// cannot currently handle fields like `Vec<SomeWidget>`.
-///
-/// Whenever the number of child widgets changes or child widgets are replaced,
-/// one must send [`TkAction::RECONFIGURE`].
-/// (TODO: this is slow. Find an option for partial reconfigures. This requires
-/// better widget identifiers; see #91.)
+/// cannot currently handle fields like `Vec<SomeWidget>`. Additionally, any
+/// parent adding child widgets must ensure they get configured, either via
+/// [`TkAction::RECONFIGURE`] or via [`SetRectMgr::configure`].
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 pub trait WidgetChildren: WidgetCore {

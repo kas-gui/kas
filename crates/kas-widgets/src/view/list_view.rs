@@ -463,10 +463,11 @@ widget! {
             let num = usize::conv(num);
             if old_num < num {
                 debug!("allocating widgets (old len = {}, new = {})", old_num, num);
-                *mgr |= TkAction::RECONFIGURE;
                 self.widgets.reserve(num - old_num);
                 for _ in old_num..num {
+                    let id = self.id_ref().make_child(self.widgets.len());
                     let mut widget = self.view.new();
+                    mgr.configure(id, &mut widget);
                     solve_size_rules(
                         &mut widget,
                         mgr.size_mgr(),

@@ -58,7 +58,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
         let mut ev_state = EventState::new(shared.config.clone(), scale_factor);
         let mut tkw = TkWindow::new(shared, None, &mut theme_window);
-        ev_state.configure(&mut tkw, &mut *widget);
+        ev_state.full_configure(&mut tkw, &mut *widget);
 
         let size_mgr = SizeMgr::new(theme_window.size_handle());
         let solve_cache = SolveCache::find_constraints(widget.as_widget_mut(), size_mgr);
@@ -277,7 +277,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         debug!("Window::reconfigure");
 
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-        self.ev_state.configure(&mut tkw, &mut *self.widget);
+        self.ev_state.full_configure(&mut tkw, &mut *self.widget);
 
         self.solve_cache.invalidate_rule_cache();
         self.apply_size(shared);

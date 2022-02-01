@@ -49,7 +49,7 @@ use crate::dir::{Direction, Directional};
 use crate::draw::DrawShared;
 use crate::event::EventState;
 use crate::theme::{SizeHandle, SizeMgr};
-use crate::TkAction;
+use crate::{TkAction, WidgetConfig, WidgetId};
 use std::ops::{Deref, DerefMut};
 
 pub use align::{Align, AlignHints, CompleteAlignment};
@@ -147,7 +147,7 @@ impl Directional for AxisInfo {
     }
 }
 
-/// Manager available to [`Layout::set_rect`] and [`crate::WidgetConfig::configure`]
+/// Manager available to [`Layout::set_rect`] and [`WidgetConfig::configure`]
 ///
 /// This type is functionally a superset of [`SizeMgr`] and subset of
 /// [`crate::theme::DrawMgr`], with support for the appropriate conversions.
@@ -157,7 +157,7 @@ impl Directional for AxisInfo {
 pub struct SetRectMgr<'a> {
     sh: &'a dyn SizeHandle,
     ds: &'a mut dyn DrawShared,
-    ev: &'a mut EventState,
+    pub(crate) ev: &'a mut EventState,
 }
 
 impl<'a> SetRectMgr<'a> {
@@ -183,10 +183,17 @@ impl<'a> SetRectMgr<'a> {
         self.ev
     }
 
-    /// Access the screen's scale factor
+    /// Configure a widget
+    ///
+    /// All widgets must be configured after construction (see
+    /// [`WidgetConfig::configure`]). This method may be used to configure a new
+    /// child widget without requiring the whole window to be reconfigured.
+    ///
+    /// Pass the `id` to assign to the widget: this should be constructed from
+    /// the parent's id via [`WidgetId::make_child`].
     #[inline]
-    pub fn scale_factor(&self) -> f32 {
-        self.sh.scale_factor()
+    pub fn configure(&mut self, id: WidgetId, widget: &mut dyn WidgetConfig) {
+        EventState::configure(self, id, widget);
     }
 }
 

@@ -203,7 +203,8 @@ impl<'a> Iterator for PathIter<'a> {
 /// reference counting internally.
 ///
 /// Identifiers are assigned when configured and when re-configured
-/// (via [`crate::TkAction::RECONFIGURE`]). Since user-code is not notified of a
+/// (via [`crate::TkAction::RECONFIGURE`] or [`crate::layout::SetRectMgr::configure`]).
+/// Since user-code is not notified of a
 /// re-configure, user-code should not store a `WidgetId`.
 #[derive(Clone)]
 pub struct WidgetId(IntOrPtr);
