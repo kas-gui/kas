@@ -65,8 +65,7 @@ fn main() -> kas::shell::Result<()> {
             #[widget] b9 = TextButton::new_msg("&9", Key::Char('9')),
         }
         impl kas::WidgetConfig for Self {
-            fn configure(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
-                self.core_data_mut().id = id;
+            fn configure(&mut self, mgr: &mut SetRectMgr) {
                 // Enable key bindings without Alt held:
                 mgr.enable_alt_bypass(self.id_ref(), true);
             }

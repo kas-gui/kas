@@ -87,13 +87,14 @@ impl EventState {
             widget: &mut dyn WidgetConfig,
             count: &mut usize,
         ) {
-            widget.configure(mgr, id.clone());
+            widget.pre_configure(mgr, id.clone());
             *count += 1;
             for i in 0..widget.num_children() {
                 if let Some(w) = widget.get_child_mut(i) {
                     recurse(mgr, id.make_child(i), w, count);
                 }
             }
+            widget.configure(mgr);
         }
 
         let mut count = 0;

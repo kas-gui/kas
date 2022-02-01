@@ -27,8 +27,7 @@ widget! {
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
-            self.core_data_mut().id = id;
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
             if let Some(handle) = self.group.update_handle() {
                 mgr.update_on_handle(handle, self.id());
             }
@@ -201,8 +200,7 @@ widget! {
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
-            self.core_data_mut().id = id;
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.add_accel_keys(self.radiobox.id_ref(), self.label.keys());
         }
     }

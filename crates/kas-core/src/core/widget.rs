@@ -250,23 +250,45 @@ pub trait WidgetChildren: WidgetCore {
 // TODO(specialization): provide a blanket implementation, so that users only
 // need implement manually when they have something to configure.
 pub trait WidgetConfig: Layout {
+    /// Pre-configure widget
+    ///
+    /// Widgets are *configured* on window creation (before sizing) and when
+    /// [`TkAction::RECONFIGURE`] is sent. Child-widgets may alternatively be
+    /// configured locally by calling [`SetRectMgr::configure`].
+    ///
+    /// Configuration happens at least once
+    /// before sizing and drawing, and may be repeated at a later time.
+    /// Configuration happens in this order: (1) `pre_configure`,
+    /// (2) recurse over children, (3) `configure`.
+    ///
+    /// This method assigns the widget's [`WidgetId`] and may be used to
+    /// affect the manager in ways which influence the child, for example
+    /// [`EventState::new_accel_layer`].
+    fn pre_configure(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
+        let _ = mgr;
+        self.core_data_mut().id = id;
+    }
+
     /// Configure widget
     ///
     /// Widgets are *configured* on window creation (before sizing) and when
-    /// [`TkAction::RECONFIGURE`] is sent. Children are configured after their
-    /// parent.
+    /// [`TkAction::RECONFIGURE`] is sent. Child-widgets may alternatively be
+    /// configured locally by calling [`SetRectMgr::configure`].
     ///
-    /// Configure is used to set the widget's [`WidgetId`] and may perform
-    /// additional actions such as setting up key bindings or local
-    /// initialisation. Note that the method may be called more than once.
+    /// Configuration happens at least once
+    /// before sizing and drawing, and may be repeated at a later time.
+    /// Configuration happens in this order: (1) `pre_configure`,
+    /// (2) recurse over children, (3) `configure`.
+    ///
+    /// This method may be used to perform local initialization and bindings,
+    /// e.g. [`EventState::add_accel_keys`].
     ///
     /// It is not advised to perform any action requiring a reconfigure (e.g.
     /// adding a child widget) during configure due to the possibility of
     /// getting stuck in a reconfigure-loop. See issue kas#91 for more on this.
     /// KAS has a crude mechanism to detect this and panic.
-    fn configure(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
+    fn configure(&mut self, mgr: &mut SetRectMgr) {
         let _ = mgr;
-        self.core_data_mut().id = id;
     }
 
     /// Is this widget navigable via Tab key?
