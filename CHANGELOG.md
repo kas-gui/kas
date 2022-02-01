@@ -10,6 +10,15 @@ This is a small patch:
 -   Fix loading the font DB before parsing Markdown (#246)
 -   Support `#[widget(align = stretch)]` (#246)
 
+## [0.11.0] — unreleased
+
+### Breaking changes
+
+-   `WidgetId` has been completely re-written, and now represents a path
+-   `Ord for WidgetId` now considers a parent to come *before* its children.
+    Note: previously ordering was used in `send` logic; this is no longer
+    recommended (use e.g. `WidgetId::index_of_child` instead).
+
 ## [0.10.0] — 2021-09-05
 
 This release responds to three key criticisms of KAS: (1) slow compile times,
