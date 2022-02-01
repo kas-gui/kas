@@ -50,6 +50,7 @@ use crate::draw::DrawShared;
 use crate::event::EventState;
 use crate::theme::{SizeHandle, SizeMgr};
 use crate::TkAction;
+use std::ops::{Deref, DerefMut};
 
 pub use align::{Align, AlignHints, CompleteAlignment};
 pub use grid_solver::{DefaultWithLen, GridChildInfo, GridDimensions, GridSetter, GridSolver};
@@ -146,10 +147,12 @@ impl Directional for AxisInfo {
     }
 }
 
-/// Manager available to [`Layout::set_rect`]
+/// Manager available to [`Layout::set_rect`] and [`crate::WidgetConfig::configure`]
 ///
 /// This type is functionally a superset of [`SizeMgr`] and subset of
 /// [`crate::theme::DrawMgr`], with support for the appropriate conversions.
+///
+/// `SetRectMgr` supports [`Deref`] and [`DerefMut`] with target [`EventState`].
 #[must_use]
 pub struct SetRectMgr<'a> {
     sh: &'a dyn SizeHandle,
@@ -179,11 +182,29 @@ impl<'a> SetRectMgr<'a> {
     pub fn ev_state(&mut self) -> &mut EventState {
         self.ev
     }
+
+    /// Access the screen's scale factor
+    #[inline]
+    pub fn scale_factor(&self) -> f32 {
+        self.sh.scale_factor()
+    }
 }
 
 impl<'a> std::ops::BitOrAssign<TkAction> for SetRectMgr<'a> {
     #[inline]
     fn bitor_assign(&mut self, action: TkAction) {
         self.ev.send_action(action);
+    }
+}
+
+impl<'a> Deref for SetRectMgr<'a> {
+    type Target = EventState;
+    fn deref(&self) -> &EventState {
+        self.ev
+    }
+}
+impl<'a> DerefMut for SetRectMgr<'a> {
+    fn deref_mut(&mut self) -> &mut EventState {
+        self.ev
     }
 }

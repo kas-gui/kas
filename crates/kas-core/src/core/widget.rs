@@ -8,13 +8,15 @@
 use std::any::Any;
 use std::fmt;
 
-use crate::event::{self, EventMgr};
+use crate::event;
+#[allow(unused)]
+use crate::event::{EventMgr, EventState};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{self, AlignHints, AxisInfo, SetRectMgr, SizeRules};
+#[allow(unused)]
+use crate::theme::DrawCtx;
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::util::IdentifyWidget;
-#[allow(unused)]
-use crate::{event::EventState, theme::DrawCtx};
 use crate::{CoreData, TkAction, WidgetId};
 
 impl dyn WidgetCore {
@@ -265,7 +267,7 @@ pub trait WidgetConfig: Layout {
     /// adding a child widget) during configure due to the possibility of
     /// getting stuck in a reconfigure-loop. See issue kas#91 for more on this.
     /// KAS has a crude mechanism to detect this and panic.
-    fn configure(&mut self, mgr: &mut EventMgr, id: WidgetId) {
+    fn configure(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
         let _ = mgr;
         self.core_data_mut().id = id;
     }

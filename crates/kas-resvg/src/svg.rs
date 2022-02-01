@@ -86,7 +86,7 @@ widget! {
     }
 
     impl WidgetConfig for Svg {
-        fn configure(&mut self, mgr: &mut EventMgr, id: WidgetId) {
+        fn configure(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
             self.core_data_mut().id = id;
             if self.tree.is_none() {
                 // TODO: maybe we should use a singleton to deduplicate loading by
@@ -99,7 +99,7 @@ widget! {
                 let font_family = fonts_db
                     .font_family_from_alias("SERIF")
                     .unwrap_or_default();
-                let font_size = mgr.size_mgr(|size| size.pixels_from_em(1.0)) as f64;
+                let font_size = mgr.size_mgr().pixels_from_em(1.0) as f64;
 
                 // TODO: some options here should be configurable
                 let opts = usvg::OptionsRef {

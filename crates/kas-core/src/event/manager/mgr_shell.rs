@@ -13,6 +13,7 @@ use std::time::{Duration, Instant};
 use super::*;
 use crate::cast::Conv;
 use crate::geom::{Coord, DVec2, Offset};
+use crate::layout::SetRectMgr;
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
 use crate::{ShellWindow, TkAction, Widget, WidgetId};
@@ -89,7 +90,7 @@ impl EventState {
 
         // Enumerate and configure all widgets:
         fn configure(
-            mgr: &mut EventMgr,
+            mgr: &mut SetRectMgr,
             id: WidgetId,
             widget: &mut dyn WidgetConfig,
             count: &mut usize,
@@ -103,14 +104,15 @@ impl EventState {
             }
         }
 
-        let coord = self.last_mouse_coord;
-        self.with(shell, |mgr| {
-            mgr.new_accel_layer(id.clone(), false);
-            configure(mgr, id, widget.as_widget_mut(), &mut count);
+        self.new_accel_layer(id.clone(), false);
 
-            let hover = widget.find_id(coord);
-            mgr.set_hover(widget, hover);
+        shell.size_and_draw_shared(&mut |size_handle, draw_shared| {
+            let mut mgr = SetRectMgr::new(size_handle, draw_shared, self);
+            configure(&mut mgr, id.clone(), widget.as_widget_mut(), &mut count);
         });
+
+        let hover = widget.find_id(self.last_mouse_coord);
+        self.with(shell, |mgr| mgr.set_hover(widget, hover));
 
         if self.action.contains(TkAction::RECONFIGURE) {
             warn!("Detected TkAction::RECONFIGURE during configure. This may cause a reconfigure-loop.");
