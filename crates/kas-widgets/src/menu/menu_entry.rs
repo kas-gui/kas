@@ -24,7 +24,8 @@ widget! {
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut EventMgr) {
+        fn configure(&mut self, mgr: &mut EventMgr, id: WidgetId) {
+            self.core_data_mut().id = id;
             mgr.add_accel_keys(self.id_ref(), self.label.text().keys());
         }
 
@@ -120,7 +121,8 @@ widget! {
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut EventMgr) {
+        fn configure(&mut self, mgr: &mut EventMgr, id: WidgetId) {
+            self.core_data_mut().id = id;
             mgr.add_accel_keys(self.checkbox.id_ref(), self.label.keys());
         }
     }

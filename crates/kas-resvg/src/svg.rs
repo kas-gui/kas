@@ -86,7 +86,8 @@ widget! {
     }
 
     impl WidgetConfig for Svg {
-        fn configure(&mut self, mgr: &mut EventMgr) {
+        fn configure(&mut self, mgr: &mut EventMgr, id: WidgetId) {
+            self.core_data_mut().id = id;
             if self.tree.is_none() {
                 // TODO: maybe we should use a singleton to deduplicate loading by
                 // path? Probably not much use for duplicate SVG widgets however.

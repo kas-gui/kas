@@ -50,7 +50,8 @@ widget! {
     }
 
     impl kas::WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut EventMgr) {
+        fn configure(&mut self, mgr: &mut EventMgr, id: WidgetId) {
+            self.core_data_mut().id = id;
             mgr.enable_alt_bypass(self.id_ref(), true);
         }
     }

@@ -78,7 +78,7 @@ impl EventState {
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
         debug!("EventMgr::configure");
-        self.action = TkAction::empty();
+        self.action.remove(TkAction::RECONFIGURE);
 
         let mut count = 0;
         let id = WidgetId::ROOT;
@@ -88,19 +88,30 @@ impl EventState {
         self.nav_fallback = None;
 
         // Enumerate and configure all widgets:
+        fn configure(
+            mgr: &mut EventMgr,
+            id: WidgetId,
+            widget: &mut dyn WidgetConfig,
+            count: &mut usize,
+        ) {
+            widget.configure(mgr, id.clone());
+            *count += 1;
+            for i in 0..widget.num_children() {
+                if let Some(w) = widget.get_child_mut(i) {
+                    configure(mgr, id.make_child(i), w, count);
+                }
+            }
+        }
+
         let coord = self.last_mouse_coord;
         self.with(shell, |mgr| {
             mgr.new_accel_layer(id.clone(), false);
-            widget.configure_recurse(ConfigureManager {
-                count: &mut count,
-                used: false,
-                id,
-                mgr,
-            });
+            configure(mgr, id, widget.as_widget_mut(), &mut count);
 
             let hover = widget.find_id(coord);
             mgr.set_hover(widget, hover);
         });
+
         if self.action.contains(TkAction::RECONFIGURE) {
             warn!("Detected TkAction::RECONFIGURE during configure. This may cause a reconfigure-loop.");
             if count == self.widget_count {

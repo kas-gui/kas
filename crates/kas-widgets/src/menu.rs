@@ -92,8 +92,8 @@ impl<M: 'static> WidgetChildren for Box<dyn Menu<Msg = M>> {
 }
 
 impl<M: 'static> WidgetConfig for Box<dyn Menu<Msg = M>> {
-    fn configure(&mut self, mgr: &mut EventMgr) {
-        self.as_mut().configure(mgr);
+    fn configure(&mut self, mgr: &mut EventMgr, id: WidgetId) {
+        self.as_mut().configure(mgr, id);
     }
 
     fn key_nav(&self) -> bool {

@@ -79,7 +79,8 @@ widget! {
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut EventMgr) {
+        fn configure(&mut self, mgr: &mut EventMgr, id: WidgetId) {
+            self.core_data_mut().id = id;
             mgr.add_accel_keys(self.inner.id_ref(), self.keys());
         }
     }

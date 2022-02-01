@@ -378,7 +378,8 @@ widget! {
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut EventMgr) {
+        fn configure(&mut self, mgr: &mut EventMgr, id: WidgetId) {
+            self.core_data_mut().id = id;
             // We must refresh the filtered list when the underlying list changes
             if let Some(handle) = self.list.data().data.update_handle() {
                 mgr.update_on_handle(handle, self.id());

@@ -11,7 +11,7 @@ use kas::class::HasString;
 use kas::event::{Event, EventMgr, Handler, Response, VoidMsg};
 use kas::macros::make_widget;
 use kas::widgets::{Frame, Label, TextButton, Window};
-use kas::WidgetCore;
+use kas::{WidgetCore, WidgetId};
 
 // Unlike most examples, we encapsulate the GUI configuration into a function.
 // There's no reason for this, but it demonstrates usage of Toolkit::add_boxed
@@ -45,7 +45,8 @@ fn make_window() -> Box<dyn kas::Window> {
             }
         }
         impl kas::WidgetConfig for Self {
-            fn configure(&mut self, mgr: &mut EventMgr) {
+            fn configure(&mut self, mgr: &mut EventMgr, id: WidgetId) {
+                self.core_data_mut().id = id;
                 mgr.enable_alt_bypass(self.id_ref(), true);
             }
         }

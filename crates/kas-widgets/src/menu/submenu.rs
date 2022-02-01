@@ -7,7 +7,7 @@
 
 use super::Menu;
 use crate::Column;
-use kas::event::{self, Command, ConfigureManager};
+use kas::event::{self, Command};
 use kas::prelude::*;
 use kas::theme::TextClass;
 use kas::{layout, WindowId};
@@ -120,11 +120,10 @@ widget! {
     }
 
     impl WidgetConfig for Self {
-        fn configure_recurse(&mut self, mut cmgr: ConfigureManager) {
-            self.core_data_mut().id = cmgr.get_id();
-            cmgr.mgr().add_accel_keys(self.id_ref(), self.label.text().keys());
-            cmgr.mgr().new_accel_layer(self.id(), true);
-            self.list.configure_recurse(cmgr.child(0));
+        fn configure(&mut self, mgr: &mut EventMgr, id: WidgetId) {
+            self.core_data_mut().id = id;
+            mgr.add_accel_keys(self.id_ref(), self.label.text().keys());
+            mgr.new_accel_layer(self.id(), true);
         }
 
         fn key_nav(&self) -> bool {

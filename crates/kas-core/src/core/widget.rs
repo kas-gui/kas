@@ -8,7 +8,7 @@
 use std::any::Any;
 use std::fmt;
 
-use crate::event::{self, ConfigureManager, EventMgr};
+use crate::event::{self, EventMgr};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{self, AlignHints, AxisInfo, SetRectMgr, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
@@ -253,35 +253,21 @@ pub trait WidgetChildren: WidgetCore {
 pub trait WidgetConfig: Layout {
     /// Configure widget
     ///
-    /// Widgets are *configured* on window creation and when
-    /// [`TkAction::RECONFIGURE`] is sent.
+    /// Widgets are *configured* on window creation (before sizing) and when
+    /// [`TkAction::RECONFIGURE`] is sent. Children are configured after their
+    /// parent.
     ///
-    /// Configure is called before resizing (but after calculation of the
-    /// initial window size). This method is called after
-    /// a [`WidgetId`] has been assigned to self, and after `configure` has
-    /// been called on each child.
+    /// Configure is used to set the widget's [`WidgetId`] and may perform
+    /// additional actions such as setting up key bindings or local
+    /// initialisation. Note that the method may be called more than once.
     ///
     /// It is not advised to perform any action requiring a reconfigure (e.g.
     /// adding a child widget) during configure due to the possibility of
     /// getting stuck in a reconfigure-loop. See issue kas#91 for more on this.
     /// KAS has a crude mechanism to detect this and panic.
-    ///
-    /// The default implementation of this method does nothing.
-    fn configure(&mut self, _: &mut EventMgr) {}
-
-    /// Configure self and children
-    ///
-    /// In most cases one should not override the default implementation of this
-    /// method but instead use [`WidgetConfig::configure`]; the exception is
-    /// widgets with pop-ups.
-    fn configure_recurse(&mut self, mut cmgr: ConfigureManager) {
-        self.core_data_mut().id = cmgr.get_id();
-        for i in 0..self.num_children() {
-            if let Some(w) = self.get_child_mut(i) {
-                w.configure_recurse(cmgr.child(i));
-            }
-        }
-        self.configure(cmgr.mgr());
+    fn configure(&mut self, mgr: &mut EventMgr, id: WidgetId) {
+        let _ = mgr;
+        self.core_data_mut().id = id;
     }
 
     /// Is this widget navigable via Tab key?

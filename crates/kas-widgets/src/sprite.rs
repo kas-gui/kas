@@ -22,7 +22,8 @@ widget! {
     }
 
     impl WidgetConfig for Image {
-        fn configure(&mut self, mgr: &mut EventMgr) {
+        fn configure(&mut self, mgr: &mut EventMgr, id: WidgetId) {
+            self.core_data_mut().id = id;
             if self.do_load {
                 self.do_load = false;
                 match mgr.draw_shared(|ds| {
