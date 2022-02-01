@@ -144,15 +144,6 @@ impl EventState {
         self.time_updates.last().map(|time| time.0)
     }
 
-    /// Set an action
-    ///
-    /// Since this is a commonly used operation, an operator overload is
-    /// available to do this job: `*mgr |= action;`.
-    #[inline]
-    pub fn send_action(&mut self, action: TkAction) {
-        self.action = self.action.max(action);
-    }
-
     /// Construct a [`EventMgr`] referring to this state
     ///
     /// Invokes the given closure on this [`EventMgr`].
