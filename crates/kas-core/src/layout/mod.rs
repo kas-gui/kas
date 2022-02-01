@@ -47,6 +47,7 @@ mod visitor;
 
 use crate::dir::{Direction, Directional};
 use crate::draw::DrawShared;
+use crate::event::EventState;
 use crate::theme::{SizeHandle, SizeMgr};
 use crate::TkAction;
 
@@ -150,39 +151,39 @@ impl Directional for AxisInfo {
 /// This type is functionally a superset of [`SizeMgr`] and subset of
 /// [`crate::theme::DrawMgr`], with support for the appropriate conversions.
 #[must_use]
-pub struct SetRectMgr<'a>(&'a dyn SizeHandle, &'a mut dyn DrawShared, TkAction);
+pub struct SetRectMgr<'a> {
+    sh: &'a dyn SizeHandle,
+    ds: &'a mut dyn DrawShared,
+    ev: &'a mut EventState,
+}
 
 impl<'a> SetRectMgr<'a> {
-    /// Construct from a [`SizeHandle`] and a [`DrawShared`]
-    ///
-    /// Note: the embedded [`TkAction`] should be extracted after usage.
+    /// Construct
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn new(size: &'a dyn SizeHandle, draw: &'a mut dyn DrawShared) -> Self {
-        SetRectMgr(size, draw, TkAction::empty())
-    }
-
-    /// Deconstruct
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn take_action(self) -> TkAction {
-        self.2
+    pub fn new(sh: &'a dyn SizeHandle, ds: &'a mut dyn DrawShared, ev: &'a mut EventState) -> Self {
+        SetRectMgr { sh, ds, ev }
     }
 
     /// Access a [`SizeMgr`]
     pub fn size_mgr(&self) -> SizeMgr<'a> {
-        SizeMgr::new(self.0)
+        SizeMgr::new(self.sh)
     }
 
-    /// Access a [`DrawShared`]
+    /// Access [`DrawShared`]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
-        self.1
+        self.ds
+    }
+
+    /// Access [`EventState`]
+    pub fn ev_state(&mut self) -> &mut EventState {
+        self.ev
     }
 }
 
 impl<'a> std::ops::BitOrAssign<TkAction> for SetRectMgr<'a> {
     #[inline]
     fn bitor_assign(&mut self, action: TkAction) {
-        self.2 |= action;
+        self.ev.send_action(action);
     }
 }

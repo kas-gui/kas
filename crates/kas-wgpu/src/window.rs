@@ -30,7 +30,7 @@ use crate::ProxyAction;
 pub(crate) struct Window<C: CustomPipe, T: Theme<DrawPipe<C>>> {
     pub(crate) widget: Box<dyn kas::Window>,
     pub(crate) window_id: WindowId,
-    mgr: EventState,
+    ev_state: EventState,
     solve_cache: SolveCache,
     /// The winit window
     pub(crate) window: winit::window::Window,
@@ -56,9 +56,9 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let scale_factor = shared.scale_factor as f32;
         let mut theme_window = shared.theme.new_window(scale_factor);
 
-        let mut mgr = EventState::new(shared.config.clone(), scale_factor);
+        let mut ev_state = EventState::new(shared.config.clone(), scale_factor);
         let mut tkw = TkWindow::new(shared, None, &mut theme_window);
-        mgr.configure(&mut tkw, &mut *widget);
+        ev_state.configure(&mut tkw, &mut *widget);
 
         let size_mgr = SizeMgr::new(theme_window.size_handle());
         let solve_cache = SolveCache::find_constraints(widget.as_widget_mut(), size_mgr);
@@ -101,7 +101,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let mut r = Window {
             widget,
             window_id,
-            mgr,
+            ev_state,
             solve_cache,
             window,
             surface,
@@ -130,7 +130,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
                 // Note: API allows us to set new window size here.
                 shared.scale_factor = scale_factor;
                 let scale_factor = scale_factor as f32;
-                self.mgr.set_scale_factor(scale_factor);
+                self.ev_state.set_scale_factor(scale_factor);
                 shared
                     .theme
                     .update_window(&mut self.theme_window, scale_factor);
@@ -140,14 +140,14 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             event => {
                 let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
                 let widget = &mut *self.widget;
-                self.mgr.with(&mut tkw, |mgr| {
+                self.ev_state.with(&mut tkw, |mgr| {
                     mgr.handle_winit(widget, event);
                 });
 
-                if self.mgr.action.contains(TkAction::RECONFIGURE) {
+                if self.ev_state.action.contains(TkAction::RECONFIGURE) {
                     // Reconfigure must happen before further event handling
                     self.reconfigure(shared);
-                    self.mgr.action.remove(TkAction::RECONFIGURE);
+                    self.ev_state.action.remove(TkAction::RECONFIGURE);
                 }
             }
         }
@@ -156,7 +156,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
     /// Update, after receiving all events
     pub fn update(&mut self, shared: &mut SharedState<C, T>) -> (TkAction, Option<Instant>) {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-        let action = self.mgr.update(&mut tkw, &mut *self.widget);
+        let action = self.ev_state.update(&mut tkw, &mut *self.widget);
         drop(tkw);
 
         if action.contains(TkAction::CLOSE | TkAction::EXIT) {
@@ -164,7 +164,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         }
         self.handle_action(shared, action);
 
-        let mut resume = self.mgr.next_resume();
+        let mut resume = self.ev_state.next_resume();
 
         if let Some(time) = self.queued_frame_time {
             if time <= Instant::now() {
@@ -197,12 +197,12 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         }
         /*if action.contains(TkAction::Popup) {
             let widget = &mut self.widget;
-            self.mgr.with(&mut tkw, |mgr| widget.resize_popups(mgr));
-            self.mgr.region_moved(&mut tkw, &mut *self.widget);
+            self.ev_state.with(&mut tkw, |mgr| widget.resize_popups(mgr));
+            self.ev_state.region_moved(&mut tkw, &mut *self.widget);
         } else*/
         if action.contains(TkAction::REGION_MOVED) {
             let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-            self.mgr.region_moved(&mut tkw, &mut *self.widget);
+            self.ev_state.region_moved(&mut tkw, &mut *self.widget);
         }
         if !action.is_empty() {
             self.queued_frame_time = Some(self.next_avail_frame_time);
@@ -212,16 +212,16 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
     pub fn handle_closure(mut self, shared: &mut SharedState<C, T>) -> TkAction {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let widget = &mut *self.widget;
-        self.mgr.with(&mut tkw, |mgr| {
+        self.ev_state.with(&mut tkw, |mgr| {
             widget.handle_closure(mgr);
         });
-        self.mgr.update(&mut tkw, &mut *self.widget)
+        self.ev_state.update(&mut tkw, &mut *self.widget)
     }
 
     pub fn update_timer(&mut self, shared: &mut SharedState<C, T>) -> Option<Instant> {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let widget = &mut *self.widget;
-        self.mgr.with(&mut tkw, |mgr| {
+        self.ev_state.with(&mut tkw, |mgr| {
             mgr.update_timer(widget);
         });
         self.next_resume()
@@ -235,7 +235,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
     ) {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let widget = &mut *self.widget;
-        self.mgr.with(&mut tkw, |mgr| {
+        self.ev_state.with(&mut tkw, |mgr| {
             mgr.update_handle(widget, handle, payload);
         });
     }
@@ -243,22 +243,22 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
     pub fn add_popup(&mut self, shared: &mut SharedState<C, T>, id: WindowId, popup: kas::Popup) {
         let window = &mut *self.widget;
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-        self.mgr.with(&mut tkw, |mgr| {
+        self.ev_state.with(&mut tkw, |mgr| {
             kas::Window::add_popup(window, mgr, id, popup);
         });
     }
 
     pub fn send_action(&mut self, action: TkAction) {
-        self.mgr.send_action(action);
+        self.ev_state.send_action(action);
     }
 
     pub fn send_close(&mut self, shared: &mut SharedState<C, T>, id: WindowId) {
         if id == self.window_id {
-            self.mgr.send_action(TkAction::CLOSE);
+            self.ev_state.send_action(TkAction::CLOSE);
         } else {
             let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
             let widget = &mut *self.widget;
-            self.mgr.with(&mut tkw, |mgr| {
+            self.ev_state.with(&mut tkw, |mgr| {
                 widget.remove_popup(mgr, id);
             });
         }
@@ -277,7 +277,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         debug!("Window::reconfigure");
 
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-        self.mgr.configure(&mut tkw, &mut *self.widget);
+        self.ev_state.configure(&mut tkw, &mut *self.widget);
 
         self.solve_cache.invalidate_rule_cache();
         self.apply_size(shared);
@@ -291,10 +291,13 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
         let solve_cache = &mut self.solve_cache;
         let widget = &mut self.widget;
-        let mut mgr = SetRectMgr::new(self.theme_window.size_handle(), &mut shared.draw);
+        let mut mgr = SetRectMgr::new(
+            self.theme_window.size_handle(),
+            &mut shared.draw,
+            &mut self.ev_state,
+        );
         solve_cache.apply_rect(widget.as_widget_mut(), &mut mgr, rect, true);
         widget.resize_popups(&mut mgr);
-        self.mgr.send_action(mgr.take_action());
 
         let restrict_dimensions = self.widget.restrict_dimensions();
         if restrict_dimensions.0 {
@@ -350,13 +353,13 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             unsafe {
                 // Safety: lifetimes do not escape the returned draw_handle value.
                 let mut draw_handle = shared.theme.draw_handle(draw, &mut self.theme_window);
-                let draw_mgr = DrawMgr::new(&mut draw_handle, &mut self.mgr, false);
+                let draw_mgr = DrawMgr::new(&mut draw_handle, &mut self.ev_state, false);
                 self.widget.draw(draw_mgr);
             }
             #[cfg(feature = "gat")]
             {
                 let mut draw_handle = shared.theme.draw_handle(draw, &mut self.theme_window);
-                let draw_mgr = DrawMgr::new(&mut draw_handle, &mut self.mgr, false);
+                let draw_mgr = DrawMgr::new(&mut draw_handle, &mut self.ev_state, false);
                 self.widget.draw(draw_mgr);
             }
         }
@@ -367,8 +370,8 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             AnimationState::Timed(time) => Some(time.max(self.next_avail_frame_time)),
         };
         self.draw.animation = AnimationState::None;
-        self.mgr.action -= TkAction::REDRAW; // we just drew
-        if !self.mgr.action.is_empty() {
+        self.ev_state.action -= TkAction::REDRAW; // we just drew
+        if !self.ev_state.action.is_empty() {
             info!("do_draw: abort and enqueue `Self::update` due to non-empty actions");
             return true;
         }
@@ -405,7 +408,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
     }
 
     pub(crate) fn next_resume(&self) -> Option<Instant> {
-        match (self.mgr.next_resume(), self.queued_frame_time) {
+        match (self.ev_state.next_resume(), self.queued_frame_time) {
             (Some(t1), Some(t2)) => Some(t1.min(t2)),
             (Some(t), None) => Some(t),
             (None, Some(t)) => Some(t),
