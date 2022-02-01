@@ -151,7 +151,7 @@ widget! {
 
     impl WidgetConfig for Self {
         fn configure(&mut self, mgr: &mut EventMgr) {
-            mgr.add_accel_keys(self.checkbox.id(), self.label.keys());
+            mgr.add_accel_keys(self.checkbox.id_ref(), self.label.keys());
         }
     }
 

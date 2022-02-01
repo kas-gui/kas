@@ -122,11 +122,9 @@ widget! {
     impl WidgetConfig for Self {
         fn configure_recurse(&mut self, mut cmgr: ConfigureManager) {
             self.core_data_mut().id = cmgr.get_id();
-            cmgr.mgr().push_accel_layer(true);
+            cmgr.mgr().add_accel_keys(self.id_ref(), self.label.text().keys());
+            cmgr.mgr().new_accel_layer(self.id(), true);
             self.list.configure_recurse(cmgr.child(0));
-            let mgr = cmgr.mgr();
-            mgr.pop_accel_layer(self.id());
-            mgr.add_accel_keys(self.id(), self.label.text().keys());
         }
 
         fn key_nav(&self) -> bool {

@@ -12,7 +12,7 @@ use linear_map::{set::LinearSet, LinearMap};
 use log::trace;
 use smallvec::SmallVec;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::rc::Rc;
 use std::time::Instant;
 use std::u16;
@@ -123,6 +123,8 @@ enum Pending {
     SetNavFocus(WidgetId, bool),
 }
 
+type AccelLayer = (bool, HashMap<VirtualKeyCode, WidgetId>);
+
 /// Event manager state
 ///
 /// This struct encapsulates window-specific event-handling state and handling.
@@ -161,8 +163,7 @@ pub struct EventState {
     mouse_grab: Option<MouseGrab>,
     touch_grab: SmallVec<[TouchGrab; 8]>,
     pan_grab: SmallVec<[PanGrab; 4]>,
-    accel_stack: Vec<(bool, HashMap<VirtualKeyCode, WidgetId>)>,
-    accel_layers: HashMap<WidgetId, (bool, HashMap<VirtualKeyCode, WidgetId>)>,
+    accel_layers: BTreeMap<WidgetId, AccelLayer>,
     // For each: (WindowId of popup, popup descriptor, old nav focus)
     popups: SmallVec<[(WindowId, crate::Popup, Option<WidgetId>); 16]>,
     popup_removed: SmallVec<[(WidgetId, WindowId); 16]>,
@@ -397,9 +398,9 @@ impl<'a> EventMgr<'a> {
 
         // If we found a key binding below the top layer, we should close everything above
         if n > 0 {
-            let last = self.state.popups.len() - 1;
-            for i in 0..n {
-                let id = self.state.popups[last - i].0;
+            let len = self.state.popups.len();
+            for i in ((len - n)..len).rev() {
+                let id = self.state.popups[i].0;
                 self.close_window(id, false);
             }
         }

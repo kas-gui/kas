@@ -80,7 +80,7 @@ widget! {
 
     impl WidgetConfig for Self {
         fn configure(&mut self, mgr: &mut EventMgr) {
-            mgr.add_accel_keys(self.inner.id(), self.keys());
+            mgr.add_accel_keys(self.inner.id_ref(), self.keys());
         }
     }
 

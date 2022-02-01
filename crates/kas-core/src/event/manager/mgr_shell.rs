@@ -48,8 +48,7 @@ impl EventState {
             mouse_grab: None,
             touch_grab: Default::default(),
             pan_grab: SmallVec::new(),
-            accel_stack: vec![],
-            accel_layers: HashMap::new(),
+            accel_layers: Default::default(),
             popups: Default::default(),
             popup_removed: Default::default(),
             time_updates: vec![],
@@ -85,23 +84,19 @@ impl EventState {
         let id = WidgetId::ROOT;
 
         // These are recreated during configure:
-        debug_assert!(self.accel_stack.is_empty());
-        self.accel_stack.clear();
         self.accel_layers.clear();
         self.nav_fallback = None;
 
         // Enumerate and configure all widgets:
         let coord = self.last_mouse_coord;
         self.with(shell, |mgr| {
-            mgr.push_accel_layer(false);
+            mgr.new_accel_layer(id.clone(), false);
             widget.configure_recurse(ConfigureManager {
                 count: &mut count,
                 used: false,
                 id,
                 mgr,
             });
-            mgr.pop_accel_layer(widget.id());
-            debug_assert!(mgr.state.accel_stack.is_empty());
 
             let hover = widget.find_id(coord);
             mgr.set_hover(widget, hover);

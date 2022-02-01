@@ -25,7 +25,7 @@ widget! {
 
     impl WidgetConfig for Self {
         fn configure(&mut self, mgr: &mut EventMgr) {
-            mgr.add_accel_keys(self.id(), self.label.text().keys());
+            mgr.add_accel_keys(self.id_ref(), self.label.text().keys());
         }
 
         fn key_nav(&self) -> bool {
@@ -121,7 +121,7 @@ widget! {
 
     impl WidgetConfig for Self {
         fn configure(&mut self, mgr: &mut EventMgr) {
-            mgr.add_accel_keys(self.checkbox.id(), self.label.keys());
+            mgr.add_accel_keys(self.checkbox.id_ref(), self.label.keys());
         }
     }
 

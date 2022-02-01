@@ -436,52 +436,47 @@ impl<'a> EventMgr<'a> {
         }
     }
 
-    /// Add a new accelerator key layer and make it current
+    fn accel_layer_for_id(&mut self, id: &WidgetId) -> Option<&mut AccelLayer> {
+        let root = &WidgetId::ROOT;
+        for (k, v) in self.state.accel_layers.range_mut(root..=id).rev() {
+            if k.is_ancestor_of(id) {
+                return Some(v);
+            };
+        }
+        debug_assert!(false, "expected ROOT accel layer");
+        None
+    }
+
+    /// Add a new accelerator key layer
     ///
-    /// This method affects the behaviour of [`EventMgr::add_accel_keys`] by
-    /// adding a new *layer* and making this new layer *current*.
+    /// This method constructs a new "layer" for accelerator keys: any keys
+    /// added via [`EventMgr::add_accel_keys`] to a widget which is a descentant
+    /// of (or equal to) `id` will only be active when that layer is active.
     ///
     /// This method should only be called by parents of a pop-up: layers over
     /// the base layer are *only* activated by an open pop-up.
     ///
-    /// [`EventMgr::pop_accel_layer`] must be called after child widgets have
-    /// been configured to finish configuration of this new layer and to make
-    /// the previous layer current.
-    ///
     /// If `alt_bypass` is true, then this layer's accelerator keys will be
     /// active even without Alt pressed (but only highlighted with Alt pressed).
-    pub fn push_accel_layer(&mut self, alt_bypass: bool) {
-        self.state.accel_stack.push((alt_bypass, HashMap::new()));
+    pub fn new_accel_layer(&mut self, id: WidgetId, alt_bypass: bool) {
+        self.state
+            .accel_layers
+            .insert(id, (alt_bypass, HashMap::new()));
     }
 
-    /// Enable `alt_bypass` for the current layer
+    /// Enable `alt_bypass` for layer
     ///
-    /// This may be called by a child widget during configure, e.g. to enable
-    /// alt-bypass for the base layer. See also [`EventMgr::push_accel_layer`].
-    pub fn enable_alt_bypass(&mut self, alt_bypass: bool) {
-        if let Some(layer) = self.state.accel_stack.last_mut() {
+    /// This may be called by a child widget during configure to enable or
+    /// disable alt-bypass for the accel-key layer containing its accel keys.
+    /// This allows accelerator keys to be used as shortcuts without the Alt
+    /// key held. See also [`EventMgr::new_accel_layer`].
+    pub fn enable_alt_bypass(&mut self, id: &WidgetId, alt_bypass: bool) {
+        if let Some(layer) = self.accel_layer_for_id(id) {
             layer.0 = alt_bypass;
         }
     }
 
-    /// Finish configuration of an accelerator key layer
-    ///
-    /// This must be called after [`EventMgr::push_accel_layer`], after
-    /// configuration of any children using this layer.
-    ///
-    /// The `id` must be that of the widget which created this layer.
-    pub fn pop_accel_layer(&mut self, id: WidgetId) {
-        if let Some(layer) = self.state.accel_stack.pop() {
-            self.state.accel_layers.insert(id, layer);
-        } else {
-            debug_assert!(
-                false,
-                "pop_accel_layer without corresponding push_accel_layer"
-            );
-        }
-    }
-
-    /// Adds an accelerator key for a widget to the current layer
+    /// Adds an accelerator key for a widget
     ///
     /// An *accelerator key* is a shortcut key able to directly open menus,
     /// activate buttons, etc. A user triggers the key by pressing `Alt+Key`,
@@ -491,18 +486,18 @@ impl<'a> EventMgr<'a> {
     /// Note that accelerator keys may be automatically derived from labels:
     /// see [`crate::text::AccelString`].
     ///
-    /// Accelerator keys may be added to the base layer or to a new layer
-    /// associated with a pop-up (see [`EventMgr::push_accel_layer`]).
-    /// The top-most active layer gets first priority in matching input, but
-    /// does not block previous layers.
+    /// Accelerator keys are added to the layer with the longest path which is
+    /// an ancestor of `id`. This usually means that if the widget is part of a
+    /// pop-up, the key is only active when that pop-up is open.
+    /// See [`EventMgr::new_accel_layer`].
     ///
     /// This should only be called from [`WidgetConfig::configure`].
     // TODO(type safety): consider only implementing on ConfigureManager
     #[inline]
-    pub fn add_accel_keys(&mut self, id: WidgetId, keys: &[VirtualKeyCode]) {
-        if let Some(last) = self.state.accel_stack.last_mut() {
+    pub fn add_accel_keys(&mut self, id: &WidgetId, keys: &[VirtualKeyCode]) {
+        if let Some(layer) = self.accel_layer_for_id(id) {
             for key in keys {
-                last.1.insert(*key, id.clone());
+                layer.1.insert(*key, id.clone());
             }
         }
     }
