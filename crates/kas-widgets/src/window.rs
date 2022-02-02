@@ -153,7 +153,7 @@ impl<W: Widget> Window<W> {
     /// The closure `consume` is called when the window is destroyed, and yields
     /// a user-defined value. This value is returned through the returned
     /// [`Future`] object. In order to be notified when the future
-    /// completes, its owner should call [`EventMgr::update_on_handle`] with the
+    /// completes, its owner should call [`EventState::update_on_handle`] with the
     /// returned [`UpdateHandle`].
     ///
     /// Currently it is not possible for this closure to actually drop the

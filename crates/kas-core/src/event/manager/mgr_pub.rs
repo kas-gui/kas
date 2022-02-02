@@ -282,7 +282,7 @@ impl EventState {
     /// Add a new accelerator key layer
     ///
     /// This method constructs a new "layer" for accelerator keys: any keys
-    /// added via [`EventMgr::add_accel_keys`] to a widget which is a descentant
+    /// added via [`EventState::add_accel_keys`] to a widget which is a descentant
     /// of (or equal to) `id` will only be active when that layer is active.
     ///
     /// This method should only be called by parents of a pop-up: layers over
@@ -299,7 +299,7 @@ impl EventState {
     /// This may be called by a child widget during configure to enable or
     /// disable alt-bypass for the accel-key layer containing its accel keys.
     /// This allows accelerator keys to be used as shortcuts without the Alt
-    /// key held. See also [`EventMgr::new_accel_layer`].
+    /// key held. See also [`EventState::new_accel_layer`].
     pub fn enable_alt_bypass(&mut self, id: &WidgetId, alt_bypass: bool) {
         if let Some(layer) = self.accel_layer_for_id(id) {
             layer.0 = alt_bypass;
@@ -319,7 +319,7 @@ impl EventState {
     /// Accelerator keys are added to the layer with the longest path which is
     /// an ancestor of `id`. This usually means that if the widget is part of a
     /// pop-up, the key is only active when that pop-up is open.
-    /// See [`EventMgr::new_accel_layer`].
+    /// See [`EventState::new_accel_layer`].
     ///
     /// This should only be called from [`WidgetConfig::configure`].
     // TODO(type safety): consider only implementing on ConfigureManager
@@ -606,7 +606,7 @@ impl<'a> EventMgr<'a> {
         let mut result = None;
         self.shell
             .size_and_draw_shared(&mut |size_handle, draw_shared| {
-                let mut mgr = SetRectMgr::new(size_handle, draw_shared, &mut self.state);
+                let mut mgr = SetRectMgr::new(size_handle, draw_shared, self.state);
                 result = Some(f(&mut mgr));
             });
         result.expect("ShellWindow::size_handle impl failed to call function argument")
@@ -637,7 +637,7 @@ impl<'a> EventMgr<'a> {
     ///
     /// Each grab can optionally visually depress one widget, and initially
     /// depresses the widget owning the grab (the `id` passed here). Call
-    /// [`EventMgr::set_grab_depress`] to update the grab's depress target.
+    /// [`EventState::set_grab_depress`] to update the grab's depress target.
     /// This is cleared automatically when the grab ends.
     ///
     /// The events sent depends on the `mode`:

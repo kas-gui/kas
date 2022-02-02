@@ -317,7 +317,7 @@ widget! {
     }
 
     impl WidgetConfig for Mandlebrot {
-        fn configure(&mut self, mgr: &mut EventMgr) {
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.register_nav_fallback(self.id());
         }
     }

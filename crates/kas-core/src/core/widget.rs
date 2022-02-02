@@ -171,7 +171,7 @@ pub trait WidgetChildren: WidgetCore {
     ///
     /// Warning: directly adjusting a widget without requiring reconfigure or
     /// redraw may break the UI. If a widget is replaced, a reconfigure **must**
-    /// be requested. This can be done via [`EventMgr::send_action`].
+    /// be requested. This can be done via [`EventState::send_action`].
     /// This method may be removed in the future.
     fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig>;
 
