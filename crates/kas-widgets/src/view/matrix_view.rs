@@ -370,7 +370,7 @@ widget! {
             let frame = kas::layout::FrameRules::new_sym(0, inner_margin, 0);
 
             // We use a default-generated widget to generate size rules
-            let mut rules = self.view.new().size_rules(size_mgr.re(), axis);
+            let mut rules = self.view.make().size_rules(size_mgr.re(), axis);
 
             self.child_size_min.set_component(axis, rules.min_size());
             self.child_size_ideal
@@ -423,7 +423,7 @@ widget! {
                 self.widgets.reserve(num - old_num);
                 for _ in old_num..num {
                     let id = self.id_ref().make_child(self.widgets.len());
-                    let mut widget = self.view.new();
+                    let mut widget = self.view.make();
                     mgr.configure(id, &mut widget);
                     solve_size_rules(
                         &mut widget,

@@ -180,7 +180,7 @@ impl Driver<(usize, bool, String)> for MyDriver {
     type Msg = EntryMsg;
     type Widget = ListEntry;
 
-    fn new(&self) -> Self::Widget {
+    fn make(&self) -> Self::Widget {
         // Default instances are not shown, so the data is unimportant
         ListEntry {
             core: Default::default(),
