@@ -632,13 +632,15 @@ widget! {
                         }
                         _ => None,
                     };
-                    if let Some((ci, ri)) = data {
+                    return if let Some((ci, ri)) = data {
                         // Set nav focus to index and update scroll position
-                        // Note: we update nav focus before updating widgets; this is fine
+                        // TODO: update position
                         let index = (ci % cols) + (ri % rows) * cols;
                         mgr.set_nav_focus(self.widgets[index].widget.id(), true);
-                    }
-                    return Response::Used;
+                        Response::Used
+                    } else {
+                        Response::Unused
+                    };
                 }
                 _ => (), // fall through to scroll handler
             }

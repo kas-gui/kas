@@ -651,7 +651,7 @@ widget! {
                         mgr.set_nav_focus(self.widgets[index % len].widget.id(), true);
                         Response::Focus(rect)
                     } else {
-                        Response::Used
+                        Response::Unused
                     };
                 }
                 _ => (), // fall through to scroll handler
