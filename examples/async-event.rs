@@ -53,7 +53,7 @@ widget! {
         handle: UpdateHandle,
     }
     impl WidgetConfig for ColourSquare {
-        fn configure(&mut self, mgr: &mut EventMgr) {
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
             // register to receive updates on this handle
             mgr.update_on_handle(self.handle, self.id());
         }

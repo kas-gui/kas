@@ -119,7 +119,7 @@ widget! {
     }
 
     impl WidgetConfig for Clock {
-        fn configure(&mut self, mgr: &mut EventMgr) {
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.update_on_timer(Duration::new(0, 0), self.id(), 0);
         }
     }

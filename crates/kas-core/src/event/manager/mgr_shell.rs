@@ -13,6 +13,7 @@ use std::time::{Duration, Instant};
 use super::*;
 use crate::cast::Conv;
 use crate::geom::{Coord, DVec2, Offset};
+use crate::layout::SetRectMgr;
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
 use crate::{ShellWindow, TkAction, Widget, WidgetId};
@@ -32,7 +33,8 @@ impl EventState {
         EventState {
             config: WindowConfig::new(config, scale_factor),
             scale_factor,
-            widget_count: 0,
+            configure_active: false,
+            configure_count: 0,
             modifiers: ModifiersState::empty(),
             char_focus: false,
             sel_focus: None,
@@ -48,8 +50,7 @@ impl EventState {
             mouse_grab: None,
             touch_grab: Default::default(),
             pan_grab: SmallVec::new(),
-            accel_stack: vec![],
-            accel_layers: HashMap::new(),
+            accel_layers: Default::default(),
             popups: Default::default(),
             popup_removed: Default::default(),
             time_updates: vec![],
@@ -65,6 +66,50 @@ impl EventState {
         self.config.set_scale_factor(scale_factor);
     }
 
+    /// Configure a widget
+    ///
+    /// All widgets must be configured after construction (see
+    /// [`WidgetConfig::configure`]). This method may be used to configure a new
+    /// child widget without requiring the whole window to be reconfigured.
+    ///
+    /// Pass the `id` to assign to the widget: this should be constructed from
+    /// the parent's id via [`WidgetId::make_child`].
+    pub fn configure(mgr: &mut SetRectMgr, id: WidgetId, widget: &mut dyn WidgetConfig) {
+        assert!(!mgr.ev.configure_active, "configure recursion");
+        if mgr.ev.action.contains(TkAction::RECONFIGURE) {
+            return; // whole window will be reconfigured
+        }
+        mgr.ev.configure_active = true;
+
+        fn recurse(
+            mgr: &mut SetRectMgr,
+            id: WidgetId,
+            widget: &mut dyn WidgetConfig,
+            count: &mut usize,
+        ) {
+            widget.pre_configure(mgr, id.clone());
+            *count += 1;
+            for i in 0..widget.num_children() {
+                if let Some(w) = widget.get_child_mut(i) {
+                    recurse(mgr, id.make_child(i), w, count);
+                }
+            }
+            widget.configure(mgr);
+        }
+
+        let mut count = 0;
+        recurse(mgr, id, widget, &mut count);
+
+        if mgr.ev.action.contains(TkAction::RECONFIGURE) {
+            log::warn!("Detected TkAction::RECONFIGURE during configure. This may cause a reconfigure-loop.");
+            if count == mgr.ev.configure_count {
+                panic!("Reconfigure occurred with the same number of widgets — we are probably stuck in a reconfigure-loop.");
+            }
+        }
+        mgr.ev.configure_count = count;
+        mgr.ev.configure_active = false;
+    }
+
     /// Configure event manager for a widget tree.
     ///
     /// This should be called by the toolkit on the widget tree when the window
@@ -74,45 +119,26 @@ impl EventState {
     /// [`WidgetId`] identifiers and call widgets' [`WidgetConfig::configure`]
     /// method. Additionally, it updates the [`EventState`] to account for
     /// renamed and removed widgets.
-    pub fn configure<W>(&mut self, shell: &mut dyn ShellWindow, widget: &mut W)
+    pub fn full_configure<W>(&mut self, shell: &mut dyn ShellWindow, widget: &mut W)
     where
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
         debug!("EventMgr::configure");
-        self.action = TkAction::empty();
-
-        let mut count = 0;
-        let id = WidgetId::ROOT;
+        self.action.remove(TkAction::RECONFIGURE);
 
         // These are recreated during configure:
-        debug_assert!(self.accel_stack.is_empty());
-        self.accel_stack.clear();
         self.accel_layers.clear();
         self.nav_fallback = None;
 
-        // Enumerate and configure all widgets:
-        let coord = self.last_mouse_coord;
-        self.with(shell, |mgr| {
-            mgr.push_accel_layer(false);
-            widget.configure_recurse(ConfigureManager {
-                count: &mut count,
-                used: false,
-                id,
-                mgr,
-            });
-            mgr.pop_accel_layer(widget.id());
-            debug_assert!(mgr.state.accel_stack.is_empty());
+        self.new_accel_layer(WidgetId::ROOT, false);
 
-            let hover = widget.find_id(coord);
-            mgr.set_hover(widget, hover);
+        shell.size_and_draw_shared(&mut |size_handle, draw_shared| {
+            let mut mgr = SetRectMgr::new(size_handle, draw_shared, self);
+            Self::configure(&mut mgr, WidgetId::ROOT, widget.as_widget_mut());
         });
-        if self.action.contains(TkAction::RECONFIGURE) {
-            warn!("Detected TkAction::RECONFIGURE during configure. This may cause a reconfigure-loop.");
-            if count == self.widget_count {
-                panic!("Reconfigure occurred with the same number of widgets — we are probably stuck in a reconfigure-loop.");
-            }
-            self.widget_count = count;
-        }
+
+        let hover = widget.find_id(self.last_mouse_coord);
+        self.with(shell, |mgr| mgr.set_hover(widget, hover));
     }
 
     /// Update the widgets under the cursor and touch events
@@ -136,15 +162,6 @@ impl EventState {
     /// Get the next resume time
     pub fn next_resume(&self) -> Option<Instant> {
         self.time_updates.last().map(|time| time.0)
-    }
-
-    /// Set an action
-    ///
-    /// Since this is a commonly used operation, an operator overload is
-    /// available to do this job: `*mgr |= action;`.
-    #[inline]
-    pub fn send_action(&mut self, action: TkAction) {
-        self.action = self.action.max(action);
     }
 
     /// Construct a [`EventMgr`] referring to this state

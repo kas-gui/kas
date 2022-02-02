@@ -9,7 +9,7 @@
 use serde::{Deserialize, Serialize};
 
 #[allow(unused)]
-use super::{EventMgr, GrabMode, Response, SendEvent}; // for doc-links
+use super::{EventMgr, EventState, GrabMode, Response, SendEvent}; // for doc-links
 use super::{MouseButton, UpdateHandle, VirtualKeyCode};
 
 use crate::geom::{Coord, DVec2, Offset};
@@ -51,7 +51,7 @@ pub enum Event {
     /// Widget receives a character of text input
     ///
     /// This is only received by a widget with character focus (see
-    /// [`EventMgr::request_char_focus`]). There is no overlap with
+    /// [`EventState::request_char_focus`]). There is no overlap with
     /// [`Event::Command`]: key presses result in at most one of these events
     /// being sent to a widget.
     ReceivedCharacter(char),
@@ -171,15 +171,15 @@ pub enum Event {
     /// Update from a timer
     ///
     /// This event is received after requesting timed wake-up(s)
-    /// (see [`EventMgr::update_on_timer`]).
+    /// (see [`EventState::update_on_timer`]).
     ///
     /// The `u64` payload may be used to identify the corresponding
-    /// [`EventMgr::update_on_timer`] call.
+    /// [`EventState::update_on_timer`] call.
     TimerUpdate(u64),
     /// Update triggerred via an [`UpdateHandle`]
     ///
     /// This event may be received after registering an [`UpdateHandle`] via
-    /// [`EventMgr::update_on_handle`].
+    /// [`EventState::update_on_handle`].
     ///
     /// A user-defined payload is passed. Interpretation of this payload is
     /// user-defined and unfortunately not type safe.

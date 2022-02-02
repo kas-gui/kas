@@ -89,7 +89,7 @@ pub use config::Config;
 pub use enums::{CursorIcon, ModifiersState, MouseButton, VirtualKeyCode};
 pub use events::*;
 pub use handler::{Handler, SendEvent};
-pub use manager::{ConfigureManager, EventMgr, EventState, GrabMode};
+pub use manager::{EventMgr, EventState, GrabMode};
 pub use response::Response;
 pub use update::UpdateHandle;
 

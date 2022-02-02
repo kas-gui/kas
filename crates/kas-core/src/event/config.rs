@@ -21,7 +21,7 @@ use std::time::Duration;
 /// This is serializable (using `feature = "config"`) with the following fields:
 ///
 /// > `menu_delay_ms`: `u32` (milliseconds) \
-/// > `touch_text_sel_delay_ms`: `u32` (milliseconds) \
+/// > `touch_select_delay_ms`: `u32` (milliseconds) \
 /// > `scroll_flick_timeout_ms`: `u32` (milliseconds) \
 /// > `scroll_flick_mul`: `f32` (unitless, applied each second) \
 /// > `scroll_flick_sub`: `f32` (pixels per second) \
@@ -37,48 +37,45 @@ use std::time::Duration;
 #[cfg_attr(feature = "config", derive(Serialize, Deserialize))]
 pub struct Config {
     #[cfg_attr(feature = "config", serde(default = "defaults::menu_delay_ms"))]
-    menu_delay_ms: u32,
+    pub menu_delay_ms: u32,
 
-    #[cfg_attr(
-        feature = "config",
-        serde(default = "defaults::touch_text_sel_delay_ms")
-    )]
-    touch_text_sel_delay_ms: u32,
+    #[cfg_attr(feature = "config", serde(default = "defaults::touch_select_delay_ms"))]
+    pub touch_select_delay_ms: u32,
 
     #[cfg_attr(
         feature = "config",
         serde(default = "defaults::scroll_flick_timeout_ms")
     )]
-    scroll_flick_timeout_ms: u32,
+    pub scroll_flick_timeout_ms: u32,
 
     #[cfg_attr(feature = "config", serde(default = "defaults::scroll_flick_mul"))]
-    scroll_flick_mul: f32,
+    pub scroll_flick_mul: f32,
 
     #[cfg_attr(feature = "config", serde(default = "defaults::scroll_flick_sub"))]
-    scroll_flick_sub: f32,
+    pub scroll_flick_sub: f32,
 
     #[cfg_attr(feature = "config", serde(default = "defaults::pan_dist_thresh"))]
-    pan_dist_thresh: f32,
+    pub pan_dist_thresh: f32,
 
     #[cfg_attr(feature = "config", serde(default = "defaults::mouse_pan"))]
-    mouse_pan: MousePan,
+    pub mouse_pan: MousePan,
     #[cfg_attr(feature = "config", serde(default = "defaults::mouse_text_pan"))]
-    mouse_text_pan: MousePan,
+    pub mouse_text_pan: MousePan,
 
     #[cfg_attr(feature = "config", serde(default = "defaults::mouse_nav_focus"))]
-    mouse_nav_focus: bool,
+    pub mouse_nav_focus: bool,
     #[cfg_attr(feature = "config", serde(default = "defaults::touch_nav_focus"))]
-    touch_nav_focus: bool,
+    pub touch_nav_focus: bool,
 
     #[cfg_attr(feature = "config", serde(default = "Shortcuts::platform_defaults"))]
-    shortcuts: Shortcuts,
+    pub shortcuts: Shortcuts,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Config {
             menu_delay_ms: defaults::menu_delay_ms(),
-            touch_text_sel_delay_ms: defaults::touch_text_sel_delay_ms(),
+            touch_select_delay_ms: defaults::touch_select_delay_ms(),
             scroll_flick_timeout_ms: defaults::scroll_flick_timeout_ms(),
             scroll_flick_mul: defaults::scroll_flick_mul(),
             scroll_flick_sub: defaults::scroll_flick_sub(),
@@ -129,10 +126,10 @@ impl WindowConfig {
         Duration::from_millis(self.config.borrow().menu_delay_ms.cast())
     }
 
-    /// Delay before switching from panning to text-selection mode
+    /// Delay before switching from panning to (text) selection mode
     #[inline]
-    pub fn touch_text_sel_delay(&self) -> Duration {
-        Duration::from_millis(self.config.borrow().touch_text_sel_delay_ms.cast())
+    pub fn touch_select_delay(&self) -> Duration {
+        Duration::from_millis(self.config.borrow().touch_select_delay_ms.cast())
     }
 
     /// Controls activation of glide/momentum scrolling
@@ -222,6 +219,8 @@ impl Config {
 /// acceptable (equivalent to touch scrolling).
 #[derive(Clone, Copy, Debug, Hash, PartialEq)]
 #[cfg_attr(feature = "config", derive(Serialize, Deserialize))]
+#[derive(num_enum::IntoPrimitive, num_enum::TryFromPrimitive)]
+#[repr(u8)]
 pub enum MousePan {
     /// Disable
     Never,
@@ -251,7 +250,7 @@ mod defaults {
     pub fn menu_delay_ms() -> u32 {
         250
     }
-    pub fn touch_text_sel_delay_ms() -> u32 {
+    pub fn touch_select_delay_ms() -> u32 {
         1000
     }
     pub fn scroll_flick_timeout_ms() -> u32 {

@@ -87,7 +87,7 @@ widget! {
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut EventMgr) {
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.register_nav_fallback(self.id());
         }
     }

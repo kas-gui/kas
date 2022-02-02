@@ -12,7 +12,8 @@ use linear_map::{set::LinearSet, LinearMap};
 use log::trace;
 use smallvec::SmallVec;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
+use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::time::Instant;
 use std::u16;
@@ -123,6 +124,8 @@ enum Pending {
     SetNavFocus(WidgetId, bool),
 }
 
+type AccelLayer = (bool, HashMap<VirtualKeyCode, WidgetId>);
+
 /// Event manager state
 ///
 /// This struct encapsulates window-specific event-handling state and handling.
@@ -144,7 +147,8 @@ enum Pending {
 pub struct EventState {
     config: WindowConfig,
     scale_factor: f32,
-    widget_count: usize,
+    configure_active: bool,
+    configure_count: usize,
     modifiers: ModifiersState,
     /// char focus is on same widget as sel_focus; otherwise its value is ignored
     char_focus: bool,
@@ -161,8 +165,7 @@ pub struct EventState {
     mouse_grab: Option<MouseGrab>,
     touch_grab: SmallVec<[TouchGrab; 8]>,
     pan_grab: SmallVec<[PanGrab; 4]>,
-    accel_stack: Vec<(bool, HashMap<VirtualKeyCode, WidgetId>)>,
-    accel_layers: HashMap<WidgetId, (bool, HashMap<VirtualKeyCode, WidgetId>)>,
+    accel_layers: BTreeMap<WidgetId, AccelLayer>,
     // For each: (WindowId of popup, popup descriptor, old nav focus)
     popups: SmallVec<[(WindowId, crate::Popup, Option<WidgetId>); 16]>,
     popup_removed: SmallVec<[(WidgetId, WindowId); 16]>,
@@ -267,12 +270,96 @@ impl EventState {
             }
         }
     }
+
+    fn add_key_depress(&mut self, scancode: u32, id: WidgetId) {
+        if self.key_depress.values().any(|v| *v == id) {
+            return;
+        }
+
+        self.key_depress.insert(scancode, id.clone());
+        self.redraw(id);
+    }
+
+    fn end_key_event(&mut self, scancode: u32) {
+        // We must match scancode not vkey since the latter may have changed due to modifiers
+        if let Some(id) = self.key_depress.remove(&scancode) {
+            self.redraw(id);
+        }
+    }
+
+    fn mouse_grab(&mut self) -> Option<&mut MouseGrab> {
+        self.mouse_grab.as_mut()
+    }
+
+    #[inline]
+    fn get_touch(&mut self, touch_id: u64) -> Option<&mut TouchGrab> {
+        for grab in self.touch_grab.iter_mut() {
+            if grab.id == touch_id {
+                return Some(grab);
+            }
+        }
+        None
+    }
+
+    // Clears touch grab and pan grab and redraws
+    fn remove_touch(&mut self, touch_id: u64) -> Option<TouchGrab> {
+        for i in 0..self.touch_grab.len() {
+            if self.touch_grab[i].id == touch_id {
+                let grab = self.touch_grab.remove(i);
+                trace!("EventMgr: end touch grab by {}", grab.start_id);
+                self.send_action(TkAction::REDRAW); // redraw(..)
+                self.remove_pan_grab(grab.pan_grab);
+                return Some(grab);
+            }
+        }
+        None
+    }
+
+    fn clear_char_focus(&mut self) {
+        trace!("EventMgr::clear_char_focus");
+        if let Some(id) = self.char_focus() {
+            // If widget has char focus, this is lost
+            self.char_focus = false;
+            self.pending.push(Pending::LostCharFocus(id));
+        }
+    }
+
+    // Set selection focus to `wid`; if `char_focus` also set that
+    fn set_sel_focus(&mut self, wid: WidgetId, char_focus: bool) {
+        trace!(
+            "EventMgr::set_sel_focus: wid={}, char_focus={}",
+            wid,
+            char_focus
+        );
+        // The widget probably already has nav focus, but anyway:
+        self.set_nav_focus(wid.clone(), true);
+
+        if wid == self.sel_focus {
+            self.char_focus = self.char_focus || char_focus;
+            return;
+        }
+
+        if let Some(id) = self.sel_focus.clone() {
+            if self.char_focus {
+                // If widget has char focus, this is lost
+                self.pending.push(Pending::LostCharFocus(id.clone()));
+            }
+
+            // Selection focus is lost if another widget receives char focus
+            self.pending.push(Pending::LostSelFocus(id));
+        }
+
+        self.char_focus = char_focus;
+        self.sel_focus = Some(wid);
+    }
 }
 
 /// Manager of event-handling and toolkit actions
 ///
 /// An `EventMgr` is in fact a handle around [`EventState`] and [`ShellWindow`]
 /// in order to provide a convenient user-interface during event processing.
+///
+/// `EventMgr` supports [`Deref`] and [`DerefMut`] with target [`EventState`].
 ///
 /// It exposes two interfaces: one aimed at users implementing widgets and UIs
 /// and one aimed at shells. The latter is hidden
@@ -282,6 +369,18 @@ pub struct EventMgr<'a> {
     state: &'a mut EventState,
     shell: &'a mut dyn ShellWindow,
     action: TkAction,
+}
+
+impl<'a> Deref for EventMgr<'a> {
+    type Target = EventState;
+    fn deref(&self) -> &Self::Target {
+        self.state
+    }
+}
+impl<'a> DerefMut for EventMgr<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.state
+    }
 }
 
 /// Internal methods
@@ -397,9 +496,9 @@ impl<'a> EventMgr<'a> {
 
         // If we found a key binding below the top layer, we should close everything above
         if n > 0 {
-            let last = self.state.popups.len() - 1;
-            for i in 0..n {
-                let id = self.state.popups[last - i].0;
+            let len = self.state.popups.len();
+            for i in ((len - n)..len).rev() {
+                let id = self.state.popups[i].0;
                 self.close_window(id, false);
             }
         }
@@ -431,26 +530,6 @@ impl<'a> EventMgr<'a> {
         }
     }
 
-    fn add_key_depress(&mut self, scancode: u32, id: WidgetId) {
-        if self.state.key_depress.values().any(|v| *v == id) {
-            return;
-        }
-
-        self.state.key_depress.insert(scancode, id.clone());
-        self.redraw(id);
-    }
-
-    fn end_key_event(&mut self, scancode: u32) {
-        // We must match scancode not vkey since the latter may have changed due to modifiers
-        if let Some(id) = self.state.key_depress.remove(&scancode) {
-            self.redraw(id);
-        }
-    }
-
-    fn mouse_grab(&mut self) -> Option<&mut MouseGrab> {
-        self.state.mouse_grab.as_mut()
-    }
-
     // Clears mouse grab and pan grab, resets cursor and redraws
     fn remove_mouse_grab(&mut self) -> Option<MouseGrab> {
         if let Some(grab) = self.state.mouse_grab.take() {
@@ -462,68 +541,6 @@ impl<'a> EventMgr<'a> {
         } else {
             None
         }
-    }
-
-    #[inline]
-    fn get_touch(&mut self, touch_id: u64) -> Option<&mut TouchGrab> {
-        for grab in self.state.touch_grab.iter_mut() {
-            if grab.id == touch_id {
-                return Some(grab);
-            }
-        }
-        None
-    }
-
-    // Clears touch grab and pan grab and redraws
-    fn remove_touch(&mut self, touch_id: u64) -> Option<TouchGrab> {
-        for i in 0..self.state.touch_grab.len() {
-            if self.state.touch_grab[i].id == touch_id {
-                let grab = self.state.touch_grab.remove(i);
-                trace!("EventMgr: end touch grab by {}", grab.start_id);
-                self.send_action(TkAction::REDRAW); // redraw(..)
-                self.state.remove_pan_grab(grab.pan_grab);
-                return Some(grab);
-            }
-        }
-        None
-    }
-
-    fn clear_char_focus(&mut self) {
-        trace!("EventMgr::clear_char_focus");
-        if let Some(id) = self.state.char_focus() {
-            // If widget has char focus, this is lost
-            self.state.char_focus = false;
-            self.state.pending.push(Pending::LostCharFocus(id));
-        }
-    }
-
-    // Set selection focus to `wid`; if `char_focus` also set that
-    fn set_sel_focus(&mut self, wid: WidgetId, char_focus: bool) {
-        trace!(
-            "EventMgr::set_sel_focus: wid={}, char_focus={}",
-            wid,
-            char_focus
-        );
-        // The widget probably already has nav focus, but anyway:
-        self.set_nav_focus(wid.clone(), true);
-
-        if wid == self.state.sel_focus {
-            self.state.char_focus = self.state.char_focus || char_focus;
-            return;
-        }
-
-        if let Some(id) = self.state.sel_focus.clone() {
-            if self.state.char_focus {
-                // If widget has char focus, this is lost
-                self.state.pending.push(Pending::LostCharFocus(id.clone()));
-            }
-
-            // Selection focus is lost if another widget receives char focus
-            self.state.pending.push(Pending::LostSelFocus(id));
-        }
-
-        self.state.char_focus = char_focus;
-        self.state.sel_focus = Some(wid);
     }
 
     fn send_event<W: Widget + ?Sized>(&mut self, widget: &mut W, id: WidgetId, event: Event) {
@@ -563,49 +580,5 @@ impl<'a> EventMgr<'a> {
         if let Some(id) = id {
             self.send_event(widget, id, event);
         }
-    }
-}
-
-/// Helper used during widget configuration
-pub struct ConfigureManager<'a: 'b, 'b> {
-    count: &'b mut usize,
-    used: bool,
-    id: WidgetId,
-    mgr: &'b mut EventMgr<'a>,
-}
-
-impl<'a: 'b, 'b> ConfigureManager<'a, 'b> {
-    /// Reborrow self to pass to a child
-    ///
-    /// The child's `index` becomes part of the identifier, and hence must be
-    /// unique.
-    pub fn child<'c>(&'c mut self, index: usize) -> ConfigureManager<'a, 'c>
-    where
-        'b: 'c,
-    {
-        ConfigureManager {
-            count: &mut *self.count,
-            used: false,
-            id: self.id.make_child(index),
-            mgr: &mut *self.mgr,
-        }
-    }
-
-    /// Get [`WidgetId`] for self
-    ///
-    /// Do not call more than once on each instance. Create a new instance with
-    /// [`Self::child`].
-    pub fn get_id(&mut self) -> WidgetId {
-        assert!(
-            !self.used,
-            "multiple use of ConfigureManager::get_id without construction of child"
-        );
-        self.used = true;
-        self.id.clone()
-    }
-
-    /// Get access to the wrapped [`EventMgr`]
-    pub fn mgr(&mut self) -> &mut EventMgr<'a> {
-        self.mgr
     }
 }

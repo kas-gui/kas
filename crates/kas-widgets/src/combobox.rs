@@ -282,14 +282,14 @@ impl<M: 'static> ComboBox<M> {
 
     /// Remove all choices
     ///
-    /// Triggers a [reconfigure action](EventMgr::send_action).
+    /// Triggers a [reconfigure action](EventState::send_action).
     pub fn clear(&mut self) -> TkAction {
         self.popup.inner.clear()
     }
 
     /// Add a choice to the combobox, in last position
     ///
-    /// Triggers a [reconfigure action](EventMgr::send_action).
+    /// Triggers a [reconfigure action](EventState::send_action).
     pub fn push<T: Into<AccelString>>(&mut self, label: T) -> TkAction {
         let column = &mut self.popup.inner;
         column.push(MenuEntry::new(label, ()))
@@ -298,7 +298,7 @@ impl<M: 'static> ComboBox<M> {
 
     /// Pops the last choice from the combobox
     ///
-    /// Triggers a [reconfigure action](EventMgr::send_action).
+    /// Triggers a [reconfigure action](EventState::send_action).
     pub fn pop(&mut self) -> (Option<()>, TkAction) {
         let r = self.popup.inner.pop();
         (r.0.map(|_| ()), r.1)
@@ -308,7 +308,7 @@ impl<M: 'static> ComboBox<M> {
     ///
     /// Panics if `index > len`.
     ///
-    /// Triggers a [reconfigure action](EventMgr::send_action).
+    /// Triggers a [reconfigure action](EventState::send_action).
     pub fn insert<T: Into<AccelString>>(&mut self, index: usize, label: T) -> TkAction {
         let column = &mut self.popup.inner;
         column.insert(index, MenuEntry::new(label, ()))
@@ -319,7 +319,7 @@ impl<M: 'static> ComboBox<M> {
     ///
     /// Panics if `index` is out of bounds.
     ///
-    /// Triggers a [reconfigure action](EventMgr::send_action).
+    /// Triggers a [reconfigure action](EventState::send_action).
     pub fn remove(&mut self, index: usize) -> TkAction {
         self.popup.inner.remove(index).1
     }

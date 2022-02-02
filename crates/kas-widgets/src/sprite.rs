@@ -22,13 +22,13 @@ widget! {
     }
 
     impl WidgetConfig for Image {
-        fn configure(&mut self, mgr: &mut EventMgr) {
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
             if self.do_load {
                 self.do_load = false;
-                match mgr.draw_shared(|ds| {
-                    ds.image_from_path(&self.path)
-                        .map(|id| (id, ds.image_size(id).unwrap_or(Size::ZERO)))
-                }) {
+                match mgr.draw_shared()
+                        .image_from_path(&self.path)
+                        .map(|id| (id, mgr.draw_shared().image_size(id).unwrap_or(Size::ZERO)))
+                {
                     Ok((id, size)) => {
                         self.id = Some(id);
                         self.sprite.size = size;

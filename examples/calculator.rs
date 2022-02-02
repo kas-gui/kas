@@ -8,10 +8,8 @@
 use std::num::ParseFloatError;
 use std::str::FromStr;
 
-use kas::class::HasString;
 use kas::event::VirtualKeyCode as VK;
-use kas::event::{EventMgr, VoidMsg};
-use kas::macros::{make_widget, VoidMsg};
+use kas::prelude::*;
 use kas::widgets::{EditBox, TextButton, Window};
 
 #[derive(Clone, Debug, VoidMsg)]
@@ -67,9 +65,9 @@ fn main() -> kas::shell::Result<()> {
             #[widget] b9 = TextButton::new_msg("&9", Key::Char('9')),
         }
         impl kas::WidgetConfig for Self {
-            fn configure(&mut self, mgr: &mut EventMgr) {
+            fn configure(&mut self, mgr: &mut SetRectMgr) {
                 // Enable key bindings without Alt held:
-                mgr.enable_alt_bypass(true);
+                mgr.enable_alt_bypass(self.id_ref(), true);
             }
         }
     };

@@ -401,7 +401,7 @@ widget! {
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut EventMgr) {
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
             if let Some(handle) = self.data.update_handle() {
                 mgr.update_on_handle(handle, self.id());
             }
@@ -416,7 +416,7 @@ widget! {
             let frame = kas::layout::FrameRules::new_sym(0, inner_margin, 0);
 
             // We use a default-generated widget to generate size rules
-            let mut rules = self.view.new().size_rules(size_mgr.re(), axis);
+            let mut rules = self.view.make().size_rules(size_mgr.re(), axis);
             if axis.is_vertical() == self.direction.is_vertical() {
                 self.child_size_min = rules.min_size();
                 self.child_size_ideal = rules.ideal_size();
@@ -462,10 +462,11 @@ widget! {
             let num = usize::conv(num);
             if old_num < num {
                 debug!("allocating widgets (old len = {}, new = {})", old_num, num);
-                *mgr |= TkAction::RECONFIGURE;
                 self.widgets.reserve(num - old_num);
                 for _ in old_num..num {
-                    let mut widget = self.view.new();
+                    let id = self.id_ref().make_child(self.widgets.len());
+                    let mut widget = self.view.make();
+                    mgr.configure(id, &mut widget);
                     solve_size_rules(
                         &mut widget,
                         mgr.size_mgr(),

@@ -9,6 +9,7 @@ use std::time::{Duration, Instant};
 
 use kas::class::HasString;
 use kas::event::{Event, EventMgr, Handler, Response, VoidMsg};
+use kas::layout::SetRectMgr;
 use kas::macros::make_widget;
 use kas::widgets::{Frame, Label, TextButton, Window};
 use kas::WidgetCore;
@@ -45,8 +46,8 @@ fn make_window() -> Box<dyn kas::Window> {
             }
         }
         impl kas::WidgetConfig for Self {
-            fn configure(&mut self, mgr: &mut EventMgr) {
-                mgr.enable_alt_bypass(true);
+            fn configure(&mut self, mgr: &mut SetRectMgr) {
+                mgr.enable_alt_bypass(self.id_ref(), true);
             }
         }
         impl Handler for Self {

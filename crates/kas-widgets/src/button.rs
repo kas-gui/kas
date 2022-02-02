@@ -32,8 +32,8 @@ widget! {
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut EventMgr) {
-            mgr.add_accel_keys(self.id(), &self.keys1);
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
+            mgr.add_accel_keys(self.id_ref(), &self.keys1);
         }
 
         fn key_nav(&self) -> bool {
@@ -189,9 +189,9 @@ widget! {
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut EventMgr) {
-            mgr.add_accel_keys(self.id(), &self.keys1);
-            mgr.add_accel_keys(self.id(), self.label.text().keys());
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
+            mgr.add_accel_keys(self.id_ref(), &self.keys1);
+            mgr.add_accel_keys(self.id_ref(), self.label.text().keys());
         }
 
         fn key_nav(&self) -> bool {

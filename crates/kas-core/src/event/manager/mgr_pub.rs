@@ -51,7 +51,7 @@ impl EventState {
 
     /// Get whether this widget has keyboard navigation focus
     #[inline]
-    pub fn nav_focus(&self, w_id: &WidgetId) -> bool {
+    pub fn has_nav_focus(&self, w_id: &WidgetId) -> bool {
         *w_id == self.nav_focus
     }
 
@@ -109,7 +109,7 @@ impl EventState {
         if self.is_depressed(&core.id) {
             state |= InputState::DEPRESS;
         }
-        if self.nav_focus(&core.id) {
+        if self.has_nav_focus(&core.id) {
             state |= InputState::NAV_FOCUS;
         }
         if char_focus {
@@ -120,36 +120,29 @@ impl EventState {
         }
         state
     }
-}
 
-/// Public API (around toolkit and shell functionality)
-impl<'a> EventMgr<'a> {
     /// Get the current modifier state
     #[inline]
     pub fn modifiers(&self) -> ModifiersState {
-        self.state.modifiers
+        self.modifiers
     }
 
     /// Access event-handling configuration
     #[inline]
     pub fn config(&self) -> &WindowConfig {
-        &self.state.config
+        &self.config
     }
 
     /// Is mouse panning enabled?
     #[inline]
     pub fn config_enable_mouse_pan(&self) -> bool {
-        self.state
-            .config
-            .mouse_pan()
-            .is_enabled_with(self.modifiers())
+        self.config.mouse_pan().is_enabled_with(self.modifiers())
     }
 
     /// Is mouse text panning enabled?
     #[inline]
     pub fn config_enable_mouse_text_pan(&self) -> bool {
-        self.state
-            .config
+        self.config
             .mouse_text_pan()
             .is_enabled_with(self.modifiers())
     }
@@ -159,14 +152,14 @@ impl<'a> EventMgr<'a> {
     /// Returns true when `dist` is large enough to switch to pan mode.
     #[inline]
     pub fn config_test_pan_thresh(&self, dist: Offset) -> bool {
-        let thresh = self.state.config.pan_dist_thresh();
+        let thresh = self.config.pan_dist_thresh();
         Vec2::from(dist).sum_square() >= thresh * thresh
     }
 
     /// Access the screen's scale factor
     #[inline]
     pub fn scale_factor(&self) -> f32 {
-        self.state.scale_factor
+        self.scale_factor
     }
 
     /// Schedule an update
@@ -196,7 +189,7 @@ impl<'a> EventMgr<'a> {
         );
         let time = Instant::now() + delay;
         'outer: loop {
-            for row in &mut self.state.time_updates {
+            for row in &mut self.time_updates {
                 if row.1 == w_id && row.2 == payload {
                     if row.0 <= time {
                         return;
@@ -207,11 +200,11 @@ impl<'a> EventMgr<'a> {
                 }
             }
 
-            self.state.time_updates.push((time, w_id, payload));
+            self.time_updates.push((time, w_id, payload));
             break;
         }
 
-        self.state.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
+        self.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
     }
 
     /// Subscribe to an update handle
@@ -227,8 +220,7 @@ impl<'a> EventMgr<'a> {
             w_id,
             handle
         );
-        self.state
-            .handle_updates
+        self.handle_updates
             .entry(handle)
             .or_insert_with(Default::default)
             .insert(w_id);
@@ -259,6 +251,220 @@ impl<'a> EventMgr<'a> {
         self.action |= action;
     }
 
+    /// Attempts to set a fallback to receive [`Event::Command`]
+    ///
+    /// In case a navigation key is pressed (see [`Command`]) but no widget has
+    /// navigation focus, then, if a fallback has been set, that widget will
+    /// receive the key via [`Event::Command`]. (This does not include
+    /// [`Event::Activate`].)
+    ///
+    /// Only one widget can be a fallback, and the *first* to set itself wins.
+    /// This is primarily used to allow scroll-region widgets to
+    /// respond to navigation keys when no widget has focus.
+    pub fn register_nav_fallback(&mut self, id: WidgetId) {
+        if self.nav_fallback.is_none() {
+            debug!("EventMgr: nav_fallback = {}", id);
+            self.nav_fallback = Some(id);
+        }
+    }
+
+    fn accel_layer_for_id(&mut self, id: &WidgetId) -> Option<&mut AccelLayer> {
+        let root = &WidgetId::ROOT;
+        for (k, v) in self.accel_layers.range_mut(root..=id).rev() {
+            if k.is_ancestor_of(id) {
+                return Some(v);
+            };
+        }
+        debug_assert!(false, "expected ROOT accel layer");
+        None
+    }
+
+    /// Add a new accelerator key layer
+    ///
+    /// This method constructs a new "layer" for accelerator keys: any keys
+    /// added via [`EventState::add_accel_keys`] to a widget which is a descentant
+    /// of (or equal to) `id` will only be active when that layer is active.
+    ///
+    /// This method should only be called by parents of a pop-up: layers over
+    /// the base layer are *only* activated by an open pop-up.
+    ///
+    /// If `alt_bypass` is true, then this layer's accelerator keys will be
+    /// active even without Alt pressed (but only highlighted with Alt pressed).
+    pub fn new_accel_layer(&mut self, id: WidgetId, alt_bypass: bool) {
+        self.accel_layers.insert(id, (alt_bypass, HashMap::new()));
+    }
+
+    /// Enable `alt_bypass` for layer
+    ///
+    /// This may be called by a child widget during configure to enable or
+    /// disable alt-bypass for the accel-key layer containing its accel keys.
+    /// This allows accelerator keys to be used as shortcuts without the Alt
+    /// key held. See also [`EventState::new_accel_layer`].
+    pub fn enable_alt_bypass(&mut self, id: &WidgetId, alt_bypass: bool) {
+        if let Some(layer) = self.accel_layer_for_id(id) {
+            layer.0 = alt_bypass;
+        }
+    }
+
+    /// Adds an accelerator key for a widget
+    ///
+    /// An *accelerator key* is a shortcut key able to directly open menus,
+    /// activate buttons, etc. A user triggers the key by pressing `Alt+Key`,
+    /// or (if `alt_bypass` is enabled) by simply pressing the key.
+    /// The widget with this `id` then receives [`Event::Activate`].
+    ///
+    /// Note that accelerator keys may be automatically derived from labels:
+    /// see [`crate::text::AccelString`].
+    ///
+    /// Accelerator keys are added to the layer with the longest path which is
+    /// an ancestor of `id`. This usually means that if the widget is part of a
+    /// pop-up, the key is only active when that pop-up is open.
+    /// See [`EventState::new_accel_layer`].
+    ///
+    /// This should only be called from [`WidgetConfig::configure`].
+    // TODO(type safety): consider only implementing on ConfigureManager
+    #[inline]
+    pub fn add_accel_keys(&mut self, id: &WidgetId, keys: &[VirtualKeyCode]) {
+        if let Some(layer) = self.accel_layer_for_id(id) {
+            for key in keys {
+                layer.1.insert(*key, id.clone());
+            }
+        }
+    }
+
+    /// Request character-input focus
+    ///
+    /// Returns true on success or when the widget already had char focus.
+    ///
+    /// Character data is sent to the widget with char focus via
+    /// [`Event::ReceivedCharacter`] and [`Event::Command`].
+    ///
+    /// Char focus implies sel focus (see [`Self::request_sel_focus`]) and
+    /// navigation focus.
+    ///
+    /// When char focus is lost, [`Event::LostCharFocus`] is sent.
+    #[inline]
+    pub fn request_char_focus(&mut self, id: WidgetId) -> bool {
+        self.set_sel_focus(id, true);
+        true
+    }
+
+    /// Request selection focus
+    ///
+    /// Returns true on success or when the widget already had sel focus.
+    ///
+    /// To prevent multiple simultaneous selections (e.g. of text) in the UI,
+    /// only widgets with "selection focus" are allowed to select things.
+    /// Selection focus is implied by character focus. [`Event::LostSelFocus`]
+    /// is sent when selection focus is lost; in this case any existing
+    /// selection should be cleared.
+    ///
+    /// Selection focus implies navigation focus.
+    ///
+    /// When char focus is lost, [`Event::LostSelFocus`] is sent.
+    #[inline]
+    pub fn request_sel_focus(&mut self, id: WidgetId) -> bool {
+        self.set_sel_focus(id, false);
+        true
+    }
+
+    /// Set a grab's depress target
+    ///
+    /// When a grab on mouse or touch input is in effect
+    /// ([`EventMgr::grab_press`]), the widget owning the grab may set itself
+    /// or any other widget as *depressed* ("pushed down"). Each grab depresses
+    /// at most one widget, thus setting a new depress target clears any
+    /// existing target. Initially a grab depresses its owner.
+    ///
+    /// This effect is purely visual. A widget is depressed when one or more
+    /// grabs targets the widget to depress, or when a keyboard binding is used
+    /// to activate a widget (for the duration of the key-press).
+    ///
+    /// Queues a redraw and returns `true` if the depress target changes,
+    /// otherwise returns `false`.
+    pub fn set_grab_depress(&mut self, source: PressSource, target: Option<WidgetId>) -> bool {
+        let mut redraw = false;
+        match source {
+            PressSource::Mouse(_, _) => {
+                if let Some(grab) = self.mouse_grab.as_mut() {
+                    redraw = grab.depress != target;
+                    grab.depress = target.clone();
+                }
+            }
+            PressSource::Touch(id) => {
+                if let Some(grab) = self.get_touch(id) {
+                    redraw = grab.depress != target;
+                    grab.depress = target.clone();
+                }
+            }
+        }
+        if redraw {
+            trace!("EventMgr: set_grab_depress on target={:?}", target);
+            self.send_action(TkAction::REDRAW);
+        }
+        redraw
+    }
+
+    /// Returns true if `id` or any descendant has a mouse or touch grab
+    pub fn any_pin_on(&self, id: &WidgetId) -> bool {
+        if self
+            .mouse_grab
+            .as_ref()
+            .map(|grab| grab.start_id == id)
+            .unwrap_or(false)
+        {
+            return true;
+        }
+        if self.touch_grab.iter().any(|grab| grab.start_id == id) {
+            return true;
+        }
+        false
+    }
+
+    /// Get the current keyboard navigation focus, if any
+    ///
+    /// This is the widget selected by navigating the UI with the Tab key.
+    #[inline]
+    pub fn nav_focus(&self) -> Option<&WidgetId> {
+        self.nav_focus.as_ref()
+    }
+
+    /// Clear keyboard navigation focus
+    pub fn clear_nav_focus(&mut self) {
+        if let Some(id) = self.nav_focus.clone() {
+            self.redraw(id);
+        }
+        self.nav_focus = None;
+        self.clear_char_focus();
+        trace!("EventMgr: nav_focus = None");
+    }
+
+    /// Set the keyboard navigation focus directly
+    ///
+    /// Normally, [`WidgetConfig::key_nav`] will be true for the specified
+    /// widget, but this is not required, e.g. a `ScrollLabel` can receive focus
+    /// on text selection with the mouse. (Currently such widgets will receive
+    /// events like any other with nav focus, but this may change.)
+    ///
+    /// The target widget, if not already having navigation focus, will receive
+    /// [`Event::NavFocus`] with `key_focus` as the payload. This boolean should
+    /// be true if focussing in response to keyboard input, false if reacting to
+    /// mouse or touch input.
+    pub fn set_nav_focus(&mut self, id: WidgetId, key_focus: bool) {
+        if id != self.nav_focus {
+            self.redraw(id.clone());
+            if id != self.sel_focus {
+                self.clear_char_focus();
+            }
+            self.nav_focus = Some(id.clone());
+            trace!("EventMgr: nav_focus = Some({})", id);
+            self.pending.push(Pending::SetNavFocus(id, key_focus));
+        }
+    }
+}
+
+/// Public API (around toolkit and shell functionality)
+impl<'a> EventMgr<'a> {
     /// Add an overlay (pop-up)
     ///
     /// A pop-up is a box used for things like tool-tips and menus which is
@@ -400,9 +606,8 @@ impl<'a> EventMgr<'a> {
         let mut result = None;
         self.shell
             .size_and_draw_shared(&mut |size_handle, draw_shared| {
-                let mut mgr = SetRectMgr::new(size_handle, draw_shared);
+                let mut mgr = SetRectMgr::new(size_handle, draw_shared, self.state);
                 result = Some(f(&mut mgr));
-                self.action |= mgr.take_action();
             });
         result.expect("ShellWindow::size_handle impl failed to call function argument")
     }
@@ -414,133 +619,6 @@ impl<'a> EventMgr<'a> {
             result = Some(f(draw_shared));
         });
         result.expect("ShellWindow::draw_shared impl failed to call function argument")
-    }
-}
-
-/// Public API (around event manager state)
-impl<'a> EventMgr<'a> {
-    /// Attempts to set a fallback to receive [`Event::Command`]
-    ///
-    /// In case a navigation key is pressed (see [`Command`]) but no widget has
-    /// navigation focus, then, if a fallback has been set, that widget will
-    /// receive the key via [`Event::Command`]. (This does not include
-    /// [`Event::Activate`].)
-    ///
-    /// Only one widget can be a fallback, and the *first* to set itself wins.
-    /// This is primarily used to allow scroll-region widgets to
-    /// respond to navigation keys when no widget has focus.
-    pub fn register_nav_fallback(&mut self, id: WidgetId) {
-        if self.state.nav_fallback.is_none() {
-            debug!("EventMgr: nav_fallback = {}", id);
-            self.state.nav_fallback = Some(id);
-        }
-    }
-
-    /// Add a new accelerator key layer and make it current
-    ///
-    /// This method affects the behaviour of [`EventMgr::add_accel_keys`] by
-    /// adding a new *layer* and making this new layer *current*.
-    ///
-    /// This method should only be called by parents of a pop-up: layers over
-    /// the base layer are *only* activated by an open pop-up.
-    ///
-    /// [`EventMgr::pop_accel_layer`] must be called after child widgets have
-    /// been configured to finish configuration of this new layer and to make
-    /// the previous layer current.
-    ///
-    /// If `alt_bypass` is true, then this layer's accelerator keys will be
-    /// active even without Alt pressed (but only highlighted with Alt pressed).
-    pub fn push_accel_layer(&mut self, alt_bypass: bool) {
-        self.state.accel_stack.push((alt_bypass, HashMap::new()));
-    }
-
-    /// Enable `alt_bypass` for the current layer
-    ///
-    /// This may be called by a child widget during configure, e.g. to enable
-    /// alt-bypass for the base layer. See also [`EventMgr::push_accel_layer`].
-    pub fn enable_alt_bypass(&mut self, alt_bypass: bool) {
-        if let Some(layer) = self.state.accel_stack.last_mut() {
-            layer.0 = alt_bypass;
-        }
-    }
-
-    /// Finish configuration of an accelerator key layer
-    ///
-    /// This must be called after [`EventMgr::push_accel_layer`], after
-    /// configuration of any children using this layer.
-    ///
-    /// The `id` must be that of the widget which created this layer.
-    pub fn pop_accel_layer(&mut self, id: WidgetId) {
-        if let Some(layer) = self.state.accel_stack.pop() {
-            self.state.accel_layers.insert(id, layer);
-        } else {
-            debug_assert!(
-                false,
-                "pop_accel_layer without corresponding push_accel_layer"
-            );
-        }
-    }
-
-    /// Adds an accelerator key for a widget to the current layer
-    ///
-    /// An *accelerator key* is a shortcut key able to directly open menus,
-    /// activate buttons, etc. A user triggers the key by pressing `Alt+Key`,
-    /// or (if `alt_bypass` is enabled) by simply pressing the key.
-    /// The widget with this `id` then receives [`Event::Activate`].
-    ///
-    /// Note that accelerator keys may be automatically derived from labels:
-    /// see [`crate::text::AccelString`].
-    ///
-    /// Accelerator keys may be added to the base layer or to a new layer
-    /// associated with a pop-up (see [`EventMgr::push_accel_layer`]).
-    /// The top-most active layer gets first priority in matching input, but
-    /// does not block previous layers.
-    ///
-    /// This should only be called from [`WidgetConfig::configure`].
-    // TODO(type safety): consider only implementing on ConfigureManager
-    #[inline]
-    pub fn add_accel_keys(&mut self, id: WidgetId, keys: &[VirtualKeyCode]) {
-        if let Some(last) = self.state.accel_stack.last_mut() {
-            for key in keys {
-                last.1.insert(*key, id.clone());
-            }
-        }
-    }
-
-    /// Request character-input focus
-    ///
-    /// Returns true on success or when the widget already had char focus.
-    ///
-    /// Character data is sent to the widget with char focus via
-    /// [`Event::ReceivedCharacter`] and [`Event::Command`].
-    ///
-    /// Char focus implies sel focus (see [`Self::request_sel_focus`]) and
-    /// navigation focus.
-    ///
-    /// When char focus is lost, [`Event::LostCharFocus`] is sent.
-    #[inline]
-    pub fn request_char_focus(&mut self, id: WidgetId) -> bool {
-        self.set_sel_focus(id, true);
-        true
-    }
-
-    /// Request selection focus
-    ///
-    /// Returns true on success or when the widget already had sel focus.
-    ///
-    /// To prevent multiple simultaneous selections (e.g. of text) in the UI,
-    /// only widgets with "selection focus" are allowed to select things.
-    /// Selection focus is implied by character focus. [`Event::LostSelFocus`]
-    /// is sent when selection focus is lost; in this case any existing
-    /// selection should be cleared.
-    ///
-    /// Selection focus implies navigation focus.
-    ///
-    /// When char focus is lost, [`Event::LostSelFocus`] is sent.
-    #[inline]
-    pub fn request_sel_focus(&mut self, id: WidgetId) -> bool {
-        self.set_sel_focus(id, false);
-        true
     }
 
     /// Grab "press" events for `source` (a mouse or finger)
@@ -559,7 +637,7 @@ impl<'a> EventMgr<'a> {
     ///
     /// Each grab can optionally visually depress one widget, and initially
     /// depresses the widget owning the grab (the `id` passed here). Call
-    /// [`EventMgr::set_grab_depress`] to update the grab's depress target.
+    /// [`EventState::set_grab_depress`] to update the grab's depress target.
     /// This is cleared automatically when the grab ends.
     ///
     /// The events sent depends on the `mode`:
@@ -665,101 +743,6 @@ impl<'a> EventMgr<'a> {
             if grab.start_id == id {
                 self.shell.set_cursor_icon(icon);
             }
-        }
-    }
-
-    /// Set a grab's depress target
-    ///
-    /// When a grab on mouse or touch input is in effect
-    /// ([`EventMgr::grab_press`]), the widget owning the grab may set itself
-    /// or any other widget as *depressed* ("pushed down"). Each grab depresses
-    /// at most one widget, thus setting a new depress target clears any
-    /// existing target. Initially a grab depresses its owner.
-    ///
-    /// This effect is purely visual. A widget is depressed when one or more
-    /// grabs targets the widget to depress, or when a keyboard binding is used
-    /// to activate a widget (for the duration of the key-press).
-    ///
-    /// Queues a redraw and returns `true` if the depress target changes,
-    /// otherwise returns `false`.
-    pub fn set_grab_depress(&mut self, source: PressSource, target: Option<WidgetId>) -> bool {
-        let mut redraw = false;
-        match source {
-            PressSource::Mouse(_, _) => {
-                if let Some(grab) = self.state.mouse_grab.as_mut() {
-                    redraw = grab.depress != target;
-                    grab.depress = target.clone();
-                }
-            }
-            PressSource::Touch(id) => {
-                if let Some(grab) = self.get_touch(id) {
-                    redraw = grab.depress != target;
-                    grab.depress = target.clone();
-                }
-            }
-        }
-        if redraw {
-            trace!("EventMgr: set_grab_depress on target={:?}", target);
-            self.state.send_action(TkAction::REDRAW);
-        }
-        redraw
-    }
-
-    /// Returns true if `id` or any descendant has a mouse or touch grab
-    pub fn any_pin_on(&self, id: &WidgetId) -> bool {
-        if self
-            .state
-            .mouse_grab
-            .as_ref()
-            .map(|grab| grab.start_id == id)
-            .unwrap_or(false)
-        {
-            return true;
-        }
-        if self.state.touch_grab.iter().any(|grab| grab.start_id == id) {
-            return true;
-        }
-        false
-    }
-
-    /// Get the current keyboard navigation focus, if any
-    ///
-    /// This is the widget selected by navigating the UI with the Tab key.
-    #[inline]
-    pub fn nav_focus(&self) -> Option<&WidgetId> {
-        self.state.nav_focus.as_ref()
-    }
-
-    /// Clear keyboard navigation focus
-    pub fn clear_nav_focus(&mut self) {
-        if let Some(id) = self.state.nav_focus.clone() {
-            self.redraw(id);
-        }
-        self.state.nav_focus = None;
-        self.clear_char_focus();
-        trace!("EventMgr: nav_focus = None");
-    }
-
-    /// Set the keyboard navigation focus directly
-    ///
-    /// Normally, [`WidgetConfig::key_nav`] will be true for the specified
-    /// widget, but this is not required, e.g. a `ScrollLabel` can receive focus
-    /// on text selection with the mouse. (Currently such widgets will receive
-    /// events like any other with nav focus, but this may change.)
-    ///
-    /// The target widget, if not already having navigation focus, will receive
-    /// [`Event::NavFocus`] with `key_focus` as the payload. This boolean should
-    /// be true if focussing in response to keyboard input, false if reacting to
-    /// mouse or touch input.
-    pub fn set_nav_focus(&mut self, id: WidgetId, key_focus: bool) {
-        if id != self.state.nav_focus {
-            self.redraw(id.clone());
-            if id != self.state.sel_focus {
-                self.clear_char_focus();
-            }
-            self.state.nav_focus = Some(id.clone());
-            trace!("EventMgr: nav_focus = Some({})", id);
-            self.state.pending.push(Pending::SetNavFocus(id, key_focus));
         }
     }
 

@@ -8,13 +8,15 @@
 use std::any::Any;
 use std::fmt;
 
-use crate::event::{self, ConfigureManager, EventMgr};
+use crate::event;
+#[allow(unused)]
+use crate::event::{EventMgr, EventState};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{self, AlignHints, AxisInfo, SetRectMgr, SizeRules};
+#[allow(unused)]
+use crate::theme::DrawCtx;
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::util::IdentifyWidget;
-#[allow(unused)]
-use crate::{event::EventState, theme::DrawCtx};
 use crate::{CoreData, TkAction, WidgetId};
 
 impl dyn WidgetCore {
@@ -148,12 +150,9 @@ pub trait WidgetCore: Any + fmt::Debug {
 /// [`derive(Widget)`] unless `#[widget(children = noauto)]` is used.
 ///
 /// Dynamic widgets must implement this trait manually, since [`derive(Widget)`]
-/// cannot currently handle fields like `Vec<SomeWidget>`.
-///
-/// Whenever the number of child widgets changes or child widgets are replaced,
-/// one must send [`TkAction::RECONFIGURE`].
-/// (TODO: this is slow. Find an option for partial reconfigures. This requires
-/// better widget identifiers; see #91.)
+/// cannot currently handle fields like `Vec<SomeWidget>`. Additionally, any
+/// parent adding child widgets must ensure they get configured, either via
+/// [`TkAction::RECONFIGURE`] or via [`SetRectMgr::configure`].
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 pub trait WidgetChildren: WidgetCore {
@@ -172,7 +171,7 @@ pub trait WidgetChildren: WidgetCore {
     ///
     /// Warning: directly adjusting a widget without requiring reconfigure or
     /// redraw may break the UI. If a widget is replaced, a reconfigure **must**
-    /// be requested. This can be done via [`EventMgr::send_action`].
+    /// be requested. This can be done via [`EventState::send_action`].
     /// This method may be removed in the future.
     fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig>;
 
@@ -251,37 +250,45 @@ pub trait WidgetChildren: WidgetCore {
 // TODO(specialization): provide a blanket implementation, so that users only
 // need implement manually when they have something to configure.
 pub trait WidgetConfig: Layout {
+    /// Pre-configure widget
+    ///
+    /// Widgets are *configured* on window creation (before sizing) and when
+    /// [`TkAction::RECONFIGURE`] is sent. Child-widgets may alternatively be
+    /// configured locally by calling [`SetRectMgr::configure`].
+    ///
+    /// Configuration happens at least once
+    /// before sizing and drawing, and may be repeated at a later time.
+    /// Configuration happens in this order: (1) `pre_configure`,
+    /// (2) recurse over children, (3) `configure`.
+    ///
+    /// This method assigns the widget's [`WidgetId`] and may be used to
+    /// affect the manager in ways which influence the child, for example
+    /// [`EventState::new_accel_layer`].
+    fn pre_configure(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
+        let _ = mgr;
+        self.core_data_mut().id = id;
+    }
+
     /// Configure widget
     ///
-    /// Widgets are *configured* on window creation and when
-    /// [`TkAction::RECONFIGURE`] is sent.
+    /// Widgets are *configured* on window creation (before sizing) and when
+    /// [`TkAction::RECONFIGURE`] is sent. Child-widgets may alternatively be
+    /// configured locally by calling [`SetRectMgr::configure`].
     ///
-    /// Configure is called before resizing (but after calculation of the
-    /// initial window size). This method is called after
-    /// a [`WidgetId`] has been assigned to self, and after `configure` has
-    /// been called on each child.
+    /// Configuration happens at least once
+    /// before sizing and drawing, and may be repeated at a later time.
+    /// Configuration happens in this order: (1) `pre_configure`,
+    /// (2) recurse over children, (3) `configure`.
+    ///
+    /// This method may be used to perform local initialization and bindings,
+    /// e.g. [`EventState::add_accel_keys`].
     ///
     /// It is not advised to perform any action requiring a reconfigure (e.g.
     /// adding a child widget) during configure due to the possibility of
     /// getting stuck in a reconfigure-loop. See issue kas#91 for more on this.
     /// KAS has a crude mechanism to detect this and panic.
-    ///
-    /// The default implementation of this method does nothing.
-    fn configure(&mut self, _: &mut EventMgr) {}
-
-    /// Configure self and children
-    ///
-    /// In most cases one should not override the default implementation of this
-    /// method but instead use [`WidgetConfig::configure`]; the exception is
-    /// widgets with pop-ups.
-    fn configure_recurse(&mut self, mut cmgr: ConfigureManager) {
-        self.core_data_mut().id = cmgr.get_id();
-        for i in 0..self.num_children() {
-            if let Some(w) = self.get_child_mut(i) {
-                w.configure_recurse(cmgr.child(i));
-            }
-        }
-        self.configure(cmgr.mgr());
+    fn configure(&mut self, mgr: &mut SetRectMgr) {
+        let _ = mgr;
     }
 
     /// Is this widget navigable via Tab key?

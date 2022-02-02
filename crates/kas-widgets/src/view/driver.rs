@@ -35,11 +35,11 @@ pub trait Driver<T>: Debug + 'static {
     /// Type of the widget used to view data
     type Widget: kas::Widget<Msg = Self::Msg>;
 
-    /// Construct a new instance with no data
+    /// Construct a new widget with no data
     ///
     /// Such instances are used for sizing and cached widgets, but not shown.
     /// The controller may later call [`Driver::set`] on the widget then show it.
-    fn new(&self) -> Self::Widget;
+    fn make(&self) -> Self::Widget;
     /// Set the viewed data
     fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction;
     /// Get data from the view
@@ -84,7 +84,7 @@ macro_rules! impl_via_to_string {
         impl Driver<$t> for Default {
             type Msg = VoidMsg;
             type Widget = Label<String>;
-            fn new(&self) -> Self::Widget where $t: std::default::Default {
+            fn make(&self) -> Self::Widget where $t: std::default::Default {
                 Label::new("".to_string())
             }
             fn set(&self, widget: &mut Self::Widget, data: $t) -> TkAction {
@@ -95,7 +95,7 @@ macro_rules! impl_via_to_string {
         impl Driver<$t> for DefaultNav {
             type Msg = VoidMsg;
             type Widget = NavFrame<Label<String>>;
-            fn new(&self) -> Self::Widget where $t: std::default::Default {
+            fn make(&self) -> Self::Widget where $t: std::default::Default {
                 NavFrame::new(Label::new("".to_string()))
             }
             fn set(&self, widget: &mut Self::Widget, data: $t) -> TkAction {
@@ -117,7 +117,7 @@ impl_via_to_string!(f32, f64);
 impl Driver<bool> for Default {
     type Msg = VoidMsg;
     type Widget = CheckBoxBare<VoidMsg>;
-    fn new(&self) -> Self::Widget {
+    fn make(&self) -> Self::Widget {
         CheckBoxBare::new().with_disabled(true)
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
@@ -131,7 +131,7 @@ impl Driver<bool> for Default {
 impl Driver<bool> for DefaultNav {
     type Msg = VoidMsg;
     type Widget = CheckBoxBare<VoidMsg>;
-    fn new(&self) -> Self::Widget {
+    fn make(&self) -> Self::Widget {
         CheckBoxBare::new().with_disabled(true)
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
@@ -164,8 +164,8 @@ where
 {
     type Msg = <Default as Driver<T>>::Msg;
     type Widget = <Default as Driver<T>>::Widget;
-    fn new(&self) -> Self::Widget {
-        Default.new()
+    fn make(&self) -> Self::Widget {
+        Default.make()
     }
     fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction {
         Default.set(widget, data)
@@ -178,7 +178,7 @@ where
 impl<G: EditGuard + std::default::Default> Driver<String> for Widget<EditField<G>> {
     type Msg = G::Msg;
     type Widget = EditField<G>;
-    fn new(&self) -> Self::Widget {
+    fn make(&self) -> Self::Widget {
         let guard = G::default();
         EditField::new("".to_string()).with_guard(guard)
     }
@@ -192,7 +192,7 @@ impl<G: EditGuard + std::default::Default> Driver<String> for Widget<EditField<G
 impl<G: EditGuard + std::default::Default> Driver<String> for Widget<EditBox<G>> {
     type Msg = G::Msg;
     type Widget = EditBox<G>;
-    fn new(&self) -> Self::Widget {
+    fn make(&self) -> Self::Widget {
         let guard = G::default();
         EditBox::new("".to_string()).with_guard(guard)
     }
@@ -207,7 +207,7 @@ impl<G: EditGuard + std::default::Default> Driver<String> for Widget<EditBox<G>>
 impl<D: Directional + std::default::Default> Driver<f32> for Widget<ProgressBar<D>> {
     type Msg = VoidMsg;
     type Widget = ProgressBar<D>;
-    fn new(&self) -> Self::Widget {
+    fn make(&self) -> Self::Widget {
         ProgressBar::new()
     }
     fn set(&self, widget: &mut Self::Widget, data: f32) -> TkAction {
@@ -225,7 +225,7 @@ pub struct CheckBox {
 }
 impl CheckBox {
     /// Construct, with given `label`
-    pub fn new<T: Into<AccelString>>(label: T) -> Self {
+    pub fn make<T: Into<AccelString>>(label: T) -> Self {
         let label = label.into();
         CheckBox { label }
     }
@@ -233,7 +233,7 @@ impl CheckBox {
 impl Driver<bool> for CheckBox {
     type Msg = bool;
     type Widget = crate::CheckBox<bool>;
-    fn new(&self) -> Self::Widget {
+    fn make(&self) -> Self::Widget {
         crate::CheckBox::new(self.label.clone()).on_toggle(|_, state| Some(state))
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
@@ -251,14 +251,14 @@ pub struct RadioBoxBare {
 }
 impl RadioBoxBare {
     /// Construct, with given `group`
-    pub fn new(group: RadioBoxGroup) -> Self {
+    pub fn make(group: RadioBoxGroup) -> Self {
         RadioBoxBare { group }
     }
 }
 impl Driver<bool> for RadioBoxBare {
     type Msg = bool;
     type Widget = crate::RadioBoxBare<bool>;
-    fn new(&self) -> Self::Widget {
+    fn make(&self) -> Self::Widget {
         crate::RadioBoxBare::new(self.group.clone()).on_select(|_| Some(true))
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
@@ -277,7 +277,7 @@ pub struct RadioBox {
 }
 impl RadioBox {
     /// Construct, with given `label` and `group`
-    pub fn new<T: Into<AccelString>>(label: T, group: RadioBoxGroup) -> Self {
+    pub fn make<T: Into<AccelString>>(label: T, group: RadioBoxGroup) -> Self {
         let label = label.into();
         RadioBox { label, group }
     }
@@ -285,7 +285,7 @@ impl RadioBox {
 impl Driver<bool> for RadioBox {
     type Msg = bool;
     type Widget = crate::RadioBox<bool>;
-    fn new(&self) -> Self::Widget {
+    fn make(&self) -> Self::Widget {
         crate::RadioBox::new(self.label.clone(), self.group.clone()).on_select(|_| Some(true))
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
@@ -305,8 +305,8 @@ pub struct Slider<T: SliderType, D: Directional> {
     direction: D,
 }
 impl<T: SliderType, D: Directional + std::default::Default> Slider<T, D> {
-    /// Construct, with given `min`, `max` and `step` (see [`Slider::new`])
-    pub fn new(min: T, max: T, step: T) -> Self {
+    /// Construct, with given `min`, `max` and `step` (see [`crate::Slider::new`])
+    pub fn make(min: T, max: T, step: T) -> Self {
         Slider {
             min,
             max,
@@ -329,7 +329,7 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
 impl<T: SliderType, D: Directional> Driver<T> for Slider<T, D> {
     type Msg = T;
     type Widget = crate::Slider<T, D>;
-    fn new(&self) -> Self::Widget {
+    fn make(&self) -> Self::Widget {
         crate::Slider::new_with_direction(self.min, self.max, self.step, self.direction)
     }
     fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction {

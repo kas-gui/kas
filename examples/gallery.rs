@@ -81,7 +81,7 @@ widget! {
         }
     }
     impl WidgetConfig for TextEditPopup {
-        fn configure(&mut self, mgr: &mut EventMgr) {
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.register_nav_fallback(self.id());
         }
     }

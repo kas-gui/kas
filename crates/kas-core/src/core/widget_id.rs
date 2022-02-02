@@ -9,7 +9,7 @@
 #![allow(clippy::precedence)]
 
 use crate::cast::{Cast, Conv};
-use std::cmp::{Eq, PartialEq};
+use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::iter::once;
 use std::marker::PhantomData;
@@ -203,7 +203,8 @@ impl<'a> Iterator for PathIter<'a> {
 /// reference counting internally.
 ///
 /// Identifiers are assigned when configured and when re-configured
-/// (via [`crate::TkAction::RECONFIGURE`]). Since user-code is not notified of a
+/// (via [`crate::TkAction::RECONFIGURE`] or [`crate::layout::SetRectMgr::configure`]).
+/// Since user-code is not notified of a
 /// re-configure, user-code should not store a `WidgetId`.
 #[derive(Clone)]
 pub struct WidgetId(IntOrPtr);
@@ -451,6 +452,22 @@ impl PartialEq for WidgetId {
 }
 impl Eq for WidgetId {}
 
+impl PartialOrd for WidgetId {
+    fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
+        Some(self.cmp(rhs))
+    }
+}
+
+impl Ord for WidgetId {
+    fn cmp(&self, rhs: &Self) -> Ordering {
+        match (self.0.get(), rhs.0.get()) {
+            (Variant::Invalid, _) | (_, Variant::Invalid) => panic!("WidgetId::cmp: invalid id"),
+            (Variant::Int(x), Variant::Int(y)) => x.cmp(&y),
+            _ => self.iter_path().cmp(rhs.iter_path()),
+        }
+    }
+}
+
 impl Hash for WidgetId {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match self.0.get() {
@@ -567,19 +584,47 @@ mod test {
     #[test]
     #[should_panic]
     fn test_partial_eq_invalid_1() {
-        assert_eq!(WidgetId::INVALID, WidgetId::INVALID);
+        let _ = WidgetId::INVALID == WidgetId::INVALID;
     }
 
     #[test]
     #[should_panic]
     fn test_partial_eq_invalid_2() {
-        assert_eq!(WidgetId::ROOT, WidgetId::INVALID);
+        let _ = WidgetId::ROOT == WidgetId::INVALID;
     }
 
     #[test]
     #[should_panic]
     fn test_partial_eq_invalid_3() {
-        assert_eq!(WidgetId::INVALID, WidgetId::ROOT);
+        let _ = WidgetId::INVALID == WidgetId::ROOT;
+    }
+
+    #[test]
+    fn test_ord() {
+        let root = WidgetId::ROOT;
+        let c_0 = root.make_child(0);
+        let c_0_0 = c_0.make_child(0);
+        assert!(root < c_0);
+        assert!(c_0 < c_0_0);
+
+        let c_1 = root.make_child(1);
+        assert!(c_0_0 < c_1);
+        assert!(c_1 < root.make_child(8));
+
+        let d_0 = WidgetId(IntOrPtr::new_iter([0].iter().cloned()));
+        let d_0_0 = WidgetId(IntOrPtr::new_iter([0, 0].iter().cloned()));
+        let d_1 = WidgetId(IntOrPtr::new_iter([1].iter().cloned()));
+        assert_eq!(d_0.cmp(&c_0), Ordering::Equal);
+        assert_eq!(d_0_0.cmp(&c_0_0), Ordering::Equal);
+        assert_eq!(d_1.cmp(&c_1), Ordering::Equal);
+        assert!(d_0 < d_0_0);
+        assert!(d_0_0 < d_1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_ord_invalid() {
+        let _ = WidgetId::INVALID < WidgetId::ROOT;
     }
 
     #[test]

@@ -50,10 +50,8 @@ impl<'a> DrawMgr<'a> {
     /// Access a [`SetRectMgr`]
     pub fn set_rect_mgr<F: FnMut(&mut SetRectMgr) -> T, T>(&mut self, mut f: F) -> T {
         let (sh, ds) = self.h.size_and_draw_shared();
-        let mut mgr = SetRectMgr::new(sh, ds);
-        let t = f(&mut mgr);
-        self.ev.send_action(mgr.take_action());
-        t
+        let mut mgr = SetRectMgr::new(sh, ds, self.ev);
+        f(&mut mgr)
     }
 
     /// Access a [`DrawShared`]
@@ -144,10 +142,8 @@ impl<'a> DrawCtx<'a> {
     /// Access a [`SetRectMgr`]
     pub fn set_rect_mgr<F: FnMut(&mut SetRectMgr) -> T, T>(&mut self, mut f: F) -> T {
         let (sh, ds) = self.h.size_and_draw_shared();
-        let mut mgr = SetRectMgr::new(sh, ds);
-        let t = f(&mut mgr);
-        self.ev.send_action(mgr.take_action());
-        t
+        let mut mgr = SetRectMgr::new(sh, ds, self.ev);
+        f(&mut mgr)
     }
 
     /// Access a [`DrawShared`]
