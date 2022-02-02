@@ -66,12 +66,20 @@ pub trait WidgetCore: Any + fmt::Debug {
     fn core_data_mut(&mut self) -> &mut CoreData;
 
     /// Get the widget's numeric identifier
+    ///
+    /// Note that the default-constructed [`WidgetId`] is *invalid*: any
+    /// operations on this value will cause a panic. Valid identifiers are
+    /// assigned by [`WidgetConfig::pre_configure`].
     #[inline]
     fn id(&self) -> WidgetId {
         self.core_data().id.clone()
     }
 
     /// Get the widget's numeric identifier
+    ///
+    /// Note that the default-constructed [`WidgetId`] is *invalid*: any
+    /// operations on this value will cause a panic. Valid identifiers are
+    /// assigned by [`WidgetConfig::pre_configure`].
     #[inline]
     fn id_ref(&self) -> &WidgetId {
         &self.core_data().id
@@ -157,6 +165,9 @@ pub trait WidgetCore: Any + fmt::Debug {
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 pub trait WidgetChildren: WidgetCore {
     /// Get the number of child widgets
+    ///
+    /// Every value in the range `0..self.num_children()` is a valid child
+    /// index.
     fn num_children(&self) -> usize;
 
     /// Get a reference to a child widget by index, or `None` if the index is
@@ -193,20 +204,14 @@ pub trait WidgetChildren: WidgetCore {
 
     /// Find the child which is an ancestor of this `id`, if any
     ///
-    /// Warning: the return value is not guaranteed to be a valid child, thus
-    /// calls to methods like [`Self::get_child`] must handle `None` return.
-    ///
-    /// This requires that the widget tree has already been configured by
-    /// [`EventState::configure`].
+    /// If `Some(index)` is returned, this is *probably* but not guaranteed
+    /// to be a valid child index.
     #[inline]
     fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
-        self.id().index_of_child(id)
+        id.next_key_after(self.id_ref())
     }
 
     /// Find the descendant with this `id`, if any
-    ///
-    /// This requires that the widget tree has already been configured by
-    /// [`EventState::configure`].
     fn find_widget(&self, id: &WidgetId) -> Option<&dyn WidgetConfig> {
         if let Some(index) = self.find_child_index(id) {
             self.get_child(index)
@@ -219,9 +224,6 @@ pub trait WidgetChildren: WidgetCore {
     }
 
     /// Find the descendant with this `id`, if any
-    ///
-    /// This requires that the widget tree has already been configured by
-    /// [`EventState::configure`].
     fn find_widget_mut(&mut self, id: &WidgetId) -> Option<&mut dyn WidgetConfig> {
         if let Some(index) = self.find_child_index(id) {
             self.get_child_mut(index)

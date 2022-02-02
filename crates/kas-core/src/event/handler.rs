@@ -95,7 +95,7 @@ pub trait SendEvent: Handler {
     /// if self.is_disabled() {
     ///     return Response::Unused;
     /// }
-    /// match self.id().index_of_child(id) {
+    /// match self.find_child_index(&id) {
     ///     Some(0) => self.child0.send(mgr, id, event).into(),
     ///     Some(1) => self.child1.send(mgr, id, event).into(),
     ///     // ...

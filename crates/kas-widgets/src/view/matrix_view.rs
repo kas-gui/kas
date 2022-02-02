@@ -670,7 +670,7 @@ widget! {
                 return Response::Unused;
             }
 
-            if let Some(index) = self.id().index_of_child(&id) {
+            if let Some(index) = self.find_child_index(&id) {
                 let child_event = self.scroll.offset_event(event.clone());
                 let response;
                 if let Some(child) = self.widgets.get_mut(index) {

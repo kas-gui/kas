@@ -89,7 +89,7 @@ widget! {
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if !self.is_disabled() {
-                if let Some(index) = self.id().index_of_child(&id) {
+                if let Some(index) = self.find_child_index(&id) {
                     if let Some(child) = self.widgets.get_mut(index) {
                         return match child.send(mgr, id, event) {
                             Response::Focus(rect) => {

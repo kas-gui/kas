@@ -17,7 +17,7 @@ This is a small patch:
 -   `WidgetId` has been completely re-written, and now represents a path
 -   `Ord for WidgetId` now considers a parent to come *before* its children.
     Note: previously ordering was used in `send` logic; this is no longer
-    recommended (use e.g. `WidgetId::index_of_child` instead).
+    recommended (use e.g. `Widget::find_child_index` instead).
 
 ## [0.10.0] — 2021-09-05
 
