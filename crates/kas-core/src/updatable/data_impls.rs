@@ -54,47 +54,6 @@ impl<T: Clone + Debug> ListDataMut for [T] {
     }
 }
 
-impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> ListData for std::collections::BTreeMap<K, T> {
-    type Key = K;
-    type Item = T;
-
-    fn version(&self) -> u64 {
-        0
-    }
-
-    fn len(&self) -> usize {
-        (*self).len()
-    }
-
-    fn contains_key(&self, key: &Self::Key) -> bool {
-        (*self).contains_key(key)
-    }
-
-    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
-        (*self).get(key).cloned()
-    }
-
-    fn update(&self, _: &Self::Key, _: Self::Item) -> Option<UpdateHandle> {
-        // Note: plain BTreeMap does not support update, but SharedRc<..> does.
-        None
-    }
-
-    fn iter_vec(&self, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        self.iter()
-            .take(limit)
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect()
-    }
-
-    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        self.iter()
-            .skip(start)
-            .take(limit)
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect()
-    }
-}
-
 // TODO(spec): implement using Deref; for now can't since it "might" conflict
 // with a RefCell impl on a derived type downstream, according to the solver.
 // impl<T: Deref + Debug> SingleData for T
