@@ -98,6 +98,12 @@ impl<T: ListData + 'static, F: Filter<T::Item>> ListData for FilteredList<T, F> 
     fn len(&self) -> usize {
         self.view.borrow().len()
     }
+    fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
+        self.data.make_id(parent, key)
+    }
+    fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
+        self.data.reconstruct_key(parent, child)
+    }
 
     fn contains_key(&self, key: &Self::Key) -> bool {
         self.get_cloned(key).is_some()

@@ -7,6 +7,7 @@
 
 use super::*;
 use crate::event::UpdateHandle;
+use crate::WidgetId;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 
@@ -20,6 +21,13 @@ impl<T: Clone + Debug> ListData for [T] {
 
     fn len(&self) -> usize {
         (*self).len()
+    }
+
+    fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
+        parent.make_child(*key)
+    }
+    fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
+        child.next_key_after(parent)
     }
 
     fn contains_key(&self, key: &Self::Key) -> bool {
@@ -85,6 +93,13 @@ macro_rules! impl_via_deref {
             fn len(&self) -> usize {
                 self.deref().len()
             }
+            fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
+                self.deref().make_id(parent, key)
+            }
+            fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
+                self.deref().reconstruct_key(parent, child)
+            }
+
             fn contains_key(&self, key: &Self::Key) -> bool {
                 self.deref().contains_key(key)
             }

@@ -111,6 +111,12 @@ impl ListData for MyData {
     fn len(&self) -> usize {
         self.len
     }
+    fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
+        parent.make_child(*key)
+    }
+    fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
+        child.next_key_after(parent)
+    }
 
     fn contains_key(&self, key: &Self::Key) -> bool {
         *key < self.len

@@ -8,6 +8,7 @@
 use crate::event::UpdateHandle;
 #[allow(unused)] // doc links
 use crate::updatable::Updatable;
+use crate::WidgetId;
 #[allow(unused)] // doc links
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -73,6 +74,20 @@ pub trait ListData: Debug {
     ///
     /// Note: users may assume this is `O(1)`.
     fn len(&self) -> usize;
+
+    /// Make a [`WidgetId`] for a key
+    ///
+    /// The `parent` identifier is used as a reference.
+    fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId;
+
+    /// Reconstruct a key from a [`WidgetId`]
+    ///
+    /// The `parent` identifier is used as a reference.
+    ///
+    /// If the `child` identifier is one returned by [`Self::make_id`] for the
+    /// same `parent`, *or descended from that*, this should return a copy of
+    /// the `key` passed to `make_id`.
+    fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key>;
 
     // TODO(gat): add get<'a>(&self) -> Self::ItemRef<'a> and get_mut
 

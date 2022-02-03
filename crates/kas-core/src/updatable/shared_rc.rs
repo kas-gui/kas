@@ -14,6 +14,7 @@
 use crate::event::EventMgr;
 use crate::event::UpdateHandle;
 use crate::updatable::*;
+use crate::WidgetId;
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;
@@ -81,6 +82,13 @@ impl<T: ListDataMut> ListData for SharedRc<T> {
 
     fn len(&self) -> usize {
         (self.0).1.borrow().0.len()
+    }
+
+    fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
+        (self.0).1.borrow().0.make_id(parent, key)
+    }
+    fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
+        (self.0).1.borrow().0.reconstruct_key(parent, child)
     }
 
     fn contains_key(&self, key: &Self::Key) -> bool {

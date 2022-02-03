@@ -335,10 +335,12 @@ widget! {
                 .enumerate()
             {
                 let i = solver.first_data + i;
+                let id = self.data.make_id(self.id_ref(), &item.0);
                 let key = Some(item.0.clone());
                 let w = &mut self.widgets[i % solver.cur_len];
                 if key != w.key {
                     w.key = key;
+                    mgr.configure(id, &mut w.widget);
                     action |= self.view.set(&mut w.widget, item.1);
                 }
                 let rect = solver.rect(i);
@@ -388,6 +390,11 @@ widget! {
         fn num_children(&self) -> usize {
             self.widgets.len()
         }
+        fn make_child_id(&self, index: usize) -> Option<WidgetId> {
+            self.widgets.get(index)
+                .and_then(|w| w.key.as_ref())
+                .map(|key| self.data.make_id(self.id_ref(), key))
+        }
         #[inline]
         fn get_child(&self, index: usize) -> Option<&dyn WidgetConfig> {
             self.widgets.get(index).map(|w| w.widget.as_widget())
@@ -397,6 +404,18 @@ widget! {
             self.widgets
                 .get_mut(index)
                 .map(|w| w.widget.as_widget_mut())
+        }
+        fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
+            let key = self.data.reconstruct_key(self.id_ref(), id);
+            if key.is_some() {
+                self.widgets
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, w)| (key == w.key).then(|| i))
+                    .next()
+            } else {
+                None
+            }
         }
     }
 
@@ -680,99 +699,98 @@ widget! {
                 return Response::Unused;
             }
 
-            if let Some(index) = self.find_child_index(&id) {
-                let child_event = self.scroll.offset_event(event.clone());
-                let response;
-                if let Some(child) = self.widgets.get_mut(index) {
-                    let r = child.widget.send(mgr, id, child_event);
-                    response = (child.key.clone(), r);
-                } else {
-                    return Response::Unused;
-                };
+            if self.eq_id(&id) {
+                return self.handle(mgr, event);
+            }
 
-                if matches!(&response.1, Response::Update | Response::Msg(_)) {
-                    let wd = &self.widgets[index];
-                    if let Some(key) = wd.key.as_ref() {
-                        if let Some(value) = self.view.get(&wd.widget) {
-                            if let Some(handle) = self.data.update(key, value) {
-                                mgr.trigger_update(handle, 0);
-                            }
-                        }
+            let key = match self.data.reconstruct_key(self.id_ref(), &id) {
+                Some(key) => key,
+                None => return Response::Unused,
+            };
+
+            let (index, response);
+            'outer: loop {
+                for i in 0..self.widgets.len() {
+                    if self.widgets[i].key.as_ref() == Some(&key) {
+                        index = i;
+                        let child_event = self.scroll.offset_event(event.clone());
+                        response = self.widgets[i].widget.send(mgr, id, child_event);
+                        break 'outer;
                     }
                 }
+                return Response::Unused;
+            }
 
-                match response {
-                    (key, Response::Unused) => {
-                        if let Event::PressStart { source, coord, .. } = event {
-                            if source.is_primary() {
-                                // We request a grab with our ID, hence the
-                                // PressMove/PressEnd events are matched in handle().
-                                mgr.grab_press_unique(self.id(), source, coord, None);
-                                self.press_phase = PressPhase::Start(coord);
-                                self.press_target = key;
-                                Response::Used
-                            } else {
-                                Response::Unused
-                            }
+            if matches!(&response, Response::Update | Response::Msg(_)) {
+                if let Some(value) = self.view.get(&self.widgets[index].widget) {
+                    if let Some(handle) = self.data.update(&key, value) {
+                        mgr.trigger_update(handle, 0);
+                    }
+                }
+            }
+
+            match response {
+                Response::Unused => {
+                    if let Event::PressStart { source, coord, .. } = event {
+                        if source.is_primary() {
+                            // We request a grab with our ID, hence the
+                            // PressMove/PressEnd events are matched in handle().
+                            mgr.grab_press_unique(self.id(), source, coord, None);
+                            self.press_phase = PressPhase::Start(coord);
+                            self.press_target = Some(key);
+                            Response::Used
                         } else {
-                            self.handle(mgr, event)
+                            Response::Unused
                         }
+                    } else {
+                        self.handle(mgr, event)
                     }
-                    (_, Response::Used) => Response::Used,
-                    (_, Response::Pan(delta)) => match self.scroll_by_delta(mgr, delta) {
-                        delta if delta == Offset::ZERO => Response::Scrolled,
-                        delta => Response::Pan(delta),
-                    }
-                    (_, Response::Scrolled) => Response::Scrolled,
-                    (_, Response::Focus(rect)) => {
-                        let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
-                        *mgr |= action;
-                        mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
-                        Response::Focus(rect)
-                    }
-                    (Some(key), Response::Select) => {
-                        match self.sel_mode {
-                            SelectionMode::None => Response::Used,
-                            SelectionMode::Single => {
-                                mgr.redraw(self.id());
-                                self.selection.clear();
+                }
+                Response::Used => Response::Used,
+                Response::Pan(delta) => match self.scroll_by_delta(mgr, delta) {
+                    delta if delta == Offset::ZERO => Response::Scrolled,
+                    delta => Response::Pan(delta),
+                }
+                Response::Scrolled => Response::Scrolled,
+                Response::Focus(rect) => {
+                    let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
+                    *mgr |= action;
+                    mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
+                    Response::Focus(rect)
+                }
+                Response::Select => {
+                    match self.sel_mode {
+                        SelectionMode::None => Response::Used,
+                        SelectionMode::Single => {
+                            mgr.redraw(self.id());
+                            self.selection.clear();
+                            self.selection.insert(key.clone());
+                            Response::Msg(ChildMsg::Select(key))
+                        }
+                        SelectionMode::Multiple => {
+                            mgr.redraw(self.id());
+                            if self.selection.remove(&key) {
+                                Response::Msg(ChildMsg::Deselect(key))
+                            } else {
                                 self.selection.insert(key.clone());
                                 Response::Msg(ChildMsg::Select(key))
                             }
-                            SelectionMode::Multiple => {
-                                mgr.redraw(self.id());
-                                if self.selection.remove(&key) {
-                                    Response::Msg(ChildMsg::Deselect(key))
-                                } else {
-                                    self.selection.insert(key.clone());
-                                    Response::Msg(ChildMsg::Select(key))
-                                }
-                            }
-                        }
-                    }
-                    (None, Response::Select) => Response::Used,
-                    (_, Response::Update) => Response::Used,
-                    (key, Response::Msg(msg)) => {
-                        trace!(
-                            "Received by {} from {:?}: {:?}",
-                            self.id(),
-                            &key,
-                            kas::util::TryFormat(&msg)
-                        );
-                        if let Some(key) = key {
-                            if let Some(handle) = self.data.handle(&key, &msg) {
-                                mgr.trigger_update(handle, 0);
-                            }
-                            Response::Msg(ChildMsg::Child(key, msg))
-                        } else {
-                            log::warn!("ListView: response from widget with no key");
-                            Response::Used
                         }
                     }
                 }
-            } else {
-                debug_assert!(self.eq_id(id), "SendEvent::send: bad WidgetId");
-                self.handle(mgr, event)
+                Response::Update => Response::Used,
+                Response::Msg(msg) => {
+                    trace!(
+                        "Received by {} from {:?}: {:?}",
+                        self.id(),
+                        &key,
+                        kas::util::TryFormat(&msg)
+                    );
+                    if let Some(handle) = self.data.handle(&key, &msg) {
+                        mgr.trigger_update(handle, 0);
+                    }
+                    Response::Msg(ChildMsg::Child(key, msg))
+                }
             }
         }
     }
