@@ -189,6 +189,22 @@ impl<'a> Iterator for PathIter<'a> {
     }
 }
 
+/// Iterator over [`WidgetId`] path components
+pub struct WidgetPathIter<'a>(PathIter<'a>);
+impl<'a> Iterator for WidgetPathIter<'a> {
+    type Item = usize;
+
+    #[inline]
+    fn next(&mut self) -> Option<usize> {
+        self.0.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
 /// Widget identifier
 ///
 /// All widgets are assigned an identifier which is unique within the window.
@@ -297,10 +313,21 @@ impl WidgetId {
         self.0.get() != Variant::Invalid
     }
 
+    /// Iterate over path components
+    pub fn iter(&self) -> WidgetPathIter {
+        match self.0.get() {
+            Variant::Invalid => panic!("WidgetId::iter: invalid"),
+            Variant::Int(x) => WidgetPathIter(PathIter::Bits(BitsIter::new(x))),
+            Variant::Slice(path) => WidgetPathIter(PathIter::Slice(path.iter().cloned())),
+        }
+    }
+
     /// Returns true if `self` equals `id` or if `id` is a descendant of `self`
     pub fn is_ancestor_of(&self, id: &Self) -> bool {
         match (self.0.get(), id.0.get()) {
-            (Variant::Invalid, _) | (_, Variant::Invalid) => false,
+            (Variant::Invalid, _) | (_, Variant::Invalid) => {
+                panic!("WidgetId::is_ancestor_of: invalid")
+            }
             (Variant::Slice(_), Variant::Int(_)) => {
                 // This combo will never be created where id is a child.
                 false
@@ -324,6 +351,17 @@ impl WidgetId {
         }
     }
 
+    pub fn iter_keys_after(&self, id: &Self) -> WidgetPathIter {
+        let mut self_iter = self.iter();
+        let mut id_iter = id.iter();
+        while let Some(v) = id_iter.next() {
+            if self_iter.next() != Some(v) {
+                return WidgetPathIter(PathIter::Bits(BitsIter(0, 0)));
+            }
+        }
+        self_iter
+    }
+
     /// Get first key in path of `self` path after `id`
     ///
     /// If the path of `self` starts with the path of `id`
@@ -331,7 +369,9 @@ impl WidgetId {
     /// `self`'s path (if any). Otherwise, this returns `None`.
     pub fn next_key_after(&self, id: &Self) -> Option<usize> {
         match (id.0.get(), self.0.get()) {
-            (Variant::Invalid, _) | (_, Variant::Invalid) => None,
+            (Variant::Invalid, _) | (_, Variant::Invalid) => {
+                panic!("WidgetId::next_key_after: invalid")
+            }
             (Variant::Slice(_), Variant::Int(_)) => None,
             (Variant::Int(parent_x), Variant::Int(child_x)) => {
                 let parent_blocks = block_len(parent_x);
@@ -376,7 +416,7 @@ impl WidgetId {
     #[must_use]
     pub fn make_child(&self, key: usize) -> Self {
         match self.0.get() {
-            Variant::Invalid => panic!("WidgetId::make_child: invalid id"),
+            Variant::Invalid => panic!("WidgetId::make_child: invalid"),
             Variant::Int(self_x) => {
                 // TODO(opt): this bit-packing approach is designed for space-optimisation, but it may
                 // be better to use a simpler, less-compressed approach, possibly with u128 type.
