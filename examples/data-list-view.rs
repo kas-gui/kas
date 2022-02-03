@@ -211,7 +211,7 @@ fn main() -> kas::shell::Result<()> {
         #[handler(msg = Control)]
         struct {
             #[widget] _ = Label::new("Number of rows:"),
-            #[widget(map_msg = activate)] edit: impl HasString = EditBox::new("3")
+            #[widget(flatmap_msg = activate)] edit: impl HasString = EditBox::new("3")
                 .on_afl(|text, _| text.parse::<usize>().ok()),
             #[widget(map_msg = button)] _ = TextButton::new_msg("Set", Button::Set),
             #[widget(map_msg = button)] _ = TextButton::new_msg("−", Button::Decr),
@@ -220,9 +220,13 @@ fn main() -> kas::shell::Result<()> {
             n: usize = 3,
         }
         impl Self {
-            fn activate(&mut self, _: &mut EventMgr, n: usize) -> Control {
-                self.n = n;
-                Control::Set(n)
+            fn activate(&mut self, _: &mut EventMgr, n: usize) -> Response<Control> {
+                if n == self.n {
+                    Response::Used
+                } else {
+                    self.n = n;
+                    Response::Msg(Control::Set(n))
+                }
             }
             fn button(&mut self, mgr: &mut EventMgr, msg: Button) -> Control {
                 let n = match msg {
