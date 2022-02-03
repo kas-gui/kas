@@ -291,7 +291,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
         toks.append_all(quote! {
             impl #impl_generics ::kas::Layout for #name #ty_generics #where_clause {
                 fn layout<'a>(&'a mut self) -> ::kas::layout::Layout<'a> {
-                    use ::kas::WidgetCore;
+                    use ::kas::{WidgetCore, layout};
                     let mut _chain = &mut self.#core.layout;
                     #layout
                 }
