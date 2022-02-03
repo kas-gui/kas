@@ -137,6 +137,14 @@ impl<T: MatrixDataMut> MatrixData for SharedRc<T> {
     fn row_len(&self) -> usize {
         (self.0).1.borrow().0.row_len()
     }
+
+    fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
+        (self.0).1.borrow().0.make_id(parent, key)
+    }
+    fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
+        (self.0).1.borrow().0.reconstruct_key(parent, child)
+    }
+
     fn contains(&self, key: &Self::Key) -> bool {
         (self.0).1.borrow().0.contains(key)
     }

@@ -135,6 +135,13 @@ macro_rules! impl_via_deref {
             fn row_len(&self) -> usize {
                 self.deref().row_len()
             }
+            fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
+                self.deref().make_id(parent, key)
+            }
+            fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
+                self.deref().reconstruct_key(parent, child)
+            }
+
             fn contains(&self, key: &Self::Key) -> bool {
                 self.deref().contains(key)
             }

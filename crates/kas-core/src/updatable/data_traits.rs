@@ -165,6 +165,20 @@ pub trait MatrixData: Debug {
     /// Note: users may assume this is `O(1)`.
     fn row_len(&self) -> usize;
 
+    /// Make a [`WidgetId`] for a key
+    ///
+    /// The `parent` identifier is used as a reference.
+    fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId;
+
+    /// Reconstruct a key from a [`WidgetId`]
+    ///
+    /// The `parent` identifier is used as a reference.
+    ///
+    /// If the `child` identifier is one returned by [`Self::make_id`] for the
+    /// same `parent`, *or descended from that*, this should return a copy of
+    /// the `key` passed to `make_id`.
+    fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key>;
+
     /// Check whether an item with these keys exists
     fn contains(&self, key: &Self::Key) -> bool;
 
