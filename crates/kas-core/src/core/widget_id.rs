@@ -195,18 +195,31 @@ impl<'a> Iterator for PathIter<'a> {
 /// This type may be tested for equality and order and may be iterated over as
 /// a "path" of "key" values.
 ///
+/// Formatting a `WidgetId` via [`Display`] prints the the path, for example
+/// `#1290a4`. Here, `#` represents the root; each following hexadecimal digit
+/// represents a path component except that digits `8-f` are combined with the
+/// following digit(s). Hence, the above path has components `1`, `2`, `90`,
+/// `a4`. To interpret these values, first subtract 8 from each digit but the
+/// last digit, then read as base-8: `[1, 2, 8, 20]`.
+///
 /// This type is small (64-bit) and non-zero: `Option<WidgetId>` has the same
 /// size as `WidgetId`. It is also very cheap to `Clone`: usually only one `if`
 /// check, and in the worst case a pointer dereference and ref-count increment.
-/// Bit-packing is used allowing up to 14 keys (depending on the values)
-/// internally; beyond this limit a reference-counted stack allocation is used.
+/// Paths up to 14 digits long (as printed) are represented internally;
+/// beyond this limit a reference-counted stack allocation is used.
 ///
 /// `WidgetId` is neither `Send` nor `Sync`.
 ///
 /// Identifiers are assigned when configured and when re-configured
-/// (via [`crate::TkAction::RECONFIGURE`] or [`crate::layout::SetRectMgr::configure`]).
-/// Since user-code is not notified of a
-/// re-configure, user-code should not store a `WidgetId`.
+/// (via [`TkAction::RECONFIGURE`] or [`SetRectMgr::configure`]).
+/// In most cases values are persistent but this is not guaranteed (e.g.
+/// inserting or removing a child from a `List` widget will affect the
+/// identifiers of all following children). View-widgets assign path components
+/// based on the data key, thus *possibly* making identifiers persistent.
+///
+/// [`Display`]: std::fmt::Display
+/// [`TkAction::RECONFIGURE`]: crate::TkAction::RECONFIGURE
+/// [`SetRectMgr::configure`]: crate::layout::SetRectMgr::configure
 #[derive(Clone)]
 pub struct WidgetId(IntOrPtr);
 
@@ -745,6 +758,8 @@ mod test {
         }
 
         test(&[0], &[]);
+        test(&[0], &[1]);
         test(&[2, 10, 1], &[2, 10]);
+        test(&[0, 5, 2], &[0, 1, 5]);
     }
 }
