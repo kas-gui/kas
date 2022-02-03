@@ -90,8 +90,10 @@ impl EventState {
             widget.pre_configure(mgr, id.clone());
             *count += 1;
             for i in 0..widget.num_children() {
-                if let Some(w) = widget.get_child_mut(i) {
-                    recurse(mgr, id.make_child(i), w, count);
+                if let Some(id) = widget.make_child_id(i) {
+                    if let Some(w) = widget.get_child_mut(i) {
+                        recurse(mgr, id, w, count);
+                    }
                 }
             }
             widget.configure(mgr);

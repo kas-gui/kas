@@ -170,6 +170,22 @@ pub trait WidgetChildren: WidgetCore {
     /// index.
     fn num_children(&self) -> usize;
 
+    /// Get the [`WidgetId`] for this child
+    ///
+    /// Note: the result should be generated relative to `self.id`.
+    /// Most widgets may use the default implementation.
+    ///
+    /// This must return `Some(..)` when `index` is valid; in other cases the
+    /// result does not matter.
+    ///
+    /// If a custom implementation is used, then [`Self::find_child_index`]
+    /// must be implemented to do the inverse of `make_child_id`, and
+    /// probably a custom implementation of [`Layout::spatial_nav`] is needed.
+    #[inline]
+    fn make_child_id(&self, index: usize) -> Option<WidgetId> {
+        Some(self.id_ref().make_child(index))
+    }
+
     /// Get a reference to a child widget by index, or `None` if the index is
     /// out of bounds.
     ///
