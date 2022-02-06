@@ -12,7 +12,7 @@ use kas::geom::Vec2;
 use kas::layout::MarginSelector;
 use kas::prelude::*;
 use std::path::PathBuf;
-use tiny_skia::Pixmap;
+use tiny_skia::{Pixmap, Transform};
 
 widget! {
     /// An SVG image loaded from a path
@@ -113,6 +113,7 @@ widget! {
                     keep_named_groups: false,
                     default_size: usvg::Size::new(def_size, def_size).unwrap(),
                     fontdb,
+                    image_href_resolver: &Default::default(),
                 };
 
                 let tree = usvg::Tree::from_data(&data, &opts).unwrap();
@@ -172,7 +173,8 @@ widget! {
                         let (w, h) = (pm.width(), pm.height());
 
                         // alas, we cannot tell resvg to skip the aspect-ratio-scaling!
-                        resvg::render(tree, usvg::FitTo::Height(h), pm.as_mut());
+                        let transform = Transform::identity();
+                        resvg::render(tree, usvg::FitTo::Height(h), transform, pm.as_mut());
 
                         let id = mgr.draw_shared().image_alloc((w, h)).unwrap();
                         mgr.draw_shared().image_upload(id, pm.data(), ImageFormat::Rgba8);
