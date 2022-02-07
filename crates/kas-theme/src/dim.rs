@@ -204,36 +204,43 @@ impl<D: 'static> SizeHandle for Window<D> {
     }
 
     fn text_bound(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules {
-        let required = text.update_env(|env| {
-            if let Some(font_id) = self.fonts.get(&class).cloned() {
-                env.set_font_id(font_id);
-            }
-            env.set_dpp(self.dims.dpp);
-            env.set_pt_size(self.dims.pt_size);
+        // Note: for horizontal axis of Edit* classes, input text does not affect size rules.
+        // We must set env at least once, but do for vertical axis anyway.
+        let mut required = None;
+        if !axis.is_horizontal() || !matches!(class, TextClass::Edit | TextClass::EditMulti) {
+            required = Some(text.update_env(|env| {
+                if let Some(font_id) = self.fonts.get(&class).cloned() {
+                    env.set_font_id(font_id);
+                }
+                env.set_dpp(self.dims.dpp);
+                env.set_pt_size(self.dims.pt_size);
 
-            let mut bounds = kas::text::Vec2::INFINITY;
-            if let Some(size) = axis.size_other_if_fixed(false) {
-                bounds.1 = size.cast();
-            } else if let Some(size) = axis.size_other_if_fixed(true) {
-                bounds.0 = size.cast();
-            }
-            env.set_bounds(bounds);
+                let mut bounds = kas::text::Vec2::INFINITY;
+                if let Some(size) = axis.size_other_if_fixed(false) {
+                    bounds.1 = size.cast();
+                } else if let Some(size) = axis.size_other_if_fixed(true) {
+                    bounds.0 = size.cast();
+                }
+                env.set_bounds(bounds);
 
-            env.set_wrap(matches!(
-                class,
-                TextClass::Label | TextClass::EditMulti | TextClass::LabelScroll
-            ));
-        });
+                env.set_wrap(matches!(
+                    class,
+                    TextClass::Label | TextClass::EditMulti | TextClass::LabelScroll
+                ));
+            }));
+        }
 
         let margin = self.dims.text_margin;
         let margins = (margin, margin);
         if axis.is_horizontal() {
-            let bound = i32::conv_ceil(required.0);
             let min = self.dims.min_line_length;
             let (min, ideal) = match class {
                 TextClass::Edit => (min, 2 * min),
                 TextClass::EditMulti => (min, 3 * min),
-                _ => (bound.min(min), bound.min(3 * min)),
+                _ => {
+                    let bound = i32::conv_ceil(required.unwrap().0);
+                    (bound.min(min), bound.min(3 * min))
+                }
             };
             // NOTE: using different variable-width stretch policies here can
             // cause problems (e.g. edit boxes greedily consuming too much
@@ -245,12 +252,13 @@ impl<D: 'static> SizeHandle for Window<D> {
             };
             SizeRules::new(min, ideal, margins, stretch)
         } else {
+            let bound = i32::conv_ceil(required.unwrap().1);
             let min = match class {
-                TextClass::Label => i32::conv_ceil(required.1),
+                TextClass::Label => bound,
                 TextClass::MenuLabel | TextClass::Button | TextClass::Edit => self.dims.line_height,
                 TextClass::EditMulti | TextClass::LabelScroll => self.dims.line_height * 3,
             };
-            let ideal = i32::conv_ceil(required.1).max(min);
+            let ideal = bound.max(min);
             let stretch = match class {
                 TextClass::EditMulti | TextClass::LabelScroll => Stretch::Low,
                 _ => Stretch::None,

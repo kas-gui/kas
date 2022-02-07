@@ -393,13 +393,11 @@ widget! {
 
             self.core.rect = rect;
             let size = rect.size;
-            let multi_line = self.multi_line;
             self.required = self
                 .text
                 .update_env(|env| {
                     env.set_align(align.unwrap_or(Align::Default, valign));
                     env.set_bounds(size.into());
-                    env.set_wrap(multi_line);
                 })
                 .into();
             self.set_view_offset_from_edit_pos();
