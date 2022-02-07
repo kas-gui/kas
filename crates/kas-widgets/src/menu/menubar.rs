@@ -24,8 +24,6 @@ widget! {
         core: CoreData,
         #[widget]
         pub bar: IndexedList<D, SubMenu<D::Flipped, W>>,
-        // Open mode. Used to close with click on root only when previously open.
-        opening: bool,
         delayed_open: Option<WidgetId>,
     }
 
@@ -49,7 +47,6 @@ widget! {
             MenuBar {
                 core: Default::default(),
                 bar: IndexedList::new_with_direction(direction, menus),
-                opening: false,
                 delayed_open: None,
             }
         }
@@ -75,28 +72,31 @@ widget! {
                 } => {
                     if start_id.as_ref().map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
                         if source.is_primary() {
-                            mgr.grab_press_unique(self.id(), source, coord, None);
+                            let any_menu_open = self.bar.iter().any(|w| w.menu_is_open());
+                            let press_in_the_bar = self.rect().contains(coord);
+
+                            match press_in_the_bar {
+                                true if !any_menu_open => mgr.grab_press_unique(self.id(), source, coord, None),
+                                false => mgr.grab_press_unique(self.id(), source, coord, None),
+                                _ => (),
+                            }
                             mgr.set_grab_depress(source, start_id.clone());
-                            self.opening = false;
-                            if self.rect().contains(coord) {
+                            if press_in_the_bar {
                                 if self
                                     .bar
                                     .iter()
                                     .any(|w| w.eq_id(&start_id) && !w.menu_is_open())
                                 {
-                                    self.opening = true;
                                     self.set_menu_path(mgr, start_id.as_ref(), false);
                                 } else {
                                     self.set_menu_path(mgr, None, false);
                                 }
-                            } else {
-                                let delay = mgr.config().menu_delay();
-                                mgr.update_on_timer(delay, self.id(), WidgetId::opt_to_u64(start_id.as_ref()));
-                                self.delayed_open = start_id;
                             }
                         }
                         Response::Used
                     } else {
+                        // Click happened out of the menubar or submenus,
+                        // while one or more submenus are opened.
                         self.delayed_open = None;
                         Response::Unused
                     }
@@ -107,46 +107,45 @@ widget! {
                     coord,
                     ..
                 } => {
-                    mgr.set_grab_depress(source, cur_id.clone());
-                    if let Some(id) = cur_id {
-                        if self.bar.is_strict_ancestor_of(&id) {
-                            // We instantly open a sub-menu on motion over the bar,
-                            // but delay when over a sub-menu (most intuitive?)
-                            if self.rect().contains(coord) && !self.bar.eq_id(&id) {
-                                self.set_menu_path(mgr, Some(&id), false);
-                            } else if id != self.delayed_open {
-                                mgr.set_nav_focus(id.clone(), false);
-                                let delay = mgr.config().menu_delay();
-                                mgr.update_on_timer(delay, self.id(), id.as_u64());
-                                self.delayed_open = Some(id);
-                            }
+                    if !mgr.set_grab_depress(source, cur_id.clone()) {
+                        // If redraw hasn't happened, force it to fix
+                        // highligting of previously selected menu-item
+                        mgr.send_action(TkAction::REDRAW);
+                    }
+                    
+                    let id = match cur_id {
+                        Some(x) => x,
+                        None => return Response::Used,
+                    };
+
+                    if self.bar.is_strict_ancestor_of(&id) {
+                        // We instantly open a sub-menu on motion over the bar,
+                        // but delay when over a sub-menu (most intuitive?)
+                        if self.rect().contains(coord) {
+                            mgr.set_nav_focus(self.id(), false);
+                            self.delayed_open = None;
+                            self.set_menu_path(mgr, Some(&id), false);
+                        } else if id != self.delayed_open {
+                            mgr.set_nav_focus(id.clone(), false);
+                            let delay = mgr.config().menu_delay();
+                            mgr.update_on_timer(delay, self.id(), id.as_u64());
+                            self.delayed_open = Some(id.clone());
                         }
+                    } else {
+                        self.delayed_open = None;
                     }
                     Response::Used
                 }
                 Event::PressEnd { coord, end_id, success, .. } if success => {
-                    if end_id.as_ref().map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
-                        // end_id is a child of self
-                        let id = end_id.unwrap();
+                    let id = match end_id {
+                        Some(x) => x,
+                        None => return Response::Used,
+                    };
 
-                        if self.rect().contains(coord) {
-                            // end coordinate is on the menubar
-                            if !self.opening {
-                                self.delayed_open = None;
-                                for i in 0..self.bar.len() {
-                                    if self.bar[i].eq_id(&id) {
-                                        self.bar[i].set_menu_path(mgr, None, false);
-                                    }
-                                }
-                            }
-                        } else {
-                            // not on the menubar, thus on a sub-menu
-                            self.delayed_open = None;
-                            return self.send(mgr, id, Event::Activate);
-                        }
-                    } else {
-                        // not on the menu
-                        self.set_menu_path(mgr, None, false);
+                    if !self.rect().contains(coord) {
+                        // not on the menubar
+                        self.delayed_open = None;
+                        return self.send(mgr, id, Event::Activate);
                     }
                     Response::Used
                 }
