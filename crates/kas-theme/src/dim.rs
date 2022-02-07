@@ -14,7 +14,7 @@ use crate::anim::AnimState;
 use kas::cast::{Cast, CastFloat, ConvFloat};
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, Stretch};
-use kas::text::{fonts::FontId, TextApi, TextApiExt};
+use kas::text::{fonts::FontId, Align, TextApi, TextApiExt};
 use kas::theme::{SizeHandle, TextClass};
 
 /// Parameterisation of [`Dimensions`]
@@ -222,6 +222,7 @@ impl<D: 'static> SizeHandle for Window<D> {
                     bounds.0 = size.cast();
                 }
                 env.set_bounds(bounds);
+                env.set_align((Align::TL, Align::TL)); // force top-left alignment for sizing
 
                 env.set_wrap(matches!(
                     class,
