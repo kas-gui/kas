@@ -362,6 +362,8 @@ impl SizeRules {
     /// The method attempts to ensure that:
     ///
     /// -   All widths are at least their minimum size requirement
+    /// -   The sum of widths plus margins between items equals `target`, if
+    ///     all minimum sizes are met
     /// -   All widths are at least their ideal size requirement, if this can be
     ///     met without decreasing any widths
     /// -   Excess space is divided evenly among members with the highest
@@ -374,10 +376,6 @@ impl SizeRules {
     /// is increased, then decreased back to the previous value, this will
     /// revert to the previous solution. (The reverse may not hold if widths
     /// had previously been affected by a different agent.)
-    ///
-    /// This method's calculations are not affected by margins, except that it
-    /// is assumed that the last entry of `rules` is a summation over all
-    /// previous entries which does respect margins.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub fn solve_seq(out: &mut [i32], rules: &[Self], target: i32) {
@@ -611,59 +609,9 @@ impl SizeRules {
                 }
             }
         } else {
-            // Below minimum size: in this case we can ignore prior contents
-            // of `out`.We reduce the maximum allowed size to hit our target.
-            let mut excess = total.a - target;
-
-            let mut largest = 0;
-            let mut num_equal = 0;
-            let mut next_largest = 0;
+            // Below minimum size: ignore target and use minimum sizes.
             for n in 0..N {
-                let a = rules[n].a;
-                out[n] = a;
-                if a == largest {
-                    num_equal += 1;
-                } else if a > largest {
-                    next_largest = largest;
-                    largest = a;
-                    num_equal = 1;
-                } else if a > next_largest {
-                    next_largest = a;
-                }
-            }
-
-            while excess > 0 && largest > 0 {
-                let step = (excess / num_equal).min(largest - next_largest);
-                if step == 0 {
-                    for n in 0..N {
-                        if out[n] == largest {
-                            out[n] -= 1;
-                            if excess == 0 {
-                                break;
-                            }
-                            excess -= 1;
-                        }
-                    }
-                    break;
-                }
-
-                let thresh = next_largest;
-                let mut num_add = 0;
-                next_largest = 0;
-                for n in 0..N {
-                    let a = out[n];
-                    if a == largest {
-                        out[n] = a - step;
-                    } else if a == thresh {
-                        num_add += 1;
-                    } else if a > next_largest {
-                        next_largest = a;
-                    }
-                }
-                excess -= step * num_equal;
-
-                largest -= step;
-                num_equal += num_add;
+                out[n] = rules[n].a;
             }
         }
     }
