@@ -337,8 +337,14 @@ impl ScrollComponent {
                 let decay = mgr.config().scroll_flick_decay();
                 if let Some(delta) = self.glide.step(decay) {
                     action = self.set_offset(self.offset - delta);
-                    mgr.update_on_timer(Duration::from_millis(GLIDE_POLL_MS), id, PAYLOAD_GLIDE);
-                    response = Response::Scrolled;
+                    if delta == Offset::ZERO || !action.is_empty() {
+                        // Note: when FPS > pixels/sec, delta may be zero while
+                        // still scrolling. Glide returns None when we're done,
+                        // but we're also done if unable to scroll further.
+                        let dur = Duration::from_millis(GLIDE_POLL_MS);
+                        mgr.update_on_timer(dur, id, PAYLOAD_GLIDE);
+                        response = Response::Scrolled;
+                    }
                 }
             }
             _ => response = Response::Unused,
