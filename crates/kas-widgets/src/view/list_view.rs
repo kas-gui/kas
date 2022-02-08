@@ -438,10 +438,43 @@ widget! {
             let inner_margin = size_mgr.inner_margin().extract(axis);
             let frame = kas::layout::FrameRules::new_sym(0, inner_margin, 0);
 
-            // We use a default-generated widget to generate size rules
+            // We use a default widget to find the minimum child size:
             let mut rules = self.view.make().size_rules(size_mgr.re(), axis);
             if axis.is_vertical() == self.direction.is_vertical() {
                 self.child_size_min = rules.min_size();
+            }
+
+            // If data is already available, create some widgets and ensure
+            // that the ideal size meets all expectations of these children.
+            if self.widgets.len() == 0 && self.data.len() > 0 {
+                let items = self.data.iter_vec(self.ideal_visible.cast());
+                self.widgets.reserve(items.len());
+                for (_, item) in items.into_iter() {
+                    let mut widget = self.view.make();
+                    // Note: we cannot call configure here, but it needs
+                    // to happen! Therefore we set key=None and do not
+                    // care about order of data within self.widgets.
+                    let _ = self.view.set(&mut widget, item);
+                    self.widgets.push(WidgetData { key: None, widget });
+                }
+            }
+            if self.widgets.len() > 0 {
+                let other = axis.other().map(|mut size| {
+                    // Use same logic as in set_rect to find per-child size:
+                    let other_axis = axis.flipped();
+                    size -= self.frame_size.extract(other_axis);
+                    if self.direction.is_horizontal() == other_axis.is_horizontal() {
+                        size = (size / self.ideal_visible).min(self.child_size_ideal).max(self.child_size_min);
+                    }
+                    size
+                });
+                let axis = AxisInfo::new(axis.is_vertical(), other);
+                for w in self.widgets.iter_mut() {
+                    rules = rules.max(w.widget.size_rules(size_mgr.re(), axis));
+                }
+            }
+
+            if axis.is_vertical() == self.direction.is_vertical() {
                 self.child_size_ideal = rules.ideal_size();
                 let m = rules.margins_i32();
                 self.child_inter_margin = m.0.max(m.1).max(inner_margin);

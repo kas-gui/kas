@@ -392,12 +392,47 @@ widget! {
             let inner_margin = size_mgr.inner_margin().extract(axis);
             let frame = kas::layout::FrameRules::new_sym(0, inner_margin, 0);
 
-            // We use a default-generated widget to generate size rules
+            // We use a default widget to find the minimum child size:
             let mut rules = self.view.make().size_rules(size_mgr.re(), axis);
-
             self.child_size_min.set_component(axis, rules.min_size());
-            self.child_size_ideal
-                .set_component(axis, rules.ideal_size());
+
+            // If data is already available, create some widgets and ensure
+            // that the ideal size meets all expectations of these children.
+            if self.widgets.len() == 0 && self.data.col_len() * self.data.row_len() > 0 {
+                let cols = self.data.col_iter_vec(self.ideal_len.cols.cast());
+                let rows = self.data.row_iter_vec(self.ideal_len.rows.cast());
+                self.widgets.reserve(cols.len() * rows.len());
+                for col in cols.iter() {
+                    for row in rows.iter(){
+                        let key = T::make_key(row, col);
+                        let mut widget = self.view.make();
+                        if let Some(item) = self.data.get_cloned(&key) {
+                            // Note: we cannot call configure here, but it needs
+                            // to happen! Therefore we set key=None and do not
+                            // care about order of data within self.widgets.
+                            let _ = self.view.set(&mut widget, item);
+                            self.widgets.push(WidgetData { key: None, widget });
+                        }
+                    }
+                }
+            }
+            if self.widgets.len() > 0 {
+                let other = axis.other().map(|mut size| {
+                    // Use same logic as in set_rect to find per-child size:
+                    let other_axis = axis.flipped();
+                    size -= self.frame_size.extract(other_axis);
+                    let div = Size(self.ideal_len.cols, self.ideal_len.rows).extract(other_axis);
+                    (size / div)
+                        .min(self.child_size_ideal.extract(other_axis))
+                        .max(self.child_size_min.extract(other_axis))
+                });
+                let axis = AxisInfo::new(axis.is_vertical(), other);
+                for w in self.widgets.iter_mut() {
+                    rules = rules.max(w.widget.size_rules(size_mgr.re(), axis));
+                }
+            }
+
+            self.child_size_ideal.set_component(axis, rules.ideal_size());
             let m = rules.margins_i32();
             self.child_inter_margin
                 .set_component(axis, (m.0 + m.1).max(inner_margin));
