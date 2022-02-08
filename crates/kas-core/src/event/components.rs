@@ -155,7 +155,7 @@ impl ScrollComponent {
     /// or [`TkAction::REGION_MOVED`] if the offset changes.
     #[inline]
     pub fn set_offset(&mut self, offset: Offset) -> TkAction {
-        let offset = offset.clamp(Offset::ZERO, self.max_offset);
+        let offset = offset.min(self.max_offset).max(Offset::ZERO);
         if offset == self.offset {
             TkAction::empty()
         } else {

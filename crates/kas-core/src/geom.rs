@@ -63,15 +63,6 @@ macro_rules! impl_common {
                 Self(self.0.max(other.0), self.1.max(other.1))
             }
 
-            /// Return the value clamped to the given `min` and `max`
-            ///
-            /// In the case that `min > max`, the `min` value is returned.
-            #[inline]
-            #[must_use = "method does not modify self but returns a new value"]
-            pub fn clamp(self, min: Self, max: Self) -> Self {
-                self.min(max).max(min)
-            }
-
             /// Return the transpose (swap x and y values)
             #[inline]
             #[must_use = "method does not modify self but returns a new value"]
