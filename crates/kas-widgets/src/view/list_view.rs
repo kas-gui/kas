@@ -459,20 +459,16 @@ widget! {
 
             let mut child_size = rect.size - self.frame_size;
             let num = if self.direction.is_horizontal() {
-                if child_size.0 >= self.ideal_visible * self.child_size_ideal {
-                    child_size.0 = self.child_size_ideal;
-                } else {
-                    child_size.0 = self.child_size_min;
-                }
+                child_size.0 = (child_size.0 / self.ideal_visible)
+                    .min(self.child_size_ideal)
+                    .max(self.child_size_min);
                 let skip = child_size.0 + self.child_inter_margin;
                 align.horiz = None;
                 (rect.size.0 + skip - 1) / skip + 1
             } else {
-                if child_size.1 >= self.ideal_visible * self.child_size_ideal {
-                    child_size.1 = self.child_size_ideal;
-                } else {
-                    child_size.1 = self.child_size_min;
-                }
+                child_size.1 = (child_size.1 / self.ideal_visible)
+                    .min(self.child_size_ideal)
+                    .max(self.child_size_min);
                 let skip = child_size.1 + self.child_inter_margin;
                 align.vert = None;
                 (rect.size.1 + skip - 1) / skip + 1

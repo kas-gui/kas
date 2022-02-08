@@ -418,17 +418,9 @@ widget! {
         fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
 
-            let mut child_size = rect.size - self.frame_size;
-            if child_size.0 >= self.ideal_len.cols * self.child_size_ideal.0 {
-                child_size.0 = self.child_size_ideal.0;
-            } else {
-                child_size.0 = self.child_size_min.0;
-            }
-            if child_size.1 >= self.ideal_len.rows * self.child_size_ideal.1 {
-                child_size.1 = self.child_size_ideal.1;
-            } else {
-                child_size.1 = self.child_size_min.1;
-            }
+            let avail = rect.size - self.frame_size;
+            let child_size = Size(avail.0 / self.ideal_len.cols, avail.1 / self.ideal_len.rows)
+                .min(self.child_size_ideal).max(self.child_size_min);
             self.child_size = child_size;
             self.align_hints = align;
 
