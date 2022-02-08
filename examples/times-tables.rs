@@ -2,7 +2,8 @@
 
 use kas::prelude::*;
 use kas::updatable::{MatrixData, Updatable, UpdatableHandler};
-use kas::widgets::{view::MatrixView, EditBox, StrLabel, Window};
+use kas::widgets::view::{driver::DefaultNav, MatrixView, SelectionMode};
+use kas::widgets::{EditBox, ScrollBars, StrLabel, Window};
 
 #[derive(Debug)]
 struct TableData(u64, usize);
@@ -69,6 +70,9 @@ impl MatrixData for TableData {
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
+    let table = MatrixView::new(TableData(0, 12)).with_selection_mode(SelectionMode::Single);
+    let table = ScrollBars::new(table);
+
     let layout = make_widget! {
         #[widget{
             layout = column: [
@@ -81,8 +85,7 @@ fn main() -> kas::shell::Result<()> {
             #[widget] label = StrLabel::new("From 1 to"),
             #[widget(use_msg = set_max)] max: impl HasString = EditBox::new("12")
                 .on_afl(|text, _| text.parse::<usize>().ok()),
-            #[widget(discard_msg)] table: MatrixView<TableData> =
-                MatrixView::new(TableData(0, 12)),
+            #[widget(discard_msg)] table: ScrollBars<MatrixView<TableData, DefaultNav>> = table,
         }
         impl Self {
             fn set_max(&mut self, mgr: &mut EventMgr, max: usize) {
