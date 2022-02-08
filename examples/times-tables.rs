@@ -56,10 +56,10 @@ impl MatrixData for TableData {
     }
 
     fn col_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::ColKey> {
-        (start..limit).collect()
+        (start..(start + limit)).collect()
     }
     fn row_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::RowKey> {
-        (start..limit).collect()
+        (start..(start + limit)).collect()
     }
 
     fn make_key(row: &Self::RowKey, col: &Self::ColKey) -> Self::Key {
