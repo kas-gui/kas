@@ -61,16 +61,16 @@ pub trait RulesSetter {
 
 /// Solve size rules for a widget
 ///
-/// Widget layout is normally a two-step process: (1) `size_rules` is called
-/// (twice: once for each axis), with parent widgets querying child size as part
-/// of this step, then (2) `set_rect` is called.
+/// It is required that a widget's `size_rules` method is called, for each axis,
+/// before `set_rect`. This method may be used to call `size_rules` in case the
+/// parent's own `size_rules` method may not.
 ///
-/// Some parent widgets do not call `size_rules` for all their children within
-/// their own `size_rules` method (perhaps because the children do not exist
-/// yet); in this case they should use this method to perform step (1) for
-/// those children before calling `set_rect` on them. (It is acceptable though
-/// not useful to perform step (1) multiple times. It is also acceptable never
-/// to do this if `set_rect` is also never called and the widget never drawn.)
+/// Note: it is not necessary to solve size rules again before calling
+/// `set_rect` a second time, although if the widget's content changes then it
+/// is recommended.
+///
+/// Note: it is not necessary to ever call `size_rules` *or* `set_rect` if the
+/// widget is never drawn and never receives events.
 ///
 /// Parameters `x_size` and `y_size` should be passed where this dimension is
 /// fixed and are used e.g. for text wrapping.
