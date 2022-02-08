@@ -25,6 +25,12 @@ struct Dim {
     cols: i32,
 }
 
+impl Dim {
+    fn len(&self) -> usize {
+        usize::conv(self.rows) * usize::conv(self.cols)
+    }
+}
+
 #[derive(Clone, Debug, Default)]
 struct WidgetData<K, W> {
     key: Option<K>,
@@ -257,10 +263,11 @@ widget! {
             self
         }
 
-        fn update_widgets(&mut self, mgr: &mut SetRectMgr) {
-            let time = Instant::now();
-
-            let data_len = Size(self.data.col_len().cast(), self.data.row_len().cast());
+        /// Construct a position solver. Note: this does more work and updates to
+        /// self than is necessary in several cases where it is used.
+        fn position_solver(&mut self, mgr: &mut SetRectMgr) -> PositionSolver {
+            let (data_cols, data_rows) = (self.data.col_len(), self.data.row_len());
+            let data_len = Size(data_cols.cast(), data_rows.cast());
             let view_size = self.rect().size;
             let skip = self.child_size + self.child_inter_margin;
             let content_size = (skip.cwise_mul(data_len) - self.child_inter_margin).max(Size::ZERO);
@@ -269,26 +276,40 @@ widget! {
             let offset = self.scroll_offset();
             let first_col = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
             let first_row = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
-            let cols = self
-                .data
-                .col_iter_vec_from(first_col, self.alloc_len.cols.cast());
-            let rows = self
-                .data
-                .row_iter_vec_from(first_row, self.alloc_len.rows.cast());
-            self.cur_len = Dim {
-                rows: rows.len().cast(),
-                cols: cols.len().cast(),
-            };
+            let col_len = usize::conv(self.alloc_len.cols).min(data_cols - first_col);
+            let row_len = usize::conv(self.alloc_len.rows).min(data_rows - first_row);
+            self.cur_len = Dim { rows: row_len.cast(), cols: col_len.cast() };
 
             let pos_start = self.core.rect.pos + self.frame_offset;
-            let mut rect = Rect::new(pos_start, self.child_size);
+
+            PositionSolver {
+                pos_start,
+                skip,
+                size: self.child_size,
+                first_col,
+                first_row,
+                col_len,
+                row_len,
+            }
+        }
+
+        fn update_widgets(&mut self, mgr: &mut SetRectMgr) {
+            let time = Instant::now();
+            let solver = self.position_solver(mgr);
+
+            let cols = self
+                .data
+                .col_iter_vec_from(solver.first_col, solver.col_len);
+            let rows = self
+                .data
+                .row_iter_vec_from(solver.first_row, solver.row_len);
 
             let mut action = TkAction::empty();
             for (cn, col) in cols.iter().enumerate() {
-                let ci = first_col + cn;
+                let ci = solver.first_col + cn;
                 for (rn, row) in rows.iter().enumerate() {
-                    let ri = first_row + rn;
-                    let i = (ci % cols.len()) + (ri % rows.len()) * cols.len();
+                    let ri = solver.first_row + rn;
+                    let i = (ci % solver.col_len) + (ri % solver.row_len) * solver.col_len;
                     let key = T::make_key(row, col);
                     let id = self.data.make_id(self.id_ref(), &key);
                     let w = &mut self.widgets[i];
@@ -307,8 +328,7 @@ widget! {
                             w.key = None; // disables drawing and clicking
                         }
                     }
-                    rect.pos = pos_start + skip.cwise_mul(Size(ci.cast(), ri.cast()));
-                    w.widget.set_rect(mgr, rect, self.align_hints);
+                    w.widget.set_rect(mgr, solver.rect(ci, ri), self.align_hints);
                 }
             }
             *mgr |= action;
@@ -488,43 +508,45 @@ widget! {
             reverse: bool,
             from: Option<usize>,
         ) -> Option<usize> {
-            let _ = mgr; // TODO: this needs a rewrite like ListView::spatial_nav
-
-            let cur_len = usize::conv(self.cur_len.cols) * usize::conv(self.cur_len.rows);
+            let cur_len = self.cur_len.len();
             if cur_len == 0 {
                 return None;
             }
 
-            // TODO: if last row/col is completely hidden, this and cur_len should be less
-            let last = cur_len - 1;
-
-            if let Some(index) = from {
-                let p = self.widgets[index].widget.rect().pos;
-                let index = match reverse {
-                    false if index < last => index + 1,
-                    false => 0,
-                    true if 0 < index => index - 1,
-                    true => last,
-                };
-                let q = self.widgets[index].widget.rect().pos;
-                match reverse {
-                    false if q.1 > p.1 || (q.1 == p.1 && q.0 > p.0) => Some(index),
-                    true if q.1 < p.1 || (q.1 == p.1 && q.0 < p.0) => Some(index),
-                    _ => None,
+            let solver = self.position_solver(mgr);
+            let (cols, rows) = (self.data.col_len(), self.data.row_len());
+            let (ci, ri) = if let Some(index) = from {
+                let (ci, ri) = solver.child_to_data(index);
+                if !reverse {
+                    if ci + 1 < cols{
+                        (ci + 1, ri)
+                    } else if ri + 1 < rows {
+                        (0, ri + 1)
+                    } else {
+                        return None;
+                    }
+                } else {
+                    if ci > 0 {
+                        (ci - 1, ri)
+                    } else if ri > 0 {
+                        (cols - 1, ri - 1)
+                    } else {
+                        return None;
+                    }
                 }
+            } else if !reverse {
+                (0, 0)
             } else {
-                // Simplified version of logic in update_widgets
-                let skip = self.child_size + self.child_inter_margin;
-                let offset = self.scroll_offset();
-                let ci = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
-                let ri = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
-                let (rows, cols): (usize, usize) = (self.cur_len.rows.cast(), self.cur_len.cols.cast());
-                let mut data = (ci % cols) * rows + (ri % rows);
-                if reverse {
-                    data += last;
-                }
-                Some(data % cur_len)
+                (cols - 1, rows - 1)
+            };
+
+            let (_, action) = self.scroll.focus_rect(solver.rect(ci, ri), self.core.rect);
+            if !action.is_empty() {
+                *mgr |= action;
+                self.update_widgets(mgr);
             }
+
+            Some((ci % cols) + (ri % rows) * cols)
         }
 
         #[inline]
@@ -538,7 +560,7 @@ widget! {
             }
 
             let coord = coord + self.scroll.offset();
-            let num = usize::conv(self.cur_len.cols) * usize::conv(self.cur_len.rows);
+            let num = self.cur_len.len();
             for child in &mut self.widgets[..num] {
                 if child.key.is_some() {
                     if let Some(id) = child.widget.find_id(coord) {
@@ -552,7 +574,7 @@ widget! {
         fn draw(&mut self, mut draw: DrawMgr) {
             let mut draw = draw.with_core(self.core_data());
             let offset = self.scroll_offset();
-            let num = usize::conv(self.cur_len.cols) * usize::conv(self.cur_len.rows);
+            let num = self.cur_len.len();
             draw.with_clip_region(self.core.rect, offset, |mut draw| {
                 for child in &mut self.widgets[..num] {
                     if let Some(ref key) = child.key {
@@ -630,30 +652,13 @@ widget! {
                     }
                 }
                 Event::Command(cmd, _) => {
-                    // Simplified version of logic in update_widgets
-                    let (cols, rows): (usize, usize) = (self.cur_len.cols.cast(), self.cur_len.rows.cast());
-
-                    let skip = self.child_size + self.child_inter_margin;
-                    let offset = self.scroll_offset();
-                    let first_col = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
-                    let first_row = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
-                    let col_start = (first_col / cols) * cols;
-                    let row_start = (first_row / rows) * rows;
+                    let solver = mgr.set_rect_mgr(|mgr| self.position_solver(mgr));
+                    let (cols, rows) = (solver.col_len, solver.row_len);
 
                     let cur = mgr
                         .nav_focus()
                         .and_then(|id| self.find_child_index(id))
-                        .map(|index| {
-                            let mut col_index = col_start + index % cols;
-                            let mut row_index = row_start + index / cols;
-                            if col_index < first_col {
-                                col_index += cols;
-                            }
-                            if row_index < first_row {
-                                row_index += rows;
-                            }
-                            (col_index, row_index)
-                        });
+                        .map(|index| solver.child_to_data(index));
                     let last_col = self.data.col_len().wrapping_sub(1);
                     let last_row = self.data.row_len().wrapping_sub(1);
 
@@ -675,11 +680,15 @@ widget! {
                         _ => None,
                     };
                     return if let Some((ci, ri)) = data {
-                        // Set nav focus to index and update scroll position
-                        // TODO: update position
+                        // Set nav focus and update scroll position
+                        let (rect, action) = self.scroll.focus_rect(solver.rect(ci, ri), self.core.rect);
+                        if !action.is_empty() {
+                            *mgr |= action;
+                            mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
+                        }
                         let index = (ci % cols) + (ri % rows) * cols;
                         mgr.set_nav_focus(self.widgets[index].widget.id(), true);
-                        Response::Used
+                        Response::Focus(rect)
                     } else {
                         Response::Unused
                     };
@@ -806,5 +815,38 @@ widget! {
                 }
             }
         }
+    }
+}
+
+struct PositionSolver {
+    pos_start: Coord,
+    skip: Size,
+    size: Size,
+    first_col: usize,
+    first_row: usize,
+    col_len: usize,
+    row_len: usize,
+}
+
+impl PositionSolver {
+    /// Map a child index to `(col_index, row_index)`
+    fn child_to_data(&self, index: usize) -> (usize, usize) {
+        let col_start = (self.first_col / self.col_len) * self.col_len;
+        let row_start = (self.first_row / self.row_len) * self.row_len;
+        let mut col_index = col_start + index % self.col_len;
+        let mut row_index = row_start + index / self.col_len;
+        if col_index < self.first_col {
+            col_index += self.col_len;
+        }
+        if row_index < self.first_row {
+            row_index += self.row_len;
+        }
+        (col_index, row_index)
+    }
+
+    /// Rect of data item (ci, ri)
+    fn rect(&self, ci: usize, ri: usize) -> Rect {
+        let pos = self.pos_start + self.skip.cwise_mul(Size(ci.cast(), ri.cast()));
+        Rect::new(pos, self.size)
     }
 }

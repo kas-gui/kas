@@ -349,8 +349,7 @@ widget! {
                         Some(self.child_size.1),
                     );
                 }
-                let rect = solver.rect(i);
-                w.widget.set_rect(mgr, rect, self.align_hints);
+                w.widget.set_rect(mgr, solver.rect(i), self.align_hints);
             }
             *mgr |= action;
             let dur = (Instant::now() - time).as_micros();
