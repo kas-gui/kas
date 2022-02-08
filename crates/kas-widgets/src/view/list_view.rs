@@ -342,11 +342,15 @@ widget! {
                     w.key = key;
                     mgr.configure(id, &mut w.widget);
                     action |= self.view.set(&mut w.widget, item.1);
+                    solve_size_rules(
+                        &mut w.widget,
+                        mgr.size_mgr(),
+                        Some(self.child_size.0),
+                        Some(self.child_size.1),
+                    );
                 }
                 let rect = solver.rect(i);
-                if w.widget.rect() != rect {
-                    w.widget.set_rect(mgr, rect, self.align_hints);
-                }
+                w.widget.set_rect(mgr, rect, self.align_hints);
             }
             *mgr |= action;
             let dur = (Instant::now() - time).as_micros();
@@ -483,15 +487,7 @@ widget! {
                 debug!("allocating widgets (old len = {}, new = {})", old_num, num);
                 self.widgets.reserve(num - old_num);
                 for _ in old_num..num {
-                    let id = self.id_ref().make_child(self.widgets.len());
-                    let mut widget = self.view.make();
-                    mgr.configure(id, &mut widget);
-                    solve_size_rules(
-                        &mut widget,
-                        mgr.size_mgr(),
-                        Some(child_size.0),
-                        Some(child_size.1),
-                    );
+                    let widget = self.view.make();
                     self.widgets.push(WidgetData { key: None, widget });
                 }
             } else if num + 64 <= old_num {
