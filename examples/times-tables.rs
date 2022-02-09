@@ -27,11 +27,8 @@ impl MatrixData for TableData {
         self.0
     }
 
-    fn col_len(&self) -> usize {
-        self.1
-    }
-    fn row_len(&self) -> usize {
-        self.1
+    fn len(&self) -> (usize, usize) {
+        (self.1, self.1)
     }
 
     fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {

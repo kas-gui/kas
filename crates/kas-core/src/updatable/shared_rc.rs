@@ -131,11 +131,8 @@ impl<T: MatrixDataMut> MatrixData for SharedRc<T> {
         cell.0.version() + cell.1
     }
 
-    fn col_len(&self) -> usize {
-        (self.0).1.borrow().0.col_len()
-    }
-    fn row_len(&self) -> usize {
-        (self.0).1.borrow().0.row_len()
+    fn len(&self) -> (usize, usize) {
+        (self.0).1.borrow().0.len()
     }
 
     fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {

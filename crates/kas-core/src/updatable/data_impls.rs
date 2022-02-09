@@ -129,11 +129,8 @@ macro_rules! impl_via_deref {
                 self.deref().version()
             }
 
-            fn col_len(&self) -> usize {
-                self.deref().col_len()
-            }
-            fn row_len(&self) -> usize {
-                self.deref().row_len()
+            fn len(&self) -> (usize, usize) {
+                self.deref().len()
             }
             fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
                 self.deref().make_id(parent, key)

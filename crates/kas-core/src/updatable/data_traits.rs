@@ -155,15 +155,10 @@ pub trait MatrixData: Debug {
     /// this data structure.
     fn version(&self) -> u64;
 
-    /// Number of columns available
+    /// Number of `(cols, rows)` available
     ///
     /// Note: users may assume this is `O(1)`.
-    fn col_len(&self) -> usize;
-
-    /// Number of rows available
-    ///
-    /// Note: users may assume this is `O(1)`.
-    fn row_len(&self) -> usize;
+    fn len(&self) -> (usize, usize);
 
     /// Make a [`WidgetId`] for a key
     ///

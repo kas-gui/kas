@@ -266,8 +266,8 @@ widget! {
         /// Construct a position solver. Note: this does more work and updates to
         /// self than is necessary in several cases where it is used.
         fn position_solver(&mut self, mgr: &mut SetRectMgr) -> PositionSolver {
-            let (data_cols, data_rows) = (self.data.col_len(), self.data.row_len());
-            let data_len = Size(data_cols.cast(), data_rows.cast());
+            let (cols, rows) = self.data.len();
+            let data_len = Size(cols.cast(), rows.cast());
             let view_size = self.rect().size;
             let skip = self.child_size + self.child_inter_margin;
             let content_size = (skip.cwise_mul(data_len) - self.child_inter_margin).max(Size::ZERO);
@@ -276,8 +276,8 @@ widget! {
             let offset = self.scroll_offset();
             let first_col = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
             let first_row = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
-            let col_len = usize::conv(self.alloc_len.cols).min(data_cols - first_col);
-            let row_len = usize::conv(self.alloc_len.rows).min(data_rows - first_row);
+            let col_len = usize::conv(self.alloc_len.cols).min(cols - first_col);
+            let row_len = usize::conv(self.alloc_len.rows).min(rows - first_row);
             self.cur_len = Dim { rows: row_len.cast(), cols: col_len.cast() };
 
             let pos_start = self.core.rect.pos + self.frame_offset;
@@ -340,7 +340,8 @@ widget! {
     impl Scrollable for Self {
         fn scroll_axes(&self, size: Size) -> (bool, bool) {
             let item_min = self.child_size_min + self.child_inter_margin;
-            let data_len = Size(self.data.col_len().cast(), self.data.row_len().cast());
+            let (cols, rows) = self.data.len();
+            let data_len = Size(cols.cast(), rows.cast());
             let min_size = (item_min.cwise_mul(data_len) - self.child_inter_margin).max(Size::ZERO);
             (min_size.0 > size.0, min_size.1 > size.1)
         }
@@ -418,7 +419,8 @@ widget! {
 
             // If data is already available, create some widgets and ensure
             // that the ideal size meets all expectations of these children.
-            if self.widgets.len() == 0 && self.data.col_len() * self.data.row_len() > 0 {
+            let (cols, rows) = self.data.len();
+            if self.widgets.len() == 0 && cols * rows > 0 {
                 let cols = self.data.col_iter_vec(self.ideal_len.cols.cast());
                 let rows = self.data.row_iter_vec(self.ideal_len.rows.cast());
                 self.widgets.reserve(cols.len() * rows.len());
@@ -514,7 +516,7 @@ widget! {
             }
 
             let solver = self.position_solver(mgr);
-            let (cols, rows) = (self.data.col_len(), self.data.row_len());
+            let (cols, rows) = self.data.len();
             let (ci, ri) = if let Some(index) = from {
                 let (ci, ri) = solver.child_to_data(index);
                 if !reverse {
@@ -653,14 +655,13 @@ widget! {
                 }
                 Event::Command(cmd, _) => {
                     let solver = mgr.set_rect_mgr(|mgr| self.position_solver(mgr));
-                    let (cols, rows) = (solver.col_len, solver.row_len);
 
                     let cur = mgr
                         .nav_focus()
                         .and_then(|id| self.find_child_index(id))
                         .map(|index| solver.child_to_data(index));
-                    let last_col = self.data.col_len().wrapping_sub(1);
-                    let last_row = self.data.row_len().wrapping_sub(1);
+                    let (cols, rows) = self.data.len();
+                    let (last_col, last_row) = (cols.wrapping_sub(1), rows.wrapping_sub(1));
 
                     let data = match (cmd, cur) {
                         _ if last_col == usize::MAX || last_row == usize::MAX => None,
