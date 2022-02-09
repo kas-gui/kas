@@ -131,6 +131,9 @@ impl<T: MatrixDataMut> MatrixData for SharedRc<T> {
         cell.0.version() + cell.1
     }
 
+    fn is_empty(&self) -> bool {
+        (self.0).1.borrow().0.is_empty()
+    }
     fn len(&self) -> (usize, usize) {
         (self.0).1.borrow().0.len()
     }

@@ -125,6 +125,9 @@ macro_rules! impl_via_deref {
                 self.deref().version()
             }
 
+            fn is_empty(&self) -> bool {
+                self.deref().is_empty()
+            }
             fn len(&self) -> (usize, usize) {
                 self.deref().len()
             }

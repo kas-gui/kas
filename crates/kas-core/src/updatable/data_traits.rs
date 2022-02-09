@@ -155,6 +155,9 @@ pub trait MatrixData: Debug {
     /// this data structure.
     fn version(&self) -> u64;
 
+    /// No data is available
+    fn is_empty(&self) -> bool;
+
     /// Number of `(cols, rows)` available
     ///
     /// Note: users may assume this is `O(1)`.

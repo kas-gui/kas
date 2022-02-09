@@ -27,6 +27,9 @@ impl MatrixData for TableData {
         self.0
     }
 
+    fn is_empty(&self) -> bool {
+        self.1 == 0
+    }
     fn len(&self) -> (usize, usize) {
         (self.1, self.1)
     }

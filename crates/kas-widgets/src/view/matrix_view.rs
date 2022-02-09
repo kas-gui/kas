@@ -418,8 +418,7 @@ widget! {
 
             // If data is already available, create some widgets and ensure
             // that the ideal size meets all expectations of these children.
-            let (d_cols, d_rows) = self.data.len();
-            if self.widgets.len() == 0 && d_cols * d_rows > 0 {
+            if self.widgets.len() == 0 && !self.data.is_empty() {
                 let cols = self.data.col_iter_vec(self.ideal_len.cols.cast());
                 let rows = self.data.row_iter_vec(self.ideal_len.rows.cast());
                 let len = cols.len() * rows.len();
@@ -671,10 +670,10 @@ widget! {
                     }
                 }
                 Event::Command(cmd, _) => {
-                    let (d_cols, d_rows) = self.data.len();
-                    if d_cols * d_rows == 0 || !self.widgets[0].widget.key_nav() {
+                    if self.data.is_empty() || !self.widgets[0].widget.key_nav() {
                         return Response::Unused;
                     }
+                    let (d_cols, d_rows) = self.data.len();
                     let (last_col, last_row) = (d_cols.wrapping_sub(1), d_rows.wrapping_sub(1));
 
                     let mut solver = mgr.set_rect_mgr(|mgr| self.position_solver(mgr));
