@@ -293,7 +293,7 @@ widget! {
             }
         }
 
-        fn update_widgets(&mut self, mgr: &mut SetRectMgr) {
+        fn update_widgets(&mut self, mgr: &mut SetRectMgr) -> PositionSolver {
             let time = Instant::now();
             let solver = self.position_solver(mgr);
 
@@ -309,7 +309,7 @@ widget! {
                 let ci = solver.first_col + cn;
                 for (rn, row) in rows.iter().enumerate() {
                     let ri = solver.first_row + rn;
-                    let i = (ci % solver.col_len) + (ri % solver.row_len) * solver.col_len;
+                    let i = solver.data_to_child(ci, ri);
                     let key = T::make_key(row, col);
                     let id = self.data.make_id(self.id_ref(), &key);
                     let w = &mut self.widgets[i];
@@ -334,6 +334,7 @@ widget! {
             *mgr |= action;
             let dur = (Instant::now() - time).as_micros();
             trace!("MatrixView::update_widgets completed in {}μs", dur);
+            solver
         }
     }
 
@@ -515,7 +516,7 @@ widget! {
                 return None;
             }
 
-            let solver = self.position_solver(mgr);
+            let mut solver = self.position_solver(mgr);
             let (cols, rows) = self.data.len();
             let (ci, ri) = if let Some(index) = from {
                 let (ci, ri) = solver.child_to_data(index);
@@ -545,10 +546,10 @@ widget! {
             let (_, action) = self.scroll.focus_rect(solver.rect(ci, ri), self.core.rect);
             if !action.is_empty() {
                 *mgr |= action;
-                self.update_widgets(mgr);
+                solver = self.update_widgets(mgr);
             }
 
-            Some((ci % cols) + (ri % rows) * cols)
+            Some(solver.data_to_child(ci, ri))
         }
 
         #[inline]
@@ -654,7 +655,7 @@ widget! {
                     }
                 }
                 Event::Command(cmd, _) => {
-                    let solver = mgr.set_rect_mgr(|mgr| self.position_solver(mgr));
+                    let mut solver = mgr.set_rect_mgr(|mgr| self.position_solver(mgr));
 
                     let cur = mgr
                         .nav_focus()
@@ -673,10 +674,10 @@ widget! {
                         (Command::Right, Some((ci, ri))) if ci < last_col => Some((ci + 1, ri)),
                         (Command::Down, Some((ci, ri))) if ri < last_row => Some((ci, ri + 1)),
                         (Command::PageUp, Some((ci, ri))) if ri > 0 => {
-                            Some((ci, ri.saturating_sub(rows / 2)))
+                            Some((ci, ri.saturating_sub(solver.row_len / 2)))
                         }
                         (Command::PageDown, Some((ci, ri))) if ri < last_row => {
-                            Some((ci, (ri + rows / 2).min(last_row)))
+                            Some((ci, (ri + solver.row_len / 2).min(last_row)))
                         }
                         _ => None,
                     };
@@ -685,10 +686,18 @@ widget! {
                         let (rect, action) = self.scroll.focus_rect(solver.rect(ci, ri), self.core.rect);
                         if !action.is_empty() {
                             *mgr |= action;
-                            mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
+                            solver = mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
                         }
-                        let index = (ci % cols) + (ri % rows) * cols;
-                        mgr.set_nav_focus(self.widgets[index].widget.id(), true);
+
+                        let id = self.widgets[solver.data_to_child(ci, ri)].widget.id();
+                        #[cfg(debug_assertions)] {
+                            let rk = &self.data.row_iter_vec_from(ri, 1)[0];
+                            let ck = &self.data.col_iter_vec_from(ci, 1)[0];
+                            let key = T::make_key(rk, ck);
+                            assert_eq!(id, self.data.make_id(self.id_ref(), &key));
+                        }
+
+                        mgr.set_nav_focus(id, true);
                         Response::Focus(rect)
                     } else {
                         Response::Unused
@@ -830,6 +839,11 @@ struct PositionSolver {
 }
 
 impl PositionSolver {
+    /// Map a data index to child index
+    fn data_to_child(&self, ci: usize, ri: usize) -> usize {
+        (ci % self.col_len) + (ri % self.row_len) * self.col_len
+    }
+
     /// Map a child index to `(col_index, row_index)`
     fn child_to_data(&self, index: usize) -> (usize, usize) {
         let col_start = (self.first_col / self.col_len) * self.col_len;
