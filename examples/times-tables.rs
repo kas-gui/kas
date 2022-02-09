@@ -70,7 +70,9 @@ impl MatrixData for TableData {
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let table = MatrixView::new(TableData(0, 12)).with_selection_mode(SelectionMode::Single);
+    let table = MatrixView::new(TableData(0, 12))
+        .with_num_visible(12, 12)
+        .with_selection_mode(SelectionMode::Single);
     let table = ScrollBars::new(table);
 
     let layout = make_widget! {
