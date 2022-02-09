@@ -335,11 +335,14 @@ widget! {
 
     impl Scrollable for Self {
         fn scroll_axes(&self, size: Size) -> (bool, bool) {
-            let item_min = self.child_size_min + self.child_inter_margin;
+            let avail = size - self.frame_size;
+            let m = self.child_inter_margin;
+            let child_size = Size(avail.0 / self.ideal_len.cols, avail.1 / self.ideal_len.rows)
+                .min(self.child_size_ideal).max(self.child_size_min);
             let (d_cols, d_rows) = self.data.len();
             let data_len = Size(d_cols.cast(), d_rows.cast());
-            let min_size = (item_min.cwise_mul(data_len) - self.child_inter_margin).max(Size::ZERO);
-            (min_size.0 > size.0, min_size.1 > size.1)
+            let content_size = ((child_size + m).cwise_mul(data_len) - m).max(Size::ZERO);
+            (content_size.0 > size.0, content_size.1 > size.1)
         }
 
         #[inline]
