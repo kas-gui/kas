@@ -43,17 +43,13 @@ impl<T: Clone + Debug> ListData for [T] {
         None
     }
 
-    fn iter_vec(&self, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        self.iter().cloned().enumerate().take(limit).collect()
+    fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
+        (0..limit.min((*self).len())).collect()
     }
 
-    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        self.iter()
-            .cloned()
-            .enumerate()
-            .skip(start)
-            .take(limit)
-            .collect()
+    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key> {
+        let len = (*self).len();
+        (start.min(len)..(start + limit).min(len)).collect()
     }
 }
 impl<T: Clone + Debug> ListDataMut for [T] {
@@ -111,10 +107,10 @@ macro_rules! impl_via_deref {
                 self.deref().update(key, value)
             }
 
-            fn iter_vec(&self, limit: usize) -> Vec<(Self::Key, Self::Item)> {
+            fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
                 self.deref().iter_vec(limit)
             }
-            fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
+            fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key> {
                 self.deref().iter_vec_from(start, limit)
             }
         }

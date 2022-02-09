@@ -56,7 +56,6 @@ widget! {
         widgets: Vec<WidgetData<T::Key, V::Widget>>,
         /// The number of widgets in use (cur_len ≤ widgets.len())
         cur_len: u32,
-        /// The first visible data item
         direction: D,
         align_hints: AlignHints,
         ideal_visible: i32,
@@ -328,26 +327,29 @@ widget! {
             let solver = self.position_solver(mgr);
 
             let mut action = TkAction::empty();
-            for (i, item) in self
+            for (i, key) in self
                 .data
                 .iter_vec_from(solver.first_data, solver.cur_len)
                 .into_iter()
                 .enumerate()
             {
                 let i = solver.first_data + i;
-                let id = self.data.make_id(self.id_ref(), &item.0);
-                let key = Some(item.0.clone());
+                let id = self.data.make_id(self.id_ref(), &key);
                 let w = &mut self.widgets[i % solver.cur_len];
-                if key != w.key {
-                    w.key = key;
-                    mgr.configure(id, &mut w.widget);
-                    action |= self.view.set(&mut w.widget, item.1);
-                    solve_size_rules(
-                        &mut w.widget,
-                        mgr.size_mgr(),
-                        Some(self.child_size.0),
-                        Some(self.child_size.1),
-                    );
+                if w.key.as_ref() != Some(&key) {
+                    if let Some(item) = self.data.get_cloned(&key) {
+                        w.key = Some(key);
+                        mgr.configure(id, &mut w.widget);
+                        action |= self.view.set(&mut w.widget, item);
+                        solve_size_rules(
+                            &mut w.widget,
+                            mgr.size_mgr(),
+                            Some(self.child_size.0),
+                            Some(self.child_size.1),
+                        );
+                    } else {
+                        w.key = None; // disables drawing and clicking
+                    }
                 }
                 w.widget.set_rect(mgr, solver.rect(i), self.align_hints);
             }
@@ -448,13 +450,15 @@ widget! {
             if self.widgets.len() == 0 && self.data.len() > 0 {
                 let items = self.data.iter_vec(self.ideal_visible.cast());
                 self.widgets.reserve(items.len());
-                for (_, item) in items.into_iter() {
-                    let mut widget = self.view.make();
-                    // Note: we cannot call configure here, but it needs
-                    // to happen! Therefore we set key=None and do not
-                    // care about order of data within self.widgets.
-                    let _ = self.view.set(&mut widget, item);
-                    self.widgets.push(WidgetData { key: None, widget });
+                for key in items.into_iter() {
+                    if let Some(item) = self.data.get_cloned(&key) {
+                        let mut widget = self.view.make();
+                        // Note: we cannot call configure here, but it needs
+                        // to happen! Therefore we set key=None and do not
+                        // care about order of data within self.widgets.
+                        let _ = self.view.set(&mut widget, item);
+                        self.widgets.push(WidgetData { key: None, widget });
+                    }
                 }
             }
             if self.widgets.len() > 0 {

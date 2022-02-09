@@ -131,19 +131,12 @@ impl ListData for MyData {
         unimplemented!()
     }
 
-    fn iter_vec(&self, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        (0..limit.min(self.len))
-            .map(|n| (n, self.get_cloned(&n).unwrap()))
-            .collect()
+    fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
+        (0..limit.min(self.len)).collect()
     }
 
-    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        (start..self.len.min(start + limit))
-            .map(|n| {
-                let (is_active, text) = self.get(n);
-                (n, (n, is_active, text))
-            })
-            .collect()
+    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key> {
+        (start.min(self.len)..(start + limit).min(self.len)).collect()
     }
 }
 

@@ -64,9 +64,11 @@ impl<T: ListData, F: Filter<T::Item>> FilteredList<T, F> {
     fn refresh(&self) -> Option<UpdateHandle> {
         let mut view = self.view.borrow_mut();
         view.clear();
-        for (key, item) in self.data.iter_vec(usize::MAX) {
-            if self.filter.matches(item) {
-                view.push(key);
+        for key in self.data.iter_vec(usize::MAX) {
+            if let Some(item) = self.data.get_cloned(&key) {
+                if self.filter.matches(item) {
+                    view.push(key);
+                }
             }
         }
         self.filter.update_handle()
@@ -138,17 +140,9 @@ impl<T: ListData + 'static, F: Filter<T::Item>> ListData for FilteredList<T, F> 
         result
     }
 
-    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        let view = self.view.borrow();
+    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key> {
         let end = self.len().min(start + limit);
-        if start >= end {
-            return Vec::new();
-        }
-        let mut v = Vec::with_capacity(end - start);
-        for k in &view[start..end] {
-            v.push((k.clone(), self.data.get_cloned(k).unwrap()));
-        }
-        v
+        (&self.view.borrow()[start..end]).into()
     }
 }
 

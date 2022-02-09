@@ -315,7 +315,7 @@ widget! {
                     let w = &mut self.widgets[i];
                     if w.key.as_ref() != Some(&key) {
                         if let Some(item) = self.data.get_cloned(&key) {
-                            w.key = Some(key.clone());
+                            w.key = Some(key);
                             mgr.configure(id, &mut w.widget);
                             action |= self.view.set(&mut w.widget, item);
                             solve_size_rules(

@@ -106,11 +106,11 @@ impl<T: ListDataMut> ListData for SharedRc<T> {
         Some((self.0).0)
     }
 
-    fn iter_vec(&self, limit: usize) -> Vec<(Self::Key, Self::Item)> {
+    fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
         (self.0).1.borrow().0.iter_vec(limit)
     }
 
-    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
+    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key> {
         (self.0).1.borrow().0.iter_vec_from(start, limit)
     }
 }

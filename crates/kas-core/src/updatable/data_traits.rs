@@ -112,19 +112,19 @@ pub trait ListData: Debug {
     fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle>;
 
     // TODO(gat): replace with an iterator
-    /// Iterate over (key, value) pairs as a vec
+    /// Iterate over keys as a vec
     ///
     /// The result will be in deterministic implementation-defined order, with
     /// a length of `max(limit, data_len)` where `data_len` is the number of
     /// items available.
-    fn iter_vec(&self, limit: usize) -> Vec<(Self::Key, Self::Item)> {
+    fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
         self.iter_vec_from(0, limit)
     }
 
-    /// Iterate over (key, value) pairs as a vec
+    /// Iterate over keys as a vec
     ///
     /// The result is the same as `self.iter_vec(start + limit).skip(start)`.
-    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)>;
+    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key>;
 }
 
 /// Trait for writable data lists
