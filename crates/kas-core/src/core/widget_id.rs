@@ -353,8 +353,7 @@ impl WidgetId {
 
     pub fn iter_keys_after(&self, id: &Self) -> WidgetPathIter {
         let mut self_iter = self.iter();
-        let mut id_iter = id.iter();
-        while let Some(v) = id_iter.next() {
+        for v in id.iter() {
             if self_iter.next() != Some(v) {
                 return WidgetPathIter(PathIter::Bits(BitsIter(0, 0)));
             }

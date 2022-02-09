@@ -87,7 +87,7 @@ impl EventState {
             widget: &mut dyn WidgetConfig,
             count: &mut usize,
         ) {
-            widget.pre_configure(mgr, id.clone());
+            widget.pre_configure(mgr, id);
             *count += 1;
             for i in 0..widget.num_children() {
                 if let Some(id) = widget.make_child_id(i) {

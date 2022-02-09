@@ -48,8 +48,14 @@
 //! -   [`DragHandle`]: a handle (e.g. for a slider, splitter or scrollbar)
 
 // Use ``never_loop`` until: https://github.com/rust-lang/rust-clippy/issues/7397 is fixed
-#![allow(clippy::or_fun_call, clippy::never_loop, clippy::comparison_chain)]
-#![allow(clippy::needless_late_init)]
+#![allow(
+    clippy::or_fun_call,
+    clippy::never_loop,
+    clippy::comparison_chain,
+    clippy::needless_late_init,
+    clippy::collapsible_else_if,
+    clippy::len_zero
+)]
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![cfg_attr(feature = "min_spec", feature(min_specialization))]
 

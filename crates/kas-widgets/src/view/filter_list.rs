@@ -142,7 +142,7 @@ impl<T: ListData + 'static, F: Filter<T::Item>> ListData for FilteredList<T, F> 
 
     fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key> {
         let end = self.len().min(start + limit);
-        (&self.view.borrow()[start..end]).into()
+        self.view.borrow()[start..end].to_vec()
     }
 }
 
