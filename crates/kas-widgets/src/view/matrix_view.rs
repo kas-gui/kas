@@ -25,12 +25,6 @@ struct Dim {
     cols: i32,
 }
 
-impl Dim {
-    fn len(&self) -> usize {
-        usize::conv(self.rows) * usize::conv(self.cols)
-    }
-}
-
 #[derive(Clone, Debug, Default)]
 struct WidgetData<K, W> {
     key: Option<K>,
@@ -68,7 +62,8 @@ widget! {
         align_hints: AlignHints,
         ideal_len: Dim,
         alloc_len: Dim,
-        cur_len: Dim,
+        /// The number of widgets in use (cur_len ≤ widgets.len())
+        cur_len: u32,
         child_size_min: Size,
         child_size_ideal: Size,
         child_inter_margin: Size,
@@ -100,7 +95,7 @@ widget! {
                 align_hints: Default::default(),
                 ideal_len: Dim { rows: 3, cols: 5 },
                 alloc_len: Dim::default(),
-                cur_len: Dim::default(),
+                cur_len: 0,
                 child_size_min: Size::ZERO,
                 child_size_ideal: Size::ZERO,
                 child_inter_margin: Size::ZERO,
@@ -276,9 +271,9 @@ widget! {
             let offset = self.scroll_offset();
             let first_col = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
             let first_row = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
-            let col_len = usize::conv(self.alloc_len.cols).min(d_cols - first_col);
-            let row_len = usize::conv(self.alloc_len.rows).min(d_rows - first_row);
-            self.cur_len = Dim { rows: row_len.cast(), cols: col_len.cast() };
+            let col_len = self.alloc_len.cols.cast();
+            let row_len = self.alloc_len.rows.cast();
+            self.cur_len = u32::conv(col_len * row_len);
 
             let pos_start = self.core.rect.pos + self.frame_offset;
 
@@ -524,8 +519,7 @@ widget! {
             reverse: bool,
             from: Option<usize>,
         ) -> Option<usize> {
-            let cur_len = self.cur_len.len();
-            if cur_len == 0 {
+            if self.cur_len == 0 {
                 return None;
             }
 
@@ -576,7 +570,7 @@ widget! {
             }
 
             let coord = coord + self.scroll.offset();
-            let num = self.cur_len.len();
+            let num = self.cur_len.cast();
             for child in &mut self.widgets[..num] {
                 if child.key.is_some() {
                     if let Some(id) = child.widget.find_id(coord) {
@@ -590,13 +584,19 @@ widget! {
         fn draw(&mut self, mut draw: DrawMgr) {
             let mut draw = draw.with_core(self.core_data());
             let offset = self.scroll_offset();
-            let num = self.cur_len.len();
+            let rect = self.rect() + offset;
+            let num = self.cur_len.cast();
             draw.with_clip_region(self.core.rect, offset, |mut draw| {
                 for child in &mut self.widgets[..num] {
-                    if let Some(ref key) = child.key {
-                        child.widget.draw(draw.re());
-                        if self.selection.contains(key) {
-                            draw.selection_box(child.widget.rect());
+                    // Note: we don't know which widgets within 0..num are
+                    // visible, so check intersection before drawing:
+                    let child_rect = child.widget.rect();
+                    if rect.intersection(&child_rect).is_some() {
+                        if let Some(ref key) = child.key {
+                            child.widget.draw(draw.re());
+                            if self.selection.contains(key) {
+                                draw.selection_box(child_rect);
+                            }
                         }
                     }
                 }
