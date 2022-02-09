@@ -170,8 +170,8 @@ impl<T: MatrixDataMut> MatrixData for SharedRc<T> {
         (self.0).1.borrow().0.row_iter_vec_from(start, limit)
     }
 
-    fn make_key(row: &Self::RowKey, col: &Self::ColKey) -> Self::Key {
-        T::make_key(row, col)
+    fn make_key(col: &Self::ColKey, row: &Self::RowKey) -> Self::Key {
+        T::make_key(col, row)
     }
 }
 impl<T: MatrixDataMut> MatrixDataMut for SharedRc<T> {

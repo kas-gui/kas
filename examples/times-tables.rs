@@ -36,9 +36,9 @@ impl MatrixData for TableData {
     }
     fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
         let mut iter = child.iter_keys_after(parent);
-        let row = iter.next();
         let col = iter.next();
-        row.zip(col)
+        let row = iter.next();
+        col.zip(row)
     }
 
     fn contains(&self, key: &Self::Key) -> bool {
@@ -59,8 +59,8 @@ impl MatrixData for TableData {
         (start..(start + limit)).collect()
     }
 
-    fn make_key(row: &Self::RowKey, col: &Self::ColKey) -> Self::Key {
-        (*row, *col)
+    fn make_key(col: &Self::ColKey, row: &Self::RowKey) -> Self::Key {
+        (*col, *row)
     }
 }
 

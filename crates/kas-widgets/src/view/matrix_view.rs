@@ -310,7 +310,7 @@ widget! {
                 for (rn, row) in rows.iter().enumerate() {
                     let ri = solver.first_row + rn;
                     let i = solver.data_to_child(ci, ri);
-                    let key = T::make_key(row, col);
+                    let key = T::make_key(col, row);
                     let id = self.data.make_id(self.id_ref(), &key);
                     let w = &mut self.widgets[i];
                     if w.key.as_ref() != Some(&key) {
@@ -427,7 +427,7 @@ widget! {
                 self.widgets.reserve(cols.len() * rows.len());
                 for col in cols.iter() {
                     for row in rows.iter(){
-                        let key = T::make_key(row, col);
+                        let key = T::make_key(col, row);
                         let mut widget = self.view.make();
                         if let Some(item) = self.data.get_cloned(&key) {
                             // Note: we cannot call configure here, but it needs
@@ -693,7 +693,7 @@ widget! {
                         #[cfg(debug_assertions)] {
                             let rk = &self.data.row_iter_vec_from(ri, 1)[0];
                             let ck = &self.data.col_iter_vec_from(ci, 1)[0];
-                            let key = T::make_key(rk, ck);
+                            let key = T::make_key(ck, rk);
                             assert_eq!(id, self.data.make_id(self.id_ref(), &key));
                         }
 

@@ -224,7 +224,7 @@ pub trait MatrixData: Debug {
     fn row_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::RowKey>;
 
     /// Make a key from parts
-    fn make_key(row: &Self::RowKey, col: &Self::ColKey) -> Self::Key;
+    fn make_key(col: &Self::ColKey, row: &Self::RowKey) -> Self::Key;
 }
 
 /// Trait for writable data matrices
