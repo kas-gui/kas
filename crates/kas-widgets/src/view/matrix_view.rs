@@ -671,30 +671,35 @@ widget! {
                     }
                 }
                 Event::Command(cmd, _) => {
-                    let mut solver = mgr.set_rect_mgr(|mgr| self.position_solver(mgr));
-
-                    let cur = mgr
-                        .nav_focus()
-                        .and_then(|id| self.find_child_index(id))
-                        .map(|index| solver.child_to_data(index));
                     let (d_cols, d_rows) = self.data.len();
+                    if d_cols * d_rows == 0 || !self.widgets[0].widget.key_nav() {
+                        return Response::Unused;
+                    }
                     let (last_col, last_row) = (d_cols.wrapping_sub(1), d_rows.wrapping_sub(1));
 
-                    let data = match (cmd, cur) {
-                        _ if last_col == usize::MAX || last_row == usize::MAX => None,
-                        _ if !self.widgets[0].widget.key_nav() => None,
-                        (Command::Home, _) => Some((0, 0)),
-                        (Command::End, _) => Some((last_col, last_row)),
-                        (Command::Left, Some((ci, ri))) if ci > 0 => Some((ci - 1, ri)),
-                        (Command::Up, Some((ci, ri))) if ri > 0 => Some((ci, ri - 1)),
-                        (Command::Right, Some((ci, ri))) if ci < last_col => Some((ci + 1, ri)),
-                        (Command::Down, Some((ci, ri))) if ri < last_row => Some((ci, ri + 1)),
-                        (Command::PageUp, Some((ci, ri))) if ri > 0 => {
+                    let mut solver = mgr.set_rect_mgr(|mgr| self.position_solver(mgr));
+                    let (ci, ri) = match mgr.nav_focus().and_then(|id| self.find_child_index(id)) {
+                        Some(index) => solver.child_to_data(index),
+                        None => return Response::Unused,
+                    };
+
+                    use Command as C;
+                    let data = match cmd {
+                        C::DocHome => Some((0, 0)),
+                        C::DocEnd => Some((last_col, last_row)),
+                        C::Home => Some((0, ri)),
+                        C::End => Some((last_col, ri)),
+                        C::Left | C::WordLeft if ci > 0 => Some((ci - 1, ri)),
+                        C::Up if ri > 0 => Some((ci, ri - 1)),
+                        C::Right | C::WordRight if ci < last_col => Some((ci + 1, ri)),
+                        C::Down if ri < last_row => Some((ci, ri + 1)),
+                        C::PageUp if ri > 0 => {
                             Some((ci, ri.saturating_sub(solver.row_len / 2)))
                         }
-                        (Command::PageDown, Some((ci, ri))) if ri < last_row => {
+                        C::PageDown if ri < last_row => {
                             Some((ci, (ri + solver.row_len / 2).min(last_row)))
                         }
+                        // TODO: C::ViewUp, ...
                         _ => None,
                     };
                     return if let Some((ci, ri)) = data {

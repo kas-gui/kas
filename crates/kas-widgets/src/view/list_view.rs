@@ -670,26 +670,30 @@ widget! {
                     }
                 }
                 Event::Command(cmd, _) => {
-                    let solver = mgr.set_rect_mgr(|mgr| self.position_solver(mgr));
-                    let cur = mgr
-                        .nav_focus()
-                        .and_then(|id| self.find_child_index(id))
-                        .map(|index| solver.child_to_data(index));
                     let last = self.data.len().wrapping_sub(1);
+                    if last == usize::MAX || !self.widgets[0].widget.key_nav() {
+                        return Response::Unused;
+                    }
+
+                    let solver = mgr.set_rect_mgr(|mgr| self.position_solver(mgr));
+                    let cur = match mgr.nav_focus().and_then(|id| self.find_child_index(id)) {
+                        Some(index) => solver.child_to_data(index),
+                        None => return Response::Unused,
+                    };
                     let is_vert = self.direction.is_vertical();
                     let len = solver.cur_len;
 
-                    let data = match (cmd, cur) {
-                        _ if last == usize::MAX => None,
-                        _ if !self.widgets[0].widget.key_nav() => None,
-                        (Command::Home, _) => Some(0),
-                        (Command::End, _) => Some(last),
-                        (Command::Left, Some(cur)) if !is_vert && cur > 0 => Some(cur - 1),
-                        (Command::Up, Some(cur)) if is_vert && cur > 0 => Some(cur - 1),
-                        (Command::Right, Some(cur)) if !is_vert && cur < last => Some(cur + 1),
-                        (Command::Down, Some(cur)) if is_vert && cur < last => Some(cur + 1),
-                        (Command::PageUp, Some(cur)) if cur > 0 => Some(cur.saturating_sub(len / 2)),
-                        (Command::PageDown, Some(cur)) if cur < last => Some((cur + len / 2).min(last)),
+                    use Command as C;
+                    let data = match cmd {
+                        C::Home | C::DocHome => Some(0),
+                        C::End | C::DocEnd => Some(last),
+                        C::Left | C::WordLeft if !is_vert && cur > 0 => Some(cur - 1),
+                        C::Up if is_vert && cur > 0 => Some(cur - 1),
+                        C::Right | C::WordRight if !is_vert && cur < last => Some(cur + 1),
+                        C::Down if is_vert && cur < last => Some(cur + 1),
+                        C::PageUp if cur > 0 => Some(cur.saturating_sub(len / 2)),
+                        C::PageDown if cur < last => Some((cur + len / 2).min(last)),
+                        // TODO: C::ViewUp, ...
                         _ => None,
                     };
                     return if let Some(index) = data {
