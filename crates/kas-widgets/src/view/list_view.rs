@@ -449,6 +449,7 @@ widget! {
             // that the ideal size meets all expectations of these children.
             if self.widgets.len() == 0 && self.data.len() > 0 {
                 let items = self.data.iter_vec(self.ideal_visible.cast());
+                debug!("allocating widgets (reserve = {})", items.len());
                 self.widgets.reserve(items.len());
                 for key in items.into_iter() {
                     if let Some(item) = self.data.get_cloned(&key) {
@@ -513,18 +514,22 @@ widget! {
             self.child_size = child_size;
             self.align_hints = align;
 
-            let old_num = self.widgets.len();
-            let num = usize::conv(num);
-            if old_num < num {
-                debug!("allocating widgets (old len = {}, new = {})", old_num, num);
-                self.widgets.reserve(num - old_num);
-                for _ in old_num..num {
+            let data_len = self.data.len();
+            let avail_widgets = self.widgets.len();
+            let mut req_widgets = usize::conv(num);
+            if data_len <= avail_widgets {
+                req_widgets = data_len
+            } else if avail_widgets < req_widgets {
+                debug!("allocating widgets (old len = {}, new = {})", avail_widgets, req_widgets);
+                self.widgets.reserve(req_widgets - avail_widgets);
+                for _ in avail_widgets..req_widgets {
                     let widget = self.view.make();
                     self.widgets.push(WidgetData { key: None, widget });
                 }
-            } else if num + 64 <= old_num {
+            }
+            if req_widgets + 64 <= avail_widgets {
                 // Free memory (rarely useful?)
-                self.widgets.truncate(num);
+                self.widgets.truncate(req_widgets);
             }
             self.update_widgets(mgr);
         }

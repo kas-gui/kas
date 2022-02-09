@@ -266,8 +266,8 @@ widget! {
         /// Construct a position solver. Note: this does more work and updates to
         /// self than is necessary in several cases where it is used.
         fn position_solver(&mut self, mgr: &mut SetRectMgr) -> PositionSolver {
-            let (cols, rows) = self.data.len();
-            let data_len = Size(cols.cast(), rows.cast());
+            let (d_cols, d_rows) = self.data.len();
+            let data_len = Size(d_cols.cast(), d_rows.cast());
             let view_size = self.rect().size;
             let skip = self.child_size + self.child_inter_margin;
             let content_size = (skip.cwise_mul(data_len) - self.child_inter_margin).max(Size::ZERO);
@@ -276,8 +276,8 @@ widget! {
             let offset = self.scroll_offset();
             let first_col = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
             let first_row = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
-            let col_len = usize::conv(self.alloc_len.cols).min(cols - first_col);
-            let row_len = usize::conv(self.alloc_len.rows).min(rows - first_row);
+            let col_len = usize::conv(self.alloc_len.cols).min(d_cols - first_col);
+            let row_len = usize::conv(self.alloc_len.rows).min(d_rows - first_row);
             self.cur_len = Dim { rows: row_len.cast(), cols: col_len.cast() };
 
             let pos_start = self.core.rect.pos + self.frame_offset;
@@ -341,8 +341,8 @@ widget! {
     impl Scrollable for Self {
         fn scroll_axes(&self, size: Size) -> (bool, bool) {
             let item_min = self.child_size_min + self.child_inter_margin;
-            let (cols, rows) = self.data.len();
-            let data_len = Size(cols.cast(), rows.cast());
+            let (d_cols, d_rows) = self.data.len();
+            let data_len = Size(d_cols.cast(), d_rows.cast());
             let min_size = (item_min.cwise_mul(data_len) - self.child_inter_margin).max(Size::ZERO);
             (min_size.0 > size.0, min_size.1 > size.1)
         }
@@ -420,11 +420,13 @@ widget! {
 
             // If data is already available, create some widgets and ensure
             // that the ideal size meets all expectations of these children.
-            let (cols, rows) = self.data.len();
-            if self.widgets.len() == 0 && cols * rows > 0 {
+            let (d_cols, d_rows) = self.data.len();
+            if self.widgets.len() == 0 && d_cols * d_rows > 0 {
                 let cols = self.data.col_iter_vec(self.ideal_len.cols.cast());
                 let rows = self.data.row_iter_vec(self.ideal_len.rows.cast());
-                self.widgets.reserve(cols.len() * rows.len());
+                let len = cols.len() * rows.len();
+                debug!("allocating widgets (reserve = {})", len);
+                self.widgets.reserve(len);
                 for col in cols.iter() {
                     for row in rows.iter(){
                         let key = T::make_key(col, row);
@@ -482,25 +484,36 @@ widget! {
             self.child_size = child_size;
             self.align_hints = align;
 
-            let skip = child_size + self.child_inter_margin;
-            let vis_len = (rect.size + skip - Size::splat(1)).cwise_div(skip) + Size::splat(1);
+            let (d_cols, d_rows) = self.data.len();
+            let data_len = Size(d_cols.cast(), d_rows.cast());
+            let (avail_widgets, mut req_widgets) = (self.widgets.len(), d_cols * d_rows);
+            let vis_len;
+            if avail_widgets >= req_widgets {
+                // Case: enough children to allocate all data directly
+                vis_len = data_len;
+            } else {
+                // Case: reallocate children when scrolling
+                let skip = child_size + self.child_inter_margin;
+                vis_len = data_len.min(
+                    (rect.size + skip - Size::splat(1)).cwise_div(skip) + Size::splat(1)
+                );
+                req_widgets = usize::conv(vis_len.0) * usize::conv(vis_len.1);
+            }
             self.alloc_len = Dim {
                 cols: vis_len.0,
                 rows: vis_len.1,
             };
 
-            let old_num = self.widgets.len();
-            let num = usize::conv(vis_len.0) * usize::conv(vis_len.1);
-            if old_num < num {
-                debug!("allocating widgets (old len = {}, new = {})", old_num, num);
-                self.widgets.reserve(num - old_num);
-                for _ in old_num..num {
+            if avail_widgets < req_widgets {
+                debug!("allocating widgets (old len = {}, new = {})", avail_widgets, req_widgets);
+                self.widgets.reserve(req_widgets - avail_widgets);
+                for _ in avail_widgets..req_widgets {
                     let widget = self.view.make();
                     self.widgets.push(WidgetData { key: None, widget });
                 }
-            } else if num + 64 <= self.widgets.len() {
+            } else if req_widgets + 64 <= avail_widgets {
                 // Free memory (rarely useful?)
-                self.widgets.truncate(num);
+                self.widgets.truncate(req_widgets);
             }
             self.update_widgets(mgr);
         }
@@ -517,13 +530,13 @@ widget! {
             }
 
             let mut solver = self.position_solver(mgr);
-            let (cols, rows) = self.data.len();
+            let (d_cols, d_rows) = self.data.len();
             let (ci, ri) = if let Some(index) = from {
                 let (ci, ri) = solver.child_to_data(index);
                 if !reverse {
-                    if ci + 1 < cols{
+                    if ci + 1 < d_cols{
                         (ci + 1, ri)
-                    } else if ri + 1 < rows {
+                    } else if ri + 1 < d_rows {
                         (0, ri + 1)
                     } else {
                         return None;
@@ -532,7 +545,7 @@ widget! {
                     if ci > 0 {
                         (ci - 1, ri)
                     } else if ri > 0 {
-                        (cols - 1, ri - 1)
+                        (d_cols - 1, ri - 1)
                     } else {
                         return None;
                     }
@@ -540,7 +553,7 @@ widget! {
             } else if !reverse {
                 (0, 0)
             } else {
-                (cols - 1, rows - 1)
+                (d_cols - 1, d_rows - 1)
             };
 
             let (_, action) = self.scroll.focus_rect(solver.rect(ci, ri), self.core.rect);
@@ -661,8 +674,8 @@ widget! {
                         .nav_focus()
                         .and_then(|id| self.find_child_index(id))
                         .map(|index| solver.child_to_data(index));
-                    let (cols, rows) = self.data.len();
-                    let (last_col, last_row) = (cols.wrapping_sub(1), rows.wrapping_sub(1));
+                    let (d_cols, d_rows) = self.data.len();
+                    let (last_col, last_row) = (d_cols.wrapping_sub(1), d_rows.wrapping_sub(1));
 
                     let data = match (cmd, cur) {
                         _ if last_col == usize::MAX || last_row == usize::MAX => None,
