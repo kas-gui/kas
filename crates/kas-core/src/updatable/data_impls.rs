@@ -7,6 +7,7 @@
 
 use super::*;
 use crate::event::UpdateHandle;
+use crate::WidgetId;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 
@@ -22,6 +23,13 @@ impl<T: Clone + Debug> ListData for [T] {
         (*self).len()
     }
 
+    fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
+        parent.make_child(*key)
+    }
+    fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
+        child.next_key_after(parent)
+    }
+
     fn contains_key(&self, key: &Self::Key) -> bool {
         *key < self.len()
     }
@@ -35,63 +43,18 @@ impl<T: Clone + Debug> ListData for [T] {
         None
     }
 
-    fn iter_vec(&self, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        self.iter().cloned().enumerate().take(limit).collect()
+    fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
+        (0..limit.min((*self).len())).collect()
     }
 
-    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        self.iter()
-            .cloned()
-            .enumerate()
-            .skip(start)
-            .take(limit)
-            .collect()
+    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key> {
+        let len = (*self).len();
+        (start.min(len)..(start + limit).min(len)).collect()
     }
 }
 impl<T: Clone + Debug> ListDataMut for [T] {
     fn set(&mut self, key: &Self::Key, item: Self::Item) {
         self[*key] = item;
-    }
-}
-
-impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> ListData for std::collections::BTreeMap<K, T> {
-    type Key = K;
-    type Item = T;
-
-    fn version(&self) -> u64 {
-        0
-    }
-
-    fn len(&self) -> usize {
-        (*self).len()
-    }
-
-    fn contains_key(&self, key: &Self::Key) -> bool {
-        (*self).contains_key(key)
-    }
-
-    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
-        (*self).get(key).cloned()
-    }
-
-    fn update(&self, _: &Self::Key, _: Self::Item) -> Option<UpdateHandle> {
-        // Note: plain BTreeMap does not support update, but SharedRc<..> does.
-        None
-    }
-
-    fn iter_vec(&self, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        self.iter()
-            .take(limit)
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect()
-    }
-
-    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        self.iter()
-            .skip(start)
-            .take(limit)
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect()
     }
 }
 
@@ -126,6 +89,13 @@ macro_rules! impl_via_deref {
             fn len(&self) -> usize {
                 self.deref().len()
             }
+            fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
+                self.deref().make_id(parent, key)
+            }
+            fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
+                self.deref().reconstruct_key(parent, child)
+            }
+
             fn contains_key(&self, key: &Self::Key) -> bool {
                 self.deref().contains_key(key)
             }
@@ -137,10 +107,10 @@ macro_rules! impl_via_deref {
                 self.deref().update(key, value)
             }
 
-            fn iter_vec(&self, limit: usize) -> Vec<(Self::Key, Self::Item)> {
+            fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
                 self.deref().iter_vec(limit)
             }
-            fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
+            fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key> {
                 self.deref().iter_vec_from(start, limit)
             }
         }
@@ -155,12 +125,19 @@ macro_rules! impl_via_deref {
                 self.deref().version()
             }
 
-            fn col_len(&self) -> usize {
-                self.deref().col_len()
+            fn is_empty(&self) -> bool {
+                self.deref().is_empty()
             }
-            fn row_len(&self) -> usize {
-                self.deref().row_len()
+            fn len(&self) -> (usize, usize) {
+                self.deref().len()
             }
+            fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
+                self.deref().make_id(parent, key)
+            }
+            fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
+                self.deref().reconstruct_key(parent, child)
+            }
+
             fn contains(&self, key: &Self::Key) -> bool {
                 self.deref().contains(key)
             }
@@ -186,8 +163,8 @@ macro_rules! impl_via_deref {
                 self.deref().row_iter_vec_from(start, limit)
             }
 
-            fn make_key(row: &Self::RowKey, col: &Self::ColKey) -> Self::Key {
-                <$t>::make_key(row, col)
+            fn make_key(col: &Self::ColKey, row: &Self::RowKey) -> Self::Key {
+                <$t>::make_key(col, row)
             }
         }
     };

@@ -111,6 +111,12 @@ impl ListData for MyData {
     fn len(&self) -> usize {
         self.len
     }
+    fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
+        parent.make_child(*key)
+    }
+    fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
+        child.next_key_after(parent)
+    }
 
     fn contains_key(&self, key: &Self::Key) -> bool {
         *key < self.len
@@ -125,19 +131,12 @@ impl ListData for MyData {
         unimplemented!()
     }
 
-    fn iter_vec(&self, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        (0..limit.min(self.len))
-            .map(|n| (n, self.get_cloned(&n).unwrap()))
-            .collect()
+    fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
+        (0..limit.min(self.len)).collect()
     }
 
-    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        (start..self.len.min(start + limit))
-            .map(|n| {
-                let (is_active, text) = self.get(n);
-                (n, (n, is_active, text))
-            })
-            .collect()
+    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key> {
+        (start.min(self.len)..(start + limit).min(self.len)).collect()
     }
 }
 
@@ -211,7 +210,7 @@ fn main() -> kas::shell::Result<()> {
         #[handler(msg = Control)]
         struct {
             #[widget] _ = Label::new("Number of rows:"),
-            #[widget(map_msg = activate)] edit: impl HasString = EditBox::new("3")
+            #[widget(flatmap_msg = activate)] edit: impl HasString = EditBox::new("3")
                 .on_afl(|text, _| text.parse::<usize>().ok()),
             #[widget(map_msg = button)] _ = TextButton::new_msg("Set", Button::Set),
             #[widget(map_msg = button)] _ = TextButton::new_msg("−", Button::Decr),
@@ -220,9 +219,13 @@ fn main() -> kas::shell::Result<()> {
             n: usize = 3,
         }
         impl Self {
-            fn activate(&mut self, _: &mut EventMgr, n: usize) -> Control {
-                self.n = n;
-                Control::Set(n)
+            fn activate(&mut self, _: &mut EventMgr, n: usize) -> Response<Control> {
+                if n == self.n {
+                    Response::Used
+                } else {
+                    self.n = n;
+                    Response::Msg(Control::Set(n))
+                }
             }
             fn button(&mut self, mgr: &mut EventMgr, msg: Button) -> Control {
                 let n = match msg {

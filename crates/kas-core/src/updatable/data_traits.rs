@@ -8,6 +8,7 @@
 use crate::event::UpdateHandle;
 #[allow(unused)] // doc links
 use crate::updatable::Updatable;
+use crate::WidgetId;
 #[allow(unused)] // doc links
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -74,6 +75,20 @@ pub trait ListData: Debug {
     /// Note: users may assume this is `O(1)`.
     fn len(&self) -> usize;
 
+    /// Make a [`WidgetId`] for a key
+    ///
+    /// The `parent` identifier is used as a reference.
+    fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId;
+
+    /// Reconstruct a key from a [`WidgetId`]
+    ///
+    /// The `parent` identifier is used as a reference.
+    ///
+    /// If the `child` identifier is one returned by [`Self::make_id`] for the
+    /// same `parent`, *or descended from that*, this should return a copy of
+    /// the `key` passed to `make_id`.
+    fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key>;
+
     // TODO(gat): add get<'a>(&self) -> Self::ItemRef<'a> and get_mut
 
     /// Check whether a key has data
@@ -97,19 +112,19 @@ pub trait ListData: Debug {
     fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle>;
 
     // TODO(gat): replace with an iterator
-    /// Iterate over (key, value) pairs as a vec
+    /// Iterate over keys as a vec
     ///
     /// The result will be in deterministic implementation-defined order, with
     /// a length of `max(limit, data_len)` where `data_len` is the number of
     /// items available.
-    fn iter_vec(&self, limit: usize) -> Vec<(Self::Key, Self::Item)> {
+    fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
         self.iter_vec_from(0, limit)
     }
 
-    /// Iterate over (key, value) pairs as a vec
+    /// Iterate over keys as a vec
     ///
     /// The result is the same as `self.iter_vec(start + limit).skip(start)`.
-    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)>;
+    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key>;
 }
 
 /// Trait for writable data lists
@@ -140,15 +155,27 @@ pub trait MatrixData: Debug {
     /// this data structure.
     fn version(&self) -> u64;
 
-    /// Number of columns available
-    ///
-    /// Note: users may assume this is `O(1)`.
-    fn col_len(&self) -> usize;
+    /// No data is available
+    fn is_empty(&self) -> bool;
 
-    /// Number of rows available
+    /// Number of `(cols, rows)` available
     ///
     /// Note: users may assume this is `O(1)`.
-    fn row_len(&self) -> usize;
+    fn len(&self) -> (usize, usize);
+
+    /// Make a [`WidgetId`] for a key
+    ///
+    /// The `parent` identifier is used as a reference.
+    fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId;
+
+    /// Reconstruct a key from a [`WidgetId`]
+    ///
+    /// The `parent` identifier is used as a reference.
+    ///
+    /// If the `child` identifier is one returned by [`Self::make_id`] for the
+    /// same `parent`, *or descended from that*, this should return a copy of
+    /// the `key` passed to `make_id`.
+    fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key>;
 
     /// Check whether an item with these keys exists
     fn contains(&self, key: &Self::Key) -> bool;
@@ -200,7 +227,7 @@ pub trait MatrixData: Debug {
     fn row_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::RowKey>;
 
     /// Make a key from parts
-    fn make_key(row: &Self::RowKey, col: &Self::ColKey) -> Self::Key;
+    fn make_key(col: &Self::ColKey, row: &Self::RowKey) -> Self::Key;
 }
 
 /// Trait for writable data matrices

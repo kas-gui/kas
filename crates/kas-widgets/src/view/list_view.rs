@@ -56,7 +56,6 @@ widget! {
         widgets: Vec<WidgetData<T::Key, V::Widget>>,
         /// The number of widgets in use (cur_len ≤ widgets.len())
         cur_len: u32,
-        /// The first visible data item
         direction: D,
         align_hints: AlignHints,
         ideal_visible: i32,
@@ -328,23 +327,31 @@ widget! {
             let solver = self.position_solver(mgr);
 
             let mut action = TkAction::empty();
-            for (i, item) in self
+            for (i, key) in self
                 .data
                 .iter_vec_from(solver.first_data, solver.cur_len)
                 .into_iter()
                 .enumerate()
             {
                 let i = solver.first_data + i;
-                let key = Some(item.0.clone());
+                let id = self.data.make_id(self.id_ref(), &key);
                 let w = &mut self.widgets[i % solver.cur_len];
-                if key != w.key {
-                    w.key = key;
-                    action |= self.view.set(&mut w.widget, item.1);
+                if w.key.as_ref() != Some(&key) {
+                    if let Some(item) = self.data.get_cloned(&key) {
+                        w.key = Some(key);
+                        mgr.configure(id, &mut w.widget);
+                        action |= self.view.set(&mut w.widget, item);
+                        solve_size_rules(
+                            &mut w.widget,
+                            mgr.size_mgr(),
+                            Some(self.child_size.0),
+                            Some(self.child_size.1),
+                        );
+                    } else {
+                        w.key = None; // disables drawing and clicking
+                    }
                 }
-                let rect = solver.rect(i);
-                if w.widget.rect() != rect {
-                    w.widget.set_rect(mgr, rect, self.align_hints);
-                }
+                w.widget.set_rect(mgr, solver.rect(i), self.align_hints);
             }
             *mgr |= action;
             let dur = (Instant::now() - time).as_micros();
@@ -388,6 +395,11 @@ widget! {
         fn num_children(&self) -> usize {
             self.widgets.len()
         }
+        fn make_child_id(&self, index: usize) -> Option<WidgetId> {
+            self.widgets.get(index)
+                .and_then(|w| w.key.as_ref())
+                .map(|key| self.data.make_id(self.id_ref(), key))
+        }
         #[inline]
         fn get_child(&self, index: usize) -> Option<&dyn WidgetConfig> {
             self.widgets.get(index).map(|w| w.widget.as_widget())
@@ -397,6 +409,18 @@ widget! {
             self.widgets
                 .get_mut(index)
                 .map(|w| w.widget.as_widget_mut())
+        }
+        fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
+            let key = self.data.reconstruct_key(self.id_ref(), id);
+            if key.is_some() {
+                self.widgets
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, w)| (key == w.key).then(|| i))
+                    .next()
+            } else {
+                None
+            }
         }
     }
 
@@ -415,10 +439,46 @@ widget! {
             let inner_margin = size_mgr.inner_margin().extract(axis);
             let frame = kas::layout::FrameRules::new_sym(0, inner_margin, 0);
 
-            // We use a default-generated widget to generate size rules
+            // We use a default widget to find the minimum child size:
             let mut rules = self.view.make().size_rules(size_mgr.re(), axis);
             if axis.is_vertical() == self.direction.is_vertical() {
                 self.child_size_min = rules.min_size();
+            }
+
+            // If data is already available, create some widgets and ensure
+            // that the ideal size meets all expectations of these children.
+            if self.widgets.len() == 0 && self.data.len() > 0 {
+                let items = self.data.iter_vec(self.ideal_visible.cast());
+                debug!("allocating widgets (reserve = {})", items.len());
+                self.widgets.reserve(items.len());
+                for key in items.into_iter() {
+                    if let Some(item) = self.data.get_cloned(&key) {
+                        let mut widget = self.view.make();
+                        // Note: we cannot call configure here, but it needs
+                        // to happen! Therefore we set key=None and do not
+                        // care about order of data within self.widgets.
+                        let _ = self.view.set(&mut widget, item);
+                        self.widgets.push(WidgetData { key: None, widget });
+                    }
+                }
+            }
+            if self.widgets.len() > 0 {
+                let other = axis.other().map(|mut size| {
+                    // Use same logic as in set_rect to find per-child size:
+                    let other_axis = axis.flipped();
+                    size -= self.frame_size.extract(other_axis);
+                    if self.direction.is_horizontal() == other_axis.is_horizontal() {
+                        size = (size / self.ideal_visible).min(self.child_size_ideal).max(self.child_size_min);
+                    }
+                    size
+                });
+                let axis = AxisInfo::new(axis.is_vertical(), other);
+                for w in self.widgets.iter_mut() {
+                    rules = rules.max(w.widget.size_rules(size_mgr.re(), axis));
+                }
+            }
+
+            if axis.is_vertical() == self.direction.is_vertical() {
                 self.child_size_ideal = rules.ideal_size();
                 let m = rules.margins_i32();
                 self.child_inter_margin = m.0.max(m.1).max(inner_margin);
@@ -436,20 +496,16 @@ widget! {
 
             let mut child_size = rect.size - self.frame_size;
             let num = if self.direction.is_horizontal() {
-                if child_size.0 >= self.ideal_visible * self.child_size_ideal {
-                    child_size.0 = self.child_size_ideal;
-                } else {
-                    child_size.0 = self.child_size_min;
-                }
+                child_size.0 = (child_size.0 / self.ideal_visible)
+                    .min(self.child_size_ideal)
+                    .max(self.child_size_min);
                 let skip = child_size.0 + self.child_inter_margin;
                 align.horiz = None;
                 (rect.size.0 + skip - 1) / skip + 1
             } else {
-                if child_size.1 >= self.ideal_visible * self.child_size_ideal {
-                    child_size.1 = self.child_size_ideal;
-                } else {
-                    child_size.1 = self.child_size_min;
-                }
+                child_size.1 = (child_size.1 / self.ideal_visible)
+                    .min(self.child_size_ideal)
+                    .max(self.child_size_min);
                 let skip = child_size.1 + self.child_inter_margin;
                 align.vert = None;
                 (rect.size.1 + skip - 1) / skip + 1
@@ -458,26 +514,22 @@ widget! {
             self.child_size = child_size;
             self.align_hints = align;
 
-            let old_num = self.widgets.len();
-            let num = usize::conv(num);
-            if old_num < num {
-                debug!("allocating widgets (old len = {}, new = {})", old_num, num);
-                self.widgets.reserve(num - old_num);
-                for _ in old_num..num {
-                    let id = self.id_ref().make_child(self.widgets.len());
-                    let mut widget = self.view.make();
-                    mgr.configure(id, &mut widget);
-                    solve_size_rules(
-                        &mut widget,
-                        mgr.size_mgr(),
-                        Some(child_size.0),
-                        Some(child_size.1),
-                    );
+            let data_len = self.data.len();
+            let avail_widgets = self.widgets.len();
+            let mut req_widgets = usize::conv(num);
+            if data_len <= avail_widgets {
+                req_widgets = data_len
+            } else if avail_widgets < req_widgets {
+                debug!("allocating widgets (old len = {}, new = {})", avail_widgets, req_widgets);
+                self.widgets.reserve(req_widgets - avail_widgets);
+                for _ in avail_widgets..req_widgets {
+                    let widget = self.view.make();
                     self.widgets.push(WidgetData { key: None, widget });
                 }
-            } else if num + 64 <= old_num {
+            }
+            if req_widgets + 64 <= avail_widgets {
                 // Free memory (rarely useful?)
-                self.widgets.truncate(num);
+                self.widgets.truncate(req_widgets);
             }
             self.update_widgets(mgr);
         }
@@ -618,26 +670,30 @@ widget! {
                     }
                 }
                 Event::Command(cmd, _) => {
-                    let solver = mgr.set_rect_mgr(|mgr| self.position_solver(mgr));
-                    let cur = mgr
-                        .nav_focus()
-                        .and_then(|id| self.find_child_index(id))
-                        .map(|index| solver.child_to_data(index));
                     let last = self.data.len().wrapping_sub(1);
+                    if last == usize::MAX || !self.widgets[0].widget.key_nav() {
+                        return Response::Unused;
+                    }
+
+                    let solver = mgr.set_rect_mgr(|mgr| self.position_solver(mgr));
+                    let cur = match mgr.nav_focus().and_then(|id| self.find_child_index(id)) {
+                        Some(index) => solver.child_to_data(index),
+                        None => return Response::Unused,
+                    };
                     let is_vert = self.direction.is_vertical();
                     let len = solver.cur_len;
 
-                    let data = match (cmd, cur) {
-                        _ if last == usize::MAX => None,
-                        _ if !self.widgets[0].widget.key_nav() => None,
-                        (Command::Home, _) => Some(0),
-                        (Command::End, _) => Some(last),
-                        (Command::Left, Some(cur)) if !is_vert && cur > 0 => Some(cur - 1),
-                        (Command::Up, Some(cur)) if is_vert && cur > 0 => Some(cur - 1),
-                        (Command::Right, Some(cur)) if !is_vert && cur < last => Some(cur + 1),
-                        (Command::Down, Some(cur)) if is_vert && cur < last => Some(cur + 1),
-                        (Command::PageUp, Some(cur)) if cur > 0 => Some(cur.saturating_sub(len / 2)),
-                        (Command::PageDown, Some(cur)) if cur < last => Some((cur + len / 2).min(last)),
+                    use Command as C;
+                    let data = match cmd {
+                        C::Home | C::DocHome => Some(0),
+                        C::End | C::DocEnd => Some(last),
+                        C::Left | C::WordLeft if !is_vert && cur > 0 => Some(cur - 1),
+                        C::Up if is_vert && cur > 0 => Some(cur - 1),
+                        C::Right | C::WordRight if !is_vert && cur < last => Some(cur + 1),
+                        C::Down if is_vert && cur < last => Some(cur + 1),
+                        C::PageUp if cur > 0 => Some(cur.saturating_sub(len / 2)),
+                        C::PageDown if cur < last => Some((cur + len / 2).min(last)),
+                        // TODO: C::ViewUp, ...
                         _ => None,
                     };
                     return if let Some(index) = data {
@@ -651,7 +707,7 @@ widget! {
                         mgr.set_nav_focus(self.widgets[index % len].widget.id(), true);
                         Response::Focus(rect)
                     } else {
-                        Response::Used
+                        Response::Unused
                     };
                 }
                 _ => (), // fall through to scroll handler
@@ -680,99 +736,98 @@ widget! {
                 return Response::Unused;
             }
 
-            if let Some(index) = self.id().index_of_child(&id) {
-                let child_event = self.scroll.offset_event(event.clone());
-                let response;
-                if let Some(child) = self.widgets.get_mut(index) {
-                    let r = child.widget.send(mgr, id, child_event);
-                    response = (child.key.clone(), r);
-                } else {
-                    return Response::Unused;
-                };
+            if self.eq_id(&id) {
+                return self.handle(mgr, event);
+            }
 
-                if matches!(&response.1, Response::Update | Response::Msg(_)) {
-                    let wd = &self.widgets[index];
-                    if let Some(key) = wd.key.as_ref() {
-                        if let Some(value) = self.view.get(&wd.widget) {
-                            if let Some(handle) = self.data.update(key, value) {
-                                mgr.trigger_update(handle, 0);
-                            }
-                        }
+            let key = match self.data.reconstruct_key(self.id_ref(), &id) {
+                Some(key) => key,
+                None => return Response::Unused,
+            };
+
+            let (index, response);
+            'outer: loop {
+                for i in 0..self.widgets.len() {
+                    if self.widgets[i].key.as_ref() == Some(&key) {
+                        index = i;
+                        let child_event = self.scroll.offset_event(event.clone());
+                        response = self.widgets[i].widget.send(mgr, id, child_event);
+                        break 'outer;
                     }
                 }
+                return Response::Unused;
+            }
 
-                match response {
-                    (key, Response::Unused) => {
-                        if let Event::PressStart { source, coord, .. } = event {
-                            if source.is_primary() {
-                                // We request a grab with our ID, hence the
-                                // PressMove/PressEnd events are matched in handle().
-                                mgr.grab_press_unique(self.id(), source, coord, None);
-                                self.press_phase = PressPhase::Start(coord);
-                                self.press_target = key;
-                                Response::Used
-                            } else {
-                                Response::Unused
-                            }
+            if matches!(&response, Response::Update | Response::Msg(_)) {
+                if let Some(value) = self.view.get(&self.widgets[index].widget) {
+                    if let Some(handle) = self.data.update(&key, value) {
+                        mgr.trigger_update(handle, 0);
+                    }
+                }
+            }
+
+            match response {
+                Response::Unused => {
+                    if let Event::PressStart { source, coord, .. } = event {
+                        if source.is_primary() {
+                            // We request a grab with our ID, hence the
+                            // PressMove/PressEnd events are matched in handle().
+                            mgr.grab_press_unique(self.id(), source, coord, None);
+                            self.press_phase = PressPhase::Start(coord);
+                            self.press_target = Some(key);
+                            Response::Used
                         } else {
-                            self.handle(mgr, event)
+                            Response::Unused
                         }
+                    } else {
+                        self.handle(mgr, event)
                     }
-                    (_, Response::Used) => Response::Used,
-                    (_, Response::Pan(delta)) => match self.scroll_by_delta(mgr, delta) {
-                        delta if delta == Offset::ZERO => Response::Scrolled,
-                        delta => Response::Pan(delta),
-                    }
-                    (_, Response::Scrolled) => Response::Scrolled,
-                    (_, Response::Focus(rect)) => {
-                        let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
-                        *mgr |= action;
-                        mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
-                        Response::Focus(rect)
-                    }
-                    (Some(key), Response::Select) => {
-                        match self.sel_mode {
-                            SelectionMode::None => Response::Used,
-                            SelectionMode::Single => {
-                                mgr.redraw(self.id());
-                                self.selection.clear();
+                }
+                Response::Used => Response::Used,
+                Response::Pan(delta) => match self.scroll_by_delta(mgr, delta) {
+                    delta if delta == Offset::ZERO => Response::Scrolled,
+                    delta => Response::Pan(delta),
+                }
+                Response::Scrolled => Response::Scrolled,
+                Response::Focus(rect) => {
+                    let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
+                    *mgr |= action;
+                    mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
+                    Response::Focus(rect)
+                }
+                Response::Select => {
+                    match self.sel_mode {
+                        SelectionMode::None => Response::Used,
+                        SelectionMode::Single => {
+                            mgr.redraw(self.id());
+                            self.selection.clear();
+                            self.selection.insert(key.clone());
+                            Response::Msg(ChildMsg::Select(key))
+                        }
+                        SelectionMode::Multiple => {
+                            mgr.redraw(self.id());
+                            if self.selection.remove(&key) {
+                                Response::Msg(ChildMsg::Deselect(key))
+                            } else {
                                 self.selection.insert(key.clone());
                                 Response::Msg(ChildMsg::Select(key))
                             }
-                            SelectionMode::Multiple => {
-                                mgr.redraw(self.id());
-                                if self.selection.remove(&key) {
-                                    Response::Msg(ChildMsg::Deselect(key))
-                                } else {
-                                    self.selection.insert(key.clone());
-                                    Response::Msg(ChildMsg::Select(key))
-                                }
-                            }
-                        }
-                    }
-                    (None, Response::Select) => Response::Used,
-                    (_, Response::Update) => Response::Used,
-                    (key, Response::Msg(msg)) => {
-                        trace!(
-                            "Received by {} from {:?}: {:?}",
-                            self.id(),
-                            &key,
-                            kas::util::TryFormat(&msg)
-                        );
-                        if let Some(key) = key {
-                            if let Some(handle) = self.data.handle(&key, &msg) {
-                                mgr.trigger_update(handle, 0);
-                            }
-                            Response::Msg(ChildMsg::Child(key, msg))
-                        } else {
-                            log::warn!("ListView: response from widget with no key");
-                            Response::Used
                         }
                     }
                 }
-            } else {
-                debug_assert!(self.eq_id(id), "SendEvent::send: bad WidgetId");
-                self.handle(mgr, event)
+                Response::Update => Response::Used,
+                Response::Msg(msg) => {
+                    trace!(
+                        "Received by {} from {:?}: {:?}",
+                        self.id(),
+                        &key,
+                        kas::util::TryFormat(&msg)
+                    );
+                    if let Some(handle) = self.data.handle(&key, &msg) {
+                        mgr.trigger_update(handle, 0);
+                    }
+                    Response::Msg(ChildMsg::Child(key, msg))
+                }
             }
         }
     }

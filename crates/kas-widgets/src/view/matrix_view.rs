@@ -62,7 +62,8 @@ widget! {
         align_hints: AlignHints,
         ideal_len: Dim,
         alloc_len: Dim,
-        cur_len: Dim,
+        /// The number of widgets in use (cur_len ≤ widgets.len())
+        cur_len: u32,
         child_size_min: Size,
         child_size_ideal: Size,
         child_inter_margin: Size,
@@ -94,7 +95,7 @@ widget! {
                 align_hints: Default::default(),
                 ideal_len: Dim { rows: 3, cols: 5 },
                 alloc_len: Dim::default(),
-                cur_len: Dim::default(),
+                cur_len: 0,
                 child_size_min: Size::ZERO,
                 child_size_ideal: Size::ZERO,
                 child_inter_margin: Size::ZERO,
@@ -257,10 +258,11 @@ widget! {
             self
         }
 
-        fn update_widgets(&mut self, mgr: &mut SetRectMgr) {
-            let time = Instant::now();
-
-            let data_len = Size(self.data.col_len().cast(), self.data.row_len().cast());
+        /// Construct a position solver. Note: this does more work and updates to
+        /// self than is necessary in several cases where it is used.
+        fn position_solver(&mut self, mgr: &mut SetRectMgr) -> PositionSolver {
+            let (d_cols, d_rows) = self.data.len();
+            let data_len = Size(d_cols.cast(), d_rows.cast());
             let view_size = self.rect().size;
             let skip = self.child_size + self.child_inter_margin;
             let content_size = (skip.cwise_mul(data_len) - self.child_inter_margin).max(Size::ZERO);
@@ -269,54 +271,78 @@ widget! {
             let offset = self.scroll_offset();
             let first_col = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
             let first_row = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
-            let cols = self
-                .data
-                .col_iter_vec_from(first_col, self.alloc_len.cols.cast());
-            let rows = self
-                .data
-                .row_iter_vec_from(first_row, self.alloc_len.rows.cast());
-            self.cur_len = Dim {
-                rows: rows.len().cast(),
-                cols: cols.len().cast(),
-            };
+            let col_len = self.alloc_len.cols.cast();
+            let row_len = self.alloc_len.rows.cast();
+            self.cur_len = u32::conv(col_len * row_len);
 
             let pos_start = self.core.rect.pos + self.frame_offset;
-            let mut rect = Rect::new(pos_start, self.child_size);
+
+            PositionSolver {
+                pos_start,
+                skip,
+                size: self.child_size,
+                first_col,
+                first_row,
+                col_len,
+                row_len,
+            }
+        }
+
+        fn update_widgets(&mut self, mgr: &mut SetRectMgr) -> PositionSolver {
+            let time = Instant::now();
+            let solver = self.position_solver(mgr);
+
+            let cols = self
+                .data
+                .col_iter_vec_from(solver.first_col, solver.col_len);
+            let rows = self
+                .data
+                .row_iter_vec_from(solver.first_row, solver.row_len);
 
             let mut action = TkAction::empty();
             for (cn, col) in cols.iter().enumerate() {
-                let ci = first_col + cn;
+                let ci = solver.first_col + cn;
                 for (rn, row) in rows.iter().enumerate() {
-                    let ri = first_row + rn;
-                    let i = (ci % cols.len()) + (ri % rows.len()) * cols.len();
+                    let ri = solver.first_row + rn;
+                    let i = solver.data_to_child(ci, ri);
+                    let key = T::make_key(col, row);
+                    let id = self.data.make_id(self.id_ref(), &key);
                     let w = &mut self.widgets[i];
-                    let key = T::make_key(row, col);
                     if w.key.as_ref() != Some(&key) {
                         if let Some(item) = self.data.get_cloned(&key) {
-                            w.key = Some(key.clone());
+                            w.key = Some(key);
+                            mgr.configure(id, &mut w.widget);
                             action |= self.view.set(&mut w.widget, item);
+                            solve_size_rules(
+                                &mut w.widget,
+                                mgr.size_mgr(),
+                                Some(self.child_size.0),
+                                Some(self.child_size.1),
+                            );
                         } else {
                             w.key = None; // disables drawing and clicking
                         }
                     }
-                    rect.pos = pos_start + skip.cwise_mul(Size(ci.cast(), ri.cast()));
-                    if w.widget.rect() != rect {
-                        w.widget.set_rect(mgr, rect, self.align_hints);
-                    }
+                    w.widget.set_rect(mgr, solver.rect(ci, ri), self.align_hints);
                 }
             }
             *mgr |= action;
             let dur = (Instant::now() - time).as_micros();
             trace!("MatrixView::update_widgets completed in {}μs", dur);
+            solver
         }
     }
 
     impl Scrollable for Self {
         fn scroll_axes(&self, size: Size) -> (bool, bool) {
-            let item_min = self.child_size_min + self.child_inter_margin;
-            let data_len = Size(self.data.col_len().cast(), self.data.row_len().cast());
-            let min_size = (item_min.cwise_mul(data_len) - self.child_inter_margin).max(Size::ZERO);
-            (min_size.0 > size.0, min_size.1 > size.1)
+            let avail = size - self.frame_size;
+            let m = self.child_inter_margin;
+            let child_size = Size(avail.0 / self.ideal_len.cols, avail.1 / self.ideal_len.rows)
+                .min(self.child_size_ideal).max(self.child_size_min);
+            let (d_cols, d_rows) = self.data.len();
+            let data_len = Size(d_cols.cast(), d_rows.cast());
+            let content_size = ((child_size + m).cwise_mul(data_len) - m).max(Size::ZERO);
+            (content_size.0 > size.0, content_size.1 > size.1)
         }
 
         #[inline]
@@ -342,6 +368,11 @@ widget! {
         fn num_children(&self) -> usize {
             self.widgets.len()
         }
+        fn make_child_id(&self, index: usize) -> Option<WidgetId> {
+            self.widgets.get(index)
+                .and_then(|w| w.key.as_ref())
+                .map(|key| self.data.make_id(self.id_ref(), key))
+        }
         #[inline]
         fn get_child(&self, index: usize) -> Option<&dyn WidgetConfig> {
             self.widgets.get(index).map(|w| w.widget.as_widget())
@@ -351,6 +382,18 @@ widget! {
             self.widgets
                 .get_mut(index)
                 .map(|w| w.widget.as_widget_mut())
+        }
+        fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
+            let key = self.data.reconstruct_key(self.id_ref(), id);
+            if key.is_some() {
+                self.widgets
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, w)| (key == w.key).then(|| i))
+                    .next()
+            } else {
+                None
+            }
         }
     }
 
@@ -369,12 +412,49 @@ widget! {
             let inner_margin = size_mgr.inner_margin().extract(axis);
             let frame = kas::layout::FrameRules::new_sym(0, inner_margin, 0);
 
-            // We use a default-generated widget to generate size rules
+            // We use a default widget to find the minimum child size:
             let mut rules = self.view.make().size_rules(size_mgr.re(), axis);
-
             self.child_size_min.set_component(axis, rules.min_size());
-            self.child_size_ideal
-                .set_component(axis, rules.ideal_size());
+
+            // If data is already available, create some widgets and ensure
+            // that the ideal size meets all expectations of these children.
+            if self.widgets.len() == 0 && !self.data.is_empty() {
+                let cols = self.data.col_iter_vec(self.ideal_len.cols.cast());
+                let rows = self.data.row_iter_vec(self.ideal_len.rows.cast());
+                let len = cols.len() * rows.len();
+                debug!("allocating widgets (reserve = {})", len);
+                self.widgets.reserve(len);
+                for col in cols.iter() {
+                    for row in rows.iter(){
+                        let key = T::make_key(col, row);
+                        let mut widget = self.view.make();
+                        if let Some(item) = self.data.get_cloned(&key) {
+                            // Note: we cannot call configure here, but it needs
+                            // to happen! Therefore we set key=None and do not
+                            // care about order of data within self.widgets.
+                            let _ = self.view.set(&mut widget, item);
+                            self.widgets.push(WidgetData { key: None, widget });
+                        }
+                    }
+                }
+            }
+            if self.widgets.len() > 0 {
+                let other = axis.other().map(|mut size| {
+                    // Use same logic as in set_rect to find per-child size:
+                    let other_axis = axis.flipped();
+                    size -= self.frame_size.extract(other_axis);
+                    let div = Size(self.ideal_len.cols, self.ideal_len.rows).extract(other_axis);
+                    (size / div)
+                        .min(self.child_size_ideal.extract(other_axis))
+                        .max(self.child_size_min.extract(other_axis))
+                });
+                let axis = AxisInfo::new(axis.is_vertical(), other);
+                for w in self.widgets.iter_mut() {
+                    rules = rules.max(w.widget.size_rules(size_mgr.re(), axis));
+                }
+            }
+
+            self.child_size_ideal.set_component(axis, rules.ideal_size());
             let m = rules.margins_i32();
             self.child_inter_margin
                 .set_component(axis, (m.0 + m.1).max(inner_margin));
@@ -395,47 +475,42 @@ widget! {
         fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
 
-            let mut child_size = rect.size - self.frame_size;
-            if child_size.0 >= self.ideal_len.cols * self.child_size_ideal.0 {
-                child_size.0 = self.child_size_ideal.0;
-            } else {
-                child_size.0 = self.child_size_min.0;
-            }
-            if child_size.1 >= self.ideal_len.rows * self.child_size_ideal.1 {
-                child_size.1 = self.child_size_ideal.1;
-            } else {
-                child_size.1 = self.child_size_min.1;
-            }
+            let avail = rect.size - self.frame_size;
+            let child_size = Size(avail.0 / self.ideal_len.cols, avail.1 / self.ideal_len.rows)
+                .min(self.child_size_ideal).max(self.child_size_min);
             self.child_size = child_size;
             self.align_hints = align;
 
-            let skip = child_size + self.child_inter_margin;
-            let vis_len = (rect.size + skip - Size::splat(1)).cwise_div(skip) + Size::splat(1);
+            let (d_cols, d_rows) = self.data.len();
+            let data_len = Size(d_cols.cast(), d_rows.cast());
+            let (avail_widgets, mut req_widgets) = (self.widgets.len(), d_cols * d_rows);
+            let vis_len;
+            if avail_widgets >= req_widgets {
+                // Case: enough children to allocate all data directly
+                vis_len = data_len;
+            } else {
+                // Case: reallocate children when scrolling
+                let skip = child_size + self.child_inter_margin;
+                vis_len = data_len.min(
+                    (rect.size + skip - Size::splat(1)).cwise_div(skip) + Size::splat(1)
+                );
+                req_widgets = usize::conv(vis_len.0) * usize::conv(vis_len.1);
+            }
             self.alloc_len = Dim {
                 cols: vis_len.0,
                 rows: vis_len.1,
             };
 
-            let old_num = self.widgets.len();
-            let num = usize::conv(vis_len.0) * usize::conv(vis_len.1);
-            if old_num < num {
-                debug!("allocating widgets (old len = {}, new = {})", old_num, num);
-                self.widgets.reserve(num - old_num);
-                for _ in old_num..num {
-                    let id = self.id_ref().make_child(self.widgets.len());
-                    let mut widget = self.view.make();
-                    mgr.configure(id, &mut widget);
-                    solve_size_rules(
-                        &mut widget,
-                        mgr.size_mgr(),
-                        Some(child_size.0),
-                        Some(child_size.1),
-                    );
+            if avail_widgets < req_widgets {
+                debug!("allocating widgets (old len = {}, new = {})", avail_widgets, req_widgets);
+                self.widgets.reserve(req_widgets - avail_widgets);
+                for _ in avail_widgets..req_widgets {
+                    let widget = self.view.make();
                     self.widgets.push(WidgetData { key: None, widget });
                 }
-            } else if num + 64 <= self.widgets.len() {
+            } else if req_widgets + 64 <= avail_widgets {
                 // Free memory (rarely useful?)
-                self.widgets.truncate(num);
+                self.widgets.truncate(req_widgets);
             }
             self.update_widgets(mgr);
         }
@@ -446,43 +521,44 @@ widget! {
             reverse: bool,
             from: Option<usize>,
         ) -> Option<usize> {
-            let _ = mgr; // TODO: this needs a rewrite like ListView::spatial_nav
-
-            let cur_len = usize::conv(self.cur_len.cols) * usize::conv(self.cur_len.rows);
-            if cur_len == 0 {
+            if self.cur_len == 0 {
                 return None;
             }
 
-            // TODO: if last row/col is completely hidden, this and cur_len should be less
-            let last = cur_len - 1;
-
-            if let Some(index) = from {
-                let p = self.widgets[index].widget.rect().pos;
-                let index = match reverse {
-                    false if index < last => index + 1,
-                    false => 0,
-                    true if 0 < index => index - 1,
-                    true => last,
-                };
-                let q = self.widgets[index].widget.rect().pos;
-                match reverse {
-                    false if q.1 > p.1 || (q.1 == p.1 && q.0 > p.0) => Some(index),
-                    true if q.1 < p.1 || (q.1 == p.1 && q.0 < p.0) => Some(index),
-                    _ => None,
+            let mut solver = self.position_solver(mgr);
+            let (d_cols, d_rows) = self.data.len();
+            let (ci, ri) = if let Some(index) = from {
+                let (ci, ri) = solver.child_to_data(index);
+                if !reverse {
+                    if ci + 1 < d_cols{
+                        (ci + 1, ri)
+                    } else if ri + 1 < d_rows {
+                        (0, ri + 1)
+                    } else {
+                        return None;
+                    }
+                } else {
+                    if ci > 0 {
+                        (ci - 1, ri)
+                    } else if ri > 0 {
+                        (d_cols - 1, ri - 1)
+                    } else {
+                        return None;
+                    }
                 }
+            } else if !reverse {
+                (0, 0)
             } else {
-                // Simplified version of logic in update_widgets
-                let skip = self.child_size + self.child_inter_margin;
-                let offset = self.scroll_offset();
-                let ci = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
-                let ri = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
-                let (rows, cols): (usize, usize) = (self.cur_len.rows.cast(), self.cur_len.cols.cast());
-                let mut data = (ci % cols) * rows + (ri % rows);
-                if reverse {
-                    data += last;
-                }
-                Some(data % cur_len)
+                (d_cols - 1, d_rows - 1)
+            };
+
+            let (_, action) = self.scroll.focus_rect(solver.rect(ci, ri), self.core.rect);
+            if !action.is_empty() {
+                *mgr |= action;
+                solver = self.update_widgets(mgr);
             }
+
+            Some(solver.data_to_child(ci, ri))
         }
 
         #[inline]
@@ -496,7 +572,7 @@ widget! {
             }
 
             let coord = coord + self.scroll.offset();
-            let num = usize::conv(self.cur_len.cols) * usize::conv(self.cur_len.rows);
+            let num = self.cur_len.cast();
             for child in &mut self.widgets[..num] {
                 if child.key.is_some() {
                     if let Some(id) = child.widget.find_id(coord) {
@@ -510,13 +586,19 @@ widget! {
         fn draw(&mut self, mut draw: DrawMgr) {
             let mut draw = draw.with_core(self.core_data());
             let offset = self.scroll_offset();
-            let num = usize::conv(self.cur_len.cols) * usize::conv(self.cur_len.rows);
+            let rect = self.rect() + offset;
+            let num = self.cur_len.cast();
             draw.with_clip_region(self.core.rect, offset, |mut draw| {
                 for child in &mut self.widgets[..num] {
-                    if let Some(ref key) = child.key {
-                        child.widget.draw(draw.re());
-                        if self.selection.contains(key) {
-                            draw.selection_box(child.widget.rect());
+                    // Note: we don't know which widgets within 0..num are
+                    // visible, so check intersection before drawing:
+                    let child_rect = child.widget.rect();
+                    if rect.intersection(&child_rect).is_some() {
+                        if let Some(ref key) = child.key {
+                            child.widget.draw(draw.re());
+                            if self.selection.contains(key) {
+                                draw.selection_box(child_rect);
+                            }
                         }
                     }
                 }
@@ -588,57 +670,58 @@ widget! {
                     }
                 }
                 Event::Command(cmd, _) => {
-                    // Simplified version of logic in update_widgets
-                    let (cols, rows): (usize, usize) = (self.cur_len.cols.cast(), self.cur_len.rows.cast());
+                    if self.data.is_empty() || !self.widgets[0].widget.key_nav() {
+                        return Response::Unused;
+                    }
+                    let (d_cols, d_rows) = self.data.len();
+                    let (last_col, last_row) = (d_cols.wrapping_sub(1), d_rows.wrapping_sub(1));
 
-                    let skip = self.child_size + self.child_inter_margin;
-                    let offset = self.scroll_offset();
-                    let first_col = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
-                    let first_row = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
-                    let col_start = (first_col / cols) * cols;
-                    let row_start = (first_row / rows) * rows;
+                    let mut solver = mgr.set_rect_mgr(|mgr| self.position_solver(mgr));
+                    let (ci, ri) = match mgr.nav_focus().and_then(|id| self.find_child_index(id)) {
+                        Some(index) => solver.child_to_data(index),
+                        None => return Response::Unused,
+                    };
 
-                    let cur = mgr
-                        .nav_focus()
-                        .and_then(|id| self.find_child_index(id))
-                        .map(|index| {
-                            let mut col_index = col_start + index % cols;
-                            let mut row_index = row_start + index / cols;
-                            if col_index < first_col {
-                                col_index += cols;
-                            }
-                            if row_index < first_row {
-                                row_index += rows;
-                            }
-                            (col_index, row_index)
-                        });
-                    let last_col = self.data.col_len().wrapping_sub(1);
-                    let last_row = self.data.row_len().wrapping_sub(1);
-
-                    let data = match (cmd, cur) {
-                        _ if last_col == usize::MAX || last_row == usize::MAX => None,
-                        _ if !self.widgets[0].widget.key_nav() => None,
-                        (Command::Home, _) => Some((0, 0)),
-                        (Command::End, _) => Some((last_col, last_row)),
-                        (Command::Left, Some((ci, ri))) if ci > 0 => Some((ci - 1, ri)),
-                        (Command::Up, Some((ci, ri))) if ri > 0 => Some((ci, ri - 1)),
-                        (Command::Right, Some((ci, ri))) if ci < last_col => Some((ci + 1, ri)),
-                        (Command::Down, Some((ci, ri))) if ri < last_row => Some((ci, ri + 1)),
-                        (Command::PageUp, Some((ci, ri))) if ri > 0 => {
-                            Some((ci, ri.saturating_sub(rows / 2)))
+                    use Command as C;
+                    let data = match cmd {
+                        C::DocHome => Some((0, 0)),
+                        C::DocEnd => Some((last_col, last_row)),
+                        C::Home => Some((0, ri)),
+                        C::End => Some((last_col, ri)),
+                        C::Left | C::WordLeft if ci > 0 => Some((ci - 1, ri)),
+                        C::Up if ri > 0 => Some((ci, ri - 1)),
+                        C::Right | C::WordRight if ci < last_col => Some((ci + 1, ri)),
+                        C::Down if ri < last_row => Some((ci, ri + 1)),
+                        C::PageUp if ri > 0 => {
+                            Some((ci, ri.saturating_sub(solver.row_len / 2)))
                         }
-                        (Command::PageDown, Some((ci, ri))) if ri < last_row => {
-                            Some((ci, (ri + rows / 2).min(last_row)))
+                        C::PageDown if ri < last_row => {
+                            Some((ci, (ri + solver.row_len / 2).min(last_row)))
                         }
+                        // TODO: C::ViewUp, ...
                         _ => None,
                     };
-                    if let Some((ci, ri)) = data {
-                        // Set nav focus to index and update scroll position
-                        // Note: we update nav focus before updating widgets; this is fine
-                        let index = (ci % cols) + (ri % rows) * cols;
-                        mgr.set_nav_focus(self.widgets[index].widget.id(), true);
-                    }
-                    return Response::Used;
+                    return if let Some((ci, ri)) = data {
+                        // Set nav focus and update scroll position
+                        let (rect, action) = self.scroll.focus_rect(solver.rect(ci, ri), self.core.rect);
+                        if !action.is_empty() {
+                            *mgr |= action;
+                            solver = mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
+                        }
+
+                        let id = self.widgets[solver.data_to_child(ci, ri)].widget.id();
+                        #[cfg(debug_assertions)] {
+                            let rk = &self.data.row_iter_vec_from(ri, 1)[0];
+                            let ck = &self.data.col_iter_vec_from(ci, 1)[0];
+                            let key = T::make_key(ck, rk);
+                            assert_eq!(id, self.data.make_id(self.id_ref(), &key));
+                        }
+
+                        mgr.set_nav_focus(id, true);
+                        Response::Focus(rect)
+                    } else {
+                        Response::Unused
+                    };
                 }
                 _ => (), // fall through to scroll handler
             }
@@ -668,100 +751,137 @@ widget! {
                 return Response::Unused;
             }
 
-            if let Some(index) = self.id().index_of_child(&id) {
-                let child_event = self.scroll.offset_event(event.clone());
-                let response;
-                if let Some(child) = self.widgets.get_mut(index) {
-                    let r = child.widget.send(mgr, id, child_event);
-                    response = (child.key.clone(), r);
-                } else {
-                    return Response::Unused;
-                };
+            if self.eq_id(&id) {
+                return self.handle(mgr, event);
+            }
 
-                if matches!(&response.1, Response::Update | Response::Msg(_)) {
-                    let wd = &self.widgets[index];
-                    if let Some(key) = wd.key.as_ref() {
-                        if let Some(value) = self.view.get(&wd.widget) {
-                            if let Some(handle) = self.data.update(key, value) {
-                                mgr.trigger_update(handle, 0);
-                            }
-                        }
+            let key = match self.data.reconstruct_key(self.id_ref(), &id) {
+                Some(key) => key,
+                None => return Response::Unused,
+            };
+
+            let (index, response);
+            'outer: loop {
+                for i in 0..self.widgets.len() {
+                    if self.widgets[i].key.as_ref() == Some(&key) {
+                        index = i;
+                        let child_event = self.scroll.offset_event(event.clone());
+                        response = self.widgets[i].widget.send(mgr, id, child_event);
+                        break 'outer;
                     }
                 }
+                return Response::Unused;
+            }
 
-                match response {
-                    (key, Response::Unused) => {
-                        if let Event::PressStart { source, coord, .. } = event {
-                            if source.is_primary() {
-                                // We request a grab with our ID, hence the
-                                // PressMove/PressEnd events are matched in handle().
-                                mgr.grab_press_unique(self.id(), source, coord, None);
-                                self.press_phase = PressPhase::Start(coord);
-                                self.press_target = key;
-                                Response::Used
-                            } else {
-                                Response::Unused
-                            }
+            if matches!(&response, Response::Update | Response::Msg(_)) {
+                if let Some(value) = self.view.get(&self.widgets[index].widget) {
+                    if let Some(handle) = self.data.update(&key, value) {
+                        mgr.trigger_update(handle, 0);
+                    }
+                }
+            }
+
+            match response {
+                Response::Unused => {
+                    if let Event::PressStart { source, coord, .. } = event {
+                        if source.is_primary() {
+                            // We request a grab with our ID, hence the
+                            // PressMove/PressEnd events are matched in handle().
+                            mgr.grab_press_unique(self.id(), source, coord, None);
+                            self.press_phase = PressPhase::Start(coord);
+                            self.press_target = Some(key);
+                            Response::Used
                         } else {
-                            self.handle(mgr, event)
+                            Response::Unused
                         }
+                    } else {
+                        self.handle(mgr, event)
                     }
-                    (_, Response::Used) => Response::Used,
-                    (_, Response::Pan(delta)) => match self.scroll_by_delta(mgr, delta) {
-                        delta if delta == Offset::ZERO => Response::Scrolled,
-                        delta => Response::Pan(delta),
-                    }
-                    (_, Response::Scrolled) => Response::Scrolled,
-                    (_, Response::Focus(rect)) => {
-                        let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
-                        *mgr |= action;
-                        mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
-                        Response::Focus(rect)
-                    }
-                    (Some(key), Response::Select) => {
-                        match self.sel_mode {
-                            SelectionMode::None => Response::Used,
-                            SelectionMode::Single => {
-                                mgr.redraw(self.id());
-                                self.selection.clear();
+                }
+                Response::Used => Response::Used,
+                Response::Pan(delta) => match self.scroll_by_delta(mgr, delta) {
+                    delta if delta == Offset::ZERO => Response::Scrolled,
+                    delta => Response::Pan(delta),
+                }
+                Response::Scrolled => Response::Scrolled,
+                Response::Focus(rect) => {
+                    let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
+                    *mgr |= action;
+                    mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
+                    Response::Focus(rect)
+                }
+                Response::Select => {
+                    match self.sel_mode {
+                        SelectionMode::None => Response::Used,
+                        SelectionMode::Single => {
+                            mgr.redraw(self.id());
+                            self.selection.clear();
+                            self.selection.insert(key.clone());
+                            Response::Msg(ChildMsg::Select(key))
+                        }
+                        SelectionMode::Multiple => {
+                            mgr.redraw(self.id());
+                            if self.selection.remove(&key) {
+                                Response::Msg(ChildMsg::Deselect(key))
+                            } else {
                                 self.selection.insert(key.clone());
                                 Response::Msg(ChildMsg::Select(key))
                             }
-                            SelectionMode::Multiple => {
-                                mgr.redraw(self.id());
-                                if self.selection.remove(&key) {
-                                    Response::Msg(ChildMsg::Deselect(key))
-                                } else {
-                                    self.selection.insert(key.clone());
-                                    Response::Msg(ChildMsg::Select(key))
-                                }
-                            }
-                        }
-                    }
-                    (None, Response::Select) => Response::Used,
-                    (_, Response::Update) => Response::Used,
-                    (key, Response::Msg(msg)) => {
-                        trace!(
-                            "Received by {} from {:?}: {:?}",
-                            self.id(),
-                            &key,
-                            kas::util::TryFormat(&msg)
-                        );
-                        if let Some(key) = key {
-                            if let Some(handle) = self.data.handle(&key, &msg) {
-                                mgr.trigger_update(handle, 0);
-                            }
-                            Response::Msg(ChildMsg::Child(key, msg))
-                        } else {
-                            log::warn!("MatrixView: response from widget with no key");
-                            Response::Used
                         }
                     }
                 }
-            } else {
-                debug_assert!(self.eq_id(id), "SendEvent::send: bad WidgetId");
-                self.handle(mgr, event)
+                Response::Update => Response::Used,
+                Response::Msg(msg) => {
+                    trace!(
+                        "Received by {} from {:?}: {:?}",
+                        self.id(),
+                        &key,
+                        kas::util::TryFormat(&msg)
+                    );
+                    if let Some(handle) = self.data.handle(&key, &msg) {
+                        mgr.trigger_update(handle, 0);
+                    }
+                    Response::Msg(ChildMsg::Child(key, msg))
+                }
             }
         }
+    }
+}
+
+struct PositionSolver {
+    pos_start: Coord,
+    skip: Size,
+    size: Size,
+    first_col: usize,
+    first_row: usize,
+    col_len: usize,
+    row_len: usize,
+}
+
+impl PositionSolver {
+    /// Map a data index to child index
+    fn data_to_child(&self, ci: usize, ri: usize) -> usize {
+        (ci % self.col_len) + (ri % self.row_len) * self.col_len
+    }
+
+    /// Map a child index to `(col_index, row_index)`
+    fn child_to_data(&self, index: usize) -> (usize, usize) {
+        let col_start = (self.first_col / self.col_len) * self.col_len;
+        let row_start = (self.first_row / self.row_len) * self.row_len;
+        let mut col_index = col_start + index % self.col_len;
+        let mut row_index = row_start + index / self.col_len;
+        if col_index < self.first_col {
+            col_index += self.col_len;
+        }
+        if row_index < self.first_row {
+            row_index += self.row_len;
+        }
+        (col_index, row_index)
+    }
+
+    /// Rect of data item (ci, ri)
+    fn rect(&self, ci: usize, ri: usize) -> Rect {
+        let pos = self.pos_start + self.skip.cwise_mul(Size(ci.cast(), ri.cast()));
+        Rect::new(pos, self.size)
     }
 }

@@ -26,12 +26,15 @@ pub trait Directional: Copy + Sized + std::fmt::Debug + 'static {
     type Reversed: Directional;
 
     /// Flip over diagonal (i.e. Down ↔ Right)
+    #[must_use = "method does not modify self but returns a new value"]
     fn flipped(self) -> Self::Flipped;
 
     /// Reverse along axis (i.e. Left ↔ Right)
+    #[must_use = "method does not modify self but returns a new value"]
     fn reversed(self) -> Self::Reversed;
 
     /// Convert to the [`Direction`] enum
+    #[must_use = "method does not modify self but returns a new value"]
     fn as_direction(self) -> Direction;
 
     /// Up or Down

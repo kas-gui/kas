@@ -14,6 +14,7 @@
 use crate::event::EventMgr;
 use crate::event::UpdateHandle;
 use crate::updatable::*;
+use crate::WidgetId;
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;
@@ -83,6 +84,13 @@ impl<T: ListDataMut> ListData for SharedRc<T> {
         (self.0).1.borrow().0.len()
     }
 
+    fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
+        (self.0).1.borrow().0.make_id(parent, key)
+    }
+    fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
+        (self.0).1.borrow().0.reconstruct_key(parent, child)
+    }
+
     fn contains_key(&self, key: &Self::Key) -> bool {
         (self.0).1.borrow().0.contains_key(key)
     }
@@ -98,11 +106,11 @@ impl<T: ListDataMut> ListData for SharedRc<T> {
         Some((self.0).0)
     }
 
-    fn iter_vec(&self, limit: usize) -> Vec<(Self::Key, Self::Item)> {
+    fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
         (self.0).1.borrow().0.iter_vec(limit)
     }
 
-    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
+    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key> {
         (self.0).1.borrow().0.iter_vec_from(start, limit)
     }
 }
@@ -123,12 +131,20 @@ impl<T: MatrixDataMut> MatrixData for SharedRc<T> {
         cell.0.version() + cell.1
     }
 
-    fn col_len(&self) -> usize {
-        (self.0).1.borrow().0.col_len()
+    fn is_empty(&self) -> bool {
+        (self.0).1.borrow().0.is_empty()
     }
-    fn row_len(&self) -> usize {
-        (self.0).1.borrow().0.row_len()
+    fn len(&self) -> (usize, usize) {
+        (self.0).1.borrow().0.len()
     }
+
+    fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
+        (self.0).1.borrow().0.make_id(parent, key)
+    }
+    fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
+        (self.0).1.borrow().0.reconstruct_key(parent, child)
+    }
+
     fn contains(&self, key: &Self::Key) -> bool {
         (self.0).1.borrow().0.contains(key)
     }
@@ -157,8 +173,8 @@ impl<T: MatrixDataMut> MatrixData for SharedRc<T> {
         (self.0).1.borrow().0.row_iter_vec_from(start, limit)
     }
 
-    fn make_key(row: &Self::RowKey, col: &Self::ColKey) -> Self::Key {
-        T::make_key(row, col)
+    fn make_key(col: &Self::ColKey, row: &Self::RowKey) -> Self::Key {
+        T::make_key(col, row)
     }
 }
 impl<T: MatrixDataMut> MatrixDataMut for SharedRc<T> {

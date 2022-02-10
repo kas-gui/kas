@@ -213,7 +213,7 @@ widget! {
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if !self.is_disabled() && !self.widgets.is_empty() {
-                if let Some(index) = self.id().index_of_child(&id) {
+                if let Some(index) = self.find_child_index(&id) {
                     if (index & 1) == 0 {
                         if let Some(w) = self.widgets.get_mut(index >> 1) {
                             return w.send(mgr, id, event);

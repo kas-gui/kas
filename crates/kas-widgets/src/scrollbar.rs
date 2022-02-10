@@ -646,7 +646,7 @@ widget! {
                 return Response::Unused;
             }
 
-            match self.id().index_of_child(&id) {
+            match self.find_child_index(&id) {
                 Some(0) => self.horiz_bar
                     .send(mgr, id, event)
                     .try_into()

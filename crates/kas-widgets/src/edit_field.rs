@@ -393,13 +393,11 @@ widget! {
 
             self.core.rect = rect;
             let size = rect.size;
-            let multi_line = self.multi_line;
             self.required = self
                 .text
                 .update_env(|env| {
                     env.set_align(align.unwrap_or(Align::Default, valign));
                     env.set_bounds(size.into());
-                    env.set_wrap(multi_line);
                 })
                 .into();
             self.set_view_offset_from_edit_pos();
@@ -580,7 +578,7 @@ widget! {
         }
 
         fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
-            let new_offset = offset.clamp(Offset::ZERO, self.max_scroll_offset());
+            let new_offset = offset.min(self.max_scroll_offset()).max(Offset::ZERO);
             if new_offset != self.view_offset {
                 self.view_offset = new_offset;
                 // No widget moves so do not need to report TkAction::REGION_MOVED
@@ -1091,7 +1089,9 @@ impl<G: EditGuard> EditField<G> {
 
     // Pan by given delta. Return `Response::Scrolled` or `Response::Pan(remaining)`.
     fn pan_delta<U>(&mut self, mgr: &mut EventMgr, mut delta: Offset) -> Response<U> {
-        let new_offset = (self.view_offset - delta).clamp(Offset::ZERO, self.max_scroll_offset());
+        let new_offset = (self.view_offset - delta)
+            .min(self.max_scroll_offset())
+            .max(Offset::ZERO);
         if new_offset != self.view_offset {
             delta -= self.view_offset - new_offset;
             self.view_offset = new_offset;

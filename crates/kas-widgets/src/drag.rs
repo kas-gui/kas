@@ -131,7 +131,7 @@ impl DragHandle {
     /// the handle hasn't moved; `REDRAW` if it has (though this widget is
     /// not directly responsible for drawing, so this may not be accurate).
     pub fn set_offset(&mut self, offset: Offset) -> (Offset, TkAction) {
-        let offset = offset.clamp(Offset::ZERO, self.max_offset());
+        let offset = offset.min(self.max_offset()).max(Offset::ZERO);
         let handle_pos = self.track.pos + offset;
         if handle_pos != self.core.rect.pos {
             self.core.rect.pos = handle_pos;

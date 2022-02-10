@@ -29,6 +29,9 @@ mod kw {
     custom_keyword!(slice);
     custom_keyword!(grid);
     custom_keyword!(single);
+    custom_keyword!(default);
+    custom_keyword!(top);
+    custom_keyword!(bottom);
 }
 
 pub struct Input {
@@ -77,8 +80,13 @@ enum Direction {
 
 #[derive(Debug)]
 enum Align {
+    Default,
     Center,
     Stretch,
+    Top,
+    Bottom,
+    Left,
+    Right,
 }
 
 #[derive(Debug, Default)]
@@ -239,12 +247,27 @@ fn parse_align(input: ParseStream) -> Result<Align> {
     let _ = parenthesized!(inner in input);
 
     let lookahead = inner.lookahead1();
-    if lookahead.peek(kw::center) {
+    if lookahead.peek(kw::default) {
+        let _: kw::default = inner.parse()?;
+        Ok(Align::Default)
+    } else if lookahead.peek(kw::center) {
         let _: kw::center = inner.parse()?;
         Ok(Align::Center)
     } else if lookahead.peek(kw::stretch) {
         let _: kw::stretch = inner.parse()?;
         Ok(Align::Stretch)
+    } else if lookahead.peek(kw::top) {
+        let _: kw::top = inner.parse()?;
+        Ok(Align::Top)
+    } else if lookahead.peek(kw::bottom) {
+        let _: kw::bottom = inner.parse()?;
+        Ok(Align::Bottom)
+    } else if lookahead.peek(kw::left) {
+        let _: kw::left = inner.parse()?;
+        Ok(Align::Left)
+    } else if lookahead.peek(kw::right) {
+        let _: kw::right = inner.parse()?;
+        Ok(Align::Right)
     } else {
         Err(lookahead.error())
     }
@@ -325,8 +348,13 @@ impl Parse for Direction {
 impl quote::ToTokens for Align {
     fn to_tokens(&self, toks: &mut Toks) {
         toks.append_all(match self {
-            Align::Center => quote! { ::kas::layout::AlignHints::CENTER },
-            Align::Stretch => quote! { ::kas::layout::AlignHints::STRETCH },
+            Align::Default => quote! { layout::AlignHints::NONE },
+            Align::Center => quote! { layout::AlignHints::CENTER },
+            Align::Stretch => quote! { layout::AlignHints::STRETCH },
+            Align::Top => quote! { layout::AlignHints::new(None, Some(layout::Align::TL))},
+            Align::Bottom => quote! { layout::AlignHints::new(None, Some(layout::Align::BR)) },
+            Align::Left => quote! { layout::AlignHints::new(Some(layout::Align::TL), None) },
+            Align::Right => quote! { layout::AlignHints::new(Some(layout::Align::BR), None) },
         });
     }
 }
@@ -347,7 +375,7 @@ impl quote::ToTokens for GridDimensions {
     fn to_tokens(&self, toks: &mut Toks) {
         let (rows, cols) = (self.rows, self.cols);
         let (row_spans, col_spans) = (self.row_spans, self.col_spans);
-        toks.append_all(quote! { ::kas::layout::GridDimensions {
+        toks.append_all(quote! { layout::GridDimensions {
             rows: #rows,
             cols: #cols,
             row_spans: #row_spans,
@@ -359,6 +387,8 @@ impl quote::ToTokens for GridDimensions {
 impl Layout {
     // Optionally pass in the list of children, but not when already in a
     // multi-element layout (list/slice/grid).
+    //
+    // Required: `::kas::layout` must be in scope.
     fn generate<'a, I: ExactSizeIterator<Item = &'a Member>>(
         &'a self,
         children: Option<I>,
@@ -366,13 +396,13 @@ impl Layout {
         Ok(match self {
             Layout::Align(layout, align) => {
                 let inner = layout.generate(children)?;
-                quote! { ::kas::layout::Layout::align(#inner, #align) }
+                quote! { layout::Layout::align(#inner, #align) }
             }
             Layout::AlignSingle(expr, align) => {
-                quote! { ::kas::layout::Layout::align_single(#expr.as_widget_mut(), #align) }
+                quote! { layout::Layout::align_single(#expr.as_widget_mut(), #align) }
             }
             Layout::Widget(expr) => quote! {
-                ::kas::layout::Layout::single(#expr.as_widget_mut())
+                layout::Layout::single(#expr.as_widget_mut())
             },
             Layout::Single(span) => {
                 if let Some(mut iter) = children {
@@ -384,7 +414,7 @@ impl Layout {
                     }
                     let child = iter.next().unwrap();
                     quote! {
-                        ::kas::layout::Layout::single(self.#child.as_widget_mut())
+                        layout::Layout::single(self.#child.as_widget_mut())
                     }
                 } else {
                     return Err(Error::new(
@@ -396,17 +426,17 @@ impl Layout {
             Layout::Frame(layout) => {
                 let inner = layout.generate(children)?;
                 quote! {
-                    let (data, next) = _chain.storage::<::kas::layout::FrameStorage>();
+                    let (data, next) = _chain.storage::<layout::FrameStorage>();
                     _chain = next;
-                    ::kas::layout::Layout::frame(data, #inner)
+                    layout::Layout::frame(data, #inner)
                 }
             }
             Layout::NavFrame(layout) => {
                 let inner = layout.generate(children)?;
                 quote! {
-                    let (data, next) = _chain.storage::<::kas::layout::FrameStorage>();
+                    let (data, next) = _chain.storage::<layout::FrameStorage>();
                     _chain = next;
-                    ::kas::layout::Layout::nav_frame(data, #inner)
+                    layout::Layout::nav_frame(data, #inner)
                 }
             }
             Layout::List(dir, list) => {
@@ -425,7 +455,7 @@ impl Layout {
                             len = iter.len();
                             for member in iter {
                                 items.append_all(quote! {
-                                    ::kas::layout::Layout::single(self.#member.as_widget_mut()),
+                                    layout::Layout::single(self.#member.as_widget_mut()),
                                 });
                             }
                         } else {
@@ -438,9 +468,9 @@ impl Layout {
                 }
 
                 let storage = if len > 16 {
-                    quote! { ::kas::layout::DynRowStorage }
+                    quote! { layout::DynRowStorage }
                 } else {
-                    quote! { ::kas::layout::FixedRowStorage<#len> }
+                    quote! { layout::FixedRowStorage<#len> }
                 };
                 // Get a storage slot from the chain. Order doesn't matter.
                 let data = quote! { {
@@ -451,20 +481,20 @@ impl Layout {
 
                 let iter = quote! { { let arr = [#items]; arr.into_iter() } };
 
-                quote! { ::kas::layout::Layout::list(#iter, #dir, #data) }
+                quote! { layout::Layout::list(#iter, #dir, #data) }
             }
             Layout::Slice(dir, expr) => {
                 let data = quote! { {
-                    let (data, next) = _chain.storage::<::kas::layout::DynRowStorage>();
+                    let (data, next) = _chain.storage::<layout::DynRowStorage>();
                     _chain = next;
                     data
                 } };
-                quote! { ::kas::layout::Layout::slice(&mut #expr, #dir, #data) }
+                quote! { layout::Layout::slice(&mut #expr, #dir, #data) }
             }
             Layout::Grid(dim, cells) => {
                 let (rows, cols) = (dim.rows as usize, dim.cols as usize);
                 let data = quote! { {
-                    let (data, next) = _chain.storage::<::kas::layout::FixedGridStorage<#rows, #cols>>();
+                    let (data, next) = _chain.storage::<layout::FixedGridStorage<#rows, #cols>>();
                     _chain = next;
                     data
                 } };
@@ -476,7 +506,7 @@ impl Layout {
                     let layout = item.1.generate::<std::iter::Empty<&Member>>(None)?;
                     items.append_all(quote! {
                         (
-                            ::kas::layout::GridChildInfo {
+                            layout::GridChildInfo {
                                 row: #row,
                                 row_end: #row_end,
                                 col: #col,
@@ -488,7 +518,7 @@ impl Layout {
                 }
                 let iter = quote! { { let arr = [#items]; arr.into_iter() } };
 
-                quote! { ::kas::layout::Layout::grid(#iter, #dim, #data) }
+                quote! { layout::Layout::grid(#iter, #dim, #data) }
             }
         })
     }
@@ -498,7 +528,7 @@ pub fn make_layout(input: Input) -> Result<Toks> {
     let core = &input.core;
     let layout = input.layout.0.generate::<std::iter::Empty<&Member>>(None)?;
     Ok(quote! { {
-        use ::kas::WidgetCore;
+        use ::kas::{WidgetCore, layout};
         let mut _chain = &mut #core.layout;
         #layout
     } })

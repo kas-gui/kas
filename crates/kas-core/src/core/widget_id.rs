@@ -189,30 +189,60 @@ impl<'a> Iterator for PathIter<'a> {
     }
 }
 
+/// Iterator over [`WidgetId`] path components
+pub struct WidgetPathIter<'a>(PathIter<'a>);
+impl<'a> Iterator for WidgetPathIter<'a> {
+    type Item = usize;
+
+    #[inline]
+    fn next(&mut self) -> Option<usize> {
+        self.0.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
 /// Widget identifier
 ///
 /// All widgets are assigned an identifier which is unique within the window.
-/// This type may be tested for equality, ancestry, and to determine the "index"
-/// of a child.
+/// This type may be tested for equality and order and may be iterated over as
+/// a "path" of "key" values.
+///
+/// Formatting a `WidgetId` via [`Display`] prints the the path, for example
+/// `#1290a4`. Here, `#` represents the root; each following hexadecimal digit
+/// represents a path component except that digits `8-f` are combined with the
+/// following digit(s). Hence, the above path has components `1`, `2`, `90`,
+/// `a4`. To interpret these values, first subtract 8 from each digit but the
+/// last digit, then read as base-8: `[1, 2, 8, 20]`.
 ///
 /// This type is small (64-bit) and non-zero: `Option<WidgetId>` has the same
 /// size as `WidgetId`. It is also very cheap to `Clone`: usually only one `if`
 /// check, and in the worst case a pointer dereference and ref-count increment.
+/// Paths up to 14 digits long (as printed) are represented internally;
+/// beyond this limit a reference-counted stack allocation is used.
 ///
-/// `WidgetId` is neither `Send` nor `Sync` since it may use non-atomic
-/// reference counting internally.
+/// `WidgetId` is neither `Send` nor `Sync`.
 ///
 /// Identifiers are assigned when configured and when re-configured
-/// (via [`crate::TkAction::RECONFIGURE`] or [`crate::layout::SetRectMgr::configure`]).
-/// Since user-code is not notified of a
-/// re-configure, user-code should not store a `WidgetId`.
+/// (via [`TkAction::RECONFIGURE`] or [`SetRectMgr::configure`]).
+/// In most cases values are persistent but this is not guaranteed (e.g.
+/// inserting or removing a child from a `List` widget will affect the
+/// identifiers of all following children). View-widgets assign path components
+/// based on the data key, thus *possibly* making identifiers persistent.
+///
+/// [`Display`]: std::fmt::Display
+/// [`TkAction::RECONFIGURE`]: crate::TkAction::RECONFIGURE
+/// [`SetRectMgr::configure`]: crate::layout::SetRectMgr::configure
 #[derive(Clone)]
 pub struct WidgetId(IntOrPtr);
 
-// Encode lowest 48 bits of index into the low bits of a u64, returning also the encoded bit-length
-fn encode(index: usize) -> (u64, u8) {
-    debug_assert!(8 * size_of::<usize>() as u32 - index.leading_zeros() <= 64);
-    let mut x = index as u64 & 0x0000_FFFF_FFFF_FFFF;
+// Encode lowest 48 bits of key into the low bits of a u64, returning also the encoded bit-length
+fn encode(key: usize) -> (u64, u8) {
+    debug_assert!(8 * size_of::<usize>() as u32 - key.leading_zeros() <= 64);
+    let mut x = key as u64 & 0x0000_FFFF_FFFF_FFFF;
     let mut y = x & 7;
     x >>= 3;
     let mut shift = 4;
@@ -283,10 +313,21 @@ impl WidgetId {
         self.0.get() != Variant::Invalid
     }
 
+    /// Iterate over path components
+    pub fn iter(&self) -> WidgetPathIter {
+        match self.0.get() {
+            Variant::Invalid => panic!("WidgetId::iter: invalid"),
+            Variant::Int(x) => WidgetPathIter(PathIter::Bits(BitsIter::new(x))),
+            Variant::Slice(path) => WidgetPathIter(PathIter::Slice(path.iter().cloned())),
+        }
+    }
+
     /// Returns true if `self` equals `id` or if `id` is a descendant of `self`
     pub fn is_ancestor_of(&self, id: &Self) -> bool {
         match (self.0.get(), id.0.get()) {
-            (Variant::Invalid, _) | (_, Variant::Invalid) => false,
+            (Variant::Invalid, _) | (_, Variant::Invalid) => {
+                panic!("WidgetId::is_ancestor_of: invalid")
+            }
             (Variant::Slice(_), Variant::Int(_)) => {
                 // This combo will never be created where id is a child.
                 false
@@ -310,32 +351,46 @@ impl WidgetId {
         }
     }
 
-    /// Get index of `child` relative to `self`
+    pub fn iter_keys_after(&self, id: &Self) -> WidgetPathIter {
+        let mut self_iter = self.iter();
+        for v in id.iter() {
+            if self_iter.next() != Some(v) {
+                return WidgetPathIter(PathIter::Bits(BitsIter(0, 0)));
+            }
+        }
+        self_iter
+    }
+
+    /// Get first key in path of `self` path after `id`
     ///
-    /// Returns `None` if `child` is not a descendant of `self`.
-    pub fn index_of_child(&self, child: &Self) -> Option<usize> {
-        match (self.0.get(), child.0.get()) {
-            (Variant::Invalid, _) | (_, Variant::Invalid) => None,
+    /// If the path of `self` starts with the path of `id`
+    /// (`id.is_ancestor_of(self)`) then this returns the *next* key in
+    /// `self`'s path (if any). Otherwise, this returns `None`.
+    pub fn next_key_after(&self, id: &Self) -> Option<usize> {
+        match (id.0.get(), self.0.get()) {
+            (Variant::Invalid, _) | (_, Variant::Invalid) => {
+                panic!("WidgetId::next_key_after: invalid")
+            }
             (Variant::Slice(_), Variant::Int(_)) => None,
-            (Variant::Int(self_x), Variant::Int(child_x)) => {
-                let self_blocks = block_len(self_x);
+            (Variant::Int(parent_x), Variant::Int(child_x)) => {
+                let parent_blocks = block_len(parent_x);
                 let child_blocks = block_len(child_x);
-                if self_blocks >= child_blocks {
+                if parent_blocks >= child_blocks {
                     return None;
                 }
 
-                // self_blocks == 0 for ROOT, otherwise > 0
-                let shift = 4 * (BLOCKS - self_blocks) + 8;
-                if shift != 64 && self_x >> shift != child_x >> shift {
+                // parent_blocks == 0 for ROOT, otherwise > 0
+                let shift = 4 * (BLOCKS - parent_blocks) + 8;
+                if shift != 64 && parent_x >> shift != child_x >> shift {
                     return None;
                 }
 
                 debug_assert!(child_blocks > 0);
-                let next_bits = (child_x & MASK_BITS) << (4 * self_blocks);
+                let next_bits = (child_x & MASK_BITS) << (4 * parent_blocks);
                 Some(next_from_bits(next_bits).0)
             }
-            (Variant::Int(self_x), Variant::Slice(child_path)) => {
-                let iter = BitsIter::new(self_x);
+            (Variant::Int(parent_x), Variant::Slice(child_path)) => {
+                let iter = BitsIter::new(parent_x);
                 let mut child_iter = child_path.iter();
                 if iter.zip(&mut child_iter).all(|(a, b)| a == *b) {
                     child_iter.next().cloned()
@@ -343,9 +398,9 @@ impl WidgetId {
                     None
                 }
             }
-            (Variant::Slice(self_path), Variant::Slice(child_path)) => {
-                if child_path.starts_with(self_path) {
-                    child_path[self_path.len()..].iter().next().cloned()
+            (Variant::Slice(parent_path), Variant::Slice(child_path)) => {
+                if child_path.starts_with(parent_path) {
+                    child_path[parent_path.len()..].iter().next().cloned()
                 } else {
                     None
                 }
@@ -353,23 +408,23 @@ impl WidgetId {
         }
     }
 
-    /// Make an identifier for the child with the given `index`
+    /// Make an identifier for the child with the given `key`
     ///
     /// Note: this is not a getter method. Calling multiple times with the same
-    /// `index` may or may not return the same value!
+    /// `key` may or may not return the same value!
     #[must_use]
-    pub fn make_child(&self, index: usize) -> Self {
+    pub fn make_child(&self, key: usize) -> Self {
         match self.0.get() {
-            Variant::Invalid => panic!("WidgetId::make_child: invalid id"),
+            Variant::Invalid => panic!("WidgetId::make_child: invalid"),
             Variant::Int(self_x) => {
                 // TODO(opt): this bit-packing approach is designed for space-optimisation, but it may
                 // be better to use a simpler, less-compressed approach, possibly with u128 type.
                 let block_len = block_len(self_x);
                 let avail_blocks = BLOCKS - block_len;
                 // Note: zero is encoded with 1 block to force bump to len
-                let req_bits = (8 * size_of::<usize>() as u8 - index.leading_zeros() as u8).max(1);
+                let req_bits = (8 * size_of::<usize>() as u8 - key.leading_zeros() as u8).max(1);
                 if req_bits <= 3 * avail_blocks {
-                    let (bits, bit_len) = encode(index);
+                    let (bits, bit_len) = encode(key);
                     let used_blocks = bit_len / 4;
                     debug_assert_eq!(used_blocks, (req_bits + 2) / 3);
                     let len = (block_len as u64 + used_blocks as u64) << SHIFT_LEN;
@@ -377,11 +432,11 @@ impl WidgetId {
                     let id = (self_x & MASK_BITS) | rest | len | USE_BITS;
                     WidgetId(IntOrPtr::new_int(id))
                 } else {
-                    WidgetId(IntOrPtr::new_iter(BitsIter::new(self_x).chain(once(index))))
+                    WidgetId(IntOrPtr::new_iter(BitsIter::new(self_x).chain(once(key))))
                 }
             }
             Variant::Slice(path) => {
-                WidgetId(IntOrPtr::new_iter(path.iter().cloned().chain(once(index))))
+                WidgetId(IntOrPtr::new_iter(path.iter().cloned().chain(once(key))))
             }
         }
     }
@@ -538,8 +593,8 @@ impl fmt::Display for WidgetId {
             }
             Variant::Slice(path) => {
                 write!(f, "#")?;
-                for index in path {
-                    let (bits, bit_len) = encode(*index);
+                for key in path {
+                    let (bits, bit_len) = encode(*key);
                     write!(f, "{1:0>0$x}", bit_len as usize / 4, bits)?;
                 }
                 Ok(())
@@ -654,8 +709,8 @@ mod test {
     fn test_make_child() {
         fn test(seq: &[usize], x: u64) {
             let mut id = WidgetId::ROOT;
-            for index in seq {
-                id = id.make_child(*index);
+            for key in seq {
+                id = id.make_child(*key);
             }
             let v = id.as_u64();
             if v != x {
@@ -709,7 +764,7 @@ mod test {
             println!("id2={} val={:x} from {:?}", id2, id2.as_u64(), seq2);
             let next = seq2.iter().next().cloned();
             assert_eq!(id.is_ancestor_of(&id2), next.is_some() || id == id2);
-            assert_eq!(id.index_of_child(&id2), next);
+            assert_eq!(id2.next_key_after(&id), next);
         }
 
         test(&[], &[]);
@@ -738,10 +793,12 @@ mod test {
             }
             println!("id2={} val={:x} from {:?}", id2, id2.as_u64(), seq2);
             assert_eq!(id.is_ancestor_of(&id2), false);
-            assert_eq!(id.index_of_child(&id2), None);
+            assert_eq!(id2.next_key_after(&id), None);
         }
 
         test(&[0], &[]);
+        test(&[0], &[1]);
         test(&[2, 10, 1], &[2, 10]);
+        test(&[0, 5, 2], &[0, 1, 5]);
     }
 }

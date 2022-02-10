@@ -5,6 +5,9 @@
 
 //! Layout visitor
 
+// Methods have to take `&mut self`
+#![allow(clippy::wrong_self_convention)]
+
 use super::{AlignHints, AxisInfo, RulesSetter, RulesSolver, SetRectMgr, SizeRules, Storage};
 use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};

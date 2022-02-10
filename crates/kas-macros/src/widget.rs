@@ -291,7 +291,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
         toks.append_all(quote! {
             impl #impl_generics ::kas::Layout for #name #ty_generics #where_clause {
                 fn layout<'a>(&'a mut self) -> ::kas::layout::Layout<'a> {
-                    use ::kas::WidgetCore;
+                    use ::kas::{WidgetCore, layout};
                     let mut _chain = &mut self.#core.layout;
                     #layout
                 }
@@ -412,15 +412,14 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
             }
 
             quote! {
-                use ::kas::{WidgetCore, event::Response};
+                use ::kas::{WidgetCore, WidgetChildren, event::Response};
                 if self.is_disabled() {
                     return Response::Unused;
                 }
 
-                let self_id = self.id();
-                match self_id.index_of_child(&id) {
+                match self.find_child_index(&id) {
                     #ev_to_num
-                    _ if id == self_id => ::kas::event::EventMgr::handle_generic(self, mgr, event),
+                    _ if id == self.core_data().id => ::kas::event::EventMgr::handle_generic(self, mgr, event),
                     _ => {
                         debug_assert!(false, "SendEvent::send: bad WidgetId");
                         Response::Unused
