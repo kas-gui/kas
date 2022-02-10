@@ -75,10 +75,8 @@ widget! {
                             let any_menu_open = self.bar.iter().any(|w| w.menu_is_open());
                             let press_in_the_bar = self.rect().contains(coord);
 
-                            match press_in_the_bar {
-                                true if !any_menu_open => mgr.grab_press_unique(self.id(), source, coord, None),
-                                false => mgr.grab_press_unique(self.id(), source, coord, None),
-                                _ => (),
+                            if !press_in_the_bar || !any_menu_open {
+                                mgr.grab_press_unique(self.id(), source, coord, None);
                             }
                             mgr.set_grab_depress(source, start_id.clone());
                             if press_in_the_bar {
@@ -112,7 +110,7 @@ widget! {
                         // highligting of previously selected menu-item
                         mgr.send_action(TkAction::REDRAW);
                     }
-                    
+
                     let id = match cur_id {
                         Some(x) => x,
                         None => return Response::Used,
