@@ -29,8 +29,8 @@ pub struct Parameters {
     pub inner_margin: f32,
     /// Margin around frames and seperators
     pub frame_margin: f32,
-    /// Margin between text elements
-    pub text_margin: f32,
+    /// Margin between text elements (horiz, vert)
+    pub text_margin: (f32, f32),
     /// Frame size
     pub frame_size: f32,
     /// Button frame size (non-flat outer region)
@@ -61,7 +61,7 @@ pub struct Dimensions {
     pub outer_margin: u16,
     pub inner_margin: u16,
     pub frame_margin: u16,
-    pub text_margin: u16,
+    pub text_margin: (u16, u16),
     pub frame: i32,
     pub button_frame: i32,
     pub checkbox: i32,
@@ -86,7 +86,8 @@ impl Dimensions {
         let outer_margin = (params.outer_margin * scale_factor).cast_nearest();
         let inner_margin = (params.inner_margin * scale_factor).cast_nearest();
         let frame_margin = (params.frame_margin * scale_factor).cast_nearest();
-        let text_margin = (params.text_margin * scale_factor).cast_nearest();
+        let text_m0 = (params.text_margin.0 * scale_factor).cast_nearest();
+        let text_m1 = (params.text_margin.1 * scale_factor).cast_nearest();
         let frame = (params.frame_size * scale_factor).cast_nearest();
 
         let shadow_size = params.shadow_size * scale_factor;
@@ -102,7 +103,7 @@ impl Dimensions {
             outer_margin,
             inner_margin,
             frame_margin,
-            text_margin,
+            text_margin: (text_m0, text_m1),
             frame,
             button_frame: (params.button_frame * scale_factor).cast_nearest(),
             checkbox: i32::conv_nearest(params.checkbox_inner * dpp)
@@ -196,7 +197,7 @@ impl<D: 'static> SizeHandle for Window<D> {
     }
 
     fn text_margins(&self) -> Margins {
-        Margins::splat(self.dims.text_margin)
+        Margins::hv_splat(self.dims.text_margin)
     }
 
     fn line_height(&self, _: TextClass) -> i32 {
@@ -231,7 +232,10 @@ impl<D: 'static> SizeHandle for Window<D> {
             }));
         }
 
-        let margin = self.dims.text_margin;
+        let margin = match axis.is_horizontal() {
+            true => self.dims.text_margin.0,
+            false => self.dims.text_margin.1,
+        };
         let margins = (margin, margin);
         if axis.is_horizontal() {
             let min = self.dims.min_line_length;

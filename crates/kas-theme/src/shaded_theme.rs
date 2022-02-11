@@ -62,7 +62,7 @@ const DIMS: dim::Parameters = dim::Parameters {
     outer_margin: 6.0,
     inner_margin: 1.2,
     frame_margin: 1.2,
-    text_margin: 2.0,
+    text_margin: (3.4, 2.0),
     frame_size: 5.0,
     button_frame: 5.0,
     checkbox_inner: 9.0,

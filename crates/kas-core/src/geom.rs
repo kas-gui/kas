@@ -406,6 +406,11 @@ impl From<Offset> for Size {
 }
 
 // used for marigns
+impl From<Size> for (u16, u16) {
+    fn from(size: Size) -> (u16, u16) {
+        (size.0.cast(), size.1.cast())
+    }
+}
 impl From<(u16, u16)> for Size {
     fn from(v: (u16, u16)) -> Self {
         Self(i32::conv(v.0), i32::conv(v.1))

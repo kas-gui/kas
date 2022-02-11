@@ -6,7 +6,7 @@
 //! Types used by size rules
 
 use super::{Align, AlignHints, AxisInfo, SizeRules};
-use crate::cast::{Cast, CastFloat, Conv, ConvFloat};
+use crate::cast::{CastFloat, Conv, ConvFloat};
 use crate::dir::Directional;
 use crate::geom::{Rect, Size, Vec2};
 
@@ -33,7 +33,7 @@ impl Margins {
     /// Margins with equal size on each edge.
     #[inline]
     pub const fn splat(size: u16) -> Self {
-        Margins::hv_splat(size, size)
+        Margins::hv_splat((size, size))
     }
 
     /// Margins via horizontal and vertical sizes
@@ -44,7 +44,7 @@ impl Margins {
 
     /// Margins via horizontal and vertical sizes
     #[inline]
-    pub const fn hv_splat(h: u16, v: u16) -> Self {
+    pub const fn hv_splat((h, v): (u16, u16)) -> Self {
         Margins {
             horiz: (h, h),
             vert: (v, v),
@@ -83,7 +83,7 @@ impl Margins {
 
 impl From<Size> for Margins {
     fn from(size: Size) -> Self {
-        Margins::hv_splat(size.0.cast(), size.1.cast())
+        Margins::hv_splat(size.into())
     }
 }
 
