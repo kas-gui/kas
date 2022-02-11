@@ -143,7 +143,7 @@ impl ColorsSrgb {
             frame: Rgba8Srgb::from_str("#AAAAAA").unwrap(),
             accent: Rgba8Srgb::from_str("#F74C00").unwrap(),
             accent_soft: Rgba8Srgb::from_str("#E77346").unwrap(),
-            nav_focus: Rgba8Srgb::from_str("#A33100").unwrap(),
+            nav_focus: Rgba8Srgb::from_str("#D03E00").unwrap(),
             edit_bg: Rgba8Srgb::from_str("#303030").unwrap(),
             edit_bg_disabled: Rgba8Srgb::from_str("#606060").unwrap(),
             edit_bg_error: Rgba8Srgb::from_str("#FFBCBC").unwrap(),
