@@ -91,6 +91,8 @@ enum LayoutType<'a> {
     Frame(Box<Layout<'a>>, &'a mut FrameStorage),
     /// Navigation frame around content
     NavFrame(Box<Layout<'a>>, &'a mut FrameStorage),
+    /// Menu entry frame
+    Menu(Box<Layout<'a>>, &'a mut FrameStorage),
     /// Button frame around content
     Button(Box<Layout<'a>>, &'a mut FrameStorage, Option<Rgb>),
     /// An embedded layout
@@ -141,6 +143,14 @@ impl<'a> Layout<'a> {
     /// This frame has dimensions according to [`SizeMgr::frame`].
     pub fn nav_frame(data: &'a mut FrameStorage, child: Self) -> Self {
         let layout = LayoutType::NavFrame(Box::new(child), data);
+        Layout { layout }
+    }
+
+    /// Construct a menu frame around a sub-layout
+    ///
+    /// Generates a menu frame containing the child node.
+    pub fn menu_frame(data: &'a mut FrameStorage, child: Self) -> Self {
+        let layout = LayoutType::Menu(Box::new(child), data);
         Layout { layout }
     }
 
@@ -234,6 +244,14 @@ impl<'a> Layout<'a> {
                 storage.size.set_component(axis, size);
                 rules
             }
+            LayoutType::Menu(child, storage) => {
+                let frame_rules = mgr.menu_frame(axis.is_vertical());
+                let child_rules = child.size_rules_(mgr, axis);
+                let (rules, offset, size) = frame_rules.surround_as_margin(child_rules);
+                storage.offset.set_component(axis, offset);
+                storage.size.set_component(axis, size);
+                rules
+            }
             LayoutType::Button(child, storage, _) => {
                 let frame_rules = mgr.button_surround(axis.is_vertical());
                 let child_rules = child.size_rules_(mgr, axis);
@@ -265,6 +283,7 @@ impl<'a> Layout<'a> {
             }
             LayoutType::Frame(child, storage)
             | LayoutType::NavFrame(child, storage)
+            | LayoutType::Menu(child, storage)
             | LayoutType::Button(child, storage, _) => {
                 storage.rect = rect;
                 rect.pos += storage.offset;
@@ -289,7 +308,8 @@ impl<'a> Layout<'a> {
             LayoutType::AlignLayout(layout, _)
             | LayoutType::Frame(layout, _)
             | LayoutType::NavFrame(layout, _)
-            | LayoutType::Button(layout, _, _) => layout.is_reversed_(),
+            | LayoutType::Menu(layout, _) => layout.is_reversed_(),
+            LayoutType::Button(layout, _, _) => layout.is_reversed_(),
             LayoutType::Visitor(layout) => layout.is_reversed(),
         }
     }
@@ -307,7 +327,9 @@ impl<'a> Layout<'a> {
             LayoutType::None => None,
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => child.find_id(coord),
             LayoutType::AlignLayout(layout, _) => layout.find_id_(coord),
-            LayoutType::Frame(child, _) | LayoutType::NavFrame(child, _) => child.find_id_(coord),
+            LayoutType::Frame(child, _)
+            | LayoutType::NavFrame(child, _)
+            | LayoutType::Menu(child, _) => child.find_id_(coord),
             // Buttons steal clicks, hence Button never returns ID of content
             LayoutType::Button(_, _, _) => None,
             LayoutType::Visitor(layout) => layout.find_id(coord),
@@ -330,6 +352,10 @@ impl<'a> Layout<'a> {
             }
             LayoutType::NavFrame(child, storage) => {
                 draw.nav_frame(storage.rect);
+                child.draw_(draw);
+            }
+            LayoutType::Menu(child, storage) => {
+                draw.menu_entry(storage.rect);
                 child.draw_(draw);
             }
             LayoutType::Button(child, storage, color) => {

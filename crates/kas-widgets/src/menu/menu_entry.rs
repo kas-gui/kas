@@ -6,7 +6,7 @@
 //! Menu Entries
 
 use super::Menu;
-use crate::{AccelLabel, CheckBoxBare};
+use crate::CheckBoxBare;
 use kas::theme::TextClass;
 use kas::{layout, prelude::*};
 use std::fmt::Debug;
@@ -36,7 +36,7 @@ widget! {
     impl Layout for Self {
         fn layout(&mut self) -> layout::Layout<'_> {
             let inner = layout::Layout::text(&mut self.layout_label, &mut self.label, TextClass::MenuLabel);
-            layout::Layout::frame(&mut self.layout_frame, inner)
+            layout::Layout::menu_frame(&mut self.layout_frame, inner)
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
@@ -114,20 +114,26 @@ widget! {
         core: CoreData,
         #[widget]
         checkbox: CheckBoxBare<M>,
-        // TODO: label should use TextClass::MenuLabel
-        #[widget]
-        label: AccelLabel,
+        label: Text<AccelString>,
+        layout_label: layout::TextStorage,
+        layout_list: layout::DynRowStorage,
+        layout_frame: layout::FrameStorage,
     }
 
     impl WidgetConfig for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
-            mgr.add_accel_keys(self.checkbox.id_ref(), self.label.keys());
+            mgr.add_accel_keys(self.checkbox.id_ref(), self.label.text().keys());
         }
     }
 
     impl Layout for Self {
         fn layout(&mut self) -> layout::Layout<'_> {
-            make_layout!(self.core; row: [self.checkbox, self.label])
+            let list = [
+                layout::Layout::single(&mut self.checkbox),
+                layout::Layout::text(&mut self.layout_label, &mut self.label, TextClass::MenuLabel),
+            ];
+            let inner = layout::Layout::list(list.into_iter(), Direction::Right, &mut self.layout_list);
+            layout::Layout::menu_frame(&mut self.layout_frame, inner)
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
@@ -138,10 +144,9 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_core(self.core_data());
+            let mut draw = draw.with_core(self.checkbox.core_data());
             draw.menu_entry(self.core.rect);
-            self.checkbox.draw(draw.re());
-            self.label.draw(draw.re());
+            self.layout().draw(draw);
         }
     }
 
@@ -158,7 +163,10 @@ widget! {
             MenuToggle {
                 core: Default::default(),
                 checkbox: CheckBoxBare::new(),
-                label: AccelLabel::new(label.into()),
+                label: Text::new_single(label.into()),
+                layout_label: Default::default(),
+                layout_list: Default::default(),
+                layout_frame: Default::default(),
             }
         }
 
@@ -173,10 +181,13 @@ widget! {
         where
             F: Fn(&mut EventMgr, bool) -> Option<M> + 'static,
         {
-            MenuToggle {
+             MenuToggle {
                 core: self.core,
                 checkbox: self.checkbox.on_toggle(f),
                 label: self.label,
+                layout_label: self.layout_label,
+                layout_list: self.layout_list,
+                layout_frame: self.layout_frame,
             }
         }
     }

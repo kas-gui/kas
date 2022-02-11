@@ -170,11 +170,11 @@ impl<D: 'static> SizeHandle for Window<D> {
         FrameRules::new_sym(self.dims.frame, 0, self.dims.frame_margin)
     }
     fn menu_frame(&self, vert: bool) -> FrameRules {
-        let mut size = self.dims.frame;
-        if vert {
-            size /= 2;
-        }
-        FrameRules::new_sym(size, 0, 0)
+        let size = match vert {
+            false => self.dims.text_margin.0,
+            true => self.dims.text_margin.1,
+        };
+        FrameRules::new_sym(size.cast(), 0, 0)
     }
     fn separator(&self) -> Size {
         Size::splat(self.dims.frame)
