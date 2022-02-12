@@ -105,11 +105,7 @@ widget! {
                     coord,
                     ..
                 } => {
-                    if !mgr.set_grab_depress(source, cur_id.clone()) {
-                        // If redraw hasn't happened, force it to fix
-                        // highligting of previously selected menu-item
-                        mgr.send_action(TkAction::REDRAW);
-                    }
+                    mgr.set_grab_depress(source, cur_id.clone());
 
                     let id = match cur_id {
                         Some(x) => x,

@@ -147,10 +147,8 @@ widget! {
 
         fn draw(&mut self, mut draw: DrawMgr) {
             let mut draw = draw.with_core(self.core_data());
-            if self.popup_id.is_some() {
-                if !self.closing_menu {
-                    draw.state.insert(InputState::DEPRESS);
-                }
+            if self.popup_id.is_some() && !self.closing_menu {
+                draw.state.insert(InputState::DEPRESS);
             }
             draw.menu_entry(self.core.rect);
             draw.text_accel(
