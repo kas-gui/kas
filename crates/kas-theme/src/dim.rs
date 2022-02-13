@@ -35,6 +35,8 @@ pub struct Parameters {
     pub frame_size: f32,
     /// Popup frame size
     pub popup_frame_size: f32,
+    /// MenuEntry frame size (horiz, vert)
+    pub menu_frame: f32,
     /// Button frame size (non-flat outer region)
     pub button_frame: f32,
     /// Checkbox inner size in Points
@@ -66,6 +68,7 @@ pub struct Dimensions {
     pub text_margin: (u16, u16),
     pub frame: i32,
     pub popup_frame: i32,
+    pub menu_frame: i32,
     pub button_frame: i32,
     pub checkbox: i32,
     pub scrollbar: Size,
@@ -93,6 +96,7 @@ impl Dimensions {
         let text_m1 = (params.text_margin.1 * scale_factor).cast_nearest();
         let frame = (params.frame_size * scale_factor).cast_nearest();
         let popup_frame = (params.popup_frame_size * scale_factor).cast_nearest();
+        let menu_frame = (params.menu_frame * scale_factor).cast_nearest();
 
         let shadow_size = params.shadow_size * scale_factor;
         let shadow_offset = shadow_size * params.shadow_rel_offset;
@@ -110,6 +114,7 @@ impl Dimensions {
             text_margin: (text_m0, text_m1),
             frame,
             popup_frame,
+            menu_frame,
             button_frame: (params.button_frame * scale_factor).cast_nearest(),
             checkbox: i32::conv_nearest(params.checkbox_inner * dpp)
                 + 2 * (i32::from(inner_margin) + frame),
@@ -171,17 +176,11 @@ impl<D: 'static> SizeHandle for Window<D> {
         self.dims.dpp * self.dims.pt_size * em
     }
 
-    fn frame(&self, style: FrameStyle, is_vert: bool) -> FrameRules {
+    fn frame(&self, style: FrameStyle, _is_vert: bool) -> FrameRules {
         match style {
             FrameStyle::Frame => FrameRules::new_sym(self.dims.frame, 0, self.dims.frame_margin),
             FrameStyle::Popup => FrameRules::new_sym(self.dims.popup_frame, 0, 0),
-            FrameStyle::MenuEntry => {
-                let size = match is_vert {
-                    false => self.dims.text_margin.0,
-                    true => self.dims.text_margin.1,
-                };
-                FrameRules::new_sym(size.cast(), 0, 0)
-            }
+            FrameStyle::MenuEntry => FrameRules::new_sym(self.dims.menu_frame, 0, 0),
             FrameStyle::NavFocus => FrameRules::new_sym(self.dims.inner_margin.into(), 0, 0),
             FrameStyle::Button => {
                 let inner = self.dims.inner_margin.into();

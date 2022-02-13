@@ -111,6 +111,7 @@ const DIMS: dim::Parameters = dim::Parameters {
     text_margin: (3.4, 2.0),
     frame_size: 2.4,
     popup_frame_size: 0.0,
+    menu_frame: 2.4,
     // NOTE: visual thickness is (button_frame * scale_factor).round() * (1 - BG_SHRINK_FACTOR)
     button_frame: 2.4,
     checkbox_inner: 9.0,
@@ -376,7 +377,7 @@ where
                 // We cheat here by using zero-sized popup-frame, but assuming that contents are
                 // all a MenuEntry, and drawing into this space. This might look wrong if other
                 // widgets are used in the popup.
-                let size = self.w.dims.text_margin.1 as f32;
+                let size = self.w.dims.menu_frame as f32;
                 let inner = outer.shrink(size);
                 self.draw
                     .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
@@ -385,7 +386,7 @@ where
             }
             FrameStyle::MenuEntry => {
                 if let Some(col) = self.cols.menu_entry(state) {
-                    let size = self.w.dims.text_margin.1 as f32;
+                    let size = self.w.dims.menu_frame as f32;
                     let inner = outer.shrink(size);
                     self.draw.rounded_frame(outer, inner, BG_SHRINK_FACTOR, col);
                     let inner = outer.shrink(size * BG_SHRINK_FACTOR);

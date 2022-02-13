@@ -66,6 +66,7 @@ const DIMS: dim::Parameters = dim::Parameters {
     text_margin: (3.4, 2.0),
     frame_size: 5.0,
     popup_frame_size: 0.0,
+    menu_frame: 2.4,
     button_frame: 5.0,
     checkbox_inner: 9.0,
     scrollbar_size: Vec2::splat(8.0),
