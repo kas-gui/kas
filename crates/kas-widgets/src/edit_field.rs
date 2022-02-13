@@ -9,6 +9,7 @@ use super::Scrollable;
 use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{self, Command, ScrollDelta};
 use kas::geom::Vec2;
+use kas::layout::{self, FrameStorage};
 use kas::prelude::*;
 use kas::text::SelectionHelper;
 use kas::theme::{FrameStyle, TextClass};
@@ -177,32 +178,13 @@ widget! {
         core: CoreData,
         #[widget]
         inner: EditField<G>,
-        frame_offset: Offset,
-        frame_size: Size,
+        frame_storage: FrameStorage,
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            let child_rules = self.inner.size_rules(mgr.re(), axis);
-            let frame_rules = mgr.frame(FrameStyle::EditBox, axis.is_vertical());
-            let (rules, offset, size) = frame_rules.surround_with_margin(child_rules);
-            self.frame_offset.set_component(axis, offset);
-            self.frame_size.set_component(axis, size);
-            rules
-        }
-
-        fn set_rect(&mut self, mgr: &mut SetRectMgr, mut rect: Rect, align: AlignHints) {
-            self.core_data_mut().rect = rect;
-            rect.pos += self.frame_offset;
-            rect.size -= self.frame_size;
-            self.inner.set_rect(mgr, rect, align);
-        }
-
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-            self.inner.find_id(coord).or_else(|| Some(self.id()))
+        fn layout(&mut self) -> layout::Layout<'_> {
+            let inner = layout::Layout::single(&mut self.inner);
+            layout::Layout::frame(&mut self.frame_storage, inner, FrameStyle::EditBox)
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
@@ -228,8 +210,7 @@ impl EditBox<()> {
         EditBox {
             core: Default::default(),
             inner: EditField::new(text),
-            frame_offset: Offset::ZERO,
-            frame_size: Size::ZERO,
+            frame_storage: Default::default(),
         }
     }
 
@@ -246,8 +227,7 @@ impl EditBox<()> {
         EditBox {
             core: self.core,
             inner: self.inner.with_guard(guard),
-            frame_offset: self.frame_offset,
-            frame_size: self.frame_size,
+            frame_storage: self.frame_storage,
         }
     }
 
