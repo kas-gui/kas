@@ -110,7 +110,7 @@ const DIMS: dim::Parameters = dim::Parameters {
     frame_margin: 2.4,
     text_margin: (3.4, 2.0),
     frame_size: 2.4,
-    popup_frame_size: 2.4,
+    popup_frame_size: 0.0,
     // NOTE: visual thickness is (button_frame * scale_factor).round() * (1 - BG_SHRINK_FACTOR)
     button_frame: 2.4,
     checkbox_inner: 9.0,
@@ -373,15 +373,23 @@ where
                     .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
             }
             FrameStyle::Popup => {
-                let inner = outer.shrink(self.w.dims.popup_frame as f32);
+                // We cheat here by using zero-sized popup-frame, but assuming that contents are
+                // all a MenuEntry, and drawing into this space. This might look wrong if other
+                // widgets are used in the popup.
+                let size = self.w.dims.text_margin.1 as f32;
+                let inner = outer.shrink(size);
                 self.draw
                     .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
-                let inner = outer.shrink(self.w.dims.popup_frame as f32 * BG_SHRINK_FACTOR);
+                let inner = outer.shrink(size * BG_SHRINK_FACTOR);
                 self.draw.rect(inner, self.cols.background);
             }
             FrameStyle::MenuEntry => {
                 if let Some(col) = self.cols.menu_entry(state) {
-                    self.draw.rect(outer, col);
+                    let size = self.w.dims.text_margin.1 as f32;
+                    let inner = outer.shrink(size);
+                    self.draw.rounded_frame(outer, inner, BG_SHRINK_FACTOR, col);
+                    let inner = outer.shrink(size * BG_SHRINK_FACTOR);
+                    self.draw.rect(inner, col);
                 }
             }
             FrameStyle::NavFocus => {

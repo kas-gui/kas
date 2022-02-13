@@ -286,6 +286,12 @@ where
                 let outer = Quad::from(rect);
                 self.draw.rect(outer, self.cols.background);
             }
+            FrameStyle::MenuEntry => {
+                if let Some(col) = self.cols.menu_entry(state) {
+                    let outer = Quad::from(rect);
+                    self.draw.rect(outer, col);
+                }
+            }
             FrameStyle::Button => self.button(rect, None, state),
             FrameStyle::EditBox => {
                 state.remove(InputState::DEPRESS);
