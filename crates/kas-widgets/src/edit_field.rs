@@ -11,7 +11,7 @@ use kas::event::{self, Command, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::SelectionHelper;
-use kas::theme::TextClass;
+use kas::theme::{FrameStyle, TextClass};
 use std::fmt::Debug;
 use std::ops::Range;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
@@ -184,7 +184,7 @@ widget! {
     impl Layout for Self {
         fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             let child_rules = self.inner.size_rules(mgr.re(), axis);
-            let frame_rules = mgr.edit_surround(axis.is_vertical());
+            let frame_rules = mgr.frame(FrameStyle::EditBox, axis.is_vertical());
             let (rules, offset, size) = frame_rules.surround_with_margin(child_rules);
             self.frame_offset.set_component(axis, offset);
             self.frame_size.set_component(axis, size);
@@ -208,7 +208,14 @@ widget! {
         fn draw(&mut self, mut draw: DrawMgr) {
             let mut draw = draw.with_core(self.core_data());
             let error = self.inner.has_error();
-            draw.re().with_core(self.inner.core_data()).edit_box(self.core.rect, error);
+            {
+                let mut draw = draw.re();
+                let mut draw = draw.with_core(self.inner.core_data());
+                if error {
+                    draw.state.insert(InputState::ERROR);
+                }
+                draw.frame(self.core.rect, FrameStyle::EditBox);
+            }
             self.inner.draw(draw.re());
         }
     }

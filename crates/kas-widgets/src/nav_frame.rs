@@ -17,7 +17,7 @@ widget! {
     #[derive(Clone, Debug, Default)]
     #[widget{
         key_nav = true;
-        layout = nav_frame(self.inner);
+        layout = frame(self.inner, kas::theme::FrameStyle::NavFocus);
     }]
     pub struct NavFrame<W: Widget> {
         #[widget_core]

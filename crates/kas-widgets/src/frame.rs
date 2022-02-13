@@ -5,8 +5,7 @@
 
 //! A simple frame
 
-use kas::macros::make_layout;
-use kas::{layout, prelude::*};
+use kas::prelude::*;
 
 widget! {
     /// A frame around content
@@ -17,6 +16,9 @@ widget! {
     #[autoimpl(class_traits where W: trait on self.inner)]
     #[derive(Clone, Debug, Default)]
     #[handler(msg = <W as Handler>::Msg)]
+    #[widget{
+        layout = frame(self.inner, kas::theme::FrameStyle::Frame);
+    }]
     pub struct Frame<W: Widget> {
         #[widget_core]
         core: CoreData,
@@ -32,12 +34,6 @@ widget! {
                 core: Default::default(),
                 inner,
             }
-        }
-    }
-
-    impl Layout for Self {
-        fn layout(&mut self) -> layout::Layout<'_> {
-            make_layout!(self.core; frame(self.inner))
         }
     }
 }

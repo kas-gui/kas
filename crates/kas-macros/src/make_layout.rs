@@ -24,7 +24,6 @@ mod kw {
     custom_keyword!(center);
     custom_keyword!(stretch);
     custom_keyword!(frame);
-    custom_keyword!(nav_frame);
     custom_keyword!(list);
     custom_keyword!(slice);
     custom_keyword!(grid);
@@ -56,8 +55,7 @@ enum Layout {
     AlignSingle(Expr, Align),
     Single(Span),
     Widget(Expr),
-    Frame(Box<Layout>),
-    NavFrame(Box<Layout>),
+    Frame(Box<Layout>, Expr),
     List(Direction, List),
     Slice(Direction, Expr),
     Grid(GridDimensions, Vec<(CellInfo, Layout)>),
@@ -194,13 +192,9 @@ impl Parse for Layout {
             let inner;
             let _ = parenthesized!(inner in input);
             let layout: Layout = inner.parse()?;
-            Ok(Layout::Frame(Box::new(layout)))
-        } else if lookahead.peek(kw::nav_frame) {
-            let _: kw::nav_frame = input.parse()?;
-            let inner;
-            let _ = parenthesized!(inner in input);
-            let layout: Layout = inner.parse()?;
-            Ok(Layout::NavFrame(Box::new(layout)))
+            let _: Token![,] = inner.parse()?;
+            let style: Expr = inner.parse()?;
+            Ok(Layout::Frame(Box::new(layout), style))
         } else if lookahead.peek(kw::column) {
             let _: kw::column = input.parse()?;
             let dir = Direction::Down;
@@ -423,20 +417,12 @@ impl Layout {
                     ));
                 }
             }
-            Layout::Frame(layout) => {
+            Layout::Frame(layout, style) => {
                 let inner = layout.generate(children)?;
                 quote! {
                     let (data, next) = _chain.storage::<layout::FrameStorage>();
                     _chain = next;
-                    layout::Layout::frame(data, #inner)
-                }
-            }
-            Layout::NavFrame(layout) => {
-                let inner = layout.generate(children)?;
-                quote! {
-                    let (data, next) = _chain.storage::<layout::FrameStorage>();
-                    _chain = next;
-                    layout::Layout::nav_frame(data, #inner)
+                    layout::Layout::frame(data, #inner, #style)
                 }
             }
             Layout::List(dir, list) => {

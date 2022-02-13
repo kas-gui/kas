@@ -7,7 +7,7 @@
 
 use super::Menu;
 use crate::CheckBoxBare;
-use kas::theme::TextClass;
+use kas::theme::{FrameStyle, TextClass};
 use kas::{layout, prelude::*};
 use std::fmt::Debug;
 
@@ -36,12 +36,12 @@ widget! {
     impl Layout for Self {
         fn layout(&mut self) -> layout::Layout<'_> {
             let inner = layout::Layout::text(&mut self.layout_label, &mut self.label, TextClass::MenuLabel);
-            layout::Layout::menu_frame(&mut self.layout_frame, inner)
+            layout::Layout::frame(&mut self.layout_frame, inner, FrameStyle::MenuEntry)
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
             let mut draw = draw.with_core(self.core_data());
-            draw.menu_entry(self.core.rect);
+            draw.frame(self.core.rect, FrameStyle::MenuEntry);
             draw.text_accel(
                 self.layout_label.pos,
                 &self.label,
@@ -133,7 +133,7 @@ widget! {
                 layout::Layout::text(&mut self.layout_label, &mut self.label, TextClass::MenuLabel),
             ];
             let inner = layout::Layout::list(list.into_iter(), Direction::Right, &mut self.layout_list);
-            layout::Layout::menu_frame(&mut self.layout_frame, inner)
+            layout::Layout::frame(&mut self.layout_frame, inner, FrameStyle::MenuEntry)
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
@@ -145,7 +145,7 @@ widget! {
 
         fn draw(&mut self, mut draw: DrawMgr) {
             let mut draw = draw.with_core(self.checkbox.core_data());
-            draw.menu_entry(self.core.rect);
+            draw.frame(self.core.rect, FrameStyle::MenuEntry);
             self.layout().draw(draw);
         }
     }

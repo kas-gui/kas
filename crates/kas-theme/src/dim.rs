@@ -15,7 +15,7 @@ use kas::cast::{Cast, CastFloat, ConvFloat};
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, Stretch};
 use kas::text::{fonts::FontId, Align, TextApi, TextApiExt};
-use kas::theme::{SizeHandle, TextClass};
+use kas::theme::{FrameStyle, SizeHandle, TextClass};
 
 /// Parameterisation of [`Dimensions`]
 ///
@@ -166,22 +166,32 @@ impl<D: 'static> SizeHandle for Window<D> {
         self.dims.dpp * self.dims.pt_size * em
     }
 
-    fn frame(&self, _vert: bool) -> FrameRules {
-        FrameRules::new_sym(self.dims.frame, 0, self.dims.frame_margin)
-    }
-    fn menu_frame(&self, vert: bool) -> FrameRules {
-        let size = match vert {
-            false => self.dims.text_margin.0,
-            true => self.dims.text_margin.1,
-        };
-        FrameRules::new_sym(size.cast(), 0, 0)
-    }
-    fn separator(&self) -> Size {
-        Size::splat(self.dims.frame)
+    fn frame(&self, style: FrameStyle, is_vert: bool) -> FrameRules {
+        match style {
+            FrameStyle::Frame => FrameRules::new_sym(self.dims.frame, 0, self.dims.frame_margin),
+            FrameStyle::MenuEntry => {
+                let size = match is_vert {
+                    false => self.dims.text_margin.0,
+                    true => self.dims.text_margin.1,
+                };
+                FrameRules::new_sym(size.cast(), 0, 0)
+            }
+            FrameStyle::NavFocus => FrameRules::new_sym(self.dims.inner_margin.into(), 0, 0),
+            FrameStyle::Button => {
+                let inner = self.dims.inner_margin.into();
+                let outer = self.dims.outer_margin;
+                FrameRules::new_sym(self.dims.frame, inner, outer)
+            }
+            FrameStyle::EditBox => {
+                let inner = self.dims.inner_margin.into();
+                let outer = 0;
+                FrameRules::new_sym(self.dims.frame, inner, outer)
+            }
+        }
     }
 
-    fn nav_frame(&self, _vert: bool) -> FrameRules {
-        FrameRules::new_sym(self.dims.inner_margin.into(), 0, 0)
+    fn separator(&self) -> Size {
+        Size::splat(self.dims.frame)
     }
 
     fn inner_margin(&self) -> Size {
@@ -274,18 +284,6 @@ impl<D: 'static> SizeHandle for Window<D> {
 
     fn text_cursor_width(&self) -> f32 {
         self.dims.font_marker_width
-    }
-
-    fn button_surround(&self, _vert: bool) -> FrameRules {
-        let inner = self.dims.inner_margin.into();
-        let outer = self.dims.outer_margin;
-        FrameRules::new_sym(self.dims.frame, inner, outer)
-    }
-
-    fn edit_surround(&self, _vert: bool) -> FrameRules {
-        let inner = self.dims.inner_margin.into();
-        let outer = 0;
-        FrameRules::new_sym(self.dims.frame, inner, outer)
     }
 
     fn checkbox(&self) -> Size {
