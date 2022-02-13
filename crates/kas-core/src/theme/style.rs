@@ -46,6 +46,8 @@ impl Default for TextClass {
 pub enum FrameStyle {
     /// A frame for grouping content
     Frame,
+    /// A frame around pop-ups
+    Popup,
     /// Border around a pop-up menu entry
     MenuEntry,
     /// Frame used to indicate navigation focus

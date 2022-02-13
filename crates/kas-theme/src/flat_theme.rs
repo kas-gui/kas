@@ -110,6 +110,7 @@ const DIMS: dim::Parameters = dim::Parameters {
     frame_margin: 2.4,
     text_margin: (3.4, 2.0),
     frame_size: 2.4,
+    popup_frame_size: 2.4,
     // NOTE: visual thickness is (button_frame * scale_factor).round() * (1 - BG_SHRINK_FACTOR)
     button_frame: 2.4,
     checkbox_inner: 9.0,
@@ -333,12 +334,10 @@ where
         class: PassType,
         f: &mut dyn FnMut(&mut dyn theme::DrawHandle),
     ) {
-        let mut frame_rect = Default::default();
         let mut shadow = Default::default();
         let mut outer_rect = inner_rect;
         if class == PassType::Overlay {
-            frame_rect = inner_rect.expand(self.w.dims.frame);
-            shadow = Quad::from(frame_rect);
+            shadow = Quad::from(inner_rect);
             shadow.a += self.w.dims.shadow_a * SHADOW_POPUP;
             shadow.b += self.w.dims.shadow_b * SHADOW_POPUP;
             let a = shadow.a.floor();
@@ -349,14 +348,8 @@ where
 
         if class == PassType::Overlay {
             shadow += offset.into();
-            let outer = Quad::from(frame_rect + offset);
-            let inner = Quad::from(inner_rect + offset);
-
+            let inner = Quad::from(inner_rect + offset).shrink(self.w.dims.frame as f32);
             draw.rounded_frame_2col(shadow, inner, Rgba::BLACK, Rgba::TRANSPARENT);
-
-            draw.rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
-            let inner = outer.shrink(self.w.dims.frame as f32 * BG_SHRINK_FACTOR);
-            draw.rect(inner, self.cols.background);
         }
 
         let mut handle = DrawHandle {
@@ -378,6 +371,13 @@ where
                 let inner = outer.shrink(self.w.dims.frame as f32);
                 self.draw
                     .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
+            }
+            FrameStyle::Popup => {
+                let inner = outer.shrink(self.w.dims.popup_frame as f32);
+                self.draw
+                    .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
+                let inner = outer.shrink(self.w.dims.popup_frame as f32 * BG_SHRINK_FACTOR);
+                self.draw.rect(inner, self.cols.background);
             }
             FrameStyle::MenuEntry => {
                 if let Some(col) = self.cols.menu_entry(state) {

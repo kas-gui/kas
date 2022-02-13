@@ -96,7 +96,7 @@ pub use dialog::MessageBox;
 pub use drag::DragHandle;
 pub use edit_field::{EditBox, EditField, EditGuard};
 pub use filler::Filler;
-pub use frame::Frame;
+pub use frame::{Frame, PopupFrame};
 pub use grid::{BoxGrid, Grid};
 pub use label::{AccelLabel, Label, StrLabel, StringLabel};
 pub use list::*;

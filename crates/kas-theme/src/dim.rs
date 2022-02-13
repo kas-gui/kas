@@ -33,6 +33,8 @@ pub struct Parameters {
     pub text_margin: (f32, f32),
     /// Frame size
     pub frame_size: f32,
+    /// Popup frame size
+    pub popup_frame_size: f32,
     /// Button frame size (non-flat outer region)
     pub button_frame: f32,
     /// Checkbox inner size in Points
@@ -63,6 +65,7 @@ pub struct Dimensions {
     pub frame_margin: u16,
     pub text_margin: (u16, u16),
     pub frame: i32,
+    pub popup_frame: i32,
     pub button_frame: i32,
     pub checkbox: i32,
     pub scrollbar: Size,
@@ -89,6 +92,7 @@ impl Dimensions {
         let text_m0 = (params.text_margin.0 * scale_factor).cast_nearest();
         let text_m1 = (params.text_margin.1 * scale_factor).cast_nearest();
         let frame = (params.frame_size * scale_factor).cast_nearest();
+        let popup_frame = (params.popup_frame_size * scale_factor).cast_nearest();
 
         let shadow_size = params.shadow_size * scale_factor;
         let shadow_offset = shadow_size * params.shadow_rel_offset;
@@ -105,6 +109,7 @@ impl Dimensions {
             frame_margin,
             text_margin: (text_m0, text_m1),
             frame,
+            popup_frame,
             button_frame: (params.button_frame * scale_factor).cast_nearest(),
             checkbox: i32::conv_nearest(params.checkbox_inner * dpp)
                 + 2 * (i32::from(inner_margin) + frame),
@@ -169,6 +174,7 @@ impl<D: 'static> SizeHandle for Window<D> {
     fn frame(&self, style: FrameStyle, is_vert: bool) -> FrameRules {
         match style {
             FrameStyle::Frame => FrameRules::new_sym(self.dims.frame, 0, self.dims.frame_margin),
+            FrameStyle::Popup => FrameRules::new_sym(self.dims.popup_frame, 0, 0),
             FrameStyle::MenuEntry => {
                 let size = match is_vert {
                     false => self.dims.text_margin.0,

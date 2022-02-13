@@ -6,7 +6,7 @@
 //! Sub-menu
 
 use super::Menu;
-use crate::Column;
+use crate::{Column, PopupFrame};
 use kas::event::{self, Command};
 use kas::prelude::*;
 use kas::theme::{FrameStyle, TextClass};
@@ -24,7 +24,7 @@ widget! {
         label_store: layout::TextStorage,
         frame_store: layout::FrameStorage,
         #[widget]
-        pub list: Column<W>,
+        pub list: PopupFrame<Column<W>>,
         popup_id: Option<WindowId>,
         closing_menu: bool,
     }
@@ -67,7 +67,7 @@ widget! {
                 label: Text::new_single(label.into()),
                 label_store: Default::default(),
                 frame_store: Default::default(),
-                list: Column::new(list),
+                list: PopupFrame::new(Column::new(list)),
                 popup_id: None,
                 closing_menu: false,
             }

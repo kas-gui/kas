@@ -37,3 +37,33 @@ widget! {
         }
     }
 }
+
+widget! {
+    /// A frame around pop-ups
+    ///
+    /// It is expected that this be the top-most widget inside any popup.
+    #[autoimpl(Deref, DerefMut on self.inner)]
+    #[autoimpl(class_traits where W: trait on self.inner)]
+    #[derive(Clone, Debug, Default)]
+    #[handler(msg = <W as Handler>::Msg)]
+    #[widget{
+        layout = frame(self.inner, kas::theme::FrameStyle::Popup);
+    }]
+    pub struct PopupFrame<W: Widget> {
+        #[widget_core]
+        core: CoreData,
+        #[widget]
+        pub inner: W,
+    }
+
+    impl Self {
+        /// Construct a frame
+        #[inline]
+        pub fn new(inner: W) -> Self {
+            PopupFrame {
+                core: Default::default(),
+                inner,
+            }
+        }
+    }
+}

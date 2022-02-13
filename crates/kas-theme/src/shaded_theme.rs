@@ -65,6 +65,7 @@ const DIMS: dim::Parameters = dim::Parameters {
     frame_margin: 1.2,
     text_margin: (3.4, 2.0),
     frame_size: 5.0,
+    popup_frame_size: 0.0,
     button_frame: 5.0,
     checkbox_inner: 9.0,
     scrollbar_size: Vec2::splat(8.0),
@@ -258,8 +259,6 @@ where
             shadow += offset.into();
             let inner = Quad::from(inner_rect + offset);
             draw.rounded_frame_2col(shadow, inner, Rgba::BLACK, Rgba::TRANSPARENT);
-
-            draw.rect(inner, self.cols.background);
         }
 
         let mut handle = DrawHandle {
@@ -282,6 +281,10 @@ where
                 let norm = (0.7, -0.7);
                 let col = self.cols.background;
                 self.draw.shaded_round_frame(outer, inner, norm, col);
+            }
+            FrameStyle::Popup => {
+                let outer = Quad::from(rect);
+                self.draw.rect(outer, self.cols.background);
             }
             FrameStyle::Button => self.button(rect, None, state),
             FrameStyle::EditBox => {
