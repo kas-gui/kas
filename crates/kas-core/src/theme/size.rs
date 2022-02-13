@@ -110,11 +110,6 @@ impl<'a> SizeMgr<'a> {
         self.0.outer_margins()
     }
 
-    /// The margin around frames and separators
-    pub fn frame_margins(&self) -> Margins {
-        self.0.frame_margins()
-    }
-
     /// The margin around text elements
     ///
     /// Similar to [`Self::outer_margins`], but intended for things like text
@@ -233,9 +228,6 @@ pub trait SizeHandle {
     /// Widgets must not draw in outer margins.
     fn outer_margins(&self) -> Margins;
 
-    /// The margin around frames and separators
-    fn frame_margins(&self) -> Margins;
-
     /// The margin around text elements
     ///
     /// Similar to [`Self::outer_margins`], but intended for things like text
@@ -323,9 +315,6 @@ macro_rules! impl_ {
             }
             fn outer_margins(&self) -> Margins {
                 self.deref().outer_margins()
-            }
-            fn frame_margins(&self) -> Margins {
-                self.deref().frame_margins()
             }
             fn text_margins(&self) -> Margins {
                 self.deref().text_margins()

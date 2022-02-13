@@ -50,8 +50,7 @@ widget! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            let margins = size_mgr.frame_margins();
-            SizeRules::extract_fixed(axis, size_mgr.separator(), margins)
+            SizeRules::extract_fixed(axis, size_mgr.separator(), Margins::ZERO)
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {

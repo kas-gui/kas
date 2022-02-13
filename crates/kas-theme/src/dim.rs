@@ -27,8 +27,6 @@ pub struct Parameters {
     pub outer_margin: f32,
     /// Margin inside a frame before contents
     pub inner_margin: f32,
-    /// Margin around frames and seperators
-    pub frame_margin: f32,
     /// Margin between text elements (horiz, vert)
     pub text_margin: (f32, f32),
     /// Frame size
@@ -64,7 +62,6 @@ pub struct Dimensions {
     pub min_line_length: i32,
     pub outer_margin: u16,
     pub inner_margin: u16,
-    pub frame_margin: u16,
     pub text_margin: (u16, u16),
     pub frame: i32,
     pub popup_frame: i32,
@@ -91,7 +88,6 @@ impl Dimensions {
 
         let outer_margin = (params.outer_margin * scale_factor).cast_nearest();
         let inner_margin = (params.inner_margin * scale_factor).cast_nearest();
-        let frame_margin = (params.frame_margin * scale_factor).cast_nearest();
         let text_m0 = (params.text_margin.0 * scale_factor).cast_nearest();
         let text_m1 = (params.text_margin.1 * scale_factor).cast_nearest();
         let frame = (params.frame_size * scale_factor).cast_nearest();
@@ -110,7 +106,6 @@ impl Dimensions {
             min_line_length: (8.0 * dpem).cast_nearest(),
             outer_margin,
             inner_margin,
-            frame_margin,
             text_margin: (text_m0, text_m1),
             frame,
             popup_frame,
@@ -179,7 +174,7 @@ impl<D: 'static> SizeHandle for Window<D> {
     fn frame(&self, style: FrameStyle, _is_vert: bool) -> FrameRules {
         match style {
             FrameStyle::InnerMargin => FrameRules::new_sym(0, 0, 0),
-            FrameStyle::Frame => FrameRules::new_sym(self.dims.frame, 0, self.dims.frame_margin),
+            FrameStyle::Frame => FrameRules::new_sym(self.dims.frame, 0, 0),
             FrameStyle::Popup => FrameRules::new_sym(self.dims.popup_frame, 0, 0),
             FrameStyle::MenuEntry => FrameRules::new_sym(self.dims.menu_frame, 0, 0),
             FrameStyle::NavFocus => FrameRules::new_sym(self.dims.inner_margin.into(), 0, 0),
@@ -206,10 +201,6 @@ impl<D: 'static> SizeHandle for Window<D> {
 
     fn outer_margins(&self) -> Margins {
         Margins::splat(self.dims.outer_margin)
-    }
-
-    fn frame_margins(&self) -> Margins {
-        Margins::splat(self.dims.frame_margin)
     }
 
     fn text_margins(&self) -> Margins {
