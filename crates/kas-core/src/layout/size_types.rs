@@ -283,8 +283,8 @@ impl FrameRules {
 
     /// Generate rules for content surrounded by this frame
     ///
-    /// It is assumed that the content's margins apply inside this frame, and
-    /// that the margin is at least as large as self's `inner_margin`.
+    /// The content's margins apply inside this frame. External margins come
+    /// from this type.
     ///
     /// Returns the tuple `(rules, offset, size)`:
     ///

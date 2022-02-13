@@ -178,6 +178,7 @@ impl<D: 'static> SizeHandle for Window<D> {
 
     fn frame(&self, style: FrameStyle, _is_vert: bool) -> FrameRules {
         match style {
+            FrameStyle::InnerMargin => FrameRules::new_sym(0, 0, 0),
             FrameStyle::Frame => FrameRules::new_sym(self.dims.frame, 0, self.dims.frame_margin),
             FrameStyle::Popup => FrameRules::new_sym(self.dims.popup_frame, 0, 0),
             FrameStyle::MenuEntry => FrameRules::new_sym(self.dims.menu_frame, 0, 0),

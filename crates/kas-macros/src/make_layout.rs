@@ -433,7 +433,7 @@ impl Layout {
                         len = list.len();
                         for item in list {
                             let item = item.generate::<std::iter::Empty<&Member>>(None)?;
-                            items.append_all(quote! { #item, });
+                            items.append_all(quote! {{ #item },});
                         }
                     }
                     List::Glob(span) => {

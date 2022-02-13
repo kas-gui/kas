@@ -368,6 +368,7 @@ where
     fn frame(&mut self, rect: Rect, style: FrameStyle, state: InputState) {
         let outer = Quad::from(rect);
         match style {
+            FrameStyle::InnerMargin => (),
             FrameStyle::Frame => {
                 let inner = outer.shrink(self.w.dims.frame as f32);
                 self.draw

@@ -206,7 +206,12 @@ impl<'a> Layout<'a> {
         let frame = |mgr: SizeMgr, child: &mut Layout, storage: &mut FrameStorage, style| {
             let frame_rules = mgr.frame(style, axis.is_vertical());
             let child_rules = child.size_rules_(mgr, axis);
-            let (rules, offset, size) = frame_rules.surround_as_margin(child_rules);
+            let (rules, offset, size) = match style {
+                FrameStyle::InnerMargin | FrameStyle::MenuEntry | FrameStyle::EditBox => {
+                    frame_rules.surround_with_margin(child_rules)
+                }
+                _ => frame_rules.surround_as_margin(child_rules),
+            };
             storage.offset.set_component(axis, offset);
             storage.size.set_component(axis, size);
             rules
