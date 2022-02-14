@@ -210,7 +210,8 @@ impl<'a> Layout<'a> {
                 FrameStyle::InnerMargin | FrameStyle::MenuEntry | FrameStyle::EditBox => {
                     frame_rules.surround_with_margin(child_rules)
                 }
-                _ => frame_rules.surround_as_margin(child_rules),
+                FrameStyle::NavFocus => frame_rules.surround_as_margin(child_rules),
+                _ => frame_rules.surround_no_margin(child_rules),
             };
             storage.offset.set_component(axis, offset);
             storage.size.set_component(axis, size);

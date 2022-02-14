@@ -308,7 +308,7 @@ impl FrameRules {
         (rules, offset, size)
     }
 
-    /// Variant: frame surrounds content
+    /// Variant: frame is content margin
     ///
     /// The content's margin is reduced by the size of the frame, with any
     /// residual margin applying outside the frame (using the max of the
@@ -326,6 +326,23 @@ impl FrameRules {
             content.min_size() + size,
             content.ideal_size() + size,
             margins,
+            content.stretch(),
+        );
+        (rules, offset, size)
+    }
+
+    /// Variant: frame replaces content margin
+    ///
+    /// The content's margin is ignored. In other respects,
+    /// this is the same as [`FrameRules::surround_with_margin`].
+    pub fn surround_no_margin(self, content: SizeRules) -> (SizeRules, i32, i32) {
+        let offset = self.offset + self.inner_margin;
+        let size = self.size + 2 * self.inner_margin;
+
+        let rules = SizeRules::new(
+            content.min_size() + size,
+            content.ideal_size() + size,
+            self.m,
             content.stretch(),
         );
         (rules, offset, size)
