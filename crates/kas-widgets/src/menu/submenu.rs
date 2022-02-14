@@ -6,10 +6,10 @@
 //! Sub-menu
 
 use super::Menu;
-use crate::Column;
+use crate::{Column, PopupFrame};
 use kas::event::{self, Command};
 use kas::prelude::*;
-use kas::theme::TextClass;
+use kas::theme::{FrameStyle, TextClass};
 use kas::{layout, WindowId};
 
 widget! {
@@ -24,7 +24,7 @@ widget! {
         label_store: layout::TextStorage,
         frame_store: layout::FrameStorage,
         #[widget]
-        pub list: Column<W>,
+        pub list: PopupFrame<Column<W>>,
         popup_id: Option<WindowId>,
         closing_menu: bool,
     }
@@ -67,7 +67,7 @@ widget! {
                 label: Text::new_single(label.into()),
                 label_store: Default::default(),
                 frame_store: Default::default(),
-                list: Column::new(list),
+                list: PopupFrame::new(Column::new(list)),
                 popup_id: None,
                 closing_menu: false,
             }
@@ -137,7 +137,7 @@ widget! {
     impl kas::Layout for Self {
         fn layout(&mut self) -> layout::Layout<'_> {
             let label = layout::Layout::text(&mut self.label_store, &mut self.label, TextClass::MenuLabel);
-            layout::Layout::frame(&mut self.frame_store, label)
+            layout::Layout::frame(&mut self.frame_store, label, FrameStyle::MenuEntry)
         }
 
         fn spatial_nav(&mut self, _: &mut SetRectMgr, _: bool, _: Option<usize>) -> Option<usize> {
@@ -150,7 +150,7 @@ widget! {
             if self.popup_id.is_some() && !self.closing_menu {
                 draw.state.insert(InputState::DEPRESS);
             }
-            draw.menu_entry(self.core.rect);
+            draw.frame(self.core.rect, FrameStyle::MenuEntry);
             draw.text_accel(
                 self.label_store.pos,
                 &self.label,

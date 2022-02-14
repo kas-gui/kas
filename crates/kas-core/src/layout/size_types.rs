@@ -6,7 +6,7 @@
 //! Types used by size rules
 
 use super::{Align, AlignHints, AxisInfo, SizeRules};
-use crate::cast::{Cast, CastFloat, Conv, ConvFloat};
+use crate::cast::{CastFloat, Conv, ConvFloat};
 use crate::dir::Directional;
 use crate::geom::{Rect, Size, Vec2};
 
@@ -33,7 +33,7 @@ impl Margins {
     /// Margins with equal size on each edge.
     #[inline]
     pub const fn splat(size: u16) -> Self {
-        Margins::hv_splat(size, size)
+        Margins::hv_splat((size, size))
     }
 
     /// Margins via horizontal and vertical sizes
@@ -44,7 +44,7 @@ impl Margins {
 
     /// Margins via horizontal and vertical sizes
     #[inline]
-    pub const fn hv_splat(h: u16, v: u16) -> Self {
+    pub const fn hv_splat((h, v): (u16, u16)) -> Self {
         Margins {
             horiz: (h, h),
             vert: (v, v),
@@ -83,7 +83,7 @@ impl Margins {
 
 impl From<Size> for Margins {
     fn from(size: Size) -> Self {
-        Margins::hv_splat(size.0.cast(), size.1.cast())
+        Margins::hv_splat(size.into())
     }
 }
 
@@ -283,8 +283,8 @@ impl FrameRules {
 
     /// Generate rules for content surrounded by this frame
     ///
-    /// It is assumed that the content's margins apply inside this frame, and
-    /// that the margin is at least as large as self's `inner_margin`.
+    /// The content's margins apply inside this frame. External margins come
+    /// from this type.
     ///
     /// Returns the tuple `(rules, offset, size)`:
     ///
@@ -308,7 +308,7 @@ impl FrameRules {
         (rules, offset, size)
     }
 
-    /// Variant: frame surrounds content
+    /// Variant: frame is content margin
     ///
     /// The content's margin is reduced by the size of the frame, with any
     /// residual margin applying outside the frame (using the max of the
@@ -326,6 +326,23 @@ impl FrameRules {
             content.min_size() + size,
             content.ideal_size() + size,
             margins,
+            content.stretch(),
+        );
+        (rules, offset, size)
+    }
+
+    /// Variant: frame replaces content margin
+    ///
+    /// The content's margin is ignored. In other respects,
+    /// this is the same as [`FrameRules::surround_with_margin`].
+    pub fn surround_no_margin(self, content: SizeRules) -> (SizeRules, i32, i32) {
+        let offset = self.offset + self.inner_margin;
+        let size = self.size + 2 * self.inner_margin;
+
+        let rules = SizeRules::new(
+            content.min_size() + size,
+            content.ideal_size() + size,
+            self.m,
             content.stretch(),
         );
         (rules, offset, size)

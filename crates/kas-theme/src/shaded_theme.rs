@@ -14,7 +14,8 @@ use kas::dir::{Direction, Directional};
 use kas::draw::{color::Rgba, *};
 use kas::geom::*;
 use kas::text::{AccelString, Text, TextApi, TextDisplay};
-use kas::theme::{self, InputState, SizeHandle, TextClass, ThemeControl};
+use kas::theme::{self, InputState, SizeHandle, ThemeControl};
+use kas::theme::{FrameStyle, TextClass};
 use kas::TkAction;
 
 /// A theme using simple shading to give apparent depth to elements
@@ -61,9 +62,10 @@ impl ShadedTheme {
 const DIMS: dim::Parameters = dim::Parameters {
     outer_margin: 6.0,
     inner_margin: 1.2,
-    frame_margin: 1.2,
-    text_margin: 2.0,
+    text_margin: (3.4, 2.0),
     frame_size: 5.0,
+    popup_frame_size: 0.0,
+    menu_frame: 2.4,
     button_frame: 5.0,
     checkbox_inner: 9.0,
     scrollbar_size: Vec2::splat(8.0),
@@ -257,8 +259,6 @@ where
             shadow += offset.into();
             let inner = Quad::from(inner_rect + offset);
             draw.rounded_frame_2col(shadow, inner, Rgba::BLACK, Rgba::TRANSPARENT);
-
-            draw.rect(inner, self.cols.background);
         }
 
         let mut handle = DrawHandle {
@@ -273,12 +273,33 @@ where
         self.draw.get_clip_rect()
     }
 
-    fn outer_frame(&mut self, rect: Rect) {
-        let outer = Quad::from(rect);
-        let inner = outer.shrink(self.w.dims.frame as f32);
-        let norm = (0.7, -0.7);
-        let col = self.cols.background;
-        self.draw.shaded_round_frame(outer, inner, norm, col);
+    fn frame(&mut self, rect: Rect, style: FrameStyle, mut state: InputState) {
+        match style {
+            FrameStyle::Frame => {
+                let outer = Quad::from(rect);
+                let inner = outer.shrink(self.w.dims.frame as f32);
+                let norm = (0.7, -0.7);
+                let col = self.cols.background;
+                self.draw.shaded_round_frame(outer, inner, norm, col);
+            }
+            FrameStyle::Popup => {
+                let outer = Quad::from(rect);
+                self.draw.rect(outer, self.cols.background);
+            }
+            FrameStyle::MenuEntry => {
+                if let Some(col) = self.cols.menu_entry(state) {
+                    let outer = Quad::from(rect);
+                    self.draw.rect(outer, col);
+                }
+            }
+            FrameStyle::Button => self.button(rect, None, state),
+            FrameStyle::EditBox => {
+                state.remove(InputState::DEPRESS);
+                let bg_col = self.cols.edit_bg(state);
+                self.draw_edit_box(rect, bg_col, self.cols.nav_region(state));
+            }
+            style => self.as_flat().frame(rect, style, state),
+        }
     }
 
     fn separator(&mut self, rect: Rect) {
@@ -287,10 +308,6 @@ where
         let norm = (0.0, -0.7);
         let col = self.cols.background;
         self.draw.shaded_round_frame(outer, inner, norm, col);
-    }
-
-    fn nav_frame(&mut self, rect: Rect, state: InputState) {
-        self.as_flat().nav_frame(rect, state);
     }
 
     fn selection_box(&mut self, rect: Rect) {
@@ -345,10 +362,6 @@ where
         self.as_flat().text_cursor(wid, pos, text, class, byte);
     }
 
-    fn menu_entry(&mut self, rect: Rect, state: InputState) {
-        self.as_flat().menu_entry(rect, state);
-    }
-
     fn button(&mut self, rect: Rect, col: Option<color::Rgb>, state: InputState) {
         let outer = Quad::from(rect);
         let inner = outer.shrink(self.w.dims.button_frame as f32);
@@ -362,12 +375,6 @@ where
             let outer = outer.shrink(self.w.dims.inner_margin as f32);
             self.draw.rounded_frame(outer, inner, 0.6, col);
         }
-    }
-
-    fn edit_box(&mut self, rect: Rect, mut state: InputState) {
-        state.remove(InputState::DEPRESS);
-        let bg_col = self.cols.edit_bg(state);
-        self.draw_edit_box(rect, bg_col, self.cols.nav_region(state));
     }
 
     fn checkbox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState) {

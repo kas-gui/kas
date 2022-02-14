@@ -7,9 +7,11 @@
 
 mod draw;
 mod size;
+mod style;
 
 pub use draw::{DrawCtx, DrawHandle, DrawMgr};
 pub use size::{SizeHandle, SizeMgr};
+pub use style::*;
 
 #[allow(unused)]
 use crate::event::EventMgr;
@@ -87,40 +89,6 @@ impl InputState {
     #[inline]
     pub fn sel_focus(self) -> bool {
         self.contains(InputState::SEL_FOCUS)
-    }
-}
-
-/// Class of text drawn
-///
-/// Themes choose font, font size, colour, and alignment based on this.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum TextClass {
-    /// Label text is drawn over the background colour
-    Label,
-    /// Scrollable label (same as label except that min height is limited)
-    LabelScroll,
-    /// Button text is drawn over a button
-    Button,
-    /// Class of text drawn in a single-line edit box
-    Edit,
-    /// Class of text drawn in a multi-line edit box
-    EditMulti,
-    /// Menu label (single line, does not stretch)
-    MenuLabel,
-}
-
-impl TextClass {
-    /// True if text should be automatically line-wrapped
-    pub fn line_wrap(self) -> bool {
-        self == TextClass::Label || self == TextClass::EditMulti
-    }
-}
-
-/// Default class: Label
-impl Default for TextClass {
-    fn default() -> Self {
-        TextClass::Label
     }
 }
 

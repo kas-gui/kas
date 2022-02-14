@@ -8,13 +8,13 @@
 use std::convert::AsRef;
 use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 
+use super::{FrameStyle, InputState, SizeHandle, SizeMgr, TextClass};
 use crate::dir::Direction;
 use crate::draw::{color::Rgb, Draw, DrawShared, ImageId, PassType};
 use crate::event::EventState;
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::SetRectMgr;
 use crate::text::{AccelString, Text, TextApi, TextDisplay};
-use crate::theme::{InputState, SizeHandle, SizeMgr, TextClass};
 use crate::{CoreData, TkAction};
 
 /// Draw interface
@@ -203,22 +203,16 @@ impl<'a> DrawCtx<'a> {
 
     /// Draw a frame inside the given `rect`
     ///
-    /// The frame dimensions equal those of [`SizeMgr::frame`] on each side.
-    pub fn outer_frame(&mut self, rect: Rect) {
-        self.h.outer_frame(rect)
+    /// The frame dimensions are given by [`SizeMgr::frame`].
+    ///
+    /// Note: for buttons, usage of [`Self::button`] does the same but allowing custom colours.
+    pub fn frame(&mut self, rect: Rect, style: FrameStyle) {
+        self.h.frame(rect, style, self.state)
     }
 
     /// Draw a separator in the given `rect`
     pub fn separator(&mut self, rect: Rect) {
         self.h.separator(rect);
-    }
-
-    /// Draw a navigation highlight frame in the given `rect`
-    ///
-    /// This is a margin area which may have a some type of navigation highlight
-    /// drawn in it, or may be empty.
-    pub fn nav_frame(&mut self, rect: Rect) {
-        self.h.nav_frame(rect, self.state);
     }
 
     /// Draw a selection box
@@ -301,28 +295,12 @@ impl<'a> DrawCtx<'a> {
         self.h.text_cursor(self.wid, pos, text, class, byte);
     }
 
-    /// Draw the background of a menu entry
-    pub fn menu_entry(&mut self, rect: Rect) {
-        self.h.menu_entry(rect, self.state);
-    }
-
     /// Draw button sides, background and margin-area highlight
     ///
     /// Optionally, a specific colour may be used.
     // TODO: Allow theme-provided named colours?
     pub fn button(&mut self, rect: Rect, col: Option<Rgb>) {
         self.h.button(rect, col, self.state);
-    }
-
-    /// Draw edit box sides, background and margin-area highlight
-    ///
-    /// If `error` is true, the background will be an error colour.
-    pub fn edit_box(&mut self, rect: Rect, error: bool) {
-        let mut state = self.state;
-        if error {
-            state.insert(InputState::ERROR);
-        }
-        self.h.edit_box(rect, state);
     }
 
     /// Draw UI element: checkbox
@@ -424,17 +402,11 @@ pub trait DrawHandle {
 
     /// Draw a frame inside the given `rect`
     ///
-    /// The frame dimensions equal those of [`SizeMgr::frame`] on each side.
-    fn outer_frame(&mut self, rect: Rect);
+    /// The frame dimensions are given by [`SizeHandle::frame`].
+    fn frame(&mut self, rect: Rect, style: FrameStyle, state: InputState);
 
     /// Draw a separator in the given `rect`
     fn separator(&mut self, rect: Rect);
-
-    /// Draw a navigation highlight frame in the given `rect`
-    ///
-    /// This is a margin area which may have a some type of navigation highlight
-    /// drawn in it, or may be empty.
-    fn nav_frame(&mut self, rect: Rect, state: InputState);
 
     /// Draw a selection box
     ///
@@ -497,17 +469,11 @@ pub trait DrawHandle {
         byte: usize,
     );
 
-    /// Draw the background of a menu entry
-    fn menu_entry(&mut self, rect: Rect, state: InputState);
-
     /// Draw button sides, background and margin-area highlight
     ///
     /// Optionally, a specific colour may be used.
     // TODO: Allow theme-provided named colours?
     fn button(&mut self, rect: Rect, col: Option<Rgb>, state: InputState);
-
-    /// Draw edit box sides, background and margin-area highlight
-    fn edit_box(&mut self, rect: Rect, state: InputState);
 
     /// Draw UI element: checkbox
     ///
@@ -570,14 +536,11 @@ macro_rules! impl_ {
             fn get_clip_rect(&self) -> Rect {
                 self.deref().get_clip_rect()
             }
-            fn outer_frame(&mut self, rect: Rect) {
-                self.deref_mut().outer_frame(rect);
+            fn frame(&mut self, rect: Rect, style: FrameStyle, state: InputState) {
+                self.deref_mut().frame(rect, style, state);
             }
             fn separator(&mut self, rect: Rect) {
                 self.deref_mut().separator(rect);
-            }
-            fn nav_frame(&mut self, rect: Rect, state: InputState) {
-                self.deref_mut().nav_frame(rect, state);
             }
             fn selection_box(&mut self, rect: Rect) {
                 self.deref_mut().selection_box(rect);
@@ -618,14 +581,8 @@ macro_rules! impl_ {
             fn text_cursor(&mut self, wid: u64, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
                 self.deref_mut().text_cursor(wid, pos, text, class, byte)
             }
-            fn menu_entry(&mut self, rect: Rect, state: InputState) {
-                self.deref_mut().menu_entry(rect, state)
-            }
             fn button(&mut self, rect: Rect, col: Option<Rgb>, state: InputState) {
                 self.deref_mut().button(rect, col, state)
-            }
-            fn edit_box(&mut self, rect: Rect, state: InputState) {
-                self.deref_mut().edit_box(rect, state)
             }
             fn checkbox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState) {
                 self.deref_mut().checkbox(wid, rect, checked, state)

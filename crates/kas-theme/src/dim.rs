@@ -15,7 +15,7 @@ use kas::cast::{Cast, CastFloat, ConvFloat};
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, Stretch};
 use kas::text::{fonts::FontId, Align, TextApi, TextApiExt};
-use kas::theme::{SizeHandle, TextClass};
+use kas::theme::{FrameStyle, SizeHandle, TextClass};
 
 /// Parameterisation of [`Dimensions`]
 ///
@@ -27,12 +27,14 @@ pub struct Parameters {
     pub outer_margin: f32,
     /// Margin inside a frame before contents
     pub inner_margin: f32,
-    /// Margin around frames and seperators
-    pub frame_margin: f32,
-    /// Margin between text elements
-    pub text_margin: f32,
+    /// Margin between text elements (horiz, vert)
+    pub text_margin: (f32, f32),
     /// Frame size
     pub frame_size: f32,
+    /// Popup frame size
+    pub popup_frame_size: f32,
+    /// MenuEntry frame size (horiz, vert)
+    pub menu_frame: f32,
     /// Button frame size (non-flat outer region)
     pub button_frame: f32,
     /// Checkbox inner size in Points
@@ -60,9 +62,10 @@ pub struct Dimensions {
     pub min_line_length: i32,
     pub outer_margin: u16,
     pub inner_margin: u16,
-    pub frame_margin: u16,
-    pub text_margin: u16,
+    pub text_margin: (u16, u16),
     pub frame: i32,
+    pub popup_frame: i32,
+    pub menu_frame: i32,
     pub button_frame: i32,
     pub checkbox: i32,
     pub scrollbar: Size,
@@ -85,9 +88,11 @@ impl Dimensions {
 
         let outer_margin = (params.outer_margin * scale_factor).cast_nearest();
         let inner_margin = (params.inner_margin * scale_factor).cast_nearest();
-        let frame_margin = (params.frame_margin * scale_factor).cast_nearest();
-        let text_margin = (params.text_margin * scale_factor).cast_nearest();
+        let text_m0 = (params.text_margin.0 * scale_factor).cast_nearest();
+        let text_m1 = (params.text_margin.1 * scale_factor).cast_nearest();
         let frame = (params.frame_size * scale_factor).cast_nearest();
+        let popup_frame = (params.popup_frame_size * scale_factor).cast_nearest();
+        let menu_frame = (params.menu_frame * scale_factor).cast_nearest();
 
         let shadow_size = params.shadow_size * scale_factor;
         let shadow_offset = shadow_size * params.shadow_rel_offset;
@@ -101,9 +106,10 @@ impl Dimensions {
             min_line_length: (8.0 * dpem).cast_nearest(),
             outer_margin,
             inner_margin,
-            frame_margin,
-            text_margin,
+            text_margin: (text_m0, text_m1),
             frame,
+            popup_frame,
+            menu_frame,
             button_frame: (params.button_frame * scale_factor).cast_nearest(),
             checkbox: i32::conv_nearest(params.checkbox_inner * dpp)
                 + 2 * (i32::from(inner_margin) + frame),
@@ -165,22 +171,28 @@ impl<D: 'static> SizeHandle for Window<D> {
         self.dims.dpp * self.dims.pt_size * em
     }
 
-    fn frame(&self, _vert: bool) -> FrameRules {
-        FrameRules::new_sym(self.dims.frame, 0, self.dims.frame_margin)
-    }
-    fn menu_frame(&self, vert: bool) -> FrameRules {
-        let mut size = self.dims.frame;
-        if vert {
-            size /= 2;
+    fn frame(&self, style: FrameStyle, _is_vert: bool) -> FrameRules {
+        match style {
+            FrameStyle::InnerMargin => FrameRules::new_sym(0, 0, 0),
+            FrameStyle::Frame => FrameRules::new_sym(self.dims.frame, 0, 0),
+            FrameStyle::Popup => FrameRules::new_sym(self.dims.popup_frame, 0, 0),
+            FrameStyle::MenuEntry => FrameRules::new_sym(self.dims.menu_frame, 0, 0),
+            FrameStyle::NavFocus => FrameRules::new_sym(self.dims.inner_margin.into(), 0, 0),
+            FrameStyle::Button => {
+                let inner = self.dims.inner_margin.into();
+                let outer = self.dims.outer_margin;
+                FrameRules::new_sym(self.dims.frame, inner, outer)
+            }
+            FrameStyle::EditBox => {
+                let inner = self.dims.inner_margin.into();
+                let outer = 0;
+                FrameRules::new_sym(self.dims.frame, inner, outer)
+            }
         }
-        FrameRules::new_sym(size, 0, 0)
-    }
-    fn separator(&self) -> Size {
-        Size::splat(self.dims.frame)
     }
 
-    fn nav_frame(&self, _vert: bool) -> FrameRules {
-        FrameRules::new_sym(self.dims.inner_margin.into(), 0, 0)
+    fn separator(&self) -> Size {
+        Size::splat(self.dims.frame)
     }
 
     fn inner_margin(&self) -> Size {
@@ -191,12 +203,8 @@ impl<D: 'static> SizeHandle for Window<D> {
         Margins::splat(self.dims.outer_margin)
     }
 
-    fn frame_margins(&self) -> Margins {
-        Margins::splat(self.dims.frame_margin)
-    }
-
     fn text_margins(&self) -> Margins {
-        Margins::splat(self.dims.text_margin)
+        Margins::hv_splat(self.dims.text_margin)
     }
 
     fn line_height(&self, _: TextClass) -> i32 {
@@ -231,7 +239,10 @@ impl<D: 'static> SizeHandle for Window<D> {
             }));
         }
 
-        let margin = self.dims.text_margin;
+        let margin = match axis.is_horizontal() {
+            true => self.dims.text_margin.0,
+            false => self.dims.text_margin.1,
+        };
         let margins = (margin, margin);
         if axis.is_horizontal() {
             let min = self.dims.min_line_length;
@@ -270,18 +281,6 @@ impl<D: 'static> SizeHandle for Window<D> {
 
     fn text_cursor_width(&self) -> f32 {
         self.dims.font_marker_width
-    }
-
-    fn button_surround(&self, _vert: bool) -> FrameRules {
-        let inner = self.dims.inner_margin.into();
-        let outer = self.dims.outer_margin;
-        FrameRules::new_sym(self.dims.frame, inner, outer)
-    }
-
-    fn edit_surround(&self, _vert: bool) -> FrameRules {
-        let inner = self.dims.inner_margin.into();
-        let outer = 0;
-        FrameRules::new_sym(self.dims.frame, inner, outer)
     }
 
     fn checkbox(&self) -> Size {

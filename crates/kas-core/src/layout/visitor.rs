@@ -14,7 +14,7 @@ use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
 use crate::draw::color::Rgb;
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::text::{Align, TextApi, TextApiExt};
-use crate::theme::{DrawCtx, SizeMgr, TextClass};
+use crate::theme::{DrawCtx, FrameStyle, SizeMgr, TextClass};
 use crate::WidgetId;
 use crate::{dir::Directional, WidgetConfig};
 use std::any::Any;
@@ -88,9 +88,7 @@ enum LayoutType<'a> {
     /// Apply alignment hints to some sub-layout
     AlignLayout(Box<Layout<'a>>, AlignHints),
     /// Frame around content
-    Frame(Box<Layout<'a>>, &'a mut FrameStorage),
-    /// Navigation frame around content
-    NavFrame(Box<Layout<'a>>, &'a mut FrameStorage),
+    Frame(Box<Layout<'a>>, &'a mut FrameStorage, FrameStyle),
     /// Button frame around content
     Button(Box<Layout<'a>>, &'a mut FrameStorage, Option<Rgb>),
     /// An embedded layout
@@ -131,16 +129,8 @@ impl<'a> Layout<'a> {
     /// Construct a frame around a sub-layout
     ///
     /// This frame has dimensions according to [`SizeMgr::frame`].
-    pub fn frame(data: &'a mut FrameStorage, child: Self) -> Self {
-        let layout = LayoutType::Frame(Box::new(child), data);
-        Layout { layout }
-    }
-
-    /// Construct a navigation frame around a sub-layout
-    ///
-    /// This frame has dimensions according to [`SizeMgr::frame`].
-    pub fn nav_frame(data: &'a mut FrameStorage, child: Self) -> Self {
-        let layout = LayoutType::NavFrame(Box::new(child), data);
+    pub fn frame(data: &'a mut FrameStorage, child: Self, style: FrameStyle) -> Self {
+        let layout = LayoutType::Frame(Box::new(child), data, style);
         Layout { layout }
     }
 
@@ -213,35 +203,27 @@ impl<'a> Layout<'a> {
         self.size_rules_(mgr, axis)
     }
     fn size_rules_(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        let frame = |mgr: SizeMgr, child: &mut Layout, storage: &mut FrameStorage, style| {
+            let frame_rules = mgr.frame(style, axis.is_vertical());
+            let child_rules = child.size_rules_(mgr, axis);
+            let (rules, offset, size) = match style {
+                FrameStyle::InnerMargin | FrameStyle::MenuEntry | FrameStyle::EditBox => {
+                    frame_rules.surround_with_margin(child_rules)
+                }
+                FrameStyle::NavFocus => frame_rules.surround_as_margin(child_rules),
+                _ => frame_rules.surround_no_margin(child_rules),
+            };
+            storage.offset.set_component(axis, offset);
+            storage.size.set_component(axis, size);
+            rules
+        };
         match &mut self.layout {
             LayoutType::None => SizeRules::EMPTY,
             LayoutType::Single(child) => child.size_rules(mgr, axis),
             LayoutType::AlignSingle(child, _) => child.size_rules(mgr, axis),
             LayoutType::AlignLayout(layout, _) => layout.size_rules_(mgr, axis),
-            LayoutType::Frame(child, storage) => {
-                let frame_rules = mgr.frame(axis.is_vertical());
-                let child_rules = child.size_rules_(mgr, axis);
-                let (rules, offset, size) = frame_rules.surround_as_margin(child_rules);
-                storage.offset.set_component(axis, offset);
-                storage.size.set_component(axis, size);
-                rules
-            }
-            LayoutType::NavFrame(child, storage) => {
-                let frame_rules = mgr.nav_frame(axis.is_vertical());
-                let child_rules = child.size_rules_(mgr, axis);
-                let (rules, offset, size) = frame_rules.surround_as_margin(child_rules);
-                storage.offset.set_component(axis, offset);
-                storage.size.set_component(axis, size);
-                rules
-            }
-            LayoutType::Button(child, storage, _) => {
-                let frame_rules = mgr.button_surround(axis.is_vertical());
-                let child_rules = child.size_rules_(mgr, axis);
-                let (rules, offset, size) = frame_rules.surround_as_margin(child_rules);
-                storage.offset.set_component(axis, offset);
-                storage.size.set_component(axis, size);
-                rules
-            }
+            LayoutType::Frame(child, storage, style) => frame(mgr, child, storage, *style),
+            LayoutType::Button(child, storage, _) => frame(mgr, child, storage, FrameStyle::Button),
             LayoutType::Visitor(visitor) => visitor.size_rules(mgr, axis),
         }
     }
@@ -263,9 +245,7 @@ impl<'a> Layout<'a> {
                 let align = hints.combine(align);
                 layout.set_rect_(mgr, rect, align);
             }
-            LayoutType::Frame(child, storage)
-            | LayoutType::NavFrame(child, storage)
-            | LayoutType::Button(child, storage, _) => {
+            LayoutType::Frame(child, storage, _) | LayoutType::Button(child, storage, _) => {
                 storage.rect = rect;
                 rect.pos += storage.offset;
                 rect.size -= storage.size;
@@ -286,10 +266,9 @@ impl<'a> Layout<'a> {
         match &mut self.layout {
             LayoutType::None => false,
             LayoutType::Single(_) | LayoutType::AlignSingle(_, _) => false,
-            LayoutType::AlignLayout(layout, _)
-            | LayoutType::Frame(layout, _)
-            | LayoutType::NavFrame(layout, _)
-            | LayoutType::Button(layout, _, _) => layout.is_reversed_(),
+            LayoutType::AlignLayout(layout, _) => layout.is_reversed_(),
+            LayoutType::Frame(layout, _, _) => layout.is_reversed_(),
+            LayoutType::Button(layout, _, _) => layout.is_reversed_(),
             LayoutType::Visitor(layout) => layout.is_reversed(),
         }
     }
@@ -307,7 +286,7 @@ impl<'a> Layout<'a> {
             LayoutType::None => None,
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => child.find_id(coord),
             LayoutType::AlignLayout(layout, _) => layout.find_id_(coord),
-            LayoutType::Frame(child, _) | LayoutType::NavFrame(child, _) => child.find_id_(coord),
+            LayoutType::Frame(child, _, _) => child.find_id_(coord),
             // Buttons steal clicks, hence Button never returns ID of content
             LayoutType::Button(_, _, _) => None,
             LayoutType::Visitor(layout) => layout.find_id(coord),
@@ -324,12 +303,8 @@ impl<'a> Layout<'a> {
             LayoutType::None => (),
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => child.draw(draw.re()),
             LayoutType::AlignLayout(layout, _) => layout.draw_(draw),
-            LayoutType::Frame(child, storage) => {
-                draw.outer_frame(storage.rect);
-                child.draw_(draw);
-            }
-            LayoutType::NavFrame(child, storage) => {
-                draw.nav_frame(storage.rect);
+            LayoutType::Frame(child, storage, style) => {
+                draw.frame(storage.rect, *style);
                 child.draw_(draw);
             }
             LayoutType::Button(child, storage, color) => {

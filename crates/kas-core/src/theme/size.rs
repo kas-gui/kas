@@ -7,9 +7,9 @@
 
 use std::ops::Deref;
 
-use super::TextClass;
 #[allow(unused)]
 use super::{DrawCtx, DrawMgr};
+use super::{FrameStyle, TextClass};
 use crate::geom::Size;
 use crate::layout::{AxisInfo, FrameRules, Margins, SizeRules};
 use crate::text::TextApi;
@@ -85,26 +85,14 @@ impl<'a> SizeMgr<'a> {
         self.0.pixels_from_em(em)
     }
 
-    /// Size of a frame around child widget(s)
-    ///
-    /// This already includes the margins specified by [`Self::frame_margins`].
-    pub fn frame(&self, is_vert: bool) -> FrameRules {
-        self.0.frame(is_vert)
-    }
-
-    /// Frame/margin around a menu entry
-    pub fn menu_frame(&self, is_vert: bool) -> FrameRules {
-        self.0.menu_frame(is_vert)
+    /// Size of a frame around another element
+    pub fn frame(&self, style: FrameStyle, is_vert: bool) -> FrameRules {
+        self.0.frame(style, is_vert)
     }
 
     /// Size of a separator frame between items
     pub fn separator(&self) -> Size {
         self.0.separator()
-    }
-
-    /// Size of a navigation highlight margin around a child widget
-    pub fn nav_frame(&self, is_vert: bool) -> FrameRules {
-        self.0.nav_frame(is_vert)
     }
 
     /// The margin around content within a widget
@@ -120,11 +108,6 @@ impl<'a> SizeMgr<'a> {
     /// Widgets must not draw in outer margins.
     pub fn outer_margins(&self) -> Margins {
         self.0.outer_margins()
-    }
-
-    /// The margin around frames and separators
-    pub fn frame_margins(&self) -> Margins {
-        self.0.frame_margins()
     }
 
     /// The margin around text elements
@@ -165,19 +148,6 @@ impl<'a> SizeMgr<'a> {
     /// Width of an edit marker
     pub fn text_cursor_width(&self) -> f32 {
         self.0.text_cursor_width()
-    }
-
-    /// Size of the sides of a button.
-    pub fn button_surround(&self, is_vert: bool) -> FrameRules {
-        self.0.button_surround(is_vert)
-    }
-
-    /// Size of the frame around an edit box, including margin
-    ///
-    /// Note: though text should not be drawn in the margin, the edit cursor
-    /// may be. The margin included here should be large enough!
-    pub fn edit_surround(&self, is_vert: bool) -> FrameRules {
-        self.0.edit_surround(is_vert)
     }
 
     /// Size of the element drawn by [`DrawCtx::checkbox`].
@@ -241,19 +211,11 @@ pub trait SizeHandle {
     /// (This depends on the font size.)
     fn pixels_from_em(&self, em: f32) -> f32;
 
-    /// Size of a frame around child widget(s)
-    ///
-    /// This already includes the margins specified by [`Self::frame_margins`].
-    fn frame(&self, vert: bool) -> FrameRules;
-
-    /// Frame/margin around a menu entry
-    fn menu_frame(&self, vert: bool) -> FrameRules;
+    /// Size of a frame around another element
+    fn frame(&self, style: FrameStyle, is_vert: bool) -> FrameRules;
 
     /// Size of a separator frame between items
     fn separator(&self) -> Size;
-
-    /// Size of a navigation highlight margin around a child widget
-    fn nav_frame(&self, vert: bool) -> FrameRules;
 
     /// The margin around content within a widget
     ///
@@ -265,9 +227,6 @@ pub trait SizeHandle {
     ///
     /// Widgets must not draw in outer margins.
     fn outer_margins(&self) -> Margins;
-
-    /// The margin around frames and separators
-    fn frame_margins(&self) -> Margins;
 
     /// The margin around text elements
     ///
@@ -295,15 +254,6 @@ pub trait SizeHandle {
 
     /// Width of an edit marker
     fn text_cursor_width(&self) -> f32;
-
-    /// Size of the sides of a button.
-    fn button_surround(&self, vert: bool) -> FrameRules;
-
-    /// Size of the frame around an edit box, including margin
-    ///
-    /// Note: though text should not be drawn in the margin, the edit cursor
-    /// may be. The margin included here should be large enough!
-    fn edit_surround(&self, vert: bool) -> FrameRules;
 
     /// Size of the element drawn by [`DrawCtx::checkbox`].
     fn checkbox(&self) -> Size;
@@ -354,26 +304,17 @@ macro_rules! impl_ {
                 self.deref().pixels_from_em(em)
             }
 
-            fn frame(&self, vert: bool) -> FrameRules {
-                self.deref().frame(vert)
-            }
-            fn menu_frame(&self, vert: bool) -> FrameRules {
-                self.deref().menu_frame(vert)
+            fn frame(&self, style: FrameStyle, is_vert: bool) -> FrameRules {
+                self.deref().frame(style, is_vert)
             }
             fn separator(&self) -> Size {
                 self.deref().separator()
-            }
-            fn nav_frame(&self, vert: bool) -> FrameRules {
-                self.deref().nav_frame(vert)
             }
             fn inner_margin(&self) -> Size {
                 self.deref().inner_margin()
             }
             fn outer_margins(&self) -> Margins {
                 self.deref().outer_margins()
-            }
-            fn frame_margins(&self) -> Margins {
-                self.deref().frame_margins()
             }
             fn text_margins(&self) -> Margins {
                 self.deref().text_margins()
@@ -387,13 +328,6 @@ macro_rules! impl_ {
             }
             fn text_cursor_width(&self) -> f32 {
                 self.deref().text_cursor_width()
-            }
-
-            fn button_surround(&self, vert: bool) -> FrameRules {
-                self.deref().button_surround(vert)
-            }
-            fn edit_surround(&self, vert: bool) -> FrameRules {
-                self.deref().edit_surround(vert)
             }
 
             fn checkbox(&self) -> Size {

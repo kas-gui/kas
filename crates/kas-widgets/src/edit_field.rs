@@ -9,10 +9,10 @@ use super::Scrollable;
 use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{self, Command, ScrollDelta};
 use kas::geom::Vec2;
-use kas::layout;
+use kas::layout::{self, FrameStorage};
 use kas::prelude::*;
 use kas::text::SelectionHelper;
-use kas::theme::TextClass;
+use kas::theme::{FrameStyle, TextClass};
 use std::fmt::Debug;
 use std::ops::Range;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
@@ -178,19 +178,26 @@ widget! {
         core: CoreData,
         #[widget]
         inner: EditField<G>,
-        layout_frame: layout::FrameStorage,
+        frame_storage: FrameStorage,
     }
 
     impl Layout for Self {
         fn layout(&mut self) -> layout::Layout<'_> {
             let inner = layout::Layout::single(&mut self.inner);
-            layout::Layout::frame(&mut self.layout_frame, inner)
+            layout::Layout::frame(&mut self.frame_storage, inner, FrameStyle::EditBox)
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
             let mut draw = draw.with_core(self.core_data());
             let error = self.inner.has_error();
-            draw.re().with_core(self.inner.core_data()).edit_box(self.core.rect, error);
+            {
+                let mut draw = draw.re();
+                let mut draw = draw.with_core(self.inner.core_data());
+                if error {
+                    draw.state.insert(InputState::ERROR);
+                }
+                draw.frame(self.core.rect, FrameStyle::EditBox);
+            }
             self.inner.draw(draw.re());
         }
     }
@@ -203,7 +210,7 @@ impl EditBox<()> {
         EditBox {
             core: Default::default(),
             inner: EditField::new(text),
-            layout_frame: Default::default(),
+            frame_storage: Default::default(),
         }
     }
 
@@ -220,7 +227,7 @@ impl EditBox<()> {
         EditBox {
             core: self.core,
             inner: self.inner.with_guard(guard),
-            layout_frame: self.layout_frame,
+            frame_storage: self.frame_storage,
         }
     }
 

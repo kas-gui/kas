@@ -19,7 +19,8 @@ use kas::draw::{color::Rgba, *};
 use kas::geom::*;
 use kas::text::format::FormattableText;
 use kas::text::{fonts, AccelString, Effect, Text, TextApi, TextDisplay};
-use kas::theme::{self, InputState, SizeHandle, TextClass, ThemeControl};
+use kas::theme::{self, InputState, SizeHandle, ThemeControl};
+use kas::theme::{FrameStyle, TextClass};
 use kas::TkAction;
 
 // Used to ensure a rectangular background is inside a circular corner.
@@ -106,9 +107,10 @@ impl FlatTheme {
 const DIMS: dim::Parameters = dim::Parameters {
     outer_margin: 8.0,
     inner_margin: 1.2,
-    frame_margin: 2.4,
-    text_margin: 2.0,
+    text_margin: (3.4, 2.0),
     frame_size: 2.4,
+    popup_frame_size: 0.0,
+    menu_frame: 2.4,
     // NOTE: visual thickness is (button_frame * scale_factor).round() * (1 - BG_SHRINK_FACTOR)
     button_frame: 2.4,
     checkbox_inner: 9.0,
@@ -275,6 +277,42 @@ where
             .rounded_frame(outer, inner, BG_SHRINK_FACTOR, col_frame);
         inner
     }
+
+    fn edit_box(&mut self, outer: Quad, mut state: InputState) {
+        state.remove(InputState::DEPRESS);
+        let col_bg = self.cols.edit_bg(state);
+        if col_bg != self.cols.background {
+            let inner = outer.shrink(self.w.dims.button_frame as f32 * BG_SHRINK_FACTOR);
+            self.draw.rect(inner, col_bg);
+        }
+
+        let inner = outer.shrink(self.w.dims.button_frame as f32);
+        self.draw
+            .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
+
+        if !state.disabled() && (state.nav_focus() || state.hover()) {
+            let r = 0.5 * self.w.dims.button_frame as f32;
+            let y = outer.b.1 - r;
+            let a = Vec2(outer.a.0 + r, y);
+            let b = Vec2(outer.b.0 - r, y);
+            let col = if state.nav_focus() {
+                self.cols.nav_focus
+            } else {
+                self.cols.text
+            };
+
+            const F: f32 = 0.6;
+            let (sa, sb) = (self.w.dims.shadow_a * F, self.w.dims.shadow_b * F);
+            let outer = Quad::from_coords(a + sa, b + sb);
+            let inner = Quad::from_coords(a, b);
+            let col1 = if self.cols.is_dark { col } else { Rgba::BLACK };
+            let mut col2 = col1;
+            col2.a = 0.0;
+            self.draw.rounded_frame_2col(outer, inner, col1, col2);
+
+            self.draw.rounded_line(a, b, r, col);
+        }
+    }
 }
 
 impl<'a, DS: DrawSharedImpl> theme::DrawHandle for DrawHandle<'a, DS>
@@ -296,12 +334,10 @@ where
         class: PassType,
         f: &mut dyn FnMut(&mut dyn theme::DrawHandle),
     ) {
-        let mut frame_rect = Default::default();
         let mut shadow = Default::default();
         let mut outer_rect = inner_rect;
         if class == PassType::Overlay {
-            frame_rect = inner_rect.expand(self.w.dims.frame);
-            shadow = Quad::from(frame_rect);
+            shadow = Quad::from(inner_rect);
             shadow.a += self.w.dims.shadow_a * SHADOW_POPUP;
             shadow.b += self.w.dims.shadow_b * SHADOW_POPUP;
             let a = shadow.a.floor();
@@ -312,14 +348,8 @@ where
 
         if class == PassType::Overlay {
             shadow += offset.into();
-            let outer = Quad::from(frame_rect + offset);
-            let inner = Quad::from(inner_rect + offset);
-
+            let inner = Quad::from(inner_rect + offset).shrink(self.w.dims.frame as f32);
             draw.rounded_frame_2col(shadow, inner, Rgba::BLACK, Rgba::TRANSPARENT);
-
-            draw.rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
-            let inner = outer.shrink(self.w.dims.frame as f32 * BG_SHRINK_FACTOR);
-            draw.rect(inner, self.cols.background);
         }
 
         let mut handle = DrawHandle {
@@ -334,24 +364,49 @@ where
         self.draw.get_clip_rect()
     }
 
-    fn outer_frame(&mut self, rect: Rect) {
+    fn frame(&mut self, rect: Rect, style: FrameStyle, state: InputState) {
         let outer = Quad::from(rect);
-        let inner = outer.shrink(self.w.dims.frame as f32);
-        self.draw
-            .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
+        match style {
+            FrameStyle::InnerMargin => (),
+            FrameStyle::Frame => {
+                let inner = outer.shrink(self.w.dims.frame as f32);
+                self.draw
+                    .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
+            }
+            FrameStyle::Popup => {
+                // We cheat here by using zero-sized popup-frame, but assuming that contents are
+                // all a MenuEntry, and drawing into this space. This might look wrong if other
+                // widgets are used in the popup.
+                let size = self.w.dims.menu_frame as f32;
+                let inner = outer.shrink(size);
+                self.draw
+                    .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
+                let inner = outer.shrink(size * BG_SHRINK_FACTOR);
+                self.draw.rect(inner, self.cols.background);
+            }
+            FrameStyle::MenuEntry => {
+                if let Some(col) = self.cols.menu_entry(state) {
+                    let size = self.w.dims.menu_frame as f32;
+                    let inner = outer.shrink(size);
+                    self.draw.rounded_frame(outer, inner, BG_SHRINK_FACTOR, col);
+                    let inner = outer.shrink(size * BG_SHRINK_FACTOR);
+                    self.draw.rect(inner, col);
+                }
+            }
+            FrameStyle::NavFocus => {
+                if let Some(col) = self.cols.nav_region(state) {
+                    let inner = outer.shrink(self.w.dims.inner_margin as f32);
+                    self.draw.rounded_frame(outer, inner, 0.0, col);
+                }
+            }
+            FrameStyle::Button => self.button(rect, None, state),
+            FrameStyle::EditBox => self.edit_box(outer, state),
+        }
     }
 
     fn separator(&mut self, rect: Rect) {
         let outer = Quad::from(rect);
         self.draw.rect(outer, self.cols.frame);
-    }
-
-    fn nav_frame(&mut self, rect: Rect, state: InputState) {
-        if let Some(col) = self.cols.nav_region(state) {
-            let outer = Quad::from(rect);
-            let inner = outer.shrink(self.w.dims.inner_margin as f32);
-            self.draw.rounded_frame(outer, inner, 0.0, col);
-        }
     }
 
     fn selection_box(&mut self, rect: Rect) {
@@ -481,13 +536,6 @@ where
         }
     }
 
-    fn menu_entry(&mut self, rect: Rect, state: InputState) {
-        if let Some(col) = self.cols.menu_entry(state) {
-            let quad = Quad::from(rect);
-            self.draw.rect(quad, col);
-        }
-    }
-
     fn button(&mut self, rect: Rect, col: Option<color::Rgb>, state: InputState) {
         let outer = Quad::from(rect);
 
@@ -499,44 +547,6 @@ where
         let col_bg = ColorsLinear::adjust_for_state(col_bg, state);
         let col_frame = self.cols.nav_region(state).unwrap_or(self.cols.frame);
         self.button_frame(outer, col_frame, col_bg, state);
-    }
-
-    fn edit_box(&mut self, rect: Rect, mut state: InputState) {
-        let outer = Quad::from(rect);
-
-        state.remove(InputState::DEPRESS);
-        let col_bg = self.cols.edit_bg(state);
-        if col_bg != self.cols.background {
-            let inner = outer.shrink(self.w.dims.button_frame as f32 * BG_SHRINK_FACTOR);
-            self.draw.rect(inner, col_bg);
-        }
-
-        let inner = outer.shrink(self.w.dims.button_frame as f32);
-        self.draw
-            .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
-
-        if !state.disabled() && (state.nav_focus() || state.hover()) {
-            let r = 0.5 * self.w.dims.button_frame as f32;
-            let y = outer.b.1 - r;
-            let a = Vec2(outer.a.0 + r, y);
-            let b = Vec2(outer.b.0 - r, y);
-            let col = if state.nav_focus() {
-                self.cols.nav_focus
-            } else {
-                self.cols.text
-            };
-
-            const F: f32 = 0.6;
-            let (sa, sb) = (self.w.dims.shadow_a * F, self.w.dims.shadow_b * F);
-            let outer = Quad::from_coords(a + sa, b + sb);
-            let inner = Quad::from_coords(a, b);
-            let col1 = if self.cols.is_dark { col } else { Rgba::BLACK };
-            let mut col2 = col1;
-            col2.a = 0.0;
-            self.draw.rounded_frame_2col(outer, inner, col1, col2);
-
-            self.draw.rounded_line(a, b, r, col);
-        }
     }
 
     fn checkbox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState) {
