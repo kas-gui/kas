@@ -315,7 +315,7 @@ impl ScrollComponent {
                 source,
                 start_id,
                 coord,
-            } => on_press_start(mgr, source, start_id, coord),
+            } if self.max_offset != Offset::ZERO => on_press_start(mgr, source, start_id, coord),
             Event::PressMove { mut delta, .. } => {
                 self.glide.move_delta(delta);
                 let old_offset = self.offset;
