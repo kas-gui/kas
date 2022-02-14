@@ -5,10 +5,8 @@
 
 //! Geometry data types
 
-use crate::cast::Conv;
+use crate::cast::{Cast, Conv};
 use crate::dir::Directional;
-#[cfg(feature = "winit")]
-use winit::dpi::{LogicalPosition, PhysicalPosition, PhysicalSize, Pixel};
 
 mod vector;
 pub use vector::{DVec2, Quad, Vec2, Vec3};
@@ -151,15 +149,6 @@ impl Coord {
     pub const fn splat(n: i32) -> Self {
         Self(n, n)
     }
-
-    /// Convert from a logical position
-    #[cfg(feature = "winit")]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
-    pub fn from_logical<X: Pixel>(logical: LogicalPosition<X>, dpi_factor: f64) -> Self {
-        let pos = PhysicalPosition::<i32>::from_logical(logical, dpi_factor);
-        let pos: (i32, i32) = pos.into();
-        Coord(pos.0, pos.1)
-    }
 }
 
 impl std::ops::Sub for Coord {
@@ -236,26 +225,6 @@ impl std::ops::SubAssign<Size> for Coord {
 impl From<Coord> for kas_text::Vec2 {
     fn from(pos: Coord) -> kas_text::Vec2 {
         Vec2::from(pos).into()
-    }
-}
-
-#[cfg(feature = "winit")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
-impl<X: Pixel> From<PhysicalPosition<X>> for Coord {
-    #[inline]
-    fn from(pos: PhysicalPosition<X>) -> Coord {
-        let pos: (i32, i32) = pos.cast::<i32>().into();
-        Coord(pos.0, pos.1)
-    }
-}
-
-#[cfg(feature = "winit")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
-impl<X: Pixel> From<Coord> for PhysicalPosition<X> {
-    #[inline]
-    fn from(coord: Coord) -> PhysicalPosition<X> {
-        let pos: PhysicalPosition<i32> = (coord.0, coord.1).into();
-        pos.cast()
     }
 }
 
@@ -433,38 +402,6 @@ impl From<Size> for kas_text::Vec2 {
     fn from(size: Size) -> kas_text::Vec2 {
         debug_assert!(size.0 >= 0 && size.1 >= 0);
         Vec2::from(size).into()
-    }
-}
-
-#[cfg(feature = "winit")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
-impl<X: Pixel> From<PhysicalSize<X>> for Size {
-    #[inline]
-    fn from(size: PhysicalSize<X>) -> Size {
-        let size: (i32, i32) = size.cast::<i32>().into();
-        debug_assert!(size.0 >= 0 && size.1 >= 0);
-        Size(size.0, size.1)
-    }
-}
-
-#[cfg(feature = "winit")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
-impl<X: Pixel> From<Size> for PhysicalSize<X> {
-    #[inline]
-    fn from(size: Size) -> PhysicalSize<X> {
-        debug_assert!(size.0 >= 0 && size.1 >= 0);
-        let pos: PhysicalSize<i32> = (size.0, size.1).into();
-        pos.cast()
-    }
-}
-
-#[cfg(feature = "winit")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
-impl From<Size> for winit::dpi::Size {
-    #[inline]
-    fn from(size: Size) -> winit::dpi::Size {
-        debug_assert!(size.0 >= 0 && size.1 >= 0);
-        winit::dpi::Size::Physical((size.0, size.1).into())
     }
 }
 
@@ -672,5 +609,63 @@ impl std::ops::SubAssign<Offset> for Rect {
     #[inline]
     fn sub_assign(&mut self, offset: Offset) {
         self.pos -= offset;
+    }
+}
+
+#[cfg(feature = "winit")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
+mod winit_impls {
+    use super::{Coord, Size};
+    use winit::dpi::{LogicalPosition, PhysicalPosition, PhysicalSize, Pixel};
+
+    impl Coord {
+        /// Convert from a logical position
+        pub fn from_logical<X: Pixel>(logical: LogicalPosition<X>, dpi_factor: f64) -> Self {
+            let pos = PhysicalPosition::<i32>::from_logical(logical, dpi_factor);
+            let pos: (i32, i32) = pos.into();
+            Coord(pos.0, pos.1)
+        }
+    }
+
+    impl<X: Pixel> From<PhysicalPosition<X>> for Coord {
+        #[inline]
+        fn from(pos: PhysicalPosition<X>) -> Coord {
+            let pos: (i32, i32) = pos.cast::<i32>().into();
+            Coord(pos.0, pos.1)
+        }
+    }
+
+    impl<X: Pixel> From<Coord> for PhysicalPosition<X> {
+        #[inline]
+        fn from(coord: Coord) -> PhysicalPosition<X> {
+            let pos: PhysicalPosition<i32> = (coord.0, coord.1).into();
+            pos.cast()
+        }
+    }
+
+    impl<X: Pixel> From<PhysicalSize<X>> for Size {
+        #[inline]
+        fn from(size: PhysicalSize<X>) -> Size {
+            let size: (i32, i32) = size.cast::<i32>().into();
+            debug_assert!(size.0 >= 0 && size.1 >= 0);
+            Size(size.0, size.1)
+        }
+    }
+
+    impl<X: Pixel> From<Size> for PhysicalSize<X> {
+        #[inline]
+        fn from(size: Size) -> PhysicalSize<X> {
+            debug_assert!(size.0 >= 0 && size.1 >= 0);
+            let pos: PhysicalSize<i32> = (size.0, size.1).into();
+            pos.cast()
+        }
+    }
+
+    impl From<Size> for winit::dpi::Size {
+        #[inline]
+        fn from(size: Size) -> winit::dpi::Size {
+            debug_assert!(size.0 >= 0 && size.1 >= 0);
+            winit::dpi::Size::Physical((size.0, size.1).into())
+        }
     }
 }
