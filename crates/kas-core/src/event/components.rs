@@ -389,19 +389,23 @@ impl TextInput {
         use TextInputAction as Action;
         match event {
             Event::PressStart { source, coord, .. } if source.is_primary() => {
-                mgr.grab_press_unique(w_id.clone(), source, coord, None);
-                match source {
+                let (action, icon) = match source {
                     PressSource::Touch(touch_id) => {
                         self.touch_phase = TouchPhase::Start(touch_id, coord);
                         let delay = mgr.config().touch_select_delay();
-                        mgr.update_on_timer(delay, w_id, PAYLOAD_SELECT);
-                        Action::Focus
+                        mgr.update_on_timer(delay, w_id.clone(), PAYLOAD_SELECT);
+                        (Action::Focus, None)
                     }
-                    PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan() => Action::Focus,
-                    PressSource::Mouse(_, repeats) => {
-                        Action::Cursor(coord, true, !mgr.modifiers().shift(), repeats)
+                    PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan() => {
+                        (Action::Focus, Some(CursorIcon::Grabbing))
                     }
-                }
+                    PressSource::Mouse(_, repeats) => (
+                        Action::Cursor(coord, true, !mgr.modifiers().shift(), repeats),
+                        None,
+                    ),
+                };
+                mgr.grab_press_unique(w_id, source, coord, icon);
+                action
             }
             Event::PressMove {
                 source,
