@@ -135,8 +135,9 @@ impl EventState {
 
     /// Is mouse panning enabled?
     #[inline]
-    pub fn config_enable_mouse_pan(&self) -> bool {
-        self.config.mouse_pan().is_enabled_with(self.modifiers())
+    pub fn config_enable_pan(&self, source: PressSource) -> bool {
+        source.is_touch()
+            || source.is_primary() && self.config.mouse_pan().is_enabled_with(self.modifiers())
     }
 
     /// Is mouse text panning enabled?

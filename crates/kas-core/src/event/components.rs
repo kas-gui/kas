@@ -6,7 +6,7 @@
 //! Event handling components
 
 use super::ScrollDelta::{LineDelta, PixelDelta};
-use super::{Command, Event, EventMgr, PressSource, Response, VoidMsg};
+use super::{Command, CursorIcon, Event, EventMgr, PressSource, Response, VoidMsg};
 use crate::cast::CastFloat;
 use crate::geom::{Coord, Offset, Rect, Size, Vec2};
 #[allow(unused)]
@@ -218,51 +218,23 @@ impl ScrollComponent {
     /// Implements scroll by Home/End, Page Up/Down and arrow keys, by mouse
     /// wheel and touchpad.
     ///
-    /// If the `on_press_start` closure requests a mouse grab, this also
-    /// implements scrolling on `PressMove` mouse/touch events. On release
-    /// (`PressEnd`), given sufficient speed, momentum scrolling commences.
-    /// The `on_press_start` closure may choose to request a mouse grab only
-    /// given certain conditions, e.g. only on the primary mouse button:
-    /// ```
-    /// # use kas_core::prelude::*;
-    /// # use kas_core::event::{self, components::ScrollComponent};
-    /// # type Msg = ();
-    /// fn dummy_event_handler(
-    ///     id: WidgetId,
-    ///     scroll: &mut ScrollComponent,
-    ///     mgr: &mut EventMgr,
-    ///     event: Event
-    /// )
-    ///     -> Response<Msg>
-    /// {
-    ///     let window_size = Size(100, 80);
-    ///     let (action, response) = scroll.scroll_by_event(
-    ///         mgr,
-    ///         event,
-    ///         id.clone(),
-    ///         window_size,
-    ///         |mgr, source, _, coord| if source.is_primary() {
-    ///             let icon = Some(event::CursorIcon::Grabbing);
-    ///             mgr.grab_press_unique(id, source, coord, icon);
-    ///         }
-    ///     );
-    ///     *mgr |= action;
-    ///     response.void_into()
-    /// }
-    /// ```
+    /// `PressStart` is consumed only if the maximum scroll offset is non-zero
+    /// and event configuration enables panning for this press `source` (may
+    /// depend on modifiers), and if so grabs press events from this `source`.
+    /// `PressMove` is used to scroll by the motion delta and to track speed;
+    /// `PressEnd` initiates momentum-scrolling if the speed is high enough.
     ///
     /// If the returned [`TkAction`] is `None`, the scroll offset has not changed and
     /// the returned [`Response`] is either `Used` or `Unused`.
     /// If the returned [`TkAction`] is not `None`, the scroll offset has been
     /// updated and the second return value is `Response::Used`.
     #[inline]
-    pub fn scroll_by_event<PS: FnOnce(&mut EventMgr, PressSource, Option<WidgetId>, Coord)>(
+    pub fn scroll_by_event(
         &mut self,
         mgr: &mut EventMgr,
         event: Event,
         id: WidgetId,
         window_size: Size,
-        on_press_start: PS,
     ) -> (TkAction, Response<VoidMsg>) {
         let mut action = TkAction::empty();
         let mut response = Response::Used;
@@ -311,11 +283,12 @@ impl ScrollComponent {
                     Response::Scrolled
                 };
             }
-            Event::PressStart {
-                source,
-                start_id,
-                coord,
-            } if self.max_offset != Offset::ZERO => on_press_start(mgr, source, start_id, coord),
+            Event::PressStart { source, coord, .. }
+                if self.max_offset != Offset::ZERO && mgr.config_enable_pan(source) =>
+            {
+                let icon = Some(CursorIcon::Grabbing);
+                mgr.grab_press_unique(id, source, coord, icon);
+            }
             Event::PressMove { mut delta, .. } => {
                 self.glide.move_delta(delta);
                 let old_offset = self.offset;

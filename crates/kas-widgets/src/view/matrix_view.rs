@@ -726,14 +726,8 @@ widget! {
                 _ => (), // fall through to scroll handler
             }
 
-            let self_id = self.id();
             let (action, response) = self.scroll
-                .scroll_by_event(mgr, event, self.id(), self.core.rect.size, |mgr, source, _, coord| {
-                    if source.is_primary() && mgr.config_enable_mouse_pan() {
-                        let icon = Some(CursorIcon::Grabbing);
-                        mgr.grab_press_unique(self_id, source, coord, icon);
-                    }
-                });
+                .scroll_by_event(mgr, event, self.id(), self.core.rect.size);
 
             if !action.is_empty() {
                 *mgr |= action;

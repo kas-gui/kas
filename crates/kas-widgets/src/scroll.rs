@@ -165,15 +165,9 @@ widget! {
                 debug_assert!(self.eq_id(id), "SendEvent::send: bad WidgetId");
             };
 
-            let id = self.id();
             let (action, response) =
                 self.scroll
-                    .scroll_by_event(mgr, event, self.id(), self.core.rect.size, |mgr, source, _, coord| {
-                        if source.is_primary() && mgr.config_enable_mouse_pan() {
-                            let icon = Some(event::CursorIcon::Grabbing);
-                            mgr.grab_press_unique(id, source, coord, icon);
-                        }
-                    });
+                    .scroll_by_event(mgr, event, self.id(), self.core.rect.size);
             if !action.is_empty() {
                 *mgr |= action;
                 Response::Focus(self.core.rect)
