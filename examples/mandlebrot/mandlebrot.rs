@@ -78,8 +78,16 @@ impl Default for PushConstants {
 }
 impl PushConstants {
     fn set(&mut self, p: DVec2, q: DVec2, iterations: i32) {
-        self.p = p.cast_approx();
-        self.q = q.cast_approx();
+        #[cfg(feature = "shader64")]
+        {
+            self.p = p;
+            self.q = q;
+        }
+        #[cfg(not(feature = "shader64"))]
+        {
+            self.p = p.cast_approx();
+            self.q = q.cast_approx();
+        }
         self.iterations = iterations;
     }
 }
