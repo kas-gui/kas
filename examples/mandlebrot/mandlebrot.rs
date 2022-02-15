@@ -78,8 +78,8 @@ impl Default for PushConstants {
 }
 impl PushConstants {
     fn set(&mut self, p: DVec2, q: DVec2, iterations: i32) {
-        self.p = p.into();
-        self.q = q.into();
+        self.p = p.cast_approx();
+        self.q = q.cast_approx();
         self.iterations = iterations;
     }
 }
@@ -232,8 +232,8 @@ impl CustomWindow for PipeWindow {
         self.push_constants.set(p.0, p.1, p.3);
         let rel_width = p.2;
 
-        let aa = Vec2::from(rect.pos);
-        let bb = aa + Vec2::from(rect.size);
+        let aa = Vec2::conv(rect.pos);
+        let bb = aa + Vec2::conv(rect.size);
 
         let depth = pass.depth();
         let ab = Vec3(aa.0, bb.1, depth);
@@ -333,10 +333,10 @@ widget! {
         #[inline]
         fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, _: AlignHints) {
             self.core.rect = rect;
-            let size = DVec2::from(rect.size);
+            let size = DVec2::conv(rect.size);
             let rel_width = DVec2(size.0 / size.1, 1.0);
             self.view_alpha = 2.0 / size.1;
-            self.view_delta = -(DVec2::from(rect.pos) * 2.0 + size) / size.1;
+            self.view_delta = -(DVec2::conv(rect.pos) * 2.0 + size) / size.1;
             self.rel_width = rel_width.0 as f32;
         }
 

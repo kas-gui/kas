@@ -65,11 +65,11 @@ pub enum Event {
     ///
     /// In general, a point `p` on the screen should be transformed as follows:
     /// ```
+    /// # use kas_core::cast::{Cast, CastFloat};
     /// # use kas_core::geom::{Coord, DVec2};
     /// # let (alpha, delta) = (DVec2::ZERO, DVec2::ZERO);
-    /// # let mut p = Coord::ZERO;
-    /// // Works for Coord type; for DVec2 type-conversions are unnecessary:
-    /// p = (alpha.complex_mul(p.into()) + delta).into();
+    ///  let mut p = Coord::ZERO; // or whatever
+    /// p = (alpha.complex_mul(p.cast()) + delta).cast_nearest();
     /// ```
     ///
     /// When it is known that there is no rotational component, one can use a
