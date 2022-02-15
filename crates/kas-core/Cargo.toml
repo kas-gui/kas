@@ -58,7 +58,7 @@ ron = ["config", "dep_ron"]
 macros_log = ["kas-macros/log"]
 
 [dependencies]
-easy-cast = "0.4.2"
+easy-cast = { git = "https://github.com/kas-gui/easy-cast.git", rev = "6bf6084bb78f6bd1e781158016916ef103db0b19" }
 log = "0.4"
 smallvec = "1.6.1"
 stack_dst = { version = "0.6", optional = true }

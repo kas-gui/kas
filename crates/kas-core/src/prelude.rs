@@ -9,7 +9,7 @@
 //! this crate's prelude.
 
 #[doc(no_inline)]
-pub use crate::cast::{Cast, CastFloat, Conv, ConvFloat};
+pub use crate::cast::traits::*;
 #[doc(no_inline)]
 pub use crate::class::*;
 #[doc(no_inline)]
