@@ -10,6 +10,7 @@ use std::ops::Range;
 
 use crate::{dim, ColorsLinear, Config, FlatTheme, Theme};
 use crate::{DrawShaded, DrawShadedImpl};
+use kas::cast::traits::*;
 use kas::dir::{Direction, Directional};
 use kas::draw::{color::Rgba, *};
 use kas::geom::*;
@@ -192,7 +193,7 @@ where
     /// - `bg_col`: colour of background
     /// - `nav_col`: colour of navigation highlight, if visible
     fn draw_edit_box(&mut self, outer: Rect, bg_col: Rgba, nav_col: Option<Rgba>) -> Quad {
-        let mut outer = Quad::from(outer);
+        let mut outer = Quad::conv(outer);
         let mut inner = outer.shrink(self.w.dims.frame as f32);
 
         let col = self.cols.background;
@@ -211,7 +212,7 @@ where
 
     /// Draw a handle (for slider, scrollbar)
     fn draw_handle(&mut self, rect: Rect, state: InputState) {
-        let outer = Quad::from(rect);
+        let outer = Quad::conv(rect);
         let thickness = outer.size().min_comp() / 2.0;
         let inner = outer.shrink(thickness);
         let col = self.cols.accent_soft_state(state);
@@ -246,18 +247,18 @@ where
         let mut shadow = Default::default();
         let mut outer_rect = inner_rect;
         if class == PassType::Overlay {
-            shadow = Quad::from(inner_rect);
+            shadow = Quad::conv(inner_rect);
             shadow.a += self.w.dims.shadow_a;
             shadow.b += self.w.dims.shadow_b;
-            let a = shadow.a.floor();
-            let b = shadow.b.ceil();
-            outer_rect = Rect::new(a.into(), (b - a).into());
+            let a = Coord::conv_floor(shadow.a);
+            let b = Coord::conv_ceil(shadow.b);
+            outer_rect = Rect::new(a, (b - a).cast());
         }
         let mut draw = self.draw.new_pass(outer_rect, offset, class);
 
         if class == PassType::Overlay {
-            shadow += offset.into();
-            let inner = Quad::from(inner_rect + offset);
+            shadow += offset.cast();
+            let inner = Quad::conv(inner_rect + offset);
             draw.rounded_frame_2col(shadow, inner, Rgba::BLACK, Rgba::TRANSPARENT);
         }
 
@@ -276,19 +277,19 @@ where
     fn frame(&mut self, rect: Rect, style: FrameStyle, mut state: InputState) {
         match style {
             FrameStyle::Frame => {
-                let outer = Quad::from(rect);
+                let outer = Quad::conv(rect);
                 let inner = outer.shrink(self.w.dims.frame as f32);
                 let norm = (0.7, -0.7);
                 let col = self.cols.background;
                 self.draw.shaded_round_frame(outer, inner, norm, col);
             }
             FrameStyle::Popup => {
-                let outer = Quad::from(rect);
+                let outer = Quad::conv(rect);
                 self.draw.rect(outer, self.cols.background);
             }
             FrameStyle::MenuEntry => {
                 if let Some(col) = self.cols.menu_entry(state) {
-                    let outer = Quad::from(rect);
+                    let outer = Quad::conv(rect);
                     self.draw.rect(outer, col);
                 }
             }
@@ -303,7 +304,7 @@ where
     }
 
     fn separator(&mut self, rect: Rect) {
-        let outer = Quad::from(rect);
+        let outer = Quad::conv(rect);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
         let norm = (0.0, -0.7);
         let col = self.cols.background;
@@ -363,7 +364,7 @@ where
     }
 
     fn button(&mut self, rect: Rect, col: Option<color::Rgb>, state: InputState) {
-        let outer = Quad::from(rect);
+        let outer = Quad::conv(rect);
         let inner = outer.shrink(self.w.dims.button_frame as f32);
         let col = col.map(|c| c.into()).unwrap_or(self.cols.accent_soft);
         let col = ColorsLinear::adjust_for_state(col, state);
@@ -411,7 +412,7 @@ where
 
     fn scrollbar(&mut self, rect: Rect, h_rect: Rect, _dir: Direction, state: InputState) {
         // track
-        let outer = Quad::from(rect);
+        let outer = Quad::conv(rect);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
         let norm = (0.0, -0.7);
         let col = self.cols.background;
@@ -423,7 +424,7 @@ where
 
     fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
         // track
-        let mut outer = Quad::from(rect);
+        let mut outer = Quad::conv(rect);
         outer = match dir.is_horizontal() {
             true => outer.shrink_vec(Vec2(0.0, outer.size().1 * (3.0 / 8.0))),
             false => outer.shrink_vec(Vec2(outer.size().0 * (3.0 / 8.0), 0.0)),
@@ -438,7 +439,7 @@ where
     }
 
     fn progress_bar(&mut self, rect: Rect, dir: Direction, _: InputState, value: f32) {
-        let mut outer = Quad::from(rect);
+        let mut outer = Quad::conv(rect);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
         let norm = (0.0, -0.7);
         let col = self.cols.frame;

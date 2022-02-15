@@ -122,7 +122,7 @@ impl DragHandle {
     /// This depends on size of the handle and the track.
     #[inline]
     pub fn max_offset(&self) -> Offset {
-        Offset::from(self.track.size) - Offset::from(self.core.rect.size)
+        Offset::conv(self.track.size) - Offset::conv(self.core.rect.size)
     }
 
     /// Set a new handle offset

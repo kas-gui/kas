@@ -11,6 +11,7 @@
 use super::{AlignHints, AxisInfo, RulesSetter, RulesSolver, SetRectMgr, SizeRules, Storage};
 use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
+use crate::cast::Cast;
 use crate::draw::color::Rgb;
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::text::{Align, TextApi, TextApiExt};
@@ -490,7 +491,7 @@ impl<'a> Visitor for Text<'a> {
         };
         self.data.pos = rect.pos;
         self.text.update_env(|env| {
-            env.set_bounds(rect.size.into());
+            env.set_bounds(rect.size.cast());
             env.set_align(align.unwrap_or(halign, Align::Center));
         });
     }

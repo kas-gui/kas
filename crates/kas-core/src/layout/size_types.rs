@@ -6,7 +6,7 @@
 //! Types used by size rules
 
 use super::{Align, AlignHints, AxisInfo, SizeRules};
-use crate::cast::{CastFloat, Conv, ConvFloat};
+use crate::cast::traits::*;
 use crate::dir::Directional;
 use crate::geom::{Rect, Size, Vec2};
 
@@ -83,7 +83,7 @@ impl Margins {
 
 impl From<Size> for Margins {
     fn from(size: Size) -> Self {
-        Margins::hv_splat(size.into())
+        Margins::hv_splat(size.cast())
     }
 }
 
@@ -224,8 +224,8 @@ impl SpriteDisplay {
         let ideal = match self.aspect {
             AspectScaling::None => self.size,
             AspectScaling::Fixed => {
-                let size = Vec2::from(self.size);
-                let ratio = Vec2::from(rect.size) / size;
+                let size = Vec2::conv(self.size);
+                let ratio = Vec2::conv(rect.size) / size;
                 // Use smaller ratio, which must be finite
                 if ratio.0 < ratio.1 {
                     Size(rect.size.0, i32::conv_nearest(ratio.0 * size.1))

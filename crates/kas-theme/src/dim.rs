@@ -11,7 +11,7 @@ use std::f32;
 use std::rc::Rc;
 
 use crate::anim::AnimState;
-use kas::cast::{Cast, CastFloat, ConvFloat};
+use kas::cast::traits::*;
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, Stretch};
 use kas::text::{fonts::FontId, Align, TextApi, TextApiExt};
@@ -113,9 +113,9 @@ impl Dimensions {
             button_frame: (params.button_frame * scale_factor).cast_nearest(),
             checkbox: i32::conv_nearest(params.checkbox_inner * dpp)
                 + 2 * (i32::from(inner_margin) + frame),
-            scrollbar: Size::from(params.scrollbar_size * scale_factor),
-            slider: Size::from(params.slider_size * scale_factor),
-            progress_bar: Size::from(params.progress_bar * scale_factor),
+            scrollbar: Size::conv_nearest(params.scrollbar_size * scale_factor),
+            slider: Size::conv_nearest(params.slider_size * scale_factor),
+            progress_bar: Size::conv_nearest(params.progress_bar * scale_factor),
             shadow_a: shadow_offset - shadow_size,
             shadow_b: shadow_offset + shadow_size,
         }

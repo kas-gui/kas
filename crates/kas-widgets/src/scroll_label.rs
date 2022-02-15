@@ -42,7 +42,7 @@ widget! {
                 .text
                 .update_env(|env| {
                     env.set_align(align.unwrap_or(Align::Default, Align::Default));
-                    env.set_bounds(size.into());
+                    env.set_bounds(size.cast());
                 })
                 .into();
             self.set_view_offset_from_edit_pos();
@@ -89,7 +89,7 @@ widget! {
         }
 
         fn set_edit_pos_from_coord(&mut self, mgr: &mut EventMgr, coord: Coord) {
-            let rel_pos = (coord - self.rect().pos + self.view_offset).into();
+            let rel_pos = (coord - self.rect().pos + self.view_offset).cast();
             self.selection
                 .set_edit_pos(self.text.text_index_nearest(rel_pos));
             self.set_view_offset_from_edit_pos();
@@ -221,8 +221,8 @@ widget! {
 
         fn max_scroll_offset(&self) -> Offset {
             let bounds = Vec2::from(self.text.env().bounds);
-            let max_offset = (self.required - bounds).ceil();
-            Offset::from(max_offset).max(Offset::ZERO)
+            let max_offset = Offset::conv_ceil(self.required - bounds);
+            max_offset.max(Offset::ZERO)
         }
 
         fn scroll_offset(&self) -> Offset {

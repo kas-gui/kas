@@ -82,7 +82,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
         let scale_factor = window.scale_factor();
         shared.scale_factor = scale_factor;
-        let size: Size = window.inner_size().into();
+        let size: Size = window.inner_size().cast();
         info!("Constucted new window with size {:?}", size);
 
         let mut draw = shared.draw.draw.new_window();
@@ -315,7 +315,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
     fn do_resize(&mut self, shared: &mut SharedState<C, T>, size: PhysicalSize<u32>) {
         let time = Instant::now();
-        let size = size.into();
+        let size = size.cast();
         if size == self.sc_size() {
             return;
         }

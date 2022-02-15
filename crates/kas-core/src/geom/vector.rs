@@ -7,7 +7,7 @@
 //!
 //! For drawing operations, all dimensions use the `f32` type.
 
-use crate::cast::{CastFloat, Conv};
+use crate::cast::*;
 use crate::geom::{Coord, Offset, Rect, Size};
 use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub, SubAssign};
 
@@ -122,12 +122,12 @@ impl SubAssign<Vec2> for Quad {
     }
 }
 
-impl From<Rect> for Quad {
+impl Conv<Rect> for Quad {
     #[inline]
-    fn from(rect: Rect) -> Quad {
-        let a = Vec2::from(rect.pos);
-        let b = a + Vec2::from(rect.size);
-        Quad { a, b }
+    fn try_conv(rect: Rect) -> Result<Self> {
+        let a = Vec2::try_conv(rect.pos)?;
+        let b = a + Vec2::try_conv(rect.size)?;
+        Ok(Quad { a, b })
     }
 }
 
@@ -440,72 +440,78 @@ macro_rules! impl_vec2 {
                 (v.0, v.1)
             }
         }
-
-        impl From<Coord> for $T {
-            #[inline]
-            fn from(arg: Coord) -> Self {
-                $T(<$f>::conv(arg.0), <$f>::conv(arg.1))
-            }
-        }
-
-        impl From<Size> for $T {
-            #[inline]
-            fn from(arg: Size) -> Self {
-                $T(<$f>::conv(arg.0), <$f>::conv(arg.1))
-            }
-        }
-
-        impl From<Offset> for $T {
-            #[inline]
-            fn from(arg: Offset) -> Self {
-                $T(<$f>::conv(arg.0), <$f>::conv(arg.1))
-            }
-        }
-
-        impl From<$T> for Coord {
-            #[inline]
-            fn from(arg: $T) -> Self {
-                Coord(arg.0.cast_nearest(), arg.1.cast_nearest())
-            }
-        }
-
-        impl From<$T> for Size {
-            #[inline]
-            fn from(arg: $T) -> Self {
-                Offset::from(arg).into()
-            }
-        }
-
-        impl From<$T> for Offset {
-            #[inline]
-            fn from(arg: $T) -> Self {
-                Offset(arg.0.cast_nearest(), arg.1.cast_nearest())
-            }
-        }
-
-        impl From<kas_text::Vec2> for $T {
-            #[inline]
-            fn from(size: kas_text::Vec2) -> Self {
-                $T(size.0.into(), size.1.into())
-            }
-        }
     };
 }
 
+impl From<kas_text::Vec2> for Vec2 {
+    #[inline]
+    fn from(size: kas_text::Vec2) -> Self {
+        Vec2(size.0, size.1)
+    }
+}
+
 impl From<Vec2> for kas_text::Vec2 {
+    #[inline]
     fn from(size: Vec2) -> kas_text::Vec2 {
         kas_text::Vec2(size.0, size.1)
     }
 }
 
-impl From<DVec2> for Vec2 {
-    fn from(size: DVec2) -> Vec2 {
-        Vec2(size.0 as f32, size.1 as f32)
+impl ConvApprox<DVec2> for Vec2 {
+    fn try_conv_approx(size: DVec2) -> Result<Vec2> {
+        Ok(Vec2(size.0.try_cast_approx()?, size.1.try_cast_approx()?))
     }
 }
 
 impl_vec2!(Vec2, f32);
 impl_vec2!(DVec2, f64);
+
+macro_rules! impl_conv_vec2 {
+    ($S:ty, $T:ty) => {
+        impl Conv<$S> for $T {
+            #[inline]
+            fn try_conv(arg: $S) -> Result<Self> {
+                Ok(Self(arg.0.try_cast()?, arg.1.try_cast()?))
+            }
+        }
+
+        impl ConvApprox<$T> for $S {
+            #[inline]
+            fn try_conv_approx(arg: $T) -> Result<Self> {
+                Ok(Self(arg.0.try_cast_approx()?, arg.1.try_cast_approx()?))
+            }
+        }
+
+        impl ConvFloat<$T> for $S {
+            #[inline]
+            fn try_conv_trunc(x: $T) -> Result<Self> {
+                Ok(Self(i32::try_conv_trunc(x.0)?, i32::try_conv_trunc(x.1)?))
+            }
+            #[inline]
+            fn try_conv_nearest(x: $T) -> Result<Self> {
+                Ok(Self(
+                    i32::try_conv_nearest(x.0)?,
+                    i32::try_conv_nearest(x.1)?,
+                ))
+            }
+            #[inline]
+            fn try_conv_floor(x: $T) -> Result<Self> {
+                Ok(Self(i32::try_conv_floor(x.0)?, i32::try_conv_floor(x.1)?))
+            }
+            #[inline]
+            fn try_conv_ceil(x: $T) -> Result<Self> {
+                Ok(Self(i32::try_conv_ceil(x.0)?, i32::try_conv_ceil(x.1)?))
+            }
+        }
+    };
+}
+
+impl_conv_vec2!(Coord, Vec2);
+impl_conv_vec2!(Size, Vec2);
+impl_conv_vec2!(Offset, Vec2);
+impl_conv_vec2!(Coord, DVec2);
+impl_conv_vec2!(Size, DVec2);
+impl_conv_vec2!(Offset, DVec2);
 
 /// 3D vector
 ///

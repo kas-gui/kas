@@ -13,7 +13,7 @@ use std::ops::Range;
 use std::rc::Rc;
 
 use crate::{dim, ColorsLinear, Config, Theme};
-use kas::cast::Cast;
+use kas::cast::traits::*;
 use kas::dir::{Direction, Directional};
 use kas::draw::{color::Rgba, *};
 use kas::geom::*;
@@ -337,18 +337,18 @@ where
         let mut shadow = Default::default();
         let mut outer_rect = inner_rect;
         if class == PassType::Overlay {
-            shadow = Quad::from(inner_rect);
+            shadow = Quad::conv(inner_rect);
             shadow.a += self.w.dims.shadow_a * SHADOW_POPUP;
             shadow.b += self.w.dims.shadow_b * SHADOW_POPUP;
-            let a = shadow.a.floor();
-            let b = shadow.b.ceil();
-            outer_rect = Rect::new(a.into(), (b - a).into());
+            let a = Coord::conv_floor(shadow.a);
+            let b = Coord::conv_ceil(shadow.b);
+            outer_rect = Rect::new(a, (b - a).cast());
         }
         let mut draw = self.draw.new_pass(outer_rect, offset, class);
 
         if class == PassType::Overlay {
-            shadow += offset.into();
-            let inner = Quad::from(inner_rect + offset).shrink(self.w.dims.frame as f32);
+            shadow += offset.cast();
+            let inner = Quad::conv(inner_rect + offset).shrink(self.w.dims.frame as f32);
             draw.rounded_frame_2col(shadow, inner, Rgba::BLACK, Rgba::TRANSPARENT);
         }
 
@@ -365,7 +365,7 @@ where
     }
 
     fn frame(&mut self, rect: Rect, style: FrameStyle, state: InputState) {
-        let outer = Quad::from(rect);
+        let outer = Quad::conv(rect);
         match style {
             FrameStyle::InnerMargin => (),
             FrameStyle::Frame => {
@@ -405,12 +405,12 @@ where
     }
 
     fn separator(&mut self, rect: Rect) {
-        let outer = Quad::from(rect);
+        let outer = Quad::conv(rect);
         self.draw.rect(outer, self.cols.frame);
     }
 
     fn selection_box(&mut self, rect: Rect) {
-        let inner = Quad::from(rect);
+        let inner = Quad::conv(rect);
         let outer = inner.grow(self.w.dims.inner_margin.into());
         // TODO: this should use its own colour and a stippled pattern
         let col = self.cols.text_sel_bg;
@@ -418,13 +418,12 @@ where
     }
 
     fn text(&mut self, pos: Coord, text: &TextDisplay, _: TextClass, state: InputState) {
-        let pos = pos;
         let col = if state.disabled() {
             self.cols.text_disabled
         } else {
             self.cols.text
         };
-        self.draw.text(pos.into(), text, col);
+        self.draw.text(pos.cast(), text, col);
     }
 
     fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, _: TextClass, state: InputState) {
@@ -434,7 +433,7 @@ where
             self.cols.text
         };
         self.draw
-            .text_col_effects((pos).into(), text.display(), col, text.effect_tokens());
+            .text_col_effects(pos.cast(), text.display(), col, text.effect_tokens());
     }
 
     fn text_accel(
@@ -445,7 +444,7 @@ where
         _: TextClass,
         state: InputState,
     ) {
-        let pos = Vec2::from(pos);
+        let pos = Vec2::conv(pos);
         let col = if state.disabled() {
             self.cols.text_disabled
         } else {
@@ -467,7 +466,7 @@ where
         _: TextClass,
         state: InputState,
     ) {
-        let pos = Vec2::from(pos);
+        let pos = Vec2::conv(pos);
         let col = if state.disabled() {
             self.cols.text_disabled
         } else {
@@ -509,7 +508,7 @@ where
         }
 
         let width = self.w.dims.font_marker_width;
-        let pos = Vec2::from(pos);
+        let pos = Vec2::conv(pos);
 
         let mut col = self.cols.nav_focus;
         for cursor in text.text_glyph_pos(byte).rev() {
@@ -537,7 +536,7 @@ where
     }
 
     fn button(&mut self, rect: Rect, col: Option<color::Rgb>, state: InputState) {
-        let outer = Quad::from(rect);
+        let outer = Quad::conv(rect);
 
         let col_bg = if state.nav_focus() && !state.disabled() {
             self.cols.accent_soft
@@ -552,7 +551,7 @@ where
     fn checkbox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState) {
         let anim_fade = self.w.anim.fade_bool_1m(self.draw.draw, wid, checked);
 
-        let outer = Quad::from(rect);
+        let outer = Quad::conv(rect);
 
         let col_frame = self.cols.nav_region(state).unwrap_or(self.cols.frame);
         let inner = self.button_frame(outer, col_frame, self.cols.edit_bg(state), state);
@@ -569,7 +568,7 @@ where
     fn radiobox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState) {
         let anim_fade = self.w.anim.fade_bool_1m(self.draw.draw, wid, checked);
 
-        let outer = Quad::from(rect);
+        let outer = Quad::conv(rect);
         let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
 
         if !(state.disabled() || state.depress()) {
@@ -605,14 +604,14 @@ where
 
     fn scrollbar(&mut self, rect: Rect, h_rect: Rect, _dir: Direction, state: InputState) {
         // track
-        let outer = Quad::from(rect);
+        let outer = Quad::conv(rect);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
         let mut col = self.cols.frame;
         col.a = 0.5; // HACK
         self.draw.rounded_frame(outer, inner, 0.0, col);
 
         // handle
-        let outer = Quad::from(h_rect);
+        let outer = Quad::conv(h_rect);
         let r = outer.size().min_comp() * 0.125;
         let outer = outer.shrink(r);
         let inner = outer.shrink(3.0 * r);
@@ -626,8 +625,8 @@ where
 
     fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
         // track
-        let mut outer = Quad::from(rect);
-        let mid = Vec2::from(h_rect.pos + h_rect.size / 2);
+        let mut outer = Quad::conv(rect);
+        let mid = Vec2::conv(h_rect.pos + h_rect.size / 2);
         let (mut first, mut second);
         if dir.is_horizontal() {
             outer = outer.shrink_vec(Vec2(0.0, outer.size().1 * (1.0 / 3.0)));
@@ -662,8 +661,8 @@ where
 
         // handle; force it to be square
         let size = Size::splat(h_rect.size.0.min(h_rect.size.1));
-        let offset = Offset::from((h_rect.size - size) / 2);
-        let outer = Quad::from(Rect::new(h_rect.pos + offset, size));
+        let offset = Offset::conv((h_rect.size - size) / 2);
+        let outer = Quad::conv(Rect::new(h_rect.pos + offset, size));
 
         let col = if state.nav_focus() && !state.disabled() {
             self.cols.accent_soft
@@ -693,7 +692,7 @@ where
     }
 
     fn progress_bar(&mut self, rect: Rect, dir: Direction, _: InputState, value: f32) {
-        let mut outer = Quad::from(rect);
+        let mut outer = Quad::conv(rect);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
         self.draw.rounded_frame(outer, inner, 0.75, self.cols.frame);
 
@@ -707,7 +706,7 @@ where
     }
 
     fn image(&mut self, id: ImageId, rect: Rect) {
-        let rect = Quad::from(rect);
+        let rect = Quad::conv(rect);
         self.draw.image(id, rect);
     }
 }

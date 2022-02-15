@@ -66,7 +66,7 @@ widget! {
         fn draw(&mut self, mut draw: DrawMgr) {
             let draw = draw.draw_device();
             let col = *self.colour.lock().unwrap();
-            draw.rect((self.rect()).into(), col);
+            draw.rect((self.rect()).cast(), col);
         }
     }
     impl Handler for ColourSquare {

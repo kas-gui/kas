@@ -9,7 +9,7 @@ use std::f32::consts::FRAC_PI_2;
 use wgpu::util::DeviceExt;
 
 use super::*;
-use kas::cast::Cast;
+use kas::cast::traits::*;
 use kas::draw::color::Rgba;
 use kas::draw::*;
 use kas::geom::{Quad, Rect, Size, Vec2};
@@ -119,7 +119,7 @@ impl<C: CustomPipe> DrawPipe<C> {
     pub fn resize(&self, window: &mut DrawWindow<C::Window>, size: Size) {
         window.clip_regions[0].0.size = size;
 
-        let vsize = Vec2::from(size);
+        let vsize = Vec2::conv(size);
         let off = vsize * -0.5;
         let scale = 2.0 / vsize;
         window.scale = [off.0, off.1, scale.0, -scale.1];
@@ -143,7 +143,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let mut scale = window.scale;
         let base_offset = (scale[0], scale[1]);
         for (region, bg) in window.clip_regions.iter().zip(self.bg_common.iter()) {
-            let offset = Vec2::from(region.1);
+            let offset = Vec2::conv(region.1);
             scale[0] = base_offset.0 - offset.0;
             scale[1] = base_offset.1 - offset.1;
             self.queue
@@ -155,7 +155,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             let (bgl_common, light_norm_buf) = (&self.bgl_common, &self.light_norm_buf);
             self.bg_common
                 .extend(window.clip_regions[bg_len..].iter().map(|region| {
-                    let offset = Vec2::from(region.1);
+                    let offset = Vec2::conv(region.1);
                     scale[0] = base_offset.0 - offset.0;
                     scale[1] = base_offset.1 - offset.1;
                     let scale_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {

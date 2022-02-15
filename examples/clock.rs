@@ -48,7 +48,7 @@ widget! {
             let size = rect.size.0.min(rect.size.1);
             let size = Size::splat(size);
             let excess = rect.size - size;
-            let pos = rect.pos + (excess * 0.5);
+            let pos = rect.pos + excess / 2;
             self.core.rect = Rect { pos, size };
 
             // Note: font size is calculated as dpem = dpp * pt_size. Instead of
@@ -56,11 +56,11 @@ widget! {
             let half_size = Size(size.0, size.1 / 2);
             self.date.update_env(|env| {
                 env.set_pt_size(size.1 as f32 * 0.12);
-                env.set_bounds(half_size.into());
+                env.set_bounds(half_size.cast());
             });
             self.time.update_env(|env| {
                 env.set_pt_size(size.1 as f32 * 0.15);
-                env.set_bounds(half_size.into());
+                env.set_bounds(half_size.cast());
             });
             self.date_pos = pos + Size(0, size.1 - half_size.1);
             self.time_pos = pos;
@@ -81,7 +81,7 @@ widget! {
             let mut draw = DrawIface::<DrawPipe<()>>::downcast_from(draw).unwrap();
 
             let rect = self.core.rect;
-            let quad = Quad::from(rect);
+            let quad = Quad::conv(rect);
             draw.circle(quad, 0.95, col_face);
 
             let half = (quad.b.1 - quad.a.1) / 2.0;
@@ -97,8 +97,8 @@ widget! {
                 draw.rounded_line(centre + v * (r - l), centre + v * r, w, col_face);
             }
 
-            draw.text(self.date_pos.into(), self.date.as_ref(), col_date);
-            draw.text(self.time_pos.into(), self.time.as_ref(), col_time);
+            draw.text(self.date_pos.cast(), self.date.as_ref(), col_date);
+            draw.text(self.time_pos.cast(), self.time.as_ref(), col_time);
 
             // We use a new pass to control the draw order (force in front).
             let mut draw = draw.new_pass(rect, Offset::ZERO, PassType::Clip);
