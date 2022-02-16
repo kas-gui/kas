@@ -48,7 +48,7 @@ struct MyData {
 impl MyData {
     fn new(len: usize) -> Self {
         MyData {
-            ver: 0,
+            ver: 1,
             len,
             data: Default::default(),
             handle: UpdateHandle::new(),

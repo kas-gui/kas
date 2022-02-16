@@ -46,9 +46,7 @@ impl<T: ListData, F: Filter<T::Item> + SingleData> FilteredList<T, F> {
     fn new(data: T, filter: F) -> Self {
         let len = data.len();
         let view = RefCell::new(Vec::with_capacity(len));
-        let s = FilteredList { data, filter, view };
-        let _ = s.refresh();
-        s
+        FilteredList { data, filter, view }
     }
 
     /// Refresh the view

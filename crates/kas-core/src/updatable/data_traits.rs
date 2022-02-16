@@ -19,8 +19,12 @@ pub trait SingleData: Debug {
 
     /// Get the data version
     ///
-    /// This number starts from 0 and is increased by every call to `update` on
-    /// this data structure.
+    /// Views over shared data must check the data's `version` and update if
+    /// necessary each time they are drawn.
+    ///
+    /// The initial version number must be at least 1 (allowing 0 to represent
+    /// an uninitialized state). Each modification of the data structure must
+    /// increase the version number (allowing change detection).
     fn version(&self) -> u64;
 
     // TODO(gat): add get<'a>(&self) -> Self::ItemRef<'a> and get_mut
@@ -61,8 +65,12 @@ pub trait ListData: Debug {
 
     /// Get the data version
     ///
-    /// This number starts from 0 and is increased by every call to `update` on
-    /// this data structure.
+    /// Views over shared data must check the data's `version` and update if
+    /// necessary each time they are drawn.
+    ///
+    /// The initial version number must be at least 1 (allowing 0 to represent
+    /// an uninitialized state). Each modification of the data structure must
+    /// increase the version number (allowing change detection).
     fn version(&self) -> u64;
 
     /// Number of data items available
@@ -145,8 +153,12 @@ pub trait MatrixData: Debug {
 
     /// Get the data version
     ///
-    /// This number starts from 0 and is increased by every call to `update` on
-    /// this data structure.
+    /// Views over shared data must check the data's `version` and update if
+    /// necessary each time they are drawn.
+    ///
+    /// The initial version number must be at least 1 (allowing 0 to represent
+    /// an uninitialized state). Each modification of the data structure must
+    /// increase the version number (allowing change detection).
     fn version(&self) -> u64;
 
     /// No data is available
