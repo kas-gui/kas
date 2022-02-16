@@ -16,7 +16,7 @@ impl<T: Clone + Debug> ListData for [T] {
     type Item = T;
 
     fn version(&self) -> u64 {
-        0
+        1
     }
 
     fn len(&self) -> usize {

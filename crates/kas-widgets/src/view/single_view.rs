@@ -60,12 +60,13 @@ widget! {
         /// Construct a new instance with explicit view
         pub fn new_with_driver(view: V, data: T) -> Self {
             let mut child = view.make();
+            let data_ver = data.version();
             let _ = view.set(&mut child, data.get_cloned());
             SingleView {
                 core: Default::default(),
                 view,
                 data,
-                data_ver: 0,
+                data_ver,
                 child,
             }
         }

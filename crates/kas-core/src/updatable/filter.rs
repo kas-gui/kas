@@ -26,7 +26,7 @@ impl ContainsString {
     /// Construct with given string
     pub fn new<S: ToString>(s: S) -> Self {
         let handle = UpdateHandle::new();
-        let data = RefCell::new((s.to_string(), 0));
+        let data = RefCell::new((s.to_string(), 1));
         ContainsString(Rc::new((handle, data)))
     }
 }
@@ -95,7 +95,7 @@ impl ContainsCaseInsensitive {
         let handle = UpdateHandle::new();
         let s = s.to_string();
         let u = s.to_uppercase();
-        let data = RefCell::new((s, u, 0));
+        let data = RefCell::new((s, u, 1));
         ContainsCaseInsensitive(Rc::new((handle, data)))
     }
 }

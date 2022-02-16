@@ -420,6 +420,7 @@ widget! {
 
             // If data is already available, create some widgets and ensure
             // that the ideal size meets all expectations of these children.
+            self.data_ver = self.data.version();
             if self.widgets.len() == 0 && !self.data.is_empty() {
                 let cols = self.data.col_iter_vec(self.ideal_len.cols.cast());
                 let rows = self.data.row_iter_vec(self.ideal_len.rows.cast());

@@ -449,6 +449,7 @@ widget! {
 
             // If data is already available, create some widgets and ensure
             // that the ideal size meets all expectations of these children.
+            self.data_ver = self.data.version();
             if self.widgets.len() == 0 && self.data.len() > 0 {
                 let items = self.data.iter_vec(self.ideal_visible.cast());
                 debug!("allocating widgets (reserve = {})", items.len());

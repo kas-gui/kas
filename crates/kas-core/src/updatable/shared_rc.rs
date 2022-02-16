@@ -31,7 +31,7 @@ impl<T: Debug> SharedRc<T> {
     /// Construct with given data
     pub fn new(data: T) -> Self {
         let handle = UpdateHandle::new();
-        let data = RefCell::new((data, 0));
+        let data = RefCell::new((data, 1));
         SharedRc(Rc::new((handle, data)))
     }
 }
