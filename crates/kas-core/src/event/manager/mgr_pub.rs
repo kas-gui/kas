@@ -228,6 +228,15 @@ impl EventState {
             .insert(w_id);
     }
 
+    /// Force redraw of all windows
+    ///
+    /// This may be used to synchronise views over shared data.
+    pub fn redraw_all_windows(&mut self) {
+        // NOTE: if the ShellWindow trait allowed pushing pending actions, we
+        // could just send REDRAW that way and remove REDRAW_ALL.
+        self.send_action(TkAction::REDRAW_ALL);
+    }
+
     /// Notify that a widget must be redrawn
     ///
     /// Currently the entire window is redrawn on any redraw request and the

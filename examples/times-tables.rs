@@ -1,20 +1,15 @@
 //! Do you know your times tables?
 
 use kas::prelude::*;
-use kas::updatable::{MatrixData, Updatable, UpdatableHandler};
+use kas::updatable::{MatrixData, Updatable};
 use kas::widgets::view::{driver::DefaultNav, MatrixView, SelectionMode};
 use kas::widgets::{EditBox, ScrollBars, StrLabel, Window};
 
 #[derive(Debug)]
 struct TableData(u64, usize);
-impl Updatable for TableData {
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        None
-    }
-}
-impl UpdatableHandler<(usize, usize), VoidMsg> for TableData {
-    fn handle(&self, _: &(usize, usize), _: &VoidMsg) -> Option<UpdateHandle> {
-        None
+impl Updatable<(usize, usize), VoidMsg> for TableData {
+    fn handle(&self, _: &(usize, usize), _: &VoidMsg) -> bool {
+        false
     }
 }
 impl MatrixData for TableData {
@@ -51,8 +46,8 @@ impl MatrixData for TableData {
         self.contains(key).then(|| (key.0 + 1) * (key.1 + 1))
     }
 
-    fn update(&self, _: &Self::Key, _: Self::Item) -> Option<UpdateHandle> {
-        None
+    fn update(&self, _: &Self::Key, _: Self::Item) -> bool {
+        false
     }
 
     fn col_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::ColKey> {

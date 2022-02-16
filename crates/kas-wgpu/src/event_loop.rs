@@ -140,6 +140,11 @@ where
                     } else if action.contains(TkAction::CLOSE) {
                         to_close.push(*window_id);
                     }
+                    if !close_all && action.contains(TkAction::REDRAW_ALL) {
+                        self.shared
+                            .pending
+                            .push(PendingAction::TkAction(TkAction::REDRAW));
+                    }
                     if let Some(instant) = resume {
                         self.resumes.push((instant, *window_id));
                     }

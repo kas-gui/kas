@@ -5,9 +5,6 @@
 
 //! Traits for shared data objects
 
-use crate::event::UpdateHandle;
-#[allow(unused)] // doc links
-use crate::updatable::Updatable;
 use crate::WidgetId;
 #[allow(unused)] // doc links
 use std::cell::RefCell;
@@ -34,16 +31,14 @@ pub trait SingleData: Debug {
     /// Update data, if supported
     ///
     /// This is optional and required only to support data updates through view
-    /// widgets. If implemented, then [`Updatable::update_handle`] should
-    /// return a copy of the same update handle.
+    /// widgets.
     ///
-    /// Updates the [`Self::version`] number and returns an [`UpdateHandle`] if
-    /// an update occurred. Returns `None` if updates are unsupported.
+    /// Updates the [`Self::version`] number and returns `true` if
+    /// an update occurred. Returns `false` if updates are unsupported.
     ///
     /// This method takes only `&self`, thus some mechanism such as [`RefCell`]
-    /// is required to obtain `&mut` and lower to [`SingleDataMut::set`]. The
-    /// provider of this lowering should also provide an [`UpdateHandle`].
-    fn update(&self, value: Self::Item) -> Option<UpdateHandle>;
+    /// is required to obtain `&mut` and lower to [`SingleDataMut::set`].
+    fn update(&self, value: Self::Item) -> bool;
 }
 
 /// Trait for writable single data items
@@ -100,8 +95,7 @@ pub trait ListData: Debug {
     /// Update data, if supported
     ///
     /// This is optional and required only to support data updates through view
-    /// widgets. If implemented, then [`Updatable::update_handle`] should
-    /// return a copy of the same update handle.
+    /// widgets.
     ///
     /// Updates the [`Self::version`] number and returns an [`UpdateHandle`] if
     /// an update occurred. Returns `None` if updates are unsupported.
@@ -109,7 +103,7 @@ pub trait ListData: Debug {
     /// This method takes only `&self`, thus some mechanism such as [`RefCell`]
     /// is required to obtain `&mut` and lower to [`ListDataMut::set`]. The
     /// provider of this lowering should also provide an [`UpdateHandle`].
-    fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle>;
+    fn update(&self, key: &Self::Key, value: Self::Item) -> bool;
 
     // TODO(gat): replace with an iterator
     /// Iterate over keys as a vec
@@ -188,8 +182,7 @@ pub trait MatrixData: Debug {
     /// Update data, if supported
     ///
     /// This is optional and required only to support data updates through view
-    /// widgets. If implemented, then [`Updatable::update_handle`] should
-    /// return a copy of the same update handle.
+    /// widgets.
     ///
     /// Updates the [`Self::version`] number and returns an [`UpdateHandle`] if
     /// an update occurred. Returns `None` if updates are unsupported.
@@ -197,7 +190,7 @@ pub trait MatrixData: Debug {
     /// This method takes only `&self`, thus some mechanism such as [`RefCell`]
     /// is required to obtain `&mut` and lower to [`ListDataMut::set`]. The
     /// provider of this lowering should also provide an [`UpdateHandle`].
-    fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle>;
+    fn update(&self, key: &Self::Key, value: Self::Item) -> bool;
 
     // TODO(gat): replace with an iterator
     /// Iterate over column keys as a vec

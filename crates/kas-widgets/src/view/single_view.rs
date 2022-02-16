@@ -6,9 +6,9 @@
 //! Single view widget
 
 use super::{driver, Driver};
+use kas::layout;
 use kas::prelude::*;
-use kas::updatable::{SingleData, UpdatableHandler};
-use UpdatableHandler as UpdHandler;
+use kas::updatable::{SingleData, Updatable};
 
 widget! {
     /// Single view widget
@@ -16,7 +16,7 @@ widget! {
     /// This widget supports a view over a shared data item.
     ///
     /// The shared data type `T` must support [`SingleData`] and
-    /// [`UpdatableHandler`], the latter with key type `()` and message type
+    /// [`Updatable`], the latter with key type `()` and message type
     /// matching the widget's message. One may use [`kas::updatable::SharedRc`]
     /// or a custom shared data type.
     ///
@@ -25,11 +25,8 @@ widget! {
     /// [`driver`] module or a custom implementation may be used.
     #[autoimpl(Debug skip self.view)]
     #[derive(Clone)]
-    #[widget{
-        layout = single;
-    }]
     pub struct SingleView<
-        T: SingleData + UpdHandler<(), V::Msg> + 'static,
+        T: SingleData + Updatable<(), V::Msg> + 'static,
         V: Driver<T::Item> = driver::Default,
     > {
         #[widget_core]
@@ -91,8 +88,8 @@ widget! {
         /// [`SingleData::update`]). Other widgets sharing this data are notified
         /// of the update, if data is changed.
         pub fn set_value(&self, mgr: &mut EventMgr, data: T::Item) {
-            if let Some(handle) = self.data.update(data) {
-                mgr.trigger_update(handle, 0);
+            if self.data.update(data) {
+                mgr.redraw_all_windows();
             }
         }
 
@@ -105,31 +102,28 @@ widget! {
         }
     }
 
-    impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            if let Some(handle) = self.data.update_handle() {
-                mgr.update_on_handle(handle, self.id());
+    impl Layout for Self {
+        fn layout(&mut self) -> layout::Layout<'_> {
+            layout::Layout::single(&mut self.child)
+        }
+
+        fn draw(&mut self, mut draw: DrawMgr) {
+            let data_ver = self.data.version();
+            if data_ver > self.data_ver {
+                let value = self.data.get_cloned();
+                draw |= self.view.set(&mut self.child, value);
+                self.data_ver = data_ver;
             }
+
+            let draw = draw.with_core(self.core_data());
+            self.layout().draw(draw);
         }
     }
 
     impl Handler for Self {
         type Msg = <V::Widget as Handler>::Msg;
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
-            match event {
-                Event::HandleUpdate { .. } => {
-                    let data_ver = self.data.version();
-                    if data_ver > self.data_ver {
-                        let value = self.data.get_cloned();
-                        *mgr |= self.view.set(&mut self.child, value);
-                        self.data_ver = data_ver;
-                        Response::Update
-                    } else {
-                        Response::Used
-                    }
-                }
-                _ => Response::Unused,
-            }
+        fn handle(&mut self, _: &mut EventMgr, _: Event) -> Response<Self::Msg> {
+            Response::Unused
         }
     }
 
@@ -145,8 +139,8 @@ widget! {
                 let r = self.child.send(mgr, id.clone(), event);
                 if matches!(&r, Response::Update | Response::Msg(_)) {
                     if let Some(value) = self.view.get(&self.child) {
-                        if let Some(handle) = self.data.update(value) {
-                            mgr.trigger_update(handle, 0);
+                        if self.data.update(value) {
+                            mgr.redraw_all_windows();
                         }
                     }
                 }
@@ -157,8 +151,8 @@ widget! {
                         id,
                         kas::util::TryFormat(&msg)
                     );
-                    if let Some(handle) = self.data.handle(&(), msg) {
-                        mgr.trigger_update(handle, 0);
+                    if self.data.handle(&(), msg) {
+                        mgr.redraw_all_windows();
                     }
                 }
                 r

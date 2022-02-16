@@ -8,12 +8,12 @@
 use super::{driver, Driver, ListView, SelectionError, SelectionMode};
 use crate::Scrollable;
 use kas::event::ChildMsg;
+use kas::layout;
 use kas::prelude::*;
 use kas::updatable::filter::Filter;
-use kas::updatable::{ListData, SingleData, Updatable, UpdatableHandler};
+use kas::updatable::{ListData, SingleData, Updatable};
 use std::cell::RefCell;
 use std::fmt::Debug;
-use UpdatableHandler as UpdHandler;
 
 /// Filter accessor over another accessor
 ///
@@ -34,12 +34,8 @@ use UpdatableHandler as UpdHandler;
 #[derive(Clone, Debug)]
 struct FilteredList<T: ListData, F: Filter<T::Item> + SingleData> {
     /// Direct access to unfiltered data
-    ///
-    /// If adjusting this, one should call [`FilteredList::refresh`] after.
     data: T,
     /// Direct access to the filter
-    ///
-    /// If adjusting this, one should call [`FilteredList::refresh`] after.
     filter: F,
     view: RefCell<Vec<T::Key>>,
 }
@@ -59,9 +55,7 @@ impl<T: ListData, F: Filter<T::Item> + SingleData> FilteredList<T, F> {
     ///
     /// Re-applies the filter (`O(n)` where `n` is the number of data elements).
     /// Calling this directly may be useful in case the data is modified.
-    ///
-    /// An update should be triggered using the returned handle.
-    fn refresh(&self) -> Option<UpdateHandle> {
+    fn refresh(&self) -> bool {
         let mut view = self.view.borrow_mut();
         view.clear();
         for key in self.data.iter_vec(usize::MAX) {
@@ -71,19 +65,14 @@ impl<T: ListData, F: Filter<T::Item> + SingleData> FilteredList<T, F> {
                 }
             }
         }
-        self.filter.update_handle()
+        true
     }
 }
 
-impl<T: ListData, F: Filter<T::Item> + SingleData> Updatable for FilteredList<T, F> {
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        self.filter.update_handle()
-    }
-}
-impl<K, M, T: ListData + UpdatableHandler<K, M> + 'static, F: Filter<T::Item> + SingleData>
-    UpdatableHandler<K, M> for FilteredList<T, F>
+impl<K, M, T: ListData + Updatable<K, M> + 'static, F: Filter<T::Item> + SingleData> Updatable<K, M>
+    for FilteredList<T, F>
 {
-    fn handle(&self, key: &K, msg: &M) -> Option<UpdateHandle> {
+    fn handle(&self, key: &K, msg: &M) -> bool {
         self.data.handle(key, msg)
     }
 }
@@ -118,7 +107,7 @@ impl<T: ListData + 'static, F: Filter<T::Item> + SingleData> ListData for Filter
             .filter(|item| self.filter.matches(item.clone()))
     }
 
-    fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle> {
+    fn update(&self, key: &Self::Key, value: Self::Item) -> bool {
         // Filtering does not affect result, but does affect the view
         if self
             .data
@@ -127,12 +116,12 @@ impl<T: ListData + 'static, F: Filter<T::Item> + SingleData> ListData for Filter
             .unwrap_or(true)
         {
             // Not previously visible: no update occurs
-            return None;
+            return false;
         }
 
         let new_visible = self.filter.matches(value.clone());
         let result = self.data.update(key, value);
-        if result.is_some() && !new_visible {
+        if result && !new_visible {
             // remove the updated item from our filtered list
             self.view.borrow_mut().retain(|item| item != key);
         }
@@ -161,12 +150,10 @@ widget! {
     /// avoids this.
     // TODO: impl Clone
     #[derive(Debug)]
-    #[widget{
-        layout = single;
-    }]
+    #[handler(msg = ChildMsg<T::Key, <V::Widget as Handler>::Msg>)]
     pub struct FilterListView<
         D: Directional,
-        T: ListData + UpdHandler<T::Key, V::Msg> + 'static,
+        T: ListData + Updatable<T::Key, V::Msg> + 'static,
         F: Filter<T::Item> + SingleData,
         V: Driver<T::Item> = driver::Default,
     > {
@@ -174,6 +161,7 @@ widget! {
         core: CoreData,
         #[widget]
         list: ListView<D, FilteredList<T, F>, V>,
+        data_ver: u64,
     }
 
     impl Self where D: Default, V: Default {
@@ -199,7 +187,7 @@ widget! {
         }
     }
     impl<
-            T: ListData + UpdHandler<T::Key, V::Msg>,
+            T: ListData + Updatable<T::Key, V::Msg>,
             F: Filter<T::Item> + SingleData,
             V: Driver<T::Item> + Default,
         > FilterListView<Direction, T, F, V>
@@ -216,6 +204,7 @@ widget! {
             FilterListView {
                 core: Default::default(),
                 list: ListView::new_with_dir_driver(direction, view, data),
+                data_ver: 0,
             }
         }
 
@@ -225,8 +214,6 @@ widget! {
         }
 
         /// Mutably access the stored data (pre-filter)
-        ///
-        /// It may be necessary to use [`FilterListView::update_view`] to update the view of this data.
         pub fn unfiltered_data_mut(&mut self) -> &mut T {
             &mut self.list.data_mut().data
         }
@@ -237,8 +224,6 @@ widget! {
         }
 
         /// Mutably access the stored data (post-filter)
-        ///
-        /// It may be necessary to use [`FilterListView::update_view`] to update the view of this data.
         pub fn data_mut(&mut self) -> &mut T {
             &mut self.list.data_mut().data
         }
@@ -259,8 +244,8 @@ widget! {
         /// [`ListData::update`]). Other widgets sharing this data are notified
         /// of the update, if data is changed.
         pub fn set_value(&self, mgr: &mut EventMgr, key: &T::Key, data: T::Item) {
-            if let Some(handle) = self.data().update(key, data) {
-                mgr.trigger_update(handle, 0);
+            if self.data().update(key, data) {
+                mgr.redraw_all_windows();
             }
         }
 
@@ -331,12 +316,6 @@ widget! {
             self.list.deselect(key)
         }
 
-        /// Manually trigger an update to handle changed data or filter
-        pub fn update_view(&mut self, mgr: &mut EventMgr) {
-            self.list.data().refresh();
-            self.list.update_view(mgr)
-        }
-
         /// Get the direction of contents
         pub fn direction(&self) -> Direction {
             self.list.direction()
@@ -376,30 +355,20 @@ widget! {
         }
     }
 
-    impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            // We must refresh the filtered list when the underlying list changes
-            if let Some(handle) = self.list.data().data.update_handle() {
-                mgr.update_on_handle(handle, self.id());
-            }
-            // As well as when the filter changes
-            if let Some(handle) = self.list.data().update_handle() {
-                mgr.update_on_handle(handle, self.id());
-            }
+    impl Layout for Self {
+        fn layout(&mut self) -> layout::Layout<'_> {
+            layout::Layout::single(&mut self.list)
         }
-    }
 
-    impl Handler for Self {
-        type Msg = ChildMsg<T::Key, <V::Widget as Handler>::Msg>;
-
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
-            match event {
-                Event::HandleUpdate { .. } => {
-                    self.update_view(mgr);
-                    Response::Update
-                }
-                _ => Response::Unused,
+        fn draw(&mut self, mut draw: DrawMgr) {
+            let data_ver = self.list.data().version();
+            if data_ver > self.data_ver {
+                self.list.data_mut().refresh();
+                self.data_ver = data_ver;
             }
+
+            let draw = draw.with_core(self.core_data());
+            self.layout().draw(draw);
         }
     }
 }

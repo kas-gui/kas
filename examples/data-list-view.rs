@@ -85,21 +85,16 @@ impl MyData {
         (is_active, text)
     }
 }
-impl Updatable for MyData {
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        Some(self.handle)
-    }
-}
-impl UpdatableHandler<usize, EntryMsg> for MyData {
-    fn handle(&self, key: &usize, msg: &EntryMsg) -> Option<UpdateHandle> {
+impl Updatable<usize, EntryMsg> for MyData {
+    fn handle(&self, key: &usize, msg: &EntryMsg) -> bool {
         match msg {
             EntryMsg::Select => {
                 self.data.borrow_mut().0 = *key;
-                Some(self.handle)
+                true
             }
             EntryMsg::Update(text) => {
                 self.data.borrow_mut().1.insert(*key, text.clone());
-                Some(self.handle)
+                true
             }
         }
     }
@@ -131,7 +126,7 @@ impl ListData for MyData {
         Some((*key, is_active, text))
     }
 
-    fn update(&self, _: &Self::Key, _: Self::Item) -> Option<UpdateHandle> {
+    fn update(&self, _: &Self::Key, _: Self::Item) -> bool {
         unimplemented!()
     }
 

@@ -8,19 +8,13 @@
 //! These traits are used for "view widgets", enabling views (and editing) over
 //! shared data.
 //!
-//! Shared data must implement these traits:
-//!
-//! -   [`Updatable`]: used to expose the [`UpdateHandle`] on which widgets and
-//!     other data may request updates; may also implement self-updates
-//! -   [`UpdatableHandler`]: allows data updates from widget messages (or
-//!     potentially from other message sources)
+//! Shared data must implement the [`Updatable`] trait.
 
 mod data_impls;
 mod data_traits;
 pub mod filter;
 mod shared_rc;
 
-use crate::event::UpdateHandle;
 #[allow(unused)] // doc links
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -31,73 +25,45 @@ pub use data_traits::{
 };
 pub use shared_rc::SharedRc;
 
-/// Shared (data) objects which may notify of updates
-pub trait Updatable: Debug {
-    /// Get an update handle, if any is used to notify of updates
-    ///
-    /// If the data supports updates through shared references (e.g. via an
-    /// internal `RefCell`), then it should have an `UpdateHandle` for notifying
-    /// other users of the data of the update, and return that here.
-    /// If the data is constant (not updatable) this may simply return `None`.
-    fn update_handle(&self) -> Option<UpdateHandle>;
-}
-
-/// Trait for data objects which can handle messages
-pub trait UpdatableHandler<K, M>: Updatable {
+/// Shared (data) objects
+pub trait Updatable<K, M>: Debug {
     /// Update data, if supported
     ///
     /// This is optional and required only to support data updates through view
-    /// widgets. If implemented, then [`Updatable::update_handle`] should
-    /// return a copy of the same update handle.
+    /// widgets.
     ///
-    /// This method should return some [`UpdateHandle`] if the data was changed
-    /// by this method, or `None` if nothing happened.
+    /// This method should return `true` if the data was changed.
     ///
     /// This method takes only `&self`, thus probably [`RefCell`] will be used
-    /// internally, alongside an [`UpdateHandle`].
-    fn handle(&self, key: &K, msg: &M) -> Option<UpdateHandle>;
+    /// internally.
+    fn handle(&self, key: &K, msg: &M) -> bool;
 }
 
 // TODO(spec): can we add this?
-// impl<K, T> UpdatableHandler<K, VoidMsg> for T {
-//     fn handle(&self, _: &K, msg: &VoidMsg) -> Option<UpdateHandle> {
+// impl<K, T> Updatable<K, VoidMsg> for T {
+//     fn handle(&self, _: &K, msg: &VoidMsg) -> bool {
 //         match *msg {}
 //     }
 // }
 
-impl<T: Debug> Updatable for [T] {
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        None
-    }
-}
-impl<T: Debug, M> UpdatableHandler<usize, M> for [T] {
-    fn handle(&self, _: &usize, _: &M) -> Option<UpdateHandle> {
-        None
+impl<T: Debug, M> Updatable<usize, M> for [T] {
+    fn handle(&self, _: &usize, _: &M) -> bool {
+        false
     }
 }
 
-impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> Updatable for std::collections::BTreeMap<K, T> {
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        None
-    }
-}
-impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug, M> UpdatableHandler<K, M>
+impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug, M> Updatable<K, M>
     for std::collections::BTreeMap<K, T>
 {
-    fn handle(&self, _: &K, _: &M) -> Option<UpdateHandle> {
-        None
+    fn handle(&self, _: &K, _: &M) -> bool {
+        false
     }
 }
 
 macro_rules! impl_via_deref {
     ($t: ident: $derived:ty) => {
-        impl<$t: Updatable + ?Sized> Updatable for $derived {
-            fn update_handle(&self) -> Option<UpdateHandle> {
-                self.deref().update_handle()
-            }
-        }
-        impl<K, M, $t: UpdatableHandler<K, M> + ?Sized> UpdatableHandler<K, M> for $derived {
-            fn handle(&self, key: &K, msg: &M) -> Option<UpdateHandle> {
+        impl<K, M, $t: Updatable<K, M> + ?Sized> Updatable<K, M> for $derived {
+            fn handle(&self, key: &K, msg: &M) -> bool {
                 self.deref().handle(key, msg)
             }
         }

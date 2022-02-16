@@ -12,7 +12,7 @@ use std::fmt::Debug;
 use std::rc::Rc;
 
 /// Types usable as a filter
-pub trait Filter<T>: Updatable + 'static {
+pub trait Filter<T>: Debug + 'static {
     /// Returns true if the given item matches this filter
     // TODO: once Accessor::get returns a reference, this should take item: &T where T: ?Sized
     fn matches(&self, item: T) -> bool;
@@ -30,19 +30,14 @@ impl ContainsString {
         ContainsString(Rc::new((handle, data)))
     }
 }
-impl Updatable for ContainsString {
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        Some((self.0).0)
-    }
-}
-impl UpdatableHandler<(), String> for ContainsString {
-    fn handle(&self, _: &(), msg: &String) -> Option<UpdateHandle> {
+impl Updatable<(), String> for ContainsString {
+    fn handle(&self, _: &(), msg: &String) -> bool {
         self.update(msg.clone())
     }
 }
-impl UpdatableHandler<(), VoidMsg> for ContainsString {
-    fn handle(&self, _: &(), _: &VoidMsg) -> Option<UpdateHandle> {
-        None
+impl Updatable<(), VoidMsg> for ContainsString {
+    fn handle(&self, _: &(), _: &VoidMsg) -> bool {
+        false
     }
 }
 impl SingleData for ContainsString {
@@ -53,11 +48,11 @@ impl SingleData for ContainsString {
     fn get_cloned(&self) -> Self::Item {
         (self.0).1.borrow().0.to_owned()
     }
-    fn update(&self, value: Self::Item) -> Option<UpdateHandle> {
+    fn update(&self, value: Self::Item) -> bool {
         let mut cell = (self.0).1.borrow_mut();
         cell.0 = value;
         cell.1 += 1;
-        Some((self.0).0)
+        true
     }
 }
 impl SingleDataMut for ContainsString {
@@ -99,19 +94,14 @@ impl ContainsCaseInsensitive {
         ContainsCaseInsensitive(Rc::new((handle, data)))
     }
 }
-impl Updatable for ContainsCaseInsensitive {
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        Some((self.0).0)
-    }
-}
-impl UpdatableHandler<(), String> for ContainsCaseInsensitive {
-    fn handle(&self, _: &(), msg: &String) -> Option<UpdateHandle> {
+impl Updatable<(), String> for ContainsCaseInsensitive {
+    fn handle(&self, _: &(), msg: &String) -> bool {
         self.update(msg.clone())
     }
 }
-impl UpdatableHandler<(), VoidMsg> for ContainsCaseInsensitive {
-    fn handle(&self, _: &(), _: &VoidMsg) -> Option<UpdateHandle> {
-        None
+impl Updatable<(), VoidMsg> for ContainsCaseInsensitive {
+    fn handle(&self, _: &(), _: &VoidMsg) -> bool {
+        false
     }
 }
 impl SingleData for ContainsCaseInsensitive {
@@ -122,12 +112,12 @@ impl SingleData for ContainsCaseInsensitive {
     fn get_cloned(&self) -> Self::Item {
         (self.0).1.borrow().0.clone()
     }
-    fn update(&self, value: Self::Item) -> Option<UpdateHandle> {
+    fn update(&self, value: Self::Item) -> bool {
         let mut cell = (self.0).1.borrow_mut();
         cell.0 = value;
         cell.1 = cell.0.to_uppercase();
         cell.2 += 1;
-        Some((self.0).0)
+        true
     }
 }
 impl SingleDataMut for ContainsCaseInsensitive {

@@ -21,9 +21,8 @@ use std::rc::Rc;
 
 /// Wrapper for single-thread shared data
 ///
-/// This wrapper adds an [`UpdateHandle`] and implements the [`Updatable`] and
-/// [`UpdatableHandler`] traits (the latter with a dummy implementation —
-/// if you need custom handlers you will need your own shared data type).
+/// This wrapper implements the [`Updatable`] trait (with a dummy implementation
+///  — if you need custom handlers you will need your own shared data type).
 #[derive(Clone, Debug, Default)]
 pub struct SharedRc<T: Debug>(Rc<(UpdateHandle, RefCell<(T, u64)>)>);
 
@@ -35,15 +34,10 @@ impl<T: Debug> SharedRc<T> {
         SharedRc(Rc::new((handle, data)))
     }
 }
-impl<T: Debug> Updatable for SharedRc<T> {
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        Some((self.0).0)
-    }
-}
 
-impl<T: Clone + Debug, K, M> UpdatableHandler<K, M> for SharedRc<T> {
-    fn handle(&self, _: &K, _: &M) -> Option<UpdateHandle> {
-        None
+impl<T: Clone + Debug, K, M> Updatable<K, M> for SharedRc<T> {
+    fn handle(&self, _: &K, _: &M) -> bool {
+        false
     }
 }
 
@@ -58,11 +52,11 @@ impl<T: Clone + Debug> SingleData for SharedRc<T> {
         (self.0).1.borrow().0.to_owned()
     }
 
-    fn update(&self, value: Self::Item) -> Option<UpdateHandle> {
+    fn update(&self, value: Self::Item) -> bool {
         let mut cell = (self.0).1.borrow_mut();
         cell.0 = value;
         cell.1 += 1;
-        Some((self.0).0)
+        true
     }
 }
 impl<T: Clone + Debug> SingleDataMut for SharedRc<T> {
@@ -99,11 +93,11 @@ impl<T: ListDataMut> ListData for SharedRc<T> {
         (self.0).1.borrow().0.get_cloned(key)
     }
 
-    fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle> {
+    fn update(&self, key: &Self::Key, value: Self::Item) -> bool {
         let mut cell = (self.0).1.borrow_mut();
         cell.0.set(key, value);
         cell.1 += 1;
-        Some((self.0).0)
+        true
     }
 
     fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
@@ -152,11 +146,11 @@ impl<T: MatrixDataMut> MatrixData for SharedRc<T> {
         (self.0).1.borrow().0.get_cloned(key)
     }
 
-    fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle> {
+    fn update(&self, key: &Self::Key, value: Self::Item) -> bool {
         let mut cell = (self.0).1.borrow_mut();
         cell.0.set(key, value);
         cell.1 += 1;
-        Some((self.0).0)
+        true
     }
 
     fn col_iter_vec(&self, limit: usize) -> Vec<Self::ColKey> {

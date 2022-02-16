@@ -7,7 +7,7 @@
 
 use super::AccelLabel;
 use kas::prelude::*;
-use kas::updatable::{SharedRc, SingleData, Updatable};
+use kas::updatable::{SharedRc, SingleData};
 use log::trace;
 use std::rc::Rc;
 
@@ -27,12 +27,6 @@ widget! {
     }
 
     impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            if let Some(handle) = self.group.update_handle() {
-                mgr.update_on_handle(handle, self.id());
-            }
-        }
-
         fn key_nav(&self) -> bool {
             true
         }
@@ -55,10 +49,8 @@ widget! {
                     if !self.state {
                         trace!("RadioBoxBare: set {}", self.id());
                         self.state = true;
-                        mgr.redraw(self.id());
-                        if let Some(handle) = self.group.update(self.id()) {
-                            mgr.trigger_update(handle, 0);
-                        }
+                        self.group.update(self.id());
+                        mgr.redraw_all_windows();
                         Response::update_or_msg(self.on_select.as_ref().and_then(|f| f(mgr)))
                     } else {
                         Response::Used

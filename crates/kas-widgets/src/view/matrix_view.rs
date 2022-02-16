@@ -13,11 +13,10 @@ use kas::event::components::ScrollComponent;
 use kas::event::{ChildMsg, Command, CursorIcon};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
-use kas::updatable::{MatrixData, UpdatableHandler};
+use kas::updatable::{MatrixData, Updatable};
 use linear_map::set::LinearSet;
 use log::{debug, trace};
 use std::time::Instant;
-use UpdatableHandler as UpdHandler;
 
 #[derive(Clone, Copy, Debug, Default)]
 struct Dim {
@@ -37,7 +36,7 @@ widget! {
     /// This widget supports a view over a matrix of shared data items.
     ///
     /// The shared data type `T` must support [`MatrixData`] and
-    /// [`UpdatableHandler`], the latter with key type `T::Key` and message type
+    /// [`Updatable`], the latter with key type `T::Key` and message type
     /// matching the widget's message. One may use [`kas::updatable::SharedRc`]
     /// or a custom shared data type.
     ///
@@ -49,7 +48,7 @@ widget! {
     /// scrolling. You may wish to wrap this widget with [`ScrollBars`].
     #[derive(Clone, Debug)]
     pub struct MatrixView<
-        T: MatrixData + UpdHandler<T::Key, V::Msg> + 'static,
+        T: MatrixData + Updatable<T::Key, V::Msg> + 'static,
         V: Driver<T::Item> = driver::Default,
     > {
         #[widget_core]
@@ -133,8 +132,8 @@ widget! {
         /// [`MatrixData::update`]). Other widgets sharing this data are notified
         /// of the update, if data is changed.
         pub fn set_value(&self, mgr: &mut EventMgr, key: &T::Key, data: T::Item) {
-            if let Some(handle) = self.data.update(key, data) {
-                mgr.trigger_update(handle, 0);
+            if self.data.update(key, data) {
+                mgr.redraw_all_windows();
             }
         }
 
@@ -401,9 +400,6 @@ widget! {
 
     impl WidgetConfig for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
-            if let Some(handle) = self.data.update_handle() {
-                mgr.update_on_handle(handle, self.id());
-            }
             mgr.register_nav_fallback(self.id());
         }
     }
@@ -586,6 +582,12 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
+            let data_ver = self.data.version();
+            if data_ver > self.data_ver {
+                draw.set_rect_mgr(|mgr| self.update_widgets(mgr));
+                self.data_ver = data_ver;
+            }
+
             let mut draw = draw.with_core(self.core_data());
             let offset = self.scroll_offset();
             let rect = self.rect() + offset;
@@ -613,15 +615,6 @@ widget! {
 
         fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
             match event {
-                Event::HandleUpdate { .. } => {
-                    let data_ver = self.data.version();
-                    if data_ver > self.data_ver {
-                        self.update_view(mgr);
-                        self.data_ver = data_ver;
-                        return Response::Update;
-                    }
-                    return Response::Used;
-                }
                 Event::PressMove { coord, .. } => {
                     if let PressPhase::Start(start_coord) = self.press_phase {
                         if mgr.config_test_pan_thresh(coord - start_coord) {
@@ -776,8 +769,8 @@ widget! {
 
             if matches!(&response, Response::Update | Response::Msg(_)) {
                 if let Some(value) = self.view.get(&self.widgets[index].widget) {
-                    if let Some(handle) = self.data.update(&key, value) {
-                        mgr.trigger_update(handle, 0);
+                    if self.data.update(&key, value) {
+                        mgr.redraw_all_windows();
                     }
                 }
             }
@@ -839,8 +832,8 @@ widget! {
                         &key,
                         kas::util::TryFormat(&msg)
                     );
-                    if let Some(handle) = self.data.handle(&key, &msg) {
-                        mgr.trigger_update(handle, 0);
+                    if self.data.handle(&key, &msg) {
+                        mgr.redraw_all_windows();
                     }
                     Response::Msg(ChildMsg::Child(key, msg))
                 }

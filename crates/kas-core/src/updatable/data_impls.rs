@@ -6,7 +6,6 @@
 //! Impls for data traits
 
 use super::*;
-use crate::event::UpdateHandle;
 use crate::WidgetId;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
@@ -38,9 +37,9 @@ impl<T: Clone + Debug> ListData for [T] {
         self.get(*key).cloned()
     }
 
-    fn update(&self, _: &Self::Key, _: Self::Item) -> Option<UpdateHandle> {
+    fn update(&self, _: &Self::Key, _: Self::Item) -> bool {
         // Note: plain [T] does not support update, but SharedRc<[T]> does.
-        None
+        false
     }
 
     fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
@@ -73,7 +72,7 @@ macro_rules! impl_via_deref {
             fn get_cloned(&self) -> Self::Item {
                 self.deref().get_cloned()
             }
-            fn update(&self, value: Self::Item) -> Option<UpdateHandle> {
+            fn update(&self, value: Self::Item) -> bool {
                 self.deref().update(value)
             }
         }
@@ -103,7 +102,7 @@ macro_rules! impl_via_deref {
                 self.deref().get_cloned(key)
             }
 
-            fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle> {
+            fn update(&self, key: &Self::Key, value: Self::Item) -> bool {
                 self.deref().update(key, value)
             }
 
@@ -145,7 +144,7 @@ macro_rules! impl_via_deref {
                 self.deref().get_cloned(key)
             }
 
-            fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle> {
+            fn update(&self, key: &Self::Key, value: Self::Item) -> bool {
                 self.deref().update(key, value)
             }
 

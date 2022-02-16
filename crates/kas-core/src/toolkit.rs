@@ -56,6 +56,8 @@ bitflags! {
         /// Note that [`event::EventMgr::redraw`] can instead be used for more
         /// selective redrawing.
         const REDRAW = 1 << 0;
+        /// All windows require redrawing
+        const REDRAW_ALL = 1 << 1;
         /// Some widgets within a region moved
         ///
         /// Used when a pop-up is closed or a region adjusted (e.g. scroll or switch
