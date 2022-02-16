@@ -16,7 +16,7 @@ use kas::Layout;
 use kas::Widget;
 
 /// Provides some convenience methods on widgets
-pub trait WidgetExt: Widget {
+pub trait AdaptWidget: Widget {
     /// Construct a wrapper widget which maps messages from this widget
     ///
     /// Responses from this widget with a message payload are mapped with `f`.
@@ -59,7 +59,7 @@ pub trait WidgetExt: Widget {
     /// [`Layout::size_rules`]. This can be done by instantiating a temporary
     /// widget, for example:
     ///```
-    /// # use kas_widgets::adapter::WidgetExt;
+    /// # use kas_widgets::adapter::AdaptWidget;
     /// use kas_widgets::Label;
     /// use kas::prelude::*;
     ///
@@ -69,7 +69,7 @@ pub trait WidgetExt: Widget {
     ///```
     /// Alternatively one may use virtual pixels:
     ///```
-    /// # use kas_widgets::adapter::WidgetExt;
+    /// # use kas_widgets::adapter::AdaptWidget;
     /// use kas_widgets::Filler;
     /// use kas::prelude::*;
     ///
@@ -100,4 +100,4 @@ pub trait WidgetExt: Widget {
         WithLabel::new_with_direction(direction, self, label)
     }
 }
-impl<W: Widget + ?Sized> WidgetExt for W {}
+impl<W: Widget + ?Sized> AdaptWidget for W {}
