@@ -3,6 +3,8 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
+//! KAS macros
+
 #![recursion_limit = "128"]
 #![allow(clippy::let_and_return)]
 
