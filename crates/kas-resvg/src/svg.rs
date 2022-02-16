@@ -119,8 +119,8 @@ widget! {
                 let size = tree.svg_node().size.to_screen_size().dimensions();
                 self.tree = Some(tree);
                 let size = Vec2(size.0.cast(), size.1.cast());
-                self.min_size = Size::from(size * self.min_size_factor * scale_factor);
-                self.ideal_size = Size::from(size * self.ideal_size_factor * scale_factor);
+                self.min_size = Size::conv_nearest(size * self.min_size_factor * scale_factor);
+                self.ideal_size = Size::conv_nearest(size * self.ideal_size_factor * scale_factor);
             }
         }
     }
@@ -151,7 +151,7 @@ widget! {
                     self.core_data_mut().rect = align
                         .complete(Align::Center, Align::Center)
                         .aligned_rect(size, rect);
-                    Into::<(u32, u32)>::into(size)
+                    Cast::<(u32, u32)>::cast(size)
                 }
                 None => {
                     self.core_data_mut().rect = rect;

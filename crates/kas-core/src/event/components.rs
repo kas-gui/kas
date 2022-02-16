@@ -7,7 +7,7 @@
 
 use super::ScrollDelta::{LineDelta, PixelDelta};
 use super::{Command, CursorIcon, Event, EventMgr, PressSource, Response, VoidMsg};
-use crate::cast::CastFloat;
+use crate::cast::traits::*;
 use crate::geom::{Coord, Offset, Rect, Size, Vec2};
 #[allow(unused)]
 use crate::text::SelectionHelper;
@@ -58,7 +58,7 @@ impl Glide {
                 }
             }
             let dur = now - t0;
-            let v = Vec2::from(delta) / dur.as_secs_f32();
+            let v = Vec2::conv(delta) / dur.as_secs_f32();
             if dur >= Duration::from_millis(1) && v != Vec2::ZERO {
                 *self = Glide::Glide(now, v, Vec2::ZERO);
                 true
@@ -76,8 +76,8 @@ impl Glide {
             let now = Instant::now();
             let dur = (now - *start).as_secs_f32();
             let d = *v * dur + *rest;
-            let rest = d.fract();
-            let delta = Offset::from(d.trunc());
+            let delta = Offset::conv_approx(d);
+            let rest = d - Vec2::conv(delta);
 
             if v.max_abs_comp() >= 1.0 {
                 let mut v = *v * decay_mul.powf(dur);
@@ -144,7 +144,7 @@ impl ScrollComponent {
     /// change in offset. In practice the caller will likely be performing all
     /// required updates regardless and the return value can be safely ignored.
     pub fn set_sizes(&mut self, window_size: Size, content_size: Size) -> TkAction {
-        self.max_offset = Offset::from(content_size) - Offset::from(window_size);
+        self.max_offset = Offset::conv(content_size) - Offset::conv(window_size);
         self.set_offset(self.offset)
     }
 
@@ -203,7 +203,7 @@ impl ScrollComponent {
     #[inline]
     pub fn focus_rect(&mut self, rect: Rect, window_rect: Rect) -> (Rect, TkAction) {
         let v = rect.pos - window_rect.pos;
-        let off = Offset::from(rect.size) - Offset::from(window_rect.size);
+        let off = Offset::conv(rect.size) - Offset::conv(window_rect.size);
         let offset = self.offset.max(v + off).min(v);
         let action = self.set_offset(offset);
         (rect - self.offset, action)

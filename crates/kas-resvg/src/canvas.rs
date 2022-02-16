@@ -118,7 +118,7 @@ widget! {
 
         fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.core.rect = self.sprite.align_rect(rect, align);
-            let size: (u32, u32) = self.core.rect.size.into();
+            let size: (u32, u32) = self.core.rect.size.cast();
 
             let pm_size = self.pixmap.as_ref().map(|pm| (pm.width(), pm.height()));
             if pm_size.unwrap_or((0, 0)) != size {

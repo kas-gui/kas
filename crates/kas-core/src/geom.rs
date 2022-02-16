@@ -4,8 +4,20 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Geometry data types
+//!
+//! [`Coord`], [`Size`] and [`Offset`] are all integer (`i32`) types used for
+//! widget UI layout, representing positions, sizes and scroll deltas
+//! respectively.
+//!
+//! [`Vec2`] is a floating-point (`f32`) type used mainly for screen-space
+//! position during rendering.
+//!
+//! Conversions types mostly use [`Cast`] and [`Conv`]. [`From`] may be used to
+//! simply pack/unpack components. To convert from floating-point types to
+//! integer types, use [`CastApprox`] or [`CastFloat`] to specify the rounding
+//! mode.
 
-use crate::cast::{Cast, Conv};
+use crate::cast::{Cast, Conv, Result};
 use crate::dir::Directional;
 
 mod vector;
@@ -222,9 +234,10 @@ impl std::ops::SubAssign<Size> for Coord {
     }
 }
 
-impl From<Coord> for kas_text::Vec2 {
-    fn from(pos: Coord) -> kas_text::Vec2 {
-        Vec2::from(pos).into()
+impl Conv<Coord> for kas_text::Vec2 {
+    #[inline]
+    fn try_conv(pos: Coord) -> Result<Self> {
+        Ok(Vec2::try_conv(pos)?.into())
     }
 }
 
@@ -346,62 +359,55 @@ impl std::ops::Div<i32> for Size {
     }
 }
 
-impl std::ops::Mul<f32> for Size {
-    type Output = Self;
-
+impl Conv<Offset> for Coord {
     #[inline]
-    fn mul(self, x: f32) -> Self {
-        debug_assert!(x >= 0.0);
-        let v = Vec2::from(self) * x;
-        v.into()
-    }
-}
-impl std::ops::Div<f32> for Size {
-    type Output = Self;
-
-    #[inline]
-    fn div(self, x: f32) -> Self {
-        debug_assert!(x >= 0.0);
-        let v = Vec2::from(self) / x;
-        v.into()
+    fn try_conv(v: Offset) -> Result<Self> {
+        debug_assert!(v.0 >= 0 && v.1 >= 0, "Coord::conv({:?}): negative value", v);
+        Ok(Self(v.0, v.1))
     }
 }
 
-impl From<Offset> for Size {
-    fn from(v: Offset) -> Self {
-        debug_assert!(v.0 >= 0 && v.1 >= 0, "Size::from({:?}): negative value", v);
-        Self(v.0, v.1)
+impl Conv<Offset> for Size {
+    #[inline]
+    fn try_conv(v: Offset) -> Result<Self> {
+        debug_assert!(v.0 >= 0 && v.1 >= 0, "Size::conv({:?}): negative value", v);
+        Ok(Self(v.0, v.1))
     }
 }
 
 // used for marigns
-impl From<Size> for (u16, u16) {
-    fn from(size: Size) -> (u16, u16) {
-        (size.0.cast(), size.1.cast())
+impl Conv<Size> for (u16, u16) {
+    #[inline]
+    fn try_conv(size: Size) -> Result<Self> {
+        Ok((size.0.try_cast()?, size.1.try_cast()?))
     }
 }
-impl From<(u16, u16)> for Size {
-    fn from(v: (u16, u16)) -> Self {
-        Self(i32::conv(v.0), i32::conv(v.1))
-    }
-}
-
-impl From<(u32, u32)> for Size {
-    fn from(v: (u32, u32)) -> Self {
-        Self(i32::conv(v.0), i32::conv(v.1))
+impl Conv<(u16, u16)> for Size {
+    #[inline]
+    fn try_conv(v: (u16, u16)) -> Result<Self> {
+        Ok(Self(i32::try_conv(v.0)?, i32::try_conv(v.1)?))
     }
 }
 
-impl From<Size> for (u32, u32) {
-    fn from(size: Size) -> (u32, u32) {
-        (u32::conv(size.0), u32::conv(size.1))
+impl Conv<(u32, u32)> for Size {
+    #[inline]
+    fn try_conv(v: (u32, u32)) -> Result<Self> {
+        Ok(Self(i32::try_conv(v.0)?, i32::try_conv(v.1)?))
     }
 }
 
-impl From<Size> for kas_text::Vec2 {
-    fn from(size: Size) -> kas_text::Vec2 {
+impl Conv<Size> for (u32, u32) {
+    #[inline]
+    fn try_conv(size: Size) -> Result<Self> {
+        Ok((u32::try_conv(size.0)?, u32::try_conv(size.1)?))
+    }
+}
+
+impl Conv<Size> for kas_text::Vec2 {
+    #[inline]
+    fn try_conv(size: Size) -> Result<Self> {
         debug_assert!(size.0 >= 0 && size.1 >= 0);
-        Vec2::from(size).into()
+        Ok(Vec2::try_conv(size)?.into())
     }
 }
 
@@ -481,34 +487,24 @@ impl std::ops::Div<i32> for Offset {
     }
 }
 
-impl std::ops::Mul<f32> for Offset {
-    type Output = Self;
-
+impl Conv<Coord> for Offset {
     #[inline]
-    fn mul(self, x: f32) -> Self {
-        let v = Vec2::from(self) * x;
-        v.into()
+    fn try_conv(v: Coord) -> Result<Self> {
+        Ok(Self(v.0, v.1))
     }
 }
-impl std::ops::Div<f32> for Offset {
-    type Output = Self;
 
+impl Conv<Size> for Offset {
     #[inline]
-    fn div(self, x: f32) -> Self {
-        let v = Vec2::from(self) / x;
-        v.into()
+    fn try_conv(v: Size) -> Result<Self> {
+        Ok(Self(v.0, v.1))
     }
 }
 
-impl From<Size> for Offset {
-    fn from(v: Size) -> Self {
-        Self(v.0, v.1)
-    }
-}
-
-impl From<Offset> for kas_text::Vec2 {
-    fn from(size: Offset) -> kas_text::Vec2 {
-        Vec2::from(size).into()
+impl Conv<Offset> for kas_text::Vec2 {
+    #[inline]
+    fn try_conv(v: Offset) -> Result<Self> {
+        Ok(Vec2::try_conv(v)?.into())
     }
 }
 
@@ -556,7 +552,7 @@ impl Rect {
         let pos = l1.max(r1);
         let pos2 = l2.min(r2);
         if pos.le(pos2) {
-            Some(Rect::new(pos, (pos2 - pos).into()))
+            Some(Rect::new(pos, (pos2 - pos).cast()))
         } else {
             None
         }
@@ -616,56 +612,28 @@ impl std::ops::SubAssign<Offset> for Rect {
 #[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
 mod winit_impls {
     use super::{Coord, Size};
-    use winit::dpi::{LogicalPosition, PhysicalPosition, PhysicalSize, Pixel};
+    use crate::cast::{Cast, CastApprox, Conv, ConvApprox};
+    use winit::dpi::{PhysicalPosition, PhysicalSize};
 
-    impl Coord {
-        /// Convert from a logical position
-        pub fn from_logical<X: Pixel>(logical: LogicalPosition<X>, dpi_factor: f64) -> Self {
-            let pos = PhysicalPosition::<i32>::from_logical(logical, dpi_factor);
-            let pos: (i32, i32) = pos.into();
-            Coord(pos.0, pos.1)
+    impl<X: CastApprox<i32>> ConvApprox<PhysicalPosition<X>> for Coord {
+        #[inline]
+        fn try_conv_approx(pos: PhysicalPosition<X>) -> cast::Result<Self> {
+            Ok(Coord(pos.x.cast_approx(), pos.y.cast_approx()))
         }
     }
 
-    impl<X: Pixel> From<PhysicalPosition<X>> for Coord {
+    impl<X: Cast<i32>> Conv<PhysicalSize<X>> for Size {
         #[inline]
-        fn from(pos: PhysicalPosition<X>) -> Coord {
-            let pos: (i32, i32) = pos.cast::<i32>().into();
-            Coord(pos.0, pos.1)
-        }
-    }
-
-    impl<X: Pixel> From<Coord> for PhysicalPosition<X> {
-        #[inline]
-        fn from(coord: Coord) -> PhysicalPosition<X> {
-            let pos: PhysicalPosition<i32> = (coord.0, coord.1).into();
-            pos.cast()
-        }
-    }
-
-    impl<X: Pixel> From<PhysicalSize<X>> for Size {
-        #[inline]
-        fn from(size: PhysicalSize<X>) -> Size {
-            let size: (i32, i32) = size.cast::<i32>().into();
-            debug_assert!(size.0 >= 0 && size.1 >= 0);
-            Size(size.0, size.1)
-        }
-    }
-
-    impl<X: Pixel> From<Size> for PhysicalSize<X> {
-        #[inline]
-        fn from(size: Size) -> PhysicalSize<X> {
-            debug_assert!(size.0 >= 0 && size.1 >= 0);
-            let pos: PhysicalSize<i32> = (size.0, size.1).into();
-            pos.cast()
+        fn try_conv(size: PhysicalSize<X>) -> cast::Result<Self> {
+            Ok(Size(size.width.cast(), size.height.cast()))
         }
     }
 
     impl From<Size> for winit::dpi::Size {
         #[inline]
-        fn from(size: Size) -> winit::dpi::Size {
-            debug_assert!(size.0 >= 0 && size.1 >= 0);
-            winit::dpi::Size::Physical((size.0, size.1).into())
+        fn from(size: Size) -> Self {
+            let (w, h): (u32, u32) = size.cast();
+            winit::dpi::Size::Physical(PhysicalSize::new(w, h))
         }
     }
 }

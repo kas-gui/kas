@@ -9,6 +9,7 @@ use log::trace;
 use std::fmt;
 
 use super::{AlignHints, AxisInfo, Margins, SetRectMgr, SizeRules};
+use crate::cast::Conv;
 use crate::geom::{Rect, Size};
 use crate::theme::SizeMgr;
 use crate::{Widget, WidgetConfig};
@@ -212,7 +213,7 @@ impl SolveCache {
         }
 
         if inner_margin {
-            rect.pos += Size::from((self.margins.horiz.0, self.margins.vert.0));
+            rect.pos += Size::conv((self.margins.horiz.0, self.margins.vert.0));
             rect.size.0 = width;
             rect.size.1 -= self.margins.sum_vert();
         }

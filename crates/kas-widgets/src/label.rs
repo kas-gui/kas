@@ -30,7 +30,7 @@ widget! {
         fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             self.label.update_env(|env| {
-                env.set_bounds(rect.size.into());
+                env.set_bounds(rect.size.cast());
                 env.set_align(align.unwrap_or(Align::Default, Align::Center));
             });
         }

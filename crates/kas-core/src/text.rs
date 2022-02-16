@@ -21,7 +21,8 @@ pub use string::AccelString;
 
 /// Utilities integrating `kas-text` functionality
 pub mod util {
-    use super::{fonts, format, EditableTextApi, Text, TextApi, Vec2};
+    use super::{fonts, format, EditableTextApi, Text, TextApi};
+    use crate::cast::Conv;
     use crate::{geom::Size, TkAction};
     use log::trace;
 
@@ -72,7 +73,7 @@ pub mod util {
             return TkAction::empty();
         }
         if let Some(req) = text.prepare() {
-            let avail = Vec2::from(avail);
+            let avail = crate::geom::Vec2::conv(avail);
             if !(req.0 <= avail.0 && req.1 <= avail.1) {
                 trace!(
                     "set_text_and_prepare triggers RESIZE: req={:?}, avail={:?}",

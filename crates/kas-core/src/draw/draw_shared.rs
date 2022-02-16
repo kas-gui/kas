@@ -7,6 +7,7 @@
 
 use super::color::Rgba;
 use super::{images, DrawImpl, ImageError, ImageFormat, ImageId, PassId};
+use crate::cast::Cast;
 use crate::geom::{Quad, Size, Vec2};
 use crate::text::{Effect, TextDisplay};
 use std::any::Any;
@@ -103,7 +104,7 @@ impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
 
     #[inline]
     fn image_size(&self, id: ImageId) -> Option<Size> {
-        self.draw.image_size(id).map(|size| size.into())
+        self.draw.image_size(id).map(|size| size.cast())
     }
 }
 

@@ -11,8 +11,8 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use super::*;
-use crate::cast::Conv;
-use crate::geom::{Coord, DVec2, Offset};
+use crate::cast::traits::*;
+use crate::geom::{Coord, DVec2};
 use crate::layout::SetRectMgr;
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
@@ -216,7 +216,7 @@ impl EventState {
             assert!(grab.n > 0);
 
             // Terminology: pi are old coordinates, qi are new coords
-            let (p1, q1) = (DVec2::from(grab.coords[0].0), DVec2::from(grab.coords[0].1));
+            let (p1, q1) = (DVec2::conv(grab.coords[0].0), DVec2::conv(grab.coords[0].1));
             grab.coords[0].0 = grab.coords[0].1;
 
             let alpha;
@@ -228,7 +228,7 @@ impl EventState {
             } else {
                 // We don't use more than two touches: information would be
                 // redundant (although it could be averaged).
-                let (p2, q2) = (DVec2::from(grab.coords[1].0), DVec2::from(grab.coords[1].1));
+                let (p2, q2) = (DVec2::conv(grab.coords[1].0), DVec2::conv(grab.coords[1].1));
                 grab.coords[1].0 = grab.coords[1].1;
                 let (pd, qd) = (p2 - p1, q2 - q1);
 
@@ -371,7 +371,7 @@ impl<'a> EventMgr<'a> {
             }
             CursorMoved { position, .. } => {
                 self.state.last_click_button = FAKE_MOUSE_BUTTON;
-                let coord = position.into();
+                let coord = position.cast_approx();
 
                 // Update hovered widget
                 let cur_id = widget.find_id(coord);
@@ -427,8 +427,8 @@ impl<'a> EventMgr<'a> {
                     MouseScrollDelta::PixelDelta(pos) => {
                         // The delta is given as a PhysicalPosition, so we need
                         // to convert to our vector type (Offset) here.
-                        let coord = Coord::from(pos);
-                        ScrollDelta::PixelDelta(Offset(coord.0, coord.1))
+                        let coord = Coord::conv_approx(pos);
+                        ScrollDelta::PixelDelta(coord.cast())
                     }
                 });
                 if let Some(id) = self.state.hover.clone() {
@@ -493,7 +493,7 @@ impl<'a> EventMgr<'a> {
             // AxisMotion { axis: AxisId, value: f64, },
             Touch(touch) => {
                 let source = PressSource::Touch(touch.id);
-                let coord = touch.location.into();
+                let coord = touch.location.cast_approx();
                 match touch.phase {
                     TouchPhase::Started => {
                         let start_id = widget.find_id(coord);

@@ -10,6 +10,7 @@ use std::time::{Duration, Instant};
 use std::u16;
 
 use super::*;
+use crate::cast::Conv;
 use crate::draw::DrawShared;
 use crate::geom::{Coord, Offset, Vec2};
 use crate::layout::SetRectMgr;
@@ -154,7 +155,7 @@ impl EventState {
     #[inline]
     pub fn config_test_pan_thresh(&self, dist: Offset) -> bool {
         let thresh = self.config.pan_dist_thresh();
-        Vec2::from(dist).sum_square() >= thresh * thresh
+        Vec2::conv(dist).sum_square() >= thresh * thresh
     }
 
     /// Access the screen's scale factor
