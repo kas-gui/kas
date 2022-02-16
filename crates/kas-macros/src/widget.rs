@@ -412,7 +412,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
             }
 
             quote! {
-                use ::kas::{WidgetCore, WidgetChildren, event::Response};
+                use ::kas::{event::Response, WidgetCore, WidgetChildren, WidgetExt};
                 if self.is_disabled() {
                     return Response::Unused;
                 }

@@ -12,7 +12,7 @@ use kas::event::{Event, EventMgr, Handler, Response, VoidMsg};
 use kas::layout::SetRectMgr;
 use kas::macros::make_widget;
 use kas::widgets::{Frame, Label, TextButton, Window};
-use kas::WidgetCore;
+use kas::WidgetExt;
 
 // Unlike most examples, we encapsulate the GUI configuration into a function.
 // There's no reason for this, but it demonstrates usage of Toolkit::add_boxed

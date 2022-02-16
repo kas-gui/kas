@@ -65,54 +65,6 @@ pub trait WidgetCore: Any + fmt::Debug {
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn core_data_mut(&mut self) -> &mut CoreData;
 
-    /// Get the widget's numeric identifier
-    ///
-    /// Note that the default-constructed [`WidgetId`] is *invalid*: any
-    /// operations on this value will cause a panic. Valid identifiers are
-    /// assigned by [`WidgetConfig::pre_configure`].
-    #[inline]
-    fn id(&self) -> WidgetId {
-        self.core_data().id.clone()
-    }
-
-    /// Get the widget's numeric identifier
-    ///
-    /// Note that the default-constructed [`WidgetId`] is *invalid*: any
-    /// operations on this value will cause a panic. Valid identifiers are
-    /// assigned by [`WidgetConfig::pre_configure`].
-    #[inline]
-    fn id_ref(&self) -> &WidgetId {
-        &self.core_data().id
-    }
-
-    /// Get the `u64` version of the widget identifier
-    ///
-    /// This may be used to approximately test identity (see notes on
-    /// [`WidgetId::as_u64`]).
-    #[inline]
-    fn id_u64(&self) -> u64 {
-        self.core_data().id.as_u64()
-    }
-
-    /// Get whether the widget is disabled
-    #[inline]
-    fn is_disabled(&self) -> bool {
-        self.core_data().disabled
-    }
-
-    /// Set the disabled state of a widget
-    ///
-    /// If disabled, a widget should not respond to input and should appear
-    /// greyed out.
-    ///
-    /// The disabled status is inherited by children: events should not be
-    /// passed to them, and they should also be drawn greyed out.
-    #[inline]
-    fn set_disabled(&mut self, disabled: bool) -> TkAction {
-        self.core_data_mut().disabled = disabled;
-        TkAction::REDRAW
-    }
-
     /// Set disabled state (chaining)
     ///
     /// This is identical to [`WidgetCore::set_disabled`], but can be called in
@@ -131,20 +83,8 @@ pub trait WidgetCore: Any + fmt::Debug {
         self
     }
 
-    /// Get the widget's region, relative to its parent.
-    #[inline]
-    fn rect(&self) -> Rect {
-        self.core_data().rect
-    }
-
     /// Get the name of the widget struct
     fn widget_name(&self) -> &'static str;
-
-    /// Display as "StructName#WidgetId"
-    #[inline]
-    fn identify(&self) -> IdentifyWidget {
-        IdentifyWidget(self.widget_name(), self.id())
-    }
 
     /// Erase type
     fn as_widget(&self) -> &dyn WidgetConfig;
@@ -170,22 +110,6 @@ pub trait WidgetChildren: WidgetCore {
     /// index.
     fn num_children(&self) -> usize;
 
-    /// Get the [`WidgetId`] for this child
-    ///
-    /// Note: the result should be generated relative to `self.id`.
-    /// Most widgets may use the default implementation.
-    ///
-    /// This must return `Some(..)` when `index` is valid; in other cases the
-    /// result does not matter.
-    ///
-    /// If a custom implementation is used, then [`Self::find_child_index`]
-    /// must be implemented to do the inverse of `make_child_id`, and
-    /// probably a custom implementation of [`Layout::spatial_nav`] is needed.
-    #[inline]
-    fn make_child_id(&self, index: usize) -> Option<WidgetId> {
-        Some(self.id_ref().make_child(index))
-    }
-
     /// Get a reference to a child widget by index, or `None` if the index is
     /// out of bounds.
     ///
@@ -202,20 +126,20 @@ pub trait WidgetChildren: WidgetCore {
     /// This method may be removed in the future.
     fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig>;
 
-    /// Check whether `id` is self or a descendant
+    /// Get the [`WidgetId`] for this child
     ///
-    /// This function assumes that `id` is a valid widget.
-    #[inline]
-    fn is_ancestor_of(&self, id: &WidgetId) -> bool {
-        self.id().is_ancestor_of(id)
-    }
-
-    /// Check whether `id` is not self and is a descendant
+    /// Note: the result should be generated relative to `self.id`.
+    /// Most widgets may use the default implementation.
     ///
-    /// This function assumes that `id` is a valid widget.
+    /// This must return `Some(..)` when `index` is valid; in other cases the
+    /// result does not matter.
+    ///
+    /// If a custom implementation is used, then [`Self::find_child_index`]
+    /// must be implemented to do the inverse of `make_child_id`, and
+    /// probably a custom implementation of [`Layout::spatial_nav`] is needed.
     #[inline]
-    fn is_strict_ancestor_of(&self, id: &WidgetId) -> bool {
-        !self.eq_id(id) && self.id().is_ancestor_of(id)
+    fn make_child_id(&self, index: usize) -> Option<WidgetId> {
+        Some(self.id_ref().make_child(index))
     }
 
     /// Find the child which is an ancestor of this `id`, if any
@@ -225,30 +149,6 @@ pub trait WidgetChildren: WidgetCore {
     #[inline]
     fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
         id.next_key_after(self.id_ref())
-    }
-
-    /// Find the descendant with this `id`, if any
-    fn find_widget(&self, id: &WidgetId) -> Option<&dyn WidgetConfig> {
-        if let Some(index) = self.find_child_index(id) {
-            self.get_child(index)
-                .and_then(|child| child.find_widget(id))
-        } else if self.eq_id(id) {
-            return Some(self.as_widget());
-        } else {
-            None
-        }
-    }
-
-    /// Find the descendant with this `id`, if any
-    fn find_widget_mut(&mut self, id: &WidgetId) -> Option<&mut dyn WidgetConfig> {
-        if let Some(index) = self.find_child_index(id) {
-            self.get_child_mut(index)
-                .and_then(|child| child.find_widget_mut(id))
-        } else if self.eq_id(id) {
-            return Some(self.as_widget_mut());
-        } else {
-            None
-        }
     }
 }
 
@@ -543,7 +443,36 @@ pub trait Layout: WidgetChildren {
 pub trait Widget: event::SendEvent {}
 
 /// Extension trait over widgets
-pub trait WidgetExt: WidgetCore {
+pub trait WidgetExt: WidgetChildren {
+    /// Get the widget's numeric identifier
+    ///
+    /// Note that the default-constructed [`WidgetId`] is *invalid*: any
+    /// operations on this value will cause a panic. Valid identifiers are
+    /// assigned by [`WidgetConfig::pre_configure`].
+    #[inline]
+    fn id(&self) -> WidgetId {
+        self.core_data().id.clone()
+    }
+
+    /// Get the widget's numeric identifier
+    ///
+    /// Note that the default-constructed [`WidgetId`] is *invalid*: any
+    /// operations on this value will cause a panic. Valid identifiers are
+    /// assigned by [`WidgetConfig::pre_configure`].
+    #[inline]
+    fn id_ref(&self) -> &WidgetId {
+        &self.core_data().id
+    }
+
+    /// Get the `u64` version of the widget identifier
+    ///
+    /// This may be used to approximately test identity (see notes on
+    /// [`WidgetId::as_u64`]).
+    #[inline]
+    fn id_u64(&self) -> u64 {
+        self.core_data().id.as_u64()
+    }
+
     /// Test widget identifier for equality
     ///
     /// This method may be used to test against `WidgetId`, `Option<WidgetId>`
@@ -555,5 +484,76 @@ pub trait WidgetExt: WidgetCore {
     {
         self.core_data().id == rhs
     }
+
+    /// Display as "StructName#WidgetId"
+    #[inline]
+    fn identify(&self) -> IdentifyWidget {
+        IdentifyWidget(self.widget_name(), self.id())
+    }
+
+    /// Check whether `id` is self or a descendant
+    ///
+    /// This function assumes that `id` is a valid widget.
+    #[inline]
+    fn is_ancestor_of(&self, id: &WidgetId) -> bool {
+        self.id().is_ancestor_of(id)
+    }
+
+    /// Check whether `id` is not self and is a descendant
+    ///
+    /// This function assumes that `id` is a valid widget.
+    #[inline]
+    fn is_strict_ancestor_of(&self, id: &WidgetId) -> bool {
+        !self.eq_id(id) && self.id().is_ancestor_of(id)
+    }
+
+    /// Find the descendant with this `id`, if any
+    fn find_widget(&self, id: &WidgetId) -> Option<&dyn WidgetConfig> {
+        if let Some(index) = self.find_child_index(id) {
+            self.get_child(index)
+                .and_then(|child| child.find_widget(id))
+        } else if self.eq_id(id) {
+            return Some(self.as_widget());
+        } else {
+            None
+        }
+    }
+
+    /// Find the descendant with this `id`, if any
+    fn find_widget_mut(&mut self, id: &WidgetId) -> Option<&mut dyn WidgetConfig> {
+        if let Some(index) = self.find_child_index(id) {
+            self.get_child_mut(index)
+                .and_then(|child| child.find_widget_mut(id))
+        } else if self.eq_id(id) {
+            return Some(self.as_widget_mut());
+        } else {
+            None
+        }
+    }
+
+    /// Get whether the widget is disabled
+    #[inline]
+    fn is_disabled(&self) -> bool {
+        self.core_data().disabled
+    }
+
+    /// Set the disabled state of a widget
+    ///
+    /// If disabled, a widget should not respond to input and should appear
+    /// greyed out.
+    ///
+    /// The disabled status is inherited by children: events should not be
+    /// passed to them, and they should also be drawn greyed out.
+    #[inline]
+    fn set_disabled(&mut self, disabled: bool) -> TkAction {
+        self.core_data_mut().disabled = disabled;
+        TkAction::REDRAW
+    }
+
+    /// Get the widget's region, relative to its parent.
+    #[inline]
+    fn rect(&self) -> Rect {
+        self.core_data().rect
+    }
 }
-impl<W: WidgetCore + ?Sized> WidgetExt for W {}
+impl<W: WidgetChildren + ?Sized> WidgetExt for W {}

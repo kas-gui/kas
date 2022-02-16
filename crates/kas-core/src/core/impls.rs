@@ -7,8 +7,8 @@
 
 use super::*;
 use crate::event::{self, Event, EventMgr, Response};
-use crate::geom::{Coord, Rect};
-use crate::layout::{AlignHints, AxisInfo, SetRectMgr, SizeRules};
+use crate::geom::{Coord, Offset, Rect};
+use crate::layout::{self, AlignHints, AxisInfo, SetRectMgr, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::{CoreData, WidgetId};
 use std::any::Any;
@@ -51,18 +51,18 @@ impl<M: 'static> WidgetChildren for Box<dyn Widget<Msg = M>> {
         self.as_mut().get_child_mut(index)
     }
 
+    fn make_child_id(&self, index: usize) -> Option<WidgetId> {
+        self.as_ref().make_child_id(index)
+    }
     fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
         self.as_ref().find_child_index(id)
-    }
-    fn find_widget(&self, id: &WidgetId) -> Option<&dyn WidgetConfig> {
-        self.as_ref().find_widget(id)
-    }
-    fn find_widget_mut(&mut self, id: &WidgetId) -> Option<&mut dyn WidgetConfig> {
-        self.as_mut().find_widget_mut(id)
     }
 }
 
 impl<M: 'static> WidgetConfig for Box<dyn Widget<Msg = M>> {
+    fn pre_configure(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
+        self.as_mut().pre_configure(mgr, id);
+    }
     fn configure(&mut self, mgr: &mut SetRectMgr) {
         self.as_mut().configure(mgr);
     }
@@ -79,12 +79,29 @@ impl<M: 'static> WidgetConfig for Box<dyn Widget<Msg = M>> {
 }
 
 impl<M: 'static> Layout for Box<dyn Widget<Msg = M>> {
+    fn layout(&mut self) -> layout::Layout<'_> {
+        self.as_mut().layout()
+    }
+
     fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         self.as_mut().size_rules(size_mgr, axis)
     }
 
     fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
         self.as_mut().set_rect(mgr, rect, align);
+    }
+
+    fn translation(&self) -> Offset {
+        self.as_ref().translation()
+    }
+
+    fn spatial_nav(
+        &mut self,
+        mgr: &mut SetRectMgr,
+        reverse: bool,
+        from: Option<usize>,
+    ) -> Option<usize> {
+        self.as_mut().spatial_nav(mgr, reverse, from)
     }
 
     fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
@@ -101,6 +118,10 @@ impl<M: 'static> event::Handler for Box<dyn Widget<Msg = M>> {
 
     fn activation_via_press(&self) -> bool {
         self.as_ref().activation_via_press()
+    }
+
+    fn focus_on_key_nav(&self) -> bool {
+        self.as_ref().focus_on_key_nav()
     }
 
     fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
