@@ -12,7 +12,6 @@
 
 #[allow(unused)]
 use crate::event::EventMgr;
-use crate::event::UpdateHandle;
 use crate::updatable::*;
 use crate::WidgetId;
 use std::cell::RefCell;
@@ -24,14 +23,13 @@ use std::rc::Rc;
 /// This wrapper implements the [`Updatable`] trait (with a dummy implementation
 ///  — if you need custom handlers you will need your own shared data type).
 #[derive(Clone, Debug, Default)]
-pub struct SharedRc<T: Debug>(Rc<(UpdateHandle, RefCell<(T, u64)>)>);
+pub struct SharedRc<T: Debug>(Rc<RefCell<(T, u64)>>);
 
 impl<T: Debug> SharedRc<T> {
     /// Construct with given data
     pub fn new(data: T) -> Self {
-        let handle = UpdateHandle::new();
         let data = RefCell::new((data, 1));
-        SharedRc(Rc::new((handle, data)))
+        SharedRc(Rc::new(data))
     }
 }
 
@@ -45,15 +43,15 @@ impl<T: Clone + Debug> SingleData for SharedRc<T> {
     type Item = T;
 
     fn version(&self) -> u64 {
-        (self.0).1.borrow().1
+        self.0.borrow().1
     }
 
     fn get_cloned(&self) -> Self::Item {
-        (self.0).1.borrow().0.to_owned()
+        self.0.borrow().0.to_owned()
     }
 
     fn update(&self, value: Self::Item) -> bool {
-        let mut cell = (self.0).1.borrow_mut();
+        let mut cell = self.0.borrow_mut();
         cell.0 = value;
         cell.1 += 1;
         true
@@ -61,7 +59,7 @@ impl<T: Clone + Debug> SingleData for SharedRc<T> {
 }
 impl<T: Clone + Debug> SingleDataMut for SharedRc<T> {
     fn set(&mut self, value: Self::Item) {
-        (self.0).1.borrow_mut().0 = value;
+        self.0.borrow_mut().0 = value;
     }
 }
 
@@ -70,47 +68,47 @@ impl<T: ListDataMut> ListData for SharedRc<T> {
     type Item = T::Item;
 
     fn version(&self) -> u64 {
-        let cell = (self.0).1.borrow();
+        let cell = self.0.borrow();
         cell.0.version() + cell.1
     }
 
     fn len(&self) -> usize {
-        (self.0).1.borrow().0.len()
+        self.0.borrow().0.len()
     }
 
     fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
-        (self.0).1.borrow().0.make_id(parent, key)
+        self.0.borrow().0.make_id(parent, key)
     }
     fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
-        (self.0).1.borrow().0.reconstruct_key(parent, child)
+        self.0.borrow().0.reconstruct_key(parent, child)
     }
 
     fn contains_key(&self, key: &Self::Key) -> bool {
-        (self.0).1.borrow().0.contains_key(key)
+        self.0.borrow().0.contains_key(key)
     }
 
     fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
-        (self.0).1.borrow().0.get_cloned(key)
+        self.0.borrow().0.get_cloned(key)
     }
 
     fn update(&self, key: &Self::Key, value: Self::Item) -> bool {
-        let mut cell = (self.0).1.borrow_mut();
+        let mut cell = self.0.borrow_mut();
         cell.0.set(key, value);
         cell.1 += 1;
         true
     }
 
     fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
-        (self.0).1.borrow().0.iter_vec(limit)
+        self.0.borrow().0.iter_vec(limit)
     }
 
     fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key> {
-        (self.0).1.borrow().0.iter_vec_from(start, limit)
+        self.0.borrow().0.iter_vec_from(start, limit)
     }
 }
 impl<T: ListDataMut> ListDataMut for SharedRc<T> {
     fn set(&mut self, key: &Self::Key, item: Self::Item) {
-        (self.0).1.borrow_mut().0.set(key, item);
+        self.0.borrow_mut().0.set(key, item);
     }
 }
 
@@ -121,50 +119,50 @@ impl<T: MatrixDataMut> MatrixData for SharedRc<T> {
     type Item = T::Item;
 
     fn version(&self) -> u64 {
-        let cell = (self.0).1.borrow();
+        let cell = self.0.borrow();
         cell.0.version() + cell.1
     }
 
     fn is_empty(&self) -> bool {
-        (self.0).1.borrow().0.is_empty()
+        self.0.borrow().0.is_empty()
     }
     fn len(&self) -> (usize, usize) {
-        (self.0).1.borrow().0.len()
+        self.0.borrow().0.len()
     }
 
     fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
-        (self.0).1.borrow().0.make_id(parent, key)
+        self.0.borrow().0.make_id(parent, key)
     }
     fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
-        (self.0).1.borrow().0.reconstruct_key(parent, child)
+        self.0.borrow().0.reconstruct_key(parent, child)
     }
 
     fn contains(&self, key: &Self::Key) -> bool {
-        (self.0).1.borrow().0.contains(key)
+        self.0.borrow().0.contains(key)
     }
     fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
-        (self.0).1.borrow().0.get_cloned(key)
+        self.0.borrow().0.get_cloned(key)
     }
 
     fn update(&self, key: &Self::Key, value: Self::Item) -> bool {
-        let mut cell = (self.0).1.borrow_mut();
+        let mut cell = self.0.borrow_mut();
         cell.0.set(key, value);
         cell.1 += 1;
         true
     }
 
     fn col_iter_vec(&self, limit: usize) -> Vec<Self::ColKey> {
-        (self.0).1.borrow().0.col_iter_vec(limit)
+        self.0.borrow().0.col_iter_vec(limit)
     }
     fn col_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::ColKey> {
-        (self.0).1.borrow().0.col_iter_vec_from(start, limit)
+        self.0.borrow().0.col_iter_vec_from(start, limit)
     }
 
     fn row_iter_vec(&self, limit: usize) -> Vec<Self::RowKey> {
-        (self.0).1.borrow().0.row_iter_vec(limit)
+        self.0.borrow().0.row_iter_vec(limit)
     }
     fn row_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::RowKey> {
-        (self.0).1.borrow().0.row_iter_vec_from(start, limit)
+        self.0.borrow().0.row_iter_vec_from(start, limit)
     }
 
     fn make_key(col: &Self::ColKey, row: &Self::RowKey) -> Self::Key {
@@ -173,6 +171,6 @@ impl<T: MatrixDataMut> MatrixData for SharedRc<T> {
 }
 impl<T: MatrixDataMut> MatrixDataMut for SharedRc<T> {
     fn set(&mut self, key: &Self::Key, item: Self::Item) {
-        (self.0).1.borrow_mut().0.set(key, item);
+        self.0.borrow_mut().0.set(key, item);
     }
 }

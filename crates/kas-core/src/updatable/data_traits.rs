@@ -105,12 +105,11 @@ pub trait ListData: Debug {
     /// This is optional and required only to support data updates through view
     /// widgets.
     ///
-    /// Updates the [`Self::version`] number and returns an [`UpdateHandle`] if
-    /// an update occurred. Returns `None` if updates are unsupported.
+    /// Updates the [`Self::version`] number and returns `true` if
+    /// an update occurred. Returns `false` if updates are unsupported.
     ///
     /// This method takes only `&self`, thus some mechanism such as [`RefCell`]
-    /// is required to obtain `&mut` and lower to [`ListDataMut::set`]. The
-    /// provider of this lowering should also provide an [`UpdateHandle`].
+    /// is required to obtain `&mut` and lower to [`ListDataMut::set`].
     fn update(&self, key: &Self::Key, value: Self::Item) -> bool;
 
     // TODO(gat): replace with an iterator
@@ -196,12 +195,11 @@ pub trait MatrixData: Debug {
     /// This is optional and required only to support data updates through view
     /// widgets.
     ///
-    /// Updates the [`Self::version`] number and returns an [`UpdateHandle`] if
-    /// an update occurred. Returns `None` if updates are unsupported.
+    /// Updates the [`Self::version`] number and returns `true` if
+    /// an update occurred. Returns `false` if updates are unsupported.
     ///
     /// This method takes only `&self`, thus some mechanism such as [`RefCell`]
-    /// is required to obtain `&mut` and lower to [`ListDataMut::set`]. The
-    /// provider of this lowering should also provide an [`UpdateHandle`].
+    /// is required to obtain `&mut` and lower to [`ListDataMut::set`].
     fn update(&self, key: &Self::Key, value: Self::Item) -> bool;
 
     // TODO(gat): replace with an iterator

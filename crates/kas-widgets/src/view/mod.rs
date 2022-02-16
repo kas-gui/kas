@@ -19,7 +19,7 @@
 //! For simpler cases it is not always necessary to implement your own shared
 //! data type, for example `SharedRc<i32>` implements [`SingleData`] and
 //! `&'static [&'static str]` implements [`ListData`]. The [`SharedRc`] type
-//! provides an `update` method and the [`UpdateHandle`] required to synchronise
+//! provides an `update` method and the version counter required to synchronise
 //! views; `&[T]` does not (data is constant).
 //!
 //! # View widgets and drivers
@@ -65,8 +65,6 @@
 //!     or selection support)
 //! -   [`ListView`] creates a scrollable list view over a [`ListData`] object
 
-#[allow(unused)]
-use kas::event::UpdateHandle;
 use kas::macros::VoidMsg;
 #[allow(unused)]
 use kas::updatable::{ListData, MatrixData, SharedRc, SingleData};

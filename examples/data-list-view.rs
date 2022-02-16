@@ -43,7 +43,6 @@ struct MyData {
     len: usize,
     // (active index, map of strings)
     data: RefCell<(usize, HashMap<usize, String>)>,
-    handle: UpdateHandle,
 }
 impl MyData {
     fn new(len: usize) -> Self {
@@ -51,10 +50,9 @@ impl MyData {
             ver: 1,
             len,
             data: Default::default(),
-            handle: UpdateHandle::new(),
         }
     }
-    fn set_len(&mut self, len: usize) -> (Option<String>, UpdateHandle) {
+    fn set_len(&mut self, len: usize) -> Option<String> {
         self.ver += 1;
         self.len = len;
         let mut new_text = None;
@@ -65,13 +63,11 @@ impl MyData {
             drop(data);
             new_text = Some(self.get(active).1);
         }
-        (new_text, self.handle)
+        new_text
     }
     fn get_active(&self) -> usize {
         self.data.borrow().0
     }
-    // Note: in general this method should update the data source and return
-    // self.handle, but for our uses this is sufficient.
     fn set_active(&mut self, active: usize) -> String {
         self.ver += 1;
         self.data.borrow_mut().0 = active;
@@ -266,11 +262,10 @@ fn main() -> kas::shell::Result<()> {
                 fn control(&mut self, mgr: &mut EventMgr, control: Control) {
                     match control {
                         Control::Set(len) => {
-                            let (opt_text, handle) = self.list.data_mut().set_len(len);
+                            let opt_text = self.list.data_mut().set_len(len);
                             if let Some(text) = opt_text {
                                 *mgr |= self.display.set_string(text);
                             }
-                            mgr.trigger_update(handle, 0);
                         }
                         Control::Dir => {
                             let dir = self.list.direction().reversed();
