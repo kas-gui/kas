@@ -19,8 +19,11 @@ pub trait SingleData: Debug {
 
     /// Get the data version
     ///
-    /// Views over shared data must check the data's `version` and update if
-    /// necessary each time they are drawn.
+    /// Views over shared data must check the data's `version` when drawn,
+    /// comparing to a local cached version and updating the view if out-dated.
+    ///
+    /// Data structures may update themselves when `version` is called (by using
+    /// an internal [`RefCell`], as required to support [`Self::update`]).
     ///
     /// The initial version number must be at least 1 (allowing 0 to represent
     /// an uninitialized state). Each modification of the data structure must
@@ -65,8 +68,11 @@ pub trait ListData: Debug {
 
     /// Get the data version
     ///
-    /// Views over shared data must check the data's `version` and update if
-    /// necessary each time they are drawn.
+    /// Views over shared data must check the data's `version` when drawn,
+    /// comparing to a local cached version and updating the view if out-dated.
+    ///
+    /// Data structures may update themselves when `version` is called (by using
+    /// an internal [`RefCell`], as required to support [`Self::update`]).
     ///
     /// The initial version number must be at least 1 (allowing 0 to represent
     /// an uninitialized state). Each modification of the data structure must
@@ -152,8 +158,11 @@ pub trait MatrixData: Debug {
 
     /// Get the data version
     ///
-    /// Views over shared data must check the data's `version` and update if
-    /// necessary each time they are drawn.
+    /// Views over shared data must check the data's `version` when drawn,
+    /// comparing to a local cached version and updating the view if out-dated.
+    ///
+    /// Data structures may update themselves when `version` is called (by using
+    /// an internal [`RefCell`], as required to support [`Self::update`]).
     ///
     /// The initial version number must be at least 1 (allowing 0 to represent
     /// an uninitialized state). Each modification of the data structure must
