@@ -37,7 +37,7 @@ struct FilteredList<T: ListData, F: Filter<T::Item> + SingleData> {
     data: T,
     /// Direct access to the filter
     filter: F,
-    view: RefCell<Vec<T::Key>>,
+    view: RefCell<(u64, Vec<T::Key>)>,
 }
 
 impl<T: ListData, F: Filter<T::Item> + SingleData> FilteredList<T, F> {
@@ -45,7 +45,7 @@ impl<T: ListData, F: Filter<T::Item> + SingleData> FilteredList<T, F> {
     #[inline]
     fn new(data: T, filter: F) -> Self {
         let len = data.len();
-        let view = RefCell::new(Vec::with_capacity(len));
+        let view = RefCell::new((0, Vec::with_capacity(len)));
         FilteredList { data, filter, view }
     }
 
@@ -53,13 +53,14 @@ impl<T: ListData, F: Filter<T::Item> + SingleData> FilteredList<T, F> {
     ///
     /// Re-applies the filter (`O(n)` where `n` is the number of data elements).
     /// Calling this directly may be useful in case the data is modified.
-    fn refresh(&self) -> bool {
+    fn refresh(&self, ver: u64) -> bool {
         let mut view = self.view.borrow_mut();
-        view.clear();
+        view.0 = ver;
+        view.1.clear();
         for key in self.data.iter_vec(usize::MAX) {
             if let Some(item) = self.data.get_cloned(&key) {
                 if self.filter.matches(item) {
-                    view.push(key);
+                    view.1.push(key);
                 }
             }
         }
@@ -80,11 +81,15 @@ impl<T: ListData + 'static, F: Filter<T::Item> + SingleData> ListData for Filter
     type Item = T::Item;
 
     fn version(&self) -> u64 {
-        self.data.version() + self.filter.version()
+        let ver = self.data.version() + self.filter.version();
+        if ver > self.view.borrow().0 {
+            self.refresh(ver);
+        }
+        ver
     }
 
     fn len(&self) -> usize {
-        self.view.borrow().len()
+        self.view.borrow().1.len()
     }
     fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
         self.data.make_id(parent, key)
@@ -117,18 +122,12 @@ impl<T: ListData + 'static, F: Filter<T::Item> + SingleData> ListData for Filter
             return false;
         }
 
-        let new_visible = self.filter.matches(value.clone());
-        let result = self.data.update(key, value);
-        if result && !new_visible {
-            // remove the updated item from our filtered list
-            self.view.borrow_mut().retain(|item| item != key);
-        }
-        result
+        self.data.update(key, value)
     }
 
     fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key> {
         let end = self.len().min(start + limit);
-        self.view.borrow()[start..end].to_vec()
+        self.view.borrow().1[start..end].to_vec()
     }
 }
 
@@ -359,11 +358,7 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let data_ver = self.list.data().version();
-            if data_ver > self.data_ver {
-                self.list.data_mut().refresh();
-                self.data_ver = data_ver;
-            }
+            self.data_ver = self.list.data().version();
 
             let draw = draw.with_core(self.core_data());
             self.layout().draw(draw);
