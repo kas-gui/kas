@@ -22,9 +22,6 @@ use std::fmt::Debug;
 /// Note: the key and item types are the same as those in the underlying list,
 /// thus one can also retrieve values from the underlying list directly.
 ///
-/// Note: only `Rc<FilteredList<T, F>>` implements [`ListData`]; the [`Rc`]
-/// wrapper is required!
-///
 /// Warning: this implementation is `O(n)` where `n = data.len()` and not well
 /// optimised, thus is expected to be slow on large data lists.
 #[derive(Clone, Debug)]
