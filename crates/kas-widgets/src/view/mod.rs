@@ -80,7 +80,7 @@ mod single_view;
 pub mod driver;
 
 pub use driver::Driver;
-pub use filter_list::FilterListView;
+pub use filter_list::FilteredList;
 pub use list_view::ListView;
 pub use matrix_view::MatrixView;
 pub use single_view::SingleView;
