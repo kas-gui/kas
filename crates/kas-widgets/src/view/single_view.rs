@@ -36,6 +36,7 @@ widget! {
         core: CoreData,
         view: V,
         data: T,
+        data_ver: u64,
         #[widget]
         child: V::Widget,
     }
@@ -64,6 +65,7 @@ widget! {
                 core: Default::default(),
                 view,
                 data,
+                data_ver: 0,
                 child,
             }
         }
@@ -116,9 +118,15 @@ widget! {
         fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
             match event {
                 Event::HandleUpdate { .. } => {
-                    let value = self.data.get_cloned();
-                    *mgr |= self.view.set(&mut self.child, value);
-                    Response::Update
+                    let data_ver = self.data.version();
+                    if data_ver > self.data_ver {
+                        let value = self.data.get_cloned();
+                        *mgr |= self.view.set(&mut self.child, value);
+                        self.data_ver = data_ver;
+                        Response::Update
+                    } else {
+                        Response::Used
+                    }
                 }
                 _ => Response::Unused,
             }

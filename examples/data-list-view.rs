@@ -39,6 +39,7 @@ enum EntryMsg {
 
 #[derive(Debug)]
 struct MyData {
+    ver: u64,
     len: usize,
     // (active index, map of strings)
     data: RefCell<(usize, HashMap<usize, String>)>,
@@ -47,12 +48,14 @@ struct MyData {
 impl MyData {
     fn new(len: usize) -> Self {
         MyData {
+            ver: 0,
             len,
             data: Default::default(),
             handle: UpdateHandle::new(),
         }
     }
     fn set_len(&mut self, len: usize) -> (Option<String>, UpdateHandle) {
+        self.ver += 1;
         self.len = len;
         let mut new_text = None;
         let mut data = self.data.borrow_mut();
@@ -70,6 +73,7 @@ impl MyData {
     // Note: in general this method should update the data source and return
     // self.handle, but for our uses this is sufficient.
     fn set_active(&mut self, active: usize) -> String {
+        self.ver += 1;
         self.data.borrow_mut().0 = active;
         self.get(active).1
     }
@@ -105,7 +109,7 @@ impl ListData for MyData {
     type Item = (usize, bool, String);
 
     fn version(&self) -> u64 {
-        0
+        self.ver
     }
 
     fn len(&self) -> usize {

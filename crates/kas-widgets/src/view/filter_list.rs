@@ -10,7 +10,7 @@ use crate::Scrollable;
 use kas::event::ChildMsg;
 use kas::prelude::*;
 use kas::updatable::filter::Filter;
-use kas::updatable::{ListData, Updatable, UpdatableHandler};
+use kas::updatable::{ListData, SingleData, Updatable, UpdatableHandler};
 use std::cell::RefCell;
 use std::fmt::Debug;
 use UpdatableHandler as UpdHandler;
@@ -32,7 +32,7 @@ use UpdatableHandler as UpdHandler;
 /// Warning: this implementation is `O(n)` where `n = data.len()` and not well
 /// optimised, thus is expected to be slow on large data lists.
 #[derive(Clone, Debug)]
-struct FilteredList<T: ListData, F: Filter<T::Item>> {
+struct FilteredList<T: ListData, F: Filter<T::Item> + SingleData> {
     /// Direct access to unfiltered data
     ///
     /// If adjusting this, one should call [`FilteredList::refresh`] after.
@@ -44,7 +44,7 @@ struct FilteredList<T: ListData, F: Filter<T::Item>> {
     view: RefCell<Vec<T::Key>>,
 }
 
-impl<T: ListData, F: Filter<T::Item>> FilteredList<T, F> {
+impl<T: ListData, F: Filter<T::Item> + SingleData> FilteredList<T, F> {
     /// Construct and apply filter
     #[inline]
     fn new(data: T, filter: F) -> Self {
@@ -75,12 +75,12 @@ impl<T: ListData, F: Filter<T::Item>> FilteredList<T, F> {
     }
 }
 
-impl<T: ListData, F: Filter<T::Item>> Updatable for FilteredList<T, F> {
+impl<T: ListData, F: Filter<T::Item> + SingleData> Updatable for FilteredList<T, F> {
     fn update_handle(&self) -> Option<UpdateHandle> {
         self.filter.update_handle()
     }
 }
-impl<K, M, T: ListData + UpdatableHandler<K, M> + 'static, F: Filter<T::Item>>
+impl<K, M, T: ListData + UpdatableHandler<K, M> + 'static, F: Filter<T::Item> + SingleData>
     UpdatableHandler<K, M> for FilteredList<T, F>
 {
     fn handle(&self, key: &K, msg: &M) -> Option<UpdateHandle> {
@@ -88,13 +88,12 @@ impl<K, M, T: ListData + UpdatableHandler<K, M> + 'static, F: Filter<T::Item>>
     }
 }
 
-impl<T: ListData + 'static, F: Filter<T::Item>> ListData for FilteredList<T, F> {
+impl<T: ListData + 'static, F: Filter<T::Item> + SingleData> ListData for FilteredList<T, F> {
     type Key = T::Key;
     type Item = T::Item;
 
     fn version(&self) -> u64 {
-        // Updates to self always update data, so we don't need a new version number
-        self.data.version()
+        self.data.version() + self.filter.version()
     }
 
     fn len(&self) -> usize {
@@ -168,7 +167,7 @@ widget! {
     pub struct FilterListView<
         D: Directional,
         T: ListData + UpdHandler<T::Key, V::Msg> + 'static,
-        F: Filter<T::Item>,
+        F: Filter<T::Item> + SingleData,
         V: Driver<T::Item> = driver::Default,
     > {
         #[widget_core]
@@ -201,7 +200,7 @@ widget! {
     }
     impl<
             T: ListData + UpdHandler<T::Key, V::Msg>,
-            F: Filter<T::Item>,
+            F: Filter<T::Item> + SingleData,
             V: Driver<T::Item> + Default,
         > FilterListView<Direction, T, F, V>
     {

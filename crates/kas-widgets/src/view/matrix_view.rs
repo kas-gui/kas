@@ -58,6 +58,7 @@ widget! {
         frame_size: Size,
         view: V,
         data: T,
+        data_ver: u64,
         widgets: Vec<WidgetData<T::Key, V::Widget>>,
         align_hints: AlignHints,
         ideal_len: Dim,
@@ -91,6 +92,7 @@ widget! {
                 frame_size: Default::default(),
                 view,
                 data,
+                data_ver: 0,
                 widgets: Default::default(),
                 align_hints: Default::default(),
                 ideal_len: Dim { rows: 3, cols: 5 },
@@ -612,8 +614,13 @@ widget! {
         fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
             match event {
                 Event::HandleUpdate { .. } => {
-                    self.update_view(mgr);
-                    return Response::Update;
+                    let data_ver = self.data.version();
+                    if data_ver > self.data_ver {
+                        self.update_view(mgr);
+                        self.data_ver = data_ver;
+                        return Response::Update;
+                    }
+                    return Response::Used;
                 }
                 Event::PressMove { coord, .. } => {
                     if let PressPhase::Start(start_coord) = self.press_phase {

@@ -53,6 +53,7 @@ widget! {
         frame_size: Size,
         view: V,
         data: T,
+        data_ver: u64,
         widgets: Vec<WidgetData<T::Key, V::Widget>>,
         /// The number of widgets in use (cur_len ≤ widgets.len())
         cur_len: u32,
@@ -109,6 +110,7 @@ widget! {
                 frame_size: Default::default(),
                 view,
                 data,
+                data_ver: 0,
                 widgets: Default::default(),
                 cur_len: 0,
                 direction,
@@ -611,9 +613,14 @@ widget! {
         fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
             match event {
                 Event::HandleUpdate { .. } => {
-                    // TODO(opt): use the update payload to indicate which widgets need updating?
-                    self.update_view(mgr);
-                    return Response::Update;
+                    let data_ver = self.data.version();
+                    if data_ver > self.data_ver {
+                        // TODO(opt): use the update payload to indicate which widgets need updating?
+                        self.update_view(mgr);
+                        self.data_ver = data_ver;
+                        return Response::Update;
+                    }
+                    return Response::Used;
                 }
                 Event::PressMove { coord, .. } => {
                     if let PressPhase::Start(start_coord) = self.press_phase {
