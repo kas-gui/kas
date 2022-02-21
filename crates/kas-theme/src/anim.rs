@@ -84,7 +84,15 @@ impl<D: DrawImpl> AnimState<D> {
             entry => {
                 let time = self.now + self.c.cursor_blink_rate;
                 let state = true;
-                entry.insert_entry(TextCursor { byte, state, time });
+                let v = TextCursor { byte, state, time };
+                match entry {
+                    Entry::Occupied(mut entry) => {
+                        entry.insert(v);
+                    }
+                    Entry::Vacant(entry) => {
+                        entry.insert(v);
+                    }
+                }
                 draw.animate_at(time);
                 true
             }
@@ -131,11 +139,19 @@ impl<D: DrawImpl> AnimState<D> {
                 }
             }
             entry => {
-                entry.insert_entry(FadeBool {
+                let v = FadeBool {
                     state,
                     time: self.now,
                     time_end: self.now,
-                });
+                };
+                match entry {
+                    Entry::Occupied(mut entry) => {
+                        entry.insert(v);
+                    }
+                    Entry::Vacant(entry) => {
+                        entry.insert(v);
+                    }
+                }
             }
         }
         !out_state as u8 as f32
