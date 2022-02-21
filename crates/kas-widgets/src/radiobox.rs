@@ -12,7 +12,7 @@ use log::trace;
 use std::rc::Rc;
 
 /// Type of radiobox group
-pub type RadioBoxGroup = SharedRc<WidgetId>;
+pub type RadioBoxGroup = SharedRc<Option<WidgetId>>;
 
 widget! {
     /// A bare radiobox (no label)
@@ -22,7 +22,7 @@ widget! {
         #[widget_core]
         core: CoreData,
         state: bool,
-        group: SharedRc<WidgetId>,
+        group: RadioBoxGroup,
         on_select: Option<Rc<dyn Fn(&mut EventMgr) -> Option<M>>>,
     }
 
@@ -49,7 +49,7 @@ widget! {
                     if !self.state {
                         trace!("RadioBoxBare: set {}", self.id());
                         self.state = true;
-                        self.group.update(self.id());
+                        self.group.update(Some(self.id()));
                         mgr.redraw_all_windows();
                         Response::update_or_msg(self.on_select.as_ref().and_then(|f| f(mgr)))
                     } else {
@@ -98,7 +98,7 @@ widget! {
         /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
         /// same `group` will be considered part of a single group.
         #[inline]
-        pub fn new(group: SharedRc<WidgetId>) -> Self {
+        pub fn new(group: RadioBoxGroup) -> Self {
             RadioBoxBare {
                 core: Default::default(),
                 state: false,
@@ -141,7 +141,7 @@ widget! {
         ///
         /// No handler is called on deselection, but [`Response::Update`] is returned.
         #[inline]
-        pub fn new_on<F>(group: SharedRc<WidgetId>, f: F) -> Self
+        pub fn new_on<F>(group: RadioBoxGroup, f: F) -> Self
         where
             F: Fn(&mut EventMgr) -> Option<M> + 'static,
         {
@@ -154,6 +154,15 @@ widget! {
         pub fn with_state(mut self, state: bool) -> Self {
             self.state = state;
             self
+        }
+
+        /// Unset all radioboxes in the group
+        ///
+        /// Note: state will not update until the next draw.
+        #[inline]
+        pub fn unset_all(&self) -> TkAction {
+            self.group.update(None);
+            TkAction::REDRAW_ALL
         }
     }
 
@@ -206,7 +215,7 @@ widget! {
         /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
         /// same `group` will be considered part of a single group.
         #[inline]
-        pub fn new<T: Into<AccelString>>(label: T, group: SharedRc<WidgetId>) -> Self {
+        pub fn new<T: Into<AccelString>>(label: T, group: RadioBoxGroup) -> Self {
             RadioBox {
                 core: Default::default(),
                 radiobox: RadioBoxBare::new(group),
@@ -250,7 +259,7 @@ widget! {
         ///
         /// No handler is called on deselection, but [`Response::Update`] is returned.
         #[inline]
-        pub fn new_on<T: Into<AccelString>, F>(label: T, group: SharedRc<WidgetId>, f: F) -> Self
+        pub fn new_on<T: Into<AccelString>, F>(label: T, group: RadioBoxGroup, f: F) -> Self
         where
             F: Fn(&mut EventMgr) -> Option<M> + 'static,
         {
@@ -270,7 +279,7 @@ widget! {
         ///
         /// No handler is called on deselection, but [`Response::Update`] is returned.
         #[inline]
-        pub fn new_msg<S: Into<AccelString>>(label: S, group: SharedRc<WidgetId>, msg: M) -> Self
+        pub fn new_msg<S: Into<AccelString>>(label: S, group: RadioBoxGroup, msg: M) -> Self
         where
             M: Clone,
         {
@@ -283,6 +292,14 @@ widget! {
         pub fn with_state(mut self, state: bool) -> Self {
             self.radiobox = self.radiobox.with_state(state);
             self
+        }
+
+        /// Unset all radioboxes in the group
+        ///
+        /// Note: state will not update until the next draw.
+        #[inline]
+        pub fn unset_all(&self) -> TkAction {
+            self.radiobox.unset_all()
         }
     }
 }
