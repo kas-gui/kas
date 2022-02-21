@@ -82,7 +82,7 @@ Getting started
 
 ### Dependencies
 
-KAS requires a recent [Rust] compiler. Currently, version 1.59 or greater is
+KAS requires a recent [Rust] compiler. Currently, version 1.56 or greater is
 required. Using the **nightly** channel does have a few advantages:
 
 -   Proceedural macros emit better diagnostics. In some cases, diagnostics are

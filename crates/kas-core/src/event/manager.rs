@@ -24,7 +24,7 @@ use crate::cast::Cast;
 use crate::geom::{Coord, Offset};
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
-use crate::{ShellWindow, TkAction, Widget, WidgetId, WindowId};
+use crate::{ShellWindow, TkAction, Widget, WidgetExt, WidgetId, WindowId};
 
 mod mgr_pub;
 mod mgr_shell;

@@ -17,7 +17,7 @@
 //! integer types, use [`CastApprox`] or [`CastFloat`] to specify the rounding
 //! mode.
 
-use crate::cast::{Cast, Conv, Result};
+use crate::cast::*;
 use crate::dir::Directional;
 
 mod vector;

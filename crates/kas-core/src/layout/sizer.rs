@@ -12,7 +12,7 @@ use super::{AlignHints, AxisInfo, Margins, SetRectMgr, SizeRules};
 use crate::cast::Conv;
 use crate::geom::{Rect, Size};
 use crate::theme::SizeMgr;
-use crate::{Widget, WidgetConfig};
+use crate::{Widget, WidgetConfig, WidgetExt};
 
 /// A [`SizeRules`] solver for layouts
 ///
