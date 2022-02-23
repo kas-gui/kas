@@ -23,6 +23,7 @@ widget! {
         core: CoreData,
         state: bool,
         group: RadioBoxGroup,
+        group_ver: u64,
         on_select: Option<Rc<dyn Fn(&mut EventMgr) -> Option<M>>>,
     }
 
@@ -56,16 +57,6 @@ widget! {
                         Response::Used
                     }
                 }
-                Event::HandleUpdate { .. } => {
-                    if self.state && !self.eq_id(self.group.get_cloned()) {
-                        trace!("RadioBoxBare: unset {}", self.id());
-                        self.state = false;
-                        mgr.redraw(self.id());
-                        Response::Update
-                    } else {
-                        Response::Used
-                    }
-                }
                 _ => Response::Unused,
             }
         }
@@ -87,6 +78,12 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
+            let ver = self.group.version();
+            if ver > self.group_ver {
+                self.state = self.eq_id(self.group.get_cloned());
+                self.group_ver = ver;
+            }
+
             let mut draw = draw.with_core(self.core_data());
             draw.radiobox(self.core.rect, self.state);
         }
@@ -103,6 +100,7 @@ widget! {
                 core: Default::default(),
                 state: false,
                 group,
+                group_ver: 0,
                 on_select: None,
             }
         }
@@ -124,6 +122,7 @@ widget! {
                 core: self.core,
                 state: self.state,
                 group: self.group,
+                group_ver: self.group_ver,
                 on_select: Some(Rc::new(f)),
             }
         }
