@@ -39,6 +39,7 @@ enum EntryMsg {
 
 #[derive(Debug)]
 struct MyData {
+    ver: u64,
     len: usize,
     // (active index, map of strings)
     data: RefCell<(usize, HashMap<usize, String>)>,
@@ -47,12 +48,14 @@ struct MyData {
 impl MyData {
     fn new(len: usize) -> Self {
         MyData {
+            ver: 1,
             len,
             data: Default::default(),
             handle: UpdateHandle::new(),
         }
     }
     fn set_len(&mut self, len: usize) -> (Option<String>, UpdateHandle) {
+        self.ver += 1;
         self.len = len;
         let mut new_text = None;
         let mut data = self.data.borrow_mut();
@@ -70,6 +73,7 @@ impl MyData {
     // Note: in general this method should update the data source and return
     // self.handle, but for our uses this is sufficient.
     fn set_active(&mut self, active: usize) -> String {
+        self.ver += 1;
         self.data.borrow_mut().0 = active;
         self.get(active).1
     }
@@ -81,12 +85,7 @@ impl MyData {
         (is_active, text)
     }
 }
-impl Updatable for MyData {
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        Some(self.handle)
-    }
-}
-impl UpdatableHandler<usize, EntryMsg> for MyData {
+impl Updatable<usize, EntryMsg> for MyData {
     fn handle(&self, key: &usize, msg: &EntryMsg) -> Option<UpdateHandle> {
         match msg {
             EntryMsg::Select => {
@@ -104,8 +103,11 @@ impl ListData for MyData {
     type Key = usize;
     type Item = (usize, bool, String);
 
+    fn update_handles(&self) -> Vec<UpdateHandle> {
+        vec![self.handle]
+    }
     fn version(&self) -> u64 {
-        0
+        self.ver
     }
 
     fn len(&self) -> usize {

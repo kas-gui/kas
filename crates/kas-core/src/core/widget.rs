@@ -67,7 +67,7 @@ pub trait WidgetCore: Any + fmt::Debug {
 
     /// Set disabled state (chaining)
     ///
-    /// This is identical to [`WidgetCore::set_disabled`], but can be called in
+    /// This is identical to [`WidgetExt::set_disabled`], but can be called in
     /// chaining fashion. Example:
     /// ```ignore
     /// use kas::{WidgetCore, widget::MenuEntry};

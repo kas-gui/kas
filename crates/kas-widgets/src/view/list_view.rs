@@ -13,11 +13,10 @@ use kas::event::components::ScrollComponent;
 use kas::event::{ChildMsg, Command, CursorIcon};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
-use kas::updatable::{ListData, UpdatableHandler};
+use kas::updatable::{ListData, Updatable};
 use linear_map::set::LinearSet;
 use log::{debug, trace};
 use std::time::Instant;
-use UpdatableHandler as UpdHandler;
 
 #[derive(Clone, Debug, Default)]
 struct WidgetData<K, W> {
@@ -31,7 +30,7 @@ widget! {
     /// This widget supports a view over a list of shared data items.
     ///
     /// The shared data type `T` must support [`ListData`] and
-    /// [`UpdatableHandler`], the latter with key type `T::Key` and message type
+    /// [`Updatable`], the latter with key type `T::Key` and message type
     /// matching the widget's message. One may use [`kas::updatable::SharedRc`]
     /// or a custom shared data type.
     ///
@@ -44,7 +43,7 @@ widget! {
     #[derive(Clone, Debug)]
     pub struct ListView<
         D: Directional,
-        T: ListData + UpdHandler<T::Key, V::Msg> + 'static,
+        T: ListData + Updatable<T::Key, V::Msg> + 'static,
         V: Driver<T::Item> = driver::Default,
     > {
         #[widget_core]
@@ -53,6 +52,7 @@ widget! {
         frame_size: Size,
         view: V,
         data: T,
+        data_ver: u64,
         widgets: Vec<WidgetData<T::Key, V::Widget>>,
         /// The number of widgets in use (cur_len ≤ widgets.len())
         cur_len: u32,
@@ -93,7 +93,7 @@ widget! {
             Self::new_with_dir_driver(D::default(), view, data)
         }
     }
-    impl<T: ListData + UpdHandler<T::Key, V::Msg>, V: Driver<T::Item>> ListView<Direction, T, V> {
+    impl<T: ListData + Updatable<T::Key, V::Msg>, V: Driver<T::Item>> ListView<Direction, T, V> {
         /// Set the direction of contents
         pub fn set_direction(&mut self, direction: Direction) -> TkAction {
             self.direction = direction;
@@ -109,6 +109,7 @@ widget! {
                 frame_size: Default::default(),
                 view,
                 data,
+                data_ver: 0,
                 widgets: Default::default(),
                 cur_len: 0,
                 direction,
@@ -426,7 +427,7 @@ widget! {
 
     impl WidgetConfig for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
-            if let Some(handle) = self.data.update_handle() {
+            for handle in self.data.update_handles().into_iter() {
                 mgr.update_on_handle(handle, self.id());
             }
             mgr.register_nav_fallback(self.id());
@@ -447,6 +448,7 @@ widget! {
 
             // If data is already available, create some widgets and ensure
             // that the ideal size meets all expectations of these children.
+            self.data_ver = self.data.version();
             if self.widgets.len() == 0 && self.data.len() > 0 {
                 let items = self.data.iter_vec(self.ideal_visible.cast());
                 debug!("allocating widgets (reserve = {})", items.len());
@@ -611,9 +613,14 @@ widget! {
         fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
             match event {
                 Event::HandleUpdate { .. } => {
-                    // TODO(opt): use the update payload to indicate which widgets need updating?
-                    self.update_view(mgr);
-                    return Response::Update;
+                    let data_ver = self.data.version();
+                    if data_ver > self.data_ver {
+                        // TODO(opt): use the update payload to indicate which widgets need updating?
+                        self.update_view(mgr);
+                        self.data_ver = data_ver;
+                        return Response::Update;
+                    }
+                    return Response::Used;
                 }
                 Event::PressMove { coord, .. } => {
                     if let PressPhase::Start(start_coord) = self.press_phase {

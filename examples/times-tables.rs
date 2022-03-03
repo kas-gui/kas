@@ -1,18 +1,13 @@
 //! Do you know your times tables?
 
 use kas::prelude::*;
-use kas::updatable::{MatrixData, Updatable, UpdatableHandler};
+use kas::updatable::{MatrixData, Updatable};
 use kas::widgets::view::{driver::DefaultNav, MatrixView, SelectionMode};
 use kas::widgets::{EditBox, ScrollBars, StrLabel, Window};
 
 #[derive(Debug)]
 struct TableData(u64, usize);
-impl Updatable for TableData {
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        None
-    }
-}
-impl UpdatableHandler<(usize, usize), VoidMsg> for TableData {
+impl Updatable<(usize, usize), VoidMsg> for TableData {
     fn handle(&self, _: &(usize, usize), _: &VoidMsg) -> Option<UpdateHandle> {
         None
     }
@@ -23,6 +18,9 @@ impl MatrixData for TableData {
     type Key = (usize, usize);
     type Item = usize;
 
+    fn update_handles(&self) -> Vec<UpdateHandle> {
+        vec![]
+    }
     fn version(&self) -> u64 {
         self.0
     }
@@ -70,7 +68,7 @@ impl MatrixData for TableData {
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let table = MatrixView::new(TableData(0, 12))
+    let table = MatrixView::new(TableData(1, 12))
         .with_num_visible(12, 12)
         .with_selection_mode(SelectionMode::Single);
     let table = ScrollBars::new(table);

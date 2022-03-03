@@ -13,11 +13,10 @@ use kas::event::components::ScrollComponent;
 use kas::event::{ChildMsg, Command, CursorIcon};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
-use kas::updatable::{MatrixData, UpdatableHandler};
+use kas::updatable::{MatrixData, Updatable};
 use linear_map::set::LinearSet;
 use log::{debug, trace};
 use std::time::Instant;
-use UpdatableHandler as UpdHandler;
 
 #[derive(Clone, Copy, Debug, Default)]
 struct Dim {
@@ -37,7 +36,7 @@ widget! {
     /// This widget supports a view over a matrix of shared data items.
     ///
     /// The shared data type `T` must support [`MatrixData`] and
-    /// [`UpdatableHandler`], the latter with key type `T::Key` and message type
+    /// [`Updatable`], the latter with key type `T::Key` and message type
     /// matching the widget's message. One may use [`kas::updatable::SharedRc`]
     /// or a custom shared data type.
     ///
@@ -49,7 +48,7 @@ widget! {
     /// scrolling. You may wish to wrap this widget with [`ScrollBars`].
     #[derive(Clone, Debug)]
     pub struct MatrixView<
-        T: MatrixData + UpdHandler<T::Key, V::Msg> + 'static,
+        T: MatrixData + Updatable<T::Key, V::Msg> + 'static,
         V: Driver<T::Item> = driver::Default,
     > {
         #[widget_core]
@@ -58,6 +57,7 @@ widget! {
         frame_size: Size,
         view: V,
         data: T,
+        data_ver: u64,
         widgets: Vec<WidgetData<T::Key, V::Widget>>,
         align_hints: AlignHints,
         ideal_len: Dim,
@@ -91,6 +91,7 @@ widget! {
                 frame_size: Default::default(),
                 view,
                 data,
+                data_ver: 0,
                 widgets: Default::default(),
                 align_hints: Default::default(),
                 ideal_len: Dim { rows: 3, cols: 5 },
@@ -399,7 +400,7 @@ widget! {
 
     impl WidgetConfig for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
-            if let Some(handle) = self.data.update_handle() {
+            for handle in self.data.update_handles().into_iter() {
                 mgr.update_on_handle(handle, self.id());
             }
             mgr.register_nav_fallback(self.id());
@@ -418,6 +419,7 @@ widget! {
 
             // If data is already available, create some widgets and ensure
             // that the ideal size meets all expectations of these children.
+            self.data_ver = self.data.version();
             if self.widgets.len() == 0 && !self.data.is_empty() {
                 let cols = self.data.col_iter_vec(self.ideal_len.cols.cast());
                 let rows = self.data.row_iter_vec(self.ideal_len.rows.cast());
@@ -612,8 +614,13 @@ widget! {
         fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
             match event {
                 Event::HandleUpdate { .. } => {
-                    self.update_view(mgr);
-                    return Response::Update;
+                    let data_ver = self.data.version();
+                    if data_ver > self.data_ver {
+                        self.update_view(mgr);
+                        self.data_ver = data_ver;
+                        return Response::Update;
+                    }
+                    return Response::Used;
                 }
                 Event::PressMove { coord, .. } => {
                     if let PressPhase::Start(start_coord) = self.press_phase {

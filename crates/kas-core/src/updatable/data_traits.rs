@@ -7,7 +7,6 @@
 
 use crate::event::UpdateHandle;
 #[allow(unused)] // doc links
-use crate::updatable::Updatable;
 use crate::WidgetId;
 #[allow(unused)] // doc links
 use std::cell::RefCell;
@@ -20,10 +19,26 @@ pub trait SingleData: Debug {
     /// Output type
     type Item: Clone;
 
+    /// Get any update handles used to notify of updates
+    ///
+    /// If the data supports updates through shared references (e.g. via an
+    /// internal [`RefCell`]), then it should have an [`UpdateHandle`] for
+    /// notifying other users of the data of the update. All [`UpdateHandle`]s
+    /// used should be returned here. View widgets should check the data version
+    /// and update their view when any of these [`UpdateHandle`]s is triggreed.
+    fn update_handles(&self) -> Vec<UpdateHandle>;
+
     /// Get the data version
     ///
-    /// This number starts from 0 and is increased by every call to `update` on
-    /// this data structure.
+    /// Views over shared data must check the data's `version` before first
+    /// reading from the data and whenever an [`UpdateHandle`] from the data is
+    /// triggered. The view may track the last known data version and refresh
+    /// its view of the data only when the version number is increased, or may
+    /// refresh its view whenever an [`UpdateHandle`] is triggered.
+    ///
+    /// The initial version number must be at least 1 (allowing 0 to represent
+    /// an uninitialized state). Each modification of the data structure must
+    /// increase the version number (allowing change detection).
     fn version(&self) -> u64;
 
     // TODO(gat): add get<'a>(&self) -> Self::ItemRef<'a> and get_mut
@@ -34,7 +49,7 @@ pub trait SingleData: Debug {
     /// Update data, if supported
     ///
     /// This is optional and required only to support data updates through view
-    /// widgets. If implemented, then [`Updatable::update_handle`] should
+    /// widgets. If implemented, then [`Self::update_handles`] should
     /// return a copy of the same update handle.
     ///
     /// Updates the [`Self::version`] number and returns an [`UpdateHandle`] if
@@ -64,10 +79,26 @@ pub trait ListData: Debug {
     /// Item type
     type Item: Clone;
 
+    /// Get any update handles used to notify of updates
+    ///
+    /// If the data supports updates through shared references (e.g. via an
+    /// internal [`RefCell`]), then it should have an [`UpdateHandle`] for
+    /// notifying other users of the data of the update. All [`UpdateHandle`]s
+    /// used should be returned here. View widgets should check the data version
+    /// and update their view when any of these [`UpdateHandle`]s is triggreed.
+    fn update_handles(&self) -> Vec<UpdateHandle>;
+
     /// Get the data version
     ///
-    /// This number starts from 0 and is increased by every call to `update` on
-    /// this data structure.
+    /// Views over shared data must check the data's `version` before first
+    /// reading from the data and whenever an [`UpdateHandle`] from the data is
+    /// triggered. The view may track the last known data version and refresh
+    /// its view of the data only when the version number is increased, or may
+    /// refresh its view whenever an [`UpdateHandle`] is triggered.
+    ///
+    /// The initial version number must be at least 1 (allowing 0 to represent
+    /// an uninitialized state). Each modification of the data structure must
+    /// increase the version number (allowing change detection).
     fn version(&self) -> u64;
 
     /// Number of data items available
@@ -100,7 +131,7 @@ pub trait ListData: Debug {
     /// Update data, if supported
     ///
     /// This is optional and required only to support data updates through view
-    /// widgets. If implemented, then [`Updatable::update_handle`] should
+    /// widgets. If implemented, then [`Self::update_handles`] should
     /// return a copy of the same update handle.
     ///
     /// Updates the [`Self::version`] number and returns an [`UpdateHandle`] if
@@ -149,10 +180,26 @@ pub trait MatrixData: Debug {
     /// Item type
     type Item: Clone;
 
+    /// Get any update handles used to notify of updates
+    ///
+    /// If the data supports updates through shared references (e.g. via an
+    /// internal [`RefCell`]), then it should have an [`UpdateHandle`] for
+    /// notifying other users of the data of the update. All [`UpdateHandle`]s
+    /// used should be returned here. View widgets should check the data version
+    /// and update their view when any of these [`UpdateHandle`]s is triggreed.
+    fn update_handles(&self) -> Vec<UpdateHandle>;
+
     /// Get the data version
     ///
-    /// This number starts from 0 and is increased by every call to `update` on
-    /// this data structure.
+    /// Views over shared data must check the data's `version` before first
+    /// reading from the data and whenever an [`UpdateHandle`] from the data is
+    /// triggered. The view may track the last known data version and refresh
+    /// its view of the data only when the version number is increased, or may
+    /// refresh its view whenever an [`UpdateHandle`] is triggered.
+    ///
+    /// The initial version number must be at least 1 (allowing 0 to represent
+    /// an uninitialized state). Each modification of the data structure must
+    /// increase the version number (allowing change detection).
     fn version(&self) -> u64;
 
     /// No data is available
@@ -188,7 +235,7 @@ pub trait MatrixData: Debug {
     /// Update data, if supported
     ///
     /// This is optional and required only to support data updates through view
-    /// widgets. If implemented, then [`Updatable::update_handle`] should
+    /// widgets. If implemented, then [`Self::update_handles`] should
     /// return a copy of the same update handle.
     ///
     /// Updates the [`Self::version`] number and returns an [`UpdateHandle`] if

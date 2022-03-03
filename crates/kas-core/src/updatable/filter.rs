@@ -12,7 +12,7 @@ use std::fmt::Debug;
 use std::rc::Rc;
 
 /// Types usable as a filter
-pub trait Filter<T>: Updatable + 'static {
+pub trait Filter<T>: 'static {
     /// Returns true if the given item matches this filter
     // TODO: once Accessor::get returns a reference, this should take item: &T where T: ?Sized
     fn matches(&self, item: T) -> bool;
@@ -26,30 +26,30 @@ impl ContainsString {
     /// Construct with given string
     pub fn new<S: ToString>(s: S) -> Self {
         let handle = UpdateHandle::new();
-        let data = RefCell::new((s.to_string(), 0));
+        let data = RefCell::new((s.to_string(), 1));
         ContainsString(Rc::new((handle, data)))
     }
 }
-impl Updatable for ContainsString {
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        Some((self.0).0)
-    }
-}
-impl UpdatableHandler<(), String> for ContainsString {
+impl Updatable<(), String> for ContainsString {
     fn handle(&self, _: &(), msg: &String) -> Option<UpdateHandle> {
         self.update(msg.clone())
     }
 }
-impl UpdatableHandler<(), VoidMsg> for ContainsString {
+impl Updatable<(), VoidMsg> for ContainsString {
     fn handle(&self, _: &(), _: &VoidMsg) -> Option<UpdateHandle> {
         None
     }
 }
 impl SingleData for ContainsString {
     type Item = String;
+
+    fn update_handles(&self) -> Vec<UpdateHandle> {
+        vec![(self.0).0]
+    }
     fn version(&self) -> u64 {
         (self.0).1.borrow().1
     }
+
     fn get_cloned(&self) -> Self::Item {
         (self.0).1.borrow().0.to_owned()
     }
@@ -70,7 +70,7 @@ impl SingleDataMut for ContainsString {
 
 impl<'a> Filter<&'a str> for ContainsString {
     fn matches(&self, item: &str) -> bool {
-        item.contains(&self.get_cloned())
+        item.contains(&(self.0).1.borrow().0)
     }
 }
 impl Filter<String> for ContainsString {
@@ -95,30 +95,30 @@ impl ContainsCaseInsensitive {
         let handle = UpdateHandle::new();
         let s = s.to_string();
         let u = s.to_uppercase();
-        let data = RefCell::new((s, u, 0));
+        let data = RefCell::new((s, u, 1));
         ContainsCaseInsensitive(Rc::new((handle, data)))
     }
 }
-impl Updatable for ContainsCaseInsensitive {
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        Some((self.0).0)
-    }
-}
-impl UpdatableHandler<(), String> for ContainsCaseInsensitive {
+impl Updatable<(), String> for ContainsCaseInsensitive {
     fn handle(&self, _: &(), msg: &String) -> Option<UpdateHandle> {
         self.update(msg.clone())
     }
 }
-impl UpdatableHandler<(), VoidMsg> for ContainsCaseInsensitive {
+impl Updatable<(), VoidMsg> for ContainsCaseInsensitive {
     fn handle(&self, _: &(), _: &VoidMsg) -> Option<UpdateHandle> {
         None
     }
 }
 impl SingleData for ContainsCaseInsensitive {
     type Item = String;
+
+    fn update_handles(&self) -> Vec<UpdateHandle> {
+        vec![(self.0).0]
+    }
     fn version(&self) -> u64 {
         (self.0).1.borrow().2
     }
+
     fn get_cloned(&self) -> Self::Item {
         (self.0).1.borrow().0.clone()
     }

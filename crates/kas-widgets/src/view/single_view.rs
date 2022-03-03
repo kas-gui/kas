@@ -7,8 +7,7 @@
 
 use super::{driver, Driver};
 use kas::prelude::*;
-use kas::updatable::{SingleData, UpdatableHandler};
-use UpdatableHandler as UpdHandler;
+use kas::updatable::{SingleData, Updatable};
 
 widget! {
     /// Single view widget
@@ -16,7 +15,7 @@ widget! {
     /// This widget supports a view over a shared data item.
     ///
     /// The shared data type `T` must support [`SingleData`] and
-    /// [`UpdatableHandler`], the latter with key type `()` and message type
+    /// [`Updatable`], the latter with key type `()` and message type
     /// matching the widget's message. One may use [`kas::updatable::SharedRc`]
     /// or a custom shared data type.
     ///
@@ -29,13 +28,14 @@ widget! {
         layout = single;
     }]
     pub struct SingleView<
-        T: SingleData + UpdHandler<(), V::Msg> + 'static,
+        T: SingleData + Updatable<(), V::Msg> + 'static,
         V: Driver<T::Item> = driver::Default,
     > {
         #[widget_core]
         core: CoreData,
         view: V,
         data: T,
+        data_ver: u64,
         #[widget]
         child: V::Widget,
     }
@@ -59,11 +59,13 @@ widget! {
         /// Construct a new instance with explicit view
         pub fn new_with_driver(view: V, data: T) -> Self {
             let mut child = view.make();
+            let data_ver = data.version();
             let _ = view.set(&mut child, data.get_cloned());
             SingleView {
                 core: Default::default(),
                 view,
                 data,
+                data_ver,
                 child,
             }
         }
@@ -105,7 +107,7 @@ widget! {
 
     impl WidgetConfig for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
-            if let Some(handle) = self.data.update_handle() {
+            for handle in self.data.update_handles().into_iter() {
                 mgr.update_on_handle(handle, self.id());
             }
         }
@@ -116,9 +118,15 @@ widget! {
         fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
             match event {
                 Event::HandleUpdate { .. } => {
-                    let value = self.data.get_cloned();
-                    *mgr |= self.view.set(&mut self.child, value);
-                    Response::Update
+                    let data_ver = self.data.version();
+                    if data_ver > self.data_ver {
+                        let value = self.data.get_cloned();
+                        *mgr |= self.view.set(&mut self.child, value);
+                        self.data_ver = data_ver;
+                        Response::Update
+                    } else {
+                        Response::Used
+                    }
                 }
                 _ => Response::Unused,
             }
