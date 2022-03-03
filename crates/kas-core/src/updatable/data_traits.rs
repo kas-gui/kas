@@ -7,7 +7,6 @@
 
 use crate::event::UpdateHandle;
 #[allow(unused)] // doc links
-use crate::updatable::Updatable;
 use crate::WidgetId;
 #[allow(unused)] // doc links
 use std::cell::RefCell;
@@ -19,6 +18,15 @@ use std::fmt::Debug;
 pub trait SingleData: Debug {
     /// Output type
     type Item: Clone;
+
+    /// Get any update handles used to notify of updates
+    ///
+    /// If the data supports updates through shared references (e.g. via an
+    /// internal [`RefCell`]), then it should have an [`UpdateHandle`] for
+    /// notifying other users of the data of the update. All [`UpdateHandle`]s
+    /// used should be returned here. View widgets should check the data version
+    /// and update their view when any of these [`UpdateHandle`]s is triggreed.
+    fn update_handles(&self) -> Vec<UpdateHandle>;
 
     /// Get the data version
     ///
@@ -41,7 +49,7 @@ pub trait SingleData: Debug {
     /// Update data, if supported
     ///
     /// This is optional and required only to support data updates through view
-    /// widgets. If implemented, then [`Updatable::update_handle`] should
+    /// widgets. If implemented, then [`Self::update_handles`] should
     /// return a copy of the same update handle.
     ///
     /// Updates the [`Self::version`] number and returns an [`UpdateHandle`] if
@@ -70,6 +78,15 @@ pub trait ListData: Debug {
 
     /// Item type
     type Item: Clone;
+
+    /// Get any update handles used to notify of updates
+    ///
+    /// If the data supports updates through shared references (e.g. via an
+    /// internal [`RefCell`]), then it should have an [`UpdateHandle`] for
+    /// notifying other users of the data of the update. All [`UpdateHandle`]s
+    /// used should be returned here. View widgets should check the data version
+    /// and update their view when any of these [`UpdateHandle`]s is triggreed.
+    fn update_handles(&self) -> Vec<UpdateHandle>;
 
     /// Get the data version
     ///
@@ -114,7 +131,7 @@ pub trait ListData: Debug {
     /// Update data, if supported
     ///
     /// This is optional and required only to support data updates through view
-    /// widgets. If implemented, then [`Updatable::update_handle`] should
+    /// widgets. If implemented, then [`Self::update_handles`] should
     /// return a copy of the same update handle.
     ///
     /// Updates the [`Self::version`] number and returns an [`UpdateHandle`] if
@@ -163,6 +180,15 @@ pub trait MatrixData: Debug {
     /// Item type
     type Item: Clone;
 
+    /// Get any update handles used to notify of updates
+    ///
+    /// If the data supports updates through shared references (e.g. via an
+    /// internal [`RefCell`]), then it should have an [`UpdateHandle`] for
+    /// notifying other users of the data of the update. All [`UpdateHandle`]s
+    /// used should be returned here. View widgets should check the data version
+    /// and update their view when any of these [`UpdateHandle`]s is triggreed.
+    fn update_handles(&self) -> Vec<UpdateHandle>;
+
     /// Get the data version
     ///
     /// Views over shared data must check the data's `version` before first
@@ -209,7 +235,7 @@ pub trait MatrixData: Debug {
     /// Update data, if supported
     ///
     /// This is optional and required only to support data updates through view
-    /// widgets. If implemented, then [`Updatable::update_handle`] should
+    /// widgets. If implemented, then [`Self::update_handles`] should
     /// return a copy of the same update handle.
     ///
     /// Updates the [`Self::version`] number and returns an [`UpdateHandle`] if

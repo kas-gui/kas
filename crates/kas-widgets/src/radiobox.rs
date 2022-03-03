@@ -7,7 +7,7 @@
 
 use super::AccelLabel;
 use kas::prelude::*;
-use kas::updatable::{SharedRc, SingleData, Updatable};
+use kas::updatable::{SharedRc, SingleData};
 use log::trace;
 use std::rc::Rc;
 

@@ -13,11 +13,10 @@ use kas::event::components::ScrollComponent;
 use kas::event::{ChildMsg, Command, CursorIcon};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
-use kas::updatable::{MatrixData, UpdatableHandler};
+use kas::updatable::{MatrixData, Updatable};
 use linear_map::set::LinearSet;
 use log::{debug, trace};
 use std::time::Instant;
-use UpdatableHandler as UpdHandler;
 
 #[derive(Clone, Copy, Debug, Default)]
 struct Dim {
@@ -37,7 +36,7 @@ widget! {
     /// This widget supports a view over a matrix of shared data items.
     ///
     /// The shared data type `T` must support [`MatrixData`] and
-    /// [`UpdatableHandler`], the latter with key type `T::Key` and message type
+    /// [`Updatable`], the latter with key type `T::Key` and message type
     /// matching the widget's message. One may use [`kas::updatable::SharedRc`]
     /// or a custom shared data type.
     ///
@@ -49,7 +48,7 @@ widget! {
     /// scrolling. You may wish to wrap this widget with [`ScrollBars`].
     #[derive(Clone, Debug)]
     pub struct MatrixView<
-        T: MatrixData + UpdHandler<T::Key, V::Msg> + 'static,
+        T: MatrixData + Updatable<T::Key, V::Msg> + 'static,
         V: Driver<T::Item> = driver::Default,
     > {
         #[widget_core]

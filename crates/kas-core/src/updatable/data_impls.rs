@@ -15,6 +15,9 @@ impl<T: Clone + Debug> ListData for [T] {
     type Key = usize;
     type Item = T;
 
+    fn update_handles(&self) -> Vec<UpdateHandle> {
+        vec![]
+    }
     fn version(&self) -> u64 {
         1
     }
@@ -67,6 +70,9 @@ macro_rules! impl_via_deref {
     ($t: ident: $derived:ty) => {
         impl<$t: SingleData + ?Sized> SingleData for $derived {
             type Item = $t::Item;
+            fn update_handles(&self) -> Vec<UpdateHandle> {
+                self.deref().update_handles()
+            }
             fn version(&self) -> u64 {
                 self.deref().version()
             }
@@ -82,6 +88,9 @@ macro_rules! impl_via_deref {
             type Key = $t::Key;
             type Item = $t::Item;
 
+            fn update_handles(&self) -> Vec<UpdateHandle> {
+                self.deref().update_handles()
+            }
             fn version(&self) -> u64 {
                 self.deref().version()
             }
@@ -121,6 +130,9 @@ macro_rules! impl_via_deref {
             type Key = $t::Key;
             type Item = $t::Item;
 
+            fn update_handles(&self) -> Vec<UpdateHandle> {
+                self.deref().update_handles()
+            }
             fn version(&self) -> u64 {
                 self.deref().version()
             }

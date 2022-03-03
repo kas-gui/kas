@@ -85,12 +85,7 @@ impl MyData {
         (is_active, text)
     }
 }
-impl Updatable for MyData {
-    fn update_handles(&self) -> Vec<UpdateHandle> {
-        vec![self.handle]
-    }
-}
-impl UpdatableHandler<usize, EntryMsg> for MyData {
+impl Updatable<usize, EntryMsg> for MyData {
     fn handle(&self, key: &usize, msg: &EntryMsg) -> Option<UpdateHandle> {
         match msg {
             EntryMsg::Select => {
@@ -108,6 +103,9 @@ impl ListData for MyData {
     type Key = usize;
     type Item = (usize, bool, String);
 
+    fn update_handles(&self) -> Vec<UpdateHandle> {
+        vec![self.handle]
+    }
     fn version(&self) -> u64 {
         self.ver
     }

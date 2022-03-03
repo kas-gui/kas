@@ -13,11 +13,10 @@ use kas::event::components::ScrollComponent;
 use kas::event::{ChildMsg, Command, CursorIcon};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
-use kas::updatable::{ListData, UpdatableHandler};
+use kas::updatable::{ListData, Updatable};
 use linear_map::set::LinearSet;
 use log::{debug, trace};
 use std::time::Instant;
-use UpdatableHandler as UpdHandler;
 
 #[derive(Clone, Debug, Default)]
 struct WidgetData<K, W> {
@@ -31,7 +30,7 @@ widget! {
     /// This widget supports a view over a list of shared data items.
     ///
     /// The shared data type `T` must support [`ListData`] and
-    /// [`UpdatableHandler`], the latter with key type `T::Key` and message type
+    /// [`Updatable`], the latter with key type `T::Key` and message type
     /// matching the widget's message. One may use [`kas::updatable::SharedRc`]
     /// or a custom shared data type.
     ///
@@ -44,7 +43,7 @@ widget! {
     #[derive(Clone, Debug)]
     pub struct ListView<
         D: Directional,
-        T: ListData + UpdHandler<T::Key, V::Msg> + 'static,
+        T: ListData + Updatable<T::Key, V::Msg> + 'static,
         V: Driver<T::Item> = driver::Default,
     > {
         #[widget_core]
@@ -94,7 +93,7 @@ widget! {
             Self::new_with_dir_driver(D::default(), view, data)
         }
     }
-    impl<T: ListData + UpdHandler<T::Key, V::Msg>, V: Driver<T::Item>> ListView<Direction, T, V> {
+    impl<T: ListData + Updatable<T::Key, V::Msg>, V: Driver<T::Item>> ListView<Direction, T, V> {
         /// Set the direction of contents
         pub fn set_direction(&mut self, direction: Direction) -> TkAction {
             self.direction = direction;

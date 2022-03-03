@@ -12,7 +12,7 @@ use std::fmt::Debug;
 use std::rc::Rc;
 
 /// Types usable as a filter
-pub trait Filter<T>: Updatable + 'static {
+pub trait Filter<T>: 'static {
     /// Returns true if the given item matches this filter
     // TODO: once Accessor::get returns a reference, this should take item: &T where T: ?Sized
     fn matches(&self, item: T) -> bool;
@@ -30,26 +30,26 @@ impl ContainsString {
         ContainsString(Rc::new((handle, data)))
     }
 }
-impl Updatable for ContainsString {
-    fn update_handles(&self) -> Vec<UpdateHandle> {
-        vec![(self.0).0]
-    }
-}
-impl UpdatableHandler<(), String> for ContainsString {
+impl Updatable<(), String> for ContainsString {
     fn handle(&self, _: &(), msg: &String) -> Option<UpdateHandle> {
         self.update(msg.clone())
     }
 }
-impl UpdatableHandler<(), VoidMsg> for ContainsString {
+impl Updatable<(), VoidMsg> for ContainsString {
     fn handle(&self, _: &(), _: &VoidMsg) -> Option<UpdateHandle> {
         None
     }
 }
 impl SingleData for ContainsString {
     type Item = String;
+
+    fn update_handles(&self) -> Vec<UpdateHandle> {
+        vec![(self.0).0]
+    }
     fn version(&self) -> u64 {
         (self.0).1.borrow().1
     }
+
     fn get_cloned(&self) -> Self::Item {
         (self.0).1.borrow().0.to_owned()
     }
@@ -99,26 +99,26 @@ impl ContainsCaseInsensitive {
         ContainsCaseInsensitive(Rc::new((handle, data)))
     }
 }
-impl Updatable for ContainsCaseInsensitive {
-    fn update_handles(&self) -> Vec<UpdateHandle> {
-        vec![(self.0).0]
-    }
-}
-impl UpdatableHandler<(), String> for ContainsCaseInsensitive {
+impl Updatable<(), String> for ContainsCaseInsensitive {
     fn handle(&self, _: &(), msg: &String) -> Option<UpdateHandle> {
         self.update(msg.clone())
     }
 }
-impl UpdatableHandler<(), VoidMsg> for ContainsCaseInsensitive {
+impl Updatable<(), VoidMsg> for ContainsCaseInsensitive {
     fn handle(&self, _: &(), _: &VoidMsg) -> Option<UpdateHandle> {
         None
     }
 }
 impl SingleData for ContainsCaseInsensitive {
     type Item = String;
+
+    fn update_handles(&self) -> Vec<UpdateHandle> {
+        vec![(self.0).0]
+    }
     fn version(&self) -> u64 {
         (self.0).1.borrow().2
     }
+
     fn get_cloned(&self) -> Self::Item {
         (self.0).1.borrow().0.clone()
     }

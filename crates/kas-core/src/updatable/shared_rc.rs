@@ -21,8 +21,8 @@ use std::rc::Rc;
 
 /// Wrapper for single-thread shared data
 ///
-/// This wrapper adds an [`UpdateHandle`] and implements the [`Updatable`] and
-/// [`UpdatableHandler`] traits (the latter with a dummy implementation —
+/// This wrapper adds an [`UpdateHandle`] and implements the
+/// [`Updatable`] traits (the latter with a dummy implementation —
 /// if you need custom handlers you will need your own shared data type).
 #[derive(Clone, Debug, Default)]
 pub struct SharedRc<T: Debug>(Rc<(UpdateHandle, RefCell<(T, u64)>)>);
@@ -35,13 +35,8 @@ impl<T: Debug> SharedRc<T> {
         SharedRc(Rc::new((handle, data)))
     }
 }
-impl<T: Debug> Updatable for SharedRc<T> {
-    fn update_handles(&self) -> Vec<UpdateHandle> {
-        vec![(self.0).0]
-    }
-}
 
-impl<T: Clone + Debug, K, M> UpdatableHandler<K, M> for SharedRc<T> {
+impl<T: Clone + Debug, K, M> Updatable<K, M> for SharedRc<T> {
     fn handle(&self, _: &K, _: &M) -> Option<UpdateHandle> {
         None
     }
@@ -50,6 +45,9 @@ impl<T: Clone + Debug, K, M> UpdatableHandler<K, M> for SharedRc<T> {
 impl<T: Clone + Debug> SingleData for SharedRc<T> {
     type Item = T;
 
+    fn update_handles(&self) -> Vec<UpdateHandle> {
+        vec![(self.0).0]
+    }
     fn version(&self) -> u64 {
         (self.0).1.borrow().1
     }
@@ -75,6 +73,9 @@ impl<T: ListDataMut> ListData for SharedRc<T> {
     type Key = T::Key;
     type Item = T::Item;
 
+    fn update_handles(&self) -> Vec<UpdateHandle> {
+        vec![(self.0).0]
+    }
     fn version(&self) -> u64 {
         let cell = (self.0).1.borrow();
         cell.0.version() + cell.1
@@ -126,6 +127,9 @@ impl<T: MatrixDataMut> MatrixData for SharedRc<T> {
     type Key = T::Key;
     type Item = T::Item;
 
+    fn update_handles(&self) -> Vec<UpdateHandle> {
+        vec![(self.0).0]
+    }
     fn version(&self) -> u64 {
         let cell = (self.0).1.borrow();
         cell.0.version() + cell.1

@@ -7,8 +7,7 @@
 
 use super::{driver, Driver};
 use kas::prelude::*;
-use kas::updatable::{SingleData, UpdatableHandler};
-use UpdatableHandler as UpdHandler;
+use kas::updatable::{SingleData, Updatable};
 
 widget! {
     /// Single view widget
@@ -16,7 +15,7 @@ widget! {
     /// This widget supports a view over a shared data item.
     ///
     /// The shared data type `T` must support [`SingleData`] and
-    /// [`UpdatableHandler`], the latter with key type `()` and message type
+    /// [`Updatable`], the latter with key type `()` and message type
     /// matching the widget's message. One may use [`kas::updatable::SharedRc`]
     /// or a custom shared data type.
     ///
@@ -29,7 +28,7 @@ widget! {
         layout = single;
     }]
     pub struct SingleView<
-        T: SingleData + UpdHandler<(), V::Msg> + 'static,
+        T: SingleData + Updatable<(), V::Msg> + 'static,
         V: Driver<T::Item> = driver::Default,
     > {
         #[widget_core]
