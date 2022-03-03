@@ -261,6 +261,6 @@ impl<W: Widget> Window<W> {
             Rect::new(Coord(x, y), Size::new(w, h))
         };
 
-        cache.apply_rect(widget, mgr, rect, false);
+        cache.apply_rect(widget, mgr, rect, false, true);
     }
 }

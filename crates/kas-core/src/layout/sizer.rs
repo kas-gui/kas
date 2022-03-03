@@ -187,6 +187,7 @@ impl SolveCache {
         mgr: &mut SetRectMgr,
         mut rect: Rect,
         inner_margin: bool,
+        print_heirarchy: bool,
     ) {
         let start = std::time::Instant::now();
 
@@ -220,11 +221,13 @@ impl SolveCache {
         widget.set_rect(mgr, rect, AlignHints::NONE);
 
         trace!(target: "kas_perf", "layout::apply_rect: {}ms", start.elapsed().as_millis());
-        trace!(
-            "layout::apply_rect: size={:?}, hierarchy:{}",
-            rect.size,
-            WidgetHeirarchy(widget, 0),
-        );
+        if print_heirarchy {
+            trace!(
+                "layout::apply_rect: size={:?}, hierarchy:{}",
+                rect.size,
+                WidgetHeirarchy(widget, 0),
+            );
+        }
 
         self.refresh_rules = false;
     }
