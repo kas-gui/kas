@@ -70,7 +70,7 @@ impl SingleDataMut for ContainsString {
 
 impl<'a> Filter<&'a str> for ContainsString {
     fn matches(&self, item: &str) -> bool {
-        item.contains(&self.get_cloned())
+        item.contains(&(self.0).1.borrow().0)
     }
 }
 impl Filter<String> for ContainsString {
