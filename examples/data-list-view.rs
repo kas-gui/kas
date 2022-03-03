@@ -86,8 +86,8 @@ impl MyData {
     }
 }
 impl Updatable for MyData {
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        Some(self.handle)
+    fn update_handles(&self) -> Vec<UpdateHandle> {
+        vec![self.handle]
     }
 }
 impl UpdatableHandler<usize, EntryMsg> for MyData {

@@ -33,13 +33,14 @@ pub use shared_rc::SharedRc;
 
 /// Shared (data) objects which may notify of updates
 pub trait Updatable: Debug {
-    /// Get an update handle, if any is used to notify of updates
+    /// Get any update handles used to notify of updates
     ///
     /// If the data supports updates through shared references (e.g. via an
-    /// internal `RefCell`), then it should have an `UpdateHandle` for notifying
-    /// other users of the data of the update, and return that here.
-    /// If the data is constant (not updatable) this may simply return `None`.
-    fn update_handle(&self) -> Option<UpdateHandle>;
+    /// internal [`RefCell`]), then it should have an [`UpdateHandle`] for
+    /// notifying other users of the data of the update. All [`UpdateHandle`]s
+    /// used should be returned here. View widgets should check the data version
+    /// and update their view when any of these [`UpdateHandle`]s is triggreed.
+    fn update_handles(&self) -> Vec<UpdateHandle>;
 }
 
 /// Trait for data objects which can handle messages
@@ -66,8 +67,8 @@ pub trait UpdatableHandler<K, M>: Updatable {
 // }
 
 impl<T: Debug> Updatable for [T] {
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        None
+    fn update_handles(&self) -> Vec<UpdateHandle> {
+        vec![]
     }
 }
 impl<T: Debug, M> UpdatableHandler<usize, M> for [T] {
@@ -77,8 +78,8 @@ impl<T: Debug, M> UpdatableHandler<usize, M> for [T] {
 }
 
 impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> Updatable for std::collections::BTreeMap<K, T> {
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        None
+    fn update_handles(&self) -> Vec<UpdateHandle> {
+        vec![]
     }
 }
 impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug, M> UpdatableHandler<K, M>
@@ -92,8 +93,8 @@ impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug, M> UpdatableHandler<K, M>
 macro_rules! impl_via_deref {
     ($t: ident: $derived:ty) => {
         impl<$t: Updatable + ?Sized> Updatable for $derived {
-            fn update_handle(&self) -> Option<UpdateHandle> {
-                self.deref().update_handle()
+            fn update_handles(&self) -> Vec<UpdateHandle> {
+                self.deref().update_handles()
             }
         }
         impl<K, M, $t: UpdatableHandler<K, M> + ?Sized> UpdatableHandler<K, M> for $derived {

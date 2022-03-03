@@ -8,8 +8,8 @@ use kas::widgets::{EditBox, ScrollBars, StrLabel, Window};
 #[derive(Debug)]
 struct TableData(u64, usize);
 impl Updatable for TableData {
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        None
+    fn update_handles(&self) -> Vec<UpdateHandle> {
+        vec![]
     }
 }
 impl UpdatableHandler<(usize, usize), VoidMsg> for TableData {

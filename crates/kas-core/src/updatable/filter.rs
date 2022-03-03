@@ -31,8 +31,8 @@ impl ContainsString {
     }
 }
 impl Updatable for ContainsString {
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        Some((self.0).0)
+    fn update_handles(&self) -> Vec<UpdateHandle> {
+        vec![(self.0).0]
     }
 }
 impl UpdatableHandler<(), String> for ContainsString {
@@ -100,8 +100,8 @@ impl ContainsCaseInsensitive {
     }
 }
 impl Updatable for ContainsCaseInsensitive {
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        Some((self.0).0)
+    fn update_handles(&self) -> Vec<UpdateHandle> {
+        vec![(self.0).0]
     }
 }
 impl UpdatableHandler<(), String> for ContainsCaseInsensitive {

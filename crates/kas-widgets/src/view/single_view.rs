@@ -108,7 +108,7 @@ widget! {
 
     impl WidgetConfig for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
-            if let Some(handle) = self.data.update_handle() {
+            for handle in self.data.update_handles().into_iter() {
                 mgr.update_on_handle(handle, self.id());
             }
         }

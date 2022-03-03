@@ -50,9 +50,7 @@ impl<T: ListData + 'static, F: Filter<T::Item> + SingleData> FilteredList<T, F> 
     ///
     /// Re-applies the filter (`O(n)` where `n` is the number of data elements).
     /// Calling this directly may be useful in case the data is modified.
-    ///
-    /// An update should be triggered using the returned handle.
-    fn refresh(&self, ver: u64) -> Option<UpdateHandle> {
+    fn refresh(&self, ver: u64) {
         let mut view = self.view.borrow_mut();
         view.0 = ver;
         view.1.clear();
@@ -63,13 +61,14 @@ impl<T: ListData + 'static, F: Filter<T::Item> + SingleData> FilteredList<T, F> 
                 }
             }
         }
-        self.filter.update_handle()
     }
 }
 
-impl<T: ListData, F: Filter<T::Item> + SingleData> Updatable for FilteredList<T, F> {
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        self.filter.update_handle()
+impl<T: Updatable + ListData, F: Filter<T::Item> + SingleData> Updatable for FilteredList<T, F> {
+    fn update_handles(&self) -> Vec<UpdateHandle> {
+        let mut v = self.data.update_handles();
+        v.append(&mut self.filter.update_handles());
+        v
     }
 }
 impl<K, M, T: ListData + UpdatableHandler<K, M> + 'static, F: Filter<T::Item> + SingleData>

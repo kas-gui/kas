@@ -36,8 +36,8 @@ impl<T: Debug> SharedRc<T> {
     }
 }
 impl<T: Debug> Updatable for SharedRc<T> {
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        Some((self.0).0)
+    fn update_handles(&self) -> Vec<UpdateHandle> {
+        vec![(self.0).0]
     }
 }
 
