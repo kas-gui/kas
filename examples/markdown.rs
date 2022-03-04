@@ -9,7 +9,25 @@ use kas::class::HasStr;
 use kas::event::{EventMgr, VoidMsg};
 use kas::macros::make_widget;
 use kas::text::format::Markdown;
-use kas::widgets::{EditBox, Label, ScrollBarRegion, TextButton, Window};
+use kas::widgets::{EditBox, EditField, EditGuard, Label, ScrollBarRegion, Window};
+
+#[derive(Debug)]
+struct Guard;
+impl EditGuard for Guard {
+    type Msg = Markdown;
+
+    fn edit(edit: &mut EditField<Self>, _: &mut EventMgr) -> Option<Markdown> {
+        let result = Markdown::new(edit.get_str());
+        edit.set_error_state(result.is_err());
+        Some(match result {
+            Ok(md) => md,
+            Err(err) => {
+                let string = format!("```\n{}\n```", err);
+                Markdown::new(&string).unwrap()
+            }
+        })
+    }
+}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
@@ -43,31 +61,18 @@ It also supports lists:
         "Markdown parser",
         make_widget! {
             #[widget{
-                layout = grid: {
-                    0..2, 0: self.editor;
-                    0, 1: self.label;
-                    1, 1: self.b_update;
-                };
+                layout = row: *;
             }]
             #[handler(msg = VoidMsg)]
             struct {
-                #[widget] editor: EditBox =
-                    EditBox::new(doc).multi_line(true),
+                #[widget(use_msg=update)] editor: EditBox<Guard> =
+                    EditBox::new(doc).multi_line(true).with_guard(Guard),
                 #[widget] label: ScrollBarRegion<Label<Markdown>> =
                     ScrollBarRegion::new(Label::new(Markdown::new(doc)?)),
-                #[widget(use_msg=update)] b_update = TextButton::new_msg("&Update", ()),
             }
             impl Self {
-                fn update(&mut self, mgr: &mut EventMgr, _: ()) {
-                    let text = match Markdown::new(self.editor.get_str()) {
-                        Ok(text) => text,
-                        Err(err) => {
-                            let string = format!("```\n{}\n```", err);
-                            Markdown::new(&string).unwrap()
-                        }
-                    };
-                    // TODO: this should update the size requirements of the inner area
-                    *mgr |= self.label.set_text(text);
+                fn update(&mut self, mgr: &mut EventMgr, md: Markdown) {
+                    *mgr |= self.label.set_text(md);
                 }
             }
         },
