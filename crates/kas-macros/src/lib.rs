@@ -22,6 +22,7 @@ mod make_layout;
 mod make_widget;
 pub(crate) mod where_clause;
 mod widget;
+mod widget_index;
 
 /// A variant of the standard `derive` macro
 ///
@@ -276,4 +277,21 @@ pub fn derive_empty_msg(input: TokenStream) -> TokenStream {
         }
     };
     toks.into()
+}
+
+/// Index of a child widget
+///
+/// This macro is usable only within a [`widget!`] macro.
+///
+/// Example usage: `widget_index![self.a]`. If `a` is a child widget (a field
+/// marked with the `#[widget]` attribute), then this expands to the child
+/// widget's index (as used by [`WidgetChildren`]). Otherwise, this is an error.
+///
+/// [`WidgetChildren`]: https://docs.rs/kas/latest/kas/trait.WidgetChildren.html
+#[proc_macro_error]
+#[proc_macro]
+pub fn widget_index(input: TokenStream) -> TokenStream {
+    let input2 = input.clone();
+    let _ = parse_macro_input!(input2 as widget_index::BaseInput);
+    input
 }

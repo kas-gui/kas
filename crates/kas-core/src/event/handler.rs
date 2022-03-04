@@ -96,8 +96,8 @@ pub trait SendEvent: Handler {
     ///     return Response::Unused;
     /// }
     /// match self.find_child_index(&id) {
-    ///     Some(0) => self.child0.send(mgr, id, event).into(),
-    ///     Some(1) => self.child1.send(mgr, id, event).into(),
+    ///     Some(widget_index![self.child0]) => self.child0.send(mgr, id, event).into(),
+    ///     Some(widget_index![self.child1]) => self.child1.send(mgr, id, event).into(),
     ///     // ...
     ///     _ => {
     ///         debug_assert_eq!(self.id(), id);
