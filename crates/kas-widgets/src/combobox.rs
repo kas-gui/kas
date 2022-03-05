@@ -49,10 +49,7 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_core(self.core_data());
-            if self.popup_id.is_some() {
-                draw.state.insert(InputState::DEPRESS);
-            }
+            let draw = draw.with_core(self.core_data());
             self.layout().draw(draw);
         }
     }

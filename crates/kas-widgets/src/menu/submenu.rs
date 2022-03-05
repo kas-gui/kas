@@ -26,7 +26,6 @@ widget! {
         #[widget]
         pub list: PopupFrame<Column<W>>,
         popup_id: Option<WindowId>,
-        closing_menu: bool,
     }
 
     impl Self where D: Default {
@@ -69,7 +68,6 @@ widget! {
                 frame_store: Default::default(),
                 list: PopupFrame::new(Column::new(list)),
                 popup_id: None,
-                closing_menu: false,
             }
         }
 
@@ -88,7 +86,6 @@ widget! {
         fn close_menu(&mut self, mgr: &mut EventMgr, restore_focus: bool) {
             if let Some(id) = self.popup_id {
                 mgr.close_window(id, restore_focus);
-                self.closing_menu = true;
             }
         }
 
@@ -147,9 +144,6 @@ widget! {
 
         fn draw(&mut self, mut draw: DrawMgr) {
             let mut draw = draw.with_core(self.core_data());
-            if self.popup_id.is_some() && !self.closing_menu {
-                draw.state.insert(InputState::DEPRESS);
-            }
             draw.frame(self.core.rect, FrameStyle::MenuEntry);
             draw.text_accel(
                 self.label_store.pos,
@@ -174,7 +168,6 @@ widget! {
                 Event::PopupRemoved(id) => {
                     debug_assert_eq!(Some(id), self.popup_id);
                     self.popup_id = None;
-                    self.closing_menu = false;
                     Response::Used
                 }
                 Event::Command(cmd, _) => self.handle_dir_key(mgr, cmd),

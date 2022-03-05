@@ -83,6 +83,11 @@ impl EventState {
                 return true;
             }
         }
+        for popup in &self.popups {
+            if *w_id == popup.1.parent {
+                return true;
+            }
+        }
         false
     }
 
@@ -478,6 +483,7 @@ impl<'a> EventMgr<'a> {
     ///
     /// The parent of a popup automatically receives mouse-motion events
     /// ([`Event::PressMove`]) which may be used to navigate menus.
+    /// The parent automatically receives the "depressed" visual state.
     ///
     /// A pop-up may be closed by calling [`EventMgr::close_window`] with
     /// the [`WindowId`] returned by this method.
