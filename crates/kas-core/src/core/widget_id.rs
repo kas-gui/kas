@@ -408,6 +408,42 @@ impl WidgetId {
         }
     }
 
+    /// Get the parent widget's identifier, if not root
+    ///
+    /// Note: there is no guarantee that [`Self::as_u64`] on the result will
+    /// match that of the original parent identifier.
+    pub fn parent(&self) -> Option<WidgetId> {
+        match self.0.get() {
+            Variant::Invalid => None,
+            Variant::Int(x) => {
+                let mut bit_len = 4 * block_len(x);
+                while bit_len > 0 {
+                    bit_len -= 4;
+                    if bit_len > 0 && (x >> (64 - bit_len)) & 8 != 0 {
+                        continue;
+                    }
+
+                    let len = ((bit_len / 4) as u64) << SHIFT_LEN;
+                    let mask = MASK_BITS << (56 - bit_len);
+                    let id = (x & mask) | len | USE_BITS;
+                    return Some(WidgetId(IntOrPtr::new_int(id)));
+                }
+                None
+            }
+            Variant::Slice(path) => {
+                let len = path.len();
+                if len > 1 {
+                    // TODO(opt): in some cases we could make Variant::Int
+                    Some(WidgetId(IntOrPtr::new_iter(
+                        path[0..len - 1].iter().cloned(),
+                    )))
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
     /// Make an identifier for the child with the given `key`
     ///
     /// Note: this is not a getter method. Calling multiple times with the same
@@ -703,6 +739,33 @@ mod test {
         assert_eq!(as_vec(USE_BITS), Vec::<usize>::new());
         assert_eq!(as_vec(0x3100_0000_0000_0011), vec![3]);
         assert_eq!(as_vec(0x1A93_007F_0000_0071), vec![1, 139, 0, 0, 7]);
+    }
+
+    #[test]
+    fn test_parent() {
+        fn test(seq: &[usize]) {
+            println!("seq: {seq:?}");
+            let mut id = WidgetId::ROOT;
+            let len = seq.len();
+            for key in &seq[..len - 1] {
+                id = id.make_child(*key);
+            }
+
+            if len == 0 {
+                assert_eq!(id.parent(), None);
+            } else {
+                let id2 = id.make_child(seq[len - 1]);
+                assert_eq!(id2.parent(), Some(id));
+            }
+        }
+
+        test(&[4]);
+        test(&[4, 0]);
+        test(&[0, 0, 0]);
+        test(&[0, 1, 0]);
+        test(&[9, 0, 1, 300]);
+        test(&[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0]);
+        test(&[313553, 13513, 13511631]);
     }
 
     #[test]
