@@ -538,7 +538,7 @@ where
     fn button(&mut self, rect: Rect, col: Option<color::Rgb>, state: InputState) {
         let outer = Quad::conv(rect);
 
-        let col_bg = if state.nav_focus() && !state.disabled() {
+        let col_bg = if state.depress() || state.nav_focus() && !state.disabled() {
             self.cols.accent_soft
         } else {
             col.map(|c| c.into()).unwrap_or(self.cols.background)
