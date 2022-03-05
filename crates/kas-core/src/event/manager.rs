@@ -146,6 +146,7 @@ type AccelLayer = (bool, HashMap<VirtualKeyCode, WidgetId>);
 #[derive(Debug)]
 pub struct EventState {
     config: WindowConfig,
+    disabled: Vec<WidgetId>,
     scale_factor: f32,
     configure_active: bool,
     configure_count: usize,
@@ -401,11 +402,13 @@ impl<'a> EventMgr<'a> {
 
             if let Some(id) = w_id {
                 let mut icon = Default::default();
-                if let Some(w) = widget.find_widget(&id) {
-                    if w.hover_highlight() {
-                        self.redraw(id);
+                if !self.is_disabled(&id) {
+                    if let Some(w) = widget.find_widget(&id) {
+                        if w.hover_highlight() {
+                            self.redraw(id);
+                        }
+                        icon = w.cursor_icon();
                     }
-                    icon = w.cursor_icon();
                 }
                 if icon != self.state.hover_icon {
                     self.state.hover_icon = icon;
@@ -543,9 +546,26 @@ impl<'a> EventMgr<'a> {
         }
     }
 
+    fn send_impl<W>(&mut self, widget: &mut W, mut id: WidgetId, event: Event) -> Response<W::Msg>
+    where
+        W: Widget + ?Sized,
+    {
+        // TODO(opt): we should be able to use binary search here
+        for d in &self.disabled {
+            if d.is_ancestor_of(&id) {
+                if let Some(p) = d.parent() {
+                    id = p;
+                } else {
+                    return Response::Unused;
+                }
+            }
+        }
+        widget.send(self, id, event)
+    }
+
     fn send_event<W: Widget + ?Sized>(&mut self, widget: &mut W, id: WidgetId, event: Event) {
         trace!("Send to {}: {:?}", id, event);
-        let _ = widget.send(self, id, event);
+        let _ = self.send_impl(widget, id, event);
     }
 
     // Similar to send_event, but return true only if response != Response::Unused
@@ -556,7 +576,7 @@ impl<'a> EventMgr<'a> {
         event: Event,
     ) -> bool {
         trace!("Send to {}: {:?}", id, event);
-        let r = widget.send(self, id, event);
+        let r = self.send_impl(widget, id, event);
         !matches!(r, Response::Unused)
     }
 
@@ -571,7 +591,7 @@ impl<'a> EventMgr<'a> {
             .map(|(wid, p, _)| (*wid, p.parent.clone()))
         {
             trace!("Send to popup parent: {}: {:?}", parent, event);
-            match widget.send(self, parent, event.clone()) {
+            match self.send_impl(widget, parent, event.clone()) {
                 Response::Unused => (),
                 _ => return,
             }

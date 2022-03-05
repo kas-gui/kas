@@ -50,7 +50,7 @@ widget! {
 
         #[inline]
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_core(self.core_data());
+            let mut draw = draw.with_id(self.id_ref());
             self.w.draw(draw.re());
             for (_, popup) in &self.popups {
                 if let Some(widget) = self.w.find_widget_mut(&popup.id) {
@@ -64,7 +64,7 @@ widget! {
 
     impl SendEvent for Self where W::Msg: Into<VoidMsg> {
         fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            if self.is_disabled() || self.eq_id(&id) {
+            if self.eq_id(&id) {
                 Response::Unused
             } else {
                 self.w.send(mgr, id, event).into()

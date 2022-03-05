@@ -44,7 +44,6 @@ pub struct CoreData {
     pub layout: StorageChain,
     pub rect: Rect,
     pub id: WidgetId,
-    pub disabled: bool,
 }
 
 /// Note: the clone has default-initialised layout storage and identifier.
@@ -55,7 +54,6 @@ impl Clone for CoreData {
             layout: StorageChain::default(),
             rect: self.rect,
             id: WidgetId::default(),
-            disabled: self.disabled,
         }
     }
 }

@@ -32,6 +32,7 @@ impl EventState {
     pub fn new(config: Rc<RefCell<Config>>, scale_factor: f32) -> Self {
         EventState {
             config: WindowConfig::new(config, scale_factor),
+            disabled: vec![],
             scale_factor,
             configure_active: false,
             configure_count: 0,

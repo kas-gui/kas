@@ -143,7 +143,7 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_core(self.core_data());
+            let mut draw = draw.with_id(self.id_ref());
             draw.frame(self.core.rect, FrameStyle::MenuEntry);
             draw.text_accel(
                 self.label_store.pos,
@@ -177,10 +177,6 @@ widget! {
 
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            if self.is_disabled() {
-                return Response::Unused;
-            }
-
             if !self.eq_id(&id) {
                 let r = self.list.send(mgr, id.clone(), event.clone());
 

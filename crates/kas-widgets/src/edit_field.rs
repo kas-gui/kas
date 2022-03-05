@@ -188,11 +188,11 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_core(self.core_data());
+            let mut draw = draw.with_id(self.id_ref());
             let error = self.inner.has_error();
             {
                 let mut draw = draw.re();
-                let mut draw = draw.with_core(self.inner.core_data());
+                let mut draw = draw.with_id(self.inner.id_ref());
                 if error {
                     draw.state.insert(InputState::ERROR);
                 }
@@ -421,7 +421,7 @@ widget! {
             } else {
                 TextClass::Edit
             };
-            let mut draw = draw.with_core(self.core_data());
+            let mut draw = draw.with_id(self.id_ref());
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
                 if self.selection.is_empty() {
                     draw.text(self.rect().pos, self.text.as_ref(), class);

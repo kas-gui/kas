@@ -586,7 +586,7 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_core(self.core_data());
+            let mut draw = draw.with_id(self.id_ref());
             let offset = self.scroll_offset();
             let rect = self.rect() + offset;
             let num = self.cur_len.cast();
@@ -757,10 +757,6 @@ widget! {
 
     impl SendEvent for Self {
         fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            if self.is_disabled() {
-                return Response::Unused;
-            }
-
             if self.eq_id(&id) {
                 return self.handle(mgr, event);
             }

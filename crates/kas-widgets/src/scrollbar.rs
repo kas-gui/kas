@@ -236,7 +236,7 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_core(self.handle.core_data());
+            let mut draw = draw.with_id(self.handle.id_ref());
             let dir = self.direction.as_direction();
             draw.scrollbar(self.core.rect, self.handle.rect(), dir);
         }
@@ -244,10 +244,6 @@ widget! {
 
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            if self.is_disabled() {
-                return Response::Unused;
-            }
-
             let offset = if self.eq_id(&id) {
                 match event {
                     Event::PressStart { source, coord, .. } => {
@@ -516,7 +512,7 @@ widget! {
         }
 
         fn draw_(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_core(self.core_data());
+            let mut draw = draw.with_id(self.id_ref());
             if self.show_bars.0 {
                 self.horiz_bar.draw(draw.re());
             }
@@ -623,7 +619,7 @@ widget! {
     #[cfg(feature = "min_spec")]
     impl<W: Widget> Layout for ScrollBars<ScrollRegion<W>> {
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_core(self.core_data());
+            let mut draw = draw.with_id(self.id_ref());
             // Enlarge clip region to *our* rect:
             draw.with_clip_region(self.core.rect, self.inner.scroll_offset(), |mut draw| {
                 self.inner.inner_mut().draw(draw.re())
@@ -642,10 +638,6 @@ widget! {
 
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            if self.is_disabled() {
-                return Response::Unused;
-            }
-
             match self.find_child_index(&id) {
                 Some(widget_index![self.horiz_bar]) => self.horiz_bar
                     .send(mgr, id, event)

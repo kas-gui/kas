@@ -49,7 +49,7 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let draw = draw.with_core(self.core_data());
+            let draw = draw.with_id(self.id_ref());
             self.layout().draw(draw);
         }
     }
@@ -161,10 +161,6 @@ widget! {
 
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            if self.is_disabled() {
-                return Response::Unused;
-            }
-
             if self.eq_id(&id) {
                 EventMgr::handle_generic(self, mgr, event)
             } else {

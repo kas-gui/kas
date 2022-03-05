@@ -15,7 +15,7 @@ use crate::event::EventState;
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::SetRectMgr;
 use crate::text::{AccelString, Text, TextApi, TextDisplay};
-use crate::{CoreData, TkAction};
+use crate::{TkAction, WidgetId};
 
 /// Draw interface
 ///
@@ -25,15 +25,14 @@ use crate::{CoreData, TkAction};
 /// Use [`DrawMgr::with_core`] to access draw methods.
 pub struct DrawMgr<'a> {
     h: &'a mut dyn DrawHandle,
-    disabled: bool,
 }
 
 impl<'a> DrawMgr<'a> {
     /// Construct from a [`DrawMgr`] and [`EventState`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn new(h: &'a mut dyn DrawHandle, disabled: bool) -> Self {
-        DrawMgr { h, disabled }
+    pub fn new(h: &'a mut dyn DrawHandle) -> Self {
+        DrawMgr { h }
     }
 
     /// Access event-management state
@@ -68,10 +67,10 @@ impl<'a> DrawMgr<'a> {
     }
 
     /// Add context to allow draw operations
-    pub fn with_core<'b>(&'b mut self, core: &CoreData) -> DrawCtx<'b> {
-        let state = self.h.components().2.draw_state(core, self.disabled);
+    pub fn with_id<'b>(&'b mut self, id: &WidgetId) -> DrawCtx<'b> {
+        let state = self.h.components().2.draw_state(id);
         let h = &mut *self.h;
-        let wid = core.id.as_u64();
+        let wid = id.as_u64();
         DrawCtx { h, wid, state }
     }
 }
@@ -103,10 +102,7 @@ impl<'a> DrawCtx<'a> {
     where
         'a: 'b,
     {
-        DrawMgr {
-            h: self.h,
-            disabled: self.state.contains(InputState::DISABLED),
-        }
+        DrawMgr { h: self.h }
     }
 
     /// Reborrow as a [`DrawCtx`] with a new lifetime
@@ -608,7 +604,7 @@ mod test {
         // But we don't need to: we just want to test that methods are callable.
 
         let _scale = draw.size_mgr().scale_factor();
-        let mut draw = draw.with_core(&Default::default());
+        let mut draw = draw.with_id(&WidgetId::ROOT);
 
         let text = crate::text::Text::new_single("sample");
         let class = TextClass::Label;

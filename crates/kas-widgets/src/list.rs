@@ -203,23 +203,21 @@ widget! {
 
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            if !self.is_disabled() {
-                if let Some(index) = self.find_child_index(&id) {
-                    if let Some(child) = self.widgets.get_mut(index) {
-                        let r = child.send(mgr, id.clone(), event);
-                        return match Response::try_from(r) {
-                            Ok(r) => r,
-                            Err(msg) => {
-                                log::trace!(
-                                    "Received by {} from {}: {:?}",
-                                    self.id(),
-                                    id,
-                                    kas::util::TryFormat(&msg)
-                                );
-                                Response::Msg(FromIndexed::from_indexed(index, msg))
-                            }
-                        };
-                    }
+            if let Some(index) = self.find_child_index(&id) {
+                if let Some(child) = self.widgets.get_mut(index) {
+                    let r = child.send(mgr, id.clone(), event);
+                    return match Response::try_from(r) {
+                        Ok(r) => r,
+                        Err(msg) => {
+                            log::trace!(
+                                "Received by {} from {}: {:?}",
+                                self.id(),
+                                id,
+                                kas::util::TryFormat(&msg)
+                            );
+                            Response::Msg(FromIndexed::from_indexed(index, msg))
+                        }
+                    };
                 }
             }
 

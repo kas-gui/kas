@@ -91,9 +91,6 @@ pub trait SendEvent: Handler {
     ///
     /// The following logic is recommended for routing events:
     /// ```no_test
-    /// if self.is_disabled() {
-    ///     return Response::Unused;
-    /// }
     /// match self.find_child_index(&id) {
     ///     Some(widget_index![self.child0]) => self.child0.send(mgr, id, event).into(),
     ///     Some(widget_index![self.child1]) => self.child1.send(mgr, id, event).into(),

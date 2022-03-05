@@ -79,7 +79,7 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_core(self.core_data());
+            let mut draw = draw.with_id(self.id_ref());
             if self.active < self.widgets.len() {
                 self.widgets[self.active].draw(draw.re());
             }
@@ -88,17 +88,15 @@ widget! {
 
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            if !self.is_disabled() {
-                if let Some(index) = self.find_child_index(&id) {
-                    if let Some(child) = self.widgets.get_mut(index) {
-                        return match child.send(mgr, id, event) {
-                            Response::Focus(rect) => {
-                                *mgr |= self.set_active(index);
-                                Response::Focus(rect)
-                            }
-                            r => r,
-                        };
-                    }
+            if let Some(index) = self.find_child_index(&id) {
+                if let Some(child) = self.widgets.get_mut(index) {
+                    return match child.send(mgr, id, event) {
+                        Response::Focus(rect) => {
+                            *mgr |= self.set_active(index);
+                            Response::Focus(rect)
+                        }
+                        r => r,
+                    };
                 }
             }
 

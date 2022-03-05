@@ -254,7 +254,7 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_core(self.core_data());
+            let mut draw = draw.with_id(self.id_ref());
             if draw.ev_state().is_hovered(self.handle.id_ref()) {
                 draw.state.insert(InputState::HOVER);
             }
@@ -265,10 +265,6 @@ widget! {
 
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            if self.is_disabled() {
-                return Response::Unused;
-            }
-
             let offset = if self.handle.id().is_ancestor_of(&id) {
                 match event {
                     Event::NavFocus(key_focus) => {

@@ -17,7 +17,7 @@ use crate::layout::SetRectMgr;
 use crate::theme::{SizeMgr, ThemeControl};
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
-use crate::{CoreData, TkAction, WidgetExt, WidgetId, WindowId};
+use crate::{TkAction, WidgetExt, WidgetId, WindowId};
 
 impl<'a> std::ops::BitOrAssign<TkAction> for EventMgr<'a> {
     #[inline]
@@ -63,7 +63,6 @@ impl EventState {
     }
 
     /// Check whether the given widget is visually depressed
-    #[inline]
     pub fn is_depressed(&self, w_id: &WidgetId) -> bool {
         for (_, id) in &self.key_depress {
             if *id == w_id {
@@ -91,10 +90,23 @@ impl EventState {
         false
     }
 
+    /// Check whether a widget is disabled
+    ///
+    /// A widget is disabled if any ancestor is.
+    #[inline]
+    pub fn is_disabled(&self, w_id: &WidgetId) -> bool {
+        // TODO(opt): we should be able to use binary search here
+        for id in &self.disabled {
+            if id.is_ancestor_of(w_id) {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Construct [`InputState`]
     ///
-    /// The `disabled` flag is inherited from parents. [`InputState::disabled`]
-    /// will be true if either `disabled` or `self.is_disabled()` are true.
+    /// [`InputState::DISABLED`] will be set if any parent is disabled.
     ///
     /// The error state defaults to `false` since most widgets don't support
     /// this.
@@ -103,19 +115,19 @@ impl EventState {
     /// in `hover` status will not (since this happens frequently and many
     /// widgets are unaffected), unless [`WidgetConfig::hover_highlight`]
     /// returns true.
-    pub fn draw_state(&self, core: &CoreData, disabled: bool) -> InputState {
-        let (char_focus, sel_focus) = self.has_char_focus(&core.id);
+    pub fn draw_state(&self, id: &WidgetId) -> InputState {
+        let (char_focus, sel_focus) = self.has_char_focus(id);
         let mut state = InputState::empty();
-        if core.disabled || disabled {
+        if self.is_disabled(id) {
             state |= InputState::DISABLED;
         }
-        if self.is_hovered(&core.id) {
+        if self.is_hovered(id) {
             state |= InputState::HOVER;
         }
-        if self.is_depressed(&core.id) {
+        if self.is_depressed(id) {
             state |= InputState::DEPRESS;
         }
-        if self.has_nav_focus(&core.id) {
+        if self.has_nav_focus(id) {
             state |= InputState::NAV_FOCUS;
         }
         if char_focus {
@@ -167,6 +179,25 @@ impl EventState {
     #[inline]
     pub fn scale_factor(&self) -> f32 {
         self.scale_factor
+    }
+
+    /// Set/unset a widget as disabled
+    ///
+    /// Disabled status applies to all descendants.
+    pub fn set_disabled(&mut self, w_id: WidgetId, state: bool) {
+        for (i, id) in self.disabled.iter().enumerate() {
+            if w_id == id {
+                if !state {
+                    self.redraw(w_id);
+                    self.disabled.remove(i);
+                }
+                return;
+            }
+        }
+        if state {
+            self.redraw(w_id.clone());
+            self.disabled.push(w_id);
+        }
     }
 
     /// Schedule an update
@@ -792,7 +823,7 @@ impl<'a> EventMgr<'a> {
             focus: Option<&WidgetId>,
             rev: bool,
         ) -> Option<WidgetId> {
-            if widget.is_disabled() {
+            if mgr.ev_state().is_disabled(widget.id_ref()) {
                 return None;
             }
 

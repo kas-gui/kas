@@ -100,7 +100,7 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_core(self.core_data());
+            let mut draw = draw.with_id(self.id_ref());
             let dir = self.direction.as_direction();
             draw.progress_bar(self.core.rect, dir, self.value);
         }

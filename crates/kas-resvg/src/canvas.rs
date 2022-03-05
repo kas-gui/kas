@@ -138,7 +138,7 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_core(self.core_data());
+            let mut draw = draw.with_id(self.id_ref());
             let (redraw, animate) = self.program.do_redraw_animate();
             if redraw {
                 draw.set_rect_mgr(|mgr| self.redraw(mgr));

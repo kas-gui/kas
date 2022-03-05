@@ -17,7 +17,7 @@ use crate::layout::{self, AlignHints, AxisInfo, SetRectMgr, SizeRules};
 use crate::theme::DrawCtx;
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::util::IdentifyWidget;
-use crate::{CoreData, TkAction, WidgetId};
+use crate::{CoreData, WidgetId};
 
 impl dyn WidgetCore {
     /// Forwards to the method defined on the type `Any`.
@@ -64,24 +64,6 @@ pub trait WidgetCore: Any + fmt::Debug {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn core_data_mut(&mut self) -> &mut CoreData;
-
-    /// Set disabled state (chaining)
-    ///
-    /// This is identical to [`WidgetExt::set_disabled`], but can be called in
-    /// chaining fashion. Example:
-    /// ```ignore
-    /// use kas::{WidgetCore, widget::MenuEntry};
-    /// let entry = MenuEntry::new("Disabled Item", ()).with_disabled(true);
-    /// ```
-    #[inline]
-    #[must_use]
-    fn with_disabled(mut self, disabled: bool) -> Self
-    where
-        Self: Sized,
-    {
-        self.core_data_mut().disabled = disabled;
-        self
-    }
 
     /// Get the name of the widget struct
     fn widget_name(&self) -> &'static str;
@@ -401,12 +383,12 @@ pub trait Layout: WidgetChildren {
     /// This method is invoked each frame to draw visible widgets. It should
     /// draw itself and recurse into all visible children.
     ///
-    /// One should use `let draw = draw.with_core(self.core_data());` to obtain
+    /// One should use `let draw = draw.with_id(self.id_ref());` to obtain
     /// a [`DrawCtx`], enabling further drawing.
     ///
     /// The default impl draws elements as defined by [`Self::layout`].
     fn draw(&mut self, mut draw: DrawMgr) {
-        let draw = draw.with_core(self.core_data());
+        let draw = draw.with_id(self.id_ref());
         self.layout().draw(draw);
     }
 }
@@ -529,25 +511,6 @@ pub trait WidgetExt: WidgetChildren {
         } else {
             None
         }
-    }
-
-    /// Get whether the widget is disabled
-    #[inline]
-    fn is_disabled(&self) -> bool {
-        self.core_data().disabled
-    }
-
-    /// Set the disabled state of a widget
-    ///
-    /// If disabled, a widget should not respond to input and should appear
-    /// greyed out.
-    ///
-    /// The disabled status is inherited by children: events should not be
-    /// passed to them, and they should also be drawn greyed out.
-    #[inline]
-    fn set_disabled(&mut self, disabled: bool) -> TkAction {
-        self.core_data_mut().disabled = disabled;
-        TkAction::REDRAW
     }
 
     /// Get the widget's region, relative to its parent.
