@@ -12,6 +12,7 @@ use syn::spanned::Spanned;
 use syn::{parse_quote, Result};
 
 pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
+    crate::widget_index::visit_widget(&mut args);
     let mut toks = quote! { #args };
 
     let name = &args.ident;
@@ -41,6 +42,9 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                         impl_.span(),
                         "impl conflicts with use of #[widget(derive=FIELD)]"
                     );
+                }
+                if !args.children.is_empty() {
+                    emit_warning!(impl_.span(), "use of `#![widget]` on children with custom `WidgetChildren` implementation");
                 }
                 impl_widget_children = false;
             } else if *path == parse_quote! { ::kas::WidgetConfig }

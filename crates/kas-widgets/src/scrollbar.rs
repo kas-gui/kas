@@ -647,7 +647,7 @@ widget! {
             }
 
             match self.find_child_index(&id) {
-                Some(0) => self.horiz_bar
+                Some(widget_index![self.horiz_bar]) => self.horiz_bar
                     .send(mgr, id, event)
                     .try_into()
                     .unwrap_or_else(|msg| {
@@ -655,7 +655,7 @@ widget! {
                         self.inner.set_scroll_offset(mgr, offset);
                         Response::Used
                     }),
-                Some(1) => self.vert_bar
+                Some(widget_index![self.vert_bar]) => self.vert_bar
                     .send(mgr, id, event)
                     .try_into()
                     .unwrap_or_else(|msg| {
@@ -663,7 +663,7 @@ widget! {
                         self.inner.set_scroll_offset(mgr, offset);
                         Response::Used
                     }),
-                Some(2) => {
+                Some(widget_index![self.inner]) => {
                     let r = self.inner.send(mgr, id, event);
                     // We assume the inner already updated its positions; this is just to set bars
                     if matches!(r, Response::Pan(_) | Response::Scrolled | Response::Focus(_)) {

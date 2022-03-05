@@ -111,7 +111,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             next_avail_frame_time: time,
             queued_frame_time: Some(time),
         };
-        r.apply_size(shared);
+        r.apply_size(shared, true);
 
         trace!("Window::new completed in {}µs", time.elapsed().as_micros());
         Ok(r)
@@ -191,9 +191,9 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         }
         if action.contains(TkAction::RESIZE) {
             self.solve_cache.invalidate_rule_cache();
-            self.apply_size(shared);
+            self.apply_size(shared, false);
         } else if action.contains(TkAction::SET_SIZE) {
-            self.apply_size(shared);
+            self.apply_size(shared, false);
         }
         /*if action.contains(TkAction::Popup) {
             let widget = &mut self.widget;
@@ -280,11 +280,11 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         self.ev_state.full_configure(&mut tkw, &mut *self.widget);
 
         self.solve_cache.invalidate_rule_cache();
-        self.apply_size(shared);
+        self.apply_size(shared, false);
         trace!("reconfigure completed in {}µs", time.elapsed().as_micros());
     }
 
-    fn apply_size(&mut self, shared: &mut SharedState<C, T>) {
+    fn apply_size(&mut self, shared: &mut SharedState<C, T>, first: bool) {
         let time = Instant::now();
         let rect = Rect::new(Coord::ZERO, self.sc_size());
         debug!("Resizing window to rect = {:?}", rect);
@@ -296,7 +296,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             &mut shared.draw,
             &mut self.ev_state,
         );
-        solve_cache.apply_rect(widget.as_widget_mut(), &mut mgr, rect, true);
+        solve_cache.apply_rect(widget.as_widget_mut(), &mut mgr, rect, true, first);
         widget.resize_popups(&mut mgr);
 
         let restrict_dimensions = self.widget.restrict_dimensions();
@@ -329,7 +329,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
         // Note that on resize, width adjustments may affect height
         // requirements; we therefore refresh size restrictions.
-        self.apply_size(shared);
+        self.apply_size(shared, false);
 
         trace!(
             "do_resize completed in {}µs (including apply_size time)",
