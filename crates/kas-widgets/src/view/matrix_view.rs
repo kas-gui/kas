@@ -622,6 +622,15 @@ widget! {
                     }
                     return Response::Used;
                 }
+                Event::PressStart { source, coord, .. } => {
+                    return if source.is_primary() {
+                        mgr.grab_press_unique(self.id(), source, coord, None);
+                        self.press_phase = PressPhase::Pan;
+                        Response::Used
+                    } else {
+                        Response::Unused
+                    };
+                }
                 Event::PressMove { coord, .. } => {
                     if let PressPhase::Start(start_coord) = self.press_phase {
                         if mgr.config_test_pan_thresh(coord - start_coord) {

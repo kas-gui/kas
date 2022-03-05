@@ -77,6 +77,22 @@ widget! {
                     }
                     Response::Used
                 }
+                Event::Command(cmd, _) => {
+                    let next = |mgr: &mut EventMgr, s, clr, rev| {
+                        if clr {
+                            mgr.clear_nav_focus();
+                        }
+                        mgr.next_nav_focus(s, rev, true);
+                        Response::Used
+                    };
+                    match cmd {
+                        Command::Up => next(mgr, self, false, true),
+                        Command::Down => next(mgr, self, false, false),
+                        Command::Home => next(mgr, self, true, false),
+                        Command::End => next(mgr, self, true, true),
+                        _ => Response::Unused,
+                    }
+                }
                 Event::PressStart {
                     source,
                     start_id,
@@ -338,25 +354,7 @@ impl<M: 'static> ComboBox<M> {
         r: Response<(usize, ())>,
     ) -> Response<M> {
         match r {
-            Response::Unused => match event {
-                Event::Command(cmd, _) => {
-                    let next = |mgr: &mut EventMgr, s, clr, rev| {
-                        if clr {
-                            mgr.clear_nav_focus();
-                        }
-                        mgr.next_nav_focus(s, rev, true);
-                        Response::Used
-                    };
-                    match cmd {
-                        Command::Up => next(mgr, self, false, true),
-                        Command::Down => next(mgr, self, false, false),
-                        Command::Home => next(mgr, self, true, false),
-                        Command::End => next(mgr, self, true, true),
-                        _ => Response::Unused,
-                    }
-                }
-                _ => Response::Unused,
-            },
+            Response::Unused => EventMgr::handle_generic(self, mgr, event),
             Response::Update | Response::Select => {
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id, true);

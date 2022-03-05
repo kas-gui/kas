@@ -87,8 +87,7 @@ pub trait SendEvent: Handler {
     ///
     /// This method is responsible for routing events toward descendents.
     /// [`WidgetId`] values are assigned via depth-first search with parents
-    /// ordered after all children. Disabling a widget is recursive, hence
-    /// disabled widgets should not forward any events.
+    /// ordered after all children.
     ///
     /// The following logic is recommended for routing events:
     /// ```no_test
@@ -112,6 +111,12 @@ pub trait SendEvent: Handler {
     /// The example above uses [`EventMgr::handle_generic`], which is an optional
     /// tool able to perform some simplifications on events. It is also valid to
     /// call [`Handler::handle`] directly or simply to embed handling logic here.
+    ///
+    /// When a child widget returns [`Response::Unused`], the widget may call
+    /// its own event handler. This is useful e.g. to capture a click+drag on a
+    /// child which does not handle that event. Note further that in case the
+    /// child is disabled, events targetting the child may be sent directly to
+    /// self.
     fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg>;
 }
 

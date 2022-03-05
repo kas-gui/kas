@@ -181,29 +181,23 @@ widget! {
                 return Response::Unused;
             }
 
-            if self.eq_id(&id) {
-                EventMgr::handle_generic(self, mgr, event)
-            } else {
+            if !self.eq_id(&id) {
                 let r = self.list.send(mgr, id.clone(), event.clone());
 
                 match r {
-                    Response::Unused => match event {
-                        Event::Command(cmd, _) if self.popup_id.is_some() => {
-                            self.handle_dir_key(mgr, cmd)
-                        }
-                        _ => Response::Unused,
-                    },
+                    Response::Unused => (),
                     Response::Select => {
                         self.set_menu_path(mgr, Some(&id), true);
-                        Response::Used
+                        return Response::Used;
                     }
                     r @ (Response::Update | Response::Msg(_)) => {
                         self.close_menu(mgr, true);
-                        r
+                        return r;
                     }
-                    r => r,
+                    r => return r,
                 }
             }
+            EventMgr::handle_generic(self, mgr, event)
         }
     }
 
