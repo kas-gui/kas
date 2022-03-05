@@ -436,7 +436,7 @@ widget! {
                         class,
                     );
                 }
-                if draw.ev_state().has_char_focus(self.id_ref()).0 {
+                if self.editable && draw.ev_state().has_char_focus(self.id_ref()).0 {
                     draw.text_cursor(
                         self.rect().pos,
                         self.text.as_ref(),
