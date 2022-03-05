@@ -118,7 +118,7 @@ impl Driver<bool> for Default {
     type Msg = VoidMsg;
     type Widget = CheckBoxBare<VoidMsg>;
     fn make(&self) -> Self::Widget {
-        CheckBoxBare::new().with_disabled(true)
+        CheckBoxBare::new().with_editable(false)
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
@@ -132,7 +132,7 @@ impl Driver<bool> for DefaultNav {
     type Msg = VoidMsg;
     type Widget = CheckBoxBare<VoidMsg>;
     fn make(&self) -> Self::Widget {
-        CheckBoxBare::new().with_disabled(true)
+        CheckBoxBare::new().with_editable(false)
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)

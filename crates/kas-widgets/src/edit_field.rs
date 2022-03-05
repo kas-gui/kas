@@ -292,21 +292,21 @@ impl EditBox<()> {
 }
 
 impl<G: EditGuard> EditBox<G> {
-    /// Set whether this `EditBox` is editable (inline)
+    /// Set whether this widget is editable (inline)
     #[inline]
     #[must_use]
-    pub fn editable(mut self, editable: bool) -> Self {
-        self.inner = self.inner.editable(editable);
+    pub fn with_editable(mut self, editable: bool) -> Self {
+        self.inner = self.inner.with_editable(editable);
         self
     }
 
-    /// Get whether this `EditBox` is editable
+    /// Get whether this widget is editable
     #[inline]
     pub fn is_editable(&self) -> bool {
         self.inner.is_editable()
     }
 
-    /// Set whether this `EditBox` is editable
+    /// Set whether this widget is editable
     #[inline]
     pub fn set_editable(&mut self, editable: bool) {
         self.inner.set_editable(editable);
@@ -714,7 +714,7 @@ impl<G: EditGuard> EditField<G> {
     /// Set whether this `EditField` is editable (inline)
     #[inline]
     #[must_use]
-    pub fn editable(mut self, editable: bool) -> Self {
+    pub fn with_editable(mut self, editable: bool) -> Self {
         self.editable = editable;
         self
     }

@@ -21,6 +21,7 @@ widget! {
         #[widget_core]
         core: CoreData,
         state: bool,
+        editable: bool,
         on_toggle: Option<Rc<dyn Fn(&mut EventMgr, bool) -> Option<M>>>,
     }
 
@@ -51,6 +52,7 @@ widget! {
             CheckBoxBare {
                 core: Default::default(),
                 state: false,
+                editable: true,
                 on_toggle: None,
             }
         }
@@ -69,6 +71,7 @@ widget! {
             CheckBoxBare {
                 core: self.core,
                 state: self.state,
+                editable: self.editable,
                 on_toggle: Some(Rc::new(f)),
             }
         }
@@ -87,15 +90,33 @@ widget! {
         {
             CheckBoxBare::new().on_toggle(f)
         }
-    }
 
-    impl Self {
         /// Set the initial state of the checkbox.
         #[inline]
         #[must_use]
         pub fn with_state(mut self, state: bool) -> Self {
             self.state = state;
             self
+        }
+
+        /// Set whether this widget is editable (inline)
+        #[inline]
+        #[must_use]
+        pub fn with_editable(mut self, editable: bool) -> Self {
+            self.editable = editable;
+            self
+        }
+
+        /// Get whether this widget is editable
+        #[inline]
+        pub fn is_editable(&self) -> bool {
+            self.editable
+        }
+
+        /// Set whether this widget is editable
+        #[inline]
+        pub fn set_editable(&mut self, editable: bool) {
+            self.editable = editable;
         }
     }
 
@@ -120,7 +141,7 @@ widget! {
 
         fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<M> {
             match event {
-                Event::Activate => {
+                Event::Activate if self.editable => {
                     self.state = !self.state;
                     mgr.redraw(self.id());
                     Response::update_or_msg(self.on_toggle.as_ref().and_then(|f| f(mgr, self.state)))
@@ -134,24 +155,24 @@ widget! {
 widget! {
     /// A checkbox with label
     #[autoimpl(Debug)]
-    #[autoimpl(HasBool on self.checkbox)]
+    #[autoimpl(HasBool on self.inner)]
     #[derive(Clone, Default)]
     #[widget{
         layout = row: *;
-        find_id = Some(self.checkbox.id());
+        find_id = Some(self.inner.id());
     }]
     pub struct CheckBox<M: 'static> {
         #[widget_core]
         core: CoreData,
         #[widget]
-        checkbox: CheckBoxBare<M>,
+        inner: CheckBoxBare<M>,
         #[widget]
         label: AccelLabel,
     }
 
     impl WidgetConfig for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
-            mgr.add_accel_keys(self.checkbox.id_ref(), self.label.keys());
+            mgr.add_accel_keys(self.inner.id_ref(), self.label.keys());
         }
     }
 
@@ -168,7 +189,7 @@ widget! {
         pub fn new<T: Into<AccelString>>(label: T) -> Self {
             CheckBox {
                 core: Default::default(),
-                checkbox: CheckBoxBare::new(),
+                inner: CheckBoxBare::new(),
                 label: AccelLabel::new(label.into()),
             }
         }
@@ -186,7 +207,7 @@ widget! {
         {
             CheckBox {
                 core: self.core,
-                checkbox: self.checkbox.on_toggle(f),
+                inner: self.inner.on_toggle(f),
                 label: self.label,
             }
         }
@@ -213,8 +234,28 @@ widget! {
         #[inline]
         #[must_use]
         pub fn with_state(mut self, state: bool) -> Self {
-            self.checkbox = self.checkbox.with_state(state);
+            self.inner = self.inner.with_state(state);
             self
+        }
+
+        /// Set whether this widget is editable (inline)
+        #[inline]
+        #[must_use]
+        pub fn editable(mut self, editable: bool) -> Self {
+            self.inner = self.inner.with_editable(editable);
+            self
+        }
+
+        /// Get whether this widget is editable
+        #[inline]
+        pub fn is_editable(&self) -> bool {
+            self.inner.is_editable()
+        }
+
+        /// Set whether this widget is editable
+        #[inline]
+        pub fn set_editable(&mut self, editable: bool) {
+            self.inner.set_editable(editable);
         }
     }
 }
