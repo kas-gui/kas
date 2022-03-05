@@ -65,17 +65,19 @@ where
     unsafe fn draw_handle(
         &self,
         draw: DrawIface<DS>,
+        ev: &mut EventState,
         window: &mut Self::Window,
     ) -> Self::DrawHandle {
-        Theme::<DS>::draw_handle(&self.inner, draw, window)
+        Theme::<DS>::draw_handle(&self.inner, draw, ev, window)
     }
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
+        ev: &mut EvState,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
-        Theme::<DS>::draw_handle(&self.inner, draw, window)
+        Theme::<DS>::draw_handle(&self.inner, draw, ev, window)
     }
 
     fn clear_color(&self) -> Rgba {

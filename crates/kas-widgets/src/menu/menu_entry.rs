@@ -45,7 +45,6 @@ widget! {
             draw.text_accel(
                 self.layout_label.pos,
                 &self.label,
-                draw.ev_state().show_accel_labels(),
                 TextClass::MenuLabel,
             );
         }

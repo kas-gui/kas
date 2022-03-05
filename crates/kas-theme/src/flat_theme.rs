@@ -16,6 +16,7 @@ use crate::{dim, ColorsLinear, Config, Theme};
 use kas::cast::traits::*;
 use kas::dir::{Direction, Directional};
 use kas::draw::{color::Rgba, *};
+use kas::event::EventState;
 use kas::geom::*;
 use kas::text::format::FormattableText;
 use kas::text::{fonts, AccelString, Effect, Text, TextApi, TextDisplay};
@@ -125,6 +126,7 @@ const DARK_SHADOW_OFFSET: Vec2 = Vec2::ZERO;
 
 pub struct DrawHandle<'a, DS: DrawSharedImpl> {
     pub(crate) draw: DrawIface<'a, DS>,
+    pub(crate) ev: &'a mut EventState,
     pub(crate) w: &'a mut dim::Window<DS::Draw>,
     pub(crate) cols: &'a ColorsLinear,
 }
@@ -176,7 +178,12 @@ where
     }
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle(&self, draw: DrawIface<DS>, w: &mut Self::Window) -> Self::DrawHandle {
+    unsafe fn draw_handle(
+        &self,
+        draw: DrawIface<DS>,
+        ev: &mut EventState,
+        w: &mut Self::Window,
+    ) -> Self::DrawHandle {
         w.anim.update();
 
         unsafe fn extend_lifetime<'b, T: ?Sized>(r: &'b T) -> &'static T {
@@ -191,6 +198,7 @@ where
                 shared: extend_lifetime_mut(draw.shared),
                 pass: draw.pass,
             },
+            ev: extend_lifetime_mut(ev),
             w: extend_lifetime_mut(w),
             cols: extend_lifetime(&self.cols),
         }
@@ -199,12 +207,14 @@ where
     fn draw_handle<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
+        ev: &mut EventState,
         w: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
         w.anim.update();
 
         DrawHandle {
             draw,
+            ev,
             w,
             cols: &self.cols,
         }
@@ -319,8 +329,8 @@ impl<'a, DS: DrawSharedImpl> theme::DrawHandle for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl,
 {
-    fn size_and_draw_shared(&mut self) -> (&dyn SizeHandle, &mut dyn DrawShared) {
-        (self.w, self.draw.shared)
+    fn components(&mut self) -> (&dyn SizeHandle, &mut dyn DrawShared, &mut EventState) {
+        (self.w, self.draw.shared, self.ev)
     }
 
     fn draw_device(&mut self) -> &mut dyn Draw {
@@ -353,8 +363,9 @@ where
         }
 
         let mut handle = DrawHandle {
-            w: self.w,
             draw,
+            ev: self.ev,
+            w: self.w,
             cols: self.cols,
         };
         f(&mut handle);
@@ -440,7 +451,6 @@ where
         &mut self,
         pos: Coord,
         text: &Text<AccelString>,
-        accel: bool,
         _: TextClass,
         state: InputState,
     ) {
@@ -450,7 +460,7 @@ where
         } else {
             self.cols.text
         };
-        if accel {
+        if self.ev.show_accel_labels() {
             let effects = text.text().effect_tokens();
             self.draw.text_col_effects(pos, text.as_ref(), col, effects);
         } else {

@@ -25,7 +25,6 @@ use crate::{CoreData, TkAction};
 /// Use [`DrawMgr::with_core`] to access draw methods.
 pub struct DrawMgr<'a> {
     h: &'a mut dyn DrawHandle,
-    ev: &'a mut EventState,
     disabled: bool,
 }
 
@@ -33,30 +32,30 @@ impl<'a> DrawMgr<'a> {
     /// Construct from a [`DrawMgr`] and [`EventState`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn new(h: &'a mut dyn DrawHandle, ev: &'a mut EventState, disabled: bool) -> Self {
-        DrawMgr { h, ev, disabled }
+    pub fn new(h: &'a mut dyn DrawHandle, disabled: bool) -> Self {
+        DrawMgr { h, disabled }
     }
 
     /// Access event-management state
-    pub fn ev_state(&self) -> &EventState {
-        self.ev
+    pub fn ev_state(&mut self) -> &EventState {
+        self.h.components().2
     }
 
     /// Access a [`SizeMgr`]
     pub fn size_mgr(&mut self) -> SizeMgr {
-        SizeMgr::new(self.h.size_and_draw_shared().0)
+        SizeMgr::new(self.h.components().0)
     }
 
     /// Access a [`SetRectMgr`]
     pub fn set_rect_mgr<F: FnMut(&mut SetRectMgr) -> T, T>(&mut self, mut f: F) -> T {
-        let (sh, ds) = self.h.size_and_draw_shared();
-        let mut mgr = SetRectMgr::new(sh, ds, self.ev);
+        let (sh, ds, ev) = self.h.components();
+        let mut mgr = SetRectMgr::new(sh, ds, ev);
         f(&mut mgr)
     }
 
     /// Access a [`DrawShared`]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
-        self.h.size_and_draw_shared().1
+        self.h.components().1
     }
 
     /// Access the low-level draw device
@@ -70,10 +69,10 @@ impl<'a> DrawMgr<'a> {
 
     /// Add context to allow draw operations
     pub fn with_core<'b>(&'b mut self, core: &CoreData) -> DrawCtx<'b> {
-        let state = self.ev.draw_state(core, self.disabled);
-        let (h, ev) = (&mut *self.h, &mut *self.ev);
+        let state = self.h.components().2.draw_state(core, self.disabled);
+        let h = &mut *self.h;
         let wid = core.id.as_u64();
-        DrawCtx { h, ev, wid, state }
+        DrawCtx { h, wid, state }
     }
 }
 
@@ -86,7 +85,6 @@ impl<'a> DrawMgr<'a> {
 /// obtained through a [`SizeMgr`], e.g. through [`Self::size_mgr`].
 pub struct DrawCtx<'a> {
     h: &'a mut dyn DrawHandle,
-    ev: &'a mut EventState,
     wid: u64,
     /// Input state for drawn objects
     ///
@@ -107,7 +105,6 @@ impl<'a> DrawCtx<'a> {
     {
         DrawMgr {
             h: self.h,
-            ev: self.ev,
             disabled: self.state.contains(InputState::DISABLED),
         }
     }
@@ -123,32 +120,31 @@ impl<'a> DrawCtx<'a> {
     {
         DrawCtx {
             h: self.h,
-            ev: self.ev,
             wid: self.wid,
             state: self.state,
         }
     }
 
     /// Access event-management state
-    pub fn ev_state(&self) -> &EventState {
-        self.ev
+    pub fn ev_state(&mut self) -> &EventState {
+        self.h.components().2
     }
 
     /// Access a [`SizeMgr`]
     pub fn size_mgr(&mut self) -> SizeMgr {
-        SizeMgr::new(self.h.size_and_draw_shared().0)
+        SizeMgr::new(self.h.components().0)
     }
 
     /// Access a [`SetRectMgr`]
     pub fn set_rect_mgr<F: FnMut(&mut SetRectMgr) -> T, T>(&mut self, mut f: F) -> T {
-        let (sh, ds) = self.h.size_and_draw_shared();
-        let mut mgr = SetRectMgr::new(sh, ds, self.ev);
+        let (sh, ds, ev) = self.h.components();
+        let mut mgr = SetRectMgr::new(sh, ds, ev);
         f(&mut mgr)
     }
 
     /// Access a [`DrawShared`]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
-        self.h.size_and_draw_shared().1
+        self.h.components().1
     }
 
     /// Access the low-level draw device
@@ -165,11 +161,10 @@ impl<'a> DrawCtx<'a> {
     /// Adds a new draw pass of type [`PassType::Clip`], with draw operations
     /// clipped to `rect` and translated by `offset.
     pub fn with_clip_region<F: FnMut(DrawCtx)>(&mut self, rect: Rect, offset: Offset, mut f: F) {
-        let ev = &mut *self.ev;
         let wid = self.wid;
         let state = self.state;
         self.h.new_pass(rect, offset, PassType::Clip, &mut |h| {
-            f(DrawCtx { h, ev, wid, state })
+            f(DrawCtx { h, wid, state })
         });
     }
 
@@ -182,12 +177,11 @@ impl<'a> DrawCtx<'a> {
     /// a frame or shadow around this overlay, thus the
     /// [`DrawCtx::get_clip_rect`] may be larger than expected.
     pub fn with_overlay<F: FnMut(DrawCtx)>(&mut self, rect: Rect, mut f: F) {
-        let ev = &mut *self.ev;
         let wid = self.wid;
         let state = self.state;
         self.h
             .new_pass(rect, Offset::ZERO, PassType::Overlay, &mut |h| {
-                f(DrawCtx { h, ev, wid, state })
+                f(DrawCtx { h, wid, state })
             });
     }
 
@@ -250,14 +244,8 @@ impl<'a> DrawCtx<'a> {
     ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text_accel(
-        &mut self,
-        pos: Coord,
-        text: &Text<AccelString>,
-        accel: bool,
-        class: TextClass,
-    ) {
-        self.h.text_accel(pos, text, accel, class, self.state);
+    pub fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, class: TextClass) {
+        self.h.text_accel(pos, text, class, self.state);
     }
 
     /// Draw some text using the standard font, with a subset selected
@@ -358,14 +346,14 @@ impl<'a> DrawCtx<'a> {
 impl<'a> std::ops::BitOrAssign<TkAction> for DrawMgr<'a> {
     #[inline]
     fn bitor_assign(&mut self, action: TkAction) {
-        self.ev.send_action(action);
+        self.h.components().2.send_action(action);
     }
 }
 
 impl<'a> std::ops::BitOrAssign<TkAction> for DrawCtx<'a> {
     #[inline]
     fn bitor_assign(&mut self, action: TkAction) {
-        self.ev.send_action(action);
+        self.h.components().2.send_action(action);
     }
 }
 
@@ -373,8 +361,8 @@ impl<'a> std::ops::BitOrAssign<TkAction> for DrawCtx<'a> {
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait DrawHandle {
-    /// Access a [`SizeHandle`] and a [`DrawShared`]
-    fn size_and_draw_shared(&mut self) -> (&dyn SizeHandle, &mut dyn DrawShared);
+    /// Access components: [`SizeHandle`], [`DrawShared`], [`EventState`]
+    fn components(&mut self) -> (&dyn SizeHandle, &mut dyn DrawShared, &mut EventState);
 
     /// Access the low-level draw device
     ///
@@ -441,7 +429,6 @@ pub trait DrawHandle {
         &mut self,
         pos: Coord,
         text: &Text<AccelString>,
-        accel: bool,
         class: TextClass,
         state: InputState,
     );
@@ -518,8 +505,8 @@ pub trait DrawHandle {
 macro_rules! impl_ {
     (($($args:tt)*) DrawHandle for $ty:ty) => {
         impl<$($args)*> DrawHandle for $ty {
-            fn size_and_draw_shared(&mut self) -> (&dyn SizeHandle, &mut dyn DrawShared) {
-                self.deref_mut().size_and_draw_shared()
+            fn components(&mut self) -> (&dyn SizeHandle, &mut dyn DrawShared, &mut EventState) {
+                self.deref_mut().components()
             }
             fn draw_device(&mut self) -> &mut dyn Draw {
                 self.deref_mut().draw_device()
@@ -561,11 +548,10 @@ macro_rules! impl_ {
                 &mut self,
                 pos: Coord,
                 text: &Text<AccelString>,
-                accel: bool,
                 class: TextClass,
                 state: InputState,
             ) {
-                self.deref_mut().text_accel(pos, text, accel, class, state);
+                self.deref_mut().text_accel(pos, text, class, state);
             }
             fn text_selected_range(
                 &mut self,

@@ -11,6 +11,7 @@ use std::ops::{Deref, DerefMut};
 
 use super::{StackDst, Theme, Window};
 use kas::draw::{color, DrawIface, DrawSharedImpl, SharedState};
+use kas::event::EventState;
 use kas::theme::{DrawHandle, SizeHandle, ThemeControl};
 use kas::TkAction;
 
@@ -75,6 +76,7 @@ pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
     unsafe fn draw_handle(
         &self,
         draw: DrawIface<DS>,
+        ev: &mut EventState,
         window: &mut dyn Window,
     ) -> StackDst<dyn DrawHandle>;
 
@@ -87,6 +89,7 @@ pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
     fn draw_handle<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
+        ev: &mut EventState,
         window: &'a mut dyn Window,
     ) -> StackDst<dyn DrawHandle + 'a>;
 
@@ -141,10 +144,11 @@ where
     unsafe fn draw_handle(
         &self,
         draw: DrawIface<DS>,
+        ev: &mut EventState,
         window: &mut dyn Window,
     ) -> StackDst<dyn DrawHandle> {
         let window = window.as_any_mut().downcast_mut().unwrap();
-        let h = <T as Theme<DS>>::draw_handle(self, draw, window);
+        let h = <T as Theme<DS>>::draw_handle(self, draw, ev, window);
         #[cfg(feature = "unsize")]
         {
             StackDst::new_or_boxed(h)
@@ -192,10 +196,11 @@ impl<'a, DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T {
     fn draw_handle<'b>(
         &'b self,
         draw: DrawIface<'b, DS>,
+        ev: &mut EventState,
         window: &'b mut dyn Window,
     ) -> StackDst<dyn DrawHandle + 'b> {
         let window = window.as_any_mut().downcast_mut().unwrap();
-        let h = <T as Theme<DS>>::draw_handle(self, draw, window);
+        let h = <T as Theme<DS>>::draw_handle(self, draw, ev, window);
         StackDst::new_or_boxed(h)
     }
 
