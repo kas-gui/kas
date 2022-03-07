@@ -143,10 +143,9 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_id(self.id());
-            draw.frame(self.core.rect, FrameStyle::MenuEntry);
+            draw.frame(&*self, FrameStyle::MenuEntry);
             draw.text_accel(
-                self.label_store.pos,
+                kas::theme::IdCoord(self.id_ref(), self.label_store.pos),
                 &self.label,
                 TextClass::MenuLabel,
             );

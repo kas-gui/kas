@@ -189,8 +189,8 @@ widget! {
 
         fn draw(&mut self, mut draw: DrawMgr) {
             // FIXME: let error = self.inner.has_error();
-            draw.with_id(self.inner.id()).frame(self.core.rect, FrameStyle::EditBox);
-            self.inner.draw(draw.with_id(self.id()).re());
+            draw.frame(&*self, FrameStyle::EditBox);
+            self.inner.draw(draw.re());
         }
     }
 }
@@ -413,16 +413,15 @@ widget! {
             } else {
                 TextClass::Edit
             };
-            let mut draw = draw.with_id(self.id());
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
                 if self.selection.is_empty() {
-                    draw.text(self.rect().pos, self.text.as_ref(), class);
+                    draw.text(&*self, self.text.as_ref(), class);
                 } else {
                     // TODO(opt): we could cache the selection rectangles here to make
                     // drawing more efficient (self.text.highlight_lines(range) output).
                     // The same applies to the edit marker below.
                     draw.text_selected(
-                        self.rect().pos,
+                        &*self,
                         &self.text,
                         self.selection.range(),
                         class,
@@ -430,7 +429,7 @@ widget! {
                 }
                 if self.editable && draw.ev_state().has_char_focus(self.id_ref()).0 {
                     draw.text_cursor(
-                        self.rect().pos,
+                        &*self,
                         self.text.as_ref(),
                         class,
                         self.selection.edit_pos(),

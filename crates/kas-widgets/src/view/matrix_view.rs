@@ -586,7 +586,6 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_id(self.id());
             let offset = self.scroll_offset();
             let rect = self.rect() + offset;
             let num = self.cur_len.cast();
@@ -594,12 +593,11 @@ widget! {
                 for child in &mut self.widgets[..num] {
                     // Note: we don't know which widgets within 0..num are
                     // visible, so check intersection before drawing:
-                    let child_rect = child.widget.rect();
-                    if rect.intersection(&child_rect).is_some() {
+                    if rect.intersection(&child.widget.rect()).is_some() {
                         if let Some(ref key) = child.key {
                             child.widget.draw(draw.re());
                             if self.selection.contains(key) {
-                                draw.selection_box(child_rect);
+                                draw.selection_box(&child.widget);
                             }
                         }
                     }

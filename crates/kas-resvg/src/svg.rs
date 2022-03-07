@@ -185,9 +185,8 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_id(self.id());
             if let Some(id) = self.image_id {
-                draw.image(id, self.rect());
+                draw.image(self, id);
             }
         }
     }

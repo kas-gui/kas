@@ -40,10 +40,9 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_id(self.id());
-            draw.frame(self.core.rect, FrameStyle::MenuEntry);
+            draw.frame(&*self, FrameStyle::MenuEntry);
             draw.text_accel(
-                self.layout_label.pos,
+                kas::theme::IdCoord(self.id_ref(), self.layout_label.pos),
                 &self.label,
                 TextClass::MenuLabel,
             );
@@ -143,9 +142,9 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_id(self.checkbox.id());
-            draw.frame(self.core.rect, FrameStyle::MenuEntry);
-            self.layout().draw(draw);
+            draw.frame(&*self, FrameStyle::MenuEntry);
+            let id = self.id();
+            self.layout().draw(draw, &id);
         }
     }
 

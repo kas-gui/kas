@@ -54,8 +54,7 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_id(self.id());
-            draw.separator(self.core.rect);
+            draw.separator(self);
         }
     }
 

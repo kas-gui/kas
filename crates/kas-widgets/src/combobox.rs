@@ -48,9 +48,9 @@ widget! {
             None
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
-            let draw = draw.with_id(self.id());
-            self.layout().draw(draw);
+        fn draw(&mut self, draw: DrawMgr) {
+            let id = self.id();
+            self.layout().draw(draw, &id);
         }
     }
 

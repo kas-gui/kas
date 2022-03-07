@@ -13,8 +13,6 @@ use crate::event;
 use crate::event::{EventMgr, EventState};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{self, AlignHints, AxisInfo, SetRectMgr, SizeRules};
-#[allow(unused)]
-use crate::theme::DrawCtx;
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::util::IdentifyWidget;
 use crate::{CoreData, WidgetId};
@@ -302,7 +300,7 @@ pub trait Layout: WidgetChildren {
     ///
     /// Affects event handling via [`Self::find_id`] and affects the positioning
     /// of pop-up menus. [`Self::draw`] must be implemented directly using
-    /// [`DrawCtx::with_clip_region`] to offset contents.
+    /// [`DrawMgr::with_clip_region`] to offset contents.
     #[inline]
     fn translation(&self) -> Offset {
         Offset::ZERO
@@ -383,13 +381,10 @@ pub trait Layout: WidgetChildren {
     /// This method is invoked each frame to draw visible widgets. It should
     /// draw itself and recurse into all visible children.
     ///
-    /// One should use `let draw = draw.with_id(self.id());` to obtain
-    /// a [`DrawCtx`], enabling further drawing.
-    ///
     /// The default impl draws elements as defined by [`Self::layout`].
-    fn draw(&mut self, mut draw: DrawMgr) {
-        let draw = draw.with_id(self.id());
-        self.layout().draw(draw);
+    fn draw(&mut self, draw: DrawMgr) {
+        let id = self.id(); // clone to avoid borrow conflict
+        self.layout().draw(draw, &id);
     }
 }
 

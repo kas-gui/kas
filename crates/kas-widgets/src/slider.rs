@@ -254,9 +254,8 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_id(self.id());
             let dir = self.direction.as_direction();
-            draw.slider(self.handle.id_ref(), self.core.rect, self.handle.rect(), dir);
+            draw.slider(&*self, &self.handle, dir);
         }
     }
 

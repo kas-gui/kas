@@ -79,7 +79,6 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_id(self.id());
             if self.active < self.widgets.len() {
                 self.widgets[self.active].draw(draw.re());
             }

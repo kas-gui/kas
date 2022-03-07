@@ -195,7 +195,6 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_id(self.id());
             // as with find_id, there's not much harm in invoking the solver twice
 
             let solver = layout::RowPositionSolver::new(self.direction);
@@ -205,7 +204,7 @@ widget! {
 
             let solver = layout::RowPositionSolver::new(self.direction);
             solver.for_children(&mut self.handles, draw.get_clip_rect(), |w| {
-                draw.separator(w.rect())
+                draw.separator(w)
             });
         }
     }

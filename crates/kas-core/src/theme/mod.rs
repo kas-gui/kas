@@ -9,13 +9,14 @@ mod draw;
 mod size;
 mod style;
 
-pub use draw::{DrawCtx, DrawHandle, DrawMgr};
+pub use draw::{DrawHandle, DrawMgr};
 pub use size::{SizeHandle, SizeMgr};
 pub use style::*;
 
 #[allow(unused)]
 use crate::event::EventMgr;
-use crate::TkAction;
+use crate::geom::{Coord, Rect};
+use crate::{CoreData, TkAction, WidgetId};
 use std::ops::{Deref, DerefMut};
 
 /// Interface through which a theme can be adjusted at run-time
@@ -58,5 +59,51 @@ impl<T: ThemeControl> ThemeControl for Box<T> {
     }
     fn set_theme(&mut self, theme: &str) -> TkAction {
         self.deref_mut().set_theme(theme)
+    }
+}
+
+/// Widget identifier and coordinate for a drawn feature
+pub struct IdCoord<'a>(pub &'a WidgetId, pub Coord);
+
+impl<'a> From<&'a CoreData> for IdCoord<'a> {
+    fn from(core: &CoreData) -> IdCoord {
+        IdCoord(&core.id, core.rect.pos)
+    }
+}
+
+impl<'a, W: crate::WidgetCore> From<&'a W> for IdCoord<'a> {
+    fn from(w: &W) -> IdCoord {
+        let core = w.core_data();
+        IdCoord(&core.id, core.rect.pos)
+    }
+}
+
+impl<'a, W: crate::WidgetCore> From<&'a mut W> for IdCoord<'a> {
+    fn from(w: &mut W) -> IdCoord {
+        let core = w.core_data();
+        IdCoord(&core.id, core.rect.pos)
+    }
+}
+
+/// Widget identifier and rect for a drawn feature
+pub struct IdRect<'a>(pub &'a WidgetId, pub Rect);
+
+impl<'a> From<&'a CoreData> for IdRect<'a> {
+    fn from(core: &CoreData) -> IdRect {
+        IdRect(&core.id, core.rect)
+    }
+}
+
+impl<'a, W: crate::WidgetCore> From<&'a W> for IdRect<'a> {
+    fn from(w: &W) -> IdRect {
+        let core = w.core_data();
+        IdRect(&core.id, core.rect)
+    }
+}
+
+impl<'a, W: crate::WidgetCore> From<&'a mut W> for IdRect<'a> {
+    fn from(w: &mut W) -> IdRect {
+        let core = w.core_data();
+        IdRect(&core.id, core.rect)
     }
 }

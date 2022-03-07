@@ -239,9 +239,8 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_id(self.id());
             let dir = self.direction.as_direction();
-            draw.scrollbar(self.handle.id_ref(), self.core.rect, self.handle.rect(), dir);
+            draw.scrollbar(&*self, &self.handle, dir);
         }
     }
 
@@ -515,7 +514,6 @@ widget! {
         }
 
         fn draw_(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_id(self.id());
             if self.show_bars.0 {
                 self.horiz_bar.draw(draw.re());
             }
@@ -622,7 +620,6 @@ widget! {
     #[cfg(feature = "min_spec")]
     impl<W: Widget> Layout for ScrollBars<ScrollRegion<W>> {
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_id(self.id());
             // Enlarge clip region to *our* rect:
             draw.with_clip_region(self.core.rect, self.inner.scroll_offset(), |mut draw| {
                 self.inner.inner_mut().draw(draw.re())
