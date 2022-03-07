@@ -516,7 +516,7 @@ where
         _: TextClass,
         byte: usize,
     ) {
-        if !self.w.anim.text_cursor(self.draw.draw, id, byte) {
+        if self.ev.window_has_focus() && !self.w.anim.text_cursor(self.draw.draw, id, byte) {
             return;
         }
 

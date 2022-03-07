@@ -150,6 +150,7 @@ pub struct EventState {
     scale_factor: f32,
     configure_active: bool,
     configure_count: usize,
+    window_has_focus: bool,
     modifiers: ModifiersState,
     /// char focus is on same widget as sel_focus; otherwise its value is ignored
     char_focus: bool,

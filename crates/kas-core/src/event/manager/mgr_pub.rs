@@ -28,6 +28,12 @@ impl<'a> std::ops::BitOrAssign<TkAction> for EventMgr<'a> {
 
 /// Public API (around event manager state)
 impl EventState {
+    /// True when the window has focus
+    #[inline]
+    pub fn window_has_focus(&self) -> bool {
+        self.window_has_focus
+    }
+
     /// True when accelerator key labels should be shown
     ///
     /// (True when Alt is held and no widget has character focus.)
