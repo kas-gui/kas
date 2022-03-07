@@ -17,6 +17,9 @@ widget! {
     /// and allow the size of the handle to be specified.
     #[derive(Clone, Debug, Default)]
     #[handler(msg = i32)]
+    #[widget{
+        hover_highlight = true;
+    }]
     pub struct ScrollBar<D: Directional> {
         #[widget_core]
         core: CoreData,
@@ -236,9 +239,9 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_id(self.handle.id());
+            let mut draw = draw.with_id(self.id());
             let dir = self.direction.as_direction();
-            draw.scrollbar(self.core.rect, self.handle.rect(), dir);
+            draw.scrollbar(self.handle.id_ref(), self.core.rect, self.handle.rect(), dir);
         }
     }
 

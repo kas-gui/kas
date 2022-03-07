@@ -301,22 +301,22 @@ impl<'a> DrawCtx<'a> {
 
     /// Draw UI element: scrollbar
     ///
+    /// -   `id2`: [`WidgetId`] of the handle
     /// -   `rect`: area of whole widget (slider track)
     /// -   `h_rect`: area of slider handle
     /// -   `dir`: direction of bar
-    /// -   `state`: highlighting information
-    pub fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction) {
-        self.h.scrollbar(&self.id, rect, h_rect, dir);
+    pub fn scrollbar(&mut self, id2: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction) {
+        self.h.scrollbar(&self.id, id2, rect, h_rect, dir);
     }
 
     /// Draw UI element: slider
     ///
+    /// -   `id2`: [`WidgetId`] of the handle
     /// -   `rect`: area of whole widget (slider track)
     /// -   `h_rect`: area of slider handle
     /// -   `dir`: direction of slider (currently only LTR or TTB)
-    /// -   `state`: highlighting information
-    pub fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction) {
-        self.h.slider(&self.id, rect, h_rect, dir);
+    pub fn slider(&mut self, id2: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction) {
+        self.h.slider(&self.id, id2, rect, h_rect, dir);
     }
 
     /// Draw UI element: progress bar
@@ -462,25 +462,34 @@ pub trait DrawHandle {
 
     /// Draw UI element: scrollbar
     ///
+    /// -   `id`: [`WidgetId`] of the bar
+    /// -   `id2`: [`WidgetId`] of the handle
     /// -   `rect`: area of whole widget (slider track)
     /// -   `h_rect`: area of slider handle
     /// -   `dir`: direction of bar
-    /// -   `state`: highlighting information
-    fn scrollbar(&mut self, id: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction);
+    fn scrollbar(
+        &mut self,
+        id: &WidgetId,
+        id2: &WidgetId,
+        rect: Rect,
+        h_rect: Rect,
+        dir: Direction,
+    );
 
     /// Draw UI element: slider
     ///
+    /// -   `id`: [`WidgetId`] of the bar
+    /// -   `id2`: [`WidgetId`] of the handle
     /// -   `rect`: area of whole widget (slider track)
     /// -   `h_rect`: area of slider handle
     /// -   `dir`: direction of slider (currently only LTR or TTB)
-    /// -   `state`: highlighting information
-    fn slider(&mut self, id: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction);
+    fn slider(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction);
 
     /// Draw UI element: progress bar
     ///
+    /// -   `id`: [`WidgetId`] of the bar
     /// -   `rect`: area of whole widget
     /// -   `dir`: direction of progress bar
-    /// -   `state`: highlighting information
     /// -   `value`: progress value, between 0.0 and 1.0
     fn progress_bar(&mut self, id: &WidgetId, rect: Rect, dir: Direction, value: f32);
 
@@ -559,11 +568,11 @@ macro_rules! impl_ {
             fn radiobox(&mut self, id: &WidgetId, rect: Rect, checked: bool) {
                 self.deref_mut().radiobox(id, rect, checked)
             }
-            fn scrollbar(&mut self, id: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction) {
-                self.deref_mut().scrollbar(id, rect, h_rect, dir)
+            fn scrollbar(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction) {
+                self.deref_mut().scrollbar(id, id2, rect, h_rect, dir)
             }
-            fn slider(&mut self, id: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction) {
-                self.deref_mut().slider(id, rect, h_rect, dir)
+            fn slider(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction) {
+                self.deref_mut().slider(id, id2, rect, h_rect, dir)
             }
             fn progress_bar(&mut self, id: &WidgetId, rect: Rect, dir: Direction, value: f32) {
                 self.deref_mut().progress_bar(id, rect, dir, value);

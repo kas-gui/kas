@@ -419,7 +419,7 @@ where
         }
     }
 
-    fn scrollbar(&mut self, id: &WidgetId, rect: Rect, h_rect: Rect, _dir: Direction) {
+    fn scrollbar(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, _: Direction) {
         // track
         let outer = Quad::conv(rect);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
@@ -428,11 +428,11 @@ where
         self.draw.shaded_round_frame(outer, inner, norm, col);
 
         // handle
-        let state = InputState::new_all(self.ev, id);
+        let state = InputState::new2(self.ev, id, id2);
         self.draw_handle(h_rect, state);
     }
 
-    fn slider(&mut self, id: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction) {
+    fn slider(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction) {
         // track
         let mut outer = Quad::conv(rect);
         outer = match dir.is_horizontal() {
@@ -445,7 +445,7 @@ where
         self.draw.shaded_round_frame(outer, inner, norm, col);
 
         // handle
-        let state = InputState::new_all(self.ev, id);
+        let state = InputState::new2(self.ev, id, id2);
         self.draw_handle(h_rect, state);
     }
 

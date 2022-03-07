@@ -619,7 +619,7 @@ where
         }
     }
 
-    fn scrollbar(&mut self, id: &WidgetId, rect: Rect, h_rect: Rect, _dir: Direction) {
+    fn scrollbar(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, _: Direction) {
         // track
         let outer = Quad::conv(rect);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
@@ -632,16 +632,13 @@ where
         let r = outer.size().min_comp() * 0.125;
         let outer = outer.shrink(r);
         let inner = outer.shrink(3.0 * r);
-        let col = if self.ev.is_depressed(id) || self.ev.has_nav_focus(id) {
-            self.cols.nav_focus
-        } else {
-            self.cols.accent_soft
-        };
+        let state = InputState::new2(self.ev, id, id2);
+        let col = self.cols.accent_soft_state(state);
         self.draw.rounded_frame(outer, inner, 0.0, col);
     }
 
-    fn slider(&mut self, id: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction) {
-        let state = InputState::new_all(self.ev, id);
+    fn slider(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction) {
+        let state = InputState::new2(self.ev, id, id2);
 
         // track
         let mut outer = Quad::conv(rect);

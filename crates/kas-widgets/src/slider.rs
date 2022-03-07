@@ -255,9 +255,8 @@ widget! {
 
         fn draw(&mut self, mut draw: DrawMgr) {
             let mut draw = draw.with_id(self.id());
-            // FIXME (additional hover target): if draw.ev_state().is_hovered(self.handle.id_ref())
             let dir = self.direction.as_direction();
-            draw.slider(self.core.rect, self.handle.rect(), dir);
+            draw.slider(self.handle.id_ref(), self.core.rect, self.handle.rect(), dir);
         }
     }
 

@@ -74,6 +74,15 @@ impl InputState {
         state
     }
 
+    /// Construct, setting all components, also setting hover from `id2`
+    pub fn new2(ev: &EventState, id: &WidgetId, id2: &WidgetId) -> Self {
+        let mut state = Self::new_all(ev, id);
+        if ev.is_hovered(id2) {
+            state |= InputState::HOVER;
+        }
+        state
+    }
+
     /// Extract `DISABLED` bit
     #[inline]
     pub fn disabled(self) -> bool {
