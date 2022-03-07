@@ -79,8 +79,8 @@ pub trait WidgetCore: Any + fmt::Debug {
 ///
 /// Dynamic widgets must implement this trait manually, since [`derive(Widget)`]
 /// cannot currently handle fields like `Vec<SomeWidget>`. Additionally, any
-/// parent adding child widgets must ensure they get configured, either via
-/// [`TkAction::RECONFIGURE`] or via [`SetRectMgr::configure`].
+/// parent adding child widgets must ensure they get configured by calling
+/// [`SetRectMgr::configure`].
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 pub trait WidgetChildren: WidgetCore {
@@ -150,9 +150,8 @@ pub trait WidgetChildren: WidgetCore {
 pub trait WidgetConfig: Layout {
     /// Pre-configure widget
     ///
-    /// Widgets are *configured* on window creation (before sizing) and when
-    /// [`TkAction::RECONFIGURE`] is sent. Child-widgets may alternatively be
-    /// configured locally by calling [`SetRectMgr::configure`].
+    /// Widgets are *configured* on window creation (before sizing) or
+    /// dynamically via the parent calling [`SetRectMgr::configure`].
     ///
     /// Configuration happens at least once
     /// before sizing and drawing, and may be repeated at a later time.
@@ -169,9 +168,8 @@ pub trait WidgetConfig: Layout {
 
     /// Configure widget
     ///
-    /// Widgets are *configured* on window creation (before sizing) and when
-    /// [`TkAction::RECONFIGURE`] is sent. Child-widgets may alternatively be
-    /// configured locally by calling [`SetRectMgr::configure`].
+    /// Widgets are *configured* on window creation (before sizing) or
+    /// dynamically via the parent calling [`SetRectMgr::configure`].
     ///
     /// Configuration happens at least once
     /// before sizing and drawing, and may be repeated at a later time.

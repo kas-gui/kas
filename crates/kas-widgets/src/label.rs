@@ -64,8 +64,7 @@ widget! {
 #[cfg(feature = "min_spec")]
 impl Layout for AccelLabel {
     fn draw(&mut self, mut draw: DrawMgr) {
-        let accel = draw.ev_state().show_accel_labels();
-        draw.text_accel(&*self, &self.label, accel, TextClass::Label);
+        draw.text_accel(&*self, &self.label, TextClass::Label);
     }
 }
 

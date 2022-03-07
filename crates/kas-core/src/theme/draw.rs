@@ -22,7 +22,13 @@ use crate::{TkAction, WidgetId};
 /// This interface is provided to widgets in [`crate::Layout::draw`].
 /// Lower-level interfaces may be accessed through [`Self::draw_device`].
 ///
-/// Use [`DrawMgr::with_core`] to access draw methods.
+/// Draw methods take a "feature"; any type convertible to [`IdRect`] or (for
+/// text methods) [`IdCoord`]. For convenience where the target [`Rect`] or
+/// [`Coord`] coincides with the widget's own `rect` (or `rect.pos`), this may
+/// be constructed from `&CoreData` or `&W where W: WidgetCore`. For example:
+///
+/// -   `draw.checkbox(&*self, self.state);` — note `&*self` to convert from to
+///     `&W` from `&mut W`, since the latter would cause borrow conflicts
 pub struct DrawMgr<'a> {
     h: &'a mut dyn DrawHandle,
 }

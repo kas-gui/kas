@@ -53,7 +53,7 @@ pub trait Driver<T>: Debug + 'static {
     /// `update` method to update the model.
     ///
     /// Note that, additionally, when [`Response::Msg`] is returned,
-    /// [`kas::updatable::UpdatableHandler`] may be used to observe the message.
+    /// [`kas::updatable::Updatable`] may be used to observe the message.
     /// Often it will be sufficient to implement custom handling/update logic
     /// in only one of these places.
     fn get(&self, widget: &Self::Widget) -> Option<T>;
