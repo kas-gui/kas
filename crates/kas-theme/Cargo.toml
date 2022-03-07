@@ -46,3 +46,4 @@ linear-map = "1.2.0"
 log = "0.4"
 serde = { version = "1.0.123", features = ["derive"], optional = true }
 stack_dst_ = { version = "0.6", package = "stack_dst", optional = true }
+bitflags = "1.3.1"

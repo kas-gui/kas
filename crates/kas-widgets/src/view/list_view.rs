@@ -592,7 +592,7 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_id(self.id_ref());
+            let mut draw = draw.with_id(self.id());
             let offset = self.scroll_offset();
             draw.with_clip_region(self.core.rect, offset, |mut draw| {
                 for child in &mut self.widgets[..self.cur_len.cast()] {

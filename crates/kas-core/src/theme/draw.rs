@@ -8,7 +8,7 @@
 use std::convert::AsRef;
 use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 
-use super::{FrameStyle, InputState, SizeHandle, SizeMgr, TextClass};
+use super::{FrameStyle, SizeHandle, SizeMgr, TextClass};
 use crate::dir::Direction;
 use crate::draw::{color::Rgb, Draw, DrawShared, ImageId, PassType};
 use crate::event::EventState;
@@ -67,11 +67,9 @@ impl<'a> DrawMgr<'a> {
     }
 
     /// Add context to allow draw operations
-    pub fn with_id<'b>(&'b mut self, id: &WidgetId) -> DrawCtx<'b> {
-        let state = self.h.components().2.draw_state(id);
+    pub fn with_id<'b>(&'b mut self, id: WidgetId) -> DrawCtx<'b> {
         let h = &mut *self.h;
-        let wid = id.as_u64();
-        DrawCtx { h, wid, state }
+        DrawCtx { h, id }
     }
 }
 
@@ -84,11 +82,9 @@ impl<'a> DrawMgr<'a> {
 /// obtained through a [`SizeMgr`], e.g. through [`Self::size_mgr`].
 pub struct DrawCtx<'a> {
     h: &'a mut dyn DrawHandle,
-    wid: u64,
-    /// Input state for drawn objects
-    ///
-    /// Normally this is derived automatically, but it may be adjusted.
-    pub state: InputState,
+    // NOTE: it is a little unfortunate that we need a clone of the WidgetId
+    // here (a borrow won't work due to borrow conflicts). Still, it's cheap.
+    id: WidgetId,
 }
 
 impl<'a> DrawCtx<'a> {
@@ -116,8 +112,7 @@ impl<'a> DrawCtx<'a> {
     {
         DrawCtx {
             h: self.h,
-            wid: self.wid,
-            state: self.state,
+            id: self.id.clone(),
         }
     }
 
@@ -157,10 +152,11 @@ impl<'a> DrawCtx<'a> {
     /// Adds a new draw pass of type [`PassType::Clip`], with draw operations
     /// clipped to `rect` and translated by `offset.
     pub fn with_clip_region<F: FnMut(DrawCtx)>(&mut self, rect: Rect, offset: Offset, mut f: F) {
-        let wid = self.wid;
-        let state = self.state;
+        // NOTE: using FnOnce in DrawHandle::new_pass would let us clone id outside the closure
+        let id = &self.id;
         self.h.new_pass(rect, offset, PassType::Clip, &mut |h| {
-            f(DrawCtx { h, wid, state })
+            let id = id.clone();
+            f(DrawCtx { h, id })
         });
     }
 
@@ -173,11 +169,11 @@ impl<'a> DrawCtx<'a> {
     /// a frame or shadow around this overlay, thus the
     /// [`DrawCtx::get_clip_rect`] may be larger than expected.
     pub fn with_overlay<F: FnMut(DrawCtx)>(&mut self, rect: Rect, mut f: F) {
-        let wid = self.wid;
-        let state = self.state;
+        let id = &self.id;
         self.h
             .new_pass(rect, Offset::ZERO, PassType::Overlay, &mut |h| {
-                f(DrawCtx { h, wid, state })
+                let id = id.clone();
+                f(DrawCtx { h, id })
             });
     }
 
@@ -197,7 +193,7 @@ impl<'a> DrawCtx<'a> {
     ///
     /// Note: for buttons, usage of [`Self::button`] does the same but allowing custom colours.
     pub fn frame(&mut self, rect: Rect, style: FrameStyle) {
-        self.h.frame(rect, style, self.state)
+        self.h.frame(&self.id, rect, style)
     }
 
     /// Draw a separator in the given `rect`
@@ -219,7 +215,7 @@ impl<'a> DrawCtx<'a> {
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     pub fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass) {
-        self.h.text(pos, text, class, self.state);
+        self.h.text(&self.id, pos, text, class);
     }
 
     /// Draw text with effects
@@ -231,7 +227,7 @@ impl<'a> DrawCtx<'a> {
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     pub fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
-        self.h.text_effects(pos, text, class, self.state);
+        self.h.text_effects(&self.id, pos, text, class);
     }
 
     /// Draw an `AccelString` text
@@ -241,7 +237,7 @@ impl<'a> DrawCtx<'a> {
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     pub fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, class: TextClass) {
-        self.h.text_accel(pos, text, class, self.state);
+        self.h.text_accel(&self.id, pos, text, class);
     }
 
     /// Draw some text using the standard font, with a subset selected
@@ -268,7 +264,7 @@ impl<'a> DrawCtx<'a> {
         };
         let range = Range { start, end };
         self.h
-            .text_selected_range(pos, text.as_ref(), range, class, self.state);
+            .text_selected_range(&self.id, pos, text.as_ref(), range, class);
     }
 
     /// Draw an edit marker at the given `byte` index on this `text`
@@ -276,7 +272,7 @@ impl<'a> DrawCtx<'a> {
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     pub fn text_cursor(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
-        self.h.text_cursor(self.wid, pos, text, class, byte);
+        self.h.text_cursor(&self.id, pos, text, class, byte);
     }
 
     /// Draw button sides, background and margin-area highlight
@@ -284,7 +280,7 @@ impl<'a> DrawCtx<'a> {
     /// Optionally, a specific colour may be used.
     // TODO: Allow theme-provided named colours?
     pub fn button(&mut self, rect: Rect, col: Option<Rgb>) {
-        self.h.button(rect, col, self.state);
+        self.h.button(&self.id, rect, col);
     }
 
     /// Draw UI element: checkbox
@@ -293,14 +289,14 @@ impl<'a> DrawCtx<'a> {
     /// mark. A checkbox widget may include a text label, but that label is not
     /// part of this element.
     pub fn checkbox(&mut self, rect: Rect, checked: bool) {
-        self.h.checkbox(self.wid, rect, checked, self.state);
+        self.h.checkbox(&self.id, rect, checked);
     }
 
     /// Draw UI element: radiobox
     ///
     /// This is similar in appearance to a checkbox.
     pub fn radiobox(&mut self, rect: Rect, checked: bool) {
-        self.h.radiobox(self.wid, rect, checked, self.state);
+        self.h.radiobox(&self.id, rect, checked);
     }
 
     /// Draw UI element: scrollbar
@@ -310,7 +306,7 @@ impl<'a> DrawCtx<'a> {
     /// -   `dir`: direction of bar
     /// -   `state`: highlighting information
     pub fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction) {
-        self.h.scrollbar(rect, h_rect, dir, self.state);
+        self.h.scrollbar(&self.id, rect, h_rect, dir);
     }
 
     /// Draw UI element: slider
@@ -320,7 +316,7 @@ impl<'a> DrawCtx<'a> {
     /// -   `dir`: direction of slider (currently only LTR or TTB)
     /// -   `state`: highlighting information
     pub fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction) {
-        self.h.slider(rect, h_rect, dir, self.state);
+        self.h.slider(&self.id, rect, h_rect, dir);
     }
 
     /// Draw UI element: progress bar
@@ -330,7 +326,7 @@ impl<'a> DrawCtx<'a> {
     /// -   `state`: highlighting information
     /// -   `value`: progress value, between 0.0 and 1.0
     pub fn progress_bar(&mut self, rect: Rect, dir: Direction, value: f32) {
-        self.h.progress_bar(rect, dir, self.state, value);
+        self.h.progress_bar(&self.id, rect, dir, value);
     }
 
     /// Draw an image
@@ -387,7 +383,7 @@ pub trait DrawHandle {
     /// Draw a frame inside the given `rect`
     ///
     /// The frame dimensions are given by [`SizeHandle::frame`].
-    fn frame(&mut self, rect: Rect, style: FrameStyle, state: InputState);
+    fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle);
 
     /// Draw a separator in the given `rect`
     fn separator(&mut self, rect: Rect);
@@ -403,7 +399,7 @@ pub trait DrawHandle {
     ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, state: InputState);
+    fn text(&mut self, id: &WidgetId, pos: Coord, text: &TextDisplay, class: TextClass);
 
     /// Draw text with effects
     ///
@@ -413,7 +409,7 @@ pub trait DrawHandle {
     ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass, state: InputState);
+    fn text_effects(&mut self, id: &WidgetId, pos: Coord, text: &dyn TextApi, class: TextClass);
 
     /// Draw an `AccelString` text
     ///
@@ -421,22 +417,16 @@ pub trait DrawHandle {
     ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    fn text_accel(
-        &mut self,
-        pos: Coord,
-        text: &Text<AccelString>,
-        class: TextClass,
-        state: InputState,
-    );
+    fn text_accel(&mut self, id: &WidgetId, pos: Coord, text: &Text<AccelString>, class: TextClass);
 
     /// Method used to implement [`DrawCtx::text_selected`]
     fn text_selected_range(
         &mut self,
+        id: &WidgetId,
         pos: Coord,
         text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
-        state: InputState,
     );
 
     /// Draw an edit marker at the given `byte` index on this `text`
@@ -445,7 +435,7 @@ pub trait DrawHandle {
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     fn text_cursor(
         &mut self,
-        wid: u64,
+        id: &WidgetId,
         pos: Coord,
         text: &TextDisplay,
         class: TextClass,
@@ -456,19 +446,19 @@ pub trait DrawHandle {
     ///
     /// Optionally, a specific colour may be used.
     // TODO: Allow theme-provided named colours?
-    fn button(&mut self, rect: Rect, col: Option<Rgb>, state: InputState);
+    fn button(&mut self, id: &WidgetId, rect: Rect, col: Option<Rgb>);
 
     /// Draw UI element: checkbox
     ///
     /// The checkbox is a small, usually square, box with or without a check
     /// mark. A checkbox widget may include a text label, but that label is not
     /// part of this element.
-    fn checkbox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState);
+    fn checkbox(&mut self, id: &WidgetId, rect: Rect, checked: bool);
 
     /// Draw UI element: radiobox
     ///
     /// This is similar in appearance to a checkbox.
-    fn radiobox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState);
+    fn radiobox(&mut self, id: &WidgetId, rect: Rect, checked: bool);
 
     /// Draw UI element: scrollbar
     ///
@@ -476,7 +466,7 @@ pub trait DrawHandle {
     /// -   `h_rect`: area of slider handle
     /// -   `dir`: direction of bar
     /// -   `state`: highlighting information
-    fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState);
+    fn scrollbar(&mut self, id: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction);
 
     /// Draw UI element: slider
     ///
@@ -484,7 +474,7 @@ pub trait DrawHandle {
     /// -   `h_rect`: area of slider handle
     /// -   `dir`: direction of slider (currently only LTR or TTB)
     /// -   `state`: highlighting information
-    fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState);
+    fn slider(&mut self, id: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction);
 
     /// Draw UI element: progress bar
     ///
@@ -492,7 +482,7 @@ pub trait DrawHandle {
     /// -   `dir`: direction of progress bar
     /// -   `state`: highlighting information
     /// -   `value`: progress value, between 0.0 and 1.0
-    fn progress_bar(&mut self, rect: Rect, dir: Direction, state: InputState, value: f32);
+    fn progress_bar(&mut self, id: &WidgetId, rect: Rect, dir: Direction, value: f32);
 
     /// Draw an image
     fn image(&mut self, id: ImageId, rect: Rect);
@@ -519,8 +509,8 @@ macro_rules! impl_ {
             fn get_clip_rect(&self) -> Rect {
                 self.deref().get_clip_rect()
             }
-            fn frame(&mut self, rect: Rect, style: FrameStyle, state: InputState) {
-                self.deref_mut().frame(rect, style, state);
+            fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle) {
+                self.deref_mut().frame(id, rect, style);
             }
             fn separator(&mut self, rect: Rect) {
                 self.deref_mut().separator(rect);
@@ -528,58 +518,55 @@ macro_rules! impl_ {
             fn selection_box(&mut self, rect: Rect) {
                 self.deref_mut().selection_box(rect);
             }
-            fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, state: InputState) {
-                self.deref_mut().text(pos, text, class, state)
+            fn text(&mut self, id: &WidgetId, pos: Coord, text: &TextDisplay, class: TextClass) {
+                self.deref_mut().text(id, pos, text, class)
             }
             fn text_effects(
                 &mut self,
-                pos: Coord,
+                id: &WidgetId, pos: Coord,
                 text: &dyn TextApi,
                 class: TextClass,
-                state: InputState,
             ) {
-                self.deref_mut().text_effects(pos, text, class, state);
+                self.deref_mut().text_effects(id, pos, text, class);
             }
             fn text_accel(
                 &mut self,
-                pos: Coord,
+                id: &WidgetId, pos: Coord,
                 text: &Text<AccelString>,
                 class: TextClass,
-                state: InputState,
             ) {
-                self.deref_mut().text_accel(pos, text, class, state);
+                self.deref_mut().text_accel(id, pos, text, class);
             }
             fn text_selected_range(
                 &mut self,
-                pos: Coord,
+                id: &WidgetId, pos: Coord,
                 text: &TextDisplay,
                 range: Range<usize>,
                 class: TextClass,
-                state: InputState,
             ) {
                 self.deref_mut()
-                    .text_selected_range(pos, text, range, class, state);
+                    .text_selected_range(id, pos, text, range, class);
             }
-            fn text_cursor(&mut self, wid: u64, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
-                self.deref_mut().text_cursor(wid, pos, text, class, byte)
+            fn text_cursor(&mut self, id: &WidgetId, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
+                self.deref_mut().text_cursor(id, pos, text, class, byte)
             }
-            fn button(&mut self, rect: Rect, col: Option<Rgb>, state: InputState) {
-                self.deref_mut().button(rect, col, state)
+            fn button(&mut self, id: &WidgetId, rect: Rect, col: Option<Rgb>) {
+                self.deref_mut().button(id, rect, col)
             }
-            fn checkbox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState) {
-                self.deref_mut().checkbox(wid, rect, checked, state)
+            fn checkbox(&mut self, id: &WidgetId, rect: Rect, checked: bool) {
+                self.deref_mut().checkbox(id, rect, checked)
             }
-            fn radiobox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState) {
-                self.deref_mut().radiobox(wid, rect, checked, state)
+            fn radiobox(&mut self, id: &WidgetId, rect: Rect, checked: bool) {
+                self.deref_mut().radiobox(id, rect, checked)
             }
-            fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
-                self.deref_mut().scrollbar(rect, h_rect, dir, state)
+            fn scrollbar(&mut self, id: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction) {
+                self.deref_mut().scrollbar(id, rect, h_rect, dir)
             }
-            fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
-                self.deref_mut().slider(rect, h_rect, dir, state)
+            fn slider(&mut self, id: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction) {
+                self.deref_mut().slider(id, rect, h_rect, dir)
             }
-            fn progress_bar(&mut self, rect: Rect, dir: Direction, state: InputState, value: f32) {
-                self.deref_mut().progress_bar(rect, dir, state, value);
+            fn progress_bar(&mut self, id: &WidgetId, rect: Rect, dir: Direction, value: f32) {
+                self.deref_mut().progress_bar(id, rect, dir, value);
             }
             fn image(&mut self, id: ImageId, rect: Rect) {
                 self.deref_mut().image(id, rect);
@@ -604,7 +591,7 @@ mod test {
         // But we don't need to: we just want to test that methods are callable.
 
         let _scale = draw.size_mgr().scale_factor();
-        let mut draw = draw.with_id(&WidgetId::ROOT);
+        let mut draw = draw.with_id(WidgetId::ROOT);
 
         let text = crate::text::Text::new_single("sample");
         let class = TextClass::Label;

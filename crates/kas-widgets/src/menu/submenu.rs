@@ -143,7 +143,7 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_id(self.id_ref());
+            let mut draw = draw.with_id(self.id());
             draw.frame(self.core.rect, FrameStyle::MenuEntry);
             draw.text_accel(
                 self.label_store.pos,

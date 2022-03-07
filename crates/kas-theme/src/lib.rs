@@ -32,6 +32,7 @@ mod traits;
 
 pub mod dim;
 
+pub(crate) use colors::InputState;
 pub use colors::{Colors, ColorsLinear, ColorsSrgb};
 pub use config::{Config, RasterConfig};
 pub use draw_shaded::{DrawShaded, DrawShadedImpl};

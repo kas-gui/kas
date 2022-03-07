@@ -188,17 +188,9 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_id(self.id_ref());
-            let error = self.inner.has_error();
-            {
-                let mut draw = draw.re();
-                let mut draw = draw.with_id(self.inner.id_ref());
-                if error {
-                    draw.state.insert(InputState::ERROR);
-                }
-                draw.frame(self.core.rect, FrameStyle::EditBox);
-            }
-            self.inner.draw(draw.re());
+            // FIXME: let error = self.inner.has_error();
+            draw.with_id(self.inner.id()).frame(self.core.rect, FrameStyle::EditBox);
+            self.inner.draw(draw.with_id(self.id()).re());
         }
     }
 }
@@ -421,7 +413,7 @@ widget! {
             } else {
                 TextClass::Edit
             };
-            let mut draw = draw.with_id(self.id_ref());
+            let mut draw = draw.with_id(self.id());
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
                 if self.selection.is_empty() {
                     draw.text(self.rect().pos, self.text.as_ref(), class);

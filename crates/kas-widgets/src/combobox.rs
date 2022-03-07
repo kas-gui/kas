@@ -49,7 +49,7 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let draw = draw.with_id(self.id_ref());
+            let draw = draw.with_id(self.id());
             self.layout().draw(draw);
         }
     }

@@ -50,7 +50,7 @@ widget! {
 
         #[inline]
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_id(self.id_ref());
+            let mut draw = draw.with_id(self.id());
             self.w.draw(draw.re());
             for (_, popup) in &self.popups {
                 if let Some(widget) = self.w.find_widget_mut(&popup.id) {

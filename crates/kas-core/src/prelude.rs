@@ -31,7 +31,7 @@ pub use crate::text::AccelString;
 #[doc(no_inline)]
 pub use crate::text::{EditableTextApi, Text, TextApi, TextApiExt};
 #[doc(no_inline)]
-pub use crate::theme::{DrawMgr, InputState, SizeMgr, ThemeControl};
+pub use crate::theme::{DrawMgr, SizeMgr, ThemeControl};
 #[doc(no_inline)]
 pub use crate::CoreData;
 #[doc(no_inline)]

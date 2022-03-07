@@ -40,7 +40,7 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_id(self.id_ref());
+            let mut draw = draw.with_id(self.id());
             draw.frame(self.core.rect, FrameStyle::MenuEntry);
             draw.text_accel(
                 self.layout_label.pos,
@@ -143,7 +143,7 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_id(self.checkbox.id_ref());
+            let mut draw = draw.with_id(self.checkbox.id());
             draw.frame(self.core.rect, FrameStyle::MenuEntry);
             self.layout().draw(draw);
         }

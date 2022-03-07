@@ -586,7 +586,7 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_id(self.id_ref());
+            let mut draw = draw.with_id(self.id());
             let offset = self.scroll_offset();
             let rect = self.rect() + offset;
             let num = self.cur_len.cast();

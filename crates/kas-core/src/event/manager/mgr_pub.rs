@@ -104,41 +104,6 @@ impl EventState {
         false
     }
 
-    /// Construct [`InputState`]
-    ///
-    /// [`InputState::DISABLED`] will be set if any parent is disabled.
-    ///
-    /// The error state defaults to `false` since most widgets don't support
-    /// this.
-    ///
-    /// Note: most state changes should automatically cause a redraw, but change
-    /// in `hover` status will not (since this happens frequently and many
-    /// widgets are unaffected), unless [`WidgetConfig::hover_highlight`]
-    /// returns true.
-    pub fn draw_state(&self, id: &WidgetId) -> InputState {
-        let (char_focus, sel_focus) = self.has_char_focus(id);
-        let mut state = InputState::empty();
-        if self.is_disabled(id) {
-            state |= InputState::DISABLED;
-        }
-        if self.is_hovered(id) {
-            state |= InputState::HOVER;
-        }
-        if self.is_depressed(id) {
-            state |= InputState::DEPRESS;
-        }
-        if self.has_nav_focus(id) {
-            state |= InputState::NAV_FOCUS;
-        }
-        if char_focus {
-            state |= InputState::CHAR_FOCUS;
-        }
-        if sel_focus {
-            state |= InputState::SEL_FOCUS;
-        }
-        state
-    }
-
     /// Get the current modifier state
     #[inline]
     pub fn modifiers(&self) -> ModifiersState {

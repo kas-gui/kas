@@ -383,12 +383,12 @@ pub trait Layout: WidgetChildren {
     /// This method is invoked each frame to draw visible widgets. It should
     /// draw itself and recurse into all visible children.
     ///
-    /// One should use `let draw = draw.with_id(self.id_ref());` to obtain
+    /// One should use `let draw = draw.with_id(self.id());` to obtain
     /// a [`DrawCtx`], enabling further drawing.
     ///
     /// The default impl draws elements as defined by [`Self::layout`].
     fn draw(&mut self, mut draw: DrawMgr) {
-        let draw = draw.with_id(self.id_ref());
+        let draw = draw.with_id(self.id());
         self.layout().draw(draw);
     }
 }

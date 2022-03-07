@@ -41,7 +41,7 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.with_id(self.id_ref()).checkbox(self.core.rect, self.state);
+            draw.with_id(self.id()).checkbox(self.core.rect, self.state);
         }
     }
 
