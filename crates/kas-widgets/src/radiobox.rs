@@ -16,7 +16,7 @@ pub type RadioBoxGroup = SharedRc<Option<WidgetId>>;
 
 widget! {
     /// A bare radiobox (no label)
-    #[autoimpl(Debug skip self.on_select)]
+    #[autoimpl(Debug ignore self.on_select)]
     #[derive(Clone)]
     pub struct RadioBoxBare<M: 'static> {
         #[widget_core]

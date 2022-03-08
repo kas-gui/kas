@@ -17,7 +17,7 @@ mod kw {
     use syn::custom_keyword;
 
     custom_keyword!(on);
-    custom_keyword!(skip);
+    custom_keyword!(ignore);
 }
 
 /// Traits targetting many fields
@@ -73,7 +73,7 @@ fn class(ident: &Ident) -> Option<Class> {
 enum Body {
     Many {
         targets: Vec<TraitMany>,
-        skip: Vec<Member>,
+        ignore: Vec<Member>,
     },
     One {
         targets: Vec<TraitOne>,
@@ -98,12 +98,13 @@ impl Parse for AutoImpl {
         let mut targets_one = Vec::new();
         let mut clause = None;
         let mut on = None;
-        let mut skip = Vec::new();
+        let mut ignore = Vec::new();
         let mut empty_or_trailing = true;
 
         while !input.is_empty() {
             let lookahead = input.lookahead1();
-            if lookahead.peek(Token![where]) || lookahead.peek(kw::on) || lookahead.peek(kw::skip) {
+            if lookahead.peek(Token![where]) || lookahead.peek(kw::on) || lookahead.peek(kw::ignore)
+            {
                 break;
             }
 
@@ -168,11 +169,11 @@ impl Parse for AutoImpl {
             let _ = input.parse::<Token![.]>()?;
             on = Some(input.parse()?);
             lookahead = input.lookahead1();
-        } else if lookahead.peek(kw::skip) {
-            let _: kw::skip = input.parse()?;
+        } else if lookahead.peek(kw::ignore) {
+            let _: kw::ignore = input.parse()?;
             let _ = input.parse::<Token![self]>()?;
             let _ = input.parse::<Token![.]>()?;
-            skip.push(input.parse()?);
+            ignore.push(input.parse()?);
             empty_or_trailing = false;
             while !input.is_empty() {
                 let lookahead = input.lookahead1();
@@ -180,7 +181,7 @@ impl Parse for AutoImpl {
                     if lookahead.peek(Token![self]) {
                         let _ = input.parse::<Token![self]>()?;
                         let _ = input.parse::<Token![.]>()?;
-                        skip.push(input.parse()?);
+                        ignore.push(input.parse()?);
                         empty_or_trailing = false;
                         continue;
                     }
@@ -205,7 +206,7 @@ impl Parse for AutoImpl {
         } else {
             Body::Many {
                 targets: targets_many,
-                skip,
+                ignore,
             }
         };
 
@@ -235,8 +236,8 @@ pub fn autoimpl(attr: AutoImpl, item: ItemStruct) -> TokenStream {
         emit_error!(mem.span(), "not a struct field");
     }
     match &attr.body {
-        Body::Many { skip, .. } => {
-            for mem in skip {
+        Body::Many { ignore, .. } => {
+            for mem in ignore {
                 check_is_field(mem, &item.fields);
             }
         }
@@ -245,7 +246,9 @@ pub fn autoimpl(attr: AutoImpl, item: ItemStruct) -> TokenStream {
 
     let mut toks = TokenStream::new();
     match attr.body {
-        Body::Many { targets, skip } => autoimpl_many(targets, skip, item, &attr.clause, &mut toks),
+        Body::Many { targets, ignore } => {
+            autoimpl_many(targets, ignore, item, &attr.clause, &mut toks)
+        }
         Body::One { targets, on } => autoimpl_one(targets, on, item, &attr.clause, &mut toks),
     }
     toks
@@ -253,13 +256,13 @@ pub fn autoimpl(attr: AutoImpl, item: ItemStruct) -> TokenStream {
 
 fn autoimpl_many(
     mut targets: Vec<TraitMany>,
-    skip: Vec<Member>,
+    ignore: Vec<Member>,
     item: ItemStruct,
     clause: &Option<WhereClause>,
     toks: &mut TokenStream,
 ) {
-    let no_skips = skip.is_empty();
-    let skip = |item: &Member| -> bool { skip.iter().any(|mem| *mem == *item) };
+    let no_skips = ignore.is_empty();
+    let ignore = |item: &Member| -> bool { ignore.iter().any(|mem| *mem == *item) };
     let ident = &item.ident;
     let (impl_generics, ty_generics, item_wc) = item.generics.split_for_impl();
 
@@ -275,7 +278,7 @@ fn autoimpl_many(
                         Member::from(i)
                     };
 
-                    if skip(&mem) {
+                    if ignore(&mem) {
                         inner.append_all(quote! { Default::default(), });
                     } else {
                         inner.append_all(quote! { self.#mem.clone(), });
@@ -303,7 +306,7 @@ fn autoimpl_many(
                         inner = quote! { f.debug_struct(#name) };
                         for field in fields.named.iter() {
                             let ident = field.ident.as_ref().unwrap();
-                            if !skip(&ident.clone().into()) {
+                            if !ignore(&ident.clone().into()) {
                                 let name = ident.to_string();
                                 inner.append_all(quote! {
                                     .field(#name, &self.#ident)
@@ -319,7 +322,7 @@ fn autoimpl_many(
                     Fields::Unnamed(ref fields) => {
                         inner = quote! { f.debug_tuple(#name) };
                         for i in 0..fields.unnamed.len() {
-                            if !skip(&i.into()) {
+                            if !ignore(&i.into()) {
                                 let lit = Literal::usize_unsuffixed(i);
                                 inner.append_all(quote! {
                                     .field(&self.#lit)

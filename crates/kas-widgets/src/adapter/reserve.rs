@@ -22,7 +22,7 @@ widget! {
     /// In a few cases it is desirable to reserve more space for a widget than
     /// required for the current content, e.g. if a label's text may change. This
     /// widget can be used for this by wrapping the base widget.
-    #[autoimpl(Debug skip self.reserve)]
+    #[autoimpl(Debug ignore self.reserve)]
     #[autoimpl(Deref, DerefMut on self.inner)]
     #[autoimpl(class_traits where W: trait on self.inner)]
     #[derive(Clone, Default)]

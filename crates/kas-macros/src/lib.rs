@@ -59,12 +59,12 @@ mod widget_index;
 /// # Multi-field traits
 ///
 /// Some trait implementations make use of all fields by default. Individual
-/// fields may be skipped via the `skip self.x, self.y` syntax (after any `where`
+/// fields may be ignored via the `ignore self.x, self.y` syntax (after any `where`
 /// clauses). The following traits may be derived this way:
 ///
-/// -   `Clone` — implements `std::clone::Clone`; skipped fields are
+/// -   `Clone` — implements `std::clone::Clone`; ignored fields are
 ///     initialised with `Default::default()`
-/// -   `Debug` — implements `std::fmt::Debug`; skipped fields are not printed
+/// -   `Debug` — implements `std::fmt::Debug`; ignored fields are not printed
 ///
 /// # Single-field traits
 ///
@@ -94,7 +94,7 @@ mod widget_index;
 /// use kas_macros::autoimpl;
 /// use std::fmt::Debug;
 ///
-/// #[autoimpl(Debug where X: Debug skip self.z)]
+/// #[autoimpl(Debug where X: Debug ignore self.z)]
 /// struct S<X, Z> {
 ///     x: X,
 ///     y: String,
