@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::where_clause::{clause_to_toks, WhereClause};
+use crate::generics::{clause_to_toks, WhereClause};
 use proc_macro2::{Literal, Span, TokenStream};
 use proc_macro_error::emit_error;
 use quote::{quote, quote_spanned, TokenStreamExt};
@@ -305,7 +305,7 @@ fn autoimpl_many(
                     Fields::Unnamed(_) => quote! { Self( #inner ) },
                     Fields::Unit => quote! { Self },
                 };
-                let wc = clause_to_toks(clause, item_wc, quote! { std::clone::Clone });
+                let wc = clause_to_toks(clause, item_wc, &quote! { std::clone::Clone });
                 toks.append_all(quote_spanned! {span=>
                     impl #impl_generics std::clone::Clone for #ident #ty_generics #wc {
                         fn clone(&self) -> Self {
@@ -351,7 +351,7 @@ fn autoimpl_many(
                         inner = quote! { #name };
                     }
                 }
-                let wc = clause_to_toks(clause, item_wc, quote! { std::fmt::Debug });
+                let wc = clause_to_toks(clause, item_wc, &quote! { std::fmt::Debug });
                 toks.append_all(quote_spanned! {span=>
                     impl #impl_generics std::fmt::Debug for #ident #ty_generics #wc {
                         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -382,7 +382,7 @@ fn autoimpl_many(
                         inner = quote! { #ident };
                     }
                 }
-                let wc = clause_to_toks(clause, item_wc, quote! { std::default::Default });
+                let wc = clause_to_toks(clause, item_wc, &quote! { std::default::Default });
                 toks.append_all(quote_spanned! {span=>
                     impl #impl_generics std::default::Default for #ident #ty_generics #wc {
                         fn default() -> Self {
@@ -427,7 +427,7 @@ fn autoimpl_one(
     for target in targets.drain(..) {
         match target {
             TraitOne::Deref(span) => {
-                let wc = clause_to_toks(clause, item_wc, quote! { std::ops::Deref });
+                let wc = clause_to_toks(clause, item_wc, &quote! { std::ops::Deref });
                 let ty = for_field(&item.fields, &on, |field| field.ty.clone()).unwrap();
                 toks.append_all(quote_spanned! {span=>
                     impl #impl_generics std::ops::Deref for #ident #ty_generics #wc {
@@ -439,7 +439,7 @@ fn autoimpl_one(
                 });
             }
             TraitOne::DerefMut(span) => {
-                let wc = clause_to_toks(clause, item_wc, quote! { std::ops::DerefMut });
+                let wc = clause_to_toks(clause, item_wc, &quote! { std::ops::DerefMut });
                 toks.append_all(quote_spanned! {span=>
                     impl #impl_generics std::ops::DerefMut for #ident #ty_generics #wc {
                         fn deref_mut(&mut self) -> &mut Self::Target {
@@ -449,7 +449,7 @@ fn autoimpl_one(
                 });
             }
             TraitOne::HasBool(span) => {
-                let wc = clause_to_toks(clause, item_wc, quote! { ::kas::class::HasBool });
+                let wc = clause_to_toks(clause, item_wc, &quote! { ::kas::class::HasBool });
                 toks.append_all(quote_spanned! {span=>
                     impl #impl_generics ::kas::class::HasBool for #ident #ty_generics #wc {
                         #[inline]
@@ -465,7 +465,7 @@ fn autoimpl_one(
                 });
             }
             TraitOne::HasStr(span) => {
-                let wc = clause_to_toks(clause, item_wc, quote! { ::kas::class::HasStr });
+                let wc = clause_to_toks(clause, item_wc, &quote! { ::kas::class::HasStr });
                 toks.append_all(quote_spanned! {span=>
                     impl #impl_generics ::kas::class::HasStr for #ident #ty_generics #wc {
                         #[inline]
@@ -481,7 +481,7 @@ fn autoimpl_one(
                 });
             }
             TraitOne::HasString(span) => {
-                let wc = clause_to_toks(clause, item_wc, quote! { ::kas::class::HasString });
+                let wc = clause_to_toks(clause, item_wc, &quote! { ::kas::class::HasString });
                 toks.append_all(quote_spanned! {span=>
                     impl #impl_generics ::kas::class::HasString for #ident #ty_generics #wc {
                         #[inline]
@@ -497,7 +497,7 @@ fn autoimpl_one(
                 });
             }
             TraitOne::SetAccel(span) => {
-                let wc = clause_to_toks(clause, item_wc, quote! { ::kas::class::SetAccel });
+                let wc = clause_to_toks(clause, item_wc, &quote! { ::kas::class::SetAccel });
                 toks.append_all(quote_spanned! {span=>
                     impl #impl_generics ::kas::class::SetAccel for #ident #ty_generics #wc {
                         #[inline]

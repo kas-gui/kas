@@ -18,9 +18,9 @@ use syn::{spanned::Spanned, GenericParam, Generics, Item};
 
 mod args;
 mod autoimpl;
+pub(crate) mod generics;
 mod make_layout;
 mod make_widget;
-pub(crate) mod where_clause;
 mod widget;
 mod widget_index;
 
