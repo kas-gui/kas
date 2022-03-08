@@ -95,8 +95,7 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_core(self.core_data());
-            draw.radiobox(self.core.rect, self.state);
+            draw.radiobox(&*self, self.state);
         }
     }
 

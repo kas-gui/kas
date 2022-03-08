@@ -15,7 +15,7 @@ use crate::cast::Cast;
 use crate::draw::color::Rgb;
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::text::{Align, TextApi, TextApiExt};
-use crate::theme::{DrawCtx, FrameStyle, SizeMgr, TextClass};
+use crate::theme::{Background, DrawMgr, FrameStyle, IdCoord, IdRect, SizeMgr, TextClass};
 use crate::WidgetId;
 use crate::{dir::Directional, WidgetConfig};
 use std::any::Any;
@@ -67,7 +67,7 @@ trait Visitor {
 
     fn find_id(&mut self, coord: Coord) -> Option<WidgetId>;
 
-    fn draw(&mut self, draw: DrawCtx);
+    fn draw(&mut self, draw: DrawMgr, id: &WidgetId);
 }
 
 /// A layout visitor
@@ -296,23 +296,27 @@ impl<'a> Layout<'a> {
 
     /// Draw a widget's children
     #[inline]
-    pub fn draw(mut self, draw: DrawCtx) {
-        self.draw_(draw);
+    pub fn draw(mut self, draw: DrawMgr, id: &WidgetId) {
+        self.draw_(draw, id);
     }
-    fn draw_(&mut self, mut draw: DrawCtx) {
+    fn draw_(&mut self, mut draw: DrawMgr, id: &WidgetId) {
         match &mut self.layout {
             LayoutType::None => (),
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => child.draw(draw.re()),
-            LayoutType::AlignLayout(layout, _) => layout.draw_(draw),
+            LayoutType::AlignLayout(layout, _) => layout.draw_(draw, id),
             LayoutType::Frame(child, storage, style) => {
-                draw.frame(storage.rect, *style);
-                child.draw_(draw);
+                draw.frame(IdRect(id, storage.rect), *style, Background::Default);
+                child.draw_(draw, id);
             }
             LayoutType::Button(child, storage, color) => {
-                draw.button(storage.rect, *color);
-                child.draw_(draw);
+                let bg = match color {
+                    Some(rgb) => Background::Rgb(*rgb),
+                    None => Background::Default,
+                };
+                draw.frame(IdRect(id, storage.rect), FrameStyle::Button, bg);
+                child.draw_(draw, id);
             }
-            LayoutType::Visitor(layout) => layout.draw(draw),
+            LayoutType::Visitor(layout) => layout.draw(draw, id),
         }
     }
 }
@@ -355,9 +359,9 @@ where
         self.children.find_map(|child| child.find_id(coord))
     }
 
-    fn draw(&mut self, mut draw: DrawCtx) {
+    fn draw(&mut self, mut draw: DrawMgr, id: &WidgetId) {
         for child in &mut self.children {
-            child.draw(draw.re_ctx());
+            child.draw(draw.re(), id);
         }
     }
 }
@@ -399,7 +403,7 @@ impl<'a, W: WidgetConfig, D: Directional> Visitor for Slice<'a, W, D> {
             .and_then(|child| child.find_id(coord))
     }
 
-    fn draw(&mut self, mut draw: DrawCtx) {
+    fn draw(&mut self, mut draw: DrawMgr, _: &WidgetId) {
         let solver = RowPositionSolver::new(self.direction);
         solver.for_children(self.children, draw.get_clip_rect(), |w| w.draw(draw.re()));
     }
@@ -441,9 +445,9 @@ where
         self.children.find_map(|(_, child)| child.find_id(coord))
     }
 
-    fn draw(&mut self, mut draw: DrawCtx) {
+    fn draw(&mut self, mut draw: DrawMgr, id: &WidgetId) {
         for (_, child) in &mut self.children {
-            child.draw(draw.re_ctx());
+            child.draw(draw.re(), id);
         }
     }
 }
@@ -504,7 +508,7 @@ impl<'a> Visitor for Text<'a> {
         None
     }
 
-    fn draw(&mut self, mut draw: DrawCtx) {
-        draw.text_effects(self.data.pos, self.text, self.class);
+    fn draw(&mut self, mut draw: DrawMgr, id: &WidgetId) {
+        draw.text_effects(IdCoord(id, self.data.pos), self.text, self.class);
     }
 }

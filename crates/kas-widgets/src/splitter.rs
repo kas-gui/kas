@@ -195,7 +195,6 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_core(self.core_data());
             // as with find_id, there's not much harm in invoking the solver twice
 
             let solver = layout::RowPositionSolver::new(self.direction);
@@ -205,14 +204,14 @@ widget! {
 
             let solver = layout::RowPositionSolver::new(self.direction);
             solver.for_children(&mut self.handles, draw.get_clip_rect(), |w| {
-                draw.separator(w.rect())
+                draw.separator(w)
             });
         }
     }
 
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            if !self.is_disabled() && !self.widgets.is_empty() {
+            if !self.widgets.is_empty() {
                 if let Some(index) = self.find_child_index(&id) {
                     if (index & 1) == 0 {
                         if let Some(w) = self.widgets.get_mut(index >> 1) {

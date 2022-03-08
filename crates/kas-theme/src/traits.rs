@@ -6,6 +6,7 @@
 //! Theme traits
 
 use kas::draw::{color, DrawIface, DrawSharedImpl, SharedState};
+use kas::event::EventState;
 use kas::theme::{DrawHandle, SizeHandle, ThemeControl};
 use kas::TkAction;
 use std::any::Any;
@@ -112,12 +113,14 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
     unsafe fn draw_handle(
         &self,
         draw: DrawIface<DS>,
+        ev: &mut EventState,
         window: &mut Self::Window,
     ) -> Self::DrawHandle;
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
+        ev: &'a mut EventState,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a>;
 
@@ -172,17 +175,19 @@ impl<T: Theme<DS>, DS: DrawSharedImpl> Theme<DS> for Box<T> {
     unsafe fn draw_handle(
         &self,
         draw: DrawIface<DS>,
+        ev: &mut EventState,
         window: &mut Self::Window,
     ) -> Self::DrawHandle {
-        self.deref().draw_handle(draw, window)
+        self.deref().draw_handle(draw, ev, window)
     }
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
+        ev: &'a mut EventState,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
-        self.deref().draw_handle(draw, window)
+        self.deref().draw_handle(draw, ev, window)
     }
 
     fn clear_color(&self) -> color::Rgba {

@@ -417,10 +417,6 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
 
             quote! {
                 use ::kas::{event::Response, WidgetCore, WidgetChildren, WidgetExt};
-                if self.is_disabled() {
-                    return Response::Unused;
-                }
-
                 match self.find_child_index(&id) {
                     #ev_to_num
                     _ if id == self.core_data().id => ::kas::event::EventMgr::handle_generic(self, mgr, event),

@@ -138,7 +138,6 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_core(self.core_data());
             let (redraw, animate) = self.program.do_redraw_animate();
             if redraw {
                 draw.set_rect_mgr(|mgr| self.redraw(mgr));
@@ -147,7 +146,7 @@ widget! {
                 draw.draw_device().animate();
             }
             if let Some(id) = self.image_id {
-                draw.image(id, self.rect());
+                draw.image(self, id);
             }
         }
     }

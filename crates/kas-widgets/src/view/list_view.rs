@@ -592,14 +592,13 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_core(self.core_data());
             let offset = self.scroll_offset();
             draw.with_clip_region(self.core.rect, offset, |mut draw| {
                 for child in &mut self.widgets[..self.cur_len.cast()] {
                     child.widget.draw(draw.re());
                     if let Some(ref key) = child.key {
                         if self.selection.contains(key) {
-                            draw.selection_box(child.widget.rect());
+                            draw.selection_box(&child.widget);
                         }
                     }
                 }
@@ -621,6 +620,15 @@ widget! {
                         return Response::Update;
                     }
                     return Response::Used;
+                }
+                Event::PressStart { source, coord, .. } => {
+                    return if source.is_primary() {
+                        mgr.grab_press_unique(self.id(), source, coord, None);
+                        self.press_phase = PressPhase::Pan;
+                        Response::Used
+                    } else {
+                        Response::Unused
+                    };
                 }
                 Event::PressMove { coord, .. } => {
                     if let PressPhase::Start(start_coord) = self.press_phase {
@@ -733,10 +741,6 @@ widget! {
 
     impl SendEvent for Self {
         fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            if self.is_disabled() {
-                return Response::Unused;
-            }
-
             if self.eq_id(&id) {
                 return self.handle(mgr, event);
             }

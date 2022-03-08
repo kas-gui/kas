@@ -49,9 +49,8 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_core(self.core_data());
             if let Some(id) = self.id {
-                draw.image(id, self.rect());
+                draw.image(self, id);
             }
         }
     }

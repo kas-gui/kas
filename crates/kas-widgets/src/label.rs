@@ -37,13 +37,11 @@ widget! {
 
         #[cfg(feature = "min_spec")]
         default fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_core(self.core_data());
-            draw.text_effects(self.core.rect.pos, &self.label, TextClass::Label);
+            draw.text_effects(&*self, &self.label, TextClass::Label);
         }
         #[cfg(not(feature = "min_spec"))]
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_core(self.core_data());
-            draw.text_effects(self.core.rect.pos, &self.label, TextClass::Label);
+            draw.text_effects(&*self, &self.label, TextClass::Label);
         }
     }
 
@@ -66,9 +64,7 @@ widget! {
 #[cfg(feature = "min_spec")]
 impl Layout for AccelLabel {
     fn draw(&mut self, mut draw: DrawMgr) {
-        let mut draw = draw.with_core(self.core_data());
-        let accel = draw.ev_state().show_accel_labels();
-        draw.text_accel(self.core.rect.pos, &self.label, accel, TextClass::Label);
+        draw.text_accel(&*self, &self.label, TextClass::Label);
     }
 }
 
@@ -76,15 +72,13 @@ impl Layout for AccelLabel {
 #[cfg(feature = "min_spec")]
 impl<'a> Layout for Label<&'a str> {
     fn draw(&mut self, mut draw: DrawMgr) {
-        let mut draw = draw.with_core(self.core_data());
-        draw.text(self.core.rect.pos, self.label.as_ref(), TextClass::Label);
+        draw.text(&*self, self.label.as_ref(), TextClass::Label);
     }
 }
 #[cfg(feature = "min_spec")]
 impl Layout for StringLabel {
     fn draw(&mut self, mut draw: DrawMgr) {
-        let mut draw = draw.with_core(self.core_data());
-        draw.text(self.core.rect.pos, self.label.as_ref(), TextClass::Label);
+        draw.text(&*self, self.label.as_ref(), TextClass::Label);
     }
 }
 

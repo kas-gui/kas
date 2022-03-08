@@ -74,10 +74,6 @@ pub mod components;
 use smallvec::SmallVec;
 use std::fmt::Debug;
 
-// doc imports
-#[allow(unused)]
-use crate::{theme::InputState, Layout, WidgetCore};
-
 #[cfg(feature = "winit")]
 pub use winit::event::{ModifiersState, MouseButton, VirtualKeyCode};
 #[cfg(feature = "winit")]

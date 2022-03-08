@@ -9,88 +9,15 @@ mod draw;
 mod size;
 mod style;
 
-pub use draw::{DrawCtx, DrawHandle, DrawMgr};
+pub use draw::{Background, DrawHandle, DrawMgr};
 pub use size::{SizeHandle, SizeMgr};
 pub use style::*;
 
 #[allow(unused)]
 use crate::event::EventMgr;
-use crate::TkAction;
+use crate::geom::{Coord, Rect};
+use crate::{CoreData, TkAction, WidgetId};
 use std::ops::{Deref, DerefMut};
-
-bitflags! {
-    /// Input and highlighting state of a widget
-    ///
-    /// This struct is used to adjust the appearance of [`DrawMgr`]'s primitives.
-    #[derive(Default)]
-    pub struct InputState: u8 {
-        /// Disabled widgets are not responsive to input and usually drawn in grey.
-        ///
-        /// All other states should be ignored when disabled.
-        const DISABLED = 1 << 0;
-        /// Some widgets, such as `EditBox`, use a red background on error
-        const ERROR = 1 << 1;
-        /// "Hover" is true if the mouse is over this element
-        const HOVER = 1 << 2;
-        /// Elements such as buttons, handles and menu entries may be depressed
-        /// (visually pushed) by a click or touch event or an accelerator key.
-        /// This is often visualised by a darker colour and/or by offsetting
-        /// graphics. The `hover` state should be ignored when depressed.
-        const DEPRESS = 1 << 3;
-        /// Keyboard navigation of UIs moves a "focus" from widget to widget.
-        const NAV_FOCUS = 1 << 4;
-        /// "Character focus" implies this widget is ready to receive text input
-        /// (e.g. typing into an input field).
-        const CHAR_FOCUS = 1 << 5;
-        /// "Selection focus" allows things such as text to be selected. Selection
-        /// focus implies that the widget also has character focus.
-        const SEL_FOCUS = 1 << 6;
-    }
-}
-
-impl InputState {
-    /// Extract `DISABLED` bit
-    #[inline]
-    pub fn disabled(self) -> bool {
-        self.contains(InputState::DISABLED)
-    }
-
-    /// Extract `ERROR` bit
-    #[inline]
-    pub fn error(self) -> bool {
-        self.contains(InputState::ERROR)
-    }
-
-    /// Extract `HOVER` bit
-    #[inline]
-    pub fn hover(self) -> bool {
-        self.contains(InputState::HOVER)
-    }
-
-    /// Extract `DEPRESS` bit
-    #[inline]
-    pub fn depress(self) -> bool {
-        self.contains(InputState::DEPRESS)
-    }
-
-    /// Extract `NAV_FOCUS` bit
-    #[inline]
-    pub fn nav_focus(self) -> bool {
-        self.contains(InputState::NAV_FOCUS)
-    }
-
-    /// Extract `CHAR_FOCUS` bit
-    #[inline]
-    pub fn char_focus(self) -> bool {
-        self.contains(InputState::CHAR_FOCUS)
-    }
-
-    /// Extract `SEL_FOCUS` bit
-    #[inline]
-    pub fn sel_focus(self) -> bool {
-        self.contains(InputState::SEL_FOCUS)
-    }
-}
 
 /// Interface through which a theme can be adjusted at run-time
 ///
@@ -132,5 +59,51 @@ impl<T: ThemeControl> ThemeControl for Box<T> {
     }
     fn set_theme(&mut self, theme: &str) -> TkAction {
         self.deref_mut().set_theme(theme)
+    }
+}
+
+/// Widget identifier and coordinate for a drawn feature
+pub struct IdCoord<'a>(pub &'a WidgetId, pub Coord);
+
+impl<'a> From<&'a CoreData> for IdCoord<'a> {
+    fn from(core: &CoreData) -> IdCoord {
+        IdCoord(&core.id, core.rect.pos)
+    }
+}
+
+impl<'a, W: crate::WidgetCore> From<&'a W> for IdCoord<'a> {
+    fn from(w: &W) -> IdCoord {
+        let core = w.core_data();
+        IdCoord(&core.id, core.rect.pos)
+    }
+}
+
+impl<'a, W: crate::WidgetCore> From<&'a mut W> for IdCoord<'a> {
+    fn from(w: &mut W) -> IdCoord {
+        let core = w.core_data();
+        IdCoord(&core.id, core.rect.pos)
+    }
+}
+
+/// Widget identifier and rect for a drawn feature
+pub struct IdRect<'a>(pub &'a WidgetId, pub Rect);
+
+impl<'a> From<&'a CoreData> for IdRect<'a> {
+    fn from(core: &CoreData) -> IdRect {
+        IdRect(&core.id, core.rect)
+    }
+}
+
+impl<'a, W: crate::WidgetCore> From<&'a W> for IdRect<'a> {
+    fn from(w: &W) -> IdRect {
+        let core = w.core_data();
+        IdRect(&core.id, core.rect)
+    }
+}
+
+impl<'a, W: crate::WidgetCore> From<&'a mut W> for IdRect<'a> {
+    fn from(w: &mut W) -> IdRect {
+        let core = w.core_data();
+        IdRect(&core.id, core.rect)
     }
 }

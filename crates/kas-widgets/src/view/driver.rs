@@ -53,7 +53,7 @@ pub trait Driver<T>: Debug + 'static {
     /// `update` method to update the model.
     ///
     /// Note that, additionally, when [`Response::Msg`] is returned,
-    /// [`kas::updatable::UpdatableHandler`] may be used to observe the message.
+    /// [`kas::updatable::Updatable`] may be used to observe the message.
     /// Often it will be sufficient to implement custom handling/update logic
     /// in only one of these places.
     fn get(&self, widget: &Self::Widget) -> Option<T>;
@@ -118,7 +118,7 @@ impl Driver<bool> for Default {
     type Msg = VoidMsg;
     type Widget = CheckBoxBare<VoidMsg>;
     fn make(&self) -> Self::Widget {
-        CheckBoxBare::new().with_disabled(true)
+        CheckBoxBare::new().with_editable(false)
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
@@ -132,7 +132,7 @@ impl Driver<bool> for DefaultNav {
     type Msg = VoidMsg;
     type Widget = CheckBoxBare<VoidMsg>;
     fn make(&self) -> Self::Widget {
-        CheckBoxBare::new().with_disabled(true)
+        CheckBoxBare::new().with_editable(false)
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)

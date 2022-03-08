@@ -77,7 +77,7 @@ fn main() -> kas::shell::Result<()> {
         }]
         #[handler(msg = VoidMsg)]
         struct {
-            #[widget] display: impl HasString = EditBox::new("0").editable(false).multi_line(true),
+            #[widget] display: impl HasString = EditBox::new("0").with_editable(false).multi_line(true),
             #[widget(use_msg = handle_button)] buttons -> Key = buttons,
             calc: Calculator = Calculator::new(),
         }

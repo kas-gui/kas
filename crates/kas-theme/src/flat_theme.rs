@@ -12,16 +12,17 @@ use std::f32;
 use std::ops::Range;
 use std::rc::Rc;
 
-use crate::{dim, ColorsLinear, Config, Theme};
+use crate::{dim, ColorsLinear, Config, InputState, Theme};
 use kas::cast::traits::*;
 use kas::dir::{Direction, Directional};
 use kas::draw::{color::Rgba, *};
+use kas::event::EventState;
 use kas::geom::*;
 use kas::text::format::FormattableText;
 use kas::text::{fonts, AccelString, Effect, Text, TextApi, TextDisplay};
-use kas::theme::{self, InputState, SizeHandle, ThemeControl};
-use kas::theme::{FrameStyle, TextClass};
-use kas::TkAction;
+use kas::theme::{self, SizeHandle, ThemeControl};
+use kas::theme::{Background, FrameStyle, TextClass};
+use kas::{TkAction, WidgetId};
 
 // Used to ensure a rectangular background is inside a circular corner.
 // Also the maximum inner radius of circular borders to overlap with this rect.
@@ -125,6 +126,7 @@ const DARK_SHADOW_OFFSET: Vec2 = Vec2::ZERO;
 
 pub struct DrawHandle<'a, DS: DrawSharedImpl> {
     pub(crate) draw: DrawIface<'a, DS>,
+    pub(crate) ev: &'a mut EventState,
     pub(crate) w: &'a mut dim::Window<DS::Draw>,
     pub(crate) cols: &'a ColorsLinear,
 }
@@ -176,7 +178,12 @@ where
     }
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle(&self, draw: DrawIface<DS>, w: &mut Self::Window) -> Self::DrawHandle {
+    unsafe fn draw_handle(
+        &self,
+        draw: DrawIface<DS>,
+        ev: &mut EventState,
+        w: &mut Self::Window,
+    ) -> Self::DrawHandle {
         w.anim.update();
 
         unsafe fn extend_lifetime<'b, T: ?Sized>(r: &'b T) -> &'static T {
@@ -191,6 +198,7 @@ where
                 shared: extend_lifetime_mut(draw.shared),
                 pass: draw.pass,
             },
+            ev: extend_lifetime_mut(ev),
             w: extend_lifetime_mut(w),
             cols: extend_lifetime(&self.cols),
         }
@@ -199,12 +207,14 @@ where
     fn draw_handle<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
+        ev: &'a mut EventState,
         w: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
         w.anim.update();
 
         DrawHandle {
             draw,
+            ev,
             w,
             cols: &self.cols,
         }
@@ -278,9 +288,9 @@ where
         inner
     }
 
-    fn edit_box(&mut self, outer: Quad, mut state: InputState) {
-        state.remove(InputState::DEPRESS);
-        let col_bg = self.cols.edit_bg(state);
+    fn edit_box(&mut self, id: &WidgetId, outer: Quad, bg: Background) {
+        let state = InputState::new_except_depress(self.ev, id);
+        let col_bg = self.cols.from_edit_bg(bg, state);
         if col_bg != self.cols.background {
             let inner = outer.shrink(self.w.dims.button_frame as f32 * BG_SHRINK_FACTOR);
             self.draw.rect(inner, col_bg);
@@ -319,8 +329,8 @@ impl<'a, DS: DrawSharedImpl> theme::DrawHandle for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl,
 {
-    fn size_and_draw_shared(&mut self) -> (&dyn SizeHandle, &mut dyn DrawShared) {
-        (self.w, self.draw.shared)
+    fn components(&mut self) -> (&dyn SizeHandle, &mut dyn DrawShared, &mut EventState) {
+        (self.w, self.draw.shared, self.ev)
     }
 
     fn draw_device(&mut self) -> &mut dyn Draw {
@@ -353,8 +363,9 @@ where
         }
 
         let mut handle = DrawHandle {
-            w: self.w,
             draw,
+            ev: self.ev,
+            w: self.w,
             cols: self.cols,
         };
         f(&mut handle);
@@ -364,7 +375,7 @@ where
         self.draw.get_clip_rect()
     }
 
-    fn frame(&mut self, rect: Rect, style: FrameStyle, state: InputState) {
+    fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle, bg: Background) {
         let outer = Quad::conv(rect);
         match style {
             FrameStyle::InnerMargin => (),
@@ -385,6 +396,7 @@ where
                 self.draw.rect(inner, self.cols.background);
             }
             FrameStyle::MenuEntry => {
+                let state = InputState::new_all(self.ev, id);
                 if let Some(col) = self.cols.menu_entry(state) {
                     let size = self.w.dims.menu_frame as f32;
                     let inner = outer.shrink(size);
@@ -394,13 +406,21 @@ where
                 }
             }
             FrameStyle::NavFocus => {
+                let state = InputState::new_all(self.ev, id);
                 if let Some(col) = self.cols.nav_region(state) {
                     let inner = outer.shrink(self.w.dims.inner_margin as f32);
                     self.draw.rounded_frame(outer, inner, 0.0, col);
                 }
             }
-            FrameStyle::Button => self.button(rect, None, state),
-            FrameStyle::EditBox => self.edit_box(outer, state),
+            FrameStyle::Button => {
+                let state = InputState::new_all(self.ev, id);
+                let outer = Quad::conv(rect);
+
+                let col_bg = self.cols.from_bg(bg, state, false);
+                let col_frame = self.cols.nav_region(state).unwrap_or(self.cols.frame);
+                self.button_frame(outer, col_frame, col_bg, state);
+            }
+            FrameStyle::EditBox => self.edit_box(id, outer, bg),
         }
     }
 
@@ -417,8 +437,8 @@ where
         self.draw.frame(outer, inner, col);
     }
 
-    fn text(&mut self, pos: Coord, text: &TextDisplay, _: TextClass, state: InputState) {
-        let col = if state.disabled() {
+    fn text(&mut self, id: &WidgetId, pos: Coord, text: &TextDisplay, _: TextClass) {
+        let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
             self.cols.text
@@ -426,8 +446,8 @@ where
         self.draw.text(pos.cast(), text, col);
     }
 
-    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, _: TextClass, state: InputState) {
-        let col = if state.disabled() {
+    fn text_effects(&mut self, id: &WidgetId, pos: Coord, text: &dyn TextApi, _: TextClass) {
+        let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
             self.cols.text
@@ -436,21 +456,14 @@ where
             .text_col_effects(pos.cast(), text.display(), col, text.effect_tokens());
     }
 
-    fn text_accel(
-        &mut self,
-        pos: Coord,
-        text: &Text<AccelString>,
-        accel: bool,
-        _: TextClass,
-        state: InputState,
-    ) {
+    fn text_accel(&mut self, id: &WidgetId, pos: Coord, text: &Text<AccelString>, _: TextClass) {
         let pos = Vec2::conv(pos);
-        let col = if state.disabled() {
+        let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
             self.cols.text
         };
-        if accel {
+        if self.ev.show_accel_labels() {
             let effects = text.text().effect_tokens();
             self.draw.text_col_effects(pos, text.as_ref(), col, effects);
         } else {
@@ -460,14 +473,14 @@ where
 
     fn text_selected_range(
         &mut self,
+        id: &WidgetId,
         pos: Coord,
         text: &TextDisplay,
         range: Range<usize>,
         _: TextClass,
-        state: InputState,
     ) {
         let pos = Vec2::conv(pos);
-        let col = if state.disabled() {
+        let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
             self.cols.text
@@ -502,8 +515,15 @@ where
         self.draw.text_effects(pos, text, &effects);
     }
 
-    fn text_cursor(&mut self, wid: u64, pos: Coord, text: &TextDisplay, _: TextClass, byte: usize) {
-        if !self.w.anim.text_cursor(self.draw.draw, wid, byte) {
+    fn text_cursor(
+        &mut self,
+        id: &WidgetId,
+        pos: Coord,
+        text: &TextDisplay,
+        _: TextClass,
+        byte: usize,
+    ) {
+        if self.ev.window_has_focus() && !self.w.anim.text_cursor(self.draw.draw, id, byte) {
             return;
         }
 
@@ -535,26 +555,15 @@ where
         }
     }
 
-    fn button(&mut self, rect: Rect, col: Option<color::Rgb>, state: InputState) {
-        let outer = Quad::conv(rect);
+    fn checkbox(&mut self, id: &WidgetId, rect: Rect, checked: bool) {
+        let anim_fade = self.w.anim.fade_bool_1m(self.draw.draw, id, checked);
 
-        let col_bg = if state.nav_focus() && !state.disabled() {
-            self.cols.accent_soft
-        } else {
-            col.map(|c| c.into()).unwrap_or(self.cols.background)
-        };
-        let col_bg = ColorsLinear::adjust_for_state(col_bg, state);
-        let col_frame = self.cols.nav_region(state).unwrap_or(self.cols.frame);
-        self.button_frame(outer, col_frame, col_bg, state);
-    }
-
-    fn checkbox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState) {
-        let anim_fade = self.w.anim.fade_bool_1m(self.draw.draw, wid, checked);
-
+        let state = InputState::new_all(self.ev, id);
         let outer = Quad::conv(rect);
 
         let col_frame = self.cols.nav_region(state).unwrap_or(self.cols.frame);
-        let inner = self.button_frame(outer, col_frame, self.cols.edit_bg(state), state);
+        let col_bg = self.cols.from_edit_bg(Default::default(), state);
+        let inner = self.button_frame(outer, col_frame, col_bg, state);
 
         if anim_fade < 1.0 {
             let inner = inner.shrink((2 * self.w.dims.inner_margin) as f32);
@@ -565,9 +574,10 @@ where
         }
     }
 
-    fn radiobox(&mut self, wid: u64, rect: Rect, checked: bool, state: InputState) {
-        let anim_fade = self.w.anim.fade_bool_1m(self.draw.draw, wid, checked);
+    fn radiobox(&mut self, id: &WidgetId, rect: Rect, checked: bool) {
+        let anim_fade = self.w.anim.fade_bool_1m(self.draw.draw, id, checked);
 
+        let state = InputState::new_all(self.ev, id);
         let outer = Quad::conv(rect);
         let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
 
@@ -586,7 +596,8 @@ where
             self.draw.circle_2col(shadow_outer, col1, col2);
         }
 
-        self.draw.circle(outer, 0.0, self.cols.edit_bg(state));
+        let col_bg = self.cols.from_edit_bg(Default::default(), state);
+        self.draw.circle(outer, 0.0, col_bg);
 
         const F: f32 = 2.0 * (1.0 - BG_SHRINK_FACTOR); // match checkbox frame
         let r = 1.0 - F * self.w.dims.button_frame as f32 / rect.size.0 as f32;
@@ -602,7 +613,7 @@ where
         }
     }
 
-    fn scrollbar(&mut self, rect: Rect, h_rect: Rect, _dir: Direction, state: InputState) {
+    fn scrollbar(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, _: Direction) {
         // track
         let outer = Quad::conv(rect);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
@@ -615,15 +626,14 @@ where
         let r = outer.size().min_comp() * 0.125;
         let outer = outer.shrink(r);
         let inner = outer.shrink(3.0 * r);
-        let col = if state.depress() || state.nav_focus() {
-            self.cols.nav_focus
-        } else {
-            self.cols.accent_soft
-        };
+        let state = InputState::new2(self.ev, id, id2);
+        let col = self.cols.accent_soft_state(state);
         self.draw.rounded_frame(outer, inner, 0.0, col);
     }
 
-    fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
+    fn slider(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction) {
+        let state = InputState::new2(self.ev, id, id2);
+
         // track
         let mut outer = Quad::conv(rect);
         let mid = Vec2::conv(h_rect.pos + h_rect.size / 2);
@@ -691,7 +701,7 @@ where
         self.draw.circle(outer, 14.0 / 16.0, col);
     }
 
-    fn progress_bar(&mut self, rect: Rect, dir: Direction, _: InputState, value: f32) {
+    fn progress_bar(&mut self, _: &WidgetId, rect: Rect, dir: Direction, value: f32) {
         let mut outer = Quad::conv(rect);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
         self.draw.rounded_frame(outer, inner, 0.75, self.cols.frame);

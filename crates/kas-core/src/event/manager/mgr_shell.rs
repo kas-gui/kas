@@ -32,9 +32,11 @@ impl EventState {
     pub fn new(config: Rc<RefCell<Config>>, scale_factor: f32) -> Self {
         EventState {
             config: WindowConfig::new(config, scale_factor),
+            disabled: vec![],
             scale_factor,
             configure_active: false,
             configure_count: 0,
+            window_has_focus: false,
             modifiers: ModifiersState::empty(),
             char_focus: false,
             sel_focus: None,
@@ -343,10 +345,16 @@ impl<'a> EventMgr<'a> {
                     }
                 }
             }
-            Focused(false) => {
-                // Window focus lost: close all popups
-                while let Some(id) = self.state.popups.last().map(|(id, _, _)| *id) {
-                    self.close_window(id, true);
+            Focused(state) => {
+                self.state.window_has_focus = state;
+                if state {
+                    // Required to restart theme animations
+                    self.state.send_action(TkAction::REDRAW);
+                } else {
+                    // Window focus lost: close all popups
+                    while let Some(id) = self.state.popups.last().map(|(id, _, _)| *id) {
+                        self.close_window(id, true);
+                    }
                 }
             }
             KeyboardInput {

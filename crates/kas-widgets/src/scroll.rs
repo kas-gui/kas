@@ -131,7 +131,6 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_core(self.core_data());
             draw.with_clip_region(self.core.rect, self.scroll_offset(), |mut draw| {
                 self.inner.draw(draw.re())
             });
@@ -140,10 +139,6 @@ widget! {
 
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            if self.is_disabled() {
-                return Response::Unused;
-            }
-
             if self.inner.id().is_ancestor_of(&id) {
                 let child_event = self.scroll.offset_event(event.clone());
                 match self.inner.send(mgr, id, child_event) {

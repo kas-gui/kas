@@ -6,6 +6,7 @@
 //! Animation helpers
 
 use kas::draw::DrawImpl;
+use kas::WidgetId;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::marker::PhantomData;
@@ -70,8 +71,8 @@ struct TextCursor {
 }
 impl<D: DrawImpl> AnimState<D> {
     /// Flashing text cursor: return true to draw
-    pub fn text_cursor(&mut self, draw: &mut D, wid: u64, byte: usize) -> bool {
-        match self.text_cursor.entry(wid) {
+    pub fn text_cursor(&mut self, draw: &mut D, id: &WidgetId, byte: usize) -> bool {
+        match self.text_cursor.entry(id.as_u64()) {
             Entry::Occupied(entry) if entry.get().byte == byte => {
                 let entry = entry.into_mut();
                 if entry.time < self.now {
@@ -112,14 +113,14 @@ impl<D: DrawImpl> AnimState<D> {
     /// Normally returns `1.0` if `state` else `0.0`, but within a short time
     /// after a state change will linearly transition between these values.
     #[inline]
-    pub fn fade_bool(&mut self, draw: &mut D, wid: u64, state: bool) -> f32 {
-        1.0 - self.fade_bool_1m(draw, wid, state)
+    pub fn fade_bool(&mut self, draw: &mut D, id: &WidgetId, state: bool) -> f32 {
+        1.0 - self.fade_bool_1m(draw, id, state)
     }
 
     /// `1.0 - self.fade_bool(..)`
-    pub fn fade_bool_1m(&mut self, draw: &mut D, wid: u64, state: bool) -> f32 {
+    pub fn fade_bool_1m(&mut self, draw: &mut D, id: &WidgetId, state: bool) -> f32 {
         let mut out_state = state;
-        match self.fade_bool.entry(wid) {
+        match self.fade_bool.entry(id.as_u64()) {
             Entry::Occupied(entry) => {
                 let entry = entry.into_mut();
                 entry.time = self.now;

@@ -17,7 +17,7 @@ use crate::layout::SetRectMgr;
 use crate::theme::{SizeMgr, ThemeControl};
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
-use crate::{CoreData, TkAction, WidgetExt, WidgetId, WindowId};
+use crate::{TkAction, WidgetExt, WidgetId, WindowId};
 
 impl<'a> std::ops::BitOrAssign<TkAction> for EventMgr<'a> {
     #[inline]
@@ -28,6 +28,12 @@ impl<'a> std::ops::BitOrAssign<TkAction> for EventMgr<'a> {
 
 /// Public API (around event manager state)
 impl EventState {
+    /// True when the window has focus
+    #[inline]
+    pub fn window_has_focus(&self) -> bool {
+        self.window_has_focus
+    }
+
     /// True when accelerator key labels should be shown
     ///
     /// (True when Alt is held and no widget has character focus.)
@@ -63,7 +69,6 @@ impl EventState {
     }
 
     /// Check whether the given widget is visually depressed
-    #[inline]
     pub fn is_depressed(&self, w_id: &WidgetId) -> bool {
         for (_, id) in &self.key_depress {
             if *id == w_id {
@@ -83,43 +88,26 @@ impl EventState {
                 return true;
             }
         }
+        for popup in &self.popups {
+            if *w_id == popup.1.parent {
+                return true;
+            }
+        }
         false
     }
 
-    /// Construct [`InputState`]
+    /// Check whether a widget is disabled
     ///
-    /// The `disabled` flag is inherited from parents. [`InputState::disabled`]
-    /// will be true if either `disabled` or `self.is_disabled()` are true.
-    ///
-    /// The error state defaults to `false` since most widgets don't support
-    /// this.
-    ///
-    /// Note: most state changes should automatically cause a redraw, but change
-    /// in `hover` status will not (since this happens frequently and many
-    /// widgets are unaffected), unless [`WidgetConfig::hover_highlight`]
-    /// returns true.
-    pub fn draw_state(&self, core: &CoreData, disabled: bool) -> InputState {
-        let (char_focus, sel_focus) = self.has_char_focus(&core.id);
-        let mut state = InputState::empty();
-        if core.disabled || disabled {
-            state |= InputState::DISABLED;
+    /// A widget is disabled if any ancestor is.
+    #[inline]
+    pub fn is_disabled(&self, w_id: &WidgetId) -> bool {
+        // TODO(opt): we should be able to use binary search here
+        for id in &self.disabled {
+            if id.is_ancestor_of(w_id) {
+                return true;
+            }
         }
-        if self.is_hovered(&core.id) {
-            state |= InputState::HOVER;
-        }
-        if self.is_depressed(&core.id) {
-            state |= InputState::DEPRESS;
-        }
-        if self.has_nav_focus(&core.id) {
-            state |= InputState::NAV_FOCUS;
-        }
-        if char_focus {
-            state |= InputState::CHAR_FOCUS;
-        }
-        if sel_focus {
-            state |= InputState::SEL_FOCUS;
-        }
-        state
+        false
     }
 
     /// Get the current modifier state
@@ -162,6 +150,25 @@ impl EventState {
     #[inline]
     pub fn scale_factor(&self) -> f32 {
         self.scale_factor
+    }
+
+    /// Set/unset a widget as disabled
+    ///
+    /// Disabled status applies to all descendants.
+    pub fn set_disabled(&mut self, w_id: WidgetId, state: bool) {
+        for (i, id) in self.disabled.iter().enumerate() {
+            if w_id == id {
+                if !state {
+                    self.redraw(w_id);
+                    self.disabled.remove(i);
+                }
+                return;
+            }
+        }
+        if state {
+            self.redraw(w_id.clone());
+            self.disabled.push(w_id);
+        }
     }
 
     /// Schedule an update
@@ -478,6 +485,7 @@ impl<'a> EventMgr<'a> {
     ///
     /// The parent of a popup automatically receives mouse-motion events
     /// ([`Event::PressMove`]) which may be used to navigate menus.
+    /// The parent automatically receives the "depressed" visual state.
     ///
     /// A pop-up may be closed by calling [`EventMgr::close_window`] with
     /// the [`WindowId`] returned by this method.
@@ -786,7 +794,7 @@ impl<'a> EventMgr<'a> {
             focus: Option<&WidgetId>,
             rev: bool,
         ) -> Option<WidgetId> {
-            if widget.is_disabled() {
+            if mgr.ev_state().is_disabled(widget.id_ref()) {
                 return None;
             }
 

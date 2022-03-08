@@ -12,7 +12,7 @@ use kas::geom::Vec2;
 use kas::layout::{self, FrameStorage};
 use kas::prelude::*;
 use kas::text::SelectionHelper;
-use kas::theme::{FrameStyle, TextClass};
+use kas::theme::{Background, FrameStyle, TextClass};
 use std::fmt::Debug;
 use std::ops::Range;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
@@ -188,16 +188,12 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_core(self.core_data());
-            let error = self.inner.has_error();
-            {
-                let mut draw = draw.re();
-                let mut draw = draw.with_core(self.inner.core_data());
-                if error {
-                    draw.state.insert(InputState::ERROR);
-                }
-                draw.frame(self.core.rect, FrameStyle::EditBox);
-            }
+            let bg = if self.inner.has_error() {
+                Background::Error
+            } else {
+                Background::Default
+            };
+            draw.frame(&*self, FrameStyle::EditBox, bg);
             self.inner.draw(draw.re());
         }
     }
@@ -292,21 +288,21 @@ impl EditBox<()> {
 }
 
 impl<G: EditGuard> EditBox<G> {
-    /// Set whether this `EditBox` is editable (inline)
+    /// Set whether this widget is editable (inline)
     #[inline]
     #[must_use]
-    pub fn editable(mut self, editable: bool) -> Self {
-        self.inner = self.inner.editable(editable);
+    pub fn with_editable(mut self, editable: bool) -> Self {
+        self.inner = self.inner.with_editable(editable);
         self
     }
 
-    /// Get whether this `EditBox` is editable
+    /// Get whether this widget is editable
     #[inline]
     pub fn is_editable(&self) -> bool {
         self.inner.is_editable()
     }
 
-    /// Set whether this `EditBox` is editable
+    /// Set whether this widget is editable
     #[inline]
     pub fn set_editable(&mut self, editable: bool) {
         self.inner.set_editable(editable);
@@ -421,24 +417,23 @@ widget! {
             } else {
                 TextClass::Edit
             };
-            let mut draw = draw.with_core(self.core_data());
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
                 if self.selection.is_empty() {
-                    draw.text(self.rect().pos, self.text.as_ref(), class);
+                    draw.text(&*self, self.text.as_ref(), class);
                 } else {
                     // TODO(opt): we could cache the selection rectangles here to make
                     // drawing more efficient (self.text.highlight_lines(range) output).
                     // The same applies to the edit marker below.
                     draw.text_selected(
-                        self.rect().pos,
+                        &*self,
                         &self.text,
                         self.selection.range(),
                         class,
                     );
                 }
-                if draw.ev_state().has_char_focus(self.id_ref()).0 {
+                if self.editable && draw.ev_state().has_char_focus(self.id_ref()).0 {
                     draw.text_cursor(
-                        self.rect().pos,
+                        &*self,
                         self.text.as_ref(),
                         class,
                         self.selection.edit_pos(),
@@ -714,7 +709,7 @@ impl<G: EditGuard> EditField<G> {
     /// Set whether this `EditField` is editable (inline)
     #[inline]
     #[must_use]
-    pub fn editable(mut self, editable: bool) -> Self {
+    pub fn with_editable(mut self, editable: bool) -> Self {
         self.editable = editable;
         self
     }

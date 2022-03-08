@@ -11,6 +11,7 @@ use std::marker::Unsize;
 
 use crate::{Config, StackDst, Theme, ThemeDst, Window};
 use kas::draw::{color, DrawIface, DrawSharedImpl, SharedState};
+use kas::event::EventState;
 use kas::theme::{DrawHandle, ThemeControl};
 use kas::TkAction;
 
@@ -150,6 +151,7 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
     unsafe fn draw_handle(
         &self,
         draw: DrawIface<DS>,
+        ev: &mut EventState,
         window: &mut Self::Window,
     ) -> StackDst<dyn DrawHandle> {
         unsafe fn extend_lifetime_mut<'b, T: ?Sized>(r: &'b mut T) -> &'static mut T {
@@ -161,6 +163,7 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
                 shared: extend_lifetime_mut(draw.shared),
                 pass: draw.pass,
             },
+            extend_lifetime_mut(ev),
             extend_lifetime_mut(window),
         )
     }
@@ -169,9 +172,10 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
     fn draw_handle<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
+        ev: &'a mut EventState,
         window: &'a mut Self::Window,
     ) -> StackDst<dyn DrawHandle + 'a> {
-        self.themes[self.active].draw_handle(draw, window)
+        self.themes[self.active].draw_handle(draw, ev, window)
     }
 
     fn clear_color(&self) -> color::Rgba {

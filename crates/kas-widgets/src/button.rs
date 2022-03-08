@@ -153,9 +153,6 @@ widget! {
 
     impl SendEvent for Self {
         fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<M> {
-            if self.is_disabled() {
-                return Response::Unused;
-            }
             if self.eq_id(&id) {
                 EventMgr::handle_generic(self, mgr, event)
             } else {

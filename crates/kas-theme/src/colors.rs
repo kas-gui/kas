@@ -6,12 +6,120 @@
 //! Colour schemes
 
 use kas::draw::color::{Rgba, Rgba8Srgb};
-use kas::theme::InputState;
+use kas::event::EventState;
+use kas::theme::Background;
+use kas::WidgetId;
 use std::str::FromStr;
 
 const MULT_DEPRESS: f32 = 0.75;
 const MULT_HIGHLIGHT: f32 = 1.25;
 const MIN_HIGHLIGHT: f32 = 0.2;
+
+bitflags::bitflags! {
+    /// Input and highlighting state of a widget
+    ///
+    /// This struct is used to adjust the appearance of [`DrawMgr`]'s primitives.
+    #[derive(Default)]
+    pub struct InputState: u8 {
+        /// Disabled widgets are not responsive to input and usually drawn in grey.
+        ///
+        /// All other states should be ignored when disabled.
+        const DISABLED = 1 << 0;
+        /// "Hover" is true if the mouse is over this element
+        const HOVER = 1 << 2;
+        /// Elements such as buttons, handles and menu entries may be depressed
+        /// (visually pushed) by a click or touch event or an accelerator key.
+        /// This is often visualised by a darker colour and/or by offsetting
+        /// graphics. The `hover` state should be ignored when depressed.
+        const DEPRESS = 1 << 3;
+        /// Keyboard navigation of UIs moves a "focus" from widget to widget.
+        const NAV_FOCUS = 1 << 4;
+        /// "Character focus" implies this widget is ready to receive text input
+        /// (e.g. typing into an input field).
+        const CHAR_FOCUS = 1 << 5;
+        /// "Selection focus" allows things such as text to be selected. Selection
+        /// focus implies that the widget also has character focus.
+        const SEL_FOCUS = 1 << 6;
+    }
+}
+
+impl InputState {
+    /// Construct, setting all components
+    pub fn new_all(ev: &EventState, id: &WidgetId) -> Self {
+        let mut state = Self::new_except_depress(ev, id);
+        if ev.is_depressed(id) {
+            state |= InputState::DEPRESS;
+        }
+        state
+    }
+
+    /// Construct, setting all but depress status
+    pub fn new_except_depress(ev: &EventState, id: &WidgetId) -> Self {
+        let (char_focus, sel_focus) = ev.has_char_focus(id);
+        let mut state = InputState::empty();
+        if ev.is_disabled(id) {
+            state |= InputState::DISABLED;
+        }
+        if ev.is_hovered(id) {
+            state |= InputState::HOVER;
+        }
+        if ev.has_nav_focus(id) {
+            state |= InputState::NAV_FOCUS;
+        }
+        if char_focus {
+            state |= InputState::CHAR_FOCUS;
+        }
+        if sel_focus {
+            state |= InputState::SEL_FOCUS;
+        }
+        state
+    }
+
+    /// Construct, setting all components, also setting hover from `id2`
+    pub fn new2(ev: &EventState, id: &WidgetId, id2: &WidgetId) -> Self {
+        let mut state = Self::new_all(ev, id);
+        if ev.is_hovered(id2) {
+            state |= InputState::HOVER;
+        }
+        state
+    }
+
+    /// Extract `DISABLED` bit
+    #[inline]
+    pub fn disabled(self) -> bool {
+        self.contains(InputState::DISABLED)
+    }
+
+    /// Extract `HOVER` bit
+    #[inline]
+    pub fn hover(self) -> bool {
+        self.contains(InputState::HOVER)
+    }
+
+    /// Extract `DEPRESS` bit
+    #[inline]
+    pub fn depress(self) -> bool {
+        self.contains(InputState::DEPRESS)
+    }
+
+    /// Extract `NAV_FOCUS` bit
+    #[inline]
+    pub fn nav_focus(self) -> bool {
+        self.contains(InputState::NAV_FOCUS)
+    }
+
+    /// Extract `CHAR_FOCUS` bit
+    #[inline]
+    pub fn char_focus(self) -> bool {
+        self.contains(InputState::CHAR_FOCUS)
+    }
+
+    /// Extract `SEL_FOCUS` bit
+    #[inline]
+    pub fn sel_focus(self) -> bool {
+        self.contains(InputState::SEL_FOCUS)
+    }
+}
 
 /// Provides standard theme colours
 #[derive(Clone, Debug, PartialEq)]
@@ -188,14 +296,26 @@ impl ColorsLinear {
         }
     }
 
+    /// Extract from [`Background`]
+    pub fn from_bg(&self, bg: Background, state: InputState, force_accent: bool) -> Rgba {
+        let use_accent = force_accent || state.depress() || state.nav_focus();
+        let col = match bg {
+            _ if state.disabled() => self.edit_bg_disabled,
+            Background::Default if use_accent => self.accent_soft,
+            Background::Default => self.background,
+            Background::Error => self.edit_bg_error,
+            Background::Rgb(rgb) => rgb.into(),
+        };
+        Self::adjust_for_state(col, state)
+    }
+
     /// Get colour of a text area, depending on state
-    pub fn edit_bg(&self, state: InputState) -> Rgba {
-        let mut col = if state.disabled() {
-            self.edit_bg_disabled
-        } else if state.error() {
-            self.edit_bg_error
-        } else {
-            self.edit_bg
+    pub fn from_edit_bg(&self, bg: Background, state: InputState) -> Rgba {
+        let mut col = match bg {
+            _ if state.disabled() => self.edit_bg_disabled,
+            Background::Default => self.edit_bg,
+            Background::Error => self.edit_bg_error,
+            Background::Rgb(rgb) => rgb.into(),
         };
         if state.depress() {
             col = col.multiply(MULT_DEPRESS);
@@ -205,7 +325,7 @@ impl ColorsLinear {
 
     /// Get colour for navigation highlight region, if any
     pub fn nav_region(&self, state: InputState) -> Option<Rgba> {
-        if state.nav_focus() && !state.disabled() {
+        if state.depress() || state.nav_focus() && !state.disabled() {
             Some(self.nav_focus)
         } else {
             None

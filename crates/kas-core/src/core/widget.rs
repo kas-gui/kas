@@ -13,11 +13,9 @@ use crate::event;
 use crate::event::{EventMgr, EventState};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{self, AlignHints, AxisInfo, SetRectMgr, SizeRules};
-#[allow(unused)]
-use crate::theme::DrawCtx;
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::util::IdentifyWidget;
-use crate::{CoreData, TkAction, WidgetId};
+use crate::{CoreData, WidgetId};
 
 impl dyn WidgetCore {
     /// Forwards to the method defined on the type `Any`.
@@ -65,24 +63,6 @@ pub trait WidgetCore: Any + fmt::Debug {
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn core_data_mut(&mut self) -> &mut CoreData;
 
-    /// Set disabled state (chaining)
-    ///
-    /// This is identical to [`WidgetExt::set_disabled`], but can be called in
-    /// chaining fashion. Example:
-    /// ```ignore
-    /// use kas::{WidgetCore, widget::MenuEntry};
-    /// let entry = MenuEntry::new("Disabled Item", ()).with_disabled(true);
-    /// ```
-    #[inline]
-    #[must_use]
-    fn with_disabled(mut self, disabled: bool) -> Self
-    where
-        Self: Sized,
-    {
-        self.core_data_mut().disabled = disabled;
-        self
-    }
-
     /// Get the name of the widget struct
     fn widget_name(&self) -> &'static str;
 
@@ -99,8 +79,8 @@ pub trait WidgetCore: Any + fmt::Debug {
 ///
 /// Dynamic widgets must implement this trait manually, since [`derive(Widget)`]
 /// cannot currently handle fields like `Vec<SomeWidget>`. Additionally, any
-/// parent adding child widgets must ensure they get configured, either via
-/// [`TkAction::RECONFIGURE`] or via [`SetRectMgr::configure`].
+/// parent adding child widgets must ensure they get configured by calling
+/// [`SetRectMgr::configure`].
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 pub trait WidgetChildren: WidgetCore {
@@ -170,9 +150,8 @@ pub trait WidgetChildren: WidgetCore {
 pub trait WidgetConfig: Layout {
     /// Pre-configure widget
     ///
-    /// Widgets are *configured* on window creation (before sizing) and when
-    /// [`TkAction::RECONFIGURE`] is sent. Child-widgets may alternatively be
-    /// configured locally by calling [`SetRectMgr::configure`].
+    /// Widgets are *configured* on window creation (before sizing) or
+    /// dynamically via the parent calling [`SetRectMgr::configure`].
     ///
     /// Configuration happens at least once
     /// before sizing and drawing, and may be repeated at a later time.
@@ -189,9 +168,8 @@ pub trait WidgetConfig: Layout {
 
     /// Configure widget
     ///
-    /// Widgets are *configured* on window creation (before sizing) and when
-    /// [`TkAction::RECONFIGURE`] is sent. Child-widgets may alternatively be
-    /// configured locally by calling [`SetRectMgr::configure`].
+    /// Widgets are *configured* on window creation (before sizing) or
+    /// dynamically via the parent calling [`SetRectMgr::configure`].
     ///
     /// Configuration happens at least once
     /// before sizing and drawing, and may be repeated at a later time.
@@ -320,7 +298,7 @@ pub trait Layout: WidgetChildren {
     ///
     /// Affects event handling via [`Self::find_id`] and affects the positioning
     /// of pop-up menus. [`Self::draw`] must be implemented directly using
-    /// [`DrawCtx::with_clip_region`] to offset contents.
+    /// [`DrawMgr::with_clip_region`] to offset contents.
     #[inline]
     fn translation(&self) -> Offset {
         Offset::ZERO
@@ -401,13 +379,10 @@ pub trait Layout: WidgetChildren {
     /// This method is invoked each frame to draw visible widgets. It should
     /// draw itself and recurse into all visible children.
     ///
-    /// One should use `let draw = draw.with_core(self.core_data());` to obtain
-    /// a [`DrawCtx`], enabling further drawing.
-    ///
     /// The default impl draws elements as defined by [`Self::layout`].
-    fn draw(&mut self, mut draw: DrawMgr) {
-        let draw = draw.with_core(self.core_data());
-        self.layout().draw(draw);
+    fn draw(&mut self, draw: DrawMgr) {
+        let id = self.id(); // clone to avoid borrow conflict
+        self.layout().draw(draw, &id);
     }
 }
 
@@ -529,25 +504,6 @@ pub trait WidgetExt: WidgetChildren {
         } else {
             None
         }
-    }
-
-    /// Get whether the widget is disabled
-    #[inline]
-    fn is_disabled(&self) -> bool {
-        self.core_data().disabled
-    }
-
-    /// Set the disabled state of a widget
-    ///
-    /// If disabled, a widget should not respond to input and should appear
-    /// greyed out.
-    ///
-    /// The disabled status is inherited by children: events should not be
-    /// passed to them, and they should also be drawn greyed out.
-    #[inline]
-    fn set_disabled(&mut self, disabled: bool) -> TkAction {
-        self.core_data_mut().disabled = disabled;
-        TkAction::REDRAW
     }
 
     /// Get the widget's region, relative to its parent.

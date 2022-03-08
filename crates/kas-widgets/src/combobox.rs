@@ -48,12 +48,9 @@ widget! {
             None
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
-            let mut draw = draw.with_core(self.core_data());
-            if self.popup_id.is_some() {
-                draw.state.insert(InputState::DEPRESS);
-            }
-            self.layout().draw(draw);
+        fn draw(&mut self, draw: DrawMgr) {
+            let id = self.id();
+            self.layout().draw(draw, &id);
         }
     }
 
@@ -79,6 +76,22 @@ widget! {
                         open_popup(self, mgr, true);
                     }
                     Response::Used
+                }
+                Event::Command(cmd, _) => {
+                    let next = |mgr: &mut EventMgr, s, clr, rev| {
+                        if clr {
+                            mgr.clear_nav_focus();
+                        }
+                        mgr.next_nav_focus(s, rev, true);
+                        Response::Used
+                    };
+                    match cmd {
+                        Command::Up => next(mgr, self, false, true),
+                        Command::Down => next(mgr, self, false, false),
+                        Command::Home => next(mgr, self, true, false),
+                        Command::End => next(mgr, self, true, true),
+                        _ => Response::Unused,
+                    }
                 }
                 Event::PressStart {
                     source,
@@ -148,10 +161,6 @@ widget! {
 
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            if self.is_disabled() {
-                return Response::Unused;
-            }
-
             if self.eq_id(&id) {
                 EventMgr::handle_generic(self, mgr, event)
             } else {
@@ -341,25 +350,7 @@ impl<M: 'static> ComboBox<M> {
         r: Response<(usize, ())>,
     ) -> Response<M> {
         match r {
-            Response::Unused => match event {
-                Event::Command(cmd, _) => {
-                    let next = |mgr: &mut EventMgr, s, clr, rev| {
-                        if clr {
-                            mgr.clear_nav_focus();
-                        }
-                        mgr.next_nav_focus(s, rev, true);
-                        Response::Used
-                    };
-                    match cmd {
-                        Command::Up => next(mgr, self, false, true),
-                        Command::Down => next(mgr, self, false, false),
-                        Command::Home => next(mgr, self, true, false),
-                        Command::End => next(mgr, self, true, true),
-                        _ => Response::Unused,
-                    }
-                }
-                _ => Response::Unused,
-            },
+            Response::Unused => EventMgr::handle_generic(self, mgr, event),
             Response::Update | Response::Select => {
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id, true);

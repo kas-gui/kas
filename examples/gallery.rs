@@ -336,7 +336,7 @@ fn main() -> kas::shell::Result<()> {
                             mgr.adjust_theme(|theme| theme.set_scheme(&name));
                         }
                         Menu::Disabled(state) => {
-                            *mgr |= self.gallery.set_disabled(state);
+                            mgr.set_disabled(self.gallery.inner().id(), state);
                         }
                         Menu::Quit => {
                             *mgr |= TkAction::EXIT;
