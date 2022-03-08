@@ -172,7 +172,7 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
     fn draw_handle<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
-        ev: &mut EventState,
+        ev: &'a mut EventState,
         window: &'a mut Self::Window,
     ) -> StackDst<dyn DrawHandle + 'a> {
         self.themes[self.active].draw_handle(draw, ev, window)

@@ -89,7 +89,7 @@ pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
     fn draw_handle<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
-        ev: &mut EventState,
+        ev: &'a mut EventState,
         window: &'a mut dyn Window,
     ) -> StackDst<dyn DrawHandle + 'a>;
 
@@ -196,7 +196,7 @@ impl<'a, DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T {
     fn draw_handle<'b>(
         &'b self,
         draw: DrawIface<'b, DS>,
-        ev: &mut EventState,
+        ev: &'b mut EventState,
         window: &'b mut dyn Window,
     ) -> StackDst<dyn DrawHandle + 'b> {
         let window = window.as_any_mut().downcast_mut().unwrap();

@@ -74,7 +74,7 @@ where
     fn draw_handle<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
-        ev: &mut EvState,
+        ev: &'a mut EventState,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
         Theme::<DS>::draw_handle(&self.inner, draw, ev, window)

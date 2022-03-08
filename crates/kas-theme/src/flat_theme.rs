@@ -207,7 +207,7 @@ where
     fn draw_handle<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
-        ev: &mut EventState,
+        ev: &'a mut EventState,
         w: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
         w.anim.update();

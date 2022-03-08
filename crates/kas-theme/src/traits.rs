@@ -120,7 +120,7 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
     fn draw_handle<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
-        ev: &mut EventState,
+        ev: &'a mut EventState,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a>;
 
@@ -184,7 +184,7 @@ impl<T: Theme<DS>, DS: DrawSharedImpl> Theme<DS> for Box<T> {
     fn draw_handle<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
-        ev: &mut EventState,
+        ev: &'a mut EventState,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
         self.deref().draw_handle(draw, ev, window)
