@@ -20,7 +20,7 @@ widget! {
     ///
     /// [`ScrollBarRegion`]: crate::ScrollBarRegion
     #[autoimpl(Deref, DerefMut on self.inner)]
-    #[autoimpl(class_traits where W: trait on self.inner)]
+    #[autoimpl(class_traits on self.inner where W: trait)]
     #[derive(Clone, Debug, Default)]
     #[handler(msg = <W as event::Handler>::Msg)]
     pub struct ScrollRegion<W: Widget> {

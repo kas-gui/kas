@@ -326,7 +326,7 @@ widget! {
     /// [`ScrollRegion`] handles the actual scrolling and wheel/touch events,
     /// while [`ScrollBars`] adds scrollbar controls.
     #[autoimpl(Deref, DerefMut on self.0)]
-    #[autoimpl(class_traits where W: trait on self.0)]
+    #[autoimpl(class_traits on self.0 where W: trait)]
     #[derive(Clone, Debug, Default)]
     #[widget{
         derive = self.0;
@@ -424,7 +424,7 @@ widget! {
     /// force internal margins by wrapping contents with a (zero-sized) frame.
     /// [`ScrollRegion`] already does this.
     #[autoimpl(Deref, DerefMut on self.inner)]
-    #[autoimpl(class_traits where W: trait on self.inner)]
+    #[autoimpl(class_traits on self.inner where W: trait)]
     #[derive(Clone, Debug, Default)]
     #[handler(msg = <W as event::Handler>::Msg)]
     pub struct ScrollBars<W: Scrollable> {

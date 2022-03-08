@@ -18,7 +18,7 @@ widget! {
     /// Default alignment is centred. Content (label) alignment is derived from the
     /// button alignment.
     #[autoimpl(Debug ignore self.on_push)]
-    #[autoimpl(class_traits where W: trait on self.inner)]
+    #[autoimpl(class_traits on self.inner where W: trait)]
     #[derive(Clone)]
     pub struct Button<W: Widget<Msg = VoidMsg>, M: 'static> {
         #[widget_core]

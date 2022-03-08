@@ -13,7 +13,7 @@ widget! {
     /// This widget provides a simple abstraction: drawing a frame around its
     /// contents.
     #[autoimpl(Deref, DerefMut on self.inner)]
-    #[autoimpl(class_traits where W: trait on self.inner)]
+    #[autoimpl(class_traits on self.inner where W: trait)]
     #[derive(Clone, Debug, Default)]
     #[handler(msg = <W as Handler>::Msg)]
     #[widget{
@@ -43,7 +43,7 @@ widget! {
     ///
     /// It is expected that this be the top-most widget inside any popup.
     #[autoimpl(Deref, DerefMut on self.inner)]
-    #[autoimpl(class_traits where W: trait on self.inner)]
+    #[autoimpl(class_traits on self.inner where W: trait)]
     #[derive(Clone, Debug, Default)]
     #[handler(msg = <W as Handler>::Msg)]
     #[widget{

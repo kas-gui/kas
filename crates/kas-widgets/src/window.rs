@@ -15,7 +15,7 @@ use std::path::Path;
 
 widget! {
     /// The main instantiation of the [`Window`] trait.
-    #[autoimpl(Clone where W: Clone ignore self.popups, self.drop)]
+    #[autoimpl(Clone ignore self.popups, self.drop where W: Clone)]
     #[autoimpl(Debug ignore self.drop, self.icon)]
     pub struct Window<W: Widget + 'static> {
         #[widget_core]

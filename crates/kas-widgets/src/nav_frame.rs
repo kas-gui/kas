@@ -13,7 +13,7 @@ widget! {
     /// This widget is a wrapper that can be used to make a static widget such as a
     /// `Label` navigable with the keyboard.
     #[autoimpl(Deref, DerefMut on self.inner)]
-    #[autoimpl(class_traits where W: trait on self.inner)]
+    #[autoimpl(class_traits on self.inner where W: trait)]
     #[derive(Clone, Debug, Default)]
     #[widget{
         key_nav = true;

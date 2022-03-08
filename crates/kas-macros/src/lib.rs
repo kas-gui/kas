@@ -94,7 +94,7 @@ mod widget_index;
 /// use kas_macros::autoimpl;
 /// use std::fmt::Debug;
 ///
-/// #[autoimpl(Debug where X: Debug ignore self.z)]
+/// #[autoimpl(Debug ignore self.z where X: Debug)]
 /// struct S<X, Z> {
 ///     x: X,
 ///     y: String,

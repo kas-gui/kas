@@ -96,9 +96,9 @@ impl Parse for AutoImpl {
         let mut mode = Mode::None;
         let mut targets_many = Vec::new();
         let mut targets_one = Vec::new();
-        let mut clause = None;
         let mut on = None;
         let mut ignore = Vec::new();
+        let mut clause = None;
         let mut empty_or_trailing = true;
 
         while !input.is_empty() {
@@ -158,11 +158,6 @@ impl Parse for AutoImpl {
         }
 
         let mut lookahead = input.lookahead1();
-        if lookahead.peek(Token![where]) {
-            clause = Some(input.parse()?);
-            lookahead = input.lookahead1();
-        }
-
         if matches!(mode, Mode::One) {
             let _: kw::on = input.parse()?;
             let _ = input.parse::<Token![self]>()?;
@@ -174,24 +169,22 @@ impl Parse for AutoImpl {
             let _ = input.parse::<Token![self]>()?;
             let _ = input.parse::<Token![.]>()?;
             ignore.push(input.parse()?);
-            empty_or_trailing = false;
-            while !input.is_empty() {
-                let lookahead = input.lookahead1();
-                if empty_or_trailing {
-                    if lookahead.peek(Token![self]) {
-                        let _ = input.parse::<Token![self]>()?;
-                        let _ = input.parse::<Token![.]>()?;
-                        ignore.push(input.parse()?);
-                        empty_or_trailing = false;
-                        continue;
-                    }
-                } else if lookahead.peek(Comma) {
-                    let _ = input.parse::<Comma>()?;
-                    empty_or_trailing = true;
+            while input.peek(Comma) {
+                let _ = input.parse::<Comma>()?;
+                if input.peek(Token![self]) {
+                    let _ = input.parse::<Token![self]>()?;
+                    let _ = input.parse::<Token![.]>()?;
+                    ignore.push(input.parse()?);
                     continue;
                 }
-                return Err(lookahead.error());
+                break;
             }
+            lookahead = input.lookahead1();
+        }
+
+        if lookahead.peek(Token![where]) {
+            clause = Some(input.parse()?);
+            lookahead = input.lookahead1();
         }
 
         if !input.is_empty() {
