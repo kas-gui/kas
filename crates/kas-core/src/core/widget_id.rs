@@ -744,7 +744,7 @@ mod test {
     #[test]
     fn test_parent() {
         fn test(seq: &[usize]) {
-            println!("seq: {seq:?}");
+            println!("seq: {:?}", seq);
             let mut id = WidgetId::ROOT;
             let len = seq.len();
             for key in &seq[..len - 1] {
