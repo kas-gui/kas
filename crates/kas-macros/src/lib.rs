@@ -65,6 +65,7 @@ mod widget_index;
 /// -   `Clone` — implements `std::clone::Clone`; ignored fields are
 ///     initialised with `Default::default()`
 /// -   `Debug` — implements `std::fmt::Debug`; ignored fields are not printed
+/// -   `Default` — implements `std::default::Default`
 ///
 /// # Single-field traits
 ///

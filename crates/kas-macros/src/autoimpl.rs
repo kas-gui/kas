@@ -73,7 +73,7 @@ fn class(ident: &Ident) -> Option<Class> {
 enum Body {
     Many {
         targets: Vec<TraitMany>,
-        ignore: Vec<Member>,
+        ignores: Vec<Member>,
     },
     One {
         targets: Vec<TraitOne>,
@@ -92,12 +92,13 @@ impl Parse for AutoImpl {
             None,
             One,
             Many,
+            Default,
         }
         let mut mode = Mode::None;
         let mut targets_many = Vec::new();
         let mut targets_one = Vec::new();
         let mut on = None;
-        let mut ignore = Vec::new();
+        let mut ignores = Vec::new();
         let mut clause = None;
         let mut empty_or_trailing = true;
 
@@ -113,12 +114,20 @@ impl Parse for AutoImpl {
                     const MSG: &str = "incompatible: traits targetting a single field and traits targetting multiple fields may not be derived simultaneously";
                     let target = input.parse()?;
                     match class(&target) {
+                        Some(Class::Many(TraitMany::Default(span))) => {
+                            targets_many.push(TraitMany::Default(span));
+                            match mode {
+                                Mode::None | Mode::Many => mode = Mode::Default,
+                                Mode::One => return Err(Error::new(target.span(), MSG)),
+                                Mode::Default => (),
+                            }
+                        }
                         Some(Class::Many(trait_)) => {
                             targets_many.push(trait_);
                             match mode {
                                 Mode::None => mode = Mode::Many,
                                 Mode::One => return Err(Error::new(target.span(), MSG)),
-                                Mode::Many => (),
+                                Mode::Many | Mode::Default => (),
                             }
                         }
                         Some(Class::One(trait_)) => {
@@ -126,7 +135,9 @@ impl Parse for AutoImpl {
                             match mode {
                                 Mode::None => mode = Mode::One,
                                 Mode::One => (),
-                                Mode::Many => return Err(Error::new(target.span(), MSG)),
+                                Mode::Many | Mode::Default => {
+                                    return Err(Error::new(target.span(), MSG))
+                                }
                             }
                         }
                         Some(Class::ClassTraits) => {
@@ -139,7 +150,9 @@ impl Parse for AutoImpl {
                             match mode {
                                 Mode::None => mode = Mode::One,
                                 Mode::One => (),
-                                Mode::Many => return Err(Error::new(target.span(), MSG)),
+                                Mode::Many | Mode::Default => {
+                                    return Err(Error::new(target.span(), MSG))
+                                }
                             }
                         }
                         None => {
@@ -165,16 +178,22 @@ impl Parse for AutoImpl {
             on = Some(input.parse()?);
             lookahead = input.lookahead1();
         } else if lookahead.peek(kw::ignore) {
-            let _: kw::ignore = input.parse()?;
+            let ignore: kw::ignore = input.parse()?;
+            if matches!(mode, Mode::Default) {
+                emit_error!(
+                    ignore.span(),
+                    "cannot ignore fields when implementing std::default::Default"
+                );
+            }
             let _ = input.parse::<Token![self]>()?;
             let _ = input.parse::<Token![.]>()?;
-            ignore.push(input.parse()?);
+            ignores.push(input.parse()?);
             while input.peek(Comma) {
                 let _ = input.parse::<Comma>()?;
                 if input.peek(Token![self]) {
                     let _ = input.parse::<Token![self]>()?;
                     let _ = input.parse::<Token![.]>()?;
-                    ignore.push(input.parse()?);
+                    ignores.push(input.parse()?);
                     continue;
                 }
                 break;
@@ -199,7 +218,7 @@ impl Parse for AutoImpl {
         } else {
             Body::Many {
                 targets: targets_many,
-                ignore,
+                ignores,
             }
         };
 
@@ -229,8 +248,8 @@ pub fn autoimpl(attr: AutoImpl, item: ItemStruct) -> TokenStream {
         emit_error!(mem.span(), "not a struct field");
     }
     match &attr.body {
-        Body::Many { ignore, .. } => {
-            for mem in ignore {
+        Body::Many { ignores, .. } => {
+            for mem in ignores {
                 check_is_field(mem, &item.fields);
             }
         }
@@ -239,8 +258,8 @@ pub fn autoimpl(attr: AutoImpl, item: ItemStruct) -> TokenStream {
 
     let mut toks = TokenStream::new();
     match attr.body {
-        Body::Many { targets, ignore } => {
-            autoimpl_many(targets, ignore, item, &attr.clause, &mut toks)
+        Body::Many { targets, ignores } => {
+            autoimpl_many(targets, ignores, item, &attr.clause, &mut toks)
         }
         Body::One { targets, on } => autoimpl_one(targets, on, item, &attr.clause, &mut toks),
     }
@@ -249,13 +268,13 @@ pub fn autoimpl(attr: AutoImpl, item: ItemStruct) -> TokenStream {
 
 fn autoimpl_many(
     mut targets: Vec<TraitMany>,
-    ignore: Vec<Member>,
+    ignores: Vec<Member>,
     item: ItemStruct,
     clause: &Option<WhereClause>,
     toks: &mut TokenStream,
 ) {
-    let no_skips = ignore.is_empty();
-    let ignore = |item: &Member| -> bool { ignore.iter().any(|mem| *mem == *item) };
+    let no_skips = ignores.is_empty();
+    let ignore = |item: &Member| -> bool { ignores.iter().any(|mem| *mem == *item) };
     let ident = &item.ident;
     let (impl_generics, ty_generics, item_wc) = item.generics.split_for_impl();
 
