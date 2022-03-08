@@ -21,7 +21,7 @@ use kas::geom::*;
 use kas::text::format::FormattableText;
 use kas::text::{fonts, AccelString, Effect, Text, TextApi, TextDisplay};
 use kas::theme::{self, SizeHandle, ThemeControl};
-use kas::theme::{FrameStyle, TextClass};
+use kas::theme::{Background, FrameStyle, TextClass};
 use kas::{TkAction, WidgetId};
 
 // Used to ensure a rectangular background is inside a circular corner.
@@ -288,9 +288,9 @@ where
         inner
     }
 
-    fn edit_box(&mut self, id: &WidgetId, outer: Quad, state_error: bool) {
+    fn edit_box(&mut self, id: &WidgetId, outer: Quad, bg: Background) {
         let state = InputState::new_except_depress(self.ev, id);
-        let col_bg = self.cols.edit_bg(state, state_error);
+        let col_bg = self.cols.from_edit_bg(bg, state);
         if col_bg != self.cols.background {
             let inner = outer.shrink(self.w.dims.button_frame as f32 * BG_SHRINK_FACTOR);
             self.draw.rect(inner, col_bg);
@@ -375,7 +375,7 @@ where
         self.draw.get_clip_rect()
     }
 
-    fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle) {
+    fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle, bg: Background) {
         let outer = Quad::conv(rect);
         match style {
             FrameStyle::InnerMargin => (),
@@ -412,8 +412,15 @@ where
                     self.draw.rounded_frame(outer, inner, 0.0, col);
                 }
             }
-            FrameStyle::Button => self.button(id, rect, None),
-            FrameStyle::EditBox => self.edit_box(id, outer, false),
+            FrameStyle::Button => {
+                let state = InputState::new_all(self.ev, id);
+                let outer = Quad::conv(rect);
+
+                let col_bg = self.cols.from_bg(bg, state, false);
+                let col_frame = self.cols.nav_region(state).unwrap_or(self.cols.frame);
+                self.button_frame(outer, col_frame, col_bg, state);
+            }
+            FrameStyle::EditBox => self.edit_box(id, outer, bg),
         }
     }
 
@@ -548,20 +555,6 @@ where
         }
     }
 
-    fn button(&mut self, id: &WidgetId, rect: Rect, col: Option<color::Rgb>) {
-        let state = InputState::new_all(self.ev, id);
-        let outer = Quad::conv(rect);
-
-        let col_bg = if state.depress() || state.nav_focus() && !state.disabled() {
-            self.cols.accent_soft
-        } else {
-            col.map(|c| c.into()).unwrap_or(self.cols.background)
-        };
-        let col_bg = ColorsLinear::adjust_for_state(col_bg, state);
-        let col_frame = self.cols.nav_region(state).unwrap_or(self.cols.frame);
-        self.button_frame(outer, col_frame, col_bg, state);
-    }
-
     fn checkbox(&mut self, id: &WidgetId, rect: Rect, checked: bool) {
         let anim_fade = self.w.anim.fade_bool_1m(self.draw.draw, id, checked);
 
@@ -569,7 +562,8 @@ where
         let outer = Quad::conv(rect);
 
         let col_frame = self.cols.nav_region(state).unwrap_or(self.cols.frame);
-        let inner = self.button_frame(outer, col_frame, self.cols.edit_bg(state, false), state);
+        let col_bg = self.cols.from_edit_bg(Default::default(), state);
+        let inner = self.button_frame(outer, col_frame, col_bg, state);
 
         if anim_fade < 1.0 {
             let inner = inner.shrink((2 * self.w.dims.inner_margin) as f32);
@@ -602,8 +596,8 @@ where
             self.draw.circle_2col(shadow_outer, col1, col2);
         }
 
-        self.draw
-            .circle(outer, 0.0, self.cols.edit_bg(state, false));
+        let col_bg = self.cols.from_edit_bg(Default::default(), state);
+        self.draw.circle(outer, 0.0, col_bg);
 
         const F: f32 = 2.0 * (1.0 - BG_SHRINK_FACTOR); // match checkbox frame
         let r = 1.0 - F * self.w.dims.button_frame as f32 / rect.size.0 as f32;

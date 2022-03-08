@@ -40,7 +40,7 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.frame(&*self, FrameStyle::MenuEntry);
+            draw.frame(&*self, FrameStyle::MenuEntry, Default::default());
             draw.text_accel(
                 kas::theme::IdCoord(self.id_ref(), self.layout_label.pos),
                 &self.label,
@@ -142,7 +142,7 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.frame(&*self, FrameStyle::MenuEntry);
+            draw.frame(&*self, FrameStyle::MenuEntry, Default::default());
             let id = self.id();
             self.layout().draw(draw, &id);
         }

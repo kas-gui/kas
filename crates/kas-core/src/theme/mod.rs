@@ -9,7 +9,7 @@ mod draw;
 mod size;
 mod style;
 
-pub use draw::{DrawHandle, DrawMgr};
+pub use draw::{Background, DrawHandle, DrawMgr};
 pub use size::{SizeHandle, SizeMgr};
 pub use style::*;
 

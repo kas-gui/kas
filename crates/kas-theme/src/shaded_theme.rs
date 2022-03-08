@@ -16,7 +16,7 @@ use kas::draw::{color::Rgba, *};
 use kas::event::EventState;
 use kas::geom::*;
 use kas::text::{AccelString, Text, TextApi, TextDisplay};
-use kas::theme::{self, SizeHandle, ThemeControl};
+use kas::theme::{self, Background, SizeHandle, ThemeControl};
 use kas::theme::{FrameStyle, TextClass};
 use kas::{TkAction, WidgetId};
 
@@ -286,7 +286,7 @@ where
         self.draw.get_clip_rect()
     }
 
-    fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle) {
+    fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle, bg: Background) {
         match style {
             FrameStyle::Frame => {
                 let outer = Quad::conv(rect);
@@ -306,13 +306,27 @@ where
                     self.draw.rect(outer, col);
                 }
             }
-            FrameStyle::Button => self.button(id, rect, None),
+            FrameStyle::Button => {
+                let state = InputState::new_all(self.ev, id);
+                let outer = Quad::conv(rect);
+                let inner = outer.shrink(self.w.dims.button_frame as f32);
+                let col_bg = self.cols.from_bg(bg, state, true);
+
+                self.draw
+                    .shaded_round_frame(outer, inner, (0.0, 0.6), col_bg);
+                self.draw.rect(inner, col_bg);
+
+                if let Some(col) = self.cols.nav_region(state) {
+                    let outer = outer.shrink(self.w.dims.inner_margin as f32);
+                    self.draw.rounded_frame(outer, inner, 0.6, col);
+                }
+            }
             FrameStyle::EditBox => {
                 let state = InputState::new_except_depress(self.ev, id);
-                let bg_col = self.cols.edit_bg(state, false);
+                let bg_col = self.cols.from_edit_bg(bg, state);
                 self.draw_edit_box(rect, bg_col, self.cols.nav_region(state));
             }
-            style => self.as_flat().frame(id, rect, style),
+            style => self.as_flat().frame(id, rect, style, bg),
         }
     }
 
@@ -369,27 +383,11 @@ where
         self.as_flat().text_cursor(id, pos, text, class, byte);
     }
 
-    fn button(&mut self, id: &WidgetId, rect: Rect, col: Option<color::Rgb>) {
-        let state = InputState::new_all(self.ev, id);
-        let outer = Quad::conv(rect);
-        let inner = outer.shrink(self.w.dims.button_frame as f32);
-        let col = col.map(|c| c.into()).unwrap_or(self.cols.accent_soft);
-        let col = ColorsLinear::adjust_for_state(col, state);
-
-        self.draw.shaded_round_frame(outer, inner, (0.0, 0.6), col);
-        self.draw.rect(inner, col);
-
-        if let Some(col) = self.cols.nav_region(state) {
-            let outer = outer.shrink(self.w.dims.inner_margin as f32);
-            self.draw.rounded_frame(outer, inner, 0.6, col);
-        }
-    }
-
     fn checkbox(&mut self, id: &WidgetId, rect: Rect, checked: bool) {
         let state = InputState::new_all(self.ev, id);
         let anim_fade = self.w.anim.fade_bool_1m(self.draw.draw, id, checked);
 
-        let bg_col = self.cols.edit_bg(state, false);
+        let bg_col = self.cols.from_edit_bg(Default::default(), state);
         let nav_col = self.cols.nav_region(state).or(Some(bg_col));
 
         let inner = self.draw_edit_box(rect, bg_col, nav_col);
@@ -406,7 +404,7 @@ where
         let state = InputState::new_all(self.ev, id);
         let anim_fade = self.w.anim.fade_bool_1m(self.draw.draw, id, checked);
 
-        let bg_col = self.cols.edit_bg(state, false);
+        let bg_col = self.cols.from_edit_bg(Default::default(), state);
         let nav_col = self.cols.nav_region(state).or(Some(bg_col));
 
         let inner = self.draw_edit_box(rect, bg_col, nav_col);

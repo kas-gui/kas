@@ -12,7 +12,7 @@ use kas::geom::Vec2;
 use kas::layout::{self, FrameStorage};
 use kas::prelude::*;
 use kas::text::SelectionHelper;
-use kas::theme::{FrameStyle, TextClass};
+use kas::theme::{Background, FrameStyle, TextClass};
 use std::fmt::Debug;
 use std::ops::Range;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
@@ -188,8 +188,12 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            // FIXME: let error = self.inner.has_error();
-            draw.frame(&*self, FrameStyle::EditBox);
+            let bg = if self.inner.has_error() {
+                Background::Error
+            } else {
+                Background::Default
+            };
+            draw.frame(&*self, FrameStyle::EditBox, bg);
             self.inner.draw(draw.re());
         }
     }

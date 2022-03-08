@@ -15,7 +15,7 @@ use crate::cast::Cast;
 use crate::draw::color::Rgb;
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::text::{Align, TextApi, TextApiExt};
-use crate::theme::{DrawMgr, FrameStyle, IdCoord, IdRect, SizeMgr, TextClass};
+use crate::theme::{Background, DrawMgr, FrameStyle, IdCoord, IdRect, SizeMgr, TextClass};
 use crate::WidgetId;
 use crate::{dir::Directional, WidgetConfig};
 use std::any::Any;
@@ -305,11 +305,15 @@ impl<'a> Layout<'a> {
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => child.draw(draw.re()),
             LayoutType::AlignLayout(layout, _) => layout.draw_(draw, id),
             LayoutType::Frame(child, storage, style) => {
-                draw.frame(IdRect(id, storage.rect), *style);
+                draw.frame(IdRect(id, storage.rect), *style, Background::Default);
                 child.draw_(draw, id);
             }
             LayoutType::Button(child, storage, color) => {
-                draw.button(IdRect(id, storage.rect), *color);
+                let bg = match color {
+                    Some(rgb) => Background::Rgb(*rgb),
+                    None => Background::Default,
+                };
+                draw.frame(IdRect(id, storage.rect), FrameStyle::Button, bg);
                 child.draw_(draw, id);
             }
             LayoutType::Visitor(layout) => layout.draw(draw, id),

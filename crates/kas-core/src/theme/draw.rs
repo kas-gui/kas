@@ -17,6 +17,23 @@ use crate::layout::SetRectMgr;
 use crate::text::{AccelString, Text, TextApi, TextDisplay};
 use crate::{TkAction, WidgetId};
 
+/// Optional background colour
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum Background {
+    /// Use theme/feature's default
+    Default,
+    /// Error state
+    Error,
+    /// A given color
+    Rgb(Rgb),
+}
+
+impl Default for Background {
+    fn default() -> Self {
+        Background::Default
+    }
+}
+
 /// Draw interface
 ///
 /// This interface is provided to widgets in [`crate::Layout::draw`].
@@ -122,11 +139,9 @@ impl<'a> DrawMgr<'a> {
     /// Draw a frame inside the given `rect`
     ///
     /// The frame dimensions are given by [`SizeMgr::frame`].
-    ///
-    /// Note: for buttons, usage of [`Self::button`] does the same but allowing custom colours.
-    pub fn frame<'b>(&mut self, feature: impl Into<IdRect<'b>>, style: FrameStyle) {
+    pub fn frame<'b>(&mut self, feature: impl Into<IdRect<'b>>, style: FrameStyle, bg: Background) {
         let f = feature.into();
-        self.h.frame(f.0, f.1, style)
+        self.h.frame(f.0, f.1, style, bg)
     }
 
     /// Draw a separator in the given `rect`
@@ -232,15 +247,6 @@ impl<'a> DrawMgr<'a> {
     ) {
         let f = feature.into();
         self.h.text_cursor(f.0, f.1, text, class, byte);
-    }
-
-    /// Draw button sides, background and margin-area highlight
-    ///
-    /// Optionally, a specific colour may be used.
-    // TODO: Allow theme-provided named colours?
-    pub fn button<'b>(&mut self, feature: impl Into<IdRect<'b>>, col: Option<Rgb>) {
-        let f = feature.into();
-        self.h.button(f.0, f.1, col);
     }
 
     /// Draw UI element: checkbox
@@ -354,7 +360,7 @@ pub trait DrawHandle {
     /// Draw a frame inside the given `rect`
     ///
     /// The frame dimensions are given by [`SizeHandle::frame`].
-    fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle);
+    fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle, bg: Background);
 
     /// Draw a separator in the given `rect`
     fn separator(&mut self, rect: Rect);
@@ -412,12 +418,6 @@ pub trait DrawHandle {
         class: TextClass,
         byte: usize,
     );
-
-    /// Draw button sides, background and margin-area highlight
-    ///
-    /// Optionally, a specific colour may be used.
-    // TODO: Allow theme-provided named colours?
-    fn button(&mut self, id: &WidgetId, rect: Rect, col: Option<Rgb>);
 
     /// Draw UI element: checkbox
     ///
@@ -489,8 +489,8 @@ macro_rules! impl_ {
             fn get_clip_rect(&self) -> Rect {
                 self.deref().get_clip_rect()
             }
-            fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle) {
-                self.deref_mut().frame(id, rect, style);
+            fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle, bg: Background) {
+                self.deref_mut().frame(id, rect, style, bg);
             }
             fn separator(&mut self, rect: Rect) {
                 self.deref_mut().separator(rect);
@@ -529,9 +529,6 @@ macro_rules! impl_ {
             }
             fn text_cursor(&mut self, id: &WidgetId, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
                 self.deref_mut().text_cursor(id, pos, text, class, byte)
-            }
-            fn button(&mut self, id: &WidgetId, rect: Rect, col: Option<Rgb>) {
-                self.deref_mut().button(id, rect, col)
             }
             fn checkbox(&mut self, id: &WidgetId, rect: Rect, checked: bool) {
                 self.deref_mut().checkbox(id, rect, checked)

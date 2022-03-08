@@ -7,6 +7,7 @@
 
 use kas::draw::color::{Rgba, Rgba8Srgb};
 use kas::event::EventState;
+use kas::theme::Background;
 use kas::WidgetId;
 use std::str::FromStr;
 
@@ -295,14 +296,26 @@ impl ColorsLinear {
         }
     }
 
+    /// Extract from [`Background`]
+    pub fn from_bg(&self, bg: Background, state: InputState, force_accent: bool) -> Rgba {
+        let use_accent = force_accent || state.depress() || state.nav_focus();
+        let col = match bg {
+            _ if state.disabled() => self.edit_bg_disabled,
+            Background::Default if use_accent => self.accent_soft,
+            Background::Default => self.background,
+            Background::Error => self.edit_bg_error,
+            Background::Rgb(rgb) => rgb.into(),
+        };
+        Self::adjust_for_state(col, state)
+    }
+
     /// Get colour of a text area, depending on state
-    pub fn edit_bg(&self, state: InputState, state_error: bool) -> Rgba {
-        let mut col = if state.disabled() {
-            self.edit_bg_disabled
-        } else if state_error {
-            self.edit_bg_error
-        } else {
-            self.edit_bg
+    pub fn from_edit_bg(&self, bg: Background, state: InputState) -> Rgba {
+        let mut col = match bg {
+            _ if state.disabled() => self.edit_bg_disabled,
+            Background::Default => self.edit_bg,
+            Background::Error => self.edit_bg_error,
+            Background::Rgb(rgb) => rgb.into(),
         };
         if state.depress() {
             col = col.multiply(MULT_DEPRESS);
