@@ -4,7 +4,7 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 use crate::where_clause::{clause_to_toks, WhereClause};
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::{Literal, Span, TokenStream};
 use proc_macro_error::emit_error;
 use quote::{quote, quote_spanned, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
@@ -320,8 +320,9 @@ fn autoimpl_many(
                         inner = quote! { f.debug_tuple(#name) };
                         for i in 0..fields.unnamed.len() {
                             if !skip(&i.into()) {
+                                let lit = Literal::usize_unsuffixed(i);
                                 inner.append_all(quote! {
-                                    .field(&self.#i)
+                                    .field(&self.#lit)
                                 });
                             }
                         }
