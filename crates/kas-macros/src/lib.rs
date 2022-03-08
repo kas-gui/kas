@@ -11,7 +11,7 @@
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
-use proc_macro_error::proc_macro_error;
+use proc_macro_error::{emit_call_site_error, proc_macro_error};
 use quote::quote;
 use syn::parse_macro_input;
 use syn::{GenericParam, Generics, ItemStruct};
@@ -111,12 +111,21 @@ mod widget_index;
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let mut toks = item.clone();
-    let attr = parse_macro_input!(attr as autoimpl::AutoImpl);
-    let item = parse_macro_input!(item as ItemStruct);
-    let impls = autoimpl::autoimpl(attr, item);
-    toks.extend(TokenStream::from(impls));
-    toks
+    match syn::parse(attr) {
+        Ok(attr) => {
+            let mut toks = item.clone();
+            let item = parse_macro_input!(item as ItemStruct);
+            let impls = autoimpl::autoimpl(attr, item);
+            toks.extend(TokenStream::from(impls));
+            toks
+        }
+        Err(err) => {
+            emit_call_site_error!(err);
+            // Since autoimpl only adds implementations, we can safely output
+            // the original item, thus reducing secondary errors:
+            item
+        }
+    }
 }
 
 // Support impls on Self by replacing name and summing generics
