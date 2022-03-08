@@ -14,7 +14,7 @@ fn wrapper() {
     test_has_debug(Wrapper(()));
 }
 
-#[autoimpl(Clone where A: Clone, B: Clone)]
+#[autoimpl(Clone, Default where A: trait, B: trait)]
 #[autoimpl(Debug where A: Debug)]
 struct X<A, B: Debug, C> {
     a: A,
