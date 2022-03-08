@@ -11,10 +11,10 @@
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
-use proc_macro_error::{emit_call_site_error, proc_macro_error};
+use proc_macro_error::{emit_call_site_error, emit_error, proc_macro_error};
 use quote::quote;
 use syn::parse_macro_input;
-use syn::{GenericParam, Generics, ItemStruct};
+use syn::{spanned::Spanned, GenericParam, Generics, Item};
 
 mod args;
 mod autoimpl;
@@ -112,21 +112,25 @@ mod widget_index;
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let mut toks = item.clone();
     match syn::parse(attr) {
         Ok(attr) => {
-            let mut toks = item.clone();
-            let item = parse_macro_input!(item as ItemStruct);
-            let impls = autoimpl::autoimpl(attr, item);
-            toks.extend(TokenStream::from(impls));
-            toks
+            let item = parse_macro_input!(item as Item);
+            toks.extend(TokenStream::from(match item {
+                Item::Struct(item) => autoimpl::autoimpl_struct(attr, item),
+                item => {
+                    emit_error!(item.span(), "autoimpl: does not support this item type");
+                    return toks;
+                }
+            }));
         }
         Err(err) => {
             emit_call_site_error!(err);
             // Since autoimpl only adds implementations, we can safely output
-            // the original item, thus reducing secondary errors:
-            item
+            // the original item, thus reducing secondary errors.
         }
     }
+    toks
 }
 
 // Support impls on Self by replacing name and summing generics

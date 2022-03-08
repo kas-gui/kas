@@ -95,15 +95,17 @@ impl Parse for AutoImpl {
             Default,
         }
         let mut mode = Mode::None;
+
+        let mut empty_or_trailing = true;
+        let mut lookahead = input.lookahead1();
+
         let mut targets_many = Vec::new();
         let mut targets_one = Vec::new();
         let mut on = None;
         let mut ignores = Vec::new();
         let mut clause = None;
-        let mut empty_or_trailing = true;
 
         while !input.is_empty() {
-            let lookahead = input.lookahead1();
             if lookahead.peek(Token![where]) || lookahead.peek(kw::on) || lookahead.peek(kw::ignore)
             {
                 break;
@@ -160,17 +162,19 @@ impl Parse for AutoImpl {
                         }
                     }
                     empty_or_trailing = false;
+                    lookahead = input.lookahead1();
                     continue;
                 }
             } else if input.peek(Comma) {
                 let _ = input.parse::<Comma>()?;
                 empty_or_trailing = true;
+                lookahead = input.lookahead1();
                 continue;
             }
             return Err(lookahead.error());
         }
 
-        let mut lookahead = input.lookahead1();
+        lookahead = input.lookahead1();
         if matches!(mode, Mode::One) {
             let _: kw::on = input.parse()?;
             let _ = input.parse::<Token![self]>()?;
@@ -226,7 +230,7 @@ impl Parse for AutoImpl {
     }
 }
 
-pub fn autoimpl(attr: AutoImpl, item: ItemStruct) -> TokenStream {
+pub fn autoimpl_struct(attr: AutoImpl, item: ItemStruct) -> TokenStream {
     fn check_is_field(mem: &Member, fields: &Fields) {
         match (fields, mem) {
             (Fields::Named(fields), Member::Named(ref ident)) => {
