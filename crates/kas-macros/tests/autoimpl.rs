@@ -1,6 +1,7 @@
 use kas_macros::autoimpl;
 use std::fmt::Debug;
 use std::marker::PhantomData;
+use std::ops::DerefMut;
 
 fn test_has_clone(_: impl Clone) {}
 fn test_has_debug(_: impl Debug) {}
@@ -30,4 +31,22 @@ fn x() {
         c: PhantomData::<fn()>,
     };
     test_has_debug(x.clone());
+}
+
+#[autoimpl(Deref, DerefMut on self.t)]
+struct Y<S, T> {
+    _s: S,
+    t: T,
+}
+
+#[test]
+fn y() {
+    let mut y = Y { _s: (), t: 1i32 };
+
+    fn set(x: &mut i32) {
+        *x = 2;
+    }
+    set(y.deref_mut());
+
+    assert_eq!(y.t, 2);
 }
