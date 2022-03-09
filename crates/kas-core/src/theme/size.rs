@@ -16,6 +16,7 @@ use crate::text::TextApi;
 // for doc use
 #[allow(unused)]
 use crate::text::TextApiExt;
+use crate::macros::autoimpl;
 
 /// Size and scale interface
 ///
@@ -199,6 +200,7 @@ impl<'a> SizeMgr<'a> {
 /// A handle to the active theme, used for sizing
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+#[autoimpl(for<S: trait + ?Sized, R: Deref<Target = S>> R)]
 pub trait SizeHandle {
     /// Get the scale (DPI) factor
     fn scale_factor(&self) -> f32;
@@ -290,63 +292,3 @@ pub trait SizeHandle {
     /// For a vertical bar, the values are swapped.
     fn progress_bar(&self) -> Size;
 }
-
-macro_rules! impl_ {
-    (($($args:tt)*) SizeHandle for $ty:ty) => {
-        impl<$($args)*> SizeHandle for $ty {
-            fn scale_factor(&self) -> f32 {
-                self.deref().scale_factor()
-            }
-            fn pixels_from_points(&self, pt: f32) -> f32 {
-                self.deref().pixels_from_points(pt)
-            }
-            fn pixels_from_em(&self, em: f32) -> f32 {
-                self.deref().pixels_from_em(em)
-            }
-
-            fn frame(&self, style: FrameStyle, is_vert: bool) -> FrameRules {
-                self.deref().frame(style, is_vert)
-            }
-            fn separator(&self) -> Size {
-                self.deref().separator()
-            }
-            fn inner_margin(&self) -> Size {
-                self.deref().inner_margin()
-            }
-            fn outer_margins(&self) -> Margins {
-                self.deref().outer_margins()
-            }
-            fn text_margins(&self) -> Margins {
-                self.deref().text_margins()
-            }
-
-            fn line_height(&self, class: TextClass) -> i32 {
-                self.deref().line_height(class)
-            }
-            fn text_bound(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules {
-                self.deref().text_bound(text, class, axis)
-            }
-            fn text_cursor_width(&self) -> f32 {
-                self.deref().text_cursor_width()
-            }
-
-            fn checkbox(&self) -> Size {
-                self.deref().checkbox()
-            }
-            fn radiobox(&self) -> Size {
-                self.deref().radiobox()
-            }
-            fn scrollbar(&self) -> (Size, i32) {
-                self.deref().scrollbar()
-            }
-            fn slider(&self) -> (Size, i32) {
-                self.deref().slider()
-            }
-            fn progress_bar(&self) -> Size {
-                self.deref().progress_bar()
-            }
-        }
-    };
-}
-
-impl_! { (S: SizeHandle + ?Sized, R: Deref<Target = S>) SizeHandle for R }

@@ -16,6 +16,7 @@ use crate::geom::{Coord, Offset, Rect};
 use crate::layout::SetRectMgr;
 use crate::text::{AccelString, Text, TextApi, TextDisplay};
 use crate::{TkAction, WidgetId};
+use crate::macros::autoimpl;
 
 /// Optional background colour
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -329,6 +330,7 @@ impl<'a> std::ops::BitOrAssign<TkAction> for DrawMgr<'a> {
 /// A handle to the active theme, used for drawing
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+#[autoimpl(for<H: trait + ?Sized> Box<H>)]
 pub trait DrawHandle {
     /// Access components: [`SizeHandle`], [`DrawShared`], [`EventState`]
     fn components(&mut self) -> (&dyn SizeHandle, &mut dyn DrawShared, &mut EventState);
@@ -552,7 +554,6 @@ macro_rules! impl_ {
     };
 }
 
-impl_! { (H: DrawHandle) DrawHandle for Box<H> }
 #[cfg(feature = "stack_dst")]
 impl_! {
     ('a, S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>)

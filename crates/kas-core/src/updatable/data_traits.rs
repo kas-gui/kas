@@ -11,10 +11,13 @@ use crate::WidgetId;
 #[allow(unused)] // doc links
 use std::cell::RefCell;
 use std::fmt::Debug;
+use crate::macros::autoimpl;
 
 /// Trait for viewable single data items
 // Note: we require Debug + 'static to allow widgets using this to implement
 // WidgetCore, which requires Debug + Any.
+#[autoimpl(for<T: trait + ?Sized> &T, &mut T)]
+#[autoimpl(for<T: trait + ?Sized> std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait SingleData: Debug {
     /// Output type
     type Item: Clone;
@@ -62,6 +65,7 @@ pub trait SingleData: Debug {
 }
 
 /// Trait for writable single data items
+#[autoimpl(for<T: trait + ?Sized> &mut T, Box<T>)]
 pub trait SingleDataMut: SingleData {
     /// Set data, given a mutable (unique) reference
     ///
@@ -72,6 +76,8 @@ pub trait SingleDataMut: SingleData {
 
 /// Trait for viewable data lists
 #[allow(clippy::len_without_is_empty)]
+#[autoimpl(for<T: trait + ?Sized> &T, &mut T)]
+#[autoimpl(for<T: trait + ?Sized> std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait ListData: Debug {
     /// Key type
     type Key: Clone + Debug + PartialEq + Eq;
@@ -159,6 +165,7 @@ pub trait ListData: Debug {
 }
 
 /// Trait for writable data lists
+#[autoimpl(for<T: trait> &mut T, Box<T>)]
 pub trait ListDataMut: ListData {
     /// Set data for an existing key
     ///
@@ -170,6 +177,8 @@ pub trait ListDataMut: ListData {
 /// Trait for viewable data matrices
 ///
 /// Data matrices are a kind of table where each cell has the same type.
+#[autoimpl(for<T: trait + ?Sized> &T, &mut T)]
+#[autoimpl(for<T: trait + ?Sized> std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait MatrixData: Debug {
     /// Column key type
     type ColKey: Clone + Debug + PartialEq + Eq;
@@ -278,6 +287,7 @@ pub trait MatrixData: Debug {
 }
 
 /// Trait for writable data matrices
+#[autoimpl(for<T: trait + ?Sized> &mut T, Box<T>)]
 pub trait MatrixDataMut: MatrixData {
     /// Set data for an existing cell
     ///
