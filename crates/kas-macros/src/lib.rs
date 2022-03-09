@@ -118,6 +118,7 @@ pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
             let item = parse_macro_input!(item as Item);
             toks.extend(TokenStream::from(match item {
                 Item::Struct(item) => autoimpl::autoimpl_struct(attr, item),
+                Item::Trait(item) => autoimpl::autoimpl_trait(attr, item),
                 item => {
                     emit_error!(item.span(), "autoimpl: does not support this item type");
                     return toks;

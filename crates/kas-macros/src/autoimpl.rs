@@ -3,14 +3,21 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::generics::{clause_to_toks, WhereClause};
+use crate::generics::{
+    clause_to_toks, impl_generics, GenericParam, Generics, TypeParamBound, WhereClause,
+    WherePredicate,
+};
 use proc_macro2::{Literal, Span, TokenStream};
-use proc_macro_error::emit_error;
-use quote::{quote, quote_spanned, TokenStreamExt};
+use proc_macro_error::{emit_call_site_error, emit_error};
+use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
+use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
-use syn::{Field, Fields, Ident, ItemStruct, Member, Token};
+use syn::{
+    Field, Fields, FnArg, Ident, ItemStruct, ItemTrait, Member, Path, PathArguments, Token,
+    TraitItem, Type, TypePath,
+};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -71,19 +78,25 @@ fn class(ident: &Ident) -> Option<Class> {
 }
 
 enum Body {
+    For {
+        generics: Generics,
+        definitive: Ident,
+        targets: Punctuated<Type, Comma>,
+    },
     Many {
         targets: Vec<TraitMany>,
         ignores: Vec<Member>,
+        clause: Option<WhereClause>,
     },
     One {
         targets: Vec<TraitOne>,
         on: Member,
+        clause: Option<WhereClause>,
     },
 }
 
 pub struct AutoImpl {
     body: Body,
-    clause: Option<WhereClause>,
 }
 
 impl Parse for AutoImpl {
@@ -98,6 +111,85 @@ impl Parse for AutoImpl {
 
         let mut empty_or_trailing = true;
         let mut lookahead = input.lookahead1();
+
+        if lookahead.peek(Token![for]) {
+            let _ = input.parse::<Token![for]>()?;
+            let mut generics: Generics = input.parse()?;
+
+            let targets = Punctuated::parse_separated_nonempty(input)?;
+
+            lookahead = input.lookahead1();
+            if lookahead.peek(Token![where]) {
+                generics.where_clause = Some(input.parse()?);
+                lookahead = input.lookahead1();
+            }
+
+            if !input.is_empty() {
+                return Err(lookahead.error());
+            }
+
+            let mut definitive = None;
+            for param in &generics.params {
+                match param {
+                    GenericParam::Type(param) => {
+                        for bound in &param.bounds {
+                            if matches!(bound, TypeParamBound::TraitSubst(_)) {
+                                definitive = Some(param.ident.clone());
+                                break;
+                            }
+                        }
+                    }
+                    _ => (),
+                }
+            }
+            if definitive.is_none() {
+                if let Some(clause) = generics.where_clause.as_ref() {
+                    for pred in &clause.predicates {
+                        match pred {
+                            WherePredicate::Type(pred) => {
+                                for bound in &pred.bounds {
+                                    if matches!(bound, TypeParamBound::TraitSubst(_)) {
+                                        match pred.bounded_ty {
+                                            Type::Path(TypePath {
+                                                qself: None,
+                                                path:
+                                                    Path {
+                                                        leading_colon: None,
+                                                        ref segments,
+                                                    },
+                                            }) if segments.len() == 1
+                                                && matches!(
+                                                    segments[0].arguments,
+                                                    PathArguments::None
+                                                ) =>
+                                            {
+                                                definitive = Some(segments[0].ident.clone());
+                                                break;
+                                            }
+                                            _ => (),
+                                        }
+                                    }
+                                }
+                            }
+                            _ => (),
+                        }
+                    }
+                }
+            }
+            let definitive = match definitive {
+                Some(def) => def,
+                None => {
+                    return Err(Error::new(Span::call_site(), "no definitive type parameter — a type parameter must have bound like `T: trait`"));
+                }
+            };
+
+            let body = Body::For {
+                generics,
+                definitive,
+                targets,
+            };
+            return Ok(AutoImpl { body });
+        }
 
         let mut targets_many = Vec::new();
         let mut targets_one = Vec::new();
@@ -218,16 +310,92 @@ impl Parse for AutoImpl {
             Body::One {
                 targets: targets_one,
                 on: on.unwrap(),
+                clause,
             }
         } else {
             Body::Many {
                 targets: targets_many,
                 ignores,
+                clause,
             }
         };
 
-        Ok(AutoImpl { body, clause })
+        Ok(AutoImpl { body })
     }
+}
+
+pub fn autoimpl_trait(mut attr: AutoImpl, item: ItemTrait) -> TokenStream {
+    let mut toks = TokenStream::new();
+    match &mut attr.body {
+        Body::For {
+            generics,
+            definitive,
+            targets,
+        } => {
+            let trait_ident = &item.ident;
+            let (_, ty_generics, _) = item.generics.split_for_impl();
+            let trait_ty = quote! { #trait_ident #ty_generics };
+            let impl_generics = impl_generics(&generics, &trait_ty);
+            let where_clause = clause_to_toks(
+                &generics.where_clause,
+                item.generics.where_clause.as_ref(),
+                &trait_ty,
+            );
+
+            for target in targets {
+                let mut impl_items = TokenStream::new();
+                for item in &item.items {
+                    match item {
+                        TraitItem::Const(item) => {
+                            let ident = &item.ident;
+                            let ty = &item.ty;
+                            impl_items.append_all(quote! {
+                                const #ident : #ty = < #definitive as #trait_ty > :: #ident;
+                            });
+                        }
+                        TraitItem::Method(item) => {
+                            let sig = &item.sig;
+                            let ident = &sig.ident;
+                            let params = sig.inputs.iter().map(|arg| match arg {
+                                FnArg::Receiver(arg) => &arg.self_token as &dyn ToTokens,
+                                FnArg::Typed(arg) => &arg.pat,
+                            });
+                            impl_items.append_all(quote! {
+                                #sig {
+                                    < #definitive as #trait_ty > :: #ident ( #(#params),* )
+                                }
+                            });
+                        }
+                        TraitItem::Type(item) => {
+                            let ident = &item.ident;
+                            impl_items.append_all(quote! {
+                                type #ident = < #definitive as #trait_ty > :: #ident;
+                            });
+                        }
+                        TraitItem::Macro(item) => {
+                            emit_error!(item.span(), "unsupported: macro item in trait");
+                        }
+                        TraitItem::Verbatim(item) => {
+                            emit_error!(item.span(), "unsupported: verbatim item in trait");
+                        }
+
+                        #[cfg(test)]
+                        TraitItem::__TestExhaustive(_) => unimplemented!(),
+                        #[cfg(not(test))]
+                        _ => (),
+                    }
+                }
+
+                toks.append_all(quote! {
+                    impl #impl_generics #trait_ty for #target #where_clause {
+                        #impl_items
+                    }
+                });
+            }
+        }
+        _ => emit_call_site_error!("autoimpl: expected `for<Params..> Types..` on trait item"),
+    }
+    toks
 }
 
 pub fn autoimpl_struct(attr: AutoImpl, item: ItemStruct) -> TokenStream {
@@ -252,6 +420,9 @@ pub fn autoimpl_struct(attr: AutoImpl, item: ItemStruct) -> TokenStream {
         emit_error!(mem.span(), "not a struct field");
     }
     match &attr.body {
+        Body::For { .. } => {
+            emit_call_site_error!("autoimpl: unexpected: `for<..> ..` on struct item")
+        }
         Body::Many { ignores, .. } => {
             for mem in ignores {
                 check_is_field(mem, &item.fields);
@@ -262,10 +433,19 @@ pub fn autoimpl_struct(attr: AutoImpl, item: ItemStruct) -> TokenStream {
 
     let mut toks = TokenStream::new();
     match attr.body {
-        Body::Many { targets, ignores } => {
-            autoimpl_many(targets, ignores, item, &attr.clause, &mut toks)
+        Body::For { .. } => {
+            emit_call_site_error!("autoimpl: `for<..>` not supported on struct item")
         }
-        Body::One { targets, on } => autoimpl_one(targets, on, item, &attr.clause, &mut toks),
+        Body::Many {
+            targets,
+            ignores,
+            ref clause,
+        } => autoimpl_many(targets, ignores, item, clause, &mut toks),
+        Body::One {
+            targets,
+            on,
+            ref clause,
+        } => autoimpl_one(targets, on, item, clause, &mut toks),
     }
     toks
 }

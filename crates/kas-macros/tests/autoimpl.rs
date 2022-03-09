@@ -50,3 +50,39 @@ fn y() {
 
     assert_eq!(y.t, 2);
 }
+
+#[autoimpl(for<'a, T: trait> &'a mut T, Box<T>)]
+trait Z {
+    const A: i32;
+
+    fn f(&self);
+    fn g(&mut self, a: i32, b: &Self::B);
+
+    type B;
+}
+
+impl Z for () {
+    const A: i32 = 10;
+
+    fn f(&self) {}
+    fn g(&mut self, _: i32, _: &i32) {}
+
+    type B = i32;
+}
+
+#[test]
+fn z() {
+    fn impls_z(_: impl Z) {}
+
+    impls_z(());
+    impls_z(&mut ());
+    impls_z(Box::new(()));
+}
+
+#[autoimpl(for<'a, V, T> &'a T, &'a mut T where T: trait)]
+trait G<V>
+where
+    V: Debug,
+{
+    fn g(&self) -> V;
+}
