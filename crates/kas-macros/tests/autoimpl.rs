@@ -79,8 +79,8 @@ fn z() {
     impls_z(Box::new(()));
 }
 
-#[autoimpl(for<'a, V, T> &'a T, &'a mut T where T: trait)]
-#[autoimpl(for<V> Box<dyn G<V>> using G<V>)]
+#[autoimpl(for<'a, V, T> &'a T, &'a mut T where T: trait + ?Sized)]
+#[autoimpl(for<V> Box<dyn G<V>> using dyn G<V>)]
 trait G<V>
 where
     V: Debug,

@@ -25,6 +25,7 @@ mod kw {
 
     custom_keyword!(on);
     custom_keyword!(ignore);
+    custom_keyword!(using);
 }
 
 /// Traits targetting many fields
@@ -80,7 +81,8 @@ fn class(ident: &Ident) -> Option<Class> {
 enum Body {
     For {
         generics: Generics,
-        definitive: Ident,
+        definitive: Type,
+        explicit_definitive: bool,
         targets: Punctuated<Type, Comma>,
     },
     Many {
@@ -118,7 +120,17 @@ impl Parse for AutoImpl {
 
             let targets = Punctuated::parse_separated_nonempty(input)?;
 
+            let mut definitive: Option<Type> = None;
+            let mut explicit_definitive = false;
+
             lookahead = input.lookahead1();
+            if lookahead.peek(kw::using) {
+                let _ = input.parse::<kw::using>()?;
+                definitive = Some(input.parse::<syn::TypeTraitObject>()?.into());
+                explicit_definitive = true;
+                lookahead = input.lookahead1();
+            }
+
             if lookahead.peek(Token![where]) {
                 generics.where_clause = Some(input.parse()?);
                 lookahead = input.lookahead1();
@@ -128,18 +140,21 @@ impl Parse for AutoImpl {
                 return Err(lookahead.error());
             }
 
-            let mut definitive = None;
-            for param in &generics.params {
-                match param {
-                    GenericParam::Type(param) => {
-                        for bound in &param.bounds {
-                            if matches!(bound, TypeParamBound::TraitSubst(_)) {
-                                definitive = Some(param.ident.clone());
-                                break;
+            if definitive.is_none() {
+                for param in &generics.params {
+                    match param {
+                        GenericParam::Type(param) => {
+                            for bound in &param.bounds {
+                                if matches!(bound, TypeParamBound::TraitSubst(_)) {
+                                    let path = Path::from(param.ident.clone());
+                                    let ty = TypePath { qself: None, path };
+                                    definitive = Some(ty.into());
+                                    break;
+                                }
                             }
                         }
+                        _ => (),
                     }
-                    _ => (),
                 }
             }
             if definitive.is_none() {
@@ -163,7 +178,9 @@ impl Parse for AutoImpl {
                                                     PathArguments::None
                                                 ) =>
                                             {
-                                                definitive = Some(segments[0].ident.clone());
+                                                let path = Path::from(segments[0].ident.clone());
+                                                let ty = TypePath { qself: None, path };
+                                                definitive = Some(ty.into());
                                                 break;
                                             }
                                             _ => (),
@@ -179,13 +196,14 @@ impl Parse for AutoImpl {
             let definitive = match definitive {
                 Some(def) => def,
                 None => {
-                    return Err(Error::new(Span::call_site(), "no definitive type parameter — a type parameter must have bound like `T: trait`"));
+                    return Err(Error::new(Span::call_site(), "no definitive type parameter — either a type parameter must have bound like `T: trait` or the type must be specified explicitly, e.g. `using dyn MyTrait`"));
                 }
             };
 
             let body = Body::For {
                 generics,
                 definitive,
+                explicit_definitive,
                 targets,
             };
             return Ok(AutoImpl { body });
@@ -330,6 +348,7 @@ pub fn autoimpl_trait(mut attr: AutoImpl, item: ItemTrait) -> TokenStream {
         Body::For {
             generics,
             definitive,
+            explicit_definitive,
             targets,
         } => {
             let trait_ident = &item.ident;
@@ -342,6 +361,12 @@ pub fn autoimpl_trait(mut attr: AutoImpl, item: ItemTrait) -> TokenStream {
                 &trait_ty,
             );
 
+            let definitive = if *explicit_definitive {
+                quote! { < #definitive > }
+            } else {
+                quote! { < #definitive as #trait_ty > }
+            };
+
             for target in targets {
                 let mut impl_items = TokenStream::new();
                 for item in &item.items {
@@ -350,7 +375,7 @@ pub fn autoimpl_trait(mut attr: AutoImpl, item: ItemTrait) -> TokenStream {
                             let ident = &item.ident;
                             let ty = &item.ty;
                             impl_items.append_all(quote! {
-                                const #ident : #ty = < #definitive as #trait_ty > :: #ident;
+                                const #ident : #ty = #definitive :: #ident;
                             });
                         }
                         TraitItem::Method(item) => {
@@ -362,14 +387,14 @@ pub fn autoimpl_trait(mut attr: AutoImpl, item: ItemTrait) -> TokenStream {
                             });
                             impl_items.append_all(quote! {
                                 #sig {
-                                    < #definitive as #trait_ty > :: #ident ( #(#params),* )
+                                    #definitive :: #ident ( #(#params),* )
                                 }
                             });
                         }
                         TraitItem::Type(item) => {
                             let ident = &item.ident;
                             impl_items.append_all(quote! {
-                                type #ident = < #definitive as #trait_ty > :: #ident;
+                                type #ident = #definitive :: #ident;
                             });
                         }
                         TraitItem::Macro(item) => {

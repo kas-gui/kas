@@ -6,7 +6,7 @@
 //! "Handle" types used by themes
 
 use std::convert::AsRef;
-use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
+use std::ops::{Bound, Range, RangeBounds};
 
 use super::{FrameStyle, IdCoord, IdRect, SizeHandle, SizeMgr, TextClass};
 use crate::dir::Direction;
@@ -331,6 +331,12 @@ impl<'a> std::ops::BitOrAssign<TkAction> for DrawMgr<'a> {
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 #[autoimpl(for<H: trait + ?Sized> Box<H>)]
+#[cfg(feature = "stack_dst")]
+#[autoimpl(
+    for<'a, S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>>
+    stack_dst::ValueA<dyn DrawHandle + 'a, S>
+    using dyn DrawHandle
+)]
 pub trait DrawHandle {
     /// Access components: [`SizeHandle`], [`DrawShared`], [`EventState`]
     fn components(&mut self) -> (&dyn SizeHandle, &mut dyn DrawShared, &mut EventState);
@@ -468,96 +474,6 @@ pub trait DrawHandle {
 
     /// Draw an image
     fn image(&mut self, id: ImageId, rect: Rect);
-}
-
-macro_rules! impl_ {
-    (($($args:tt)*) DrawHandle for $ty:ty) => {
-        impl<$($args)*> DrawHandle for $ty {
-            fn components(&mut self) -> (&dyn SizeHandle, &mut dyn DrawShared, &mut EventState) {
-                self.deref_mut().components()
-            }
-            fn draw_device(&mut self) -> &mut dyn Draw {
-                self.deref_mut().draw_device()
-            }
-            fn new_pass(
-                &mut self,
-                rect: Rect,
-                offset: Offset,
-                class: PassType,
-                f: &mut dyn FnMut(&mut dyn DrawHandle),
-            ) {
-                self.deref_mut().new_pass(rect, offset, class, f);
-            }
-            fn get_clip_rect(&self) -> Rect {
-                self.deref().get_clip_rect()
-            }
-            fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle, bg: Background) {
-                self.deref_mut().frame(id, rect, style, bg);
-            }
-            fn separator(&mut self, rect: Rect) {
-                self.deref_mut().separator(rect);
-            }
-            fn selection_box(&mut self, rect: Rect) {
-                self.deref_mut().selection_box(rect);
-            }
-            fn text(&mut self, id: &WidgetId, pos: Coord, text: &TextDisplay, class: TextClass) {
-                self.deref_mut().text(id, pos, text, class)
-            }
-            fn text_effects(
-                &mut self,
-                id: &WidgetId, pos: Coord,
-                text: &dyn TextApi,
-                class: TextClass,
-            ) {
-                self.deref_mut().text_effects(id, pos, text, class);
-            }
-            fn text_accel(
-                &mut self,
-                id: &WidgetId, pos: Coord,
-                text: &Text<AccelString>,
-                class: TextClass,
-            ) {
-                self.deref_mut().text_accel(id, pos, text, class);
-            }
-            fn text_selected_range(
-                &mut self,
-                id: &WidgetId, pos: Coord,
-                text: &TextDisplay,
-                range: Range<usize>,
-                class: TextClass,
-            ) {
-                self.deref_mut()
-                    .text_selected_range(id, pos, text, range, class);
-            }
-            fn text_cursor(&mut self, id: &WidgetId, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
-                self.deref_mut().text_cursor(id, pos, text, class, byte)
-            }
-            fn checkbox(&mut self, id: &WidgetId, rect: Rect, checked: bool) {
-                self.deref_mut().checkbox(id, rect, checked)
-            }
-            fn radiobox(&mut self, id: &WidgetId, rect: Rect, checked: bool) {
-                self.deref_mut().radiobox(id, rect, checked)
-            }
-            fn scrollbar(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction) {
-                self.deref_mut().scrollbar(id, id2, rect, h_rect, dir)
-            }
-            fn slider(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction) {
-                self.deref_mut().slider(id, id2, rect, h_rect, dir)
-            }
-            fn progress_bar(&mut self, id: &WidgetId, rect: Rect, dir: Direction, value: f32) {
-                self.deref_mut().progress_bar(id, rect, dir, value);
-            }
-            fn image(&mut self, id: ImageId, rect: Rect) {
-                self.deref_mut().image(id, rect);
-            }
-        }
-    };
-}
-
-#[cfg(feature = "stack_dst")]
-impl_! {
-    ('a, S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>)
-    DrawHandle for stack_dst::ValueA<dyn DrawHandle + 'a, S>
 }
 
 #[cfg(test)]
