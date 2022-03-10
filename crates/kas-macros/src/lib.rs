@@ -7,6 +7,7 @@
 
 #![recursion_limit = "128"]
 #![allow(clippy::let_and_return)]
+#![allow(clippy::large_enum_variant)]
 
 extern crate proc_macro;
 

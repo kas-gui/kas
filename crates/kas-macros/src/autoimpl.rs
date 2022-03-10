@@ -141,53 +141,47 @@ impl Parse for AutoImpl {
 
             if definitive.is_none() {
                 for param in &generics.params {
-                    match param {
-                        GenericParam::Type(param) => {
-                            for bound in &param.bounds {
-                                if matches!(bound, TypeParamBound::TraitSubst(_)) {
-                                    let path = Path::from(param.ident.clone());
-                                    let ty = TypePath { qself: None, path };
-                                    definitive = Some(ty.into());
-                                    break;
-                                }
+                    if let GenericParam::Type(param) = param {
+                        for bound in &param.bounds {
+                            if matches!(bound, TypeParamBound::TraitSubst(_)) {
+                                let path = Path::from(param.ident.clone());
+                                let ty = TypePath { qself: None, path };
+                                definitive = Some(ty.into());
+                                break;
                             }
                         }
-                        _ => (),
                     }
                 }
             }
             if definitive.is_none() {
                 if let Some(clause) = generics.where_clause.as_ref() {
                     for pred in &clause.predicates {
-                        match pred {
-                            WherePredicate::Type(pred) => {
-                                for bound in &pred.bounds {
-                                    if matches!(bound, TypeParamBound::TraitSubst(_)) {
-                                        match pred.bounded_ty {
-                                            Type::Path(TypePath {
-                                                qself: None,
-                                                path:
-                                                    Path {
-                                                        leading_colon: None,
-                                                        ref segments,
-                                                    },
-                                            }) if segments.len() == 1
-                                                && matches!(
-                                                    segments[0].arguments,
-                                                    PathArguments::None
-                                                ) =>
-                                            {
-                                                let path = Path::from(segments[0].ident.clone());
-                                                let ty = TypePath { qself: None, path };
-                                                definitive = Some(ty.into());
-                                                break;
-                                            }
-                                            _ => (),
+                        if let WherePredicate::Type(pred) = pred {
+                            for bound in &pred.bounds {
+                                if matches!(bound, TypeParamBound::TraitSubst(_)) {
+                                    match pred.bounded_ty {
+                                        Type::Path(TypePath {
+                                            qself: None,
+                                            path:
+                                                Path {
+                                                    leading_colon: None,
+                                                    ref segments,
+                                                },
+                                        }) if segments.len() == 1
+                                            && matches!(
+                                                segments[0].arguments,
+                                                PathArguments::None
+                                            ) =>
+                                        {
+                                            let path = Path::from(segments[0].ident.clone());
+                                            let ty = TypePath { qself: None, path };
+                                            definitive = Some(ty.into());
+                                            break;
                                         }
+                                        _ => (),
                                     }
                                 }
                             }
-                            _ => (),
                         }
                     }
                 }
@@ -355,7 +349,7 @@ pub fn autoimpl_trait(mut attr: AutoImpl, item: ItemTrait) -> TokenStream {
             let trait_ident = &item.ident;
             let (_, ty_generics, _) = item.generics.split_for_impl();
             let trait_ty = quote! { #trait_ident #ty_generics };
-            let impl_generics = impl_generics(&generics, &trait_ty);
+            let impl_generics = impl_generics(generics, &trait_ty);
             let where_clause = clause_to_toks(
                 &generics.where_clause,
                 item.generics.where_clause.as_ref(),
