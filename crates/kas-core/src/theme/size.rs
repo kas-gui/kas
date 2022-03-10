@@ -12,9 +12,10 @@ use super::DrawMgr;
 use super::{FrameStyle, TextClass};
 use crate::geom::Size;
 use crate::layout::{AxisInfo, FrameRules, Margins, SizeRules};
-use crate::text::TextApi;
-// for doc use
 use crate::macros::autoimpl;
+use crate::text::TextApi;
+
+// for doc use
 #[allow(unused)]
 use crate::text::TextApiExt;
 

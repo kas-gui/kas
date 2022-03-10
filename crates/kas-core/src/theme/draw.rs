@@ -331,12 +331,11 @@ impl<'a> std::ops::BitOrAssign<TkAction> for DrawMgr<'a> {
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 #[autoimpl(for<H: trait + ?Sized> Box<H>)]
-#[cfg(feature = "stack_dst")]
-#[autoimpl(
+#[cfg_attr(feature = "stack_dst", autoimpl(
     for<'a, S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>>
     stack_dst::ValueA<dyn DrawHandle + 'a, S>
     using dyn DrawHandle
-)]
+))]
 pub trait DrawHandle {
     /// Access components: [`SizeHandle`], [`DrawShared`], [`EventState`]
     fn components(&mut self) -> (&dyn SizeHandle, &mut dyn DrawShared, &mut EventState);

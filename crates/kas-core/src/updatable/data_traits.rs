@@ -16,8 +16,7 @@ use std::fmt::Debug;
 /// Trait for viewable single data items
 // Note: we require Debug + 'static to allow widgets using this to implement
 // WidgetCore, which requires Debug + Any.
-#[autoimpl(for<T: trait + ?Sized> &T, &mut T)]
-#[autoimpl(for<T: trait + ?Sized> std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
+#[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait SingleData: Debug {
     /// Output type
     type Item: Clone;
@@ -76,8 +75,7 @@ pub trait SingleDataMut: SingleData {
 
 /// Trait for viewable data lists
 #[allow(clippy::len_without_is_empty)]
-#[autoimpl(for<T: trait + ?Sized> &T, &mut T)]
-#[autoimpl(for<T: trait + ?Sized> std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
+#[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait ListData: Debug {
     /// Key type
     type Key: Clone + Debug + PartialEq + Eq;
@@ -177,8 +175,7 @@ pub trait ListDataMut: ListData {
 /// Trait for viewable data matrices
 ///
 /// Data matrices are a kind of table where each cell has the same type.
-#[autoimpl(for<T: trait + ?Sized> &T, &mut T)]
-#[autoimpl(for<T: trait + ?Sized> std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
+#[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait MatrixData: Debug {
     /// Column key type
     type ColKey: Clone + Debug + PartialEq + Eq;
