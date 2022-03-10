@@ -16,6 +16,7 @@ use syn::{Attribute, ConstParam, LifetimeDef, PredicateLifetime, TraitBound};
 use syn::{BoundLifetimes, Ident, Lifetime, Token, Type};
 
 /// Lifetimes and type parameters attached an item
+#[derive(Debug)]
 pub struct Generics {
     pub lt_token: Option<Token![<]>,
     pub params: Punctuated<GenericParam, Token![,]>,
@@ -35,6 +36,7 @@ impl Default for Generics {
 }
 
 /// A generic type parameter, lifetime, or const generic
+#[derive(Debug)]
 pub enum GenericParam {
     Type(TypeParam),
     Lifetime(LifetimeDef),
@@ -42,6 +44,7 @@ pub enum GenericParam {
 }
 
 /// A generic type parameter: `T: Into<String>`.
+#[derive(Debug)]
 pub struct TypeParam {
     pub attrs: Vec<Attribute>,
     pub ident: Ident,
@@ -52,6 +55,7 @@ pub struct TypeParam {
 }
 
 /// A trait or lifetime used as a bound on a type parameter.
+#[derive(Debug)]
 pub enum TypeParamBound {
     Trait(TraitBound),
     TraitSubst(Token![trait]),
@@ -59,6 +63,7 @@ pub enum TypeParamBound {
 }
 
 /// A `where` clause in a definition: `where T: Deserialize<'de>, D: 'static`.
+#[derive(Debug)]
 pub struct WhereClause {
     pub where_token: Token![where],
     pub predicates: Punctuated<WherePredicate, Token![,]>,
@@ -66,6 +71,7 @@ pub struct WhereClause {
 
 /// A single predicate in a `where` clause: `T: Deserialize<'de>`.
 #[allow(clippy::large_enum_variant)]
+#[derive(Debug)]
 pub enum WherePredicate {
     /// A type predicate in a `where` clause: `for<'c> Foo<'c>: Trait<'c>`.
     Type(PredicateType),
@@ -75,6 +81,7 @@ pub enum WherePredicate {
 }
 
 /// A type predicate in a `where` clause: `for<'c> Foo<'c>: Trait<'c>`.
+#[derive(Debug)]
 pub struct PredicateType {
     /// Any lifetimes from a `for` binding
     pub lifetimes: Option<BoundLifetimes>,

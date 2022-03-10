@@ -14,9 +14,9 @@ use crate::draw::{color::Rgb, Draw, DrawShared, ImageId, PassType};
 use crate::event::EventState;
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::SetRectMgr;
+use crate::macros::autoimpl;
 use crate::text::{AccelString, Text, TextApi, TextDisplay};
 use crate::{TkAction, WidgetId};
-use crate::macros::autoimpl;
 
 /// Optional background colour
 #[derive(Copy, Clone, Debug, PartialEq)]

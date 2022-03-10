@@ -14,9 +14,9 @@ use crate::geom::Size;
 use crate::layout::{AxisInfo, FrameRules, Margins, SizeRules};
 use crate::text::TextApi;
 // for doc use
+use crate::macros::autoimpl;
 #[allow(unused)]
 use crate::text::TextApiExt;
-use crate::macros::autoimpl;
 
 /// Size and scale interface
 ///

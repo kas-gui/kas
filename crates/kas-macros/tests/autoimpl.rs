@@ -80,6 +80,7 @@ fn z() {
 }
 
 #[autoimpl(for<'a, V, T> &'a T, &'a mut T where T: trait)]
+#[autoimpl(for<V> Box<dyn G<V>> using G<V>)]
 trait G<V>
 where
     V: Debug,

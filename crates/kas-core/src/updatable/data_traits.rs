@@ -6,12 +6,12 @@
 //! Traits for shared data objects
 
 use crate::event::UpdateHandle;
+use crate::macros::autoimpl;
 #[allow(unused)] // doc links
 use crate::WidgetId;
 #[allow(unused)] // doc links
 use std::cell::RefCell;
 use std::fmt::Debug;
-use crate::macros::autoimpl;
 
 /// Trait for viewable single data items
 // Note: we require Debug + 'static to allow widgets using this to implement
