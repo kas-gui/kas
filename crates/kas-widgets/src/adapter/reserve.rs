@@ -23,8 +23,8 @@ widget! {
     /// required for the current content, e.g. if a label's text may change. This
     /// widget can be used for this by wrapping the base widget.
     #[autoimpl(Debug ignore self.reserve)]
-    #[autoimpl(Deref, DerefMut on self.inner)]
-    #[autoimpl(class_traits on self.inner where W: trait)]
+    #[autoimpl(Deref, DerefMut using self.inner)]
+    #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Default)]
     #[handler(msg = <W as Handler>::Msg)]
     pub struct Reserve<W: Widget, R: FnMut(SizeMgr, AxisInfo) -> SizeRules + 'static> {

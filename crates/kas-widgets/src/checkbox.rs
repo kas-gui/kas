@@ -155,7 +155,7 @@ widget! {
 widget! {
     /// A checkbox with label
     #[autoimpl(Debug)]
-    #[autoimpl(HasBool on self.inner)]
+    #[autoimpl(HasBool using self.inner)]
     #[derive(Clone, Default)]
     #[widget{
         layout = row: *;

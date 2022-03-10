@@ -189,7 +189,7 @@ widget! {
 widget! {
     /// A radiobox with label
     #[autoimpl(Debug)]
-    #[autoimpl(HasBool on self.radiobox)]
+    #[autoimpl(HasBool using self.radiobox)]
     #[derive(Clone)]
     #[widget{
         find_id = Some(self.radiobox.id());

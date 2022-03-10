@@ -106,7 +106,7 @@ mod widget_index;
 /// Implement `Deref` and `DerefMut`, dereferencing to the given field:
 /// ```rust
 /// # use kas_macros::autoimpl;
-/// #[autoimpl(Deref, DerefMut on self.0)]
+/// #[autoimpl(Deref, DerefMut using self.0)]
 /// struct MyWrapper<T>(T);
 /// ```
 #[proc_macro_attribute]

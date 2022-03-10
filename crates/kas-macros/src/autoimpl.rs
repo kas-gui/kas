@@ -23,7 +23,6 @@ use syn::{
 mod kw {
     use syn::custom_keyword;
 
-    custom_keyword!(on);
     custom_keyword!(ignore);
     custom_keyword!(using);
 }
@@ -92,7 +91,7 @@ enum Body {
     },
     One {
         targets: Vec<TraitOne>,
-        on: Member,
+        using: Member,
         clause: Option<WhereClause>,
     },
 }
@@ -211,12 +210,14 @@ impl Parse for AutoImpl {
 
         let mut targets_many = Vec::new();
         let mut targets_one = Vec::new();
-        let mut on = None;
+        let mut using = None;
         let mut ignores = Vec::new();
         let mut clause = None;
 
         while !input.is_empty() {
-            if lookahead.peek(Token![where]) || lookahead.peek(kw::on) || lookahead.peek(kw::ignore)
+            if lookahead.peek(Token![where])
+                || lookahead.peek(kw::using)
+                || lookahead.peek(kw::ignore)
             {
                 break;
             }
@@ -286,10 +287,10 @@ impl Parse for AutoImpl {
 
         lookahead = input.lookahead1();
         if matches!(mode, Mode::One) {
-            let _: kw::on = input.parse()?;
+            let _: kw::using = input.parse()?;
             let _ = input.parse::<Token![self]>()?;
             let _ = input.parse::<Token![.]>()?;
-            on = Some(input.parse()?);
+            using = Some(input.parse()?);
             lookahead = input.lookahead1();
         } else if lookahead.peek(kw::ignore) {
             let ignore: kw::ignore = input.parse()?;
@@ -327,7 +328,7 @@ impl Parse for AutoImpl {
         let body = if matches!(mode, Mode::One) {
             Body::One {
                 targets: targets_one,
-                on: on.unwrap(),
+                using: using.unwrap(),
                 clause,
             }
         } else {
@@ -453,7 +454,7 @@ pub fn autoimpl_struct(attr: AutoImpl, item: ItemStruct) -> TokenStream {
                 check_is_field(mem, &item.fields);
             }
         }
-        Body::One { on, .. } => check_is_field(on, &item.fields),
+        Body::One { using, .. } => check_is_field(using, &item.fields),
     }
 
     let mut toks = TokenStream::new();
@@ -468,9 +469,9 @@ pub fn autoimpl_struct(attr: AutoImpl, item: ItemStruct) -> TokenStream {
         } => autoimpl_many(targets, ignores, item, clause, &mut toks),
         Body::One {
             targets,
-            on,
+            using,
             ref clause,
-        } => autoimpl_one(targets, on, item, clause, &mut toks),
+        } => autoimpl_one(targets, using, item, clause, &mut toks),
     }
     toks
 }
@@ -602,7 +603,7 @@ fn autoimpl_many(
 
 fn autoimpl_one(
     mut targets: Vec<TraitOne>,
-    on: Member,
+    using: Member,
     item: ItemStruct,
     clause: &Option<WhereClause>,
     toks: &mut TokenStream,
@@ -633,12 +634,12 @@ fn autoimpl_one(
         match target {
             TraitOne::Deref(span) => {
                 let wc = clause_to_toks(clause, item_wc, &quote! { std::ops::Deref });
-                let ty = for_field(&item.fields, &on, |field| field.ty.clone()).unwrap();
+                let ty = for_field(&item.fields, &using, |field| field.ty.clone()).unwrap();
                 toks.append_all(quote_spanned! {span=>
                     impl #impl_generics std::ops::Deref for #ident #ty_generics #wc {
                         type Target = #ty;
                         fn deref(&self) -> &Self::Target {
-                            &self.#on
+                            &self.#using
                         }
                     }
                 });
@@ -648,7 +649,7 @@ fn autoimpl_one(
                 toks.append_all(quote_spanned! {span=>
                     impl #impl_generics std::ops::DerefMut for #ident #ty_generics #wc {
                         fn deref_mut(&mut self) -> &mut Self::Target {
-                            &mut self.#on
+                            &mut self.#using
                         }
                     }
                 });
@@ -659,12 +660,12 @@ fn autoimpl_one(
                     impl #impl_generics ::kas::class::HasBool for #ident #ty_generics #wc {
                         #[inline]
                         fn get_bool(&self) -> bool {
-                            self.#on.get_bool()
+                            self.#using.get_bool()
                         }
 
                         #[inline]
                         fn set_bool(&mut self, state: bool) -> ::kas::TkAction {
-                            self.#on.set_bool(state)
+                            self.#using.set_bool(state)
                         }
                     }
                 });
@@ -675,12 +676,12 @@ fn autoimpl_one(
                     impl #impl_generics ::kas::class::HasStr for #ident #ty_generics #wc {
                         #[inline]
                         fn get_str(&self) -> &str {
-                            self.#on.get_str()
+                            self.#using.get_str()
                         }
 
                         #[inline]
                         fn get_string(&self) -> String {
-                            self.#on.get_string()
+                            self.#using.get_string()
                         }
                     }
                 });
@@ -691,12 +692,12 @@ fn autoimpl_one(
                     impl #impl_generics ::kas::class::HasString for #ident #ty_generics #wc {
                         #[inline]
                         fn set_str(&mut self, text: &str) -> ::kas::TkAction {
-                            self.#on.set_str(text)
+                            self.#using.set_str(text)
                         }
 
                         #[inline]
                         fn set_string(&mut self, text: String) -> ::kas::TkAction {
-                            self.#on.set_string(text)
+                            self.#using.set_string(text)
                         }
                     }
                 });
@@ -707,7 +708,7 @@ fn autoimpl_one(
                     impl #impl_generics ::kas::class::SetAccel for #ident #ty_generics #wc {
                         #[inline]
                         fn set_accel_string(&mut self, accel: AccelString) -> ::kas::TkAction {
-                            self.#on.set_accel_string(accel)
+                            self.#using.set_accel_string(accel)
                         }
                     }
                 });

@@ -33,7 +33,7 @@ fn x() {
     test_has_debug(x.clone());
 }
 
-#[autoimpl(Deref, DerefMut on self.t)]
+#[autoimpl(Deref, DerefMut using self.t)]
 struct Y<S, T> {
     _s: S,
     t: T,
