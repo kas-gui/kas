@@ -72,18 +72,45 @@ impl Z for () {
 
 #[test]
 fn z() {
-    fn impls_z(_: impl Z) {}
+    fn impls_z(mut z: impl Z<B = i32>) {
+        z.f();
+        z.g(1, &2);
+    }
 
     impls_z(());
     impls_z(&mut ());
     impls_z(Box::new(()));
 }
 
-#[autoimpl(for<'a, V, T> &'a T, &'a mut T where T: trait + ?Sized)]
-#[autoimpl(for<V> Box<dyn G<V>> using dyn G<V>)]
+#[autoimpl(for<'a, V, T> &'a T, &'a mut T, Box<T> where T: trait + ?Sized)]
 trait G<V>
 where
     V: Debug,
 {
     fn g(&self) -> V;
+}
+
+#[test]
+fn g() {
+    struct S;
+    impl G<i32> for S {
+        fn g(&self) -> i32 {
+            123
+        }
+    }
+
+    fn impls_g(g: impl G<i32>) {
+        assert_eq!(g.g(), 123);
+    }
+
+    impls_g(S);
+    impls_g(&S);
+    impls_g(&&S);
+    impls_g(&mut S);
+    impls_g(&&mut S);
+    impls_g(&S as &dyn G<i32>);
+    impls_g(Box::new(S));
+    impls_g(&mut &Box::new(S));
+    impls_g(Box::new(S) as Box<dyn G<i32>>);
+    impls_g(&mut (Box::new(S) as Box<dyn G<i32>>));
 }

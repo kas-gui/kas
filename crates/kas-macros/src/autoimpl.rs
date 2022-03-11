@@ -28,14 +28,14 @@ mod kw {
 }
 
 /// Traits targetting many fields
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum TraitMany {
     Clone(Span),
     Debug(Span),
     Default(Span),
 }
 /// Traits targetting one field
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum TraitOne {
     Deref(Span),
     DerefMut(Span),
@@ -44,7 +44,7 @@ enum TraitOne {
     HasString(Span),
     SetAccel(Span),
 }
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 #[allow(clippy::enum_variant_names)]
 enum Class {
     Many(TraitMany),
@@ -77,11 +77,11 @@ fn class(ident: &Ident) -> Option<Class> {
     }
 }
 
+#[derive(Debug)]
 enum Body {
     For {
         generics: Generics,
-        definitive: Type,
-        explicit_definitive: bool,
+        definitive: Ident,
         targets: Punctuated<Type, Comma>,
     },
     Many {
@@ -119,17 +119,7 @@ impl Parse for AutoImpl {
 
             let targets = Punctuated::parse_separated_nonempty(input)?;
 
-            let mut definitive: Option<Type> = None;
-            let mut explicit_definitive = false;
-
             lookahead = input.lookahead1();
-            if lookahead.peek(kw::using) {
-                let _ = input.parse::<kw::using>()?;
-                definitive = Some(input.parse::<syn::TypeTraitObject>()?.into());
-                explicit_definitive = true;
-                lookahead = input.lookahead1();
-            }
-
             if lookahead.peek(Token![where]) {
                 generics.where_clause = Some(input.parse()?);
                 lookahead = input.lookahead1();
@@ -139,16 +129,13 @@ impl Parse for AutoImpl {
                 return Err(lookahead.error());
             }
 
-            if definitive.is_none() {
-                for param in &generics.params {
-                    if let GenericParam::Type(param) = param {
-                        for bound in &param.bounds {
-                            if matches!(bound, TypeParamBound::TraitSubst(_)) {
-                                let path = Path::from(param.ident.clone());
-                                let ty = TypePath { qself: None, path };
-                                definitive = Some(ty.into());
-                                break;
-                            }
+            let mut definitive: Option<Ident> = None;
+            for param in &generics.params {
+                if let GenericParam::Type(param) = param {
+                    for bound in &param.bounds {
+                        if matches!(bound, TypeParamBound::TraitSubst(_)) {
+                            definitive = Some(param.ident.clone());
+                            break;
                         }
                     }
                 }
@@ -173,9 +160,7 @@ impl Parse for AutoImpl {
                                                 PathArguments::None
                                             ) =>
                                         {
-                                            let path = Path::from(segments[0].ident.clone());
-                                            let ty = TypePath { qself: None, path };
-                                            definitive = Some(ty.into());
+                                            definitive = Some(segments[0].ident.clone());
                                             break;
                                         }
                                         _ => (),
@@ -196,7 +181,6 @@ impl Parse for AutoImpl {
             let body = Body::For {
                 generics,
                 definitive,
-                explicit_definitive,
                 targets,
             };
             return Ok(AutoImpl { body });
@@ -343,7 +327,6 @@ pub fn autoimpl_trait(mut attr: AutoImpl, item: ItemTrait) -> TokenStream {
         Body::For {
             generics,
             definitive,
-            explicit_definitive,
             targets,
         } => {
             let trait_ident = &item.ident;
@@ -356,11 +339,7 @@ pub fn autoimpl_trait(mut attr: AutoImpl, item: ItemTrait) -> TokenStream {
                 &trait_ty,
             );
 
-            let definitive = if *explicit_definitive {
-                quote! { < #definitive > }
-            } else {
-                quote! { < #definitive as #trait_ty > }
-            };
+            let definitive = quote! { < #definitive as #trait_ty > };
 
             for target in targets {
                 let mut impl_items = TokenStream::new();

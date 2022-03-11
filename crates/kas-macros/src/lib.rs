@@ -140,18 +140,17 @@ mod widget_index;
 /// Implement `MyTrait` for `&T`, `&mut T` and `Box<dyn MyTrait>`:
 /// ```
 /// # use kas_macros::autoimpl;
-/// #[autoimpl(for<'a, T: trait + ?Sized> &'a T, &'a mut T)]
-/// #[autoimpl(for<> Box<dyn MyTrait> using dyn MyTrait)]
+/// #[autoimpl(for<'a, T: trait + ?Sized> &'a T, &'a mut T, Box<T>)]
 /// trait MyTrait {
 ///     fn f(&self) -> String;
 /// }
 /// ```
-/// Note that so long as a parameter bound like `T: trait` exists, the
-/// definitive type may be deduced (e.g. `<T as MyTrait>`). In the second
-/// case, we must specify the definitive type directly: `using dyn MyTrait`.
+/// Note that the first parameter bound like `T: trait` is used as the
+/// definitive type (required). For example, here, `f` is implemented with the
+/// body `<T as MyTrait>::f(self)`.
 ///
-/// Note also that parameters of trait re-implementations must start with `for`,
-/// hence the empty `for<>`.
+/// Note further: if the trait uses generic parameters itself, these must be
+/// introduced explicitly in the `for<..>` parameter list.
 
 #[proc_macro_attribute]
 #[proc_macro_error]
