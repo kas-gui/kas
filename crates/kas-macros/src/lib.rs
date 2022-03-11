@@ -140,8 +140,7 @@ mod widget_index;
 /// Implement `MyTrait` for `&T`, `&mut T` and `Box<dyn MyTrait>`:
 /// ```
 /// # use kas_macros::autoimpl;
-/// #[autoimpl(for<'a, T: trait + ?Sized> &'a T, &'a mut T)]
-/// #[autoimpl(for<> Box<dyn MyTrait> using dyn MyTrait)]
+/// #[autoimpl(for<'a, T: trait + ?Sized> &'a T, &'a mut T, Box<T>)]
 /// trait MyTrait {
 ///     fn f(&self) -> String;
 /// }

@@ -332,9 +332,8 @@ impl<'a> std::ops::BitOrAssign<TkAction> for DrawMgr<'a> {
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 #[autoimpl(for<H: trait + ?Sized> Box<H>)]
 #[cfg_attr(feature = "stack_dst", autoimpl(
-    for<'a, S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>>
-    stack_dst::ValueA<dyn DrawHandle + 'a, S>
-    using dyn DrawHandle
+    for<H: trait + ?Sized, S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>>
+    stack_dst::ValueA<H, S>
 ))]
 pub trait DrawHandle {
     /// Access components: [`SizeHandle`], [`DrawShared`], [`EventState`]
