@@ -58,6 +58,14 @@ impl TextClass {
             Label(true) | LabelScroll | AccelLabel(true) | Edit(true)
         )
     }
+
+    /// True if text effects should only be shown dependant on accelerator-key
+    /// mode being active
+    #[inline]
+    pub fn is_accel(self) -> bool {
+        use TextClass::*;
+        matches!(self, AccelLabel(_) | Button | MenuLabel)
+    }
 }
 
 /// Style of a frame

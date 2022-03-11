@@ -41,7 +41,7 @@ widget! {
 
         fn draw(&mut self, mut draw: DrawMgr) {
             draw.frame(&*self, FrameStyle::MenuEntry, Default::default());
-            draw.text_accel(
+            draw.text_effects(
                 kas::theme::IdCoord(self.id_ref(), self.layout_label.pos),
                 &self.label,
                 TextClass::MenuLabel,

@@ -62,10 +62,11 @@ widget! {
     }
 }
 
+// NOTE: the only effect of this specialization is to change the TextClass.
 #[cfg(feature = "min_spec")]
 impl Layout for AccelLabel {
     fn draw(&mut self, mut draw: DrawMgr) {
-        draw.text_accel(&*self, &self.label, TextClass::AccelLabel(self.wrap));
+        draw.text_effects(&*self, &self.label, TextClass::AccelLabel(self.wrap));
     }
 }
 
