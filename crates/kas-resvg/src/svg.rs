@@ -17,7 +17,7 @@ use tiny_skia::{Pixmap, Transform};
 widget! {
     /// An SVG image loaded from a path
     #[cfg_attr(doc_cfg, doc(cfg(feature = "svg")))]
-    #[autoimpl(Debug skip self.tree)]
+    #[autoimpl(Debug ignore self.tree)]
     #[derive(Clone)]
     pub struct Svg {
         #[widget_core]

@@ -16,7 +16,7 @@ widget! {
     /// usage.
     ///
     /// Mouse/touch input on the label sends events to the inner widget.
-    #[autoimpl(Deref, DerefMut on self.inner)]
+    #[autoimpl(Deref, DerefMut using self.inner)]
     #[derive(Clone, Default, Debug)]
     #[handler(msg = W::Msg)]
     pub struct WithLabel<W: Widget, D: Directional> {

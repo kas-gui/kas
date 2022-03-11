@@ -22,7 +22,7 @@ widget! {
     /// The driver `V` must implement [`Driver`], with data type
     /// `<T as SingleData>::Item`. Several implementations are available in the
     /// [`driver`] module or a custom implementation may be used.
-    #[autoimpl(Debug skip self.view)]
+    #[autoimpl(Debug ignore self.view)]
     #[derive(Clone)]
     #[widget{
         layout = single;

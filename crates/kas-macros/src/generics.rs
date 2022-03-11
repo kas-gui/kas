@@ -12,10 +12,50 @@ use quote::{quote, ToTokens, TokenStreamExt};
 use syn::parse::{Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::{parenthesized, token};
-use syn::{BoundLifetimes, Lifetime, Token, Type};
-use syn::{PredicateLifetime, TraitBound};
+use syn::{Attribute, ConstParam, LifetimeDef, PredicateLifetime, TraitBound};
+use syn::{BoundLifetimes, Ident, Lifetime, Token, Type};
+
+/// Lifetimes and type parameters attached an item
+#[derive(Debug)]
+pub struct Generics {
+    pub lt_token: Option<Token![<]>,
+    pub params: Punctuated<GenericParam, Token![,]>,
+    pub gt_token: Option<Token![>]>,
+    pub where_clause: Option<WhereClause>,
+}
+
+impl Default for Generics {
+    fn default() -> Self {
+        Generics {
+            lt_token: None,
+            params: Punctuated::new(),
+            gt_token: None,
+            where_clause: None,
+        }
+    }
+}
+
+/// A generic type parameter, lifetime, or const generic
+#[derive(Debug)]
+pub enum GenericParam {
+    Type(TypeParam),
+    Lifetime(LifetimeDef),
+    Const(ConstParam),
+}
+
+/// A generic type parameter: `T: Into<String>`.
+#[derive(Debug)]
+pub struct TypeParam {
+    pub attrs: Vec<Attribute>,
+    pub ident: Ident,
+    pub colon_token: Option<Token![:]>,
+    pub bounds: Punctuated<TypeParamBound, Token![+]>,
+    pub eq_token: Option<Token![=]>,
+    pub default: Option<Type>,
+}
 
 /// A trait or lifetime used as a bound on a type parameter.
+#[derive(Debug)]
 pub enum TypeParamBound {
     Trait(TraitBound),
     TraitSubst(Token![trait]),
@@ -23,6 +63,7 @@ pub enum TypeParamBound {
 }
 
 /// A `where` clause in a definition: `where T: Deserialize<'de>, D: 'static`.
+#[derive(Debug)]
 pub struct WhereClause {
     pub where_token: Token![where],
     pub predicates: Punctuated<WherePredicate, Token![,]>,
@@ -30,6 +71,7 @@ pub struct WhereClause {
 
 /// A single predicate in a `where` clause: `T: Deserialize<'de>`.
 #[allow(clippy::large_enum_variant)]
+#[derive(Debug)]
 pub enum WherePredicate {
     /// A type predicate in a `where` clause: `for<'c> Foo<'c>: Trait<'c>`.
     Type(PredicateType),
@@ -39,6 +81,7 @@ pub enum WherePredicate {
 }
 
 /// A type predicate in a `where` clause: `for<'c> Foo<'c>: Trait<'c>`.
+#[derive(Debug)]
 pub struct PredicateType {
     /// Any lifetimes from a `for` binding
     pub lifetimes: Option<BoundLifetimes>,
@@ -51,6 +94,109 @@ pub struct PredicateType {
 
 mod parsing {
     use super::*;
+    use syn::ext::IdentExt;
+
+    impl Parse for Generics {
+        fn parse(input: ParseStream) -> Result<Self> {
+            if !input.peek(Token![<]) {
+                return Ok(Generics::default());
+            }
+
+            let lt_token: Token![<] = input.parse()?;
+
+            let mut params = Punctuated::new();
+            loop {
+                if input.peek(Token![>]) {
+                    break;
+                }
+
+                let attrs = input.call(Attribute::parse_outer)?;
+                let lookahead = input.lookahead1();
+                if lookahead.peek(Lifetime) {
+                    params.push_value(GenericParam::Lifetime(LifetimeDef {
+                        attrs,
+                        ..input.parse()?
+                    }));
+                } else if lookahead.peek(Ident) {
+                    params.push_value(GenericParam::Type(TypeParam {
+                        attrs,
+                        ..input.parse()?
+                    }));
+                } else if lookahead.peek(Token![const]) {
+                    params.push_value(GenericParam::Const(ConstParam {
+                        attrs,
+                        ..input.parse()?
+                    }));
+                } else if input.peek(Token![_]) {
+                    params.push_value(GenericParam::Type(TypeParam {
+                        attrs,
+                        ident: input.call(Ident::parse_any)?,
+                        colon_token: None,
+                        bounds: Punctuated::new(),
+                        eq_token: None,
+                        default: None,
+                    }));
+                } else {
+                    return Err(lookahead.error());
+                }
+
+                if input.peek(Token![>]) {
+                    break;
+                }
+                let punct = input.parse()?;
+                params.push_punct(punct);
+            }
+
+            let gt_token: Token![>] = input.parse()?;
+
+            Ok(Generics {
+                lt_token: Some(lt_token),
+                params,
+                gt_token: Some(gt_token),
+                where_clause: None,
+            })
+        }
+    }
+
+    impl Parse for TypeParam {
+        fn parse(input: ParseStream) -> Result<Self> {
+            let attrs = input.call(Attribute::parse_outer)?;
+            let ident: Ident = input.parse()?;
+            let colon_token: Option<Token![:]> = input.parse()?;
+
+            let mut bounds = Punctuated::new();
+            if colon_token.is_some() {
+                loop {
+                    if input.peek(Token![,]) || input.peek(Token![>]) || input.peek(Token![=]) {
+                        break;
+                    }
+                    let value: TypeParamBound = input.parse()?;
+                    bounds.push_value(value);
+                    if !input.peek(Token![+]) {
+                        break;
+                    }
+                    let punct: Token![+] = input.parse()?;
+                    bounds.push_punct(punct);
+                }
+            }
+
+            let eq_token: Option<Token![=]> = input.parse()?;
+            let default = if eq_token.is_some() {
+                Some(input.parse::<Type>()?)
+            } else {
+                None
+            };
+
+            Ok(TypeParam {
+                attrs,
+                ident,
+                colon_token,
+                bounds,
+                eq_token,
+                default,
+            })
+        }
+    }
 
     impl Parse for TypeParamBound {
         fn parse(input: ParseStream) -> Result<Self> {
@@ -168,9 +314,71 @@ mod parsing {
 
 mod printing_subst {
     use super::*;
+    use syn::AttrStyle;
 
     pub trait ToTokensSubst {
         fn to_tokens_subst(&self, tokens: &mut TokenStream, subst: &TokenStream);
+    }
+
+    impl ToTokensSubst for Generics {
+        fn to_tokens_subst(&self, tokens: &mut TokenStream, subst: &TokenStream) {
+            if self.params.is_empty() {
+                return;
+            }
+
+            self.lt_token.unwrap_or_default().to_tokens(tokens);
+
+            let mut trailing_or_empty = true;
+            for pair in self.params.pairs() {
+                if let GenericParam::Lifetime(param) = *pair.value() {
+                    param.to_tokens(tokens);
+                    pair.punct().to_tokens(tokens);
+                    trailing_or_empty = pair.punct().is_some();
+                }
+            }
+            for pair in self.params.pairs() {
+                match *pair.value() {
+                    GenericParam::Type(param) => {
+                        if !trailing_or_empty {
+                            <Token![,]>::default().to_tokens(tokens);
+                            trailing_or_empty = true;
+                        }
+                        param.to_tokens_subst(tokens, subst);
+                        pair.punct().to_tokens(tokens);
+                    }
+                    GenericParam::Const(param) => {
+                        if !trailing_or_empty {
+                            <Token![,]>::default().to_tokens(tokens);
+                            trailing_or_empty = true;
+                        }
+                        param.to_tokens(tokens);
+                        pair.punct().to_tokens(tokens);
+                    }
+                    GenericParam::Lifetime(_) => {}
+                }
+            }
+
+            self.gt_token.unwrap_or_default().to_tokens(tokens);
+        }
+    }
+
+    impl ToTokensSubst for TypeParam {
+        fn to_tokens_subst(&self, tokens: &mut TokenStream, subst: &TokenStream) {
+            tokens.append_all(
+                self.attrs
+                    .iter()
+                    .filter(|attr| matches!(attr.style, AttrStyle::Outer)),
+            );
+            self.ident.to_tokens(tokens);
+            if !self.bounds.is_empty() {
+                self.colon_token.unwrap_or_default().to_tokens(tokens);
+                self.bounds.to_tokens_subst(tokens, subst);
+            }
+            if let Some(default) = &self.default {
+                self.eq_token.unwrap_or_default().to_tokens(tokens);
+                default.to_tokens(tokens);
+            }
+        }
     }
 
     impl ToTokensSubst for WhereClause {
@@ -226,10 +434,17 @@ mod printing_subst {
     }
 }
 
+pub fn impl_generics(generics: &Generics, subst: &TokenStream) -> TokenStream {
+    use printing_subst::ToTokensSubst;
+    let mut toks = quote! {};
+    generics.to_tokens_subst(&mut toks, subst);
+    toks
+}
+
 pub fn clause_to_toks(
     wc: &Option<WhereClause>,
     item_wc: Option<&syn::WhereClause>,
-    subst: TokenStream,
+    subst: &TokenStream,
 ) -> TokenStream {
     use printing_subst::ToTokensSubst;
 
@@ -237,16 +452,16 @@ pub fn clause_to_toks(
         (None, None) => quote! {},
         (Some(wc), None) => {
             let mut toks = quote! {};
-            wc.to_tokens_subst(&mut toks, &subst);
+            wc.to_tokens_subst(&mut toks, subst);
             toks
         }
         (None, Some(wc)) => quote! { #wc },
         (Some(wc), Some(item_wc)) => {
-            let mut toks = quote! { item_wc };
+            let mut toks = quote! { #item_wc };
             if !item_wc.predicates.empty_or_trailing() {
                 toks.append_all(quote! { , });
             }
-            wc.predicates.to_tokens_subst(&mut toks, &subst);
+            wc.predicates.to_tokens_subst(&mut toks, subst);
             toks
         }
     }

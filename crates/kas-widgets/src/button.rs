@@ -17,8 +17,8 @@ widget! {
     ///
     /// Default alignment is centred. Content (label) alignment is derived from the
     /// button alignment.
-    #[autoimpl(Debug skip self.on_push)]
-    #[autoimpl(class_traits where W: trait on self.inner)]
+    #[autoimpl(Debug ignore self.on_push)]
+    #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone)]
     pub struct Button<W: Widget<Msg = VoidMsg>, M: 'static> {
         #[widget_core]
@@ -172,7 +172,7 @@ widget! {
     /// Default alignment of the button is to stretch horizontally and centre
     /// vertically. The text label is always centred (irrespective of alignment
     /// parameters).
-    #[autoimpl(Debug skip self.on_push)]
+    #[autoimpl(Debug ignore self.on_push)]
     #[derive(Clone)]
     pub struct TextButton<M: 'static> {
         #[widget_core]

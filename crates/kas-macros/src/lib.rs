@@ -7,20 +7,21 @@
 
 #![recursion_limit = "128"]
 #![allow(clippy::let_and_return)]
+#![allow(clippy::large_enum_variant)]
 
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
-use proc_macro_error::proc_macro_error;
+use proc_macro_error::{emit_call_site_error, emit_error, proc_macro_error};
 use quote::quote;
 use syn::parse_macro_input;
-use syn::{GenericParam, Generics, ItemStruct};
+use syn::{spanned::Spanned, GenericParam, Generics, Item};
 
 mod args;
 mod autoimpl;
+pub(crate) mod generics;
 mod make_layout;
 mod make_widget;
-pub(crate) mod where_clause;
 mod widget;
 mod widget_index;
 
@@ -28,11 +29,8 @@ mod widget_index;
 ///
 /// This macro is similar to `#[derive(Trait)]`, but with a few differences.
 ///
-/// If using `autoimpl` **and** `derive` macros, the `autoimpl` attribute must
-/// come first (this limitation is already fixed in Rust nightly; see rust#81119).
-///
-/// Support is currently limited to structs, though in theory enums could be
-/// supported too, at least for the "mutli-field traits".
+/// If using `autoimpl` **and** `derive` macros with Rust < 1.57.0, the
+/// `autoimpl` attribute must come first (see rust#81119).
 ///
 /// Unlike `derive`, `autoimpl` is not extensible by third-party crates. The
 /// "trait names" provided to `autoimpl` are matched directly, unlike
@@ -40,37 +38,63 @@ mod widget_index;
 /// Without language support for this there appears to be no option for
 /// third-party extensions.
 ///
-/// # Bounds
-///
-/// No bounds on generic parameters are assumed. For example, if a struct has
-/// type parameter `X: 'static`, then `derive(Debug)` would assume the
-/// bound `X: Debug + 'static` on the implementation (this may or may not be
-/// desired). In contrast, `autoimpl(Debug)` will only assume bounds on the
-/// struct itself (in this case `X: 'static`).
-///
-/// Additional bounds may be specified on the implementation in the form of a
-/// `where` clause following the traits, e.g. `autoimpl(Debug where X: Debug)`.
-///
-/// A special type of bound is supported: `X: trait` — in this case `trait`
-/// resolves to the trait currently being derived.
-///
 /// [`proc_macro_derive`]: https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros
+///
+/// ### Bounds on generic parameters
+///
+/// If a type has generic parameters, generated implementations will assume the
+/// same parameters and bounds as specified in the type, but not additional
+/// bounds for the trait implemented.
+///
+/// Additional bounds may be specified via a `where` clause. A special predicate
+/// is supported: `T: trait`; here `trait` is replaced the name of the trait
+/// being implemented.
 ///
 /// # Multi-field traits
 ///
-/// Some trait implementations make use of all fields by default. Individual
-/// fields may be skipped via the `skip self.x, self.y` syntax (after any `where`
-/// clauses). The following traits may be derived this way:
+/// Some trait implementations make use of all fields (except those ignored):
 ///
-/// -   `Clone` — implements `std::clone::Clone`; skipped fields are
+/// -   `Clone` — implements `std::clone::Clone`; ignored fields are
 ///     initialised with `Default::default()`
-/// -   `Debug` — implements `std::fmt::Debug`; skipped fields are not printed
+/// -   `Debug` — implements `std::fmt::Debug`; ignored fields are not printed
+/// -   `Default` — implements `std::default::Default`
+///
+/// ### Parameter syntax
+///
+/// > _ParamsMulti_ :\
+/// > &nbsp;&nbsp; ( _Trait_ ),+ _Ignores_? _WhereClause_?
+/// >
+/// > _Ignores_ :\
+/// > &nbsp;&nbsp; `ignore` ( `self` `.` _Member_ ),+
+/// >
+/// > _WhereClause_ :\
+/// > &nbsp;&nbsp; `where` ( _WherePredicate_ ),*
+///
+/// ### Examples
+///
+/// Implement `std::fmt::Debug`, ignoring the last field:
+/// ```
+/// # use kas_macros::autoimpl;
+/// #[autoimpl(Debug ignore self.f)]
+/// struct PairWithFn<T> {
+///     x: f32,
+///     y: f32,
+///     f: fn(&T),
+/// }
+/// ```
+///
+/// Implement `Clone` and `Debug` on a wrapper, with the required bounds:
+/// ```
+/// # use kas_macros::autoimpl;
+/// #[autoimpl(Clone, Debug where T: trait)]
+/// struct Wrapper<T>(pub T);
+/// ```
+/// Note: `T: trait` is a special predicate implying that for each
+/// implementation the type `T` must support the trait being implemented.
 ///
 /// # Single-field traits
 ///
-/// Other trait implementations make use of a single field, identified via the
-/// `on self.x` syntax (after any `where` clauses). The following traits may be
-/// derived in this way:
+/// Other traits are implemented using a single field (for structs):
 ///
 /// -   `Deref` — implements `std::ops::Deref`
 /// -   `DerefMut` — implements `std::ops::DerefMut`
@@ -78,44 +102,79 @@ mod widget_index;
 /// -   `class_traits` — implements each `kas::class` trait (intended to be
 ///     used with a where clause like `where W: trait`)
 ///
-/// # Examples
+/// ### Parameter syntax
 ///
-/// Basic usage: `#[autoimpl(Debug)]`
+/// > _ParamsSingle_ :\
+/// > &nbsp;&nbsp; ( _Trait_ ),+ _Using_ _WhereClause_?
+/// >
+/// > _Using_ :\
+/// > &nbsp;&nbsp; `using` `self` `.` _Member_
 ///
-/// Implement `Clone` and `Debug` on a wrapper, with the required bounds:
-/// ```rust
-/// # use kas_macros::autoimpl;
-/// #[autoimpl(Clone, Debug where T: trait)]
-/// struct Wrapper<T>(pub T);
-/// ```
-///
-/// Implement `Debug` with a custom bound and skipping an unformattable field:
-/// ```rust
-/// use kas_macros::autoimpl;
-/// use std::fmt::Debug;
-///
-/// #[autoimpl(Debug where X: Debug skip self.z)]
-/// struct S<X, Z> {
-///     x: X,
-///     y: String,
-///     z: Z,
-/// }
-/// ```
+/// ### Examples
 ///
 /// Implement `Deref` and `DerefMut`, dereferencing to the given field:
-/// ```rust
+/// ```
 /// # use kas_macros::autoimpl;
-/// #[autoimpl(Deref, DerefMut on self.0)]
+/// #[autoimpl(Deref, DerefMut using self.0)]
 /// struct MyWrapper<T>(T);
 /// ```
+///
+/// # Trait re-implementations
+///
+/// User-defined traits may be implemented over any type supporting `Deref`
+/// (and if required `DerefMut`) to another type supporting the trait.
+///
+/// ### Parameter syntax
+///
+/// > _ParamsTrait_ :\
+/// > &nbsp;&nbsp; `for` _Generics_ ( _Type_ ),+ _Definitive_? _WhereClause_?
+/// >
+/// > _Generics_ :\
+/// > &nbsp;&nbsp; `<` ( _GenericParam_ ) `>`
+/// >
+/// > _Definitive_ :\
+/// > &nbsp;&nbsp; `using` _Type_
+///
+/// ### Examples
+///
+/// Implement `MyTrait` for `&T`, `&mut T` and `Box<dyn MyTrait>`:
+/// ```
+/// # use kas_macros::autoimpl;
+/// #[autoimpl(for<'a, T: trait + ?Sized> &'a T, &'a mut T)]
+/// #[autoimpl(for<> Box<dyn MyTrait> using dyn MyTrait)]
+/// trait MyTrait {
+///     fn f(&self) -> String;
+/// }
+/// ```
+/// Note that so long as a parameter bound like `T: trait` exists, the
+/// definitive type may be deduced (e.g. `<T as MyTrait>`). In the second
+/// case, we must specify the definitive type directly: `using dyn MyTrait`.
+///
+/// Note also that parameters of trait re-implementations must start with `for`,
+/// hence the empty `for<>`.
+
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut toks = item.clone();
-    let attr = parse_macro_input!(attr as autoimpl::AutoImpl);
-    let item = parse_macro_input!(item as ItemStruct);
-    let impls = autoimpl::autoimpl(attr, item);
-    toks.extend(TokenStream::from(impls));
+    match syn::parse(attr) {
+        Ok(attr) => {
+            let item = parse_macro_input!(item as Item);
+            toks.extend(TokenStream::from(match item {
+                Item::Struct(item) => autoimpl::autoimpl_struct(attr, item),
+                Item::Trait(item) => autoimpl::autoimpl_trait(attr, item),
+                item => {
+                    emit_error!(item.span(), "autoimpl: does not support this item type");
+                    return toks;
+                }
+            }));
+        }
+        Err(err) => {
+            emit_call_site_error!(err);
+            // Since autoimpl only adds implementations, we can safely output
+            // the original item, thus reducing secondary errors.
+        }
+    }
     toks
 }
 
