@@ -275,8 +275,8 @@ mod defaults {
         let mut selector = FontSelector::new();
         selector.set_families(vec!["serif".into()]);
         let list = [
-            (TextClass::Edit, selector.clone()),
-            (TextClass::EditMulti, selector),
+            (TextClass::Edit(false), selector.clone()),
+            (TextClass::Edit(true), selector),
         ];
         list.iter().cloned().collect()
     }

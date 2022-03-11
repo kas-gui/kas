@@ -379,11 +379,7 @@ widget! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            let class = if self.multi_line {
-                TextClass::EditMulti
-            } else {
-                TextClass::Edit
-            };
+            let class = TextClass::Edit(self.multi_line);
             size_mgr.text_bound(&mut self.text, class, axis)
         }
 
@@ -412,11 +408,7 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let class = if self.multi_line {
-                TextClass::EditMulti
-            } else {
-                TextClass::Edit
-            };
+            let class = TextClass::Edit(self.multi_line);
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
                 if self.selection.is_empty() {
                     draw.text(&*self, self.text.as_ref(), class);

@@ -487,7 +487,7 @@ mod test {
         let id = WidgetId::ROOT;
         let feature = IdCoord(&id, Coord::ZERO);
         let text = crate::text::Text::new_single("sample");
-        let class = TextClass::Label;
+        let class = TextClass::Label(false);
         draw.text_selected(feature, &text, .., class)
     }
 }

@@ -18,13 +18,14 @@ widget! {
     pub struct Label<T: FormattableText + 'static> {
         #[widget_core]
         core: CoreData,
+        wrap: bool,
         label: Text<T>,
     }
 
     impl Layout for Self {
         #[inline]
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            size_mgr.text_bound(&mut self.label, TextClass::Label, axis)
+            size_mgr.text_bound(&mut self.label, TextClass::Label(self.wrap), axis)
         }
 
         fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, align: AlignHints) {
@@ -37,11 +38,11 @@ widget! {
 
         #[cfg(feature = "min_spec")]
         default fn draw(&mut self, mut draw: DrawMgr) {
-            draw.text_effects(&*self, &self.label, TextClass::Label);
+            draw.text_effects(&*self, &self.label, TextClass::Label(self.wrap));
         }
         #[cfg(not(feature = "min_spec"))]
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.text_effects(&*self, &self.label, TextClass::Label);
+            draw.text_effects(&*self, &self.label, TextClass::Label(self.wrap));
         }
     }
 
@@ -64,7 +65,7 @@ widget! {
 #[cfg(feature = "min_spec")]
 impl Layout for AccelLabel {
     fn draw(&mut self, mut draw: DrawMgr) {
-        draw.text_accel(&*self, &self.label, TextClass::Label);
+        draw.text_accel(&*self, &self.label, TextClass::AccelLabel(self.wrap));
     }
 }
 
@@ -72,13 +73,13 @@ impl Layout for AccelLabel {
 #[cfg(feature = "min_spec")]
 impl<'a> Layout for Label<&'a str> {
     fn draw(&mut self, mut draw: DrawMgr) {
-        draw.text(&*self, self.label.as_ref(), TextClass::Label);
+        draw.text(&*self, self.label.as_ref(), TextClass::Label(self.wrap));
     }
 }
 #[cfg(feature = "min_spec")]
 impl Layout for StringLabel {
     fn draw(&mut self, mut draw: DrawMgr) {
-        draw.text(&*self, self.label.as_ref(), TextClass::Label);
+        draw.text(&*self, self.label.as_ref(), TextClass::Label(self.wrap));
     }
 }
 
@@ -108,8 +109,30 @@ impl<T: FormattableText + 'static> Label<T> {
     pub fn new(label: T) -> Self {
         Label {
             core: Default::default(),
+            wrap: true,
             label: Text::new_multi(label),
         }
+    }
+
+    /// Get whether line-wrapping is enabled
+    #[inline]
+    pub fn wrap(&self) -> bool {
+        self.wrap
+    }
+
+    /// Enable/disable line wrapping
+    ///
+    /// By default this is enabled.
+    #[inline]
+    pub fn set_wrap(&mut self, wrap: bool) {
+        self.wrap = wrap;
+    }
+
+    /// Enable/disable line wrapping (inline)
+    #[inline]
+    pub fn with_wrap(mut self, wrap: bool) -> Self {
+        self.wrap = wrap;
+        self
     }
 
     /// Set text in an existing `Label`
