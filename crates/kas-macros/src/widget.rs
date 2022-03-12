@@ -28,9 +28,11 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
 
     let mut impl_widget_children = true;
     let mut impl_widget_config = true;
+    let mut impl_layout = true;
     let mut has_find_id_impl = args.attr_widget.layout.is_some();
     let mut handler_impl = None;
     let mut send_event_impl = None;
+
     for (index, impl_) in args.extra_impls.iter().enumerate() {
         if let Some((_, ref path, _)) = impl_.trait_ {
             if *path == parse_quote! { ::kas::WidgetChildren }
@@ -69,6 +71,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                         "impl conflicts with use of #[widget(layout=...;)]"
                     );
                 }
+                impl_layout = false;
                 for item in &impl_.items {
                     if let syn::ImplItem::Method(method) = item {
                         if method.sig.ident == "layout" || method.sig.ident == "find_id" {
@@ -147,54 +150,56 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
         }
     });
 
-    if let Some(inner) = opt_derive {
-        toks.append_all(quote! {
-            impl #impl_generics ::kas::WidgetChildren
-                for #name #ty_generics #where_clause
-            {
-                fn num_children(&self) -> usize {
-                    self.#inner.num_children()
+    if impl_widget_children {
+        if let Some(inner) = opt_derive {
+            toks.append_all(quote! {
+                impl #impl_generics ::kas::WidgetChildren
+                    for #name #ty_generics #where_clause
+                {
+                    fn num_children(&self) -> usize {
+                        self.#inner.num_children()
+                    }
+                    fn get_child(&self, index: usize) -> Option<&dyn ::kas::WidgetConfig> {
+                        self.#inner.get_child(index)
+                    }
+                    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn ::kas::WidgetConfig> {
+                        self.#inner.get_child_mut(index)
+                    }
                 }
-                fn get_child(&self, index: usize) -> Option<&dyn ::kas::WidgetConfig> {
-                    self.#inner.get_child(index)
-                }
-                fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn ::kas::WidgetConfig> {
-                    self.#inner.get_child_mut(index)
-                }
-            }
-        });
-    } else if impl_widget_children {
-        let count = args.children.len();
+            });
+        } else {
+            let count = args.children.len();
 
-        let mut get_rules = quote! {};
-        let mut get_mut_rules = quote! {};
-        for (i, child) in args.children.iter().enumerate() {
-            let ident = &child.ident;
-            get_rules.append_all(quote! { #i => Some(&self.#ident), });
-            get_mut_rules.append_all(quote! { #i => Some(&mut self.#ident), });
+            let mut get_rules = quote! {};
+            let mut get_mut_rules = quote! {};
+            for (i, child) in args.children.iter().enumerate() {
+                let ident = &child.ident;
+                get_rules.append_all(quote! { #i => Some(&self.#ident), });
+                get_mut_rules.append_all(quote! { #i => Some(&mut self.#ident), });
+            }
+
+            toks.append_all(quote! {
+                impl #impl_generics ::kas::WidgetChildren
+                    for #name #ty_generics #where_clause
+                {
+                    fn num_children(&self) -> usize {
+                        #count
+                    }
+                    fn get_child(&self, _index: usize) -> Option<&dyn ::kas::WidgetConfig> {
+                        match _index {
+                            #get_rules
+                            _ => None
+                        }
+                    }
+                    fn get_child_mut(&mut self, _index: usize) -> Option<&mut dyn ::kas::WidgetConfig> {
+                        match _index {
+                            #get_mut_rules
+                            _ => None
+                        }
+                    }
+                }
+            });
         }
-
-        toks.append_all(quote! {
-            impl #impl_generics ::kas::WidgetChildren
-                for #name #ty_generics #where_clause
-            {
-                fn num_children(&self) -> usize {
-                    #count
-                }
-                fn get_child(&self, _index: usize) -> Option<&dyn ::kas::WidgetConfig> {
-                    match _index {
-                        #get_rules
-                        _ => None
-                    }
-                }
-                fn get_child_mut(&mut self, _index: usize) -> Option<&mut dyn ::kas::WidgetConfig> {
-                    match _index {
-                        #get_mut_rules
-                        _ => None
-                    }
-                }
-            }
-        });
     }
 
     if impl_widget_config {
@@ -229,80 +234,82 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
         }
     }
 
-    if let Some(inner) = opt_derive {
-        toks.append_all(quote! {
-            impl #impl_generics ::kas::Layout
-                    for #name #ty_generics #where_clause
-            {
-                #[inline]
-                fn size_rules(&mut self,
-                    size_mgr: ::kas::theme::SizeMgr,
-                    axis: ::kas::layout::AxisInfo,
-                ) -> ::kas::layout::SizeRules {
-                    self.#inner.size_rules(size_mgr, axis)
-                }
-                #[inline]
-                fn set_rect(
-                    &mut self,
-                    mgr: &mut ::kas::layout::SetRectMgr,
-                    rect: ::kas::geom::Rect,
-                    align: ::kas::layout::AlignHints,
-                ) {
-                    self.#inner.set_rect(mgr, rect, align);
-                }
-                #[inline]
-                fn translation(&self) -> ::kas::geom::Offset {
-                    self.#inner.translation()
-                }
-                #[inline]
-                fn spatial_nav(
-                    &mut self,
-                    mgr: &mut ::kas::layout::SetRectMgr,
-                    reverse: bool,
-                    from: Option<usize>,
-                ) -> Option<usize> {
-                    self.#inner.spatial_nav(mgr, reverse, from)
-                }
-                #[inline]
-                fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
-                    self.#inner.find_id(coord)
-                }
-                #[inline]
-                fn draw(
-                    &mut self,
-                    draw: ::kas::theme::DrawMgr,
-                ) {
-                    self.#inner.draw(draw);
-                }
-            }
-        });
-    } else if let Some(layout) = args.attr_widget.layout.take() {
-        let find_id = match args.attr_widget.find_id.value {
-            None => quote! {},
-            Some(find_id) => quote! {
-                fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
-                    if !self.rect().contains(coord) {
-                        return None;
+    if impl_layout {
+        if let Some(inner) = opt_derive {
+            toks.append_all(quote! {
+                impl #impl_generics ::kas::Layout
+                        for #name #ty_generics #where_clause
+                {
+                    #[inline]
+                    fn size_rules(&mut self,
+                        size_mgr: ::kas::theme::SizeMgr,
+                        axis: ::kas::layout::AxisInfo,
+                    ) -> ::kas::layout::SizeRules {
+                        self.#inner.size_rules(size_mgr, axis)
                     }
+                    #[inline]
+                    fn set_rect(
+                        &mut self,
+                        mgr: &mut ::kas::layout::SetRectMgr,
+                        rect: ::kas::geom::Rect,
+                        align: ::kas::layout::AlignHints,
+                    ) {
+                        self.#inner.set_rect(mgr, rect, align);
+                    }
+                    #[inline]
+                    fn translation(&self) -> ::kas::geom::Offset {
+                        self.#inner.translation()
+                    }
+                    #[inline]
+                    fn spatial_nav(
+                        &mut self,
+                        mgr: &mut ::kas::layout::SetRectMgr,
+                        reverse: bool,
+                        from: Option<usize>,
+                    ) -> Option<usize> {
+                        self.#inner.spatial_nav(mgr, reverse, from)
+                    }
+                    #[inline]
+                    fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
+                        self.#inner.find_id(coord)
+                    }
+                    #[inline]
+                    fn draw(
+                        &mut self,
+                        draw: ::kas::theme::DrawMgr,
+                    ) {
+                        self.#inner.draw(draw);
+                    }
+                }
+            });
+        } else if let Some(layout) = args.attr_widget.layout.take() {
+            let find_id = match args.attr_widget.find_id.value {
+                None => quote! {},
+                Some(find_id) => quote! {
+                    fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
+                        if !self.rect().contains(coord) {
+                            return None;
+                        }
+                        #find_id
+                    }
+                },
+            };
+
+            let core = args.core_data.as_ref().unwrap();
+            let layout = layout.generate(args.children.iter().map(|c| &c.ident))?;
+
+            toks.append_all(quote! {
+                impl #impl_generics ::kas::Layout for #name #ty_generics #where_clause {
+                    fn layout<'a>(&'a mut self) -> ::kas::layout::Layout<'a> {
+                        use ::kas::{WidgetCore, layout};
+                        let mut _chain = &mut self.#core.layout;
+                        #layout
+                    }
+
                     #find_id
                 }
-            },
-        };
-
-        let core = args.core_data.as_ref().unwrap();
-        let layout = layout.generate(args.children.iter().map(|c| &c.ident))?;
-
-        toks.append_all(quote! {
-            impl #impl_generics ::kas::Layout for #name #ty_generics #where_clause {
-                fn layout<'a>(&'a mut self) -> ::kas::layout::Layout<'a> {
-                    use ::kas::{WidgetCore, layout};
-                    let mut _chain = &mut self.#core.layout;
-                    #layout
-                }
-
-                #find_id
-            }
-        });
+            });
+        }
     } else if let Some(span) = args.attr_widget.find_id.span {
         emit_warning!(span, "unused without generated impl of `Layout`");
     }
