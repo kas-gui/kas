@@ -150,7 +150,7 @@ fn main() -> kas::shell::Result<()> {
         .collect();
     let styles = vec![
         SubMenu::right("&Colours", colours).boxed_menu(),
-        Separator::infer().boxed_menu(),
+        Separator::new().map_void_msg().boxed_menu(),
         MenuToggle::new("&Disabled")
             .on_toggle(|_, state| Some(Menu::Disabled(state)))
             .boxed_menu(),

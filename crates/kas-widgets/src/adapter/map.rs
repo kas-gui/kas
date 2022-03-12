@@ -5,6 +5,7 @@
 
 //! Message Map widget
 
+use crate::Menu;
 use kas::prelude::*;
 use std::rc::Rc;
 
@@ -64,6 +65,15 @@ widget! {
                     (self.map)(mgr, msg)
                 })
             }
+        }
+    }
+
+    impl<W: Menu, M: 'static> Menu for MapResponse<W, M> {
+        fn menu_is_open(&self) -> bool {
+            self.inner.menu_is_open()
+        }
+        fn set_menu_path(&mut self, mgr: &mut EventMgr, target: Option<&WidgetId>, set_focus: bool) {
+            self.inner.set_menu_path(mgr, target, set_focus);
         }
     }
 }
