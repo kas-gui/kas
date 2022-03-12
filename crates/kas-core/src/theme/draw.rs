@@ -15,7 +15,7 @@ use crate::event::EventState;
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::SetRectMgr;
 use crate::macros::autoimpl;
-use crate::text::{AccelString, Text, TextApi, TextDisplay};
+use crate::text::{TextApi, TextDisplay};
 use crate::{TkAction, WidgetId};
 
 /// Optional background colour
@@ -191,20 +191,6 @@ impl<'a> DrawMgr<'a> {
     ) {
         let f = feature.into();
         self.h.text_effects(f.0, f.1, text, class);
-    }
-
-    /// Draw an `AccelString` text
-    ///
-    /// [`SizeMgr::text_bound`] should be called prior to this method to
-    /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text_accel<'b>(
-        &mut self,
-        feature: impl Into<IdCoord<'b>>,
-        text: &Text<AccelString>,
-        class: TextClass,
-    ) {
-        let f = feature.into();
-        self.h.text_accel(f.0, f.1, text, class);
     }
 
     /// Draw some text using the standard font, with a subset selected
@@ -394,14 +380,6 @@ pub trait DrawHandle {
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     fn text_effects(&mut self, id: &WidgetId, pos: Coord, text: &dyn TextApi, class: TextClass);
 
-    /// Draw an `AccelString` text
-    ///
-    /// The `text` is drawn within the rect from `pos` to `text.env().bounds`.
-    ///
-    /// [`SizeMgr::text_bound`] should be called prior to this method to
-    /// select a font, font size and wrap options (based on the [`TextClass`]).
-    fn text_accel(&mut self, id: &WidgetId, pos: Coord, text: &Text<AccelString>, class: TextClass);
-
     /// Method used to implement [`Self::text_selected`]
     fn text_selected_range(
         &mut self,
@@ -487,7 +465,7 @@ mod test {
         let id = WidgetId::ROOT;
         let feature = IdCoord(&id, Coord::ZERO);
         let text = crate::text::Text::new_single("sample");
-        let class = TextClass::Label;
+        let class = TextClass::Label(false);
         draw.text_selected(feature, &text, .., class)
     }
 }

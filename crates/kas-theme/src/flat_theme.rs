@@ -18,8 +18,7 @@ use kas::dir::{Direction, Directional};
 use kas::draw::{color::Rgba, *};
 use kas::event::EventState;
 use kas::geom::*;
-use kas::text::format::FormattableText;
-use kas::text::{fonts, AccelString, Effect, Text, TextApi, TextDisplay};
+use kas::text::{fonts, Effect, TextApi, TextDisplay};
 use kas::theme::{self, SizeHandle, ThemeControl};
 use kas::theme::{Background, FrameStyle, TextClass};
 use kas::{TkAction, WidgetId};
@@ -446,28 +445,18 @@ where
         self.draw.text(pos.cast(), text, col);
     }
 
-    fn text_effects(&mut self, id: &WidgetId, pos: Coord, text: &dyn TextApi, _: TextClass) {
-        let col = if self.ev.is_disabled(id) {
-            self.cols.text_disabled
-        } else {
-            self.cols.text
-        };
-        self.draw
-            .text_col_effects(pos.cast(), text.display(), col, text.effect_tokens());
-    }
-
-    fn text_accel(&mut self, id: &WidgetId, pos: Coord, text: &Text<AccelString>, _: TextClass) {
+    fn text_effects(&mut self, id: &WidgetId, pos: Coord, text: &dyn TextApi, class: TextClass) {
         let pos = Vec2::conv(pos);
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
             self.cols.text
         };
-        if self.ev.show_accel_labels() {
-            let effects = text.text().effect_tokens();
-            self.draw.text_col_effects(pos, text.as_ref(), col, effects);
+        if class.is_accel() && !self.ev.show_accel_labels() {
+            self.draw.text(pos, text.display(), col);
         } else {
-            self.draw.text(pos, text.as_ref(), col);
+            self.draw
+                .text_col_effects(pos, text.display(), col, text.effect_tokens());
         }
     }
 

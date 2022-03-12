@@ -25,6 +25,7 @@ widget! {
         dir: D,
         #[widget]
         inner: W,
+        wrap: bool,
         layout_store: layout::FixedRowStorage<2>,
         label_store: layout::TextStorage,
         label: Text<AccelString>,
@@ -46,6 +47,7 @@ widget! {
                 core: Default::default(),
                 dir: direction,
                 inner,
+                wrap: true,
                 layout_store: Default::default(),
                 label_store: Default::default(),
                 label: Text::new_multi(label.into()),
@@ -62,6 +64,27 @@ widget! {
         #[inline]
         pub fn deconstruct(self) -> (W, Text<AccelString>) {
             (self.inner, self.label)
+        }
+
+        /// Get whether line-wrapping is enabled
+        #[inline]
+        pub fn wrap(&self) -> bool {
+            self.wrap
+        }
+
+        /// Enable/disable line wrapping
+        ///
+        /// By default this is enabled.
+        #[inline]
+        pub fn set_wrap(&mut self, wrap: bool) {
+            self.wrap = wrap;
+        }
+
+        /// Enable/disable line wrapping (inline)
+        #[inline]
+        pub fn with_wrap(mut self, wrap: bool) -> Self {
+            self.wrap = wrap;
+            self
         }
 
         /// Set text in an existing `Label`
@@ -88,7 +111,7 @@ widget! {
         fn layout(&mut self) -> layout::Layout<'_> {
             let arr = [
                 layout::Layout::single(&mut self.inner),
-                layout::Layout::text(&mut self.label_store, &mut self.label, TextClass::Label),
+                layout::Layout::text(&mut self.label_store, &mut self.label, TextClass::Label(self.wrap)),
             ];
             layout::Layout::list(arr.into_iter(), self.dir, &mut self.layout_store)
         }

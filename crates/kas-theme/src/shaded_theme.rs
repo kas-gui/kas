@@ -15,7 +15,7 @@ use kas::dir::{Direction, Directional};
 use kas::draw::{color::Rgba, *};
 use kas::event::EventState;
 use kas::geom::*;
-use kas::text::{AccelString, Text, TextApi, TextDisplay};
+use kas::text::{TextApi, TextDisplay};
 use kas::theme::{self, Background, SizeHandle, ThemeControl};
 use kas::theme::{FrameStyle, TextClass};
 use kas::{TkAction, WidgetId};
@@ -348,16 +348,6 @@ where
 
     fn text_effects(&mut self, id: &WidgetId, pos: Coord, text: &dyn TextApi, class: TextClass) {
         self.as_flat().text_effects(id, pos, text, class);
-    }
-
-    fn text_accel(
-        &mut self,
-        id: &WidgetId,
-        pos: Coord,
-        text: &Text<AccelString>,
-        class: TextClass,
-    ) {
-        self.as_flat().text_accel(id, pos, text, class);
     }
 
     fn text_selected_range(

@@ -215,7 +215,7 @@ impl<D: 'static> SizeHandle for Window<D> {
         // Note: for horizontal axis of Edit* classes, input text does not affect size rules.
         // We must set env at least once, but do for vertical axis anyway.
         let mut required = None;
-        if !axis.is_horizontal() || !matches!(class, TextClass::Edit | TextClass::EditMulti) {
+        if !axis.is_horizontal() || !matches!(class, TextClass::Edit(_)) {
             required = Some(text.update_env(|env| {
                 if let Some(font_id) = self.fonts.get(&class).cloned() {
                     env.set_font_id(font_id);
@@ -231,11 +231,7 @@ impl<D: 'static> SizeHandle for Window<D> {
                 }
                 env.set_bounds(bounds);
                 env.set_align((Align::TL, Align::TL)); // force top-left alignment for sizing
-
-                env.set_wrap(matches!(
-                    class,
-                    TextClass::Label | TextClass::EditMulti | TextClass::LabelScroll
-                ));
+                env.set_wrap(class.multi_line());
             }));
         }
 
@@ -247,8 +243,8 @@ impl<D: 'static> SizeHandle for Window<D> {
         if axis.is_horizontal() {
             let min = self.dims.min_line_length;
             let (min, ideal) = match class {
-                TextClass::Edit => (min, 2 * min),
-                TextClass::EditMulti => (min, 3 * min),
+                TextClass::Edit(false) => (min, 2 * min),
+                TextClass::Edit(true) => (min, 3 * min),
                 _ => {
                     let bound = i32::conv_ceil(required.unwrap().0);
                     (bound.min(min), bound.min(3 * min))
@@ -266,13 +262,15 @@ impl<D: 'static> SizeHandle for Window<D> {
         } else {
             let bound = i32::conv_ceil(required.unwrap().1);
             let min = match class {
-                TextClass::Label => bound,
-                TextClass::MenuLabel | TextClass::Button | TextClass::Edit => self.dims.line_height,
-                TextClass::EditMulti | TextClass::LabelScroll => self.dims.line_height * 3,
+                _ if class.single_line() => self.dims.line_height,
+                TextClass::Label(true) => bound,
+                TextClass::LabelScroll => bound.min(self.dims.line_height * 3),
+                TextClass::Edit(true) => self.dims.line_height * 3,
+                _ => unreachable!(),
             };
             let ideal = bound.max(min);
             let stretch = match class {
-                TextClass::EditMulti | TextClass::LabelScroll => Stretch::Low,
+                TextClass::LabelScroll | TextClass::Edit(true) => Stretch::Low,
                 _ => Stretch::None,
             };
             SizeRules::new(min, ideal, margins, stretch)
