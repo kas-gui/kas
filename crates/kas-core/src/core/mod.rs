@@ -6,7 +6,6 @@
 //! Core widget types
 
 mod data;
-mod impls;
 mod widget;
 mod widget_id;
 

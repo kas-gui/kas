@@ -9,6 +9,7 @@ use super::*;
 #[allow(unused)]
 use crate::Widget; // for doc-links
 use crate::{WidgetConfig, WidgetExt, WidgetId};
+use kas_macros::autoimpl;
 
 /// Event handling for a [`Widget`]
 ///
@@ -25,6 +26,7 @@ use crate::{WidgetConfig, WidgetExt, WidgetId};
 /// `handler=noauto`).
 ///
 /// [`derive(Widget)`]: ../macros/index.html#the-derivewidget-macro
+#[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait Handler: WidgetConfig {
     /// Type of message returned by this widget
     ///
@@ -82,6 +84,7 @@ pub trait Handler: WidgetConfig {
 /// is present (except with parameter `send=noauto`).
 ///
 /// [`derive(Widget)`]: ../macros/index.html#the-derivewidget-macro
+#[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait SendEvent: Handler {
     /// Send an event
     ///
