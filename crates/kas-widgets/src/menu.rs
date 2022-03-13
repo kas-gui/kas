@@ -5,7 +5,11 @@
 
 //! Menus
 
+use crate::adapter::AdaptWidget;
+use crate::Separator;
+use kas::dir::Right;
 use kas::prelude::*;
+use std::fmt::Debug;
 
 mod menu_entry;
 mod menubar;
@@ -44,14 +48,51 @@ pub trait Menu: Widget {
 /// A boxed menu
 pub type BoxedMenu<M> = Box<dyn Menu<Msg = M>>;
 
-/// Provides a convenient `.boxed()` method on implementors
-pub trait MakeBoxedMenu<T: ?Sized> {
-    /// Boxing method
-    fn boxed_menu(self) -> Box<T>;
+pub struct SubMenuBuilder<'a, M: 'static> {
+    menu: &'a mut Vec<BoxedMenu<M>>,
 }
 
-impl<M: Menu + Sized> MakeBoxedMenu<dyn Menu<Msg = M::Msg>> for M {
-    fn boxed_menu(self) -> BoxedMenu<M::Msg> {
-        Box::new(self)
+impl<'a, M: 'static> SubMenuBuilder<'a, M> {
+    pub fn push_entry<S: Into<AccelString>>(&mut self, label: S, msg: M)
+    where
+        M: Clone + Debug,
+    {
+        self.menu.push(Box::new(MenuEntry::new(label, msg)));
+    }
+
+    #[inline]
+    pub fn entry<S: Into<AccelString>>(mut self, label: S, msg: M) -> Self
+    where
+        M: Clone + Debug,
+    {
+        self.push_entry(label, msg);
+        self
+    }
+
+    #[inline]
+    pub fn toggle<S: Into<AccelString>, F>(self, label: S, f: F) -> Self
+    where
+        F: Fn(&mut EventMgr, bool) -> Option<M> + 'static,
+    {
+        self.menu
+            .push(Box::new(MenuToggle::new(label).on_toggle(f)));
+        self
+    }
+
+    #[inline]
+    pub fn separator(self) -> Self {
+        self.menu.push(Box::new(Separator::new().map_void_msg()));
+        self
+    }
+
+    pub fn submenu<F>(self, label: impl Into<AccelString>, f: F) -> Self
+    where
+        F: FnOnce(SubMenuBuilder<M>),
+    {
+        let mut menu = Vec::new();
+        f(SubMenuBuilder { menu: &mut menu });
+        self.menu
+            .push(Box::new(SubMenu::<M, Right>::new(label, menu)));
+        self
     }
 }

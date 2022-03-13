@@ -5,7 +5,7 @@
 
 //! Menubar
 
-use super::{Menu, SubMenu};
+use super::{Menu, SubMenu, SubMenuBuilder};
 use crate::IndexedList;
 use kas::event::{self, Command};
 use kas::prelude::*;
@@ -49,6 +49,10 @@ widget! {
                 bar: IndexedList::new_with_direction(direction, menus),
                 delayed_open: None,
             }
+        }
+
+        pub fn builder() -> MenuBuilder<M, D> {
+            MenuBuilder { menus: vec![] }
         }
     }
 
@@ -206,5 +210,29 @@ widget! {
                 self.bar[i].set_menu_path(mgr, target, set_focus);
             }
         }
+    }
+}
+
+pub struct MenuBuilder<M: 'static, D: Directional> {
+    menus: Vec<SubMenu<M, D::Flipped>>,
+}
+
+impl<M: 'static, D: Directional> MenuBuilder<M, D> {
+    pub fn menu<F>(mut self, label: impl Into<AccelString>, f: F) -> Self
+    where
+        F: FnOnce(SubMenuBuilder<M>),
+        D::Flipped: Default,
+    {
+        let mut menu = Vec::new();
+        f(SubMenuBuilder { menu: &mut menu });
+        self.menus.push(SubMenu::new(label, menu));
+        self
+    }
+
+    pub fn build(self) -> MenuBar<M, D>
+    where
+        D: Default,
+    {
+        MenuBar::new(self.menus)
     }
 }
