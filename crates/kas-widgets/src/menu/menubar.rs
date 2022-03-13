@@ -213,11 +213,17 @@ widget! {
     }
 }
 
+/// Builder for [`MenuBar`]
+///
+/// Access through [`MenuBar::builder`].
 pub struct MenuBuilder<M: 'static, D: Directional> {
     menus: Vec<SubMenu<M, D::Flipped>>,
 }
 
 impl<M: 'static, D: Directional> MenuBuilder<M, D> {
+    /// Add a new menu
+    ///
+    /// The menu's direction is determined via [`Directional::Flipped`].
     pub fn menu<F>(mut self, label: impl Into<AccelString>, f: F) -> Self
     where
         F: FnOnce(SubMenuBuilder<M>),
@@ -229,6 +235,7 @@ impl<M: 'static, D: Directional> MenuBuilder<M, D> {
         self
     }
 
+    /// Finish, yielding a [`MenuBar`]
     pub fn build(self) -> MenuBar<M, D>
     where
         D: Default,

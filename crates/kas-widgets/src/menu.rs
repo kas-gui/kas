@@ -16,7 +16,7 @@ mod menubar;
 mod submenu;
 
 pub use menu_entry::{MenuEntry, MenuToggle};
-pub use menubar::MenuBar;
+pub use menubar::{MenuBar, MenuBuilder};
 pub use submenu::SubMenu;
 
 /// Trait governing menus, sub-menus and menu-entries
@@ -48,11 +48,28 @@ pub trait Menu: Widget {
 /// A boxed menu
 pub type BoxedMenu<M> = Box<dyn Menu<Msg = M>>;
 
+/// Builder for a [`SubMenu`]
+///
+/// Access through [`MenuBar::builder`].
 pub struct SubMenuBuilder<'a, M: 'static> {
     menu: &'a mut Vec<BoxedMenu<M>>,
 }
 
 impl<'a, M: 'static> SubMenuBuilder<'a, M> {
+    /// Append an item
+    #[inline]
+    pub fn push_item(&mut self, item: BoxedMenu<M>) {
+        self.menu.push(item);
+    }
+
+    /// Append an item, chain style
+    #[inline]
+    pub fn item(mut self, item: BoxedMenu<M>) -> Self {
+        self.push_item(item);
+        self
+    }
+
+    /// Append a [`MenuEntry`]
     pub fn push_entry<S: Into<AccelString>>(&mut self, label: S, msg: M)
     where
         M: Clone + Debug,
@@ -60,6 +77,7 @@ impl<'a, M: 'static> SubMenuBuilder<'a, M> {
         self.menu.push(Box::new(MenuEntry::new(label, msg)));
     }
 
+    /// Append a [`MenuEntry`], chain style
     #[inline]
     pub fn entry<S: Into<AccelString>>(mut self, label: S, msg: M) -> Self
     where
@@ -69,30 +87,84 @@ impl<'a, M: 'static> SubMenuBuilder<'a, M> {
         self
     }
 
-    #[inline]
-    pub fn toggle<S: Into<AccelString>, F>(self, label: S, f: F) -> Self
+    /// Append a [`MenuToggle`]
+    pub fn push_toggle<S: Into<AccelString>, F>(&mut self, label: S, f: F)
     where
         F: Fn(&mut EventMgr, bool) -> Option<M> + 'static,
     {
         self.menu
             .push(Box::new(MenuToggle::new(label).on_toggle(f)));
-        self
     }
 
+    /// Append a [`MenuToggle`], chain style
     #[inline]
-    pub fn separator(self) -> Self {
-        self.menu.push(Box::new(Separator::new().map_void_msg()));
+    pub fn toggle<S: Into<AccelString>, F>(mut self, label: S, f: F) -> Self
+    where
+        F: Fn(&mut EventMgr, bool) -> Option<M> + 'static,
+    {
+        self.push_toggle(label, f);
         self
     }
 
-    pub fn submenu<F>(self, label: impl Into<AccelString>, f: F) -> Self
+    /// Append a [`Separator`]
+    pub fn push_separator(&mut self) {
+        self.menu.push(Box::new(Separator::new().map_void_msg()));
+    }
+
+    /// Append a [`Separator`], chain style
+    #[inline]
+    pub fn separator(mut self) -> Self {
+        self.push_separator();
+        self
+    }
+
+    /// Append a [`SubMenu`]
+    ///
+    /// This submenu prefers opens to the right.
+    #[inline]
+    pub fn push_submenu<F>(&mut self, label: impl Into<AccelString>, f: F)
     where
+        F: FnOnce(SubMenuBuilder<M>),
+    {
+        self.push_submenu_with_dir(Right, label, f);
+    }
+
+    /// Append a [`SubMenu`], chain style
+    ///
+    /// This submenu prefers opens to the right.
+    #[inline]
+    pub fn submenu<F>(mut self, label: impl Into<AccelString>, f: F) -> Self
+    where
+        F: FnOnce(SubMenuBuilder<M>),
+    {
+        self.push_submenu_with_dir(Right, label, f);
+        self
+    }
+
+    /// Append a [`SubMenu`]
+    ///
+    /// This submenu prefers to open in the specified direction.
+    pub fn push_submenu_with_dir<D, F>(&mut self, dir: D, label: impl Into<AccelString>, f: F)
+    where
+        D: Directional,
         F: FnOnce(SubMenuBuilder<M>),
     {
         let mut menu = Vec::new();
         f(SubMenuBuilder { menu: &mut menu });
         self.menu
-            .push(Box::new(SubMenu::<M, Right>::new(label, menu)));
+            .push(Box::new(SubMenu::new_with_direction(dir, label, menu)));
+    }
+
+    /// Append a [`SubMenu`], chain style
+    ///
+    /// This submenu prefers to open in the specified direction.
+    #[inline]
+    pub fn submenu_with_dir<D, F>(mut self, dir: D, label: impl Into<AccelString>, f: F) -> Self
+    where
+        D: Directional,
+        F: FnOnce(SubMenuBuilder<M>),
+    {
+        self.push_submenu_with_dir(dir, label, f);
         self
     }
 }
