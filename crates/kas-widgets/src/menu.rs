@@ -41,14 +41,17 @@ pub trait Menu: Widget {
     }
 }
 
+/// A boxed menu
+pub type BoxedMenu<M> = Box<dyn Menu<Msg = M>>;
+
 /// Provides a convenient `.boxed()` method on implementors
-pub trait BoxedMenu<T: ?Sized> {
+pub trait MakeBoxedMenu<T: ?Sized> {
     /// Boxing method
     fn boxed_menu(self) -> Box<T>;
 }
 
-impl<M: Menu + Sized> BoxedMenu<dyn Menu<Msg = M::Msg>> for M {
-    fn boxed_menu(self) -> Box<dyn Menu<Msg = M::Msg>> {
+impl<M: Menu + Sized> MakeBoxedMenu<dyn Menu<Msg = M::Msg>> for M {
+    fn boxed_menu(self) -> BoxedMenu<M::Msg> {
         Box::new(self)
     }
 }

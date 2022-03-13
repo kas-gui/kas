@@ -15,15 +15,15 @@ widget! {
     ///
     /// This widget houses a sequence of menu buttons, allowing input actions across
     /// menus.
-    #[derive(Clone, Debug)]
+    #[autoimpl(Debug where D: trait)]
     #[widget{
         layout = single;
     }]
-    pub struct MenuBar<W: Menu, D: Directional = kas::dir::Right> {
+    pub struct MenuBar<M: 'static, D: Directional = kas::dir::Right> {
         #[widget_core]
         core: CoreData,
         #[widget]
-        pub bar: IndexedList<D, SubMenu<D::Flipped, W>>,
+        pub bar: IndexedList<D, SubMenu<M, D::Flipped>>,
         delayed_open: Option<WidgetId>,
     }
 
@@ -33,14 +33,14 @@ widget! {
         /// Note: it appears that `MenuBar::new(..)` causes a type inference error,
         /// however `MenuBar::<_>::new(..)` does not. Alternatively one may specify
         /// the direction explicitly: `MenuBar::<_, kas::dir::Right>::new(..)`.
-        pub fn new(menus: Vec<SubMenu<D::Flipped, W>>) -> Self {
+        pub fn new(menus: Vec<SubMenu<M, D::Flipped>>) -> Self {
             MenuBar::new_with_direction(D::default(), menus)
         }
     }
 
     impl Self {
         /// Construct a menubar with explicit direction
-        pub fn new_with_direction(direction: D, mut menus: Vec<SubMenu<D::Flipped, W>>) -> Self {
+        pub fn new_with_direction(direction: D, mut menus: Vec<SubMenu<M, D::Flipped>>) -> Self {
             for menu in menus.iter_mut() {
                 menu.key_nav = false;
             }
@@ -52,7 +52,7 @@ widget! {
         }
     }
 
-    impl<W: Menu<Msg = M>, D: Directional, M: 'static> event::Handler for MenuBar<W, D> {
+    impl<M: 'static, D: Directional> event::Handler for MenuBar<M, D> {
         type Msg = M;
 
         fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {

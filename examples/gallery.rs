@@ -145,7 +145,7 @@ fn main() -> kas::shell::Result<()> {
                     }
                 }
             }
-            MenuEntry::new(title, Menu::Colour(name.to_string()))
+            MenuEntry::new(title, Menu::Colour(name.to_string())).boxed_menu()
         })
         .collect();
     let styles = vec![

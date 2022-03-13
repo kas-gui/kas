@@ -5,7 +5,7 @@
 
 //! Sub-menu
 
-use super::Menu;
+use super::{BoxedMenu, Menu};
 use crate::{Column, PopupFrame};
 use kas::event::{self, Command};
 use kas::prelude::*;
@@ -14,8 +14,8 @@ use kas::{layout, WindowId};
 
 widget! {
     /// A sub-menu
-    #[derive(Clone, Debug)]
-    pub struct SubMenu<D: Directional, W: Menu> {
+    #[autoimpl(Debug where D: trait)]
+    pub struct SubMenu<M: 'static, D: Directional> {
         #[widget_core]
         core: CoreData,
         direction: D,
@@ -24,33 +24,33 @@ widget! {
         label_store: layout::TextStorage,
         frame_store: layout::FrameStorage,
         #[widget]
-        pub list: PopupFrame<Column<W>>,
+        pub list: PopupFrame<Column<BoxedMenu<M>>>,
         popup_id: Option<WindowId>,
     }
 
     impl Self where D: Default {
         /// Construct a sub-menu
         #[inline]
-        pub fn new<S: Into<AccelString>>(label: S, list: Vec<W>) -> Self {
+        pub fn new<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<M>>) -> Self {
             SubMenu::new_with_direction(Default::default(), label, list)
         }
     }
 
-    impl<W: Menu> SubMenu<kas::dir::Right, W> {
+    impl<M: 'static> SubMenu<M, kas::dir::Right> {
         /// Construct a sub-menu, opening to the right
         // NOTE: this is used since we can't infer direction of a boxed SubMenu.
         // Consider only accepting an enum of special menu widgets?
         // Then we can pass type information.
         #[inline]
-        pub fn right<S: Into<AccelString>>(label: S, list: Vec<W>) -> Self {
+        pub fn right<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<M>>) -> Self {
             SubMenu::new(label, list)
         }
     }
 
-    impl<W: Menu> SubMenu<kas::dir::Down, W> {
+    impl<M: 'static> SubMenu<M, kas::dir::Down> {
         /// Construct a sub-menu, opening downwards
         #[inline]
-        pub fn down<S: Into<AccelString>>(label: S, list: Vec<W>) -> Self {
+        pub fn down<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<M>>) -> Self {
             SubMenu::new(label, list)
         }
     }
@@ -58,7 +58,7 @@ widget! {
     impl Self {
         /// Construct a sub-menu
         #[inline]
-        pub fn new_with_direction<S: Into<AccelString>>(direction: D, label: S, list: Vec<W>) -> Self {
+        pub fn new_with_direction<S: Into<AccelString>>(direction: D, label: S, list: Vec<BoxedMenu<M>>) -> Self {
             SubMenu {
                 core: Default::default(),
                 direction,
@@ -89,7 +89,7 @@ widget! {
             }
         }
 
-        fn handle_dir_key(&mut self, mgr: &mut EventMgr, cmd: Command) -> Response<W::Msg> {
+        fn handle_dir_key(&mut self, mgr: &mut EventMgr, cmd: Command) -> Response<M> {
             if self.menu_is_open() {
                 if let Some(dir) = cmd.as_direction() {
                     if dir.is_vertical() == self.list.direction().is_vertical() {
@@ -152,7 +152,7 @@ widget! {
         }
     }
 
-    impl<D: Directional, M: 'static, W: Menu<Msg = M>> event::Handler for SubMenu<D, W> {
+    impl<M: 'static, D: Directional> event::Handler for SubMenu<M, D> {
         type Msg = M;
 
         fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<M> {
