@@ -559,7 +559,19 @@ where
             let v = inner.size() * (anim_fade / 2.0);
             let inner = Quad::from_coords(inner.a + v, inner.b - v);
             let col = self.cols.check_mark_state(state);
-            self.draw.rect(inner, col);
+            let f = self.w.dims.frame as f32 * 0.5;
+            if inner.size().min_comp() >= 2.0 * f {
+                let inner = inner.shrink(f);
+                let size = inner.size();
+                let vstep = size.1 * 0.125;
+                let a = Vec2(inner.a.0, inner.b.1 - 3.0 * vstep);
+                let b = Vec2(inner.a.0 + size.0 * 0.25, inner.b.1 - vstep);
+                let c = Vec2(inner.b.0, inner.a.1 + vstep);
+                self.draw.rounded_line(a, b, f, col);
+                self.draw.rounded_line(b, c, f, col);
+            } else {
+                self.draw.rect(inner, col);
+            }
         }
     }
 
