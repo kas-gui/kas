@@ -105,7 +105,7 @@ impl FlatTheme {
 }
 
 const DIMS: dim::Parameters = dim::Parameters {
-    outer_margin: 8.0,
+    outer_margin: 7.0,
     inner_margin: 1.2,
     text_margin: (3.4, 2.0),
     frame_size: 2.4,
@@ -113,7 +113,7 @@ const DIMS: dim::Parameters = dim::Parameters {
     menu_frame: 2.4,
     // NOTE: visual thickness is (button_frame * scale_factor).round() * (1 - BG_SHRINK_FACTOR)
     button_frame: 2.4,
-    checkbox_inner: 9.0,
+    checkbox_inner: 7.0,
     scrollbar_size: Vec2::splat(8.0),
     slider_size: Vec2(16.0, 16.0),
     progress_bar: Vec2::splat(8.0),
@@ -555,7 +555,7 @@ where
         let inner = self.button_frame(outer, col_frame, col_bg, state);
 
         if anim_fade < 1.0 {
-            let inner = inner.shrink((2 * self.w.dims.inner_margin) as f32);
+            let inner = inner.shrink(self.w.dims.inner_margin as f32);
             let v = inner.size() * (anim_fade / 2.0);
             let inner = Quad::from_coords(inner.a + v, inner.b - v);
             let col = self.cols.check_mark_state(state);
@@ -593,7 +593,7 @@ where
         self.draw.circle(outer, r, col);
 
         if anim_fade < 1.0 {
-            let r = self.w.dims.button_frame + 2 * self.w.dims.inner_margin as i32;
+            let r = self.w.dims.button_frame + self.w.dims.inner_margin as i32;
             let inner = outer.shrink(r as f32);
             let v = inner.size() * (anim_fade / 2.0);
             let inner = Quad::from_coords(inner.a + v, inner.b - v);
@@ -651,10 +651,9 @@ where
             }
         };
 
-        let dist = outer.size().min_comp() / 2.0;
-        let inner = first.shrink(dist);
+        let inner = first.shrink(first.size().min_comp() / 2.0);
         self.draw.rounded_frame(first, inner, 0.0, self.cols.accent);
-        let inner = second.shrink(dist);
+        let inner = second.shrink(second.size().min_comp() / 2.0);
         self.draw
             .rounded_frame(second, inner, 1.0 / 3.0, self.cols.frame);
 

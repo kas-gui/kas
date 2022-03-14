@@ -37,7 +37,7 @@ pub struct Parameters {
     pub menu_frame: f32,
     /// Button frame size (non-flat outer region)
     pub button_frame: f32,
-    /// Checkbox inner size in Points
+    /// CheckBox inner size in Points
     pub checkbox_inner: f32,
     /// Scrollbar minimum handle size
     pub scrollbar_size: Vec2,
@@ -172,22 +172,18 @@ impl<D: 'static> SizeHandle for Window<D> {
     }
 
     fn frame(&self, style: FrameStyle, _is_vert: bool) -> FrameRules {
+        let inner = self.dims.inner_margin.into();
         match style {
             FrameStyle::InnerMargin => FrameRules::new_sym(0, 0, 0),
             FrameStyle::Frame => FrameRules::new_sym(self.dims.frame, 0, 0),
             FrameStyle::Popup => FrameRules::new_sym(self.dims.popup_frame, 0, 0),
-            FrameStyle::MenuEntry => FrameRules::new_sym(self.dims.menu_frame, 0, 0),
+            FrameStyle::MenuEntry => FrameRules::new_sym(self.dims.menu_frame, inner, 0),
             FrameStyle::NavFocus => FrameRules::new_sym(self.dims.inner_margin.into(), 0, 0),
             FrameStyle::Button => {
-                let inner = self.dims.inner_margin.into();
                 let outer = self.dims.outer_margin;
                 FrameRules::new_sym(self.dims.frame, inner, outer)
             }
-            FrameStyle::EditBox => {
-                let inner = self.dims.inner_margin.into();
-                let outer = 0;
-                FrameRules::new_sym(self.dims.frame, inner, outer)
-            }
+            FrameStyle::EditBox => FrameRules::new_sym(self.dims.frame, inner, 0),
         }
     }
 
