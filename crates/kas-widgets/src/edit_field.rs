@@ -12,7 +12,7 @@ use kas::geom::Vec2;
 use kas::layout::{self, FrameStorage};
 use kas::prelude::*;
 use kas::text::SelectionHelper;
-use kas::theme::{Background, FrameStyle, TextClass};
+use kas::theme::{Background, FrameStyle, IdRect, TextClass};
 use std::fmt::Debug;
 use std::ops::Range;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
@@ -193,7 +193,7 @@ widget! {
             } else {
                 Background::Default
             };
-            draw.frame(&*self, FrameStyle::EditBox, bg);
+            draw.frame(IdRect(self.inner.id_ref(), self.rect()), FrameStyle::EditBox, bg);
             self.inner.draw(draw.re());
         }
     }
