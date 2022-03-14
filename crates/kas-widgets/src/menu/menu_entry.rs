@@ -148,11 +148,11 @@ widget! {
         }
     }
 
-    impl Handler for Self where M: From<VoidMsg> {
+    impl Handler for Self {
         type Msg = M;
     }
 
-    impl Menu for Self where M: From<VoidMsg> {}
+    impl Menu for Self {}
 
     impl MenuToggle<VoidMsg> {
         /// Construct a toggleable menu entry with a given `label`

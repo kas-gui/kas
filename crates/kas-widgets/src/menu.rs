@@ -5,19 +5,22 @@
 
 //! Menus
 
-use kas::{event, layout, prelude::*};
-use std::any::Any;
-use std::ops::{Deref, DerefMut};
+use crate::adapter::AdaptWidget;
+use crate::Separator;
+use kas::dir::Right;
+use kas::prelude::*;
+use std::fmt::Debug;
 
 mod menu_entry;
 mod menubar;
 mod submenu;
 
 pub use menu_entry::{MenuEntry, MenuToggle};
-pub use menubar::MenuBar;
+pub use menubar::{MenuBar, MenuBuilder};
 pub use submenu::SubMenu;
 
 /// Trait governing menus, sub-menus and menu-entries
+#[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait Menu: Widget {
     /// Report whether one's own menu is open
     ///
@@ -42,147 +45,126 @@ pub trait Menu: Widget {
     }
 }
 
-impl<M: 'static> WidgetCore for Box<dyn Menu<Msg = M>> {
-    fn as_any(&self) -> &dyn Any {
-        self.as_ref().as_any()
-    }
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self.as_mut().as_any_mut()
-    }
+/// A boxed menu
+pub type BoxedMenu<M> = Box<dyn Menu<Msg = M>>;
 
-    fn core_data(&self) -> &CoreData {
-        self.as_ref().core_data()
-    }
-    fn core_data_mut(&mut self) -> &mut CoreData {
-        self.as_mut().core_data_mut()
-    }
-
-    fn widget_name(&self) -> &'static str {
-        self.as_ref().widget_name()
-    }
-
-    fn as_widget(&self) -> &dyn WidgetConfig {
-        self.as_ref().as_widget()
-    }
-    fn as_widget_mut(&mut self) -> &mut dyn WidgetConfig {
-        self.as_mut().as_widget_mut()
-    }
+/// Builder for a [`SubMenu`]
+///
+/// Access through [`MenuBar::builder`].
+pub struct SubMenuBuilder<'a, M: 'static> {
+    menu: &'a mut Vec<BoxedMenu<M>>,
 }
 
-impl<M: 'static> WidgetChildren for Box<dyn Menu<Msg = M>> {
-    fn num_children(&self) -> usize {
-        self.as_ref().num_children()
-    }
-    fn get_child(&self, index: usize) -> Option<&dyn WidgetConfig> {
-        self.as_ref().get_child(index)
-    }
-    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
-        self.as_mut().get_child_mut(index)
+impl<'a, M: 'static> SubMenuBuilder<'a, M> {
+    /// Append an item
+    #[inline]
+    pub fn push_item(&mut self, item: BoxedMenu<M>) {
+        self.menu.push(item);
     }
 
-    fn make_child_id(&self, index: usize) -> Option<WidgetId> {
-        self.as_ref().make_child_id(index)
-    }
-    fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
-        self.as_ref().find_child_index(id)
-    }
-}
-
-impl<M: 'static> WidgetConfig for Box<dyn Menu<Msg = M>> {
-    fn pre_configure(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
-        self.as_mut().pre_configure(mgr, id);
-    }
-    fn configure(&mut self, mgr: &mut SetRectMgr) {
-        self.as_mut().configure(mgr);
+    /// Append an item, chain style
+    #[inline]
+    pub fn item(mut self, item: BoxedMenu<M>) -> Self {
+        self.push_item(item);
+        self
     }
 
-    fn key_nav(&self) -> bool {
-        self.as_ref().key_nav()
-    }
-    fn hover_highlight(&self) -> bool {
-        self.as_ref().hover_highlight()
-    }
-    fn cursor_icon(&self) -> event::CursorIcon {
-        self.as_ref().cursor_icon()
-    }
-}
-
-impl<M: 'static> Layout for Box<dyn Menu<Msg = M>> {
-    fn layout(&mut self) -> layout::Layout<'_> {
-        self.as_mut().layout()
+    /// Append a [`MenuEntry`]
+    pub fn push_entry<S: Into<AccelString>>(&mut self, label: S, msg: M)
+    where
+        M: Clone + Debug,
+    {
+        self.menu.push(Box::new(MenuEntry::new(label, msg)));
     }
 
-    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-        self.as_mut().size_rules(size_mgr, axis)
+    /// Append a [`MenuEntry`], chain style
+    #[inline]
+    pub fn entry<S: Into<AccelString>>(mut self, label: S, msg: M) -> Self
+    where
+        M: Clone + Debug,
+    {
+        self.push_entry(label, msg);
+        self
     }
 
-    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
-        self.as_mut().set_rect(mgr, rect, align);
+    /// Append a [`MenuToggle`]
+    pub fn push_toggle<S: Into<AccelString>, F>(&mut self, label: S, f: F)
+    where
+        F: Fn(&mut EventMgr, bool) -> Option<M> + 'static,
+    {
+        self.menu
+            .push(Box::new(MenuToggle::new(label).on_toggle(f)));
     }
 
-    fn translation(&self) -> Offset {
-        self.as_ref().translation()
+    /// Append a [`MenuToggle`], chain style
+    #[inline]
+    pub fn toggle<S: Into<AccelString>, F>(mut self, label: S, f: F) -> Self
+    where
+        F: Fn(&mut EventMgr, bool) -> Option<M> + 'static,
+    {
+        self.push_toggle(label, f);
+        self
     }
 
-    fn spatial_nav(
-        &mut self,
-        mgr: &mut SetRectMgr,
-        reverse: bool,
-        from: Option<usize>,
-    ) -> Option<usize> {
-        self.as_mut().spatial_nav(mgr, reverse, from)
+    /// Append a [`Separator`]
+    pub fn push_separator(&mut self) {
+        self.menu.push(Box::new(Separator::new().map_void_msg()));
     }
 
-    fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-        self.as_mut().find_id(coord)
+    /// Append a [`Separator`], chain style
+    #[inline]
+    pub fn separator(mut self) -> Self {
+        self.push_separator();
+        self
     }
 
-    fn draw(&mut self, draw: DrawMgr) {
-        self.as_mut().draw(draw);
-    }
-}
-
-impl<M: 'static> event::Handler for Box<dyn Menu<Msg = M>> {
-    type Msg = M;
-
-    fn activation_via_press(&self) -> bool {
-        self.as_ref().activation_via_press()
-    }
-
-    fn focus_on_key_nav(&self) -> bool {
-        self.as_ref().focus_on_key_nav()
+    /// Append a [`SubMenu`]
+    ///
+    /// This submenu prefers opens to the right.
+    #[inline]
+    pub fn push_submenu<F>(&mut self, label: impl Into<AccelString>, f: F)
+    where
+        F: FnOnce(SubMenuBuilder<M>),
+    {
+        self.push_submenu_with_dir(Right, label, f);
     }
 
-    fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
-        self.as_mut().handle(mgr, event)
+    /// Append a [`SubMenu`], chain style
+    ///
+    /// This submenu prefers opens to the right.
+    #[inline]
+    pub fn submenu<F>(mut self, label: impl Into<AccelString>, f: F) -> Self
+    where
+        F: FnOnce(SubMenuBuilder<M>),
+    {
+        self.push_submenu_with_dir(Right, label, f);
+        self
     }
-}
 
-impl<M: 'static> event::SendEvent for Box<dyn Menu<Msg = M>> {
-    fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        self.as_mut().send(mgr, id, event)
+    /// Append a [`SubMenu`]
+    ///
+    /// This submenu prefers to open in the specified direction.
+    pub fn push_submenu_with_dir<D, F>(&mut self, dir: D, label: impl Into<AccelString>, f: F)
+    where
+        D: Directional,
+        F: FnOnce(SubMenuBuilder<M>),
+    {
+        let mut menu = Vec::new();
+        f(SubMenuBuilder { menu: &mut menu });
+        self.menu
+            .push(Box::new(SubMenu::new_with_direction(dir, label, menu)));
     }
-}
 
-impl<M: 'static> Widget for Box<dyn Menu<Msg = M>> {}
-
-impl<M: 'static> Menu for Box<dyn Menu<Msg = M>> {
-    fn menu_is_open(&self) -> bool {
-        self.deref().menu_is_open()
-    }
-    fn set_menu_path(&mut self, mgr: &mut EventMgr, target: Option<&WidgetId>, set_focus: bool) {
-        self.deref_mut().set_menu_path(mgr, target, set_focus)
-    }
-}
-
-/// Provides a convenient `.boxed()` method on implementors
-pub trait BoxedMenu<T: ?Sized> {
-    /// Boxing method
-    fn boxed_menu(self) -> Box<T>;
-}
-
-impl<M: Menu + Sized> BoxedMenu<dyn Menu<Msg = M::Msg>> for M {
-    fn boxed_menu(self) -> Box<dyn Menu<Msg = M::Msg>> {
-        Box::new(self)
+    /// Append a [`SubMenu`], chain style
+    ///
+    /// This submenu prefers to open in the specified direction.
+    #[inline]
+    pub fn submenu_with_dir<D, F>(mut self, dir: D, label: impl Into<AccelString>, f: F) -> Self
+    where
+        D: Directional,
+        F: FnOnce(SubMenuBuilder<M>),
+    {
+        self.push_submenu_with_dir(dir, label, f);
+        self
     }
 }

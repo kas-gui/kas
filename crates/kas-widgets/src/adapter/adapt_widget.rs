@@ -7,7 +7,7 @@
 
 use super::{MapResponse, Reserve, WithLabel};
 use kas::dir::Directional;
-use kas::event::{EventMgr, Response};
+use kas::event::{EventMgr, Response, VoidMsg};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::text::AccelString;
 use kas::theme::SizeMgr;
@@ -17,7 +17,7 @@ use kas::Widget;
 
 /// Provides some convenience methods on widgets
 pub trait AdaptWidget: Widget {
-    /// Construct a wrapper widget which maps messages from this widget
+    /// Construct a wrapper widget which maps messages to `M`
     ///
     /// Responses from this widget with a message payload are mapped with `f`.
     #[must_use]
@@ -27,6 +27,17 @@ pub trait AdaptWidget: Widget {
         Self: Sized,
     {
         MapResponse::new(self, move |mgr, msg| Response::Msg(f(mgr, msg)))
+    }
+
+    /// Construct a wrapper widget which maps messages from [`VoidMsg`] to `M`
+    ///
+    /// Responses from this widget with a message payload are mapped with `f`.
+    #[must_use]
+    fn map_void_msg<M>(self) -> MapResponse<Self, M>
+    where
+        Self: Widget<Msg = VoidMsg> + Sized,
+    {
+        MapResponse::new(self, |_, msg| match msg {})
     }
 
     /// Construct a wrapper widget which discards messages from this widget

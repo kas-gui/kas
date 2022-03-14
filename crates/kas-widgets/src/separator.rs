@@ -6,44 +6,26 @@
 //! A separator
 
 use std::fmt::Debug;
-use std::marker::PhantomData;
 
 use crate::Menu;
-use kas::{event::VoidMsg, prelude::*};
+use kas::prelude::*;
 
 widget! {
     /// A separator
     ///
     /// This widget draws a bar when in a list.
     #[derive(Clone, Debug, Default)]
-    #[handler(msg=M)]
-    pub struct Separator<M: Debug + 'static = VoidMsg> {
+    pub struct Separator {
         #[widget_core]
         core: CoreData,
-        _msg: PhantomData<M>,
     }
 
-    impl Separator<VoidMsg> {
+    impl Self {
         /// Construct a frame, with void message type
         #[inline]
         pub fn new() -> Self {
             Separator {
                 core: Default::default(),
-                _msg: Default::default(),
-            }
-        }
-    }
-
-    impl Self {
-        /// Construct a frame, with inferred message type
-        ///
-        /// This may be useful when embedding a separator in a list with
-        /// a given message type.
-        #[inline]
-        pub fn infer() -> Self {
-            Separator {
-                core: Default::default(),
-                _msg: Default::default(),
             }
         }
     }

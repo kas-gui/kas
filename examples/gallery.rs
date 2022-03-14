@@ -117,52 +117,43 @@ fn main() -> kas::shell::Result<()> {
         Quit,
     }
 
-    let themes = vec![
-        MenuEntry::new("&Flat", Menu::Theme("flat")).boxed_menu(),
-        MenuEntry::new("&Shaded", Menu::Theme("shaded")).boxed_menu(),
-    ];
-    // Enumerate colour schemes. Access through the toolkit since this handles
-    // config loading.
-    let colours = toolkit
-        .theme()
-        .list_schemes()
-        .iter()
-        .map(|name| {
-            let mut title = String::with_capacity(name.len() + 1);
-            match name {
-                &"" => title.push_str("&Default"),
-                &"dark" => title.push_str("Dar&k"),
-                name => {
-                    let mut iter = name.char_indices();
-                    if let Some((_, c)) = iter.next() {
-                        title.push('&');
-                        for c in c.to_uppercase() {
-                            title.push(c);
-                        }
-                        if let Some((i, _)) = iter.next() {
-                            title.push_str(&name[i..]);
+    let menubar = MenuBar::<Menu>::builder()
+        .menu("&App", |menu| {
+            menu.entry("&Quit", Menu::Quit);
+        })
+        .menu("&Theme", |menu| {
+            menu.entry("&Flat", Menu::Theme("flat"))
+                .entry("&Shaded", Menu::Theme("shaded"));
+        })
+        .menu("&Style", |menu| {
+            menu.submenu("&Colours", |mut menu| {
+                // Enumerate colour schemes. Access through the toolkit since
+                // this handles config loading.
+                for name in toolkit.theme().list_schemes().iter() {
+                    let mut title = String::with_capacity(name.len() + 1);
+                    match name {
+                        &"" => title.push_str("&Default"),
+                        &"dark" => title.push_str("Dar&k"),
+                        name => {
+                            let mut iter = name.char_indices();
+                            if let Some((_, c)) = iter.next() {
+                                title.push('&');
+                                for c in c.to_uppercase() {
+                                    title.push(c);
+                                }
+                                if let Some((i, _)) = iter.next() {
+                                    title.push_str(&name[i..]);
+                                }
+                            }
                         }
                     }
+                    menu.push_entry(title, Menu::Colour(name.to_string()));
                 }
-            }
-            MenuEntry::new(title, Menu::Colour(name.to_string()))
+            })
+            .separator()
+            .toggle("&Disabled", |_, state| Some(Menu::Disabled(state)));
         })
-        .collect();
-    let styles = vec![
-        SubMenu::right("&Colours", colours).boxed_menu(),
-        Separator::infer().boxed_menu(),
-        MenuToggle::new("&Disabled")
-            .on_toggle(|_, state| Some(Menu::Disabled(state)))
-            .boxed_menu(),
-    ];
-    let menubar = MenuBar::<_>::new(vec![
-        SubMenu::new(
-            "&App",
-            vec![MenuEntry::new("&Quit", Menu::Quit).boxed_menu()],
-        ),
-        SubMenu::new("&Theme", themes),
-        SubMenu::new("&Style", styles),
-    ]);
+        .build();
 
     let popup_edit_box = make_widget! {
         #[widget{

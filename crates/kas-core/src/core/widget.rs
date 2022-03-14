@@ -16,6 +16,7 @@ use crate::layout::{self, AlignHints, AxisInfo, SetRectMgr, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::util::IdentifyWidget;
 use crate::{CoreData, WidgetId};
+use kas_macros::autoimpl;
 
 impl dyn WidgetCore {
     /// Forwards to the method defined on the type `Any`.
@@ -46,6 +47,7 @@ impl dyn WidgetCore {
 /// unexpected breaking changes.
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
+#[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait WidgetCore: Any + fmt::Debug {
     /// Get self as type `Any`
     fn as_any(&self) -> &dyn Any;
@@ -83,6 +85,7 @@ pub trait WidgetCore: Any + fmt::Debug {
 /// [`SetRectMgr::configure`].
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
+#[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait WidgetChildren: WidgetCore {
     /// Get the number of child widgets
     ///
@@ -147,6 +150,7 @@ pub trait WidgetChildren: WidgetCore {
 //
 // TODO(specialization): provide a blanket implementation, so that users only
 // need implement manually when they have something to configure.
+#[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait WidgetConfig: Layout {
     /// Pre-configure widget
     ///
@@ -232,6 +236,7 @@ pub trait WidgetConfig: Layout {
 /// 2.  [`Self::set_rect`] applies the result recursively
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
+#[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait Layout: WidgetChildren {
     /// Describe layout
     ///
@@ -415,6 +420,7 @@ pub trait Layout: WidgetChildren {
 /// `<M, W: Widget<Msg = M>>`.
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
+#[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait Widget: event::SendEvent {}
 
 /// Extension trait over widgets
