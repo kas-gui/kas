@@ -169,24 +169,31 @@ pub trait WidgetChildren: WidgetCore {
 // need implement manually when they have something to configure.
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait WidgetConfig: Layout {
-    /// Pre-configure widget
+    /// Configure widget and children
     ///
-    /// This method is part of configuration (see trait documentation).
+    /// This method:
     ///
-    /// This method assigns the widget's [`WidgetId`] and may be used to
-    /// affect the manager in ways which influence the child, for example
-    /// [`EventState::new_accel_layer`]. Custom implementations should be aware
-    /// that children may not have been configured and thus may have invalid
-    /// identifiers at the time of calling.
+    /// 1.  Assigns `id` to self
+    /// 2.  Constructs an identifier for and call `configure_recurse` on each child
+    /// 3.  Calls [`Self::configure`]
     ///
-    /// The window's scale factor (and thus any sizes available through
-    /// [`SetRectMgr::size_mgr`]) may not be correct initially (some platforms
-    /// construct all windows using scale factor 1) and/or may change in the
-    /// future. Changes to the scale factor result in recalculation of
-    /// [`Layout::size_rules`] but not repeated configuration.
-    fn pre_configure(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
-        let _ = mgr;
+    /// Normally the default implementation is used. A custom implementation
+    /// may be used to influence configuration of children, for example by
+    /// calling [`EventState::new_accel_layer`] or by constructing children's
+    /// [`WidgetId`] values in a non-standard manner.
+    ///
+    /// To directly configure a child, call [`SetRectMgr::configure`] instead.
+    fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
         self.core_data_mut().id = id;
+
+        for index in 0..self.num_children() {
+            let id = self.id_ref().make_child(index);
+            if let Some(widget) = self.get_child_mut(index) {
+                widget.configure_recurse(mgr, id);
+            }
+        }
+
+        self.configure(mgr);
     }
 
     /// Configure widget

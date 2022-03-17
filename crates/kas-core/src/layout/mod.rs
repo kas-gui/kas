@@ -198,7 +198,9 @@ impl<'a> SetRectMgr<'a> {
     /// the parent's id via [`WidgetId::make_child`].
     #[inline]
     pub fn configure(&mut self, id: WidgetId, widget: &mut dyn WidgetConfig) {
-        EventState::configure(self, id, widget);
+        // Yes, this method is just a shim! We reserve the option to add other code here in the
+        // future, hence do not advise calling `configure_recurse` directly.
+        widget.configure_recurse(self, id);
     }
 }
 
