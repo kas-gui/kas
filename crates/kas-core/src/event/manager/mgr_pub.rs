@@ -146,12 +146,6 @@ impl EventState {
         Vec2::conv(dist).sum_square() >= thresh * thresh
     }
 
-    /// Access the screen's scale factor
-    #[inline]
-    pub fn scale_factor(&self) -> f32 {
-        self.scale_factor
-    }
-
     /// Set/unset a widget as disabled
     ///
     /// Disabled status applies to all descendants.

@@ -8,6 +8,7 @@
 //! For drawing operations, all dimensions use the `f32` type.
 
 use crate::cast::*;
+use crate::dir::Directional;
 use crate::geom::{Coord, Offset, Rect, Size};
 use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub, SubAssign};
 
@@ -312,6 +313,18 @@ macro_rules! impl_vec2 {
             #[inline]
             pub fn sum_square(self) -> $f {
                 self.0 * self.0 + self.1 * self.1
+            }
+
+            /// Extract one component, based on a direction
+            ///
+            /// This merely extracts the horizontal or vertical component.
+            /// It never negates it, even if the axis is reversed.
+            #[inline]
+            pub fn extract<D: Directional>(self, dir: D) -> $f {
+                match dir.is_vertical() {
+                    false => self.0,
+                    true => self.1,
+                }
             }
         }
 
