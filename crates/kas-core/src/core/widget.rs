@@ -9,14 +9,15 @@ use std::any::Any;
 use std::fmt;
 
 use crate::event;
-#[allow(unused)]
-use crate::event::{EventMgr, EventState};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{self, AlignHints, AxisInfo, SetRectMgr, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::util::IdentifyWidget;
 use crate::{CoreData, WidgetId};
 use kas_macros::autoimpl;
+
+#[allow(unused)]
+use crate::{event::EventState, TkAction};
 
 impl dyn WidgetCore {
     /// Forwards to the method defined on the type `Any`.
@@ -138,13 +139,29 @@ pub trait WidgetChildren: WidgetCore {
 /// Widget configuration
 ///
 /// This trait is part of the [`Widget`] family and is derived by
-/// [`derive(Widget)`] unless `#[widget(config = noauto)]` is used.
-/// `key_nav` and `cursor_icon` may be customised without a manual
-/// implementation (e.g. `#[widget(config(key_nav = true))]`).
+/// [`derive(Widget)`] unless explicitly implemented.
 ///
-/// This trait allows some configuration of widget behaviour. All methods have
-/// default implementations. Most frequently, this trait is used to implement
-/// some custom action during configure: [`WidgetConfig::configure`].
+/// Widgets are *configured* on window creation or dynamically via the
+/// parent calling [`SetRectMgr::configure`]. Configuration may be repeated.
+///
+/// Configuration is required to happen before [`Layout::size_rules`] is first
+/// called, thus [`Self::configure`] may be used to load assets required by
+/// [`Layout::size_rules`].
+///
+/// Configuration happens in this order:
+///
+/// 1.  [`Self::pre_configure`] is used to assign a [`WidgetId`] and may
+///     influence configuration of children.
+/// 2.  Configuration of children accessible through [`WidgetChildren`].
+/// 3.  [`Self::configure`] allows user-configuration of event handling and
+///     may be used for resource loading.
+///
+/// Note that if parent widgets add child widgets dynamically, that parent is
+/// responsible for ensuring that the new child widgets gets configured. This
+/// may be done (1) by adding the children during [`Self::pre_configure`], (2)
+/// by requesting [`TkAction::RECONFIGURE`] or (3) by calling
+/// [`SetRectMgr::configure`]. The latter may also be used to change a child's
+/// [`WidgetId`].
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 //
@@ -154,17 +171,19 @@ pub trait WidgetChildren: WidgetCore {
 pub trait WidgetConfig: Layout {
     /// Pre-configure widget
     ///
-    /// Widgets are *configured* on window creation (before sizing) or
-    /// dynamically via the parent calling [`SetRectMgr::configure`].
-    ///
-    /// Configuration happens at least once
-    /// before sizing and drawing, and may be repeated at a later time.
-    /// Configuration happens in this order: (1) `pre_configure`,
-    /// (2) recurse over children, (3) `configure`.
+    /// This method is part of configuration (see trait documentation).
     ///
     /// This method assigns the widget's [`WidgetId`] and may be used to
     /// affect the manager in ways which influence the child, for example
-    /// [`EventState::new_accel_layer`].
+    /// [`EventState::new_accel_layer`]. Custom implementations should be aware
+    /// that children may not have been configured and thus may have invalid
+    /// identifiers at the time of calling.
+    ///
+    /// The window's scale factor (and thus any sizes available through
+    /// [`SetRectMgr::size_mgr`]) may not be correct initially (some platforms
+    /// construct all windows using scale factor 1) and/or may change in the
+    /// future. Changes to the scale factor result in recalculation of
+    /// [`Layout::size_rules`] but not repeated configuration.
     fn pre_configure(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
         let _ = mgr;
         self.core_data_mut().id = id;
@@ -172,21 +191,16 @@ pub trait WidgetConfig: Layout {
 
     /// Configure widget
     ///
-    /// Widgets are *configured* on window creation (before sizing) or
-    /// dynamically via the parent calling [`SetRectMgr::configure`].
+    /// This method is part of configuration (see trait documentation).
     ///
-    /// Configuration happens at least once
-    /// before sizing and drawing, and may be repeated at a later time.
-    /// Configuration happens in this order: (1) `pre_configure`,
-    /// (2) recurse over children, (3) `configure`.
+    /// This method may be used to configure event handling and to load
+    /// resources.
     ///
-    /// This method may be used to perform local initialization and bindings,
-    /// e.g. [`EventState::add_accel_keys`].
-    ///
-    /// It is not advised to perform any action requiring a reconfigure (e.g.
-    /// adding a child widget) during configure due to the possibility of
-    /// getting stuck in a reconfigure-loop. See issue kas#91 for more on this.
-    /// KAS has a crude mechanism to detect this and panic.
+    /// The window's scale factor (and thus any sizes available through
+    /// [`SetRectMgr::size_mgr`]) may not be correct initially (some platforms
+    /// construct all windows using scale factor 1) and/or may change in the
+    /// future. Changes to the scale factor result in recalculation of
+    /// [`Layout::size_rules`] but not repeated configuration.
     fn configure(&mut self, mgr: &mut SetRectMgr) {
         let _ = mgr;
     }
@@ -268,6 +282,9 @@ pub trait Layout: WidgetChildren {
     /// This method may be implemented through [`Self::layout`] or directly.
     /// A [`crate::layout::RulesSolver`] engine may be useful to calculate
     /// requirements of complex layouts.
+    ///
+    /// [`WidgetConfig::configure`] will be called before this method and may
+    /// be used to load assets.
     fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         self.layout().size_rules(size_mgr, axis)
     }

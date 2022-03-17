@@ -597,6 +597,11 @@ impl<'a> EventMgr<'a> {
     }
 
     /// Access a [`SizeMgr`]
+    ///
+    /// Warning: sizes are calculated using the window's current scale factor.
+    /// This may change, even without user action, since some platforms
+    /// always initialize windows with scale factor 1.
+    /// See also notes on [`WidgetConfig::configure`].
     pub fn size_mgr<F: FnMut(SizeMgr) -> T, T>(&mut self, mut f: F) -> T {
         let mut result = None;
         self.shell.size_and_draw_shared(&mut |size_handle, _| {

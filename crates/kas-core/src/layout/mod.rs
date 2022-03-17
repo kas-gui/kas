@@ -169,6 +169,11 @@ impl<'a> SetRectMgr<'a> {
     }
 
     /// Access a [`SizeMgr`]
+    ///
+    /// Warning: sizes are calculated using the window's current scale factor.
+    /// This may change, even without user action, since some platforms
+    /// always initialize windows with scale factor 1.
+    /// See also notes on [`WidgetConfig::configure`].
     pub fn size_mgr(&self) -> SizeMgr<'a> {
         SizeMgr::new(self.sh)
     }
