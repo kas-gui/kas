@@ -6,6 +6,7 @@
 //! A row or column with sizes adjustable via dividing handles
 
 use log::warn;
+use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
 
 use super::DragHandle;
@@ -80,6 +81,36 @@ widget! {
         handles: Vec<DragHandle>,
         data: layout::DynRowStorage,
         direction: D,
+        size_solved: bool,
+        next: usize,
+        id_map: HashMap<usize, usize>, // map key of WidgetId to index
+    }
+
+    impl Self {
+        // Assumption: index is a valid entry of self.widgets
+        fn make_next_id(&mut self, is_handle: bool, index: usize) -> WidgetId {
+            let child_index = (2 * index) + (is_handle as usize);
+            if !is_handle {
+                if let Some(child) = self.widgets.get(index) {
+                    // Use the widget's existing identifier, if any
+                    if child.id_ref().is_valid() {
+                        if let Some(key) = child.id_ref().next_key_after(self.id_ref()) {
+                            self.id_map.insert(key, child_index);
+                            return child.id();
+                        }
+                    }
+                }
+            }
+
+            loop {
+                let key = self.next;
+                self.next += 1;
+                if !self.id_map.contains_key(&key) {
+                    self.id_map.insert(key, child_index);
+                    return self.id_ref().make_child(key);
+                }
+            }
+        }
     }
 
     impl WidgetChildren for Self {
@@ -103,10 +134,36 @@ widget! {
                 self.widgets.get_mut(index >> 1).map(|w| w.as_widget_mut())
             }
         }
+
+        fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
+            id.next_key_after(self.id_ref()).and_then(|k| self.id_map.get(&k).cloned())
+        }
+    }
+
+    impl WidgetConfig for Self {
+        fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
+            self.core_data_mut().id = id;
+            self.id_map.clear();
+
+            // It does not matter what order we choose widget/child ids:
+            for index in 0..self.widgets.len() {
+                let id = self.make_next_id(false, index);
+                self.widgets[index].configure_recurse(mgr, id);
+            }
+            for index in 0..self.handles.len() {
+                let id = self.make_next_id(true, index);
+                self.handles[index].configure_recurse(mgr, id);
+            }
+
+            self.configure(mgr);
+        }
     }
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            // Assumption: if size_rules is called, then set_rect will be too.
+            self.size_solved = true;
+
             if self.widgets.is_empty() {
                 return SizeRules::EMPTY;
             }
@@ -173,7 +230,7 @@ widget! {
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
+            if !self.rect().contains(coord) || !self.size_solved {
                 return None;
             }
 
@@ -195,6 +252,9 @@ widget! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
+            if !self.size_solved {
+                return;
+            }
             // as with find_id, there's not much harm in invoking the solver twice
 
             let solver = layout::RowPositionSolver::new(self.direction);
@@ -274,6 +334,9 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
             handles,
             data: Default::default(),
             direction,
+            size_solved: false,
+            next: 0,
+            id_map: Default::default(),
         }
     }
 
@@ -337,145 +400,138 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         self.widgets.len()
     }
 
-    /// Returns the number of elements the vector can hold without reallocating.
-    pub fn capacity(&self) -> usize {
-        self.widgets.capacity()
-    }
-
-    /// Reserves capacity for at least `additional` more elements to be inserted
-    /// into the list. See documentation of [`Vec::reserve`].
-    pub fn reserve(&mut self, additional: usize) {
-        self.widgets.reserve(additional);
-        self.handles.reserve(additional);
-    }
-
     /// Remove all child widgets
-    ///
-    /// Triggers a [reconfigure action](EventState::send_action) if any widget is
-    /// removed.
-    pub fn clear(&mut self) -> TkAction {
-        let action = match self.widgets.is_empty() {
-            true => TkAction::empty(),
-            false => TkAction::RECONFIGURE,
-        };
+    pub fn clear(&mut self) {
         self.widgets.clear();
         self.handles.clear();
-        action
+        self.size_solved = false;
     }
 
     /// Append a child widget
     ///
-    /// Triggers a [reconfigure action](EventState::send_action).
-    pub fn push(&mut self, widget: W) -> TkAction {
-        if !self.widgets.is_empty() {
+    /// The new child is configured immediately. [`TkAction::RESIZE`] is
+    /// triggered.
+    ///
+    /// Returns the new element's index.
+    pub fn push(&mut self, mgr: &mut SetRectMgr, widget: W) -> usize {
+        let index = self.widgets.len();
+        if index > 0 {
+            let len = self.handles.len();
             self.handles.push(DragHandle::new());
+            let id = self.make_next_id(true, len);
+            mgr.configure(id, &mut self.handles[len]);
         }
         self.widgets.push(widget);
-        TkAction::RECONFIGURE
+        let id = self.make_next_id(false, index);
+        mgr.configure(id, &mut self.widgets[index]);
+        self.size_solved = false;
+        *mgr |= TkAction::RESIZE;
+        index
     }
 
-    /// Remove the last child widget
+    /// Remove the last child widget (if any) and return
     ///
-    /// Returns `None` if there are no children. Otherwise, this
-    /// triggers a reconfigure before the next draw operation.
-    ///
-    /// Triggers a [reconfigure action](EventState::send_action) if any widget is
-    /// removed.
-    pub fn pop(&mut self) -> (Option<W>, TkAction) {
-        let action = match self.widgets.is_empty() {
-            true => TkAction::empty(),
-            false => TkAction::RECONFIGURE,
-        };
-        let _ = self.handles.pop();
-        (self.widgets.pop(), action)
+    /// Triggers [`TkAction::RESIZE`].
+    pub fn pop(&mut self, mgr: &mut SetRectMgr) -> Option<W> {
+        let result = self.widgets.pop();
+        if let Some(w) = result.as_ref() {
+            *mgr |= TkAction::RESIZE;
+
+            if w.id_ref().is_valid() {
+                if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
+                    self.id_map.remove(&key);
+                }
+            }
+
+            if let Some(w) = self.handles.pop() {
+                if w.id_ref().is_valid() {
+                    if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
+                        self.id_map.remove(&key);
+                    }
+                }
+            }
+        }
+        result
     }
 
     /// Inserts a child widget position `index`
     ///
     /// Panics if `index > len`.
     ///
-    /// Triggers a [reconfigure action](EventState::send_action).
-    pub fn insert(&mut self, index: usize, widget: W) -> TkAction {
-        if !self.widgets.is_empty() {
-            self.handles.push(DragHandle::new());
+    /// The new child is configured immediately. Triggers [`TkAction::RESIZE`].
+    pub fn insert(&mut self, mgr: &mut SetRectMgr, index: usize, widget: W) {
+        for v in self.id_map.values_mut() {
+            if *v >= index {
+                *v += 2;
+            }
         }
+
+        if !self.widgets.is_empty() {
+            let index = index.min(self.handles.len());
+            self.handles.insert(index, DragHandle::new());
+            let id = self.make_next_id(true, index);
+            mgr.configure(id, &mut self.handles[index]);
+        }
+
         self.widgets.insert(index, widget);
-        TkAction::RECONFIGURE
+        let id = self.make_next_id(false, index);
+        mgr.configure(id, &mut self.widgets[index]);
+
+        self.size_solved = false;
+        *mgr |= TkAction::RESIZE;
     }
 
     /// Removes the child widget at position `index`
     ///
     /// Panics if `index` is out of bounds.
     ///
-    /// Triggers a [reconfigure action](EventState::send_action).
-    pub fn remove(&mut self, index: usize) -> (W, TkAction) {
-        let _ = self.handles.pop();
-        let r = self.widgets.remove(index);
-        (r, TkAction::RECONFIGURE)
+    /// Triggers [`TkAction::RESIZE`].
+    pub fn remove(&mut self, mgr: &mut SetRectMgr, index: usize) -> W {
+        if !self.handles.is_empty() {
+            let index = index.min(self.handles.len());
+            let w = self.handles.remove(index);
+            if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
+                self.id_map.remove(&key);
+            }
+        }
+
+        let w = self.widgets.remove(index);
+        if w.id_ref().is_valid() {
+            if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
+                self.id_map.remove(&key);
+            }
+        }
+
+        *mgr |= TkAction::RESIZE;
+
+        for v in self.id_map.values_mut() {
+            if *v > index {
+                *v -= 2;
+            }
+        }
+        w
     }
 
     /// Replace the child at `index`
     ///
     /// Panics if `index` is out of bounds.
     ///
-    /// Triggers a [reconfigure action](EventState::send_action).
-    // TODO: in theory it is possible to avoid a reconfigure where both widgets
-    // have no children and have compatible size. Is this a good idea and can
-    // we somehow test "has compatible size"?
-    pub fn replace(&mut self, index: usize, mut widget: W) -> (W, TkAction) {
-        std::mem::swap(&mut widget, &mut self.widgets[index]);
-        (widget, TkAction::RECONFIGURE)
-    }
+    /// The new child is configured immediately. Triggers [`TkAction::RESIZE`].
+    pub fn replace(&mut self, mgr: &mut SetRectMgr, index: usize, mut w: W) -> W {
+        std::mem::swap(&mut w, &mut self.widgets[index]);
 
-    /// Append child widgets from an iterator
-    ///
-    /// Triggers a [reconfigure action](EventState::send_action) if any widgets
-    /// are added.
-    pub fn extend<T: IntoIterator<Item = W>>(&mut self, iter: T) -> TkAction {
-        let len = self.widgets.len();
-        self.widgets.extend(iter);
-        self.handles
-            .resize_with(self.widgets.len().saturating_sub(1), DragHandle::new);
-        match len == self.widgets.len() {
-            true => TkAction::empty(),
-            false => TkAction::RECONFIGURE,
-        }
-    }
-
-    /// Resize, using the given closure to construct new widgets
-    ///
-    /// Triggers a [reconfigure action](EventState::send_action).
-    pub fn resize_with<F: Fn(usize) -> W>(&mut self, len: usize, f: F) -> TkAction {
-        let l0 = self.widgets.len();
-        if l0 == len {
-            return TkAction::empty();
-        } else if l0 > len {
-            self.widgets.truncate(len);
-        } else {
-            self.widgets.reserve(len);
-            for i in l0..len {
-                self.widgets.push(f(i));
+        if w.id_ref().is_valid() {
+            if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
+                self.id_map.remove(&key);
             }
         }
-        self.handles
-            .resize_with(self.widgets.len().saturating_sub(1), DragHandle::new);
-        TkAction::RECONFIGURE
-    }
 
-    /// Retain only widgets satisfying predicate `f`
-    ///
-    /// See documentation of [`Vec::retain`].
-    ///
-    /// Triggers a [reconfigure action](EventState::send_action) if any widgets
-    /// are removed.
-    pub fn retain<F: FnMut(&W) -> bool>(&mut self, f: F) -> TkAction {
-        let len = self.widgets.len();
-        self.widgets.retain(f);
-        self.handles
-            .resize_with(self.widgets.len().saturating_sub(1), DragHandle::new);
-        match len == self.widgets.len() {
-            true => TkAction::empty(),
-            false => TkAction::RECONFIGURE,
-        }
+        let id = self.make_next_id(false, index);
+        mgr.configure(id, &mut self.widgets[index]);
+
+        self.size_solved = false;
+        *mgr |= TkAction::RESIZE;
+
+        w
     }
 }
