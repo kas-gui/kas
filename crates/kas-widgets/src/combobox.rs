@@ -190,15 +190,18 @@ impl ComboBox<VoidMsg> {
     /// types, and the chosen `active` entry. For example:
     /// ```
     /// # use kas_widgets::ComboBox;
-    /// let combobox = ComboBox::new(&["zero", "one", "two"], 0);
+    /// let combobox = ComboBox::new_from_iter(&["zero", "one", "two"], 0);
     /// ```
     #[inline]
-    pub fn new<T: Into<AccelString>, I: IntoIterator<Item = T>>(iter: I, active: usize) -> Self {
+    pub fn new_from_iter<T: Into<AccelString>, I: IntoIterator<Item = T>>(
+        iter: I,
+        active: usize,
+    ) -> Self {
         let entries = iter
             .into_iter()
             .map(|label| MenuEntry::new(label, ()))
             .collect();
-        Self::new_entries(entries, active)
+        Self::new(entries, active)
     }
 
     /// Construct a combobox with the given menu entries
@@ -206,7 +209,7 @@ impl ComboBox<VoidMsg> {
     /// A combobox presents a menu with a fixed set of choices when clicked,
     /// with the `active` choice selected (0-based index).
     #[inline]
-    pub fn new_entries(entries: Vec<MenuEntry<()>>, active: usize) -> Self {
+    pub fn new(entries: Vec<MenuEntry<()>>, active: usize) -> Self {
         let label = entries.get(active).map(|entry| entry.get_string());
         let label = Text::new_single(label.unwrap_or("".to_string()));
         ComboBox {
