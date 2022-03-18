@@ -71,7 +71,7 @@ bitflags! {
         */
         /// Reset size of all widgets without recalculating requirements
         const SET_SIZE = 1 << 8;
-        /// Resize all widgets
+        /// Resize all widgets in the window
         const RESIZE = 1 << 9;
         /// Update theme memory
         const THEME_UPDATE = 1 << 10;
