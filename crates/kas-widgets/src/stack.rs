@@ -131,6 +131,18 @@ impl<W: Widget> Stack<W> {
         }
     }
 
+    /// Edit the list of children directly
+    ///
+    /// This may be used to edit children before window construction. It may
+    /// also be used from a running UI, but in this case a full reconfigure
+    /// of the window's widgets is required (triggered by the the return
+    /// value, [`TkAction::RECONFIGURE`]).
+    #[inline]
+    pub fn edit<F: FnOnce(&mut Vec<W>)>(&mut self, f: F) -> TkAction {
+        f(&mut self.widgets);
+        TkAction::RECONFIGURE
+    }
+
     /// Get the index of the active widget
     pub fn active_index(&self) -> usize {
         self.active

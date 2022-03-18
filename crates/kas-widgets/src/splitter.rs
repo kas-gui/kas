@@ -277,6 +277,20 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         }
     }
 
+    /// Edit the list of children directly
+    ///
+    /// This may be used to edit children before window construction. It may
+    /// also be used from a running UI, but in this case a full reconfigure
+    /// of the window's widgets is required (triggered by the the return
+    /// value, [`TkAction::RECONFIGURE`]).
+    #[inline]
+    pub fn edit<F: FnOnce(&mut Vec<W>)>(&mut self, f: F) -> TkAction {
+        f(&mut self.widgets);
+        let len = self.widgets.len().saturating_sub(1);
+        self.handles.resize_with(len, DragHandle::new);
+        TkAction::RECONFIGURE
+    }
+
     fn adjust_size(&mut self, mgr: &mut SetRectMgr, n: usize) {
         assert!(n < self.handles.len());
         assert_eq!(self.widgets.len(), self.handles.len() + 1);

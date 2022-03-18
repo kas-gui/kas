@@ -46,8 +46,9 @@ bitflags! {
     /// assignments are supported by both `TkAction` and [`event::EventMgr`].
     ///
     /// Users receiving a value of this type from a widget update method should
-    /// generally call `*mgr |= action;` during event handling. Prior to
-    /// starting the event loop (`toolkit.run()`), these values can be ignored.
+    /// usually handle with `*mgr |= action;`. Before the event loop starts
+    /// (`toolkit.run()`) or if the widget in question is not part of a UI these
+    /// values can be ignored.
     #[must_use]
     #[derive(Default)]
     pub struct TkAction: u32 {
