@@ -301,10 +301,10 @@ widget! {
                 .row_iter_vec_from(solver.first_row, solver.row_len);
 
             let mut action = TkAction::empty();
-            for (cn, col) in cols.iter().enumerate() {
-                let ci = solver.first_col + cn;
-                for (rn, row) in rows.iter().enumerate() {
-                    let ri = solver.first_row + rn;
+            for (rn, row) in rows.iter().enumerate() {
+                let ri = solver.first_row + rn;
+                for (cn, col) in cols.iter().enumerate() {
+                    let ci = solver.first_col + cn;
                     let i = solver.data_to_child(ci, ri);
                     let key = T::make_key(col, row);
                     let id = self.data.make_id(self.id_ref(), &key);
@@ -369,11 +369,6 @@ widget! {
         fn num_children(&self) -> usize {
             self.widgets.len()
         }
-        fn make_child_id(&self, index: usize) -> Option<WidgetId> {
-            self.widgets.get(index)
-                .and_then(|w| w.key.as_ref())
-                .map(|key| self.data.make_id(self.id_ref(), key))
-        }
         #[inline]
         fn get_child(&self, index: usize) -> Option<&dyn WidgetConfig> {
             self.widgets.get(index).map(|w| w.widget.as_widget())
@@ -399,6 +394,37 @@ widget! {
     }
 
     impl WidgetConfig for Self {
+        fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
+            self.core_data_mut().id = id;
+
+            // If data is available but not loaded yet, make some widgets for
+            // use by size_rules (this allows better sizing). Configure the new
+            // widgets (this allows resource loading which may affect size.)
+            self.data_ver = self.data.version();
+            if self.widgets.len() == 0 && !self.data.is_empty() {
+                let cols = self.data.col_iter_vec(self.ideal_len.cols.cast());
+                let rows = self.data.row_iter_vec(self.ideal_len.rows.cast());
+                let len = cols.len() * rows.len();
+                debug!("allocating {len} widgets");
+                self.widgets.reserve(len);
+                for row in rows.iter(){
+                    for col in cols.iter() {
+                        let key = T::make_key(col, row);
+                        let id = self.data.make_id(self.id_ref(), &key);
+                        let mut widget = self.view.make();
+                        mgr.configure(id, &mut widget);
+                        if let Some(item) = self.data.get_cloned(&key) {
+                            *mgr |= self.view.set(&mut widget, item);
+                        }
+                        let key = Some(key);
+                        self.widgets.push(WidgetData { key, widget });
+                    }
+                }
+            }
+
+            self.configure(mgr);
+        }
+
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             for handle in self.data.update_handles().into_iter() {
                 mgr.update_on_handle(handle, self.id());
@@ -417,29 +443,6 @@ widget! {
             let mut rules = self.view.make().size_rules(size_mgr.re(), axis);
             self.child_size_min.set_component(axis, rules.min_size());
 
-            // If data is already available, create some widgets and ensure
-            // that the ideal size meets all expectations of these children.
-            self.data_ver = self.data.version();
-            if self.widgets.len() == 0 && !self.data.is_empty() {
-                let cols = self.data.col_iter_vec(self.ideal_len.cols.cast());
-                let rows = self.data.row_iter_vec(self.ideal_len.rows.cast());
-                let len = cols.len() * rows.len();
-                debug!("allocating widgets (reserve = {})", len);
-                self.widgets.reserve(len);
-                for col in cols.iter() {
-                    for row in rows.iter(){
-                        let key = T::make_key(col, row);
-                        let mut widget = self.view.make();
-                        if let Some(item) = self.data.get_cloned(&key) {
-                            // Note: we cannot call configure here, but it needs
-                            // to happen! Therefore we set key=None and do not
-                            // care about order of data within self.widgets.
-                            let _ = self.view.set(&mut widget, item);
-                            self.widgets.push(WidgetData { key: None, widget });
-                        }
-                    }
-                }
-            }
             if self.widgets.len() > 0 {
                 let other = axis.other().map(|mut size| {
                     // Use same logic as in set_rect to find per-child size:

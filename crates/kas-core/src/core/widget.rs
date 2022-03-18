@@ -110,26 +110,14 @@ pub trait WidgetChildren: WidgetCore {
     /// This method may be removed in the future.
     fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig>;
 
-    /// Get the [`WidgetId`] for this child
-    ///
-    /// Note: the result should be generated relative to `self.id`.
-    /// Most widgets may use the default implementation.
-    ///
-    /// This must return `Some(..)` when `index` is valid; in other cases the
-    /// result does not matter.
-    ///
-    /// If a custom implementation is used, then [`Self::find_child_index`]
-    /// must be implemented to do the inverse of `make_child_id`, and
-    /// probably a custom implementation of [`Layout::spatial_nav`] is needed.
-    #[inline]
-    fn make_child_id(&self, index: usize) -> Option<WidgetId> {
-        Some(self.id_ref().make_child(index))
-    }
-
     /// Find the child which is an ancestor of this `id`, if any
     ///
     /// If `Some(index)` is returned, this is *probably* but not guaranteed
     /// to be a valid child index.
+    ///
+    /// The default implementation simply uses [`WidgetId::next_key_after`].
+    /// Widgets may choose to assign children custom keys by overriding this
+    /// method and [`WidgetChildren::configure_recurse`].
     #[inline]
     fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
         id.next_key_after(self.id_ref())
@@ -180,7 +168,8 @@ pub trait WidgetConfig: Layout {
     /// Normally the default implementation is used. A custom implementation
     /// may be used to influence configuration of children, for example by
     /// calling [`EventState::new_accel_layer`] or by constructing children's
-    /// [`WidgetId`] values in a non-standard manner.
+    /// [`WidgetId`] values in a non-standard manner (in this case ensure that
+    /// [`WidgetChildren::find_child_index`] has a correct implementation).
     ///
     /// To directly configure a child, call [`SetRectMgr::configure`] instead.
     fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {

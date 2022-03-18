@@ -58,9 +58,8 @@ widget! {
     impl Self {
         /// Construct a new instance with explicit view
         pub fn new_with_driver(view: V, data: T) -> Self {
-            let mut child = view.make();
+            let child = view.make();
             let data_ver = data.version();
-            let _ = view.set(&mut child, data.get_cloned());
             SingleView {
                 core: Default::default(),
                 view,
@@ -110,6 +109,9 @@ widget! {
             for handle in self.data.update_handles().into_iter() {
                 mgr.update_on_handle(handle, self.id());
             }
+
+            // We set data now, after child is configured
+            *mgr |= self.view.set(&mut self.child, self.data.get_cloned());
         }
     }
 
