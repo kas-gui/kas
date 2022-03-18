@@ -54,12 +54,20 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let time = Instant::now();
 
         // Wayland only supports windows constructed via logical size
-        let use_logical_size = if cfg!(unix) {
+        #[allow(unused_assignments, unused_mut)]
+        let mut use_logical_size = false;
+        #[cfg(any(
+            target_os = "linux",
+            target_os = "dragonfly",
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd"
+        ))]
+        {
             use winit::platform::unix::EventLoopWindowTargetExtUnix;
-            elwt.is_wayland()
-        } else {
-            false
-        };
+            use_logical_size = elwt.is_wayland();
+        }
+
         let scale_factor = if use_logical_size {
             1.0
         } else {
