@@ -62,7 +62,7 @@ impl ShadedTheme {
 }
 
 const DIMS: dim::Parameters = dim::Parameters {
-    outer_margin: 6.0,
+    outer_margin: 5.0,
     inner_margin: 1.2,
     text_margin: (3.4, 2.0),
     frame_size: 5.0,
@@ -199,26 +199,21 @@ where
 
     /// Draw an edit box with optional navigation highlight.
     /// Return the inner rect.
-    ///
-    /// - `outer`: define position via outer rect
-    /// - `bg_col`: colour of background
-    /// - `nav_col`: colour of navigation highlight, if visible
-    fn draw_edit_box(&mut self, outer: Rect, bg_col: Rgba, nav_col: Option<Rgba>) -> Quad {
-        let mut outer = Quad::conv(outer);
-        let mut inner = outer.shrink(self.w.dims.frame as f32);
+    fn draw_edit_box(&mut self, outer: Rect, bg_col: Rgba, nav_focus: bool) -> Quad {
+        let outer = Quad::conv(outer);
+        let inner = outer.shrink(self.w.dims.frame as f32);
 
-        let col = self.cols.background;
+        let outer_col = self.cols.background;
+        let inner_col = if nav_focus {
+            self.cols.accent_soft
+        } else {
+            outer_col
+        };
         self.draw
-            .shaded_square_frame(outer, inner, (-0.6, 0.0), col, col);
-
-        if let Some(col) = nav_col {
-            outer = inner;
-            inner = outer.shrink(self.w.dims.inner_margin as f32);
-            self.draw.frame(outer, inner, col);
-        }
+            .shaded_square_frame(outer, inner, (-0.6, 0.0), outer_col, inner_col);
 
         self.draw.rect(inner, bg_col);
-        inner
+        inner.shrink(self.w.dims.inner_margin as f32)
     }
 
     /// Draw a handle (for slider, scrollbar)
@@ -324,7 +319,7 @@ where
             FrameStyle::EditBox => {
                 let state = InputState::new_except_depress(self.ev, id);
                 let bg_col = self.cols.from_edit_bg(bg, state);
-                self.draw_edit_box(rect, bg_col, self.cols.nav_region(state));
+                self.draw_edit_box(rect, bg_col, state.nav_focus());
             }
             style => self.as_flat().frame(id, rect, style, bg),
         }
@@ -378,9 +373,8 @@ where
         let anim_fade = self.w.anim.fade_bool_1m(self.draw.draw, id, checked);
 
         let bg_col = self.cols.from_edit_bg(Default::default(), state);
-        let nav_col = self.cols.nav_region(state).or(Some(bg_col));
 
-        let inner = self.draw_edit_box(rect, bg_col, nav_col);
+        let inner = self.draw_edit_box(rect, bg_col, state.nav_focus());
 
         if anim_fade < 1.0 {
             let v = inner.size() * (anim_fade / 2.0);
@@ -395,9 +389,8 @@ where
         let anim_fade = self.w.anim.fade_bool_1m(self.draw.draw, id, checked);
 
         let bg_col = self.cols.from_edit_bg(Default::default(), state);
-        let nav_col = self.cols.nav_region(state).or(Some(bg_col));
 
-        let inner = self.draw_edit_box(rect, bg_col, nav_col);
+        let inner = self.draw_edit_box(rect, bg_col, state.nav_focus());
 
         if anim_fade < 1.0 {
             let v = inner.size() * (anim_fade / 2.0);

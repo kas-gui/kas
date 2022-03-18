@@ -53,7 +53,27 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
     ) -> Result<Self, OsError> {
         let time = Instant::now();
 
-        let scale_factor = shared.scale_factor as f32;
+        // Wayland only supports windows constructed via logical size
+        #[allow(unused_assignments, unused_mut)]
+        let mut use_logical_size = false;
+        #[cfg(any(
+            target_os = "linux",
+            target_os = "dragonfly",
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd"
+        ))]
+        {
+            use winit::platform::unix::EventLoopWindowTargetExtUnix;
+            use_logical_size = elwt.is_wayland();
+        }
+
+        let scale_factor = if use_logical_size {
+            1.0
+        } else {
+            shared.scale_factor as f32
+        };
+
         let mut theme_window = shared.theme.new_window(scale_factor);
 
         let mut ev_state = EventState::new(shared.config.clone(), scale_factor);
@@ -61,14 +81,24 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         ev_state.full_configure(&mut tkw, &mut *widget);
 
         let size_mgr = SizeMgr::new(theme_window.size_handle());
-        let solve_cache = SolveCache::find_constraints(widget.as_widget_mut(), size_mgr);
+        let mut solve_cache = SolveCache::find_constraints(widget.as_widget_mut(), size_mgr);
+
         // Opening a zero-size window causes a crash, so force at least 1x1:
         let ideal = solve_cache.ideal(true).max(Size(1, 1));
+        let ideal = match use_logical_size {
+            false => ideal.as_physical(),
+            true => ideal.as_logical(),
+        };
 
         let mut builder = WindowBuilder::new().with_inner_size(ideal);
         let restrict_dimensions = widget.restrict_dimensions();
         if restrict_dimensions.0 {
-            builder = builder.with_min_inner_size(solve_cache.min(true));
+            let min = solve_cache.min(true);
+            let min = match use_logical_size {
+                false => min.as_physical(),
+                true => min.as_logical(),
+            };
+            builder = builder.with_min_inner_size(min);
         }
         if restrict_dimensions.1 {
             builder = builder.with_max_inner_size(ideal);
@@ -83,7 +113,18 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let scale_factor = window.scale_factor();
         shared.scale_factor = scale_factor;
         let size: Size = window.inner_size().cast();
-        info!("Constucted new window with size {:?}", size);
+        info!(
+            "Constucted new window with physical size {:?}, scale factor {}",
+            size, scale_factor
+        );
+
+        // Now that we have a scale factor, we may need to resize:
+        if use_logical_size && scale_factor != 1.0 {
+            let scale_factor = scale_factor as f32;
+            ev_state.set_scale_factor(scale_factor);
+            shared.theme.update_window(&mut theme_window, scale_factor);
+            solve_cache.invalidate_rule_cache();
+        }
 
         let mut draw = shared.draw.draw.new_window();
         shared.draw.draw.resize(&mut draw, size);
@@ -301,12 +342,12 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
         let restrict_dimensions = self.widget.restrict_dimensions();
         if restrict_dimensions.0 {
-            self.window
-                .set_min_inner_size(Some(self.solve_cache.min(true)));
+            let min = self.solve_cache.min(true).as_physical();
+            self.window.set_min_inner_size(Some(min));
         };
         if restrict_dimensions.1 {
-            self.window
-                .set_max_inner_size(Some(self.solve_cache.ideal(true)));
+            let ideal = self.solve_cache.ideal(true).as_physical();
+            self.window.set_max_inner_size(Some(ideal));
         };
 
         self.window.request_redraw();

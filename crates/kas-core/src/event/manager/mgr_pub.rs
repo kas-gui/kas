@@ -146,12 +146,6 @@ impl EventState {
         Vec2::conv(dist).sum_square() >= thresh * thresh
     }
 
-    /// Access the screen's scale factor
-    #[inline]
-    pub fn scale_factor(&self) -> f32 {
-        self.scale_factor
-    }
-
     /// Set/unset a widget as disabled
     ///
     /// Disabled status applies to all descendants.
@@ -603,6 +597,11 @@ impl<'a> EventMgr<'a> {
     }
 
     /// Access a [`SizeMgr`]
+    ///
+    /// Warning: sizes are calculated using the window's current scale factor.
+    /// This may change, even without user action, since some platforms
+    /// always initialize windows with scale factor 1.
+    /// See also notes on [`WidgetConfig::configure`].
     pub fn size_mgr<F: FnMut(SizeMgr) -> T, T>(&mut self, mut f: F) -> T {
         let mut result = None;
         self.shell.size_and_draw_shared(&mut |size_handle, _| {

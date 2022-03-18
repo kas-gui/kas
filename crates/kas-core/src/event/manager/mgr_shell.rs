@@ -33,7 +33,6 @@ impl EventState {
         EventState {
             config: WindowConfig::new(config, scale_factor),
             disabled: vec![],
-            scale_factor,
             configure_active: false,
             configure_count: 0,
             window_has_focus: false,
@@ -64,7 +63,6 @@ impl EventState {
 
     /// Update scale factor
     pub fn set_scale_factor(&mut self, scale_factor: f32) {
-        self.scale_factor = scale_factor;
         self.config.set_scale_factor(scale_factor);
     }
 

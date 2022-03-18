@@ -27,7 +27,6 @@ widget! {
         margins: MarginSelector,
         min_size_factor: f32,
         ideal_size_factor: f32,
-        min_size: Size,
         ideal_size: Size,
         stretch: Stretch,
         pixmap: Option<Pixmap>,
@@ -52,7 +51,6 @@ widget! {
                 margins: MarginSelector::Outer,
                 min_size_factor,
                 ideal_size_factor,
-                min_size: Size::ZERO,
                 ideal_size: Size::ZERO,
                 stretch: Stretch::Low,
                 pixmap: None,
@@ -91,14 +89,18 @@ widget! {
                 // TODO: maybe we should use a singleton to deduplicate loading by
                 // path? Probably not much use for duplicate SVG widgets however.
                 let data = std::fs::read(&self.path).unwrap();
-                let scale_factor = mgr.scale_factor();
+
+                // TODO: should we reload the SVG if the scale factor changes?
+                let size_mgr = mgr.size_mgr();
+                let scale_factor = size_mgr.scale_factor();
                 let def_size = 100.0 * f64::conv(scale_factor);
+
                 let fonts_db = kas::text::fonts::fonts().read_db();
                 let fontdb = fonts_db.db();
                 let font_family = fonts_db
                     .font_family_from_alias("SERIF")
                     .unwrap_or_default();
-                let font_size = mgr.size_mgr().pixels_from_em(1.0) as f64;
+                let font_size = size_mgr.pixels_from_em(1.0) as f64;
 
                 // TODO: some options here should be configurable
                 let opts = usvg::OptionsRef {
@@ -116,34 +118,27 @@ widget! {
                     image_href_resolver: &Default::default(),
                 };
 
-                let tree = usvg::Tree::from_data(&data, &opts).unwrap();
-                let size = tree.svg_node().size.to_screen_size().dimensions();
-                self.tree = Some(tree);
-                let size = Vec2(size.0.cast(), size.1.cast());
-                self.min_size = Size::conv_nearest(size * self.min_size_factor * scale_factor);
-                self.ideal_size = Size::conv_nearest(size * self.ideal_size_factor * scale_factor);
+                self.tree = Some(usvg::Tree::from_data(&data, &opts).unwrap());
             }
         }
     }
 
     impl Layout for Svg {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            let scale_factor = size_mgr.scale_factor();
+
+            let size = self.tree.as_ref().map(|tree| tree.svg_node().size.to_screen_size().dimensions())
+            .unwrap_or((100, 100));
+            let size = Vec2(size.0.cast(), size.1.cast());
+            self.ideal_size = Size::conv_nearest(size * self.ideal_size_factor * scale_factor);
+
             let margins = self.margins.select(size_mgr);
-            if axis.is_horizontal() {
-                SizeRules::new(
-                    self.min_size.0,
-                    self.ideal_size.0,
-                    margins.horiz,
-                    self.stretch,
-                )
-            } else {
-                SizeRules::new(
-                    self.min_size.1,
-                    self.ideal_size.1,
-                    margins.vert,
-                    self.stretch,
-                )
-            }
+            SizeRules::new(
+                (size.extract(axis) * self.min_size_factor * scale_factor).cast_nearest(),
+                self.ideal_size.extract(axis),
+                margins.extract(axis),
+                self.stretch,
+            )
         }
 
         fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {

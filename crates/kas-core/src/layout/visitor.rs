@@ -204,11 +204,14 @@ impl<'a> Layout<'a> {
         self.size_rules_(mgr, axis)
     }
     fn size_rules_(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-        let frame = |mgr: SizeMgr, child: &mut Layout, storage: &mut FrameStorage, style| {
+        let frame = |mgr: SizeMgr, child: &mut Layout, storage: &mut FrameStorage, mut style| {
             let frame_rules = mgr.frame(style, axis.is_vertical());
             let child_rules = child.size_rules_(mgr, axis);
+            if axis.is_horizontal() && style == FrameStyle::MenuEntry {
+                style = FrameStyle::InnerMargin;
+            }
             let (rules, offset, size) = match style {
-                FrameStyle::InnerMargin | FrameStyle::MenuEntry | FrameStyle::EditBox => {
+                FrameStyle::InnerMargin | FrameStyle::EditBox => {
                     frame_rules.surround_with_margin(child_rules)
                 }
                 FrameStyle::NavFocus => frame_rules.surround_as_margin(child_rules),

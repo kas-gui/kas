@@ -31,8 +31,7 @@ pub struct SharedState<C: CustomPipe, T> {
     pub theme: T,
     pub config: Rc<RefCell<kas::event::Config>>,
     pub pending: Vec<PendingAction>,
-    /// Newly created windows need to know the scale_factor *before* they are
-    /// created. This is used to estimate ideal window size.
+    /// Estimated scale factor (from last window constructed or available screens)
     pub scale_factor: f64,
     pub frame_dur: Duration,
     window_id: u32,

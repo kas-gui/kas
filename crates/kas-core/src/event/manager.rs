@@ -147,7 +147,6 @@ type AccelLayer = (bool, HashMap<VirtualKeyCode, WidgetId>);
 pub struct EventState {
     config: WindowConfig,
     disabled: Vec<WidgetId>,
-    scale_factor: f32,
     configure_active: bool,
     configure_count: usize,
     window_has_focus: bool,

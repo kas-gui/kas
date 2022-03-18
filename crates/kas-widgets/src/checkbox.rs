@@ -216,7 +216,7 @@ widget! {
     impl Self {
         /// Construct a checkbox with a given `label` and event handler `f`
         ///
-        /// Checkbox labels are optional; if no label is desired, use an empty
+        /// CheckBox labels are optional; if no label is desired, use an empty
         /// string.
         ///
         /// On toggle (through user input events or [`Event::Activate`]) the
