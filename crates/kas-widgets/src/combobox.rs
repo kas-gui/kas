@@ -293,54 +293,46 @@ impl<M: 'static> ComboBox<M> {
     }
 
     /// Remove all choices
-    ///
-    /// Triggers a [reconfigure action](EventState::send_action).
-    pub fn clear(&mut self) -> TkAction {
+    pub fn clear(&mut self) {
         self.popup.inner.clear()
     }
 
     /// Add a choice to the combobox, in last position
     ///
-    /// Triggers a [reconfigure action](EventState::send_action).
-    pub fn push<T: Into<AccelString>>(&mut self, label: T) -> TkAction {
+    /// Returns the index of the new choice
+    //
+    // TODO(opt): these methods cause full-window resize. They don't need to
+    // resize at all if the menu is closed!
+    pub fn push<T: Into<AccelString>>(&mut self, mgr: &mut SetRectMgr, label: T) -> usize {
         let column = &mut self.popup.inner;
-        column.push(MenuEntry::new(label, ()))
-        // TODO: localised reconfigure
+        column.push(mgr, MenuEntry::new(label, ()))
     }
 
     /// Pops the last choice from the combobox
-    ///
-    /// Triggers a [reconfigure action](EventState::send_action).
-    pub fn pop(&mut self) -> (Option<()>, TkAction) {
-        let r = self.popup.inner.pop();
-        (r.0.map(|_| ()), r.1)
+    pub fn pop(&mut self, mgr: &mut SetRectMgr) -> Option<()> {
+        self.popup.inner.pop(mgr).map(|_| ())
     }
 
     /// Add a choice at position `index`
     ///
     /// Panics if `index > len`.
-    ///
-    /// Triggers a [reconfigure action](EventState::send_action).
-    pub fn insert<T: Into<AccelString>>(&mut self, index: usize, label: T) -> TkAction {
+    pub fn insert<T: Into<AccelString>>(&mut self, mgr: &mut SetRectMgr, index: usize, label: T) {
         let column = &mut self.popup.inner;
-        column.insert(index, MenuEntry::new(label, ()))
-        // TODO: localised reconfigure
+        column.insert(mgr, index, MenuEntry::new(label, ()));
     }
 
     /// Removes the choice at position `index`
     ///
     /// Panics if `index` is out of bounds.
-    ///
-    /// Triggers a [reconfigure action](EventState::send_action).
-    pub fn remove(&mut self, index: usize) -> TkAction {
-        self.popup.inner.remove(index).1
+    pub fn remove(&mut self, mgr: &mut SetRectMgr, index: usize) {
+        self.popup.inner.remove(mgr, index);
     }
 
     /// Replace the choice at `index`
     ///
     /// Panics if `index` is out of bounds.
-    pub fn replace<T: Into<AccelString>>(&mut self, index: usize, label: T) -> TkAction {
-        self.popup.inner[index].set_accel(label)
+    pub fn replace<T: Into<AccelString>>(&mut self, mgr: &mut SetRectMgr, index: usize, label: T) {
+        *mgr |= self.popup.inner[index].set_accel(label);
     }
 }
 

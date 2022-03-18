@@ -162,7 +162,10 @@ fn main() -> kas::shell::Result<()> {
                         Control::Set(len) => {
                             let active = self.active;
                             let old_len = self.list.len();
-                            *mgr |= self.list.inner_mut().resize_with(len, |n| ListEntry::new(n, n == active));
+                            mgr.set_rect_mgr(|mgr| {
+                                self.list.inner_mut()
+                                    .resize_with(mgr, len, |n| ListEntry::new(n, n == active))
+                            });
                             if active >= old_len && active < len {
                                 let _ = self.set_radio(mgr, (active, EntryMsg::Select));
                             }
