@@ -247,9 +247,14 @@ pub trait WidgetConfig: Layout {
 /// This trait is part of the [`Widget`] family. It may be derived by
 /// the [`crate::macros::widget`] macro, but is not by default.
 ///
-/// Implementations of this trait should *either* define [`Self::layout`]
-/// (optionally with other methods as required) *or* define at least
-/// [`Self::size_rules`] and [`Self::draw`].
+/// There are two methods of implementing this trait:
+///
+/// -   Implement [`Self::layout`]. This alone suffices in many cases; other
+///     methods may be overridden if necessary.
+/// -   Ignore [`Self::layout`] and implement [`Self::size_rules`] (to give the
+///     widget size) and [`Self::draw`] (to make it show something). Other
+///     methods may be required (e.g. [`Self::set_rect`] to position child
+///     elements).
 ///
 /// Layout solving happens in two steps:
 ///
@@ -269,8 +274,9 @@ pub trait Layout: WidgetChildren {
     ///
     /// The default implementation is for an empty layout (zero size required,
     /// no child elements, no graphics).
+    #[inline]
     fn layout(&mut self) -> layout::Layout<'_> {
-        Default::default() // TODO: remove default impl
+        Default::default()
     }
 
     /// Get size rules for the given axis
