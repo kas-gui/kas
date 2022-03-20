@@ -431,7 +431,7 @@ widget! {
             if self.widgets.len() == 0 && !self.data.is_empty() {
                 let items = self.data.iter_vec(self.ideal_visible.cast());
                 let len = items.len();
-                debug!("allocating {len} widgets");
+                debug!("allocating {} widgets", len);
                 self.widgets.reserve(len);
                 for key in items.into_iter() {
                     let id = self.data.make_id(self.id_ref(), &key);

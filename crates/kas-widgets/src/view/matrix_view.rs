@@ -405,7 +405,7 @@ widget! {
                 let cols = self.data.col_iter_vec(self.ideal_len.cols.cast());
                 let rows = self.data.row_iter_vec(self.ideal_len.rows.cast());
                 let len = cols.len() * rows.len();
-                debug!("allocating {len} widgets");
+                debug!("allocating {} widgets", len);
                 self.widgets.reserve(len);
                 for row in rows.iter(){
                     for col in cols.iter() {

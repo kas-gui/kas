@@ -7,7 +7,7 @@
 
 use kas::dir::{Down, Right};
 use kas::{event, layout, prelude::*};
-use std::collections::HashMap;
+use std::collections::hash_map::{Entry, HashMap};
 use std::ops::{Index, IndexMut};
 
 /// Support for optionally-indexed messages
@@ -297,8 +297,8 @@ widget! {
             loop {
                 let key = self.next;
                 self.next += 1;
-                if !self.id_map.contains_key(&key) {
-                    self.id_map.insert(key, index);
+                if let Entry::Vacant(entry) = self.id_map.entry(key) {
+                    entry.insert(index);
                     return self.id_ref().make_child(key);
                 }
             }
