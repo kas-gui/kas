@@ -5,10 +5,10 @@
 
 //! A stack
 
-use std::fmt::Debug;
-use std::ops::{Index, IndexMut};
-
 use kas::{event, prelude::*};
+use std::collections::hash_map::{Entry, HashMap};
+use std::fmt::Debug;
+use std::ops::{Index, IndexMut, Range};
 
 /// A stack of boxed widgets
 ///
@@ -23,21 +23,52 @@ pub type RefStack<'a, M> = Stack<&'a mut dyn Widget<Msg = M>>;
 widget! {
     /// A stack of widgets
     ///
-    /// A stack consists a set of child widgets, all of equal size.
-    /// Only a single member is visible at a time.
+    /// A stack consists a set of child widgets, "pages", all of equal size.
+    /// Only a single page is visible at a time. The page is "turned" by calling
+    /// [`Self::set_active`].
     ///
-    /// This may only be parametrised with a single widget type; [`BoxStack`] is
-    /// a parametrisation allowing run-time polymorphism of child widgets.
+    /// This may only be parametrised with a single widget type, thus usually
+    /// it will be necessary to box children (this is what [`BoxStack`] is).
     ///
-    /// Configuring and resizing elements is O(n) in the number of children.
-    /// Drawing and event handling is O(1).
+    /// Configuring is `O(n)` in the number of pages `n`. Resizing may be `O(n)`
+    /// or may be limited: see [`Self::set_size_limit`]. Drawing is `O(1)`, and
+    /// so is event handling in the expected case.
     #[derive(Clone, Default, Debug)]
     #[handler(msg=<W as event::Handler>::Msg)]
     pub struct Stack<W: Widget> {
         #[widget_core]
         core: CoreData,
+        align_hints: AlignHints,
         widgets: Vec<W>,
+        sized_range: Range<usize>,
         active: usize,
+        size_limit: usize,
+        next: usize,
+        id_map: HashMap<usize, usize>, // map key of WidgetId to index
+    }
+
+    impl Self {
+        // Assumption: index is a valid entry of self.widgets
+        fn make_next_id(&mut self, index: usize) -> WidgetId {
+            if let Some(child) = self.widgets.get(index) {
+                // Use the widget's existing identifier, if any
+                if child.id_ref().is_valid() {
+                    if let Some(key) = child.id_ref().next_key_after(self.id_ref()) {
+                        self.id_map.insert(key, index);
+                        return child.id();
+                    }
+                }
+            }
+
+            loop {
+                let key = self.next;
+                self.next += 1;
+                if let Entry::Vacant(entry) = self.id_map.entry(key) {
+                    entry.insert(index);
+                    return self.id_ref().make_child(key);
+                }
+            }
+        }
     }
 
     impl WidgetChildren for Self {
@@ -53,33 +84,57 @@ widget! {
         fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
             self.widgets.get_mut(index).map(|w| w.as_widget_mut())
         }
+
+        fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
+            id.next_key_after(self.id_ref()).and_then(|k| self.id_map.get(&k).cloned())
+        }
+    }
+
+    impl WidgetConfig for Self {
+        fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
+            self.core_data_mut().id = id;
+            self.id_map.clear();
+
+            for index in 0..self.widgets.len() {
+                let id = self.make_next_id(index);
+                self.widgets[index].configure_recurse(mgr, id);
+            }
+
+            self.configure(mgr);
+        }
     }
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             let mut rules = SizeRules::EMPTY;
-            for child in &mut self.widgets {
-                rules = rules.max(child.size_rules(size_mgr.re(), axis));
+            let end = self.active.saturating_add(self.size_limit).min(self.widgets.len());
+            let start = end.saturating_sub(self.size_limit);
+            self.sized_range = start..end;
+            debug_assert!(self.sized_range.contains(&self.active));
+            for index in start..end {
+                rules = rules.max(self.widgets[index].size_rules(size_mgr.re(), axis));
             }
             rules
         }
 
         fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
-            for child in &mut self.widgets {
+            self.align_hints = align;
+            if let Some(child) = self.widgets.get_mut(self.active) {
                 child.set_rect(mgr, rect, align);
             }
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            if self.active < self.widgets.len() {
+            // Latter condition is implied, but compiler doesn't know this:
+            if self.sized_range.contains(&self.active) && self.active < self.widgets.len() {
                 return self.widgets[self.active].find_id(coord);
             }
             None
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            if self.active < self.widgets.len() {
+            if self.sized_range.contains(&self.active) && self.active < self.widgets.len() {
                 self.widgets[self.active].draw(draw.re());
             }
         }
@@ -91,7 +146,7 @@ widget! {
                 if let Some(child) = self.widgets.get_mut(index) {
                     return match child.send(mgr, id, event) {
                         Response::Focus(rect) => {
-                            *mgr |= self.set_active(index);
+                            mgr.set_rect_mgr(|mgr| self.set_active(mgr, index));
                             Response::Focus(rect)
                         }
                         r => r,
@@ -122,13 +177,44 @@ impl<W: Widget> Stack<W> {
     /// Construct a new instance
     ///
     /// If `active < widgets.len()`, then `widgets[active]` will initially be
-    /// visible; otherwise, no widget will be visible.
+    /// shown; otherwise, no page will be visible or receive press events.
     pub fn new(widgets: Vec<W>, active: usize) -> Self {
         Stack {
             core: Default::default(),
+            align_hints: Default::default(),
             widgets,
+            sized_range: 0..0,
             active,
+            size_limit: usize::MAX,
+            next: 0,
+            id_map: Default::default(),
         }
+    }
+
+    /// Edit the list of children directly
+    ///
+    /// This may be used to edit pages before window construction. It may
+    /// also be used from a running UI, but in this case a full reconfigure
+    /// of the window's widgets is required (triggered by the the return
+    /// value, [`TkAction::RECONFIGURE`]).
+    #[inline]
+    pub fn edit<F: FnOnce(&mut Vec<W>)>(&mut self, f: F) -> TkAction {
+        f(&mut self.widgets);
+        TkAction::RECONFIGURE
+    }
+
+    /// Limit the number of pages considered by [`Layout::size_rules`]
+    ///
+    /// By default, this is `usize::MAX`: all pages affect the result. If
+    /// this is set to 1 then only the active page will affect the result. If
+    /// this is `n > 1`, then `min(n, num_pages)` pages (including active)
+    /// will be used. (If this is set to 0 it is silently replaced with 1.)
+    ///
+    /// Using a limit lower than the number of pages has two effects:
+    /// (1) resizing is faster and (2) calling [`Self::set_active`] may cause a
+    /// full-window resize.
+    pub fn set_size_limit(&mut self, limit: usize) {
+        self.size_limit = limit.max(1);
     }
 
     /// Get the index of the active widget
@@ -136,21 +222,38 @@ impl<W: Widget> Stack<W> {
         self.active
     }
 
-    /// Change the active widget via index
+    /// Set the active page
     ///
-    /// It is not required that `active < self.len()`; if not, no widget will be
-    /// drawn or respond to events, but the stack will still size as required by
-    /// child widgets.
-    pub fn set_active(&mut self, active: usize) -> TkAction {
-        if self.active == active {
-            TkAction::empty()
+    /// Behaviour depends on whether [`SizeRules`] were already solved for
+    /// `index` (see [`Self::set_size_limit`] and note that methods like
+    /// [`Self::push`] do not solve rules for new pages). Case:
+    ///
+    /// -   `index >= num_pages`: no page displayed
+    /// -   `index == active` and `SizeRules` were solved: nothing happens
+    /// -   `SizeRules` were solved: set layout ([`Layout::set_rect`]) and
+    ///     update mouse-cursor target ([`TkAction::REGION_MOVED`])
+    /// -   Otherwise: resize the whole window ([`TkAction::RESIZE`])
+    pub fn set_active(&mut self, mgr: &mut SetRectMgr, index: usize) {
+        let old_index = self.active;
+        self.active = index;
+        if index >= self.widgets.len() {
+            if old_index < self.widgets.len() {
+                *mgr |= TkAction::REGION_MOVED;
+            }
+            return;
+        }
+
+        if self.sized_range.contains(&index) {
+            if old_index != index {
+                self.widgets[index].set_rect(mgr, self.core.rect, self.align_hints);
+                *mgr |= TkAction::REGION_MOVED;
+            }
         } else {
-            self.active = active;
-            TkAction::REGION_MOVED
+            *mgr |= TkAction::RESIZE;
         }
     }
 
-    /// Get a direct reference to the active widget, if any
+    /// Get a direct reference to the active child widget, if any
     pub fn active(&self) -> Option<&W> {
         if self.active < self.widgets.len() {
             Some(&self.widgets[self.active])
@@ -159,148 +262,209 @@ impl<W: Widget> Stack<W> {
         }
     }
 
-    /// Get a direct mutable reference to the active widget, if any
-    pub fn active_mut(&mut self) -> Option<&mut W> {
-        if self.active < self.widgets.len() {
-            Some(&mut self.widgets[self.active])
-        } else {
-            None
-        }
-    }
-
-    /// True if there are no child widgets
+    /// True if there are no pages
     pub fn is_empty(&self) -> bool {
         self.widgets.is_empty()
     }
 
-    /// Returns the number of child widgets
+    /// Returns the number of pages
     pub fn len(&self) -> usize {
         self.widgets.len()
     }
 
-    /// Returns the number of elements the vector can hold without reallocating.
-    pub fn capacity(&self) -> usize {
-        self.widgets.capacity()
-    }
-
-    /// Reserves capacity for at least `additional` more elements to be inserted
-    /// into the list. See documentation of [`Vec::reserve`].
-    pub fn reserve(&mut self, additional: usize) {
-        self.widgets.reserve(additional);
-    }
-
-    /// Remove all child widgets
+    /// Remove all pages
     ///
-    /// Triggers a [reconfigure action](EventState::send_action) if any widget is
-    /// removed.
-    pub fn clear(&mut self) -> TkAction {
-        let action = match self.widgets.is_empty() {
-            true => TkAction::empty(),
-            false => TkAction::RECONFIGURE,
-        };
+    /// This does not change the active page index.
+    pub fn clear(&mut self) {
         self.widgets.clear();
-        action
+        self.sized_range = 0..0;
     }
 
-    /// Append a child widget
+    /// Append a page
     ///
-    /// Triggers a [reconfigure action](EventState::send_action).
-    pub fn push(&mut self, widget: W) -> TkAction {
+    /// The new page is configured immediately. If it becomes the active page
+    /// and then [`TkAction::RESIZE`] will be triggered.
+    ///
+    /// Returns the new page's index.
+    pub fn push(&mut self, mgr: &mut SetRectMgr, widget: W) -> usize {
+        let index = self.widgets.len();
         self.widgets.push(widget);
-        TkAction::RECONFIGURE
+        let id = self.make_next_id(index);
+        mgr.configure(id, &mut self.widgets[index]);
+        if index == self.active {
+            *mgr |= TkAction::RESIZE;
+        }
+        self.sized_range.end = self.sized_range.end.min(index);
+        index
     }
 
-    /// Remove the last child widget
+    /// Remove the last child widget (if any) and return
     ///
-    /// Returns `None` if there are no children. Otherwise, this
-    /// triggers a reconfigure before the next draw operation.
-    ///
-    /// Triggers a [reconfigure action](EventState::send_action) if any widget is
-    /// removed.
-    pub fn pop(&mut self) -> (Option<W>, TkAction) {
-        let action = match self.widgets.is_empty() {
-            true => TkAction::empty(),
-            false => TkAction::RECONFIGURE,
-        };
-        (self.widgets.pop(), action)
+    /// If this page was active then the previous page becomes active.
+    pub fn pop(&mut self, mgr: &mut SetRectMgr) -> Option<W> {
+        let result = self.widgets.pop();
+        if let Some(w) = result.as_ref() {
+            if self.active > 0 && self.active == self.widgets.len() {
+                self.active -= 1;
+                if self.sized_range.contains(&self.active) {
+                    self.widgets[self.active].set_rect(mgr, self.core.rect, self.align_hints);
+                } else {
+                    *mgr |= TkAction::RESIZE;
+                }
+            }
+
+            if w.id_ref().is_valid() {
+                if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
+                    self.id_map.remove(&key);
+                }
+            }
+        }
+        result
     }
 
     /// Inserts a child widget position `index`
     ///
     /// Panics if `index > len`.
     ///
-    /// Triggers a [reconfigure action](EventState::send_action).
-    pub fn insert(&mut self, index: usize, widget: W) -> TkAction {
+    /// The new child is configured immediately. The active page does not
+    /// change.
+    pub fn insert(&mut self, mgr: &mut SetRectMgr, index: usize, widget: W) {
+        if self.active < index {
+            self.sized_range.end = self.sized_range.end.min(index);
+        } else {
+            self.sized_range.start = (self.sized_range.start + 1).max(index + 1);
+            self.sized_range.end += 1;
+            self.active = self.active.saturating_add(1);
+        }
+        for v in self.id_map.values_mut() {
+            if *v >= index {
+                *v += 1;
+            }
+        }
         self.widgets.insert(index, widget);
-        TkAction::RECONFIGURE
+        let id = self.make_next_id(index);
+        mgr.configure(id, &mut self.widgets[index]);
     }
 
     /// Removes the child widget at position `index`
     ///
     /// Panics if `index` is out of bounds.
     ///
-    /// Triggers a [reconfigure action](EventState::send_action).
-    pub fn remove(&mut self, index: usize) -> (W, TkAction) {
-        let r = self.widgets.remove(index);
-        (r, TkAction::RECONFIGURE)
+    /// If the active page is removed then the previous page (if any) becomes
+    /// active.
+    pub fn remove(&mut self, mgr: &mut SetRectMgr, index: usize) -> W {
+        let w = self.widgets.remove(index);
+        if w.id_ref().is_valid() {
+            if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
+                self.id_map.remove(&key);
+            }
+        }
+
+        if self.active == index {
+            self.active = self.active.saturating_sub(1);
+            if self.sized_range.contains(&self.active) {
+                self.widgets[self.active].set_rect(mgr, self.core.rect, self.align_hints);
+            } else {
+                *mgr |= TkAction::RESIZE;
+            }
+        }
+        if index < self.sized_range.end {
+            self.sized_range.end -= 1;
+            if index < self.sized_range.start {
+                self.sized_range.start -= 1;
+            }
+        }
+
+        for v in self.id_map.values_mut() {
+            if *v > index {
+                *v -= 1;
+            }
+        }
+        w
     }
 
     /// Replace the child at `index`
     ///
     /// Panics if `index` is out of bounds.
     ///
-    /// Triggers a [reconfigure action](EventState::send_action).
-    // TODO: in theory it is possible to avoid a reconfigure where both widgets
-    // have no children and have compatible size. Is this a good idea and can
-    // we somehow test "has compatible size"?
-    pub fn replace(&mut self, index: usize, mut widget: W) -> (W, TkAction) {
-        std::mem::swap(&mut widget, &mut self.widgets[index]);
-        (widget, TkAction::RECONFIGURE)
+    /// The new child is configured immediately. If it replaces the active page,
+    /// then [`TkAction::RESIZE`] is triggered.
+    pub fn replace(&mut self, mgr: &mut SetRectMgr, index: usize, mut w: W) -> W {
+        std::mem::swap(&mut w, &mut self.widgets[index]);
+
+        if w.id_ref().is_valid() {
+            if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
+                self.id_map.remove(&key);
+            }
+        }
+
+        let id = self.make_next_id(index);
+        mgr.configure(id, &mut self.widgets[index]);
+
+        if self.active < index {
+            self.sized_range.end = self.sized_range.end.min(index);
+        } else {
+            self.sized_range.start = (self.sized_range.start + 1).max(index + 1);
+            self.sized_range.end += 1;
+            if index == self.active {
+                *mgr |= TkAction::RESIZE;
+            }
+        }
+
+        w
     }
 
     /// Append child widgets from an iterator
     ///
-    /// Triggers a [reconfigure action](EventState::send_action) if any widgets
-    /// are added.
-    pub fn extend<T: IntoIterator<Item = W>>(&mut self, iter: T) -> TkAction {
-        let len = self.widgets.len();
+    /// New children are configured immediately. If a new page becomes active,
+    /// then [`TkAction::RESIZE`] is triggered.
+    pub fn extend<T: IntoIterator<Item = W>>(&mut self, mgr: &mut SetRectMgr, iter: T) {
+        let old_len = self.widgets.len();
         self.widgets.extend(iter);
-        match len == self.widgets.len() {
-            true => TkAction::empty(),
-            false => TkAction::RECONFIGURE,
+        for index in old_len..self.widgets.len() {
+            let id = self.make_next_id(index);
+            mgr.configure(id, &mut self.widgets[index]);
+        }
+
+        if (old_len..self.widgets.len()).contains(&self.active) {
+            *mgr |= TkAction::RESIZE;
         }
     }
 
     /// Resize, using the given closure to construct new widgets
     ///
-    /// Triggers a [reconfigure action](EventState::send_action).
-    pub fn resize_with<F: Fn(usize) -> W>(&mut self, len: usize, f: F) -> TkAction {
-        let l0 = self.widgets.len();
-        if l0 == len {
-            return TkAction::empty();
-        } else if l0 > len {
-            self.widgets.truncate(len);
-        } else {
-            self.widgets.reserve(len);
-            for i in l0..len {
-                self.widgets.push(f(i));
+    /// New children are configured immediately. If a new page becomes active,
+    /// then [`TkAction::RESIZE`] is triggered.
+    pub fn resize_with<F: Fn(usize) -> W>(&mut self, mgr: &mut SetRectMgr, len: usize, f: F) {
+        let old_len = self.widgets.len();
+
+        if len < old_len {
+            self.sized_range.end = self.sized_range.end.min(len);
+            loop {
+                let w = self.widgets.pop().unwrap();
+                if w.id_ref().is_valid() {
+                    if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
+                        self.id_map.remove(&key);
+                    }
+                }
+                if len == self.widgets.len() {
+                    return;
+                }
             }
         }
-        TkAction::RECONFIGURE
-    }
 
-    /// Retain only widgets satisfying predicate `f`
-    ///
-    /// See documentation of [`Vec::retain`].
-    ///
-    /// Triggers a [reconfigure action](EventState::send_action) if any widgets
-    /// are removed.
-    pub fn retain<F: FnMut(&W) -> bool>(&mut self, f: F) -> TkAction {
-        let len = self.widgets.len();
-        self.widgets.retain(f);
-        match len == self.widgets.len() {
-            true => TkAction::empty(),
-            false => TkAction::RECONFIGURE,
+        if len > old_len {
+            self.widgets.reserve(len - old_len);
+            for index in old_len..len {
+                let id = self.make_next_id(index);
+                let mut widget = f(index);
+                mgr.configure(id, &mut widget);
+                self.widgets.push(widget);
+            }
+
+            if (old_len..len).contains(&self.active) {
+                *mgr |= TkAction::RESIZE;
+            }
         }
     }
 }

@@ -41,6 +41,10 @@ pub trait Driver<T>: Debug + 'static {
     /// The controller may later call [`Driver::set`] on the widget then show it.
     fn make(&self) -> Self::Widget;
     /// Set the viewed data
+    ///
+    /// The widget may expect `configure` to be called at least once before data
+    /// is set and to have `size_rules` and `set_rect` called after each time
+    /// data is set.
     fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction;
     /// Get data from the view
     ///

@@ -120,10 +120,15 @@ widget! {
     }
 
     impl WidgetConfig for Self {
-        fn pre_configure(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
+        fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
             self.core_data_mut().id = id;
             mgr.add_accel_keys(self.id_ref(), self.label.text().keys());
             mgr.new_accel_layer(self.id(), true);
+
+            let id = self.id_ref().make_child(widget_index![self.list]);
+            self.list.configure_recurse(mgr, id);
+
+            self.configure(mgr);
         }
 
         fn key_nav(&self) -> bool {

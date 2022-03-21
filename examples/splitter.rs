@@ -28,10 +28,8 @@ fn main() -> kas::shell::Result<()> {
             #[widget] _ = TextButton::new_msg("+", Message::Incr),
         }
     };
-    let mut panes = RowSplitter::<EditField>::default();
-    let _ = panes.resize_with(2, |n| {
-        EditField::new(format!("Pane {}", n + 1)).multi_line(true)
-    });
+    let panes = (0..2).map(|n| EditField::new(format!("Pane {}", n + 1)).multi_line(true));
+    let panes = RowSplitter::<EditField>::new(panes.collect());
 
     let window = Window::new(
         "Slitter panes",
@@ -49,11 +47,14 @@ fn main() -> kas::shell::Result<()> {
                 fn handle_button(&mut self, mgr: &mut EventMgr, msg: Message) {
                     match msg {
                         Message::Decr => {
-                            *mgr |= self.panes.pop().1;
+                            mgr.set_rect_mgr(|mgr| self.panes.pop(mgr));
                         }
                         Message::Incr => {
                             let n = self.panes.len() + 1;
-                            *mgr |= self.panes.push(EditField::new(format!("Pane {}", n)).multi_line(true));
+                            mgr.set_rect_mgr(|mgr| self.panes.push(
+                                mgr,
+                                EditField::new(format!("Pane {}", n)).multi_line(true)
+                            ));
                         }
                     };
                 }

@@ -396,11 +396,6 @@ widget! {
         fn num_children(&self) -> usize {
             self.widgets.len()
         }
-        fn make_child_id(&self, index: usize) -> Option<WidgetId> {
-            self.widgets.get(index)
-                .and_then(|w| w.key.as_ref())
-                .map(|key| self.data.make_id(self.id_ref(), key))
-        }
         #[inline]
         fn get_child(&self, index: usize) -> Option<&dyn WidgetConfig> {
             self.widgets.get(index).map(|w| w.widget.as_widget())
@@ -426,6 +421,33 @@ widget! {
     }
 
     impl WidgetConfig for Self {
+        fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
+            self.core_data_mut().id = id;
+
+            // If data is available but not loaded yet, make some widgets for
+            // use by size_rules (this allows better sizing). Configure the new
+            // widgets (this allows resource loading which may affect size.)
+            self.data_ver = self.data.version();
+            if self.widgets.len() == 0 && !self.data.is_empty() {
+                let items = self.data.iter_vec(self.ideal_visible.cast());
+                let len = items.len();
+                debug!("allocating {} widgets", len);
+                self.widgets.reserve(len);
+                for key in items.into_iter() {
+                    let id = self.data.make_id(self.id_ref(), &key);
+                    let mut widget = self.view.make();
+                    mgr.configure(id, &mut widget);
+                    if let Some(item) = self.data.get_cloned(&key) {
+                        *mgr |= self.view.set(&mut widget, item);
+                    }
+                    let key = Some(key);
+                    self.widgets.push(WidgetData { key, widget });
+                }
+            }
+
+            self.configure(mgr);
+        }
+
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             for handle in self.data.update_handles().into_iter() {
                 mgr.update_on_handle(handle, self.id());
@@ -446,24 +468,6 @@ widget! {
                 self.child_size_min = rules.min_size();
             }
 
-            // If data is already available, create some widgets and ensure
-            // that the ideal size meets all expectations of these children.
-            self.data_ver = self.data.version();
-            if self.widgets.len() == 0 && self.data.len() > 0 {
-                let items = self.data.iter_vec(self.ideal_visible.cast());
-                debug!("allocating widgets (reserve = {})", items.len());
-                self.widgets.reserve(items.len());
-                for key in items.into_iter() {
-                    if let Some(item) = self.data.get_cloned(&key) {
-                        let mut widget = self.view.make();
-                        // Note: we cannot call configure here, but it needs
-                        // to happen! Therefore we set key=None and do not
-                        // care about order of data within self.widgets.
-                        let _ = self.view.set(&mut widget, item);
-                        self.widgets.push(WidgetData { key: None, widget });
-                    }
-                }
-            }
             if self.widgets.len() > 0 {
                 let other = axis.other().map(|mut size| {
                     // Use same logic as in set_rect to find per-child size:

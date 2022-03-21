@@ -105,6 +105,11 @@ pub trait ListData: Debug {
     /// increase the version number (allowing change detection).
     fn version(&self) -> u64;
 
+    /// No data is available
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Number of data items available
     ///
     /// Note: users may assume this is `O(1)`.

@@ -110,26 +110,14 @@ pub trait WidgetChildren: WidgetCore {
     /// This method may be removed in the future.
     fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig>;
 
-    /// Get the [`WidgetId`] for this child
-    ///
-    /// Note: the result should be generated relative to `self.id`.
-    /// Most widgets may use the default implementation.
-    ///
-    /// This must return `Some(..)` when `index` is valid; in other cases the
-    /// result does not matter.
-    ///
-    /// If a custom implementation is used, then [`Self::find_child_index`]
-    /// must be implemented to do the inverse of `make_child_id`, and
-    /// probably a custom implementation of [`Layout::spatial_nav`] is needed.
-    #[inline]
-    fn make_child_id(&self, index: usize) -> Option<WidgetId> {
-        Some(self.id_ref().make_child(index))
-    }
-
     /// Find the child which is an ancestor of this `id`, if any
     ///
     /// If `Some(index)` is returned, this is *probably* but not guaranteed
     /// to be a valid child index.
+    ///
+    /// The default implementation simply uses [`WidgetId::next_key_after`].
+    /// Widgets may choose to assign children custom keys by overriding this
+    /// method and [`WidgetConfig::configure_recurse`].
     #[inline]
     fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
         id.next_key_after(self.id_ref())
@@ -142,51 +130,43 @@ pub trait WidgetChildren: WidgetCore {
 /// [`derive(Widget)`] unless explicitly implemented.
 ///
 /// Widgets are *configured* on window creation or dynamically via the
-/// parent calling [`SetRectMgr::configure`]. Configuration may be repeated.
+/// parent calling [`SetRectMgr::configure`]. Parent widgets are responsible
+/// for ensuring that children are configured before calling
+/// [`Layout::size_rules`]. Configuration may be repeated and may be used as a
+/// mechanism to change a child's [`WidgetId`], but this may be expensive.
 ///
-/// Configuration is required to happen before [`Layout::size_rules`] is first
-/// called, thus [`Self::configure`] may be used to load assets required by
-/// [`Layout::size_rules`].
-///
-/// Configuration happens in this order:
-///
-/// 1.  [`Self::pre_configure`] is used to assign a [`WidgetId`] and may
-///     influence configuration of children.
-/// 2.  Configuration of children accessible through [`WidgetChildren`].
-/// 3.  [`Self::configure`] allows user-configuration of event handling and
-///     may be used for resource loading.
-///
-/// Note that if parent widgets add child widgets dynamically, that parent is
-/// responsible for ensuring that the new child widgets gets configured. This
-/// may be done (1) by adding the children during [`Self::pre_configure`], (2)
-/// by requesting [`TkAction::RECONFIGURE`] or (3) by calling
-/// [`SetRectMgr::configure`]. The latter may also be used to change a child's
-/// [`WidgetId`].
+/// Configuration invokes [`Self::configure_recurse`] which then calls
+/// [`Self::configure`]. The latter may be used to load assets before sizing.
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
-//
-// TODO(specialization): provide a blanket implementation, so that users only
-// need implement manually when they have something to configure.
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait WidgetConfig: Layout {
-    /// Pre-configure widget
+    /// Configure widget and children
     ///
-    /// This method is part of configuration (see trait documentation).
+    /// This method:
     ///
-    /// This method assigns the widget's [`WidgetId`] and may be used to
-    /// affect the manager in ways which influence the child, for example
-    /// [`EventState::new_accel_layer`]. Custom implementations should be aware
-    /// that children may not have been configured and thus may have invalid
-    /// identifiers at the time of calling.
+    /// 1.  Assigns `id` to self
+    /// 2.  Constructs an identifier for and call `configure_recurse` on each child
+    /// 3.  Calls [`Self::configure`]
     ///
-    /// The window's scale factor (and thus any sizes available through
-    /// [`SetRectMgr::size_mgr`]) may not be correct initially (some platforms
-    /// construct all windows using scale factor 1) and/or may change in the
-    /// future. Changes to the scale factor result in recalculation of
-    /// [`Layout::size_rules`] but not repeated configuration.
-    fn pre_configure(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
-        let _ = mgr;
+    /// Normally the default implementation is used. A custom implementation
+    /// may be used to influence configuration of children, for example by
+    /// calling [`EventState::new_accel_layer`] or by constructing children's
+    /// [`WidgetId`] values in a non-standard manner (in this case ensure that
+    /// [`WidgetChildren::find_child_index`] has a correct implementation).
+    ///
+    /// To directly configure a child, call [`SetRectMgr::configure`] instead.
+    fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
         self.core_data_mut().id = id;
+
+        for index in 0..self.num_children() {
+            let id = self.id_ref().make_child(index);
+            if let Some(widget) = self.get_child_mut(index) {
+                widget.configure_recurse(mgr, id);
+            }
+        }
+
+        self.configure(mgr);
     }
 
     /// Configure widget
@@ -194,7 +174,7 @@ pub trait WidgetConfig: Layout {
     /// This method is part of configuration (see trait documentation).
     ///
     /// This method may be used to configure event handling and to load
-    /// resources.
+    /// resources, including resources affecting [`Layout::size_rules`].
     ///
     /// The window's scale factor (and thus any sizes available through
     /// [`SetRectMgr::size_mgr`]) may not be correct initially (some platforms
@@ -240,9 +220,14 @@ pub trait WidgetConfig: Layout {
 /// This trait is part of the [`Widget`] family. It may be derived by
 /// the [`crate::macros::widget`] macro, but is not by default.
 ///
-/// Implementations of this trait should *either* define [`Self::layout`]
-/// (optionally with other methods as required) *or* define at least
-/// [`Self::size_rules`] and [`Self::draw`].
+/// There are two methods of implementing this trait:
+///
+/// -   Implement [`Self::layout`]. This alone suffices in many cases; other
+///     methods may be overridden if necessary.
+/// -   Ignore [`Self::layout`] and implement [`Self::size_rules`] (to give the
+///     widget size) and [`Self::draw`] (to make it show something). Other
+///     methods may be required (e.g. [`Self::set_rect`] to position child
+///     elements).
 ///
 /// Layout solving happens in two steps:
 ///
@@ -262,8 +247,9 @@ pub trait Layout: WidgetChildren {
     ///
     /// The default implementation is for an empty layout (zero size required,
     /// no child elements, no graphics).
+    #[inline]
     fn layout(&mut self) -> layout::Layout<'_> {
-        Default::default() // TODO: remove default impl
+        Default::default()
     }
 
     /// Get size rules for the given axis
@@ -446,7 +432,7 @@ pub trait WidgetExt: WidgetChildren {
     ///
     /// Note that the default-constructed [`WidgetId`] is *invalid*: any
     /// operations on this value will cause a panic. Valid identifiers are
-    /// assigned by [`WidgetConfig::pre_configure`].
+    /// assigned by [`WidgetConfig::configure_recurse`].
     #[inline]
     fn id(&self) -> WidgetId {
         self.core_data().id.clone()
@@ -456,7 +442,7 @@ pub trait WidgetExt: WidgetChildren {
     ///
     /// Note that the default-constructed [`WidgetId`] is *invalid*: any
     /// operations on this value will cause a panic. Valid identifiers are
-    /// assigned by [`WidgetConfig::pre_configure`].
+    /// assigned by [`WidgetConfig::configure_recurse`].
     #[inline]
     fn id_ref(&self) -> &WidgetId {
         &self.core_data().id

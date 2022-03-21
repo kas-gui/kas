@@ -256,7 +256,7 @@ fn main() -> kas::shell::Result<()> {
                 .with_state(true)
                 .on_select(|_| Some(Item::Radio(2))),
             #[widget] cbbl = Label::new("ComboBox"),
-            #[widget] cbb = ComboBox::new(&["&One", "T&wo", "Th&ree"], 0)
+            #[widget] cbb = ComboBox::new_from_iter(&["&One", "T&wo", "Th&ree"], 0)
                 .on_select(|_, index| Some(Item::Combo((index + 1).cast()))),
             #[widget] sdl = Label::new("Slider"),
             #[widget(map_msg = handle_slider)] sd =
