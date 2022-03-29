@@ -11,15 +11,16 @@
 
 extern crate proc_macro;
 
+use impl_tools_lib::autoimpl;
 use impl_tools_lib::{AttrImplDefault, ImplDefault, Scope, ScopeAttr};
 use proc_macro::TokenStream;
-use proc_macro_error::{emit_call_site_error, emit_error, proc_macro_error};
+use proc_macro_error::{emit_call_site_error, proc_macro_error};
 use quote::quote;
 use syn::parse_macro_input;
-use syn::{spanned::Spanned, GenericParam, Generics, Item};
+use syn::{GenericParam, Generics};
 
 mod args;
-mod autoimpl;
+mod class_traits;
 mod make_layout;
 mod make_widget;
 mod widget;
@@ -122,7 +123,8 @@ pub fn impl_default(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// -   `Clone` — implements `std::clone::Clone`; ignored fields are
 ///     initialised with `Default::default()`
 /// -   `Debug` — implements `std::fmt::Debug`; ignored fields are not printed
-/// -   `Default` — implements `std::default::Default`
+/// -   `Default` — implements `std::default::Default` using
+///     `Default::default()` for all fields (see also [`impl_default`](macro@impl_default))
 ///
 /// ### Parameter syntax
 ///
@@ -216,22 +218,25 @@ pub fn impl_default(attr: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// Note further: if the trait uses generic parameters itself, these must be
 /// introduced explicitly in the `for<..>` parameter list.
-
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut toks = item.clone();
-    match syn::parse(attr) {
-        Ok(attr) => {
-            let item = parse_macro_input!(item as Item);
-            toks.extend(TokenStream::from(match item {
-                Item::Struct(item) => autoimpl::autoimpl_struct(attr, item),
-                Item::Trait(item) => autoimpl::autoimpl_trait(attr, item),
-                item => {
-                    emit_error!(item.span(), "autoimpl: does not support this item type");
-                    return toks;
-                }
-            }));
+    match syn::parse::<autoimpl::Attr>(attr) {
+        Ok(autoimpl::Attr::ForDeref(ai)) => toks.extend(TokenStream::from(ai.expand(item.into()))),
+        Ok(autoimpl::Attr::ImplTraits(ai)) => {
+            // We could use lazy_static to construct a HashMap for fast lookups,
+            // but given the small number of impls a "linear map" is fine.
+            let find_impl = |path: &syn::Path| {
+                (autoimpl::STD_IMPLS.iter())
+                    .chain(class_traits::CLASS_IMPLS.iter())
+                    .cloned()
+                    .chain(std::iter::once(
+                        &class_traits::ImplClassTraits as &dyn autoimpl::ImplTrait,
+                    ))
+                    .find(|impl_| impl_.path().matches_ident_or_path(path))
+            };
+            toks.extend(TokenStream::from(ai.expand(item.into(), find_impl)))
         }
         Err(err) => {
             emit_call_site_error!(err);
