@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::generics::{
+use impl_tools_lib::generics::{
     clause_to_toks, impl_generics, GenericParam, Generics, TypeParamBound, WhereClause,
     WherePredicate,
 };

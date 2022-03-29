@@ -24,6 +24,7 @@ log = []
 quote = "1.0"
 proc-macro2 = { version = "1.0" }
 proc-macro-error = "1.0"
+impl-tools-lib = "0.3.0"
 
 [dependencies.syn]
 version = "1.0.14"
