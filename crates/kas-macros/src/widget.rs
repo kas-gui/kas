@@ -320,8 +320,10 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
         impl_generics = a;
         where_clause = c;
     } else {
-        let handler = args.attr_handler.unwrap_or_default();
-        let msg = handler.msg;
+        let msg = args
+            .attr_widget
+            .msg
+            .unwrap_or_else(|| parse_quote! { ::kas::event::VoidMsg });
         let handle = if let Some(inner) = opt_derive {
             quote! {
                 #[inline]

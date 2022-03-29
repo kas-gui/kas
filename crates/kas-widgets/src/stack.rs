@@ -34,7 +34,7 @@ widget! {
     /// or may be limited: see [`Self::set_size_limit`]. Drawing is `O(1)`, and
     /// so is event handling in the expected case.
     #[derive(Clone, Default, Debug)]
-    #[handler(msg=<W as event::Handler>::Msg)]
+    #[widget { msg = <W as event::Handler>::Msg; }]
     pub struct Stack<W: Widget> {
         #[widget_core]
         core: CoreData,

@@ -23,8 +23,8 @@ fn main() -> kas::shell::Result<()> {
                     align(center): self.counter,
                     row: [self.b_decr, self.b_incr],
                 ];
+                msg = VoidMsg;
             }]
-            #[handler(msg = VoidMsg)]
             struct {
                 // SingleView embeds a shared value, here default-constructed to 0
                 #[widget] counter: SingleView<SharedRc<i32>> = Default::default(),

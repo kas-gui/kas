@@ -27,8 +27,8 @@ fn main() -> kas::shell::Result<()> {
                     2..4, 1..3: align(stretch): self.crasit;
                     3, 0: self.edit;
                 };
+                msg = VoidMsg;
             }]
-            #[handler(msg = VoidMsg)]
             struct {
                 #[widget] title = Label::new("Layout demo"),
                 #[widget] lipsum = Label::new(lipsum),

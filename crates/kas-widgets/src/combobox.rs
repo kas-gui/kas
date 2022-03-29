@@ -381,8 +381,8 @@ widget! {
     #[derive(Clone, Debug)]
     #[widget{
         layout = single;
+        msg = (usize, ());
     }]
-    #[handler(msg=(usize, ()))]
     struct ComboPopup {
         #[widget_core]
         core: CoreData,

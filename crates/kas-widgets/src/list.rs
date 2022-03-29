@@ -167,7 +167,7 @@ widget! {
     #[autoimpl(Clone where W: Clone)]
     #[autoimpl(Debug)]
     #[autoimpl(Default where D: Default)]
-    #[handler(msg=M)]
+    #[widget { msg = M; }]
     pub struct GenericList<
         D: Directional,
         W: Widget,

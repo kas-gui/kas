@@ -15,9 +15,9 @@ widget! {
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Debug, Default)]
-    #[handler(msg = <W as Handler>::Msg)]
     #[widget{
         layout = frame(self.inner, kas::theme::FrameStyle::Frame);
+        msg = <W as Handler>::Msg;
     }]
     pub struct Frame<W: Widget> {
         #[widget_core]
@@ -45,9 +45,9 @@ widget! {
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Debug, Default)]
-    #[handler(msg = <W as Handler>::Msg)]
     #[widget{
         layout = frame(self.inner, kas::theme::FrameStyle::Popup);
+        msg = <W as Handler>::Msg;
     }]
     pub struct PopupFrame<W: Widget> {
         #[widget_core]

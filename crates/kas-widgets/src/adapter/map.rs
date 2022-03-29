@@ -17,8 +17,8 @@ widget! {
     #[derive(Clone)]
     #[widget{
         layout = single;
+        msg = M;
     }]
-    #[handler(msg=M)]
     pub struct MapResponse<W: Widget, M: 'static> {
         #[widget_core]
         core: kas::CoreData,

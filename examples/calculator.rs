@@ -37,8 +37,8 @@ fn main() -> kas::shell::Result<()> {
                 3..5, 3: align(stretch): self.b_eq;
                 4, 0..2: self.b0; 4, 2: self.b_dot;
             };
+            msg = Key;
         }]
-        #[handler(msg = Key)]
         struct {
             // Buttons get keyboard bindings through the "&" item (e.g. "&1"
             // binds both main and numpad 1 key) and via `with_keys`.
@@ -74,8 +74,8 @@ fn main() -> kas::shell::Result<()> {
     let content = make_widget! {
         #[widget{
             layout = column: *;
+            msg = VoidMsg;
         }]
-        #[handler(msg = VoidMsg)]
         struct {
             #[widget] display: impl HasString = EditBox::new("0").with_editable(false).multi_line(true),
             #[widget(use_msg = handle_button)] buttons -> Key = buttons,

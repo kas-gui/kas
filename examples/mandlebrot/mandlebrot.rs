@@ -434,7 +434,7 @@ widget! {
             1..3, 1..3: self.mbrot;
         };
     }]
-    #[handler(msg = event::VoidMsg)]
+    #[widget { msg = event::VoidMsg; }]
     struct MandlebrotWindow {
         #[widget_core] core: CoreData,
         #[widget] label: Label<String>,

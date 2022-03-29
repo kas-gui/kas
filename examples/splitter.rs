@@ -21,8 +21,8 @@ fn main() -> kas::shell::Result<()> {
     let buttons = make_widget! {
         #[widget{
             layout = row: *;
+            msg = Message;
         }]
-        #[handler(msg = Message)]
         struct {
             #[widget] _ = TextButton::new_msg("−", Message::Decr),
             #[widget] _ = TextButton::new_msg("+", Message::Incr),
@@ -37,8 +37,8 @@ fn main() -> kas::shell::Result<()> {
             // TODO: use vertical splitter
             #[widget{
                 layout = column: *;
+                msg = VoidMsg;
             }]
-            #[handler(msg = VoidMsg)]
             struct {
                 #[widget(use_msg = handle_button)] buttons -> Message = buttons,
                 #[widget] panes: RowSplitter<EditField> = panes,

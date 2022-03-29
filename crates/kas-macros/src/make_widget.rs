@@ -96,13 +96,12 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
     };
 
     let mut impl_handler = false;
-    let msg;
-    if let Some(h) = args.attr_handler {
+    let mut opt_msg = None;
+    let msg = if let Some(msg) = args.attr_widget.msg.as_ref() {
         impl_handler = true;
-        msg = h.msg;
+        msg
     } else {
         // A little magic: try to deduce parameters, applying defaults otherwise
-        let mut opt_msg = None;
         let msg_ident: Ident = parse_quote! { Msg };
         for impl_ in &args.extra_impls {
             if let Some((_, ref name, _)) = impl_.trait_ {
@@ -122,8 +121,8 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
             }
         }
 
-        if let Some(m) = opt_msg {
-            msg = m;
+        if let Some(msg) = opt_msg.as_ref() {
+            msg
         } else {
             // We could default to msg=VoidMsg here. If error messages weren't
             // so terrible this might even be a good idea!
@@ -234,7 +233,6 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
 
     let widget = crate::widget::widget(crate::args::Widget {
         attr_widget: args.attr_widget,
-        attr_handler: None,
         extra_attrs: args.extra_attrs,
 
         vis: Visibility::Inherited,

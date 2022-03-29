@@ -27,7 +27,6 @@ pub struct Child {
 #[derive(Debug)]
 pub struct Widget {
     pub attr_widget: WidgetArgs,
-    pub attr_handler: Option<HandlerArgs>,
     pub extra_attrs: Vec<Attribute>,
 
     pub vis: Visibility,
@@ -46,7 +45,6 @@ pub struct Widget {
 impl Parse for Widget {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut attr_widget = None;
-        let mut attr_handler = None;
         let mut extra_attrs = Vec::new();
 
         let mut attrs = input.call(Attribute::parse_outer)?;
@@ -58,12 +56,6 @@ impl Parse for Widget {
                     attr_widget = Some(w);
                 } else {
                     emit_error!(attr.span(), "multiple #[widget(..)] attributes on type");
-                }
-            } else if attr.path == parse_quote! { handler } {
-                if attr_handler.is_some() {
-                    emit_error!(attr.span(), "multiple #[handler(..)] attributes on type");
-                } else {
-                    attr_handler = Some(syn::parse2(attr.tokens)?);
                 }
             } else {
                 extra_attrs.push(attr);
@@ -162,7 +154,6 @@ impl Parse for Widget {
 
         Ok(Widget {
             attr_widget,
-            attr_handler,
             extra_attrs,
             vis,
             token,
@@ -521,6 +512,7 @@ pub struct WidgetArgs {
     pub derive: Option<Member>,
     pub layout: Option<make_layout::Tree>,
     pub find_id: FindId,
+    pub msg: Option<Type>,
 }
 
 impl Parse for WidgetArgs {
@@ -531,6 +523,7 @@ impl Parse for WidgetArgs {
         let mut derive = None;
         let mut layout = None;
         let mut find_id = FindId::default();
+        let mut msg = None;
 
         let content;
         let _ = braced!(content in input);
@@ -555,6 +548,10 @@ impl Parse for WidgetArgs {
                 layout = Some(content.parse()?);
             } else if content.peek(kw::find_id) {
                 find_id = content.parse()?;
+            } else if msg.is_none() && lookahead.peek(kw::msg) {
+                let _: kw::msg = content.parse()?;
+                let _: Eq = content.parse()?;
+                msg = Some(content.parse()?);
             } else {
                 return Err(lookahead.error());
             }
@@ -569,57 +566,8 @@ impl Parse for WidgetArgs {
             derive,
             layout,
             find_id,
+            msg,
         })
-    }
-}
-
-#[derive(Debug)]
-pub struct HandlerArgs {
-    pub msg: Type,
-}
-
-impl HandlerArgs {
-    pub fn new(msg: Type) -> Self {
-        HandlerArgs { msg }
-    }
-}
-
-impl Default for HandlerArgs {
-    fn default() -> Self {
-        let msg = parse_quote! { ::kas::event::VoidMsg };
-        HandlerArgs::new(msg)
-    }
-}
-
-impl Parse for HandlerArgs {
-    fn parse(input: ParseStream) -> Result<Self> {
-        let mut msg = None;
-
-        if !input.is_empty() {
-            let content;
-            let _ = parenthesized!(content in input);
-
-            while !content.is_empty() {
-                let lookahead = content.lookahead1();
-                if msg.is_none() && lookahead.peek(kw::msg) {
-                    let _: kw::msg = content.parse()?;
-                    let _: Eq = content.parse()?;
-                    msg = Some(content.parse()?);
-                } else {
-                    return Err(lookahead.error());
-                }
-
-                if content.peek(Comma) {
-                    let _: Comma = content.parse()?;
-                }
-            }
-        }
-
-        if let Some(msg) = msg {
-            Ok(HandlerArgs { msg })
-        } else {
-            Ok(HandlerArgs::default())
-        }
     }
 }
 
@@ -644,7 +592,6 @@ pub struct WidgetField {
 #[derive(Debug)]
 pub struct MakeWidget {
     pub attr_widget: WidgetArgs,
-    pub attr_handler: Option<HandlerArgs>,
     pub extra_attrs: Vec<Attribute>,
 
     pub token: Token![struct],
@@ -659,7 +606,6 @@ pub struct MakeWidget {
 impl Parse for MakeWidget {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut attr_widget = None;
-        let mut attr_handler = None;
         let mut extra_attrs = Vec::new();
 
         let mut attrs = input.call(Attribute::parse_outer)?;
@@ -671,12 +617,6 @@ impl Parse for MakeWidget {
                     attr_widget = Some(w);
                 } else {
                     emit_error!(attr.span(), "multiple #[widget(..)] attributes on type");
-                }
-            } else if attr.path == parse_quote! { handler } {
-                if attr_handler.is_some() {
-                    emit_error!(attr.span(), "multiple #[handler(..)] attributes on type");
-                } else {
-                    attr_handler = Some(syn::parse2(attr.tokens)?);
                 }
             } else {
                 extra_attrs.push(attr);
@@ -702,7 +642,6 @@ impl Parse for MakeWidget {
 
         Ok(MakeWidget {
             attr_widget,
-            attr_handler,
             extra_attrs,
 
             token,
