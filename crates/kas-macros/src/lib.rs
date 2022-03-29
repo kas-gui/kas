@@ -11,6 +11,7 @@
 
 extern crate proc_macro;
 
+use impl_tools_lib::{AttrImplDefault, ImplDefault, Scope, ScopeAttr};
 use proc_macro::TokenStream;
 use proc_macro_error::{emit_call_site_error, emit_error, proc_macro_error};
 use quote::quote;
@@ -23,6 +24,71 @@ mod make_layout;
 mod make_widget;
 mod widget;
 mod widget_index;
+
+/// Implement `Default`
+///
+/// This macro may be used in one of two ways.
+///
+/// ### Type-level initialiser
+///
+/// ```
+/// # use kas_macros::impl_default;
+/// /// A simple enum; default value is Blue
+/// #[impl_default(Colour::Blue)]
+/// enum Colour {
+///     Red,
+///     Green,
+///     Blue,
+/// }
+///
+/// fn main() {
+///     assert!(matches!(Colour::default(), Colour::Blue));
+/// }
+/// ```
+///
+/// A where clause is optional: `#[impl_default(EXPR where BOUNDS)]`.
+///
+/// ### Field-level initialiser
+///
+/// This variant only supports structs. Fields specified as `name: type = expr`
+/// will be initialised with `expr`, while other fields will be initialised with
+/// `Defualt::default()`.
+///
+/// ```
+/// # use kas_macros::{impl_default, impl_scope};
+///
+/// impl_scope! {
+///     #[impl_default]
+///     struct Person {
+///         name: String = "Jane Doe".to_string(),
+///         age: u32 = 72,
+///         occupation: String,
+///     }
+/// }
+///
+/// fn main() {
+///     let person = Person::default();
+///     assert_eq!(person.name, "Jane Doe");
+///     assert_eq!(person.age, 72);
+///     assert_eq!(person.occupation, "");
+/// }
+/// ```
+///
+/// A where clause is optional: `#[impl_default(where BOUNDS)]`.
+#[proc_macro_attribute]
+#[proc_macro_error]
+pub fn impl_default(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let mut toks = item.clone();
+    match syn::parse::<ImplDefault>(attr) {
+        Ok(attr) => toks.extend(TokenStream::from(attr.expand(item.into()))),
+        Err(err) => {
+            emit_call_site_error!(err);
+            // Since this form of invocation only adds implementations, we can
+            // safely output the original item, thus reducing secondary errors.
+        }
+    }
+    toks
+}
 
 /// A variant of the standard `derive` macro
 ///
@@ -174,6 +240,76 @@ pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     }
     toks
+}
+
+/// Implementation scope
+///
+/// Supports `impl Self` syntax.
+///
+/// Also supports struct field assignment syntax for `Default`: see [`impl_default`](macro@impl_default).
+///
+/// Caveat: `rustfmt` will not format contents (see
+/// [rustfmt#5254](https://github.com/rust-lang/rustfmt/issues/5254)).
+///
+/// ## Syntax
+///
+/// > _ImplScope_ :\
+/// > &nbsp;&nbsp; `impl_scope!` `{` _ScopeItem_ _ItemImpl_ * `}`
+/// >
+/// > _ScopeItem_ :\
+/// > &nbsp;&nbsp; _ItemEnum_ | _ItemStruct_ | _ItemType_ | _ItemUnion_
+///
+/// The result looks a little like a module containing a single type definition
+/// plus its implementations, but is injected into the parent module.
+///
+/// Implementations must target the type defined at the start of the scope. A
+/// special syntax for the target type, `Self`, is added:
+///
+/// > _ScopeImplItem_ :\
+/// > &nbsp;&nbsp; `impl` _GenericParams_? _ForTrait_? _ScopeImplTarget_ _WhereClause_? `{`
+/// > &nbsp;&nbsp; &nbsp;&nbsp; _InnerAttribute_*
+/// > &nbsp;&nbsp; &nbsp;&nbsp; _AssociatedItem_*
+/// > &nbsp;&nbsp; `}`
+/// >
+/// > _ScopeImplTarget_ :\
+/// > &nbsp;&nbsp; `Self` | _TypeName_ _GenericParams_?
+///
+/// That is, implementations may take one of two forms:
+///
+/// -   `impl MyType { ... }`
+/// -   `impl Self { ... }`
+///
+/// Generic parameters from the type are included automatically, with bounds as
+/// defined on the type. Additional generic parameters and an additional where
+/// clause are supported (generic parameter lists and bounds are merged).
+///
+/// ## Example
+///
+/// ```
+/// use kas_macros::impl_scope;
+/// use std::ops::Add;
+///
+/// impl_scope! {
+///     struct Pair<T>(T, T);
+///
+///     impl Self where T: Clone + Add {
+///         fn sum(&self) -> <T as Add>::Output {
+///             self.0.clone().add(self.1.clone())
+///         }
+///     }
+/// }
+/// ```
+#[proc_macro_error]
+#[proc_macro]
+pub fn impl_scope(input: TokenStream) -> TokenStream {
+    let mut scope = parse_macro_input!(input as Scope);
+    scope.apply_attrs(|path| {
+        AttrImplDefault
+            .path()
+            .matches(path)
+            .then(|| &AttrImplDefault as &dyn ScopeAttr)
+    });
+    scope.expand().into()
 }
 
 // Support impls on Self by replacing name and summing generics
