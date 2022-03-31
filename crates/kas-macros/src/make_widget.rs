@@ -29,8 +29,6 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
             }
         }
 
-        let mut x: Option<(Ident, Type)> = None;
-
         for impl_ in impls {
             if impl_.trait_.is_some() {
                 continue;
@@ -40,13 +38,6 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
                     syn::ImplItem::Method(syn::ImplItemMethod { sig, .. })
                         if sig.ident == *handler =>
                     {
-                        if let Some(_x) = x {
-                            abort!(
-                                handler.span(), "multiple methods with this name";
-                                help = _x.0.span() => "first method with this name";
-                                help = sig.ident.span() => "second method with this name";
-                            );
-                        }
                         if sig.inputs.len() != 3 {
                             abort!(
                                 sig.span(),
@@ -58,18 +49,16 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
                             syn::FnArg::Typed(arg) => (*arg.ty).clone(),
                             _ => panic!("expected typed argument"), // nothing else is possible here?
                         };
-                        x = Some((sig.ident.clone(), ty));
+
+                        find_handler_ty_buf.push((handler.clone(), ty.clone()));
+                        return ty;
                     }
                     _ => (),
                 }
             }
         }
-        if let Some(x) = x {
-            find_handler_ty_buf.push((handler.clone(), x.1.clone()));
-            x.1
-        } else {
-            abort!(handler.span(), "no methods with this name found");
-        }
+
+        abort!(handler.span(), "no methods with this name found");
     };
 
     // Used to make fresh identifiers for generic types
