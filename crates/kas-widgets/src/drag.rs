@@ -10,7 +10,7 @@ use std::fmt::Debug;
 use kas::event::{CursorIcon, PressSource};
 use kas::prelude::*;
 
-widget! {
+impl_scope! {
     /// Draggable Handle
     ///
     /// A `DragHandle` is a draggable object with a given size which is restricted

@@ -45,7 +45,7 @@ impl EditGuard for Guard {
     }
 }
 
-widget! {
+impl_scope! {
     #[derive(Debug)]
     #[widget{
         layout = grid: {
@@ -226,8 +226,8 @@ fn main() -> kas::shell::Result<()> {
                 11, 0: self.svl; 11, 1: align(center): self.sv;
                 12, 0: self.pul; 12, 1: self.pu;
             };
+            msg = Item;
         }]
-        #[handler(msg = Item)]
         struct {
             #[widget] sll = Label::new("ScrollLabel"),
             #[widget] sl = ScrollLabel::new(text),
@@ -286,8 +286,8 @@ fn main() -> kas::shell::Result<()> {
     let head = make_widget! {
         #[widget{
             layout = row: *;
+            msg = VoidMsg;
         }]
-        #[handler(msg = VoidMsg)]
         struct {
             #[widget] _ = Label::new("Widget Gallery"),
             #[widget] _ = Image::new("res/gallery.png"),
@@ -303,8 +303,8 @@ fn main() -> kas::shell::Result<()> {
                     align(center): self.head,
                     self.gallery,
                 ];
+                msg = VoidMsg;
             }]
-            #[handler(msg = VoidMsg)]
             struct {
                 #[widget(use_msg = menu)] menubar = menubar,
                 #[widget] head = Frame::new(head),

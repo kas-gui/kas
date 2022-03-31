@@ -8,22 +8,88 @@
 #![recursion_limit = "128"]
 #![allow(clippy::let_and_return)]
 #![allow(clippy::large_enum_variant)]
+#![allow(clippy::needless_late_init)]
 
 extern crate proc_macro;
 
+use impl_tools_lib::autoimpl;
+use impl_tools_lib::{AttrImplDefault, ImplDefault, Scope, ScopeAttr};
 use proc_macro::TokenStream;
-use proc_macro_error::{emit_call_site_error, emit_error, proc_macro_error};
+use proc_macro_error::{emit_call_site_error, proc_macro_error};
 use quote::quote;
 use syn::parse_macro_input;
-use syn::{spanned::Spanned, GenericParam, Generics, Item};
 
 mod args;
-mod autoimpl;
-pub(crate) mod generics;
+mod class_traits;
 mod make_layout;
 mod make_widget;
 mod widget;
 mod widget_index;
+
+/// Implement `Default`
+///
+/// This macro may be used in one of two ways.
+///
+/// ### Type-level initialiser
+///
+/// ```
+/// # use kas_macros::impl_default;
+/// /// A simple enum; default value is Blue
+/// #[impl_default(Colour::Blue)]
+/// enum Colour {
+///     Red,
+///     Green,
+///     Blue,
+/// }
+///
+/// fn main() {
+///     assert!(matches!(Colour::default(), Colour::Blue));
+/// }
+/// ```
+///
+/// A where clause is optional: `#[impl_default(EXPR where BOUNDS)]`.
+///
+/// ### Field-level initialiser
+///
+/// This variant only supports structs. Fields specified as `name: type = expr`
+/// will be initialised with `expr`, while other fields will be initialised with
+/// `Defualt::default()`.
+///
+/// ```
+/// # use kas_macros::{impl_default, impl_scope};
+///
+/// impl_scope! {
+///     #[impl_default]
+///     struct Person {
+///         name: String = "Jane Doe".to_string(),
+///         age: u32 = 72,
+///         occupation: String,
+///     }
+/// }
+///
+/// fn main() {
+///     let person = Person::default();
+///     assert_eq!(person.name, "Jane Doe");
+///     assert_eq!(person.age, 72);
+///     assert_eq!(person.occupation, "");
+/// }
+/// ```
+///
+/// A where clause is optional: `#[impl_default(where BOUNDS)]`.
+#[proc_macro_attribute]
+#[proc_macro_error]
+pub fn impl_default(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let mut toks = item.clone();
+    match syn::parse::<ImplDefault>(attr) {
+        Ok(attr) => toks.extend(TokenStream::from(attr.expand(item.into()))),
+        Err(err) => {
+            emit_call_site_error!(err);
+            // Since this form of invocation only adds implementations, we can
+            // safely output the original item, thus reducing secondary errors.
+        }
+    }
+    toks
+}
 
 /// A variant of the standard `derive` macro
 ///
@@ -57,7 +123,8 @@ mod widget_index;
 /// -   `Clone` — implements `std::clone::Clone`; ignored fields are
 ///     initialised with `Default::default()`
 /// -   `Debug` — implements `std::fmt::Debug`; ignored fields are not printed
-/// -   `Default` — implements `std::default::Default`
+/// -   `Default` — implements `std::default::Default` using
+///     `Default::default()` for all fields (see also [`impl_default`](macro@impl_default))
 ///
 /// ### Parameter syntax
 ///
@@ -151,22 +218,25 @@ mod widget_index;
 ///
 /// Note further: if the trait uses generic parameters itself, these must be
 /// introduced explicitly in the `for<..>` parameter list.
-
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut toks = item.clone();
-    match syn::parse(attr) {
-        Ok(attr) => {
-            let item = parse_macro_input!(item as Item);
-            toks.extend(TokenStream::from(match item {
-                Item::Struct(item) => autoimpl::autoimpl_struct(attr, item),
-                Item::Trait(item) => autoimpl::autoimpl_trait(attr, item),
-                item => {
-                    emit_error!(item.span(), "autoimpl: does not support this item type");
-                    return toks;
-                }
-            }));
+    match syn::parse::<autoimpl::Attr>(attr) {
+        Ok(autoimpl::Attr::ForDeref(ai)) => toks.extend(TokenStream::from(ai.expand(item.into()))),
+        Ok(autoimpl::Attr::ImplTraits(ai)) => {
+            // We could use lazy_static to construct a HashMap for fast lookups,
+            // but given the small number of impls a "linear map" is fine.
+            let find_impl = |path: &syn::Path| {
+                (autoimpl::STD_IMPLS.iter())
+                    .chain(class_traits::CLASS_IMPLS.iter())
+                    .cloned()
+                    .chain(std::iter::once(
+                        &class_traits::ImplClassTraits as &dyn autoimpl::ImplTrait,
+                    ))
+                    .find(|impl_| impl_.path().matches_ident_or_path(path))
+            };
+            toks.extend(TokenStream::from(ai.expand(item.into(), find_impl)))
         }
         Err(err) => {
             emit_call_site_error!(err);
@@ -177,65 +247,80 @@ pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
     toks
 }
 
-// Support impls on Self by replacing name and summing generics
-fn extend_generics(generics: &mut Generics, in_generics: &Generics) {
-    if generics.lt_token.is_none() {
-        debug_assert!(generics.params.is_empty());
-        debug_assert!(generics.gt_token.is_none());
-        generics.lt_token = in_generics.lt_token;
-        generics.params = in_generics.params.clone();
-        generics.gt_token = in_generics.gt_token;
-    } else if in_generics.lt_token.is_none() {
-        debug_assert!(in_generics.params.is_empty());
-        debug_assert!(in_generics.gt_token.is_none());
-    } else {
-        if !generics.params.empty_or_trailing() {
-            generics.params.push_punct(Default::default());
-        }
-        generics
-            .params
-            .extend(in_generics.params.clone().into_pairs());
-    }
-
-    // Strip defaults which are legal on the struct but not on impls
-    for param in &mut generics.params {
-        match param {
-            GenericParam::Type(p) => {
-                p.eq_token = None;
-                p.default = None;
-            }
-            GenericParam::Lifetime(_) => (),
-            GenericParam::Const(p) => {
-                p.eq_token = None;
-                p.default = None;
-            }
-        }
-    }
-
-    if let Some(ref mut clause1) = generics.where_clause {
-        if let Some(ref clause2) = in_generics.where_clause {
-            if !clause1.predicates.empty_or_trailing() {
-                clause1.predicates.push_punct(Default::default());
-            }
-            clause1
-                .predicates
-                .extend(clause2.predicates.clone().into_pairs());
-        }
-    } else {
-        generics.where_clause = in_generics.where_clause.clone();
-    }
-}
-
-/// Macro to derive widget traits
+/// Implementation scope
 ///
-/// See documentation [in the `kas::macros` module](https://docs.rs/kas/latest/kas/macros#the-widget-macro).
+/// Supports `impl Self` syntax.
+///
+/// Also supports struct field assignment syntax for `Default`: see [`impl_default`](macro@impl_default).
+///
+/// Caveat: `rustfmt` will not format contents (see
+/// [rustfmt#5254](https://github.com/rust-lang/rustfmt/issues/5254)).
+///
+/// ## Syntax
+///
+/// > _ImplScope_ :\
+/// > &nbsp;&nbsp; `impl_scope!` `{` _ScopeItem_ _ItemImpl_ * `}`
+/// >
+/// > _ScopeItem_ :\
+/// > &nbsp;&nbsp; _ItemEnum_ | _ItemStruct_ | _ItemType_ | _ItemUnion_
+///
+/// The result looks a little like a module containing a single type definition
+/// plus its implementations, but is injected into the parent module.
+///
+/// Implementations must target the type defined at the start of the scope. A
+/// special syntax for the target type, `Self`, is added:
+///
+/// > _ScopeImplItem_ :\
+/// > &nbsp;&nbsp; `impl` _GenericParams_? _ForTrait_? _ScopeImplTarget_ _WhereClause_? `{`
+/// > &nbsp;&nbsp; &nbsp;&nbsp; _InnerAttribute_*
+/// > &nbsp;&nbsp; &nbsp;&nbsp; _AssociatedItem_*
+/// > &nbsp;&nbsp; `}`
+/// >
+/// > _ScopeImplTarget_ :\
+/// > &nbsp;&nbsp; `Self` | _TypeName_ _GenericParams_?
+///
+/// That is, implementations may take one of two forms:
+///
+/// -   `impl MyType { ... }`
+/// -   `impl Self { ... }`
+///
+/// Generic parameters from the type are included automatically, with bounds as
+/// defined on the type. Additional generic parameters and an additional where
+/// clause are supported (generic parameter lists and bounds are merged).
+///
+/// ## Example
+///
+/// ```
+/// use kas_macros::impl_scope;
+/// use std::ops::Add;
+///
+/// impl_scope! {
+///     struct Pair<T>(T, T);
+///
+///     impl Self where T: Clone + Add {
+///         fn sum(&self) -> <T as Add>::Output {
+///             self.0.clone().add(self.1.clone())
+///         }
+///     }
+/// }
+/// ```
 #[proc_macro_error]
 #[proc_macro]
-pub fn widget(input: TokenStream) -> TokenStream {
-    let args = parse_macro_input!(input as args::Widget);
-    widget::widget(args)
-        .unwrap_or_else(|err| err.to_compile_error())
-        .into()
+pub fn impl_scope(input: TokenStream) -> TokenStream {
+    let mut scope = parse_macro_input!(input as Scope);
+    let rules: [&'static dyn ScopeAttr; 2] = [&AttrImplDefault, &widget::AttrImplWidget];
+    scope.apply_attrs(|path| rules.iter().cloned().find(|rule| rule.path().matches(path)));
+    scope.expand().into()
+}
+
+/// Attribute to implement `kas::Widget`
+///
+/// TODO: doc
+#[proc_macro_attribute]
+#[proc_macro_error]
+pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
+    emit_call_site_error!("must be used within impl_scope! { ... }");
+    item
 }
 
 /// Macro to create a widget with anonymous type
@@ -339,7 +424,8 @@ pub fn derive_empty_msg(input: TokenStream) -> TokenStream {
 
 /// Index of a child widget
 ///
-/// This macro is usable only within a [`widget!`] macro.
+/// This macro is usable only within an [`impl_scope!`]  macro using the
+/// [`widget`](macro@widget) attribute.
 ///
 /// Example usage: `widget_index![self.a]`. If `a` is a child widget (a field
 /// marked with the `#[widget]` attribute), then this expands to the child

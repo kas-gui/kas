@@ -82,15 +82,15 @@ impl SliderType for Duration {
     }
 }
 
-widget! {
+impl_scope! {
     /// A slider
     ///
     /// Sliders allow user input of a value from a fixed range.
     #[derive(Clone, Debug, Default)]
-    #[handler(msg = T)]
     #[widget{
         key_nav = true;
         hover_highlight = true;
+        msg = T;
     }]
     pub struct Slider<T: SliderType, D: Directional> {
         #[widget_core]

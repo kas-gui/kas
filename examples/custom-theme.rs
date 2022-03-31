@@ -119,8 +119,8 @@ fn main() -> kas::shell::Result<()> {
                 2, 1: self.yellow;
                 1, 0: self.green;
             };
+            msg = Item;
         }]
-        #[handler(msg = Item)]
         struct {
             #[widget] label = Label::new("Custom theme demo\nChoose your colour!"),
             #[widget] white = TextButton::new_msg("&White", Item::White),
@@ -137,8 +137,8 @@ fn main() -> kas::shell::Result<()> {
         make_widget! {
             #[widget{
                 layout = single;
+                msg = VoidMsg;
             }]
-            #[handler(msg = VoidMsg)]
             struct {
                 #[widget(use_msg = handler)] _ = widgets,
             }

@@ -281,8 +281,9 @@ impl PipeWindow {
     }
 }
 
-widget! {
+impl_scope! {
     #[derive(Clone, Debug)]
+    #[widget]
     struct Mandlebrot {
         #[widget_core]
         core: kas::CoreData,
@@ -424,7 +425,7 @@ widget! {
     }
 }
 
-widget! {
+impl_scope! {
     #[derive(Debug)]
     #[widget{
         layout = grid: {
@@ -433,8 +434,8 @@ widget! {
             2, 0: self.slider;
             1..3, 1..3: self.mbrot;
         };
+        msg = event::VoidMsg;
     }]
-    #[handler(msg = event::VoidMsg)]
     struct MandlebrotWindow {
         #[widget_core] core: CoreData,
         #[widget] label: Label<String>,

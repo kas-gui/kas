@@ -62,8 +62,8 @@ It also supports lists:
         make_widget! {
             #[widget{
                 layout = row: *;
+                msg = VoidMsg;
             }]
-            #[handler(msg = VoidMsg)]
             struct {
                 #[widget(use_msg=update)] editor: EditBox<Guard> =
                     EditBox::new(doc).multi_line(true).with_guard(Guard),

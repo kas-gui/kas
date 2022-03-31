@@ -10,15 +10,15 @@ use std::fmt::Debug;
 use super::{DragHandle, ScrollRegion};
 use kas::{event, prelude::*};
 
-widget! {
+impl_scope! {
     /// A scroll bar
     ///
     /// Scroll bars allow user-input of a value between 0 and a defined maximum,
     /// and allow the size of the handle to be specified.
     #[derive(Clone, Debug, Default)]
-    #[handler(msg = i32)]
     #[widget{
         hover_highlight = true;
+        msg = i32;
     }]
     pub struct ScrollBar<D: Directional> {
         #[widget_core]
@@ -319,7 +319,7 @@ pub trait Scrollable: Widget {
     }
 }
 
-widget! {
+impl_scope! {
     /// A scrollable region with bars
     ///
     /// This is essentially a `ScrollBars<ScrollRegion<W>>`:
@@ -330,8 +330,8 @@ widget! {
     #[derive(Clone, Debug, Default)]
     #[widget{
         derive = self.0;
+        msg = <W as event::Handler>::Msg;
     }]
-    #[handler(msg = <W as event::Handler>::Msg)]
     pub struct ScrollBarRegion<W: Widget>(ScrollBars<ScrollRegion<W>>);
 
     impl Self {
@@ -413,7 +413,7 @@ widget! {
     }
 }
 
-widget! {
+impl_scope! {
     /// Scrollbar controls
     ///
     /// This is a wrapper adding scrollbar controls around a child. Note that this
@@ -426,7 +426,7 @@ widget! {
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Debug, Default)]
-    #[handler(msg = <W as event::Handler>::Msg)]
+    #[widget { msg = <W as event::Handler>::Msg; }]
     pub struct ScrollBars<W: Scrollable> {
         #[widget_core]
         core: CoreData,

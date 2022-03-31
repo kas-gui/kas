@@ -55,7 +55,7 @@ impl EditGuard for ListEntryGuard {
     }
 }
 
-widget! {
+impl_scope! {
     // The list entry
     //
     // Use of a compound listing here with five child widgets (RadioBox is a
@@ -69,8 +69,8 @@ widget! {
     #[derive(Clone, Debug)]
     #[widget{
         layout = column: *;
+        msg = EntryMsg;
     }]
-    #[handler(msg=EntryMsg)]
     struct ListEntry {
         #[widget_core]
         core: CoreData,
@@ -102,8 +102,8 @@ fn main() -> kas::shell::Result<()> {
     let controls = make_widget! {
         #[widget{
             layout = row: *;
+            msg = Control;
         }]
-        #[handler(msg = Control)]
         struct {
             #[widget] _ = Label::new("Number of rows:"),
             #[widget(map_msg = activate)] edit: impl HasString = EditBox::new("3")
@@ -144,8 +144,8 @@ fn main() -> kas::shell::Result<()> {
         make_widget! {
             #[widget{
                 layout = column: *;
+                msg = VoidMsg;
             }]
-            #[handler(msg = VoidMsg)]
             struct {
                 #[widget] _ = Label::new("Demonstration of dynamic widget creation / deletion"),
                 #[widget(use_msg = control)] controls -> Control = controls,

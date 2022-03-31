@@ -9,7 +9,7 @@ use super::{driver, Driver};
 use kas::prelude::*;
 use kas::updatable::{SingleData, Updatable};
 
-widget! {
+impl_scope! {
     /// Single view widget
     ///
     /// This widget supports a view over a shared data item.

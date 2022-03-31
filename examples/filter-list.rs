@@ -34,8 +34,8 @@ fn main() -> kas::shell::Result<()> {
     let selection_mode = make_widget! {
         #[widget{
             layout = list(right): *;
+            msg = SelectionMode;
         }]
-        #[handler(msg = SelectionMode)]
         struct {
             #[widget] _ = Label::new("Selection:"),
             #[widget] _ = RadioBox::new_msg("none", r.clone(), SelectionMode::None).with_state(true),
@@ -55,8 +55,8 @@ fn main() -> kas::shell::Result<()> {
     let widget = make_widget! {
         #[widget{
             layout = list(down): *;
+            msg = VoidMsg;
         }]
-        #[handler(msg = VoidMsg)]
         struct {
             #[widget(use_msg = set_selection_mode)] _ = selection_mode,
             #[widget] filter = SingleView::new_with_driver(filter_driver, filter),

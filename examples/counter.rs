@@ -14,7 +14,7 @@ fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
     let counter = make_widget! {
-        #[handler(msg = VoidMsg)]
+        #[widget { msg = VoidMsg; }]
         struct {
             #[widget]
             display: Label<String> = Label::from("0"),

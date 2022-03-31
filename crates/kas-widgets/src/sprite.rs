@@ -9,9 +9,10 @@ use kas::layout::SpriteDisplay;
 use kas::prelude::*;
 use std::path::PathBuf;
 
-widget! {
+impl_scope! {
     /// An image with margins
     #[derive(Clone, Debug, Default)]
+    #[widget]
     pub struct Image {
         #[widget_core]
         core: CoreData,

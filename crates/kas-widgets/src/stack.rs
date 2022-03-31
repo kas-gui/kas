@@ -20,7 +20,7 @@ pub type BoxStack<M> = Stack<Box<dyn Widget<Msg = M>>>;
 /// This is a parametrisation of [`Stack`].
 pub type RefStack<'a, M> = Stack<&'a mut dyn Widget<Msg = M>>;
 
-widget! {
+impl_scope! {
     /// A stack of widgets
     ///
     /// A stack consists a set of child widgets, "pages", all of equal size.
@@ -34,7 +34,7 @@ widget! {
     /// or may be limited: see [`Self::set_size_limit`]. Drawing is `O(1)`, and
     /// so is event handling in the expected case.
     #[derive(Clone, Default, Debug)]
-    #[handler(msg=<W as event::Handler>::Msg)]
+    #[widget { msg = <W as event::Handler>::Msg; }]
     pub struct Stack<W: Widget> {
         #[widget_core]
         core: CoreData,

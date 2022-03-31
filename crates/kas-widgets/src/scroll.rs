@@ -11,7 +11,7 @@ use kas::prelude::*;
 use kas::theme::TextClass;
 use std::fmt::Debug;
 
-widget! {
+impl_scope! {
     /// A scrollable region
     ///
     /// This region supports scrolling via mouse wheel and click/touch drag.
@@ -22,7 +22,7 @@ widget! {
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Debug, Default)]
-    #[handler(msg = <W as event::Handler>::Msg)]
+    #[widget { msg = <W as event::Handler>::Msg; }]
     pub struct ScrollRegion<W: Widget> {
         #[widget_core]
         core: CoreData,

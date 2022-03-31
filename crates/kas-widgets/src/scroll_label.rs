@@ -14,7 +14,7 @@ use kas::text::format::{EditableText, FormattableText};
 use kas::text::SelectionHelper;
 use kas::theme::TextClass;
 
-widget! {
+impl_scope! {
     /// A text label supporting scrolling and selection
     #[derive(Clone, Default, Debug)]
     #[widget{

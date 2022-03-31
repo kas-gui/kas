@@ -12,7 +12,7 @@ use kas::prelude::*;
 use kas::theme::TextClass;
 use std::rc::Rc;
 
-widget! {
+impl_scope! {
     /// A push-button with a generic label
     ///
     /// Default alignment is centred. Content (label) alignment is derived from the
@@ -20,6 +20,7 @@ widget! {
     #[autoimpl(Debug ignore self.on_push)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone)]
+    #[widget]
     pub struct Button<W: Widget<Msg = VoidMsg>, M: 'static> {
         #[widget_core]
         core: kas::CoreData,
@@ -163,7 +164,7 @@ widget! {
     }
 }
 
-widget! {
+impl_scope! {
     /// A push-button with a text label
     ///
     /// This is a specialised variant of [`Button`] supporting key shortcuts from an
@@ -174,6 +175,7 @@ widget! {
     /// parameters).
     #[autoimpl(Debug ignore self.on_push)]
     #[derive(Clone)]
+    #[widget]
     pub struct TextButton<M: 'static> {
         #[widget_core]
         core: kas::CoreData,

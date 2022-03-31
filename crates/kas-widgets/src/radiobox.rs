@@ -14,10 +14,11 @@ use std::rc::Rc;
 /// Type of radiobox group
 pub type RadioBoxGroup = SharedRc<Option<WidgetId>>;
 
-widget! {
+impl_scope! {
     /// A bare radiobox (no label)
     #[autoimpl(Debug ignore self.on_select)]
     #[derive(Clone)]
+    #[widget]
     pub struct RadioBoxBare<M: 'static> {
         #[widget_core]
         core: CoreData,
@@ -186,7 +187,7 @@ widget! {
     }
 }
 
-widget! {
+impl_scope! {
     /// A radiobox with label
     #[autoimpl(Debug)]
     #[autoimpl(HasBool using self.radiobox)]

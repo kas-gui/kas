@@ -9,7 +9,7 @@ use kas::text::util::set_text_and_prepare;
 use kas::theme::TextClass;
 use kas::{event, layout, prelude::*};
 
-widget! {
+impl_scope! {
     /// A wrapper widget with a label
     ///
     /// The label supports accelerator keys, which activate `self.inner` on
@@ -18,7 +18,7 @@ widget! {
     /// Mouse/touch input on the label sends events to the inner widget.
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[derive(Clone, Default, Debug)]
-    #[handler(msg = W::Msg)]
+    #[widget { msg = W::Msg; }]
     pub struct WithLabel<W: Widget, D: Directional> {
         #[widget_core]
         core: CoreData,

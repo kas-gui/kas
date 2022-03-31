@@ -9,12 +9,13 @@ use kas::text::format::{EditableText, FormattableText};
 use kas::theme::TextClass;
 use kas::{event, prelude::*};
 
-widget! {
+impl_scope! {
     /// A text label
     ///
     /// This type is generic over the text type. Some aliases are available:
     /// [`StrLabel`], [`StringLabel`], [`AccelLabel`].
     #[derive(Clone, Default, Debug)]
+    #[widget]
     pub struct Label<T: FormattableText + 'static> {
         #[widget_core]
         core: CoreData,
@@ -152,7 +153,7 @@ pub type StringLabel = Label<String>;
 // NOTE: AccelLabel requires a different text class. Once specialization is
 // stable we can simply replace the `draw` method, but for now we use a whole
 // new type.
-widget! {
+impl_scope! {
     /// A label supporting an accelerator key
     ///
     /// Accelerator keys are not useful on plain labels. To be useful, a parent

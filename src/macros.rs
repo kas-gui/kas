@@ -74,7 +74,7 @@
 //! ```
 //! use kas::{event, prelude::*};
 //!
-//! widget! {
+//! impl_scope! {
 //!     #[derive(Clone, Debug)]
 //!     #[widget{
 //!         layout = single;
@@ -214,14 +214,14 @@
 //! parametrised with `W: Widget`, but the [`Handler`] impl may require
 //! `W: Layout`. This may be achieved as follows:
 //! ```
-//! # use kas::macros::widget;
+//! # use kas::macros::impl_scope;
 //! # use kas::{CoreData, Layout, Widget, event::Handler};
-//! widget! {
+//! impl_scope! {
 //!     #[derive(Clone, Debug, Default)]
 //!     #[widget{
 //!         layout = single;
+//!         msg = <W as Handler>::Msg;
 //!     }]
-//!     #[handler(msg = <W as Handler>::Msg)]
 //!     pub struct Frame<W: Widget> {
 //!         #[widget_core]
 //!         core: CoreData,
@@ -278,14 +278,14 @@
 //! ```
 //! # use kas::prelude::*;
 //! # use kas::widgets::{ScrollBars, ScrollRegion};
-//! widget! {
+//! impl_scope! {
 //!     #[autoimpl(Deref, DerefMut using self.0)]
 //!     #[autoimpl(class_traits using self.0 where W: trait)]
 //!     #[derive(Clone, Debug, Default)]
 //!     #[widget{
 //!         derive = self.0;
+//!         msg = <W as Handler>::Msg;
 //!     }]
-//!     #[handler(msg = <W as Handler>::Msg)]
 //!     pub struct ScrollBarRegion<W: Widget>(ScrollBars<ScrollRegion<W>>);
 //! }
 //! ```
@@ -297,14 +297,14 @@
 //!
 //! ```
 //! use kas::event::{Handler, EventMgr, Response, VoidMsg};
-//! use kas::macros::widget;
+//! use kas::macros::impl_scope;
 //! use kas::widgets::StrLabel;
 //! use kas::{CoreData, Widget};
 //!
 //! #[derive(Debug)]
 //! enum ChildMessage { A }
 //!
-//! widget! {
+//! impl_scope! {
 //!     #[derive(Debug)]
 //!     #[widget{
 //!         layout = column: *;
@@ -360,8 +360,8 @@
 //! let button_box = make_widget!{
 //!     #[widget{
 //!         layout = row: *;
+//!         msg = OkCancel;
 //!     }]
-//!     #[handler(msg = OkCancel)]
 //!     #[derive(Clone)] // optional
 //!     struct {
 //!         #[widget] _ = TextButton::new_msg("Ok", OkCancel::Ok),
@@ -372,8 +372,8 @@
 //! let window = Window::new("Question", make_widget! {
 //!     #[widget{
 //!         layout = column: *;
+//!         msg = VoidMsg;
 //!     }]
-//!     #[handler(msg = VoidMsg)]
 //!     struct {
 //!         #[widget] _ = Label::new("Would you like to print a message?"),
 //!         #[widget(use_msg = buttons)] _ = button_box,
@@ -415,7 +415,7 @@
 //! like usual, however `#[derive(Debug, kas::macros::Widget)]` is implied.
 //!
 //! Different from [`widget`], one must specify the message type via
-//! either `#[handler(msg = ..)]` or a [`Handler`] implementation. The type does
+//! either `#[widget { msg = ..; }]` or a [`Handler`] implementation. The type does
 //! not default to [`VoidMsg`] (purely to avoid some terrible error messages).
 //!
 //! ### Struct fields

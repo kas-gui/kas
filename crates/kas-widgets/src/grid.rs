@@ -17,7 +17,7 @@ use std::ops::{Index, IndexMut};
 /// See documentation of [`Grid`] type.
 pub type BoxGrid<M> = Grid<Box<dyn Widget<Msg = M>>>;
 
-widget! {
+impl_scope! {
     /// A generic grid widget
     ///
     /// Child widgets are displayed in a grid, according to each child's
@@ -46,7 +46,7 @@ widget! {
     /// Most operations are `O(n)` in the number of children.
     #[autoimpl(Default)]
     #[derive(Clone, Debug)]
-    #[handler(msg=<W as Handler>::Msg)]
+    #[widget { msg = <W as Handler>::Msg; }]
     pub struct Grid<W: Widget> {
         #[widget_core]
         core: CoreData,

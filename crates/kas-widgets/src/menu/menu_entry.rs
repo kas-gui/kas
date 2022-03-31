@@ -11,9 +11,10 @@ use kas::theme::{FrameStyle, TextClass};
 use kas::{layout, prelude::*};
 use std::fmt::Debug;
 
-widget! {
+impl_scope! {
     /// A standard menu entry
     #[derive(Clone, Debug, Default)]
+    #[widget]
     pub struct MenuEntry<M: Clone + Debug + 'static> {
         #[widget_core]
         core: kas::CoreData,
@@ -102,11 +103,12 @@ widget! {
     impl Menu for Self {}
 }
 
-widget! {
+impl_scope! {
     /// A menu entry which can be toggled
     #[autoimpl(Debug)]
     #[autoimpl(HasBool using self.checkbox)]
     #[derive(Clone, Default)]
+    #[widget]
     pub struct MenuToggle<M: 'static> {
         #[widget_core]
         core: CoreData,

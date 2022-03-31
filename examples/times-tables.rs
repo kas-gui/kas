@@ -79,8 +79,8 @@ fn main() -> kas::shell::Result<()> {
                 row: [self.label, self.max],
                 align(right): self.table,
             ];
+            msg = VoidMsg;
         }]
-        #[handler(msg = VoidMsg)]
         struct {
             #[widget] label = StrLabel::new("From 1 to"),
             #[widget(use_msg = set_max)] max: impl HasString = EditBox::new("12")

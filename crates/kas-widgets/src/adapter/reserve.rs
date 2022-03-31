@@ -16,7 +16,7 @@ use kas::prelude::*;
 /// a function pointer may be preferred.
 pub type ReserveP<W> = Reserve<W, fn(SizeMgr, AxisInfo) -> SizeRules>;
 
-widget! {
+impl_scope! {
     /// A generic widget for size reservations
     ///
     /// In a few cases it is desirable to reserve more space for a widget than
@@ -26,7 +26,7 @@ widget! {
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Default)]
-    #[handler(msg = <W as Handler>::Msg)]
+    #[widget { msg = <W as Handler>::Msg; }]
     pub struct Reserve<W: Widget, R: FnMut(SizeMgr, AxisInfo) -> SizeRules + 'static> {
         #[widget_core]
         core: CoreData,
