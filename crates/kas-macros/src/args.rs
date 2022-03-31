@@ -4,195 +4,23 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 use crate::make_layout;
-use proc_macro2::{Span, TokenStream};
+use impl_tools_lib::parse_attr_group;
+use proc_macro2::Span;
 use proc_macro_error::{abort, emit_error};
-use quote::{ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::token::{Brace, Colon, Comma, Eq, For, Impl, Paren, Semi};
+use syn::token::{Brace, Colon, Comma, Eq};
 use syn::{braced, bracketed, parenthesized, parse_quote};
 use syn::{
-    AttrStyle, Attribute, ConstParam, Expr, Field, Fields, FieldsNamed, GenericParam, Generics,
-    Ident, Index, ItemImpl, Lifetime, LifetimeDef, Member, Path, Token, Type, TypeParam, TypePath,
-    TypeTraitObject, Visibility,
+    AttrStyle, Attribute, ConstParam, Expr, GenericParam, Generics, Ident, ItemImpl, Lifetime,
+    LifetimeDef, Member, Path, Token, Type, TypeParam, TypePath, TypeTraitObject, Visibility,
 };
 
 #[derive(Debug)]
 pub struct Child {
     pub ident: Member,
     pub args: WidgetAttrArgs,
-}
-
-#[derive(Debug)]
-pub struct Widget {
-    pub attr_widget: WidgetArgs,
-    pub extra_attrs: Vec<Attribute>,
-
-    pub vis: Visibility,
-    pub token: Token![struct],
-    pub ident: Ident,
-    pub generics: Generics,
-    pub fields: Fields,
-    pub semi_token: Option<Semi>,
-
-    pub core_data: Option<Member>,
-    pub children: Vec<Child>,
-
-    pub extra_impls: Vec<ItemImpl>,
-}
-
-impl Parse for Widget {
-    fn parse(input: ParseStream) -> Result<Self> {
-        let mut attr_widget = None;
-        let mut extra_attrs = Vec::new();
-
-        let mut attrs = input.call(Attribute::parse_outer)?;
-        for attr in attrs.drain(..) {
-            if attr.path == parse_quote! { widget } {
-                if attr_widget.is_none() {
-                    let _span = attr.span();
-                    let w: WidgetArgs = syn::parse2(attr.tokens)?;
-                    attr_widget = Some(w);
-                } else {
-                    emit_error!(attr.span(), "multiple #[widget(..)] attributes on type");
-                }
-            } else {
-                extra_attrs.push(attr);
-            }
-        }
-
-        let vis = input.parse::<Visibility>()?;
-        let token = input.parse::<Token![struct]>()?;
-        let ident = input.parse::<Ident>()?;
-
-        let mut generics = input.parse::<Generics>()?;
-        let (mut fields, semi_token) = {
-            let mut lookahead = input.lookahead1();
-            if lookahead.peek(Token![where]) {
-                generics.where_clause = Some(input.parse()?);
-                lookahead = input.lookahead1();
-            }
-
-            if generics.where_clause.is_none() && lookahead.peek(Paren) {
-                let fields = input.parse()?;
-
-                lookahead = input.lookahead1();
-                if lookahead.peek(Token![where]) {
-                    generics.where_clause = Some(input.parse()?);
-                    lookahead = input.lookahead1();
-                }
-
-                if lookahead.peek(Token![;]) {
-                    let semi = input.parse()?;
-                    (Fields::Unnamed(fields), Some(semi))
-                } else {
-                    return Err(lookahead.error());
-                }
-            } else if lookahead.peek(Brace) {
-                let content;
-                let brace_token = braced!(content in input);
-                let named = content.parse_terminated(Field::parse_named)?;
-                let fields = Fields::Named(FieldsNamed { brace_token, named });
-                (fields, None)
-            } else {
-                return Err(lookahead.error());
-            }
-        };
-
-        let mut extra_impls = Vec::new();
-        while !input.is_empty() {
-            extra_impls.push(parse_impl(Some(&ident), input)?);
-        }
-
-        let mut core_data = None;
-        let mut children = Vec::new();
-
-        for (i, field) in fields.iter_mut().enumerate() {
-            let mut other_attrs = Vec::with_capacity(field.attrs.len());
-            for attr in field.attrs.drain(..) {
-                if attr.path == parse_quote! { widget_core } {
-                    if core_data.is_none() {
-                        core_data = Some(member(i, field.ident.clone()));
-                    } else {
-                        emit_error!(attr.span(), "multiple fields marked with #[widget_core]");
-                    }
-                } else if attr.path == parse_quote! { widget } {
-                    let ident = member(i, field.ident.clone());
-                    let args = syn::parse2(attr.tokens)?;
-                    children.push(Child { ident, args });
-                } else {
-                    other_attrs.push(attr);
-                }
-            }
-            field.attrs = other_attrs;
-        }
-
-        let attr_widget = attr_widget.unwrap_or_default();
-
-        if core_data.is_none() {
-            if attr_widget.derive.is_none() {
-                emit_error!(
-                    fields.span(),
-                    "require a field with #[widget_core] or #[widget(derive = FIELD)]",
-                );
-            }
-            if !children.is_empty() {
-                emit_error!(
-                    fields.span(),
-                    "require a field with #[widget_core] when using #[widget]",
-                );
-            }
-        }
-
-        if core_data.is_some() && attr_widget.derive.is_some() {
-            emit_error!(
-                fields.span(),
-                "usage of field with #[widget_core] conflicts with #[widget(derive=FIELD)]",
-            );
-        }
-
-        Ok(Widget {
-            attr_widget,
-            extra_attrs,
-            vis,
-            token,
-            ident,
-            generics,
-            fields,
-            semi_token,
-            core_data,
-            children,
-            extra_impls,
-        })
-    }
-}
-
-/// Prints out the widget struct, but not other fields
-impl ToTokens for Widget {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        tokens.append_all(self.extra_attrs.iter());
-        self.vis.to_tokens(tokens);
-        self.token.to_tokens(tokens);
-        self.ident.to_tokens(tokens);
-        self.generics.to_tokens(tokens);
-        match &self.fields {
-            Fields::Named(fields) => {
-                self.generics.where_clause.to_tokens(tokens);
-                fields.to_tokens(tokens);
-            }
-            Fields::Unnamed(fields) => {
-                fields.to_tokens(tokens);
-                self.generics.where_clause.to_tokens(tokens);
-                self.semi_token.unwrap_or_default().to_tokens(tokens);
-            }
-            Fields::Unit => {
-                unreachable!()
-                // self.generics.where_clause.to_tokens(tokens);
-                // self.semi_token.unwrap_or_default().to_tokens(tokens);
-            }
-        }
-    }
 }
 
 fn parse_impl(in_ident: Option<&Ident>, input: ParseStream) -> Result<ItemImpl> {
@@ -309,16 +137,6 @@ fn parse_attrs_inner(input: ParseStream, attrs: &mut Vec<Attribute>) -> Result<(
         });
     }
     Ok(())
-}
-
-fn member(index: usize, ident: Option<Ident>) -> Member {
-    match ident {
-        None => Member::Unnamed(Index {
-            index: index as u32,
-            span: Span::call_site(),
-        }),
-        Some(ident) => Member::Named(ident),
-    }
 }
 
 #[allow(non_camel_case_types)]
@@ -516,7 +334,7 @@ pub struct WidgetArgs {
 }
 
 impl Parse for WidgetArgs {
-    fn parse(input: ParseStream) -> Result<Self> {
+    fn parse(content: ParseStream) -> Result<Self> {
         let mut key_nav = KeyNav::default();
         let mut hover_highlight = HoverHighlight::default();
         let mut cursor_icon = CursorIcon::default();
@@ -524,9 +342,6 @@ impl Parse for WidgetArgs {
         let mut layout = None;
         let mut find_id = FindId::default();
         let mut msg = None;
-
-        let content;
-        let _ = braced!(content in input);
 
         while !content.is_empty() {
             let lookahead = content.lookahead1();
@@ -583,8 +398,10 @@ pub enum ChildType {
 
 #[derive(Debug)]
 pub struct WidgetField {
-    pub widget_attr: Option<WidgetAttrArgs>,
+    pub attrs: Vec<Attribute>,
+    pub vis: Visibility,
     pub ident: Option<Ident>,
+    pub colon_token: Option<Colon>,
     pub ty: ChildType,
     pub value: Expr,
 }
@@ -592,7 +409,7 @@ pub struct WidgetField {
 #[derive(Debug)]
 pub struct MakeWidget {
     pub attr_widget: WidgetArgs,
-    pub extra_attrs: Vec<Attribute>,
+    pub attrs: Vec<Attribute>,
 
     pub token: Token![struct],
     pub generics: Generics,
@@ -600,28 +417,32 @@ pub struct MakeWidget {
     pub brace_token: Brace,
     pub fields: Punctuated<WidgetField, Comma>,
 
-    pub extra_impls: Vec<ItemImpl>,
+    pub impls: Vec<ItemImpl>,
 }
 
 impl Parse for MakeWidget {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut attr_widget = None;
-        let mut extra_attrs = Vec::new();
-
         let mut attrs = input.call(Attribute::parse_outer)?;
-        for attr in attrs.drain(..) {
+        let mut index = None;
+        for (i, attr) in attrs.iter().enumerate() {
             if attr.path == parse_quote! { widget } {
-                if attr_widget.is_none() {
-                    let _span = attr.span();
-                    let w: WidgetArgs = syn::parse2(attr.tokens)?;
-                    attr_widget = Some(w);
+                if index.is_none() {
+                    index = Some(i);
                 } else {
                     emit_error!(attr.span(), "multiple #[widget(..)] attributes on type");
                 }
-            } else {
-                extra_attrs.push(attr);
             }
         }
+
+        let attr_widget;
+        if let Some(i) = index {
+            let attr = attrs.remove(i);
+            let (_, tokens) = parse_attr_group(attr.tokens)?;
+            attr_widget = syn::parse2(tokens)?;
+        } else {
+            attr_widget = Default::default();
+        }
+
         let token = input.parse::<Token![struct]>()?;
 
         let mut generics = input.parse::<Generics>()?;
@@ -633,16 +454,14 @@ impl Parse for MakeWidget {
         let brace_token = braced!(content in input);
         let fields = content.parse_terminated(WidgetField::parse)?;
 
-        let mut extra_impls = Vec::new();
+        let mut impls = Vec::new();
         while !input.is_empty() {
-            extra_impls.push(parse_impl(None, input)?);
+            impls.push(parse_impl(None, input)?);
         }
-
-        let attr_widget = attr_widget.unwrap_or_default();
 
         Ok(MakeWidget {
             attr_widget,
-            extra_attrs,
+            attrs,
 
             token,
             generics,
@@ -650,42 +469,31 @@ impl Parse for MakeWidget {
             brace_token,
             fields,
 
-            extra_impls,
+            impls,
         })
     }
 }
 
 impl Parse for WidgetField {
     fn parse(input: ParseStream) -> Result<Self> {
-        let widget_attr = if input.peek(Token![#]) {
-            let _: Token![#] = input.parse()?;
-            let inner;
-            let _ = bracketed!(inner in input);
-            let _: kw::widget = inner.parse()?;
-            let args = inner.parse::<WidgetAttrArgs>()?;
-            Some(args)
-        } else {
+        let attrs = input.call(Attribute::parse_outer)?;
+        let vis = input.parse()?;
+
+        let ident = if input.peek(Token![_]) {
+            let _: Token![_] = input.parse()?;
             None
+        } else {
+            Some(input.parse::<Ident>()?)
         };
 
-        let ident = {
-            let lookahead = input.lookahead1();
-            if lookahead.peek(Token![_]) {
-                let _: Token![_] = input.parse()?;
-                None
-            } else if lookahead.peek(Ident) {
-                Some(input.parse::<Ident>()?)
-            } else {
-                return Err(lookahead.error());
-            }
-        };
+        let mut colon_token = None;
 
         // Note: Colon matches `::` but that results in confusing error messages
         let mut ty = if input.peek(Colon) && !input.peek2(Colon) {
-            let _: Colon = input.parse()?;
-            if input.peek(For) {
+            colon_token = Some(input.parse()?);
+            if input.peek(Token![for]) {
                 // internal generic
-                let _: For = input.parse()?;
+                let _: Token![for] = input.parse()?;
 
                 // copied from syn::Generic's Parse impl
                 let _: Token![<] = input.parse()?;
@@ -733,9 +541,9 @@ impl Parse for WidgetField {
 
                 let ty = input.parse()?;
                 ChildType::InternGeneric(params, ty)
-            } else if input.peek(Impl) {
+            } else if input.peek(Token![impl]) {
                 // generic with trait bound, optionally with msg type
-                let _: Impl = input.parse()?;
+                let _: Token![impl] = input.parse()?;
                 let bound: TypeTraitObject = input.parse()?;
                 ChildType::Generic(None, Some(bound))
             } else {
@@ -747,7 +555,10 @@ impl Parse for WidgetField {
 
         if input.peek(Token![->]) {
             let arrow: Token![->] = input.parse()?;
-            if widget_attr.is_none() {
+            if !attrs
+                .iter()
+                .any(|attr| attr.path == parse_quote! { widget })
+            {
                 return Err(Error::new(
                     arrow.span(),
                     "can only use `-> Msg` type restriction on widgets",
@@ -771,8 +582,10 @@ impl Parse for WidgetField {
         let value: Expr = input.parse()?;
 
         Ok(WidgetField {
-            widget_attr,
+            attrs,
+            vis,
             ident,
+            colon_token,
             ty,
             value,
         })

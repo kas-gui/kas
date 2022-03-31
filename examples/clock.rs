@@ -23,8 +23,9 @@ use kas::text::util::set_text_and_prepare;
 use kas::widgets::Window;
 use kas::{event, prelude::*};
 
-widget! {
+impl_scope! {
     #[derive(Clone, Debug)]
+    #[widget]
     struct Clock {
         #[widget_core]
         core: kas::CoreData,

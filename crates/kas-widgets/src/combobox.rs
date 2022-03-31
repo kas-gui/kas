@@ -13,7 +13,7 @@ use kas::theme::TextClass;
 use kas::WindowId;
 use std::rc::Rc;
 
-widget! {
+impl_scope! {
     /// A pop-up multiple choice menu
     ///
     /// A combobox presents a menu with a fixed set of choices when clicked.
@@ -377,7 +377,7 @@ impl<M: 'static> ComboBox<M> {
     }
 }
 
-widget! {
+impl_scope! {
     #[derive(Clone, Debug)]
     #[widget{
         layout = single;

@@ -82,7 +82,7 @@ impl SliderType for Duration {
     }
 }
 
-widget! {
+impl_scope! {
     /// A slider
     ///
     /// Sliders allow user input of a value from a fixed range.

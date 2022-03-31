@@ -55,7 +55,7 @@ impl EditGuard for ListEntryGuard {
     }
 }
 
-widget! {
+impl_scope! {
     // The list entry
     //
     // Use of a compound listing here with five child widgets (RadioBox is a

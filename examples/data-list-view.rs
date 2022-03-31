@@ -154,7 +154,7 @@ impl EditGuard for ListEntryGuard {
     }
 }
 
-widget! {
+impl_scope! {
     // The list entry
     #[derive(Clone, Debug)]
     #[widget{

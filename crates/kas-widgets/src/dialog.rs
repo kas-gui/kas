@@ -14,7 +14,7 @@ use kas::prelude::*;
 use kas::text::format::FormattableText;
 use kas::WindowId;
 
-widget! {
+impl_scope! {
     /// A simple message box.
     #[derive(Clone, Debug)]
     #[widget{

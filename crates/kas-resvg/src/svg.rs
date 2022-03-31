@@ -14,11 +14,12 @@ use kas::prelude::*;
 use std::path::PathBuf;
 use tiny_skia::{Pixmap, Transform};
 
-widget! {
+impl_scope! {
     /// An SVG image loaded from a path
     #[cfg_attr(doc_cfg, doc(cfg(feature = "svg")))]
     #[autoimpl(Debug ignore self.tree)]
     #[derive(Clone)]
+    #[widget]
     pub struct Svg {
         #[widget_core]
         core: CoreData,

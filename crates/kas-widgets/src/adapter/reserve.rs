@@ -16,7 +16,7 @@ use kas::prelude::*;
 /// a function pointer may be preferred.
 pub type ReserveP<W> = Reserve<W, fn(SizeMgr, AxisInfo) -> SizeRules>;
 
-widget! {
+impl_scope! {
     /// A generic widget for size reservations
     ///
     /// In a few cases it is desirable to reserve more space for a widget than

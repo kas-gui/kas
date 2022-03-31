@@ -11,7 +11,7 @@ use kas::prelude::*;
 use kas::theme::TextClass;
 use std::fmt::Debug;
 
-widget! {
+impl_scope! {
     /// A scrollable region
     ///
     /// This region supports scrolling via mouse wheel and click/touch drag.

@@ -139,7 +139,7 @@ pub type List<D, W> = GenericList<D, W, <W as Handler>::Msg>;
 /// only a small number are visible at any one time).
 pub type IndexedList<D, W> = GenericList<D, W, (usize, <W as Handler>::Msg)>;
 
-widget! {
+impl_scope! {
     /// A generic row/column widget
     ///
     /// This type is roughly [`Vec`] but for widgets. Generics:

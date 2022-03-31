@@ -12,9 +12,10 @@ use kas::prelude::*;
 use kas::theme::{FrameStyle, TextClass};
 use kas::{layout, WindowId};
 
-widget! {
+impl_scope! {
     /// A sub-menu
     #[autoimpl(Debug where D: trait)]
+    #[widget]
     pub struct SubMenu<M: 'static, D: Directional> {
         #[widget_core]
         core: CoreData,

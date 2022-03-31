@@ -10,11 +10,12 @@ use std::fmt::Debug;
 use crate::Menu;
 use kas::prelude::*;
 
-widget! {
+impl_scope! {
     /// A separator
     ///
     /// This widget draws a bar when in a list.
     #[derive(Clone, Debug, Default)]
+    #[widget]
     pub struct Separator {
         #[widget_core]
         core: CoreData,

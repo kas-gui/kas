@@ -9,7 +9,7 @@ use super::AccelLabel;
 use kas::{event, prelude::*};
 use std::rc::Rc;
 
-widget! {
+impl_scope! {
     /// A bare checkbox (no label)
     #[autoimpl(Debug ignore self.on_toggle)]
     #[derive(Clone, Default)]
@@ -152,7 +152,7 @@ widget! {
     }
 }
 
-widget! {
+impl_scope! {
     /// A checkbox with label
     #[autoimpl(Debug)]
     #[autoimpl(HasBool using self.inner)]

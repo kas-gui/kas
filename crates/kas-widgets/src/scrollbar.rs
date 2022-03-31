@@ -10,7 +10,7 @@ use std::fmt::Debug;
 use super::{DragHandle, ScrollRegion};
 use kas::{event, prelude::*};
 
-widget! {
+impl_scope! {
     /// A scroll bar
     ///
     /// Scroll bars allow user-input of a value between 0 and a defined maximum,
@@ -319,7 +319,7 @@ pub trait Scrollable: Widget {
     }
 }
 
-widget! {
+impl_scope! {
     /// A scrollable region with bars
     ///
     /// This is essentially a `ScrollBars<ScrollRegion<W>>`:
@@ -413,7 +413,7 @@ widget! {
     }
 }
 
-widget! {
+impl_scope! {
     /// Scrollbar controls
     ///
     /// This is a wrapper adding scrollbar controls around a child. Note that this

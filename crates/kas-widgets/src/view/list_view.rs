@@ -24,7 +24,7 @@ struct WidgetData<K, W> {
     widget: W,
 }
 
-widget! {
+impl_scope! {
     /// List view widget
     ///
     /// This widget supports a view over a list of shared data items.
@@ -41,6 +41,7 @@ widget! {
     /// This widget is [`Scrollable`], supporting keyboard, wheel and drag
     /// scrolling. You may wish to wrap this widget with [`ScrollBars`].
     #[derive(Clone, Debug)]
+    #[widget]
     pub struct ListView<
         D: Directional,
         T: ListData + Updatable<T::Key, V::Msg> + 'static,

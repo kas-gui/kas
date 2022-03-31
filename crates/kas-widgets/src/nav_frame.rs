@@ -7,7 +7,7 @@
 
 use kas::{event, prelude::*};
 
-widget! {
+impl_scope! {
     /// Navigation Frame wrapper
     ///
     /// This widget is a wrapper that can be used to make a static widget such as a

@@ -9,7 +9,7 @@ use crate::Menu;
 use kas::prelude::*;
 use std::rc::Rc;
 
-widget! {
+impl_scope! {
     /// Wrapper to map messages from the inner widget
     #[autoimpl(Debug ignore self.map)]
     #[autoimpl(Deref, DerefMut using self.inner)]

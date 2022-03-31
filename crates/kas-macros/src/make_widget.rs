@@ -3,7 +3,11 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::args::{Child, ChildType, Handler, MakeWidget};
+use crate::args::{ChildType, Handler, MakeWidget, WidgetAttrArgs};
+use impl_tools_lib::{
+    fields::{Field, Fields, FieldsNamed},
+    Scope, ScopeItem,
+};
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::abort;
 use quote::{quote, TokenStreamExt};
@@ -12,7 +16,7 @@ use syn::parse_quote;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
-use syn::{Field, Ident, ItemImpl, Result, Type, TypePath, Visibility, WhereClause};
+use syn::{AttrStyle, Attribute, Ident, ItemImpl, Result, Type, TypePath, Visibility, WhereClause};
 
 pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
     let mut find_handler_ty_buf: Vec<(Ident, Type)> = vec![];
@@ -77,16 +81,22 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
     };
 
     let core_ident: Ident = parse_quote! { core };
-    let mut children = vec![];
 
     // fields of anonymous struct:
     let mut fields = Punctuated::<Field, Comma>::new();
     fields.push_value(Field {
-        attrs: vec![],
+        attrs: vec![Attribute {
+            pound_token: Default::default(),
+            style: AttrStyle::Outer,
+            bracket_token: Default::default(),
+            path: parse_quote! { widget_core },
+            tokens: Default::default(),
+        }],
         vis: Visibility::Inherited,
-        ident: Some(core_ident.clone()),
+        ident: Some(core_ident),
         colon_token: Default::default(),
         ty: parse_quote! { ::kas::CoreData },
+        assign: None,
     });
     fields.push_punct(Default::default());
 
@@ -103,7 +113,7 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
     } else {
         // A little magic: try to deduce parameters, applying defaults otherwise
         let msg_ident: Ident = parse_quote! { Msg };
-        for impl_ in &args.extra_impls {
+        for impl_ in &args.impls {
             if let Some((_, ref name, _)) = impl_.trait_ {
                 if *name == parse_quote! { Handler } || *name == parse_quote! { ::kas::Handler } {
                     for item in &impl_.items {
@@ -112,7 +122,7 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
                                 ref ident, ref ty, ..
                             }) if *ident == msg_ident => {
                                 opt_msg = Some(ty.clone());
-                                continue;
+                                break;
                             }
                             _ => (),
                         }
@@ -149,6 +159,16 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
             None => make_ident(format_args!("mw_anon_{}", index)),
         };
 
+        let widget_attr = if let Some(attr) = field
+            .attrs
+            .iter()
+            .find(|attr| (attr.path == parse_quote! { widget }))
+        {
+            Some(syn::parse2::<WidgetAttrArgs>(attr.tokens.clone())?)
+        } else {
+            None
+        };
+
         let ty: Type = match field.ty {
             ChildType::Fixed(ty) => ty.clone(),
             ChildType::InternGeneric(gen_args, ty) => {
@@ -158,12 +178,12 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
             ChildType::Generic(gen_msg, gen_bound) => {
                 let ty = make_ident(format_args!("MWAnon{}", index));
 
-                if let Some(ref wattr) = field.widget_attr {
+                if let Some(ref wattr) = widget_attr {
                     if let Some(tyr) = gen_msg {
                         clauses.push(parse_quote! { #ty: ::kas::Widget<Msg = #tyr> });
                     } else if let Some(handler) = wattr.handler.any_ref() {
                         // Message passed to a method; exact type required
-                        let ty_bound = find_handler_ty(handler, &args.extra_impls);
+                        let ty_bound = find_handler_ty(handler, &args.impls);
                         clauses.push(parse_quote! { #ty: ::kas::Widget<Msg = #ty_bound> });
                     } else if wattr.handler == Handler::Discard {
                         // No type bound on discarded message
@@ -192,20 +212,16 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
             }
         };
 
-        if let Some(args) = field.widget_attr {
-            let ident = syn::Member::Named(ident.clone());
-            children.push(Child { ident, args });
-        }
-
         let value = &field.value;
         field_val_toks.append_all(quote! { #ident: #value, });
 
         fields.push_value(Field {
-            attrs: vec![],
-            vis: Visibility::Inherited,
+            attrs: field.attrs,
+            vis: field.vis,
             ident: Some(ident),
-            colon_token: Default::default(),
+            colon_token: field.colon_token.or_else(|| Some(Default::default())),
             ty,
+            assign: None,
         });
         if let Some(comma) = opt_comma {
             fields.push_punct(comma);
@@ -218,7 +234,8 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
     let (impl_generics, ty_generics, where_clause) = args.generics.split_for_impl();
 
     if impl_handler {
-        args.extra_impls.push(parse_quote! {
+        // This cannot go in Scope::generated since ImplWidget checks for it
+        args.impls.push(parse_quote! {
             impl #impl_generics ::kas::event::Handler
             for AnonWidget #ty_generics
             #where_clause
@@ -228,31 +245,29 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
         });
     }
 
-    args.extra_attrs
-        .insert(0, parse_quote! { #[derive(Debug)] });
+    args.attrs.insert(0, parse_quote! { #[derive(Debug)] });
 
-    let widget = crate::widget::widget(crate::args::Widget {
-        attr_widget: args.attr_widget,
-        extra_attrs: args.extra_attrs,
-
+    let mut scope = Scope {
+        attrs: args.attrs,
         vis: Visibility::Inherited,
-        token: args.token,
         ident: parse_quote! { AnonWidget },
         generics: args.generics,
-        fields: syn::Fields::Named(syn::FieldsNamed {
-            brace_token: args.brace_token,
-            named: fields,
-        }),
-        semi_token: None,
-
-        core_data: Some(syn::Member::Named(core_ident)),
-        children,
-
-        extra_impls: args.extra_impls,
-    })?;
+        item: ScopeItem::Struct {
+            token: args.token,
+            fields: Fields::Named(FieldsNamed {
+                brace_token: args.brace_token,
+                fields,
+            }),
+        },
+        semi: None,
+        impls: args.impls,
+        generated: vec![],
+    };
+    crate::widget::widget(args.attr_widget, &mut scope)?;
+    scope.expand_impl_self();
 
     let toks = quote! { {
-        #widget
+        #scope
 
         AnonWidget {
             #field_val_toks

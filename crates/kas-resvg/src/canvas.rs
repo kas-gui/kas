@@ -31,7 +31,7 @@ pub trait CanvasProgram: std::fmt::Debug + 'static {
     }
 }
 
-widget! {
+impl_scope! {
     /// A canvas widget over the `tiny-skia` library
     ///
     /// Note that the `tiny-skia` API is re-exported as [`crate::tiny_skia`].
@@ -48,6 +48,7 @@ widget! {
     /// [`Canvas::redraw`] must be called to update the pixmap.
     #[cfg_attr(doc_cfg, doc(cfg(feature = "canvas")))]
     #[derive(Clone, Debug,)]
+    #[widget]
     pub struct Canvas<P: CanvasProgram> {
         #[widget_core]
         core: CoreData,

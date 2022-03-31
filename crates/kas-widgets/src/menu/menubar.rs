@@ -10,7 +10,7 @@ use crate::IndexedList;
 use kas::event::{self, Command};
 use kas::prelude::*;
 
-widget! {
+impl_scope! {
     /// A menu-bar
     ///
     /// This widget houses a sequence of menu buttons, allowing input actions across

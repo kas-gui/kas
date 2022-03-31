@@ -30,7 +30,7 @@ struct WidgetData<K, W> {
     widget: W,
 }
 
-widget! {
+impl_scope! {
     /// Matrix view widget
     ///
     /// This widget supports a view over a matrix of shared data items.
@@ -47,6 +47,7 @@ widget! {
     /// This widget is [`Scrollable`], supporting keyboard, wheel and drag
     /// scrolling. You may wish to wrap this widget with [`ScrollBars`].
     #[derive(Clone, Debug)]
+    #[widget]
     pub struct MatrixView<
         T: MatrixData + Updatable<T::Key, V::Msg> + 'static,
         V: Driver<T::Item> = driver::Default,

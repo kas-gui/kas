@@ -44,8 +44,9 @@ fn main() -> kas::shell::Result<()> {
     toolkit.with(window)?.run()
 }
 
-widget! {
+impl_scope! {
     #[derive(Debug)]
+    #[widget]
     struct ColourSquare {
         #[widget_core]
         core: CoreData,

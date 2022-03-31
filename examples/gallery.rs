@@ -45,7 +45,7 @@ impl EditGuard for Guard {
     }
 }
 
-widget! {
+impl_scope! {
     #[derive(Debug)]
     #[widget{
         layout = grid: {

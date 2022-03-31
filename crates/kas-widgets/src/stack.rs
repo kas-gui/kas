@@ -20,7 +20,7 @@ pub type BoxStack<M> = Stack<Box<dyn Widget<Msg = M>>>;
 /// This is a parametrisation of [`Stack`].
 pub type RefStack<'a, M> = Stack<&'a mut dyn Widget<Msg = M>>;
 
-widget! {
+impl_scope! {
     /// A stack of widgets
     ///
     /// A stack consists a set of child widgets, "pages", all of equal size.

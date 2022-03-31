@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::args::{self, Widget};
+use crate::args::Child;
 use proc_macro2::Span;
 use proc_macro_error::emit_error;
 use syn::parse::{Parse, ParseStream};
@@ -33,7 +33,7 @@ impl Parse for BaseInput {
             }
         }
 
-        let msg = "usage of `widget_index!` invalid outside of `widget!` macro";
+        let msg = "usage of `widget_index!` invalid outside of `impl_scope!` macro with `#[widget]` attribute";
         Err(Error::new(Span::call_site(), msg))
     }
 }
@@ -53,7 +53,7 @@ impl Parse for WidgetInput {
 }
 
 struct Visitor<'a> {
-    children: &'a [args::Child],
+    children: &'a [Child],
 }
 impl<'a> VisitMut for Visitor<'a> {
     fn visit_macro_mut(&mut self, node: &mut syn::Macro) {
@@ -88,11 +88,10 @@ impl<'a> VisitMut for Visitor<'a> {
     }
 }
 
-pub fn visit_widget(node: &mut Widget) {
-    let children = &node.children;
+pub fn visit_impls(children: &[Child], impls: &mut [syn::ItemImpl]) {
     let mut obj = Visitor { children };
 
-    for impl_ in &mut node.extra_impls {
+    for impl_ in impls {
         obj.visit_item_impl_mut(impl_);
     }
 }

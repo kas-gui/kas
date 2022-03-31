@@ -7,12 +7,13 @@
 
 use kas::prelude::*;
 
-widget! {
+impl_scope! {
     /// A space filler
     ///
     /// This widget has zero minimum size but can expand according to the given
     /// stretch priority.
     #[derive(Clone, Debug, Default)]
+    #[widget]
     pub struct Filler {
         #[widget_core]
         core: CoreData,

@@ -8,6 +8,7 @@
 #![recursion_limit = "128"]
 #![allow(clippy::let_and_return)]
 #![allow(clippy::large_enum_variant)]
+#![allow(clippy::needless_late_init)]
 
 extern crate proc_macro;
 
@@ -17,7 +18,6 @@ use proc_macro::TokenStream;
 use proc_macro_error::{emit_call_site_error, proc_macro_error};
 use quote::quote;
 use syn::parse_macro_input;
-use syn::{GenericParam, Generics};
 
 mod args;
 mod class_traits;
@@ -308,74 +308,19 @@ pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn impl_scope(input: TokenStream) -> TokenStream {
     let mut scope = parse_macro_input!(input as Scope);
-    scope.apply_attrs(|path| {
-        AttrImplDefault
-            .path()
-            .matches(path)
-            .then(|| &AttrImplDefault as &dyn ScopeAttr)
-    });
+    let rules: [&'static dyn ScopeAttr; 2] = [&AttrImplDefault, &widget::AttrImplWidget];
+    scope.apply_attrs(|path| rules.iter().cloned().find(|rule| rule.path().matches(path)));
     scope.expand().into()
 }
 
-// Support impls on Self by replacing name and summing generics
-fn extend_generics(generics: &mut Generics, in_generics: &Generics) {
-    if generics.lt_token.is_none() {
-        debug_assert!(generics.params.is_empty());
-        debug_assert!(generics.gt_token.is_none());
-        generics.lt_token = in_generics.lt_token;
-        generics.params = in_generics.params.clone();
-        generics.gt_token = in_generics.gt_token;
-    } else if in_generics.lt_token.is_none() {
-        debug_assert!(in_generics.params.is_empty());
-        debug_assert!(in_generics.gt_token.is_none());
-    } else {
-        if !generics.params.empty_or_trailing() {
-            generics.params.push_punct(Default::default());
-        }
-        generics
-            .params
-            .extend(in_generics.params.clone().into_pairs());
-    }
-
-    // Strip defaults which are legal on the struct but not on impls
-    for param in &mut generics.params {
-        match param {
-            GenericParam::Type(p) => {
-                p.eq_token = None;
-                p.default = None;
-            }
-            GenericParam::Lifetime(_) => (),
-            GenericParam::Const(p) => {
-                p.eq_token = None;
-                p.default = None;
-            }
-        }
-    }
-
-    if let Some(ref mut clause1) = generics.where_clause {
-        if let Some(ref clause2) = in_generics.where_clause {
-            if !clause1.predicates.empty_or_trailing() {
-                clause1.predicates.push_punct(Default::default());
-            }
-            clause1
-                .predicates
-                .extend(clause2.predicates.clone().into_pairs());
-        }
-    } else {
-        generics.where_clause = in_generics.where_clause.clone();
-    }
-}
-
-/// Macro to derive widget traits
+/// Attribute to implement `kas::Widget`
 ///
-/// See documentation [in the `kas::macros` module](https://docs.rs/kas/latest/kas/macros#the-widget-macro).
+/// TODO: doc
+#[proc_macro_attribute]
 #[proc_macro_error]
-#[proc_macro]
-pub fn widget(input: TokenStream) -> TokenStream {
-    let args = parse_macro_input!(input as args::Widget);
-    widget::widget(args)
-        .unwrap_or_else(|err| err.to_compile_error())
-        .into()
+pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
+    emit_call_site_error!("must be used within impl_scope! { ... }");
+    item
 }
 
 /// Macro to create a widget with anonymous type
@@ -479,7 +424,8 @@ pub fn derive_empty_msg(input: TokenStream) -> TokenStream {
 
 /// Index of a child widget
 ///
-/// This macro is usable only within a [`widget!`] macro.
+/// This macro is usable only within an [`impl_scope!`]  macro using the
+/// [`widget`](macro@widget) attribute.
 ///
 /// Example usage: `widget_index![self.a]`. If `a` is a child widget (a field
 /// marked with the `#[widget]` attribute), then this expands to the child

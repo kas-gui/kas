@@ -166,7 +166,7 @@ impl<F: FnMut(&str) + 'static> EditGuard for EditUpdate<F> {
     }
 }
 
-widget! {
+impl_scope! {
     /// A text-edit box
     ///
     /// This is just a wrapper around [`EditField`] adding a frame.
@@ -338,7 +338,7 @@ impl<G: EditGuard> EditBox<G> {
     }
 }
 
-widget! {
+impl_scope! {
     /// A text-edit field (single- or multi-line)
     ///
     /// Usually one uses a derived type like [`EditBox`] instead. This field does

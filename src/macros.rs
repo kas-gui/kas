@@ -74,7 +74,7 @@
 //! ```
 //! use kas::{event, prelude::*};
 //!
-//! widget! {
+//! impl_scope! {
 //!     #[derive(Clone, Debug)]
 //!     #[widget{
 //!         layout = single;
@@ -214,9 +214,9 @@
 //! parametrised with `W: Widget`, but the [`Handler`] impl may require
 //! `W: Layout`. This may be achieved as follows:
 //! ```
-//! # use kas::macros::widget;
+//! # use kas::macros::impl_scope;
 //! # use kas::{CoreData, Layout, Widget, event::Handler};
-//! widget! {
+//! impl_scope! {
 //!     #[derive(Clone, Debug, Default)]
 //!     #[widget{
 //!         layout = single;
@@ -278,7 +278,7 @@
 //! ```
 //! # use kas::prelude::*;
 //! # use kas::widgets::{ScrollBars, ScrollRegion};
-//! widget! {
+//! impl_scope! {
 //!     #[autoimpl(Deref, DerefMut using self.0)]
 //!     #[autoimpl(class_traits using self.0 where W: trait)]
 //!     #[derive(Clone, Debug, Default)]
@@ -297,14 +297,14 @@
 //!
 //! ```
 //! use kas::event::{Handler, EventMgr, Response, VoidMsg};
-//! use kas::macros::widget;
+//! use kas::macros::impl_scope;
 //! use kas::widgets::StrLabel;
 //! use kas::{CoreData, Widget};
 //!
 //! #[derive(Debug)]
 //! enum ChildMessage { A }
 //!
-//! widget! {
+//! impl_scope! {
 //!     #[derive(Debug)]
 //!     #[widget{
 //!         layout = column: *;

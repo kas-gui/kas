@@ -7,7 +7,7 @@
 
 use kas::prelude::*;
 
-widget! {
+impl_scope! {
     /// A frame around content
     ///
     /// This widget provides a simple abstraction: drawing a frame around its
@@ -38,7 +38,7 @@ widget! {
     }
 }
 
-widget! {
+impl_scope! {
     /// A frame around pop-ups
     ///
     /// It is expected that this be the top-most widget inside any popup.

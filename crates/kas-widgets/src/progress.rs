@@ -9,11 +9,12 @@ use std::fmt::Debug;
 
 use kas::prelude::*;
 
-widget! {
+impl_scope! {
     /// A progress bar
     ///
     /// The "progress" value may range from 0.0 to 1.0.
     #[derive(Clone, Debug, Default)]
+    #[widget]
     pub struct ProgressBar<D: Directional> {
         #[widget_core]
         core: CoreData,

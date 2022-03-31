@@ -9,7 +9,7 @@ use kas::event::CursorIcon;
 use kas::prelude::*;
 use kas::widgets::{Column, Label, StrLabel, Window};
 
-widget! {
+impl_scope! {
     #[derive(Clone, Debug)]
     #[widget{
         layout = single;

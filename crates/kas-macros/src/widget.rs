@@ -3,37 +3,92 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::args::{Handler, Widget};
-use crate::extend_generics;
-use proc_macro2::TokenStream;
+use crate::args::{Child, Handler, WidgetArgs};
+use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
+use impl_tools_lib::{Scope, ScopeAttr, ScopeItem, SimplePath};
+use proc_macro2::{Span, TokenStream};
 use proc_macro_error::{emit_call_site_warning, emit_error, emit_warning};
 use quote::{quote, TokenStreamExt};
 use syn::spanned::Spanned;
-use syn::{parse_quote, Result};
+use syn::{parse_quote, Error, Ident, Index, Member, Result};
 
-pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
-    crate::widget_index::visit_widget(&mut args);
-    let mut toks = quote! { #args };
+fn member(index: usize, ident: Option<Ident>) -> Member {
+    match ident {
+        None => Member::Unnamed(Index {
+            index: index as u32,
+            span: Span::call_site(),
+        }),
+        Some(ident) => Member::Named(ident),
+    }
+}
 
-    let name = &args.ident;
-    for impl_ in &mut args.extra_impls {
-        if impl_.self_ty == parse_quote! { Self } {
-            let (_, ty_generics, _) = args.generics.split_for_impl();
-            impl_.self_ty = parse_quote! { #name #ty_generics };
-            extend_generics(&mut impl_.generics, &args.generics);
-        }
+pub struct AttrImplWidget;
+impl ScopeAttr for AttrImplWidget {
+    fn path(&self) -> SimplePath {
+        SimplePath::new(&["widget"])
     }
 
-    let opt_derive = &args.attr_widget.derive;
+    fn apply(&self, args: TokenStream, _: Span, scope: &mut Scope) -> Result<()> {
+        let attr = syn::parse2(args)?;
+        widget(attr, scope)
+    }
+}
+
+pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
+    scope.expand_impl_self();
+    let name = &scope.ident;
+    let opt_derive = &attr.derive;
 
     let mut impl_widget_children = true;
     let mut impl_widget_config = true;
     let mut impl_layout = true;
-    let mut has_find_id_impl = args.attr_widget.layout.is_some();
+    let mut has_find_id_impl = attr.layout.is_some();
     let mut handler_impl = None;
     let mut send_event_impl = None;
 
-    for (index, impl_) in args.extra_impls.iter().enumerate() {
+    let fields = match &mut scope.item {
+        ScopeItem::Struct { token, fields } => match fields {
+            Fields::Named(FieldsNamed { fields, .. }) => fields,
+            Fields::Unnamed(FieldsUnnamed { fields, .. }) => fields,
+            Fields::Unit => {
+                let span = scope
+                    .semi
+                    .map(|semi| semi.span())
+                    .and_then(|span| token.span().join(span))
+                    .unwrap_or_else(Span::call_site);
+                return Err(Error::new(span, "expected struct, not unit struct"));
+            }
+        },
+        item => {
+            return Err(syn::Error::new(item.token_span(), "expected struct"));
+        }
+    };
+
+    let mut core_data = None;
+    let mut children = Vec::with_capacity(fields.len());
+    for (i, field) in fields.iter_mut().enumerate() {
+        let mut other_attrs = Vec::with_capacity(field.attrs.len());
+        for attr in field.attrs.drain(..) {
+            if attr.path == parse_quote! { widget_core } {
+                if core_data.is_none() {
+                    core_data = Some(member(i, field.ident.clone()));
+                } else {
+                    emit_error!(attr.span(), "multiple fields marked with #[widget_core]");
+                }
+            } else if attr.path == parse_quote! { widget } {
+                let ident = member(i, field.ident.clone());
+                let args = syn::parse2(attr.tokens)?;
+                children.push(Child { ident, args });
+            } else {
+                other_attrs.push(attr);
+            }
+        }
+        field.attrs = other_attrs;
+    }
+
+    crate::widget_index::visit_impls(&children, &mut scope.impls);
+
+    for (index, impl_) in scope.impls.iter().enumerate() {
         if let Some((_, ref path, _)) = impl_.trait_ {
             if *path == parse_quote! { ::kas::WidgetChildren }
                 || *path == parse_quote! { kas::WidgetChildren }
@@ -45,7 +100,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                         "impl conflicts with use of #[widget(derive=FIELD)]"
                     );
                 }
-                if !args.children.is_empty() {
+                if !children.is_empty() {
                     emit_warning!(impl_.span(), "use of `#![widget]` on children with custom `WidgetChildren` implementation");
                 }
                 impl_widget_children = false;
@@ -65,7 +120,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                 || *path == parse_quote! { kas::Layout }
                 || *path == parse_quote! { Layout }
             {
-                if args.attr_widget.layout.is_some() {
+                if attr.layout.is_some() {
                     emit_error!(
                         impl_.span(),
                         "impl conflicts with use of #[widget(layout=...;)]"
@@ -108,25 +163,28 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
         }
     }
 
-    if !has_find_id_impl && (!impl_widget_children || !args.children.is_empty()) {
+    if !has_find_id_impl && (!impl_widget_children || !children.is_empty()) {
         emit_call_site_warning!("widget appears to have children yet does not implement Layout::layout or Layout::find_id; this may cause incorrect handling of mouse/touch events");
     }
 
-    let (mut impl_generics, ty_generics, mut where_clause) = args.generics.split_for_impl();
+    let (mut impl_generics, ty_generics, mut where_clause) = scope.generics.split_for_impl();
     let widget_name = name.to_string();
 
-    let (core_data, core_data_mut) = args
-        .core_data
-        .as_ref()
-        .map(|cd| (quote! { &self.#cd }, quote! { &mut self.#cd }))
-        .unwrap_or_else(|| {
-            let inner = opt_derive.as_ref().unwrap();
-            (
-                quote! { self.#inner.core_data() },
-                quote! { self.#inner.core_data_mut() },
-            )
-        });
-    toks.append_all(quote! {
+    let (access_core_data, access_core_data_mut);
+    if let Some(ref cd) = core_data {
+        access_core_data = quote! { &self.#cd };
+        access_core_data_mut = quote! { &mut self.#cd };
+    } else if let Some(ref inner) = opt_derive {
+        access_core_data = quote! { self.#inner.core_data() };
+        access_core_data_mut = quote! { self.#inner.core_data_mut() };
+    } else {
+        return Err(Error::new(
+            fields.span(),
+            "no field marked with #[widget_core]",
+        ));
+    }
+
+    scope.generated.push(quote! {
         impl #impl_generics ::kas::WidgetCore
             for #name #ty_generics #where_clause
         {
@@ -134,11 +192,11 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
             fn as_any_mut(&mut self) -> &mut dyn std::any::Any { self }
 
             fn core_data(&self) -> &::kas::CoreData {
-                #core_data
+                #access_core_data
             }
 
             fn core_data_mut(&mut self) -> &mut ::kas::CoreData {
-                #core_data_mut
+                #access_core_data_mut
             }
 
             fn widget_name(&self) -> &'static str {
@@ -152,7 +210,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
 
     if impl_widget_children {
         if let Some(inner) = opt_derive {
-            toks.append_all(quote! {
+            scope.generated.push(quote! {
                 impl #impl_generics ::kas::WidgetChildren
                     for #name #ty_generics #where_clause
                 {
@@ -168,17 +226,17 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                 }
             });
         } else {
-            let count = args.children.len();
+            let count = children.len();
 
             let mut get_rules = quote! {};
             let mut get_mut_rules = quote! {};
-            for (i, child) in args.children.iter().enumerate() {
+            for (i, child) in children.iter().enumerate() {
                 let ident = &child.ident;
                 get_rules.append_all(quote! { #i => Some(&self.#ident), });
                 get_mut_rules.append_all(quote! { #i => Some(&mut self.#ident), });
             }
 
-            toks.append_all(quote! {
+            scope.generated.push(quote! {
                 impl #impl_generics ::kas::WidgetChildren
                     for #name #ty_generics #where_clause
                 {
@@ -203,11 +261,11 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
     }
 
     if impl_widget_config {
-        let key_nav = args.attr_widget.key_nav.value;
-        let hover_highlight = args.attr_widget.hover_highlight.value;
-        let cursor_icon = args.attr_widget.cursor_icon.value;
+        let key_nav = attr.key_nav.value;
+        let hover_highlight = attr.hover_highlight.value;
+        let cursor_icon = attr.cursor_icon.value;
 
-        toks.append_all(quote! {
+        scope.generated.push(quote! {
             impl #impl_generics ::kas::WidgetConfig
                     for #name #ty_generics #where_clause
             {
@@ -223,20 +281,20 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
             }
         });
     } else {
-        if let Some(span) = args.attr_widget.key_nav.span {
+        if let Some(span) = attr.key_nav.span {
             emit_warning!(span, "unused due to manual impl of `WidgetConfig`");
         }
-        if let Some(span) = args.attr_widget.hover_highlight.span {
+        if let Some(span) = attr.hover_highlight.span {
             emit_warning!(span, "unused due to manual impl of `WidgetConfig`");
         }
-        if let Some(span) = args.attr_widget.cursor_icon.span {
+        if let Some(span) = attr.cursor_icon.span {
             emit_warning!(span, "unused due to manual impl of `WidgetConfig`");
         }
     }
 
     if impl_layout {
         if let Some(inner) = opt_derive {
-            toks.append_all(quote! {
+            scope.generated.push(quote! {
                 impl #impl_generics ::kas::Layout
                         for #name #ty_generics #where_clause
                 {
@@ -282,8 +340,8 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                     }
                 }
             });
-        } else if let Some(layout) = args.attr_widget.layout.take() {
-            let find_id = match args.attr_widget.find_id.value {
+        } else if let Some(layout) = attr.layout.take() {
+            let find_id = match attr.find_id.value {
                 None => quote! {},
                 Some(find_id) => quote! {
                     fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
@@ -295,10 +353,17 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                 },
             };
 
-            let core = args.core_data.as_ref().unwrap();
-            let layout = layout.generate(args.children.iter().map(|c| &c.ident))?;
+            let core = if let Some(ref cd) = core_data {
+                cd
+            } else {
+                return Err(Error::new(
+                    fields.span(),
+                    "no field marked with #[widget_core]",
+                ));
+            };
+            let layout = layout.generate(children.iter().map(|c| &c.ident))?;
 
-            toks.append_all(quote! {
+            scope.generated.push(quote! {
                 impl #impl_generics ::kas::Layout for #name #ty_generics #where_clause {
                     fn layout<'a>(&'a mut self) -> ::kas::layout::Layout<'a> {
                         use ::kas::{WidgetCore, layout};
@@ -310,18 +375,17 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
                 }
             });
         }
-    } else if let Some(span) = args.attr_widget.find_id.span {
+    } else if let Some(span) = attr.find_id.span {
         emit_warning!(span, "unused without generated impl of `Layout`");
     }
 
     if let Some(index) = handler_impl {
         // Manual Handler impl may add additional bounds:
-        let (a, _, c) = args.extra_impls[index].generics.split_for_impl();
+        let (a, _, c) = scope.impls[index].generics.split_for_impl();
         impl_generics = a;
         where_clause = c;
     } else {
-        let msg = args
-            .attr_widget
+        let msg = attr
             .msg
             .unwrap_or_else(|| parse_quote! { ::kas::event::VoidMsg });
         let handle = if let Some(inner) = opt_derive {
@@ -338,7 +402,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
         } else {
             quote! {}
         };
-        toks.append_all(quote! {
+        scope.generated.push(quote! {
             impl #impl_generics ::kas::event::Handler
                     for #name #ty_generics #where_clause
             {
@@ -350,7 +414,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
 
     if let Some(index) = send_event_impl {
         // Manual SendEvent impl may add additional bounds:
-        let (a, _, c) = args.extra_impls[index].generics.split_for_impl();
+        let (a, _, c) = scope.impls[index].generics.split_for_impl();
         impl_generics = a;
         where_clause = c;
     } else {
@@ -358,7 +422,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
             quote! { self.#inner.send(mgr, id, event) }
         } else {
             let mut ev_to_num = TokenStream::new();
-            for (i, child) in args.children.iter().enumerate() {
+            for (i, child) in children.iter().enumerate() {
                 #[cfg(feature = "log")]
                 let id = quote! { id.clone() };
                 #[cfg(feature = "log")]
@@ -437,7 +501,7 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
             }
         };
 
-        toks.append_all(quote! {
+        scope.generated.push(quote! {
             impl #impl_generics ::kas::event::SendEvent
                     for #name #ty_generics #where_clause
             {
@@ -454,15 +518,9 @@ pub(crate) fn widget(mut args: Widget) -> Result<TokenStream> {
         });
     }
 
-    toks.append_all(quote! {
+    scope.generated.push(quote! {
         impl #impl_generics ::kas::Widget for #name #ty_generics #where_clause {}
     });
 
-    for impl_ in &mut args.extra_impls {
-        toks.append_all(quote! {
-            #impl_
-        });
-    }
-
-    Ok(toks)
+    Ok(())
 }
