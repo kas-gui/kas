@@ -11,11 +11,11 @@ the main KAS lib, which re-exports these macros in its API.
 Stable vs nightly
 -----------------
 
-This crate is compatible with **stable rustc**, however, usage of **nightly**
-has some benefits:
+Note that proc macros may emit error messages on stable rust, but currently can
+only emit warnings with nightly `rustc`. Warning lints may be emitted by:
 
--   More macro diagnostics are emitted, resulting in better error messages
-    (without this, some errors may not even be reported)
+-   the `#[widget]` attribute macro
+-   `make_widget!`, which uses `#[widget]`
 
 
 Copyright and Licence

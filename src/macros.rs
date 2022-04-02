@@ -52,10 +52,8 @@
 //! (exception: the [`Layout`] trait is opt-in).
 //!
 //! It is recommended to use **nightly rustc** when developing code using this
-//! macro for improved diagnostics using
-//! [`proc_macro_diagnostics`](https://github.com/rust-lang/rust/issues/54140)
-//! (this is enabled automatically). It is safe to use a stable Rust compiler
-//! but debugging macros will be harder.
+//! macro since warning messages may currently only be emitted when using
+//! nightly `rustc`.
 //!
 //! The behaviour of this macro is controlled by attributes on struct fields and
 //! on the widget struct itself.
