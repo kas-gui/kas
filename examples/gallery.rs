@@ -267,7 +267,7 @@ fn main() -> kas::shell::Result<()> {
             #[widget] pg: ProgressBar<Right> = ProgressBar::new(),
             #[widget] pgl = Label::new("ProgressBar"),
             #[widget] svl = Label::new("SVG"),
-            #[widget] sv = Svg::from_path_and_factors("res/rustacean-flat-happy.svg", 0.1, 0.3),
+            #[widget] sv = Svg::load_with_factors("res/rustacean-flat-happy.svg", 0.1, 0.3),
             #[widget] pul = Label::new("Child window"),
             #[widget] pu = popup_edit_box,
         }

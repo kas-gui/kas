@@ -8,11 +8,17 @@
 // TODO: error handling (unwrap)
 
 use kas::draw::{ImageFormat, ImageId};
-use kas::geom::Vec2;
+use kas::geom::{Size, Vec2};
 use kas::layout::MarginSelector;
 use kas::prelude::*;
 use std::path::PathBuf;
 use tiny_skia::{Pixmap, Transform};
+
+#[derive(Copy, Clone, Debug)]
+enum Scale {
+    Factors(f32, f32),
+    Size(Size),
+}
 
 impl_scope! {
     /// An SVG image loaded from a path
@@ -26,8 +32,7 @@ impl_scope! {
         path: PathBuf,
         tree: Option<usvg::Tree>,
         margins: MarginSelector,
-        min_size_factor: f32,
-        ideal_size_factor: f32,
+        scale: Scale,
         ideal_size: Size,
         stretch: Stretch,
         pixmap: Option<Pixmap>,
@@ -35,12 +40,18 @@ impl_scope! {
     }
 
     impl Svg {
-        /// Construct with a path and size factors
+        /// Load from a path
         ///
-        /// An SVG image has an embedded "original" size. This constructor
-        /// multiplies that size by the given factors to obtain minimum and ideal
-        /// sizes (see [`SizeRules`] for a description of min / ideal sizes).
-        pub fn from_path_and_factors<P: Into<PathBuf>>(
+        /// Uses the SVG's embedded size adjusted by the window's scale factor.
+        pub fn load<P: Into<PathBuf>>(path: P) -> Self {
+            Self::load_with_factors(path, 1.0, 1.0)
+        }
+
+        /// Load from a path and size factors
+        ///
+        /// Uses the SVG's embedded size, scaled by the given min or ideal
+        /// factor then by the window's scale factor.
+        pub fn load_with_factors<P: Into<PathBuf>>(
             path: P,
             min_size_factor: f32,
             ideal_size_factor: f32,
@@ -50,8 +61,25 @@ impl_scope! {
                 path: path.into(),
                 tree: None,
                 margins: MarginSelector::Outer,
-                min_size_factor,
-                ideal_size_factor,
+                scale: Scale::Factors(min_size_factor, ideal_size_factor),
+                ideal_size: Size::ZERO,
+                stretch: Stretch::Low,
+                pixmap: None,
+                image_id: None,
+            }
+        }
+
+        /// Load from a path and size
+        ///
+        /// Ignore's the SVG's embedded size, instead using the given size,
+        /// scaled by the window's scale factor.
+        pub fn load_with_size<P: Into<PathBuf>>(path: P, size: Size) -> Self {
+            Svg {
+                core: Default::default(),
+                path: path.into(),
+                tree: None,
+                margins: MarginSelector::Outer,
+                scale: Scale::Size(size),
                 ideal_size: Size::ZERO,
                 stretch: Stretch::Low,
                 pixmap: None,
@@ -131,15 +159,23 @@ impl_scope! {
             let size = self.tree.as_ref().map(|tree| tree.svg_node().size.to_screen_size().dimensions())
             .unwrap_or((100, 100));
             let size = Vec2(size.0.cast(), size.1.cast());
-            self.ideal_size = Size::conv_nearest(size * self.ideal_size_factor * scale_factor);
 
-            let margins = self.margins.select(size_mgr);
-            SizeRules::new(
-                (size.extract(axis) * self.min_size_factor * scale_factor).cast_nearest(),
-                self.ideal_size.extract(axis),
-                margins.extract(axis),
-                self.stretch,
-            )
+            let (min_size, ideal_size);
+            match self.scale {
+                Scale::Factors(min, ideal) => {
+                    self.ideal_size = Size::conv_nearest(size * ideal * scale_factor);
+                    min_size = (size.extract(axis) * min * scale_factor).cast_nearest();
+                    ideal_size = self.ideal_size.extract(axis);
+                }
+                Scale::Size(size) => {
+                    self.ideal_size = Size::conv_nearest(Vec2::conv(size) * scale_factor);
+                    ideal_size = self.ideal_size.extract(axis);
+                    min_size = ideal_size;
+                }
+            };
+
+            let margins = self.margins.select(size_mgr).extract(axis);
+            SizeRules::new(min_size, ideal_size, margins, self.stretch)
         }
 
         fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
