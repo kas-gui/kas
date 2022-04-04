@@ -30,9 +30,6 @@
 // public implementations:
 pub mod prelude;
 
-// macro re-exports
-pub mod macros;
-
 pub use kas_core::*;
 
 pub use kas_widgets as widgets;

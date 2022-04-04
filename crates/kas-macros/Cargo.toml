@@ -10,7 +10,6 @@ categories = ["gui"]
 repository = "https://github.com/kas-gui/kas"
 readme = "README.md"
 documentation = "https://docs.rs/kas-macros/"
-build = "build.rs"
 
 [lib]
 proc-macro = true

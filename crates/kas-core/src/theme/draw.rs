@@ -343,10 +343,8 @@ pub trait DrawHandle {
 
     /// Target area for drawing
     ///
-    /// Drawing is restricted to this [`Rect`], which may be the whole window, a
-    /// [clip region](Self::with_clip_region) or an
-    /// [overlay](Self::with_overlay). This may be used to cull hidden
-    /// items from lists inside a scrollable view.
+    /// Drawing is restricted to this [`Rect`]. Affected by [`Self::new_pass`].
+    /// This may be used to cull hidden items from lists inside a scrollable view.
     fn get_clip_rect(&self) -> Rect;
 
     /// Draw a frame inside the given `rect`
@@ -380,7 +378,7 @@ pub trait DrawHandle {
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     fn text_effects(&mut self, id: &WidgetId, pos: Coord, text: &dyn TextApi, class: TextClass);
 
-    /// Method used to implement [`Self::text_selected`]
+    /// Method used to implement [`DrawMgr::text_selected`]
     fn text_selected_range(
         &mut self,
         id: &WidgetId,

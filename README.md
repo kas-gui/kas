@@ -85,7 +85,7 @@ Getting started
 KAS requires a recent [Rust] compiler. Currently, version 1.56 or greater is
 required. Using the **nightly** channel does have a few advantages:
 
--   Proceedural macros emit better diagnostics. In some cases, diagnostics are
+-   Procedural macros can only emit warnings using nightly `rustc`.
     missed without nightly rustc, hence **nightly is recommended for development**.
 -   The `nightly` (`min_spec`) feature allows some visual improvements (see below).
 -   The `doc_cfg` feature may be used for API docs.
@@ -240,7 +240,7 @@ The following non-default features of `kas` are highlighted:
 -   `dynamic`: enable dynamic linking for `kas` (see [Faster builds](#faster-builds))
 -   `internal_doc`: turns on some extra documentation intended for internal
     usage but not for end users. (This only affects generated documentation.)
--   `nightly`: enables "more stable" unstable features
+-   `nightly`: enables the less problematic unstable features
 -   `min_spec` (enabled by `nightly`): use `min_specialization` for some visual
     improvements: scrolled regions are drawn under scrollbars,
     underlines on checkbox accelerator keys show with the <kbd>Alt</kbd> key.
