@@ -4,6 +4,8 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! KAS macros
+//!
+//! This crate extends [impl-tools](https://crates.io/crates/impl-tools).
 
 #![recursion_limit = "128"]
 #![allow(clippy::let_and_return)]
