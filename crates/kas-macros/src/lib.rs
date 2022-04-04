@@ -313,9 +313,83 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
     scope.expand().into()
 }
 
-/// Attribute to implement `kas::Widget`
+/// Attribute to implement the `kas::Widget` family of traits
 ///
-/// TODO: doc
+/// This may *only* be used within the [`impl_scope!`] macro.
+///
+/// Implements the [`WidgetCore`] and [`Widget`] traits for the deriving type.
+/// Implements the [`WidgetChildren`], [`WidgetConfig`], [`Layout`], [`Handler`]
+/// and [`SendEvent`] traits only if not implemented explicitly within the
+/// defining [`impl_scope!`].
+///
+/// Using the `derive` argument activates a special "thin wrapper" mode.
+/// In this case, layout may optionally be defined explicitly. Non-layout
+/// properties are not supported.
+///
+/// When not using `derive`, layout must be defined, either via the `layout`
+/// argument or by implementing [`Layout`]. All other properties are optional.
+///
+/// ## Syntax
+///
+/// > _WidgetAttr_ :\
+/// > &nbsp;&nbsp; `#` `[` _WidgetAttrArgs_? `]`
+/// >
+/// > _WidgetAttrArgs_ :\
+/// > &nbsp;&nbsp; `{` (_WidgetAttrArg_ `;`) * `}`
+///
+/// Supported arguments (_WidgetAttrArg_) are:
+///
+/// -   `derive` `=` `self` `.` _Member_ — if present, identifies a struct or struct tuple field
+///     implementing [`Widget`] over which the `Self` type implements [`Widget`]
+/// -   `key_nav` `=` _Bool_ — whether this widget supports keyboard focus via
+///     <kbd>Tab</kbd> key (method of [`WidgetConfig`]; default is `false`)
+/// -   `hover_highlight` `=` _Bool_ — whether to redraw when cursor hover
+///     status is gained/lost (method of [`WidgetConfig`]; default is `false`)
+/// -   `cursor_icon` `=` _Expr_ — an expression yielding a [`CursorIcon`]
+///     (method of [`WidgetConfig`]; default is `CursorIcon::Default`)
+/// -   `layout` `=` _Layout_ — defines widget layout via an expression; see [`make_layout!`] for
+///     documentation (method of [`Layout`]; defaults to an empty layout)
+/// -   `find_id` `=` _Expr_ — override default implementation of `kas::Layout::find_id` to
+///     return this expression when `self.rect().contains(coord)`
+/// -   `msg` `=` _Type_ — set [`Handler::Msg`] associated type (default is [`VoidMsg`])
+///
+/// Assuming the deriving type is a `struct` or `tuple struct`, fields support
+/// the following attributes:
+///
+/// -   `#[widget_core]`: required on one field of type [`CoreData`], unless `derive` argument is
+///     used
+/// -   `#[widget]`: marks the field as a [`Widget`] to be configured, enumerated by
+///     [`WidgetChildren`] and included by glob layouts
+///
+/// The `#[widget]` attribute on fields may have arguments, affecting how the
+/// implementation of [`SendEvent`] handles [`Response`] values from the child:
+///
+/// -   `#[widget(update = f)]` — when `Response::Update` is received, `self.f()` is called
+/// -   `#[widget(use_msg = f)]` — when `Response::Msg(msg)` is received,
+///     `self.f(msg)` is called and `Response::Used` is returned
+/// -   `#[widget(map_msg = f)]` — when `Response::Msg(msg)` is received,
+///     `Response::Msg(self.f(msg))` is returned
+/// -   `#[widget(flatmap_msg = f)]` — when `Response::Msg(msg)` is received,
+///     `self.f(msg)` is returned
+/// -   `#[widget(discard_msg = f)]` — when `Response::Msg(msg)` is received,
+///     `Response::Used` is returned
+///
+/// ## Layout
+///
+/// Widget layout must be described somehow
+///
+/// [`Widget`]: https://docs.rs/kas/0.11/kas/trait.Widget.html
+/// [`WidgetCore`]: https://docs.rs/kas/0.11/kas/trait.WidgetCore.html
+/// [`WidgetChildren`]: https://docs.rs/kas/0.11/kas/trait.WidgetChildren.html
+/// [`WidgetConfig`]: https://docs.rs/kas/0.11/kas/trait.WidgetConfig.html
+/// [`Layout`]: https://docs.rs/kas/0.11/kas/trait.Layout.html
+/// [`Handler`]: https://docs.rs/kas/0.11/kas/event/trait.Handler.html
+/// [`Handler::Msg`]: https://docs.rs/kas/0.11/kas/event/trait.Handler.html#associatedtype.Msg
+/// [`SendEvent`]: https://docs.rs/kas/0.11/kas/event/trait.SendEvent.html
+/// [`CursorIcon`]: https://docs.rs/kas/0.11/kas/event/enum.CursorIcon.html
+/// [`VoidMsg`]: https://docs.rs/kas/0.11/kas/event/enum.VoidMsg.html
+/// [`Response`]: https://docs.rs/kas/0.11/kas/event/enum.Response.html
+/// [`CoreData`]: https://docs.rs/kas/0.11/kas/struct.CoreData.html
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
@@ -325,7 +399,7 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 
 /// Macro to create a widget with anonymous type
 ///
-/// See documentation [in the `kas::macros` module](https://docs.rs/kas/latest/kas/macros#the-make_widget-macro).
+/// See documentation [in the `kas::macros` module](https://docs.rs/kas/0.11/kas/macros#the-make_widget-macro).
 #[proc_macro_error]
 #[proc_macro]
 pub fn make_widget(input: TokenStream) -> TokenStream {
@@ -342,6 +416,12 @@ pub fn make_widget(input: TokenStream) -> TokenStream {
 ///
 /// # Syntax
 ///
+/// > _MakeLayout_:\
+/// > &nbsp;&nbsp; `make_layout` `!` `(` _CoreData_ `;` _Layout_ `)`
+/// >
+/// > _Layout_ :\
+/// > &nbsp;&nbsp; &nbsp;&nbsp; _Align_ | _Single_ | _List_ | _Slice_ | _Grid_ | _Frame_
+/// >
 /// > _AlignType_ :\
 /// > &nbsp;&nbsp; `center` | `stretch`
 /// >
@@ -358,19 +438,19 @@ pub fn make_widget(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; `column` | `row` | `list` `(` _Direction_ `)`
 /// >
 /// > _List_ :\
-/// > &nbsp;&nbsp; _ListPre_ `:` `[` _Layout_ `]`
+/// > &nbsp;&nbsp; _ListPre_ `:` `*` | (`[` _Layout_ `]`)
 /// >
 /// > _Slice_ :\
 /// > &nbsp;&nbsp; `slice` `(` _Direction_ `)` `:` `self` `.` _Member_
 /// >
+/// > _Grid_ :\
+/// > &nbsp;&nbsp; `grid` `:` `{` _GridCell_* `}`
+/// >
+/// > _GridCell_ :\
+/// > &nbsp;&nbsp; _Range_ `,` _Range_ `:` _Layout_
+/// >
 /// > _Frame_ :\
 /// > &nbsp;&nbsp; `frame` `(` _Layout_ `)`
-/// >
-/// > _Layout_ :\
-/// > &nbsp;&nbsp; &nbsp;&nbsp; _Align_ | _Single_ | _List_ | _Slice_ | _Frame_
-/// >
-/// > _MakeLayout_:\
-/// > &nbsp;&nbsp; `(` _CoreData_ `;` _Layout_ `)`
 ///
 /// ## Notes
 ///
@@ -379,7 +459,8 @@ pub fn make_widget(input: TokenStream) -> TokenStream {
 /// access (e.g. `self.x.y`) is also supported.
 ///
 /// `row` and `column` are abbreviations for `list(right)` and `list(down)`
-/// respectively.
+/// respectively. Glob syntax is allowed: `row: *` uses all children in a row
+/// layout.
 ///
 /// _Slice_ is a variant of _List_ over a single struct field, supporting
 /// `AsMut<W>` for some widget type `W`.
@@ -390,6 +471,20 @@ pub fn make_widget(input: TokenStream) -> TokenStream {
 ///
 /// ```none
 /// make_layout!(self.core; row[self.a, self.b])
+/// ```
+///
+/// # Grid
+///
+/// Grid cells are defined by `row, column` ranges, where the ranges are either
+/// a half-open range or a single number (who's end is implicitly `start + 1`).
+///
+/// ```none
+/// make_layout!(self.core; grid: {
+///     0..2, 0: self.merged_title;
+///     0, 1: self.a;
+///     1, 1: self.b;
+///     1, 2: self.c;
+/// })
 /// ```
 #[proc_macro_error]
 #[proc_macro]
@@ -434,7 +529,7 @@ pub fn derive_empty_msg(input: TokenStream) -> TokenStream {
 /// marked with the `#[widget]` attribute), then this expands to the child
 /// widget's index (as used by [`WidgetChildren`]). Otherwise, this is an error.
 ///
-/// [`WidgetChildren`]: https://docs.rs/kas/latest/kas/trait.WidgetChildren.html
+/// [`WidgetChildren`]: https://docs.rs/kas/0.11/kas/trait.WidgetChildren.html
 #[proc_macro_error]
 #[proc_macro]
 pub fn widget_index(input: TokenStream) -> TokenStream {
