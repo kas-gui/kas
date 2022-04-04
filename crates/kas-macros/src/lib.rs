@@ -397,9 +397,30 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
     item
 }
 
-/// Macro to create a widget with anonymous type
+/// Create a widget singleton
 ///
-/// See documentation [in the `kas::macros` module](https://docs.rs/kas/0.11/kas/macros#the-make_widget-macro).
+/// Rust doesn't currently support [`impl Trait { ... }` expressions](https://github.com/canndrew/rfcs/blob/impl-trait-expressions/text/0000-impl-trait-expressions.md)
+/// or implicit typing of struct fields. This macro is a **hack** allowing that.
+///
+/// Implicit typing is emulated using type parameters plus "smart" bounds. These
+/// don't always work and can result in terrible error messages. Another result
+/// is that fields cannot be accessed outside the type definition except
+/// through their type or a trait bound.
+///
+/// Syntax is similar to using [`widget`](macro@widget) within [`impl_scope!`], except that:
+///
+/// -   `#[derive(Debug)]` is added automatically
+/// -   a `#[widget_core] core: kas::CoreData` field is added automatically
+/// -   all fields must have an initializer, e.g. `ident: ty = value,`
+/// -   the type of fields is optional: `ident = value,` works (but see note above)
+/// -   the name of fields is optional: `_: ty = value,` and `_ = value,` are valid
+/// -   instead of a type, a type bound may be used: `ident: impl Trait = value,`
+/// -   instead of a widget type, only the widget's message type may be specified:
+///     `ident -> MessageType = value,`
+/// -   type generics may be used:
+///     `#[widget] display: for<W: Widget<Msg = VoidMsg>> Frame<W> = value,`
+///
+/// Refer to [examples](https://github.com/search?q=make_widget+repo%3Akas-gui%2Fkas+path%3Aexamples&type=Code) for usage.
 #[proc_macro_error]
 #[proc_macro]
 pub fn make_widget(input: TokenStream) -> TokenStream {
