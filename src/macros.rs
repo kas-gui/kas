@@ -22,23 +22,7 @@
 //!
 //! [`make_widget`]: #the-make_widget-macro
 //! [`widget`]: #the-widget-macro
-//! [`derive(VoidMsg)`]: #the-derivevoidmsg-macro
-//!
-//!
-//! ## The `derive(VoidMsg)` macro
-//!
-//! This macro implements `From<VoidMsg>` for the given type (see [`VoidMsg`]).
-//!
-//! [`VoidMsg`]: crate::event::VoidMsg
-//!
-//! ### Example
-//!
-//! ```
-//! use kas::macros::VoidMsg;
-//!
-//! #[derive(VoidMsg)]
-//! enum MyMessage { A, B };
-//! ```
+//! [`derive(VoidMsg)`]: VoidMsg
 //!
 //!
 //! ## The `widget` macro

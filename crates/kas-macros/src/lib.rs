@@ -400,9 +400,12 @@ pub fn make_layout(input: TokenStream) -> TokenStream {
         .into()
 }
 
-/// Macro to derive `From<VoidMsg>`
+/// Implement `From<VoidMsg>`
 ///
-/// See documentation [ in the `kas::macros` module](https://docs.rs/kas/latest/kas/macros#the-derivevoidmsg-macro).
+/// Since `VoidMsg` is a void type (cannot exist at run-time), `From<VoidMsg>`
+/// can safely be implemented for *any* type. (But due to the theoretical
+/// possibility of avoid conflicting implementations, it is not implemented
+/// automatically until Rust has some form of specialization.)
 #[proc_macro_error]
 #[proc_macro_derive(VoidMsg)]
 pub fn derive_empty_msg(input: TokenStream) -> TokenStream {
