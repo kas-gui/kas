@@ -23,7 +23,9 @@ pub use crate::event::{
 #[doc(no_inline)]
 pub use crate::geom::{Coord, Offset, Rect, Size};
 #[doc(no_inline)]
-pub use crate::layout::{Align, AlignHints, AxisInfo, Margins, SetRectMgr, SizeRules, Stretch};
+pub use crate::layout::{
+    Align, AlignHints, AxisInfo, LogicalSize, Margins, SetRectMgr, SizeRules, Stretch,
+};
 #[doc(no_inline)]
 pub use crate::macros::*;
 #[doc(no_inline)]

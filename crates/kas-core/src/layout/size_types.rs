@@ -14,6 +14,78 @@ use crate::geom::{Rect, Size, Vec2};
 #[allow(unused)]
 use crate::theme::SizeMgr;
 
+/// Logical (pre-scaling) pixel size
+///
+/// A measure of size in "logical pixels". May be used to define scalable
+/// layouts.
+#[derive(Copy, Clone, PartialEq, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct LogicalSize(pub f32, pub f32);
+
+impl LogicalSize {
+    /// Convert to physical pixels
+    ///
+    /// Values are multiplied by the window's scale factor and cast to nearest.
+    pub fn to_physical(self, scale_factor: f32) -> Size {
+        let w = i32::conv_nearest(self.0 * scale_factor);
+        let h = i32::conv_nearest(self.1 * scale_factor);
+        Size(w, h)
+    }
+
+    /// Convert to [`SizeRules`], fixed size
+    pub fn to_rules(self, dir: impl Directional, scale_factor: f32) -> SizeRules {
+        SizeRules::fixed(self.extract_scaled(dir, scale_factor), (0, 0))
+    }
+
+    /// Convert to [`SizeRules`]
+    ///
+    /// Ideal size is `component * ideal_factor * scale_factor`.
+    pub fn to_rules_with_factor(
+        self,
+        dir: impl Directional,
+        scale_factor: f32,
+        ideal_factor: f32,
+    ) -> SizeRules {
+        let min = self.extract_scaled(dir, scale_factor);
+        let ideal = self.extract_scaled(dir, scale_factor * ideal_factor);
+        SizeRules::new(min, ideal, (0, 0), Stretch::None)
+    }
+
+    /// Take horizontal/vertical axis component
+    pub fn extract(self, dir: impl Directional) -> f32 {
+        match dir.is_vertical() {
+            false => self.0,
+            true => self.1,
+        }
+    }
+
+    /// Take component and scale
+    pub fn extract_scaled(self, dir: impl Directional, scale_factor: f32) -> i32 {
+        (self.extract(dir) * scale_factor).cast_nearest()
+    }
+}
+
+impl From<(f32, f32)> for LogicalSize {
+    #[inline]
+    fn from((w, h): (f32, f32)) -> Self {
+        LogicalSize(w, h)
+    }
+}
+
+impl From<(i32, i32)> for LogicalSize {
+    #[inline]
+    fn from((w, h): (i32, i32)) -> Self {
+        LogicalSize(w.cast(), h.cast())
+    }
+}
+
+impl From<(u32, u32)> for LogicalSize {
+    #[inline]
+    fn from((w, h): (u32, u32)) -> Self {
+        LogicalSize(w.cast(), h.cast())
+    }
+}
+
 /// Margin sizes
 ///
 /// Used by the layout system for margins around child widgets. Margins may be

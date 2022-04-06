@@ -8,7 +8,7 @@
 // TODO: error handling (unwrap)
 
 use kas::draw::{ImageFormat, ImageId};
-use kas::geom::{Size, Vec2};
+use kas::geom::Size;
 use kas::layout::MarginSelector;
 use kas::prelude::*;
 use std::path::PathBuf;
@@ -17,7 +17,7 @@ use tiny_skia::{Pixmap, Transform};
 #[derive(Copy, Clone, Debug)]
 enum Scale {
     Factors(f32, f32),
-    Size(Size),
+    Size(LogicalSize),
 }
 
 impl_scope! {
@@ -73,7 +73,7 @@ impl_scope! {
         ///
         /// Ignore's the SVG's embedded size, instead using the given size,
         /// scaled by the window's scale factor.
-        pub fn load_with_size<P: Into<PathBuf>>(path: P, size: Size) -> Self {
+        pub fn load_with_size<P: Into<PathBuf>>(path: P, size: LogicalSize) -> Self {
             Svg {
                 core: Default::default(),
                 path: path.into(),
@@ -156,23 +156,21 @@ impl_scope! {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             let scale_factor = size_mgr.scale_factor();
 
-            let size = self.tree.as_ref().map(|tree| tree.svg_node().size.to_screen_size().dimensions())
-            .unwrap_or((100, 100));
-            let size = Vec2(size.0.cast(), size.1.cast());
+            let opt_size = self.tree.as_ref().map(|tree|
+                tree.svg_node().size.to_screen_size().dimensions());
+            let mut size = LogicalSize::from(opt_size.unwrap_or((128, 128)));
 
-            let (min_size, ideal_size);
-            match self.scale {
-                Scale::Factors(min, ideal) => {
-                    self.ideal_size = Size::conv_nearest(size * ideal * scale_factor);
-                    min_size = (size.extract(axis) * min * scale_factor).cast_nearest();
-                    ideal_size = self.ideal_size.extract(axis);
-                }
-                Scale::Size(size) => {
-                    self.ideal_size = Size::conv_nearest(Vec2::conv(size) * scale_factor);
-                    ideal_size = self.ideal_size.extract(axis);
-                    min_size = ideal_size;
+            let (min_factor, ideal_factor) = match self.scale {
+                Scale::Factors(min, ideal) => (min * scale_factor, ideal * scale_factor),
+                Scale::Size(explicit_size) => {
+                    size = explicit_size;
+                    (scale_factor, scale_factor)
                 }
             };
+
+            self.ideal_size = size.to_physical(ideal_factor);
+            let min_size = size.extract_scaled(axis, min_factor);
+            let ideal_size = self.ideal_size.extract(axis);
 
             let margins = self.margins.select(size_mgr).extract(axis);
             SizeRules::new(min_size, ideal_size, margins, self.stretch)

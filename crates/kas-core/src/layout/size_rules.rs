@@ -9,7 +9,7 @@ use smallvec::SmallVec;
 use std::iter::Sum;
 
 use super::{Margins, Stretch};
-use crate::cast::{Cast, CastFloat, Conv, ConvFloat};
+use crate::cast::{Cast, CastFloat, Conv};
 use crate::dir::Directional;
 use crate::geom::Size;
 
@@ -168,28 +168,10 @@ impl SizeRules {
         }
     }
 
-    /// Construct with custom rules, scaled from virtual pixels
-    ///
-    /// This is a shortcut around [`SizeRules::new`].
-    /// It assumes that both margins are equal.
-    ///
-    /// Region size should meet the given `min`-imum size and has a given
-    /// `ideal` size, plus a given `stretch` priority.
-    ///
-    /// Expected: `ideal >= min` (if not, ideal is clamped to min).
+    /// Set stretch factor, inline
     #[inline]
-    pub fn new_scaled(
-        min: f32,
-        ideal: f32,
-        margins: f32,
-        stretch: Stretch,
-        scale_factor: f32,
-    ) -> Self {
-        debug_assert!(0.0 <= min && 0.0 <= ideal && margins >= 0.0);
-        let min = (min * scale_factor).cast_nearest();
-        let ideal = i32::conv_nearest(ideal * scale_factor).max(min);
-        let m = (scale_factor * margins).cast_nearest();
-        SizeRules::new(min, ideal, (m, m), stretch)
+    pub fn with_stretch(self, stretch: Stretch) -> Self {
+        Self::new(self.a, self.b, self.m, stretch)
     }
 
     /// Get the minimum size

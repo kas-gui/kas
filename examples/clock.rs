@@ -37,10 +37,10 @@ impl_scope! {
     }
 
     impl Layout for Clock {
-        fn size_rules(&mut self, size_mgr: SizeMgr, _: AxisInfo) -> SizeRules {
-            // We want a square shape and can resize freely. Numbers are arbitrary.
-            let size: i32 = size_mgr.pixels_from_virtual(100.0).cast_nearest();
-            SizeRules::new(size, 2 * size, (0, 0), Stretch::High)
+        fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            LogicalSize(100.0, 100.0)
+                .to_rules_with_factor(axis, mgr.scale_factor(), 3.0)
+                .with_stretch(Stretch::High)
         }
 
         #[inline]
