@@ -129,10 +129,11 @@ impl MarginSelector {
 /// shared between widgets in the highest priority class.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum Stretch {
-    /// No expectations beyond the minimum
+    /// Prefer not to stretch beyond ideal size
     ///
-    /// Note: this does not prevent stretching (specifically, it can happen with
-    /// other widgets in the same row/column wishing more size).
+    /// When `min == ideal`, this is as close to fixed-size as one can get, but
+    /// still does not completely prevent stretching, e.g. if another widget in
+    /// the same column causes it to be wider.
     None,
     /// Fill unwanted space
     Filler,

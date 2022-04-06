@@ -406,9 +406,9 @@ impl SizeRules {
         #[cfg(debug_assertions)]
         {
             assert!(out.iter().all(|w| *w >= 0));
-            let sum = SizeRules::sum(rules);
-            assert_eq!((sum.a, sum.b), (total.a, total.b));
-            // Note: we do not care about margins, which may be in different order!
+            let mut sum = SizeRules::sum(rules);
+            sum.m = total.m; // external margins are unimportant here
+            assert_eq!(sum, total);
         }
 
         if target > total.a {
@@ -436,6 +436,10 @@ impl SizeRules {
                     base: F,
                     mut avail: i32,
                 ) {
+                    if targets.is_empty() {
+                        return;
+                    }
+
                     // Calculate ceiling above which sizes will not be increased
                     let mut any_removed = true;
                     while any_removed {
@@ -479,8 +483,9 @@ impl SizeRules {
                     // We can increase all sizes to their ideal. Since this may
                     // not be enough, we also count the number with highest
                     // stretch factor and how far these are over their ideal.
+                    // If highest stretch is None, do not expand beyond ideal.
                     sum = 0;
-                    let highest_stretch = total.stretch;
+                    let highest_stretch = total.stretch.max(Stretch::Filler);
                     let mut targets = Targets::new();
                     let mut over = 0;
                     for i in 0..N {
@@ -494,7 +499,7 @@ impl SizeRules {
 
                     let avail = target - sum + over;
                     increase_targets(out, &mut targets, |i| rules[i].b, avail);
-                    debug_assert_eq!(target, (0..N).fold(0, |x, i| x + out[i]));
+                    debug_assert!(target >= (0..N).fold(0, |x, i| x + out[i]));
                 } else {
                     // We cannot increase sizes as far as their ideal: instead
                     // increase over minimum size and under ideal
