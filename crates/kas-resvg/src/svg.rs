@@ -105,36 +105,35 @@ impl_scope! {
     }
 
     impl WidgetConfig for Svg {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
+        fn configure(&mut self, _: &mut SetRectMgr) {
             if self.tree.is_none() {
                 // TODO: maybe we should use a singleton to deduplicate loading by
                 // path? Probably not much use for duplicate SVG widgets however.
                 let data = std::fs::read(&self.path).unwrap();
-
-                // TODO: should we reload the SVG if the scale factor changes?
-                let size_mgr = mgr.size_mgr();
-                let scale_factor = size_mgr.scale_factor();
-                let def_size = 100.0 * f64::conv(scale_factor);
 
                 let fonts_db = kas::text::fonts::fonts().read_db();
                 let fontdb = fonts_db.db();
                 let font_family = fonts_db
                     .font_family_from_alias("SERIF")
                     .unwrap_or_default();
-                let font_size = size_mgr.pixels_from_em(1.0) as f64;
 
-                // TODO: some options here should be configurable
+                // Defaults are taken from usvg::Options::default(). Notes:
+                // - adjusting for screen scale factor is purely a property of
+                //   making the canvas larger and not important here
+                // - default_size: affected by screen scale factor later
+                // - dpi: according to css-values-3, 1in = 96px
+                // - font_size: units are (logical) px per em; 16px = 12pt
                 let opts = usvg::OptionsRef {
                     resources_dir: self.path.parent(),
-                    dpi: 96.0 * f64::conv(scale_factor),
+                    dpi: 96.0,
                     font_family: &font_family,
-                    font_size,
-                    languages: &[],
+                    font_size: 16.0, // units: "logical pixels" per Em
+                    languages: &["en".to_string()],
                     shape_rendering: usvg::ShapeRendering::default(),
                     text_rendering: usvg::TextRendering::default(),
                     image_rendering: usvg::ImageRendering::default(),
                     keep_named_groups: false,
-                    default_size: usvg::Size::new(def_size, def_size).unwrap(),
+                    default_size: usvg::Size::new(100.0, 100.0).unwrap(),
                     fontdb,
                     image_href_resolver: &Default::default(),
                 };
