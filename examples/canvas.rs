@@ -9,7 +9,8 @@
 //! pure-CPU drawing instead of GPU-acceleration, thus performance is poor.
 
 use kas::cast::Conv;
-use kas::geom::{Size, Vec2};
+use kas::geom::Vec2;
+use kas::layout::LogicalSize;
 use kas::resvg::{tiny_skia::*, Canvas, CanvasProgram};
 use kas::widgets::Window;
 use std::time::Instant;
@@ -85,7 +86,7 @@ impl CanvasProgram for Program {
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let canvas = Canvas::new(Program(Instant::now()), Size(400, 400));
+    let canvas = Canvas::new(Program(Instant::now()), LogicalSize::from((400, 400)));
     let window = Window::new("Canvas", canvas);
 
     let theme = kas::theme::FlatTheme::new();

@@ -9,6 +9,7 @@ use super::{Align, AlignHints, AxisInfo, SizeRules};
 use crate::cast::traits::*;
 use crate::dir::Directional;
 use crate::geom::{Rect, Size, Vec2};
+use kas_macros::impl_default;
 
 // for doc use
 #[allow(unused)]
@@ -223,24 +224,18 @@ impl Default for Stretch {
     }
 }
 
-/// Scaling of image according to scale factor
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub enum SpriteScaling {
-    /// Do not scale with scale factor
-    Original,
-    /// Use the nearest integer of scale factor (e.g. 1, 2, 3)
-    Integer,
-    /// Use raw scale factor
-    Real,
-}
-
-impl Default for SpriteScaling {
-    fn default() -> Self {
-        SpriteScaling::Integer
-    }
+/// Sprite size
+#[impl_default(SpriteSize::Relative(1.0))]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum SpriteSize {
+    /// Size in logical pixels
+    Logical(LogicalSize),
+    /// Scale relative to input size
+    Relative(f32),
 }
 
 /// Scaling of image sprite within allocation
+#[impl_default(AspectScaling::Fixed)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum AspectScaling {
     /// Align sprite within available space without further scaling
@@ -252,21 +247,24 @@ pub enum AspectScaling {
     // TODO: we could add repeat (tile) and mirrored repeat modes here
 }
 
-impl Default for AspectScaling {
-    fn default() -> Self {
-        AspectScaling::Fixed
-    }
-}
-
 /// Widget component for displaying a sprite
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct SpriteDisplay {
     /// Margins
     pub margins: MarginSelector,
-    /// The native size of the sprite
-    pub size: Size,
-    /// Sprite scaling according to scale factor
-    pub scaling: SpriteScaling,
+    /// Display size
+    pub size: SpriteSize,
+    /// Ideal size relative to minimum size
+    pub ideal_factor: f32,
+    /// If true, output size must be an integer mulitple of the raw size
+    ///
+    /// Usually used for icons and pixel-art images.
+    ///
+    /// It is recommended to use `stretch == None` and `ideal_factor == 1.0`,
+    /// since currently assignment of space does not use a "step" (this may
+    /// change in the future). Regardless, the result of [`Self::align_rect`]
+    /// should respect `int_scale_factor`.
+    pub int_scale_factor: bool,
     /// Sprite scaling within allocation, after impact of scale factor
     ///
     /// Note: this only has an impact if `stretch > Stretch::None`.
@@ -276,40 +274,66 @@ pub struct SpriteDisplay {
 }
 
 impl SpriteDisplay {
+    /// Calculate render size (physical pixels) from input (pixels)
+    pub fn size_from_pixels(&self, raw_size: Size, scale_factor: f32) -> Size {
+        match self.size {
+            SpriteSize::Logical(logical) if self.int_scale_factor => {
+                logical.to_physical(scale_factor.round())
+            }
+            SpriteSize::Logical(logical) => logical.to_physical(scale_factor),
+            SpriteSize::Relative(rel) if self.int_scale_factor => {
+                raw_size * i32::conv_nearest(rel * scale_factor)
+            }
+            SpriteSize::Relative(rel) => {
+                (Vec2::conv(raw_size) * (rel * scale_factor)).cast_nearest()
+            }
+        }
+    }
+
     /// Generates `size_rules` based on size
     ///
     /// Set [`Self::size`] before calling this.
-    pub fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+    pub fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo, raw_size: Size) -> SizeRules {
         let margins = self.margins.select(mgr.re()).extract(axis);
-        let size = self.size.extract(axis);
-        let size = match self.scaling {
-            SpriteScaling::Original => size,
-            SpriteScaling::Integer => i32::conv_nearest(mgr.scale_factor()) * size,
-            SpriteScaling::Real => (mgr.scale_factor() * f32::conv(size)).cast_nearest(),
-        };
-        SizeRules::new(size, size, margins, self.stretch)
+        let scale_factor = mgr.scale_factor();
+        let min = self.size_from_pixels(raw_size, scale_factor).extract(axis);
+        let ideal = self
+            .size_from_pixels(raw_size, scale_factor * self.ideal_factor)
+            .extract(axis);
+        SizeRules::new(min, ideal, margins, self.stretch)
     }
 
-    /// Aligns `rect` according to stretch policy
+    /// Constrains and aligns within `rect`
+    ///
+    /// If `stretch == None` or `aspect == None`, then the result has size
+    /// `raw_size`. Otherwise, if `aspect == Fixed`, the resulting size has
+    /// (approximately) the same aspect ratio as `raw_size`. Otherwise, `rect`
+    /// is used without adjustment.
+    ///
+    /// Alignment follows `align` hints, defaulting to centered.
     ///
     /// Assign the result to `self.core_data_mut().rect`.
-    pub fn align_rect(&mut self, rect: Rect, align: AlignHints) -> Rect {
+    pub fn align_rect(&mut self, rect: Rect, align: AlignHints, raw_size: Size) -> Rect {
         let ideal = match self.aspect {
-            AspectScaling::None => self.size,
+            _ if self.stretch == Stretch::None => raw_size,
+            AspectScaling::None => raw_size,
             AspectScaling::Fixed => {
-                let size = Vec2::conv(self.size);
+                let size = Vec2::conv(raw_size);
                 let ratio = Vec2::conv(rect.size) / size;
                 // Use smaller ratio, which must be finite
-                if ratio.0 < ratio.1 {
-                    Size(rect.size.0, i32::conv_nearest(ratio.0 * size.1))
-                } else if ratio.1 < ratio.0 {
-                    Size(i32::conv_nearest(ratio.1 * size.0), rect.size.1)
-                } else {
-                    // Non-finite ratio implies size is zero on at least one axis
+                if !ratio.0.is_finite() || !ratio.1.is_finite() {
                     rect.size
+                } else if self.int_scale_factor {
+                    let ratio = i32::conv_floor(ratio.0.min(ratio.1)).max(1);
+                    rect.size * ratio
+                } else if ratio.0 < ratio.1 {
+                    Size(rect.size.0, i32::conv_nearest(ratio.0 * size.1))
+                } else {
+                    debug_assert!(ratio.1 < ratio.0);
+                    Size(i32::conv_nearest(ratio.1 * size.0), rect.size.1)
                 }
             }
-            AspectScaling::Free => rect.size,
+            AspectScaling::Free => return rect,
         };
         align
             .complete(Align::Center, Align::Center)

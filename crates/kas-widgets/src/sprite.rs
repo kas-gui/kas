@@ -17,6 +17,7 @@ impl_scope! {
         #[widget_core]
         core: CoreData,
         sprite: SpriteDisplay,
+        sprite_size: Size,
         path: PathBuf,
         do_load: bool,
         id: Option<ImageId>,
@@ -32,7 +33,7 @@ impl_scope! {
                 {
                     Ok((id, size)) => {
                         self.id = Some(id);
-                        self.sprite.size = size;
+                        self.sprite_size = size;
                     }
                     Err(error) => self.handle_load_fail(&error),
                 }
@@ -42,11 +43,11 @@ impl_scope! {
 
     impl Layout for Image {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            self.sprite.size_rules(size_mgr, axis)
+            self.sprite.size_rules(size_mgr, axis, self.sprite_size)
         }
 
         fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, align: AlignHints) {
-            self.core_data_mut().rect = self.sprite.align_rect(rect, align);
+            self.core_data_mut().rect = self.sprite.align_rect(rect, align, self.sprite_size);
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
@@ -63,6 +64,7 @@ impl Image {
         Image {
             core: Default::default(),
             sprite: Default::default(),
+            sprite_size: Size::ZERO,
             path: path.into(),
             do_load: true,
             id: None,
@@ -101,8 +103,8 @@ impl Image {
             Err(error) => self.handle_load_fail(&error),
         };
         *mgr |= TkAction::REDRAW;
-        if size != self.sprite.size {
-            self.sprite.size = size;
+        if size != self.sprite_size {
+            self.sprite_size = size;
             *mgr |= TkAction::RESIZE;
         }
     }
