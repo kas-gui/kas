@@ -249,10 +249,8 @@ impl_scope! {
         ///
         /// Usually used for icons and pixel-art images.
         ///
-        /// It is recommended to use `stretch == None` and `ideal_factor == 1.0`,
-        /// since currently assignment of space does not use a "step" (this may
-        /// change in the future). Regardless, the result of [`Self::align_rect`]
-        /// should respect `int_scale_factor`.
+        /// This only works correctly with `stretch == None` and
+        /// `ideal_factor == 1.0` (other cases may be supported in the future).
         pub int_scale_factor: bool = false,
         /// If true, aspect ratio is fixed
         pub fix_aspect: bool = false,
@@ -307,26 +305,31 @@ impl SpriteDisplay {
         scale_factor: f32,
     ) -> Rect {
         let mut size = rect.size;
-        let raw_size = Vec2::conv(raw_size);
+
         if self.stretch == Stretch::None {
-            let ideal = Size::conv_nearest(raw_size * (scale_factor * self.ideal_factor));
+            let ideal = self.size_from_pixels(raw_size, scale_factor);
             size = size.min(ideal);
         }
 
-        if self.fix_aspect {
-            let ratio = Vec2::conv(size) / raw_size;
+        let raw_size = Vec2::conv(raw_size);
+        let Vec2(rw, rh) = Vec2::conv(size) / raw_size;
+
+        if self.int_scale_factor {
+            if rw.is_finite() && rh.is_finite() {
+                let (mut rw, mut rh) = (i32::conv_floor(rw), i32::conv_floor(rh));
+                if self.fix_aspect {
+                    rw = rw.min(rh);
+                    rh = rw;
+                }
+                size = Size(size.0 * rw, size.1 * rh);
+            }
+        } else if self.fix_aspect {
             // Use smaller ratio, which must be finite
-            size = if !ratio.0.is_finite() || !ratio.1.is_finite() {
-                size
-            } else if self.int_scale_factor {
-                let ratio = i32::conv_floor(ratio.0.min(ratio.1)).max(1);
-                size * ratio
-            } else if ratio.0 < ratio.1 {
-                Size(size.0, i32::conv_nearest(ratio.0 * raw_size.1))
-            } else {
-                debug_assert!(ratio.1 < ratio.0);
-                Size(i32::conv_nearest(ratio.1 * raw_size.0), size.1)
-            };
+            if rw < rh {
+                size = Size(size.0, i32::conv_nearest(rw * raw_size.1));
+            } else if rh < rw {
+                size = Size(i32::conv_nearest(rh * raw_size.0), size.1);
+            }
         }
 
         align
