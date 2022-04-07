@@ -136,6 +136,13 @@ macro_rules! impl_common {
                 Self(v.0, v.1)
             }
         }
+
+        impl From<(u32, u32)> for $T {
+            #[inline]
+            fn from(v: (u32, u32)) -> Self {
+                Self(v.0.cast(), v.1.cast())
+            }
+        }
     };
 }
 

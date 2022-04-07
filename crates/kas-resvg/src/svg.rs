@@ -9,16 +9,10 @@
 
 use kas::draw::{ImageFormat, ImageId};
 use kas::geom::Size;
-use kas::layout::MarginSelector;
+use kas::layout::{MarginSelector, SpriteDisplay, SpriteSize};
 use kas::prelude::*;
 use std::path::PathBuf;
 use tiny_skia::{Pixmap, Transform};
-
-#[derive(Copy, Clone, Debug)]
-enum Scale {
-    Factors(f32, f32),
-    Size(LogicalSize),
-}
 
 impl_scope! {
     /// An SVG image loaded from a path
@@ -31,10 +25,8 @@ impl_scope! {
         core: CoreData,
         path: PathBuf,
         tree: Option<usvg::Tree>,
-        margins: MarginSelector,
-        scale: Scale,
+        sprite: SpriteDisplay,
         ideal_size: Size,
-        stretch: Stretch,
         pixmap: Option<Pixmap>,
         image_id: Option<ImageId>,
     }
@@ -60,10 +52,14 @@ impl_scope! {
                 core: Default::default(),
                 path: path.into(),
                 tree: None,
-                margins: MarginSelector::Outer,
-                scale: Scale::Factors(min_size_factor, ideal_size_factor),
+                sprite: SpriteDisplay {
+                    margins: MarginSelector::Outer,
+                    size: SpriteSize::Relative(min_size_factor),
+                    ideal_factor: ideal_size_factor / min_size_factor,
+                    stretch: Stretch::Low,
+                    ..Default::default()
+                },
                 ideal_size: Size::ZERO,
-                stretch: Stretch::Low,
                 pixmap: None,
                 image_id: None,
             }
@@ -78,37 +74,33 @@ impl_scope! {
                 core: Default::default(),
                 path: path.into(),
                 tree: None,
-                margins: MarginSelector::Outer,
-                scale: Scale::Size(size),
+                sprite: SpriteDisplay {
+                    margins: MarginSelector::Outer,
+                    size: SpriteSize::Logical(size),
+                    ideal_factor: 1.0,
+                    stretch: Stretch::Low,
+                    ..Default::default()
+                },
                 ideal_size: Size::ZERO,
-                stretch: Stretch::Low,
                 pixmap: None,
                 image_id: None,
             }
         }
 
-        /// Set margins
+        /// Adjust scaling
+        #[inline]
         #[must_use]
-        pub fn with_margins(mut self, margins: MarginSelector) -> Self {
-            self.margins = margins;
+        pub fn with_scaling(mut self, f: impl FnOnce(SpriteDisplay) -> SpriteDisplay) -> Self {
+            self.sprite = f(self.sprite);
             self
         }
 
-        /// Set stretch policy
-        #[must_use]
-        pub fn with_stretch(mut self, stretch: Stretch) -> Self {
-            self.stretch = stretch;
-            self
-        }
-
-        /// Set margins
-        pub fn set_margins(&mut self, margins: MarginSelector) {
-            self.margins = margins;
-        }
-
-        /// Set stretch policy
-        pub fn set_stretch(&mut self, stretch: Stretch) {
-            self.stretch = stretch;
+        /// Adjust scaling
+        #[inline]
+        pub fn set_scaling(&mut self, f: impl FnOnce(&mut SpriteDisplay)) -> TkAction {
+            f(&mut self.sprite);
+            // NOTE: if only `aspect` is changed, REDRAW is enough
+            TkAction::RESIZE
         }
     }
 
@@ -154,43 +146,15 @@ impl_scope! {
 
     impl Layout for Svg {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            let scale_factor = size_mgr.scale_factor();
-
-            let opt_size = self.tree.as_ref().map(|tree|
-                tree.svg_node().size.to_screen_size().dimensions());
-            let mut size = LogicalSize::from(opt_size.unwrap_or((128, 128)));
-
-            let (min_factor, ideal_factor) = match self.scale {
-                Scale::Factors(min, ideal) => (min * scale_factor, ideal * scale_factor),
-                Scale::Size(explicit_size) => {
-                    size = explicit_size;
-                    (scale_factor, scale_factor)
-                }
-            };
-
-            self.ideal_size = size.to_physical(ideal_factor);
-            let min_size = size.extract_scaled(axis, min_factor);
-            let ideal_size = self.ideal_size.extract(axis);
-
-            let margins = self.margins.select(size_mgr).extract(axis);
-            SizeRules::new(min_size, ideal_size, margins, self.stretch)
+            let size = self.tree.as_ref()
+                .map(|tree| Size::from(tree.svg_node().size.to_screen_size().dimensions()))
+                .unwrap_or(Size(128, 128));
+            self.sprite.size_rules(size_mgr, axis, size)
         }
 
         fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
-            let size = match self.ideal_size.aspect_scale_to(rect.size) {
-                Some(size) => {
-                    self.core_data_mut().rect = align
-                        .complete(Align::Center, Align::Center)
-                        .aligned_rect(size, rect);
-                    Cast::<(u32, u32)>::cast(size)
-                }
-                None => {
-                    self.core_data_mut().rect = rect;
-                    self.pixmap = None;
-                    self.image_id = None;
-                    return;
-                }
-            };
+            self.core.rect = self.sprite.align_rect(rect, align, Size::ZERO);
+            let size: (u32, u32) = self.core.rect.size.cast();
 
             let pm_size = self.pixmap.as_ref().map(|pm| (pm.width(), pm.height()));
             if pm_size.unwrap_or((0, 0)) != size {
