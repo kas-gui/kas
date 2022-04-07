@@ -6,7 +6,7 @@
 //! Canvas widget
 
 use kas::draw::{ImageFormat, ImageId};
-use kas::layout::{SpriteDisplay, SpriteSize};
+use kas::layout::{AspectScaling, SpriteDisplay, SpriteSize};
 use kas::prelude::*;
 use tiny_skia::{Color, Pixmap};
 
@@ -67,6 +67,7 @@ impl_scope! {
                 core: Default::default(),
                 sprite: SpriteDisplay {
                     size: SpriteSize::Logical(size),
+                    aspect: AspectScaling::Fixed,
                     stretch: Stretch::High,
                     ..Default::default()
                 },
@@ -77,14 +78,22 @@ impl_scope! {
         }
 
         /// Adjust scaling
+        ///
+        /// By default, uses `size` as provided to [`Self::new`],
+        /// `aspect: AspectScaling::Fixed` and `stretch: Stretch::High`.
+        /// Other fields use [`SpriteDisplay`]'s default values.
         #[inline]
         #[must_use]
-        pub fn with_scaling(mut self, f: impl FnOnce(SpriteDisplay) -> SpriteDisplay) -> Self {
-            self.sprite = f(self.sprite);
+        pub fn with_scaling(mut self, f: impl FnOnce(&mut SpriteDisplay)) -> Self {
+            f(&mut self.sprite);
             self
         }
 
         /// Adjust scaling
+        ///
+        /// By default, uses `size` as provided to [`Self::new`],
+        /// `aspect: AspectScaling::Fixed` and `stretch: Stretch::High`.
+        /// Other fields use [`SpriteDisplay`]'s default values.
         #[inline]
         pub fn set_scaling(&mut self, f: impl FnOnce(&mut SpriteDisplay)) -> TkAction {
             f(&mut self.sprite);

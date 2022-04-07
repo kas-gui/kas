@@ -9,7 +9,7 @@ use super::{Align, AlignHints, AxisInfo, SizeRules};
 use crate::cast::traits::*;
 use crate::dir::Directional;
 use crate::geom::{Rect, Size, Vec2};
-use kas_macros::impl_default;
+use kas_macros::{impl_default, impl_scope};
 
 // for doc use
 #[allow(unused)]
@@ -235,7 +235,7 @@ pub enum SpriteSize {
 }
 
 /// Scaling of image sprite within allocation
-#[impl_default(AspectScaling::Fixed)]
+#[impl_default(AspectScaling::None)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum AspectScaling {
     /// Align sprite within available space without further scaling
@@ -247,30 +247,33 @@ pub enum AspectScaling {
     // TODO: we could add repeat (tile) and mirrored repeat modes here
 }
 
-/// Widget component for displaying a sprite
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct SpriteDisplay {
-    /// Margins
-    pub margins: MarginSelector,
-    /// Display size
-    pub size: SpriteSize,
-    /// Ideal size relative to minimum size
-    pub ideal_factor: f32,
-    /// If true, output size must be an integer mulitple of the raw size
-    ///
-    /// Usually used for icons and pixel-art images.
-    ///
-    /// It is recommended to use `stretch == None` and `ideal_factor == 1.0`,
-    /// since currently assignment of space does not use a "step" (this may
-    /// change in the future). Regardless, the result of [`Self::align_rect`]
-    /// should respect `int_scale_factor`.
-    pub int_scale_factor: bool,
-    /// Sprite scaling within allocation, after impact of scale factor
-    ///
-    /// Note: this only has an impact if `stretch > Stretch::None`.
-    pub aspect: AspectScaling,
-    /// Widget stretchiness
-    pub stretch: Stretch,
+impl_scope! {
+    /// Widget component for displaying a sprite
+    #[impl_default]
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SpriteDisplay {
+        /// Margins
+        pub margins: MarginSelector,
+        /// Display size
+        pub size: SpriteSize,
+        /// Ideal size relative to minimum size
+        pub ideal_factor: f32 = 1.0,
+        /// If true, output size must be an integer mulitple of the raw size
+        ///
+        /// Usually used for icons and pixel-art images.
+        ///
+        /// It is recommended to use `stretch == None` and `ideal_factor == 1.0`,
+        /// since currently assignment of space does not use a "step" (this may
+        /// change in the future). Regardless, the result of [`Self::align_rect`]
+        /// should respect `int_scale_factor`.
+        pub int_scale_factor: bool = false,
+        /// Sprite scaling within allocation, after impact of scale factor
+        ///
+        /// Note: this only has an impact if `stretch > Stretch::None`.
+        pub aspect: AspectScaling,
+        /// Widget stretchiness
+        pub stretch: Stretch,
+    }
 }
 
 impl SpriteDisplay {

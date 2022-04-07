@@ -5,7 +5,7 @@
 
 //! 2D pixmap widget
 
-use kas::layout::SpriteDisplay;
+use kas::layout::{AspectScaling, SpriteDisplay};
 use kas::prelude::*;
 use std::path::PathBuf;
 
@@ -63,7 +63,10 @@ impl Image {
     pub fn new<P: Into<PathBuf>>(path: P) -> Self {
         Image {
             core: Default::default(),
-            sprite: Default::default(),
+            sprite: SpriteDisplay {
+                aspect: AspectScaling::Fixed,
+                ..Default::default()
+            },
             sprite_size: Size::ZERO,
             path: path.into(),
             do_load: true,
@@ -72,14 +75,20 @@ impl Image {
     }
 
     /// Adjust scaling
+    ///
+    /// By default, this is [`SpriteDisplay::default`] except with
+    /// `aspect: AspectScaling::Fixed`.
     #[inline]
     #[must_use]
-    pub fn with_scaling(mut self, f: impl FnOnce(SpriteDisplay) -> SpriteDisplay) -> Self {
-        self.sprite = f(self.sprite);
+    pub fn with_scaling(mut self, f: impl FnOnce(&mut SpriteDisplay)) -> Self {
+        f(&mut self.sprite);
         self
     }
 
     /// Adjust scaling
+    ///
+    /// By default, this is [`SpriteDisplay::default`] except with
+    /// `aspect: AspectScaling::Fixed`.
     #[inline]
     pub fn set_scaling(&mut self, f: impl FnOnce(&mut SpriteDisplay)) -> TkAction {
         f(&mut self.sprite);

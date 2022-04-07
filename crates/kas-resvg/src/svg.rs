@@ -88,14 +88,20 @@ impl_scope! {
         }
 
         /// Adjust scaling
+        ///
+        /// By default, uses `margins: MarginSelector::Outer` and
+        /// `stretch: Stretch::Low`.
         #[inline]
         #[must_use]
-        pub fn with_scaling(mut self, f: impl FnOnce(SpriteDisplay) -> SpriteDisplay) -> Self {
-            self.sprite = f(self.sprite);
+        pub fn with_scaling(mut self, f: impl FnOnce(&mut SpriteDisplay)) -> Self {
+            f(&mut self.sprite);
             self
         }
 
         /// Adjust scaling
+        ///
+        /// By default, uses `margins: MarginSelector::Outer` and
+        /// `stretch: Stretch::Low`.
         #[inline]
         pub fn set_scaling(&mut self, f: impl FnOnce(&mut SpriteDisplay)) -> TkAction {
             f(&mut self.sprite);
