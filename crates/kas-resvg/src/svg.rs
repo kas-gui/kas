@@ -25,6 +25,7 @@ impl_scope! {
         core: CoreData,
         path: PathBuf,
         tree: Option<usvg::Tree>,
+        raw_size: Size,
         sprite: SpriteDisplay,
         ideal_size: Size,
         pixmap: Option<Pixmap>,
@@ -52,6 +53,7 @@ impl_scope! {
                 core: Default::default(),
                 path: path.into(),
                 tree: None,
+                raw_size: Size::ZERO,
                 sprite: SpriteDisplay {
                     margins: MarginSelector::Outer,
                     size: SpriteSize::Relative(min_size_factor),
@@ -74,6 +76,7 @@ impl_scope! {
                 core: Default::default(),
                 path: path.into(),
                 tree: None,
+                raw_size: Size::ZERO,
                 sprite: SpriteDisplay {
                     margins: MarginSelector::Outer,
                     size: SpriteSize::Logical(size),
@@ -145,20 +148,21 @@ impl_scope! {
                 };
 
                 self.tree = Some(usvg::Tree::from_data(&data, &opts).unwrap());
+                self.raw_size = self.tree.as_ref()
+                    .map(|tree| Size::from(tree.svg_node().size.to_screen_size().dimensions()))
+                    .unwrap_or(Size(128, 128));
             }
         }
     }
 
     impl Layout for Svg {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            let size = self.tree.as_ref()
-                .map(|tree| Size::from(tree.svg_node().size.to_screen_size().dimensions()))
-                .unwrap_or(Size(128, 128));
-            self.sprite.size_rules(size_mgr, axis, size)
+            self.sprite.size_rules(size_mgr, axis, self.raw_size)
         }
 
         fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
-            self.core.rect = self.sprite.align_rect(rect, align, Size::ZERO);
+            let scale_factor = mgr.size_mgr().scale_factor();
+            self.core.rect = self.sprite.align_rect(rect, align, self.raw_size, scale_factor);
             let size: (u32, u32) = self.core.rect.size.cast();
 
             let pm_size = self.pixmap.as_ref().map(|pm| (pm.width(), pm.height()));

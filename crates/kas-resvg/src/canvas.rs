@@ -6,7 +6,7 @@
 //! Canvas widget
 
 use kas::draw::{ImageFormat, ImageId};
-use kas::layout::{AspectScaling, SpriteDisplay, SpriteSize};
+use kas::layout::{SpriteDisplay, SpriteSize};
 use kas::prelude::*;
 use tiny_skia::{Color, Pixmap};
 
@@ -67,7 +67,7 @@ impl_scope! {
                 core: Default::default(),
                 sprite: SpriteDisplay {
                     size: SpriteSize::Logical(size),
-                    aspect: AspectScaling::Fixed,
+                    fix_aspect: true,
                     stretch: Stretch::High,
                     ..Default::default()
                 },
@@ -80,7 +80,7 @@ impl_scope! {
         /// Adjust scaling
         ///
         /// By default, uses `size` as provided to [`Self::new`],
-        /// `aspect: AspectScaling::Fixed` and `stretch: Stretch::High`.
+        /// `fix_aspect: true` and `stretch: Stretch::High`.
         /// Other fields use [`SpriteDisplay`]'s default values.
         #[inline]
         #[must_use]
@@ -92,7 +92,7 @@ impl_scope! {
         /// Adjust scaling
         ///
         /// By default, uses `size` as provided to [`Self::new`],
-        /// `aspect: AspectScaling::Fixed` and `stretch: Stretch::High`.
+        /// `fix_aspect: true` and `stretch: Stretch::High`.
         /// Other fields use [`SpriteDisplay`]'s default values.
         #[inline]
         pub fn set_scaling(&mut self, f: impl FnOnce(&mut SpriteDisplay)) -> TkAction {
@@ -122,7 +122,8 @@ impl_scope! {
         }
 
         fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
-            self.core.rect = self.sprite.align_rect(rect, align, Size::ZERO);
+            let scale_factor = mgr.size_mgr().scale_factor();
+            self.core.rect = self.sprite.align_rect(rect, align, Size::ZERO, scale_factor);
             let size: (u32, u32) = self.core.rect.size.cast();
 
             let pm_size = self.pixmap.as_ref().map(|pm| (pm.width(), pm.height()));

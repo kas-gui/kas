@@ -234,19 +234,6 @@ pub enum SpriteSize {
     Relative(f32),
 }
 
-/// Scaling of image sprite within allocation
-#[impl_default(AspectScaling::None)]
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub enum AspectScaling {
-    /// Align sprite within available space without further scaling
-    None,
-    /// Scale sprite to available space with fixed aspect ratio
-    Fixed,
-    /// Scale sprite freely
-    Free,
-    // TODO: we could add repeat (tile) and mirrored repeat modes here
-}
-
 impl_scope! {
     /// Widget component for displaying a sprite
     #[impl_default]
@@ -267,11 +254,11 @@ impl_scope! {
         /// change in the future). Regardless, the result of [`Self::align_rect`]
         /// should respect `int_scale_factor`.
         pub int_scale_factor: bool = false,
-        /// Sprite scaling within allocation, after impact of scale factor
-        ///
-        /// Note: this only has an impact if `stretch > Stretch::None`.
-        pub aspect: AspectScaling,
+        /// If true, aspect ratio is fixed
+        pub fix_aspect: bool = false,
         /// Widget stretchiness
+        ///
+        /// If is `None`, max size is limited.
         pub stretch: Stretch,
     }
 }
@@ -308,39 +295,43 @@ impl SpriteDisplay {
 
     /// Constrains and aligns within `rect`
     ///
-    /// If `stretch == None` or `aspect == None`, then the result has size
-    /// `raw_size`. Otherwise, if `aspect == Fixed`, the resulting size has
-    /// (approximately) the same aspect ratio as `raw_size`. Otherwise, `rect`
-    /// is used without adjustment.
+    /// If `self.stretch == Stretch::None`, maximum size is limited.
+    /// If `self.fix_aspect`, size is corrected for aspect ratio.
     ///
-    /// Alignment follows `align` hints, defaulting to centered.
-    ///
-    /// Assign the result to `self.core_data_mut().rect`.
-    pub fn align_rect(&mut self, rect: Rect, align: AlignHints, raw_size: Size) -> Rect {
-        let ideal = match self.aspect {
-            _ if self.stretch == Stretch::None => raw_size,
-            AspectScaling::None => raw_size,
-            AspectScaling::Fixed => {
-                let size = Vec2::conv(raw_size);
-                let ratio = Vec2::conv(rect.size) / size;
-                // Use smaller ratio, which must be finite
-                if !ratio.0.is_finite() || !ratio.1.is_finite() {
-                    rect.size
-                } else if self.int_scale_factor {
-                    let ratio = i32::conv_floor(ratio.0.min(ratio.1)).max(1);
-                    rect.size * ratio
-                } else if ratio.0 < ratio.1 {
-                    Size(rect.size.0, i32::conv_nearest(ratio.0 * size.1))
-                } else {
-                    debug_assert!(ratio.1 < ratio.0);
-                    Size(i32::conv_nearest(ratio.1 * size.0), rect.size.1)
-                }
-            }
-            AspectScaling::Free => return rect,
-        };
+    /// The resulting size is then aligned using the `align` hints, defaulting to centered.
+    pub fn align_rect(
+        &mut self,
+        rect: Rect,
+        align: AlignHints,
+        raw_size: Size,
+        scale_factor: f32,
+    ) -> Rect {
+        let mut size = rect.size;
+        let raw_size = Vec2::conv(raw_size);
+        if self.stretch == Stretch::None {
+            let ideal = Size::conv_nearest(raw_size * (scale_factor * self.ideal_factor));
+            size = size.min(ideal);
+        }
+
+        if self.fix_aspect {
+            let ratio = Vec2::conv(size) / raw_size;
+            // Use smaller ratio, which must be finite
+            size = if !ratio.0.is_finite() || !ratio.1.is_finite() {
+                size
+            } else if self.int_scale_factor {
+                let ratio = i32::conv_floor(ratio.0.min(ratio.1)).max(1);
+                size * ratio
+            } else if ratio.0 < ratio.1 {
+                Size(size.0, i32::conv_nearest(ratio.0 * raw_size.1))
+            } else {
+                debug_assert!(ratio.1 < ratio.0);
+                Size(i32::conv_nearest(ratio.1 * raw_size.0), size.1)
+            };
+        }
+
         align
             .complete(Align::Center, Align::Center)
-            .aligned_rect(ideal, rect)
+            .aligned_rect(size, rect)
     }
 }
 
