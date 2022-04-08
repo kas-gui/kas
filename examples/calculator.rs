@@ -31,10 +31,10 @@ fn main() -> kas::shell::Result<()> {
             layout = grid: {
                 0, 0: self.b_clear; 0, 1: self.b_div; 0, 2: self.b_mul; 0, 3: self.b_sub;
                 1, 0: self.b7; 1, 1: self.b8; 1, 2: self.b9;
-                1..3, 3: align(stretch): self.b_add;
+                1..3, 3: self.b_add;
                 2, 0: self.b4; 2, 1: self.b5; 2, 2: self.b6;
                 3, 0: self.b1; 3, 1: self.b2; 3, 2: self.b3;
-                3..5, 3: align(stretch): self.b_eq;
+                3..5, 3: self.b_eq;
                 4, 0..2: self.b0; 4, 2: self.b_dot;
             };
             msg = Key;
