@@ -48,8 +48,8 @@ impl_scope! {
     #[derive(Debug)]
     #[widget{
         layout = grid: {
-            0, 0..3: self.edit;
-            1, 0: self.fill; 1, 1: self.cancel; 1, 2: self.save;
+            0..3, 0: self.edit;
+            0, 1: self.fill; 1, 1: self.cancel; 2, 1: self.save;
         };
     }]
     struct TextEditPopup {
@@ -225,19 +225,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // want better alignment controls first (which are also needed for menus).
         #[widget{
             layout = grid: {
-                0, 0: self.sll; 0, 1: self.sl;
-                1, 0: self.ebl; 1, 1: self.eb;
-                2, 0: self.tbl; 2, 1: self.tb;
-                3, 0: self.bil; 3, 1: self.bi;
-                4, 0: self.cbl; 4, 1: self.cb;
-                5, 0: self.rbl; 5, 1: self.rb;
-                6, 0: self.rb2l; 6, 1: self.rb2;
-                7, 0: self.cbbl; 7, 1: self.cbb;
-                8, 0: self.sdl; 8, 1: self.sd;
-                9, 0: self.scl; 9, 1: self.sc;
-                10, 0: self.pgl; 10, 1: self.pg;
-                11, 0: self.svl; 11, 1: align(center): self.sv;
-                12, 0: self.pul; 12, 1: self.pu;
+                0, 0: self.sll; 1, 0: self.sl;
+                0, 1: self.ebl; 1, 1: self.eb;
+                0, 2: self.tbl; 1, 2: self.tb;
+                0, 3: self.bil; 1, 3: self.bi;
+                0, 4: self.cbl; 1, 4: self.cb;
+                0, 5: self.rbl; 1, 5: self.rb;
+                0, 6: self.rb2l; 1, 6: self.rb2;
+                0, 7: self.cbbl; 1, 7: self.cbb;
+                0, 8: self.sdl; 1, 8: self.sd;
+                0, 9: self.scl; 1, 9: self.sc;
+                0, 10: self.pgl; 1, 10: self.pg;
+                0, 11: self.svl; 1, 11: align(center): self.sv;
+                0, 12: self.pul; 1, 12: self.pu;
             };
             msg = Item;
         }]

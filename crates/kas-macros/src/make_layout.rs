@@ -103,21 +103,6 @@ struct CellInfo {
 }
 impl Parse for CellInfo {
     fn parse(input: ParseStream) -> Result<Self> {
-        let row = input.parse::<LitInt>()?.base10_parse()?;
-        let row_end = if input.peek(Token![..]) {
-            let _ = input.parse::<Token![..]>();
-            let lit = input.parse::<LitInt>()?;
-            let end = lit.base10_parse()?;
-            if row >= end {
-                return Err(Error::new(lit.span(), format!("expected value > {}", row)));
-            }
-            end
-        } else {
-            row + 1
-        };
-
-        let _ = input.parse::<Token![,]>()?;
-
         let col = input.parse::<LitInt>()?.base10_parse()?;
         let col_end = if input.peek(Token![..]) {
             let _ = input.parse::<Token![..]>();
@@ -129,6 +114,21 @@ impl Parse for CellInfo {
             end
         } else {
             col + 1
+        };
+
+        let _ = input.parse::<Token![,]>()?;
+
+        let row = input.parse::<LitInt>()?.base10_parse()?;
+        let row_end = if input.peek(Token![..]) {
+            let _ = input.parse::<Token![..]>();
+            let lit = input.parse::<LitInt>()?;
+            let end = lit.base10_parse()?;
+            if row >= end {
+                return Err(Error::new(lit.span(), format!("expected value > {}", row)));
+            }
+            end
+        } else {
+            row + 1
         };
 
         Ok(CellInfo {

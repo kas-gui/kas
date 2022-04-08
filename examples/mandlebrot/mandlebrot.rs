@@ -430,9 +430,9 @@ impl_scope! {
     #[derive(Debug)]
     #[widget{
         layout = grid: {
-            0, 0..2: self.label;
-            1, 0: align(center): self.iters;
-            2, 0: self.slider;
+            0..2, 0: self.label;
+            0, 1: align(center): self.iters;
+            0, 2: self.slider;
             1..3, 1..3: self.mbrot;
         };
         msg = event::VoidMsg;
