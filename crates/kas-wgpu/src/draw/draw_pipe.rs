@@ -306,7 +306,7 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
     type Draw = DrawWindow<C::Window>;
 
     #[inline]
-    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, ImageError> {
+    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, AllocError> {
         self.images.alloc(size)
     }
 

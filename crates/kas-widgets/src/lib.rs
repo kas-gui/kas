@@ -82,7 +82,6 @@ mod scrollbar;
 mod separator;
 mod slider;
 mod splitter;
-mod sprite;
 mod stack;
 mod window;
 
@@ -110,6 +109,5 @@ pub use scrollbar::{ScrollBar, ScrollBarRegion, ScrollBars, Scrollable};
 pub use separator::Separator;
 pub use slider::{Slider, SliderType};
 pub use splitter::*;
-pub use sprite::Image;
 pub use stack::{BoxStack, RefStack, Stack};
 pub use window::Window;

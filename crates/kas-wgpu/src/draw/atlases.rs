@@ -9,27 +9,14 @@ use guillotiere::{AllocId, Allocation, AtlasAllocator};
 use std::mem::size_of;
 use std::num::NonZeroU64;
 use std::ops::Range;
-use thiserror::Error;
 
 use kas::cast::{Cast, Conv};
-use kas::draw::{ImageError, PassId};
+use kas::draw::{AllocError, PassId};
 use kas::geom::{Quad, Size, Vec2};
 use kas::macros::autoimpl;
 
 fn to_vec2(p: guillotiere::Point) -> Vec2 {
     Vec2(p.x.cast(), p.y.cast())
-}
-
-// TODO
-/// Allocation failed: too large or zero sized
-#[derive(Error, Debug)]
-#[error("failed to allocate: size too large or zero-sized")]
-pub struct AllocError;
-
-impl From<AllocError> for ImageError {
-    fn from(_: AllocError) -> ImageError {
-        ImageError::Allocation
-    }
 }
 
 pub struct Atlas {
