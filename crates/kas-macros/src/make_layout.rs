@@ -89,17 +89,17 @@ enum Align {
 
 #[derive(Debug, Default)]
 struct GridDimensions {
-    rows: u32,
     cols: u32,
-    row_spans: u32,
     col_spans: u32,
+    rows: u32,
+    row_spans: u32,
 }
 #[derive(Debug)]
 struct CellInfo {
-    row: u32,
-    row_end: u32,
     col: u32,
     col_end: u32,
+    row: u32,
+    row_end: u32,
 }
 impl Parse for CellInfo {
     fn parse(input: ParseStream) -> Result<Self> {
@@ -141,13 +141,13 @@ impl Parse for CellInfo {
 }
 impl GridDimensions {
     fn update(&mut self, cell: &CellInfo) {
-        self.rows = self.rows.max(cell.row_end);
         self.cols = self.cols.max(cell.col_end);
-        if cell.row_end - cell.row > 1 {
-            self.row_spans += 1;
-        }
         if cell.col_end - cell.col > 1 {
             self.col_spans += 1;
+        }
+        self.rows = self.rows.max(cell.row_end);
+        if cell.row_end - cell.row > 1 {
+            self.row_spans += 1;
         }
     }
 }
@@ -367,13 +367,13 @@ impl quote::ToTokens for Direction {
 
 impl quote::ToTokens for GridDimensions {
     fn to_tokens(&self, toks: &mut Toks) {
-        let (rows, cols) = (self.rows, self.cols);
-        let (row_spans, col_spans) = (self.row_spans, self.col_spans);
+        let (cols, rows) = (self.cols, self.rows);
+        let (col_spans, row_spans) = (self.col_spans, self.row_spans);
         toks.append_all(quote! { layout::GridDimensions {
-            rows: #rows,
             cols: #cols,
-            row_spans: #row_spans,
             col_spans: #col_spans,
+            rows: #rows,
+            row_spans: #row_spans,
         } });
     }
 }
@@ -478,25 +478,25 @@ impl Layout {
                 quote! { layout::Layout::slice(&mut #expr, #dir, #data) }
             }
             Layout::Grid(dim, cells) => {
-                let (rows, cols) = (dim.rows as usize, dim.cols as usize);
+                let (cols, rows) = (dim.cols as usize, dim.rows as usize);
                 let data = quote! { {
-                    let (data, next) = _chain.storage::<layout::FixedGridStorage<#rows, #cols>>();
+                    let (data, next) = _chain.storage::<layout::FixedGridStorage<#cols, #rows>>();
                     _chain = next;
                     data
                 } };
 
                 let mut items = Toks::new();
                 for item in cells {
-                    let (row, row_end) = (item.0.row, item.0.row_end);
                     let (col, col_end) = (item.0.col, item.0.col_end);
+                    let (row, row_end) = (item.0.row, item.0.row_end);
                     let layout = item.1.generate::<std::iter::Empty<&Member>>(None)?;
                     items.append_all(quote! {
                         (
                             layout::GridChildInfo {
-                                row: #row,
-                                row_end: #row_end,
                                 col: #col,
                                 col_end: #col_end,
+                                row: #row,
+                                row_end: #row_end,
                             },
                             #layout,
                         ),

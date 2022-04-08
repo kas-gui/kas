@@ -95,7 +95,7 @@ impl_scope! {
                 data_ver: 0,
                 widgets: Default::default(),
                 align_hints: Default::default(),
-                ideal_len: Dim { rows: 3, cols: 5 },
+                ideal_len: Dim { cols: 3, rows: 5 },
                 alloc_len: Dim::default(),
                 cur_len: 0,
                 child_size_min: Size::ZERO,
@@ -255,8 +255,8 @@ impl_scope! {
         /// This affects the (ideal) size request and whether children are sized
         /// according to their ideal or minimum size but not the minimum size.
         #[must_use]
-        pub fn with_num_visible(mut self, rows: i32, cols: i32) -> Self {
-            self.ideal_len = Dim { rows, cols };
+        pub fn with_num_visible(mut self, cols: i32, rows: i32) -> Self {
+            self.ideal_len = Dim { cols, rows };
             self
         }
 
