@@ -161,6 +161,7 @@ impl From<Size> for Margins {
 }
 
 /// Margins (selectable)
+#[impl_default(MarginSelector::Outer)]
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum MarginSelector {
     /// Use the theme's default around-widget margins
@@ -173,12 +174,6 @@ pub enum MarginSelector {
     Fixed(Margins),
     /// Use scaled margins (single value)
     ScaledSplat(f32),
-}
-
-impl Default for MarginSelector {
-    fn default() -> Self {
-        MarginSelector::Outer
-    }
 }
 
 impl MarginSelector {

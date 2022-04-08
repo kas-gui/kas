@@ -282,7 +282,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             #[widget] svl = Label::new("SVG"),
             #[widget] sv = img_rustacean.with_scaling(|s| {
                 s.size = kas::layout::SpriteSize::Relative(0.1);
-                s.ideal_factor = 3.0;
+                s.ideal_factor = 2.0;
+                s.stretch = kas::layout::Stretch::High;
             }),
             #[widget] pul = Label::new("Child window"),
             #[widget] pu = popup_edit_box,

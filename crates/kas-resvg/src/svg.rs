@@ -7,7 +7,7 @@
 
 use kas::draw::{ImageFormat, ImageHandle};
 use kas::geom::Size;
-use kas::layout::{MarginSelector, SpriteDisplay, SpriteSize};
+use kas::layout::{SpriteDisplay, SpriteSize};
 use kas::prelude::*;
 use std::io::Result;
 use std::path::Path;
@@ -27,11 +27,7 @@ impl_scope! {
         core: CoreData,
         tree: Option<usvg::Tree>,
         raw_size: Size,
-        sprite: SpriteDisplay = SpriteDisplay {
-            margins: MarginSelector::Outer,
-            stretch: Stretch::Low,
-            ..Default::default()
-        },
+        sprite: SpriteDisplay,
         ideal_size: Size,
         pixmap: Option<Pixmap>,
         image: Option<ImageHandle>,
@@ -107,9 +103,6 @@ impl_scope! {
         }
 
         /// Adjust scaling
-        ///
-        /// By default, uses `margins: MarginSelector::Outer` and
-        /// `stretch: Stretch::Low`.
         #[inline]
         #[must_use]
         pub fn with_scaling(mut self, f: impl FnOnce(&mut SpriteDisplay)) -> Self {
@@ -118,9 +111,6 @@ impl_scope! {
         }
 
         /// Adjust scaling
-        ///
-        /// By default, uses `margins: MarginSelector::Outer` and
-        /// `stretch: Stretch::Low`.
         #[inline]
         pub fn set_scaling(&mut self, f: impl FnOnce(&mut SpriteDisplay)) -> TkAction {
             f(&mut self.sprite);
