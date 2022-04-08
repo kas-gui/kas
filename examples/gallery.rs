@@ -97,7 +97,7 @@ impl_scope! {
     }
 }
 
-fn main() -> kas::shell::Result<()> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
     #[cfg(feature = "stack_dst")]
@@ -267,7 +267,10 @@ fn main() -> kas::shell::Result<()> {
             #[widget] pg: ProgressBar<Right> = ProgressBar::new(),
             #[widget] pgl = Label::new("ProgressBar"),
             #[widget] svl = Label::new("SVG"),
-            #[widget] sv = Svg::load_with_factors("res/rustacean-flat-happy.svg", 0.1, 0.3),
+            #[widget] sv = Svg::new_path("res/rustacean-flat-happy.svg")?.with_scaling(|s| {
+                s.size = kas::layout::SpriteSize::Relative(0.1);
+                s.ideal_factor = 3.0;
+            }),
             #[widget] pul = Label::new("Child window"),
             #[widget] pu = popup_edit_box,
         }
