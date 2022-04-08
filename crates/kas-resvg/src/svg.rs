@@ -77,7 +77,7 @@ impl_scope! {
                 image_href_resolver: &Default::default(),
             };
 
-            self.tree = Some(usvg::Tree::from_data(&data, &opts).unwrap());
+            self.tree = Some(usvg::Tree::from_data(data, &opts).unwrap());
             self.raw_size = self.tree.as_ref()
                 .map(|tree| Size::from(tree.svg_node().size.to_screen_size().dimensions()))
                 .unwrap_or(Size(128, 128));

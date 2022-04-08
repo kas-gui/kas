@@ -129,9 +129,8 @@ impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
 
     #[inline]
     fn image_free(&mut self, handle: ImageHandle) {
-        match Rc::try_unwrap(handle.1) {
-            Ok(()) => self.draw.image_free(handle.0),
-            Err(_) => (),
+        if let Ok(()) = Rc::try_unwrap(handle.1) {
+            self.draw.image_free(handle.0);
         }
     }
 
