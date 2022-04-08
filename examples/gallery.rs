@@ -8,7 +8,6 @@
 //! This is a test-bed to demonstrate most toolkit functionality
 //! (excepting custom graphics).
 
-use kas::draw::color::Rgb;
 use kas::event::VirtualKeyCode as VK;
 use kas::event::{Command, VoidResponse};
 use kas::prelude::*;
@@ -252,10 +251,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             #[widget] bil = Label::new("Button<Image>"),
             #[widget] bi = row![
                 Button::new_msg(img_light, Item::LightTheme)
-                    .with_color(Rgb::rgb(0.3, 0.4, 0.5))
+                    .with_color("#FAFAFA".parse().unwrap())
                     .with_keys(&[VK::L]),
                 Button::new_msg(img_dark, Item::DarkTheme)
-                    .with_color(Rgb::grey(0.1))
+                    .with_color("#404040".parse().unwrap())
                     .with_keys(&[VK::K]),
             ],
             #[widget] cbl = Label::new("CheckBox"),
