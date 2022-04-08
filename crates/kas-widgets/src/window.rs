@@ -10,8 +10,6 @@ use kas::prelude::*;
 use kas::Icon;
 use kas::{Future, WindowId};
 use smallvec::SmallVec;
-use std::error::Error;
-use std::path::Path;
 
 impl_scope! {
     /// The main instantiation of the [`Window`] trait.
@@ -185,7 +183,12 @@ impl<W: Widget> Window<W> {
     /// Load the window icon from a path
     ///
     /// On error the icon is not set. The window may still be used.
-    pub fn load_icon_from_path<P: AsRef<Path>>(&mut self, path: P) -> Result<(), Box<dyn Error>> {
+    #[cfg(feature = "image")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "image")))]
+    pub fn load_icon_from_path<P: AsRef<std::path::Path>>(
+        &mut self,
+        path: P,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         // TODO(opt): image loading could be de-duplicated with
         // DrawShared::image_from_path, but this may not be worthwhile.
         let im = image::io::Reader::open(path)?

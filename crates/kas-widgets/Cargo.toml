@@ -28,7 +28,7 @@ smallvec = "1.6.1"
 unicode-segmentation = "1.7"
 linear-map = "1.2.0"
 thiserror = "1.0.23"
-image = "0.23.14"
+image = { version = "0.24.1", optional = true }
 kas-macros = { version = "0.10.0", path = "../kas-macros" }
 
 # We must rename this package since macros expect kas to be in scope:

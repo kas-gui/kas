@@ -68,6 +68,7 @@ mod edit_field;
 mod filler;
 mod frame;
 mod grid;
+mod image;
 mod label;
 mod list;
 #[macro_use]
@@ -88,6 +89,7 @@ mod window;
 pub mod adapter;
 pub mod view;
 
+pub use crate::image::Image;
 pub use button::{Button, TextButton};
 pub use checkbox::{CheckBox, CheckBoxBare};
 pub use combobox::ComboBox;

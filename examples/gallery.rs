@@ -109,6 +109,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let theme = kas::theme::ShadedTheme::new();
     let mut toolkit = kas::shell::Toolkit::new(theme)?;
 
+    // A real app might use async loading of resources here (Svg permits loading
+    // from a data slice; DrawShared allows allocation from data slice).
+    let img_sun = Image::new_path("res/sun_32.png", toolkit.draw_shared())?;
+    let img_moon = Image::new_path("res/moon_32.png", toolkit.draw_shared())?;
+    let img_gallery = Image::new_path("res/gallery.png", toolkit.draw_shared())?;
+    let img_rustacean = Svg::new_path("res/rustacean-flat-happy.svg")?.with_scaling(|s| {
+        s.size = kas::layout::SpriteSize::Relative(0.1);
+        s.ideal_factor = 3.0;
+    });
+
     #[derive(Clone, Debug, VoidMsg)]
     enum Menu {
         Theme(&'static str),
@@ -237,10 +247,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             #[widget] tb = TextButton::new_msg("&Press me", Item::Button),
             #[widget] bil = Label::new("Button<Image>"),
             #[widget] bi = row![
-                Button::new_msg(Image::new("res/sun_32.png"), Item::LightTheme)
+                Button::new_msg(img_sun, Item::LightTheme)
                     .with_color(Rgb::rgb(0.3, 0.4, 0.5))
                     .with_keys(&[VK::L]),
-                Button::new_msg(Image::new("res/moon_32.png"), Item::DarkTheme)
+                Button::new_msg(img_moon, Item::DarkTheme)
                     .with_color(Rgb::grey(0.1))
                     .with_keys(&[VK::K]),
             ],
@@ -267,10 +277,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             #[widget] pg: ProgressBar<Right> = ProgressBar::new(),
             #[widget] pgl = Label::new("ProgressBar"),
             #[widget] svl = Label::new("SVG"),
-            #[widget] sv = Svg::new_path("res/rustacean-flat-happy.svg")?.with_scaling(|s| {
-                s.size = kas::layout::SpriteSize::Relative(0.1);
-                s.ideal_factor = 3.0;
-            }),
+            #[widget] sv = img_rustacean,
             #[widget] pul = Label::new("Child window"),
             #[widget] pu = popup_edit_box,
         }
@@ -293,7 +300,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }]
         struct {
             #[widget] _ = Label::new("Widget Gallery"),
-            #[widget] _ = Image::new("res/gallery.png"),
+            #[widget] _ = img_gallery,
         }
     };
 

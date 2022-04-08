@@ -34,6 +34,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use thiserror::Error;
 
+use kas::draw::DrawShared;
 use kas::event::UpdateHandle;
 use kas::WindowId;
 use kas_theme::Theme;
@@ -181,6 +182,12 @@ where
             windows: vec![],
             shared: SharedState::new(custom, theme, options, config, scale_factor)?,
         })
+    }
+
+    /// Access shared draw state
+    #[inline]
+    pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
+        &mut self.shared.draw
     }
 
     /// Access the theme by ref
