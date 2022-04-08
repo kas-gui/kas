@@ -70,7 +70,6 @@ serde = { version = "1.0.123", features = ["derive"], optional = true }
 serde_json = { version = "1.0.61", optional = true }
 serde_yaml = { version = "0.8.16", optional = true }
 dep_ron = { version = "0.6.4", package = "ron", optional = true }
-image = "0.23.14"
 num_enum = "0.5.6"
 
 [dependencies.kas-macros]

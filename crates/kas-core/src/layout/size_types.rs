@@ -9,10 +9,83 @@ use super::{Align, AlignHints, AxisInfo, SizeRules};
 use crate::cast::traits::*;
 use crate::dir::Directional;
 use crate::geom::{Rect, Size, Vec2};
+use kas_macros::{impl_default, impl_scope};
 
 // for doc use
 #[allow(unused)]
 use crate::theme::SizeMgr;
+
+/// Logical (pre-scaling) pixel size
+///
+/// A measure of size in "logical pixels". May be used to define scalable
+/// layouts.
+#[derive(Copy, Clone, PartialEq, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct LogicalSize(pub f32, pub f32);
+
+impl LogicalSize {
+    /// Convert to physical pixels
+    ///
+    /// Values are multiplied by the window's scale factor and cast to nearest.
+    pub fn to_physical(self, scale_factor: f32) -> Size {
+        let w = i32::conv_nearest(self.0 * scale_factor);
+        let h = i32::conv_nearest(self.1 * scale_factor);
+        Size(w, h)
+    }
+
+    /// Convert to [`SizeRules`], fixed size
+    pub fn to_rules(self, dir: impl Directional, scale_factor: f32) -> SizeRules {
+        SizeRules::fixed(self.extract_scaled(dir, scale_factor), (0, 0))
+    }
+
+    /// Convert to [`SizeRules`]
+    ///
+    /// Ideal size is `component * ideal_factor * scale_factor`.
+    pub fn to_rules_with_factor(
+        self,
+        dir: impl Directional,
+        scale_factor: f32,
+        ideal_factor: f32,
+    ) -> SizeRules {
+        let min = self.extract_scaled(dir, scale_factor);
+        let ideal = self.extract_scaled(dir, scale_factor * ideal_factor);
+        SizeRules::new(min, ideal, (0, 0), Stretch::None)
+    }
+
+    /// Take horizontal/vertical axis component
+    pub fn extract(self, dir: impl Directional) -> f32 {
+        match dir.is_vertical() {
+            false => self.0,
+            true => self.1,
+        }
+    }
+
+    /// Take component and scale
+    pub fn extract_scaled(self, dir: impl Directional, scale_factor: f32) -> i32 {
+        (self.extract(dir) * scale_factor).cast_nearest()
+    }
+}
+
+impl From<(f32, f32)> for LogicalSize {
+    #[inline]
+    fn from((w, h): (f32, f32)) -> Self {
+        LogicalSize(w, h)
+    }
+}
+
+impl From<(i32, i32)> for LogicalSize {
+    #[inline]
+    fn from((w, h): (i32, i32)) -> Self {
+        LogicalSize(w.cast(), h.cast())
+    }
+}
+
+impl From<(u32, u32)> for LogicalSize {
+    #[inline]
+    fn from((w, h): (u32, u32)) -> Self {
+        LogicalSize(w.cast(), h.cast())
+    }
+}
 
 /// Margin sizes
 ///
@@ -88,6 +161,7 @@ impl From<Size> for Margins {
 }
 
 /// Margins (selectable)
+#[impl_default(MarginSelector::Outer)]
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum MarginSelector {
     /// Use the theme's default around-widget margins
@@ -100,12 +174,6 @@ pub enum MarginSelector {
     Fixed(Margins),
     /// Use scaled margins (single value)
     ScaledSplat(f32),
-}
-
-impl Default for MarginSelector {
-    fn default() -> Self {
-        MarginSelector::Outer
-    }
 }
 
 impl MarginSelector {
@@ -129,10 +197,11 @@ impl MarginSelector {
 /// shared between widgets in the highest priority class.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum Stretch {
-    /// No expectations beyond the minimum
+    /// Prefer not to stretch beyond ideal size
     ///
-    /// Note: this does not prevent stretching (specifically, it can happen with
-    /// other widgets in the same row/column wishing more size).
+    /// When `min == ideal`, this is as close to fixed-size as one can get, but
+    /// still does not completely prevent stretching, e.g. if another widget in
+    /// the same column causes it to be wider.
     None,
     /// Fill unwanted space
     Filler,
@@ -150,97 +219,117 @@ impl Default for Stretch {
     }
 }
 
-/// Scaling of image according to scale factor
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub enum SpriteScaling {
-    /// Do not scale with scale factor
-    Original,
-    /// Use the nearest integer of scale factor (e.g. 1, 2, 3)
-    Integer,
-    /// Use raw scale factor
-    Real,
+/// Sprite size
+#[impl_default(SpriteSize::Relative(1.0))]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum SpriteSize {
+    /// Size in logical pixels
+    Logical(LogicalSize),
+    /// Scale relative to input size
+    Relative(f32),
 }
 
-impl Default for SpriteScaling {
-    fn default() -> Self {
-        SpriteScaling::Integer
+impl_scope! {
+    /// Widget component for displaying a sprite
+    #[impl_default]
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SpriteDisplay {
+        /// Margins
+        pub margins: MarginSelector,
+        /// Display size
+        pub size: SpriteSize,
+        /// Ideal size relative to minimum size
+        pub ideal_factor: f32 = 1.0,
+        /// If true, output size must be an integer mulitple of the raw size
+        ///
+        /// Usually used for icons and pixel-art images.
+        ///
+        /// This only works correctly with `stretch == None` and
+        /// `ideal_factor == 1.0` (other cases may be supported in the future).
+        pub int_scale_factor: bool = false,
+        /// If true, aspect ratio is fixed
+        pub fix_aspect: bool = false,
+        /// Widget stretchiness
+        ///
+        /// If is `None`, max size is limited.
+        pub stretch: Stretch,
     }
-}
-
-/// Scaling of image sprite within allocation
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub enum AspectScaling {
-    /// Align sprite within available space without further scaling
-    None,
-    /// Scale sprite to available space with fixed aspect ratio
-    Fixed,
-    /// Scale sprite freely
-    Free,
-    // TODO: we could add repeat (tile) and mirrored repeat modes here
-}
-
-impl Default for AspectScaling {
-    fn default() -> Self {
-        AspectScaling::Fixed
-    }
-}
-
-/// Widget component for displaying a sprite
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct SpriteDisplay {
-    /// Margins
-    pub margins: MarginSelector,
-    /// The native size of the sprite
-    pub size: Size,
-    /// Sprite scaling according to scale factor
-    pub scaling: SpriteScaling,
-    /// Sprite scaling within allocation, after impact of scale factor
-    ///
-    /// Note: this only has an impact if `stretch > Stretch::None`.
-    pub aspect: AspectScaling,
-    /// Widget stretchiness
-    pub stretch: Stretch,
 }
 
 impl SpriteDisplay {
+    /// Calculate render size (physical pixels) from input (pixels)
+    pub fn size_from_pixels(&self, raw_size: Size, scale_factor: f32) -> Size {
+        match self.size {
+            SpriteSize::Logical(logical) if self.int_scale_factor => {
+                logical.to_physical(scale_factor.round())
+            }
+            SpriteSize::Logical(logical) => logical.to_physical(scale_factor),
+            SpriteSize::Relative(rel) if self.int_scale_factor => {
+                raw_size * i32::conv_nearest(rel * scale_factor)
+            }
+            SpriteSize::Relative(rel) => {
+                (Vec2::conv(raw_size) * (rel * scale_factor)).cast_nearest()
+            }
+        }
+    }
+
     /// Generates `size_rules` based on size
     ///
     /// Set [`Self::size`] before calling this.
-    pub fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+    pub fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo, raw_size: Size) -> SizeRules {
         let margins = self.margins.select(mgr.re()).extract(axis);
-        let size = self.size.extract(axis);
-        let size = match self.scaling {
-            SpriteScaling::Original => size,
-            SpriteScaling::Integer => i32::conv_nearest(mgr.scale_factor()) * size,
-            SpriteScaling::Real => (mgr.scale_factor() * f32::conv(size)).cast_nearest(),
-        };
-        SizeRules::new(size, size, margins, self.stretch)
+        let scale_factor = mgr.scale_factor();
+        let min = self.size_from_pixels(raw_size, scale_factor).extract(axis);
+        let ideal = self
+            .size_from_pixels(raw_size, scale_factor * self.ideal_factor)
+            .extract(axis);
+        SizeRules::new(min, ideal, margins, self.stretch)
     }
 
-    /// Aligns `rect` according to stretch policy
+    /// Constrains and aligns within `rect`
     ///
-    /// Assign the result to `self.core_data_mut().rect`.
-    pub fn align_rect(&mut self, rect: Rect, align: AlignHints) -> Rect {
-        let ideal = match self.aspect {
-            AspectScaling::None => self.size,
-            AspectScaling::Fixed => {
-                let size = Vec2::conv(self.size);
-                let ratio = Vec2::conv(rect.size) / size;
-                // Use smaller ratio, which must be finite
-                if ratio.0 < ratio.1 {
-                    Size(rect.size.0, i32::conv_nearest(ratio.0 * size.1))
-                } else if ratio.1 < ratio.0 {
-                    Size(i32::conv_nearest(ratio.1 * size.0), rect.size.1)
-                } else {
-                    // Non-finite ratio implies size is zero on at least one axis
-                    rect.size
+    /// If `self.stretch == Stretch::None`, maximum size is limited.
+    /// If `self.fix_aspect`, size is corrected for aspect ratio.
+    ///
+    /// The resulting size is then aligned using the `align` hints, defaulting to centered.
+    pub fn align_rect(
+        &mut self,
+        rect: Rect,
+        align: AlignHints,
+        raw_size: Size,
+        scale_factor: f32,
+    ) -> Rect {
+        let mut size = rect.size;
+
+        if self.stretch == Stretch::None {
+            let ideal = self.size_from_pixels(raw_size, scale_factor);
+            size = size.min(ideal);
+        }
+
+        let raw_size = Vec2::conv(raw_size);
+        let Vec2(rw, rh) = Vec2::conv(size) / raw_size;
+
+        if self.int_scale_factor {
+            if rw.is_finite() && rh.is_finite() {
+                let (mut rw, mut rh) = (i32::conv_floor(rw), i32::conv_floor(rh));
+                if self.fix_aspect {
+                    rw = rw.min(rh);
+                    rh = rw;
                 }
+                size = Size(size.0 * rw, size.1 * rh);
             }
-            AspectScaling::Free => rect.size,
-        };
+        } else if self.fix_aspect {
+            // Use smaller ratio, which must be finite
+            if rw < rh {
+                size = Size(size.0, i32::conv_nearest(rw * raw_size.1));
+            } else if rh < rw {
+                size = Size(i32::conv_nearest(rh * raw_size.0), size.1);
+            }
+        }
+
         align
             .complete(Align::Center, Align::Center)
-            .aligned_rect(ideal, rect)
+            .aligned_rect(size, rect)
     }
 }
 

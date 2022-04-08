@@ -332,6 +332,24 @@ impl std::str::FromStr for Rgba8Srgb {
     }
 }
 
+impl std::str::FromStr for Rgba {
+    type Err = ParseError;
+
+    #[inline]
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Rgba8Srgb::from_str(s).map(|c| c.into())
+    }
+}
+
+impl std::str::FromStr for Rgb {
+    type Err = ParseError;
+
+    #[inline]
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Rgba8Srgb::from_str(s).map(|c| c.into())
+    }
+}
+
 #[cfg(feature = "serde")]
 impl serde::Serialize for Rgba8Srgb {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

@@ -19,7 +19,7 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 # RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=nightly,internal_doc --all --no-deps --open
 
 [features]
-default = ["theme", "wgpu", "winit", "yaml", "svg", "canvas", "clipboard", "markdown", "shaping", "stack_dst"]
+default = ["theme", "wgpu", "winit", "yaml", "image", "svg", "canvas", "clipboard", "markdown", "shaping", "stack_dst"]
 
 # Enable theme support:
 theme = ["kas-theme"]
@@ -70,6 +70,9 @@ json = ["config", "kas-core/json"]
 
 # Enable support for RON (de)serialisation
 ron = ["config", "kas-core/ron"]
+
+# Support image loading and decoding
+image = ["kas-widgets/image"]
 
 # Support canvas widget
 canvas = ["kas-resvg/canvas"]

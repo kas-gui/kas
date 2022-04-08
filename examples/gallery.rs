@@ -8,7 +8,6 @@
 //! This is a test-bed to demonstrate most toolkit functionality
 //! (excepting custom graphics).
 
-use kas::draw::color::Rgb;
 use kas::event::VirtualKeyCode as VK;
 use kas::event::{Command, VoidResponse};
 use kas::prelude::*;
@@ -97,7 +96,7 @@ impl_scope! {
     }
 }
 
-fn main() -> kas::shell::Result<()> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
     #[cfg(feature = "stack_dst")]
@@ -108,6 +107,20 @@ fn main() -> kas::shell::Result<()> {
     #[cfg(not(feature = "stack_dst"))]
     let theme = kas::theme::ShadedTheme::new();
     let mut toolkit = kas::shell::Toolkit::new(theme)?;
+
+    // A real app might use async loading of resources here (Svg permits loading
+    // from a data slice; DrawShared allows allocation from data slice).
+    let img_light = Svg::new(include_bytes!("../res/contrast-2-line.svg"));
+    let img_dark = Svg::new(include_bytes!("../res/contrast-2-fill.svg"));
+    let img_gallery = Svg::new(include_bytes!("../res/gallery-line.svg"));
+    const SVG_WARNING: &'static [u8] = include_bytes!("../res/error-warning-line.svg");
+    let img_rustacean = match Svg::new_path("res/rustacean-flat-happy.svg") {
+        Ok(svg) => svg,
+        Err(e) => {
+            println!("Failed to load res/rustacean-flat-happy.svg: {}", e);
+            Svg::new(SVG_WARNING)
+        }
+    };
 
     #[derive(Clone, Debug, VoidMsg)]
     enum Menu {
@@ -237,11 +250,11 @@ fn main() -> kas::shell::Result<()> {
             #[widget] tb = TextButton::new_msg("&Press me", Item::Button),
             #[widget] bil = Label::new("Button<Image>"),
             #[widget] bi = row![
-                Button::new_msg(Image::new("res/sun_32.png"), Item::LightTheme)
-                    .with_color(Rgb::rgb(0.3, 0.4, 0.5))
+                Button::new_msg(img_light, Item::LightTheme)
+                    .with_color("#FAFAFA".parse().unwrap())
                     .with_keys(&[VK::L]),
-                Button::new_msg(Image::new("res/moon_32.png"), Item::DarkTheme)
-                    .with_color(Rgb::grey(0.1))
+                Button::new_msg(img_dark, Item::DarkTheme)
+                    .with_color("#404040".parse().unwrap())
                     .with_keys(&[VK::K]),
             ],
             #[widget] cbl = Label::new("CheckBox"),
@@ -267,7 +280,11 @@ fn main() -> kas::shell::Result<()> {
             #[widget] pg: ProgressBar<Right> = ProgressBar::new(),
             #[widget] pgl = Label::new("ProgressBar"),
             #[widget] svl = Label::new("SVG"),
-            #[widget] sv = Svg::from_path_and_factors("res/rustacean-flat-happy.svg", 0.1, 0.3),
+            #[widget] sv = img_rustacean.with_scaling(|s| {
+                s.size = kas::layout::SpriteSize::Relative(0.1);
+                s.ideal_factor = 2.0;
+                s.stretch = kas::layout::Stretch::High;
+            }),
             #[widget] pul = Label::new("Child window"),
             #[widget] pu = popup_edit_box,
         }
@@ -290,11 +307,11 @@ fn main() -> kas::shell::Result<()> {
         }]
         struct {
             #[widget] _ = Label::new("Widget Gallery"),
-            #[widget] _ = Image::new("res/gallery.png"),
+            #[widget] _ = img_gallery,
         }
     };
 
-    let mut window = Window::new(
+    let window = Window::new(
         "Widget Gallery",
         make_widget! {
             #[widget{
@@ -350,9 +367,6 @@ fn main() -> kas::shell::Result<()> {
             }
         },
     );
-    if let Err(err) = window.load_icon_from_path("res/gallery.png") {
-        println!("Failed to load window icon: {}", err);
-    }
 
     toolkit.add(window)?;
     toolkit.run()

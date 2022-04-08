@@ -5,183 +5,153 @@
 
 //! SVG widget
 
-// TODO: error handling (unwrap)
-
-use kas::draw::{ImageFormat, ImageId};
-use kas::geom::Vec2;
-use kas::layout::MarginSelector;
+use kas::draw::{ImageFormat, ImageHandle};
+use kas::geom::Size;
+use kas::layout::{SpriteDisplay, SpriteSize};
 use kas::prelude::*;
-use std::path::PathBuf;
+use std::io::Result;
+use std::path::Path;
 use tiny_skia::{Pixmap, Transform};
 
 impl_scope! {
     /// An SVG image loaded from a path
+    ///
+    /// May be default constructed (result is empty).
     #[cfg_attr(doc_cfg, doc(cfg(feature = "svg")))]
     #[autoimpl(Debug ignore self.tree)]
+    #[impl_default]
     #[derive(Clone)]
     #[widget]
     pub struct Svg {
         #[widget_core]
         core: CoreData,
-        path: PathBuf,
         tree: Option<usvg::Tree>,
-        margins: MarginSelector,
-        min_size_factor: f32,
-        ideal_size_factor: f32,
+        raw_size: Size,
+        sprite: SpriteDisplay,
         ideal_size: Size,
-        stretch: Stretch,
         pixmap: Option<Pixmap>,
-        image_id: Option<ImageId>,
+        image: Option<ImageHandle>,
     }
 
-    impl Svg {
-        /// Construct with a path and size factors
+    impl Self {
+        /// Construct from data
+        pub fn new(data: &[u8]) -> Self {
+            let mut svg = Svg::default();
+            svg.load(data, None);
+            svg
+        }
+
+        /// Construct from a path
+        pub fn new_path<P: AsRef<Path>>(path: P) -> Result<Self> {
+            let mut svg = Svg::default();
+            svg.load_path(path)?;
+            Ok(svg)
+        }
+
+        /// Load from `data`
+        pub fn load(&mut self, data: &[u8], resources_dir: Option<&Path>) {
+            let fonts_db = kas::text::fonts::fonts().read_db();
+            let fontdb = fonts_db.db();
+            let font_family = fonts_db
+                .font_family_from_alias("SERIF")
+                .unwrap_or_default();
+
+            // Defaults are taken from usvg::Options::default(). Notes:
+            // - adjusting for screen scale factor is purely a property of
+            //   making the canvas larger and not important here
+            // - default_size: affected by screen scale factor later
+            // - dpi: according to css-values-3, 1in = 96px
+            // - font_size: units are (logical) px per em; 16px = 12pt
+            let opts = usvg::OptionsRef {
+                resources_dir,
+                dpi: 96.0,
+                font_family: &font_family,
+                font_size: 16.0, // units: "logical pixels" per Em
+                languages: &["en".to_string()],
+                shape_rendering: usvg::ShapeRendering::default(),
+                text_rendering: usvg::TextRendering::default(),
+                image_rendering: usvg::ImageRendering::default(),
+                keep_named_groups: false,
+                default_size: usvg::Size::new(100.0, 100.0).unwrap(),
+                fontdb,
+                image_href_resolver: &Default::default(),
+            };
+
+            self.tree = Some(usvg::Tree::from_data(data, &opts).unwrap());
+            self.raw_size = self.tree.as_ref()
+                .map(|tree| Size::from(tree.svg_node().size.to_screen_size().dimensions()))
+                .unwrap_or(Size(128, 128));
+        }
+
+        /// Load from a path
+        pub fn load_path<P: AsRef<Path>>(&mut self, path: P) -> Result<()> {
+            let data = std::fs::read(path.as_ref())?;
+            let resources_dir = path.as_ref().parent();
+            self.load(&data, resources_dir);
+            Ok(())
+        }
+
+        /// Assign size
         ///
-        /// An SVG image has an embedded "original" size. This constructor
-        /// multiplies that size by the given factors to obtain minimum and ideal
-        /// sizes (see [`SizeRules`] for a description of min / ideal sizes).
-        pub fn from_path_and_factors<P: Into<PathBuf>>(
-            path: P,
-            min_size_factor: f32,
-            ideal_size_factor: f32,
-        ) -> Self {
-            Svg {
-                core: Default::default(),
-                path: path.into(),
-                tree: None,
-                margins: MarginSelector::Outer,
-                min_size_factor,
-                ideal_size_factor,
-                ideal_size: Size::ZERO,
-                stretch: Stretch::Low,
-                pixmap: None,
-                image_id: None,
-            }
-        }
-
-        /// Set margins
+        /// By default, size is derived from the loaded SVG. See also
+        /// [`Self::with_scaling`] and [`Self::set_scaling`] for more options.
+        #[inline]
         #[must_use]
-        pub fn with_margins(mut self, margins: MarginSelector) -> Self {
-            self.margins = margins;
+        pub fn with_size(mut self, size: LogicalSize) -> Self {
+            self.sprite.size = SpriteSize::Logical(size);
             self
         }
 
-        /// Set stretch policy
+        /// Adjust scaling
+        #[inline]
         #[must_use]
-        pub fn with_stretch(mut self, stretch: Stretch) -> Self {
-            self.stretch = stretch;
+        pub fn with_scaling(mut self, f: impl FnOnce(&mut SpriteDisplay)) -> Self {
+            f(&mut self.sprite);
             self
         }
 
-        /// Set margins
-        pub fn set_margins(&mut self, margins: MarginSelector) {
-            self.margins = margins;
-        }
-
-        /// Set stretch policy
-        pub fn set_stretch(&mut self, stretch: Stretch) {
-            self.stretch = stretch;
+        /// Adjust scaling
+        #[inline]
+        pub fn set_scaling(&mut self, f: impl FnOnce(&mut SpriteDisplay)) -> TkAction {
+            f(&mut self.sprite);
+            // NOTE: if only `aspect` is changed, REDRAW is enough
+            TkAction::RESIZE
         }
     }
 
-    impl WidgetConfig for Svg {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            if self.tree.is_none() {
-                // TODO: maybe we should use a singleton to deduplicate loading by
-                // path? Probably not much use for duplicate SVG widgets however.
-                let data = std::fs::read(&self.path).unwrap();
-
-                // TODO: should we reload the SVG if the scale factor changes?
-                let size_mgr = mgr.size_mgr();
-                let scale_factor = size_mgr.scale_factor();
-                let def_size = 100.0 * f64::conv(scale_factor);
-
-                let fonts_db = kas::text::fonts::fonts().read_db();
-                let fontdb = fonts_db.db();
-                let font_family = fonts_db
-                    .font_family_from_alias("SERIF")
-                    .unwrap_or_default();
-                let font_size = size_mgr.pixels_from_em(1.0) as f64;
-
-                // TODO: some options here should be configurable
-                let opts = usvg::OptionsRef {
-                    resources_dir: self.path.parent(),
-                    dpi: 96.0 * f64::conv(scale_factor),
-                    font_family: &font_family,
-                    font_size,
-                    languages: &[],
-                    shape_rendering: usvg::ShapeRendering::default(),
-                    text_rendering: usvg::TextRendering::default(),
-                    image_rendering: usvg::ImageRendering::default(),
-                    keep_named_groups: false,
-                    default_size: usvg::Size::new(def_size, def_size).unwrap(),
-                    fontdb,
-                    image_href_resolver: &Default::default(),
-                };
-
-                self.tree = Some(usvg::Tree::from_data(&data, &opts).unwrap());
-            }
-        }
-    }
-
-    impl Layout for Svg {
+    impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            let scale_factor = size_mgr.scale_factor();
-
-            let size = self.tree.as_ref().map(|tree| tree.svg_node().size.to_screen_size().dimensions())
-            .unwrap_or((100, 100));
-            let size = Vec2(size.0.cast(), size.1.cast());
-            self.ideal_size = Size::conv_nearest(size * self.ideal_size_factor * scale_factor);
-
-            let margins = self.margins.select(size_mgr);
-            SizeRules::new(
-                (size.extract(axis) * self.min_size_factor * scale_factor).cast_nearest(),
-                self.ideal_size.extract(axis),
-                margins.extract(axis),
-                self.stretch,
-            )
+            self.sprite.size_rules(size_mgr, axis, self.raw_size)
         }
 
         fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
-            let size = match self.ideal_size.aspect_scale_to(rect.size) {
-                Some(size) => {
-                    self.core_data_mut().rect = align
-                        .complete(Align::Center, Align::Center)
-                        .aligned_rect(size, rect);
-                    Cast::<(u32, u32)>::cast(size)
-                }
-                None => {
-                    self.core_data_mut().rect = rect;
-                    self.pixmap = None;
-                    self.image_id = None;
-                    return;
-                }
-            };
+            let scale_factor = mgr.size_mgr().scale_factor();
+            self.core.rect = self.sprite.align_rect(rect, align, self.raw_size, scale_factor);
+            let size: (u32, u32) = self.core.rect.size.cast();
 
             let pm_size = self.pixmap.as_ref().map(|pm| (pm.width(), pm.height()));
             if pm_size.unwrap_or((0, 0)) != size {
-                if let Some(id) = self.image_id {
-                    mgr.draw_shared().image_free(id);
+                if let Some(handle) = self.image.take() {
+                    mgr.draw_shared().image_free(handle);
                 }
                 self.pixmap = Pixmap::new(size.0, size.1);
                 if let Some(tree) = self.tree.as_ref() {
-                    self.image_id = self.pixmap.as_mut().map(|pm| {
+                    self.image = self.pixmap.as_mut().map(|pm| {
                         let (w, h) = (pm.width(), pm.height());
 
-                        // alas, we cannot tell resvg to skip the aspect-ratio-scaling!
                         let transform = Transform::identity();
-                        resvg::render(tree, usvg::FitTo::Height(h), transform, pm.as_mut());
+                        resvg::render(tree, usvg::FitTo::Size(w, h), transform, pm.as_mut());
 
-                        let id = mgr.draw_shared().image_alloc((w, h)).unwrap();
-                        mgr.draw_shared().image_upload(id, pm.data(), ImageFormat::Rgba8);
-                        id
+                        let handle = mgr.draw_shared().image_alloc((w, h)).unwrap();
+                        mgr.draw_shared().image_upload(&handle, pm.data(), ImageFormat::Rgba8);
+                        handle
                     });
                 }
             }
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            if let Some(id) = self.image_id {
+            if let Some(id) = self.image.as_ref().map(|h| h.id()) {
                 draw.image(self, id);
             }
         }

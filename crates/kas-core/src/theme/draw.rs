@@ -300,6 +300,10 @@ impl<'a> DrawMgr<'a> {
     }
 
     /// Draw an image
+    //
+    // NOTE: it would be tempting to use the following:
+    // pub fn image<'b>(&mut self, feature: impl Into<IdRect<'b>>, id: impl Into<ImageId>) { .. }
+    // but common usage would result in a borrow conflict!
     pub fn image<'b>(&mut self, feature: impl Into<IdRect<'b>>, id: ImageId) {
         let f = feature.into();
         self.h.image(id, f.1);

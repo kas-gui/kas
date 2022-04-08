@@ -16,6 +16,12 @@ impl_scope! {
     ///
     /// This region supports scrolling via mouse wheel and click/touch drag.
     ///
+    /// The ideal size of a `ScrollRegion` is the ideal size of its content:
+    /// that is, all content may be shown at ideal size without scrolling.
+    /// The minimum size of a `ScrollRegion` is somewhat arbitrary (currently,
+    /// fixed at the height of three lines of standard text). The inner size
+    /// (content size) is `max(content_min_size, outer_size - content_margin)`.
+    ///
     /// Scrollbars are not included; use [`ScrollBarRegion`] if you want those.
     ///
     /// [`ScrollBarRegion`]: crate::ScrollBarRegion
@@ -97,10 +103,9 @@ impl_scope! {
             let mut rules = self.inner.size_rules(size_mgr.re(), axis);
             self.min_child_size.set_component(axis, rules.min_size());
             let line_height = size_mgr.line_height(TextClass::Label(false));
-            self.scroll.set_scroll_rate(3.0 * f32::conv(line_height));
             rules.reduce_min_to(line_height);
 
-            // We use a zero-sized frame to push any margins inside the scroll-region.
+            // We use a to contain the content margin within the scrollable area.
             let frame = kas::layout::FrameRules::new(0, 0, 0, (0, 0));
             let (rules, offset, size) = frame.surround_with_margin(rules);
             self.offset.set_component(axis, offset);

@@ -68,6 +68,7 @@ mod edit_field;
 mod filler;
 mod frame;
 mod grid;
+mod image;
 mod label;
 mod list;
 #[macro_use]
@@ -82,13 +83,13 @@ mod scrollbar;
 mod separator;
 mod slider;
 mod splitter;
-mod sprite;
 mod stack;
 mod window;
 
 pub mod adapter;
 pub mod view;
 
+pub use crate::image::Image;
 pub use button::{Button, TextButton};
 pub use checkbox::{CheckBox, CheckBoxBare};
 pub use combobox::ComboBox;
@@ -110,6 +111,5 @@ pub use scrollbar::{ScrollBar, ScrollBarRegion, ScrollBars, Scrollable};
 pub use separator::Separator;
 pub use slider::{Slider, SliderType};
 pub use splitter::*;
-pub use sprite::Image;
 pub use stack::{BoxStack, RefStack, Stack};
 pub use window::Window;

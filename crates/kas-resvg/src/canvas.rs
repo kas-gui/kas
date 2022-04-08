@@ -5,8 +5,8 @@
 
 //! Canvas widget
 
-use kas::draw::{ImageFormat, ImageId};
-use kas::layout::{SpriteDisplay, SpriteScaling};
+use kas::draw::{ImageFormat, ImageHandle};
+use kas::layout::{SpriteDisplay, SpriteSize};
 use kas::prelude::*;
 use tiny_skia::{Color, Pixmap};
 
@@ -54,42 +54,46 @@ impl_scope! {
         core: CoreData,
         sprite: SpriteDisplay,
         pixmap: Option<Pixmap>,
-        image_id: Option<ImageId>,
+        image: Option<ImageHandle>,
         /// The program drawing to the canvas
         pub program: P,
     }
 
     impl Self {
         /// Construct with given size
-        ///
-        /// Creates a new canvas with a given size. The size is adjusted
-        /// according to the display's scale factor.
         #[inline]
-        pub fn new(program: P, size: Size) -> Self {
+        pub fn new(program: P, size: LogicalSize) -> Self {
             Canvas {
                 core: Default::default(),
                 sprite: SpriteDisplay {
-                    margins: Default::default(),
-                    size,
-                    scaling: SpriteScaling::Real,
-                    aspect: Default::default(),
+                    size: SpriteSize::Logical(size),
+                    fix_aspect: true,
                     stretch: Stretch::High,
+                    ..Default::default()
                 },
                 pixmap: None,
-                image_id: None,
+                image: None,
                 program,
             }
         }
 
         /// Adjust scaling
+        ///
+        /// By default, uses `size` as provided to [`Self::new`],
+        /// `fix_aspect: true` and `stretch: Stretch::High`.
+        /// Other fields use [`SpriteDisplay`]'s default values.
         #[inline]
         #[must_use]
-        pub fn with_scaling(mut self, f: impl FnOnce(SpriteDisplay) -> SpriteDisplay) -> Self {
-            self.sprite = f(self.sprite);
+        pub fn with_scaling(mut self, f: impl FnOnce(&mut SpriteDisplay)) -> Self {
+            f(&mut self.sprite);
             self
         }
 
         /// Adjust scaling
+        ///
+        /// By default, uses `size` as provided to [`Self::new`],
+        /// `fix_aspect: true` and `stretch: Stretch::High`.
+        /// Other fields use [`SpriteDisplay`]'s default values.
         #[inline]
         pub fn set_scaling(&mut self, f: impl FnOnce(&mut SpriteDisplay)) -> TkAction {
             f(&mut self.sprite);
@@ -104,36 +108,37 @@ impl_scope! {
         ///
         /// This method does nothing before a backing pixmap has been created.
         pub fn redraw(&mut self, mgr: &mut SetRectMgr) {
-            if let Some((pm, id)) = self.pixmap.as_mut().zip(self.image_id) {
+            if let Some((pm, h)) = self.pixmap.as_mut().zip(self.image.as_ref()) {
                 pm.fill(Color::TRANSPARENT);
                 self.program.draw(pm);
-                mgr.draw_shared().image_upload(id, pm.data(), ImageFormat::Rgba8);
+                mgr.draw_shared().image_upload(h, pm.data(), ImageFormat::Rgba8);
             }
         }
     }
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            self.sprite.size_rules(size_mgr, axis)
+            self.sprite.size_rules(size_mgr, axis, Size::ZERO)
         }
 
         fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
-            self.core.rect = self.sprite.align_rect(rect, align);
+            let scale_factor = mgr.size_mgr().scale_factor();
+            self.core.rect = self.sprite.align_rect(rect, align, Size::ZERO, scale_factor);
             let size: (u32, u32) = self.core.rect.size.cast();
 
             let pm_size = self.pixmap.as_ref().map(|pm| (pm.width(), pm.height()));
             if pm_size.unwrap_or((0, 0)) != size {
-                if let Some(id) = self.image_id {
-                    mgr.draw_shared().image_free(id);
+                if let Some(handle) = self.image.take() {
+                    mgr.draw_shared().image_free(handle);
                 }
                 self.pixmap = Pixmap::new(size.0, size.1);
                 let program = &mut self.program;
-                self.image_id = self.pixmap.as_mut().map(|pm| {
+                self.image = self.pixmap.as_mut().map(|pm| {
                     program.draw(pm);
                     let (w, h) = (pm.width(), pm.height());
-                    let id = mgr.draw_shared().image_alloc((w, h)).unwrap();
-                    mgr.draw_shared().image_upload(id, pm.data(), ImageFormat::Rgba8);
-                    id
+                    let handle = mgr.draw_shared().image_alloc((w, h)).unwrap();
+                    mgr.draw_shared().image_upload(&handle, pm.data(), ImageFormat::Rgba8);
+                    handle
                 });
             }
         }
@@ -146,7 +151,7 @@ impl_scope! {
             if animate {
                 draw.draw_device().animate();
             }
-            if let Some(id) = self.image_id {
+            if let Some(id) = self.image.as_ref().map(|h| h.id()) {
                 draw.image(self, id);
             }
         }

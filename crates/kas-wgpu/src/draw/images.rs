@@ -12,7 +12,7 @@ use std::num::NonZeroU32;
 
 use super::{atlases, ShaderManager};
 use kas::cast::Conv;
-use kas::draw::{ImageError, ImageFormat, ImageId, PassId};
+use kas::draw::{AllocError, ImageFormat, ImageId, PassId};
 use kas::geom::{Quad, Vec2};
 
 #[derive(Debug)]
@@ -130,7 +130,7 @@ impl Images {
     }
 
     /// Allocate an image
-    pub fn alloc(&mut self, size: (u32, u32)) -> Result<ImageId, ImageError> {
+    pub fn alloc(&mut self, size: (u32, u32)) -> Result<ImageId, AllocError> {
         let id = self.next_image_id();
         let (atlas, alloc, origin, tex_quad) = self.atlas_pipe.allocate(size)?;
         let image = Image {

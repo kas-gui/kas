@@ -60,9 +60,8 @@ impl_scope! {
         }
     }
     impl Layout for ColourSquare {
-        fn size_rules(&mut self, size_mgr: SizeMgr, _: AxisInfo) -> SizeRules {
-            let factor = size_mgr.scale_factor();
-            SizeRules::fixed_scaled(100.0, 10.0, factor)
+        fn size_rules(&mut self, mgr: SizeMgr, _: AxisInfo) -> SizeRules {
+            SizeRules::fixed_scaled(100.0, 10.0, mgr.scale_factor())
         }
         fn draw(&mut self, mut draw: DrawMgr) {
             let draw = draw.draw_device();

@@ -9,7 +9,7 @@ use smallvec::SmallVec;
 use std::iter::Sum;
 
 use super::{Margins, Stretch};
-use crate::cast::{Cast, CastFloat, Conv, ConvFloat};
+use crate::cast::{Cast, CastFloat, Conv};
 use crate::dir::Directional;
 use crate::geom::Size;
 
@@ -168,28 +168,10 @@ impl SizeRules {
         }
     }
 
-    /// Construct with custom rules, scaled from virtual pixels
-    ///
-    /// This is a shortcut around [`SizeRules::new`].
-    /// It assumes that both margins are equal.
-    ///
-    /// Region size should meet the given `min`-imum size and has a given
-    /// `ideal` size, plus a given `stretch` priority.
-    ///
-    /// Expected: `ideal >= min` (if not, ideal is clamped to min).
+    /// Set stretch factor, inline
     #[inline]
-    pub fn new_scaled(
-        min: f32,
-        ideal: f32,
-        margins: f32,
-        stretch: Stretch,
-        scale_factor: f32,
-    ) -> Self {
-        debug_assert!(0.0 <= min && 0.0 <= ideal && margins >= 0.0);
-        let min = (min * scale_factor).cast_nearest();
-        let ideal = i32::conv_nearest(ideal * scale_factor).max(min);
-        let m = (scale_factor * margins).cast_nearest();
-        SizeRules::new(min, ideal, (m, m), stretch)
+    pub fn with_stretch(self, stretch: Stretch) -> Self {
+        Self::new(self.a, self.b, self.m, stretch)
     }
 
     /// Get the minimum size
@@ -406,9 +388,9 @@ impl SizeRules {
         #[cfg(debug_assertions)]
         {
             assert!(out.iter().all(|w| *w >= 0));
-            let sum = SizeRules::sum(rules);
-            assert_eq!((sum.a, sum.b), (total.a, total.b));
-            // Note: we do not care about margins, which may be in different order!
+            let mut sum = SizeRules::sum(rules);
+            sum.m = total.m; // external margins are unimportant here
+            assert_eq!(sum, total);
         }
 
         if target > total.a {
@@ -436,6 +418,10 @@ impl SizeRules {
                     base: F,
                     mut avail: i32,
                 ) {
+                    if targets.is_empty() {
+                        return;
+                    }
+
                     // Calculate ceiling above which sizes will not be increased
                     let mut any_removed = true;
                     while any_removed {
@@ -479,8 +465,9 @@ impl SizeRules {
                     // We can increase all sizes to their ideal. Since this may
                     // not be enough, we also count the number with highest
                     // stretch factor and how far these are over their ideal.
+                    // If highest stretch is None, do not expand beyond ideal.
                     sum = 0;
-                    let highest_stretch = total.stretch;
+                    let highest_stretch = total.stretch.max(Stretch::Filler);
                     let mut targets = Targets::new();
                     let mut over = 0;
                     for i in 0..N {
@@ -494,7 +481,7 @@ impl SizeRules {
 
                     let avail = target - sum + over;
                     increase_targets(out, &mut targets, |i| rules[i].b, avail);
-                    debug_assert_eq!(target, (0..N).fold(0, |x, i| x + out[i]));
+                    debug_assert!(target >= (0..N).fold(0, |x, i| x + out[i]));
                 } else {
                     // We cannot increase sizes as far as their ideal: instead
                     // increase over minimum size and under ideal

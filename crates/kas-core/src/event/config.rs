@@ -9,7 +9,8 @@ mod shortcuts;
 pub use shortcuts::Shortcuts;
 
 use super::ModifiersState;
-use crate::cast::Cast;
+use crate::cast::{Cast, CastFloat};
+use crate::geom::Offset;
 #[cfg(feature = "config")]
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
@@ -41,6 +42,9 @@ pub struct Config {
 
     #[cfg_attr(feature = "config", serde(default = "defaults::touch_select_delay_ms"))]
     pub touch_select_delay_ms: u32,
+
+    #[cfg_attr(feature = "config", serde(default = "defaults::scroll_lines"))]
+    pub scroll_lines: f32,
 
     #[cfg_attr(
         feature = "config",
@@ -76,6 +80,7 @@ impl Default for Config {
         Config {
             menu_delay_ms: defaults::menu_delay_ms(),
             touch_select_delay_ms: defaults::touch_select_delay_ms(),
+            scroll_lines: defaults::scroll_lines(),
             scroll_flick_timeout_ms: defaults::scroll_flick_timeout_ms(),
             scroll_flick_mul: defaults::scroll_flick_mul(),
             scroll_flick_sub: defaults::scroll_flick_sub(),
@@ -93,6 +98,7 @@ impl Default for Config {
 #[derive(Clone, Debug)]
 pub struct WindowConfig {
     config: Rc<RefCell<Config>>,
+    scroll_dist: f32,
     scroll_flick_sub: f32,
     pan_dist_thresh: f32,
 }
@@ -104,6 +110,7 @@ impl WindowConfig {
     pub fn new(config: Rc<RefCell<Config>>, scale_factor: f32) -> Self {
         let mut w = WindowConfig {
             config,
+            scroll_dist: f32::NAN,
             scroll_flick_sub: f32::NAN,
             pan_dist_thresh: f32::NAN,
         };
@@ -116,6 +123,8 @@ impl WindowConfig {
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub fn set_scale_factor(&mut self, scale_factor: f32) {
         let base = self.config.borrow();
+        const LINE_HEIGHT: f32 = 19.0; // TODO: maybe we shouldn't assume this?
+        self.scroll_dist = base.scroll_lines * LINE_HEIGHT;
         self.scroll_flick_sub = base.scroll_flick_sub * scale_factor;
         self.pan_dist_thresh = base.pan_dist_thresh * scale_factor;
     }
@@ -130,6 +139,23 @@ impl WindowConfig {
     #[inline]
     pub fn touch_select_delay(&self) -> Duration {
         Duration::from_millis(self.config.borrow().touch_select_delay_ms.cast())
+    }
+
+    /// Get distance in pixels to scroll due to mouse wheel
+    ///
+    /// Calculates scroll distance from `(horiz, vert)` lines.
+    ///
+    /// If `line_height` is provided, scroll distance is based on this value,
+    /// otherwise it is based on an arbitrary line height.
+    pub fn scroll_distance(&self, lines: (f32, f32), line_height: Option<f32>) -> Offset {
+        let dist = match line_height {
+            Some(height) => height * self.config.borrow().scroll_lines,
+            None => self.scroll_dist,
+        };
+        Offset(
+            (dist * lines.0).cast_nearest(),
+            (dist * lines.1).cast_nearest(),
+        )
     }
 
     /// Controls activation of glide/momentum scrolling
@@ -252,6 +278,9 @@ mod defaults {
     }
     pub fn touch_select_delay_ms() -> u32 {
         1000
+    }
+    pub fn scroll_lines() -> f32 {
+        3.0
     }
     pub fn scroll_flick_timeout_ms() -> u32 {
         25

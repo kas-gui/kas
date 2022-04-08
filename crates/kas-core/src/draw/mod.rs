@@ -41,7 +41,6 @@ pub mod color;
 mod draw;
 mod draw_rounded;
 mod draw_shared;
-mod images;
 
 use crate::cast::Cast;
 #[allow(unused)]
@@ -49,8 +48,8 @@ use crate::theme::DrawMgr;
 
 pub use draw::{Draw, DrawIface, DrawImpl};
 pub use draw_rounded::{DrawRounded, DrawRoundedImpl};
+pub use draw_shared::{AllocError, ImageFormat, ImageHandle, ImageId};
 pub use draw_shared::{DrawShared, DrawSharedImpl, SharedState};
-pub use images::{ImageError, ImageFormat, ImageId};
 use std::time::Instant;
 
 /// Animation status

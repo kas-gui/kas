@@ -101,7 +101,6 @@ impl Glide {
 pub struct ScrollComponent {
     max_offset: Offset,
     offset: Offset,
-    scroll_rate: f32,
     glide: Glide,
 }
 
@@ -111,7 +110,6 @@ impl Default for ScrollComponent {
         ScrollComponent {
             max_offset: Offset::ZERO,
             offset: Offset::ZERO,
-            scroll_rate: 30.0,
             glide: Glide::None,
         }
     }
@@ -162,15 +160,6 @@ impl ScrollComponent {
             self.offset = offset;
             TkAction::REGION_MOVED
         }
-    }
-
-    /// Set the scroll rate
-    ///
-    /// This affects how fast arrow keys and the mouse wheel scroll (but not
-    /// pixel offsets, as from touch devices supporting smooth scrolling).
-    #[inline]
-    pub fn set_scroll_rate(&mut self, rate: f32) {
-        self.scroll_rate = rate;
     }
 
     /// Apply offset to an event being sent to the scrolled child
@@ -258,20 +247,14 @@ impl ScrollComponent {
                 };
 
                 let d = match delta {
-                    LineDelta(x, y) => Offset(
-                        (-self.scroll_rate * x).cast_nearest(),
-                        (self.scroll_rate * y).cast_nearest(),
-                    ),
+                    LineDelta(x, y) => mgr.config().scroll_distance((-x, y), None),
                     PixelDelta(d) => d,
                 };
                 action = self.set_offset(self.offset - d);
             }
             Event::Scroll(delta) => {
                 let d = match delta {
-                    LineDelta(x, y) => Offset(
-                        (-self.scroll_rate * x).cast_nearest(),
-                        (self.scroll_rate * y).cast_nearest(),
-                    ),
+                    LineDelta(x, y) => mgr.config().scroll_distance((-x, y), None),
                     PixelDelta(d) => d,
                 };
                 let old_offset = self.offset;

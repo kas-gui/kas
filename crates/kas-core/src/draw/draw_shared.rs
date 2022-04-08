@@ -6,12 +6,60 @@
 //! Drawing APIs — shared draw state
 
 use super::color::Rgba;
-use super::{images, DrawImpl, ImageError, ImageFormat, ImageId, PassId};
+use super::{DrawImpl, PassId};
 use crate::cast::Cast;
 use crate::geom::{Quad, Size, Vec2};
 use crate::text::{Effect, TextDisplay};
 use std::any::Any;
-use std::path::Path;
+use std::num::NonZeroU32;
+use std::rc::Rc;
+use thiserror::Error;
+
+/// Identifier for an image allocation
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ImageId(NonZeroU32);
+
+/// Handle for an image
+///
+/// Serves both to identify an allocated image and to track the number of users
+/// via reference counting.
+#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ImageHandle(ImageId, Rc<()>);
+
+impl ImageHandle {
+    /// Convert to an [`ImageId`]
+    #[inline]
+    pub fn id(&self) -> ImageId {
+        self.0
+    }
+}
+
+impl ImageId {
+    /// Construct a new identifier from `u32` value not equal to 0
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[inline]
+    pub const fn try_new(n: u32) -> Option<Self> {
+        // We can't use ? or .map in a const fn so do it the tedious way:
+        if let Some(nz) = NonZeroU32::new(n) {
+            Some(ImageId(nz))
+        } else {
+            None
+        }
+    }
+}
+
+/// Image formats available for upload
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub enum ImageFormat {
+    /// 8-bit unsigned RGBA values (4 bytes per pixel)
+    Rgba8,
+}
+
+/// Allocation failed: too large or zero sized
+#[derive(Error, Debug)]
+#[error("failed to allocate: size too large or zero-sized")]
+pub struct AllocError;
 
 /// Shared draw state
 ///
@@ -26,7 +74,6 @@ use std::path::Path;
 pub struct SharedState<DS: DrawSharedImpl> {
     /// The shell's [`DrawSharedImpl`] object
     pub draw: DS,
-    images: images::Images,
 }
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -34,8 +81,7 @@ pub struct SharedState<DS: DrawSharedImpl> {
 impl<DS: DrawSharedImpl> SharedState<DS> {
     /// Construct (this is only called by the shell)
     pub fn new(draw: DS) -> Self {
-        let images = images::Images::new();
-        SharedState { draw, images }
+        SharedState { draw }
     }
 }
 
@@ -46,65 +92,51 @@ pub trait DrawShared {
     /// Allocate an image
     ///
     /// Use [`SharedState::image_upload`] to set contents of the new image.
-    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, ImageError>;
+    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageHandle, AllocError>;
 
     /// Upload an image to the GPU
     ///
     /// This should be called at least once on each image before display. May be
     /// called again to update the image contents.
     ///
-    /// `id` must refer to an allocation of some size `(w, h)`, such that
+    /// `handle` must refer to an allocation of some size `(w, h)`, such that
     /// `data.len() == b * w * h` where `b` is the number of bytes per pixel,
     /// according to `format`. Data must be in row-major order.
-    fn image_upload(&mut self, id: ImageId, data: &[u8], format: ImageFormat);
+    fn image_upload(&mut self, handle: &ImageHandle, data: &[u8], format: ImageFormat);
 
-    /// Load an image from a path, autodetecting file type
+    /// Potentially free an image
     ///
-    /// This deduplicates multiple loads of the same path, instead incrementing
-    /// a reference count.
-    fn image_from_path(&mut self, path: &Path) -> Result<ImageId, ImageError>;
-
-    /// Remove a loaded image, by path
-    ///
-    /// This reduces the reference count and frees if zero.
-    fn image_free_from_path(&mut self, path: &Path);
-
-    /// Free an image
-    fn image_free(&mut self, id: ImageId);
+    /// The input `handle` is consumed. If this reduces its reference count to
+    /// zero, then the image is freed.
+    fn image_free(&mut self, handle: ImageHandle);
 
     /// Get the size of an image
-    fn image_size(&self, id: ImageId) -> Option<Size>;
+    fn image_size(&self, handle: &ImageHandle) -> Option<Size>;
 }
 
 impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
     #[inline]
-    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, ImageError> {
-        self.draw.image_alloc(size)
+    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageHandle, AllocError> {
+        self.draw
+            .image_alloc(size)
+            .map(|id| ImageHandle(id, Rc::new(())))
     }
 
     #[inline]
-    fn image_upload(&mut self, id: ImageId, data: &[u8], format: ImageFormat) {
-        self.draw.image_upload(id, data, format);
+    fn image_upload(&mut self, handle: &ImageHandle, data: &[u8], format: ImageFormat) {
+        self.draw.image_upload(handle.0, data, format);
     }
 
     #[inline]
-    fn image_from_path(&mut self, path: &Path) -> Result<ImageId, ImageError> {
-        self.images.load_path(&mut self.draw, path)
+    fn image_free(&mut self, handle: ImageHandle) {
+        if let Ok(()) = Rc::try_unwrap(handle.1) {
+            self.draw.image_free(handle.0);
+        }
     }
 
     #[inline]
-    fn image_free_from_path(&mut self, path: &Path) {
-        self.images.remove_path(&mut self.draw, path);
-    }
-
-    #[inline]
-    fn image_free(&mut self, id: ImageId) {
-        self.images.remove_id(&mut self.draw, id);
-    }
-
-    #[inline]
-    fn image_size(&self, id: ImageId) -> Option<Size> {
-        self.draw.image_size(id).map(|size| size.cast())
+    fn image_size(&self, handle: &ImageHandle) -> Option<Size> {
+        self.draw.image_size(handle.0).map(|size| size.cast())
     }
 }
 
@@ -119,7 +151,7 @@ pub trait DrawSharedImpl: Any {
     /// Allocate an image
     ///
     /// Use [`DrawSharedImpl::image_upload`] to set contents of the new image.
-    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, ImageError>;
+    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, AllocError>;
 
     /// Upload an image to the GPU
     ///
