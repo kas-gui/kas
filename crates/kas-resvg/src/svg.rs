@@ -5,7 +5,7 @@
 
 //! SVG widget
 
-use kas::draw::{ImageFormat, ImageId};
+use kas::draw::{ImageFormat, ImageHandle};
 use kas::geom::Size;
 use kas::layout::{MarginSelector, SpriteDisplay, SpriteSize};
 use kas::prelude::*;
@@ -34,7 +34,7 @@ impl_scope! {
         },
         ideal_size: Size,
         pixmap: Option<Pixmap>,
-        image_id: Option<ImageId>,
+        image: Option<ImageHandle>,
     }
 
     impl Self {
@@ -141,27 +141,27 @@ impl_scope! {
 
             let pm_size = self.pixmap.as_ref().map(|pm| (pm.width(), pm.height()));
             if pm_size.unwrap_or((0, 0)) != size {
-                if let Some(id) = self.image_id {
-                    mgr.draw_shared().image_free(id);
+                if let Some(handle) = self.image.take() {
+                    mgr.draw_shared().image_free(handle);
                 }
                 self.pixmap = Pixmap::new(size.0, size.1);
                 if let Some(tree) = self.tree.as_ref() {
-                    self.image_id = self.pixmap.as_mut().map(|pm| {
+                    self.image = self.pixmap.as_mut().map(|pm| {
                         let (w, h) = (pm.width(), pm.height());
 
                         let transform = Transform::identity();
                         resvg::render(tree, usvg::FitTo::Size(w, h), transform, pm.as_mut());
 
-                        let id = mgr.draw_shared().image_alloc((w, h)).unwrap();
-                        mgr.draw_shared().image_upload(id, pm.data(), ImageFormat::Rgba8);
-                        id
+                        let handle = mgr.draw_shared().image_alloc((w, h)).unwrap();
+                        mgr.draw_shared().image_upload(&handle, pm.data(), ImageFormat::Rgba8);
+                        handle
                     });
                 }
             }
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            if let Some(id) = self.image_id {
+            if let Some(id) = self.image.as_ref().map(|h| h.id()) {
                 draw.image(self, id);
             }
         }

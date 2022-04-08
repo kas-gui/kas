@@ -12,11 +12,27 @@ use crate::geom::{Quad, Size, Vec2};
 use crate::text::{Effect, TextDisplay};
 use std::any::Any;
 use std::num::NonZeroU32;
+use std::rc::Rc;
 use thiserror::Error;
 
 /// Identifier for an image allocation
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ImageId(NonZeroU32);
+
+/// Handle for an image
+///
+/// Serves both to identify an allocated image and to track the number of users
+/// via reference counting.
+#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ImageHandle(ImageId, Rc<()>);
+
+impl ImageHandle {
+    /// Convert to an [`ImageId`]
+    #[inline]
+    pub fn id(&self) -> ImageId {
+        self.0
+    }
+}
 
 impl ImageId {
     /// Construct a new identifier from `u32` value not equal to 0
@@ -76,44 +92,52 @@ pub trait DrawShared {
     /// Allocate an image
     ///
     /// Use [`SharedState::image_upload`] to set contents of the new image.
-    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, AllocError>;
+    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageHandle, AllocError>;
 
     /// Upload an image to the GPU
     ///
     /// This should be called at least once on each image before display. May be
     /// called again to update the image contents.
     ///
-    /// `id` must refer to an allocation of some size `(w, h)`, such that
+    /// `handle` must refer to an allocation of some size `(w, h)`, such that
     /// `data.len() == b * w * h` where `b` is the number of bytes per pixel,
     /// according to `format`. Data must be in row-major order.
-    fn image_upload(&mut self, id: ImageId, data: &[u8], format: ImageFormat);
+    fn image_upload(&mut self, handle: &ImageHandle, data: &[u8], format: ImageFormat);
 
-    /// Free an image
-    fn image_free(&mut self, id: ImageId);
+    /// Potentially free an image
+    ///
+    /// The input `handle` is consumed. If this reduces its reference count to
+    /// zero, then the image is freed.
+    fn image_free(&mut self, handle: ImageHandle);
 
     /// Get the size of an image
-    fn image_size(&self, id: ImageId) -> Option<Size>;
+    fn image_size(&self, handle: &ImageHandle) -> Option<Size>;
 }
 
 impl<DS: DrawSharedImpl> DrawShared for SharedState<DS> {
     #[inline]
-    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, AllocError> {
-        self.draw.image_alloc(size)
+    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageHandle, AllocError> {
+        self.draw
+            .image_alloc(size)
+            .map(|id| ImageHandle(id, Rc::new(())))
     }
 
     #[inline]
-    fn image_upload(&mut self, id: ImageId, data: &[u8], format: ImageFormat) {
-        self.draw.image_upload(id, data, format);
+    fn image_upload(&mut self, handle: &ImageHandle, data: &[u8], format: ImageFormat) {
+        self.draw.image_upload(handle.0, data, format);
     }
 
     #[inline]
-    fn image_free(&mut self, id: ImageId) {
-        self.draw.image_free(id);
+    fn image_free(&mut self, handle: ImageHandle) {
+        match Rc::try_unwrap(handle.1) {
+            Ok(()) => self.draw.image_free(handle.0),
+            Err(_) => (),
+        }
     }
 
     #[inline]
-    fn image_size(&self, id: ImageId) -> Option<Size> {
-        self.draw.image_size(id).map(|size| size.cast())
+    fn image_size(&self, handle: &ImageHandle) -> Option<Size> {
+        self.draw.image_size(handle.0).map(|size| size.cast())
     }
 }
 

@@ -45,7 +45,7 @@ impl_scope! {
         core: CoreData,
         sprite: SpriteDisplay,
         raw_size: Size,
-        id: Option<ImageId>,
+        handle: Option<ImageHandle>,
     }
 
     impl Self {
@@ -53,9 +53,9 @@ impl_scope! {
         ///
         /// The image may be allocated through the [`DrawShared`] interface.
         #[inline]
-        pub fn new(id: ImageId, draw: &mut dyn DrawShared) -> Option<Self> {
+        pub fn new(handle: ImageHandle, draw: &mut dyn DrawShared) -> Option<Self> {
             let mut sprite = Self::default();
-            sprite.set(id, draw).map(|_| sprite)
+            sprite.set(handle, draw).map(|_| sprite)
         }
 
         /// Construct from a path
@@ -74,10 +74,10 @@ impl_scope! {
         /// Assign a pre-allocated image
         ///
         /// Returns `TkAction::RESIZE` on success. On error, `self` is unchanged.
-        pub fn set(&mut self, id: ImageId, draw: &mut dyn DrawShared) -> Option<TkAction> {
-            if let Some(size) = draw.image_size(id) {
+        pub fn set(&mut self, handle: ImageHandle, draw: &mut dyn DrawShared) -> Option<TkAction> {
+            if let Some(size) = draw.image_size(&handle) {
                 self.raw_size = size;
-                self.id = Some(id);
+                self.handle = Some(handle);
                 Some(TkAction::RESIZE)
             } else {
                 None
@@ -104,23 +104,23 @@ impl_scope! {
             let image = image.into_rgba8();
             let size = image.dimensions();
 
-            let id = draw.image_alloc(size)?;
-            draw.image_upload(id, &image, kas::draw::ImageFormat::Rgba8);
+            let handle = draw.image_alloc(size)?;
+            draw.image_upload(&handle, &image, kas::draw::ImageFormat::Rgba8);
 
-            if let Some(old_id) = self.id {
-                draw.image_free(old_id);
+            if let Some(old_handle) = self.handle.take() {
+                draw.image_free(old_handle);
             }
 
             self.raw_size = size.into();
-            self.id = Some(id);
+            self.handle = Some(handle);
 
             Ok(TkAction::RESIZE)
         }
 
         /// Remove image (set empty)
         pub fn clear(&mut self, draw: &mut dyn DrawShared) -> TkAction {
-            if let Some(id) = self.id.take() {
-                draw.image_free(id);
+            if let Some(handle) = self.handle.take() {
+                draw.image_free(handle);
                 self.raw_size = Size::ZERO;
                 TkAction::RESIZE
             } else {
@@ -162,7 +162,7 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            if let Some(id) = self.id {
+            if let Some(id) = self.handle.as_ref().map(|h| h.id()) {
                 draw.image(self, id);
             }
         }

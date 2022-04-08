@@ -5,7 +5,7 @@
 
 //! Canvas widget
 
-use kas::draw::{ImageFormat, ImageId};
+use kas::draw::{ImageFormat, ImageHandle};
 use kas::layout::{SpriteDisplay, SpriteSize};
 use kas::prelude::*;
 use tiny_skia::{Color, Pixmap};
@@ -54,7 +54,7 @@ impl_scope! {
         core: CoreData,
         sprite: SpriteDisplay,
         pixmap: Option<Pixmap>,
-        image_id: Option<ImageId>,
+        image: Option<ImageHandle>,
         /// The program drawing to the canvas
         pub program: P,
     }
@@ -72,7 +72,7 @@ impl_scope! {
                     ..Default::default()
                 },
                 pixmap: None,
-                image_id: None,
+                image: None,
                 program,
             }
         }
@@ -108,10 +108,10 @@ impl_scope! {
         ///
         /// This method does nothing before a backing pixmap has been created.
         pub fn redraw(&mut self, mgr: &mut SetRectMgr) {
-            if let Some((pm, id)) = self.pixmap.as_mut().zip(self.image_id) {
+            if let Some((pm, h)) = self.pixmap.as_mut().zip(self.image.as_ref()) {
                 pm.fill(Color::TRANSPARENT);
                 self.program.draw(pm);
-                mgr.draw_shared().image_upload(id, pm.data(), ImageFormat::Rgba8);
+                mgr.draw_shared().image_upload(h, pm.data(), ImageFormat::Rgba8);
             }
         }
     }
@@ -128,17 +128,17 @@ impl_scope! {
 
             let pm_size = self.pixmap.as_ref().map(|pm| (pm.width(), pm.height()));
             if pm_size.unwrap_or((0, 0)) != size {
-                if let Some(id) = self.image_id {
-                    mgr.draw_shared().image_free(id);
+                if let Some(handle) = self.image.take() {
+                    mgr.draw_shared().image_free(handle);
                 }
                 self.pixmap = Pixmap::new(size.0, size.1);
                 let program = &mut self.program;
-                self.image_id = self.pixmap.as_mut().map(|pm| {
+                self.image = self.pixmap.as_mut().map(|pm| {
                     program.draw(pm);
                     let (w, h) = (pm.width(), pm.height());
-                    let id = mgr.draw_shared().image_alloc((w, h)).unwrap();
-                    mgr.draw_shared().image_upload(id, pm.data(), ImageFormat::Rgba8);
-                    id
+                    let handle = mgr.draw_shared().image_alloc((w, h)).unwrap();
+                    mgr.draw_shared().image_upload(&handle, pm.data(), ImageFormat::Rgba8);
+                    handle
                 });
             }
         }
@@ -151,7 +151,7 @@ impl_scope! {
             if animate {
                 draw.draw_device().animate();
             }
-            if let Some(id) = self.image_id {
+            if let Some(id) = self.image.as_ref().map(|h| h.id()) {
                 draw.image(self, id);
             }
         }
