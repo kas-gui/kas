@@ -5,9 +5,9 @@
 
 use proc_macro2::{Span, TokenStream as Toks};
 use quote::{quote, TokenStreamExt};
-use syn::parse::{Error, Parse, ParseStream, Result};
+use syn::parse::{Error, Parse, ParseStream, Peek, Result};
 use syn::spanned::Spanned;
-use syn::{braced, bracketed, parenthesized, Expr, LitInt, Member, Token};
+use syn::{braced, bracketed, parenthesized, Expr, Ident, LitInt, Member, Token};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -94,51 +94,88 @@ struct GridDimensions {
     rows: u32,
     row_spans: u32,
 }
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 struct CellInfo {
     col: u32,
     col_end: u32,
     row: u32,
     row_end: u32,
 }
-impl Parse for CellInfo {
-    fn parse(input: ParseStream) -> Result<Self> {
-        let col = input.parse::<LitInt>()?.base10_parse()?;
-        let col_end = if input.peek(Token![..]) {
-            let _ = input.parse::<Token![..]>();
-            let lit = input.parse::<LitInt>()?;
-            let end = lit.base10_parse()?;
-            if col >= end {
-                return Err(Error::new(lit.span(), format!("expected value > {}", col)));
-            }
-            end
+
+fn parse_cell_info(input: ParseStream, last: Option<&CellInfo>) -> Result<CellInfo> {
+    // We except a very limited expression syntax here.
+    fn eval_item(input: ParseStream, token: impl Peek, last: Option<u32>) -> Result<u32> {
+        let lah = input.lookahead1();
+        if lah.peek(token) {
+            let r = input.parse::<Ident>()?; // hack: keywords will parse as an Ident
+            last.ok_or_else(|| {
+                Error::new(
+                    r.span(),
+                    "`col` and `row` vars are undefined for first cell",
+                )
+            })
+        } else if lah.peek(LitInt) {
+            input.parse::<LitInt>()?.base10_parse()
         } else {
-            col + 1
-        };
-
-        let _ = input.parse::<Token![,]>()?;
-
-        let row = input.parse::<LitInt>()?.base10_parse()?;
-        let row_end = if input.peek(Token![..]) {
-            let _ = input.parse::<Token![..]>();
-            let lit = input.parse::<LitInt>()?;
-            let end = lit.base10_parse()?;
-            if row >= end {
-                return Err(Error::new(lit.span(), format!("expected value > {}", row)));
-            }
-            end
-        } else {
-            row + 1
-        };
-
-        Ok(CellInfo {
-            row,
-            row_end,
-            col,
-            col_end,
-        })
+            Err(lah.error())
+        }
     }
+
+    fn eval_sum(input: ParseStream, token: impl Peek, last: Option<u32>) -> Result<u32> {
+        let mut sum = eval_item(input, token, last)?;
+
+        loop {
+            let lah = input.lookahead1();
+            if lah.peek(Token![+]) {
+                let _ = input.parse::<Token![+]>();
+                sum += eval_item(input, token, last)?;
+            } else if lah.peek(Token![-]) {
+                let _ = input.parse::<Token![-]>();
+                sum -= eval_item(input, token, last)?;
+            } else if lah.peek(Token![..]) || lah.peek(Token![,]) || lah.peek(Token![:]) {
+                return Ok(sum);
+            } else {
+                return Err(lah.error());
+            }
+        }
+    }
+
+    fn parse_end(input: ParseStream, start: u32) -> Result<u32> {
+        if input.parse::<Token![..]>().is_ok() {
+            if input.parse::<Token![+]>().is_ok() {
+                return Ok(start + input.parse::<LitInt>()?.base10_parse::<u32>()?);
+            }
+
+            let lit = input.parse::<LitInt>()?;
+            let end = lit.base10_parse()?;
+            if start >= end {
+                return Err(Error::new(
+                    lit.span(),
+                    format!("expected value > {}", start),
+                ));
+            }
+            Ok(end)
+        } else {
+            Ok(start + 1)
+        }
+    }
+
+    let col = eval_sum(input, kw::col, last.map(|info| info.col))?;
+    let col_end = parse_end(input, col)?;
+
+    let _ = input.parse::<Token![,]>()?;
+
+    let row = eval_sum(input, kw::row, last.map(|info| info.row))?;
+    let row_end = parse_end(input, row)?;
+
+    Ok(CellInfo {
+        row,
+        row_end,
+        col,
+        col_end,
+    })
 }
+
 impl GridDimensions {
     fn update(&mut self, cell: &CellInfo) {
         self.cols = self.cols.max(cell.col_end);
@@ -299,8 +336,10 @@ fn parse_grid(input: ParseStream) -> Result<Layout> {
 
     let mut dim = GridDimensions::default();
     let mut cells = vec![];
+    let mut last_info = None;
     while !inner.is_empty() {
-        let info = inner.parse()?;
+        let info = parse_cell_info(&inner, last_info.as_ref())?;
+        last_info = Some(info);
         dim.update(&info);
         let _: Token![:] = inner.parse()?;
         let layout = inner.parse()?;

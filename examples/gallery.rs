@@ -221,23 +221,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let radio = RadioBoxGroup::default();
     let widgets = make_widget! {
-        // TODO: this would be better expressed with a column layout, though we
-        // want better alignment controls first (which are also needed for menus).
         #[widget{
             layout = grid: {
-                0, 0: self.sll; 1, 0: self.sl;
-                0, 1: self.ebl; 1, 1: self.eb;
-                0, 2: self.tbl; 1, 2: self.tb;
-                0, 3: self.bil; 1, 3: self.bi;
-                0, 4: self.cbl; 1, 4: self.cb;
-                0, 5: self.rbl; 1, 5: self.rb;
-                0, 6: self.rb2l; 1, 6: self.rb2;
-                0, 7: self.cbbl; 1, 7: self.cbb;
-                0, 8: self.sdl; 1, 8: self.sd;
-                0, 9: self.scl; 1, 9: self.sc;
-                0, 10: self.pgl; 1, 10: self.pg;
-                0, 11: self.svl; 1, 11: align(center): self.sv;
-                0, 12: self.pul; 1, 12: self.pu;
+                0, 0: self.sll; 1, row: self.sl;
+                0, row + 1: self.ebl; 1, row: self.eb;
+                0, row + 1: self.tbl; 1, row: self.tb;
+                0, row + 1: self.bil; 1, row: self.bi;
+                0, row + 1: self.cbl; 1, row: self.cb;
+                0, row + 1: self.rbl; 1, row: self.rb;
+                0, row + 1: self.rb2l; 1, row: self.rb2;
+                0, row + 1: self.cbbl; 1, row: self.cbb;
+                0, row + 1: self.sdl; 1, row: self.sd;
+                0, row + 1: self.scl; 1, row: self.sc;
+                0, row + 1: self.pgl; 1, row: self.pg;
+                0, row + 1: self.svl; 1, row: align(center): self.sv;
+                0, row + 1: self.pul; 1, row: self.pu;
             };
             msg = Item;
         }]

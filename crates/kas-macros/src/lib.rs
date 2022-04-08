@@ -472,6 +472,15 @@ pub fn make_widget(input: TokenStream) -> TokenStream {
 /// > _GridCell_ :\
 /// > &nbsp;&nbsp; _Range_ `,` _Range_ `:` _Layout_
 /// >
+/// > _Range_ :\
+/// > &nbsp;&nbsp; _RangeStartSum_ ( `..` `+`? _LitInt_ )?
+///
+/// > _RangeStartSum_ :\
+/// > &nbsp;&nbsp; _RangeStartItem_ ( (`+` | `-`) _RangeStartItem_ )*
+///
+/// > _RangeStartItem_ :\
+/// > &nbsp;&nbsp; `row` | `col` | _LitInt_
+///
 /// > _Frame_ :\
 /// > &nbsp;&nbsp; `frame` `(` _Layout_ `)`
 ///
