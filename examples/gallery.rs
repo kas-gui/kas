@@ -111,13 +111,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // A real app might use async loading of resources here (Svg permits loading
     // from a data slice; DrawShared allows allocation from data slice).
-    let img_sun = Image::new_path("res/sun_32.png", toolkit.draw_shared())?;
-    let img_moon = Image::new_path("res/moon_32.png", toolkit.draw_shared())?;
-    let img_gallery = Image::new_path("res/gallery.png", toolkit.draw_shared())?;
-    let img_rustacean = Svg::new_path("res/rustacean-flat-happy.svg")?.with_scaling(|s| {
-        s.size = kas::layout::SpriteSize::Relative(0.1);
-        s.ideal_factor = 3.0;
-    });
+    let img_light = Svg::new(include_bytes!("../res/contrast-2-line.svg"));
+    let img_dark = Svg::new(include_bytes!("../res/contrast-2-fill.svg"));
+    let img_gallery = Svg::new(include_bytes!("../res/gallery-line.svg"));
+    const SVG_WARNING: &'static [u8] = include_bytes!("../res/error-warning-line.svg");
+    let img_rustacean = match Svg::new_path("res/rustacean-flat-happy.svg") {
+        Ok(svg) => svg,
+        Err(e) => {
+            println!("Failed to load res/rustacean-flat-happy.svg: {}", e);
+            Svg::new(SVG_WARNING)
+        }
+    };
 
     #[derive(Clone, Debug, VoidMsg)]
     enum Menu {
@@ -247,10 +251,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             #[widget] tb = TextButton::new_msg("&Press me", Item::Button),
             #[widget] bil = Label::new("Button<Image>"),
             #[widget] bi = row![
-                Button::new_msg(img_sun, Item::LightTheme)
+                Button::new_msg(img_light, Item::LightTheme)
                     .with_color(Rgb::rgb(0.3, 0.4, 0.5))
                     .with_keys(&[VK::L]),
-                Button::new_msg(img_moon, Item::DarkTheme)
+                Button::new_msg(img_dark, Item::DarkTheme)
                     .with_color(Rgb::grey(0.1))
                     .with_keys(&[VK::K]),
             ],
@@ -277,7 +281,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             #[widget] pg: ProgressBar<Right> = ProgressBar::new(),
             #[widget] pgl = Label::new("ProgressBar"),
             #[widget] svl = Label::new("SVG"),
-            #[widget] sv = img_rustacean,
+            #[widget] sv = img_rustacean.with_scaling(|s| {
+                s.size = kas::layout::SpriteSize::Relative(0.1);
+                s.ideal_factor = 3.0;
+            }),
             #[widget] pul = Label::new("Child window"),
             #[widget] pu = popup_edit_box,
         }
@@ -304,7 +311,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    let mut window = Window::new(
+    let window = Window::new(
         "Widget Gallery",
         make_widget! {
             #[widget{
@@ -360,9 +367,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         },
     );
-    if let Err(err) = window.load_icon_from_path("res/gallery.png") {
-        println!("Failed to load window icon: {}", err);
-    }
 
     toolkit.add(window)?;
     toolkit.run()
