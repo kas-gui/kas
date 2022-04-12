@@ -470,16 +470,10 @@ pub fn make_widget(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; `grid` `:` `{` _GridCell_* `}`
 /// >
 /// > _GridCell_ :\
-/// > &nbsp;&nbsp; _Range_ `,` _Range_ `:` _Layout_
+/// > &nbsp;&nbsp; _CellRange_ `,` _CellRange_ `:` _Layout_
 /// >
-/// > _Range_ :\
-/// > &nbsp;&nbsp; _RangeStartSum_ ( `..` `+`? _LitInt_ )?
-///
-/// > _RangeStartSum_ :\
-/// > &nbsp;&nbsp; _RangeStartItem_ ( (`+` | `-`) _RangeStartItem_ )*
-///
-/// > _RangeStartItem_ :\
-/// > &nbsp;&nbsp; `row` | `col` | _LitInt_
+/// > _CellRange_ :\
+/// > &nbsp;&nbsp; _LitInt_ ( `..` `+`? _LitInt_ )?
 ///
 /// > _Frame_ :\
 /// > &nbsp;&nbsp; `frame` `(` _Layout_ `)`
@@ -500,6 +494,11 @@ pub fn make_widget(input: TokenStream) -> TokenStream {
 ///
 /// _Slice_ is a variant of _List_ over a single struct field, supporting
 /// `AsMut<W>` for some widget type `W`.
+///
+/// A _Grid_ is an aligned two-dimensional layout supporting item spans.
+/// Contents are declared as a collection of cells. Cell location is specified
+/// like `0, 1` (that is, col=0, row=1) with spans specified like `0..2, 1`
+/// (thus cols={0, 1}, row=1) or `2..+2, 1` (cols={2,3}, row=1).
 ///
 /// _Member_ is a field name (struct) or number (tuple struct).
 ///
