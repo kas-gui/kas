@@ -143,9 +143,8 @@ impl_scope! {
             Some(self.checkbox.id())
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
-            draw.frame(&*self, FrameStyle::MenuEntry, Default::default());
-            let id = self.id();
+        fn draw(&mut self, draw: DrawMgr) {
+            let id = self.checkbox.id();
             self.layout().draw(draw, &id);
         }
     }
