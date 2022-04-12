@@ -20,12 +20,12 @@ fn main() -> kas::shell::Result<()> {
         make_widget! {
             #[widget{
                 layout = grid: {
-                    0, 1: self.title;
-                    0, 2: self.check;
-                    1, 0..3: self.lipsum;
-                    2, 0: align(center): self.abc;
-                    2..4, 1..3: align(stretch): self.crasit;
-                    3, 0: self.edit;
+                    1, 0: self.title;
+                    2, 0: self.check;
+                    0..3, 1: self.lipsum;
+                    0, 2: align(center): self.abc;
+                    1..3, 2..4: align(stretch): self.crasit;
+                    0, 3: self.edit;
                 };
                 msg = VoidMsg;
             }]

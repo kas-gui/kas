@@ -6,6 +6,7 @@
 //! Layout solver — storage
 
 use super::SizeRules;
+use kas_macros::impl_scope;
 use std::any::Any;
 
 /// Master trait over storage types
@@ -152,7 +153,7 @@ where
 /// Details are hidden (for internal use only).
 pub trait GridStorage: sealed::Sealed + Clone {
     #[doc(hidden)]
-    fn set_dims(&mut self, rows: usize, cols: usize);
+    fn set_dims(&mut self, cols: usize, rows: usize);
 
     #[doc(hidden)]
     fn width_rules(&mut self) -> &mut [SizeRules] {
@@ -183,70 +184,60 @@ pub trait GridStorage: sealed::Sealed + Clone {
     fn heights_rules_total(&mut self) -> (&mut [i32], &mut [SizeRules], SizeRules);
 }
 
-/// Fixed-length grid storage
-///
-/// Uses const-generics arguments `R, C` (the number of rows and columns).
-#[derive(Clone, Debug)]
-pub struct FixedGridStorage<const R: usize, const C: usize> {
-    width_rules: [SizeRules; C],
-    height_rules: [SizeRules; R],
-    width_total: SizeRules,
-    height_total: SizeRules,
-    widths: [i32; C],
-    heights: [i32; R],
-}
+impl_scope! {
+    /// Fixed-length grid storage
+    ///
+    /// Uses const-generics arguments `R, C` (the number of rows and columns).
+    #[impl_default]
+    #[derive(Clone, Debug)]
+    pub struct FixedGridStorage<const C: usize, const R: usize> {
+        width_rules: [SizeRules; C] = [SizeRules::default(); C],
+        height_rules: [SizeRules; R] = [SizeRules::default(); R],
+        width_total: SizeRules,
+        height_total: SizeRules,
+        widths: [i32; C] = [0; C],
+        heights: [i32; R] = [0; R],
+    }
 
-impl<const R: usize, const C: usize> Default for FixedGridStorage<R, C> {
-    fn default() -> Self {
-        FixedGridStorage {
-            width_rules: [SizeRules::default(); C],
-            height_rules: [SizeRules::default(); R],
-            width_total: SizeRules::default(),
-            height_total: SizeRules::default(),
-            widths: [0; C],
-            heights: [0; R],
+    impl Storage for Self {
+        fn as_any_mut(&mut self) -> &mut dyn Any {
+            self
         }
     }
-}
 
-impl<const R: usize, const C: usize> Storage for FixedGridStorage<R, C> {
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
+    impl GridStorage for Self {
+        fn set_dims(&mut self, cols: usize, rows: usize) {
+            assert_eq!(self.width_rules.as_ref().len(), cols);
+            assert_eq!(self.height_rules.as_ref().len(), rows);
+            assert_eq!(self.widths.len(), cols);
+            assert_eq!(self.heights.len(), rows);
+        }
 
-impl<const R: usize, const C: usize> GridStorage for FixedGridStorage<R, C> {
-    fn set_dims(&mut self, rows: usize, cols: usize) {
-        assert_eq!(self.width_rules.as_ref().len(), cols);
-        assert_eq!(self.height_rules.as_ref().len(), rows);
-        assert_eq!(self.widths.len(), cols);
-        assert_eq!(self.heights.len(), rows);
-    }
+        #[doc(hidden)]
+        fn set_width_total(&mut self, total: SizeRules) {
+            self.width_total = total;
+        }
+        #[doc(hidden)]
+        fn set_height_total(&mut self, total: SizeRules) {
+            self.height_total = total;
+        }
 
-    #[doc(hidden)]
-    fn set_width_total(&mut self, total: SizeRules) {
-        self.width_total = total;
-    }
-    #[doc(hidden)]
-    fn set_height_total(&mut self, total: SizeRules) {
-        self.height_total = total;
-    }
-
-    #[doc(hidden)]
-    fn widths_rules_total(&mut self) -> (&mut [i32], &mut [SizeRules], SizeRules) {
-        (
-            self.widths.as_mut(),
-            self.width_rules.as_mut(),
-            self.width_total,
-        )
-    }
-    #[doc(hidden)]
-    fn heights_rules_total(&mut self) -> (&mut [i32], &mut [SizeRules], SizeRules) {
-        (
-            self.heights.as_mut(),
-            self.height_rules.as_mut(),
-            self.height_total,
-        )
+        #[doc(hidden)]
+        fn widths_rules_total(&mut self) -> (&mut [i32], &mut [SizeRules], SizeRules) {
+            (
+                self.widths.as_mut(),
+                self.width_rules.as_mut(),
+                self.width_total,
+            )
+        }
+        #[doc(hidden)]
+        fn heights_rules_total(&mut self) -> (&mut [i32], &mut [SizeRules], SizeRules) {
+            (
+                self.heights.as_mut(),
+                self.height_rules.as_mut(),
+                self.height_total,
+            )
+        }
     }
 }
 
@@ -268,7 +259,7 @@ impl Storage for DynGridStorage {
 }
 
 impl GridStorage for DynGridStorage {
-    fn set_dims(&mut self, rows: usize, cols: usize) {
+    fn set_dims(&mut self, cols: usize, rows: usize) {
         self.width_rules.resize(cols, SizeRules::EMPTY);
         self.height_rules.resize(rows, SizeRules::EMPTY);
         self.widths.resize(cols, 0);
@@ -308,6 +299,6 @@ mod sealed {
     impl Sealed for super::DynRowStorage {}
     impl Sealed for Vec<i32> {}
     impl<const L: usize> Sealed for [i32; L] {}
-    impl<const R: usize, const C: usize> Sealed for super::FixedGridStorage<R, C> {}
+    impl<const C: usize, const R: usize> Sealed for super::FixedGridStorage<C, R> {}
     impl Sealed for super::DynGridStorage {}
 }

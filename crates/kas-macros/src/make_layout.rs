@@ -14,7 +14,6 @@ mod kw {
     use syn::custom_keyword;
 
     custom_keyword!(align);
-    custom_keyword!(col);
     custom_keyword!(column);
     custom_keyword!(row);
     custom_keyword!(right);
@@ -31,6 +30,8 @@ mod kw {
     custom_keyword!(default);
     custom_keyword!(top);
     custom_keyword!(bottom);
+    custom_keyword!(aligned_column);
+    custom_keyword!(aligned_row);
 }
 
 pub struct Input {
@@ -89,65 +90,77 @@ enum Align {
 
 #[derive(Debug, Default)]
 struct GridDimensions {
-    rows: u32,
     cols: u32,
-    row_spans: u32,
     col_spans: u32,
+    rows: u32,
+    row_spans: u32,
 }
-#[derive(Debug)]
+
+#[derive(Copy, Clone, Debug)]
 struct CellInfo {
-    row: u32,
-    row_end: u32,
     col: u32,
     col_end: u32,
+    row: u32,
+    row_end: u32,
 }
-impl Parse for CellInfo {
-    fn parse(input: ParseStream) -> Result<Self> {
-        let row = input.parse::<LitInt>()?.base10_parse()?;
-        let row_end = if input.peek(Token![..]) {
-            let _ = input.parse::<Token![..]>();
-            let lit = input.parse::<LitInt>()?;
-            let end = lit.base10_parse()?;
-            if row >= end {
-                return Err(Error::new(lit.span(), format!("expected value > {}", row)));
-            }
-            end
-        } else {
-            row + 1
-        };
 
-        let _ = input.parse::<Token![,]>()?;
-
-        let col = input.parse::<LitInt>()?.base10_parse()?;
-        let col_end = if input.peek(Token![..]) {
-            let _ = input.parse::<Token![..]>();
-            let lit = input.parse::<LitInt>()?;
-            let end = lit.base10_parse()?;
-            if col >= end {
-                return Err(Error::new(lit.span(), format!("expected value > {}", col)));
-            }
-            end
-        } else {
-            col + 1
-        };
-
-        Ok(CellInfo {
-            row,
-            row_end,
+impl CellInfo {
+    fn new(col: u32, row: u32) -> Self {
+        CellInfo {
             col,
-            col_end,
-        })
+            col_end: col + 1,
+            row,
+            row_end: row + 1,
+        }
     }
 }
+
+fn parse_cell_info(input: ParseStream) -> Result<CellInfo> {
+    fn parse_end(input: ParseStream, start: u32) -> Result<u32> {
+        if input.parse::<Token![..]>().is_ok() {
+            if input.parse::<Token![+]>().is_ok() {
+                return Ok(start + input.parse::<LitInt>()?.base10_parse::<u32>()?);
+            }
+
+            let lit = input.parse::<LitInt>()?;
+            let end = lit.base10_parse()?;
+            if start >= end {
+                return Err(Error::new(
+                    lit.span(),
+                    format!("expected value > {}", start),
+                ));
+            }
+            Ok(end)
+        } else {
+            Ok(start + 1)
+        }
+    }
+
+    let col = input.parse::<LitInt>()?.base10_parse()?;
+    let col_end = parse_end(input, col)?;
+
+    let _ = input.parse::<Token![,]>()?;
+
+    let row = input.parse::<LitInt>()?.base10_parse()?;
+    let row_end = parse_end(input, row)?;
+
+    Ok(CellInfo {
+        row,
+        row_end,
+        col,
+        col_end,
+    })
+}
+
 impl GridDimensions {
     fn update(&mut self, cell: &CellInfo) {
-        self.rows = self.rows.max(cell.row_end);
         self.cols = self.cols.max(cell.col_end);
-        if cell.row_end - cell.row > 1 {
-            self.row_spans += 1;
-        }
         if cell.col_end - cell.col > 1 {
             self.col_spans += 1;
+        }
+        self.rows = self.rows.max(cell.row_end);
+        if cell.row_end - cell.row > 1 {
+            self.row_spans += 1;
         }
     }
 }
@@ -215,6 +228,14 @@ impl Parse for Layout {
             let _: Token![:] = input.parse()?;
             let list = parse_layout_list(input)?;
             Ok(Layout::List(dir, list))
+        } else if lookahead.peek(kw::aligned_column) {
+            let _: kw::aligned_column = input.parse()?;
+            let _: Token![:] = input.parse()?;
+            Ok(parse_grid_as_list_of_lists::<kw::row>(input, true)?)
+        } else if lookahead.peek(kw::aligned_row) {
+            let _: kw::aligned_row = input.parse()?;
+            let _: Token![:] = input.parse()?;
+            Ok(parse_grid_as_list_of_lists::<kw::column>(input, false)?)
         } else if lookahead.peek(kw::slice) {
             let _: kw::slice = input.parse()?;
             let inner;
@@ -293,6 +314,56 @@ fn parse_layout_list(input: ParseStream) -> Result<List> {
     }
 }
 
+fn parse_grid_as_list_of_lists<KW: Parse>(input: ParseStream, row_major: bool) -> Result<Layout> {
+    let inner;
+    let _ = bracketed!(inner in input);
+
+    let (mut col, mut row) = (0, 0);
+    let mut dim = GridDimensions::default();
+    let mut cells = vec![];
+
+    while !inner.is_empty() {
+        let _ = inner.parse::<KW>()?;
+        let _ = inner.parse::<Token![:]>()?;
+
+        let inner2;
+        let _ = bracketed!(inner2 in inner);
+
+        while !inner2.is_empty() {
+            let info = CellInfo::new(col, row);
+            dim.update(&info);
+            let layout = inner2.parse()?;
+            cells.push((info, layout));
+
+            if inner2.is_empty() {
+                break;
+            }
+            let _: Token![,] = inner2.parse()?;
+
+            if row_major {
+                col += 1;
+            } else {
+                row += 1;
+            }
+        }
+
+        if inner.is_empty() {
+            break;
+        }
+        let _: Token![,] = inner.parse()?;
+
+        if row_major {
+            col = 0;
+            row += 1;
+        } else {
+            row = 0;
+            col += 1;
+        }
+    }
+
+    Ok(Layout::Grid(dim, cells))
+}
+
 fn parse_grid(input: ParseStream) -> Result<Layout> {
     let inner;
     let _ = braced!(inner in input);
@@ -300,7 +371,7 @@ fn parse_grid(input: ParseStream) -> Result<Layout> {
     let mut dim = GridDimensions::default();
     let mut cells = vec![];
     while !inner.is_empty() {
-        let info = inner.parse()?;
+        let info = parse_cell_info(&inner)?;
         dim.update(&info);
         let _: Token![:] = inner.parse()?;
         let layout = inner.parse()?;
@@ -367,13 +438,13 @@ impl quote::ToTokens for Direction {
 
 impl quote::ToTokens for GridDimensions {
     fn to_tokens(&self, toks: &mut Toks) {
-        let (rows, cols) = (self.rows, self.cols);
-        let (row_spans, col_spans) = (self.row_spans, self.col_spans);
+        let (cols, rows) = (self.cols, self.rows);
+        let (col_spans, row_spans) = (self.col_spans, self.row_spans);
         toks.append_all(quote! { layout::GridDimensions {
-            rows: #rows,
             cols: #cols,
-            row_spans: #row_spans,
             col_spans: #col_spans,
+            rows: #rows,
+            row_spans: #row_spans,
         } });
     }
 }
@@ -478,25 +549,25 @@ impl Layout {
                 quote! { layout::Layout::slice(&mut #expr, #dir, #data) }
             }
             Layout::Grid(dim, cells) => {
-                let (rows, cols) = (dim.rows as usize, dim.cols as usize);
+                let (cols, rows) = (dim.cols as usize, dim.rows as usize);
                 let data = quote! { {
-                    let (data, next) = _chain.storage::<layout::FixedGridStorage<#rows, #cols>>();
+                    let (data, next) = _chain.storage::<layout::FixedGridStorage<#cols, #rows>>();
                     _chain = next;
                     data
                 } };
 
                 let mut items = Toks::new();
                 for item in cells {
-                    let (row, row_end) = (item.0.row, item.0.row_end);
                     let (col, col_end) = (item.0.col, item.0.col_end);
+                    let (row, row_end) = (item.0.row, item.0.row_end);
                     let layout = item.1.generate::<std::iter::Empty<&Member>>(None)?;
                     items.append_all(quote! {
                         (
                             layout::GridChildInfo {
-                                row: #row,
-                                row_end: #row_end,
                                 col: #col,
                                 col_end: #col_end,
+                                row: #row,
+                                row_end: #row_end,
                             },
                             #layout,
                         ),

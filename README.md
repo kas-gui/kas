@@ -82,8 +82,8 @@ Getting started
 
 ### Dependencies
 
-KAS requires a recent [Rust] compiler. Currently, version 1.56 or greater is
-required. Using the **nightly** channel does have a few advantages:
+KAS requires a [Rust] compiler, version (MSRV) 1.56 or greater.
+Using the **nightly** channel does have a few advantages:
 
 -   Procedural macros can only emit warnings using nightly `rustc`.
     missed without nightly rustc, hence **nightly is recommended for development**.
