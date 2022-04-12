@@ -31,6 +31,8 @@ mod kw {
     custom_keyword!(default);
     custom_keyword!(top);
     custom_keyword!(bottom);
+    custom_keyword!(aligned_column);
+    custom_keyword!(aligned_row);
 }
 
 pub struct Input {
@@ -94,12 +96,24 @@ struct GridDimensions {
     rows: u32,
     row_spans: u32,
 }
+
 #[derive(Copy, Clone, Debug)]
 struct CellInfo {
     col: u32,
     col_end: u32,
     row: u32,
     row_end: u32,
+}
+
+impl CellInfo {
+    fn new(col: u32, row: u32) -> Self {
+        CellInfo {
+            col,
+            col_end: col + 1,
+            row,
+            row_end: row + 1,
+        }
+    }
 }
 
 fn parse_cell_info(input: ParseStream, last: Option<&CellInfo>) -> Result<CellInfo> {
@@ -252,6 +266,14 @@ impl Parse for Layout {
             let _: Token![:] = input.parse()?;
             let list = parse_layout_list(input)?;
             Ok(Layout::List(dir, list))
+        } else if lookahead.peek(kw::aligned_column) {
+            let _: kw::aligned_column = input.parse()?;
+            let _: Token![:] = input.parse()?;
+            Ok(parse_grid_as_list_of_lists::<kw::row>(input, true)?)
+        } else if lookahead.peek(kw::aligned_row) {
+            let _: kw::aligned_row = input.parse()?;
+            let _: Token![:] = input.parse()?;
+            Ok(parse_grid_as_list_of_lists::<kw::column>(input, false)?)
         } else if lookahead.peek(kw::slice) {
             let _: kw::slice = input.parse()?;
             let inner;
@@ -328,6 +350,56 @@ fn parse_layout_list(input: ParseStream) -> Result<List> {
     } else {
         Err(lookahead.error())
     }
+}
+
+fn parse_grid_as_list_of_lists<KW: Parse>(input: ParseStream, row_major: bool) -> Result<Layout> {
+    let inner;
+    let _ = bracketed!(inner in input);
+
+    let (mut col, mut row) = (0, 0);
+    let mut dim = GridDimensions::default();
+    let mut cells = vec![];
+
+    while !inner.is_empty() {
+        let _ = inner.parse::<KW>()?;
+        let _ = inner.parse::<Token![:]>()?;
+
+        let inner2;
+        let _ = bracketed!(inner2 in inner);
+
+        while !inner2.is_empty() {
+            let info = CellInfo::new(col, row);
+            dim.update(&info);
+            let layout = inner2.parse()?;
+            cells.push((info, layout));
+
+            if inner2.is_empty() {
+                break;
+            }
+            let _: Token![,] = inner2.parse()?;
+
+            if row_major {
+                col += 1;
+            } else {
+                row += 1;
+            }
+        }
+
+        if inner.is_empty() {
+            break;
+        }
+        let _: Token![,] = inner.parse()?;
+
+        if row_major {
+            col = 0;
+            row += 1;
+        } else {
+            row = 0;
+            col += 1;
+        }
+    }
+
+    Ok(Layout::Grid(dim, cells))
 }
 
 fn parse_grid(input: ParseStream) -> Result<Layout> {

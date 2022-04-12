@@ -222,21 +222,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let radio = RadioBoxGroup::default();
     let widgets = make_widget! {
         #[widget{
-            layout = grid: {
-                0, 0: self.sll; 1, row: self.sl;
-                0, row + 1: self.ebl; 1, row: self.eb;
-                0, row + 1: self.tbl; 1, row: self.tb;
-                0, row + 1: self.bil; 1, row: self.bi;
-                0, row + 1: self.cbl; 1, row: self.cb;
-                0, row + 1: self.rbl; 1, row: self.rb;
-                0, row + 1: self.rb2l; 1, row: self.rb2;
-                0, row + 1: self.cbbl; 1, row: self.cbb;
-                0, row + 1: self.sdl; 1, row: self.sd;
-                0, row + 1: self.scl; 1, row: self.sc;
-                0, row + 1: self.pgl; 1, row: self.pg;
-                0, row + 1: self.svl; 1, row: align(center): self.sv;
-                0, row + 1: self.pul; 1, row: self.pu;
-            };
+            layout = aligned_column: [
+                row: [self.sll, self.sl],
+                row: [self.ebl, self.eb],
+                row: [self.tbl, self.tb],
+                row: [self.bil, self.bi],
+                row: [self.cbl, self.cb],
+                row: [self.rbl, self.rb],
+                row: [self.rb2l, self.rb2],
+                row: [self.cbbl, self.cbb],
+                row: [self.sdl, self.sd],
+                row: [self.scl, self.sc],
+                row: [self.pgl, self.pg],
+                row: [self.svl, align(center): self.sv],
+                row: [self.pul, self.pu],
+            ];
             msg = Item;
         }]
         struct {

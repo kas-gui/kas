@@ -458,7 +458,7 @@ pub fn make_widget(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; `self` `.` _Member_ | _Expr_
 /// >
 /// > _ListPre_ :\
-/// > &nbsp;&nbsp; `column` | `row` | `list` `(` _Direction_ `)`
+/// > &nbsp;&nbsp; `column` | `row` | `aligned_column` | `aligned_row` | `list` `(` _Direction_ `)`
 /// >
 /// > _List_ :\
 /// > &nbsp;&nbsp; _ListPre_ `:` `*` | (`[` _Layout_ `]`)
@@ -493,6 +493,10 @@ pub fn make_widget(input: TokenStream) -> TokenStream {
 /// `row` and `column` are abbreviations for `list(right)` and `list(down)`
 /// respectively. Glob syntax is allowed: `row: *` uses all children in a row
 /// layout.
+///
+/// `aligned_column` and `aligned_row` use restricted list syntax (items must
+/// be `row` or `column` respectively; glob syntax not allowed), but build a
+/// grid layout. Essentially, they are syntax sugar for simple table layouts.
 ///
 /// _Slice_ is a variant of _List_ over a single struct field, supporting
 /// `AsMut<W>` for some widget type `W`.
