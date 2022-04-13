@@ -383,22 +383,17 @@ impl_scope! {
             size_mgr.text_bound(&mut self.text, class, axis)
         }
 
-        fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             let valign = if self.multi_line {
                 Align::Default
             } else {
                 Align::Center
             };
+            let class = TextClass::Edit(self.multi_line);
 
             self.core.rect = rect;
-            let size = rect.size;
-            self.required = self
-                .text
-                .update_env(|env| {
-                    env.set_align(align.unwrap_or(Align::Default, valign));
-                    env.set_bounds(size.cast());
-                })
-                .into();
+            let align = align.unwrap_or(Align::Default, valign);
+            self.required = mgr.text_set_size(&mut self.text, class, rect.size, align);
             self.set_view_offset_from_edit_pos();
         }
 

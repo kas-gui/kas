@@ -210,7 +210,6 @@ impl_scope! {
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             let (size, min_len) = size_mgr.scrollbar();
-            self.min_handle_len = size.0;
             let margins = (0, 0);
             if self.direction.is_vertical() == axis.is_vertical() {
                 SizeRules::new(min_len, min_len, margins, Stretch::High)
@@ -228,6 +227,7 @@ impl_scope! {
                 .aligned_rect(ideal_size, rect);
             self.core.rect = rect;
             self.handle.set_rect(mgr, rect, align);
+            self.min_handle_len = (mgr.size_mgr().scrollbar().0).0;
             let _ = self.update_handle();
         }
 

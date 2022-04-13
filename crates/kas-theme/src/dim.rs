@@ -215,7 +215,6 @@ impl<D: 'static> SizeHandle for Window<D> {
         let margins = (margin, margin);
 
         // Note: for horizontal axis of Edit* classes, input text does not affect size rules.
-        // We must set env at least once, but do for vertical axis anyway.
         if axis.is_horizontal() {
             if let TextClass::Edit(multi) = class {
                 let min = self.dims.min_line_length;
@@ -280,6 +279,28 @@ impl<D: 'static> SizeHandle for Window<D> {
             };
             SizeRules::new(min, ideal, margins, stretch)
         }
+    }
+
+    fn text_set_size(
+        &self,
+        text: &mut dyn TextApi,
+        class: TextClass,
+        size: Size,
+        align: (Align, Align),
+    ) -> Vec2 {
+        // TODO(opt): we don't always need to do this work
+        text.update_env(|env| {
+            if let Some(font_id) = self.fonts.get(&class).cloned() {
+                env.set_font_id(font_id);
+            }
+            env.set_dpp(self.dims.dpp);
+            env.set_pt_size(self.dims.pt_size);
+
+            env.set_bounds(size.cast());
+            env.set_align(align);
+            env.set_wrap(class.multi_line());
+        })
+        .into()
     }
 
     fn text_cursor_width(&self) -> f32 {

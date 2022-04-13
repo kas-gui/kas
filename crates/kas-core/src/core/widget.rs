@@ -132,8 +132,9 @@ pub trait WidgetChildren: WidgetCore {
 /// Widgets are *configured* on window creation or dynamically via the
 /// parent calling [`SetRectMgr::configure`]. Parent widgets are responsible
 /// for ensuring that children are configured before calling
-/// [`Layout::size_rules`]. Configuration may be repeated and may be used as a
-/// mechanism to change a child's [`WidgetId`], but this may be expensive.
+/// [`Layout::size_rules`] or [`Layout::set_rect`]. Configuration may be
+/// repeated and may be used as a mechanism to change a child's [`WidgetId`],
+/// but this may be expensive.
 ///
 /// Configuration invokes [`Self::configure_recurse`] which then calls
 /// [`Self::configure`]. The latter may be used to load assets before sizing.
@@ -229,10 +230,13 @@ pub trait WidgetConfig: Layout {
 ///     methods may be required (e.g. [`Self::set_rect`] to position child
 ///     elements).
 ///
-/// Layout solving happens in two steps:
+/// Two methods of setting layout are possible:
 ///
-/// 1.  [`Self::size_rules`] calculates size requirements recursively
-/// 2.  [`Self::set_rect`] applies the result recursively
+/// 1.  Use [`layout::solve_size_rules`] or [`layout::SolveCache`] to solve and
+///     set layout. This functions by calling [`Self::size_rules`] for each
+///     axis then calling [`Self::set_rect`].
+/// 2.  Only call [`Self::set_rect`]. For some widgets this is fine but for
+///     others the internal layout will be incorrect.
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
@@ -258,12 +262,11 @@ pub trait Layout: WidgetChildren {
     ///
     /// Typically, this method is called twice: first for the horizontal axis,
     /// second for the vertical axis (with resolved width available through
-    /// the `axis` parameter allowing content wrapping). On re-sizing, the
-    /// first or both method calls may be skipped.
+    /// the `axis` parameter allowing content wrapping).
     ///
-    /// This method takes `&mut self` since it may be necessary to store child
-    /// element size rules in order to calculate layout by `size_rules` on the
-    /// second axis and by `set_rect`.
+    /// When called, this method should cache any data required to determine
+    /// internal layout (of child widgets and other components), especially data
+    /// which requires calling `size_rules` on children.
     ///
     /// This method may be implemented through [`Self::layout`] or directly.
     /// A [`crate::layout::RulesSolver`] engine may be useful to calculate
@@ -275,25 +278,25 @@ pub trait Layout: WidgetChildren {
         self.layout().size_rules(size_mgr, axis)
     }
 
-    /// Apply a given `rect` to self
+    /// Set size and position
     ///
-    /// This method applies the layout resolved by [`Self::size_rules`].
+    /// This is the final step to layout solving. It may be influenced by
+    /// [`Self::size_rules`], but it is not guaranteed that `size_rules` is
+    /// called first. After calling `set_rect`, the widget must be ready for
+    /// calls to [`Self::draw`] and event handling.
+    ///
+    /// The size of the assigned `rect` is normally at least the minimum size
+    /// requested by [`Self::size_rules`], but this is not guaranteed. In case
+    /// this minimum is not met, it is permissible for the widget to draw
+    /// outside of its assigned `rect` and to not function as normal.
+    ///
+    /// The assigned `rect` may be larger than the widget's size requirements.
+    /// It is up to the widget to either stretch to occupy this space or align
+    /// itself within the excess space, according to the `align` hints provided.
     ///
     /// This method may be implemented through [`Self::layout`] or directly.
-    /// For widgets without children, typically this method only stores the
-    /// calculated `rect`, which is done by the default implementation (even
-    /// with the default empty layout for [`Self::layout`]).
-    ///
-    /// This method may also be useful for alignment, which may be applied in
-    /// one of two ways:
-    ///
-    /// 1.  Shrinking `rect` to the "ideal size" and aligning within (see
-    ///     [`crate::layout::CompleteAlignment::aligned_rect`] or example usage in
-    ///     `CheckBoxBare` widget)
-    /// 2.  Applying alignment to contents (see for example `Label` widget)
-    ///
-    /// One may assume that `size_rules` has been called at least once for each
-    /// axis with current size information before this method.
+    /// The default implementation assigns `self.core_data_mut().rect = rect`
+    /// and applies the layout described by [`Self::layout`].
     fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
         self.core_data_mut().rect = rect;
         self.layout().set_rect(mgr, rect, align);
@@ -360,6 +363,9 @@ pub trait Layout: WidgetChildren {
     /// inner content, while the `CheckBox` widget forwards click events to its
     /// `CheckBoxBare` component.
     ///
+    /// It is expected that [`Self::set_rect`] is called before this method,
+    /// but failure to do so should not cause a fatal error.
+    ///
     /// The default implementation suffices unless:
     ///
     /// -   [`Self::layout`] is not implemented and there are child widgets
@@ -386,6 +392,9 @@ pub trait Layout: WidgetChildren {
     ///
     /// This method is invoked each frame to draw visible widgets. It should
     /// draw itself and recurse into all visible children.
+    ///
+    /// It is expected that [`Self::set_rect`] is called before this method,
+    /// but failure to do so should not cause a fatal error.
     ///
     /// The default impl draws elements as defined by [`Self::layout`].
     fn draw(&mut self, draw: DrawMgr) {

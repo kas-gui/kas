@@ -11,10 +11,9 @@
 use super::{AlignHints, AxisInfo, RulesSetter, RulesSolver, SetRectMgr, SizeRules, Storage};
 use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
-use crate::cast::Cast;
 use crate::draw::color::Rgb;
 use crate::geom::{Coord, Offset, Rect, Size};
-use crate::text::{Align, TextApi, TextApiExt};
+use crate::text::{Align, TextApi};
 use crate::theme::{Background, DrawMgr, FrameStyle, IdCoord, IdRect, SizeMgr, TextClass};
 use crate::WidgetId;
 use crate::{dir::Directional, WidgetConfig};
@@ -491,16 +490,14 @@ impl<'a> Visitor for Text<'a> {
         mgr.text_bound(self.text, self.class, axis)
     }
 
-    fn set_rect(&mut self, _mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+        self.data.pos = rect.pos;
         let halign = match self.class {
             TextClass::Button => Align::Center,
             _ => Align::Default,
         };
-        self.data.pos = rect.pos;
-        self.text.update_env(|env| {
-            env.set_bounds(rect.size.cast());
-            env.set_align(align.unwrap_or(halign, Align::Center));
-        });
+        let align = align.unwrap_or(halign, Align::Center);
+        mgr.text_set_size(self.text, self.class, rect.size, align);
     }
 
     fn is_reversed(&mut self) -> bool {

@@ -48,7 +48,9 @@ mod visitor;
 use crate::dir::{Direction, Directional};
 use crate::draw::DrawShared;
 use crate::event::EventState;
-use crate::theme::{SizeHandle, SizeMgr};
+use crate::geom::{Size, Vec2};
+use crate::text::TextApi;
+use crate::theme::{SizeHandle, SizeMgr, TextClass};
 use crate::{TkAction, WidgetConfig, WidgetId};
 use std::ops::{Deref, DerefMut};
 
@@ -196,6 +198,20 @@ impl<'a> SetRectMgr<'a> {
         // Yes, this method is just a shim! We reserve the option to add other code here in the
         // future, hence do not advise calling `configure_recurse` directly.
         widget.configure_recurse(self, id);
+    }
+
+    /// Update a text object, setting font properties and wrap size
+    ///
+    /// Returns required size.
+    #[inline]
+    pub fn text_set_size(
+        &self,
+        text: &mut dyn TextApi,
+        class: TextClass,
+        size: Size,
+        align: (Align, Align),
+    ) -> Vec2 {
+        self.sh.text_set_size(text, class, size, align)
     }
 }
 

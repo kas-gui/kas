@@ -161,9 +161,6 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            // Assumption: if size_rules is called, then set_rect will be too.
-            self.size_solved = true;
-
             if self.widgets.is_empty() {
                 return SizeRules::EMPTY;
             }
@@ -195,6 +192,7 @@ impl_scope! {
 
         fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
+            self.size_solved = true;
             if self.widgets.is_empty() {
                 return;
             }

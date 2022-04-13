@@ -70,12 +70,10 @@ impl_scope! {
             size_mgr.text_bound(&mut self.label, TextClass::Label(self.wrap), axis)
         }
 
-        fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
-            self.label.update_env(|env| {
-                env.set_bounds(rect.size.cast());
-                env.set_align(align.unwrap_or(Align::Default, Align::Center));
-            });
+            let align = align.unwrap_or(Align::Default, Align::Center);
+            mgr.text_set_size(&mut self.label, TextClass::Label(self.wrap), rect.size, align);
         }
 
         #[cfg(feature = "min_spec")]

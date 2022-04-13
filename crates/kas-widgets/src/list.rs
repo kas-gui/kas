@@ -219,20 +219,29 @@ impl_scope! {
 
     impl Layout for Self {
         fn layout(&mut self) -> layout::Layout<'_> {
-            if self.size_solved {
-                layout::Layout::slice(&mut self.widgets, self.direction, &mut self.layout_store)
-            } else {
-                // Draw without sizing all elements may cause a panic, so don't.
-                Default::default()
-            }
+            layout::Layout::slice(&mut self.widgets, self.direction, &mut self.layout_store)
         }
 
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            // Assumption: if size_rules is called, then set_rect will be too.
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+            self.core_data_mut().rect = rect;
+            self.layout().set_rect(mgr, rect, align);
             self.size_solved = true;
+        }
 
-            layout::Layout::slice(&mut self.widgets, self.direction, &mut self.layout_store)
-                .size_rules(size_mgr, axis)
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) || !self.size_solved {
+                return None;
+            }
+
+            let coord = coord + self.translation();
+            self.layout().find_id(coord).or_else(|| Some(self.id()))
+        }
+
+        fn draw(&mut self, draw: DrawMgr) {
+            if self.size_solved {
+                let id = self.id(); // clone to avoid borrow conflict
+                self.layout().draw(draw, &id);
+            }
         }
     }
 
