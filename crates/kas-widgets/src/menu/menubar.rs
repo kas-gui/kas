@@ -202,7 +202,7 @@ impl_scope! {
         }
     }
 
-    impl Menu for Self {
+    impl Self {
         fn set_menu_path(&mut self, mgr: &mut EventMgr, target: Option<&WidgetId>, set_focus: bool) {
             log::trace!("{}::set_menu_path: target={:?}, set_focus={}", self.identify(), target, set_focus);
             self.delayed_open = None;

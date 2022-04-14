@@ -95,7 +95,14 @@ impl_scope! {
         }
     }
 
-    impl Menu for Self {}
+    impl Menu for Self {
+        fn menu_sub_items(&mut self) -> Option<(
+            &mut MenuLabel,
+            Option<&mut dyn WidgetConfig>,
+        )> {
+            Some((&mut self.label, None))
+        }
+    }
 }
 
 impl_scope! {
@@ -147,7 +154,14 @@ impl_scope! {
         type Msg = M;
     }
 
-    impl Menu for Self {}
+    impl Menu for Self {
+        fn menu_sub_items(&mut self) -> Option<(
+            &mut MenuLabel,
+            Option<&mut dyn WidgetConfig>,
+        )> {
+            Some((&mut self.label, Some(&mut self.checkbox)))
+        }
+    }
 
     impl MenuToggle<VoidMsg> {
         /// Construct a toggleable menu entry with a given `label`

@@ -330,7 +330,9 @@ impl<M: 'static> ComboBox<M> {
     ///
     /// Panics if `index` is out of bounds.
     pub fn replace<T: Into<AccelString>>(&mut self, mgr: &mut SetRectMgr, index: usize, label: T) {
-        *mgr |= self.popup.inner[index].set_accel(label);
+        self.popup
+            .inner
+            .replace(mgr, index, MenuEntry::new(label, ()));
     }
 }
 

@@ -5,7 +5,7 @@
 
 //! Message Map widget
 
-use crate::Menu;
+use crate::{Menu, MenuLabel};
 use kas::prelude::*;
 use std::rc::Rc;
 
@@ -69,6 +69,12 @@ impl_scope! {
     }
 
     impl<W: Menu, M: 'static> Menu for MapResponse<W, M> {
+        fn menu_sub_items(&mut self) -> Option<(
+            &mut MenuLabel,
+            Option<&mut dyn WidgetConfig>,
+        )> {
+            self.inner.menu_sub_items()
+        }
         fn menu_is_open(&self) -> bool {
             self.inner.menu_is_open()
         }

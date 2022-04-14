@@ -25,7 +25,21 @@ pub type MenuLabel = kas::component::Label<AccelString>;
 /// Trait governing menus, sub-menus and menu-entries
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait Menu: Widget {
-    /// Report whether one's own menu is open
+    /// Access row items for aligned layout
+    ///
+    /// If this is implemented, the row will be sized and layout through direct
+    /// access to these sub-components. [`Layout::size_rules`] will not be
+    /// invoked on `self`. [`Layout::set_rect`] will be, but should not set the
+    /// position of these items. [`Layout::draw`] should draw all components,
+    /// including a frame with style [`kas::theme::FrameStyle::MenuEntry`] on
+    /// self.
+    ///
+    /// Return value is `None` or `Some((label, opt_toggle))`.
+    fn menu_sub_items(&mut self) -> Option<(&mut MenuLabel, Option<&mut dyn WidgetConfig>)> {
+        None
+    }
+
+    /// Report whether a submenu (if any) is open
     ///
     /// By default, this is `false`.
     fn menu_is_open(&self) -> bool {
