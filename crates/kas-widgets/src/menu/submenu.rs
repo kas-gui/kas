@@ -5,8 +5,9 @@
 
 //! Sub-menu
 
-use super::{BoxedMenu, Menu};
+use super::{BoxedMenu, Menu, MenuLabel};
 use crate::{Column, PopupFrame};
+use kas::component::Component;
 use kas::event::{self, Command};
 use kas::prelude::*;
 use kas::theme::{FrameStyle, TextClass};
@@ -21,9 +22,8 @@ impl_scope! {
         core: CoreData,
         direction: D,
         pub(crate) key_nav: bool,
-        label: Text<AccelString>,
-        label_store: layout::TextStorage,
-        frame_store: layout::FrameStorage,
+        label: MenuLabel,
+        layout_frame: layout::FrameStorage,
         #[widget]
         pub list: PopupFrame<Column<BoxedMenu<M>>>,
         popup_id: Option<WindowId>,
@@ -59,14 +59,15 @@ impl_scope! {
     impl Self {
         /// Construct a sub-menu
         #[inline]
-        pub fn new_with_direction<S: Into<AccelString>>(direction: D, label: S, list: Vec<BoxedMenu<M>>) -> Self {
+        pub fn new_with_direction<S: Into<AccelString>>(
+            direction: D, label: S, list: Vec<BoxedMenu<M>>
+        ) -> Self {
             SubMenu {
                 core: Default::default(),
                 direction,
                 key_nav: true,
-                label: Text::new_single(label.into()),
-                label_store: Default::default(),
-                frame_store: Default::default(),
+                label: MenuLabel::new(label.into(), TextClass::MenuLabel),
+                layout_frame: Default::default(),
                 list: PopupFrame::new(Column::new(list)),
                 popup_id: None,
             }
@@ -123,7 +124,7 @@ impl_scope! {
     impl WidgetConfig for Self {
         fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
             self.core_data_mut().id = id;
-            mgr.add_accel_keys(self.id_ref(), self.label.text().keys());
+            mgr.add_accel_keys(self.id_ref(), self.label.keys());
             mgr.new_accel_layer(self.id(), true);
 
             let id = self.id_ref().make_child(widget_index![self.list]);
@@ -139,8 +140,8 @@ impl_scope! {
 
     impl kas::Layout for Self {
         fn layout(&mut self) -> layout::Layout<'_> {
-            let label = layout::Layout::text(&mut self.label_store, &mut self.label, TextClass::MenuLabel);
-            layout::Layout::frame(&mut self.frame_store, label, FrameStyle::MenuEntry)
+            let label = layout::Layout::component(&mut self.label);
+            layout::Layout::frame(&mut self.layout_frame, label, FrameStyle::MenuEntry)
         }
 
         fn spatial_nav(&mut self, _: &mut SetRectMgr, _: bool, _: Option<usize>) -> Option<usize> {
@@ -150,11 +151,7 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawMgr) {
             draw.frame(&*self, FrameStyle::MenuEntry, Default::default());
-            draw.text_effects(
-                kas::theme::IdCoord(self.id_ref(), self.label_store.pos),
-                &self.label,
-                TextClass::MenuLabel,
-            );
+            self.label.draw(draw, &self.core.id);
         }
     }
 
@@ -236,11 +233,11 @@ impl_scope! {
     impl SetAccel for Self {
         fn set_accel_string(&mut self, string: AccelString) -> TkAction {
             let mut action = TkAction::empty();
-            if self.label.text().keys() != string.keys() {
+            if self.label.keys() != string.keys() {
                 action |= TkAction::RECONFIGURE;
             }
-            let avail = self.core.rect.size.clamped_sub(self.frame_store.size);
-            action | kas::text::util::set_text_and_prepare(&mut self.label, string, avail)
+            let avail = self.core.rect.size.clamped_sub(self.layout_frame.size);
+            action | self.label.set_text_and_prepare(string, avail)
         }
     }
 }

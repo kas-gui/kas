@@ -19,6 +19,9 @@ pub use menu_entry::{MenuEntry, MenuToggle};
 pub use menubar::{MenuBar, MenuBuilder};
 pub use submenu::SubMenu;
 
+/// Menu label component
+pub type MenuLabel = kas::component::Label<AccelString>;
+
 /// Trait governing menus, sub-menus and menu-entries
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait Menu: Widget {

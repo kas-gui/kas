@@ -11,10 +11,10 @@
 use super::{AlignHints, AxisInfo, RulesSetter, RulesSolver, SetRectMgr, SizeRules, Storage};
 use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
+use crate::component::Component;
 use crate::draw::color::Rgb;
 use crate::geom::{Coord, Offset, Rect, Size};
-use crate::text::{Align, TextApi};
-use crate::theme::{Background, DrawMgr, FrameStyle, IdCoord, IdRect, SizeMgr, TextClass};
+use crate::theme::{Background, DrawMgr, FrameStyle, IdRect, SizeMgr};
 use crate::WidgetId;
 use crate::{dir::Directional, WidgetConfig};
 use std::any::Any;
@@ -81,6 +81,8 @@ pub struct Layout<'a> {
 enum LayoutType<'a> {
     /// No layout
     None,
+    /// A component
+    Component(&'a mut dyn Component),
     /// A single child widget
     Single(&'a mut dyn WidgetConfig),
     /// A single child widget with alignment
@@ -143,9 +145,9 @@ impl<'a> Layout<'a> {
         Layout { layout }
     }
 
-    /// Place a text element in the layout
-    pub fn text(data: &'a mut TextStorage, text: &'a mut dyn TextApi, class: TextClass) -> Self {
-        let layout = LayoutType::Visitor(Box::new(Text { data, text, class }));
+    /// Place a component in the layout
+    pub fn component(component: &'a mut dyn Component) -> Self {
+        let layout = LayoutType::Component(component);
         Layout { layout }
     }
 
@@ -222,6 +224,7 @@ impl<'a> Layout<'a> {
         };
         match &mut self.layout {
             LayoutType::None => SizeRules::EMPTY,
+            LayoutType::Component(component) => component.size_rules(mgr, axis),
             LayoutType::Single(child) => child.size_rules(mgr, axis),
             LayoutType::AlignSingle(child, _) => child.size_rules(mgr, axis),
             LayoutType::AlignLayout(layout, _) => layout.size_rules_(mgr, axis),
@@ -239,6 +242,7 @@ impl<'a> Layout<'a> {
     fn set_rect_(&mut self, mgr: &mut SetRectMgr, mut rect: Rect, align: AlignHints) {
         match &mut self.layout {
             LayoutType::None => (),
+            LayoutType::Component(component) => component.set_rect(mgr, rect, align),
             LayoutType::Single(child) => child.set_rect(mgr, rect, align),
             LayoutType::AlignSingle(child, hints) => {
                 let align = hints.combine(align);
@@ -268,6 +272,7 @@ impl<'a> Layout<'a> {
     fn is_reversed_(&mut self) -> bool {
         match &mut self.layout {
             LayoutType::None => false,
+            LayoutType::Component(component) => component.is_reversed(),
             LayoutType::Single(_) | LayoutType::AlignSingle(_, _) => false,
             LayoutType::AlignLayout(layout, _) => layout.is_reversed_(),
             LayoutType::Frame(layout, _, _) => layout.is_reversed_(),
@@ -287,6 +292,7 @@ impl<'a> Layout<'a> {
     fn find_id_(&mut self, coord: Coord) -> Option<WidgetId> {
         match &mut self.layout {
             LayoutType::None => None,
+            LayoutType::Component(component) => component.find_id(coord),
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => child.find_id(coord),
             LayoutType::AlignLayout(layout, _) => layout.find_id_(coord),
             LayoutType::Frame(child, _, _) => child.find_id_(coord),
@@ -304,6 +310,7 @@ impl<'a> Layout<'a> {
     fn draw_(&mut self, mut draw: DrawMgr, id: &WidgetId) {
         match &mut self.layout {
             LayoutType::None => (),
+            LayoutType::Component(component) => component.draw(draw, id),
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => child.draw(draw.re()),
             LayoutType::AlignLayout(layout, _) => layout.draw_(draw, id),
             LayoutType::Frame(child, storage, style) => {
@@ -469,46 +476,5 @@ pub struct FrameStorage {
 impl Storage for FrameStorage {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
-    }
-}
-
-/// Layout storage for text element
-#[derive(Clone, Default, Debug)]
-pub struct TextStorage {
-    /// Position of text
-    pub pos: Coord,
-}
-
-struct Text<'a> {
-    data: &'a mut TextStorage,
-    text: &'a mut dyn TextApi,
-    class: TextClass,
-}
-
-impl<'a> Visitor for Text<'a> {
-    fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-        mgr.text_bound(self.text, self.class, axis)
-    }
-
-    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
-        self.data.pos = rect.pos;
-        let halign = match self.class {
-            TextClass::Button => Align::Center,
-            _ => Align::Default,
-        };
-        let align = align.unwrap_or(halign, Align::Center);
-        mgr.text_set_size(self.text, self.class, rect.size, align);
-    }
-
-    fn is_reversed(&mut self) -> bool {
-        false
-    }
-
-    fn find_id(&mut self, _: Coord) -> Option<WidgetId> {
-        None
-    }
-
-    fn draw(&mut self, mut draw: DrawMgr, id: &WidgetId) {
-        draw.text_effects(IdCoord(id, self.data.pos), self.text, self.class);
     }
 }

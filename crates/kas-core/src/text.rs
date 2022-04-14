@@ -34,6 +34,8 @@ pub mod util {
     /// this parameter is a little bit wrong then resizes may sometimes happen
     /// unnecessarily or may not happen when text is slightly too big (e.g.
     /// spills into the margin area); this behaviour is probably acceptable.
+    /// Passing `Size::ZERO` will always resize (unless text is empty).
+    /// Passing `Size::MAX` should never resize.
     pub fn set_text_and_prepare<T: format::FormattableText>(
         text: &mut Text<T>,
         s: T,
@@ -67,7 +69,10 @@ pub mod util {
     ///
     /// Note: an alternative approach would be to delay text preparation by
     /// adding TkAction::PREPARE and a new method, perhaps in Layout.
-    fn prepare_if_needed<T: format::FormattableText>(text: &mut Text<T>, avail: Size) -> TkAction {
+    pub(crate) fn prepare_if_needed<T: format::FormattableText>(
+        text: &mut Text<T>,
+        avail: Size,
+    ) -> TkAction {
         if fonts::fonts().num_faces() == 0 {
             // Fonts not loaded yet: cannot prepare and can assume it will happen later anyway.
             return TkAction::empty();

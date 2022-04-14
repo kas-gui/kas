@@ -6,6 +6,7 @@
 //! Combobox
 
 use super::{IndexedColumn, MenuEntry, PopupFrame};
+use kas::component::Label;
 use kas::event::{self, Command};
 use kas::layout;
 use kas::prelude::*;
@@ -26,9 +27,8 @@ impl_scope! {
     pub struct ComboBox<M: 'static> {
         #[widget_core]
         core: CoreData,
-        label: Text<String>,
+        label: Label<String>,
         layout_frame: layout::FrameStorage,
-        layout_text: layout::TextStorage,
         #[widget]
         popup: ComboPopup,
         active: usize,
@@ -39,7 +39,7 @@ impl_scope! {
 
     impl kas::Layout for Self {
         fn layout(&mut self) -> layout::Layout<'_> {
-            let inner = layout::Layout::text(&mut self.layout_text, &mut self.label, TextClass::Button);
+            let inner = layout::Layout::component(&mut self.label);
             layout::Layout::button(&mut self.layout_frame, inner, None)
         }
 
@@ -211,12 +211,11 @@ impl ComboBox<VoidMsg> {
     #[inline]
     pub fn new(entries: Vec<MenuEntry<()>>, active: usize) -> Self {
         let label = entries.get(active).map(|entry| entry.get_string());
-        let label = Text::new_single(label.unwrap_or("".to_string()));
+        let label = Label::new(label.unwrap_or("".to_string()), TextClass::Button);
         ComboBox {
             core: Default::default(),
             label,
             layout_frame: Default::default(),
-            layout_text: Default::default(),
             popup: ComboPopup {
                 core: Default::default(),
                 inner: PopupFrame::new(IndexedColumn::new(entries)),
@@ -243,7 +242,6 @@ impl ComboBox<VoidMsg> {
             core: self.core,
             label: self.label,
             layout_frame: self.layout_frame,
-            layout_text: self.layout_text,
             popup: self.popup,
             active: self.active,
             opening: self.opening,
@@ -274,7 +272,7 @@ impl<M: 'static> ComboBox<M> {
                 "".to_string()
             };
             let avail = self.core.rect.size.clamped_sub(self.layout_frame.size);
-            kas::text::util::set_text_and_prepare(&mut self.label, string, avail)
+            self.label.set_text_and_prepare(string, avail)
         } else {
             TkAction::empty()
         }
