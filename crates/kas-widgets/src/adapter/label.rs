@@ -66,6 +66,15 @@ impl_scope! {
             (self.inner, self.label)
         }
 
+        /// Access layout storage
+        ///
+        /// The number of columns/rows is fixed at two: the `inner` widget, and
+        /// the `label` (in this order, regardless of direction).
+        #[inline]
+        pub fn layout_storage(&mut self) -> &mut impl layout::RowStorage {
+            &mut self.layout_store
+        }
+
         /// Get whether line-wrapping is enabled
         #[inline]
         pub fn wrap(&self) -> bool {

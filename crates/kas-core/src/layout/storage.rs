@@ -32,22 +32,35 @@ impl Storage for () {
 
 /// Requirements of row solver storage type
 ///
-/// Details are hidden (for internal use only).
+/// Usually this is set by a [`crate::layout::RowSolver`] from
+/// [`crate::Layout::size_rules`], then used by [`crate::Layout::set_rect`] to
+/// divide the assigned rect between children.
+///
+/// It may be useful to access this directly if not solving size rules normally;
+/// specifically this allows a different size solver to replace `size_rules` and
+/// influence `set_rect`.
+///
+/// Note: some implementations allocate when [`Self::set_dim`] is first called.
+/// It is expected that this method is called before other methods.
 pub trait RowStorage: sealed::Sealed + Clone {
-    #[doc(hidden)]
+    /// Set dimension: number of columns or rows
     fn set_dim(&mut self, cols: usize);
 
-    #[doc(hidden)]
+    /// Access [`SizeRules`] for each column/row
     fn rules(&mut self) -> &mut [SizeRules] {
         self.widths_and_rules().1
     }
 
-    #[doc(hidden)]
+    /// Access widths for each column/row
+    ///
+    /// Widths are calculated from rules when `set_rect` is called. Assigning
+    /// to widths before `set_rect` is called only has any effect when the available
+    /// size exceeds the minimum required (see [`SizeRules::solve_seq`]).
     fn widths(&mut self) -> &mut [i32] {
         self.widths_and_rules().0
     }
 
-    #[doc(hidden)]
+    /// Access widths and rules simultaneously
     fn widths_and_rules(&mut self) -> (&mut [i32], &mut [SizeRules]);
 }
 
@@ -136,32 +149,52 @@ where
 
 /// Requirements of grid solver storage type
 ///
-/// Details are hidden (for internal use only).
+/// Usually this is set by a [`crate::layout::GridSolver`] from
+/// [`crate::Layout::size_rules`], then used by [`crate::Layout::set_rect`] to
+/// divide the assigned rect between children.
+///
+/// It may be useful to access this directly if not solving size rules normally;
+/// specifically this allows a different size solver to replace `size_rules` and
+/// influence `set_rect`.
+///
+/// Note: some implementations allocate when [`Self::set_dims`] is first called.
+/// It is expected that this method is called before other methods.
 pub trait GridStorage: sealed::Sealed + Clone {
-    #[doc(hidden)]
+    /// Set dimension: number of columns and rows
     fn set_dims(&mut self, cols: usize, rows: usize);
 
-    #[doc(hidden)]
+    /// Access [`SizeRules`] for each column
     fn width_rules(&mut self) -> &mut [SizeRules] {
         self.widths_and_rules().1
     }
-    #[doc(hidden)]
+
+    /// Access [`SizeRules`] for each row
     fn height_rules(&mut self) -> &mut [SizeRules] {
         self.heights_and_rules().1
     }
 
-    #[doc(hidden)]
+    /// Access widths for each column
+    ///
+    /// Widths are calculated from rules when `set_rect` is called. Assigning
+    /// to widths before `set_rect` is called only has any effect when the available
+    /// size exceeds the minimum required (see [`SizeRules::solve_seq`]).
     fn widths(&mut self) -> &mut [i32] {
         self.widths_and_rules().0
     }
-    #[doc(hidden)]
+
+    /// Access heights for each row
+    ///
+    /// Heights are calculated from rules when `set_rect` is called. Assigning
+    /// to heights before `set_rect` is called only has any effect when the available
+    /// size exceeds the minimum required (see [`SizeRules::solve_seq`]).
     fn heights(&mut self) -> &mut [i32] {
         self.heights_and_rules().0
     }
 
-    #[doc(hidden)]
+    /// Access column widths and rules simultaneously
     fn widths_and_rules(&mut self) -> (&mut [i32], &mut [SizeRules]);
-    #[doc(hidden)]
+
+    /// Access row heights and rules simultaneously
     fn heights_and_rules(&mut self) -> (&mut [i32], &mut [SizeRules]);
 }
 

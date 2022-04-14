@@ -345,6 +345,14 @@ impl_scope! {
             self.direction.as_direction()
         }
 
+        /// Access layout storage
+        ///
+        /// The number of columns/rows is [`Self.len`].
+        #[inline]
+        pub fn layout_storage(&mut self) -> &mut impl layout::RowStorage {
+            &mut self.layout_store
+        }
+
         /// True if there are no child widgets
         pub fn is_empty(&self) -> bool {
             self.widgets.is_empty()

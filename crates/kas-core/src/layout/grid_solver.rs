@@ -12,8 +12,9 @@ use super::{GridStorage, RowTemp, RulesSetter, RulesSolver};
 use crate::cast::{Cast, Conv};
 use crate::geom::{Coord, Offset, Rect, Size};
 
+/// Bound on [`GridSolver`] type parameters
 pub trait DefaultWithLen {
-    // Construct with default elements of given length; panic on failure
+    /// Construct with default elements of given length; panic on failure
     fn default_with_len(len: usize) -> Self;
 }
 impl<T: Copy + Default, const N: usize> DefaultWithLen for [T; N] {
