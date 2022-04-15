@@ -33,10 +33,10 @@ pub struct StorageChain(Option<(Box<StorageChain>, Box<dyn Storage>)>);
 impl StorageChain {
     /// Access layout storage
     ///
-    /// This storage is allocated and initialised on first access.
+    /// This storage is allocated and initialised via `f()` on first access.
     ///
     /// Panics if the type `T` differs from the initial usage.
-    pub fn storage<T: Storage + Default>(&mut self) -> (&mut T, &mut StorageChain) {
+    pub fn storage<T: Storage, F: FnOnce() -> T>(&mut self, f: F) -> (&mut T, &mut StorageChain) {
         if let StorageChain(Some(ref mut b)) = self {
             let storage =
                 b.1.downcast_mut()
@@ -45,7 +45,7 @@ impl StorageChain {
         }
         // TODO(rust#42877): store (StorageChain, dyn Storage) tuple in a single box
         let s = Box::new(StorageChain(None));
-        let t: Box<dyn Storage> = Box::new(T::default());
+        let t: Box<dyn Storage> = Box::new(f());
         *self = StorageChain(Some((s, t)));
         match self {
             StorageChain(Some(b)) => (b.1.downcast_mut::<T>().unwrap(), &mut b.0),

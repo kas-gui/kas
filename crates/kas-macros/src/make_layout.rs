@@ -491,7 +491,7 @@ impl Layout {
             Layout::Frame(layout, style) => {
                 let inner = layout.generate(children)?;
                 quote! {
-                    let (data, next) = _chain.storage::<layout::FrameStorage>();
+                    let (data, next) = _chain.storage::<layout::FrameStorage, _>(Default::default);
                     _chain = next;
                     layout::Layout::frame(data, #inner, #style)
                 }
@@ -531,7 +531,7 @@ impl Layout {
                 };
                 // Get a storage slot from the chain. Order doesn't matter.
                 let data = quote! { {
-                    let (data, next) = _chain.storage::<#storage>();
+                    let (data, next) = _chain.storage::<#storage, _>(Default::default);
                     _chain = next;
                     data
                 } };
@@ -542,7 +542,7 @@ impl Layout {
             }
             Layout::Slice(dir, expr) => {
                 let data = quote! { {
-                    let (data, next) = _chain.storage::<layout::DynRowStorage>();
+                    let (data, next) = _chain.storage::<layout::DynRowStorage, _>(Default::default);
                     _chain = next;
                     data
                 } };
@@ -551,7 +551,8 @@ impl Layout {
             Layout::Grid(dim, cells) => {
                 let (cols, rows) = (dim.cols as usize, dim.rows as usize);
                 let data = quote! { {
-                    let (data, next) = _chain.storage::<layout::FixedGridStorage<#cols, #rows>>();
+                    type Storage = layout::FixedGridStorage<#cols, #rows>;
+                    let (data, next) = _chain.storage::<Storage, _>(Default::default);
                     _chain = next;
                     data
                 } };
