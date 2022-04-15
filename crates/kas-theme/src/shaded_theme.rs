@@ -17,7 +17,7 @@ use kas::event::EventState;
 use kas::geom::*;
 use kas::text::{TextApi, TextDisplay};
 use kas::theme::{self, Background, SizeHandle, ThemeControl};
-use kas::theme::{FrameStyle, TextClass};
+use kas::theme::{FrameStyle, MarkStyle, TextClass};
 use kas::{TkAction, WidgetId};
 
 /// A theme using simple shading to give apparent depth to elements
@@ -70,6 +70,7 @@ const DIMS: dim::Parameters = dim::Parameters {
     menu_frame: 2.4,
     button_frame: 5.0,
     checkbox_inner: 9.0,
+    mark: 9.0,
     scrollbar_size: Vec2::splat(8.0),
     slider_size: Vec2(12.0, 25.0),
     progress_bar: Vec2::splat(12.0),
@@ -398,6 +399,10 @@ where
             let col = self.cols.check_mark_state(state);
             self.draw.shaded_circle(inner, (0.0, 1.0), col);
         }
+    }
+
+    fn mark(&mut self, id: &WidgetId, rect: Rect, style: MarkStyle) {
+        self.as_flat().mark(id, rect, style);
     }
 
     fn scrollbar(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, _: Direction) {

@@ -12,8 +12,9 @@ use super::{GridStorage, RowTemp, RulesSetter, RulesSolver};
 use crate::cast::{Cast, Conv};
 use crate::geom::{Coord, Offset, Rect, Size};
 
+/// Bound on [`GridSolver`] type parameters
 pub trait DefaultWithLen {
-    // Construct with default elements of given length; panic on failure
+    /// Construct with default elements of given length; panic on failure
     fn default_with_len(len: usize) -> Self;
 }
 impl<T: Copy + Default, const N: usize> DefaultWithLen for [T; N] {
@@ -105,11 +106,11 @@ impl<CSR: DefaultWithLen, RSR: DefaultWithLen, S: GridStorage> GridSolver<CSR, R
     fn prepare(&mut self, storage: &mut S) {
         if self.axis.has_fixed {
             if self.axis.is_vertical() {
-                let (widths, rules, total) = storage.widths_rules_total();
-                SizeRules::solve_seq_total(widths, rules, total, self.axis.other_axis);
+                let (widths, rules) = storage.widths_and_rules();
+                SizeRules::solve_seq(widths, rules, self.axis.other_axis);
             } else {
-                let (heights, rules, total) = storage.heights_rules_total();
-                SizeRules::solve_seq_total(heights, rules, total, self.axis.other_axis);
+                let (heights, rules) = storage.heights_and_rules();
+                SizeRules::solve_seq(heights, rules, self.axis.other_axis);
             }
         }
 
@@ -243,18 +244,14 @@ where
                 rules.distribute_span_over(&mut widths[begin..end]);
             }
 
-            widths.iter().sum()
+            SizeRules::sum(widths)
         }
 
-        let rules;
         if self.axis.is_horizontal() {
-            rules = calculate(storage.width_rules(), self.col_spans.as_mut());
-            storage.set_width_total(rules);
+            calculate(storage.width_rules(), self.col_spans.as_mut())
         } else {
-            rules = calculate(storage.height_rules(), self.row_spans.as_mut());
-            storage.set_height_total(rules);
+            calculate(storage.height_rules(), self.row_spans.as_mut())
         }
-        rules
     }
 }
 
@@ -286,7 +283,8 @@ impl<CT: RowTemp, RT: RowTemp, S: GridStorage> GridSetter<CT, RT, S> {
 
         if cols > 0 {
             let align = align.horiz.unwrap_or(Align::Default);
-            let (widths, rules, total) = storage.widths_rules_total();
+            let (widths, rules) = storage.widths_and_rules();
+            let total = SizeRules::sum(rules);
             let max_size = total.max_size();
             let mut target = rect.size.0;
 
@@ -312,7 +310,8 @@ impl<CT: RowTemp, RT: RowTemp, S: GridStorage> GridSetter<CT, RT, S> {
 
         if rows > 0 {
             let align = align.vert.unwrap_or(Align::Default);
-            let (heights, rules, total) = storage.heights_rules_total();
+            let (heights, rules) = storage.heights_and_rules();
+            let total = SizeRules::sum(rules);
             let max_size = total.max_size();
             let mut target = rect.size.1;
 

@@ -21,9 +21,7 @@
 //!
 //! ## Menus
 //!
-//! -   [`ComboBox`]: a simple pop-up selector
-//! -   [`MenuBar`], [`SubMenu`]: menu parent widgets
-//! -   [`MenuEntry`], [`MenuToggle`], [`Separator`]: menu entries
+//! See the [`menu`] module.
 //!
 //! ## Controls
 //!
@@ -73,7 +71,7 @@ mod label;
 mod list;
 #[macro_use]
 mod macros;
-mod menu;
+pub mod menu;
 mod nav_frame;
 mod progress;
 mod radiobox;
@@ -101,7 +99,6 @@ pub use frame::{Frame, PopupFrame};
 pub use grid::{BoxGrid, Grid};
 pub use label::{AccelLabel, Label, StrLabel, StringLabel};
 pub use list::*;
-pub use menu::*;
 pub use nav_frame::NavFrame;
 pub use progress::ProgressBar;
 pub use radiobox::{RadioBox, RadioBoxBare, RadioBoxGroup};

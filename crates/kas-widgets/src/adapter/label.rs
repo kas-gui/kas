@@ -5,7 +5,7 @@
 
 //! Wrapper adding a label
 
-use kas::text::util::set_text_and_prepare;
+use kas::component::Label;
 use kas::theme::TextClass;
 use kas::{event, layout, prelude::*};
 
@@ -27,8 +27,7 @@ impl_scope! {
         inner: W,
         wrap: bool,
         layout_store: layout::FixedRowStorage<2>,
-        label_store: layout::TextStorage,
-        label: Text<AccelString>,
+        label: Label<AccelString>,
     }
 
     impl Self where D: Default {
@@ -43,14 +42,14 @@ impl_scope! {
         /// Construct from `direction`, `inner` widget and `label`
         #[inline]
         pub fn new_with_direction<T: Into<AccelString>>(direction: D, inner: W, label: T) -> Self {
+            let wrap = true;
             WithLabel {
                 core: Default::default(),
                 dir: direction,
                 inner,
-                wrap: true,
+                wrap,
                 layout_store: Default::default(),
-                label_store: Default::default(),
-                label: Text::new_multi(label.into()),
+                label: Label::new(label.into(), TextClass::Label(wrap)),
             }
         }
 
@@ -60,10 +59,19 @@ impl_scope! {
             self.dir.as_direction()
         }
 
-        /// Deconstruct into `(inner, label)`
+        /// Take inner
         #[inline]
-        pub fn deconstruct(self) -> (W, Text<AccelString>) {
-            (self.inner, self.label)
+        pub fn take_inner(self) -> W {
+            self.inner
+        }
+
+        /// Access layout storage
+        ///
+        /// The number of columns/rows is fixed at two: the `inner` widget, and
+        /// the `label` (in this order, regardless of direction).
+        #[inline]
+        pub fn layout_storage(&mut self) -> &mut impl layout::RowStorage {
+            &mut self.layout_store
         }
 
         /// Get whether line-wrapping is enabled
@@ -92,12 +100,12 @@ impl_scope! {
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
         pub fn set_text<T: Into<AccelString>>(&mut self, text: T) -> TkAction {
-            set_text_and_prepare(&mut self.label, text.into(), self.core.rect.size)
+            self.label.set_text_and_prepare(text.into(), self.core.rect.size)
         }
 
         /// Get the accelerator keys
         pub fn keys(&self) -> &[event::VirtualKeyCode] {
-            self.label.text().keys()
+            self.label.keys()
         }
     }
 
@@ -111,7 +119,7 @@ impl_scope! {
         fn layout(&mut self) -> layout::Layout<'_> {
             let arr = [
                 layout::Layout::single(&mut self.inner),
-                layout::Layout::text(&mut self.label_store, &mut self.label, TextClass::Label(self.wrap)),
+                layout::Layout::component(&mut self.label),
             ];
             layout::Layout::list(arr.into_iter(), self.dir, &mut self.layout_store)
         }
@@ -133,10 +141,10 @@ impl_scope! {
     impl SetAccel for Self {
         fn set_accel_string(&mut self, string: AccelString) -> TkAction {
             let mut action = TkAction::empty();
-            if self.label.text().keys() != string.keys() {
+            if self.label.keys() != string.keys() {
                 action |= TkAction::RECONFIGURE;
             }
-            action | set_text_and_prepare(&mut self.label, string, self.core.rect.size)
+            action | self.label.set_text_and_prepare(string, self.core.rect.size)
         }
     }
 }

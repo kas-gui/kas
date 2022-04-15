@@ -274,8 +274,6 @@ impl SpriteDisplay {
     }
 
     /// Generates `size_rules` based on size
-    ///
-    /// Set [`Self::size`] before calling this.
     pub fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo, raw_size: Size) -> SizeRules {
         let margins = self.margins.select(mgr.re()).extract(axis);
         let scale_factor = mgr.scale_factor();

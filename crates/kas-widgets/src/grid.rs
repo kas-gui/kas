@@ -116,6 +116,22 @@ impl<W: Widget> Grid<W> {
         grid
     }
 
+    /// Get grid dimensions
+    ///
+    /// The numbers of rows, columns and spans is determined automatically.
+    #[inline]
+    pub fn dimensions(&self) -> GridDimensions {
+        self.dim
+    }
+
+    /// Access layout storage
+    ///
+    /// Use [`Self::dimensions`] to get expected dimensions.
+    #[inline]
+    pub fn layout_storage(&mut self) -> &mut impl layout::GridStorage {
+        &mut self.data
+    }
+
     fn calc_dim(&mut self) {
         let mut dim = GridDimensions::default();
         for child in &self.widgets {

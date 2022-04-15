@@ -7,13 +7,14 @@
 
 use std::ops::Deref;
 
-#[allow(unused)]
-use super::DrawMgr;
-use super::{FrameStyle, TextClass};
-use crate::geom::Size;
+use super::{FrameStyle, MarkStyle, TextClass};
+use crate::dir::Directional;
+use crate::geom::{Size, Vec2};
 use crate::layout::{AxisInfo, FrameRules, Margins, SizeRules};
 use crate::macros::autoimpl;
-use crate::text::TextApi;
+use crate::text::{Align, TextApi};
+#[allow(unused)]
+use crate::{layout::SetRectMgr, theme::DrawMgr};
 
 // for doc use
 #[allow(unused)]
@@ -88,8 +89,8 @@ impl<'a> SizeMgr<'a> {
     }
 
     /// Size of a frame around another element
-    pub fn frame(&self, style: FrameStyle, is_vert: bool) -> FrameRules {
-        self.0.frame(style, is_vert)
+    pub fn frame(&self, style: FrameStyle, dir: impl Directional) -> FrameRules {
+        self.0.frame(style, dir.is_vertical())
     }
 
     /// Size of a separator frame between items
@@ -125,19 +126,15 @@ impl<'a> SizeMgr<'a> {
         self.0.line_height(class)
     }
 
-    /// Update a [`crate::text::Text`] and get a size bound
+    /// Update a text object, setting font properties and getting a size bound
     ///
-    /// First, this method updates the text's [`Environment`]: `bounds`, `dpp`
-    /// and `pt_size` are set. Second, the text is prepared (which is necessary
-    /// to calculate size requirements). Finally, this converts the requirements
-    /// to a [`SizeRules`] value and returns it.
+    /// This method updates the text's [`Environment`] and uses the result to
+    /// calculate size requirements.
     ///
-    /// Usually this method is used in [`Layout::size_rules`], then
-    /// [`TextApiExt::update_env`] is used in [`Layout::set_rect`].
+    /// It is necessary to update the environment *again* once the target `rect`
+    /// is known: use [`SetRectMgr::text_set_size`] to do this.
     ///
     /// [`Environment`]: crate::text::Environment
-    /// [`Layout::set_rect`]: crate::Layout::set_rect
-    /// [`Layout::size_rules`]: crate::Layout::size_rules
     pub fn text_bound(
         &self,
         text: &mut dyn TextApi,
@@ -145,11 +142,6 @@ impl<'a> SizeMgr<'a> {
         axis: AxisInfo,
     ) -> SizeRules {
         self.0.text_bound(text, class, axis)
-    }
-
-    /// Width of an edit marker
-    pub fn text_cursor_width(&self) -> f32 {
-        self.0.text_cursor_width()
     }
 
     /// Size of the element drawn by [`DrawMgr::checkbox`].
@@ -160,6 +152,11 @@ impl<'a> SizeMgr<'a> {
     /// Size of the element drawn by [`DrawMgr::radiobox`].
     pub fn radiobox(&self) -> Size {
         self.0.radiobox()
+    }
+
+    /// A simple mark
+    pub fn mark(&self, style: MarkStyle, dir: impl Directional) -> SizeRules {
+        self.0.mark(style, dir.is_vertical())
     }
 
     /// Dimensions for a scrollbar
@@ -240,29 +237,36 @@ pub trait SizeHandle {
     /// The height of a line of text
     fn line_height(&self, class: TextClass) -> i32;
 
-    /// Update a [`crate::text::Text`] and get a size bound
+    /// Update a text object, setting font properties and getting a size bound
     ///
-    /// First, this method updates the text's [`Environment`]: `bounds`, `dpp`
-    /// and `pt_size` are set. Second, the text is prepared (which is necessary
-    /// to calculate size requirements). Finally, this converts the requirements
-    /// to a [`SizeRules`] value and returns it.
+    /// This method updates the text's [`Environment`] and uses the result to
+    /// calculate size requirements.
     ///
-    /// Usually this method is used in [`Layout::size_rules`], then
-    /// [`TextApiExt::update_env`] is used in [`Layout::set_rect`].
+    /// It is necessary to update the environment *again* once the target `rect`
+    /// is known: use [`Self::text_set_size`] to do this.
     ///
     /// [`Environment`]: crate::text::Environment
-    /// [`Layout::set_rect`]: crate::Layout::set_rect
-    /// [`Layout::size_rules`]: crate::Layout::size_rules
     fn text_bound(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules;
 
-    /// Width of an edit marker
-    fn text_cursor_width(&self) -> f32;
+    /// Update a text object, setting font properties and wrap size
+    ///
+    /// Returns required size.
+    fn text_set_size(
+        &self,
+        text: &mut dyn TextApi,
+        class: TextClass,
+        size: Size,
+        align: (Align, Align),
+    ) -> Vec2;
 
     /// Size of the element drawn by [`DrawMgr::checkbox`].
     fn checkbox(&self) -> Size;
 
     /// Size of the element drawn by [`DrawMgr::radiobox`].
     fn radiobox(&self) -> Size;
+
+    /// A simple mark
+    fn mark(&self, style: MarkStyle, is_vert: bool) -> SizeRules;
 
     /// Dimensions for a scrollbar
     ///

@@ -32,26 +32,36 @@ impl Storage for () {
 
 /// Requirements of row solver storage type
 ///
-/// Details are hidden (for internal use only).
+/// Usually this is set by a [`crate::layout::RowSolver`] from
+/// [`crate::Layout::size_rules`], then used by [`crate::Layout::set_rect`] to
+/// divide the assigned rect between children.
+///
+/// It may be useful to access this directly if not solving size rules normally;
+/// specifically this allows a different size solver to replace `size_rules` and
+/// influence `set_rect`.
+///
+/// Note: some implementations allocate when [`Self::set_dim`] is first called.
+/// It is expected that this method is called before other methods.
 pub trait RowStorage: sealed::Sealed + Clone {
-    #[doc(hidden)]
+    /// Set dimension: number of columns or rows
     fn set_dim(&mut self, cols: usize);
 
-    #[doc(hidden)]
+    /// Access [`SizeRules`] for each column/row
     fn rules(&mut self) -> &mut [SizeRules] {
-        self.widths_rules_total().1
+        self.widths_and_rules().1
     }
 
-    #[doc(hidden)]
-    fn set_total(&mut self, total: SizeRules);
-
-    #[doc(hidden)]
+    /// Access widths for each column/row
+    ///
+    /// Widths are calculated from rules when `set_rect` is called. Assigning
+    /// to widths before `set_rect` is called only has any effect when the available
+    /// size exceeds the minimum required (see [`SizeRules::solve_seq`]).
     fn widths(&mut self) -> &mut [i32] {
-        self.widths_rules_total().0
+        self.widths_and_rules().0
     }
 
-    #[doc(hidden)]
-    fn widths_rules_total(&mut self) -> (&mut [i32], &mut [SizeRules], SizeRules);
+    /// Access widths and rules simultaneously
+    fn widths_and_rules(&mut self) -> (&mut [i32], &mut [SizeRules]);
 }
 
 /// Fixed-length row storage
@@ -60,7 +70,6 @@ pub trait RowStorage: sealed::Sealed + Clone {
 #[derive(Clone, Debug)]
 pub struct FixedRowStorage<const C: usize> {
     rules: [SizeRules; C],
-    total: SizeRules,
     widths: [i32; C],
 }
 
@@ -68,7 +77,6 @@ impl<const C: usize> Default for FixedRowStorage<C> {
     fn default() -> Self {
         FixedRowStorage {
             rules: [SizeRules::default(); C],
-            total: SizeRules::default(),
             widths: [0; C],
         }
     }
@@ -86,12 +94,8 @@ impl<const C: usize> RowStorage for FixedRowStorage<C> {
         assert_eq!(self.widths.as_ref().len(), cols);
     }
 
-    fn set_total(&mut self, total: SizeRules) {
-        self.total = total;
-    }
-
-    fn widths_rules_total(&mut self) -> (&mut [i32], &mut [SizeRules], SizeRules) {
-        (self.widths.as_mut(), self.rules.as_mut(), self.total)
+    fn widths_and_rules(&mut self) -> (&mut [i32], &mut [SizeRules]) {
+        (self.widths.as_mut(), self.rules.as_mut())
     }
 }
 
@@ -99,7 +103,6 @@ impl<const C: usize> RowStorage for FixedRowStorage<C> {
 #[derive(Clone, Debug, Default)]
 pub struct DynRowStorage {
     rules: Vec<SizeRules>,
-    total: SizeRules,
     widths: Vec<i32>,
 }
 
@@ -115,12 +118,8 @@ impl RowStorage for DynRowStorage {
         self.widths.resize(cols, 0);
     }
 
-    fn set_total(&mut self, total: SizeRules) {
-        self.total = total;
-    }
-
-    fn widths_rules_total(&mut self) -> (&mut [i32], &mut [SizeRules], SizeRules) {
-        (&mut self.widths, &mut self.rules, self.total)
+    fn widths_and_rules(&mut self) -> (&mut [i32], &mut [SizeRules]) {
+        (&mut self.widths, &mut self.rules)
     }
 }
 
@@ -150,38 +149,53 @@ where
 
 /// Requirements of grid solver storage type
 ///
-/// Details are hidden (for internal use only).
+/// Usually this is set by a [`crate::layout::GridSolver`] from
+/// [`crate::Layout::size_rules`], then used by [`crate::Layout::set_rect`] to
+/// divide the assigned rect between children.
+///
+/// It may be useful to access this directly if not solving size rules normally;
+/// specifically this allows a different size solver to replace `size_rules` and
+/// influence `set_rect`.
+///
+/// Note: some implementations allocate when [`Self::set_dims`] is first called.
+/// It is expected that this method is called before other methods.
 pub trait GridStorage: sealed::Sealed + Clone {
-    #[doc(hidden)]
+    /// Set dimension: number of columns and rows
     fn set_dims(&mut self, cols: usize, rows: usize);
 
-    #[doc(hidden)]
+    /// Access [`SizeRules`] for each column
     fn width_rules(&mut self) -> &mut [SizeRules] {
-        self.widths_rules_total().1
+        self.widths_and_rules().1
     }
-    #[doc(hidden)]
+
+    /// Access [`SizeRules`] for each row
     fn height_rules(&mut self) -> &mut [SizeRules] {
-        self.heights_rules_total().1
+        self.heights_and_rules().1
     }
 
-    #[doc(hidden)]
-    fn set_width_total(&mut self, total: SizeRules);
-    #[doc(hidden)]
-    fn set_height_total(&mut self, total: SizeRules);
-
-    #[doc(hidden)]
+    /// Access widths for each column
+    ///
+    /// Widths are calculated from rules when `set_rect` is called. Assigning
+    /// to widths before `set_rect` is called only has any effect when the available
+    /// size exceeds the minimum required (see [`SizeRules::solve_seq`]).
     fn widths(&mut self) -> &mut [i32] {
-        self.widths_rules_total().0
-    }
-    #[doc(hidden)]
-    fn heights(&mut self) -> &mut [i32] {
-        self.heights_rules_total().0
+        self.widths_and_rules().0
     }
 
-    #[doc(hidden)]
-    fn widths_rules_total(&mut self) -> (&mut [i32], &mut [SizeRules], SizeRules);
-    #[doc(hidden)]
-    fn heights_rules_total(&mut self) -> (&mut [i32], &mut [SizeRules], SizeRules);
+    /// Access heights for each row
+    ///
+    /// Heights are calculated from rules when `set_rect` is called. Assigning
+    /// to heights before `set_rect` is called only has any effect when the available
+    /// size exceeds the minimum required (see [`SizeRules::solve_seq`]).
+    fn heights(&mut self) -> &mut [i32] {
+        self.heights_and_rules().0
+    }
+
+    /// Access column widths and rules simultaneously
+    fn widths_and_rules(&mut self) -> (&mut [i32], &mut [SizeRules]);
+
+    /// Access row heights and rules simultaneously
+    fn heights_and_rules(&mut self) -> (&mut [i32], &mut [SizeRules]);
 }
 
 impl_scope! {
@@ -193,8 +207,6 @@ impl_scope! {
     pub struct FixedGridStorage<const C: usize, const R: usize> {
         width_rules: [SizeRules; C] = [SizeRules::default(); C],
         height_rules: [SizeRules; R] = [SizeRules::default(); R],
-        width_total: SizeRules,
-        height_total: SizeRules,
         widths: [i32; C] = [0; C],
         heights: [i32; R] = [0; R],
     }
@@ -214,28 +226,17 @@ impl_scope! {
         }
 
         #[doc(hidden)]
-        fn set_width_total(&mut self, total: SizeRules) {
-            self.width_total = total;
-        }
-        #[doc(hidden)]
-        fn set_height_total(&mut self, total: SizeRules) {
-            self.height_total = total;
-        }
-
-        #[doc(hidden)]
-        fn widths_rules_total(&mut self) -> (&mut [i32], &mut [SizeRules], SizeRules) {
+        fn widths_and_rules(&mut self) -> (&mut [i32], &mut [SizeRules]) {
             (
                 self.widths.as_mut(),
                 self.width_rules.as_mut(),
-                self.width_total,
             )
         }
         #[doc(hidden)]
-        fn heights_rules_total(&mut self) -> (&mut [i32], &mut [SizeRules], SizeRules) {
+        fn heights_and_rules(&mut self) -> (&mut [i32], &mut [SizeRules]) {
             (
                 self.heights.as_mut(),
                 self.height_rules.as_mut(),
-                self.height_total,
             )
         }
     }
@@ -246,8 +247,6 @@ impl_scope! {
 pub struct DynGridStorage {
     width_rules: Vec<SizeRules>,
     height_rules: Vec<SizeRules>,
-    width_total: SizeRules,
-    height_total: SizeRules,
     widths: Vec<i32>,
     heights: Vec<i32>,
 }
@@ -267,29 +266,12 @@ impl GridStorage for DynGridStorage {
     }
 
     #[doc(hidden)]
-    fn set_width_total(&mut self, total: SizeRules) {
-        self.width_total = total;
+    fn widths_and_rules(&mut self) -> (&mut [i32], &mut [SizeRules]) {
+        (self.widths.as_mut(), self.width_rules.as_mut())
     }
     #[doc(hidden)]
-    fn set_height_total(&mut self, total: SizeRules) {
-        self.height_total = total;
-    }
-
-    #[doc(hidden)]
-    fn widths_rules_total(&mut self) -> (&mut [i32], &mut [SizeRules], SizeRules) {
-        (
-            self.widths.as_mut(),
-            self.width_rules.as_mut(),
-            self.width_total,
-        )
-    }
-    #[doc(hidden)]
-    fn heights_rules_total(&mut self) -> (&mut [i32], &mut [SizeRules], SizeRules) {
-        (
-            self.heights.as_mut(),
-            self.height_rules.as_mut(),
-            self.height_total,
-        )
+    fn heights_and_rules(&mut self) -> (&mut [i32], &mut [SizeRules]) {
+        (self.heights.as_mut(), self.height_rules.as_mut())
     }
 }
 

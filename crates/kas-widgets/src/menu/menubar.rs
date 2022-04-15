@@ -6,9 +6,10 @@
 //! Menubar
 
 use super::{Menu, SubMenu, SubMenuBuilder};
-use crate::IndexedList;
 use kas::event::{self, Command};
+use kas::layout::{self, RowSetter, RowSolver, RulesSetter, RulesSolver};
 use kas::prelude::*;
+use kas::theme::FrameStyle;
 
 impl_scope! {
     /// A menu-bar
@@ -16,14 +17,13 @@ impl_scope! {
     /// This widget houses a sequence of menu buttons, allowing input actions across
     /// menus.
     #[autoimpl(Debug where D: trait)]
-    #[widget{
-        layout = single;
-    }]
+    #[widget]
     pub struct MenuBar<M: 'static, D: Directional = kas::dir::Right> {
         #[widget_core]
         core: CoreData,
-        #[widget]
-        pub bar: IndexedList<D, SubMenu<M, D::Flipped>>,
+        direction: D,
+        widgets: Vec<SubMenu<M, D::Flipped>>,
+        layout_store: layout::DynRowStorage,
         delayed_open: Option<WidgetId>,
     }
 
@@ -46,13 +46,59 @@ impl_scope! {
             }
             MenuBar {
                 core: Default::default(),
-                bar: IndexedList::new_with_direction(direction, menus),
+                direction,
+                widgets: menus,
+                layout_store: Default::default(),
                 delayed_open: None,
             }
         }
 
         pub fn builder() -> MenuBuilder<M, D> {
             MenuBuilder { menus: vec![] }
+        }
+    }
+
+    impl WidgetChildren for Self {
+        #[inline]
+        fn num_children(&self) -> usize {
+            self.widgets.len()
+        }
+        #[inline]
+        fn get_child(&self, index: usize) -> Option<&dyn WidgetConfig> {
+            self.widgets.get(index).map(|w| w.as_widget())
+        }
+        #[inline]
+        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
+            self.widgets.get_mut(index).map(|w| w.as_widget_mut())
+        }
+    }
+
+    impl Layout for Self {
+        fn layout(&mut self) -> layout::Layout<'_> {
+            layout::Layout::slice(&mut self.widgets, self.direction, &mut self.layout_store)
+        }
+
+        fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            let dim = (self.direction, self.widgets.len());
+            let mut solver = RowSolver::new(axis, dim, &mut self.layout_store);
+            let frame_rules = mgr.frame(FrameStyle::MenuEntry, axis);
+            for (n, child) in self.widgets.iter_mut().enumerate() {
+                solver.for_child(&mut self.layout_store, n, |axis| {
+                    let rules = child.size_rules(mgr.re(), axis);
+                    frame_rules.surround_as_margin(rules).0
+                });
+            }
+            solver.finish(&mut self.layout_store)
+        }
+
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+            self.core_data_mut().rect = rect;
+            let dim = (self.direction, self.widgets.len());
+            let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, align, &mut self.layout_store);
+
+            for (n, child) in self.widgets.iter_mut().enumerate() {
+                child.set_rect(mgr, setter.child_rect(&mut self.layout_store, n), AlignHints::CENTER);
+            }
         }
     }
 
@@ -76,7 +122,7 @@ impl_scope! {
                 } => {
                     if start_id.as_ref().map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
                         if source.is_primary() {
-                            let any_menu_open = self.bar.iter().any(|w| w.menu_is_open());
+                            let any_menu_open = self.widgets.iter().any(|w| w.menu_is_open());
                             let press_in_the_bar = self.rect().contains(coord);
 
                             if !press_in_the_bar || !any_menu_open {
@@ -85,7 +131,7 @@ impl_scope! {
                             mgr.set_grab_depress(source, start_id.clone());
                             if press_in_the_bar {
                                 if self
-                                    .bar
+                                    .widgets
                                     .iter()
                                     .any(|w| w.eq_id(&start_id) && !w.menu_is_open())
                                 {
@@ -116,7 +162,7 @@ impl_scope! {
                         None => return Response::Used,
                     };
 
-                    if self.bar.is_strict_ancestor_of(&id) {
+                    if self.is_strict_ancestor_of(&id) {
                         // We instantly open a sub-menu on motion over the bar,
                         // but delay when over a sub-menu (most intuitive?)
                         if self.rect().contains(coord) {
@@ -152,17 +198,17 @@ impl_scope! {
                     // Arrow keys can switch to the next / previous menu
                     // as well as to the first / last item of an open menu.
                     use Command::{Left, Up};
-                    let is_vert = self.bar.direction().is_vertical();
-                    let reverse = self.bar.direction().is_reversed() ^ matches!(cmd, Left | Up);
+                    let is_vert = self.direction.is_vertical();
+                    let reverse = self.direction.is_reversed() ^ matches!(cmd, Left | Up);
                     match cmd.as_direction().map(|d| d.is_vertical()) {
                         Some(v) if v == is_vert => {
-                            for i in 0..self.bar.len() {
-                                if self.bar[i].menu_is_open() {
+                            for i in 0..self.widgets.len() {
+                                if self.widgets[i].menu_is_open() {
                                     let mut j = isize::conv(i);
                                     j = if reverse { j - 1 } else { j + 1 };
-                                    j = j.rem_euclid(self.bar.len().cast());
-                                    self.bar[i].set_menu_path(mgr, None, true);
-                                    let w = &mut self.bar[usize::conv(j)];
+                                    j = j.rem_euclid(self.widgets.len().cast());
+                                    self.widgets[i].set_menu_path(mgr, None, true);
+                                    let w = &mut self.widgets[usize::conv(j)];
                                     w.set_menu_path(mgr, Some(&w.id()), true);
                                     break;
                                 }
@@ -184,30 +230,35 @@ impl_scope! {
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
             if self.eq_id(&id) {
-                self.handle(mgr, event)
-            } else {
-                match self.bar.send(mgr, id.clone(), event.clone()) {
-                    Response::Unused => self.handle(mgr, event),
-                    r => r.try_into().unwrap_or_else(|(_, msg)| {
-                        log::trace!(
-                            "Received by {} from {}: {:?}",
-                            self.id(),
-                            id,
-                            kas::util::TryFormat(&msg)
-                        );
-                        Response::Msg(msg)
-                    }),
+                return self.handle(mgr, event);
+            } else if let Some(index) = id.next_key_after(self.id_ref()) {
+                if let Some(widget) = self.widgets.get_mut(index) {
+                    return match widget.send(mgr, id.clone(), event.clone()) {
+                        Response::Unused => self.handle(mgr, event),
+                        r => r.try_into().unwrap_or_else(|msg| {
+                            log::trace!(
+                                "Received by {} from {}: {:?}",
+                                self.id(),
+                                id,
+                                kas::util::TryFormat(&msg)
+                            );
+                            Response::Msg(msg)
+                        }),
+                    };
                 }
             }
+
+            debug_assert!(false, "SendEvent::send: bad WidgetId");
+            Response::Unused
         }
     }
 
-    impl Menu for Self {
+    impl Self {
         fn set_menu_path(&mut self, mgr: &mut EventMgr, target: Option<&WidgetId>, set_focus: bool) {
             log::trace!("{}::set_menu_path: target={:?}, set_focus={}", self.identify(), target, set_focus);
             self.delayed_open = None;
-            for i in 0..self.bar.len() {
-                self.bar[i].set_menu_path(mgr, target, set_focus);
+            for i in 0..self.widgets.len() {
+                self.widgets[i].set_menu_path(mgr, target, set_focus);
             }
         }
     }

@@ -5,11 +5,12 @@
 
 //! Combobox
 
-use super::{IndexedColumn, MenuEntry, PopupFrame};
+use super::{menu::MenuEntry, IndexedColumn, PopupFrame};
+use kas::component::{Label, Mark};
 use kas::event::{self, Command};
 use kas::layout;
 use kas::prelude::*;
-use kas::theme::TextClass;
+use kas::theme::{MarkStyle, TextClass};
 use kas::WindowId;
 use std::rc::Rc;
 
@@ -26,9 +27,10 @@ impl_scope! {
     pub struct ComboBox<M: 'static> {
         #[widget_core]
         core: CoreData,
-        label: Text<String>,
+        label: Label<String>,
+        mark: Mark,
+        layout_list: layout::FixedRowStorage<2>,
         layout_frame: layout::FrameStorage,
-        layout_text: layout::TextStorage,
         #[widget]
         popup: ComboPopup,
         active: usize,
@@ -39,8 +41,12 @@ impl_scope! {
 
     impl kas::Layout for Self {
         fn layout(&mut self) -> layout::Layout<'_> {
-            let inner = layout::Layout::text(&mut self.layout_text, &mut self.label, TextClass::Button);
-            layout::Layout::button(&mut self.layout_frame, inner, None)
+            let list = [
+                layout::Layout::component(&mut self.label),
+                layout::Layout::component(&mut self.mark),
+            ];
+            let list = layout::Layout::list(list.into_iter(), Direction::Right, &mut self.layout_list);
+            layout::Layout::button(&mut self.layout_frame, list, None)
         }
 
         fn spatial_nav(&mut self, _: &mut SetRectMgr, _: bool, _: Option<usize>) -> Option<usize> {
@@ -211,12 +217,13 @@ impl ComboBox<VoidMsg> {
     #[inline]
     pub fn new(entries: Vec<MenuEntry<()>>, active: usize) -> Self {
         let label = entries.get(active).map(|entry| entry.get_string());
-        let label = Text::new_single(label.unwrap_or("".to_string()));
+        let label = Label::new(label.unwrap_or("".to_string()), TextClass::Button);
         ComboBox {
             core: Default::default(),
             label,
+            mark: Mark::new(MarkStyle::Point(Direction::Down)),
+            layout_list: Default::default(),
             layout_frame: Default::default(),
-            layout_text: Default::default(),
             popup: ComboPopup {
                 core: Default::default(),
                 inner: PopupFrame::new(IndexedColumn::new(entries)),
@@ -242,8 +249,9 @@ impl ComboBox<VoidMsg> {
         ComboBox {
             core: self.core,
             label: self.label,
+            mark: self.mark,
+            layout_list: self.layout_list,
             layout_frame: self.layout_frame,
-            layout_text: self.layout_text,
             popup: self.popup,
             active: self.active,
             opening: self.opening,
@@ -274,7 +282,7 @@ impl<M: 'static> ComboBox<M> {
                 "".to_string()
             };
             let avail = self.core.rect.size.clamped_sub(self.layout_frame.size);
-            kas::text::util::set_text_and_prepare(&mut self.label, string, avail)
+            self.label.set_text_and_prepare(string, avail)
         } else {
             TkAction::empty()
         }
@@ -332,7 +340,9 @@ impl<M: 'static> ComboBox<M> {
     ///
     /// Panics if `index` is out of bounds.
     pub fn replace<T: Into<AccelString>>(&mut self, mgr: &mut SetRectMgr, index: usize, label: T) {
-        *mgr |= self.popup.inner[index].set_accel(label);
+        self.popup
+            .inner
+            .replace(mgr, index, MenuEntry::new(label, ()));
     }
 }
 

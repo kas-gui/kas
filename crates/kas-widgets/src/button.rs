@@ -5,6 +5,7 @@
 
 //! Push-buttons
 
+use kas::component::Label;
 use kas::draw::color::Rgb;
 use kas::event::{self, VirtualKeyCode, VirtualKeyCodes};
 use kas::layout;
@@ -180,17 +181,16 @@ impl_scope! {
         #[widget_core]
         core: kas::CoreData,
         keys1: VirtualKeyCodes,
+        label: Label<AccelString>,
         layout_frame: layout::FrameStorage,
-        layout_text: layout::TextStorage,
         color: Option<Rgb>,
-        label: Text<AccelString>,
         on_push: Option<Rc<dyn Fn(&mut EventMgr) -> Option<M>>>,
     }
 
     impl WidgetConfig for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.add_accel_keys(self.id_ref(), &self.keys1);
-            mgr.add_accel_keys(self.id_ref(), self.label.text().keys());
+            mgr.add_accel_keys(self.id_ref(), self.label.keys());
         }
 
         fn key_nav(&self) -> bool {
@@ -203,7 +203,7 @@ impl_scope! {
 
     impl Layout for Self {
         fn layout(&mut self) -> layout::Layout<'_> {
-            let inner = layout::Layout::text(&mut self.layout_text, &mut self.label, TextClass::Button);
+            let inner = layout::Layout::component(&mut self.label);
             layout::Layout::button(&mut self.layout_frame, inner, self.color)
         }
     }
@@ -212,15 +212,12 @@ impl_scope! {
         /// Construct a button with given `label`
         #[inline]
         pub fn new<S: Into<AccelString>>(label: S) -> Self {
-            let label = label.into();
-            let text = Text::new_single(label);
             TextButton {
                 core: Default::default(),
                 keys1: Default::default(),
+                label: Label::new(label.into(), TextClass::Button),
                 layout_frame: Default::default(),
-                layout_text: Default::default(),
                 color: None,
-                label: text,
                 on_push: None,
             }
         }
@@ -240,7 +237,6 @@ impl_scope! {
                 core: self.core,
                 keys1: self.keys1,
                 layout_frame: self.layout_frame,
-                layout_text: self.layout_text,
                 color: self.color,
                 label: self.label,
                 on_push: Some(Rc::new(f)),
@@ -307,11 +303,11 @@ impl_scope! {
     impl SetAccel for Self {
         fn set_accel_string(&mut self, string: AccelString) -> TkAction {
             let mut action = TkAction::empty();
-            if self.label.text().keys() != string.keys() {
+            if self.label.keys() != string.keys() {
                 action |= TkAction::RECONFIGURE;
             }
             let avail = self.core.rect.size.clamped_sub(self.layout_frame.size);
-            action | kas::text::util::set_text_and_prepare(&mut self.label, string, avail)
+            action | self.label.set_text_and_prepare(string, avail)
         }
     }
 

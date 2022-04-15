@@ -5,9 +5,10 @@
 
 //! Menu Entries
 
-use super::Menu;
+use super::{Menu, SubItems};
 use crate::CheckBoxBare;
-use kas::theme::{FrameStyle, TextClass};
+use kas::component::{Component, Label};
+use kas::theme::{FrameStyle, IdRect, TextClass};
 use kas::{layout, prelude::*};
 use std::fmt::Debug;
 
@@ -18,15 +19,13 @@ impl_scope! {
     pub struct MenuEntry<M: Clone + Debug + 'static> {
         #[widget_core]
         core: kas::CoreData,
-        label: Text<AccelString>,
-        layout_label: layout::TextStorage,
-        layout_frame: layout::FrameStorage,
+        label: Label<AccelString>,
         msg: M,
     }
 
     impl WidgetConfig for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
-            mgr.add_accel_keys(self.id_ref(), self.label.text().keys());
+            mgr.add_accel_keys(self.id_ref(), self.label.keys());
         }
 
         fn key_nav(&self) -> bool {
@@ -36,17 +35,12 @@ impl_scope! {
 
     impl Layout for Self {
         fn layout(&mut self) -> layout::Layout<'_> {
-            let inner = layout::Layout::text(&mut self.layout_label, &mut self.label, TextClass::MenuLabel);
-            layout::Layout::frame(&mut self.layout_frame, inner, FrameStyle::MenuEntry)
+            layout::Layout::component(&mut self.label)
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
             draw.frame(&*self, FrameStyle::MenuEntry, Default::default());
-            draw.text_effects(
-                kas::theme::IdCoord(self.id_ref(), self.layout_label.pos),
-                &self.label,
-                TextClass::MenuLabel,
-            );
+            self.label.draw(draw, &self.core.id);
         }
     }
 
@@ -59,9 +53,7 @@ impl_scope! {
         pub fn new<S: Into<AccelString>>(label: S, msg: M) -> Self {
             MenuEntry {
                 core: Default::default(),
-                label: Text::new_single(label.into()),
-                layout_label: Default::default(),
-                layout_frame: Default::default(),
+                label: Label::new(label.into(), TextClass::MenuLabel),
                 msg,
             }
         }
@@ -81,11 +73,11 @@ impl_scope! {
     impl SetAccel for Self {
         fn set_accel_string(&mut self, string: AccelString) -> TkAction {
             let mut action = TkAction::empty();
-            if self.label.text().keys() != string.keys() {
+            if self.label.keys() != string.keys() {
                 action |= TkAction::RECONFIGURE;
             }
-            let avail = self.core.rect.size.clamped_sub(self.layout_frame.size);
-            action | kas::text::util::set_text_and_prepare(&mut self.label, string, avail)
+            let avail = self.core.rect.size;
+            action | self.label.set_text_and_prepare(string, avail)
         }
     }
 
@@ -100,7 +92,14 @@ impl_scope! {
         }
     }
 
-    impl Menu for Self {}
+    impl Menu for Self {
+        fn sub_items(&mut self) -> Option<SubItems> {
+            Some(SubItems {
+                label: Some(&mut self.label),
+                ..Default::default()
+            })
+        }
+    }
 }
 
 impl_scope! {
@@ -114,15 +113,13 @@ impl_scope! {
         core: CoreData,
         #[widget]
         checkbox: CheckBoxBare<M>,
-        label: Text<AccelString>,
-        layout_label: layout::TextStorage,
+        label: Label<AccelString>,
         layout_list: layout::DynRowStorage,
-        layout_frame: layout::FrameStorage,
     }
 
     impl WidgetConfig for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
-            mgr.add_accel_keys(self.checkbox.id_ref(), self.label.text().keys());
+            mgr.add_accel_keys(self.checkbox.id_ref(), self.label.keys());
         }
     }
 
@@ -130,10 +127,9 @@ impl_scope! {
         fn layout(&mut self) -> layout::Layout<'_> {
             let list = [
                 layout::Layout::single(&mut self.checkbox),
-                layout::Layout::text(&mut self.layout_label, &mut self.label, TextClass::MenuLabel),
+                layout::Layout::component(&mut self.label),
             ];
-            let inner = layout::Layout::list(list.into_iter(), Direction::Right, &mut self.layout_list);
-            layout::Layout::frame(&mut self.layout_frame, inner, FrameStyle::MenuEntry)
+            layout::Layout::list(list.into_iter(), Direction::Right, &mut self.layout_list)
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
@@ -144,8 +140,8 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.frame(&*self, FrameStyle::MenuEntry, Default::default());
-            let id = self.id();
+            let id = self.checkbox.id();
+            draw.frame(IdRect(&id, self.rect()), FrameStyle::MenuEntry, Default::default());
             self.layout().draw(draw, &id);
         }
     }
@@ -154,7 +150,15 @@ impl_scope! {
         type Msg = M;
     }
 
-    impl Menu for Self {}
+    impl Menu for Self {
+        fn sub_items(&mut self) -> Option<SubItems> {
+            Some(SubItems {
+                label: Some(&mut self.label),
+                toggle: Some(&mut self.checkbox),
+                ..Default::default()
+            })
+        }
+    }
 
     impl MenuToggle<VoidMsg> {
         /// Construct a toggleable menu entry with a given `label`
@@ -163,10 +167,8 @@ impl_scope! {
             MenuToggle {
                 core: Default::default(),
                 checkbox: CheckBoxBare::new(),
-                label: Text::new_single(label.into()),
-                layout_label: Default::default(),
+                label: Label::new(label.into(), TextClass::MenuLabel),
                 layout_list: Default::default(),
-                layout_frame: Default::default(),
             }
         }
 
@@ -185,9 +187,7 @@ impl_scope! {
                 core: self.core,
                 checkbox: self.checkbox.on_toggle(f),
                 label: self.label,
-                layout_label: self.layout_label,
                 layout_list: self.layout_list,
-                layout_frame: self.layout_frame,
             }
         }
     }

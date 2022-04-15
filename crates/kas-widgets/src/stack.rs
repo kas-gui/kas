@@ -40,7 +40,7 @@ impl_scope! {
         core: CoreData,
         align_hints: AlignHints,
         widgets: Vec<W>,
-        sized_range: Range<usize>,
+        sized_range: Range<usize>, // range of pages for which size rules are solved
         active: usize,
         size_limit: usize,
         next: usize,

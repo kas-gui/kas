@@ -20,7 +20,7 @@ use kas::event::EventState;
 use kas::geom::*;
 use kas::text::{fonts, Effect, TextApi, TextDisplay};
 use kas::theme::{self, SizeHandle, ThemeControl};
-use kas::theme::{Background, FrameStyle, TextClass};
+use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use kas::{TkAction, WidgetId};
 
 // Used to ensure a rectangular background is inside a circular corner.
@@ -114,6 +114,7 @@ const DIMS: dim::Parameters = dim::Parameters {
     // NOTE: visual thickness is (button_frame * scale_factor).round() * (1 - BG_SHRINK_FACTOR)
     button_frame: 2.4,
     checkbox_inner: 7.0,
+    mark: 8.0,
     scrollbar_size: Vec2::splat(8.0),
     slider_size: Vec2(16.0, 16.0),
     progress_bar: Vec2::splat(8.0),
@@ -516,7 +517,7 @@ where
             return;
         }
 
-        let width = self.w.dims.font_marker_width;
+        let width = self.w.dims.mark_line;
         let pos = Vec2::conv(pos);
 
         let mut col = self.cols.nav_focus;
@@ -611,6 +612,48 @@ where
             let inner = Quad::from_coords(inner.a + v, inner.b - v);
             let col = self.cols.check_mark_state(state);
             self.draw.circle(inner, 0.0, col);
+        }
+    }
+
+    fn mark(&mut self, id: &WidgetId, rect: Rect, style: MarkStyle) {
+        let col = if self.ev.is_disabled(id) {
+            self.cols.text_disabled
+        } else {
+            self.cols.text
+        };
+
+        match style {
+            MarkStyle::Point(dir) => {
+                let size = match dir.is_horizontal() {
+                    true => Size(self.w.dims.mark / 2, self.w.dims.mark),
+                    false => Size(self.w.dims.mark, self.w.dims.mark / 2),
+                };
+                let offset = Offset::conv(rect.size.clamped_sub(size) / 2);
+                let q = Quad::conv(Rect::new(rect.pos + offset, size));
+
+                let (p1, p2, p3);
+                if dir.is_horizontal() {
+                    let (mut x1, mut x2) = (q.a.0, q.b.0);
+                    if dir.is_reversed() {
+                        std::mem::swap(&mut x1, &mut x2);
+                    }
+                    p1 = Vec2(x1, q.a.1);
+                    p2 = Vec2(x2, 0.5 * (q.a.1 + q.b.1));
+                    p3 = Vec2(x1, q.b.1);
+                } else {
+                    let (mut y1, mut y2) = (q.a.1, q.b.1);
+                    if dir.is_reversed() {
+                        std::mem::swap(&mut y1, &mut y2);
+                    }
+                    p1 = Vec2(q.a.0, y1);
+                    p2 = Vec2(0.5 * (q.a.0 + q.b.0), y2);
+                    p3 = Vec2(q.b.0, y1);
+                };
+
+                let f = 0.5 * self.w.dims.mark_line;
+                self.draw.rounded_line(p1, p2, f, col);
+                self.draw.rounded_line(p2, p3, f, col);
+            }
         }
     }
 

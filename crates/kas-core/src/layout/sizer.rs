@@ -62,16 +62,13 @@ pub trait RulesSetter {
 
 /// Solve size rules for a widget
 ///
-/// It is required that a widget's `size_rules` method is called, for each axis,
-/// before `set_rect`. This method may be used to call `size_rules` in case the
-/// parent's own `size_rules` method may not.
+/// Automatic layout solving requires that a widget's `size_rules` method is
+/// called for each axis before `set_rect`. This method simply calls
+/// `size_rules` on each axis.
 ///
-/// Note: it is not necessary to solve size rules again before calling
-/// `set_rect` a second time, although if the widget's content changes then it
-/// is recommended.
-///
-/// Note: it is not necessary to ever call `size_rules` *or* `set_rect` if the
-/// widget is never drawn and never receives events.
+/// If `size_rules` is not called, internal layout may be poor (depending on the
+/// widget). If widget content changes, it is recommended to call
+/// `solve_size_rules` and `set_rect` again.
 ///
 /// Parameters `x_size` and `y_size` should be passed where this dimension is
 /// fixed and are used e.g. for text wrapping.
@@ -196,8 +193,8 @@ impl SolveCache {
             width -= self.margins.sum_horiz();
         }
 
-        // We call size_rules not because we want the result, but because our
-        // spec requires that we do so before calling set_rect.
+        // We call size_rules not because we want the result, but to allow
+        // internal layout solving.
         if self.refresh_rules || width != self.last_width {
             if self.refresh_rules {
                 let w = widget.size_rules(mgr.size_mgr(), AxisInfo::new(false, None));

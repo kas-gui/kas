@@ -5,6 +5,8 @@
 
 //! Theme style components
 
+use crate::dir::Direction;
+
 /// Class of text drawn
 ///
 /// Themes choose font, font size, colour, and alignment based on this.
@@ -87,4 +89,11 @@ pub enum FrameStyle {
     Button,
     /// Box used to contain editable text
     EditBox,
+}
+
+/// Style of marks
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub enum MarkStyle {
+    /// An arrowhead/angle-bracket/triangle pointing in the given direction
+    Point(Direction),
 }
