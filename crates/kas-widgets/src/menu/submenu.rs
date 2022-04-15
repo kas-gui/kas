@@ -322,8 +322,8 @@ impl_scope! {
             let frame_rules = mgr.size_mgr().frame(FrameStyle::MenuEntry, is_vert);
             let (_, frame_offset, frame_size) = frame_rules.surround_no_margin(SizeRules::EMPTY);
             let subtract_frame = |mut rect: Rect| {
-                rect.pos = rect.pos + Offset::splat(frame_offset);
-                rect.size = rect.size - Size::splat(frame_size);
+                rect.pos += Offset::splat(frame_offset);
+                rect.size -= Size::splat(frame_size);
                 rect
             };
 

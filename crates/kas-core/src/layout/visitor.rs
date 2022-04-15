@@ -344,7 +344,7 @@ where
         }
     }
 
-    fn is_reversed(&mut self) -> bool {
+    fn is_reversed(&self) -> bool {
         self.direction.is_reversed()
     }
 
@@ -386,7 +386,7 @@ impl<'a, W: WidgetConfig, D: Directional> Component for Slice<'a, W, D> {
         }
     }
 
-    fn is_reversed(&mut self) -> bool {
+    fn is_reversed(&self) -> bool {
         self.direction.is_reversed()
     }
 
@@ -429,7 +429,7 @@ where
         }
     }
 
-    fn is_reversed(&mut self) -> bool {
+    fn is_reversed(&self) -> bool {
         // TODO: replace is_reversed with direct implementation of spatial_nav
         false
     }

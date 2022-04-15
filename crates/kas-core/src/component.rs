@@ -14,7 +14,7 @@ use kas_macros::{autoimpl, impl_scope};
 
 /// Components are not true widgets, but support layout solving
 ///
-/// TODO: since this is a sub-set of widget functionality, should [`Widget`]
+/// TODO: since this is a sub-set of widget functionality, should [`crate::Widget`]
 /// extend `Component`? (Significant trait revision would be required.)
 pub trait Component {
     /// Get size rules for the given axis
@@ -26,7 +26,7 @@ pub trait Component {
     /// True if the layout direction is up/left (reverse reading direction)
     ///
     /// TODO: replace with spatial_nav?
-    fn is_reversed(&mut self) -> bool {
+    fn is_reversed(&self) -> bool {
         false
     }
 
