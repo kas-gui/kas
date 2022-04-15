@@ -24,7 +24,6 @@ impl_scope! {
         direction: D,
         pub(crate) key_nav: bool,
         label: MenuLabel,
-        layout_frame: layout::FrameStorage,
         #[widget]
         list: PopupFrame<MenuView<BoxedMenu<M>>>,
         popup_id: Option<WindowId>,
@@ -68,7 +67,6 @@ impl_scope! {
                 direction,
                 key_nav: true,
                 label: MenuLabel::new(label.into(), TextClass::MenuLabel),
-                layout_frame: Default::default(),
                 list: PopupFrame::new(MenuView::new(list)),
                 popup_id: None,
             }
@@ -140,8 +138,7 @@ impl_scope! {
 
     impl kas::Layout for Self {
         fn layout(&mut self) -> layout::Layout<'_> {
-            let label = layout::Layout::component(&mut self.label);
-            layout::Layout::frame(&mut self.layout_frame, label, FrameStyle::MenuEntry)
+            layout::Layout::component(&mut self.label)
         }
 
         fn spatial_nav(&mut self, _: &mut SetRectMgr, _: bool, _: Option<usize>) -> Option<usize> {
@@ -293,7 +290,7 @@ impl_scope! {
             let frame_rules = mgr.frame(FrameStyle::MenuEntry, axis.is_vertical());
             let is_horiz = axis.is_horizontal();
             let with_frame_rules = |rules| if is_horiz {
-                frame_rules.surround_with_margin(rules).0
+                frame_rules.surround_as_margin(rules).0
             } else {
                 frame_rules.surround_no_margin(rules).0
             };
@@ -344,7 +341,7 @@ impl_scope! {
 
                     child.core_data_mut().rect = child_rect;
                 } else {
-                    child.set_rect(mgr, rect, align);
+                    child.set_rect(mgr, child_rect, align);
                 }
             }
         }

@@ -8,7 +8,7 @@
 use super::{Menu, MenuLabel};
 use crate::CheckBoxBare;
 use kas::component::Component;
-use kas::theme::{FrameStyle, TextClass};
+use kas::theme::{FrameStyle, IdRect, TextClass};
 use kas::{layout, prelude::*};
 use std::fmt::Debug;
 
@@ -20,7 +20,6 @@ impl_scope! {
         #[widget_core]
         core: kas::CoreData,
         label: MenuLabel,
-        layout_frame: layout::FrameStorage,
         msg: M,
     }
 
@@ -36,8 +35,7 @@ impl_scope! {
 
     impl Layout for Self {
         fn layout(&mut self) -> layout::Layout<'_> {
-            let inner = layout::Layout::component(&mut self.label);
-            layout::Layout::frame(&mut self.layout_frame, inner, FrameStyle::MenuEntry)
+            layout::Layout::component(&mut self.label)
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
@@ -56,7 +54,6 @@ impl_scope! {
             MenuEntry {
                 core: Default::default(),
                 label: MenuLabel::new(label.into(), TextClass::MenuLabel),
-                layout_frame: Default::default(),
                 msg,
             }
         }
@@ -79,7 +76,7 @@ impl_scope! {
             if self.label.keys() != string.keys() {
                 action |= TkAction::RECONFIGURE;
             }
-            let avail = self.core.rect.size.clamped_sub(self.layout_frame.size);
+            let avail = self.core.rect.size;
             action | self.label.set_text_and_prepare(string, avail)
         }
     }
@@ -118,7 +115,6 @@ impl_scope! {
         checkbox: CheckBoxBare<M>,
         label: MenuLabel,
         layout_list: layout::DynRowStorage,
-        layout_frame: layout::FrameStorage,
     }
 
     impl WidgetConfig for Self {
@@ -133,8 +129,7 @@ impl_scope! {
                 layout::Layout::single(&mut self.checkbox),
                 layout::Layout::component(&mut self.label),
             ];
-            let inner = layout::Layout::list(list.into_iter(), Direction::Right, &mut self.layout_list);
-            layout::Layout::frame(&mut self.layout_frame, inner, FrameStyle::MenuEntry)
+            layout::Layout::list(list.into_iter(), Direction::Right, &mut self.layout_list)
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
@@ -144,8 +139,9 @@ impl_scope! {
             Some(self.checkbox.id())
         }
 
-        fn draw(&mut self, draw: DrawMgr) {
+        fn draw(&mut self, mut draw: DrawMgr) {
             let id = self.checkbox.id();
+            draw.frame(IdRect(&id, self.rect()), FrameStyle::MenuEntry, Default::default());
             self.layout().draw(draw, &id);
         }
     }
@@ -172,7 +168,6 @@ impl_scope! {
                 checkbox: CheckBoxBare::new(),
                 label: MenuLabel::new(label.into(), TextClass::MenuLabel),
                 layout_list: Default::default(),
-                layout_frame: Default::default(),
             }
         }
 
@@ -192,7 +187,6 @@ impl_scope! {
                 checkbox: self.checkbox.on_toggle(f),
                 label: self.label,
                 layout_list: self.layout_list,
-                layout_frame: self.layout_frame,
             }
         }
     }
