@@ -144,11 +144,6 @@ impl<'a> SizeMgr<'a> {
         self.0.text_bound(text, class, axis)
     }
 
-    /// Width of an edit marker
-    pub fn text_cursor_width(&self) -> f32 {
-        self.0.text_cursor_width()
-    }
-
     /// Size of the element drawn by [`DrawMgr::checkbox`].
     pub fn checkbox(&self) -> Size {
         self.0.checkbox()
@@ -263,9 +258,6 @@ pub trait SizeHandle {
         size: Size,
         align: (Align, Align),
     ) -> Vec2;
-
-    /// Width of an edit marker
-    fn text_cursor_width(&self) -> f32;
 
     /// Size of the element drawn by [`DrawMgr::checkbox`].
     fn checkbox(&self) -> Size;

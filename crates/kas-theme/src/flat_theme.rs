@@ -114,6 +114,7 @@ const DIMS: dim::Parameters = dim::Parameters {
     // NOTE: visual thickness is (button_frame * scale_factor).round() * (1 - BG_SHRINK_FACTOR)
     button_frame: 2.4,
     checkbox_inner: 7.0,
+    mark: 8.0,
     scrollbar_size: Vec2::splat(8.0),
     slider_size: Vec2(16.0, 16.0),
     progress_bar: Vec2::splat(8.0),
@@ -516,7 +517,7 @@ where
             return;
         }
 
-        let width = self.w.dims.font_marker_width;
+        let width = self.w.dims.mark_line;
         let pos = Vec2::conv(pos);
 
         let mut col = self.cols.nav_focus;
@@ -615,32 +616,41 @@ where
     }
 
     fn mark(&mut self, id: &WidgetId, rect: Rect, style: MarkStyle) {
-        let state = InputState::new_all(self.ev, id);
-        let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
-        let outer = Quad::conv(rect);
+        let col = if self.ev.is_disabled(id) {
+            self.cols.text_disabled
+        } else {
+            self.cols.text
+        };
+
         match style {
             MarkStyle::Point(dir) => {
-                // TODO: should we fix the size?
-                let f = 0.5 * self.w.dims.font_marker_width;
+                let size = match dir.is_horizontal() {
+                    true => Size(self.w.dims.mark / 2, self.w.dims.mark),
+                    false => Size(self.w.dims.mark, self.w.dims.mark / 2),
+                };
+                let offset = Offset::conv(rect.size.clamped_sub(size) / 2);
+                let q = Quad::conv(Rect::new(rect.pos + offset, size));
+
                 let (p1, p2, p3);
                 if dir.is_horizontal() {
-                    let (mut x1, mut x2) = (outer.a.0 + f, outer.b.0 - f);
+                    let (mut x1, mut x2) = (q.a.0, q.b.0);
                     if dir.is_reversed() {
                         std::mem::swap(&mut x1, &mut x2);
                     }
-                    p1 = Vec2(x1, outer.a.1 + f);
-                    p2 = Vec2(x2, 0.5 * (outer.a.1 + outer.b.1));
-                    p3 = Vec2(x1, outer.b.1 - f);
+                    p1 = Vec2(x1, q.a.1);
+                    p2 = Vec2(x2, 0.5 * (q.a.1 + q.b.1));
+                    p3 = Vec2(x1, q.b.1);
                 } else {
-                    let (mut y1, mut y2) = (outer.a.1 + f, outer.b.1 - f);
+                    let (mut y1, mut y2) = (q.a.1, q.b.1);
                     if dir.is_reversed() {
                         std::mem::swap(&mut y1, &mut y2);
                     }
-                    p1 = Vec2(outer.a.0 + f, y1);
-                    p2 = Vec2(0.5 * (outer.a.0 + outer.b.0), y2);
-                    p3 = Vec2(outer.b.0 - f, y1);
+                    p1 = Vec2(q.a.0, y1);
+                    p2 = Vec2(0.5 * (q.a.0 + q.b.0), y2);
+                    p3 = Vec2(q.b.0, y1);
                 };
 
+                let f = 0.5 * self.w.dims.mark_line;
                 self.draw.rounded_line(p1, p2, f, col);
                 self.draw.rounded_line(p2, p3, f, col);
             }

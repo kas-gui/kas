@@ -6,11 +6,11 @@
 //! Combobox
 
 use super::{IndexedColumn, MenuEntry, PopupFrame};
-use kas::component::Label;
+use kas::component::{Label, Mark};
 use kas::event::{self, Command};
 use kas::layout;
 use kas::prelude::*;
-use kas::theme::TextClass;
+use kas::theme::{MarkStyle, TextClass};
 use kas::WindowId;
 use std::rc::Rc;
 
@@ -28,6 +28,8 @@ impl_scope! {
         #[widget_core]
         core: CoreData,
         label: Label<String>,
+        mark: Mark,
+        layout_list: layout::FixedRowStorage<2>,
         layout_frame: layout::FrameStorage,
         #[widget]
         popup: ComboPopup,
@@ -39,8 +41,12 @@ impl_scope! {
 
     impl kas::Layout for Self {
         fn layout(&mut self) -> layout::Layout<'_> {
-            let inner = layout::Layout::component(&mut self.label);
-            layout::Layout::button(&mut self.layout_frame, inner, None)
+            let list = [
+                layout::Layout::component(&mut self.label),
+                layout::Layout::component(&mut self.mark),
+            ];
+            let list = layout::Layout::list(list.into_iter(), Direction::Right, &mut self.layout_list);
+            layout::Layout::button(&mut self.layout_frame, list, None)
         }
 
         fn spatial_nav(&mut self, _: &mut SetRectMgr, _: bool, _: Option<usize>) -> Option<usize> {
@@ -215,6 +221,8 @@ impl ComboBox<VoidMsg> {
         ComboBox {
             core: Default::default(),
             label,
+            mark: Mark::new(MarkStyle::Point(Direction::Down)),
+            layout_list: Default::default(),
             layout_frame: Default::default(),
             popup: ComboPopup {
                 core: Default::default(),
@@ -241,6 +249,8 @@ impl ComboBox<VoidMsg> {
         ComboBox {
             core: self.core,
             label: self.label,
+            mark: self.mark,
+            layout_list: self.layout_list,
             layout_frame: self.layout_frame,
             popup: self.popup,
             active: self.active,

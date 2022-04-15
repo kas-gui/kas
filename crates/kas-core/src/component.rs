@@ -145,8 +145,8 @@ impl_scope! {
     /// A mark
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
     pub struct Mark {
-        style: MarkStyle,
-        rect: Rect,
+        pub style: MarkStyle,
+        pub rect: Rect,
     }
     impl Self {
         /// Construct

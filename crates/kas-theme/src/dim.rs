@@ -12,6 +12,7 @@ use std::rc::Rc;
 
 use crate::anim::AnimState;
 use kas::cast::traits::*;
+use kas::dir::Directional;
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, Stretch};
 use kas::text::{fonts::FontId, Align, TextApi, TextApiExt};
@@ -39,6 +40,8 @@ pub struct Parameters {
     pub button_frame: f32,
     /// CheckBox inner size in Points
     pub checkbox_inner: f32,
+    /// Larger size of a mark in Points
+    pub mark: f32,
     /// Scrollbar minimum handle size
     pub scrollbar_size: Vec2,
     /// Slider minimum handle size
@@ -57,7 +60,7 @@ pub struct Dimensions {
     pub scale_factor: f32,
     pub dpp: f32,
     pub pt_size: f32,
-    pub font_marker_width: f32,
+    pub mark_line: f32,
     pub line_height: i32,
     pub min_line_length: i32,
     pub outer_margin: u16,
@@ -95,8 +98,6 @@ impl Dimensions {
         let popup_frame = (params.popup_frame_size * scale_factor).cast_nearest();
         let menu_frame = (params.menu_frame * scale_factor).cast_nearest();
 
-        let mark = i32::conv_nearest(params.checkbox_inner * dpp);
-
         let shadow_size = params.shadow_size * scale_factor;
         let shadow_offset = shadow_size * params.shadow_rel_offset;
 
@@ -104,7 +105,7 @@ impl Dimensions {
             scale_factor,
             dpp,
             pt_size,
-            font_marker_width: (1.6 * scale_factor).round().max(1.0),
+            mark_line: (1.2 * dpp).round().max(1.0),
             line_height,
             min_line_length: (8.0 * dpem).cast_nearest(),
             outer_margin,
@@ -114,8 +115,9 @@ impl Dimensions {
             popup_frame,
             menu_frame,
             button_frame: (params.button_frame * scale_factor).cast_nearest(),
-            checkbox: mark + 2 * (i32::from(inner_margin) + frame),
-            mark,
+            checkbox: i32::conv_nearest(params.checkbox_inner * dpp)
+                + 2 * (i32::from(inner_margin) + frame),
+            mark: i32::conv_nearest(params.mark * dpp),
             scrollbar: Size::conv_nearest(params.scrollbar_size * scale_factor),
             slider: Size::conv_nearest(params.slider_size * scale_factor),
             progress_bar: Size::conv_nearest(params.progress_bar * scale_factor),
@@ -306,10 +308,6 @@ impl<D: 'static> SizeHandle for Window<D> {
         .into()
     }
 
-    fn text_cursor_width(&self) -> f32 {
-        self.dims.font_marker_width
-    }
-
     fn checkbox(&self) -> Size {
         Size::splat(self.dims.checkbox)
     }
@@ -319,11 +317,15 @@ impl<D: 'static> SizeHandle for Window<D> {
         self.checkbox()
     }
 
-    fn mark(&self, style: MarkStyle, _is_vert: bool) -> SizeRules {
+    fn mark(&self, style: MarkStyle, is_vert: bool) -> SizeRules {
         match style {
-            MarkStyle::Point(_) => {
+            MarkStyle::Point(dir) => {
+                let w = match dir.is_vertical() == is_vert {
+                    true => self.dims.mark / 2 + i32::conv_ceil(self.dims.mark_line),
+                    false => self.dims.mark + i32::conv_ceil(self.dims.mark_line),
+                };
                 let m = self.dims.outer_margin;
-                SizeRules::fixed(self.dims.mark, (m, m))
+                SizeRules::fixed(w, (m, m))
             }
         }
     }
