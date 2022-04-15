@@ -7,7 +7,7 @@ use proc_macro2::{Span, TokenStream as Toks};
 use quote::{quote, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
-use syn::{braced, bracketed, parenthesized, Expr, LitInt, Member, Token};
+use syn::{braced, bracketed, parenthesized, Expr, LitInt, LitStr, Member, Token};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -60,6 +60,7 @@ enum Layout {
     List(Direction, List),
     Slice(Direction, Expr),
     Grid(GridDimensions, Vec<(CellInfo, Layout)>),
+    Label(LitStr),
 }
 
 #[derive(Debug)]
@@ -251,6 +252,8 @@ impl Parse for Layout {
             let _: kw::grid = input.parse()?;
             let _: Token![:] = input.parse()?;
             Ok(parse_grid(input)?)
+        } else if lookahead.peek(LitStr) {
+            Ok(Layout::Label(input.parse()?))
         } else {
             Err(lookahead.error())
         }
@@ -577,6 +580,17 @@ impl Layout {
                 let iter = quote! { { let arr = [#items]; arr.into_iter() } };
 
                 quote! { layout::Layout::grid(#iter, #dim, #data) }
+            }
+            Layout::Label(text) => {
+                let data = quote! { {
+                    type Label = kas::component::Label<&'static str>;
+                    let (data, next) = _chain.storage::<Label, _>(|| {
+                        Label::new(#text, kas::theme::TextClass::Label(false))
+                    });
+                    _chain = next;
+                    data
+                } };
+                quote! { layout::Layout::component(#data) }
             }
         })
     }

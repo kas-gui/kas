@@ -132,6 +132,12 @@ impl_scope! {
             draw.text_effects(IdCoord(id, self.pos), &self.text, self.class);
         }
     }
+
+    impl crate::layout::Storage for Self where T: 'static {
+        fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+            self
+        }
+    }
 }
 
 impl_scope! {

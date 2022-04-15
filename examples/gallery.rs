@@ -223,30 +223,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let widgets = make_widget! {
         #[widget{
             layout = aligned_column: [
-                row: [self.sll, self.sl],
-                row: [self.ebl, self.eb],
-                row: [self.tbl, self.tb],
-                row: [self.bil, self.bi],
-                row: [self.cbl, self.cb],
-                row: [self.rbl, self.rb],
-                row: [self.rb2l, self.rb2],
-                row: [self.cbbl, self.cbb],
-                row: [self.sdl, self.sd],
-                row: [self.scl, self.sc],
-                row: [self.pgl, self.pg],
-                row: [self.svl, align(center): self.sv],
-                row: [self.pul, self.pu],
+                row: ["ScrollLabel", self.sl],
+                row: ["EditBox", self.eb],
+                row: ["TextButton", self.tb],
+                row: ["Button<Image>", self.bi],
+                row: ["CheckBox", self.cb],
+                row: ["RadioBox", self.rb],
+                row: ["RadioBox", self.rb2],
+                row: ["ComboBox", self.cbb],
+                row: ["Slider", self.sd],
+                row: ["ScrollBar", self.sc],
+                row: ["ProgressBar", self.pg],
+                row: ["SVG", align(center): self.sv],
+                row: ["Child window", self.pu],
             ];
             msg = Item;
         }]
         struct {
-            #[widget] sll = Label::new("ScrollLabel"),
             #[widget] sl = ScrollLabel::new(text),
-            #[widget] ebl = Label::new("EditBox"),
             #[widget] eb = EditBox::new("edit me").with_guard(Guard),
-            #[widget] tbl = Label::new("TextButton"),
             #[widget] tb = TextButton::new_msg("&Press me", Item::Button),
-            #[widget] bil = Label::new("Button<Image>"),
             #[widget] bi = row![
                 Button::new_msg(img_light, Item::LightTheme)
                     .with_color("#FAFAFA".parse().unwrap())
@@ -255,35 +251,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .with_color("#404040".parse().unwrap())
                     .with_keys(&[VK::K]),
             ],
-            #[widget] cbl = Label::new("CheckBox"),
             #[widget] cb = CheckBox::new("&Check me")
                 .with_state(true)
                 .on_toggle(|_, check| Some(Item::Check(check))),
-            #[widget] rbl = Label::new("RadioBox"),
             #[widget] rb = RadioBox::new("radio box &1", radio.clone())
                 .on_select(|_| Some(Item::Radio(1))),
-            #[widget] rb2l = Label::new("RadioBox"),
             #[widget] rb2 = RadioBox::new("radio box &2", radio)
                 .with_state(true)
                 .on_select(|_| Some(Item::Radio(2))),
-            #[widget] cbbl = Label::new("ComboBox"),
             #[widget] cbb = ComboBox::new_from_iter(&["&One", "T&wo", "Th&ree"], 0)
                 .on_select(|_, index| Some(Item::Combo((index + 1).cast()))),
-            #[widget] sdl = Label::new("Slider"),
             #[widget(map_msg = handle_slider)] sd =
                 Slider::<i32, Right>::new(0, 10, 1).with_value(0),
-            #[widget] scl = Label::new("ScrollBar"),
             #[widget(map_msg = handle_scroll)] sc: ScrollBar<Right> =
                 ScrollBar::new().with_limits(100, 20),
             #[widget] pg: ProgressBar<Right> = ProgressBar::new(),
-            #[widget] pgl = Label::new("ProgressBar"),
-            #[widget] svl = Label::new("SVG"),
             #[widget] sv = img_rustacean.with_scaling(|s| {
                 s.size = kas::layout::SpriteSize::Relative(0.1);
                 s.ideal_factor = 2.0;
                 s.stretch = kas::layout::Stretch::High;
             }),
-            #[widget] pul = Label::new("Child window"),
             #[widget] pu = popup_edit_box,
         }
         impl Self {
@@ -300,12 +287,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let head = make_widget! {
         #[widget{
-            layout = row: *;
+            layout = row: ["Widget Gallery", self.img];
             msg = VoidMsg;
         }]
         struct {
-            #[widget] _ = Label::new("Widget Gallery"),
-            #[widget] _ = img_gallery,
+            #[widget] img = img_gallery,
         }
     };
 

@@ -20,19 +20,17 @@ fn main() -> kas::shell::Result<()> {
         make_widget! {
             #[widget{
                 layout = grid: {
-                    1, 0: self.title;
+                    1, 0: "Layout demo";
                     2, 0: self.check;
                     0..3, 1: self.lipsum;
-                    0, 2: align(center): self.abc;
+                    0, 2: align(center): "abc אבג def";
                     1..3, 2..4: align(stretch): self.crasit;
                     0, 3: self.edit;
                 };
                 msg = VoidMsg;
             }]
             struct {
-                #[widget] title = Label::new("Layout demo"),
                 #[widget] lipsum = Label::new(lipsum),
-                #[widget] abc = Label::new("abc אבג def"),
                 #[widget] crasit = ScrollLabel::new(crasit),
                 #[widget] edit = EditBox::new("A small\nsample\nof text").multi_line(true),
                 #[widget] check = CheckBoxBare::new(),
