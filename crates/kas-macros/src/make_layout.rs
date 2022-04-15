@@ -204,9 +204,9 @@ impl Parse for Layout {
             let _: kw::frame = input.parse()?;
             let inner;
             let _ = parenthesized!(inner in input);
-            let layout: Layout = inner.parse()?;
-            let _: Token![,] = inner.parse()?;
             let style: Expr = inner.parse()?;
+            let _: Token![:] = input.parse()?;
+            let layout: Layout = input.parse()?;
             Ok(Layout::Frame(Box::new(layout), style))
         } else if lookahead.peek(kw::column) {
             let _: kw::column = input.parse()?;
@@ -464,10 +464,10 @@ impl Layout {
                 quote! { layout::Layout::align(#inner, #align) }
             }
             Layout::AlignSingle(expr, align) => {
-                quote! { layout::Layout::align_single(#expr.as_widget_mut(), #align) }
+                quote! { layout::Layout::align_single((#expr).as_widget_mut(), #align) }
             }
             Layout::Widget(expr) => quote! {
-                layout::Layout::single(#expr.as_widget_mut())
+                layout::Layout::single((#expr).as_widget_mut())
             },
             Layout::Single(span) => {
                 if let Some(mut iter) = children {

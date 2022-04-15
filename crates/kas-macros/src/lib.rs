@@ -443,28 +443,22 @@ pub fn make_widget(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; `make_layout` `!` `(` _CoreData_ `;` _Layout_ `)`
 /// >
 /// > _Layout_ :\
-/// > &nbsp;&nbsp; &nbsp;&nbsp; _Align_ | _Single_ | _List_ | _Slice_ | _Grid_ | _Frame_
+/// > &nbsp;&nbsp; &nbsp;&nbsp; _Single_ | _List_ | _Slice_ | _Grid_ | _Align_ | _Frame_
 /// >
-/// > _AlignType_ :\
-/// > &nbsp;&nbsp; `center` | `stretch`
-/// >
-/// > _Align_ :\
-/// > &nbsp;&nbsp; `align` `(` _AlignType_ `)` `:` _Layout_
-/// >
-/// > _Direction_ :\
-/// > &nbsp;&nbsp; `left` | `right` | `up` | `down` | `self` `.` _Member_
-/// >
-/// > _Field_ :\
-/// > &nbsp;&nbsp; `self` `.` _Member_ | _Expr_
-/// >
-/// > _ListPre_ :\
-/// > &nbsp;&nbsp; `column` | `row` | `aligned_column` | `aligned_row` | `list` `(` _Direction_ `)`
+/// > _Single_ :\
+/// > &nbsp;&nbsp; `single` | `self` `.` _Member_
 /// >
 /// > _List_ :\
 /// > &nbsp;&nbsp; _ListPre_ `:` `*` | (`[` _Layout_ `]`)
 /// >
+/// > _ListPre_ :\
+/// > &nbsp;&nbsp; `column` | `row` | `aligned_column` | `aligned_row` | `list` `(` _Direction_ `)`
+/// >
 /// > _Slice_ :\
 /// > &nbsp;&nbsp; `slice` `(` _Direction_ `)` `:` `self` `.` _Member_
+/// >
+/// > _Direction_ :\
+/// > &nbsp;&nbsp; `left` | `right` | `up` | `down`
 /// >
 /// > _Grid_ :\
 /// > &nbsp;&nbsp; `grid` `:` `{` _GridCell_* `}`
@@ -475,14 +469,20 @@ pub fn make_widget(input: TokenStream) -> TokenStream {
 /// > _CellRange_ :\
 /// > &nbsp;&nbsp; _LitInt_ ( `..` `+`? _LitInt_ )?
 ///
+/// > _Align_ :\
+/// > &nbsp;&nbsp; `align` `(` _AlignType_ `)` `:` _Layout_
+/// >
+/// > _AlignType_ :\
+/// > &nbsp;&nbsp; `center` | `stretch`
+/// >
 /// > _Frame_ :\
-/// > &nbsp;&nbsp; `frame` `(` _Layout_ `)`
+/// > &nbsp;&nbsp; `frame` `(` _Style_ `)` `:` _Layout_
 ///
 /// ## Notes
 ///
-/// Fields are specified via `self.NAME`; referencing is implied (the macro
-/// converts to `&mut self.NAME` or a suitable method call). Embedded field
-/// access (e.g. `self.x.y`) is also supported.
+/// Both _Single_ and _Slice_ variants match `self.MEMBER` where `MEMBER` is the
+/// name of a field or number of a tuple field. More precisely, both match any
+/// expression starting with `self` and append with `.as_widget_mut()`.
 ///
 /// `row` and `column` are abbreviations for `list(right)` and `list(down)`
 /// respectively. Glob syntax is allowed: `row: *` uses all children in a row
@@ -492,7 +492,7 @@ pub fn make_widget(input: TokenStream) -> TokenStream {
 /// be `row` or `column` respectively; glob syntax not allowed), but build a
 /// grid layout. Essentially, they are syntax sugar for simple table layouts.
 ///
-/// _Slice_ is a variant of _List_ over a single struct field, supporting
+/// _Slice_ is a variant of _List_ over a single struct field which supports
 /// `AsMut<W>` for some widget type `W`.
 ///
 /// A _Grid_ is an aligned two-dimensional layout supporting item spans.
