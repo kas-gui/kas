@@ -17,7 +17,7 @@ use kas::event::EventState;
 use kas::geom::*;
 use kas::text::{TextApi, TextDisplay};
 use kas::theme::{self, Background, SizeHandle, ThemeControl};
-use kas::theme::{FrameStyle, TextClass};
+use kas::theme::{FrameStyle, MarkStyle, TextClass};
 use kas::{TkAction, WidgetId};
 
 /// A theme using simple shading to give apparent depth to elements
@@ -398,6 +398,10 @@ where
             let col = self.cols.check_mark_state(state);
             self.draw.shaded_circle(inner, (0.0, 1.0), col);
         }
+    }
+
+    fn mark(&mut self, id: &WidgetId, rect: Rect, style: MarkStyle) {
+        self.as_flat().mark(id, rect, style);
     }
 
     fn scrollbar(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, _: Direction) {

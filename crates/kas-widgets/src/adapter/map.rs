@@ -5,7 +5,8 @@
 
 //! Message Map widget
 
-use crate::{Menu, MenuLabel};
+use crate::Menu;
+use kas::component::Component;
 use kas::prelude::*;
 use std::rc::Rc;
 
@@ -70,7 +71,10 @@ impl_scope! {
 
     impl<W: Menu, M: 'static> Menu for MapResponse<W, M> {
         fn menu_sub_items(&mut self) -> Option<(
-            &mut MenuLabel,
+            &mut dyn Component,
+            Option<&mut dyn Component>,
+            Option<&mut dyn Component>,
+            Option<&mut dyn Component>,
             Option<&mut dyn WidgetConfig>,
         )> {
             self.inner.menu_sub_items()

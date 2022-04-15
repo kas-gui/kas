@@ -15,7 +15,7 @@ use kas::cast::traits::*;
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, Stretch};
 use kas::text::{fonts::FontId, Align, TextApi, TextApiExt};
-use kas::theme::{FrameStyle, SizeHandle, TextClass};
+use kas::theme::{FrameStyle, MarkStyle, SizeHandle, TextClass};
 
 /// Parameterisation of [`Dimensions`]
 ///
@@ -68,6 +68,7 @@ pub struct Dimensions {
     pub menu_frame: i32,
     pub button_frame: i32,
     pub checkbox: i32,
+    pub mark: i32,
     pub scrollbar: Size,
     pub slider: Size,
     pub progress_bar: Size,
@@ -94,6 +95,8 @@ impl Dimensions {
         let popup_frame = (params.popup_frame_size * scale_factor).cast_nearest();
         let menu_frame = (params.menu_frame * scale_factor).cast_nearest();
 
+        let mark = i32::conv_nearest(params.checkbox_inner * dpp);
+
         let shadow_size = params.shadow_size * scale_factor;
         let shadow_offset = shadow_size * params.shadow_rel_offset;
 
@@ -111,8 +114,8 @@ impl Dimensions {
             popup_frame,
             menu_frame,
             button_frame: (params.button_frame * scale_factor).cast_nearest(),
-            checkbox: i32::conv_nearest(params.checkbox_inner * dpp)
-                + 2 * (i32::from(inner_margin) + frame),
+            checkbox: mark + 2 * (i32::from(inner_margin) + frame),
+            mark,
             scrollbar: Size::conv_nearest(params.scrollbar_size * scale_factor),
             slider: Size::conv_nearest(params.slider_size * scale_factor),
             progress_bar: Size::conv_nearest(params.progress_bar * scale_factor),
@@ -314,6 +317,15 @@ impl<D: 'static> SizeHandle for Window<D> {
     #[inline]
     fn radiobox(&self) -> Size {
         self.checkbox()
+    }
+
+    fn mark(&self, style: MarkStyle, _is_vert: bool) -> SizeRules {
+        match style {
+            MarkStyle::Point(_) => {
+                let m = self.dims.outer_margin;
+                SizeRules::fixed(self.dims.mark, (m, m))
+            }
+        }
     }
 
     fn scrollbar(&self) -> (Size, i32) {

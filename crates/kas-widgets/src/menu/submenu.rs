@@ -5,13 +5,13 @@
 
 //! Sub-menu
 
-use super::{BoxedMenu, Menu, MenuLabel};
+use super::{BoxedMenu, Menu};
 use crate::PopupFrame;
-use kas::component::Component;
+use kas::component::{Component, Label, Mark};
 use kas::event::{self, Command};
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::prelude::*;
-use kas::theme::{FrameStyle, TextClass};
+use kas::theme::{FrameStyle, MarkStyle, TextClass};
 use kas::WindowId;
 
 impl_scope! {
@@ -23,7 +23,8 @@ impl_scope! {
         core: CoreData,
         direction: D,
         pub(crate) key_nav: bool,
-        label: MenuLabel,
+        label: Label<AccelString>,
+        mark: Mark,
         #[widget]
         list: PopupFrame<MenuView<BoxedMenu<M>>>,
         popup_id: Option<WindowId>,
@@ -58,6 +59,8 @@ impl_scope! {
 
     impl Self {
         /// Construct a sub-menu
+        ///
+        /// The sub-menu is opened in the `direction` given (contents are always vertical).
         #[inline]
         pub fn new_with_direction<S: Into<AccelString>>(
             direction: D, label: S, list: Vec<BoxedMenu<M>>
@@ -66,7 +69,8 @@ impl_scope! {
                 core: Default::default(),
                 direction,
                 key_nav: true,
-                label: MenuLabel::new(label.into(), TextClass::MenuLabel),
+                label: Label::new(label.into(), TextClass::MenuLabel),
+                mark: Mark::new(MarkStyle::Point(direction.as_direction())),
                 list: PopupFrame::new(MenuView::new(list)),
                 popup_id: None,
             }
@@ -148,7 +152,8 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawMgr) {
             draw.frame(&*self, FrameStyle::MenuEntry, Default::default());
-            self.label.draw(draw, &self.core.id);
+            self.label.draw(draw.re(), &self.core.id);
+            self.mark.draw(draw, &self.core.id);
         }
     }
 
@@ -198,11 +203,13 @@ impl_scope! {
 
     impl Menu for Self {
         fn menu_sub_items(&mut self) -> Option<(
-            &mut MenuLabel,
+            &mut dyn Component,
+            Option<&mut dyn Component>,
+            Option<&mut dyn Component>,
+            Option<&mut dyn Component>,
             Option<&mut dyn WidgetConfig>,
         )> {
-            // Issue: widget is used both by MenuBar and other SubMenus
-            Some((&mut self.label, None))
+            Some((&mut self.label, None, Some(&mut self.mark), None, None))
         }
 
         fn menu_is_open(&self) -> bool {
@@ -236,7 +243,7 @@ impl_scope! {
     }
 }
 
-const MENU_VIEW_COLS: u32 = 2;
+const MENU_VIEW_COLS: u32 = 5;
 const fn menu_view_row_info(row: u32) -> layout::GridChildInfo {
     layout::GridChildInfo {
         col: 0,
@@ -287,7 +294,7 @@ impl_scope! {
             let store = &mut self.store;
             let mut solver = layout::GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, store);
 
-            let frame_rules = mgr.frame(FrameStyle::MenuEntry, axis.is_vertical());
+            let frame_rules = mgr.frame(FrameStyle::MenuEntry, axis);
             let is_horiz = axis.is_horizontal();
             let with_frame_rules = |rules| if is_horiz {
                 frame_rules.surround_as_margin(rules).0
@@ -297,13 +304,25 @@ impl_scope! {
 
             for (row, child) in self.list.iter_mut().enumerate() {
                 let row = u32::conv(row);
-                if let Some((label, opt_toggle)) = child.menu_sub_items() {
+                if let Some((label, opt_label2, opt_submenu, opt_icon, opt_toggle)) = child.menu_sub_items() {
                     if let Some(w) = opt_toggle {
                         let info = layout::GridChildInfo::new(0, row);
                         solver.for_child(store, info, |axis| with_frame_rules(w.size_rules(mgr.re(), axis)));
                     }
-                    let info = layout::GridChildInfo::new(1, row);
+                    if let Some(w) = opt_icon {
+                        let info = layout::GridChildInfo::new(1, row);
+                        solver.for_child(store, info, |axis| with_frame_rules(w.size_rules(mgr.re(), axis)));
+                    }
+                    let info = layout::GridChildInfo::new(2, row);
                     solver.for_child(store, info, |axis| with_frame_rules(label.size_rules(mgr.re(), axis)));
+                    if let Some(l) = opt_label2 {
+                        let info = layout::GridChildInfo::new(3, row);
+                        solver.for_child(store, info, |axis| with_frame_rules(l.size_rules(mgr.re(), axis)));
+                    }
+                    if let Some(w) = opt_submenu {
+                        let info = layout::GridChildInfo::new(4, row);
+                        solver.for_child(store, info, |axis| with_frame_rules(w.size_rules(mgr.re(), axis)));
+                    }
                 } else {
                     let info = menu_view_row_info(row);
                     solver.for_child(store, info, |axis| child.size_rules(mgr.re(), axis));
@@ -318,8 +337,8 @@ impl_scope! {
             let mut setter = layout::GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, align, store);
 
             // Assumption: frame inner margin is at least as large as content margins
-            let is_vert = false; // assumption: horiz and vert are the same
-            let frame_rules = mgr.size_mgr().frame(FrameStyle::MenuEntry, is_vert);
+            let dir = Direction::Right; // assumption: horiz and vert are the same
+            let frame_rules = mgr.size_mgr().frame(FrameStyle::MenuEntry, dir);
             let (_, frame_offset, frame_size) = frame_rules.surround_no_margin(SizeRules::EMPTY);
             let subtract_frame = |mut rect: Rect| {
                 rect.pos += Offset::splat(frame_offset);
@@ -331,13 +350,25 @@ impl_scope! {
                 let row = u32::conv(row);
                 let child_rect = setter.child_rect(store, menu_view_row_info(row));
 
-                if let Some((label, opt_toggle)) = child.menu_sub_items() {
+                if let Some((label, opt_label2, opt_submenu, opt_icon, opt_toggle)) = child.menu_sub_items() {
                     if let Some(w) = opt_toggle {
                         let info = layout::GridChildInfo::new(0, row);
                         w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)), align);
                     }
-                    let info = layout::GridChildInfo::new(1, row);
+                    if let Some(w) = opt_icon {
+                        let info = layout::GridChildInfo::new(1, row);
+                        w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)), align);
+                    }
+                    let info = layout::GridChildInfo::new(2, row);
                     label.set_rect(mgr, subtract_frame(setter.child_rect(store, info)), align);
+                    if let Some(l) = opt_label2 {
+                        let info = layout::GridChildInfo::new(3, row);
+                        l.set_rect(mgr, subtract_frame(setter.child_rect(store, info)), align);
+                    }
+                    if let Some(w) = opt_submenu {
+                        let info = layout::GridChildInfo::new(4, row);
+                        w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)), align);
+                    }
 
                     child.core_data_mut().rect = child_rect;
                 } else {

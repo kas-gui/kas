@@ -7,7 +7,8 @@
 
 use std::ops::Deref;
 
-use super::{FrameStyle, TextClass};
+use super::{FrameStyle, MarkStyle, TextClass};
+use crate::dir::Directional;
 use crate::geom::{Size, Vec2};
 use crate::layout::{AxisInfo, FrameRules, Margins, SizeRules};
 use crate::macros::autoimpl;
@@ -88,8 +89,8 @@ impl<'a> SizeMgr<'a> {
     }
 
     /// Size of a frame around another element
-    pub fn frame(&self, style: FrameStyle, is_vert: bool) -> FrameRules {
-        self.0.frame(style, is_vert)
+    pub fn frame(&self, style: FrameStyle, dir: impl Directional) -> FrameRules {
+        self.0.frame(style, dir.is_vertical())
     }
 
     /// Size of a separator frame between items
@@ -156,6 +157,11 @@ impl<'a> SizeMgr<'a> {
     /// Size of the element drawn by [`DrawMgr::radiobox`].
     pub fn radiobox(&self) -> Size {
         self.0.radiobox()
+    }
+
+    /// A simple mark
+    pub fn mark(&self, style: MarkStyle, dir: impl Directional) -> SizeRules {
+        self.0.mark(style, dir.is_vertical())
     }
 
     /// Dimensions for a scrollbar
@@ -266,6 +272,9 @@ pub trait SizeHandle {
 
     /// Size of the element drawn by [`DrawMgr::radiobox`].
     fn radiobox(&self) -> Size;
+
+    /// A simple mark
+    fn mark(&self, style: MarkStyle, is_vert: bool) -> SizeRules;
 
     /// Dimensions for a scrollbar
     ///

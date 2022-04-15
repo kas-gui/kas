@@ -191,7 +191,7 @@ impl<'a> Layout<'a> {
     }
     fn size_rules_(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         let frame = |mgr: SizeMgr, child: &mut Layout, storage: &mut FrameStorage, mut style| {
-            let frame_rules = mgr.frame(style, axis.is_vertical());
+            let frame_rules = mgr.frame(style, axis);
             let child_rules = child.size_rules_(mgr, axis);
             if axis.is_horizontal() && style == FrameStyle::MenuEntry {
                 style = FrameStyle::InnerMargin;

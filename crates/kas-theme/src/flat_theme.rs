@@ -20,7 +20,7 @@ use kas::event::EventState;
 use kas::geom::*;
 use kas::text::{fonts, Effect, TextApi, TextDisplay};
 use kas::theme::{self, SizeHandle, ThemeControl};
-use kas::theme::{Background, FrameStyle, TextClass};
+use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use kas::{TkAction, WidgetId};
 
 // Used to ensure a rectangular background is inside a circular corner.
@@ -611,6 +611,39 @@ where
             let inner = Quad::from_coords(inner.a + v, inner.b - v);
             let col = self.cols.check_mark_state(state);
             self.draw.circle(inner, 0.0, col);
+        }
+    }
+
+    fn mark(&mut self, id: &WidgetId, rect: Rect, style: MarkStyle) {
+        let state = InputState::new_all(self.ev, id);
+        let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
+        let outer = Quad::conv(rect);
+        match style {
+            MarkStyle::Point(dir) => {
+                // TODO: should we fix the size?
+                let f = 0.5 * self.w.dims.font_marker_width;
+                let (p1, p2, p3);
+                if dir.is_horizontal() {
+                    let (mut x1, mut x2) = (outer.a.0 + f, outer.b.0 - f);
+                    if dir.is_reversed() {
+                        std::mem::swap(&mut x1, &mut x2);
+                    }
+                    p1 = Vec2(x1, outer.a.1 + f);
+                    p2 = Vec2(x2, 0.5 * (outer.a.1 + outer.b.1));
+                    p3 = Vec2(x1, outer.b.1 - f);
+                } else {
+                    let (mut y1, mut y2) = (outer.a.1 + f, outer.b.1 - f);
+                    if dir.is_reversed() {
+                        std::mem::swap(&mut y1, &mut y2);
+                    }
+                    p1 = Vec2(outer.a.0 + f, y1);
+                    p2 = Vec2(0.5 * (outer.a.0 + outer.b.0), y2);
+                    p3 = Vec2(outer.b.0 - f, y1);
+                };
+
+                self.draw.rounded_line(p1, p2, f, col);
+                self.draw.rounded_line(p2, p3, f, col);
+            }
         }
     }
 

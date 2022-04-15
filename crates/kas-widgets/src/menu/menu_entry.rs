@@ -5,9 +5,9 @@
 
 //! Menu Entries
 
-use super::{Menu, MenuLabel};
+use super::Menu;
 use crate::CheckBoxBare;
-use kas::component::Component;
+use kas::component::{Component, Label};
 use kas::theme::{FrameStyle, IdRect, TextClass};
 use kas::{layout, prelude::*};
 use std::fmt::Debug;
@@ -19,7 +19,7 @@ impl_scope! {
     pub struct MenuEntry<M: Clone + Debug + 'static> {
         #[widget_core]
         core: kas::CoreData,
-        label: MenuLabel,
+        label: Label<AccelString>,
         msg: M,
     }
 
@@ -53,7 +53,7 @@ impl_scope! {
         pub fn new<S: Into<AccelString>>(label: S, msg: M) -> Self {
             MenuEntry {
                 core: Default::default(),
-                label: MenuLabel::new(label.into(), TextClass::MenuLabel),
+                label: Label::new(label.into(), TextClass::MenuLabel),
                 msg,
             }
         }
@@ -94,10 +94,13 @@ impl_scope! {
 
     impl Menu for Self {
         fn menu_sub_items(&mut self) -> Option<(
-            &mut MenuLabel,
+            &mut dyn Component,
+            Option<&mut dyn Component>,
+            Option<&mut dyn Component>,
+            Option<&mut dyn Component>,
             Option<&mut dyn WidgetConfig>,
         )> {
-            Some((&mut self.label, None))
+            Some((&mut self.label, None, None, None, None))
         }
     }
 }
@@ -113,7 +116,7 @@ impl_scope! {
         core: CoreData,
         #[widget]
         checkbox: CheckBoxBare<M>,
-        label: MenuLabel,
+        label: Label<AccelString>,
         layout_list: layout::DynRowStorage,
     }
 
@@ -152,10 +155,13 @@ impl_scope! {
 
     impl Menu for Self {
         fn menu_sub_items(&mut self) -> Option<(
-            &mut MenuLabel,
+            &mut dyn Component,
+            Option<&mut dyn Component>,
+            Option<&mut dyn Component>,
+            Option<&mut dyn Component>,
             Option<&mut dyn WidgetConfig>,
         )> {
-            Some((&mut self.label, Some(&mut self.checkbox)))
+            Some((&mut self.label, None, None, None, Some(&mut self.checkbox)))
         }
     }
 
@@ -166,7 +172,7 @@ impl_scope! {
             MenuToggle {
                 core: Default::default(),
                 checkbox: CheckBoxBare::new(),
-                label: MenuLabel::new(label.into(), TextClass::MenuLabel),
+                label: Label::new(label.into(), TextClass::MenuLabel),
                 layout_list: Default::default(),
             }
         }

@@ -7,6 +7,7 @@
 
 use crate::adapter::AdaptWidget;
 use crate::Separator;
+use kas::component::Component;
 use kas::dir::Right;
 use kas::prelude::*;
 use std::fmt::Debug;
@@ -18,9 +19,6 @@ mod submenu;
 pub use menu_entry::{MenuEntry, MenuToggle};
 pub use menubar::{MenuBar, MenuBuilder};
 pub use submenu::SubMenu;
-
-/// Menu label component
-pub type MenuLabel = kas::component::Label<AccelString>;
 
 /// Trait governing menus, sub-menus and menu-entries
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
@@ -34,8 +32,17 @@ pub trait Menu: Widget {
     /// including a frame with style [`kas::theme::FrameStyle::MenuEntry`] on
     /// self.
     ///
-    /// Return value is `None` or `Some((label, opt_toggle))`.
-    fn menu_sub_items(&mut self) -> Option<(&mut MenuLabel, Option<&mut dyn WidgetConfig>)> {
+    /// Return value is `None` or `Some((label, opt_label2, opt_submenu, opt_icon, opt_toggle))`.
+    /// `opt_label2` is used to show shortcut labels. `opt_submenu` is a sub-menu indicator.
+    fn menu_sub_items(
+        &mut self,
+    ) -> Option<(
+        &mut dyn Component,
+        Option<&mut dyn Component>,
+        Option<&mut dyn Component>,
+        Option<&mut dyn Component>,
+        Option<&mut dyn WidgetConfig>,
+    )> {
         None
     }
 

@@ -8,7 +8,7 @@
 use std::convert::AsRef;
 use std::ops::{Bound, Range, RangeBounds};
 
-use super::{FrameStyle, IdCoord, IdRect, SizeHandle, SizeMgr, TextClass};
+use super::{FrameStyle, IdCoord, IdRect, MarkStyle, SizeHandle, SizeMgr, TextClass};
 use crate::dir::Direction;
 use crate::draw::{color::Rgb, Draw, DrawShared, ImageId, PassType};
 use crate::event::EventState;
@@ -254,6 +254,12 @@ impl<'a> DrawMgr<'a> {
         self.h.radiobox(f.0, f.1, checked);
     }
 
+    /// Draw UI element: mark
+    pub fn mark<'b>(&mut self, feature: impl Into<IdRect<'b>>, style: MarkStyle) {
+        let f = feature.into();
+        self.h.mark(f.0, f.1, style);
+    }
+
     /// Draw UI element: scrollbar
     ///
     /// -   `id2`: [`WidgetId`] of the handle
@@ -416,6 +422,9 @@ pub trait DrawHandle {
     ///
     /// This is similar in appearance to a checkbox.
     fn radiobox(&mut self, id: &WidgetId, rect: Rect, checked: bool);
+
+    /// Draw UI element: mark
+    fn mark(&mut self, id: &WidgetId, rect: Rect, style: MarkStyle);
 
     /// Draw UI element: scrollbar
     ///

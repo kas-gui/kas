@@ -8,7 +8,7 @@
 use crate::geom::{Coord, Rect, Size};
 use crate::layout::{Align, AlignHints, AxisInfo, SetRectMgr, SizeRules};
 use crate::text::{format, AccelString, Text, TextApi};
-use crate::theme::{DrawMgr, IdCoord, SizeMgr, TextClass};
+use crate::theme::{DrawMgr, IdCoord, IdRect, MarkStyle, SizeMgr, TextClass};
 use crate::{TkAction, WidgetId};
 use kas_macros::{autoimpl, impl_scope};
 
@@ -137,6 +137,39 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawMgr, id: &WidgetId) {
             draw.text_effects(IdCoord(id, self.pos), &self.text, self.class);
+        }
+    }
+}
+
+impl_scope! {
+    /// A mark
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    pub struct Mark {
+        style: MarkStyle,
+        rect: Rect,
+    }
+    impl Self {
+        /// Construct
+        pub fn new(style: MarkStyle) -> Self {
+            let rect = Rect::ZERO;
+            Mark { style, rect }
+        }
+    }
+    impl Component for Self {
+        fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            mgr.mark(self.style, axis)
+        }
+
+        fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, _: AlignHints) {
+            self.rect = rect;
+        }
+
+        fn find_id(&mut self, _: Coord) -> Option<WidgetId> {
+            None
+        }
+
+        fn draw(&mut self, mut draw: DrawMgr, id: &WidgetId) {
+            draw.mark(IdRect(id, self.rect), self.style);
         }
     }
 }
