@@ -3,7 +3,19 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Menus
+//! Menu widgets
+//!
+//! The following serve as menu roots:
+//!
+//! -   [`crate::ComboBox`]
+//! -   [`MenuBar`]
+//!
+//! Any implementation of the [`Menu`] trait may be used as a menu item:
+//!
+//! -   [`SubMenu`]
+//! -   [`MenuEntry`]
+//! -   [`MenuToggle`]
+//! -   [`Separator`]
 
 use crate::adapter::AdaptWidget;
 use crate::Separator;
@@ -20,6 +32,22 @@ pub use menu_entry::{MenuEntry, MenuToggle};
 pub use menubar::{MenuBar, MenuBuilder};
 pub use submenu::SubMenu;
 
+/// Return value of [`Menu::sub_items`]
+#[derive(Default)]
+pub struct SubItems<'a> {
+    /// Primary label
+    pub label: Option<&'a mut dyn Component>,
+    /// Secondary label, often used to show shortcut key
+    pub label2: Option<&'a mut dyn Component>,
+    /// Sub-menu indicator
+    pub submenu: Option<&'a mut dyn Component>,
+    /// Icon
+    pub icon: Option<&'a mut dyn Component>,
+    /// Toggle mark
+    // TODO: should be a component?
+    pub toggle: Option<&'a mut dyn WidgetConfig>,
+}
+
 /// Trait governing menus, sub-menus and menu-entries
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait Menu: Widget {
@@ -34,15 +62,7 @@ pub trait Menu: Widget {
     ///
     /// Return value is `None` or `Some((label, opt_label2, opt_submenu, opt_icon, opt_toggle))`.
     /// `opt_label2` is used to show shortcut labels. `opt_submenu` is a sub-menu indicator.
-    fn menu_sub_items(
-        &mut self,
-    ) -> Option<(
-        &mut dyn Component,
-        Option<&mut dyn Component>,
-        Option<&mut dyn Component>,
-        Option<&mut dyn Component>,
-        Option<&mut dyn WidgetConfig>,
-    )> {
+    fn sub_items(&mut self) -> Option<SubItems> {
         None
     }
 

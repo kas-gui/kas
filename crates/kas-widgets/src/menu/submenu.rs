@@ -5,7 +5,7 @@
 
 //! Sub-menu
 
-use super::{BoxedMenu, Menu};
+use super::{BoxedMenu, Menu, SubItems};
 use crate::PopupFrame;
 use kas::component::{Component, Label, Mark};
 use kas::event::{self, Command};
@@ -204,14 +204,12 @@ impl_scope! {
     }
 
     impl Menu for Self {
-        fn menu_sub_items(&mut self) -> Option<(
-            &mut dyn Component,
-            Option<&mut dyn Component>,
-            Option<&mut dyn Component>,
-            Option<&mut dyn Component>,
-            Option<&mut dyn WidgetConfig>,
-        )> {
-            Some((&mut self.label, None, Some(&mut self.mark), None, None))
+        fn sub_items(&mut self) -> Option<SubItems> {
+            Some(SubItems {
+                label: Some(&mut self.label),
+                submenu: Some(&mut self.mark),
+                ..Default::default()
+            })
         }
 
         fn menu_is_open(&self) -> bool {
@@ -288,7 +286,7 @@ impl_scope! {
         fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             self.dim = layout::GridDimensions {
                 cols: MENU_VIEW_COLS,
-                col_spans: self.list.iter_mut().filter_map(|w| w.menu_sub_items().is_none().then(|| ())).count().cast(),
+                col_spans: self.list.iter_mut().filter_map(|w| w.sub_items().is_none().then(|| ())).count().cast(),
                 rows: self.list.len().cast(),
                 row_spans: 0,
             };
@@ -306,22 +304,24 @@ impl_scope! {
 
             for (row, child) in self.list.iter_mut().enumerate() {
                 let row = u32::conv(row);
-                if let Some((label, opt_label2, opt_submenu, opt_icon, opt_toggle)) = child.menu_sub_items() {
-                    if let Some(w) = opt_toggle {
+                if let Some(items) = child.sub_items() {
+                    if let Some(w) = items.toggle {
                         let info = layout::GridChildInfo::new(0, row);
                         solver.for_child(store, info, |axis| with_frame_rules(w.size_rules(mgr.re(), axis)));
                     }
-                    if let Some(w) = opt_icon {
+                    if let Some(w) = items.icon {
                         let info = layout::GridChildInfo::new(1, row);
                         solver.for_child(store, info, |axis| with_frame_rules(w.size_rules(mgr.re(), axis)));
                     }
-                    let info = layout::GridChildInfo::new(2, row);
-                    solver.for_child(store, info, |axis| with_frame_rules(label.size_rules(mgr.re(), axis)));
-                    if let Some(l) = opt_label2 {
-                        let info = layout::GridChildInfo::new(3, row);
-                        solver.for_child(store, info, |axis| with_frame_rules(l.size_rules(mgr.re(), axis)));
+                    if let Some(w) = items.label {
+                        let info = layout::GridChildInfo::new(2, row);
+                        solver.for_child(store, info, |axis| with_frame_rules(w.size_rules(mgr.re(), axis)));
                     }
-                    if let Some(w) = opt_submenu {
+                    if let Some(w) = items.label2 {
+                        let info = layout::GridChildInfo::new(3, row);
+                        solver.for_child(store, info, |axis| with_frame_rules(w.size_rules(mgr.re(), axis)));
+                    }
+                    if let Some(w) = items.submenu {
                         let info = layout::GridChildInfo::new(4, row);
                         solver.for_child(store, info, |axis| with_frame_rules(w.size_rules(mgr.re(), axis)));
                     }
@@ -352,22 +352,24 @@ impl_scope! {
                 let row = u32::conv(row);
                 let child_rect = setter.child_rect(store, menu_view_row_info(row));
 
-                if let Some((label, opt_label2, opt_submenu, opt_icon, opt_toggle)) = child.menu_sub_items() {
-                    if let Some(w) = opt_toggle {
+                if let Some(items) = child.sub_items() {
+                    if let Some(w) = items.toggle {
                         let info = layout::GridChildInfo::new(0, row);
                         w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)), align);
                     }
-                    if let Some(w) = opt_icon {
+                    if let Some(w) = items.icon {
                         let info = layout::GridChildInfo::new(1, row);
                         w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)), align);
                     }
-                    let info = layout::GridChildInfo::new(2, row);
-                    label.set_rect(mgr, subtract_frame(setter.child_rect(store, info)), align);
-                    if let Some(l) = opt_label2 {
-                        let info = layout::GridChildInfo::new(3, row);
-                        l.set_rect(mgr, subtract_frame(setter.child_rect(store, info)), align);
+                    if let Some(w) =  items.label {
+                        let info = layout::GridChildInfo::new(2, row);
+                        w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)), align);
                     }
-                    if let Some(w) = opt_submenu {
+                    if let Some(w) = items.label2 {
+                        let info = layout::GridChildInfo::new(3, row);
+                        w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)), align);
+                    }
+                    if let Some(w) = items.submenu {
                         let info = layout::GridChildInfo::new(4, row);
                         w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)), align);
                     }

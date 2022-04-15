@@ -7,7 +7,7 @@
 
 use std::fmt::Debug;
 
-use crate::Menu;
+use crate::menu::Menu;
 use kas::prelude::*;
 
 impl_scope! {

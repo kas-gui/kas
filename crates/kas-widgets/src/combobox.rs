@@ -5,7 +5,7 @@
 
 //! Combobox
 
-use super::{IndexedColumn, MenuEntry, PopupFrame};
+use super::{menu::MenuEntry, IndexedColumn, PopupFrame};
 use kas::component::{Label, Mark};
 use kas::event::{self, Command};
 use kas::layout;

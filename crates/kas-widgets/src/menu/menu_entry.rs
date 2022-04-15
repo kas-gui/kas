@@ -5,7 +5,7 @@
 
 //! Menu Entries
 
-use super::Menu;
+use super::{Menu, SubItems};
 use crate::CheckBoxBare;
 use kas::component::{Component, Label};
 use kas::theme::{FrameStyle, IdRect, TextClass};
@@ -93,14 +93,11 @@ impl_scope! {
     }
 
     impl Menu for Self {
-        fn menu_sub_items(&mut self) -> Option<(
-            &mut dyn Component,
-            Option<&mut dyn Component>,
-            Option<&mut dyn Component>,
-            Option<&mut dyn Component>,
-            Option<&mut dyn WidgetConfig>,
-        )> {
-            Some((&mut self.label, None, None, None, None))
+        fn sub_items(&mut self) -> Option<SubItems> {
+            Some(SubItems {
+                label: Some(&mut self.label),
+                ..Default::default()
+            })
         }
     }
 }
@@ -154,14 +151,12 @@ impl_scope! {
     }
 
     impl Menu for Self {
-        fn menu_sub_items(&mut self) -> Option<(
-            &mut dyn Component,
-            Option<&mut dyn Component>,
-            Option<&mut dyn Component>,
-            Option<&mut dyn Component>,
-            Option<&mut dyn WidgetConfig>,
-        )> {
-            Some((&mut self.label, None, None, None, Some(&mut self.checkbox)))
+        fn sub_items(&mut self) -> Option<SubItems> {
+            Some(SubItems {
+                label: Some(&mut self.label),
+                toggle: Some(&mut self.checkbox),
+                ..Default::default()
+            })
         }
     }
 
