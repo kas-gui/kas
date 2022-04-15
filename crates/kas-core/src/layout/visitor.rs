@@ -247,25 +247,6 @@ impl<'a> Layout<'a> {
         }
     }
 
-    /// Return true if layout is up/left
-    ///
-    /// This is a lazy method of implementing tab order for reversible layouts.
-    #[inline]
-    pub fn is_reversed(mut self) -> bool {
-        self.is_reversed_()
-    }
-    fn is_reversed_(&mut self) -> bool {
-        match &mut self.layout {
-            LayoutType::None => false,
-            LayoutType::Component(component) => component.is_reversed(),
-            LayoutType::BoxComponent(layout) => layout.is_reversed(),
-            LayoutType::Single(_) | LayoutType::AlignSingle(_, _) => false,
-            LayoutType::AlignLayout(layout, _) => layout.is_reversed_(),
-            LayoutType::Frame(layout, _, _) => layout.is_reversed_(),
-            LayoutType::Button(layout, _, _) => layout.is_reversed_(),
-        }
-    }
-
     /// Find a widget by coordinate
     ///
     /// Does not return the widget's own identifier. See example usage in
@@ -344,10 +325,6 @@ where
         }
     }
 
-    fn is_reversed(&self) -> bool {
-        self.direction.is_reversed()
-    }
-
     fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
         // TODO(opt): more efficient search strategy?
         self.children.find_map(|child| child.find_id(coord))
@@ -384,10 +361,6 @@ impl<'a, W: WidgetConfig, D: Directional> Component for Slice<'a, W, D> {
         for (n, child) in self.children.iter_mut().enumerate() {
             child.set_rect(mgr, setter.child_rect(self.data, n), align);
         }
-    }
-
-    fn is_reversed(&self) -> bool {
-        self.direction.is_reversed()
     }
 
     fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
@@ -427,11 +400,6 @@ where
         for (info, child) in &mut self.children {
             child.set_rect(mgr, setter.child_rect(self.data, info), align);
         }
-    }
-
-    fn is_reversed(&self) -> bool {
-        // TODO: replace is_reversed with direct implementation of spatial_nav
-        false
     }
 
     fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {

@@ -338,25 +338,7 @@ pub trait Layout: WidgetChildren {
         from: Option<usize>,
     ) -> Option<usize> {
         let _ = mgr;
-        let last = self.num_children().wrapping_sub(1);
-        if last == usize::MAX {
-            return None;
-        }
-
-        let reverse = reverse ^ self.layout().is_reversed();
-
-        if let Some(index) = from {
-            match reverse {
-                false if index < last => Some(index + 1),
-                true if 0 < index => Some(index - 1),
-                _ => None,
-            }
-        } else {
-            match reverse {
-                false => Some(0),
-                true => Some(last),
-            }
-        }
+        crate::util::spatial_nav(reverse, from, self.num_children())
     }
 
     /// Translate a coordinate to a [`WidgetId`]

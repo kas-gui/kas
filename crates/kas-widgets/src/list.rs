@@ -228,6 +228,16 @@ impl_scope! {
             self.size_solved = true;
         }
 
+        fn spatial_nav(
+            &mut self,
+            _: &mut SetRectMgr,
+            reverse: bool,
+            from: Option<usize>,
+        ) -> Option<usize> {
+            let reverse = reverse ^ self.direction.is_reversed();
+            kas::util::spatial_nav(reverse, from, self.num_children())
+        }
+
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) || !self.size_solved {
                 return None;
