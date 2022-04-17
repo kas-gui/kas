@@ -34,6 +34,7 @@ impl_scope! {
     /// A label component
     #[impl_default(where T: trait)]
     #[autoimpl(Clone, Debug where T: trait)]
+    #[autoimpl(Storage where T: 'static)]
     pub struct Label<T: format::FormattableText> {
         text: Text<T>,
         class: TextClass = TextClass::Label(false),
@@ -130,12 +131,6 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawMgr, id: &WidgetId) {
             draw.text_effects(IdCoord(id, self.pos), &self.text, self.class);
-        }
-    }
-
-    impl crate::layout::Storage for Self where T: 'static {
-        fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-            self
         }
     }
 }
