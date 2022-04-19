@@ -129,10 +129,12 @@ impl EventState {
         let mut mgr = EventMgr {
             state: self,
             shell,
+            messages: vec![],
             action: TkAction::empty(),
         };
         f(&mut mgr);
         let action = mgr.action;
+        drop(mgr);
         self.send_action(action);
     }
 
@@ -145,6 +147,7 @@ impl EventState {
         let mut mgr = EventMgr {
             state: self,
             shell,
+            messages: vec![],
             action: TkAction::empty(),
         };
 
@@ -217,7 +220,9 @@ impl EventState {
             mgr.send_event(widget, id, event);
         }
 
-        let action = mgr.action | self.action;
+        let action = mgr.action;
+        drop(mgr);
+        let action = action | self.action;
         self.action = TkAction::empty();
         action
     }

@@ -26,7 +26,7 @@ impl<'a> std::ops::BitOrAssign<TkAction> for EventMgr<'a> {
     }
 }
 
-/// Public API (around event manager state)
+/// Public API
 impl EventState {
     /// True when the window has focus
     #[inline]
@@ -466,8 +466,37 @@ impl EventState {
     }
 }
 
-/// Public API (around toolkit and shell functionality)
+/// Public API
 impl<'a> EventMgr<'a> {
+    /// Push a message to the stack
+    pub fn push_msg<M: 'static>(&mut self, msg: M) {
+        self.push_boxed_msg(Box::new(msg));
+    }
+
+    /// Push a pre-boxed message to the stack
+    pub fn push_boxed_msg<M: 'static>(&mut self, msg: Box<M>) {
+        self.messages.push(msg);
+    }
+
+    /// True if the message stack is non-empty
+    pub fn has_msg(&self) -> bool {
+        !self.messages.is_empty()
+    }
+
+    /// Try popping the last message from the stack with the given type
+    pub fn try_pop_msg<M: 'static>(&mut self) -> Option<M> {
+        self.try_pop_boxed_msg().map(|m| *m)
+    }
+
+    /// Try popping the last message from the stack with the given type
+    pub fn try_pop_boxed_msg<M: 'static>(&mut self) -> Option<Box<M>> {
+        if self.messages.last().map(|m| m.is::<M>()).unwrap_or(false) {
+            self.messages.pop().unwrap().downcast::<M>().ok()
+        } else {
+            None
+        }
+    }
+
     /// Add an overlay (pop-up)
     ///
     /// A pop-up is a box used for things like tool-tips and menus which is
@@ -486,7 +515,6 @@ impl<'a> EventMgr<'a> {
     ///
     /// Returns `None` if window creation is not currently available (but note
     /// that `Some` result does not guarantee the operation succeeded).
-    #[inline]
     pub fn add_popup(&mut self, popup: crate::Popup) -> Option<WindowId> {
         trace!("Manager::add_popup({:?})", popup);
         let new_id = &popup.id;
@@ -531,7 +559,6 @@ impl<'a> EventMgr<'a> {
     /// If `restore_focus` then navigation focus will return to whichever widget
     /// had focus before the popup was open. (Usually this is true excepting
     /// where focus has already been changed.)
-    #[inline]
     pub fn close_window(&mut self, id: WindowId, restore_focus: bool) {
         if let Some(index) =
             self.state.popups.iter().enumerate().find_map(

@@ -11,6 +11,7 @@
 use linear_map::{set::LinearSet, LinearMap};
 use log::trace;
 use smallvec::SmallVec;
+use std::any::Any;
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 use std::ops::{Deref, DerefMut};
@@ -367,6 +368,7 @@ impl EventState {
 pub struct EventMgr<'a> {
     state: &'a mut EventState,
     shell: &'a mut dyn ShellWindow,
+    messages: Vec<Box<dyn Any>>,
     action: TkAction,
 }
 
@@ -379,6 +381,17 @@ impl<'a> Deref for EventMgr<'a> {
 impl<'a> DerefMut for EventMgr<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.state
+    }
+}
+
+impl<'a> Drop for EventMgr<'a> {
+    fn drop(&mut self) {
+        for msg in self.messages.drain(..) {
+            log::warn!(
+                "EventMgr: unhandled message: {:?}",
+                kas::util::TryFormat(&msg)
+            );
+        }
     }
 }
 
