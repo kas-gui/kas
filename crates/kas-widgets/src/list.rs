@@ -263,12 +263,6 @@ impl_scope! {
                     return match Response::try_from(r) {
                         Ok(r) => r,
                         Err(msg) => {
-                            log::trace!(
-                                "Received by {} from {}: {:?}",
-                                self.id(),
-                                id,
-                                kas::util::TryFormat(&msg)
-                            );
                             Response::Msg(FromIndexed::from_indexed(index, msg))
                         }
                     };

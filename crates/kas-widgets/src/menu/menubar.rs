@@ -236,12 +236,6 @@ impl_scope! {
                     return match widget.send(mgr, id.clone(), event.clone()) {
                         Response::Unused => self.handle(mgr, event),
                         r => r.try_into().unwrap_or_else(|msg| {
-                            log::trace!(
-                                "Received by {} from {}: {:?}",
-                                self.id(),
-                                id,
-                                kas::util::TryFormat(&msg)
-                            );
                             Response::Msg(msg)
                         }),
                     };

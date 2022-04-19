@@ -149,12 +149,6 @@ impl_scope! {
                     }
                 }
                 if let Response::Msg(ref msg) = &r {
-                    log::trace!(
-                        "Received by {} from {}: {:?}",
-                        self.id(),
-                        id,
-                        kas::util::TryFormat(&msg)
-                    );
                     if let Some(handle) = self.data.handle(&(), msg) {
                         mgr.trigger_update(handle, 0);
                     }

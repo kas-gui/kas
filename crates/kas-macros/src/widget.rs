@@ -423,21 +423,7 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
         } else {
             let mut ev_to_num = TokenStream::new();
             for (i, child) in children.iter().enumerate() {
-                #[cfg(feature = "log")]
-                let id = quote! { id.clone() };
-                #[cfg(feature = "log")]
-                let log_msg = quote! {
-                    ::log::trace!(
-                        "Received by {} from {}: {:?}",
-                        self.id(),
-                        id,
-                        ::kas::util::TryFormat(&msg)
-                    );
-                };
-                #[cfg(not(feature = "log"))]
                 let id = quote! { id };
-                #[cfg(not(feature = "log"))]
-                let log_msg = quote! {};
 
                 let ident = &child.ident;
                 let update = if let Some(f) = child.args.update.as_ref() {
@@ -452,26 +438,22 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 let handler = match &child.args.handler {
                     Handler::Use(f) => quote! {
                         r.try_into().unwrap_or_else(|msg| {
-                            #log_msg
                             let _: () = self.#f(mgr, msg);
                             Response::Used
                         })
                     },
                     Handler::Map(f) => quote! {
                         r.try_into().unwrap_or_else(|msg| {
-                            #log_msg
                             Response::Msg(self.#f(mgr, msg))
                         })
                     },
                     Handler::FlatMap(f) => quote! {
                         r.try_into().unwrap_or_else(|msg| {
-                            #log_msg
                             self.#f(mgr, msg)
                         })
                     },
                     Handler::Discard => quote! {
                         r.try_into().unwrap_or_else(|msg| {
-                            #log_msg
                             let _ = msg;
                             Response::Used
                         })

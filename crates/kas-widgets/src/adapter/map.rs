@@ -56,12 +56,6 @@ impl_scope! {
             } else {
                 let r = self.inner.send(mgr, id.clone(), event);
                 r.try_into().unwrap_or_else(|msg| {
-                    log::trace!(
-                        "Received by {} from {}: {:?}",
-                        self.id(),
-                        id,
-                        kas::util::TryFormat(&msg)
-                    );
                     (self.map)(mgr, msg)
                 })
             }

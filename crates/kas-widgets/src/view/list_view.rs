@@ -827,12 +827,6 @@ impl_scope! {
                 }
                 Response::Update => Response::Used,
                 Response::Msg(msg) => {
-                    trace!(
-                        "Received by {} from {:?}: {:?}",
-                        self.id(),
-                        &key,
-                        kas::util::TryFormat(&msg)
-                    );
                     if let Some(handle) = self.data.handle(&key, &msg) {
                         mgr.trigger_update(handle, 0);
                     }
