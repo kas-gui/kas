@@ -7,7 +7,7 @@ use proc_macro2::{Span, TokenStream as Toks};
 use quote::{quote, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
-use syn::{braced, bracketed, parenthesized, Expr, LitInt, Member, Token};
+use syn::{braced, bracketed, parenthesized, Expr, LitInt, LitStr, Member, Token};
 
 #[allow(non_camel_case_types)]
 mod kw {
@@ -60,6 +60,7 @@ enum Layout {
     List(Direction, List),
     Slice(Direction, Expr),
     Grid(GridDimensions, Vec<(CellInfo, Layout)>),
+    Label(LitStr),
 }
 
 #[derive(Debug)]
@@ -204,9 +205,9 @@ impl Parse for Layout {
             let _: kw::frame = input.parse()?;
             let inner;
             let _ = parenthesized!(inner in input);
-            let layout: Layout = inner.parse()?;
-            let _: Token![,] = inner.parse()?;
             let style: Expr = inner.parse()?;
+            let _: Token![:] = input.parse()?;
+            let layout: Layout = input.parse()?;
             Ok(Layout::Frame(Box::new(layout), style))
         } else if lookahead.peek(kw::column) {
             let _: kw::column = input.parse()?;
@@ -251,6 +252,8 @@ impl Parse for Layout {
             let _: kw::grid = input.parse()?;
             let _: Token![:] = input.parse()?;
             Ok(parse_grid(input)?)
+        } else if lookahead.peek(LitStr) {
+            Ok(Layout::Label(input.parse()?))
         } else {
             Err(lookahead.error())
         }
@@ -464,10 +467,10 @@ impl Layout {
                 quote! { layout::Layout::align(#inner, #align) }
             }
             Layout::AlignSingle(expr, align) => {
-                quote! { layout::Layout::align_single(#expr.as_widget_mut(), #align) }
+                quote! { layout::Layout::align_single((#expr).as_widget_mut(), #align) }
             }
             Layout::Widget(expr) => quote! {
-                layout::Layout::single(#expr.as_widget_mut())
+                layout::Layout::single((#expr).as_widget_mut())
             },
             Layout::Single(span) => {
                 if let Some(mut iter) = children {
@@ -491,7 +494,7 @@ impl Layout {
             Layout::Frame(layout, style) => {
                 let inner = layout.generate(children)?;
                 quote! {
-                    let (data, next) = _chain.storage::<layout::FrameStorage>();
+                    let (data, next) = _chain.storage::<layout::FrameStorage, _>(Default::default);
                     _chain = next;
                     layout::Layout::frame(data, #inner, #style)
                 }
@@ -531,7 +534,7 @@ impl Layout {
                 };
                 // Get a storage slot from the chain. Order doesn't matter.
                 let data = quote! { {
-                    let (data, next) = _chain.storage::<#storage>();
+                    let (data, next) = _chain.storage::<#storage, _>(Default::default);
                     _chain = next;
                     data
                 } };
@@ -542,7 +545,7 @@ impl Layout {
             }
             Layout::Slice(dir, expr) => {
                 let data = quote! { {
-                    let (data, next) = _chain.storage::<layout::DynRowStorage>();
+                    let (data, next) = _chain.storage::<layout::DynRowStorage, _>(Default::default);
                     _chain = next;
                     data
                 } };
@@ -551,7 +554,8 @@ impl Layout {
             Layout::Grid(dim, cells) => {
                 let (cols, rows) = (dim.cols as usize, dim.rows as usize);
                 let data = quote! { {
-                    let (data, next) = _chain.storage::<layout::FixedGridStorage<#cols, #rows>>();
+                    type Storage = layout::FixedGridStorage<#cols, #rows>;
+                    let (data, next) = _chain.storage::<Storage, _>(Default::default);
                     _chain = next;
                     data
                 } };
@@ -576,6 +580,17 @@ impl Layout {
                 let iter = quote! { { let arr = [#items]; arr.into_iter() } };
 
                 quote! { layout::Layout::grid(#iter, #dim, #data) }
+            }
+            Layout::Label(text) => {
+                let data = quote! { {
+                    type Label = kas::component::Label<&'static str>;
+                    let (data, next) = _chain.storage::<Label, _>(|| {
+                        Label::new(#text, kas::theme::TextClass::Label(false))
+                    });
+                    _chain = next;
+                    data
+                } };
+                quote! { layout::Layout::component(#data) }
             }
         })
     }

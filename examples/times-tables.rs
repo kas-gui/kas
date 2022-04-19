@@ -3,7 +3,7 @@
 use kas::prelude::*;
 use kas::updatable::{MatrixData, Updatable};
 use kas::widgets::view::{driver::DefaultNav, MatrixView, SelectionMode};
-use kas::widgets::{EditBox, ScrollBars, StrLabel, Window};
+use kas::widgets::{EditBox, ScrollBars, Window};
 
 #[derive(Debug)]
 struct TableData(u64, usize);
@@ -76,13 +76,12 @@ fn main() -> kas::shell::Result<()> {
     let layout = make_widget! {
         #[widget{
             layout = column: [
-                row: [self.label, self.max],
+                row: ["From 1 to", self.max],
                 align(right): self.table,
             ];
             msg = VoidMsg;
         }]
         struct {
-            #[widget] label = StrLabel::new("From 1 to"),
             #[widget(use_msg = set_max)] max: impl HasString = EditBox::new("12")
                 .on_afl(|text, _| text.parse::<usize>().ok()),
             #[widget(discard_msg)] table: ScrollBars<MatrixView<TableData, DefaultNav>> = table,

@@ -23,13 +23,6 @@ pub trait Component {
     /// Apply a given `rect` to self
     fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints);
 
-    /// True if the layout direction is up/left (reverse reading direction)
-    ///
-    /// TODO: replace with spatial_nav?
-    fn is_reversed(&self) -> bool {
-        false
-    }
-
     /// Translate a coordinate to a [`WidgetId`]
     fn find_id(&mut self, coord: Coord) -> Option<WidgetId>;
 
@@ -41,6 +34,7 @@ impl_scope! {
     /// A label component
     #[impl_default(where T: trait)]
     #[autoimpl(Clone, Debug where T: trait)]
+    #[autoimpl(Storage where T: 'static)]
     pub struct Label<T: format::FormattableText> {
         text: Text<T>,
         class: TextClass = TextClass::Label(false),

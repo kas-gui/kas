@@ -11,6 +11,8 @@
 #![cfg_attr(feature = "gat", feature(generic_associated_types))]
 #![cfg_attr(feature = "spec", feature(specialization))]
 
+extern crate self as kas;
+
 #[macro_use]
 extern crate bitflags;
 

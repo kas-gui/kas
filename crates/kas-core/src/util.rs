@@ -43,3 +43,24 @@ impl<'a, T: fmt::Debug + ?Sized> fmt::Debug for TryFormat<'a, T> {
         write!(f, "{:?}", self.0)
     }
 }
+
+/// Generic implementation of [`crate::Layout::spatial_nav`]
+pub fn spatial_nav(reverse: bool, from: Option<usize>, len: usize) -> Option<usize> {
+    let last = len.wrapping_sub(1);
+    if last == usize::MAX {
+        return None;
+    }
+
+    if let Some(index) = from {
+        match reverse {
+            false if index < last => Some(index + 1),
+            true if 0 < index => Some(index - 1),
+            _ => None,
+        }
+    } else {
+        match reverse {
+            false => Some(0),
+            true => Some(last),
+        }
+    }
+}

@@ -17,7 +17,7 @@ impl_scope! {
     #[derive(Clone, Debug, Default)]
     #[widget{
         key_nav = true;
-        layout = frame(self.inner, kas::theme::FrameStyle::NavFocus);
+        layout = frame(kas::theme::FrameStyle::NavFocus): self.inner;
     }]
     pub struct NavFrame<W: Widget> {
         #[widget_core]

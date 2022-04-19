@@ -113,7 +113,7 @@ fn main() -> kas::shell::Result<()> {
     let widgets = make_widget! {
         #[widget{
             layout = grid: {
-                1, 1: self.label;
+                1, 1: "Custom theme demo\nChoose your colour!";
                 0, 1: self.white;
                 1, 2: self.red;
                 2, 1: self.yellow;
@@ -122,7 +122,6 @@ fn main() -> kas::shell::Result<()> {
             msg = Item;
         }]
         struct {
-            #[widget] label = Label::new("Custom theme demo\nChoose your colour!"),
             #[widget] white = TextButton::new_msg("&White", Item::White),
             #[widget] red = TextButton::new_msg("&Red", Item::Red),
             #[widget] yellow = TextButton::new_msg("&Yellow", Item::Yellow),

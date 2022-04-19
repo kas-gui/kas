@@ -317,12 +317,17 @@ pub trait Layout: WidgetChildren {
 
     /// Navigation in spatial order
     ///
-    /// Returns the index of the "next" child in iteration order within the
-    /// widget's rect, if any. (Pop-up widgets should be excluded.)
+    /// Controls <kbd>Tab</kbd> navigation order of children.
+    /// This method should:
     ///
-    /// If `reverse` is true, move in left/up direction, otherwise right/down.
-    /// If `from.is_some()`, return its next sibling in iteration order,
-    /// otherwise return the first or last child.
+    /// -   Return `None` if there is no next child
+    /// -   Determine the next child after `from` (if provided) or the whole
+    ///     range, optionally in `reverse` order
+    /// -   Ensure that the selected widget is addressable through
+    ///     [`WidgetChildren::get_child`]
+    ///
+    /// Both `from` and the return value use the widget index, as used by
+    /// [`WidgetChildren::get_child`].
     ///
     /// The default implementation often suffices: it will navigate through
     /// children in order.
@@ -333,25 +338,7 @@ pub trait Layout: WidgetChildren {
         from: Option<usize>,
     ) -> Option<usize> {
         let _ = mgr;
-        let last = self.num_children().wrapping_sub(1);
-        if last == usize::MAX {
-            return None;
-        }
-
-        let reverse = reverse ^ self.layout().is_reversed();
-
-        if let Some(index) = from {
-            match reverse {
-                false if index < last => Some(index + 1),
-                true if 0 < index => Some(index - 1),
-                _ => None,
-            }
-        } else {
-            match reverse {
-                false => Some(0),
-                true => Some(last),
-            }
-        }
+        crate::util::spatial_nav(reverse, from, self.num_children())
     }
 
     /// Translate a coordinate to a [`WidgetId`]
