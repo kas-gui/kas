@@ -188,10 +188,6 @@ impl_scope! {
 
                 match r {
                     Response::Unused => (),
-                    Response::Select => {
-                        self.set_menu_path(mgr, Some(&id), true);
-                        return Response::Used;
-                    }
                     r @ (Response::Update | Response::Msg(_)) => {
                         self.close_menu(mgr, true);
                         return r;

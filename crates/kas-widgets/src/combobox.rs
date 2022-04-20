@@ -356,7 +356,7 @@ impl<M: 'static> ComboBox<M> {
     ) -> Response<M> {
         match r {
             Response::Unused => EventMgr::handle_generic(self, mgr, event),
-            Response::Update | Response::Select => {
+            Response::Update => {
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id, true);
                 }
