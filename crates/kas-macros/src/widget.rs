@@ -426,15 +426,6 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 let id = quote! { id };
 
                 let ident = &child.ident;
-                let update = if let Some(f) = child.args.update.as_ref() {
-                    quote! {
-                        if matches!(r, Response::Update) {
-                            self.#f(mgr);
-                        }
-                    }
-                } else {
-                    quote! {}
-                };
                 let handler = match &child.args.handler {
                     Handler::Use(f) => quote! {
                         r.try_into().unwrap_or_else(|msg| {
@@ -464,7 +455,6 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 ev_to_num.append_all(quote! {
                     Some(#i) => {
                         let r = self.#ident.send(mgr, #id, event);
-                        #update
                         #handler
                     }
                 });

@@ -177,7 +177,6 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// The `#[widget]` attribute on fields may have arguments, affecting how the
 /// implementation of [`SendEvent`] handles [`Response`] values from the child:
 ///
-/// -   `#[widget(update = f)]` — when `Response::Update` is received, `self.f()` is called
 /// -   `#[widget(use_msg = f)]` — when `Response::Msg(msg)` is received,
 ///     `self.f(msg)` is called and `Response::Used` is returned
 /// -   `#[widget(map_msg = f)]` — when `Response::Msg(msg)` is received,

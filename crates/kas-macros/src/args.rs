@@ -239,11 +239,7 @@ impl Parse for WidgetAttrArgs {
 
         loop {
             let lookahead = content.lookahead1();
-            if args.update.is_none() && lookahead.peek(kw::update) {
-                let _: kw::update = content.parse()?;
-                let _: Eq = content.parse()?;
-                args.update = Some(content.parse()?);
-            } else if args.handler.is_none() && lookahead.peek(kw::flatmap_msg) {
+            if args.handler.is_none() && lookahead.peek(kw::flatmap_msg) {
                 let _: kw::flatmap_msg = content.parse()?;
                 let _: Eq = content.parse()?;
                 args.handler = Handler::FlatMap(content.parse()?);
