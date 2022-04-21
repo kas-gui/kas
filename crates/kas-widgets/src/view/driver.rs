@@ -50,7 +50,7 @@ pub trait Driver<T>: Debug + 'static {
     /// This method optionally constructs and returns `data` from the widget.
     /// It is only useful on interactive widgets (e.g. a slider or edit box).
     ///
-    /// When the constructed widget emits [`Response::Update`] or
+    /// When the constructed widget emits
     /// [`Response::Msg`], the "view" (e.g. `SingleView`) calls this method; if
     /// a data item is returned, then then it is passed to the data model's
     /// `update` method to update the model.

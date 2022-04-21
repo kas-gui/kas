@@ -188,7 +188,7 @@ impl_scope! {
 
                 match r {
                     Response::Unused => (),
-                    r @ (Response::Update | Response::Msg(_)) => {
+                    r @ Response::Msg(_) => {
                         self.close_menu(mgr, true);
                         return r;
                     }

@@ -622,7 +622,6 @@ impl_scope! {
                         // TODO(opt): use the update payload to indicate which widgets need updating?
                         self.update_view(mgr);
                         self.data_ver = data_ver;
-                        return Response::Update;
                     }
                     return Response::Used;
                 }
@@ -768,7 +767,7 @@ impl_scope! {
                 return Response::Unused;
             }
 
-            if matches!(&response, Response::Update | Response::Msg(_)) {
+            if matches!(&response, Response::Msg(_)) {
                 if let Some(value) = self.view.get(&self.widgets[index].widget) {
                     if let Some(handle) = self.data.update(&key, value) {
                         mgr.trigger_update(handle, 0);
@@ -825,7 +824,6 @@ impl_scope! {
                         }
                     }
                 }
-                Response::Update => Response::Used,
                 Response::Msg(msg) => {
                     if let Some(handle) = self.data.handle(&key, &msg) {
                         mgr.trigger_update(handle, 0);

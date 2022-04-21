@@ -60,7 +60,7 @@ impl_scope! {
                         if let Some(handle) = self.group.update(Some(self.id())) {
                             mgr.trigger_update(handle, 0);
                         }
-                        Response::update_or_msg(self.on_select.as_ref().and_then(|f| f(mgr)))
+                        Response::used_or_msg(self.on_select.as_ref().and_then(|f| f(mgr)))
                     } else {
                         Response::Used
                     }
@@ -70,10 +70,8 @@ impl_scope! {
                         trace!("RadioBoxBare: unset {}", self.id());
                         self.state = false;
                         mgr.redraw(self.id());
-                        Response::Update
-                    } else {
-                        Response::Used
                     }
+                    Response::Used
                 }
                 _ => Response::Unused,
             }
@@ -118,10 +116,9 @@ impl_scope! {
         /// Set event handler `f`
         ///
         /// On selection (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called. The result of `f` is converted to
-        /// [`Response::Msg`] or [`Response::Update`] and returned to the parent.
+        /// closure `f` is called.
         ///
-        /// No handler is called on deselection, but [`Response::Update`] is returned.
+        /// No handler is called on deselection.
         #[inline]
         #[must_use]
         pub fn on_select<M, F>(self, f: F) -> RadioBoxBare<M>
@@ -144,10 +141,9 @@ impl_scope! {
         /// same `group` will be considered part of a single group.
         ///
         /// On selection (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called. The result of `f` is converted to
-        /// [`Response::Msg`] or [`Response::Update`] and returned to the parent.
+        /// closure `f` is called.
         ///
-        /// No handler is called on deselection, but [`Response::Update`] is returned.
+        /// No handler is called on deselection.
         #[inline]
         pub fn new_on<F>(group: RadioBoxGroup, f: F) -> Self
         where
@@ -235,10 +231,9 @@ impl_scope! {
         /// Set event handler `f`
         ///
         /// On selection (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called. The result of `f` is converted to
-        /// [`Response::Msg`] or [`Response::Update`] and returned to the parent.
+        /// closure `f` is called.
         ///
-        /// No handler is called on deselection, but [`Response::Update`] is returned.
+        /// No handler is called on deselection.
         #[inline]
         #[must_use]
         pub fn on_select<M, F>(self, f: F) -> RadioBox<M>
@@ -263,10 +258,9 @@ impl_scope! {
         /// same `group` will be considered part of a single group.
         ///
         /// On selection (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called. The result of `f` is converted to
-        /// [`Response::Msg`] or [`Response::Update`] and returned to the parent.
+        /// closure `f` is called.
         ///
-        /// No handler is called on deselection, but [`Response::Update`] is returned.
+        /// No handler is called on deselection.
         #[inline]
         pub fn new_on<T: Into<AccelString>, F>(label: T, group: RadioBoxGroup, f: F) -> Self
         where
@@ -286,7 +280,7 @@ impl_scope! {
         /// On selection (through user input events or [`Event::Activate`]) a clone
         /// of `msg` is returned to the parent widget via [`Response::Msg`].
         ///
-        /// No handler is called on deselection, but [`Response::Update`] is returned.
+        /// No handler is called on deselection.
         #[inline]
         pub fn new_msg<S: Into<AccelString>>(label: S, group: RadioBoxGroup, msg: M) -> Self
         where

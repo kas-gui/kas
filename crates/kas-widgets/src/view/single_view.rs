@@ -125,10 +125,8 @@ impl_scope! {
                         let value = self.data.get_cloned();
                         *mgr |= self.view.set(&mut self.child, value);
                         self.data_ver = data_ver;
-                        Response::Update
-                    } else {
-                        Response::Used
                     }
+                    Response::Used
                 }
                 _ => Response::Unused,
             }
@@ -141,7 +139,7 @@ impl_scope! {
                 self.handle(mgr, event)
             } else {
                 let r = self.child.send(mgr, id.clone(), event);
-                if matches!(&r, Response::Update | Response::Msg(_)) {
+                if matches!(&r, Response::Msg(_)) {
                     if let Some(value) = self.view.get(&self.child) {
                         if let Some(handle) = self.data.update(value) {
                             mgr.trigger_update(handle, 0);

@@ -46,12 +46,6 @@ pub enum Response<M> {
     Focus(Rect),
     /// Widget wishes to be selected (or have selection status toggled)
     Select,
-    /// Notify of update to widget's data
-    ///
-    /// Widgets which hold editable data should return either this or
-    /// [`Response::Msg`] on handling events which update that data.
-    /// Note: scrolling/adjusting a view is not considered a data update.
-    Update,
     /// Custom message type
     ///
     /// This signals a (possible) update to the widget's data, while passing a
@@ -67,15 +61,6 @@ impl<M> Response<M> {
     pub fn used_or_msg(opt_msg: Option<M>) -> Self {
         match opt_msg {
             None => Response::Used,
-            Some(msg) => Response::Msg(msg),
-        }
-    }
-
-    /// Construct `Update` or `Msg(msg)`
-    #[inline]
-    pub fn update_or_msg(opt_msg: Option<M>) -> Self {
-        match opt_msg {
-            None => Response::Update,
             Some(msg) => Response::Msg(msg),
         }
     }
@@ -133,7 +118,6 @@ impl<M> Response<M> {
             Scrolled => Ok(Scrolled),
             Focus(rect) => Ok(Focus(rect)),
             Select => Ok(Select),
-            Update => Ok(Update),
             Msg(m) => Err(m),
         }
     }

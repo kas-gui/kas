@@ -87,8 +87,7 @@ pub trait EditGuard: Debug + Sized + 'static {
     /// Edit guard
     ///
     /// This function is called when contents are updated by the user (but not
-    /// on programmatic updates — see also [`EditGuard::update`]). Its return
-    /// value is converted to [`Response::Update`] or [`Response::Msg`].
+    /// on programmatic updates — see also [`EditGuard::update`]).
     ///
     /// The default implementation calls [`EditGuard::update`].
     fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Option<Self::Msg> {
@@ -500,7 +499,7 @@ impl_scope! {
                             EditAction::None => Response::Used,
                             EditAction::Unused => Response::Unused,
                             EditAction::Activate => Response::used_or_msg(G::activate(self, mgr)),
-                            EditAction::Edit => Response::update_or_msg(G::edit(self, mgr)),
+                            EditAction::Edit => Response::used_or_msg(G::edit(self, mgr)),
                         }
                     } else {
                         Response::Unused
@@ -508,7 +507,7 @@ impl_scope! {
                 }
                 Event::ReceivedCharacter(c) => match self.received_char(mgr, c) {
                     false => Response::Unused,
-                    true => Response::update_or_msg(G::edit(self, mgr)),
+                    true => Response::used_or_msg(G::edit(self, mgr)),
                 },
                 Event::Scroll(delta) => {
                     let delta2 = match delta {

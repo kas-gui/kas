@@ -238,8 +238,7 @@ impl ComboBox<VoidMsg> {
     /// Set the selection handler `f`
     ///
     /// On selection of a new choice the closure `f` is called with the choice's
-    /// index. The result of `f` is converted to [`Response::Msg`] or
-    /// [`Response::Update`] and returned to the parent.
+    /// index.
     #[inline]
     #[must_use]
     pub fn on_select<M, F>(self, f: F) -> ComboBox<M>
@@ -356,7 +355,7 @@ impl<M: 'static> ComboBox<M> {
     ) -> Response<M> {
         match r {
             Response::Unused => EventMgr::handle_generic(self, mgr, event),
-            Response::Update => {
+            /* TODO Response::Update => {
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id, true);
                 }
@@ -364,23 +363,23 @@ impl<M: 'static> ComboBox<M> {
                     if index != self.active {
                         *mgr |= self.set_active(index);
                         return if let Some(ref f) = self.on_select {
-                            Response::update_or_msg((f)(mgr, index))
+                            Response::used_or_msg((f)(mgr, index))
                         } else {
                             Response::Update
                         };
                     }
                 }
                 Response::Used
-            }
+            } */
             r => r.try_into().unwrap_or_else(|(index, ())| {
                 *mgr |= self.set_active(index);
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id, true);
                 }
                 if let Some(ref f) = self.on_select {
-                    Response::update_or_msg((f)(mgr, index))
+                    Response::used_or_msg((f)(mgr, index))
                 } else {
-                    Response::Update
+                    Response::Used
                 }
             }),
         }

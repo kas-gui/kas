@@ -60,8 +60,7 @@ impl_scope! {
         /// Set event handler `f`
         ///
         /// On toggle (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called. The result of `f` is converted to
-        /// [`Response::Msg`] or [`Response::Update`] and returned to the parent.
+        /// closure `f` is called.
         #[inline]
         #[must_use]
         pub fn on_toggle<M, F>(self, f: F) -> CheckBoxBare<M>
@@ -81,8 +80,7 @@ impl_scope! {
         /// Construct a checkbox with event handler `f`
         ///
         /// On activation (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called. The result of `f` is converted to
-        /// [`Response::Msg`] or [`Response::Update`] and returned to the parent.
+        /// closure `f` is called.
         #[inline]
         pub fn new_on<F>(f: F) -> Self
         where
@@ -144,7 +142,7 @@ impl_scope! {
                 Event::Activate if self.editable => {
                     self.state = !self.state;
                     mgr.redraw(self.id());
-                    Response::update_or_msg(self.on_toggle.as_ref().and_then(|f| f(mgr, self.state)))
+                    Response::used_or_msg(self.on_toggle.as_ref().and_then(|f| f(mgr, self.state)))
                 }
                 _ => Response::Unused,
             }
@@ -197,8 +195,7 @@ impl_scope! {
         /// Set event handler `f`
         ///
         /// On toggle (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called. The result of `f` is converted to
-        /// [`Response::Msg`] or [`Response::Update`] and returned to the parent.
+        /// closure `f` is called.
         #[inline]
         #[must_use]
         pub fn on_toggle<M, F>(self, f: F) -> CheckBox<M>
@@ -220,8 +217,7 @@ impl_scope! {
         /// string.
         ///
         /// On toggle (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called. The result of `f` is converted to
-        /// [`Response::Msg`] or [`Response::Update`] and returned to the parent.
+        /// closure `f` is called.
         #[inline]
         pub fn new_on<T: Into<AccelString>, F>(label: T, f: F) -> Self
         where
