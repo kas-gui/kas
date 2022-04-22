@@ -60,17 +60,17 @@ impl_scope! {
         }
     }
 
-    impl SendEvent for Self where W::Msg: Into<VoidMsg> {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
+    impl SendEvent for Self {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
             if self.eq_id(&id) {
                 Response::Unused
             } else {
-                self.w.send(mgr, id, event).into()
+                self.w.send(mgr, id, event)
             }
         }
     }
 
-    impl<M: Into<VoidMsg>, W: Widget<Msg = M> + 'static> kas::Window for Window<W> {
+    impl<W: Widget + 'static> kas::Window for Window<W> {
         fn title(&self) -> &str {
             &self.title
         }

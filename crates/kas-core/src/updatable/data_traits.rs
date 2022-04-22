@@ -5,7 +5,7 @@
 
 //! Traits for shared data objects
 
-use crate::event::UpdateHandle;
+use crate::event::{EventMgr, UpdateHandle};
 use crate::macros::autoimpl;
 #[allow(unused)] // doc links
 use crate::WidgetId;
@@ -19,7 +19,7 @@ use std::fmt::Debug;
 #[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait SingleData: Debug {
     /// Output type
-    type Item: Clone;
+    type Item: Clone + 'static;
 
     /// Get any update handles used to notify of updates
     ///
@@ -61,6 +61,25 @@ pub trait SingleData: Debug {
     /// is required to obtain `&mut` and lower to [`SingleDataMut::set`]. The
     /// provider of this lowering should also provide an [`UpdateHandle`].
     fn update(&self, value: Self::Item) -> Option<UpdateHandle>;
+
+    /// Handle a message from a widget
+    ///
+    /// This method is called when a view widget returns with a message.
+    /// It may use [`EventMgr::try_pop_msg`] and update self.
+    ///
+    /// If `self` is updated, the version number must be incremented and an
+    /// update handle returned (this handle should also be returned by
+    /// [`Self::update_handles`]).
+    ///
+    /// This method takes only `&self`, thus some mechanism such as [`RefCell`]
+    /// is required to obtain `&mut` and lower to [`SingleDataMut::set`]. The
+    /// provider of this lowering should also provide an [`UpdateHandle`].
+    ///
+    /// The default implementation attempts to extract a value of type
+    /// [`Self::Item`], passing this to [`Self::update`] on success.
+    fn on_message(&self, mgr: &mut EventMgr) -> Option<UpdateHandle> {
+        mgr.try_pop_msg().and_then(|value| self.update(value))
+    }
 }
 
 /// Trait for writable single data items
@@ -81,7 +100,7 @@ pub trait ListData: Debug {
     type Key: Clone + Debug + PartialEq + Eq;
 
     /// Item type
-    type Item: Clone;
+    type Item: Clone + 'static;
 
     /// Get any update handles used to notify of updates
     ///
@@ -151,6 +170,25 @@ pub trait ListData: Debug {
     /// provider of this lowering should also provide an [`UpdateHandle`].
     fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle>;
 
+    /// Handle a message from a widget
+    ///
+    /// This method is called when a view widget returns with a message.
+    /// It may use [`EventMgr::try_pop_msg`] and update self.
+    ///
+    /// If `self` is updated, the version number must be incremented and an
+    /// update handle returned (this handle should also be returned by
+    /// [`Self::update_handles`]).
+    ///
+    /// This method takes only `&self`, thus some mechanism such as [`RefCell`]
+    /// is required to obtain `&mut` and lower to [`ListDataMut::set`]. The
+    /// provider of this lowering should also provide an [`UpdateHandle`].
+    ///
+    /// The default implementation attempts to extract a value of type
+    /// [`Self::Item`], passing this to [`Self::update`] on success.
+    fn on_message(&self, mgr: &mut EventMgr, key: &Self::Key) -> Option<UpdateHandle> {
+        mgr.try_pop_msg().and_then(|value| self.update(key, value))
+    }
+
     // TODO(gat): replace with an iterator
     /// Iterate over keys as a vec
     ///
@@ -189,7 +227,7 @@ pub trait MatrixData: Debug {
     /// Full key type
     type Key: Clone + Debug + PartialEq + Eq;
     /// Item type
-    type Item: Clone;
+    type Item: Clone + 'static;
 
     /// Get any update handles used to notify of updates
     ///
@@ -253,9 +291,28 @@ pub trait MatrixData: Debug {
     /// an update occurred. Returns `None` if updates are unsupported.
     ///
     /// This method takes only `&self`, thus some mechanism such as [`RefCell`]
-    /// is required to obtain `&mut` and lower to [`ListDataMut::set`]. The
+    /// is required to obtain `&mut` and lower to [`MatrixDataMut::set`]. The
     /// provider of this lowering should also provide an [`UpdateHandle`].
     fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle>;
+
+    /// Handle a message from a widget
+    ///
+    /// This method is called when a view widget returns with a message.
+    /// It may use [`EventMgr::try_pop_msg`] and update self.
+    ///
+    /// If `self` is updated, the version number must be incremented and an
+    /// update handle returned (this handle should also be returned by
+    /// [`Self::update_handles`]).
+    ///
+    /// This method takes only `&self`, thus some mechanism such as [`RefCell`]
+    /// is required to obtain `&mut` and lower to [`MatrixDataMut::set`]. The
+    /// provider of this lowering should also provide an [`UpdateHandle`].
+    ///
+    /// The default implementation attempts to extract a value of type
+    /// [`Self::Item`], passing this to [`Self::update`] on success.
+    fn on_message(&self, mgr: &mut EventMgr, key: &Self::Key) -> Option<UpdateHandle> {
+        mgr.try_pop_msg().and_then(|value| self.update(key, value))
+    }
 
     // TODO(gat): replace with an iterator
     /// Iterate over column keys as a vec

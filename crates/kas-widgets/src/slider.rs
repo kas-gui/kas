@@ -86,6 +86,10 @@ impl_scope! {
     /// A slider
     ///
     /// Sliders allow user input of a value from a fixed range.
+    ///
+    /// # Messages
+    ///
+    /// On value change, pushes a value of type `T`.
     #[derive(Clone, Debug, Default)]
     #[widget{
         key_nav = true;
@@ -260,17 +264,20 @@ impl_scope! {
     }
 
     impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
             let offset = if self.handle.id().is_ancestor_of(&id) {
                 match event {
                     Event::NavFocus(key_focus) => {
                         mgr.set_nav_focus(self.id(), key_focus);
                         return Response::Used; // NavFocus event will be sent to self
                     }
-                    event => match self.handle.send(mgr, id, event).try_into() {
-                        Ok(res) => return res,
-                        Err(offset) => offset,
-                    },
+                    event => {
+                        let r = self.handle.send(mgr, id, event);
+                        match mgr.try_pop_msg::<Offset>() {
+                            Some(offset) => offset,
+                            _ => return r,
+                        }
+                    }
                 }
             } else {
                 debug_assert_eq!(id, self.id());
@@ -308,12 +315,11 @@ impl_scope! {
                             _ => return Response::Unused,
                         };
                         let action = self.set_value(v);
-                        return if action.is_empty() {
-                            Response::Used
-                        } else {
+                        if !action.is_empty() {
                             mgr.send_action(action);
-                            Response::Msg(self.value)
-                        };
+                            mgr.push_msg(self.value);
+                        }
+                        return Response::Used;
                     }
                     Event::PressStart { source, coord, .. } => {
                         self.handle.handle_press_on_track(mgr, source, coord)
@@ -322,13 +328,11 @@ impl_scope! {
                 }
             };
 
-            let r = if self.set_offset(offset) {
-                Response::Msg(self.value)
-            } else {
-                Response::Used
-            };
+            if self.set_offset(offset) {
+                mgr.push_msg(self.value);
+            }
             *mgr |= self.handle.set_offset(self.offset()).1;
-            r
+            Response::Used
         }
     }
 }

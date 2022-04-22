@@ -17,12 +17,12 @@ impl_scope! {
         key_nav = true;
         hover_highlight = true;
     }]
-    pub struct CheckBoxBare<M: 'static> {
+    pub struct CheckBoxBare {
         #[widget_core]
         core: CoreData,
         state: bool,
         editable: bool,
-        on_toggle: Option<Rc<dyn Fn(&mut EventMgr, bool) -> Option<M>>>,
+        on_toggle: Option<Rc<dyn Fn(&mut EventMgr, bool)>>,
     }
 
     impl Layout for Self {
@@ -45,7 +45,7 @@ impl_scope! {
         }
     }
 
-    impl CheckBoxBare<VoidMsg> {
+    impl Self {
         /// Construct a checkbox
         #[inline]
         pub fn new() -> Self {
@@ -63,9 +63,9 @@ impl_scope! {
         /// closure `f` is called.
         #[inline]
         #[must_use]
-        pub fn on_toggle<M, F>(self, f: F) -> CheckBoxBare<M>
+        pub fn on_toggle<F>(self, f: F) -> CheckBoxBare
         where
-            F: Fn(&mut EventMgr, bool) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr, bool) + 'static,
         {
             CheckBoxBare {
                 core: self.core,
@@ -74,9 +74,7 @@ impl_scope! {
                 on_toggle: Some(Rc::new(f)),
             }
         }
-    }
 
-    impl Self {
         /// Construct a checkbox with event handler `f`
         ///
         /// On activation (through user input events or [`Event::Activate`]) the
@@ -84,7 +82,7 @@ impl_scope! {
         #[inline]
         pub fn new_on<F>(f: F) -> Self
         where
-            F: Fn(&mut EventMgr, bool) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr, bool) + 'static,
         {
             CheckBoxBare::new().on_toggle(f)
         }
@@ -130,19 +128,18 @@ impl_scope! {
     }
 
     impl event::Handler for Self {
-        type Msg = M;
-
         #[inline]
         fn activation_via_press(&self) -> bool {
             true
         }
 
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<M> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Activate if self.editable => {
                     self.state = !self.state;
                     mgr.redraw(self.id());
-                    Response::used_or_msg(self.on_toggle.as_ref().and_then(|f| f(mgr, self.state)))
+                    self.on_toggle.as_ref().map(|f| f(mgr, self.state));
+                    Response::Used
                 }
                 _ => Response::Unused,
             }
@@ -159,11 +156,11 @@ impl_scope! {
         layout = row: *;
         find_id = Some(self.inner.id());
     }]
-    pub struct CheckBox<M: 'static> {
+    pub struct CheckBox {
         #[widget_core]
         core: CoreData,
         #[widget]
-        inner: CheckBoxBare<M>,
+        inner: CheckBoxBare,
         #[widget]
         label: AccelLabel,
     }
@@ -174,11 +171,7 @@ impl_scope! {
         }
     }
 
-    impl Handler for Self where M: From<VoidMsg> {
-        type Msg = M;
-    }
-
-    impl CheckBox<VoidMsg> {
+    impl Self {
         /// Construct a checkbox with a given `label`
         ///
         /// CheckBox labels are optional; if no label is desired, use an empty
@@ -198,9 +191,9 @@ impl_scope! {
         /// closure `f` is called.
         #[inline]
         #[must_use]
-        pub fn on_toggle<M, F>(self, f: F) -> CheckBox<M>
+        pub fn on_toggle<F>(self, f: F) -> CheckBox
         where
-            F: Fn(&mut EventMgr, bool) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr, bool) + 'static,
         {
             CheckBox {
                 core: self.core,
@@ -208,9 +201,7 @@ impl_scope! {
                 label: self.label,
             }
         }
-    }
 
-    impl Self {
         /// Construct a checkbox with a given `label` and event handler `f`
         ///
         /// CheckBox labels are optional; if no label is desired, use an empty
@@ -221,7 +212,7 @@ impl_scope! {
         #[inline]
         pub fn new_on<T: Into<AccelString>, F>(label: T, f: F) -> Self
         where
-            F: Fn(&mut EventMgr, bool) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr, bool) + 'static,
         {
             CheckBox::new(label).on_toggle(f)
         }

@@ -5,9 +5,8 @@
 
 //! Widget extension traits
 
-use super::{MapResponse, Reserve, WithLabel};
+use super::{MapMessage, Reserve, WithLabel};
 use kas::dir::Directional;
-use kas::event::{EventMgr, Response, VoidMsg};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::text::AccelString;
 use kas::theme::SizeMgr;
@@ -17,51 +16,14 @@ use kas::Widget;
 
 /// Provides some convenience methods on widgets
 pub trait AdaptWidget: Widget {
-    /// Construct a wrapper widget which maps messages to `M`
-    ///
-    /// Responses from this widget with a message payload are mapped with `f`.
+    /// Construct a wrapper widget which maps a message of the given type
     #[must_use]
-    fn map_msg<F, M>(self, f: F) -> MapResponse<Self, M>
-    where
-        F: Fn(&mut EventMgr, Self::Msg) -> M + 'static,
-        Self: Sized,
-    {
-        MapResponse::new(self, move |mgr, msg| Response::Msg(f(mgr, msg)))
-    }
-
-    /// Construct a wrapper widget which maps messages from [`VoidMsg`] to `M`
-    ///
-    /// Responses from this widget with a message payload are mapped with `f`.
-    #[must_use]
-    fn map_void_msg<M>(self) -> MapResponse<Self, M>
-    where
-        Self: Widget<Msg = VoidMsg> + Sized,
-    {
-        MapResponse::new(self, |_, msg| match msg {})
-    }
-
-    /// Construct a wrapper widget which discards messages from this widget
-    ///
-    /// Responses from this widget with a message payload are mapped to
-    /// [`Response::Used`].
-    #[must_use]
-    fn map_msg_discard<M>(self) -> MapResponse<Self, M>
+    fn map_msg<M, N, F>(self, f: F) -> MapMessage<Self, M, N, F>
     where
         Self: Sized,
+        F: FnMut(M) -> N,
     {
-        MapResponse::new(self, |_, _| Response::Used)
-    }
-
-    /// Construct a wrapper widget which maps message responses from this widget
-    ///
-    /// Responses from this widget with a message payload are mapped with `f`.
-    #[must_use]
-    fn map_response<F, M>(self, f: F) -> MapResponse<Self, M>
-    where
-        F: Fn(&mut EventMgr, Self::Msg) -> Response<M> + 'static,
-        Self: Sized,
-    {
-        MapResponse::new(self, f)
+        MapMessage::new(self, f)
     }
 
     /// Construct a wrapper widget which reserves extra space

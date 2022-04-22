@@ -13,12 +13,12 @@ use std::ops::{Index, IndexMut, Range};
 /// A stack of boxed widgets
 ///
 /// This is a parametrisation of [`Stack`].
-pub type BoxStack<M> = Stack<Box<dyn Widget<Msg = M>>>;
+pub type BoxStack = Stack<Box<dyn Widget>>;
 
 /// A stack of widget references
 ///
 /// This is a parametrisation of [`Stack`].
-pub type RefStack<'a, M> = Stack<&'a mut dyn Widget<Msg = M>>;
+pub type RefStack<'a> = Stack<&'a mut dyn Widget>;
 
 impl_scope! {
     /// A stack of widgets
@@ -141,7 +141,7 @@ impl_scope! {
     }
 
     impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
             if let Some(index) = self.find_child_index(&id) {
                 if let Some(child) = self.widgets.get_mut(index) {
                     return match child.send(mgr, id, event) {

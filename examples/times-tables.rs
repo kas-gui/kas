@@ -1,17 +1,12 @@
 //! Do you know your times tables?
 
 use kas::prelude::*;
-use kas::updatable::{MatrixData, Updatable};
+use kas::updatable::MatrixData;
 use kas::widgets::view::{driver::DefaultNav, MatrixView, SelectionMode};
 use kas::widgets::{EditBox, ScrollBars, Window};
 
 #[derive(Debug)]
 struct TableData(u64, usize);
-impl Updatable<(usize, usize), VoidMsg> for TableData {
-    fn handle(&self, _: &(usize, usize), _: &VoidMsg) -> Option<UpdateHandle> {
-        None
-    }
-}
 impl MatrixData for TableData {
     type ColKey = usize;
     type RowKey = usize;
@@ -79,21 +74,25 @@ fn main() -> kas::shell::Result<()> {
                 row: ["From 1 to", self.max],
                 align(right): self.table,
             ];
-            msg = VoidMsg;
         }]
         struct {
-            #[widget(use_msg = set_max)] max: impl HasString = EditBox::new("12")
+            #[widget] max: impl HasString = EditBox::new("12")
                 .on_afl(|text, _| text.parse::<usize>().ok()),
-            #[widget(discard_msg)] table: ScrollBars<MatrixView<TableData, DefaultNav>> = table,
+            #[widget] table: ScrollBars<MatrixView<TableData, DefaultNav>> = table,
         }
-        impl Self {
-            fn set_max(&mut self, mgr: &mut EventMgr, max: usize) {
-                let data = self.table.data_mut();
-                if data.1 != max {
-                    data.0 += 1;
-                    data.1 = max;
-                    self.table.update_view(mgr);
+        impl Handler for Self {
+            fn on_message(&mut self, mgr: &mut EventMgr, index: usize) -> Response {
+                if index == widget_index![self.max] {
+                    if let Some(max) = mgr.try_pop_msg::<usize>() {
+                        let data = self.table.data_mut();
+                        if data.1 != max {
+                            data.0 += 1;
+                            data.1 = max;
+                            self.table.update_view(mgr);
+                        }
+                    }
                 }
+                Response::Unused
             }
         }
     };

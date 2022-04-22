@@ -5,6 +5,7 @@
 
 //! A grid widget
 
+use super::IndexMsg;
 use kas::layout::{DynGridStorage, GridChildInfo, GridDimensions};
 use kas::{event, layout, prelude::*};
 use std::ops::{Index, IndexMut};
@@ -15,7 +16,7 @@ use std::ops::{Index, IndexMut};
 /// This is parameterised over the handler message type.
 ///
 /// See documentation of [`Grid`] type.
-pub type BoxGrid<M> = Grid<Box<dyn Widget<Msg = M>>>;
+pub type BoxGrid = Grid<Box<dyn Widget>>;
 
 impl_scope! {
     /// A generic grid widget
@@ -44,6 +45,11 @@ impl_scope! {
     /// ## Performance
     ///
     /// Most operations are `O(n)` in the number of children.
+    ///
+    /// # Messages
+    ///
+    /// When a child pushes a message, this widget pushes [`IndexMsg`] to
+    /// identify the child.
     #[autoimpl(Default)]
     #[derive(Clone, Debug)]
     #[widget { msg = <W as Handler>::Msg; }]
@@ -81,16 +87,14 @@ impl_scope! {
     }
 
     impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
             if let Some(index) = self.find_child_index(&id) {
                 if let Some((_, child)) = self.widgets.get_mut(index) {
                     let r = child.send(mgr, id.clone(), event);
-                    return match Response::try_from(r) {
-                        Ok(r) => r,
-                        Err(msg) => {
-                            Response::Msg(msg)
-                        }
-                    };
+                    if mgr.has_msg() {
+                        mgr.push_msg(IndexMsg(index));
+                    }
+                    return r;
                 }
             }
 

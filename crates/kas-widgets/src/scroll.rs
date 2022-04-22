@@ -143,7 +143,7 @@ impl_scope! {
     }
 
     impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
             if self.inner.id().is_ancestor_of(&id) {
                 let child_event = self.scroll.offset_event(event.clone());
                 match self.inner.send(mgr, id, child_event) {
@@ -172,7 +172,7 @@ impl_scope! {
                 *mgr |= action;
                 Response::Focus(self.core.rect)
             } else {
-                response.void_into()
+                response
             }
         }
     }

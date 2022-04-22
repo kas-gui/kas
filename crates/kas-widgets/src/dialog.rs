@@ -14,6 +14,9 @@ use kas::prelude::*;
 use kas::text::format::FormattableText;
 use kas::WindowId;
 
+#[derive(Copy, Clone)]
+struct MessageBoxOk;
+
 impl_scope! {
     /// A simple message box.
     #[derive(Clone, Debug)]
@@ -26,8 +29,8 @@ impl_scope! {
         title: String,
         #[widget]
         label: Label<T>,
-        #[widget(use_msg = handle_button)]
-        button: TextButton<()>,
+        #[widget]
+        button: TextButton,
     }
 
     impl Self {
@@ -36,16 +39,21 @@ impl_scope! {
                 core: Default::default(),
                 title: title.to_string(),
                 label: Label::new(message),
-                button: TextButton::new_msg("Ok", ()).with_keys(&[
+                button: TextButton::new_msg("Ok", MessageBoxOk).with_keys(&[
                     VirtualKeyCode::Return,
                     VirtualKeyCode::Space,
                     VirtualKeyCode::NumpadEnter,
                 ]),
             }
         }
+    }
 
-        fn handle_button(&mut self, mgr: &mut EventMgr, _: ()) {
-            mgr.send_action(TkAction::CLOSE);
+    impl kas::event::Handler for Self {
+        fn on_message(&mut self, mgr: &mut EventMgr, _: usize) -> Response {
+            if let Some(_) = mgr.try_pop_msg::<MessageBoxOk>() {
+                mgr.send_action(TkAction::CLOSE);
+            }
+            Response::Unused
         }
     }
 

@@ -6,10 +6,9 @@
 //! Filter list example
 
 use kas::dir::Down;
-use kas::event::ChildMsg;
 use kas::prelude::*;
 use kas::updatable::filter::ContainsCaseInsensitive;
-use kas::widgets::view::{self, driver, SelectionMode, SingleView};
+use kas::widgets::view::{self, driver, SelectMsg, SelectionMode, SingleView};
 use kas::widgets::{EditBox, Label, RadioBox, RadioBoxGroup, ScrollBars, Window};
 
 const MONTHS: &[&str] = &[
@@ -55,20 +54,21 @@ fn main() -> kas::shell::Result<()> {
     let widget = make_widget! {
         #[widget{
             layout = list(down): *;
-            msg = VoidMsg;
         }]
         struct {
-            #[widget(use_msg = set_selection_mode)] _ = selection_mode,
+            #[widget] _ = selection_mode,
             #[widget] filter = SingleView::new_with_driver(filter_driver, filter),
-            #[widget(use_msg = select)] list: ScrollBars<ListView> =
+            #[widget] list: ScrollBars<ListView> =
                 ScrollBars::new(ListView::new(filtered)),
         }
-        impl Self {
-            fn set_selection_mode(&mut self, mgr: &mut EventMgr, mode: SelectionMode) {
-                *mgr |= self.list.set_selection_mode(mode);
-            }
-            fn select(&mut self, _: &mut EventMgr, msg: ChildMsg<usize, VoidMsg>) {
-                println!("Selection message: {:?}", msg);
+        impl Handler for Self {
+            fn on_message(&mut self, mgr: &mut EventMgr, _: usize) -> Response {
+                if let Some(mode) = mgr.try_pop_msg() {
+                    *mgr |= self.list.set_selection_mode(mode);
+                } else if let Some(msg) = mgr.try_pop_msg::<SelectMsg<usize>>() {
+                    println!("Selection message: {:?}", msg);
+                }
+                Response::Unused
             }
         }
     };

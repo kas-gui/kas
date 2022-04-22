@@ -67,7 +67,6 @@
 
 #[allow(unused)]
 use kas::event::UpdateHandle;
-use kas::macros::VoidMsg;
 #[allow(unused)]
 use kas::updatable::{ListData, MatrixData, SharedRc, SingleData};
 use thiserror::Error;
@@ -85,6 +84,17 @@ pub use list_view::ListView;
 pub use matrix_view::MatrixView;
 pub use single_view::SingleView;
 
+/// Used to notify selection and deselection of [`ListView`] and [`MatrixView`] children
+#[derive(Clone, Debug)]
+pub enum SelectMsg<K> {
+    /// Selection of item
+    Select(K),
+    /// Deselection of item
+    ///
+    /// Note: not emitted due to selection of another item in single-item selection mode.
+    Deselect(K),
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 enum PressPhase {
     None,
@@ -93,7 +103,7 @@ enum PressPhase {
 }
 
 /// Selection mode used by [`ListView`]
-#[derive(Clone, Copy, Debug, VoidMsg)]
+#[derive(Clone, Copy, Debug)]
 pub enum SelectionMode {
     None,
     Single,

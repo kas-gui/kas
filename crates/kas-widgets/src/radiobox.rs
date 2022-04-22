@@ -19,12 +19,12 @@ impl_scope! {
     #[autoimpl(Debug ignore self.on_select)]
     #[derive(Clone)]
     #[widget]
-    pub struct RadioBoxBare<M: 'static> {
+    pub struct RadioBoxBare {
         #[widget_core]
         core: CoreData,
         state: bool,
         group: RadioBoxGroup,
-        on_select: Option<Rc<dyn Fn(&mut EventMgr) -> Option<M>>>,
+        on_select: Option<Rc<dyn Fn(&mut EventMgr)>>,
     }
 
     impl WidgetConfig for Self {
@@ -43,14 +43,12 @@ impl_scope! {
     }
 
     impl Handler for Self {
-        type Msg = M;
-
         #[inline]
         fn activation_via_press(&self) -> bool {
             true
         }
 
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<M> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Activate => {
                     if !self.state {
@@ -60,10 +58,11 @@ impl_scope! {
                         if let Some(handle) = self.group.update(Some(self.id())) {
                             mgr.trigger_update(handle, 0);
                         }
-                        Response::used_or_msg(self.on_select.as_ref().and_then(|f| f(mgr)))
-                    } else {
-                        Response::Used
+                        if let Some(msg) = self.on_select.as_ref().map(|f| f(mgr)) {
+                            mgr.push_msg(msg);
+                        }
                     }
+                    Response::Used
                 }
                 Event::HandleUpdate { .. } => {
                     if self.state && !self.eq_id(self.group.get_cloned()) {
@@ -98,7 +97,7 @@ impl_scope! {
         }
     }
 
-    impl RadioBoxBare<VoidMsg> {
+    impl Self {
         /// Construct a radiobox
         ///
         /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
@@ -121,9 +120,9 @@ impl_scope! {
         /// No handler is called on deselection.
         #[inline]
         #[must_use]
-        pub fn on_select<M, F>(self, f: F) -> RadioBoxBare<M>
+        pub fn on_select<F>(self, f: F) -> RadioBoxBare
         where
-            F: Fn(&mut EventMgr) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr) + 'static,
         {
             RadioBoxBare {
                 core: self.core,
@@ -132,9 +131,7 @@ impl_scope! {
                 on_select: Some(Rc::new(f)),
             }
         }
-    }
 
-    impl Self {
         /// Construct a radiobox with given `group` and event handler `f`
         ///
         /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
@@ -147,7 +144,7 @@ impl_scope! {
         #[inline]
         pub fn new_on<F>(group: RadioBoxGroup, f: F) -> Self
         where
-            F: Fn(&mut EventMgr) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr) + 'static,
         {
             RadioBoxBare::new(group).on_select(f)
         }
@@ -192,17 +189,13 @@ impl_scope! {
         find_id = Some(self.radiobox.id());
         layout = row: *;
     }]
-    pub struct RadioBox<M: 'static> {
+    pub struct RadioBox {
         #[widget_core]
         core: CoreData,
         #[widget]
-        radiobox: RadioBoxBare<M>,
+        radiobox: RadioBoxBare,
         #[widget]
         label: AccelLabel,
-    }
-
-    impl Handler for Self where M: From<VoidMsg> {
-        type Msg = M;
     }
 
     impl WidgetConfig for Self {
@@ -211,7 +204,7 @@ impl_scope! {
         }
     }
 
-    impl RadioBox<VoidMsg> {
+    impl Self {
         /// Construct a radiobox with a given `label` and `group`
         ///
         /// RadioBox labels are optional; if no label is desired, use an empty
@@ -236,9 +229,9 @@ impl_scope! {
         /// No handler is called on deselection.
         #[inline]
         #[must_use]
-        pub fn on_select<M, F>(self, f: F) -> RadioBox<M>
+        pub fn on_select<F>(self, f: F) -> RadioBox
         where
-            F: Fn(&mut EventMgr) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr) + 'static,
         {
             RadioBox {
                 core: self.core,
@@ -246,9 +239,7 @@ impl_scope! {
                 label: self.label,
             }
         }
-    }
 
-    impl Self {
         /// Construct a radiobox with given `label`, `group` and event handler `f`
         ///
         /// RadioBox labels are optional; if no label is desired, use an empty
@@ -264,7 +255,7 @@ impl_scope! {
         #[inline]
         pub fn new_on<T: Into<AccelString>, F>(label: T, group: RadioBoxGroup, f: F) -> Self
         where
-            F: Fn(&mut EventMgr) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr) + 'static,
         {
             RadioBox::new(label, group).on_select(f)
         }
@@ -278,15 +269,16 @@ impl_scope! {
         /// same `group` will be considered part of a single group.
         ///
         /// On selection (through user input events or [`Event::Activate`]) a clone
-        /// of `msg` is returned to the parent widget via [`Response::Msg`].
+        /// of `msg` is returned to the parent widget via [`EventMgr::push_msg`].
         ///
         /// No handler is called on deselection.
         #[inline]
-        pub fn new_msg<S: Into<AccelString>>(label: S, group: RadioBoxGroup, msg: M) -> Self
+        pub fn new_msg<S, M: Clone>(label: S, group: RadioBoxGroup, msg: M) -> Self
         where
-            M: Clone,
+            S: Into<AccelString>,
+            M: Clone + 'static,
         {
-            Self::new_on(label, group, move |_| Some(msg.clone()))
+            Self::new_on(label, group, move |mgr| mgr.push_msg(msg.clone()))
         }
 
         /// Set the initial state of the radiobox.

@@ -5,7 +5,7 @@
 
 //! Filters over data
 
-use crate::event::{UpdateHandle, VoidMsg};
+use crate::event::UpdateHandle;
 use crate::updatable::*;
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -28,16 +28,6 @@ impl ContainsString {
         let handle = UpdateHandle::new();
         let data = RefCell::new((s.to_string(), 1));
         ContainsString(Rc::new((handle, data)))
-    }
-}
-impl Updatable<(), String> for ContainsString {
-    fn handle(&self, _: &(), msg: &String) -> Option<UpdateHandle> {
-        self.update(msg.clone())
-    }
-}
-impl Updatable<(), VoidMsg> for ContainsString {
-    fn handle(&self, _: &(), _: &VoidMsg) -> Option<UpdateHandle> {
-        None
     }
 }
 impl SingleData for ContainsString {
@@ -97,16 +87,6 @@ impl ContainsCaseInsensitive {
         let u = s.to_uppercase();
         let data = RefCell::new((s, u, 1));
         ContainsCaseInsensitive(Rc::new((handle, data)))
-    }
-}
-impl Updatable<(), String> for ContainsCaseInsensitive {
-    fn handle(&self, _: &(), msg: &String) -> Option<UpdateHandle> {
-        self.update(msg.clone())
-    }
-}
-impl Updatable<(), VoidMsg> for ContainsCaseInsensitive {
-    fn handle(&self, _: &(), _: &VoidMsg) -> Option<UpdateHandle> {
-        None
     }
 }
 impl SingleData for ContainsCaseInsensitive {

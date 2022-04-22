@@ -18,7 +18,7 @@ impl_scope! {
     /// A sub-menu
     #[autoimpl(Debug where D: trait)]
     #[widget]
-    pub struct SubMenu<M: 'static, D: Directional> {
+    pub struct SubMenu<D: Directional> {
         #[widget_core]
         core: CoreData,
         direction: D,
@@ -26,33 +26,33 @@ impl_scope! {
         label: Label<AccelString>,
         mark: Mark,
         #[widget]
-        list: PopupFrame<MenuView<BoxedMenu<M>>>,
+        list: PopupFrame<MenuView<BoxedMenu>>,
         popup_id: Option<WindowId>,
     }
 
     impl Self where D: Default {
         /// Construct a sub-menu
         #[inline]
-        pub fn new<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<M>>) -> Self {
+        pub fn new<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu>) -> Self {
             SubMenu::new_with_direction(Default::default(), label, list)
         }
     }
 
-    impl<M: 'static> SubMenu<M, kas::dir::Right> {
+    impl SubMenu<kas::dir::Right> {
         /// Construct a sub-menu, opening to the right
         // NOTE: this is used since we can't infer direction of a boxed SubMenu.
         // Consider only accepting an enum of special menu widgets?
         // Then we can pass type information.
         #[inline]
-        pub fn right<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<M>>) -> Self {
+        pub fn right<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu>) -> Self {
             SubMenu::new(label, list)
         }
     }
 
-    impl<M: 'static> SubMenu<M, kas::dir::Down> {
+    impl SubMenu<kas::dir::Down> {
         /// Construct a sub-menu, opening downwards
         #[inline]
-        pub fn down<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu<M>>) -> Self {
+        pub fn down<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu>) -> Self {
             SubMenu::new(label, list)
         }
     }
@@ -63,7 +63,7 @@ impl_scope! {
         /// The sub-menu is opened in the `direction` given (contents are always vertical).
         #[inline]
         pub fn new_with_direction<S: Into<AccelString>>(
-            direction: D, label: S, list: Vec<BoxedMenu<M>>
+            direction: D, label: S, list: Vec<BoxedMenu>
         ) -> Self {
             SubMenu {
                 core: Default::default(),
@@ -94,7 +94,7 @@ impl_scope! {
             }
         }
 
-        fn handle_dir_key(&mut self, mgr: &mut EventMgr, cmd: Command) -> Response<M> {
+        fn handle_dir_key(&mut self, mgr: &mut EventMgr, cmd: Command) -> Response {
             if self.menu_is_open() {
                 if let Some(dir) = cmd.as_direction() {
                     if dir.is_vertical() {
@@ -159,10 +159,8 @@ impl_scope! {
         }
     }
 
-    impl<M: 'static, D: Directional> event::Handler for SubMenu<M, D> {
-        type Msg = M;
-
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<M> {
+    impl<D: Directional> event::Handler for SubMenu<D> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Activate => {
                     if self.popup_id.is_none() {
@@ -182,17 +180,16 @@ impl_scope! {
     }
 
     impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
             if !self.eq_id(&id) {
-                let r = self.list.send(mgr, id.clone(), event.clone());
-
-                match r {
+                match self.list.send(mgr, id.clone(), event.clone()) {
                     Response::Unused => (),
-                    r @ Response::Msg(_) => {
-                        self.close_menu(mgr, true);
+                    r => {
+                        if mgr.has_msg() {
+                            self.close_menu(mgr, true);
+                        }
                         return r;
                     }
-                    r => return r,
                 }
             }
             EventMgr::handle_generic(self, mgr, event)
@@ -252,9 +249,7 @@ const fn menu_view_row_info(row: u32) -> layout::GridChildInfo {
 impl_scope! {
     /// A menu view
     #[autoimpl(Debug)]
-    #[widget {
-        msg=<W as Handler>::Msg;
-    }]
+    #[widget]
     struct MenuView<W: Menu> {
         #[widget_core]
         core: CoreData,
@@ -398,16 +393,10 @@ impl_scope! {
     }
 
     impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
             if let Some(index) = self.find_child_index(&id) {
                 if let Some(child) = self.list.get_mut(index) {
-                    let r = child.send(mgr, id.clone(), event);
-                    return match Response::try_from(r) {
-                        Ok(r) => r,
-                        Err(msg) => {
-                            Response::Msg(msg)
-                        }
-                    };
+                    return child.send(mgr, id.clone(), event);
                 }
             }
 

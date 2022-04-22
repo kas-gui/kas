@@ -17,7 +17,6 @@
 //! -   [`MenuToggle`]
 //! -   [`Separator`]
 
-use crate::adapter::AdaptWidget;
 use crate::Separator;
 use kas::component::Component;
 use kas::dir::Right;
@@ -90,42 +89,42 @@ pub trait Menu: Widget {
 }
 
 /// A boxed menu
-pub type BoxedMenu<M> = Box<dyn Menu<Msg = M>>;
+pub type BoxedMenu = Box<dyn Menu>;
 
 /// Builder for a [`SubMenu`]
 ///
 /// Access through [`MenuBar::builder`].
-pub struct SubMenuBuilder<'a, M: 'static> {
-    menu: &'a mut Vec<BoxedMenu<M>>,
+pub struct SubMenuBuilder<'a> {
+    menu: &'a mut Vec<BoxedMenu>,
 }
 
-impl<'a, M: 'static> SubMenuBuilder<'a, M> {
+impl<'a> SubMenuBuilder<'a> {
     /// Append an item
     #[inline]
-    pub fn push_item(&mut self, item: BoxedMenu<M>) {
+    pub fn push_item(&mut self, item: BoxedMenu) {
         self.menu.push(item);
     }
 
     /// Append an item, chain style
     #[inline]
-    pub fn item(mut self, item: BoxedMenu<M>) -> Self {
+    pub fn item(mut self, item: BoxedMenu) -> Self {
         self.push_item(item);
         self
     }
 
     /// Append a [`MenuEntry`]
-    pub fn push_entry<S: Into<AccelString>>(&mut self, label: S, msg: M)
+    pub fn push_entry<S: Into<AccelString>, M>(&mut self, label: S, msg: M)
     where
-        M: Clone + Debug,
+        M: Clone + Debug + 'static,
     {
         self.menu.push(Box::new(MenuEntry::new(label, msg)));
     }
 
     /// Append a [`MenuEntry`], chain style
     #[inline]
-    pub fn entry<S: Into<AccelString>>(mut self, label: S, msg: M) -> Self
+    pub fn entry<S: Into<AccelString>, M>(mut self, label: S, msg: M) -> Self
     where
-        M: Clone + Debug,
+        M: Clone + Debug + 'static,
     {
         self.push_entry(label, msg);
         self
@@ -134,7 +133,7 @@ impl<'a, M: 'static> SubMenuBuilder<'a, M> {
     /// Append a [`MenuToggle`]
     pub fn push_toggle<S: Into<AccelString>, F>(&mut self, label: S, f: F)
     where
-        F: Fn(&mut EventMgr, bool) -> Option<M> + 'static,
+        F: Fn(&mut EventMgr, bool) + 'static,
     {
         self.menu
             .push(Box::new(MenuToggle::new(label).on_toggle(f)));
@@ -144,7 +143,7 @@ impl<'a, M: 'static> SubMenuBuilder<'a, M> {
     #[inline]
     pub fn toggle<S: Into<AccelString>, F>(mut self, label: S, f: F) -> Self
     where
-        F: Fn(&mut EventMgr, bool) -> Option<M> + 'static,
+        F: Fn(&mut EventMgr, bool) + 'static,
     {
         self.push_toggle(label, f);
         self
@@ -152,7 +151,7 @@ impl<'a, M: 'static> SubMenuBuilder<'a, M> {
 
     /// Append a [`Separator`]
     pub fn push_separator(&mut self) {
-        self.menu.push(Box::new(Separator::new().map_void_msg()));
+        self.menu.push(Box::new(Separator::new()));
     }
 
     /// Append a [`Separator`], chain style
@@ -168,7 +167,7 @@ impl<'a, M: 'static> SubMenuBuilder<'a, M> {
     #[inline]
     pub fn push_submenu<F>(&mut self, label: impl Into<AccelString>, f: F)
     where
-        F: FnOnce(SubMenuBuilder<M>),
+        F: FnOnce(SubMenuBuilder),
     {
         self.push_submenu_with_dir(Right, label, f);
     }
@@ -179,7 +178,7 @@ impl<'a, M: 'static> SubMenuBuilder<'a, M> {
     #[inline]
     pub fn submenu<F>(mut self, label: impl Into<AccelString>, f: F) -> Self
     where
-        F: FnOnce(SubMenuBuilder<M>),
+        F: FnOnce(SubMenuBuilder),
     {
         self.push_submenu_with_dir(Right, label, f);
         self
@@ -191,7 +190,7 @@ impl<'a, M: 'static> SubMenuBuilder<'a, M> {
     pub fn push_submenu_with_dir<D, F>(&mut self, dir: D, label: impl Into<AccelString>, f: F)
     where
         D: Directional,
-        F: FnOnce(SubMenuBuilder<M>),
+        F: FnOnce(SubMenuBuilder),
     {
         let mut menu = Vec::new();
         f(SubMenuBuilder { menu: &mut menu });
@@ -206,7 +205,7 @@ impl<'a, M: 'static> SubMenuBuilder<'a, M> {
     pub fn submenu_with_dir<D, F>(mut self, dir: D, label: impl Into<AccelString>, f: F) -> Self
     where
         D: Directional,
-        F: FnOnce(SubMenuBuilder<M>),
+        F: FnOnce(SubMenuBuilder),
     {
         self.push_submenu_with_dir(dir, label, f);
         self

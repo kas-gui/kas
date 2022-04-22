@@ -99,7 +99,7 @@ impl ThemeControl for CustomTheme {
     }
 }
 
-#[derive(Clone, Debug, VoidMsg)]
+#[derive(Clone, Debug)]
 enum Item {
     White,
     Red,
@@ -136,19 +136,21 @@ fn main() -> kas::shell::Result<()> {
         make_widget! {
             #[widget{
                 layout = single;
-                msg = VoidMsg;
             }]
             struct {
-                #[widget(use_msg = handler)] _ = widgets,
+                #[widget] _ = widgets,
             }
-            impl Self {
-                fn handler(&mut self, _: &mut EventMgr, item: Item) {
-                    match item {
-                        Item::White => BACKGROUND.with(|b| b.set(Rgba::WHITE)),
-                        Item::Red => BACKGROUND.with(|b| b.set(Rgba::rgb(0.9, 0.2, 0.2))),
-                        Item::Green => BACKGROUND.with(|b| b.set(Rgba::rgb(0.2, 0.9, 0.2))),
-                        Item::Yellow => BACKGROUND.with(|b| b.set(Rgba::rgb(0.9, 0.9, 0.2))),
-                    };
+            impl Handler for Self {
+                fn on_message(&mut self, mgr: &mut EventMgr, _: usize) -> Response {
+                    if let Some(item) = mgr.try_pop_msg::<Item>() {
+                        match item {
+                            Item::White => BACKGROUND.with(|b| b.set(Rgba::WHITE)),
+                            Item::Red => BACKGROUND.with(|b| b.set(Rgba::rgb(0.9, 0.2, 0.2))),
+                            Item::Green => BACKGROUND.with(|b| b.set(Rgba::rgb(0.2, 0.9, 0.2))),
+                            Item::Yellow => BACKGROUND.with(|b| b.set(Rgba::rgb(0.9, 0.9, 0.2))),
+                        }
+                    }
+                    Response::Unused
                 }
             }
         },

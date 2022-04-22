@@ -90,7 +90,7 @@ impl_scope! {
         }
 
         // Pan by given delta. Return `Response::Scrolled` or `Response::Pan(remaining)`.
-        fn pan_delta<U>(&mut self, mgr: &mut EventMgr, mut delta: Offset) -> Response<U> {
+        fn pan_delta(&mut self, mgr: &mut EventMgr, mut delta: Offset) -> Response {
             let new_offset = (self.view_offset - delta).min(self.max_scroll_offset()).max(Offset::ZERO);
             if new_offset != self.view_offset {
                 delta -= self.view_offset - new_offset;
@@ -142,9 +142,7 @@ impl_scope! {
     }
 
     impl event::Handler for Self {
-        type Msg = VoidMsg;
-
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(cmd, _) => match cmd {
                     Command::Escape | Command::Deselect if !self.selection.is_empty() => {

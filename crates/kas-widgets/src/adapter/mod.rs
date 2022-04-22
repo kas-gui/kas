@@ -12,5 +12,5 @@ mod reserve;
 
 pub use adapt_widget::*;
 pub use label::WithLabel;
-pub use map::MapResponse;
+pub use map::MapMessage;
 pub use reserve::{Reserve, ReserveP};

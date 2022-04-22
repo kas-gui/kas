@@ -8,9 +8,9 @@
 use std::time::{Duration, Instant};
 
 use kas::class::HasString;
-use kas::event::{Event, EventMgr, Handler, Response, VoidMsg};
+use kas::event::{Event, EventMgr, Handler, Response};
 use kas::layout::SetRectMgr;
-use kas::macros::make_widget;
+use kas::macros::{make_widget, widget_index};
 use kas::widgets::{Frame, Label, TextButton, Window};
 use kas::WidgetExt;
 
@@ -24,26 +24,10 @@ fn make_window() -> Box<dyn kas::Window> {
         }]
         struct {
             #[widget] display: impl HasString = Frame::new(Label::new("0.000".to_string())),
-            #[widget(use_msg = reset)] _ = TextButton::new_msg("&reset", ()),
-            #[widget(use_msg = start)] _ = TextButton::new_msg("&start / &stop", ()),
+            #[widget] reset = TextButton::new("&reset"),
+            #[widget] ss = TextButton::new("&start / &stop"),
             saved: Duration = Duration::default(),
             start: Option<Instant> = None,
-        }
-        impl Self {
-            fn reset(&mut self, mgr: &mut EventMgr, _: ()) {
-                self.saved = Duration::default();
-                self.start = None;
-                *mgr |= self.display.set_str("0.000");
-            }
-            fn start(&mut self, mgr: &mut EventMgr, _: ()) {
-                if let Some(start) = self.start {
-                    self.saved += Instant::now() - start;
-                    self.start = None;
-                } else {
-                    self.start = Some(Instant::now());
-                    mgr.update_on_timer(Duration::new(0, 0), self.id(), 0);
-                }
-            }
         }
         impl kas::WidgetConfig for Self {
             fn configure(&mut self, mgr: &mut SetRectMgr) {
@@ -51,8 +35,7 @@ fn make_window() -> Box<dyn kas::Window> {
             }
         }
         impl Handler for Self {
-            type Msg = VoidMsg;
-            fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<VoidMsg> {
+            fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
                 match event {
                     Event::TimerUpdate(0) => {
                         if let Some(start) = self.start {
@@ -65,6 +48,22 @@ fn make_window() -> Box<dyn kas::Window> {
                     }
                     _ => Response::Unused,
                 }
+            }
+            fn on_message(&mut self, mgr: &mut EventMgr, index: usize) -> Response {
+                if index == widget_index![self.reset] {
+                    self.saved = Duration::default();
+                    self.start = None;
+                    *mgr |= self.display.set_str("0.000");
+                } else if index == widget_index![self.ss] {
+                    if let Some(start) = self.start {
+                        self.saved += Instant::now() - start;
+                        self.start = None;
+                    } else {
+                        self.start = Some(Instant::now());
+                        mgr.update_on_timer(Duration::new(0, 0), self.id(), 0);
+                    }
+                }
+                Response::Unused
             }
         }
     };

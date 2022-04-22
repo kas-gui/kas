@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::args::{Child, Handler, WidgetArgs};
+use crate::args::{Child, WidgetArgs};
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::{Scope, ScopeAttr, ScopeItem, SimplePath};
 use proc_macro2::{Span, TokenStream};
@@ -70,15 +70,20 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
         let mut other_attrs = Vec::with_capacity(field.attrs.len());
         for attr in field.attrs.drain(..) {
             if attr.path == parse_quote! { widget_core } {
+                if !attr.tokens.is_empty() {
+                    return Err(Error::new(attr.tokens.span(), "unexpected token"));
+                }
                 if core_data.is_none() {
                     core_data = Some(member(i, field.ident.clone()));
                 } else {
                     emit_error!(attr.span(), "multiple fields marked with #[widget_core]");
                 }
             } else if attr.path == parse_quote! { widget } {
+                if !attr.tokens.is_empty() {
+                    return Err(Error::new(attr.tokens.span(), "unexpected token"));
+                }
                 let ident = member(i, field.ident.clone());
-                let args = syn::parse2(attr.tokens)?;
-                children.push(Child { ident, args });
+                children.push(Child { ident });
             } else {
                 other_attrs.push(attr);
             }
@@ -385,9 +390,6 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
         impl_generics = a;
         where_clause = c;
     } else {
-        let msg = attr
-            .msg
-            .unwrap_or_else(|| parse_quote! { ::kas::event::VoidMsg });
         let handle = if let Some(inner) = opt_derive {
             quote! {
                 #[inline]
@@ -395,7 +397,7 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     self.#inner.activation_via_press()
                 }
                 #[inline]
-                fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
+                fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
                     self.#inner.handle(mgr, event)
                 }
             }
@@ -406,7 +408,6 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
             impl #impl_generics ::kas::event::Handler
                     for #name #ty_generics #where_clause
             {
-                type Msg = #msg;
                 #handle
             }
         });
@@ -424,38 +425,11 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
             let mut ev_to_num = TokenStream::new();
             for (i, child) in children.iter().enumerate() {
                 let id = quote! { id };
-
                 let ident = &child.ident;
-                let handler = match &child.args.handler {
-                    Handler::Use(f) => quote! {
-                        r.try_into().unwrap_or_else(|msg| {
-                            let _: () = self.#f(mgr, msg);
-                            Response::Used
-                        })
-                    },
-                    Handler::Map(f) => quote! {
-                        r.try_into().unwrap_or_else(|msg| {
-                            Response::Msg(self.#f(mgr, msg))
-                        })
-                    },
-                    Handler::FlatMap(f) => quote! {
-                        r.try_into().unwrap_or_else(|msg| {
-                            self.#f(mgr, msg)
-                        })
-                    },
-                    Handler::Discard => quote! {
-                        r.try_into().unwrap_or_else(|msg| {
-                            let _ = msg;
-                            Response::Used
-                        })
-                    },
-                    Handler::None => quote! { r.into() },
-                };
 
                 ev_to_num.append_all(quote! {
                     Some(#i) => {
-                        let r = self.#ident.send(mgr, #id, event);
-                        #handler
+                        self.#ident.send(mgr, #id, event)
                     }
                 });
             }
@@ -482,7 +456,7 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     mgr: &mut ::kas::event::EventMgr,
                     id: ::kas::WidgetId,
                     event: ::kas::event::Event
-                ) -> ::kas::event::Response<Self::Msg>
+                ) -> ::kas::event::Response
                 {
                     #send_impl
                 }

@@ -413,10 +413,8 @@ pub trait Layout: WidgetChildren {
 /// implement *all except for `Layout`*. This opt-out derive behaviour means
 /// that adding additional traits into the family is not a breaking change.
 ///
-/// To refer to a widget via dyn trait, use `&dyn WidgetConfig` (or, if the
-/// message type is known, one may use `&dyn Widget<Msg = M>`).
-/// To refer to a widget in generic functions, use `<W: Widget>` or
-/// `<M, W: Widget<Msg = M>>`.
+/// To refer to a widget via dyn trait, use `&dyn WidgetConfig` or `&dyn Widget`.
+/// To refer to a widget in generic functions, use `<W: Widget>`.
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]

@@ -28,17 +28,6 @@ use kas_macros::autoimpl;
 /// [`derive(Widget)`]: ../macros/index.html#the-derivewidget-macro
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait Handler: WidgetConfig {
-    /// Type of message returned by this widget
-    ///
-    /// This mechanism allows type-safe handling of user-defined responses to
-    /// handled actions, for example an enum encoding button presses or a
-    /// floating-point value from a slider.
-    ///
-    /// The [`VoidMsg`] type may be used where messages are never generated.
-    /// This is distinct from `()`, which might be applicable when a widget only
-    /// needs to "wake up" a parent.
-    type Msg: 'static;
-
     /// Generic handler: translate presses to activations
     ///
     /// This is configuration for [`EventMgr::handle_generic`], and can be used
@@ -64,8 +53,23 @@ pub trait Handler: WidgetConfig {
     /// Widgets should handle any events applicable to themselves here, and
     /// return all other events via [`Response::Unused`].
     #[inline]
-    fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
+    fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
         let _ = (mgr, event);
+        Response::Unused
+    }
+
+    /// Handler for messages from children/descendants
+    ///
+    /// This method is called when a child leaves a message on the stack. *Some*
+    /// parent or ancestor widget should read this message.
+    ///
+    /// Any [`Response`] value may be returned. In normal usage, `Used` or
+    /// `Unused` is returned (the distinction is unimportant).
+    ///
+    /// The default implementation does nothing.
+    #[inline]
+    fn on_message(&mut self, mgr: &mut EventMgr, index: usize) -> Response {
+        let _ = (mgr, index);
         Response::Unused
     }
 }
@@ -88,7 +92,7 @@ pub trait Handler: WidgetConfig {
 pub trait SendEvent: Handler {
     /// Send an event
     ///
-    /// This method is responsible for routing events toward descendents.
+    /// This method is responsible for routing events toward descendants.
     /// [`WidgetId`] values are assigned via depth-first search with parents
     /// ordered after all children.
     ///
@@ -117,7 +121,7 @@ pub trait SendEvent: Handler {
     /// child which does not handle that event. Note further that in case the
     /// child is disabled, events targetting the child may be sent directly to
     /// self.
-    fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg>;
+    fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response;
 }
 
 impl<'a> EventMgr<'a> {
@@ -125,11 +129,7 @@ impl<'a> EventMgr<'a> {
     ///
     /// This is a free function often called from [`SendEvent::send`] to
     /// simplify certain events and then invoke [`Handler::handle`].
-    pub fn handle_generic<W>(
-        widget: &mut W,
-        mgr: &mut EventMgr,
-        mut event: Event,
-    ) -> Response<<W as Handler>::Msg>
+    pub fn handle_generic<W>(widget: &mut W, mgr: &mut EventMgr, mut event: Event) -> Response
     where
         W: Handler + ?Sized,
     {

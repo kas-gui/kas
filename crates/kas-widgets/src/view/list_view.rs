@@ -5,15 +5,15 @@
 
 //! List view widget
 
-use super::{driver, Driver, PressPhase, SelectionError, SelectionMode};
+use super::{driver, Driver, PressPhase, SelectMsg, SelectionError, SelectionMode};
 #[allow(unused)] // doc links
 use crate::ScrollBars;
 use crate::Scrollable;
 use kas::event::components::ScrollComponent;
-use kas::event::{ChildMsg, Command, CursorIcon};
+use kas::event::{Command, CursorIcon};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
-use kas::updatable::{ListData, Updatable};
+use kas::updatable::ListData;
 use linear_map::set::LinearSet;
 use log::{debug, trace};
 use std::time::Instant;
@@ -29,9 +29,8 @@ impl_scope! {
     ///
     /// This widget supports a view over a list of shared data items.
     ///
-    /// The shared data type `T` must support [`ListData`] and
-    /// [`Updatable`], the latter with key type `T::Key` and message type
-    /// matching the widget's message. One may use [`kas::updatable::SharedRc`]
+    /// The shared data type `T` must support [`ListData`].
+    /// One may use [`kas::updatable::SharedRc`]
     /// or a custom shared data type.
     ///
     /// The driver `V` must implement [`Driver`], with data type
@@ -40,11 +39,19 @@ impl_scope! {
     ///
     /// This widget is [`Scrollable`], supporting keyboard, wheel and drag
     /// scrolling. You may wish to wrap this widget with [`ScrollBars`].
+    ///
+    /// # Messages
+    ///
+    /// When a child pushes a message, the [`ListData::on_message`] method is
+    /// called.
+    ///
+    /// When selection is enabled and an item is selected or deselected, this
+    /// widget emits a [`SelectMsg`].
     #[derive(Clone, Debug)]
     #[widget]
     pub struct ListView<
         D: Directional,
-        T: ListData + Updatable<T::Key, V::Msg> + 'static,
+        T: ListData + 'static,
         V: Driver<T::Item> = driver::Default,
     > {
         #[widget_core]
@@ -94,7 +101,7 @@ impl_scope! {
             Self::new_with_dir_driver(D::default(), view, data)
         }
     }
-    impl<T: ListData + Updatable<T::Key, V::Msg>, V: Driver<T::Item>> ListView<Direction, T, V> {
+    impl<T: ListData + 'static, V: Driver<T::Item>> ListView<Direction, T, V> {
         /// Set the direction of contents
         pub fn set_direction(&mut self, direction: Direction) -> TkAction {
             self.direction = direction;
@@ -209,8 +216,6 @@ impl_scope! {
         }
 
         /// Clear all selected items
-        ///
-        /// Does not send [`ChildMsg`] responses.
         pub fn clear_selected(&mut self) -> TkAction {
             if self.selection.is_empty() {
                 TkAction::empty()
@@ -225,8 +230,6 @@ impl_scope! {
         /// Returns `TkAction::REDRAW` if newly selected, `TkAction::empty()` if
         /// already selected. Fails if selection mode does not permit selection
         /// or if the key is invalid.
-        ///
-        /// Does not send [`ChildMsg`] responses.
         pub fn select(&mut self, key: T::Key) -> Result<TkAction, SelectionError> {
             match self.sel_mode {
                 SelectionMode::None => return Err(SelectionError::Disabled),
@@ -246,8 +249,6 @@ impl_scope! {
         ///
         /// Returns `TkAction::REDRAW` if deselected, `TkAction::empty()` if not
         /// previously selected or if the key is invalid.
-        ///
-        /// Does not send [`ChildMsg`] responses.
         pub fn deselect(&mut self, key: &T::Key) -> TkAction {
             match self.selection.remove(key) {
                 true => TkAction::REDRAW,
@@ -612,9 +613,7 @@ impl_scope! {
     }
 
     impl Handler for Self {
-        type Msg = ChildMsg<T::Key, <V::Widget as Handler>::Msg>;
-
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::HandleUpdate { .. } => {
                     let data_ver = self.data.version();
@@ -664,21 +663,21 @@ impl_scope! {
                                 }
                             }
 
-                            return match self.sel_mode {
-                                SelectionMode::None => Response::Used,
+                            match self.sel_mode {
+                                SelectionMode::None => (),
                                 SelectionMode::Single => {
                                     mgr.redraw(self.id());
                                     self.selection.clear();
                                     self.selection.insert(key.clone());
-                                    ChildMsg::Select(key.clone()).into()
+                                    mgr.push_msg(SelectMsg::Select(key.clone()));
                                 }
                                 SelectionMode::Multiple => {
                                     mgr.redraw(self.id());
                                     if self.selection.remove(key) {
-                                        ChildMsg::Deselect(key.clone()).into()
+                                        mgr.push_msg(SelectMsg::Deselect(key.clone()));
                                     } else {
                                         self.selection.insert(key.clone());
-                                        ChildMsg::Select(key.clone()).into()
+                                        mgr.push_msg(SelectMsg::Select(key.clone()));
                                     }
                                 }
                             }
@@ -739,12 +738,12 @@ impl_scope! {
                 *mgr |= action;
                 mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
             }
-            response.void_into()
+            response
         }
     }
 
     impl SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
             if self.eq_id(&id) {
                 return self.handle(mgr, event);
             }
@@ -754,24 +753,20 @@ impl_scope! {
                 None => return Response::Unused,
             };
 
-            let (index, response);
+            let response;
             'outer: loop {
-                for i in 0..self.widgets.len() {
-                    if self.widgets[i].key.as_ref() == Some(&key) {
-                        index = i;
+                for w in self.widgets.iter_mut() {
+                    if w.key.as_ref() == Some(&key) {
                         let child_event = self.scroll.offset_event(event.clone());
-                        response = self.widgets[i].widget.send(mgr, id, child_event);
+                        response = w.widget.send(mgr, id, child_event);
                         break 'outer;
                     }
                 }
                 return Response::Unused;
             }
-
-            if matches!(&response, Response::Msg(_)) {
-                if let Some(value) = self.view.get(&self.widgets[index].widget) {
-                    if let Some(handle) = self.data.update(&key, value) {
-                        mgr.trigger_update(handle, 0);
-                    }
+            if mgr.has_msg() {
+                if let Some(handle) = self.data.on_message(mgr, &key) {
+                    mgr.trigger_update(handle, 0);
                 }
             }
 
@@ -806,29 +801,24 @@ impl_scope! {
                 }
                 Response::Select => {
                     match self.sel_mode {
-                        SelectionMode::None => Response::Used,
+                        SelectionMode::None => (),
                         SelectionMode::Single => {
                             mgr.redraw(self.id());
                             self.selection.clear();
                             self.selection.insert(key.clone());
-                            Response::Msg(ChildMsg::Select(key))
+                            mgr.push_msg(SelectMsg::Select(key));
                         }
                         SelectionMode::Multiple => {
                             mgr.redraw(self.id());
                             if self.selection.remove(&key) {
-                                Response::Msg(ChildMsg::Deselect(key))
+                                mgr.push_msg(SelectMsg::Deselect(key));
                             } else {
                                 self.selection.insert(key.clone());
-                                Response::Msg(ChildMsg::Select(key))
+                                mgr.push_msg(SelectMsg::Select(key));
                             }
                         }
                     }
-                }
-                Response::Msg(msg) => {
-                    if let Some(handle) = self.data.handle(&key, &msg) {
-                        mgr.trigger_update(handle, 0);
-                    }
-                    Response::Msg(ChildMsg::Child(key, msg))
+                    Response::Used
                 }
             }
         }

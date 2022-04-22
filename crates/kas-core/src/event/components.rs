@@ -6,7 +6,7 @@
 //! Event handling components
 
 use super::ScrollDelta::{LineDelta, PixelDelta};
-use super::{Command, CursorIcon, Event, EventMgr, PressSource, Response, VoidMsg};
+use super::{Command, CursorIcon, Event, EventMgr, PressSource, Response};
 use crate::cast::traits::*;
 use crate::geom::{Coord, Offset, Rect, Size, Vec2};
 #[allow(unused)]
@@ -224,7 +224,7 @@ impl ScrollComponent {
         event: Event,
         id: WidgetId,
         window_size: Size,
-    ) -> (TkAction, Response<VoidMsg>) {
+    ) -> (TkAction, Response) {
         let mut action = TkAction::empty();
         let mut response = Response::Used;
 

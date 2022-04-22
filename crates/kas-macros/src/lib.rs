@@ -18,7 +18,6 @@ use impl_tools_lib::autoimpl;
 use impl_tools_lib::{AttrImplDefault, ImplDefault, Scope, ScopeAttr};
 use proc_macro::TokenStream;
 use proc_macro_error::{emit_call_site_error, proc_macro_error};
-use quote::quote;
 use syn::parse_macro_input;
 
 mod args;
@@ -164,7 +163,6 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///     documentation (method of [`Layout`]; defaults to an empty layout)
 /// -   `find_id` `=` _Expr_ — override default implementation of `kas::Layout::find_id` to
 ///     return this expression when `self.rect().contains(coord)`
-/// -   `msg` `=` _Type_ — set [`Handler::Msg`] associated type (default is [`VoidMsg`])
 ///
 /// Assuming the deriving type is a `struct` or `tuple struct`, fields support
 /// the following attributes:
@@ -173,18 +171,6 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///     used
 /// -   `#[widget]`: marks the field as a [`Widget`] to be configured, enumerated by
 ///     [`WidgetChildren`] and included by glob layouts
-///
-/// The `#[widget]` attribute on fields may have arguments, affecting how the
-/// implementation of [`SendEvent`] handles [`Response`] values from the child:
-///
-/// -   `#[widget(use_msg = f)]` — when `Response::Msg(msg)` is received,
-///     `self.f(msg)` is called and `Response::Used` is returned
-/// -   `#[widget(map_msg = f)]` — when `Response::Msg(msg)` is received,
-///     `Response::Msg(self.f(msg))` is returned
-/// -   `#[widget(flatmap_msg = f)]` — when `Response::Msg(msg)` is received,
-///     `self.f(msg)` is returned
-/// -   `#[widget(discard_msg = f)]` — when `Response::Msg(msg)` is received,
-///     `Response::Used` is returned
 ///
 /// ## Layout
 ///
@@ -199,7 +185,6 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// [`Handler::Msg`]: https://docs.rs/kas/0.11/kas/event/trait.Handler.html#associatedtype.Msg
 /// [`SendEvent`]: https://docs.rs/kas/0.11/kas/event/trait.SendEvent.html
 /// [`CursorIcon`]: https://docs.rs/kas/0.11/kas/event/enum.CursorIcon.html
-/// [`VoidMsg`]: https://docs.rs/kas/0.11/kas/event/enum.VoidMsg.html
 /// [`Response`]: https://docs.rs/kas/0.11/kas/event/enum.Response.html
 /// [`CoreData`]: https://docs.rs/kas/0.11/kas/struct.CoreData.html
 #[proc_macro_attribute]
@@ -227,10 +212,8 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 /// -   the type of fields is optional: `ident = value,` works (but see note above)
 /// -   the name of fields is optional: `_: ty = value,` and `_ = value,` are valid
 /// -   instead of a type, a type bound may be used: `ident: impl Trait = value,`
-/// -   instead of a widget type, only the widget's message type may be specified:
-///     `ident -> MessageType = value,`
 /// -   type generics may be used:
-///     `#[widget] display: for<W: Widget<Msg = VoidMsg>> Frame<W> = value,`
+///     `#[widget] display: for<W: Widget> Frame<W> = value,`
 ///
 /// Refer to [examples](https://github.com/search?q=make_widget+repo%3Akas-gui%2Fkas+path%3Aexamples&type=Code) for usage.
 #[proc_macro_error]
@@ -338,31 +321,6 @@ pub fn make_layout(input: TokenStream) -> TokenStream {
     make_layout::make_layout(input)
         .unwrap_or_else(|err| err.to_compile_error())
         .into()
-}
-
-/// Implement `From<VoidMsg>`
-///
-/// Since `VoidMsg` is a void type (cannot exist at run-time), `From<VoidMsg>`
-/// can safely be implemented for *any* type. (But due to the theoretical
-/// possibility of avoid conflicting implementations, it is not implemented
-/// automatically until Rust has some form of specialization.)
-#[proc_macro_error]
-#[proc_macro_derive(VoidMsg)]
-pub fn derive_empty_msg(input: TokenStream) -> TokenStream {
-    let ast = parse_macro_input!(input as syn::DeriveInput);
-    let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
-    let name = &ast.ident;
-
-    let toks = quote! {
-        impl #impl_generics From<::kas::event::VoidMsg>
-            for #name #ty_generics #where_clause
-        {
-            fn from(_: ::kas::event::VoidMsg) -> Self {
-                unreachable!()
-            }
-        }
-    };
-    toks.into()
 }
 
 /// Index of a child widget

@@ -7,7 +7,7 @@
 
 use kas::prelude::*;
 use kas::updatable::filter::Filter;
-use kas::updatable::{ListData, SingleData, Updatable};
+use kas::updatable::{ListData, SingleData};
 use std::cell::RefCell;
 use std::fmt::Debug;
 
@@ -61,14 +61,6 @@ impl<T: ListData + 'static, F: Filter<T::Item> + SingleData> FilteredList<T, F> 
                 }
             }
         }
-    }
-}
-
-impl<K, M, T: ListData + Updatable<K, M> + 'static, F: Filter<T::Item> + SingleData> Updatable<K, M>
-    for FilteredList<T, F>
-{
-    fn handle(&self, key: &K, msg: &M) -> Option<UpdateHandle> {
-        self.data.handle(key, msg)
     }
 }
 

@@ -5,7 +5,7 @@
 
 //! Combobox
 
-use super::{menu::MenuEntry, IndexedColumn, PopupFrame};
+use super::{menu::MenuEntry, IndexMsg, IndexedColumn, PopupFrame};
 use kas::component::{Label, Mark};
 use kas::event::{self, Command};
 use kas::layout;
@@ -24,7 +24,7 @@ impl_scope! {
         key_nav = true;
         hover_highlight = true;
     }]
-    pub struct ComboBox<M: 'static> {
+    pub struct ComboBox {
         #[widget_core]
         core: CoreData,
         label: Label<String>,
@@ -36,7 +36,7 @@ impl_scope! {
         active: usize,
         opening: bool,
         popup_id: Option<WindowId>,
-        on_select: Option<Rc<dyn Fn(&mut EventMgr, usize) -> Option<M>>>,
+        on_select: Option<Rc<dyn Fn(&mut EventMgr, usize)>>,
     }
 
     impl kas::Layout for Self {
@@ -61,9 +61,7 @@ impl_scope! {
     }
 
     impl event::Handler for Self {
-        type Msg = M;
-
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<M> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             let open_popup = |s: &mut Self, mgr: &mut EventMgr, key_focus: bool| {
                 s.popup_id = mgr.add_popup(kas::Popup {
                     id: s.popup.id(),
@@ -146,7 +144,7 @@ impl_scope! {
                             }
                         } else if self.popup_id.is_some() && self.popup.is_ancestor_of(id) {
                             let r = self.popup.send(mgr, id.clone(), Event::Activate);
-                            return self.map_response(mgr, id.clone(), event, r);
+                            return self.map_response(mgr, event, r);
                         }
                     }
                     if let Some(id) = self.popup_id {
@@ -166,7 +164,7 @@ impl_scope! {
     }
 
     impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
             if self.eq_id(&id) {
                 EventMgr::handle_generic(self, mgr, event)
             } else {
@@ -182,14 +180,14 @@ impl_scope! {
                     return Response::Used;
                 }
 
-                let r = self.popup.send(mgr, id.clone(), event.clone());
-                self.map_response(mgr, id, event, r)
+                let r = self.popup.send(mgr, id, event.clone());
+                self.map_response(mgr, event, r)
             }
         }
     }
 }
 
-impl ComboBox<VoidMsg> {
+impl ComboBox {
     /// Construct a combobox
     ///
     /// Constructs a combobox with labels derived from an iterator over string
@@ -241,9 +239,9 @@ impl ComboBox<VoidMsg> {
     /// index.
     #[inline]
     #[must_use]
-    pub fn on_select<M, F>(self, f: F) -> ComboBox<M>
+    pub fn on_select<F>(self, f: F) -> ComboBox
     where
-        F: Fn(&mut EventMgr, usize) -> Option<M> + 'static,
+        F: Fn(&mut EventMgr, usize) + 'static,
     {
         ComboBox {
             core: self.core,
@@ -260,7 +258,7 @@ impl ComboBox<VoidMsg> {
     }
 }
 
-impl<M: 'static> ComboBox<M> {
+impl ComboBox {
     /// Get the index of the active choice
     ///
     /// This index is normally less than the number of choices (`self.len()`),
@@ -345,44 +343,23 @@ impl<M: 'static> ComboBox<M> {
     }
 }
 
-impl<M: 'static> ComboBox<M> {
-    fn map_response(
-        &mut self,
-        mgr: &mut EventMgr,
-        id: WidgetId,
-        event: Event,
-        r: Response<(usize, ())>,
-    ) -> Response<M> {
-        match r {
-            Response::Unused => EventMgr::handle_generic(self, mgr, event),
-            /* TODO Response::Update => {
-                if let Some(id) = self.popup_id {
-                    mgr.close_window(id, true);
-                }
-                if let Some(index) = self.popup.inner.find_child_index(&id) {
-                    if index != self.active {
-                        *mgr |= self.set_active(index);
-                        return if let Some(ref f) = self.on_select {
-                            Response::used_or_msg((f)(mgr, index))
-                        } else {
-                            Response::Update
-                        };
-                    }
-                }
-                Response::Used
-            } */
-            r => r.try_into().unwrap_or_else(|(index, ())| {
-                *mgr |= self.set_active(index);
-                if let Some(id) = self.popup_id {
-                    mgr.close_window(id, true);
-                }
-                if let Some(ref f) = self.on_select {
-                    Response::used_or_msg((f)(mgr, index))
-                } else {
-                    Response::Used
-                }
-            }),
+impl ComboBox {
+    fn map_response(&mut self, mgr: &mut EventMgr, event: Event, r: Response) -> Response {
+        if matches!(r, Response::Unused) {
+            return EventMgr::handle_generic(self, mgr, event);
         }
+
+        if let Some(IndexMsg(index)) = mgr.try_pop_msg() {
+            mgr.try_pop_msg::<()>();
+            *mgr |= self.set_active(index);
+            if let Some(id) = self.popup_id {
+                mgr.close_window(id, true);
+            }
+            if let Some(ref f) = self.on_select {
+                (f)(mgr, index);
+            }
+        }
+        r
     }
 }
 

@@ -20,7 +20,6 @@ use syn::{
 #[derive(Debug)]
 pub struct Child {
     pub ident: Member,
-    pub args: WidgetAttrArgs,
 }
 
 fn parse_impl(in_ident: Option<&Ident>, input: ParseStream) -> Result<ItemImpl> {
@@ -198,82 +197,6 @@ impl Parse for WidgetDerive {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub enum Handler {
-    None,
-    Use(Ident),
-    Map(Ident),
-    FlatMap(Ident),
-    Discard,
-}
-impl Handler {
-    fn is_none(&self) -> bool {
-        *self == Handler::None
-    }
-    pub fn any_ref(&self) -> Option<&Ident> {
-        match self {
-            Handler::None | Handler::Discard => None,
-            Handler::Use(n) | Handler::Map(n) | Handler::FlatMap(n) => Some(n),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct WidgetAttrArgs {
-    pub update: Option<Ident>,
-    pub handler: Handler,
-}
-
-impl Parse for WidgetAttrArgs {
-    fn parse(input: ParseStream) -> Result<Self> {
-        let mut args = WidgetAttrArgs {
-            update: None,
-            handler: Handler::None,
-        };
-        if input.is_empty() {
-            return Ok(args);
-        }
-
-        let content;
-        let _ = parenthesized!(content in input);
-
-        loop {
-            let lookahead = content.lookahead1();
-            if args.handler.is_none() && lookahead.peek(kw::flatmap_msg) {
-                let _: kw::flatmap_msg = content.parse()?;
-                let _: Eq = content.parse()?;
-                args.handler = Handler::FlatMap(content.parse()?);
-            } else if args.handler.is_none() && lookahead.peek(kw::map_msg) {
-                let _: kw::map_msg = content.parse()?;
-                let _: Eq = content.parse()?;
-                args.handler = Handler::Map(content.parse()?);
-            } else if args.handler.is_none() && lookahead.peek(kw::use_msg) {
-                let _: kw::use_msg = content.parse()?;
-                let _: Eq = content.parse()?;
-                args.handler = Handler::Use(content.parse()?);
-            } else if args.handler.is_none() && lookahead.peek(kw::discard_msg) {
-                let _: kw::discard_msg = content.parse()?;
-                args.handler = Handler::Discard;
-            } else if lookahead.peek(kw::handler) {
-                let tok: Ident = content.parse()?;
-                return Err(Error::new(
-                    tok.span(),
-                    "handler is obsolete; replace with flatmap_msg, map_msg, use_msg or discard_msg",
-                ));
-            } else {
-                return Err(lookahead.error());
-            }
-
-            if content.is_empty() {
-                break;
-            }
-            let _: Comma = content.parse()?;
-        }
-
-        Ok(args)
-    }
-}
-
 macro_rules! property {
     ($name:ident : $ty:ty = $def:expr ; $kw:path : $input:ident => $parse:expr ;) => {
         #[derive(Debug)]
@@ -387,9 +310,8 @@ pub enum ChildType {
     Fixed(Type), // fixed type
     // A given type using generics internally
     InternGeneric(Punctuated<GenericParam, Comma>, Type),
-    // Generic, optionally with specified handler msg type,
-    // optionally with an additional trait bound.
-    Generic(Option<Type>, Option<TypeTraitObject>),
+    // Generic, optionally with an additional trait bound.
+    Generic(Option<TypeTraitObject>),
 }
 
 #[derive(Debug)]
@@ -485,7 +407,7 @@ impl Parse for WidgetField {
         let mut colon_token = None;
 
         // Note: Colon matches `::` but that results in confusing error messages
-        let mut ty = if input.peek(Colon) && !input.peek2(Colon) {
+        let ty = if input.peek(Colon) && !input.peek2(Colon) {
             colon_token = Some(input.parse()?);
             if input.peek(Token![for]) {
                 // internal generic
@@ -541,38 +463,13 @@ impl Parse for WidgetField {
                 // generic with trait bound, optionally with msg type
                 let _: Token![impl] = input.parse()?;
                 let bound: TypeTraitObject = input.parse()?;
-                ChildType::Generic(None, Some(bound))
+                ChildType::Generic(Some(bound))
             } else {
                 ChildType::Fixed(input.parse()?)
             }
         } else {
-            ChildType::Generic(None, None)
+            ChildType::Generic(None)
         };
-
-        if input.peek(Token![->]) {
-            let arrow: Token![->] = input.parse()?;
-            if !attrs
-                .iter()
-                .any(|attr| attr.path == parse_quote! { widget })
-            {
-                return Err(Error::new(
-                    arrow.span(),
-                    "can only use `-> Msg` type restriction on widgets",
-                ));
-            }
-            let msg: Type = input.parse()?;
-            match &mut ty {
-                ChildType::Fixed(_) | ChildType::InternGeneric(_, _) => {
-                    return Err(Error::new(
-                        arrow.span(),
-                        "cannot use `-> Msg` type restriction with fixed `type` or with `for<...> type`",
-                    ));
-                }
-                ChildType::Generic(ref mut gen_r, _) => {
-                    *gen_r = Some(msg);
-                }
-            }
-        }
 
         let _: Eq = input.parse()?;
         let value: Expr = input.parse()?;

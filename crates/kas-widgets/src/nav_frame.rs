@@ -38,9 +38,7 @@ impl_scope! {
     }
 
     impl event::Handler for Self {
-        type Msg = <W as Handler>::Msg;
-
-        fn handle(&mut self, _mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
+        fn handle(&mut self, _mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Activate => Response::Select,
                 _ => Response::Unused,

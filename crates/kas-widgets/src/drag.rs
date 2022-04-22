@@ -26,6 +26,10 @@ impl_scope! {
     /// 3.  [`Layout::draw`] does nothing. The parent should handle all drawing.
     /// 4.  Optionally, this widget can handle clicks on the track area via
     ///     [`DragHandle::handle_press_on_track`].
+    ///
+    /// # Messages
+    ///
+    /// On position change, pushes a value of type `Offset`.
     #[derive(Clone, Debug, Default)]
     #[widget{
         hover_highlight = true;
@@ -59,9 +63,7 @@ impl_scope! {
     }
 
     impl Handler for DragHandle {
-        type Msg = Offset;
-
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::PressStart { source, coord, .. } => {
                     mgr.grab_press_unique(self.id(), source, coord, Some(CursorIcon::Grabbing));
@@ -73,12 +75,11 @@ impl_scope! {
                 Event::PressMove { coord, .. } => {
                     let offset = coord - self.press_coord;
                     let (offset, action) = self.set_offset(offset);
-                    if action.is_empty() {
-                        Response::Used
-                    } else {
+                    if !action.is_empty() {
                         mgr.send_action(action);
-                        Response::Msg(offset)
+                        mgr.push_msg(offset)
                     }
+                    Response::Used
                 }
                 Event::PressEnd { .. } => Response::Used,
                 _ => Response::Unused,

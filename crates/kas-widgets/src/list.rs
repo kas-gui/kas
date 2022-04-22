@@ -10,34 +10,11 @@ use kas::{event, layout, prelude::*};
 use std::collections::hash_map::{Entry, HashMap};
 use std::ops::{Index, IndexMut};
 
-/// Support for optionally-indexed messages
-pub trait FromIndexed<T> {
-    fn from_indexed(i: usize, t: T) -> Self;
-}
-impl<T> FromIndexed<T> for T {
-    #[inline]
-    fn from_indexed(_: usize, t: T) -> Self {
-        t
-    }
-}
-impl<T> FromIndexed<T> for (usize, T) {
-    #[inline]
-    fn from_indexed(i: usize, t: T) -> Self {
-        (i, t)
-    }
-}
-impl<T> FromIndexed<T> for (u32, T) {
-    #[inline]
-    fn from_indexed(i: usize, t: T) -> Self {
-        (i.cast(), t)
-    }
-}
-impl<T> FromIndexed<T> for (u64, T) {
-    #[inline]
-    fn from_indexed(i: usize, t: T) -> Self {
-        (i.cast(), t)
-    }
-}
+/// Used to annotate messages from [`List`] children
+///
+/// Contains the child's index in the list.
+#[derive(Clone, Debug)]
+pub struct IndexMsg(pub usize);
 
 /// A generic row widget
 ///
@@ -61,24 +38,20 @@ pub type IndexedColumn<W> = IndexedList<Down, W>;
 
 /// A row of boxed widgets
 ///
-/// This is parameterised over handler message type.
-///
 /// See documentation of [`List`] type.
-pub type BoxRow<M> = BoxList<Right, M>;
+pub type BoxRow = BoxList<Right>;
 
 /// A column of boxed widgets
 ///
-/// This is parameterised over handler message type.
-///
 /// See documentation of [`List`] type.
-pub type BoxColumn<M> = BoxList<Down, M>;
+pub type BoxColumn = BoxList<Down>;
 
 /// A row/column of boxed widgets
 ///
-/// This is parameterised over directionality and handler message type.
+/// This is parameterised over directionality.
 ///
 /// See documentation of [`List`] type.
-pub type BoxList<D, M> = List<D, Box<dyn Widget<Msg = M>>>;
+pub type BoxList<D> = List<D, Box<dyn Widget>>;
 
 /// A generic row/column widget
 ///
@@ -96,8 +69,7 @@ pub type BoxList<D, M> = List<D, Box<dyn Widget<Msg = M>>>;
 /// -   [`Row`] fixes the direction to [`Right`]
 /// -   [`Column`] fixes the direction to [`Down`]
 /// -   [`row`](crate::row) and [`column`](crate::column) macros
-/// -   [`BoxList`] is parameterised over the message type `M`, using boxed
-///     widgets: `Box<dyn Widget<Msg = M>>`
+/// -   [`BoxList`] is parameterised over the directionality
 /// -   [`BoxRow`] and [`BoxColumn`] are variants of [`BoxList`] with fixed direction
 ///
 /// See also [`IndexedList`] and [`GenericList`] which allow other message types.
@@ -109,7 +81,7 @@ pub type BoxList<D, M> = List<D, Box<dyn Widget<Msg = M>>>;
 /// Configuring and resizing elements is O(n) in the number of children.
 /// Drawing and event handling is O(log n) in the number of children (assuming
 /// only a small number are visible at any one time).
-pub type List<D, W> = GenericList<D, W, <W as Handler>::Msg>;
+pub type List<D, W> = GenericList<D, W>;
 
 /// A generic row/column widget
 ///
@@ -137,7 +109,7 @@ pub type List<D, W> = GenericList<D, W, <W as Handler>::Msg>;
 /// Configuring and resizing elements is O(n) in the number of children.
 /// Drawing and event handling is O(log n) in the number of children (assuming
 /// only a small number are visible at any one time).
-pub type IndexedList<D, W> = GenericList<D, W, (usize, <W as Handler>::Msg)>;
+pub type IndexedList<D, W> = GenericList<D, W>;
 
 impl_scope! {
     /// A generic row/column widget
@@ -146,8 +118,6 @@ impl_scope! {
     ///
     /// -   `D:` [`Directional`] — fixed or run-time direction of layout
     /// -   `W:` [`Widget`] — type of widget
-    /// -   `M` — the message type; restricted to `M:` [`FromIndexed`]`<M2>` where
-    ///     `M2` is the child's message type; this is usually either `M2` or `(usize, M2)`
     ///
     /// ## Alternatives
     ///
@@ -164,15 +134,16 @@ impl_scope! {
     /// Configuring and resizing elements is O(n) in the number of children.
     /// Drawing and event handling is O(log n) in the number of children (assuming
     /// only a small number are visible at any one time).
+    ///
+    /// # Messages
+    ///
+    /// When a child pushes a message, this widget pushes [`IndexMsg`] to
+    /// identify the child.
     #[autoimpl(Clone where W: Clone)]
     #[autoimpl(Debug)]
     #[autoimpl(Default where D: Default)]
-    #[widget { msg = M; }]
-    pub struct GenericList<
-        D: Directional,
-        W: Widget,
-        M: FromIndexed<<W as Handler>::Msg> + 'static,
-    > {
+    #[widget]
+    pub struct GenericList<D: Directional, W: Widget> {
         #[widget_core]
         core: CoreData,
         layout_store: layout::DynRowStorage,
@@ -181,7 +152,6 @@ impl_scope! {
         size_solved: bool,
         next: usize,
         id_map: HashMap<usize, usize>, // map key of WidgetId to index
-        _pd: std::marker::PhantomData<M>,
     }
 
     impl WidgetChildren for Self {
@@ -256,16 +226,14 @@ impl_scope! {
     }
 
     impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
             if let Some(index) = self.find_child_index(&id) {
                 if let Some(child) = self.widgets.get_mut(index) {
                     let r = child.send(mgr, id.clone(), event);
-                    return match Response::try_from(r) {
-                        Ok(r) => r,
-                        Err(msg) => {
-                            Response::Msg(FromIndexed::from_indexed(index, msg))
-                        }
-                    };
+                    if mgr.has_msg() {
+                        mgr.push_msg(IndexMsg(index));
+                    }
+                    return r;
                 }
             }
 
@@ -285,7 +253,7 @@ impl_scope! {
         }
     }
 
-    impl<W: Widget, M: FromIndexed<<W as Handler>::Msg> + 'static> GenericList<Direction, W, M> {
+    impl<W: Widget> GenericList<Direction, W> {
         /// Set the direction of contents
         pub fn set_direction(&mut self, direction: Direction) -> TkAction {
             self.direction = direction;
@@ -328,7 +296,6 @@ impl_scope! {
                 size_solved: false,
                 next: 0,
                 id_map: Default::default(),
-                _pd: Default::default(),
             }
         }
 

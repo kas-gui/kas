@@ -10,7 +10,7 @@ use crate::event::UpdateHandle;
 use crate::WidgetId;
 use std::fmt::Debug;
 
-impl<T: Clone + Debug> ListData for [T] {
+impl<T: Clone + Debug + 'static> ListData for [T] {
     type Key = usize;
     type Item = T;
 
@@ -54,7 +54,7 @@ impl<T: Clone + Debug> ListData for [T] {
         (start.min(len)..(start + limit).min(len)).collect()
     }
 }
-impl<T: Clone + Debug> ListDataMut for [T] {
+impl<T: Clone + Debug + 'static> ListDataMut for [T] {
     fn set(&mut self, key: &Self::Key, item: Self::Item) {
         self[*key] = item;
     }

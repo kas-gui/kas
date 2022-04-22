@@ -21,9 +21,7 @@ use std::rc::Rc;
 
 /// Wrapper for single-thread shared data
 ///
-/// This wrapper adds an [`UpdateHandle`] and implements the
-/// [`Updatable`] traits (the latter with a dummy implementation —
-/// if you need custom handlers you will need your own shared data type).
+/// This wrapper adds an [`UpdateHandle`].
 #[derive(Clone, Debug, Default)]
 pub struct SharedRc<T: Debug>(Rc<(UpdateHandle, RefCell<(T, u64)>)>);
 
@@ -36,13 +34,7 @@ impl<T: Debug> SharedRc<T> {
     }
 }
 
-impl<T: Clone + Debug, K, M> Updatable<K, M> for SharedRc<T> {
-    fn handle(&self, _: &K, _: &M) -> Option<UpdateHandle> {
-        None
-    }
-}
-
-impl<T: Clone + Debug> SingleData for SharedRc<T> {
+impl<T: Clone + Debug + 'static> SingleData for SharedRc<T> {
     type Item = T;
 
     fn update_handles(&self) -> Vec<UpdateHandle> {
@@ -63,7 +55,7 @@ impl<T: Clone + Debug> SingleData for SharedRc<T> {
         Some((self.0).0)
     }
 }
-impl<T: Clone + Debug> SingleDataMut for SharedRc<T> {
+impl<T: Clone + Debug + 'static> SingleDataMut for SharedRc<T> {
     fn set(&mut self, value: Self::Item) {
         (self.0).1.borrow_mut().0 = value;
     }

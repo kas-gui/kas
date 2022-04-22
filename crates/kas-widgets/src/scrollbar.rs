@@ -15,10 +15,13 @@ impl_scope! {
     ///
     /// Scroll bars allow user-input of a value between 0 and a defined maximum,
     /// and allow the size of the handle to be specified.
+    ///
+    /// # Messages
+    ///
+    /// On value change, pushes a value of type `i32`.
     #[derive(Clone, Debug, Default)]
     #[widget{
         hover_highlight = true;
-        msg = i32;
     }]
     pub struct ScrollBar<D: Directional> {
         #[widget_core]
@@ -245,7 +248,8 @@ impl_scope! {
     }
 
     impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
+            let mut response = Response::Used;
             let offset = if self.eq_id(&id) {
                 match event {
                     Event::PressStart { source, coord, .. } => {
@@ -255,18 +259,18 @@ impl_scope! {
                 }
             } else {
                 debug_assert!(self.handle.id().is_ancestor_of(&id));
-                match self.handle.send(mgr, id, event).try_into() {
-                    Ok(res) => return res,
-                    Err(offset) => offset,
+                response = self.handle.send(mgr, id, event);
+                match mgr.try_pop_msg() {
+                    Some(offset) => offset,
+                    None => return response,
                 }
             };
 
             if self.set_offset(offset) {
                 mgr.redraw(self.handle.id());
-                Response::Msg(self.value)
-            } else {
-                Response::Used
+                mgr.push_msg(self.value);
             }
+            response
         }
     }
 }
@@ -637,24 +641,24 @@ impl_scope! {
     }
 
     impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
             match self.find_child_index(&id) {
-                Some(widget_index![self.horiz_bar]) => self.horiz_bar
-                    .send(mgr, id, event)
-                    .try_into()
-                    .unwrap_or_else(|msg| {
+                Some(widget_index![self.horiz_bar]) => {
+                    let r = self.horiz_bar.send(mgr, id, event);
+                    if let Some(msg) = mgr.try_pop_msg() {
                         let offset = Offset(msg, self.inner.scroll_offset().1);
                         self.inner.set_scroll_offset(mgr, offset);
-                        Response::Used
-                    }),
-                Some(widget_index![self.vert_bar]) => self.vert_bar
-                    .send(mgr, id, event)
-                    .try_into()
-                    .unwrap_or_else(|msg| {
+                    }
+                    r
+                }
+                Some(widget_index![self.vert_bar]) => {
+                    let r = self.vert_bar.send(mgr, id, event);
+                    if let Some(msg) = mgr.try_pop_msg() {
                         let offset = Offset(self.inner.scroll_offset().0, msg);
                         self.inner.set_scroll_offset(mgr, offset);
-                        Response::Used
-                    }),
+                    }
+                    r
+                }
                 Some(widget_index![self.inner]) => {
                     let r = self.inner.send(mgr, id, event);
                     // We assume the inner already updated its positions; this is just to set bars

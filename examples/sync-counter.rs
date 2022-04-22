@@ -5,7 +5,7 @@
 
 //! A counter synchronised between multiple windows
 
-use kas::event::{EventMgr, VoidMsg};
+use kas::event::{EventMgr, Handler, Response};
 use kas::macros::make_widget;
 use kas::updatable::SharedRc;
 use kas::widgets::view::SingleView;
@@ -13,6 +13,9 @@ use kas::widgets::{TextButton, Window};
 
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
+
+    #[derive(Clone)]
+    struct Increment(i32);
 
     let window = Window::new(
         "Counter",
@@ -23,17 +26,19 @@ fn main() -> kas::shell::Result<()> {
                     align(center): self.counter,
                     row: [self.b_decr, self.b_incr],
                 ];
-                msg = VoidMsg;
             }]
             struct {
                 // SingleView embeds a shared value, here default-constructed to 0
                 #[widget] counter: SingleView<SharedRc<i32>> = Default::default(),
-                #[widget(use_msg = update)] b_decr = TextButton::new_msg("−", -1),
-                #[widget(use_msg = update)] b_incr = TextButton::new_msg("+", 1),
+                #[widget] b_decr = TextButton::new_msg("−", Increment(-1)),
+                #[widget] b_incr = TextButton::new_msg("+", Increment(1)),
             }
-            impl Self {
-                fn update(&mut self, mgr: &mut EventMgr, msg: i32) {
-                    self.counter.update_value(mgr, |v| v + msg);
+            impl Handler for Self {
+                fn on_message(&mut self, mgr: &mut EventMgr, _: usize) -> Response {
+                    if let Some(Increment(x)) = mgr.try_pop_msg() {
+                        self.counter.update_value(mgr, |v| v + x);
+                    }
+                    Response::Unused
                 }
             }
         },

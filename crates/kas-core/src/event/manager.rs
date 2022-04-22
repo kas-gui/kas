@@ -433,7 +433,7 @@ impl<'a> EventMgr<'a> {
 
     fn start_key_event<W>(&mut self, widget: &mut W, vkey: VirtualKeyCode, scancode: u32)
     where
-        W: Widget<Msg = VoidMsg> + ?Sized,
+        W: Widget + ?Sized,
     {
         trace!(
             "EventMgr::start_key_event: widget={}, vkey={:?}, scancode={}",
@@ -557,7 +557,7 @@ impl<'a> EventMgr<'a> {
         }
     }
 
-    fn send_impl<W>(&mut self, widget: &mut W, mut id: WidgetId, event: Event) -> Response<W::Msg>
+    fn send_impl<W>(&mut self, widget: &mut W, mut id: WidgetId, event: Event) -> Response
     where
         W: Widget + ?Sized,
     {

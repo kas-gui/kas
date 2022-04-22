@@ -13,21 +13,27 @@ use kas::widgets::{Label, TextButton, Window};
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
+    #[derive(Clone)]
+    struct Increment(i32);
+
     let counter = make_widget! {
-        #[widget { msg = VoidMsg; }]
+        #[widget]
         struct {
             #[widget]
             display: Label<String> = Label::from("0"),
-            #[widget(use_msg = update)]
-            b_decr = TextButton::new_msg("−", -1),
-            #[widget(use_msg = update)]
-            b_incr = TextButton::new_msg("+", 1),
+            #[widget]
+            b_decr = TextButton::new_msg("−", Increment(-1)),
+            #[widget]
+            b_incr = TextButton::new_msg("+", Increment(1)),
             count: i32 = 0,
         }
-        impl Self {
-            fn update(&mut self, mgr: &mut EventMgr, incr: i32) {
-                self.count += incr;
-                *mgr |= self.display.set_string(self.count.to_string());
+        impl Handler for Self {
+            fn on_message(&mut self, mgr: &mut EventMgr, _: usize) -> Response {
+                if let Some(Increment(incr)) = mgr.try_pop_msg() {
+                    self.count += incr;
+                    *mgr |= self.display.set_string(self.count.to_string());
+                }
+                Response::Unused
             }
         }
         impl Layout for Self {

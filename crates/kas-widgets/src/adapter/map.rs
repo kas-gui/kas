@@ -5,9 +5,9 @@
 
 //! Message Map widget
 
-use crate::menu;
+use crate::menu::{self, Menu};
 use kas::prelude::*;
-use std::rc::Rc;
+use std::marker::PhantomData;
 
 impl_scope! {
     /// Wrapper to map messages from the inner widget
@@ -17,52 +17,48 @@ impl_scope! {
     #[derive(Clone)]
     #[widget{
         layout = single;
-        msg = M;
     }]
-    pub struct MapResponse<W: Widget, M: 'static> {
+    pub struct MapMessage<W: Widget, M: 'static, N: 'static, F: FnMut(M) -> N + 'static> {
         #[widget_core]
         core: kas::CoreData,
         #[widget]
         inner: W,
-        map: Rc<dyn Fn(&mut EventMgr, W::Msg) -> Response<M>>,
+        map: F,
+        _m: PhantomData<M>,
+        _n: PhantomData<N>,
     }
 
     impl Self {
         /// Construct
         ///
         /// Any response from the child widget with a message payload is mapped
-        /// through the closure `f`.
-        pub fn new<F: Fn(&mut EventMgr, W::Msg) -> Response<M> + 'static>(child: W, f: F) -> Self {
-            Self::new_rc(child, Rc::new(f))
-        }
-
-        /// Construct with an Rc-wrapped method
-        ///
-        /// Any response from the child widget with a message payload is mapped
-        /// through the closure `f`.
-        pub fn new_rc(child: W, f: Rc<dyn Fn(&mut EventMgr, W::Msg) -> Response<M>>) -> Self {
-            MapResponse {
+        /// through the closure `map`.
+        pub fn new(inner: W, map: F) -> Self {
+            MapMessage {
                 core: Default::default(),
-                inner: child,
-                map: f,
+                inner,
+                map,
+                _m: PhantomData,
+                _n: PhantomData,
             }
         }
     }
 
     impl SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
             if self.eq_id(&id) {
                 self.handle(mgr, event)
             } else {
                 let r = self.inner.send(mgr, id.clone(), event);
-                r.try_into().unwrap_or_else(|msg| {
-                    (self.map)(mgr, msg)
-                })
+                if let Some(msg) = mgr.try_pop_msg() {
+                    mgr.push_msg((self.map)(msg));
+                }
+                r
             }
         }
     }
 
-    impl<W: menu::Menu, M: 'static> menu::Menu for MapResponse<W, M> {
+    impl Menu for Self where W: Menu {
         fn sub_items(&mut self) -> Option<menu::SubItems> {
             self.inner.sub_items()
         }

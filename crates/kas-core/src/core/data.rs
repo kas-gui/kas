@@ -8,7 +8,7 @@
 #[allow(unused)]
 use super::Layout;
 use super::{Widget, WidgetId};
-use crate::event::{self, EventMgr};
+use crate::event::EventMgr;
 use crate::geom::Rect;
 use crate::layout::{SetRectMgr, StorageChain};
 use crate::{dir::Direction, WindowId};
@@ -86,7 +86,7 @@ pub struct Popup {
 }
 
 /// Functionality required by a window
-pub trait Window: Widget<Msg = event::VoidMsg> {
+pub trait Window: Widget {
     /// Get the window title
     fn title(&self) -> &str;
 

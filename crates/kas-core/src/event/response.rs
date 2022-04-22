@@ -5,7 +5,6 @@
 
 //! Event handling: Response type
 
-use super::VoidResponse;
 use crate::geom::{Offset, Rect};
 
 /// Response type from [`Handler::handle`].
@@ -15,9 +14,9 @@ use crate::geom::{Offset, Rect};
 ///
 /// [`Handler::handle`]: super::Handler::handle
 /// [`Handler::Msg`]: super::Handler::Msg
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 #[must_use]
-pub enum Response<M> {
+pub enum Response {
     /// Event was unused
     ///
     /// Unused events may be used by a parent/ancestor widget or passed to
@@ -46,25 +45,11 @@ pub enum Response<M> {
     Focus(Rect),
     /// Widget wishes to be selected (or have selection status toggled)
     Select,
-    /// Custom message type
-    ///
-    /// This signals a (possible) update to the widget's data, while passing a
-    /// data payload to the parent widget.
-    Msg(M),
 }
 
 // Unfortunately we cannot write generic `From` / `TryFrom` impls
 // due to trait coherence rules, so we impl `from` etc. directly.
-impl<M> Response<M> {
-    /// Construct `None` or `Msg(msg)`
-    #[inline]
-    pub fn used_or_msg(opt_msg: Option<M>) -> Self {
-        match opt_msg {
-            None => Response::Used,
-            Some(msg) => Response::Msg(msg),
-        }
-    }
-
+impl Response {
     /// True if variant is `Used`
     #[inline]
     pub fn is_used(&self) -> bool {
@@ -75,70 +60,5 @@ impl<M> Response<M> {
     #[inline]
     pub fn is_unused(&self) -> bool {
         matches!(self, Response::Unused)
-    }
-
-    /// True if variant is `Msg`
-    #[inline]
-    pub fn is_msg(&self) -> bool {
-        matches!(self, Response::Msg(_))
-    }
-
-    /// Map from one `Response` type to another
-    ///
-    /// Once Rust supports specialisation, this will likely be replaced with a
-    /// `From` implementation.
-    #[inline]
-    pub fn from<N>(r: Response<N>) -> Self
-    where
-        N: Into<M>,
-    {
-        r.try_into().unwrap_or_else(|msg| Response::Msg(msg.into()))
-    }
-
-    /// Map one `Response` type into another
-    ///
-    /// Once Rust supports specialisation, this will likely be redundant.
-    #[inline]
-    pub fn into<N>(self) -> Response<N>
-    where
-        M: Into<N>,
-    {
-        Response::from(self)
-    }
-
-    /// Try mapping from one `Response` type to another, failing on `Msg`
-    /// variant and returning the payload.
-    #[inline]
-    pub fn try_from<N>(r: Response<N>) -> Result<Self, N> {
-        use Response::*;
-        match r {
-            Unused => Ok(Unused),
-            Used => Ok(Used),
-            Pan(delta) => Ok(Pan(delta)),
-            Scrolled => Ok(Scrolled),
-            Focus(rect) => Ok(Focus(rect)),
-            Select => Ok(Select),
-            Msg(m) => Err(m),
-        }
-    }
-
-    /// Try mapping one `Response` type into another, failing on `Msg`
-    /// variant and returning the payload.
-    #[inline]
-    pub fn try_into<N>(self) -> Result<Response<N>, M> {
-        Response::try_from(self)
-    }
-}
-
-impl VoidResponse {
-    /// Convert a `Response<VoidMsg>` to another `Response`
-    pub fn void_into<M>(self) -> Response<M> {
-        self.try_into().unwrap_or(Response::Used)
-    }
-}
-
-impl<M> From<M> for Response<M> {
-    fn from(msg: M) -> Self {
-        Response::Msg(msg)
     }
 }
