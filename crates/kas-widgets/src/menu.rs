@@ -44,7 +44,7 @@ pub struct SubItems<'a> {
     pub icon: Option<&'a mut dyn Component>,
     /// Toggle mark
     // TODO: should be a component?
-    pub toggle: Option<&'a mut dyn WidgetConfig>,
+    pub toggle: Option<&'a mut dyn Widget>,
 }
 
 /// Trait governing menus, sub-menus and menu-entries

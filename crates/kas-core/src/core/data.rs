@@ -74,7 +74,7 @@ impl Clone for CoreData {
 /// visible). The window is responsible for calling these methods.
 //
 // NOTE: it's tempting to include a pointer to the widget here. There are two
-// options: (a) an unsafe aliased pointer or (b) Rc<RefCell<dyn WidgetConfig>>.
+// options: (a) an unsafe aliased pointer or (b) Rc<RefCell<dyn Widget>>.
 // Option (a) should work but is an unnecessary performance hack; (b) could in
 // theory work but requires adjusting WidgetChildren::get, find etc. to take a
 // closure instead of returning a reference, causing *significant* complication.

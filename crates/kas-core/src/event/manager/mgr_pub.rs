@@ -802,7 +802,7 @@ impl<'a> EventMgr<'a> {
     /// keyboard input, false if reacting to mouse or touch input.
     pub fn next_nav_focus(
         &mut self,
-        mut widget: &mut dyn WidgetConfig,
+        mut widget: &mut dyn Widget,
         reverse: bool,
         key_focus: bool,
     ) -> bool {
@@ -821,7 +821,7 @@ impl<'a> EventMgr<'a> {
 
         fn nav(
             mgr: &mut SetRectMgr,
-            widget: &mut dyn WidgetConfig,
+            widget: &mut dyn Widget,
             focus: Option<&WidgetId>,
             rev: bool,
         ) -> Option<WidgetId> {

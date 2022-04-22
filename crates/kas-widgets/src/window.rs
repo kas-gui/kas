@@ -202,7 +202,7 @@ impl<W: Widget> Window<W> {
 }
 
 // This is like WidgetChildren::find, but returns a translated Rect.
-fn find_rect(widget: &dyn WidgetConfig, id: WidgetId) -> Option<Rect> {
+fn find_rect(widget: &dyn Widget, id: WidgetId) -> Option<Rect> {
     match widget.find_child_index(&id) {
         Some(i) => {
             if let Some(w) = widget.get_child(i) {

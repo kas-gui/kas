@@ -12,7 +12,7 @@ use super::{Align, AlignHints, AxisInfo, SizeRules};
 use super::{RowStorage, RowTemp, RulesSetter, RulesSolver};
 use crate::dir::{Direction, Directional};
 use crate::geom::{Coord, Rect};
-use crate::{WidgetConfig, WidgetExt};
+use crate::{Widget, WidgetExt};
 
 /// A [`RulesSolver`] for rows (and, without loss of generality, for columns).
 ///
@@ -280,7 +280,7 @@ impl<D: Directional> RowPositionSolver<D> {
         RowPositionSolver { direction }
     }
 
-    fn binary_search<W: WidgetConfig>(self, widgets: &[W], coord: Coord) -> Result<usize, usize> {
+    fn binary_search<W: Widget>(self, widgets: &[W], coord: Coord) -> Result<usize, usize> {
         match self.direction.as_direction() {
             Direction::Right => widgets.binary_search_by_key(&coord.0, |w| w.rect().pos.0),
             Direction::Down => widgets.binary_search_by_key(&coord.1, |w| w.rect().pos.1),
@@ -293,7 +293,7 @@ impl<D: Directional> RowPositionSolver<D> {
     ///
     /// Returns `None` when the coordinates lie within the margin area or
     /// outside of the parent widget.
-    pub fn find_child_index<W: WidgetConfig>(self, widgets: &[W], coord: Coord) -> Option<usize> {
+    pub fn find_child_index<W: Widget>(self, widgets: &[W], coord: Coord) -> Option<usize> {
         match self.binary_search(widgets, coord) {
             Ok(i) => Some(i),
             Err(i) if self.direction.is_reversed() => {
@@ -318,7 +318,7 @@ impl<D: Directional> RowPositionSolver<D> {
     /// Returns `None` when the coordinates lie within the margin area or
     /// outside of the parent widget.
     #[inline]
-    pub fn find_child<W: WidgetConfig>(self, widgets: &[W], coord: Coord) -> Option<&W> {
+    pub fn find_child<W: Widget>(self, widgets: &[W], coord: Coord) -> Option<&W> {
         self.find_child_index(widgets, coord).map(|i| &widgets[i])
     }
 
@@ -327,17 +327,13 @@ impl<D: Directional> RowPositionSolver<D> {
     /// Returns `None` when the coordinates lie within the margin area or
     /// outside of the parent widget.
     #[inline]
-    pub fn find_child_mut<W: WidgetConfig>(
-        self,
-        widgets: &mut [W],
-        coord: Coord,
-    ) -> Option<&mut W> {
+    pub fn find_child_mut<W: Widget>(self, widgets: &mut [W], coord: Coord) -> Option<&mut W> {
         self.find_child_index(widgets, coord)
             .map(|i| &mut widgets[i])
     }
 
     /// Call `f` on each child intersecting the given `rect`
-    pub fn for_children<W: WidgetConfig, F: FnMut(&mut W)>(
+    pub fn for_children<W: Widget, F: FnMut(&mut W)>(
         self,
         widgets: &mut [W],
         rect: Rect,
