@@ -37,7 +37,6 @@ fn main() -> kas::shell::Result<()> {
                 3, 3..5: self.b_eq;
                 0..2, 4: self.b0; 2, 4: self.b_dot;
             };
-            msg = Key;
         }]
         struct {
             // Buttons get keyboard bindings through the "&" item (e.g. "&1"

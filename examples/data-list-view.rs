@@ -164,7 +164,6 @@ impl_scope! {
     #[derive(Clone, Debug)]
     #[widget{
         layout = column: *;
-        msg = EntryMsg;
     }]
     struct ListEntry {
         #[widget_core]
@@ -212,7 +211,6 @@ fn main() -> kas::shell::Result<()> {
     let controls = make_widget! {
         #[widget{
             layout = row: *;
-            msg = Control;
         }]
         struct {
             #[widget] _ = Label::new("Number of rows:"),

@@ -67,7 +67,6 @@ impl_scope! {
     #[derive(Clone, Debug)]
     #[widget{
         layout = column: *;
-        msg = EntryMsg;
     }]
     struct ListEntry {
         #[widget_core]

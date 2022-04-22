@@ -69,7 +69,7 @@ impl_scope! {
     /// Similar to [`crate::List`] but with draggable handles between items.
     // TODO: better doc
     #[derive(Clone, Default, Debug)]
-    #[widget { msg = <W as event::Handler>::Msg; }]
+    #[widget]
     pub struct Splitter<D: Directional, W: Widget> {
         #[widget_core]
         core: CoreData,

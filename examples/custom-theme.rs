@@ -119,7 +119,6 @@ fn main() -> kas::shell::Result<()> {
                 2, 1: self.yellow;
                 1, 0: self.green;
             };
-            msg = Item;
         }]
         struct {
             #[widget] white = TextButton::new_msg("&White", Item::White),

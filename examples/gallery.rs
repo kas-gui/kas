@@ -245,7 +245,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 row: ["SVG", align(center): self.sv],
                 row: ["Child window", self.pu],
             ];
-            msg = Item;
         }]
         struct {
             #[widget] sl = ScrollLabel::new(text),

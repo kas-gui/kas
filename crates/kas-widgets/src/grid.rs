@@ -52,7 +52,7 @@ impl_scope! {
     /// identify the child.
     #[autoimpl(Default)]
     #[derive(Clone, Debug)]
-    #[widget { msg = <W as Handler>::Msg; }]
+    #[widget]
     pub struct Grid<W: Widget> {
         #[widget_core]
         core: CoreData,

@@ -150,12 +150,6 @@ mod kw {
     custom_keyword!(rspan);
     custom_keyword!(widget);
     custom_keyword!(handler);
-    custom_keyword!(flatmap_msg);
-    custom_keyword!(map_msg);
-    custom_keyword!(use_msg);
-    custom_keyword!(discard_msg);
-    custom_keyword!(update);
-    custom_keyword!(msg);
     custom_keyword!(generics);
     custom_keyword!(single);
     custom_keyword!(right);
@@ -249,7 +243,6 @@ pub struct WidgetArgs {
     pub derive: Option<Member>,
     pub layout: Option<make_layout::Tree>,
     pub find_id: FindId,
-    pub msg: Option<Type>,
 }
 
 impl Parse for WidgetArgs {
@@ -260,7 +253,6 @@ impl Parse for WidgetArgs {
         let mut derive = None;
         let mut layout = None;
         let mut find_id = FindId::default();
-        let mut msg = None;
 
         while !content.is_empty() {
             let lookahead = content.lookahead1();
@@ -282,10 +274,6 @@ impl Parse for WidgetArgs {
                 layout = Some(content.parse()?);
             } else if content.peek(kw::find_id) {
                 find_id = content.parse()?;
-            } else if msg.is_none() && lookahead.peek(kw::msg) {
-                let _: kw::msg = content.parse()?;
-                let _: Eq = content.parse()?;
-                msg = Some(content.parse()?);
             } else {
                 return Err(lookahead.error());
             }
@@ -300,7 +288,6 @@ impl Parse for WidgetArgs {
             derive,
             layout,
             find_id,
-            msg,
         })
     }
 }
@@ -460,7 +447,7 @@ impl Parse for WidgetField {
                 let ty = input.parse()?;
                 ChildType::InternGeneric(params, ty)
             } else if input.peek(Token![impl]) {
-                // generic with trait bound, optionally with msg type
+                // generic with trait bound
                 let _: Token![impl] = input.parse()?;
                 let bound: TypeTraitObject = input.parse()?;
                 ChildType::Generic(Some(bound))

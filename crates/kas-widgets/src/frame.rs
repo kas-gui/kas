@@ -17,7 +17,6 @@ impl_scope! {
     #[derive(Clone, Debug, Default)]
     #[widget{
         layout = frame(kas::theme::FrameStyle::Frame): self.inner;
-        msg = <W as Handler>::Msg;
     }]
     pub struct Frame<W: Widget> {
         #[widget_core]
@@ -47,7 +46,6 @@ impl_scope! {
     #[derive(Clone, Debug, Default)]
     #[widget{
         layout = frame(kas::theme::FrameStyle::Popup): self.inner;
-        msg = <W as Handler>::Msg;
     }]
     pub struct PopupFrame<W: Widget> {
         #[widget_core]

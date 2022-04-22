@@ -33,7 +33,6 @@ fn main() -> kas::shell::Result<()> {
     let selection_mode = make_widget! {
         #[widget{
             layout = list(right): *;
-            msg = SelectionMode;
         }]
         struct {
             #[widget] _ = Label::new("Selection:"),

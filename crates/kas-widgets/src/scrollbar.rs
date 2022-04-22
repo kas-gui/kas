@@ -334,7 +334,6 @@ impl_scope! {
     #[derive(Clone, Debug, Default)]
     #[widget{
         derive = self.0;
-        msg = <W as event::Handler>::Msg;
     }]
     pub struct ScrollBarRegion<W: Widget>(ScrollBars<ScrollRegion<W>>);
 
@@ -430,7 +429,7 @@ impl_scope! {
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Debug, Default)]
-    #[widget { msg = <W as event::Handler>::Msg; }]
+    #[widget]
     pub struct ScrollBars<W: Scrollable> {
         #[widget_core]
         core: CoreData,

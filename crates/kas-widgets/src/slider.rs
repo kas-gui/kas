@@ -94,7 +94,6 @@ impl_scope! {
     #[widget{
         key_nav = true;
         hover_highlight = true;
-        msg = T;
     }]
     pub struct Slider<T: SliderType, D: Directional> {
         #[widget_core]

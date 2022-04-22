@@ -34,7 +34,7 @@ impl_scope! {
     /// or may be limited: see [`Self::set_size_limit`]. Drawing is `O(1)`, and
     /// so is event handling in the expected case.
     #[derive(Clone, Default, Debug)]
-    #[widget { msg = <W as event::Handler>::Msg; }]
+    #[widget]
     pub struct Stack<W: Widget> {
         #[widget_core]
         core: CoreData,

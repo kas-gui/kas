@@ -28,7 +28,7 @@ impl_scope! {
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Debug, Default)]
-    #[widget { msg = <W as event::Handler>::Msg; }]
+    #[widget]
     pub struct ScrollRegion<W: Widget> {
         #[widget_core]
         core: CoreData,

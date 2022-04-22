@@ -367,7 +367,6 @@ impl_scope! {
     #[derive(Clone, Debug)]
     #[widget{
         layout = single;
-        msg = (usize, ());
     }]
     struct ComboPopup {
         #[widget_core]
