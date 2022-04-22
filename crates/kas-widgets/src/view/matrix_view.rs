@@ -5,10 +5,10 @@
 
 //! List view widget
 
-use super::{driver, Driver, PressPhase, SelectMsg, SelectionError, SelectionMode};
+use super::{driver, Driver, PressPhase, SelectionError, SelectionMode, SelectionMsg};
 #[allow(unused)] // doc links
 use crate::ScrollBars;
-use crate::Scrollable;
+use crate::{Scrollable, SelectMsg};
 use kas::event::components::ScrollComponent;
 use kas::event::{Command, CursorIcon};
 use kas::layout::solve_size_rules;
@@ -49,10 +49,11 @@ impl_scope! {
     /// # Messages
     ///
     /// When a child pushes a message, the [`MatrixData::on_message`] method is
-    /// called.
+    /// called. After calling [`MatrixData::on_message`], this widget attempts
+    /// to read and handle [`SelectMsg`].
     ///
     /// When selection is enabled and an item is selected or deselected, this
-    /// widget emits a [`SelectMsg`].
+    /// widget emits a [`SelectionMsg`].
     #[derive(Clone, Debug)]
     #[widget]
     pub struct MatrixView<
@@ -667,15 +668,15 @@ impl_scope! {
                                     mgr.redraw(self.id());
                                     self.selection.clear();
                                     self.selection.insert(key.clone());
-                                    mgr.push_msg(SelectMsg::Select(key.clone()));
+                                    mgr.push_msg(SelectionMsg::Select(key.clone()));
                                 }
                                 SelectionMode::Multiple => {
                                     mgr.redraw(self.id());
                                     if self.selection.remove(key) {
-                                        mgr.push_msg(SelectMsg::Deselect(key.clone()));
+                                        mgr.push_msg(SelectionMsg::Deselect(key.clone()));
                                     } else {
                                         self.selection.insert(key.clone());
-                                        mgr.push_msg(SelectMsg::Select(key.clone()));
+                                        mgr.push_msg(SelectionMsg::Select(key.clone()));
                                     }
                                 }
                             }
@@ -781,6 +782,27 @@ impl_scope! {
                 if let Some(handle) = self.data.on_message(mgr, &key) {
                     mgr.trigger_update(handle, 0);
                 }
+
+                if let Some(SelectMsg) = mgr.try_pop_msg() {
+                    match self.sel_mode {
+                        SelectionMode::None => (),
+                        SelectionMode::Single => {
+                            mgr.redraw(self.id());
+                            self.selection.clear();
+                            self.selection.insert(key.clone());
+                            mgr.push_msg(SelectionMsg::Select(key.clone()));
+                        }
+                        SelectionMode::Multiple => {
+                            mgr.redraw(self.id());
+                            if self.selection.remove(&key) {
+                                mgr.push_msg(SelectionMsg::Deselect(key.clone()));
+                            } else {
+                                self.selection.insert(key.clone());
+                                mgr.push_msg(SelectionMsg::Select(key.clone()));
+                            }
+                        }
+                    }
+                }
             }
 
             match response {
@@ -811,27 +833,6 @@ impl_scope! {
                     *mgr |= action;
                     mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
                     Response::Focus(rect)
-                }
-                Response::Select => {
-                    match self.sel_mode {
-                        SelectionMode::None => (),
-                        SelectionMode::Single => {
-                            mgr.redraw(self.id());
-                            self.selection.clear();
-                            self.selection.insert(key.clone());
-                            mgr.push_msg(SelectMsg::Select(key));
-                        }
-                        SelectionMode::Multiple => {
-                            mgr.redraw(self.id());
-                            if self.selection.remove(&key) {
-                                mgr.push_msg(SelectMsg::Deselect(key));
-                            } else {
-                                self.selection.insert(key.clone());
-                                mgr.push_msg(SelectMsg::Select(key));
-                            }
-                        }
-                    }
-                    Response::Used
                 }
             }
         }

@@ -43,8 +43,6 @@ pub enum Response {
     ///
     /// This region (in the child's coordinate space) should be made visible.
     Focus(Rect),
-    /// Widget wishes to be selected (or have selection status toggled)
-    Select,
 }
 
 // Unfortunately we cannot write generic `From` / `TryFrom` impls

@@ -8,7 +8,7 @@
 use kas::dir::Down;
 use kas::prelude::*;
 use kas::updatable::filter::ContainsCaseInsensitive;
-use kas::widgets::view::{self, driver, SelectMsg, SelectionMode, SingleView};
+use kas::widgets::view::{self, driver, SelectionMode, SelectionMsg, SingleView};
 use kas::widgets::{EditBox, Label, RadioBox, RadioBoxGroup, ScrollBars, Window};
 
 const MONTHS: &[&str] = &[
@@ -64,7 +64,7 @@ fn main() -> kas::shell::Result<()> {
             fn on_message(&mut self, mgr: &mut EventMgr, _: usize) -> Response {
                 if let Some(mode) = mgr.try_pop_msg() {
                     *mgr |= self.list.set_selection_mode(mode);
-                } else if let Some(msg) = mgr.try_pop_msg::<SelectMsg<usize>>() {
+                } else if let Some(msg) = mgr.try_pop_msg::<SelectionMsg<usize>>() {
                     println!("Selection message: {:?}", msg);
                 }
                 Response::Unused

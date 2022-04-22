@@ -86,7 +86,7 @@ pub use single_view::SingleView;
 
 /// Used to notify selection and deselection of [`ListView`] and [`MatrixView`] children
 #[derive(Clone, Debug)]
-pub enum SelectMsg<K> {
+pub enum SelectionMsg<K> {
     /// Selection of item
     Select(K),
     /// Deselection of item
