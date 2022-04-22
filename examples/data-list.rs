@@ -140,7 +140,7 @@ fn main() -> kas::shell::Result<()> {
         ListEntry::new(1, false),
         ListEntry::new(2, false),
     ];
-    let list = IndexedList::new_with_direction(Direction::Down, entries);
+    let list = List::new_with_direction(Direction::Down, entries);
 
     let window = Window::new(
         "Dynamic widget demo",
@@ -154,7 +154,7 @@ fn main() -> kas::shell::Result<()> {
                 #[widget] _ = Label::new("Contents of selected entry:"),
                 #[widget] display: StringLabel = Label::from("Entry #0"),
                 #[widget] _ = Separator::new(),
-                #[widget] list: ScrollBarRegion<IndexedList<Direction, ListEntry>> =
+                #[widget] list: ScrollBarRegion<List<Direction, ListEntry>> =
                     ScrollBarRegion::new(list).with_bars(false, true),
                 active: usize = 0,
             }

@@ -5,7 +5,7 @@
 
 //! Combobox
 
-use super::{menu::MenuEntry, IndexMsg, IndexedColumn, PopupFrame};
+use super::{menu::MenuEntry, Column, IndexMsg, PopupFrame};
 use kas::component::{Label, Mark};
 use kas::event::{self, Command};
 use kas::layout;
@@ -224,7 +224,7 @@ impl ComboBox {
             layout_frame: Default::default(),
             popup: ComboPopup {
                 core: Default::default(),
-                inner: PopupFrame::new(IndexedColumn::new(entries)),
+                inner: PopupFrame::new(Column::new(entries)),
             },
             active,
             opening: false,
@@ -373,6 +373,6 @@ impl_scope! {
         #[widget_core]
         core: CoreData,
         #[widget]
-        inner: PopupFrame<IndexedColumn<MenuEntry<()>>>,
+        inner: PopupFrame<Column<MenuEntry<()>>>,
     }
 }

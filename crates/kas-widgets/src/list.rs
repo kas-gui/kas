@@ -26,16 +26,6 @@ pub type Row<W> = List<Right, W>;
 /// See documentation of [`List`] type. See also the [`column`](crate::column) macro.
 pub type Column<W> = List<Down, W>;
 
-/// A generic row widget
-///
-/// See documentation of [`IndexedList`] type.
-pub type IndexedRow<W> = IndexedList<Right, W>;
-
-/// A generic column widget
-///
-/// See documentation of [`IndexedList`] type.
-pub type IndexedColumn<W> = IndexedList<Down, W>;
-
 /// A row of boxed widgets
 ///
 /// See documentation of [`List`] type.
@@ -52,64 +42,6 @@ pub type BoxColumn = BoxList<Down>;
 ///
 /// See documentation of [`List`] type.
 pub type BoxList<D> = List<D, Box<dyn Widget>>;
-
-/// A generic row/column widget
-///
-/// This type is roughly [`Vec`] but for widgets. Generics:
-///
-/// -   `D:` [`Directional`] — fixed or run-time direction of layout
-/// -   `W:` [`Widget`] — type of widget
-///
-/// The `List` widget forwards messages from children: `M = <W as Handler>::Msg`.
-///
-/// ## Alternatives
-///
-/// Some more specific type-defs are available:
-///
-/// -   [`Row`] fixes the direction to [`Right`]
-/// -   [`Column`] fixes the direction to [`Down`]
-/// -   [`row`](crate::row) and [`column`](crate::column) macros
-/// -   [`BoxList`] is parameterised over the directionality
-/// -   [`BoxRow`] and [`BoxColumn`] are variants of [`BoxList`] with fixed direction
-///
-/// See also [`IndexedList`] and [`GenericList`] which allow other message types.
-///
-/// Where the entries are fixed, also consider custom [`Widget`] implementations.
-///
-/// ## Performance
-///
-/// Configuring and resizing elements is O(n) in the number of children.
-/// Drawing and event handling is O(log n) in the number of children (assuming
-/// only a small number are visible at any one time).
-pub type List<D, W> = GenericList<D, W>;
-
-/// A generic row/column widget
-///
-/// This type is roughly [`Vec`] but for widgets. Generics:
-///
-/// -   `D:` [`Directional`] — fixed or run-time direction of layout
-/// -   `W:` [`Widget`] — type of widget
-///
-/// The `IndexedList` widget forwards messages from children together with the
-/// child's index in the list: `(usize, M)` where `M = <W as Handler>::Msg`.
-///
-/// ## Alternatives
-///
-/// Some more specific type-defs are available:
-///
-/// -   [`IndexedRow`] fixes the direction to [`Right`]
-/// -   [`IndexedColumn`] fixes the direction to [`Down`]
-///
-/// See also [`List`] and [`GenericList`] which allow other message types.
-///
-/// Where the entries are fixed, also consider custom [`Widget`] implementations.
-///
-/// ## Performance
-///
-/// Configuring and resizing elements is O(n) in the number of children.
-/// Drawing and event handling is O(log n) in the number of children (assuming
-/// only a small number are visible at any one time).
-pub type IndexedList<D, W> = GenericList<D, W>;
 
 impl_scope! {
     /// A generic row/column widget
@@ -143,7 +75,7 @@ impl_scope! {
     #[autoimpl(Debug)]
     #[autoimpl(Default where D: Default)]
     #[widget]
-    pub struct GenericList<D: Directional, W: Widget> {
+    pub struct List<D: Directional, W: Widget> {
         #[widget_core]
         core: CoreData,
         layout_store: layout::DynRowStorage,
@@ -253,7 +185,7 @@ impl_scope! {
         }
     }
 
-    impl<W: Widget> GenericList<Direction, W> {
+    impl<W: Widget> List<Direction, W> {
         /// Set the direction of contents
         pub fn set_direction(&mut self, direction: Direction) -> TkAction {
             self.direction = direction;
@@ -288,7 +220,7 @@ impl_scope! {
         /// Construct a new instance with explicit direction
         #[inline]
         pub fn new_with_direction(direction: D, widgets: Vec<W>) -> Self {
-            GenericList {
+            List {
                 core: Default::default(),
                 layout_store: Default::default(),
                 widgets,
