@@ -110,8 +110,12 @@ enum Item {
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let widgets = make_widget! {
-        #[widget{
+    let theme = CustomTheme::default();
+
+    let window = Window::new(
+        "Theme demo",
+        make_widget! {
+            #[widget{
             layout = grid: {
                 1, 1: "Custom theme demo\nChoose your colour!";
                 0, 1: self.white;
@@ -119,25 +123,12 @@ fn main() -> kas::shell::Result<()> {
                 2, 1: self.yellow;
                 1, 0: self.green;
             };
-        }]
-        struct {
-            #[widget] white = TextButton::new_msg("&White", Item::White),
-            #[widget] red = TextButton::new_msg("&Red", Item::Red),
-            #[widget] yellow = TextButton::new_msg("&Yellow", Item::Yellow),
-            #[widget] green = TextButton::new_msg("&Green", Item::Green),
-        }
-    };
-
-    let theme = CustomTheme::default();
-
-    let window = Window::new(
-        "Theme demo",
-        make_widget! {
-            #[widget{
-                layout = single;
             }]
             struct {
-                #[widget] _ = widgets,
+                #[widget] white = TextButton::new_msg("&White", Item::White),
+                #[widget] red = TextButton::new_msg("&Red", Item::Red),
+                #[widget] yellow = TextButton::new_msg("&Yellow", Item::Yellow),
+                #[widget] green = TextButton::new_msg("&Green", Item::Green),
             }
             impl Handler for Self {
                 fn on_message(&mut self, mgr: &mut EventMgr, _: usize) -> Response {
