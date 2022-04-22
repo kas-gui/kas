@@ -80,13 +80,12 @@ fn main() -> kas::shell::Result<()> {
             calc: Calculator = Calculator::new(),
         }
         impl Handler for Self {
-            fn on_message(&mut self, mgr: &mut EventMgr, _: usize) -> Response {
+            fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
                 if let Some(msg) = mgr.try_pop_msg::<Key>() {
                     if self.calc.handle(msg) {
                         *mgr |= self.display.set_string(self.calc.display());
                     }
                 }
-                Response::Unused
             }
         }
     };

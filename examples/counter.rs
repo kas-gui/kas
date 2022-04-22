@@ -28,12 +28,11 @@ fn main() -> kas::shell::Result<()> {
             count: i32 = 0,
         }
         impl Handler for Self {
-            fn on_message(&mut self, mgr: &mut EventMgr, _: usize) -> Response {
+            fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
                 if let Some(Increment(incr)) = mgr.try_pop_msg() {
                     self.count += incr;
                     *mgr |= self.display.set_string(self.count.to_string());
                 }
-                Response::Unused
             }
         }
         impl Layout for Self {

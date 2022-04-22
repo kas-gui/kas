@@ -81,7 +81,7 @@ fn main() -> kas::shell::Result<()> {
             #[widget] table: ScrollBars<MatrixView<TableData, DefaultNav>> = table,
         }
         impl Handler for Self {
-            fn on_message(&mut self, mgr: &mut EventMgr, index: usize) -> Response {
+            fn on_message(&mut self, mgr: &mut EventMgr, index: usize) {
                 if index == widget_index![self.max] {
                     if let Some(max) = mgr.try_pop_msg::<usize>() {
                         let data = self.table.data_mut();
@@ -92,7 +92,6 @@ fn main() -> kas::shell::Result<()> {
                         }
                     }
                 }
-                Response::Unused
             }
         }
     };

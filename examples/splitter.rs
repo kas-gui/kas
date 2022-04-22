@@ -5,7 +5,7 @@
 
 //! Counter example (simple button)
 
-use kas::event::{EventMgr, Handler, Response};
+use kas::event::{EventMgr, Handler};
 use kas::macros::make_widget;
 use kas::widgets::{EditField, RowSplitter, TextButton, Window};
 
@@ -42,7 +42,7 @@ fn main() -> kas::shell::Result<()> {
                 #[widget] panes: RowSplitter<EditField> = panes,
             }
             impl Handler for Self {
-                fn on_message(&mut self, mgr: &mut EventMgr, _: usize) -> Response {
+                fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
                     if let Some(msg) = mgr.try_pop_msg::<Message>() {
                         match msg {
                             Message::Decr => {
@@ -57,7 +57,6 @@ fn main() -> kas::shell::Result<()> {
                             }
                         };
                     }
-                    Response::Unused
                 }
             }
         },

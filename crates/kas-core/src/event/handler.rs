@@ -63,14 +63,10 @@ pub trait Handler: WidgetConfig {
     /// This method is called when a child leaves a message on the stack. *Some*
     /// parent or ancestor widget should read this message.
     ///
-    /// Any [`Response`] value may be returned. In normal usage, `Used` or
-    /// `Unused` is returned (the distinction is unimportant).
-    ///
     /// The default implementation does nothing.
     #[inline]
-    fn on_message(&mut self, mgr: &mut EventMgr, index: usize) -> Response {
+    fn on_message(&mut self, mgr: &mut EventMgr, index: usize) {
         let _ = (mgr, index);
-        Response::Unused
     }
 
     /// Handler for scrolling

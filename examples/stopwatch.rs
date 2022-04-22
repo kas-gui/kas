@@ -49,7 +49,7 @@ fn make_window() -> Box<dyn kas::Window> {
                     _ => Response::Unused,
                 }
             }
-            fn on_message(&mut self, mgr: &mut EventMgr, index: usize) -> Response {
+            fn on_message(&mut self, mgr: &mut EventMgr, index: usize) {
                 if index == widget_index![self.reset] {
                     self.saved = Duration::default();
                     self.start = None;
@@ -63,7 +63,6 @@ fn make_window() -> Box<dyn kas::Window> {
                         mgr.update_on_timer(Duration::new(0, 0), self.id(), 0);
                     }
                 }
-                Response::Unused
             }
         }
     };

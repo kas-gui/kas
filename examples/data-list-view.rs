@@ -223,7 +223,7 @@ fn main() -> kas::shell::Result<()> {
             n: usize = 3,
         }
         impl Handler for Self {
-            fn on_message(&mut self, mgr: &mut EventMgr, index: usize) -> Response {
+            fn on_message(&mut self, mgr: &mut EventMgr, index: usize) {
                 if index == widget_index![self.edit] {
                     if let Some(n) = mgr.try_pop_msg::<usize>() {
                         if n != self.n {
@@ -241,7 +241,6 @@ fn main() -> kas::shell::Result<()> {
                     self.n = n;
                     mgr.push_msg(Control::Set(n));
                 }
-                Response::Unused
             }
         }
     };
@@ -269,7 +268,7 @@ fn main() -> kas::shell::Result<()> {
                     ScrollBars::new(list).with_bars(false, true),
             }
             impl Handler for Self {
-                fn on_message(&mut self, mgr: &mut EventMgr, _: usize) -> Response {
+                fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
                     if let Some(control) = mgr.try_pop_msg::<Control>() {
                         match control {
                             Control::Set(len) => {
@@ -288,7 +287,6 @@ fn main() -> kas::shell::Result<()> {
                             }
                         }
                     }
-                    Response::Unused
                 }
             }
         },
