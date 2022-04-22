@@ -7,7 +7,7 @@
 
 use super::Scrollable;
 use kas::event::components::{TextInput, TextInputAction};
-use kas::event::{self, Command, ScrollDelta};
+use kas::event::{self, Command, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
@@ -97,11 +97,14 @@ impl_scope! {
                 self.view_offset = new_offset;
                 mgr.redraw(self.id());
             }
-            if delta == Offset::ZERO {
-                Response::Scrolled
-            } else {
-                Response::Pan(delta)
-            }
+
+            mgr.set_scroll(if delta == Offset::ZERO {
+                    Scroll::Scrolled
+                } else {
+                    Scroll::Offset(delta)
+                }
+            );
+            Response::Used
         }
 
         /// Update view_offset after edit_pos changes

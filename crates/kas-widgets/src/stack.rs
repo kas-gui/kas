@@ -145,10 +145,6 @@ impl_scope! {
             if let Some(index) = self.find_child_index(&id) {
                 if let Some(child) = self.widgets.get_mut(index) {
                     return match child.send(mgr, id, event) {
-                        Response::Focus(rect) => {
-                            mgr.set_rect_mgr(|mgr| self.set_active(mgr, index));
-                            Response::Focus(rect)
-                        }
                         r => r,
                     };
                 }

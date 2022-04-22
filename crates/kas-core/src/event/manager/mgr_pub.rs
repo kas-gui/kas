@@ -497,6 +497,11 @@ impl<'a> EventMgr<'a> {
         }
     }
 
+    /// Set a scroll action
+    pub fn set_scroll(&mut self, scroll: Scroll) {
+        // TODO
+    }
+
     /// Add an overlay (pop-up)
     ///
     /// A pop-up is a box used for things like tool-tips and menus which is

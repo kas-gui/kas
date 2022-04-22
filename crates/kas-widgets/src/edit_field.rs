@@ -7,7 +7,7 @@
 
 use super::Scrollable;
 use kas::event::components::{TextInput, TextInputAction};
-use kas::event::{self, Command, ScrollDelta};
+use kas::event::{self, Command, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::layout::{self, FrameStorage};
 use kas::prelude::*;
@@ -462,13 +462,14 @@ impl_scope! {
             fn request_focus<G: EditGuard + 'static>(s: &mut EditField<G>, mgr: &mut EventMgr) {
                 if !s.has_key_focus && mgr.request_char_focus(s.id()) {
                     s.has_key_focus = true;
+                    mgr.set_scroll(Scroll::Rect(s.rect()));
                     G::focus_gained(s, mgr);
                 }
             }
             match event {
                 Event::Activate | Event::NavFocus(true) => {
                     request_focus(self, mgr);
-                    Response::Focus(self.rect())
+                    Response::Used
                 }
                 Event::NavFocus(false) => Response::Used,
                 Event::LostCharFocus => {
@@ -1086,11 +1087,13 @@ impl<G: EditGuard> EditField<G> {
             self.view_offset = new_offset;
             mgr.redraw(self.id());
         }
-        if delta == Offset::ZERO {
-            Response::Scrolled
+
+        mgr.set_scroll(if delta == Offset::ZERO {
+            Scroll::Scrolled
         } else {
-            Response::Pan(delta)
-        }
+            Scroll::Offset(delta)
+        });
+        Response::Used
     }
 
     /// Update view_offset after edit_pos changes

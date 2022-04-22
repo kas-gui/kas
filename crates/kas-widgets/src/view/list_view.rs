@@ -10,7 +10,7 @@ use super::{driver, Driver, PressPhase, SelectionError, SelectionMode, Selection
 use crate::ScrollBars;
 use crate::{Scrollable, SelectMsg};
 use kas::event::components::ScrollComponent;
-use kas::event::{Command, CursorIcon};
+use kas::event::{Command, CursorIcon, Scroll};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
 use kas::updatable::ListData;
@@ -724,7 +724,8 @@ impl_scope! {
                         }
                         let len = usize::conv(self.cur_len);
                         mgr.set_nav_focus(self.widgets[index % len].widget.id(), true);
-                        Response::Focus(rect)
+                        mgr.set_scroll(Scroll::Rect(rect));
+                        Response::Used
                     } else {
                         Response::Unused
                     };
@@ -732,14 +733,13 @@ impl_scope! {
                 _ => (), // fall through to scroll handler
             }
 
-            let (action, response) =
-                self.scroll
-                    .scroll_by_event(mgr, event, self.id(), self.core.rect.size);
-            if !action.is_empty() {
-                *mgr |= action;
-                mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
-            }
-            response
+            self.scroll.scroll_by_event(mgr, event, self.id(), self.core.rect)
+        }
+
+        fn scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) -> Scroll {
+            let s = self.scroll.scroll(mgr, self.rect(), scroll);
+            mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
+            s
         }
     }
 
@@ -810,17 +810,6 @@ impl_scope! {
                     }
                 }
                 Response::Used => Response::Used,
-                Response::Pan(delta) => match self.scroll_by_delta(mgr, delta) {
-                    delta if delta == Offset::ZERO => Response::Scrolled,
-                    delta => Response::Pan(delta),
-                }
-                Response::Scrolled => Response::Scrolled,
-                Response::Focus(rect) => {
-                    let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
-                    *mgr |= action;
-                    mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
-                    Response::Focus(rect)
-                }
             }
         }
     }

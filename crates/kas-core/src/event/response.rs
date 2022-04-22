@@ -27,22 +27,6 @@ pub enum Response {
     /// All variants besides `Unused` indicate that the event was used. This
     /// variant is used when no further action happens.
     Used,
-    /// Pan scrollable regions by the given delta
-    ///
-    /// This may be returned to scroll the closest scrollable ancestor region.
-    /// This region should attempt to scroll self by this offset, then, if all
-    /// the offset was used, return `Response::Scrolled`, otherwise return
-    /// `Response::Pan(d)` with the unused offset `d`.
-    ///
-    /// With the usual scroll offset conventions, this delta must be subtracted
-    /// from the scroll offset.
-    Pan(Offset),
-    /// Notify that an inner region scrolled
-    Scrolled,
-    /// (Keyboard) focus has changed
-    ///
-    /// This region (in the child's coordinate space) should be made visible.
-    Focus(Rect),
 }
 
 // Unfortunately we cannot write generic `From` / `TryFrom` impls
@@ -59,4 +43,28 @@ impl Response {
     pub fn is_unused(&self) -> bool {
         matches!(self, Response::Unused)
     }
+}
+
+/// Request to / notification of scrolling from a child
+#[derive(Copy, Clone, Debug)]
+#[must_use]
+pub enum Scroll {
+    /// No scrolling
+    None,
+    /// Child has scrolled; no further scrolling needed
+    ///
+    /// External scrollbars use this as a notification to update self.
+    Scrolled,
+    /// Pan region by the given offset
+    ///
+    /// This may be returned to scroll the closest scrollable ancestor region.
+    /// This region should attempt to scroll self by this offset, then, if all
+    /// the offset was used, return `Scroll::Scrolled`, otherwise return
+    /// `Scroll::Offset(delta)` with the unused offset `delta`.
+    ///
+    /// With the usual scroll offset conventions, this delta must be subtracted
+    /// from the scroll offset.
+    Offset(Offset),
+    /// Focus the given rect
+    Rect(Rect),
 }

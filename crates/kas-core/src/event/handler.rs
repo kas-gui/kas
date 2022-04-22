@@ -72,6 +72,18 @@ pub trait Handler: WidgetConfig {
         let _ = (mgr, index);
         Response::Unused
     }
+
+    /// Handler for scrolling
+    ///
+    /// Called when [`Response::Pan`], [`Response::Scrolled`] or
+    /// [`Response::Focus`] is emitted, including when emitted by self.
+    ///
+    /// The default implementation simply returns `scroll`.
+    #[inline]
+    fn scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) -> Scroll {
+        let _ = mgr;
+        scroll
+    }
 }
 
 /// Event routing
@@ -157,7 +169,7 @@ impl<'a> EventMgr<'a> {
         }
 
         if widget.focus_on_key_nav() && event == Event::NavFocus(true) {
-            return Response::Focus(widget.rect());
+            mgr.set_scroll(Scroll::Rect(widget.rect()));
         }
 
         widget.handle(mgr, event)

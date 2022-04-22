@@ -8,7 +8,8 @@
 use std::fmt::Debug;
 
 use super::{DragHandle, ScrollRegion};
-use kas::{event, prelude::*};
+use kas::event::{self, Scroll};
+use kas::prelude::*;
 
 impl_scope! {
     /// A scroll bar
@@ -311,16 +312,6 @@ pub trait Scrollable: Widget {
     /// The offset is clamped to the available scroll range and applied. The
     /// resulting offset is returned.
     fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset;
-
-    /// Scroll by a delta
-    ///
-    /// Returns the remaining (unused) delta.
-    #[inline]
-    fn scroll_by_delta(&mut self, mgr: &mut EventMgr, delta: Offset) -> Offset {
-        let old_offset = self.scroll_offset();
-        let new_offset = self.set_scroll_offset(mgr, old_offset - delta);
-        delta - old_offset + new_offset
-    }
 }
 
 impl_scope! {
@@ -639,6 +630,15 @@ impl_scope! {
         }
     }
 
+    impl Handler for Self {
+        fn scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) -> Scroll {
+            // We assume the inner already updated its positions; this is just to set bars
+            let offset = self.inner.scroll_offset();
+            *mgr |= self.horiz_bar.set_value(offset.0) | self.vert_bar.set_value(offset.1);
+            scroll
+        }
+    }
+
     impl event::SendEvent for Self {
         fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
             match self.find_child_index(&id) {
@@ -659,13 +659,7 @@ impl_scope! {
                     r
                 }
                 Some(widget_index![self.inner]) => {
-                    let r = self.inner.send(mgr, id, event);
-                    // We assume the inner already updated its positions; this is just to set bars
-                    if matches!(r, Response::Pan(_) | Response::Scrolled | Response::Focus(_)) {
-                        let offset = self.inner.scroll_offset();
-                        *mgr |= self.horiz_bar.set_value(offset.0) | self.vert_bar.set_value(offset.1);
-                    }
-                    r
+                    self.inner.send(mgr, id, event)
                 }
                 _ if self.eq_id(id) => self.handle(mgr, event),
                 _ => {

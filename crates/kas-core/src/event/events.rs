@@ -190,22 +190,18 @@ pub enum Event {
     /// Since popups may be removed directly by the EventMgr, the parent should
     /// clean up any associated state here.
     PopupRemoved(WindowId),
-    /// Sent when a widget receives keyboard navigation focus
-    ///
-    /// This event may be used to react (e.g. by requesting char focus) or to
-    /// steal focus from a child.
+    /// Sent when a widget receives focus
     ///
     /// When the payload, `key_focus`, is true when the focus was triggered by
-    /// the keyboard, not the mouse or a touch event. When true, the widget
-    /// should reply with [`Response::Focus`] in order to ensure visibility.
-    /// This should not be done when `key_focus` is false to avoid moving
-    /// widgets during interaction via mouse or finger.
+    /// the keyboard, not the mouse or a touch event.
+    /// This event may be used e.g. to request char focus or to
+    /// steal focus from a child.
     ///
-    /// Widgets using [`EventMgr::handle_generic`] should note that this event
-    /// is trapped and responded to (in line with the above recommendation).
-    /// If the widget needs to react to `NavFocus`, the event must be matched
-    /// *before* calling `handle_generic`, which might require a custom
-    /// implementation of [`SendEvent`].
+    /// When `key_focus` is true, the widget's rect will be made visible (the
+    /// event sender automatically calls
+    /// `mgr.set_scroll(Scroll::Rect(widget.rect()));`).
+    ///
+    /// Unlike other events, this is not passed to a parent when `Unused`.
     NavFocus(bool),
 }
 

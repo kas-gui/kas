@@ -10,7 +10,7 @@ use std::ops::{Add, Sub};
 use std::time::Duration;
 
 use super::DragHandle;
-use kas::event::{self, Command};
+use kas::event::{self, Command, Scroll};
 use kas::prelude::*;
 
 /// Requirements on type used by [`Slider`]
@@ -282,9 +282,7 @@ impl_scope! {
                 debug_assert_eq!(id, self.id());
                 match event {
                     Event::NavFocus(true) => {
-                        return Response::Focus(self.rect());
-                    }
-                    Event::NavFocus(false) => {
+                        mgr.set_scroll(Scroll::Rect(self.rect()));
                         return Response::Used;
                     }
                     Event::Command(cmd, _) => {
