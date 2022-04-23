@@ -491,12 +491,12 @@ impl<'a> EventMgr<'a> {
     }
 
     /// Push a message to the stack
-    pub fn push_msg<M: 'static>(&mut self, msg: M) {
+    pub fn push_msg<M: Debug + 'static>(&mut self, msg: M) {
         self.push_boxed_msg(Box::new(msg));
     }
 
     /// Push a pre-boxed message to the stack
-    pub fn push_boxed_msg<M: 'static>(&mut self, msg: Box<M>) {
+    pub fn push_boxed_msg<M: Debug + 'static>(&mut self, msg: Box<M>) {
         self.messages.push(msg);
     }
 
@@ -506,12 +506,12 @@ impl<'a> EventMgr<'a> {
     }
 
     /// Try popping the last message from the stack with the given type
-    pub fn try_pop_msg<M: 'static>(&mut self) -> Option<M> {
+    pub fn try_pop_msg<M: Debug + 'static>(&mut self) -> Option<M> {
         self.try_pop_boxed_msg().map(|m| *m)
     }
 
     /// Try popping the last message from the stack with the given type
-    pub fn try_pop_boxed_msg<M: 'static>(&mut self) -> Option<Box<M>> {
+    pub fn try_pop_boxed_msg<M: Debug + 'static>(&mut self) -> Option<Box<M>> {
         if self.messages.last().map(|m| m.is::<M>()).unwrap_or(false) {
             self.messages.pop().unwrap().downcast::<M>().ok()
         } else {

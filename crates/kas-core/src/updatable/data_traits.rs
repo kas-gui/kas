@@ -19,7 +19,7 @@ use std::fmt::Debug;
 #[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait SingleData: Debug {
     /// Output type
-    type Item: Clone + 'static;
+    type Item: Clone + Debug + 'static;
 
     /// Get any update handles used to notify of updates
     ///
@@ -100,7 +100,7 @@ pub trait ListData: Debug {
     type Key: Clone + Debug + PartialEq + Eq;
 
     /// Item type
-    type Item: Clone + 'static;
+    type Item: Clone + Debug + 'static;
 
     /// Get any update handles used to notify of updates
     ///
@@ -227,7 +227,7 @@ pub trait MatrixData: Debug {
     /// Full key type
     type Key: Clone + Debug + PartialEq + Eq;
     /// Item type
-    type Item: Clone + 'static;
+    type Item: Clone + Debug + 'static;
 
     /// Get any update handles used to notify of updates
     ///

@@ -11,6 +11,7 @@ use kas::event::{self, VirtualKeyCode, VirtualKeyCodes};
 use kas::layout;
 use kas::prelude::*;
 use kas::theme::TextClass;
+use std::fmt::Debug;
 use std::rc::Rc;
 
 impl_scope! {
@@ -107,7 +108,7 @@ impl_scope! {
         /// of `msg` is returned to the parent widget. Click actions must be
         /// implemented through a handler on the parent widget (or other ancestor).
         #[inline]
-        pub fn new_msg<M: Clone + 'static>(inner: W, msg: M) -> Self {
+        pub fn new_msg<M: Clone + Debug + 'static>(inner: W, msg: M) -> Self {
             Self::new_on(inner, move |mgr| mgr.push_msg(msg.clone()))
         }
 
@@ -245,7 +246,7 @@ impl_scope! {
         /// of `msg` is returned to the parent widget. Click actions must be
         /// implemented through a handler on the parent widget (or other ancestor).
         #[inline]
-        pub fn new_msg<S: Into<AccelString>, M: Clone + 'static>(label: S, msg: M) -> Self {
+        pub fn new_msg<S: Into<AccelString>, M: Clone + Debug + 'static>(label: S, msg: M) -> Self {
             Self::new_on(label, move |mgr| mgr.push_msg(msg.clone()))
         }
 

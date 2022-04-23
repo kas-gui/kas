@@ -14,7 +14,7 @@ use kas::widgets::{TextButton, Window};
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    #[derive(Clone)]
+    #[derive(Clone, Debug)]
     struct Increment(i32);
 
     let window = Window::new(

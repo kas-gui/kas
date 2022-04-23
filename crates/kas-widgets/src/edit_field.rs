@@ -104,7 +104,7 @@ impl EditGuard for () {}
 #[autoimpl(Debug ignore self.0)]
 #[derive(Clone)]
 pub struct EditActivate<F: FnMut(&str, &mut EventMgr) -> Option<M>, M>(pub F);
-impl<F, M: 'static> EditGuard for EditActivate<F, M>
+impl<F, M: Debug + 'static> EditGuard for EditActivate<F, M>
 where
     F: FnMut(&str, &mut EventMgr) -> Option<M> + 'static,
 {
@@ -119,7 +119,7 @@ where
 #[autoimpl(Debug ignore self.0)]
 #[derive(Clone)]
 pub struct EditAFL<F: FnMut(&str, &mut EventMgr) -> Option<M>, M>(pub F);
-impl<F, M: 'static> EditGuard for EditAFL<F, M>
+impl<F, M: Debug + 'static> EditGuard for EditAFL<F, M>
 where
     F: FnMut(&str, &mut EventMgr) -> Option<M> + 'static,
 {
@@ -139,7 +139,7 @@ where
 #[autoimpl(Debug ignore self.0)]
 #[derive(Clone)]
 pub struct EditEdit<F: FnMut(&str, &mut EventMgr) -> Option<M>, M>(pub F);
-impl<F, M: 'static> EditGuard for EditEdit<F, M>
+impl<F, M: Debug + 'static> EditGuard for EditEdit<F, M>
 where
     F: FnMut(&str, &mut EventMgr) -> Option<M> + 'static,
 {
@@ -230,7 +230,7 @@ impl EditBox<()> {
     /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
     /// previously assigned to the `EditBox` will be replaced.
     #[must_use]
-    pub fn on_activate<F, M: 'static>(self, f: F) -> EditBox<EditActivate<F, M>>
+    pub fn on_activate<F, M: Debug + 'static>(self, f: F) -> EditBox<EditActivate<F, M>>
     where
         F: FnMut(&str, &mut EventMgr) -> Option<M> + 'static,
     {
@@ -246,7 +246,7 @@ impl EditBox<()> {
     /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
     /// previously assigned to the `EditBox` will be replaced.
     #[must_use]
-    pub fn on_afl<F, M: 'static>(self, f: F) -> EditBox<EditAFL<F, M>>
+    pub fn on_afl<F, M: Debug + 'static>(self, f: F) -> EditBox<EditAFL<F, M>>
     where
         F: FnMut(&str, &mut EventMgr) -> Option<M> + 'static,
     {
@@ -261,7 +261,7 @@ impl EditBox<()> {
     /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
     /// previously assigned to the `EditBox` will be replaced.
     #[must_use]
-    pub fn on_edit<F, M: 'static>(self, f: F) -> EditBox<EditEdit<F, M>>
+    pub fn on_edit<F, M: Debug + 'static>(self, f: F) -> EditBox<EditEdit<F, M>>
     where
         F: FnMut(&str, &mut EventMgr) -> Option<M> + 'static,
     {
@@ -642,7 +642,7 @@ impl EditField<()> {
     /// This method is a parametisation of [`EditField::with_guard`]. Any guard
     /// previously assigned to the `EditField` will be replaced.
     #[must_use]
-    pub fn on_activate<F: FnMut(&str, &mut EventMgr) -> Option<M> + 'static, M: 'static>(
+    pub fn on_activate<F: FnMut(&str, &mut EventMgr) -> Option<M> + 'static, M: Debug + 'static>(
         self,
         f: F,
     ) -> EditField<EditActivate<F, M>> {
@@ -658,7 +658,7 @@ impl EditField<()> {
     /// This method is a parametisation of [`EditField::with_guard`]. Any guard
     /// previously assigned to the `EditField` will be replaced.
     #[must_use]
-    pub fn on_afl<F: FnMut(&str, &mut EventMgr) -> Option<M> + 'static, M: 'static>(
+    pub fn on_afl<F: FnMut(&str, &mut EventMgr) -> Option<M> + 'static, M: Debug + 'static>(
         self,
         f: F,
     ) -> EditField<EditAFL<F, M>> {
@@ -673,7 +673,7 @@ impl EditField<()> {
     /// This method is a parametisation of [`EditField::with_guard`]. Any guard
     /// previously assigned to the `EditField` will be replaced.
     #[must_use]
-    pub fn on_edit<F: FnMut(&str, &mut EventMgr) -> Option<M> + 'static, M: 'static>(
+    pub fn on_edit<F: FnMut(&str, &mut EventMgr) -> Option<M> + 'static, M: Debug + 'static>(
         self,
         f: F,
     ) -> EditField<EditEdit<F, M>> {

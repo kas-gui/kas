@@ -14,7 +14,9 @@ use kas::macros::make_widget;
 use kas::widgets::{Frame, Label, TextButton, Window};
 use kas::WidgetExt;
 
+#[derive(Clone, Debug)]
 struct MsgReset;
+#[derive(Clone, Debug)]
 struct MsgStart;
 
 // Unlike most examples, we encapsulate the GUI configuration into a function.
@@ -27,8 +29,8 @@ fn make_window() -> Box<dyn kas::Window> {
         }]
         struct {
             #[widget] display: impl HasString = Frame::new(Label::new("0.000".to_string())),
-            #[widget] reset = TextButton::new_on("&reset", |mgr| mgr.push_msg(MsgReset)),
-            #[widget] ss = TextButton::new_on("&start / &stop", |mgr| mgr.push_msg(MsgStart)),
+            #[widget] reset = TextButton::new_msg("&reset", MsgReset),
+            #[widget] ss = TextButton::new_msg("&start / &stop", MsgStart),
             saved: Duration = Duration::default(),
             start: Option<Instant> = None,
         }

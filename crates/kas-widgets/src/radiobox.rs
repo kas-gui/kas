@@ -9,6 +9,7 @@ use super::AccelLabel;
 use kas::prelude::*;
 use kas::updatable::{SharedRc, SingleData};
 use log::trace;
+use std::fmt::Debug;
 use std::rc::Rc;
 
 /// Type of radiobox group
@@ -276,7 +277,7 @@ impl_scope! {
         pub fn new_msg<S, M: Clone>(label: S, group: RadioBoxGroup, msg: M) -> Self
         where
             S: Into<AccelString>,
-            M: Clone + 'static,
+            M: Clone + Debug + 'static,
         {
             Self::new_on(label, group, move |mgr| mgr.push_msg(msg.clone()))
         }

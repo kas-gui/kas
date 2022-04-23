@@ -7,6 +7,7 @@
 
 use crate::menu::{self, Menu};
 use kas::prelude::*;
+use std::fmt::Debug;
 use std::marker::PhantomData;
 
 impl_scope! {
@@ -18,7 +19,7 @@ impl_scope! {
     #[widget{
         layout = single;
     }]
-    pub struct MapMessage<W: Widget, M: 'static, N: 'static, F: FnMut(M) -> N + 'static> {
+    pub struct MapMessage<W: Widget, M: Debug + 'static, N: Debug + 'static, F: FnMut(M) -> N + 'static> {
         #[widget_core]
         core: kas::CoreData,
         #[widget]

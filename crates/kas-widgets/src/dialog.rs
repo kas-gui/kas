@@ -14,7 +14,7 @@ use kas::prelude::*;
 use kas::text::format::FormattableText;
 use kas::WindowId;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 struct MessageBoxOk;
 
 impl_scope! {

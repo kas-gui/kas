@@ -13,12 +13,13 @@ use kas::theme::SizeMgr;
 #[allow(unused)]
 use kas::Layout;
 use kas::Widget;
+use std::fmt::Debug;
 
 /// Provides some convenience methods on widgets
 pub trait AdaptWidget: Widget {
     /// Construct a wrapper widget which maps a message of the given type
     #[must_use]
-    fn map_msg<M, N, F>(self, f: F) -> MapMessage<Self, M, N, F>
+    fn map_msg<M: Debug, N: Debug, F>(self, f: F) -> MapMessage<Self, M, N, F>
     where
         Self: Sized,
         F: FnMut(M) -> N,
