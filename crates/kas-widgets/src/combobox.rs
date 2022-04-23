@@ -20,10 +20,7 @@ impl_scope! {
     /// A combobox presents a menu with a fixed set of choices when clicked.
     #[autoimpl(Debug ignore self.on_select)]
     #[derive(Clone)]
-    #[widget{
-        key_nav = true;
-        hover_highlight = true;
-    }]
+    #[widget]
     pub struct ComboBox {
         #[widget_core]
         core: CoreData,
@@ -37,6 +34,26 @@ impl_scope! {
         opening: bool,
         popup_id: Option<WindowId>,
         on_select: Option<Rc<dyn Fn(&mut EventMgr, usize)>>,
+    }
+
+    impl WidgetConfig for Self {
+        fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
+            self.core_data_mut().id = id;
+            mgr.new_accel_layer(self.id(), true);
+
+            let id = self.id_ref().make_child(widget_index![self.popup]);
+            self.popup.configure_recurse(mgr, id);
+
+            self.configure(mgr);
+        }
+
+        fn key_nav(&self) -> bool {
+            true
+        }
+
+        fn hover_highlight(&self) -> bool {
+            true
+        }
     }
 
     impl kas::Layout for Self {
