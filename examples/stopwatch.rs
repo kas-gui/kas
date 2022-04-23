@@ -10,9 +10,12 @@ use std::time::{Duration, Instant};
 use kas::class::HasString;
 use kas::event::{Event, EventMgr, Handler, Response};
 use kas::layout::SetRectMgr;
-use kas::macros::{make_widget, widget_index};
+use kas::macros::make_widget;
 use kas::widgets::{Frame, Label, TextButton, Window};
 use kas::WidgetExt;
+
+struct MsgReset;
+struct MsgStart;
 
 // Unlike most examples, we encapsulate the GUI configuration into a function.
 // There's no reason for this, but it demonstrates usage of Toolkit::add_boxed
@@ -24,8 +27,8 @@ fn make_window() -> Box<dyn kas::Window> {
         }]
         struct {
             #[widget] display: impl HasString = Frame::new(Label::new("0.000".to_string())),
-            #[widget] reset = TextButton::new("&reset"),
-            #[widget] ss = TextButton::new("&start / &stop"),
+            #[widget] reset = TextButton::new_on("&reset", |mgr| mgr.push_msg(MsgReset)),
+            #[widget] ss = TextButton::new_on("&start / &stop", |mgr| mgr.push_msg(MsgStart)),
             saved: Duration = Duration::default(),
             start: Option<Instant> = None,
         }
@@ -49,12 +52,12 @@ fn make_window() -> Box<dyn kas::Window> {
                     _ => Response::Unused,
                 }
             }
-            fn on_message(&mut self, mgr: &mut EventMgr, index: usize) {
-                if index == widget_index![self.reset] {
+            fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
+                if let Some(MsgReset) = mgr.try_pop_msg() {
                     self.saved = Duration::default();
                     self.start = None;
                     *mgr |= self.display.set_str("0.000");
-                } else if index == widget_index![self.ss] {
+                } else if let Some(MsgStart) = mgr.try_pop_msg() {
                     if let Some(start) = self.start {
                         self.saved += Instant::now() - start;
                         self.start = None;
