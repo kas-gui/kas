@@ -148,17 +148,6 @@ impl_scope! {
             }
         }
     }
-
-    impl SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
-            if self.eq_id(&id) {
-                EventMgr::handle_generic(self, mgr, event)
-            } else {
-                debug_assert!(self.inner.id().is_ancestor_of(&id));
-                self.inner.send(mgr, id, event)
-            }
-        }
-    }
 }
 
 impl_scope! {

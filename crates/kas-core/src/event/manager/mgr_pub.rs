@@ -148,7 +148,9 @@ impl EventState {
 
     /// Set/unset a widget as disabled
     ///
-    /// Disabled status applies to all descendants.
+    /// Disabled status applies to all descendants and blocks reception of
+    /// events ([`Response::Unhandled`] is returned automatically when the
+    /// recipient or any ancestor is disabled).
     pub fn set_disabled(&mut self, w_id: WidgetId, state: bool) {
         for (i, id) in self.disabled.iter().enumerate() {
             if w_id == id {
@@ -468,6 +470,26 @@ impl EventState {
 
 /// Public API
 impl<'a> EventMgr<'a> {
+    /// Send an event to a widget
+    ///
+    /// Messages may be left on the stack after this returns and scroll state
+    /// may be adjusted.
+    pub fn send<W>(&mut self, widget: &mut W, mut id: WidgetId, event: Event) -> Response
+    where
+        W: Widget + ?Sized,
+    {
+        // TODO(opt): we should be able to use binary search here
+        let mut disabled = false;
+        for d in &self.disabled {
+            if d.is_ancestor_of(&id) {
+                id = d.clone();
+                disabled = true;
+            }
+        }
+
+        self.send_recurse(widget.as_widget_mut(), id, disabled, event)
+    }
+
     /// Push a message to the stack
     pub fn push_msg<M: 'static>(&mut self, msg: M) {
         self.push_boxed_msg(Box::new(msg));
@@ -498,8 +520,9 @@ impl<'a> EventMgr<'a> {
     }
 
     /// Set a scroll action
+    #[inline]
     pub fn set_scroll(&mut self, scroll: Scroll) {
-        // TODO
+        self.scroll = scroll;
     }
 
     /// Add an overlay (pop-up)

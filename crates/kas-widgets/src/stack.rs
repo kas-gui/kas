@@ -5,7 +5,7 @@
 
 //! A stack
 
-use kas::{event, prelude::*};
+use kas::prelude::*;
 use std::collections::hash_map::{Entry, HashMap};
 use std::fmt::Debug;
 use std::ops::{Index, IndexMut, Range};
@@ -137,20 +137,6 @@ impl_scope! {
             if self.sized_range.contains(&self.active) && self.active < self.widgets.len() {
                 self.widgets[self.active].draw(draw.re());
             }
-        }
-    }
-
-    impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
-            if let Some(index) = self.find_child_index(&id) {
-                if let Some(child) = self.widgets.get_mut(index) {
-                    return match child.send(mgr, id, event) {
-                        r => r,
-                    };
-                }
-            }
-
-            Response::Unused
         }
     }
 

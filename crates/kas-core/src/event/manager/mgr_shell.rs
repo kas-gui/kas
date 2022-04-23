@@ -130,6 +130,7 @@ impl EventState {
             state: self,
             shell,
             messages: vec![],
+            scroll: Scroll::None,
             action: TkAction::empty(),
         };
         f(&mut mgr);
@@ -148,6 +149,7 @@ impl EventState {
             state: self,
             shell,
             messages: vec![],
+            scroll: Scroll::None,
             action: TkAction::empty(),
         };
 

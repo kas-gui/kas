@@ -187,7 +187,7 @@ impl_scope! {
                     if !self.rect().contains(coord) {
                         // not on the menubar
                         self.delayed_open = None;
-                        return self.send(mgr, id, Event::Activate);
+                        return mgr.send(self, id, Event::Activate);
                     }
                     Response::Used
                 }
@@ -222,24 +222,6 @@ impl_scope! {
                 }
                 _ => Response::Unused,
             }
-        }
-    }
-
-    impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
-            if self.eq_id(&id) {
-                return self.handle(mgr, event);
-            } else if let Some(index) = id.next_key_after(self.id_ref()) {
-                if let Some(widget) = self.widgets.get_mut(index) {
-                    return match widget.send(mgr, id.clone(), event.clone()) {
-                        Response::Unused => self.handle(mgr, event),
-                        r => r,
-                    };
-                }
-            }
-
-            debug_assert!(false, "SendEvent::send: bad WidgetId");
-            Response::Unused
         }
     }
 

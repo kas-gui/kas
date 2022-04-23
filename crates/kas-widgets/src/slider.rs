@@ -10,7 +10,7 @@ use std::ops::{Add, Sub};
 use std::time::Duration;
 
 use super::DragHandle;
-use kas::event::{self, Command, Scroll};
+use kas::event::{Command, Scroll};
 use kas::prelude::*;
 
 /// Requirements on type used by [`Slider`]
@@ -262,74 +262,63 @@ impl_scope! {
         }
     }
 
-    impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
-            let offset = if self.handle.id().is_ancestor_of(&id) {
-                match event {
-                    Event::NavFocus(key_focus) => {
-                        mgr.set_nav_focus(self.id(), key_focus);
-                        return Response::Used; // NavFocus event will be sent to self
-                    }
-                    event => {
-                        let r = self.handle.send(mgr, id, event);
-                        match mgr.try_pop_msg::<Offset>() {
-                            Some(offset) => offset,
-                            _ => return r,
-                        }
-                    }
+    impl Handler for Self {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+            match event {
+                Event::NavFocus(true) => {
+                    mgr.set_scroll(Scroll::Rect(self.rect()));
                 }
-            } else {
-                debug_assert_eq!(id, self.id());
-                match event {
-                    Event::NavFocus(true) => {
-                        mgr.set_scroll(Scroll::Rect(self.rect()));
-                        return Response::Used;
-                    }
-                    Event::Command(cmd, _) => {
-                        let rev = self.direction.is_reversed();
-                        let v = match cmd {
-                            Command::Left | Command::Up => match rev {
-                                false => self.value - self.step,
-                                true => self.value + self.step,
-                            },
-                            Command::Right | Command::Down => match rev {
-                                false => self.value + self.step,
-                                true => self.value - self.step,
-                            },
-                            Command::PageUp | Command::PageDown => {
-                                // Generics makes this easier than constructing a literal and multiplying!
-                                let mut x = self.step + self.step;
-                                x = x + x;
-                                x = x + x;
-                                x = x + x;
-                                match rev == (cmd == Command::PageDown) {
-                                    false => self.value + x,
-                                    true => self.value - x,
-                                }
+                Event::Command(cmd, _) => {
+                    let rev = self.direction.is_reversed();
+                    let v = match cmd {
+                        Command::Left | Command::Up => match rev {
+                            false => self.value - self.step,
+                            true => self.value + self.step,
+                        },
+                        Command::Right | Command::Down => match rev {
+                            false => self.value + self.step,
+                            true => self.value - self.step,
+                        },
+                        Command::PageUp | Command::PageDown => {
+                            // Generics makes this easier than constructing a literal and multiplying!
+                            let mut x = self.step + self.step;
+                            x = x + x;
+                            x = x + x;
+                            x = x + x;
+                            match rev == (cmd == Command::PageDown) {
+                                false => self.value + x,
+                                true => self.value - x,
                             }
-                            Command::Home => self.range.0,
-                            Command::End => self.range.1,
-                            _ => return Response::Unused,
-                        };
-                        let action = self.set_value(v);
-                        if !action.is_empty() {
-                            mgr.send_action(action);
-                            mgr.push_msg(self.value);
                         }
-                        return Response::Used;
+                        Command::Home => self.range.0,
+                        Command::End => self.range.1,
+                        _ => return Response::Unused,
+                    };
+                    let action = self.set_value(v);
+                    if !action.is_empty() {
+                        mgr.send_action(action);
+                        mgr.push_msg(self.value);
                     }
-                    Event::PressStart { source, coord, .. } => {
-                        self.handle.handle_press_on_track(mgr, source, coord)
-                    }
-                    _ => return Response::Unused,
                 }
-            };
-
-            if self.set_offset(offset) {
-                mgr.push_msg(self.value);
+                Event::PressStart { source, coord, .. } => {
+                    let offset = self.handle.handle_press_on_track(mgr, source, coord);
+                    if self.set_offset(offset) {
+                        mgr.push_msg(self.value);
+                    }
+                    *mgr |= self.handle.set_offset(self.offset()).1;
+                }
+                _ => return Response::Unused,
             }
-            *mgr |= self.handle.set_offset(self.offset()).1;
             Response::Used
+        }
+
+        fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            if let Some(offset) = mgr.try_pop_msg() {
+                if self.set_offset(offset) {
+                    mgr.push_msg(self.value);
+                    *mgr |= self.handle.set_offset(self.offset()).1;
+                }
+            }
         }
     }
 }

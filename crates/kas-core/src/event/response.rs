@@ -23,9 +23,6 @@ pub enum Response {
     /// another handler until used.
     Unused,
     /// Event is used, no other result
-    ///
-    /// All variants besides `Unused` indicate that the event was used. This
-    /// variant is used when no further action happens.
     Used,
 }
 
@@ -45,8 +42,19 @@ impl Response {
     }
 }
 
+impl std::ops::BitOr for Response {
+    type Output = Self;
+    fn bitor(self, rhs: Self) -> Self {
+        use Response::{Unused, Used};
+        match (self, rhs) {
+            (Unused, Unused) => Unused,
+            _ => Used,
+        }
+    }
+}
+
 /// Request to / notification of scrolling from a child
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[must_use]
 pub enum Scroll {
     /// No scrolling

@@ -7,7 +7,7 @@
 
 use super::{menu::MenuEntry, Column, IndexMsg, PopupFrame};
 use kas::component::{Label, Mark};
-use kas::event::{self, Command};
+use kas::event::Command;
 use kas::layout;
 use kas::prelude::*;
 use kas::theme::{MarkStyle, TextClass};
@@ -60,7 +60,7 @@ impl_scope! {
         }
     }
 
-    impl event::Handler for Self {
+    impl Handler for Self {
         fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             let open_popup = |s: &mut Self, mgr: &mut EventMgr, key_focus: bool| {
                 s.popup_id = mgr.add_popup(kas::Popup {
@@ -143,8 +143,7 @@ impl_scope! {
                                 return Response::Used;
                             }
                         } else if self.popup_id.is_some() && self.popup.is_ancestor_of(id) {
-                            let r = self.popup.send(mgr, id.clone(), Event::Activate);
-                            return self.map_response(mgr, event, r);
+                            return mgr.send(self, id.clone(), Event::Activate);
                         }
                     }
                     if let Some(id) = self.popup_id {
@@ -161,27 +160,17 @@ impl_scope! {
                 _ => Response::Unused,
             }
         }
-    }
 
-    impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
-            if self.eq_id(&id) {
-                EventMgr::handle_generic(self, mgr, event)
-            } else {
-                debug_assert!(self.popup.id().is_ancestor_of(&id));
-
-                if let Event::NavFocus(key_focus) = event {
-                    if self.popup_id.is_none() {
-                        // Steal focus since child is invisible
-                        mgr.set_nav_focus(self.id(), key_focus);
-                    }
-                    // Don't bother sending Response::Focus here since NavFocus will
-                    // be sent to this widget, and handle_generic will respond.
-                    return Response::Used;
+        fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            if let Some(IndexMsg(index)) = mgr.try_pop_msg() {
+                mgr.try_pop_msg::<()>();
+                *mgr |= self.set_active(index);
+                if let Some(id) = self.popup_id {
+                    mgr.close_window(id, true);
                 }
-
-                let r = self.popup.send(mgr, id, event.clone());
-                self.map_response(mgr, event, r)
+                if let Some(ref f) = self.on_select {
+                    (f)(mgr, index);
+                }
             }
         }
     }
@@ -340,26 +329,6 @@ impl ComboBox {
         self.popup
             .inner
             .replace(mgr, index, MenuEntry::new(label, ()));
-    }
-}
-
-impl ComboBox {
-    fn map_response(&mut self, mgr: &mut EventMgr, event: Event, r: Response) -> Response {
-        if matches!(r, Response::Unused) {
-            return EventMgr::handle_generic(self, mgr, event);
-        }
-
-        if let Some(IndexMsg(index)) = mgr.try_pop_msg() {
-            mgr.try_pop_msg::<()>();
-            *mgr |= self.set_active(index);
-            if let Some(id) = self.popup_id {
-                mgr.close_window(id, true);
-            }
-            if let Some(ref f) = self.on_select {
-                (f)(mgr, index);
-            }
-        }
-        r
     }
 }
 

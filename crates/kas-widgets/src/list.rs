@@ -6,7 +6,7 @@
 //! A row or column with run-time adjustable contents
 
 use kas::dir::{Down, Right};
-use kas::{event, layout, prelude::*};
+use kas::{layout, prelude::*};
 use std::collections::hash_map::{Entry, HashMap};
 use std::ops::{Index, IndexMut};
 
@@ -157,19 +157,9 @@ impl_scope! {
         }
     }
 
-    impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
-            if let Some(index) = self.find_child_index(&id) {
-                if let Some(child) = self.widgets.get_mut(index) {
-                    let r = child.send(mgr, id.clone(), event);
-                    if mgr.has_msg() {
-                        mgr.push_msg(IndexMsg(index));
-                    }
-                    return r;
-                }
-            }
-
-            Response::Unused
+    impl Handler for Self {
+        fn on_message(&mut self, mgr: &mut EventMgr, index: usize) {
+            mgr.push_msg(IndexMsg(index));
         }
     }
 

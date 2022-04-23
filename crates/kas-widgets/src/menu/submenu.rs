@@ -8,7 +8,7 @@
 use super::{BoxedMenu, Menu, SubItems};
 use crate::PopupFrame;
 use kas::component::{Component, Label, Mark};
-use kas::event::{self, Command};
+use kas::event::Command;
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::prelude::*;
 use kas::theme::{FrameStyle, MarkStyle, TextClass};
@@ -159,7 +159,7 @@ impl_scope! {
         }
     }
 
-    impl<D: Directional> event::Handler for SubMenu<D> {
+    impl Handler for Self {
         fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Activate => {
@@ -177,22 +177,9 @@ impl_scope! {
                 _ => Response::Unused,
             }
         }
-    }
 
-    impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
-            if !self.eq_id(&id) {
-                match self.list.send(mgr, id.clone(), event.clone()) {
-                    Response::Unused => (),
-                    r => {
-                        if mgr.has_msg() {
-                            self.close_menu(mgr, true);
-                        }
-                        return r;
-                    }
-                }
-            }
-            EventMgr::handle_generic(self, mgr, event)
+        fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            self.close_menu(mgr, true);
         }
     }
 
@@ -389,18 +376,6 @@ impl_scope! {
             for child in self.list.iter_mut() {
                 child.draw(draw.re());
             }
-        }
-    }
-
-    impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
-            if let Some(index) = self.find_child_index(&id) {
-                if let Some(child) = self.list.get_mut(index) {
-                    return child.send(mgr, id.clone(), event);
-                }
-            }
-
-            Response::Unused
         }
     }
 

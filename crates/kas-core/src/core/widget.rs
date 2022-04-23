@@ -401,9 +401,7 @@ pub trait Layout: WidgetChildren {
 /// -   [`Layout`] — handles sizing and positioning of self and children
 /// -   [`WidgetConfig`] — the last unparametrised trait allows customisation of
 ///     some aspects of widget behaviour
-/// -   [`event::Handler`] — parametrised widgets over a `Msg` type and handles
-///     events
-/// -   [`event::SendEvent`] — routes events to children and handles responses
+/// -   [`event::Handler`] — handles events
 /// -   [`Widget`] — the final trait
 ///
 /// Widgets **must** use the [`derive(Widget)`] macro to implement at least
@@ -418,7 +416,7 @@ pub trait Layout: WidgetChildren {
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
-pub trait Widget: event::SendEvent {}
+pub trait Widget: event::Handler {}
 
 /// Extension trait over widgets
 pub trait WidgetExt: WidgetChildren {

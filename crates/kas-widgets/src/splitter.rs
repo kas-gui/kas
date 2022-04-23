@@ -11,7 +11,6 @@ use std::ops::{Index, IndexMut};
 
 use super::DragHandle;
 use kas::dir::{Down, Right};
-use kas::event;
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::prelude::*;
 
@@ -263,30 +262,16 @@ impl_scope! {
         }
     }
 
-    impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
-            if !self.widgets.is_empty() {
-                if let Some(index) = self.find_child_index(&id) {
-                    if (index & 1) == 0 {
-                        if let Some(w) = self.widgets.get_mut(index >> 1) {
-                            return w.send(mgr, id, event);
-                        }
-                    } else {
-                        let n = index >> 1;
-                        if let Some(h) = self.handles.get_mut(n) {
-                            let r = h.send(mgr, id, event);
-                            return r.try_into().unwrap_or_else(|_| {
-                                // Message is the new offset relative to the track;
-                                // the handle has already adjusted its position
-                                mgr.set_rect_mgr(|mgr| self.adjust_size(mgr, n));
-                                Response::Used
-                            });
-                        }
-                    }
+    impl Handler for Self {
+        fn on_message(&mut self, mgr: &mut EventMgr, index: usize) {
+            if (index & 1) == 1 {
+                if let Some(_) = mgr.try_pop_msg::<Offset>() {
+                    let n = index >> 1;
+                    // Message is the new offset relative to the track;
+                    // the handle has already adjusted its position
+                    mgr.set_rect_mgr(|mgr| self.adjust_size(mgr, n));
                 }
             }
-
-            Response::Unused
         }
     }
 

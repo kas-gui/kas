@@ -736,81 +736,59 @@ impl_scope! {
             self.scroll.scroll_by_event(mgr, event, self.id(), self.core.rect)
         }
 
+        fn handle_unused(&mut self, mgr: &mut EventMgr, index: usize, event: Event) -> Response {
+            if let Event::PressStart { source, coord, .. } = event {
+                if source.is_primary() {
+                    // We request a grab with our ID, hence the
+                    // PressMove/PressEnd events are matched in handle().
+                    mgr.grab_press_unique(self.id(), source, coord, None);
+                    self.press_phase = PressPhase::Start(coord);
+                    self.press_target = self.widgets[index].key.clone();
+                    Response::Used
+                } else {
+                    Response::Unused
+                }
+            } else {
+                self.handle(mgr, event)
+            }
+        }
+
+        fn on_message(&mut self, mgr: &mut EventMgr, index: usize) {
+            let key = match self.widgets[index].key.clone() {
+                Some(k) => k,
+                None => return,
+            };
+
+            if let Some(handle) = self.data.on_message(mgr, &key) {
+                mgr.trigger_update(handle, 0);
+            }
+
+            if let Some(SelectMsg) = mgr.try_pop_msg() {
+                match self.sel_mode {
+                    SelectionMode::None => (),
+                    SelectionMode::Single => {
+                        mgr.redraw(self.id());
+                        self.selection.clear();
+                        self.selection.insert(key.clone());
+                        mgr.push_msg(SelectionMsg::Select(key));
+                    }
+                    SelectionMode::Multiple => {
+                        mgr.redraw(self.id());
+                        if self.selection.remove(&key) {
+                            mgr.push_msg(SelectionMsg::Deselect(key));
+                        } else {
+                            self.selection.insert(key.clone());
+                            mgr.push_msg(SelectionMsg::Select(key));
+                        }
+                    }
+                }
+            }
+        }
+
         fn scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) -> Scroll {
             let s = self.scroll.scroll(mgr, self.rect(), scroll);
             mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
             s
-        }
-    }
-
-    impl SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
-            if self.eq_id(&id) {
-                return self.handle(mgr, event);
-            }
-
-            let key = match self.data.reconstruct_key(self.id_ref(), &id) {
-                Some(key) => key,
-                None => return Response::Unused,
-            };
-
-            let response;
-            'outer: loop {
-                for w in self.widgets.iter_mut() {
-                    if w.key.as_ref() == Some(&key) {
-                        let child_event = self.scroll.offset_event(event.clone());
-                        response = w.widget.send(mgr, id, child_event);
-                        break 'outer;
-                    }
-                }
-                return Response::Unused;
-            }
-            if mgr.has_msg() {
-                if let Some(handle) = self.data.on_message(mgr, &key) {
-                    mgr.trigger_update(handle, 0);
-                }
-
-                if let Some(SelectMsg) = mgr.try_pop_msg() {
-                    match self.sel_mode {
-                        SelectionMode::None => (),
-                        SelectionMode::Single => {
-                            mgr.redraw(self.id());
-                            self.selection.clear();
-                            self.selection.insert(key.clone());
-                            mgr.push_msg(SelectionMsg::Select(key.clone()));
-                        }
-                        SelectionMode::Multiple => {
-                            mgr.redraw(self.id());
-                            if self.selection.remove(&key) {
-                                mgr.push_msg(SelectionMsg::Deselect(key.clone()));
-                            } else {
-                                self.selection.insert(key.clone());
-                                mgr.push_msg(SelectionMsg::Select(key.clone()));
-                            }
-                        }
-                    }
-                }
-            }
-
-            match response {
-                Response::Unused => {
-                    if let Event::PressStart { source, coord, .. } = event {
-                        if source.is_primary() {
-                            // We request a grab with our ID, hence the
-                            // PressMove/PressEnd events are matched in handle().
-                            mgr.grab_press_unique(self.id(), source, coord, None);
-                            self.press_phase = PressPhase::Start(coord);
-                            self.press_target = Some(key);
-                            Response::Used
-                        } else {
-                            Response::Unused
-                        }
-                    } else {
-                        self.handle(mgr, event)
-                    }
-                }
-                Response::Used => Response::Used,
-            }
         }
     }
 }

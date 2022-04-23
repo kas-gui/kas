@@ -134,20 +134,10 @@ impl_scope! {
                 _ => Response::Unused,
             }
         }
-    }
 
-    impl SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
-            if self.eq_id(&id) {
-                self.handle(mgr, event)
-            } else {
-                let r = self.child.send(mgr, id.clone(), event);
-                if mgr.has_msg() {
-                    if let Some(handle) = self.data.on_message(mgr) {
-                        mgr.trigger_update(handle, 0);
-                    }
-                }
-                r
+        fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            if let Some(handle) = self.data.on_message(mgr) {
+                mgr.trigger_update(handle, 0);
             }
         }
     }

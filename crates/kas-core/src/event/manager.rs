@@ -9,7 +9,7 @@
 #![cfg_attr(not(feature = "winit"), allow(unused))]
 
 use linear_map::{set::LinearSet, LinearMap};
-use log::trace;
+use log::{trace, warn};
 use smallvec::SmallVec;
 use std::any::Any;
 use std::cell::RefCell;
@@ -369,6 +369,7 @@ pub struct EventMgr<'a> {
     state: &'a mut EventState,
     shell: &'a mut dyn ShellWindow,
     messages: Vec<Box<dyn Any>>,
+    scroll: Scroll,
     action: TkAction,
 }
 
@@ -557,26 +558,52 @@ impl<'a> EventMgr<'a> {
         }
     }
 
-    fn send_impl<W>(&mut self, widget: &mut W, mut id: WidgetId, event: Event) -> Response
-    where
-        W: Widget + ?Sized,
-    {
-        // TODO(opt): we should be able to use binary search here
-        for d in &self.disabled {
-            if d.is_ancestor_of(&id) {
-                if let Some(p) = d.parent() {
-                    id = p;
-                } else {
-                    return Response::Unused;
-                }
+    // Traverse widget tree by recursive call
+    //
+    // Note: cannot use internal stack of mutable references due to borrow checker
+    fn send_recurse(
+        &mut self,
+        widget: &mut dyn Widget,
+        id: WidgetId,
+        disabled: bool,
+        event: Event,
+    ) -> Response {
+        let mut response;
+        if let Some(index) = widget.find_child_index(&id) {
+            let mut child_event = event.clone();
+            child_event += widget.translation();
+            if disabled {
+                response = Response::Unused;
+            } else if let Some(w) = widget.get_child_mut(index) {
+                response = self.send_recurse(w, id, disabled, child_event);
+            } else {
+                warn!(
+                    "Widget {} found index {index} for {id}, but child not found",
+                    widget.identify()
+                );
+                return Response::Unused;
             }
+            if matches!(response, Response::Unused) {
+                response = widget.handle_unused(self, index, event);
+            } else if self.has_msg() {
+                widget.on_message(self, index);
+            }
+        } else if id == widget.id_ref() {
+            response = self.handle_generic(widget, event);
+        } else {
+            warn!("Widget {} cannot find path to {id}", widget.identify());
+            return Response::Unused;
         }
-        widget.send(self, id, event)
+
+        if self.scroll != Scroll::None {
+            self.scroll = widget.scroll(self, self.scroll);
+        }
+        response
     }
 
     fn send_event<W: Widget + ?Sized>(&mut self, widget: &mut W, id: WidgetId, event: Event) {
         trace!("Send to {}: {:?}", id, event);
-        let _ = self.send_impl(widget, id, event);
+        let _ = self.send(widget, id, event);
     }
 
     // Similar to send_event, but return true only if response != Response::Unused
@@ -587,7 +614,7 @@ impl<'a> EventMgr<'a> {
         event: Event,
     ) -> bool {
         trace!("Send to {}: {:?}", id, event);
-        let r = self.send_impl(widget, id, event);
+        let r = self.send(widget, id, event);
         !matches!(r, Response::Unused)
     }
 
@@ -602,7 +629,7 @@ impl<'a> EventMgr<'a> {
             .map(|(wid, p, _)| (*wid, p.parent.clone()))
         {
             trace!("Send to popup parent: {}: {:?}", parent, event);
-            match self.send_impl(widget, parent, event.clone()) {
+            match self.send(widget, parent, event.clone()) {
                 Response::Unused => (),
                 _ => return,
             }

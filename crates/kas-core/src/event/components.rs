@@ -161,23 +161,6 @@ impl ScrollComponent {
         }
     }
 
-    /// Apply offset to an event being sent to the scrolled child
-    pub fn offset_event(&self, mut event: Event) -> Event {
-        match &mut event {
-            Event::PressStart { coord, .. } => {
-                *coord += self.offset;
-            }
-            Event::PressMove { coord, .. } => {
-                *coord += self.offset;
-            }
-            Event::PressEnd { coord, .. } => {
-                *coord += self.offset;
-            }
-            _ => {}
-        };
-        event
-    }
-
     /// Handle [`Response::Focus`]
     ///
     /// Inputs and outputs:

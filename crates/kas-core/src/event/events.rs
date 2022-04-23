@@ -9,7 +9,7 @@
 use serde::{Deserialize, Serialize};
 
 #[allow(unused)]
-use super::{EventMgr, EventState, GrabMode, Response, SendEvent}; // for doc-links
+use super::{EventMgr, EventState, GrabMode, Response}; // for doc-links
 use super::{MouseButton, UpdateHandle, VirtualKeyCode};
 
 use crate::geom::{Coord, DVec2, Offset};
@@ -123,6 +123,9 @@ pub enum Event {
     ///
     /// If `start_id` is `None`, then no widget was found at the coordinate and
     /// the event will only be delivered to pop-up layer owners.
+    ///
+    /// When handling, it may be desirable to call [`EventMgr::grab_press`] in
+    /// order to receive corresponding Move and End events from this `source`.
     PressStart {
         source: PressSource,
         start_id: Option<WidgetId>,
@@ -200,9 +203,35 @@ pub enum Event {
     /// When `key_focus` is true, the widget's rect will be made visible (the
     /// event sender automatically calls
     /// `mgr.set_scroll(Scroll::Rect(widget.rect()));`).
-    ///
-    /// Unlike other events, this is not passed to a parent when `Unused`.
     NavFocus(bool),
+}
+
+impl std::ops::Add<Offset> for Event {
+    type Output = Self;
+
+    #[inline]
+    fn add(self, offset: Offset) -> Event {
+        let mut clone = self.clone();
+        clone += offset;
+        clone
+    }
+}
+
+impl std::ops::AddAssign<Offset> for Event {
+    fn add_assign(&mut self, offset: Offset) {
+        match self {
+            Event::PressStart { coord, .. } => {
+                *coord += offset;
+            }
+            Event::PressMove { coord, .. } => {
+                *coord += offset;
+            }
+            Event::PressEnd { coord, .. } => {
+                *coord += offset;
+            }
+            _ => (),
+        }
+    }
 }
 
 /// Command input ([`Event::Command`])

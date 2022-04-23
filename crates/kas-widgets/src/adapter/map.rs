@@ -44,16 +44,10 @@ impl_scope! {
         }
     }
 
-    impl SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
-            if self.eq_id(&id) {
-                self.handle(mgr, event)
-            } else {
-                let r = self.inner.send(mgr, id.clone(), event);
-                if let Some(msg) = mgr.try_pop_msg() {
-                    mgr.push_msg((self.map)(msg));
-                }
-                r
+    impl Handler for Self {
+        fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            if let Some(msg) = mgr.try_pop_msg() {
+                mgr.push_msg((self.map)(msg));
             }
         }
     }

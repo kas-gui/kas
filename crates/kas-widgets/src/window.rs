@@ -60,16 +60,6 @@ impl_scope! {
         }
     }
 
-    impl SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
-            if self.eq_id(&id) {
-                Response::Unused
-            } else {
-                self.w.send(mgr, id, event)
-            }
-        }
-    }
-
     impl<W: Widget + 'static> kas::Window for Window<W> {
         fn title(&self) -> &str {
             &self.title

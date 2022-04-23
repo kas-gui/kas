@@ -8,7 +8,7 @@
 use super::*;
 #[allow(unused)]
 use crate::Widget; // for doc-links
-use crate::{WidgetConfig, WidgetExt, WidgetId};
+use crate::{WidgetConfig, WidgetExt};
 use kas_macros::autoimpl;
 
 /// Event handling for a [`Widget`]
@@ -17,21 +17,14 @@ use kas_macros::autoimpl;
 /// [`derive(Widget)`] unless `#[handler(handle = noauto)]`
 /// or `#[handler(noauto)]` is used.
 ///
-/// Interactive widgets should implement their event-handling logic here
-/// (although it is also possible to implement this in [`SendEvent::send`],
-/// which might be preferable when dealing with child widgets).
-///
-/// The default implementation does nothing, and is derived by `derive(Widget)`
-/// when a `#[handler]` attribute is present (except with parameter
-/// `handler=noauto`).
-///
 /// [`derive(Widget)`]: ../macros/index.html#the-derivewidget-macro
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait Handler: WidgetConfig {
     /// Generic handler: translate presses to activations
     ///
-    /// This is configuration for [`EventMgr::handle_generic`], and can be used
-    /// to translate *press* (click/touch) events into [`Event::Activate`].
+    /// If true, [`Event::PressStart`] (and other press events) will not be sent
+    /// to [`Handler::handle`]; instead [`Event::Activate`] will be sent on
+    /// "click events".
     // NOTE: not an associated constant because these are not object-safe
     #[inline]
     fn activation_via_press(&self) -> bool {
@@ -48,14 +41,33 @@ pub trait Handler: WidgetConfig {
         self.key_nav()
     }
 
-    /// Handle an event and return a user-defined message
+    /// Handle an event sent to this widget
     ///
-    /// Widgets should handle any events applicable to themselves here, and
-    /// return all other events via [`Response::Unused`].
+    /// This is the primary event handler for a widget. Secondary handlers are:
+    ///
+    /// -   If this method returns [`Response::Unused`], then
+    ///     [`Handler::handle_unused`] is called on each parent until the event
+    ///     is used (or the root widget is reached)
+    /// -   If a message is left on the stack by [`EventMgr::push_msg`], then
+    ///     [`Handler::on_message`] is called on each parent until the stack is
+    ///     empty (failing to empty the stack results in a warning in the log).
+    /// -   If any scroll state is set by [`EventMgr::set_scroll`], then
+    ///     [`Handler::scroll`] is called for each parent
+    ///
+    /// Default implementation: do nothing; return [`Response::Unused`].
     #[inline]
     fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
         let _ = (mgr, event);
         Response::Unused
+    }
+
+    /// Handle an event sent to child `index` but left unhandled
+    ///
+    /// Default implementation: call [`Self::handle`] with `event`.
+    #[inline]
+    fn handle_unused(&mut self, mgr: &mut EventMgr, index: usize, event: Event) -> Response {
+        let _ = index;
+        self.handle(mgr, event)
     }
 
     /// Handler for messages from children/descendants
@@ -71,8 +83,14 @@ pub trait Handler: WidgetConfig {
 
     /// Handler for scrolling
     ///
-    /// Called when [`Response::Pan`], [`Response::Scrolled`] or
-    /// [`Response::Focus`] is emitted, including when emitted by self.
+    /// This is the last "event handling step" for each widget. If
+    /// [`Self::handle`], [`Self::handle_unused`], [`Self::on_message`] or any
+    /// child's event handlers set a non-empty scroll value
+    /// (via [`EventMgr::set_scroll`]), this gets called and the result set as
+    /// the new scroll value.
+    ///
+    /// If [`Layout::translation`] is non-zero and `scroll` is
+    /// `Scroll::Rect(_)`, then this method should undo the translation.
     ///
     /// The default implementation simply returns `scroll`.
     #[inline]
@@ -82,76 +100,20 @@ pub trait Handler: WidgetConfig {
     }
 }
 
-/// Event routing
-///
-/// This trait is part of the [`Widget`] family and is derived by
-/// [`derive(Widget)`] unless `#[handler(send = noauto)]`
-/// or `#[handler(noauto)]` is used.
-///
-/// This trait is responsible for routing events to the correct widget. It is
-/// separate from [`Handler`] since it can be derived for many parent widgets,
-/// even when event *handling* must be implemented manually.
-///
-/// This trait is implemented by `derive(Widget)` when a `#[handler]` attribute
-/// is present (except with parameter `send=noauto`).
-///
-/// [`derive(Widget)`]: ../macros/index.html#the-derivewidget-macro
-#[autoimpl(for<T: trait + ?Sized> Box<T>)]
-pub trait SendEvent: Handler {
-    /// Send an event
-    ///
-    /// This method is responsible for routing events toward descendants.
-    /// [`WidgetId`] values are assigned via depth-first search with parents
-    /// ordered after all children.
-    ///
-    /// The following logic is recommended for routing events:
-    /// ```no_test
-    /// match self.find_child_index(&id) {
-    ///     Some(widget_index![self.child0]) => self.child0.send(mgr, id, event).into(),
-    ///     Some(widget_index![self.child1]) => self.child1.send(mgr, id, event).into(),
-    ///     // ...
-    ///     _ => {
-    ///         debug_assert_eq!(self.id(), id);
-    ///         EventMgr::handle_generic(self, mgr, event),
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// When the child's [`Handler::Msg`] type is not something which converts
-    /// into the widget's own message type, it must be handled here (in place of `.into()`).
-    ///
-    /// The example above uses [`EventMgr::handle_generic`], which is an optional
-    /// tool able to perform some simplifications on events. It is also valid to
-    /// call [`Handler::handle`] directly or simply to embed handling logic here.
-    ///
-    /// When a child widget returns [`Response::Unused`], the widget may call
-    /// its own event handler. This is useful e.g. to capture a click+drag on a
-    /// child which does not handle that event. Note further that in case the
-    /// child is disabled, events targetting the child may be sent directly to
-    /// self.
-    fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response;
-}
-
 impl<'a> EventMgr<'a> {
     /// Generic event simplifier
-    ///
-    /// This is a free function often called from [`SendEvent::send`] to
-    /// simplify certain events and then invoke [`Handler::handle`].
-    pub fn handle_generic<W>(widget: &mut W, mgr: &mut EventMgr, mut event: Event) -> Response
-    where
-        W: Handler + ?Sized,
-    {
+    pub(crate) fn handle_generic(&mut self, widget: &mut dyn Widget, mut event: Event) -> Response {
         if widget.activation_via_press() {
             // Translate press events
             match event {
                 Event::PressStart { source, coord, .. } if source.is_primary() => {
-                    mgr.grab_press(widget.id(), source, coord, GrabMode::Grab, None);
+                    self.grab_press(widget.id(), source, coord, GrabMode::Grab, None);
                     return Response::Used;
                 }
                 Event::PressMove { source, cur_id, .. } => {
                     let cond = widget.eq_id(&cur_id);
                     let target = if cond { cur_id } else { None };
-                    mgr.set_grab_depress(source, target);
+                    self.set_grab_depress(source, target);
                     return Response::Used;
                 }
                 Event::PressEnd {
@@ -164,10 +126,12 @@ impl<'a> EventMgr<'a> {
             };
         }
 
+        let mut response = Response::Unused;
         if widget.focus_on_key_nav() && event == Event::NavFocus(true) {
-            mgr.set_scroll(Scroll::Rect(widget.rect()));
+            self.set_scroll(Scroll::Rect(widget.rect()));
+            response = Response::Used;
         }
 
-        widget.handle(mgr, event)
+        response | widget.handle(self, event)
     }
 }

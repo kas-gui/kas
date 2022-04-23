@@ -8,7 +8,7 @@
 use std::fmt::Debug;
 
 use super::{DragHandle, ScrollRegion};
-use kas::event::{self, Scroll};
+use kas::event::Scroll;
 use kas::prelude::*;
 
 impl_scope! {
@@ -248,30 +248,26 @@ impl_scope! {
         }
     }
 
-    impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
-            let mut response = Response::Used;
-            let offset = if self.eq_id(&id) {
-                match event {
-                    Event::PressStart { source, coord, .. } => {
-                        self.handle.handle_press_on_track(mgr, source, coord)
+    impl Handler for Self {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+            match event {
+                Event::PressStart { source, coord, .. } => {
+                    let offset = self.handle.handle_press_on_track(mgr, source, coord);
+                    if self.set_offset(offset) {
+                        mgr.push_msg(self.value);
                     }
-                    _ => return Response::Unused,
+                    Response::Used
                 }
-            } else {
-                debug_assert!(self.handle.id().is_ancestor_of(&id));
-                response = self.handle.send(mgr, id, event);
-                match mgr.try_pop_msg() {
-                    Some(offset) => offset,
-                    None => return response,
-                }
-            };
-
-            if self.set_offset(offset) {
-                mgr.redraw(self.handle.id());
-                mgr.push_msg(self.value);
+                _ => Response::Unused
             }
-            response
+        }
+
+        fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            if let Some(offset) = mgr.try_pop_msg() {
+                if self.set_offset(offset) {
+                    mgr.push_msg(self.value);
+                }
+            }
         }
     }
 }
@@ -631,42 +627,25 @@ impl_scope! {
     }
 
     impl Handler for Self {
+        fn on_message(&mut self, mgr: &mut EventMgr, index: usize) {
+            if index == widget_index![self.horiz_bar] {
+                if let Some(msg) = mgr.try_pop_msg() {
+                    let offset = Offset(msg, self.inner.scroll_offset().1);
+                    self.inner.set_scroll_offset(mgr, offset);
+                }
+            } else if index == widget_index![self.vert_bar] {
+                if let Some(msg) = mgr.try_pop_msg() {
+                    let offset = Offset(self.inner.scroll_offset().0, msg);
+                    self.inner.set_scroll_offset(mgr, offset);
+                }
+            }
+        }
+
         fn scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) -> Scroll {
             // We assume the inner already updated its positions; this is just to set bars
             let offset = self.inner.scroll_offset();
             *mgr |= self.horiz_bar.set_value(offset.0) | self.vert_bar.set_value(offset.1);
             scroll
-        }
-    }
-
-    impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
-            match self.find_child_index(&id) {
-                Some(widget_index![self.horiz_bar]) => {
-                    let r = self.horiz_bar.send(mgr, id, event);
-                    if let Some(msg) = mgr.try_pop_msg() {
-                        let offset = Offset(msg, self.inner.scroll_offset().1);
-                        self.inner.set_scroll_offset(mgr, offset);
-                    }
-                    r
-                }
-                Some(widget_index![self.vert_bar]) => {
-                    let r = self.vert_bar.send(mgr, id, event);
-                    if let Some(msg) = mgr.try_pop_msg() {
-                        let offset = Offset(self.inner.scroll_offset().0, msg);
-                        self.inner.set_scroll_offset(mgr, offset);
-                    }
-                    r
-                }
-                Some(widget_index![self.inner]) => {
-                    self.inner.send(mgr, id, event)
-                }
-                _ if self.eq_id(id) => self.handle(mgr, event),
-                _ => {
-                    debug_assert!(false, "SendEvent::send: bad WidgetId");
-                    Response::Unused
-                }
-            }
         }
     }
 }

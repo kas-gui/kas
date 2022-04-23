@@ -6,7 +6,7 @@
 //! Scroll region
 
 use super::Scrollable;
-use kas::event::{self, components::ScrollComponent, Scroll};
+use kas::event::{components::ScrollComponent, Scroll};
 use kas::prelude::*;
 use kas::theme::TextClass;
 use std::fmt::Debug;
@@ -143,24 +143,12 @@ impl_scope! {
     }
 
     impl Handler for Self {
+        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+            self.scroll.scroll_by_event(mgr, event, self.id(), self.core.rect)
+        }
+
         fn scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) -> Scroll {
             self.scroll.scroll(mgr, self.rect(), scroll)
-        }
-    }
-
-    impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
-            if self.inner.id().is_ancestor_of(&id) {
-                let child_event = self.scroll.offset_event(event.clone());
-                match self.inner.send(mgr, id, child_event) {
-                    Response::Unused => (),
-                    r => return r,
-                }
-            } else {
-                debug_assert!(self.eq_id(id), "SendEvent::send: bad WidgetId");
-            };
-
-            self.scroll.scroll_by_event(mgr, event, self.id(), self.core.rect)
         }
     }
 }

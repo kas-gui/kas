@@ -7,7 +7,7 @@
 
 use super::IndexMsg;
 use kas::layout::{DynGridStorage, GridChildInfo, GridDimensions};
-use kas::{event, layout, prelude::*};
+use kas::{layout, prelude::*};
 use std::ops::{Index, IndexMut};
 
 /// A grid of boxed widgets
@@ -86,19 +86,9 @@ impl_scope! {
         }
     }
 
-    impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response {
-            if let Some(index) = self.find_child_index(&id) {
-                if let Some((_, child)) = self.widgets.get_mut(index) {
-                    let r = child.send(mgr, id.clone(), event);
-                    if mgr.has_msg() {
-                        mgr.push_msg(IndexMsg(index));
-                    }
-                    return r;
-                }
-            }
-
-            Response::Unused
+    impl Handler for Self {
+        fn on_message(&mut self, mgr: &mut EventMgr, index: usize) {
+            mgr.push_msg(IndexMsg(index));
         }
     }
 }

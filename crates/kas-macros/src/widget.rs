@@ -44,7 +44,6 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let mut impl_layout = true;
     let mut has_find_id_impl = attr.layout.is_some();
     let mut handler_impl = None;
-    let mut send_event_impl = None;
 
     let fields = match &mut scope.item {
         ScopeItem::Struct { token, fields } => match fields {
@@ -152,18 +151,6 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 }
                 // TODO: warn about unused handler stuff if present
                 handler_impl = Some(index);
-            } else if *path == parse_quote! { ::kas::event::SendEvent }
-                || *path == parse_quote! { kas::event::SendEvent }
-                || *path == parse_quote! { event::SendEvent }
-                || *path == parse_quote! { SendEvent }
-            {
-                if opt_derive.is_some() {
-                    emit_error!(
-                        impl_.span(),
-                        "impl conflicts with use of #[widget(derive=FIELD)]"
-                    );
-                }
-                send_event_impl = Some(index);
             }
         }
     }
@@ -409,57 +396,6 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     for #name #ty_generics #where_clause
             {
                 #handle
-            }
-        });
-    }
-
-    if let Some(index) = send_event_impl {
-        // Manual SendEvent impl may add additional bounds:
-        let (a, _, c) = scope.impls[index].generics.split_for_impl();
-        impl_generics = a;
-        where_clause = c;
-    } else {
-        let send_impl = if let Some(inner) = opt_derive {
-            quote! { self.#inner.send(mgr, id, event) }
-        } else {
-            let mut ev_to_num = TokenStream::new();
-            for (i, child) in children.iter().enumerate() {
-                let id = quote! { id };
-                let ident = &child.ident;
-
-                ev_to_num.append_all(quote! {
-                    Some(#i) => {
-                        self.#ident.send(mgr, #id, event)
-                    }
-                });
-            }
-
-            quote! {
-                use ::kas::{event::Response, WidgetCore, WidgetChildren, WidgetExt};
-                match self.find_child_index(&id) {
-                    #ev_to_num
-                    _ if id == self.core_data().id => ::kas::event::EventMgr::handle_generic(self, mgr, event),
-                    _ => {
-                        debug_assert!(false, "SendEvent::send: bad WidgetId");
-                        Response::Unused
-                    }
-                }
-            }
-        };
-
-        scope.generated.push(quote! {
-            impl #impl_generics ::kas::event::SendEvent
-                    for #name #ty_generics #where_clause
-            {
-                fn send(
-                    &mut self,
-                    mgr: &mut ::kas::event::EventMgr,
-                    id: ::kas::WidgetId,
-                    event: ::kas::event::Event
-                ) -> ::kas::event::Response
-                {
-                    #send_impl
-                }
             }
         });
     }
