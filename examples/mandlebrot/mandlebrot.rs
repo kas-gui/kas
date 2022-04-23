@@ -331,6 +331,10 @@ impl_scope! {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.register_nav_fallback(self.id());
         }
+
+        fn key_nav(&self) -> bool {
+            true
+        }
     }
 
     impl Layout for Mandlebrot {
