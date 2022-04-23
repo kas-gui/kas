@@ -101,7 +101,7 @@ impl_scope! {
                 let key = self.next;
                 self.next += 1;
                 if let Entry::Vacant(entry) = self.id_map.entry(key) {
-                    entry.insert(index);
+                    entry.insert(child_index);
                     return self.id_ref().make_child(key);
                 }
             }
