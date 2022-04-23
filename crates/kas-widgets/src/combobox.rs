@@ -85,7 +85,7 @@ impl_scope! {
                     parent: s.id(),
                     direction: Direction::Down,
                 });
-                if let Some(id) = s.popup.inner.get_child(s.active).map(|w| w.id()) {
+                if let Some(id) = s.popup.inner.inner.get_child(s.active).map(|w| w.id()) {
                     mgr.set_nav_focus(id, key_focus);
                 }
             };

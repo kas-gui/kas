@@ -538,6 +538,8 @@ impl<'a> EventMgr<'a> {
     /// ([`Event::PressMove`]) which may be used to navigate menus.
     /// The parent automatically receives the "depressed" visual state.
     ///
+    /// It is recommended to call [`EventMgr::set_nav_focus`] after this method.
+    ///
     /// A pop-up may be closed by calling [`EventMgr::close_window`] with
     /// the [`WindowId`] returned by this method.
     ///
