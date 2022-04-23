@@ -478,6 +478,8 @@ impl<'a> EventMgr<'a> {
     where
         W: Widget + ?Sized,
     {
+        trace!("EventMgr::send to {}: {:?}", id, event);
+
         // TODO(opt): we should be able to use binary search here
         let mut disabled = false;
         for d in &self.disabled {

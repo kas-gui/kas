@@ -486,7 +486,7 @@ impl<'a> EventMgr<'a> {
         if let Some(cmd) = opt_command {
             if self.state.char_focus {
                 if let Some(id) = self.state.sel_focus.clone() {
-                    if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
+                    if self.send_event(widget, id, Event::Command(cmd, shift)) {
                         return;
                     }
                 }
@@ -494,28 +494,28 @@ impl<'a> EventMgr<'a> {
 
             if !self.state.modifiers.alt() {
                 if let Some(id) = self.state.nav_focus.clone() {
-                    if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
+                    if self.send_event(widget, id, Event::Command(cmd, shift)) {
                         return;
                     }
                 }
             }
 
             if let Some(id) = self.state.popups.last().map(|popup| popup.1.parent.clone()) {
-                if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
+                if self.send_event(widget, id, Event::Command(cmd, shift)) {
                     return;
                 }
             }
 
             if self.state.sel_focus != self.state.nav_focus && cmd.suitable_for_sel_focus() {
                 if let Some(id) = self.state.sel_focus.clone() {
-                    if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
+                    if self.send_event(widget, id, Event::Command(cmd, shift)) {
                         return;
                     }
                 }
             }
 
             if let Some(id) = self.state.nav_fallback.clone() {
-                if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
+                if self.send_event(widget, id, Event::Command(cmd, shift)) {
                     return;
                 }
             }
@@ -602,12 +602,11 @@ impl<'a> EventMgr<'a> {
     ) -> Response {
         let mut response;
         if let Some(index) = widget.find_child_index(&id) {
-            let mut child_event = event.clone();
-            child_event += widget.translation();
+            let translation = widget.translation();
             if disabled {
                 response = Response::Unused;
             } else if let Some(w) = widget.get_child_mut(index) {
-                response = self.send_recurse(w, id, disabled, child_event);
+                response = self.send_recurse(w, id, disabled, event.clone() + translation);
             } else {
                 warn!(
                     "Widget {} found index {index} for {id}, but child not found",
@@ -615,6 +614,7 @@ impl<'a> EventMgr<'a> {
                 );
                 return Response::Unused;
             }
+
             if matches!(response, Response::Unused) {
                 response = widget.handle_unused(self, index, event);
             } else if self.has_msg() {
@@ -633,21 +633,15 @@ impl<'a> EventMgr<'a> {
         response
     }
 
-    fn send_event<W: Widget + ?Sized>(&mut self, widget: &mut W, id: WidgetId, event: Event) {
-        trace!("Send to {}: {:?}", id, event);
-        let _ = self.send(widget, id, event);
-    }
-
-    // Similar to send_event, but return true only if response != Response::Unused
-    fn try_send_event<W: Widget + ?Sized>(
+    // Wrapper around Self::send; returns true when event is used
+    #[inline]
+    fn send_event<W: Widget + ?Sized>(
         &mut self,
         widget: &mut W,
         id: WidgetId,
         event: Event,
     ) -> bool {
-        trace!("Send to {}: {:?}", id, event);
-        let r = self.send(widget, id, event);
-        !matches!(r, Response::Unused)
+        self.send(widget, id, event) == Response::Used
     }
 
     fn send_popup_first<W>(&mut self, widget: &mut W, id: Option<WidgetId>, event: Event)
