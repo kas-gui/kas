@@ -354,6 +354,38 @@ impl EventState {
     }
 }
 
+// NOTE: we *want* to store Box<dyn Any + Debug> entries, but Rust doesn't
+// support multi-trait objects. An alternative would be to store Box<dyn Message>
+// where `trait Message: Any + Debug {}`, but Rust does not support
+// trait-object upcast, so we cannot downcast the result.
+//
+// Workaround: pre-format when the message is *pushed*.
+struct Message {
+    any: Box<dyn Any>,
+    #[cfg(debug_assertions)]
+    fmt: String,
+}
+impl Message {
+    fn new<M: Any + Debug>(msg: Box<M>) -> Self {
+        #[cfg(debug_assertions)]
+        let fmt = format!("{:?}", &msg);
+        let any = msg;
+        Message {
+            #[cfg(debug_assertions)]
+            fmt,
+            any,
+        }
+    }
+
+    fn is<T: 'static>(&self) -> bool {
+        self.any.is::<T>()
+    }
+
+    fn downcast<T: 'static>(self) -> Result<Box<T>, Box<dyn Any>> {
+        self.any.downcast::<T>()
+    }
+}
+
 /// Manager of event-handling and toolkit actions
 ///
 /// An `EventMgr` is in fact a handle around [`EventState`] and [`ShellWindow`]
@@ -368,7 +400,7 @@ impl EventState {
 pub struct EventMgr<'a> {
     state: &'a mut EventState,
     shell: &'a mut dyn ShellWindow,
-    messages: Vec<Box<dyn Any>>,
+    messages: Vec<Message>,
     scroll: Scroll,
     action: TkAction,
 }
@@ -387,11 +419,11 @@ impl<'a> DerefMut for EventMgr<'a> {
 
 impl<'a> Drop for EventMgr<'a> {
     fn drop(&mut self) {
-        for msg in self.messages.drain(..) {
-            log::warn!(
-                "EventMgr: unhandled message: {:?}",
-                kas::util::TryFormat(&msg)
-            );
+        for _msg in self.messages.drain(..) {
+            #[cfg(debug_assertions)]
+            log::warn!("EventMgr: unhandled message: {}", _msg.fmt);
+            #[cfg(not(debug_assertions))]
+            log::warn!("EventMgr: unhandled message: [use debug build to see value]");
         }
     }
 }

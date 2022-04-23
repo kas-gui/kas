@@ -497,7 +497,7 @@ impl<'a> EventMgr<'a> {
 
     /// Push a pre-boxed message to the stack
     pub fn push_boxed_msg<M: Debug + 'static>(&mut self, msg: Box<M>) {
-        self.messages.push(msg);
+        self.messages.push(Message::new(msg));
     }
 
     /// True if the message stack is non-empty
