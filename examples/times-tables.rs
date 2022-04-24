@@ -77,7 +77,10 @@ fn main() -> kas::shell::Result<()> {
         }]
         struct {
             #[widget] max: impl HasString = EditBox::new("12")
-                .on_afl(|text, _| text.parse::<usize>().ok()),
+                .on_afl(|text, mgr| match text.parse::<usize>() {
+                    Ok(n) => mgr.push_msg(n),
+                    Err(_) => (),
+                }),
             #[widget] table: ScrollBars<MatrixView<TableData, DefaultNav>> = table,
         }
         impl Handler for Self {

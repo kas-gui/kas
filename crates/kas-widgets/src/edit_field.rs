@@ -103,50 +103,42 @@ impl EditGuard for () {}
 /// An [`EditGuard`] impl which calls a closure when activated
 #[autoimpl(Debug ignore self.0)]
 #[derive(Clone)]
-pub struct EditActivate<F: FnMut(&str, &mut EventMgr) -> Option<M>, M>(pub F);
-impl<F, M: Debug + 'static> EditGuard for EditActivate<F, M>
+pub struct EditActivate<F: FnMut(&str, &mut EventMgr)>(pub F);
+impl<F> EditGuard for EditActivate<F>
 where
-    F: FnMut(&str, &mut EventMgr) -> Option<M> + 'static,
+    F: FnMut(&str, &mut EventMgr) + 'static,
 {
     fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        if let Some(msg) = (edit.guard.0)(edit.text.text(), mgr) {
-            mgr.push_msg(msg);
-        }
+        (edit.guard.0)(edit.text.text(), mgr);
     }
 }
 
 /// An [`EditGuard`] impl which calls a closure when activated or focus is lost
 #[autoimpl(Debug ignore self.0)]
 #[derive(Clone)]
-pub struct EditAFL<F: FnMut(&str, &mut EventMgr) -> Option<M>, M>(pub F);
-impl<F, M: Debug + 'static> EditGuard for EditAFL<F, M>
+pub struct EditAFL<F: FnMut(&str, &mut EventMgr)>(pub F);
+impl<F> EditGuard for EditAFL<F>
 where
-    F: FnMut(&str, &mut EventMgr) -> Option<M> + 'static,
+    F: FnMut(&str, &mut EventMgr) + 'static,
 {
     fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        if let Some(msg) = (edit.guard.0)(edit.text.text(), mgr) {
-            mgr.push_msg(msg);
-        }
+        (edit.guard.0)(edit.text.text(), mgr);
     }
     fn focus_lost(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        if let Some(msg) = (edit.guard.0)(edit.text.text(), mgr) {
-            mgr.push_msg(msg);
-        }
+        (edit.guard.0)(edit.text.text(), mgr);
     }
 }
 
 /// An [`EditGuard`] impl which calls a closure when edited
 #[autoimpl(Debug ignore self.0)]
 #[derive(Clone)]
-pub struct EditEdit<F: FnMut(&str, &mut EventMgr) -> Option<M>, M>(pub F);
-impl<F, M: Debug + 'static> EditGuard for EditEdit<F, M>
+pub struct EditEdit<F: FnMut(&str, &mut EventMgr)>(pub F);
+impl<F> EditGuard for EditEdit<F>
 where
-    F: FnMut(&str, &mut EventMgr) -> Option<M> + 'static,
+    F: FnMut(&str, &mut EventMgr) + 'static,
 {
     fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        if let Some(msg) = (edit.guard.0)(edit.text.text(), mgr) {
-            mgr.push_msg(msg);
-        }
+        (edit.guard.0)(edit.text.text(), mgr);
     }
 }
 
@@ -225,14 +217,13 @@ impl EditBox<()> {
     ///
     /// The closure `f` is called when the `EditBox` is activated (when the
     /// "enter" key is pressed).
-    /// Its result, if not `None`, is the event handler's response.
     ///
     /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
     /// previously assigned to the `EditBox` will be replaced.
     #[must_use]
-    pub fn on_activate<F, M: Debug + 'static>(self, f: F) -> EditBox<EditActivate<F, M>>
+    pub fn on_activate<F>(self, f: F) -> EditBox<EditActivate<F>>
     where
-        F: FnMut(&str, &mut EventMgr) -> Option<M> + 'static,
+        F: FnMut(&str, &mut EventMgr) + 'static,
     {
         self.with_guard(EditActivate(f))
     }
@@ -241,14 +232,13 @@ impl EditBox<()> {
     ///
     /// The closure `f` is called when the `EditBox` is activated (when the
     /// "enter" key is pressed) and when keyboard focus is lost.
-    /// Its result, if not `None`, is the event handler's response.
     ///
     /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
     /// previously assigned to the `EditBox` will be replaced.
     #[must_use]
-    pub fn on_afl<F, M: Debug + 'static>(self, f: F) -> EditBox<EditAFL<F, M>>
+    pub fn on_afl<F>(self, f: F) -> EditBox<EditAFL<F>>
     where
-        F: FnMut(&str, &mut EventMgr) -> Option<M> + 'static,
+        F: FnMut(&str, &mut EventMgr) + 'static,
     {
         self.with_guard(EditAFL(f))
     }
@@ -256,14 +246,13 @@ impl EditBox<()> {
     /// Set a guard function, called on edit
     ///
     /// The closure `f` is called when the `EditBox` is edited by the user.
-    /// Its result, if not `None`, is the event handler's response.
     ///
     /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
     /// previously assigned to the `EditBox` will be replaced.
     #[must_use]
-    pub fn on_edit<F, M: Debug + 'static>(self, f: F) -> EditBox<EditEdit<F, M>>
+    pub fn on_edit<F>(self, f: F) -> EditBox<EditEdit<F>>
     where
-        F: FnMut(&str, &mut EventMgr) -> Option<M> + 'static,
+        F: FnMut(&str, &mut EventMgr) + 'static,
     {
         self.with_guard(EditEdit(f))
     }
@@ -637,15 +626,14 @@ impl EditField<()> {
     ///
     /// The closure `f` is called when the `EditField` is activated (when the
     /// "enter" key is pressed).
-    /// Its result, if not `None`, is the event handler's response.
     ///
     /// This method is a parametisation of [`EditField::with_guard`]. Any guard
     /// previously assigned to the `EditField` will be replaced.
     #[must_use]
-    pub fn on_activate<F: FnMut(&str, &mut EventMgr) -> Option<M> + 'static, M: Debug + 'static>(
+    pub fn on_activate<F: FnMut(&str, &mut EventMgr) + 'static>(
         self,
         f: F,
-    ) -> EditField<EditActivate<F, M>> {
+    ) -> EditField<EditActivate<F>> {
         self.with_guard(EditActivate(f))
     }
 
@@ -653,30 +641,22 @@ impl EditField<()> {
     ///
     /// The closure `f` is called when the `EditField` is activated (when the
     /// "enter" key is pressed) and when keyboard focus is lost.
-    /// Its result, if not `None`, is the event handler's response.
     ///
     /// This method is a parametisation of [`EditField::with_guard`]. Any guard
     /// previously assigned to the `EditField` will be replaced.
     #[must_use]
-    pub fn on_afl<F: FnMut(&str, &mut EventMgr) -> Option<M> + 'static, M: Debug + 'static>(
-        self,
-        f: F,
-    ) -> EditField<EditAFL<F, M>> {
+    pub fn on_afl<F: FnMut(&str, &mut EventMgr) + 'static>(self, f: F) -> EditField<EditAFL<F>> {
         self.with_guard(EditAFL(f))
     }
 
     /// Set a guard function, called on edit
     ///
     /// The closure `f` is called when the `EditField` is edited by the user.
-    /// Its result, if not `None`, is the event handler's response.
     ///
     /// This method is a parametisation of [`EditField::with_guard`]. Any guard
     /// previously assigned to the `EditField` will be replaced.
     #[must_use]
-    pub fn on_edit<F: FnMut(&str, &mut EventMgr) -> Option<M> + 'static, M: Debug + 'static>(
-        self,
-        f: F,
-    ) -> EditField<EditEdit<F, M>> {
+    pub fn on_edit<F: FnMut(&str, &mut EventMgr) + 'static>(self, f: F) -> EditField<EditEdit<F>> {
         self.with_guard(EditEdit(f))
     }
 

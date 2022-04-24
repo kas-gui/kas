@@ -59,9 +59,7 @@ impl_scope! {
                         if let Some(handle) = self.group.update(Some(self.id())) {
                             mgr.trigger_update(handle, 0);
                         }
-                        if let Some(msg) = self.on_select.as_ref().map(|f| f(mgr)) {
-                            mgr.push_msg(msg);
-                        }
+                        self.on_select.as_ref().map(|f| f(mgr));
                     }
                     Response::Used
                 }

@@ -215,7 +215,10 @@ fn main() -> kas::shell::Result<()> {
         struct {
             #[widget] _ = Label::new("Number of rows:"),
             #[widget] edit: impl HasString = EditBox::new("3")
-                .on_afl(|text, _| text.parse::<usize>().ok()),
+                .on_afl(|text, mgr| match text.parse::<usize>() {
+                    Ok(n) => mgr.push_msg(n),
+                    Err(_) => (),
+                }),
             #[widget] _ = TextButton::new_msg("Set", Button::Set),
             #[widget] _ = TextButton::new_msg("−", Button::Decr),
             #[widget] _ = TextButton::new_msg("+", Button::Incr),
