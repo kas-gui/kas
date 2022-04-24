@@ -164,15 +164,23 @@ impl_scope! {
             self.value
         }
 
+        #[inline]
+        #[allow(clippy::neg_cmp_op_on_partial_ord)]
+        fn clamp_value(&self, value: T) -> T {
+            if !(value >= self.range.0) {
+                self.range.0
+            } else if !(value <= self.range.1) {
+                self.range.1
+            } else {
+                value
+            }
+        }
+
         /// Set the value
         ///
         /// Returns [`TkAction::REDRAW`] if a redraw is required.
-        pub fn set_value(&mut self, mut value: T) -> TkAction {
-            if value < self.range.0 {
-                value = self.range.0;
-            } else if value > self.range.1 {
-                value = self.range.1;
-            }
+        pub fn set_value(&mut self, value: T) -> TkAction {
+            let value = self.clamp_value(value);
             if value == self.value {
                 TkAction::empty()
             } else {
@@ -197,9 +205,7 @@ impl_scope! {
             }
         }
 
-        // true if not equal to old value
-        #[allow(clippy::neg_cmp_op_on_partial_ord)]
-        fn set_offset(&mut self, offset: Offset) -> bool {
+        fn set_offset_and_push_msg(&mut self, mgr: &mut EventMgr, offset: Offset) {
             let b = self.range.1 - self.range.0;
             let max_offset = self.handle.max_offset();
             let mut a = match self.direction.is_vertical() {
@@ -209,19 +215,12 @@ impl_scope! {
             if self.direction.is_reversed() {
                 a = b - a;
             }
-            let value = a + self.range.0;
-            let value = if !(value >= self.range.0) {
-                self.range.0
-            } else if !(value <= self.range.1) {
-                self.range.1
-            } else {
-                value
-            };
+            let value = self.clamp_value(a + self.range.0);
             if value != self.value {
                 self.value = value;
-                return true;
+                *mgr |= self.handle.set_offset(self.offset()).1;
+                mgr.push_msg(self.value);
             }
-            false
         }
     }
 
@@ -302,10 +301,7 @@ impl_scope! {
                 }
                 Event::PressStart { source, coord, .. } => {
                     let offset = self.handle.handle_press_on_track(mgr, source, coord);
-                    if self.set_offset(offset) {
-                        mgr.push_msg(self.value);
-                    }
-                    *mgr |= self.handle.set_offset(self.offset()).1;
+                    self.set_offset_and_push_msg(mgr, offset);
                 }
                 _ => return Response::Unused,
             }
@@ -314,10 +310,7 @@ impl_scope! {
 
         fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
             if let Some(offset) = mgr.try_pop_msg() {
-                if self.set_offset(offset) {
-                    mgr.push_msg(self.value);
-                    *mgr |= self.handle.set_offset(self.offset()).1;
-                }
+                self.set_offset_and_push_msg(mgr, offset);
             }
         }
     }

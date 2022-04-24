@@ -253,6 +253,8 @@ impl_scope! {
             match event {
                 Event::PressStart { source, coord, .. } => {
                     let offset = self.handle.handle_press_on_track(mgr, source, coord);
+                    let (offset, action) = self.handle.set_offset(offset);
+                    *mgr |= action;
                     if self.set_offset(offset) {
                         mgr.push_msg(self.value);
                     }
@@ -264,6 +266,8 @@ impl_scope! {
 
         fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
             if let Some(offset) = mgr.try_pop_msg() {
+                let (offset, action) = self.handle.set_offset(offset);
+                *mgr |= action;
                 if self.set_offset(offset) {
                     mgr.push_msg(self.value);
                 }

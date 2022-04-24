@@ -29,7 +29,11 @@ impl_scope! {
     ///
     /// # Messages
     ///
-    /// On position change, pushes a value of type `Offset`.
+    /// On input to change the position, pushes `offset: Offset`. This is a raw
+    /// offset relative to the track calculated from input (usually this is
+    /// between `Offset::ZERO` and [`Self::max_offset`], but it is not clamped).
+    /// The position is not updated by this widget; call [`Self::set_offset`]
+    /// to clamp the offset and update the position.
     #[derive(Clone, Debug, Default)]
     #[widget{
         hover_highlight = true;
@@ -73,12 +77,7 @@ impl_scope! {
                     Response::Used
                 }
                 Event::PressMove { coord, .. } => {
-                    let offset = coord - self.press_coord;
-                    let (offset, action) = self.set_offset(offset);
-                    if !action.is_empty() {
-                        mgr.send_action(action);
-                        mgr.push_msg(offset)
-                    }
+                    mgr.push_msg(coord - self.press_coord);
                     Response::Used
                 }
                 Event::PressEnd { .. } => Response::Used,
@@ -148,7 +147,8 @@ impl DragHandle {
     /// then the parent widget should call this method when receiving
     /// [`Event::PressStart`].
     ///
-    /// This method moves the handle immediately and returns the new offset.
+    /// Returns a raw (unclamped) offset calculated from the press, but does
+    /// not move the handle (maybe call [`Self::set_offset`] with the result).
     pub fn handle_press_on_track(
         &mut self,
         mgr: &mut EventMgr,
@@ -158,11 +158,6 @@ impl DragHandle {
         mgr.grab_press_unique(self.id(), source, coord, Some(CursorIcon::Grabbing));
 
         self.press_coord = self.track.pos + self.core.rect.size / 2;
-
-        // Since the press is not on the handle, we move the bar immediately.
-        let (offset, action) = self.set_offset(coord - self.press_coord);
-        debug_assert!(action == TkAction::REDRAW);
-        mgr.send_action(action);
-        offset
+        coord - self.press_coord
     }
 }

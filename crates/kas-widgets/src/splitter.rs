@@ -265,10 +265,10 @@ impl_scope! {
     impl Handler for Self {
         fn on_message(&mut self, mgr: &mut EventMgr, index: usize) {
             if (index & 1) == 1 {
-                if let Some(_) = mgr.try_pop_msg::<Offset>() {
+                if let Some(offset) = mgr.try_pop_msg::<Offset>() {
                     let n = index >> 1;
-                    // Message is the new offset relative to the track;
-                    // the handle has already adjusted its position
+                    assert!(n < self.handles.len());
+                    *mgr |= self.handles[n].set_offset(offset).1;
                     mgr.set_rect_mgr(|mgr| self.adjust_size(mgr, n));
                 }
             }
