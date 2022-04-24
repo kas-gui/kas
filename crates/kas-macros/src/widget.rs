@@ -206,14 +206,21 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 impl #impl_generics ::kas::WidgetChildren
                     for #name #ty_generics #where_clause
                 {
+                    #[inline]
                     fn num_children(&self) -> usize {
                         self.#inner.num_children()
                     }
+                    #[inline]
                     fn get_child(&self, index: usize) -> Option<&dyn ::kas::Widget> {
                         self.#inner.get_child(index)
                     }
+                    #[inline]
                     fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn ::kas::Widget> {
                         self.#inner.get_child_mut(index)
+                    }
+                    #[inline]
+                    fn find_child_index(&self, id: &::kas::WidgetId) -> Option<usize> {
+                        self.#inner.find_child_index(id)
                     }
                 }
             });
@@ -253,14 +260,39 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
     }
 
     if impl_widget_config {
-        let key_nav = attr.key_nav.value;
-        let hover_highlight = attr.hover_highlight.value;
-        let cursor_icon = attr.cursor_icon.value;
+        let methods = if let Some(inner) = opt_derive {
+            quote! {
+                #[inline]
+                fn configure_recurse(
+                    &mut self,
+                    mgr: &mut ::kas::layout::SetRectMgr,
+                    id: ::kas::WidgetId,
+                ) {
+                    self.#inner.configure_recurse(mgr, id);
+                }
+                #[inline]
+                fn configure(&mut self, mgr: &mut ::kas::layout::SetRectMgr) {
+                    self.#inner.configure(mgr);
+                }
+                #[inline]
+                fn key_nav(&self) -> bool {
+                    self.#inner.key_nav()
+                }
+                #[inline]
+                fn hover_highlight(&self) -> bool {
+                    self.#inner.hover_highlight()
+                }
+                #[inline]
+                fn cursor_icon(&self) -> ::kas::event::CursorIcon {
+                    self.#inner.cursor_icon()
+                }
+            }
+        } else {
+            let key_nav = attr.key_nav.value;
+            let hover_highlight = attr.hover_highlight.value;
+            let cursor_icon = attr.cursor_icon.value;
 
-        scope.generated.push(quote! {
-            impl #impl_generics ::kas::WidgetConfig
-                    for #name #ty_generics #where_clause
-            {
+            quote! {
                 fn key_nav(&self) -> bool {
                     #key_nav
                 }
@@ -270,6 +302,14 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 fn cursor_icon(&self) -> ::kas::event::CursorIcon {
                     #cursor_icon
                 }
+            }
+        };
+
+        scope.generated.push(quote! {
+            impl #impl_generics ::kas::WidgetConfig
+                    for #name #ty_generics #where_clause
+            {
+                #methods
             }
         });
     } else {
@@ -290,6 +330,10 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 impl #impl_generics ::kas::Layout
                         for #name #ty_generics #where_clause
                 {
+                    #[inline]
+                    fn layout(&mut self) -> ::kas::layout::Layout<'_> {
+                        self.#inner.layout()
+                    }
                     #[inline]
                     fn size_rules(&mut self,
                         size_mgr: ::kas::theme::SizeMgr,
@@ -384,8 +428,41 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     self.#inner.activation_via_press()
                 }
                 #[inline]
-                fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+                fn focus_on_key_nav(&self) -> bool {
+                    self.#inner.focus_on_key_nav()
+                }
+                #[inline]
+                fn handle(
+                    &mut self,
+                    mgr: &mut ::kas::event::EventMgr,
+                    event: ::kas::event::Event,
+                ) -> ::kas::event::Response {
                     self.#inner.handle(mgr, event)
+                }
+                #[inline]
+                fn handle_unused(
+                    &mut self,
+                    mgr: &mut ::kas::event::EventMgr,
+                    index: usize,
+                    event: ::kas::event::Event,
+                ) -> ::kas::event::Response {
+                    self.#inner.handle_unused(mgr, index, event)
+                }
+                #[inline]
+                fn on_message(
+                    &mut self,
+                    mgr: &mut ::kas::event::EventMgr,
+                    index: usize,
+                ) {
+                    self.#inner.on_message(mgr, index);
+                }
+                #[inline]
+                fn scroll(
+                    &mut self,
+                    mgr: &mut ::kas::event::EventMgr,
+                    scroll: ::kas::event::Scroll,
+                ) -> ::kas::event::Scroll {
+                    self.#inner.scroll(mgr, scroll)
                 }
             }
         } else {
