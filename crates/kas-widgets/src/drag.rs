@@ -7,7 +7,7 @@
 
 use std::fmt::Debug;
 
-use kas::event::{CursorIcon, PressSource};
+use kas::event::{CursorIcon, MsgPressFocus, PressSource};
 use kas::prelude::*;
 
 impl_scope! {
@@ -28,6 +28,8 @@ impl_scope! {
     ///     [`DragHandle::handle_press_on_track`].
     ///
     /// # Messages
+    ///
+    /// On [`Event::PressStart`], pushes [`MsgPressFocus`].
     ///
     /// On input to change the position, pushes `offset: Offset`. This is a raw
     /// offset relative to the track calculated from input (usually this is
@@ -70,6 +72,7 @@ impl_scope! {
         fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::PressStart { source, coord, .. } => {
+                    mgr.push_msg(MsgPressFocus);
                     mgr.grab_press_unique(self.id(), source, coord, Some(CursorIcon::Grabbing));
 
                     // Event delivery implies coord is over the handle.

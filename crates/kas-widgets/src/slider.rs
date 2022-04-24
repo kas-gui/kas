@@ -10,7 +10,7 @@ use std::ops::{Add, Sub};
 use std::time::Duration;
 
 use super::DragHandle;
-use kas::event::{Command, Scroll};
+use kas::event::{Command, MsgPressFocus, Scroll};
 use kas::prelude::*;
 
 /// Requirements on type used by [`Slider`]
@@ -309,7 +309,9 @@ impl_scope! {
         }
 
         fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
-            if let Some(offset) = mgr.try_pop_msg() {
+            if let Some(MsgPressFocus) = mgr.try_pop_msg() {
+                mgr.set_nav_focus(self.id(), false);
+            } else if let Some(offset) = mgr.try_pop_msg() {
                 self.set_offset_and_push_msg(mgr, offset);
             }
         }

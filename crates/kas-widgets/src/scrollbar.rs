@@ -8,7 +8,7 @@
 use std::fmt::Debug;
 
 use super::{DragHandle, ScrollRegion};
-use kas::event::Scroll;
+use kas::event::{MsgPressFocus, Scroll};
 use kas::prelude::*;
 
 impl_scope! {
@@ -265,7 +265,9 @@ impl_scope! {
         }
 
         fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
-            if let Some(offset) = mgr.try_pop_msg() {
+            if let Some(MsgPressFocus) = mgr.try_pop_msg() {
+                // Useless to us, but we should remove it.
+            } else if let Some(offset) = mgr.try_pop_msg() {
                 let (offset, action) = self.handle.set_offset(offset);
                 *mgr |= action;
                 if self.set_offset(offset) {

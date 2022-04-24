@@ -11,6 +11,7 @@ use std::ops::{Index, IndexMut};
 
 use super::DragHandle;
 use kas::dir::{Down, Right};
+use kas::event::MsgPressFocus;
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::prelude::*;
 
@@ -265,7 +266,9 @@ impl_scope! {
     impl Handler for Self {
         fn on_message(&mut self, mgr: &mut EventMgr, index: usize) {
             if (index & 1) == 1 {
-                if let Some(offset) = mgr.try_pop_msg::<Offset>() {
+                if let Some(MsgPressFocus) = mgr.try_pop_msg() {
+                    // Useless to us, but we should remove it.
+                } else if let Some(offset) = mgr.try_pop_msg::<Offset>() {
                     let n = index >> 1;
                     assert!(n < self.handles.len());
                     *mgr |= self.handles[n].set_offset(offset).1;
