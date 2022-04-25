@@ -260,7 +260,7 @@ fn main() -> kas::shell::Result<()> {
                 #[widget] _ = Label::new("Demonstration of dynamic widget creation / deletion"),
                 #[widget] _ = controls,
                 #[widget] _ = Label::new("Contents of selected entry:"),
-                #[widget] display: StringLabel = Label::from("Entry #0"),
+                #[widget] display: StringLabel = Label::from("Entry #1"),
                 #[widget] _ = Separator::new(),
                 #[widget] list: ScrollBars<MyList> =
                     ScrollBars::new(list).with_bars(false, true),
