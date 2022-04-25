@@ -263,7 +263,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             #[widget] rb2 = RadioBox::new("radio box &2", radio)
                 .with_state(true)
                 .on_select(|mgr| mgr.push_msg(Item::Radio(2))),
-            #[widget] cbb = ComboBox::new_from_iter(&["&One", "T&wo", "Th&ree"], 0)
+            #[widget] cbb = ComboBox::new_from_iter(&["&One", "T&wo", "Th&ree"])
                 .on_select(|mgr, index| mgr.push_msg(Item::Combo((index + 1).cast()))),
             #[widget] sd = Slider::<i32, Right>::new(0, 10, 1)
                 .with_value(0)

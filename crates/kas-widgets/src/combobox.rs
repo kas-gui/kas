@@ -197,30 +197,30 @@ impl ComboBox {
     /// Construct a combobox
     ///
     /// Constructs a combobox with labels derived from an iterator over string
-    /// types, and the chosen `active` entry. For example:
+    /// types. For example:
     /// ```
     /// # use kas_widgets::ComboBox;
     /// let combobox = ComboBox::new_from_iter(&["zero", "one", "two"], 0);
     /// ```
+    ///
+    /// Initially, the first entry is active.
     #[inline]
-    pub fn new_from_iter<T: Into<AccelString>, I: IntoIterator<Item = T>>(
-        iter: I,
-        active: usize,
-    ) -> Self {
+    pub fn new_from_iter<T: Into<AccelString>, I: IntoIterator<Item = T>>(iter: I) -> Self {
         let entries = iter
             .into_iter()
             .map(|label| MenuEntry::new(label, ()))
             .collect();
-        Self::new(entries, active)
+        Self::new(entries)
     }
 
     /// Construct a combobox with the given menu entries
     ///
-    /// A combobox presents a menu with a fixed set of choices when clicked,
-    /// with the `active` choice selected (0-based index).
+    /// A combobox presents a menu with a fixed set of choices when clicked.
+    ///
+    /// Initially, the first entry is active.
     #[inline]
-    pub fn new(entries: Vec<MenuEntry<()>>, active: usize) -> Self {
-        let label = entries.get(active).map(|entry| entry.get_string());
+    pub fn new(entries: Vec<MenuEntry<()>>) -> Self {
+        let label = entries.get(0).map(|entry| entry.get_string());
         let label = Label::new(label.unwrap_or("".to_string()), TextClass::Button);
         ComboBox {
             core: Default::default(),
@@ -232,7 +232,7 @@ impl ComboBox {
                 core: Default::default(),
                 inner: PopupFrame::new(Column::new(entries)),
             },
-            active,
+            active: 0,
             opening: false,
             popup_id: None,
             on_select: None,
@@ -274,8 +274,14 @@ impl ComboBox {
         self.active
     }
 
-    /// Set the active choice
+    /// Set the active choice (inline style)
     #[inline]
+    pub fn with_active(mut self, index: usize) -> Self {
+        let _ = self.set_active(index);
+        self
+    }
+
+    /// Set the active choice
     pub fn set_active(&mut self, index: usize) -> TkAction {
         if self.active != index && index < self.popup.inner.len() {
             self.active = index;
