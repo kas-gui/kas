@@ -14,6 +14,11 @@ use std::fmt::Debug;
 
 impl_scope! {
     /// A standard menu entry
+    ///
+    /// # Messages
+    ///
+    /// A `MenuEntry` has an associated message value of type `M`. A clone of
+    /// this value is pushed when the entry is activated.
     #[derive(Clone, Debug, Default)]
     #[widget]
     pub struct MenuEntry<M: Clone + Debug + 'static> {

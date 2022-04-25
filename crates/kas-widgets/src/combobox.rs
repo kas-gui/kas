@@ -12,16 +12,24 @@ use kas::layout;
 use kas::prelude::*;
 use kas::theme::{MarkStyle, TextClass};
 use kas::WindowId;
+use std::fmt::Debug;
 use std::rc::Rc;
 
 impl_scope! {
     /// A pop-up multiple choice menu
     ///
+    /// # Messages
+    ///
     /// A combobox presents a menu with a fixed set of choices when clicked.
+    /// Each choice has an associated "message" value of type `M`.
+    ///
+    /// If no selection handler exists, then the choice's message is emitted
+    /// when selected. If a handler is specified via [`Self::on_select`], then
+    /// this message is passed to the handler and not emitted.
     #[autoimpl(Debug ignore self.on_select)]
     #[derive(Clone)]
     #[widget]
-    pub struct ComboBox {
+    pub struct ComboBox<M: Clone + Debug + 'static> {
         #[widget_core]
         core: CoreData,
         label: Label<String>,
@@ -29,11 +37,11 @@ impl_scope! {
         layout_list: layout::FixedRowStorage<2>,
         layout_frame: layout::FrameStorage,
         #[widget]
-        popup: ComboPopup,
+        popup: ComboPopup<M>,
         active: usize,
         opening: bool,
         popup_id: Option<WindowId>,
-        on_select: Option<Rc<dyn Fn(&mut EventMgr, usize)>>,
+        on_select: Option<Rc<dyn Fn(&mut EventMgr, M)>>,
     }
 
     impl WidgetConfig for Self {
@@ -180,20 +188,21 @@ impl_scope! {
 
         fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
             if let Some(IndexMsg(index)) = mgr.try_pop_msg() {
-                mgr.try_pop_msg::<()>();
                 *mgr |= self.set_active(index);
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id, true);
                 }
                 if let Some(ref f) = self.on_select {
-                    (f)(mgr, index);
+                    if let Some(msg) = mgr.try_pop_msg() {
+                        (f)(mgr, msg);
+                    }
                 }
             }
         }
     }
 }
 
-impl ComboBox {
+impl<M: Clone + Debug + 'static> ComboBox<M> {
     /// Construct a combobox
     ///
     /// Constructs a combobox with labels derived from an iterator over string
@@ -205,10 +214,10 @@ impl ComboBox {
     ///
     /// Initially, the first entry is active.
     #[inline]
-    pub fn new_from_iter<T: Into<AccelString>, I: IntoIterator<Item = T>>(iter: I) -> Self {
+    pub fn new_from_iter<T: Into<AccelString>, I: IntoIterator<Item = (T, M)>>(iter: I) -> Self {
         let entries = iter
             .into_iter()
-            .map(|label| MenuEntry::new(label, ()))
+            .map(|(label, msg)| MenuEntry::new(label, msg))
             .collect();
         Self::new(entries)
     }
@@ -219,7 +228,7 @@ impl ComboBox {
     ///
     /// Initially, the first entry is active.
     #[inline]
-    pub fn new(entries: Vec<MenuEntry<()>>) -> Self {
+    pub fn new(entries: Vec<MenuEntry<M>>) -> Self {
         let label = entries.get(0).map(|entry| entry.get_string());
         let label = Label::new(label.unwrap_or("".to_string()), TextClass::Button);
         ComboBox {
@@ -242,12 +251,12 @@ impl ComboBox {
     /// Set the selection handler `f`
     ///
     /// On selection of a new choice the closure `f` is called with the choice's
-    /// index.
+    /// message.
     #[inline]
     #[must_use]
-    pub fn on_select<F>(self, f: F) -> ComboBox
+    pub fn on_select<F>(self, f: F) -> ComboBox<M>
     where
-        F: Fn(&mut EventMgr, usize) + 'static,
+        F: Fn(&mut EventMgr, M) + 'static,
     {
         ComboBox {
             core: self.core,
@@ -264,7 +273,7 @@ impl ComboBox {
     }
 }
 
-impl ComboBox {
+impl<M: Clone + Debug + 'static> ComboBox<M> {
     /// Get the index of the active choice
     ///
     /// This index is normally less than the number of choices (`self.len()`),
@@ -320,9 +329,9 @@ impl ComboBox {
     //
     // TODO(opt): these methods cause full-window resize. They don't need to
     // resize at all if the menu is closed!
-    pub fn push<T: Into<AccelString>>(&mut self, mgr: &mut SetRectMgr, label: T) -> usize {
+    pub fn push<T: Into<AccelString>>(&mut self, mgr: &mut SetRectMgr, label: T, msg: M) -> usize {
         let column = &mut self.popup.inner;
-        column.push(mgr, MenuEntry::new(label, ()))
+        column.push(mgr, MenuEntry::new(label, msg))
     }
 
     /// Pops the last choice from the combobox
@@ -333,9 +342,15 @@ impl ComboBox {
     /// Add a choice at position `index`
     ///
     /// Panics if `index > len`.
-    pub fn insert<T: Into<AccelString>>(&mut self, mgr: &mut SetRectMgr, index: usize, label: T) {
+    pub fn insert<T: Into<AccelString>>(
+        &mut self,
+        mgr: &mut SetRectMgr,
+        index: usize,
+        label: T,
+        msg: M,
+    ) {
         let column = &mut self.popup.inner;
-        column.insert(mgr, index, MenuEntry::new(label, ()));
+        column.insert(mgr, index, MenuEntry::new(label, msg));
     }
 
     /// Removes the choice at position `index`
@@ -348,10 +363,16 @@ impl ComboBox {
     /// Replace the choice at `index`
     ///
     /// Panics if `index` is out of bounds.
-    pub fn replace<T: Into<AccelString>>(&mut self, mgr: &mut SetRectMgr, index: usize, label: T) {
+    pub fn replace<T: Into<AccelString>>(
+        &mut self,
+        mgr: &mut SetRectMgr,
+        index: usize,
+        label: T,
+        msg: M,
+    ) {
         self.popup
             .inner
-            .replace(mgr, index, MenuEntry::new(label, ()));
+            .replace(mgr, index, MenuEntry::new(label, msg));
     }
 }
 
@@ -360,10 +381,10 @@ impl_scope! {
     #[widget{
         layout = single;
     }]
-    struct ComboPopup {
+    struct ComboPopup<M: Clone + Debug + 'static> {
         #[widget_core]
         core: CoreData,
         #[widget]
-        inner: PopupFrame<Column<MenuEntry<()>>>,
+        inner: PopupFrame<Column<MenuEntry<M>>>,
     }
 }

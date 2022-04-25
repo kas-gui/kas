@@ -12,7 +12,7 @@ use kas::event::Command;
 use kas::event::VirtualKeyCode as VK;
 use kas::prelude::*;
 use kas::resvg::Svg;
-use kas::widgets::*;
+use kas::widgets::{menu::MenuEntry, *};
 use kas::{dir::Right, Future};
 
 #[derive(Clone, Debug)]
@@ -263,8 +263,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             #[widget] rb2 = RadioBox::new("radio box &2", radio)
                 .with_state(true)
                 .on_select(|mgr| mgr.push_msg(Item::Radio(2))),
-            #[widget] cbb = ComboBox::new_from_iter(&["&One", "T&wo", "Th&ree"])
-                .on_select(|mgr, index| mgr.push_msg(Item::Combo((index + 1).cast()))),
+            #[widget] cbb = ComboBox::new(vec![
+                MenuEntry::new("&One", Item::Combo(1)),
+                MenuEntry::new("T&wo", Item::Combo(2)),
+                MenuEntry::new("Th&ree", Item::Combo(3)),
+            ]),
             #[widget] sd = Slider::<i32, Right>::new(0, 10, 1)
                 .with_value(0)
                 .map_msg(|msg: i32| Item::Slider(msg)),
