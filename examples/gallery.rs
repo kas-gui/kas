@@ -174,13 +174,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .build();
 
+    #[derive(Clone, Debug)]
+    struct MsgEdit;
+
     let popup_edit_box = make_widget! {
         #[widget{
             layout = row: *;
         }]
         struct {
             #[widget] label: StringLabel = Label::from("Use button to edit →"),
-            #[widget] edit = TextButton::new("&Edit"),
+            #[widget] edit = TextButton::new_msg("&Edit", MsgEdit),
             future: Option<Future<Option<String>>> = None,
         }
         impl Handler for Self {
@@ -200,8 +203,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     _ => Response::Unused,
                 }
             }
-            fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
-                if index == widget_index![self.edit] {
+            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+                if let Some(MsgEdit) = mgr.try_pop_msg() {
                     if self.future.is_none() {
                         let text = self.label.get_string();
                         let mut window = Window::new("Edit text", TextEditPopup::new(text));
