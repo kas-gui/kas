@@ -7,8 +7,8 @@
 
 use kas::dir::Down;
 use kas::prelude::*;
-use kas::updatable::filter::ContainsCaseInsensitive;
-use kas::widgets::view::{self, driver, SelectionMode, SelectionMsg, SingleView};
+use kas::updatable::{filter::ContainsCaseInsensitive, SingleData};
+use kas::widgets::view::{self, driver, SelectionMode, SelectionMsg};
 use kas::widgets::{EditBox, Label, RadioBox, RadioBoxGroup, ScrollBars, Window};
 
 const MONTHS: &[&str] = &[
@@ -45,7 +45,6 @@ fn main() -> kas::shell::Result<()> {
     let data = MONTHS;
     println!("filter-list: {} entries", data.len());
     let filter = ContainsCaseInsensitive::new("");
-    let filter_driver = driver::Widget::<EditBox>::default();
     type FilteredList = view::FilteredList<&'static [&'static str], ContainsCaseInsensitive>;
     type ListView = view::ListView<Down, FilteredList, driver::DefaultNav>;
     let filtered = FilteredList::new(data, filter.clone());
@@ -56,7 +55,8 @@ fn main() -> kas::shell::Result<()> {
         }]
         struct {
             #[widget] _ = selection_mode,
-            #[widget] filter = SingleView::new_with_driver(filter_driver, filter),
+            #[widget] filter = EditBox::new("")
+                .on_edit(move |s, mgr| filter.update(mgr, s.to_string())),
             #[widget] list: ScrollBars<ListView> =
                 ScrollBars::new(ListView::new(filtered)),
         }
