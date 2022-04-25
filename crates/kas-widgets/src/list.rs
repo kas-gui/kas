@@ -10,12 +10,6 @@ use kas::{layout, prelude::*};
 use std::collections::hash_map::{Entry, HashMap};
 use std::ops::{Index, IndexMut};
 
-/// Used to annotate messages from [`List`] children
-///
-/// Contains the child's index in the list.
-#[derive(Clone, Debug)]
-pub struct IndexMsg(pub usize);
-
 /// A generic row widget
 ///
 /// See documentation of [`List`] type. See also the [`row`](crate::row) macro.
@@ -69,10 +63,10 @@ impl_scope! {
     ///
     /// # Messages
     ///
-    /// When a child pushes a message, this widget pushes [`IndexMsg`] to
-    /// identify the child.
+    /// If a handler is specified via [`Self::on_message`] then this handler is
+    /// called when a child pushes a message.
     #[autoimpl(Clone where W: Clone)]
-    #[autoimpl(Debug)]
+    #[autoimpl(Debug ignore self.on_message)]
     #[autoimpl(Default where D: Default)]
     #[widget]
     pub struct List<D: Directional, W: Widget> {
@@ -84,6 +78,7 @@ impl_scope! {
         size_solved: bool,
         next: usize,
         id_map: HashMap<usize, usize>, // map key of WidgetId to index
+        on_message: Option<fn(&mut EventMgr, usize)>,
     }
 
     impl WidgetChildren for Self {
@@ -159,7 +154,9 @@ impl_scope! {
 
     impl Handler for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
-            mgr.push_msg(IndexMsg(index));
+            if let Some(f) = self.on_message {
+                f(mgr, index);
+            }
         }
     }
 
@@ -218,7 +215,27 @@ impl_scope! {
                 size_solved: false,
                 next: 0,
                 id_map: Default::default(),
+                on_message: None,
             }
+        }
+
+        /// Assign a child message handler
+        ///
+        /// This handler (if any) is called when a child pushes a message:
+        /// `f(mgr, index)`, where `index` is the child's index.
+        #[inline]
+        pub fn set_on_message(&mut self, f: Option<fn(&mut EventMgr, usize)>) {
+            self.on_message = f;
+        }
+
+        /// Assign a child message handler (inline style)
+        ///
+        /// This handler is called when a child pushes a message:
+        /// `f(mgr, index)`, where `index` is the child's index.
+        #[inline]
+        pub fn on_message(mut self, f: fn(&mut EventMgr, usize)) -> Self {
+            self.on_message = Some(f);
+            self
         }
 
         /// Edit the list of children directly

@@ -5,7 +5,7 @@
 
 //! Combobox
 
-use super::{menu::MenuEntry, Column, IndexMsg, PopupFrame};
+use super::{menu::MenuEntry, Column, PopupFrame};
 use kas::component::{Label, Mark};
 use kas::event::Command;
 use kas::layout;
@@ -14,6 +14,9 @@ use kas::theme::{MarkStyle, TextClass};
 use kas::WindowId;
 use std::fmt::Debug;
 use std::rc::Rc;
+
+#[derive(Clone, Debug)]
+struct IndexMsg(usize);
 
 impl_scope! {
     /// A pop-up multiple choice menu
@@ -239,7 +242,9 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
             layout_frame: Default::default(),
             popup: ComboPopup {
                 core: Default::default(),
-                inner: PopupFrame::new(Column::new(entries)),
+                inner: PopupFrame::new(
+                    Column::new(entries).on_message(|mgr, index| mgr.push_msg(IndexMsg(index))),
+                ),
             },
             active: 0,
             opening: false,

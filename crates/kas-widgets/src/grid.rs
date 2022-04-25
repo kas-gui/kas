@@ -5,7 +5,6 @@
 
 //! A grid widget
 
-use super::IndexMsg;
 use kas::layout::{DynGridStorage, GridChildInfo, GridDimensions};
 use kas::{layout, prelude::*};
 use std::ops::{Index, IndexMut};
@@ -48,10 +47,11 @@ impl_scope! {
     ///
     /// # Messages
     ///
-    /// When a child pushes a message, this widget pushes [`IndexMsg`] to
-    /// identify the child.
+    /// If a handler is specified via [`Self::on_message`] then this handler is
+    /// called when a child pushes a message.
     #[autoimpl(Default)]
-    #[derive(Clone, Debug)]
+    #[autoimpl(Debug ignore self.on_message)]
+    #[derive(Clone)]
     #[widget]
     pub struct Grid<W: Widget> {
         #[widget_core]
@@ -59,6 +59,7 @@ impl_scope! {
         widgets: Vec<(GridChildInfo, W)>,
         data: DynGridStorage,
         dim: GridDimensions,
+        on_message: Option<fn(&mut EventMgr, usize)>,
     }
 
     impl WidgetChildren for Self {
@@ -88,7 +89,9 @@ impl_scope! {
 
     impl Handler for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
-            mgr.push_msg(IndexMsg(index));
+            if let Some(f) = self.on_message {
+                f(mgr, index);
+            }
         }
     }
 }
@@ -102,6 +105,25 @@ impl<W: Widget> Grid<W> {
         };
         grid.calc_dim();
         grid
+    }
+
+    /// Assign a child message handler
+    ///
+    /// This handler (if any) is called when a child pushes a message:
+    /// `f(mgr, index)`, where `index` is the child's index.
+    #[inline]
+    pub fn set_on_message(&mut self, f: Option<fn(&mut EventMgr, usize)>) {
+        self.on_message = f;
+    }
+
+    /// Assign a child message handler (inline style)
+    ///
+    /// This handler is called when a child pushes a message:
+    /// `f(mgr, index)`, where `index` is the child's index.
+    #[inline]
+    pub fn on_message(mut self, f: fn(&mut EventMgr, usize)) -> Self {
+        self.on_message = Some(f);
+        self
     }
 
     /// Get grid dimensions
