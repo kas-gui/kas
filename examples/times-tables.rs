@@ -13,9 +13,7 @@ impl MatrixData for TableData {
     type Key = (usize, usize);
     type Item = usize;
 
-    fn update_handles(&self) -> Vec<UpdateHandle> {
-        vec![]
-    }
+    fn update_on_handles(&self, _: &mut EventState, _: &WidgetId) {}
     fn version(&self) -> u64 {
         self.0
     }

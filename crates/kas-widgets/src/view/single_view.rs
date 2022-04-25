@@ -110,9 +110,7 @@ impl_scope! {
 
     impl WidgetConfig for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
-            for handle in self.data.update_handles().into_iter() {
-                mgr.update_on_handle(handle, self.id());
-            }
+            self.data.update_on_handles(mgr.ev_state(), self.id_ref());
 
             // We set data now, after child is configured
             *mgr |= self.view.set(&mut self.child, self.data.get_cloned());

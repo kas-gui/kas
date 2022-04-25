@@ -5,9 +5,10 @@
 
 //! Traits for shared data objects
 
-use crate::event::{EventMgr, UpdateHandle};
-use crate::macros::autoimpl;
 #[allow(unused)] // doc links
+use crate::event::Event;
+use crate::event::{EventMgr, EventState, UpdateHandle};
+use crate::macros::autoimpl;
 use crate::WidgetId;
 #[allow(unused)] // doc links
 use std::cell::RefCell;
@@ -21,14 +22,16 @@ pub trait SingleData: Debug {
     /// Output type
     type Item: Clone + Debug + 'static;
 
-    /// Get any update handles used to notify of updates
+    /// Register `id` for updates on all used [`UpdateHandle`] values
     ///
     /// If the data supports updates through shared references (e.g. via an
     /// internal [`RefCell`]), then it should have an [`UpdateHandle`] for
     /// notifying other users of the data of the update. All [`UpdateHandle`]s
-    /// used should be returned here. View widgets should check the data version
-    /// and update their view when any of these [`UpdateHandle`]s is triggreed.
-    fn update_handles(&self) -> Vec<UpdateHandle>;
+    /// used will notify `id` of updates.
+    ///
+    /// View widgets should check the data version and update their view when
+    /// [`Event::HandleUpdate`] is received.
+    fn update_on_handles(&self, mgr: &mut EventState, id: &WidgetId);
 
     /// Get the data version
     ///
@@ -102,14 +105,16 @@ pub trait ListData: Debug {
     /// Item type
     type Item: Clone + Debug + 'static;
 
-    /// Get any update handles used to notify of updates
+    /// Register `id` for updates on all used [`UpdateHandle`] values
     ///
     /// If the data supports updates through shared references (e.g. via an
     /// internal [`RefCell`]), then it should have an [`UpdateHandle`] for
     /// notifying other users of the data of the update. All [`UpdateHandle`]s
-    /// used should be returned here. View widgets should check the data version
-    /// and update their view when any of these [`UpdateHandle`]s is triggreed.
-    fn update_handles(&self) -> Vec<UpdateHandle>;
+    /// used will notify `id` of updates.
+    ///
+    /// View widgets should check the data version and update their view when
+    /// [`Event::HandleUpdate`] is received.
+    fn update_on_handles(&self, mgr: &mut EventState, id: &WidgetId);
 
     /// Get the data version
     ///
@@ -229,14 +234,16 @@ pub trait MatrixData: Debug {
     /// Item type
     type Item: Clone + Debug + 'static;
 
-    /// Get any update handles used to notify of updates
+    /// Register `id` for updates on all used [`UpdateHandle`] values
     ///
     /// If the data supports updates through shared references (e.g. via an
     /// internal [`RefCell`]), then it should have an [`UpdateHandle`] for
     /// notifying other users of the data of the update. All [`UpdateHandle`]s
-    /// used should be returned here. View widgets should check the data version
-    /// and update their view when any of these [`UpdateHandle`]s is triggreed.
-    fn update_handles(&self) -> Vec<UpdateHandle>;
+    /// used will notify `id` of updates.
+    ///
+    /// View widgets should check the data version and update their view when
+    /// [`Event::HandleUpdate`] is received.
+    fn update_on_handles(&self, mgr: &mut EventState, id: &WidgetId);
 
     /// Get the data version
     ///

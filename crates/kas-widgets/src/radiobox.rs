@@ -30,9 +30,7 @@ impl_scope! {
 
     impl WidgetConfig for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
-            for handle in self.group.update_handles().into_iter() {
-                mgr.update_on_handle(handle, self.id());
-            }
+            self.group.update_on_handles(mgr.ev_state(), self.id_ref());
         }
 
         fn key_nav(&self) -> bool {

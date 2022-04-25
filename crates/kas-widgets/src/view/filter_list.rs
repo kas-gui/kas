@@ -68,10 +68,9 @@ impl<T: ListData + 'static, F: Filter<T::Item> + SingleData> ListData for Filter
     type Key = T::Key;
     type Item = T::Item;
 
-    fn update_handles(&self) -> Vec<UpdateHandle> {
-        let mut v = self.data.update_handles();
-        v.append(&mut self.filter.update_handles());
-        v
+    fn update_on_handles(&self, mgr: &mut EventState, id: &WidgetId) {
+        self.data.update_on_handles(mgr, id);
+        self.filter.update_on_handles(mgr, id);
     }
     fn version(&self) -> u64 {
         let ver = self.data.version() + self.filter.version();

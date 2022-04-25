@@ -5,8 +5,9 @@
 
 //! Filters over data
 
-use crate::event::UpdateHandle;
+use crate::event::{EventState, UpdateHandle};
 use crate::updatable::*;
+use crate::WidgetId;
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;
@@ -33,8 +34,8 @@ impl ContainsString {
 impl SingleData for ContainsString {
     type Item = String;
 
-    fn update_handles(&self) -> Vec<UpdateHandle> {
-        vec![(self.0).0]
+    fn update_on_handles(&self, mgr: &mut EventState, id: &WidgetId) {
+        mgr.update_on_handle((self.0).0, id.clone());
     }
     fn version(&self) -> u64 {
         (self.0).1.borrow().1
@@ -92,8 +93,8 @@ impl ContainsCaseInsensitive {
 impl SingleData for ContainsCaseInsensitive {
     type Item = String;
 
-    fn update_handles(&self) -> Vec<UpdateHandle> {
-        vec![(self.0).0]
+    fn update_on_handles(&self, mgr: &mut EventState, id: &WidgetId) {
+        mgr.update_on_handle((self.0).0, id.clone());
     }
     fn version(&self) -> u64 {
         (self.0).1.borrow().2

@@ -10,8 +10,7 @@
 //! If not, we can probably remove `ListDataMut` and other `*Mut` traits too.
 //! Probably this question requires seeing more examples/applications to answer.
 
-#[allow(unused)]
-use crate::event::EventMgr;
+use crate::event::EventState;
 use crate::event::UpdateHandle;
 use crate::updatable::*;
 use crate::WidgetId;
@@ -37,8 +36,8 @@ impl<T: Debug> SharedRc<T> {
 impl<T: Clone + Debug + 'static> SingleData for SharedRc<T> {
     type Item = T;
 
-    fn update_handles(&self) -> Vec<UpdateHandle> {
-        vec![(self.0).0]
+    fn update_on_handles(&self, mgr: &mut EventState, id: &WidgetId) {
+        mgr.update_on_handle((self.0).0, id.clone());
     }
     fn version(&self) -> u64 {
         (self.0).1.borrow().1
@@ -65,8 +64,8 @@ impl<T: ListDataMut> ListData for SharedRc<T> {
     type Key = T::Key;
     type Item = T::Item;
 
-    fn update_handles(&self) -> Vec<UpdateHandle> {
-        vec![(self.0).0]
+    fn update_on_handles(&self, mgr: &mut EventState, id: &WidgetId) {
+        mgr.update_on_handle((self.0).0, id.clone());
     }
     fn version(&self) -> u64 {
         let cell = (self.0).1.borrow();
@@ -119,8 +118,8 @@ impl<T: MatrixDataMut> MatrixData for SharedRc<T> {
     type Key = T::Key;
     type Item = T::Item;
 
-    fn update_handles(&self) -> Vec<UpdateHandle> {
-        vec![(self.0).0]
+    fn update_on_handles(&self, mgr: &mut EventState, id: &WidgetId) {
+        mgr.update_on_handle((self.0).0, id.clone());
     }
     fn version(&self) -> u64 {
         let cell = (self.0).1.borrow();

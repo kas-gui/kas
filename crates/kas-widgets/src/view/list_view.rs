@@ -452,9 +452,7 @@ impl_scope! {
         }
 
         fn configure(&mut self, mgr: &mut SetRectMgr) {
-            for handle in self.data.update_handles().into_iter() {
-                mgr.update_on_handle(handle, self.id());
-            }
+            self.data.update_on_handles(mgr.ev_state(), self.id_ref());
             mgr.register_nav_fallback(self.id());
         }
     }
