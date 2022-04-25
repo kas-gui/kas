@@ -103,7 +103,7 @@ impl_scope! {
     }
 
     impl<D: Directional> event::Handler for MenuBar<D> {
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(id_code) => {
                     if let Some(id) = self.delayed_open.clone() {

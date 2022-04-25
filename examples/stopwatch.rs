@@ -40,7 +40,7 @@ fn make_window() -> Box<dyn kas::Window> {
             }
         }
         impl Handler for Self {
-            fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+            fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
                 match event {
                     Event::TimerUpdate(0) => {
                         if let Some(start) = self.start {

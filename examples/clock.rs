@@ -127,7 +127,7 @@ impl_scope! {
 
     impl Handler for Clock {
         #[inline]
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(0) => {
                     self.now = Local::now();

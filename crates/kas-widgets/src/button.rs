@@ -139,7 +139,7 @@ impl_scope! {
             true
         }
 
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Activate => {
                     self.on_push.as_ref().map(|f| f(mgr));
@@ -296,7 +296,7 @@ impl_scope! {
             true
         }
 
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Activate => {
                     self.on_push.as_ref().map(|f| f(mgr));

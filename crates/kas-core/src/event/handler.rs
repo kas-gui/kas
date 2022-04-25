@@ -23,7 +23,7 @@ pub trait Handler: WidgetConfig {
     /// Generic handler: translate presses to activations
     ///
     /// If true, [`Event::PressStart`] (and other press events) will not be sent
-    /// to [`Handler::handle`]; instead [`Event::Activate`] will be sent on
+    /// to [`Handler::handle_event`]; instead [`Event::Activate`] will be sent on
     /// "click events".
     // NOTE: not an associated constant because these are not object-safe
     #[inline]
@@ -43,6 +43,8 @@ pub trait Handler: WidgetConfig {
 
     /// Handle an event sent to this widget
     ///
+    /// An [`Event`] is some form of user input, timer or notification.
+    ///
     /// This is the primary event handler for a widget. Secondary handlers are:
     ///
     /// -   If this method returns [`Response::Unused`], then
@@ -56,18 +58,18 @@ pub trait Handler: WidgetConfig {
     ///
     /// Default implementation: do nothing; return [`Response::Unused`].
     #[inline]
-    fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+    fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
         let _ = (mgr, event);
         Response::Unused
     }
 
     /// Handle an event sent to child `index` but left unhandled
     ///
-    /// Default implementation: call [`Self::handle`] with `event`.
+    /// Default implementation: call [`Self::handle_event`] with `event`.
     #[inline]
     fn handle_unused(&mut self, mgr: &mut EventMgr, index: usize, event: Event) -> Response {
         let _ = index;
-        self.handle(mgr, event)
+        self.handle_event(mgr, event)
     }
 
     /// Handler for messages from children/descendants
@@ -84,7 +86,7 @@ pub trait Handler: WidgetConfig {
     /// Handler for scrolling
     ///
     /// This is the last "event handling step" for each widget. If
-    /// [`Self::handle`], [`Self::handle_unused`], [`Self::on_message`] or any
+    /// [`Self::handle_event`], [`Self::handle_unused`], [`Self::on_message`] or any
     /// child's event handlers set a non-empty scroll value
     /// (via [`EventMgr::set_scroll`]), this gets called and the result set as
     /// the new scroll value.
@@ -132,6 +134,6 @@ impl<'a> EventMgr<'a> {
             response = Response::Used;
         }
 
-        response | widget.handle(self, event)
+        response | widget.handle_event(self, event)
     }
 }

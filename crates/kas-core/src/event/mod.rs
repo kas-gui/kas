@@ -18,7 +18,7 @@
 //! [`WidgetId`]:
 //!
 //! -   In case any widget encountered is disabled, [`Unused`] is returned
-//! -   If the target is found, [`Handler::handle`] is called. This method may
+//! -   If the target is found, [`Handler::handle_event`] is called. This method may
 //!     handle the event and may push a message to the stack via
 //!     [`EventMgr::push_msg`].
 //! -   If no target is found, a warning is logged and [`Unused`] returned

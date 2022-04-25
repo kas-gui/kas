@@ -432,12 +432,12 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     self.#inner.focus_on_key_nav()
                 }
                 #[inline]
-                fn handle(
+                fn handle_event(
                     &mut self,
                     mgr: &mut ::kas::event::EventMgr,
                     event: ::kas::event::Event,
                 ) -> ::kas::event::Response {
-                    self.#inner.handle(mgr, event)
+                    self.#inner.handle_event(mgr, event)
                 }
                 #[inline]
                 fn handle_unused(

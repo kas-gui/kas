@@ -85,7 +85,7 @@ impl_scope! {
         }
     }
     impl Handler for TextEditPopup {
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(Command::Escape, _) => self.close(mgr, false),
                 Event::Command(Command::Return, _) => self.close(mgr, true),
@@ -184,7 +184,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             future: Option<Future<Option<String>>> = None,
         }
         impl Handler for Self {
-            fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+            fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
                 match event {
                     Event::HandleUpdate { .. } => {
                         // There should be no other source of this event,

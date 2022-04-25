@@ -160,7 +160,7 @@ impl_scope! {
     }
 
     impl Handler for Self {
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Activate => {
                     if self.popup_id.is_none() {

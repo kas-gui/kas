@@ -614,7 +614,7 @@ impl_scope! {
     }
 
     impl Handler for Self {
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::HandleUpdate { .. } => {
                     let data_ver = self.data.version();
@@ -740,7 +740,7 @@ impl_scope! {
             if let Event::PressStart { source, coord, .. } = event {
                 if source.is_primary() {
                     // We request a grab with our ID, hence the
-                    // PressMove/PressEnd events are matched in handle().
+                    // PressMove/PressEnd events are matched in handle_event().
                     mgr.grab_press_unique(self.id(), source, coord, None);
                     self.press_phase = PressPhase::Start(coord);
                     self.press_target = self.widgets[index].key.clone();
@@ -749,7 +749,7 @@ impl_scope! {
                     Response::Unused
                 }
             } else {
-                self.handle(mgr, event)
+                self.handle_event(mgr, event)
             }
         }
 

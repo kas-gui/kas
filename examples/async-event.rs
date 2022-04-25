@@ -70,7 +70,7 @@ impl_scope! {
         }
     }
     impl Handler for ColourSquare {
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::HandleUpdate { .. } => {
                     // Note: event has `handle` and `payload` params.

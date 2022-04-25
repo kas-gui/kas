@@ -7,12 +7,12 @@
 
 use crate::geom::{Offset, Rect};
 
-/// Response type from [`Handler::handle`].
+/// Response type from [`Handler::handle_event`].
 ///
 /// This type wraps [`Handler::Msg`] allowing both custom messages and toolkit
 /// messages.
 ///
-/// [`Handler::handle`]: super::Handler::handle
+/// [`Handler::handle_event`]: super::Handler::handle_event
 /// [`Handler::Msg`]: super::Handler::Msg
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 #[must_use]
