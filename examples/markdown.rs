@@ -65,7 +65,7 @@ It also supports lists:
                     ScrollBarRegion::new(Label::new(Markdown::new(doc)?)),
             }
             impl Handler for Self {
-                fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
+                fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
                     if let Some(md) = mgr.try_pop_msg::<Markdown>() {
                         *mgr |= self.label.set_text(md);
                     }

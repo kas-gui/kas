@@ -49,7 +49,7 @@ impl_scope! {
     }
 
     impl kas::event::Handler for Self {
-        fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
+        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
             if let Some(_) = mgr.try_pop_msg::<MessageBoxOk>() {
                 mgr.send_action(TkAction::CLOSE);
             }

@@ -131,7 +131,7 @@ fn main() -> kas::shell::Result<()> {
                 #[widget] green = TextButton::new_msg("&Green", Item::Green),
             }
             impl Handler for Self {
-                fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
+                fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
                     if let Some(item) = mgr.try_pop_msg::<Item>() {
                         match item {
                             Item::White => BACKGROUND.with(|b| b.set(Rgba::WHITE)),

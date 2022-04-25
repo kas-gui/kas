@@ -308,7 +308,7 @@ impl_scope! {
             Response::Used
         }
 
-        fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
+        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
             if let Some(MsgPressFocus) = mgr.try_pop_msg() {
                 mgr.set_nav_focus(self.id(), false);
             } else if let Some(offset) = mgr.try_pop_msg() {

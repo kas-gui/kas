@@ -54,7 +54,7 @@ fn make_window() -> Box<dyn kas::Window> {
                     _ => Response::Unused,
                 }
             }
-            fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
                 if let Some(MsgReset) = mgr.try_pop_msg() {
                     self.saved = Duration::default();
                     self.start = None;

@@ -48,8 +48,8 @@ impl_scope! {
     ///
     /// # Messages
     ///
-    /// When a child pushes a message, the [`MatrixData::on_message`] method is
-    /// called. After calling [`MatrixData::on_message`], this widget attempts
+    /// When a child pushes a message, the [`MatrixData::handle_message`] method is
+    /// called. After calling [`MatrixData::handle_message`], this widget attempts
     /// to read and handle [`SelectMsg`].
     ///
     /// When selection is enabled and an item is selected or deselected, this
@@ -764,13 +764,13 @@ impl_scope! {
             }
         }
 
-        fn on_message(&mut self, mgr: &mut EventMgr, index: usize) {
+        fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
             let key = match self.widgets[index].key.clone() {
                 Some(k) => k,
                 None => return,
             };
 
-            if let Some(handle) = self.data.on_message(mgr, &key) {
+            if let Some(handle) = self.data.handle_message(mgr, &key) {
                 mgr.trigger_update(handle, 0);
             }
 

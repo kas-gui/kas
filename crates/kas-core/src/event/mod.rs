@@ -26,7 +26,7 @@
 //! Then, for each parent back to the root,
 //!
 //! -   If [`Unused`] was returned, [`Handler::handle_unused`] is called
-//! -   Otherwise, if the message stack is non-empty, [`Handler::on_message`]
+//! -   Otherwise, if the message stack is non-empty, [`Handler::handle_message`]
 //!     is called
 //!
 //! This traversal of the widget tree is fast: (`O(len)`) where `len` is the

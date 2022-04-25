@@ -158,7 +158,7 @@ impl_scope! {
     }
 
     impl Handler for Self {
-        fn on_message(&mut self, mgr: &mut EventMgr, index: usize) {
+        fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
             mgr.push_msg(IndexMsg(index));
         }
     }

@@ -77,7 +77,7 @@ pub trait SingleData: Debug {
     ///
     /// The default implementation attempts to extract a value of type
     /// [`Self::Item`], passing this to [`Self::update`] on success.
-    fn on_message(&self, mgr: &mut EventMgr) -> Option<UpdateHandle> {
+    fn handle_message(&self, mgr: &mut EventMgr) -> Option<UpdateHandle> {
         mgr.try_pop_msg().and_then(|value| self.update(value))
     }
 }
@@ -185,7 +185,7 @@ pub trait ListData: Debug {
     ///
     /// The default implementation attempts to extract a value of type
     /// [`Self::Item`], passing this to [`Self::update`] on success.
-    fn on_message(&self, mgr: &mut EventMgr, key: &Self::Key) -> Option<UpdateHandle> {
+    fn handle_message(&self, mgr: &mut EventMgr, key: &Self::Key) -> Option<UpdateHandle> {
         mgr.try_pop_msg().and_then(|value| self.update(key, value))
     }
 
@@ -310,7 +310,7 @@ pub trait MatrixData: Debug {
     ///
     /// The default implementation attempts to extract a value of type
     /// [`Self::Item`], passing this to [`Self::update`] on success.
-    fn on_message(&self, mgr: &mut EventMgr, key: &Self::Key) -> Option<UpdateHandle> {
+    fn handle_message(&self, mgr: &mut EventMgr, key: &Self::Key) -> Option<UpdateHandle> {
         mgr.try_pop_msg().and_then(|value| self.update(key, value))
     }
 

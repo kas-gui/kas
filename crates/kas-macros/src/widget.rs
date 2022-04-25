@@ -449,12 +449,12 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     self.#inner.handle_unused(mgr, index, event)
                 }
                 #[inline]
-                fn on_message(
+                fn handle_message(
                     &mut self,
                     mgr: &mut ::kas::event::EventMgr,
                     index: usize,
                 ) {
-                    self.#inner.on_message(mgr, index);
+                    self.#inner.handle_message(mgr, index);
                 }
                 #[inline]
                 fn scroll(

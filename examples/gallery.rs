@@ -92,7 +92,7 @@ impl_scope! {
                 _ => Response::Unused,
             }
         }
-        fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
+        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
             if let Some(MsgClose(commit)) = mgr.try_pop_msg() {
                 let _ = self.close(mgr, commit);
             }
@@ -200,7 +200,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     _ => Response::Unused,
                 }
             }
-            fn on_message(&mut self, mgr: &mut EventMgr, index: usize) {
+            fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
                 if index == widget_index![self.edit] {
                     if self.future.is_none() {
                         let text = self.label.get_string();
@@ -281,7 +281,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             #[widget] pu = popup_edit_box,
         }
         impl Handler for Self {
-            fn on_message(&mut self, mgr: &mut EventMgr, index: usize) {
+            fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
                 if index == widget_index![self.sc] {
                     if let Some(msg) = mgr.try_pop_msg::<i32>() {
                         let ratio = msg as f32 / self.sc.max_value() as f32;
@@ -320,7 +320,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         ScrollBarRegion::new(widgets),
             }
             impl Handler for Self {
-                fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
+                fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
                     if let Some(msg) = mgr.try_pop_msg::<Menu>() {
                         match msg {
                             Menu::Theme(name) => {

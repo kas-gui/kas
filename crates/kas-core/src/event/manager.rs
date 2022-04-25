@@ -618,7 +618,7 @@ impl<'a> EventMgr<'a> {
             if matches!(response, Response::Unused) {
                 response = widget.handle_unused(self, index, event);
             } else if self.has_msg() {
-                widget.on_message(self, index);
+                widget.handle_message(self, index);
             }
         } else if id == widget.id_ref() {
             response = self.handle_generic(widget, event);

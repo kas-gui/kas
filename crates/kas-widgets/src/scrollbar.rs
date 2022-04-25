@@ -264,7 +264,7 @@ impl_scope! {
             }
         }
 
-        fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
+        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
             if let Some(MsgPressFocus) = mgr.try_pop_msg() {
                 // Useless to us, but we should remove it.
             } else if let Some(offset) = mgr.try_pop_msg() {
@@ -633,7 +633,7 @@ impl_scope! {
     }
 
     impl Handler for Self {
-        fn on_message(&mut self, mgr: &mut EventMgr, index: usize) {
+        fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
             if index == widget_index![self.horiz_bar] {
                 if let Some(msg) = mgr.try_pop_msg() {
                     let offset = Offset(msg, self.inner.scroll_offset().1);

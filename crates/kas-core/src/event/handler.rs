@@ -51,7 +51,7 @@ pub trait Handler: WidgetConfig {
     ///     [`Handler::handle_unused`] is called on each parent until the event
     ///     is used (or the root widget is reached)
     /// -   If a message is left on the stack by [`EventMgr::push_msg`], then
-    ///     [`Handler::on_message`] is called on each parent until the stack is
+    ///     [`Handler::handle_message`] is called on each parent until the stack is
     ///     empty (failing to empty the stack results in a warning in the log).
     /// -   If any scroll state is set by [`EventMgr::set_scroll`], then
     ///     [`Handler::scroll`] is called for each parent
@@ -79,14 +79,14 @@ pub trait Handler: WidgetConfig {
     ///
     /// The default implementation does nothing.
     #[inline]
-    fn on_message(&mut self, mgr: &mut EventMgr, index: usize) {
+    fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
         let _ = (mgr, index);
     }
 
     /// Handler for scrolling
     ///
     /// This is the last "event handling step" for each widget. If
-    /// [`Self::handle_event`], [`Self::handle_unused`], [`Self::on_message`] or any
+    /// [`Self::handle_event`], [`Self::handle_unused`], [`Self::handle_message`] or any
     /// child's event handlers set a non-empty scroll value
     /// (via [`EventMgr::set_scroll`]), this gets called and the result set as
     /// the new scroll value.

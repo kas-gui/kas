@@ -264,7 +264,7 @@ impl_scope! {
     }
 
     impl Handler for Self {
-        fn on_message(&mut self, mgr: &mut EventMgr, index: usize) {
+        fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
             if (index & 1) == 1 {
                 if let Some(MsgPressFocus) = mgr.try_pop_msg() {
                     // Useless to us, but we should remove it.

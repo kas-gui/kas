@@ -24,7 +24,7 @@ impl_scope! {
     ///
     /// # Messages
     ///
-    /// When a child pushes a message, the [`SingleData::on_message`] method is
+    /// When a child pushes a message, the [`SingleData::handle_message`] method is
     /// called.
     #[autoimpl(Debug ignore self.view)]
     #[derive(Clone)]
@@ -135,8 +135,8 @@ impl_scope! {
             }
         }
 
-        fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
-            if let Some(handle) = self.data.on_message(mgr) {
+        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            if let Some(handle) = self.data.handle_message(mgr) {
                 mgr.trigger_update(handle, 0);
             }
         }

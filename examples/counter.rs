@@ -28,7 +28,7 @@ fn main() -> kas::shell::Result<()> {
             count: i32 = 0,
         }
         impl Handler for Self {
-            fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
                 if let Some(Increment(incr)) = mgr.try_pop_msg() {
                     self.count += incr;
                     *mgr |= self.display.set_string(self.count.to_string());

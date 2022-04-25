@@ -61,7 +61,7 @@ fn main() -> kas::shell::Result<()> {
                 ScrollBars::new(ListView::new(filtered)),
         }
         impl Handler for Self {
-            fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
                 if let Some(mode) = mgr.try_pop_msg() {
                     *mgr |= self.list.set_selection_mode(mode);
                 } else if let Some(msg) = mgr.try_pop_msg::<SelectionMsg<usize>>() {

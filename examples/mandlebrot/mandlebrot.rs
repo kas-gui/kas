@@ -463,7 +463,7 @@ impl_scope! {
         }
     }
     impl Handler for Self {
-        fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
+        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
             if let Some(iter) = mgr.try_pop_msg() {
                 self.mbrot.iter = iter;
                 *mgr |= self.iters.set_string(format!("{}", iter));

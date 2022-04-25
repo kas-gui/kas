@@ -178,7 +178,7 @@ impl_scope! {
             }
         }
 
-        fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
+        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
             self.close_menu(mgr, true);
         }
     }

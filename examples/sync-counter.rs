@@ -34,7 +34,7 @@ fn main() -> kas::shell::Result<()> {
                 #[widget] b_incr = TextButton::new_msg("+", Increment(1)),
             }
             impl Handler for Self {
-                fn on_message(&mut self, mgr: &mut EventMgr, _: usize) {
+                fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
                     if let Some(Increment(x)) = mgr.try_pop_msg() {
                         self.counter.update_value(mgr, |v| v + x);
                     }
