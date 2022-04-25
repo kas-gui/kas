@@ -118,12 +118,10 @@ impl ListData for MySharedData {
         Some((index, is_active, text))
     }
 
-    fn update(&self, _: &Self::Key, _: Self::Item) -> Option<UpdateHandle> {
-        unimplemented!()
-    }
+    fn update(&self, _: &mut EventMgr, _: &Self::Key, _: Self::Item) {}
 
-    fn handle_message(&self, mgr: &mut EventMgr, key: &Self::Key) -> Option<UpdateHandle> {
-        mgr.try_pop_msg().map(|msg| {
+    fn handle_message(&self, mgr: &mut EventMgr, key: &Self::Key) {
+        if let Some(msg) = mgr.try_pop_msg() {
             let mut data = self.data.borrow_mut();
             data.ver += 1;
             match msg {
@@ -135,8 +133,8 @@ impl ListData for MySharedData {
                 }
             }
             mgr.push_msg(Control::Update(data.get(data.active)));
-            self.handle
-        })
+            mgr.trigger_update(self.handle, 0);
+        }
     }
 
     fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {

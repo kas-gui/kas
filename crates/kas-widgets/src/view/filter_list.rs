@@ -102,7 +102,7 @@ impl<T: ListData + 'static, F: Filter<T::Item> + SingleData> ListData for Filter
             .filter(|item| self.filter.matches(item.clone()))
     }
 
-    fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle> {
+    fn update(&self, mgr: &mut EventMgr, key: &Self::Key, value: Self::Item) {
         // Filtering does not affect result, but does affect the view
         if self
             .data
@@ -111,10 +111,10 @@ impl<T: ListData + 'static, F: Filter<T::Item> + SingleData> ListData for Filter
             .unwrap_or(true)
         {
             // Not previously visible: no update occurs
-            return None;
+            return;
         }
 
-        self.data.update(key, value)
+        self.data.update(mgr, key, value);
     }
 
     fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key> {

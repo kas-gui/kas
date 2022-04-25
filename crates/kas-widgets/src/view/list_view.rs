@@ -159,9 +159,7 @@ impl_scope! {
         /// [`ListData::update`]). Other widgets sharing this data are notified
         /// of the update, if data is changed.
         pub fn set_value(&self, mgr: &mut EventMgr, key: &T::Key, data: T::Item) {
-            if let Some(handle) = self.data.update(key, data) {
-                mgr.trigger_update(handle, 0);
-            }
+            self.data.update(mgr, key, data);
         }
 
         /// Update shared data
@@ -757,9 +755,7 @@ impl_scope! {
                 None => return,
             };
 
-            if let Some(handle) = self.data.handle_message(mgr, &key) {
-                mgr.trigger_update(handle, 0);
-            }
+            self.data.handle_message(mgr, &key);
 
             if let Some(SelectMsg) = mgr.try_pop_msg() {
                 match self.sel_mode {

@@ -54,9 +54,7 @@ impl_scope! {
                         trace!("RadioBoxBare: set {}", self.id());
                         self.state = true;
                         mgr.redraw(self.id());
-                        if let Some(handle) = self.group.update(Some(self.id())) {
-                            mgr.trigger_update(handle, 0);
-                        }
+                        self.group.update(mgr, Some(self.id()));
                         self.on_select.as_ref().map(|f| f(mgr));
                     }
                     Response::Used
@@ -159,9 +157,7 @@ impl_scope! {
         /// Note: state will not update until the next draw.
         #[inline]
         pub fn unset_all(&self, mgr: &mut EventMgr) {
-            if let Some(handle) = self.group.update(None) {
-                mgr.trigger_update(handle, 0);
-            }
+            self.group.update(mgr, None);
         }
     }
 

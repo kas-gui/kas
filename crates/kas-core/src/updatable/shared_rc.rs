@@ -10,8 +10,8 @@
 //! If not, we can probably remove `ListDataMut` and other `*Mut` traits too.
 //! Probably this question requires seeing more examples/applications to answer.
 
-use crate::event::EventState;
 use crate::event::UpdateHandle;
+use crate::event::{EventMgr, EventState};
 use crate::updatable::*;
 use crate::WidgetId;
 use std::cell::RefCell;
@@ -47,11 +47,11 @@ impl<T: Clone + Debug + 'static> SingleData for SharedRc<T> {
         (self.0).1.borrow().0.to_owned()
     }
 
-    fn update(&self, value: Self::Item) -> Option<UpdateHandle> {
+    fn update(&self, mgr: &mut EventMgr, value: Self::Item) {
         let mut cell = (self.0).1.borrow_mut();
         cell.0 = value;
         cell.1 += 1;
-        Some((self.0).0)
+        mgr.trigger_update((self.0).0, 0);
     }
 }
 impl<T: Clone + Debug + 'static> SingleDataMut for SharedRc<T> {
@@ -91,11 +91,11 @@ impl<T: ListDataMut> ListData for SharedRc<T> {
         (self.0).1.borrow().0.get_cloned(key)
     }
 
-    fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle> {
+    fn update(&self, mgr: &mut EventMgr, key: &Self::Key, value: Self::Item) {
         let mut cell = (self.0).1.borrow_mut();
         cell.0.set(key, value);
         cell.1 += 1;
-        Some((self.0).0)
+        mgr.trigger_update((self.0).0, 0);
     }
 
     fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
@@ -147,11 +147,11 @@ impl<T: MatrixDataMut> MatrixData for SharedRc<T> {
         (self.0).1.borrow().0.get_cloned(key)
     }
 
-    fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle> {
+    fn update(&self, mgr: &mut EventMgr, key: &Self::Key, value: Self::Item) {
         let mut cell = (self.0).1.borrow_mut();
         cell.0.set(key, value);
         cell.1 += 1;
-        Some((self.0).0)
+        mgr.trigger_update((self.0).0, 0);
     }
 
     fn col_iter_vec(&self, limit: usize) -> Vec<Self::ColKey> {

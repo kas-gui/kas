@@ -6,7 +6,7 @@
 //! Impls for data traits
 
 use super::*;
-use crate::event::{EventState, UpdateHandle};
+use crate::event::{EventMgr, EventState};
 use crate::WidgetId;
 use std::fmt::Debug;
 
@@ -38,9 +38,8 @@ impl<T: Clone + Debug + 'static> ListData for [T] {
         self.get(*key).cloned()
     }
 
-    fn update(&self, _: &Self::Key, _: Self::Item) -> Option<UpdateHandle> {
+    fn update(&self, _: &mut EventMgr, _: &Self::Key, _: Self::Item) {
         // Note: plain [T] does not support update, but SharedRc<[T]> does.
-        None
     }
 
     fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {

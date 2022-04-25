@@ -42,9 +42,7 @@ impl MatrixData for TableData {
         self.contains(key).then(|| (key.0 + 1) * (key.1 + 1))
     }
 
-    fn update(&self, _: &Self::Key, _: Self::Item) -> Option<UpdateHandle> {
-        None
-    }
+    fn update(&self, _: &mut EventMgr, _: &Self::Key, _: Self::Item) {}
 
     fn col_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::ColKey> {
         (start..(start + limit)).collect()

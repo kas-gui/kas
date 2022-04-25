@@ -94,9 +94,7 @@ impl_scope! {
         /// [`SingleData::update`]). Other widgets sharing this data are notified
         /// of the update, if data is changed.
         pub fn set_value(&self, mgr: &mut EventMgr, data: T::Item) {
-            if let Some(handle) = self.data.update(data) {
-                mgr.trigger_update(handle, 0);
-            }
+            self.data.update(mgr, data);
         }
 
         /// Update shared data
@@ -134,9 +132,7 @@ impl_scope! {
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-            if let Some(handle) = self.data.handle_message(mgr) {
-                mgr.trigger_update(handle, 0);
-            }
+            self.data.handle_message(mgr);
         }
     }
 }

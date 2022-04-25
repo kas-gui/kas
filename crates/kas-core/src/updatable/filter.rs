@@ -5,7 +5,7 @@
 
 //! Filters over data
 
-use crate::event::{EventState, UpdateHandle};
+use crate::event::{EventMgr, EventState, UpdateHandle};
 use crate::updatable::*;
 use crate::WidgetId;
 use std::cell::RefCell;
@@ -44,11 +44,11 @@ impl SingleData for ContainsString {
     fn get_cloned(&self) -> Self::Item {
         (self.0).1.borrow().0.to_owned()
     }
-    fn update(&self, value: Self::Item) -> Option<UpdateHandle> {
+    fn update(&self, mgr: &mut EventMgr, value: Self::Item) {
         let mut cell = (self.0).1.borrow_mut();
         cell.0 = value;
         cell.1 += 1;
-        Some((self.0).0)
+        mgr.trigger_update((self.0).0, 0);
     }
 }
 impl SingleDataMut for ContainsString {
@@ -103,12 +103,12 @@ impl SingleData for ContainsCaseInsensitive {
     fn get_cloned(&self) -> Self::Item {
         (self.0).1.borrow().0.clone()
     }
-    fn update(&self, value: Self::Item) -> Option<UpdateHandle> {
+    fn update(&self, mgr: &mut EventMgr, value: Self::Item) {
         let mut cell = (self.0).1.borrow_mut();
         cell.0 = value;
         cell.1 = cell.0.to_uppercase();
         cell.2 += 1;
-        Some((self.0).0)
+        mgr.trigger_update((self.0).0, 0);
     }
 }
 impl SingleDataMut for ContainsCaseInsensitive {
