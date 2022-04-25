@@ -39,17 +39,17 @@ enum Button {
 
 #[derive(Clone, Debug)]
 enum EntryMsg {
-    Select,
-    Update(String),
+    Select(usize),
+    Update(usize, String),
 }
 
 // TODO: it would be nicer to use EditBox::new(..).on_edit(..), but that produces
 // an object with unnamable type, which is a problem.
 #[derive(Clone, Debug)]
-struct ListEntryGuard;
+struct ListEntryGuard(usize);
 impl EditGuard for ListEntryGuard {
     fn edit(entry: &mut EditField<Self>, mgr: &mut EventMgr) {
-        mgr.push_msg(EntryMsg::Update(entry.get_string()));
+        mgr.push_msg(EntryMsg::Update(entry.guard.0, entry.get_string()));
     }
 }
 
@@ -82,13 +82,15 @@ impl_scope! {
 
 impl ListEntry {
     fn new(n: usize, active: bool) -> Self {
+        // Note: we embed `n` into messages here. A possible alternative: use
+        // List::on_message to pop the message and push `(usize, EntryMsg)`.
         ListEntry {
             core: Default::default(),
             label: Label::new(format!("Entry number {}", n + 1)),
             radio: RadioBox::new("display this entry", RADIO.with(|g| g.clone()))
                 .with_state(active)
-                .on_select(|mgr| mgr.push_msg(EntryMsg::Select)),
-            entry: EditBox::new(format!("Entry #{}", n + 1)).with_guard(ListEntryGuard),
+                .on_select(move |mgr| mgr.push_msg(EntryMsg::Select(n))),
+            entry: EditBox::new(format!("Entry #{}", n + 1)).with_guard(ListEntryGuard(n)),
         }
     }
 }
@@ -153,52 +155,39 @@ fn main() -> kas::shell::Result<()> {
                 #[widget] _ = Label::new("Demonstration of dynamic widget creation / deletion"),
                 #[widget] _ = controls,
                 #[widget] _ = Label::new("Contents of selected entry:"),
-                #[widget] display: StringLabel = Label::from("Entry #0"),
+                #[widget] display: StringLabel = Label::from("Entry #1"),
                 #[widget] _ = Separator::new(),
                 #[widget] list: ScrollBarRegion<List<Direction, ListEntry>> =
                     ScrollBarRegion::new(list).with_bars(false, true),
                 active: usize = 0,
             }
             impl Handler for Self {
-                fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
+                fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
                     if let Some(control) = mgr.try_pop_msg() {
                         match control {
                             Control::Set(len) => {
                                 let active = self.active;
-                                let old_len = self.list.len();
                                 mgr.set_rect_mgr(|mgr| {
                                     self.list.inner_mut()
                                         .resize_with(mgr, len, |n| ListEntry::new(n, n == active))
                                 });
-                                if active >= old_len && active < len {
-                                    let _ = self.set_radio(mgr, active, EntryMsg::Select);
-                                }
                             }
                             Control::Dir => {
                                 let dir = self.list.direction().reversed();
                                 *mgr |= self.list.set_direction(dir);
                             }
                         }
-                    } else if index == widget_index![self.list] {
-                        if let Some(n) = mgr.try_pop_msg::<usize>() {
-                            if let Some(msg) = mgr.try_pop_msg() {
-                                self.set_radio(mgr, n, msg);
-                            }
-                        }
-                    }
-                }
-            }
-            impl Self {
-                fn set_radio(&mut self, mgr: &mut EventMgr, n: usize, msg: EntryMsg) {
-                    match msg {
-                        EntryMsg::Select => {
-                            self.active = n;
-                            let text = self.list[n].entry.get_string();
-                            *mgr |= self.display.set_string(text);
-                        }
-                        EntryMsg::Update(text) => {
-                            if n == self.active {
+                    } else if let Some(msg) = mgr.try_pop_msg() {
+                        match msg {
+                            EntryMsg::Select(n) => {
+                                self.active = n;
+                                let text = self.list[n].entry.get_string();
                                 *mgr |= self.display.set_string(text);
+                            }
+                            EntryMsg::Update(n, text) => {
+                                if n == self.active {
+                                    *mgr |= self.display.set_string(text);
+                                }
                             }
                         }
                     }
