@@ -96,7 +96,7 @@ pub trait Handler: WidgetConfig {
     ///
     /// The default implementation simply returns `scroll`.
     #[inline]
-    fn scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) -> Scroll {
+    fn handle_scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) -> Scroll {
         let _ = mgr;
         scroll
     }

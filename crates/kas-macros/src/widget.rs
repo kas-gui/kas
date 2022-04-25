@@ -457,12 +457,12 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     self.#inner.handle_message(mgr, index);
                 }
                 #[inline]
-                fn scroll(
+                fn handle_scroll(
                     &mut self,
                     mgr: &mut ::kas::event::EventMgr,
                     scroll: ::kas::event::Scroll,
                 ) -> ::kas::event::Scroll {
-                    self.#inner.scroll(mgr, scroll)
+                    self.#inner.handle_scroll(mgr, scroll)
                 }
             }
         } else {

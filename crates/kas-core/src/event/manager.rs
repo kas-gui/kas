@@ -628,7 +628,7 @@ impl<'a> EventMgr<'a> {
         }
 
         if self.scroll != Scroll::None {
-            self.scroll = widget.scroll(self, self.scroll);
+            self.scroll = widget.handle_scroll(self, self.scroll);
         }
         response
     }
