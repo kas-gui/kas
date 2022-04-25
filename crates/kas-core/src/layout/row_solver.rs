@@ -136,7 +136,7 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
             let max_size = total.max_size();
             let align = if is_horiz { align.horiz } else { align.vert };
             let align = align.unwrap_or(Align::Default);
-            if rect.size.0 > max_size {
+            if width > max_size {
                 let extra = width - max_size;
                 width = max_size;
                 let offset = match align {

@@ -105,7 +105,7 @@ impl_scope! {
             let line_height = size_mgr.line_height(TextClass::Label(false));
             rules.reduce_min_to(line_height);
 
-            // We use a to contain the content margin within the scrollable area.
+            // We use a frame to contain the content margin within the scrollable area.
             let frame = kas::layout::FrameRules::new(0, 0, 0, (0, 0));
             let (rules, offset, size) = frame.surround_with_margin(rules);
             self.offset.set_component(axis, offset);
