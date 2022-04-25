@@ -138,7 +138,9 @@ impl_scope! {
                 Event::Activate if self.editable => {
                     self.state = !self.state;
                     mgr.redraw(self.id());
-                    self.on_toggle.as_ref().map(|f| f(mgr, self.state));
+                    if let Some(f) = self.on_toggle.as_ref() {
+                        f(mgr, self.state);
+                    }
                     Response::Used
                 }
                 _ => Response::Unused,

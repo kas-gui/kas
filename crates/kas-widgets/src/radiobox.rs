@@ -55,7 +55,9 @@ impl_scope! {
                         self.state = true;
                         mgr.redraw(self.id());
                         self.group.update(mgr, Some(self.id()));
-                        self.on_select.as_ref().map(|f| f(mgr));
+                        if let Some(f) = self.on_select.as_ref() {
+                            f(mgr);
+                        }
                     }
                     Response::Used
                 }

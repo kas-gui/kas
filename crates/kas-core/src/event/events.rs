@@ -210,10 +210,9 @@ impl std::ops::Add<Offset> for Event {
     type Output = Self;
 
     #[inline]
-    fn add(self, offset: Offset) -> Event {
-        let mut clone = self.clone();
-        clone += offset;
-        clone
+    fn add(mut self, offset: Offset) -> Event {
+        self += offset;
+        self
     }
 }
 
