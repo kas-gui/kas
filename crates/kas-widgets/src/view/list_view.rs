@@ -711,15 +711,15 @@ impl_scope! {
                         // TODO: C::ViewUp, ...
                         _ => None,
                     };
-                    return if let Some(index) = data {
-                        // Set nav focus to index and update scroll position
-                        let (rect, action) = self.scroll.focus_rect(solver.rect(index), self.core.rect);
+                    return if let Some(i_data) = data {
+                        // Set nav focus to i_data and update scroll position
+                        let (rect, action) = self.scroll.focus_rect(solver.rect(i_data), self.core.rect);
                         if !action.is_empty() {
                             *mgr |= action;
                             mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
                         }
-                        let len = usize::conv(self.cur_len);
-                        mgr.set_nav_focus(self.widgets[index % len].widget.id(), true);
+                        let index = i_data % usize::conv(self.cur_len);
+                        mgr.next_nav_focus(&mut self.widgets[index].widget, false, true);
                         mgr.set_scroll(Scroll::Rect(rect));
                         Response::Used
                     } else {

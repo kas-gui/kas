@@ -722,15 +722,18 @@ impl_scope! {
                             solver = mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
                         }
 
-                        let id = self.widgets[solver.data_to_child(ci, ri)].widget.id();
+                        let index = solver.data_to_child(ci, ri);
                         #[cfg(debug_assertions)] {
                             let rk = &self.data.row_iter_vec_from(ri, 1)[0];
                             let ck = &self.data.col_iter_vec_from(ci, 1)[0];
                             let key = T::make_key(ck, rk);
-                            assert_eq!(id, self.data.make_id(self.id_ref(), &key));
+                            assert_eq!(
+                                self.widgets[index].widget.id(),
+                                self.data.make_id(self.id_ref(), &key),
+                            );
                         }
 
-                        mgr.set_nav_focus(id, true);
+                        mgr.next_nav_focus(&mut self.widgets[index].widget, false, true);
                         mgr.set_scroll(Scroll::Rect(rect));
                         Response::Used
                     } else {
