@@ -30,10 +30,8 @@ use std::marker::PhantomData;
 /// -   [`Default`](struct@Default) will choose a sensible widget to view the data
 /// -   [`DefaultNav`] will choose a sensible widget to view the data
 pub trait Driver<T>: Debug + 'static {
-    /// Type of message sent by the widget
-    type Msg;
     /// Type of the widget used to view data
-    type Widget: kas::Widget<Msg = Self::Msg>;
+    type Widget: kas::Widget;
 
     /// Construct a new widget with no data
     ///
@@ -45,21 +43,6 @@ pub trait Driver<T>: Debug + 'static {
     /// The widget may expect `configure` to be called at least once before data
     /// is set and to have `set_rect` called after each time data is set.
     fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction;
-    /// Get data from the view
-    ///
-    /// This method optionally constructs and returns `data` from the widget.
-    /// It is only useful on interactive widgets (e.g. a slider or edit box).
-    ///
-    /// When the constructed widget emits [`Response::Update`] or
-    /// [`Response::Msg`], the "view" (e.g. `SingleView`) calls this method; if
-    /// a data item is returned, then then it is passed to the data model's
-    /// `update` method to update the model.
-    ///
-    /// Note that, additionally, when [`Response::Msg`] is returned,
-    /// [`kas::updatable::Updatable`] may be used to observe the message.
-    /// Often it will be sufficient to implement custom handling/update logic
-    /// in only one of these places.
-    fn get(&self, widget: &Self::Widget) -> Option<T>;
 }
 
 /// Default view widget constructor
@@ -85,7 +68,6 @@ pub struct DefaultNav;
 macro_rules! impl_via_to_string {
     ($t:ty) => {
         impl Driver<$t> for Default {
-            type Msg = VoidMsg;
             type Widget = Label<String>;
             fn make(&self) -> Self::Widget where $t: std::default::Default {
                 Label::new("".to_string())
@@ -93,10 +75,8 @@ macro_rules! impl_via_to_string {
             fn set(&self, widget: &mut Self::Widget, data: $t) -> TkAction {
                 widget.set_string(data.to_string())
             }
-            fn get(&self, _: &Self::Widget) -> Option<$t> { None }
         }
         impl Driver<$t> for DefaultNav {
-            type Msg = VoidMsg;
             type Widget = NavFrame<Label<String>>;
             fn make(&self) -> Self::Widget where $t: std::default::Default {
                 NavFrame::new(Label::new("".to_string()))
@@ -104,7 +84,6 @@ macro_rules! impl_via_to_string {
             fn set(&self, widget: &mut Self::Widget, data: $t) -> TkAction {
                 widget.set_string(data.to_string())
             }
-            fn get(&self, _: &Self::Widget) -> Option<$t> { None }
         }
     };
     ($t:ty, $($tt:ty),+) => {
@@ -118,30 +97,22 @@ impl_via_to_string!(u8, u16, u32, u64, u128, usize);
 impl_via_to_string!(f32, f64);
 
 impl Driver<bool> for Default {
-    type Msg = VoidMsg;
-    type Widget = CheckBoxBare<VoidMsg>;
+    type Widget = CheckBoxBare;
     fn make(&self) -> Self::Widget {
         CheckBoxBare::new().with_editable(false)
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
-    }
-    fn get(&self, widget: &Self::Widget) -> Option<bool> {
-        Some(widget.get_bool())
     }
 }
 
 impl Driver<bool> for DefaultNav {
-    type Msg = VoidMsg;
-    type Widget = CheckBoxBare<VoidMsg>;
+    type Widget = CheckBoxBare;
     fn make(&self) -> Self::Widget {
         CheckBoxBare::new().with_editable(false)
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
-    }
-    fn get(&self, widget: &Self::Widget) -> Option<bool> {
-        Some(widget.get_bool())
     }
 }
 
@@ -165,7 +136,6 @@ impl<T> Driver<T> for Widget<<Default as Driver<T>>::Widget>
 where
     Default: Driver<T>,
 {
-    type Msg = <Default as Driver<T>>::Msg;
     type Widget = <Default as Driver<T>>::Widget;
     fn make(&self) -> Self::Widget {
         Default.make()
@@ -173,13 +143,9 @@ where
     fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction {
         Default.set(widget, data)
     }
-    fn get(&self, widget: &Self::Widget) -> Option<T> {
-        Default.get(widget)
-    }
 }
 
 impl<G: EditGuard + std::default::Default> Driver<String> for Widget<EditField<G>> {
-    type Msg = G::Msg;
     type Widget = EditField<G>;
     fn make(&self) -> Self::Widget {
         let guard = G::default();
@@ -188,12 +154,8 @@ impl<G: EditGuard + std::default::Default> Driver<String> for Widget<EditField<G
     fn set(&self, widget: &mut Self::Widget, data: String) -> TkAction {
         widget.set_string(data)
     }
-    fn get(&self, widget: &Self::Widget) -> Option<String> {
-        Some(widget.get_string())
-    }
 }
 impl<G: EditGuard + std::default::Default> Driver<String> for Widget<EditBox<G>> {
-    type Msg = G::Msg;
     type Widget = EditBox<G>;
     fn make(&self) -> Self::Widget {
         let guard = G::default();
@@ -202,22 +164,15 @@ impl<G: EditGuard + std::default::Default> Driver<String> for Widget<EditBox<G>>
     fn set(&self, widget: &mut Self::Widget, data: String) -> TkAction {
         widget.set_string(data)
     }
-    fn get(&self, widget: &Self::Widget) -> Option<String> {
-        Some(widget.get_string())
-    }
 }
 
 impl<D: Directional + std::default::Default> Driver<f32> for Widget<ProgressBar<D>> {
-    type Msg = VoidMsg;
     type Widget = ProgressBar<D>;
     fn make(&self) -> Self::Widget {
         ProgressBar::new()
     }
     fn set(&self, widget: &mut Self::Widget, data: f32) -> TkAction {
         widget.set_value(data)
-    }
-    fn get(&self, widget: &Self::Widget) -> Option<f32> {
-        Some(widget.value())
     }
 }
 
@@ -234,16 +189,12 @@ impl CheckBox {
     }
 }
 impl Driver<bool> for CheckBox {
-    type Msg = bool;
-    type Widget = crate::CheckBox<bool>;
+    type Widget = crate::CheckBox;
     fn make(&self) -> Self::Widget {
-        crate::CheckBox::new(self.label.clone()).on_toggle(|_, state| Some(state))
+        crate::CheckBox::new(self.label.clone()).on_toggle(|mgr, state| mgr.push_msg(state))
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
-    }
-    fn get(&self, widget: &Self::Widget) -> Option<bool> {
-        Some(widget.get_bool())
     }
 }
 
@@ -259,16 +210,12 @@ impl RadioBoxBare {
     }
 }
 impl Driver<bool> for RadioBoxBare {
-    type Msg = bool;
-    type Widget = crate::RadioBoxBare<bool>;
+    type Widget = crate::RadioBoxBare;
     fn make(&self) -> Self::Widget {
-        crate::RadioBoxBare::new(self.group.clone()).on_select(|_| Some(true))
+        crate::RadioBoxBare::new(self.group.clone()).on_select(|mgr| mgr.push_msg(true))
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
-    }
-    fn get(&self, widget: &Self::Widget) -> Option<bool> {
-        Some(widget.get_bool())
     }
 }
 
@@ -286,16 +233,13 @@ impl RadioBox {
     }
 }
 impl Driver<bool> for RadioBox {
-    type Msg = bool;
-    type Widget = crate::RadioBox<bool>;
+    type Widget = crate::RadioBox;
     fn make(&self) -> Self::Widget {
-        crate::RadioBox::new(self.label.clone(), self.group.clone()).on_select(|_| Some(true))
+        crate::RadioBox::new(self.label.clone(), self.group.clone())
+            .on_select(|mgr| mgr.push_msg(true))
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
-    }
-    fn get(&self, widget: &Self::Widget) -> Option<bool> {
-        Some(widget.get_bool())
     }
 }
 
@@ -330,15 +274,11 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
     }
 }
 impl<T: SliderType, D: Directional> Driver<T> for Slider<T, D> {
-    type Msg = T;
     type Widget = crate::Slider<T, D>;
     fn make(&self) -> Self::Widget {
         crate::Slider::new_with_direction(self.min, self.max, self.step, self.direction)
     }
     fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction {
         widget.set_value(data)
-    }
-    fn get(&self, widget: &Self::Widget) -> Option<T> {
-        Some(widget.value())
     }
 }

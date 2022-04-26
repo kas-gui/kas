@@ -19,8 +19,8 @@ pub trait Boxed<T: ?Sized> {
     fn boxed(self) -> Box<T>;
 }
 
-impl<W: Widget + Sized> Boxed<dyn Widget<Msg = W::Msg>> for W {
-    fn boxed(self) -> Box<dyn Widget<Msg = W::Msg>> {
+impl<W: Widget + Sized> Boxed<dyn Widget> for W {
+    fn boxed(self) -> Box<dyn Widget> {
         Box::new(self)
     }
 }

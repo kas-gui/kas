@@ -5,7 +5,6 @@
 
 //! Demonstration of widget and text layouts
 
-use kas::event::VoidMsg;
 use kas::macros::make_widget;
 use kas::widgets::{CheckBoxBare, EditBox, Label, ScrollLabel, Window};
 
@@ -27,7 +26,6 @@ fn main() -> kas::shell::Result<()> {
                     1..3, 2..4: align(stretch): self.crasit;
                     0, 3: self.edit;
                 };
-                msg = VoidMsg;
             }]
             struct {
                 #[widget] lipsum = Label::new(lipsum),

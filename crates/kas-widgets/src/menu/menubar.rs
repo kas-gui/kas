@@ -18,11 +18,11 @@ impl_scope! {
     /// menus.
     #[autoimpl(Debug where D: trait)]
     #[widget]
-    pub struct MenuBar<M: 'static, D: Directional = kas::dir::Right> {
+    pub struct MenuBar<D: Directional = kas::dir::Right> {
         #[widget_core]
         core: CoreData,
         direction: D,
-        widgets: Vec<SubMenu<M, D::Flipped>>,
+        widgets: Vec<SubMenu<D::Flipped>>,
         layout_store: layout::DynRowStorage,
         delayed_open: Option<WidgetId>,
     }
@@ -33,14 +33,14 @@ impl_scope! {
         /// Note: it appears that `MenuBar::new(..)` causes a type inference error,
         /// however `MenuBar::<_>::new(..)` does not. Alternatively one may specify
         /// the direction explicitly: `MenuBar::<_, kas::dir::Right>::new(..)`.
-        pub fn new(menus: Vec<SubMenu<M, D::Flipped>>) -> Self {
+        pub fn new(menus: Vec<SubMenu<D::Flipped>>) -> Self {
             MenuBar::new_with_direction(D::default(), menus)
         }
     }
 
     impl Self {
         /// Construct a menubar with explicit direction
-        pub fn new_with_direction(direction: D, mut menus: Vec<SubMenu<M, D::Flipped>>) -> Self {
+        pub fn new_with_direction(direction: D, mut menus: Vec<SubMenu<D::Flipped>>) -> Self {
             for menu in menus.iter_mut() {
                 menu.key_nav = false;
             }
@@ -53,7 +53,7 @@ impl_scope! {
             }
         }
 
-        pub fn builder() -> MenuBuilder<M, D> {
+        pub fn builder() -> MenuBuilder<D> {
             MenuBuilder { menus: vec![] }
         }
     }
@@ -64,11 +64,11 @@ impl_scope! {
             self.widgets.len()
         }
         #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn WidgetConfig> {
+        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
             self.widgets.get(index).map(|w| w.as_widget())
         }
         #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
+        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
             self.widgets.get_mut(index).map(|w| w.as_widget_mut())
         }
     }
@@ -102,10 +102,8 @@ impl_scope! {
         }
     }
 
-    impl<M: 'static, D: Directional> event::Handler for MenuBar<M, D> {
-        type Msg = M;
-
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
+    impl<D: Directional> event::Handler for MenuBar<D> {
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(id_code) => {
                     if let Some(id) = self.delayed_open.clone() {
@@ -189,7 +187,7 @@ impl_scope! {
                     if !self.rect().contains(coord) {
                         // not on the menubar
                         self.delayed_open = None;
-                        return self.send(mgr, id, Event::Activate);
+                        return mgr.send(self, id, Event::Activate);
                     }
                     Response::Used
                 }
@@ -227,32 +225,6 @@ impl_scope! {
         }
     }
 
-    impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            if self.eq_id(&id) {
-                return self.handle(mgr, event);
-            } else if let Some(index) = id.next_key_after(self.id_ref()) {
-                if let Some(widget) = self.widgets.get_mut(index) {
-                    return match widget.send(mgr, id.clone(), event.clone()) {
-                        Response::Unused => self.handle(mgr, event),
-                        r => r.try_into().unwrap_or_else(|msg| {
-                            log::trace!(
-                                "Received by {} from {}: {:?}",
-                                self.id(),
-                                id,
-                                kas::util::TryFormat(&msg)
-                            );
-                            Response::Msg(msg)
-                        }),
-                    };
-                }
-            }
-
-            debug_assert!(false, "SendEvent::send: bad WidgetId");
-            Response::Unused
-        }
-    }
-
     impl Self {
         fn set_menu_path(&mut self, mgr: &mut EventMgr, target: Option<&WidgetId>, set_focus: bool) {
             log::trace!("{}::set_menu_path: target={:?}, set_focus={}", self.identify(), target, set_focus);
@@ -267,17 +239,17 @@ impl_scope! {
 /// Builder for [`MenuBar`]
 ///
 /// Access through [`MenuBar::builder`].
-pub struct MenuBuilder<M: 'static, D: Directional> {
-    menus: Vec<SubMenu<M, D::Flipped>>,
+pub struct MenuBuilder<D: Directional> {
+    menus: Vec<SubMenu<D::Flipped>>,
 }
 
-impl<M: 'static, D: Directional> MenuBuilder<M, D> {
+impl<D: Directional> MenuBuilder<D> {
     /// Add a new menu
     ///
     /// The menu's direction is determined via [`Directional::Flipped`].
     pub fn menu<F>(mut self, label: impl Into<AccelString>, f: F) -> Self
     where
-        F: FnOnce(SubMenuBuilder<M>),
+        F: FnOnce(SubMenuBuilder),
         D::Flipped: Default,
     {
         let mut menu = Vec::new();
@@ -287,7 +259,7 @@ impl<M: 'static, D: Directional> MenuBuilder<M, D> {
     }
 
     /// Finish, yielding a [`MenuBar`]
-    pub fn build(self) -> MenuBar<M, D>
+    pub fn build(self) -> MenuBar<D>
     where
         D: Default,
     {

@@ -7,7 +7,7 @@
 
 use std::fmt::Debug;
 
-use kas::event::{CursorIcon, PressSource};
+use kas::event::{CursorIcon, MsgPressFocus, PressSource};
 use kas::prelude::*;
 
 impl_scope! {
@@ -26,6 +26,16 @@ impl_scope! {
     /// 3.  [`Layout::draw`] does nothing. The parent should handle all drawing.
     /// 4.  Optionally, this widget can handle clicks on the track area via
     ///     [`DragHandle::handle_press_on_track`].
+    ///
+    /// # Messages
+    ///
+    /// On [`Event::PressStart`], pushes [`MsgPressFocus`].
+    ///
+    /// On input to change the position, pushes `offset: Offset`. This is a raw
+    /// offset relative to the track calculated from input (usually this is
+    /// between `Offset::ZERO` and [`Self::max_offset`], but it is not clamped).
+    /// The position is not updated by this widget; call [`Self::set_offset`]
+    /// to clamp the offset and update the position.
     #[derive(Clone, Debug, Default)]
     #[widget{
         hover_highlight = true;
@@ -59,11 +69,10 @@ impl_scope! {
     }
 
     impl Handler for DragHandle {
-        type Msg = Offset;
-
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::PressStart { source, coord, .. } => {
+                    mgr.push_msg(MsgPressFocus);
                     mgr.grab_press_unique(self.id(), source, coord, Some(CursorIcon::Grabbing));
 
                     // Event delivery implies coord is over the handle.
@@ -71,14 +80,8 @@ impl_scope! {
                     Response::Used
                 }
                 Event::PressMove { coord, .. } => {
-                    let offset = coord - self.press_coord;
-                    let (offset, action) = self.set_offset(offset);
-                    if action.is_empty() {
-                        Response::Used
-                    } else {
-                        mgr.send_action(action);
-                        Response::Msg(offset)
-                    }
+                    mgr.push_msg(coord - self.press_coord);
+                    Response::Used
                 }
                 Event::PressEnd { .. } => Response::Used,
                 _ => Response::Unused,
@@ -147,7 +150,8 @@ impl DragHandle {
     /// then the parent widget should call this method when receiving
     /// [`Event::PressStart`].
     ///
-    /// This method moves the handle immediately and returns the new offset.
+    /// Returns a raw (unclamped) offset calculated from the press, but does
+    /// not move the handle (maybe call [`Self::set_offset`] with the result).
     pub fn handle_press_on_track(
         &mut self,
         mgr: &mut EventMgr,
@@ -157,11 +161,6 @@ impl DragHandle {
         mgr.grab_press_unique(self.id(), source, coord, Some(CursorIcon::Grabbing));
 
         self.press_coord = self.track.pos + self.core.rect.size / 2;
-
-        // Since the press is not on the handle, we move the bar immediately.
-        let (offset, action) = self.set_offset(coord - self.press_coord);
-        debug_assert!(action == TkAction::REDRAW);
-        mgr.send_action(action);
-        offset
+        coord - self.press_coord
     }
 }

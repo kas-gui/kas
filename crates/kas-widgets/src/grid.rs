@@ -6,7 +6,7 @@
 //! A grid widget
 
 use kas::layout::{DynGridStorage, GridChildInfo, GridDimensions};
-use kas::{event, layout, prelude::*};
+use kas::{layout, prelude::*};
 use std::ops::{Index, IndexMut};
 
 /// A grid of boxed widgets
@@ -15,7 +15,7 @@ use std::ops::{Index, IndexMut};
 /// This is parameterised over the handler message type.
 ///
 /// See documentation of [`Grid`] type.
-pub type BoxGrid<M> = Grid<Box<dyn Widget<Msg = M>>>;
+pub type BoxGrid = Grid<Box<dyn Widget>>;
 
 impl_scope! {
     /// A generic grid widget
@@ -44,15 +44,22 @@ impl_scope! {
     /// ## Performance
     ///
     /// Most operations are `O(n)` in the number of children.
+    ///
+    /// # Messages
+    ///
+    /// If a handler is specified via [`Self::on_message`] then this handler is
+    /// called when a child pushes a message.
     #[autoimpl(Default)]
-    #[derive(Clone, Debug)]
-    #[widget { msg = <W as Handler>::Msg; }]
+    #[autoimpl(Debug ignore self.on_message)]
+    #[derive(Clone)]
+    #[widget]
     pub struct Grid<W: Widget> {
         #[widget_core]
         core: CoreData,
         widgets: Vec<(GridChildInfo, W)>,
         data: DynGridStorage,
         dim: GridDimensions,
+        on_message: Option<fn(&mut EventMgr, usize)>,
     }
 
     impl WidgetChildren for Self {
@@ -61,11 +68,11 @@ impl_scope! {
             self.widgets.len()
         }
         #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn WidgetConfig> {
+        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
             self.widgets.get(index).map(|c| c.1.as_widget())
         }
         #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
+        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
             self.widgets.get_mut(index).map(|c| c.1.as_widget_mut())
         }
     }
@@ -80,27 +87,11 @@ impl_scope! {
         }
     }
 
-    impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            if let Some(index) = self.find_child_index(&id) {
-                if let Some((_, child)) = self.widgets.get_mut(index) {
-                    let r = child.send(mgr, id.clone(), event);
-                    return match Response::try_from(r) {
-                        Ok(r) => r,
-                        Err(msg) => {
-                            log::trace!(
-                                "Received by {} from {}: {:?}",
-                                self.id(),
-                                id,
-                                kas::util::TryFormat(&msg)
-                            );
-                            Response::Msg(msg)
-                        }
-                    };
-                }
+    impl Handler for Self {
+        fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
+            if let Some(f) = self.on_message {
+                f(mgr, index);
             }
-
-            Response::Unused
         }
     }
 }
@@ -114,6 +105,25 @@ impl<W: Widget> Grid<W> {
         };
         grid.calc_dim();
         grid
+    }
+
+    /// Assign a child message handler
+    ///
+    /// This handler (if any) is called when a child pushes a message:
+    /// `f(mgr, index)`, where `index` is the child's index.
+    #[inline]
+    pub fn set_on_message(&mut self, f: Option<fn(&mut EventMgr, usize)>) {
+        self.on_message = f;
+    }
+
+    /// Assign a child message handler (inline style)
+    ///
+    /// This handler is called when a child pushes a message:
+    /// `f(mgr, index)`, where `index` is the child's index.
+    #[inline]
+    pub fn on_message(mut self, f: fn(&mut EventMgr, usize)) -> Self {
+        self.on_message = Some(f);
+        self
     }
 
     /// Get grid dimensions

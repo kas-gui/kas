@@ -8,14 +8,14 @@
 //! This is a test-bed to demonstrate most toolkit functionality
 //! (excepting custom graphics).
 
+use kas::event::Command;
 use kas::event::VirtualKeyCode as VK;
-use kas::event::{Command, VoidResponse};
 use kas::prelude::*;
 use kas::resvg::Svg;
-use kas::widgets::*;
+use kas::widgets::{menu::MenuEntry, *};
 use kas::{dir::Right, Future};
 
-#[derive(Clone, Debug, VoidMsg)]
+#[derive(Clone, Debug)]
 enum Item {
     Button,
     LightTheme,
@@ -31,18 +31,18 @@ enum Item {
 #[derive(Debug)]
 struct Guard;
 impl EditGuard for Guard {
-    type Msg = Item;
-
-    fn activate(edit: &mut EditField<Self>, _: &mut EventMgr) -> Option<Self::Msg> {
-        Some(Item::Edit(edit.get_string()))
+    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+        mgr.push_msg(Item::Edit(edit.get_string()));
     }
 
-    fn edit(edit: &mut EditField<Self>, _: &mut EventMgr) -> Option<Self::Msg> {
+    fn edit(edit: &mut EditField<Self>, _: &mut EventMgr) {
         // 7a is the colour of *magic*!
         edit.set_error_state(edit.get_str().len() % (7 + 1) == 0);
-        None
     }
 }
+
+#[derive(Clone, Debug)]
+struct MsgClose(bool);
 
 impl_scope! {
     #[derive(Debug)]
@@ -57,8 +57,8 @@ impl_scope! {
         core: CoreData,
         #[widget] edit: EditBox,
         #[widget] fill: Filler,
-        #[widget(flatmap_msg = close)] cancel: TextButton<bool>,
-        #[widget(flatmap_msg = close)] save: TextButton<bool>,
+        #[widget] cancel: TextButton,
+        #[widget] save: TextButton,
         commit: bool,
     }
     impl TextEditPopup {
@@ -67,13 +67,13 @@ impl_scope! {
                 core: Default::default(),
                 edit: EditBox::new(text).multi_line(true),
                 fill: Filler::maximize(),
-                cancel: TextButton::new_msg("&Cancel", false),
-                save: TextButton::new_msg("&Save", true),
+                cancel: TextButton::new_msg("&Cancel", MsgClose(false)),
+                save: TextButton::new_msg("&Save", MsgClose(true)),
                 commit: false,
             }
         }
 
-        fn close(&mut self, mgr: &mut EventMgr, commit: bool) -> VoidResponse {
+        fn close(&mut self, mgr: &mut EventMgr, commit: bool) -> Response {
             self.commit = commit;
             mgr.send_action(TkAction::CLOSE);
             Response::Used
@@ -85,12 +85,16 @@ impl_scope! {
         }
     }
     impl Handler for TextEditPopup {
-        type Msg = VoidMsg;
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(Command::Escape, _) => self.close(mgr, false),
                 Event::Command(Command::Return, _) => self.close(mgr, true),
                 _ => Response::Unused,
+            }
+        }
+        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            if let Some(MsgClose(commit)) = mgr.try_pop_msg() {
+                let _ = self.close(mgr, commit);
             }
         }
     }
@@ -122,7 +126,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    #[derive(Clone, Debug, VoidMsg)]
+    #[derive(Clone, Debug)]
     enum Menu {
         Theme(&'static str),
         Colour(String),
@@ -130,7 +134,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Quit,
     }
 
-    let menubar = menu::MenuBar::<Menu>::builder()
+    let menubar = menu::MenuBar::<Right>::builder()
         .menu("&App", |menu| {
             menu.entry("&Quit", Menu::Quit);
         })
@@ -164,9 +168,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             })
             .separator()
-            .toggle("&Disabled", |_, state| Some(Menu::Disabled(state)));
+            .toggle("&Disabled", |mgr, state| {
+                mgr.push_msg(Menu::Disabled(state))
+            });
         })
         .build();
+
+    #[derive(Clone, Debug)]
+    struct MsgEdit;
 
     let popup_edit_box = make_widget! {
         #[widget{
@@ -174,28 +183,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }]
         struct {
             #[widget] label: StringLabel = Label::from("Use button to edit →"),
-            #[widget(use_msg = edit)] edit = TextButton::new_msg("&Edit", ()),
+            #[widget] edit = TextButton::new_msg("&Edit", MsgEdit),
             future: Option<Future<Option<String>>> = None,
         }
-        impl Self {
-            fn edit(&mut self, mgr: &mut EventMgr, _: ()) {
-                if self.future.is_none() {
-                    let text = self.label.get_string();
-                    let mut window = Window::new("Edit text", TextEditPopup::new(text));
-                    let (future, update) = window.on_drop(|w: &mut TextEditPopup| if w.commit {
-                        Some(w.edit.get_string())
-                    } else {
-                        None
-                    });
-                    self.future = Some(future);
-                    mgr.update_on_handle(update, self.id());
-                    mgr.add_window(Box::new(window));
-                }
-            }
-        }
         impl Handler for Self {
-            type Msg = VoidMsg;
-            fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
+            fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
                 match event {
                     Event::HandleUpdate { .. } => {
                         // There should be no other source of this event,
@@ -209,6 +201,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         Response::Used
                     }
                     _ => Response::Unused,
+                }
+            }
+            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+                if let Some(MsgEdit) = mgr.try_pop_msg() {
+                    if self.future.is_none() {
+                        let text = self.label.get_string();
+                        let mut window = Window::new("Edit text", TextEditPopup::new(text));
+                        let (future, update) = window.on_drop(|w: &mut TextEditPopup| if w.commit {
+                            Some(w.edit.get_string())
+                        } else {
+                            None
+                        });
+                        self.future = Some(future);
+                        mgr.update_on_handle(update, self.id());
+                        mgr.add_window(Box::new(window));
+                    }
                 }
             }
         }
@@ -237,7 +245,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 row: ["SVG", align(center): self.sv],
                 row: ["Child window", self.pu],
             ];
-            msg = Item;
         }]
         struct {
             #[widget] sl = ScrollLabel::new(text),
@@ -253,18 +260,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ],
             #[widget] cb = CheckBox::new("&Check me")
                 .with_state(true)
-                .on_toggle(|_, check| Some(Item::Check(check))),
+                .on_toggle(|mgr, check| mgr.push_msg(Item::Check(check))),
             #[widget] rb = RadioBox::new("radio box &1", radio.clone())
-                .on_select(|_| Some(Item::Radio(1))),
+                .on_select(|mgr| mgr.push_msg(Item::Radio(1))),
             #[widget] rb2 = RadioBox::new("radio box &2", radio)
                 .with_state(true)
-                .on_select(|_| Some(Item::Radio(2))),
-            #[widget] cbb = ComboBox::new_from_iter(&["&One", "T&wo", "Th&ree"], 0)
-                .on_select(|_, index| Some(Item::Combo((index + 1).cast()))),
-            #[widget(map_msg = handle_slider)] sd =
-                Slider::<i32, Right>::new(0, 10, 1).with_value(0),
-            #[widget(map_msg = handle_scroll)] sc: ScrollBar<Right> =
-                ScrollBar::new().with_limits(100, 20),
+                .on_select(|mgr| mgr.push_msg(Item::Radio(2))),
+            #[widget] cbb = ComboBox::new(vec![
+                MenuEntry::new("&One", Item::Combo(1)),
+                MenuEntry::new("T&wo", Item::Combo(2)),
+                MenuEntry::new("Th&ree", Item::Combo(3)),
+            ]),
+            #[widget] sd = Slider::<i32, Right>::new(0, 10, 1)
+                .with_value(0)
+                .map_msg(|msg: i32| Item::Slider(msg)),
+            #[widget] sc: ScrollBar<Right> = ScrollBar::new().with_limits(100, 20),
             #[widget] pg: ProgressBar<Right> = ProgressBar::new(),
             #[widget] sv = img_rustacean.with_scaling(|s| {
                 s.size = kas::layout::SpriteSize::Relative(0.1);
@@ -273,14 +283,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }),
             #[widget] pu = popup_edit_box,
         }
-        impl Self {
-            fn handle_slider(&mut self, _: &mut EventMgr, msg: i32) -> Item {
-                Item::Slider(msg)
-            }
-            fn handle_scroll(&mut self, mgr: &mut EventMgr, msg: i32) -> Item {
-                let ratio = msg as f32 / self.sc.max_value() as f32;
-                *mgr |= self.pg.set_value(ratio);
-                Item::Scroll(msg)
+        impl Handler for Self {
+            fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
+                if index == widget_index![self.sc] {
+                    if let Some(msg) = mgr.try_pop_msg::<i32>() {
+                        let ratio = msg as f32 / self.sc.max_value() as f32;
+                        *mgr |= self.pg.set_value(ratio);
+                        mgr.push_msg(Item::Scroll(msg))
+                    }
+                }
             }
         }
     };
@@ -288,7 +299,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let head = make_widget! {
         #[widget{
             layout = row: ["Widget Gallery", self.img];
-            msg = VoidMsg;
         }]
         struct {
             #[widget] img = img_gallery,
@@ -304,49 +314,49 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     align(center): self.head,
                     self.gallery,
                 ];
-                msg = VoidMsg;
             }]
             struct {
-                #[widget(use_msg = menu)] menubar = menubar,
+                #[widget] menubar = menubar,
                 #[widget] head = Frame::new(head),
-                #[widget(use_msg = activations)] gallery:
-                    for<W: Widget<Msg = Item>> ScrollBarRegion<W> =
+                #[widget] gallery:
+                    for<W: Widget> ScrollBarRegion<W> =
                         ScrollBarRegion::new(widgets),
             }
-            impl Self {
-                fn menu(&mut self, mgr: &mut EventMgr, msg: Menu) {
-                    match msg {
-                        Menu::Theme(name) => {
-                            println!("Theme: {:?}", name);
-                            #[cfg(not(feature = "stack_dst"))]
-                            println!("Warning: switching themes requires feature 'stack_dst'");
+            impl Handler for Self {
+                fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+                    if let Some(msg) = mgr.try_pop_msg::<Menu>() {
+                        match msg {
+                            Menu::Theme(name) => {
+                                println!("Theme: {:?}", name);
+                                #[cfg(not(feature = "stack_dst"))]
+                                println!("Warning: switching themes requires feature 'stack_dst'");
 
-                            mgr.adjust_theme(|theme| theme.set_theme(name));
+                                mgr.adjust_theme(|theme| theme.set_theme(name));
+                            }
+                            Menu::Colour(name) => {
+                                println!("Colour scheme: {:?}", name);
+                                mgr.adjust_theme(|theme| theme.set_scheme(&name));
+                            }
+                            Menu::Disabled(state) => {
+                                mgr.set_disabled(self.gallery.inner().id(), state);
+                            }
+                            Menu::Quit => {
+                                *mgr |= TkAction::EXIT;
+                            }
                         }
-                        Menu::Colour(name) => {
-                            println!("Colour scheme: {:?}", name);
-                            mgr.adjust_theme(|theme| theme.set_scheme(&name));
-                        }
-                        Menu::Disabled(state) => {
-                            mgr.set_disabled(self.gallery.inner().id(), state);
-                        }
-                        Menu::Quit => {
-                            *mgr |= TkAction::EXIT;
+                    } else if let Some(item) = mgr.try_pop_msg::<Item>() {
+                        match item {
+                            Item::Button => println!("Clicked!"),
+                            Item::LightTheme => mgr.adjust_theme(|theme| theme.set_scheme("light")),
+                            Item::DarkTheme => mgr.adjust_theme(|theme| theme.set_scheme("dark")),
+                            Item::Check(b) => println!("CheckBox: {}", b),
+                            Item::Combo(c) => println!("ComboBox: {}", c),
+                            Item::Radio(id) => println!("RadioBox: {}", id),
+                            Item::Edit(s) => println!("Edited: {}", s),
+                            Item::Slider(p) => println!("Slider: {}", p),
+                            Item::Scroll(p) => println!("ScrollBar: {}", p),
                         }
                     }
-                }
-                fn activations(&mut self, mgr: &mut EventMgr, item: Item) {
-                    match item {
-                        Item::Button => println!("Clicked!"),
-                        Item::LightTheme => mgr.adjust_theme(|theme| theme.set_scheme("light")),
-                        Item::DarkTheme => mgr.adjust_theme(|theme| theme.set_scheme("dark")),
-                        Item::Check(b) => println!("CheckBox: {}", b),
-                        Item::Combo(c) => println!("ComboBox: {}", c),
-                        Item::Radio(id) => println!("RadioBox: {}", id),
-                        Item::Edit(s) => println!("Edited: {}", s),
-                        Item::Slider(p) => println!("Slider: {}", p),
-                        Item::Scroll(p) => println!("ScrollBar: {}", p),
-                    };
                 }
             }
         },

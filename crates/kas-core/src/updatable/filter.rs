@@ -5,8 +5,9 @@
 
 //! Filters over data
 
-use crate::event::{UpdateHandle, VoidMsg};
+use crate::event::{EventMgr, EventState, UpdateHandle};
 use crate::updatable::*;
+use crate::WidgetId;
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;
@@ -30,21 +31,11 @@ impl ContainsString {
         ContainsString(Rc::new((handle, data)))
     }
 }
-impl Updatable<(), String> for ContainsString {
-    fn handle(&self, _: &(), msg: &String) -> Option<UpdateHandle> {
-        self.update(msg.clone())
-    }
-}
-impl Updatable<(), VoidMsg> for ContainsString {
-    fn handle(&self, _: &(), _: &VoidMsg) -> Option<UpdateHandle> {
-        None
-    }
-}
 impl SingleData for ContainsString {
     type Item = String;
 
-    fn update_handles(&self) -> Vec<UpdateHandle> {
-        vec![(self.0).0]
+    fn update_on_handles(&self, mgr: &mut EventState, id: &WidgetId) {
+        mgr.update_on_handle((self.0).0, id.clone());
     }
     fn version(&self) -> u64 {
         (self.0).1.borrow().1
@@ -53,11 +44,11 @@ impl SingleData for ContainsString {
     fn get_cloned(&self) -> Self::Item {
         (self.0).1.borrow().0.to_owned()
     }
-    fn update(&self, value: Self::Item) -> Option<UpdateHandle> {
+    fn update(&self, mgr: &mut EventMgr, value: Self::Item) {
         let mut cell = (self.0).1.borrow_mut();
         cell.0 = value;
         cell.1 += 1;
-        Some((self.0).0)
+        mgr.trigger_update((self.0).0, 0);
     }
 }
 impl SingleDataMut for ContainsString {
@@ -99,21 +90,11 @@ impl ContainsCaseInsensitive {
         ContainsCaseInsensitive(Rc::new((handle, data)))
     }
 }
-impl Updatable<(), String> for ContainsCaseInsensitive {
-    fn handle(&self, _: &(), msg: &String) -> Option<UpdateHandle> {
-        self.update(msg.clone())
-    }
-}
-impl Updatable<(), VoidMsg> for ContainsCaseInsensitive {
-    fn handle(&self, _: &(), _: &VoidMsg) -> Option<UpdateHandle> {
-        None
-    }
-}
 impl SingleData for ContainsCaseInsensitive {
     type Item = String;
 
-    fn update_handles(&self) -> Vec<UpdateHandle> {
-        vec![(self.0).0]
+    fn update_on_handles(&self, mgr: &mut EventState, id: &WidgetId) {
+        mgr.update_on_handle((self.0).0, id.clone());
     }
     fn version(&self) -> u64 {
         (self.0).1.borrow().2
@@ -122,12 +103,12 @@ impl SingleData for ContainsCaseInsensitive {
     fn get_cloned(&self) -> Self::Item {
         (self.0).1.borrow().0.clone()
     }
-    fn update(&self, value: Self::Item) -> Option<UpdateHandle> {
+    fn update(&self, mgr: &mut EventMgr, value: Self::Item) {
         let mut cell = (self.0).1.borrow_mut();
         cell.0 = value;
         cell.1 = cell.0.to_uppercase();
         cell.2 += 1;
-        Some((self.0).0)
+        mgr.trigger_update((self.0).0, 0);
     }
 }
 impl SingleDataMut for ContainsCaseInsensitive {

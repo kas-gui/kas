@@ -6,10 +6,9 @@
 //! Filter list example
 
 use kas::dir::Down;
-use kas::event::ChildMsg;
 use kas::prelude::*;
-use kas::updatable::filter::ContainsCaseInsensitive;
-use kas::widgets::view::{self, driver, SelectionMode, SingleView};
+use kas::updatable::{filter::ContainsCaseInsensitive, SingleData};
+use kas::widgets::view::{self, driver, SelectionMode, SelectionMsg};
 use kas::widgets::{EditBox, Label, RadioBox, RadioBoxGroup, ScrollBars, Window};
 
 const MONTHS: &[&str] = &[
@@ -34,7 +33,6 @@ fn main() -> kas::shell::Result<()> {
     let selection_mode = make_widget! {
         #[widget{
             layout = list(right): *;
-            msg = SelectionMode;
         }]
         struct {
             #[widget] _ = Label::new("Selection:"),
@@ -47,7 +45,6 @@ fn main() -> kas::shell::Result<()> {
     let data = MONTHS;
     println!("filter-list: {} entries", data.len());
     let filter = ContainsCaseInsensitive::new("");
-    let filter_driver = driver::Widget::<EditBox>::default();
     type FilteredList = view::FilteredList<&'static [&'static str], ContainsCaseInsensitive>;
     type ListView = view::ListView<Down, FilteredList, driver::DefaultNav>;
     let filtered = FilteredList::new(data, filter.clone());
@@ -55,20 +52,21 @@ fn main() -> kas::shell::Result<()> {
     let widget = make_widget! {
         #[widget{
             layout = list(down): *;
-            msg = VoidMsg;
         }]
         struct {
-            #[widget(use_msg = set_selection_mode)] _ = selection_mode,
-            #[widget] filter = SingleView::new_with_driver(filter_driver, filter),
-            #[widget(use_msg = select)] list: ScrollBars<ListView> =
+            #[widget] _ = selection_mode,
+            #[widget] filter = EditBox::new("")
+                .on_edit(move |s, mgr| filter.update(mgr, s.to_string())),
+            #[widget] list: ScrollBars<ListView> =
                 ScrollBars::new(ListView::new(filtered)),
         }
-        impl Self {
-            fn set_selection_mode(&mut self, mgr: &mut EventMgr, mode: SelectionMode) {
-                *mgr |= self.list.set_selection_mode(mode);
-            }
-            fn select(&mut self, _: &mut EventMgr, msg: ChildMsg<usize, VoidMsg>) {
-                println!("Selection message: {:?}", msg);
+        impl Handler for Self {
+            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+                if let Some(mode) = mgr.try_pop_msg() {
+                    *mgr |= self.list.set_selection_mode(mode);
+                } else if let Some(msg) = mgr.try_pop_msg::<SelectionMsg<usize>>() {
+                    println!("Selection message: {:?}", msg);
+                }
             }
         }
     };

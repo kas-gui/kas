@@ -10,7 +10,7 @@ use std::ops::{Add, Sub};
 use std::time::Duration;
 
 use super::DragHandle;
-use kas::event::{self, Command};
+use kas::event::{Command, MsgPressFocus, Scroll};
 use kas::prelude::*;
 
 /// Requirements on type used by [`Slider`]
@@ -86,11 +86,14 @@ impl_scope! {
     /// A slider
     ///
     /// Sliders allow user input of a value from a fixed range.
+    ///
+    /// # Messages
+    ///
+    /// On value change, pushes a value of type `T`.
     #[derive(Clone, Debug, Default)]
     #[widget{
         key_nav = true;
         hover_highlight = true;
-        msg = T;
     }]
     pub struct Slider<T: SliderType, D: Directional> {
         #[widget_core]
@@ -161,15 +164,23 @@ impl_scope! {
             self.value
         }
 
+        #[inline]
+        #[allow(clippy::neg_cmp_op_on_partial_ord)]
+        fn clamp_value(&self, value: T) -> T {
+            if !(value >= self.range.0) {
+                self.range.0
+            } else if !(value <= self.range.1) {
+                self.range.1
+            } else {
+                value
+            }
+        }
+
         /// Set the value
         ///
         /// Returns [`TkAction::REDRAW`] if a redraw is required.
-        pub fn set_value(&mut self, mut value: T) -> TkAction {
-            if value < self.range.0 {
-                value = self.range.0;
-            } else if value > self.range.1 {
-                value = self.range.1;
-            }
+        pub fn set_value(&mut self, value: T) -> TkAction {
+            let value = self.clamp_value(value);
             if value == self.value {
                 TkAction::empty()
             } else {
@@ -194,9 +205,7 @@ impl_scope! {
             }
         }
 
-        // true if not equal to old value
-        #[allow(clippy::neg_cmp_op_on_partial_ord)]
-        fn set_offset(&mut self, offset: Offset) -> bool {
+        fn set_offset_and_push_msg(&mut self, mgr: &mut EventMgr, offset: Offset) {
             let b = self.range.1 - self.range.0;
             let max_offset = self.handle.max_offset();
             let mut a = match self.direction.is_vertical() {
@@ -206,19 +215,12 @@ impl_scope! {
             if self.direction.is_reversed() {
                 a = b - a;
             }
-            let value = a + self.range.0;
-            let value = if !(value >= self.range.0) {
-                self.range.0
-            } else if !(value <= self.range.1) {
-                self.range.1
-            } else {
-                value
-            };
+            let value = self.clamp_value(a + self.range.0);
             if value != self.value {
                 self.value = value;
-                return true;
+                *mgr |= self.handle.set_offset(self.offset()).1;
+                mgr.push_msg(self.value);
             }
-            false
         }
     }
 
@@ -259,76 +261,59 @@ impl_scope! {
         }
     }
 
-    impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            let offset = if self.handle.id().is_ancestor_of(&id) {
-                match event {
-                    Event::NavFocus(key_focus) => {
-                        mgr.set_nav_focus(self.id(), key_focus);
-                        return Response::Used; // NavFocus event will be sent to self
-                    }
-                    event => match self.handle.send(mgr, id, event).try_into() {
-                        Ok(res) => return res,
-                        Err(offset) => offset,
-                    },
+    impl Handler for Self {
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+            match event {
+                Event::NavFocus(true) => {
+                    mgr.set_scroll(Scroll::Rect(self.rect()));
                 }
-            } else {
-                debug_assert_eq!(id, self.id());
-                match event {
-                    Event::NavFocus(true) => {
-                        return Response::Focus(self.rect());
-                    }
-                    Event::NavFocus(false) => {
-                        return Response::Used;
-                    }
-                    Event::Command(cmd, _) => {
-                        let rev = self.direction.is_reversed();
-                        let v = match cmd {
-                            Command::Left | Command::Up => match rev {
-                                false => self.value - self.step,
-                                true => self.value + self.step,
-                            },
-                            Command::Right | Command::Down => match rev {
-                                false => self.value + self.step,
-                                true => self.value - self.step,
-                            },
-                            Command::PageUp | Command::PageDown => {
-                                // Generics makes this easier than constructing a literal and multiplying!
-                                let mut x = self.step + self.step;
-                                x = x + x;
-                                x = x + x;
-                                x = x + x;
-                                match rev == (cmd == Command::PageDown) {
-                                    false => self.value + x,
-                                    true => self.value - x,
-                                }
+                Event::Command(cmd, _) => {
+                    let rev = self.direction.is_reversed();
+                    let v = match cmd {
+                        Command::Left | Command::Up => match rev {
+                            false => self.value - self.step,
+                            true => self.value + self.step,
+                        },
+                        Command::Right | Command::Down => match rev {
+                            false => self.value + self.step,
+                            true => self.value - self.step,
+                        },
+                        Command::PageUp | Command::PageDown => {
+                            // Generics makes this easier than constructing a literal and multiplying!
+                            let mut x = self.step + self.step;
+                            x = x + x;
+                            x = x + x;
+                            x = x + x;
+                            match rev == (cmd == Command::PageDown) {
+                                false => self.value + x,
+                                true => self.value - x,
                             }
-                            Command::Home => self.range.0,
-                            Command::End => self.range.1,
-                            _ => return Response::Unused,
-                        };
-                        let action = self.set_value(v);
-                        return if action.is_empty() {
-                            Response::Used
-                        } else {
-                            mgr.send_action(action);
-                            Response::Msg(self.value)
-                        };
+                        }
+                        Command::Home => self.range.0,
+                        Command::End => self.range.1,
+                        _ => return Response::Unused,
+                    };
+                    let action = self.set_value(v);
+                    if !action.is_empty() {
+                        mgr.send_action(action);
+                        mgr.push_msg(self.value);
                     }
-                    Event::PressStart { source, coord, .. } => {
-                        self.handle.handle_press_on_track(mgr, source, coord)
-                    }
-                    _ => return Response::Unused,
                 }
-            };
+                Event::PressStart { source, coord, .. } => {
+                    let offset = self.handle.handle_press_on_track(mgr, source, coord);
+                    self.set_offset_and_push_msg(mgr, offset);
+                }
+                _ => return Response::Unused,
+            }
+            Response::Used
+        }
 
-            let r = if self.set_offset(offset) {
-                Response::Msg(self.value)
-            } else {
-                Response::Used
-            };
-            *mgr |= self.handle.set_offset(self.offset()).1;
-            r
+        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            if let Some(MsgPressFocus) = mgr.try_pop_msg() {
+                mgr.set_nav_focus(self.id(), false);
+            } else if let Some(offset) = mgr.try_pop_msg() {
+                self.set_offset_and_push_msg(mgr, offset);
+            }
         }
     }
 }

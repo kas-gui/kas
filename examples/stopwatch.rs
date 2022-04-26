@@ -8,11 +8,16 @@
 use std::time::{Duration, Instant};
 
 use kas::class::HasString;
-use kas::event::{Event, EventMgr, Handler, Response, VoidMsg};
+use kas::event::{Event, EventMgr, Handler, Response};
 use kas::layout::SetRectMgr;
 use kas::macros::make_widget;
 use kas::widgets::{Frame, Label, TextButton, Window};
 use kas::WidgetExt;
+
+#[derive(Clone, Debug)]
+struct MsgReset;
+#[derive(Clone, Debug)]
+struct MsgStart;
 
 // Unlike most examples, we encapsulate the GUI configuration into a function.
 // There's no reason for this, but it demonstrates usage of Toolkit::add_boxed
@@ -24,26 +29,10 @@ fn make_window() -> Box<dyn kas::Window> {
         }]
         struct {
             #[widget] display: impl HasString = Frame::new(Label::new("0.000".to_string())),
-            #[widget(use_msg = reset)] _ = TextButton::new_msg("&reset", ()),
-            #[widget(use_msg = start)] _ = TextButton::new_msg("&start / &stop", ()),
+            #[widget] reset = TextButton::new_msg("&reset", MsgReset),
+            #[widget] ss = TextButton::new_msg("&start / &stop", MsgStart),
             saved: Duration = Duration::default(),
             start: Option<Instant> = None,
-        }
-        impl Self {
-            fn reset(&mut self, mgr: &mut EventMgr, _: ()) {
-                self.saved = Duration::default();
-                self.start = None;
-                *mgr |= self.display.set_str("0.000");
-            }
-            fn start(&mut self, mgr: &mut EventMgr, _: ()) {
-                if let Some(start) = self.start {
-                    self.saved += Instant::now() - start;
-                    self.start = None;
-                } else {
-                    self.start = Some(Instant::now());
-                    mgr.update_on_timer(Duration::new(0, 0), self.id(), 0);
-                }
-            }
         }
         impl kas::WidgetConfig for Self {
             fn configure(&mut self, mgr: &mut SetRectMgr) {
@@ -51,8 +40,7 @@ fn make_window() -> Box<dyn kas::Window> {
             }
         }
         impl Handler for Self {
-            type Msg = VoidMsg;
-            fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<VoidMsg> {
+            fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
                 match event {
                     Event::TimerUpdate(0) => {
                         if let Some(start) = self.start {
@@ -64,6 +52,21 @@ fn make_window() -> Box<dyn kas::Window> {
                         Response::Used
                     }
                     _ => Response::Unused,
+                }
+            }
+            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+                if let Some(MsgReset) = mgr.try_pop_msg() {
+                    self.saved = Duration::default();
+                    self.start = None;
+                    *mgr |= self.display.set_str("0.000");
+                } else if let Some(MsgStart) = mgr.try_pop_msg() {
+                    if let Some(start) = self.start {
+                        self.saved += Instant::now() - start;
+                        self.start = None;
+                    } else {
+                        self.start = Some(Instant::now());
+                        mgr.update_on_timer(Duration::new(0, 0), self.id(), 0);
+                    }
                 }
             }
         }

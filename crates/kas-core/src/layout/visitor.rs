@@ -16,7 +16,7 @@ use crate::draw::color::Rgb;
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::theme::{Background, DrawMgr, FrameStyle, IdRect, SizeMgr};
 use crate::WidgetId;
-use crate::{dir::Directional, WidgetConfig};
+use crate::{dir::Directional, Widget};
 use std::any::Any;
 use std::iter::ExactSizeIterator;
 
@@ -71,9 +71,9 @@ enum LayoutType<'a> {
     /// A boxed component
     BoxComponent(Box<dyn Component + 'a>),
     /// A single child widget
-    Single(&'a mut dyn WidgetConfig),
+    Single(&'a mut dyn Widget),
     /// A single child widget with alignment
-    AlignSingle(&'a mut dyn WidgetConfig, AlignHints),
+    AlignSingle(&'a mut dyn Widget, AlignHints),
     /// Apply alignment hints to some sub-layout
     AlignLayout(Box<Layout<'a>>, AlignHints),
     /// Frame around content
@@ -96,13 +96,13 @@ impl<'a> Layout<'a> {
     }
 
     /// Construct a single-item layout
-    pub fn single(widget: &'a mut dyn WidgetConfig) -> Self {
+    pub fn single(widget: &'a mut dyn Widget) -> Self {
         let layout = LayoutType::Single(widget);
         Layout { layout }
     }
 
     /// Construct a single-item layout with alignment hints
-    pub fn align_single(widget: &'a mut dyn WidgetConfig, hints: AlignHints) -> Self {
+    pub fn align_single(widget: &'a mut dyn Widget, hints: AlignHints) -> Self {
         let layout = LayoutType::AlignSingle(widget, hints);
         Layout { layout }
     }
@@ -159,7 +159,7 @@ impl<'a> Layout<'a> {
     /// the optimisations are not (currently) so useful.
     pub fn slice<W, D>(slice: &'a mut [W], direction: D, data: &'a mut DynRowStorage) -> Self
     where
-        W: WidgetConfig,
+        W: Widget,
         D: Directional,
     {
         let layout = LayoutType::BoxComponent(Box::new(Slice {
@@ -338,13 +338,13 @@ where
 }
 
 /// A row/column over a slice
-struct Slice<'a, W: WidgetConfig, D: Directional> {
+struct Slice<'a, W: Widget, D: Directional> {
     data: &'a mut DynRowStorage,
     direction: D,
     children: &'a mut [W],
 }
 
-impl<'a, W: WidgetConfig, D: Directional> Component for Slice<'a, W, D> {
+impl<'a, W: Widget, D: Directional> Component for Slice<'a, W, D> {
     fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         let dim = (self.direction, self.children.len());
         let mut solver = RowSolver::new(axis, dim, self.data);

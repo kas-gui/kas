@@ -10,9 +10,8 @@
 //! If not, we can probably remove `ListDataMut` and other `*Mut` traits too.
 //! Probably this question requires seeing more examples/applications to answer.
 
-#[allow(unused)]
-use crate::event::EventMgr;
 use crate::event::UpdateHandle;
+use crate::event::{EventMgr, EventState};
 use crate::updatable::*;
 use crate::WidgetId;
 use std::cell::RefCell;
@@ -21,9 +20,7 @@ use std::rc::Rc;
 
 /// Wrapper for single-thread shared data
 ///
-/// This wrapper adds an [`UpdateHandle`] and implements the
-/// [`Updatable`] traits (the latter with a dummy implementation —
-/// if you need custom handlers you will need your own shared data type).
+/// This wrapper adds an [`UpdateHandle`].
 #[derive(Clone, Debug, Default)]
 pub struct SharedRc<T: Debug>(Rc<(UpdateHandle, RefCell<(T, u64)>)>);
 
@@ -36,17 +33,11 @@ impl<T: Debug> SharedRc<T> {
     }
 }
 
-impl<T: Clone + Debug, K, M> Updatable<K, M> for SharedRc<T> {
-    fn handle(&self, _: &K, _: &M) -> Option<UpdateHandle> {
-        None
-    }
-}
-
-impl<T: Clone + Debug> SingleData for SharedRc<T> {
+impl<T: Clone + Debug + 'static> SingleData for SharedRc<T> {
     type Item = T;
 
-    fn update_handles(&self) -> Vec<UpdateHandle> {
-        vec![(self.0).0]
+    fn update_on_handles(&self, mgr: &mut EventState, id: &WidgetId) {
+        mgr.update_on_handle((self.0).0, id.clone());
     }
     fn version(&self) -> u64 {
         (self.0).1.borrow().1
@@ -56,14 +47,14 @@ impl<T: Clone + Debug> SingleData for SharedRc<T> {
         (self.0).1.borrow().0.to_owned()
     }
 
-    fn update(&self, value: Self::Item) -> Option<UpdateHandle> {
+    fn update(&self, mgr: &mut EventMgr, value: Self::Item) {
         let mut cell = (self.0).1.borrow_mut();
         cell.0 = value;
         cell.1 += 1;
-        Some((self.0).0)
+        mgr.trigger_update((self.0).0, 0);
     }
 }
-impl<T: Clone + Debug> SingleDataMut for SharedRc<T> {
+impl<T: Clone + Debug + 'static> SingleDataMut for SharedRc<T> {
     fn set(&mut self, value: Self::Item) {
         (self.0).1.borrow_mut().0 = value;
     }
@@ -73,8 +64,8 @@ impl<T: ListDataMut> ListData for SharedRc<T> {
     type Key = T::Key;
     type Item = T::Item;
 
-    fn update_handles(&self) -> Vec<UpdateHandle> {
-        vec![(self.0).0]
+    fn update_on_handles(&self, mgr: &mut EventState, id: &WidgetId) {
+        mgr.update_on_handle((self.0).0, id.clone());
     }
     fn version(&self) -> u64 {
         let cell = (self.0).1.borrow();
@@ -100,11 +91,11 @@ impl<T: ListDataMut> ListData for SharedRc<T> {
         (self.0).1.borrow().0.get_cloned(key)
     }
 
-    fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle> {
+    fn update(&self, mgr: &mut EventMgr, key: &Self::Key, value: Self::Item) {
         let mut cell = (self.0).1.borrow_mut();
         cell.0.set(key, value);
         cell.1 += 1;
-        Some((self.0).0)
+        mgr.trigger_update((self.0).0, 0);
     }
 
     fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
@@ -127,8 +118,8 @@ impl<T: MatrixDataMut> MatrixData for SharedRc<T> {
     type Key = T::Key;
     type Item = T::Item;
 
-    fn update_handles(&self) -> Vec<UpdateHandle> {
-        vec![(self.0).0]
+    fn update_on_handles(&self, mgr: &mut EventState, id: &WidgetId) {
+        mgr.update_on_handle((self.0).0, id.clone());
     }
     fn version(&self) -> u64 {
         let cell = (self.0).1.borrow();
@@ -156,11 +147,11 @@ impl<T: MatrixDataMut> MatrixData for SharedRc<T> {
         (self.0).1.borrow().0.get_cloned(key)
     }
 
-    fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle> {
+    fn update(&self, mgr: &mut EventMgr, key: &Self::Key, value: Self::Item) {
         let mut cell = (self.0).1.borrow_mut();
         cell.0.set(key, value);
         cell.1 += 1;
-        Some((self.0).0)
+        mgr.trigger_update((self.0).0, 0);
     }
 
     fn col_iter_vec(&self, limit: usize) -> Vec<Self::ColKey> {

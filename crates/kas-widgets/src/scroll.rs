@@ -6,7 +6,7 @@
 //! Scroll region
 
 use super::Scrollable;
-use kas::event::{self, components::ScrollComponent};
+use kas::event::{components::ScrollComponent, Scroll};
 use kas::prelude::*;
 use kas::theme::TextClass;
 use std::fmt::Debug;
@@ -28,7 +28,7 @@ impl_scope! {
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Debug, Default)]
-    #[widget { msg = <W as event::Handler>::Msg; }]
+    #[widget]
     pub struct ScrollRegion<W: Widget> {
         #[widget_core]
         core: CoreData,
@@ -105,7 +105,7 @@ impl_scope! {
             let line_height = size_mgr.line_height(TextClass::Label(false));
             rules.reduce_min_to(line_height);
 
-            // We use a to contain the content margin within the scrollable area.
+            // We use a frame to contain the content margin within the scrollable area.
             let frame = kas::layout::FrameRules::new(0, 0, 0, (0, 0));
             let (rules, offset, size) = frame.surround_with_margin(rules);
             self.offset.set_component(axis, offset);
@@ -142,38 +142,13 @@ impl_scope! {
         }
     }
 
-    impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            if self.inner.id().is_ancestor_of(&id) {
-                let child_event = self.scroll.offset_event(event.clone());
-                match self.inner.send(mgr, id, child_event) {
-                    Response::Unused => (),
-                    Response::Pan(delta) => {
-                        return match self.scroll_by_delta(mgr, delta) {
-                            delta if delta == Offset::ZERO => Response::Scrolled,
-                            delta => Response::Pan(delta),
-                        };
-                    }
-                    Response::Focus(rect) => {
-                        let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
-                        *mgr |= action;
-                        return Response::Focus(rect);
-                    }
-                    r => return r,
-                }
-            } else {
-                debug_assert!(self.eq_id(id), "SendEvent::send: bad WidgetId");
-            };
+    impl Handler for Self {
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+            self.scroll.scroll_by_event(mgr, event, self.id(), self.core.rect)
+        }
 
-            let (action, response) =
-                self.scroll
-                    .scroll_by_event(mgr, event, self.id(), self.core.rect.size);
-            if !action.is_empty() {
-                *mgr |= action;
-                Response::Focus(self.core.rect)
-            } else {
-                response.void_into()
-            }
+        fn handle_scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) -> Scroll {
+            self.scroll.scroll(mgr, self.rect(), scroll)
         }
     }
 }

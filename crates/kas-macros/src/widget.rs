@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::args::{Child, Handler, WidgetArgs};
+use crate::args::{Child, WidgetArgs};
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::{Scope, ScopeAttr, ScopeItem, SimplePath};
 use proc_macro2::{Span, TokenStream};
@@ -44,7 +44,6 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let mut impl_layout = true;
     let mut has_find_id_impl = attr.layout.is_some();
     let mut handler_impl = None;
-    let mut send_event_impl = None;
 
     let fields = match &mut scope.item {
         ScopeItem::Struct { token, fields } => match fields {
@@ -70,15 +69,20 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
         let mut other_attrs = Vec::with_capacity(field.attrs.len());
         for attr in field.attrs.drain(..) {
             if attr.path == parse_quote! { widget_core } {
+                if !attr.tokens.is_empty() {
+                    return Err(Error::new(attr.tokens.span(), "unexpected token"));
+                }
                 if core_data.is_none() {
                     core_data = Some(member(i, field.ident.clone()));
                 } else {
                     emit_error!(attr.span(), "multiple fields marked with #[widget_core]");
                 }
             } else if attr.path == parse_quote! { widget } {
+                if !attr.tokens.is_empty() {
+                    return Err(Error::new(attr.tokens.span(), "unexpected token"));
+                }
                 let ident = member(i, field.ident.clone());
-                let args = syn::parse2(attr.tokens)?;
-                children.push(Child { ident, args });
+                children.push(Child { ident });
             } else {
                 other_attrs.push(attr);
             }
@@ -147,18 +151,6 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 }
                 // TODO: warn about unused handler stuff if present
                 handler_impl = Some(index);
-            } else if *path == parse_quote! { ::kas::event::SendEvent }
-                || *path == parse_quote! { kas::event::SendEvent }
-                || *path == parse_quote! { event::SendEvent }
-                || *path == parse_quote! { SendEvent }
-            {
-                if opt_derive.is_some() {
-                    emit_error!(
-                        impl_.span(),
-                        "impl conflicts with use of #[widget(derive=FIELD)]"
-                    );
-                }
-                send_event_impl = Some(index);
             }
         }
     }
@@ -203,8 +195,8 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 #widget_name
             }
 
-            fn as_widget(&self) -> &dyn ::kas::WidgetConfig { self }
-            fn as_widget_mut(&mut self) -> &mut dyn ::kas::WidgetConfig { self }
+            fn as_widget(&self) -> &dyn ::kas::Widget { self }
+            fn as_widget_mut(&mut self) -> &mut dyn ::kas::Widget { self }
         }
     });
 
@@ -214,14 +206,21 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 impl #impl_generics ::kas::WidgetChildren
                     for #name #ty_generics #where_clause
                 {
+                    #[inline]
                     fn num_children(&self) -> usize {
                         self.#inner.num_children()
                     }
-                    fn get_child(&self, index: usize) -> Option<&dyn ::kas::WidgetConfig> {
+                    #[inline]
+                    fn get_child(&self, index: usize) -> Option<&dyn ::kas::Widget> {
                         self.#inner.get_child(index)
                     }
-                    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn ::kas::WidgetConfig> {
+                    #[inline]
+                    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn ::kas::Widget> {
                         self.#inner.get_child_mut(index)
+                    }
+                    #[inline]
+                    fn find_child_index(&self, id: &::kas::WidgetId) -> Option<usize> {
+                        self.#inner.find_child_index(id)
                     }
                 }
             });
@@ -243,13 +242,13 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     fn num_children(&self) -> usize {
                         #count
                     }
-                    fn get_child(&self, _index: usize) -> Option<&dyn ::kas::WidgetConfig> {
+                    fn get_child(&self, _index: usize) -> Option<&dyn ::kas::Widget> {
                         match _index {
                             #get_rules
                             _ => None
                         }
                     }
-                    fn get_child_mut(&mut self, _index: usize) -> Option<&mut dyn ::kas::WidgetConfig> {
+                    fn get_child_mut(&mut self, _index: usize) -> Option<&mut dyn ::kas::Widget> {
                         match _index {
                             #get_mut_rules
                             _ => None
@@ -261,14 +260,39 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
     }
 
     if impl_widget_config {
-        let key_nav = attr.key_nav.value;
-        let hover_highlight = attr.hover_highlight.value;
-        let cursor_icon = attr.cursor_icon.value;
+        let methods = if let Some(inner) = opt_derive {
+            quote! {
+                #[inline]
+                fn configure_recurse(
+                    &mut self,
+                    mgr: &mut ::kas::layout::SetRectMgr,
+                    id: ::kas::WidgetId,
+                ) {
+                    self.#inner.configure_recurse(mgr, id);
+                }
+                #[inline]
+                fn configure(&mut self, mgr: &mut ::kas::layout::SetRectMgr) {
+                    self.#inner.configure(mgr);
+                }
+                #[inline]
+                fn key_nav(&self) -> bool {
+                    self.#inner.key_nav()
+                }
+                #[inline]
+                fn hover_highlight(&self) -> bool {
+                    self.#inner.hover_highlight()
+                }
+                #[inline]
+                fn cursor_icon(&self) -> ::kas::event::CursorIcon {
+                    self.#inner.cursor_icon()
+                }
+            }
+        } else {
+            let key_nav = attr.key_nav.value;
+            let hover_highlight = attr.hover_highlight.value;
+            let cursor_icon = attr.cursor_icon.value;
 
-        scope.generated.push(quote! {
-            impl #impl_generics ::kas::WidgetConfig
-                    for #name #ty_generics #where_clause
-            {
+            quote! {
                 fn key_nav(&self) -> bool {
                     #key_nav
                 }
@@ -278,6 +302,14 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 fn cursor_icon(&self) -> ::kas::event::CursorIcon {
                     #cursor_icon
                 }
+            }
+        };
+
+        scope.generated.push(quote! {
+            impl #impl_generics ::kas::WidgetConfig
+                    for #name #ty_generics #where_clause
+            {
+                #methods
             }
         });
     } else {
@@ -298,6 +330,10 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 impl #impl_generics ::kas::Layout
                         for #name #ty_generics #where_clause
                 {
+                    #[inline]
+                    fn layout(&mut self) -> ::kas::layout::Layout<'_> {
+                        self.#inner.layout()
+                    }
                     #[inline]
                     fn size_rules(&mut self,
                         size_mgr: ::kas::theme::SizeMgr,
@@ -385,9 +421,6 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
         impl_generics = a;
         where_clause = c;
     } else {
-        let msg = attr
-            .msg
-            .unwrap_or_else(|| parse_quote! { ::kas::event::VoidMsg });
         let handle = if let Some(inner) = opt_derive {
             quote! {
                 #[inline]
@@ -395,8 +428,41 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     self.#inner.activation_via_press()
                 }
                 #[inline]
-                fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
-                    self.#inner.handle(mgr, event)
+                fn focus_on_key_nav(&self) -> bool {
+                    self.#inner.focus_on_key_nav()
+                }
+                #[inline]
+                fn handle_event(
+                    &mut self,
+                    mgr: &mut ::kas::event::EventMgr,
+                    event: ::kas::event::Event,
+                ) -> ::kas::event::Response {
+                    self.#inner.handle_event(mgr, event)
+                }
+                #[inline]
+                fn handle_unused(
+                    &mut self,
+                    mgr: &mut ::kas::event::EventMgr,
+                    index: usize,
+                    event: ::kas::event::Event,
+                ) -> ::kas::event::Response {
+                    self.#inner.handle_unused(mgr, index, event)
+                }
+                #[inline]
+                fn handle_message(
+                    &mut self,
+                    mgr: &mut ::kas::event::EventMgr,
+                    index: usize,
+                ) {
+                    self.#inner.handle_message(mgr, index);
+                }
+                #[inline]
+                fn handle_scroll(
+                    &mut self,
+                    mgr: &mut ::kas::event::EventMgr,
+                    scroll: ::kas::event::Scroll,
+                ) -> ::kas::event::Scroll {
+                    self.#inner.handle_scroll(mgr, scroll)
                 }
             }
         } else {
@@ -406,114 +472,7 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
             impl #impl_generics ::kas::event::Handler
                     for #name #ty_generics #where_clause
             {
-                type Msg = #msg;
                 #handle
-            }
-        });
-    }
-
-    if let Some(index) = send_event_impl {
-        // Manual SendEvent impl may add additional bounds:
-        let (a, _, c) = scope.impls[index].generics.split_for_impl();
-        impl_generics = a;
-        where_clause = c;
-    } else {
-        let send_impl = if let Some(inner) = opt_derive {
-            quote! { self.#inner.send(mgr, id, event) }
-        } else {
-            let mut ev_to_num = TokenStream::new();
-            for (i, child) in children.iter().enumerate() {
-                #[cfg(feature = "log")]
-                let id = quote! { id.clone() };
-                #[cfg(feature = "log")]
-                let log_msg = quote! {
-                    ::log::trace!(
-                        "Received by {} from {}: {:?}",
-                        self.id(),
-                        id,
-                        ::kas::util::TryFormat(&msg)
-                    );
-                };
-                #[cfg(not(feature = "log"))]
-                let id = quote! { id };
-                #[cfg(not(feature = "log"))]
-                let log_msg = quote! {};
-
-                let ident = &child.ident;
-                let update = if let Some(f) = child.args.update.as_ref() {
-                    quote! {
-                        if matches!(r, Response::Update) {
-                            self.#f(mgr);
-                        }
-                    }
-                } else {
-                    quote! {}
-                };
-                let handler = match &child.args.handler {
-                    Handler::Use(f) => quote! {
-                        r.try_into().unwrap_or_else(|msg| {
-                            #log_msg
-                            let _: () = self.#f(mgr, msg);
-                            Response::Used
-                        })
-                    },
-                    Handler::Map(f) => quote! {
-                        r.try_into().unwrap_or_else(|msg| {
-                            #log_msg
-                            Response::Msg(self.#f(mgr, msg))
-                        })
-                    },
-                    Handler::FlatMap(f) => quote! {
-                        r.try_into().unwrap_or_else(|msg| {
-                            #log_msg
-                            self.#f(mgr, msg)
-                        })
-                    },
-                    Handler::Discard => quote! {
-                        r.try_into().unwrap_or_else(|msg| {
-                            #log_msg
-                            let _ = msg;
-                            Response::Used
-                        })
-                    },
-                    Handler::None => quote! { r.into() },
-                };
-
-                ev_to_num.append_all(quote! {
-                    Some(#i) => {
-                        let r = self.#ident.send(mgr, #id, event);
-                        #update
-                        #handler
-                    }
-                });
-            }
-
-            quote! {
-                use ::kas::{event::Response, WidgetCore, WidgetChildren, WidgetExt};
-                match self.find_child_index(&id) {
-                    #ev_to_num
-                    _ if id == self.core_data().id => ::kas::event::EventMgr::handle_generic(self, mgr, event),
-                    _ => {
-                        debug_assert!(false, "SendEvent::send: bad WidgetId");
-                        Response::Unused
-                    }
-                }
-            }
-        };
-
-        scope.generated.push(quote! {
-            impl #impl_generics ::kas::event::SendEvent
-                    for #name #ty_generics #where_clause
-            {
-                fn send(
-                    &mut self,
-                    mgr: &mut ::kas::event::EventMgr,
-                    id: ::kas::WidgetId,
-                    event: ::kas::event::Event
-                ) -> ::kas::event::Response<Self::Msg>
-                {
-                    #send_impl
-                }
             }
         });
     }

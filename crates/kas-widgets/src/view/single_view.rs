@@ -7,28 +7,32 @@
 
 use super::{driver, Driver};
 use kas::prelude::*;
-use kas::updatable::{SingleData, Updatable};
+use kas::updatable::SingleData;
 
 impl_scope! {
     /// Single view widget
     ///
     /// This widget supports a view over a shared data item.
     ///
-    /// The shared data type `T` must support [`SingleData`] and
-    /// [`Updatable`], the latter with key type `()` and message type
-    /// matching the widget's message. One may use [`kas::updatable::SharedRc`]
+    /// The shared data type `T` must support [`SingleData`].
+    /// One may use [`kas::updatable::SharedRc`]
     /// or a custom shared data type.
     ///
     /// The driver `V` must implement [`Driver`], with data type
     /// `<T as SingleData>::Item`. Several implementations are available in the
     /// [`driver`] module or a custom implementation may be used.
+    ///
+    /// # Messages
+    ///
+    /// When a child pushes a message, the [`SingleData::handle_message`] method is
+    /// called.
     #[autoimpl(Debug ignore self.view)]
     #[derive(Clone)]
     #[widget{
         layout = single;
     }]
     pub struct SingleView<
-        T: SingleData + Updatable<(), V::Msg> + 'static,
+        T: SingleData + 'static,
         V: Driver<T::Item> = driver::Default,
     > {
         #[widget_core]
@@ -90,9 +94,7 @@ impl_scope! {
         /// [`SingleData::update`]). Other widgets sharing this data are notified
         /// of the update, if data is changed.
         pub fn set_value(&self, mgr: &mut EventMgr, data: T::Item) {
-            if let Some(handle) = self.data.update(data) {
-                mgr.trigger_update(handle, 0);
-            }
+            self.data.update(mgr, data);
         }
 
         /// Update shared data
@@ -106,9 +108,7 @@ impl_scope! {
 
     impl WidgetConfig for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
-            for handle in self.data.update_handles().into_iter() {
-                mgr.update_on_handle(handle, self.id());
-            }
+            self.data.update_on_handles(mgr.ev_state(), self.id_ref());
 
             // We set data now, after child is configured
             *mgr |= self.view.set(&mut self.child, self.data.get_cloned());
@@ -116,8 +116,7 @@ impl_scope! {
     }
 
     impl Handler for Self {
-        type Msg = <V::Widget as Handler>::Msg;
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::HandleUpdate { .. } => {
                     let data_ver = self.data.version();
@@ -125,42 +124,15 @@ impl_scope! {
                         let value = self.data.get_cloned();
                         *mgr |= self.view.set(&mut self.child, value);
                         self.data_ver = data_ver;
-                        Response::Update
-                    } else {
-                        Response::Used
                     }
+                    Response::Used
                 }
                 _ => Response::Unused,
             }
         }
-    }
 
-    impl SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            if self.eq_id(&id) {
-                self.handle(mgr, event)
-            } else {
-                let r = self.child.send(mgr, id.clone(), event);
-                if matches!(&r, Response::Update | Response::Msg(_)) {
-                    if let Some(value) = self.view.get(&self.child) {
-                        if let Some(handle) = self.data.update(value) {
-                            mgr.trigger_update(handle, 0);
-                        }
-                    }
-                }
-                if let Response::Msg(ref msg) = &r {
-                    log::trace!(
-                        "Received by {} from {}: {:?}",
-                        self.id(),
-                        id,
-                        kas::util::TryFormat(&msg)
-                    );
-                    if let Some(handle) = self.data.handle(&(), msg) {
-                        mgr.trigger_update(handle, 0);
-                    }
-                }
-                r
-            }
+        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            self.data.handle_message(mgr);
         }
     }
 }

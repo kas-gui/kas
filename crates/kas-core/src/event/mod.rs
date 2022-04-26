@@ -5,14 +5,7 @@
 
 //! Event handling
 //!
-//! Event handling uses *event* messages, passed from the parent into a widget,
-//! with responses passed back to the parent. This model is simpler than that
-//! commonly used by GUI frameworks: widgets do not need a pointer to their
-//! parent and any result is pushed back up the call stack. The model allows
-//! type-safety while allowing user-defined result types.
-//!
-//! We deliver events only on a "need to know" basis: typically, only one widget
-//! will receive an event.
+//! See documentation of [`Event`] values.
 //!
 //! ## Event delivery
 //!
@@ -20,45 +13,45 @@
 //! mouse and touch events) is to use [`crate::Layout::find_id`] to translate a
 //! coordinate to a [`WidgetId`].
 //!
-//! Events then process from root to leaf. [`SendEvent::send`] is responsible
-//! for forwarding an event to the appropriate child. Once the target widget is
-//! reached, `send` (usually) calls [`EventMgr::handle_generic`] which may apply
-//! some transformations to events, then calls [`Handler::handle`] on target
-//! widget. Finally, a [`Response`] is emitted.
+//! Events are then sent via [`EventMgr::send`] which traverses the widget tree
+//! starting from the root (the window), following the path described by the
+//! [`WidgetId`]:
 //!
-//! The [`Response`] enum has a few variants; most important is `Msg(msg)`
-//! which passes a user-defined payload up to a parent widget. The
-//! `Unused` and `Focus(rect)` variants may be trapped by any parent
-//! for secondary purposes, e.g. to adjust a `ScrollRegion`.
+//! -   In case any widget encountered is disabled, [`Unused`] is returned
+//! -   If the target is found, [`Handler::handle_event`] is called. This method may
+//!     handle the event and may push a message to the stack via
+//!     [`EventMgr::push_msg`].
+//! -   If no target is found, a warning is logged and [`Unused`] returned
 //!
-//! ## Mouse and touch events
+//! Then, for each parent back to the root,
 //!
-//! Mouse events and touch events are unified: both have a "press" which starts
-//! somewhere, moves, and ends somewhere. The main difference concerns move
-//! events, which may occur with any number of mouse buttons pressed.
+//! -   If [`Unused`] was returned, [`Handler::handle_unused`] is called
+//! -   Otherwise, if the message stack is non-empty, [`Handler::handle_message`]
+//!     is called
 //!
-//! Motion and release events are only delivered when a "press grab" is active.
-//! This is achieved by calling [`EventMgr::grab_press`] and allows receiving
-//! both relative and absolute press coordinates.
-//! A special "pan" grab allows receiving two-finger scroll/scale/rotate input.
+//! This traversal of the widget tree is fast: (`O(len)`) where `len` is the
+//! length of the path described by [`WidgetId`]. It is "clean": uninvolved
+//! widgets are not sent any event, while actionable messages are sent to an
+//! appropriate parent. It allows "recycling" of unused events.
 //!
-//! Each touch event is considered independent. The mouse cursor and multiple
-//! fingers may all interact with different parts of a UI simultaneously. The
-//! same is partly true of keyboard input, though some actions force keyboard
-//! focus.
+//! ### Keyboard focus
+//!
+//! Keyboard focus controls where otherwise undirected keyboard input is sent.
+//! This may be set via [`EventState::set_nav_focus`] but is typically controlled
+//! via the <kbd>Tab</kbd> key, via [`EventMgr::next_nav_focus`].
 //!
 //! ### Pop-ups
 //!
-//! When a pop-up widget is created, this forces keyboard focus to that widget
-//! and receives a "weak" grab on press actions, meaning that the widget
-//! receives this input first, but if returned via `Response::Unused` the
-//! input passes immediately to the next target. This allows pop-up menus to
-//! get first chance of handling input and to dismiss themselves when input is
-//! for other widgets without blocking other widgets from accepting that input.
-//! (This "weak grab" behaviour is intentional to align UI response with a
-//! user's intuition that any visible non-grey part of the UI is interactive.)
+//! When a pop-up widget is created, the pop-up's parent takes priority for
+//! "press" (mouse / touch) input as well as receiving keyboard focus.
+//!
+//! If this input is unhandled, the pop-up is automatically closed and the event
+//! is re-sent to the next candidate, allowing handling of e.g. mouse clicks on
+//! widgets under a menu. This should be intuitive: UI which is in focus and
+//! not greyed-out should be interactive.
 //!
 //! [`WidgetId`]: crate::WidgetId
+//! [`Unused`]: Response::Unused
 
 pub mod config;
 #[cfg(not(feature = "winit"))]
@@ -84,9 +77,9 @@ pub use config::Config;
 #[cfg(not(feature = "winit"))]
 pub use enums::{CursorIcon, ModifiersState, MouseButton, VirtualKeyCode};
 pub use events::*;
-pub use handler::{Handler, SendEvent};
+pub use handler::Handler;
 pub use manager::{EventMgr, EventState, GrabMode};
-pub use response::Response;
+pub use response::{Response, Scroll};
 pub use update::UpdateHandle;
 
 /// A type supporting a small number of key bindings
@@ -103,77 +96,10 @@ fn size_of_virtual_key_codes() {
     assert!(std::mem::size_of::<VirtualKeyCodes>() <= 32);
 }
 
-/// A void message
+/// A message indicating press focus
 ///
-/// This type is not constructible, therefore `Response<VoidMsg>` is known at
-/// compile-time not to contain a `Response::Msg(..)` variant.
-///
-/// It is trivial to implement `From<VoidMsg>` for any type `T`; unfortunately
-/// Rust's type system is too restrictive for us to provide a blanket
-/// implementation (due both to orphan rules for trait implementations and to
-/// conflicting implementations; it is possible that this may change in the
-/// future).
-///
-/// `From<VoidMsg>` is implemented for a number of language types;
-/// custom message types are required to implement this via the
-/// [`derive(VoidMsg)`](https://docs.rs/kas/latest/kas/macros#the-derivevoidmsg-macro) macro.
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum VoidMsg {}
-
-/// Alias for `Response<VoidMsg>`
-pub type VoidResponse = Response<VoidMsg>;
-
-// TODO(specialization): replace below impls with impl<T> From<VoidMsg> for T
-macro_rules! impl_void_msg {
-    () => {};
-    ($t:ty) => {
-        impl From<VoidMsg> for $t {
-            fn from(_: VoidMsg) -> $t {
-                unreachable!()
-            }
-        }
-    };
-    ($t:ty, $($tt:ty),*) => {
-        impl_void_msg!($t);
-        impl_void_msg!($($tt),*);
-    };
-}
-impl_void_msg!(bool, char);
-impl_void_msg!(u8, u16, u32, u64, u128, usize);
-impl_void_msg!(i8, i16, i32, i64, i128, isize);
-impl_void_msg!(f32, f64);
-impl_void_msg!(&'static str, String);
-impl_void_msg!(std::time::Duration, std::time::Instant);
-
-/// A keyed message from a child
-///
-/// This type is used by some containers to forward messages from children.
-#[derive(Clone, Debug)]
-pub enum ChildMsg<K, M> {
-    Select(K),
-    Deselect(K),
-    Child(K, M),
-}
-
-impl<K, M> From<VoidMsg> for ChildMsg<K, M> {
-    fn from(_: VoidMsg) -> Self {
-        unreachable!()
-    }
-}
-
-/// Convert Response<ChildMsg<_, M>> to Response<M>
-///
-/// `ChildMsg::Child(_, msg)`  translates to `Response::Msg(msg)`; other
-/// variants translate to `Response::Used`.
-impl<K, M> From<Response<ChildMsg<K, M>>> for Response<M> {
-    fn from(r: Response<ChildMsg<K, M>>) -> Self {
-        match Response::try_from(r) {
-            Ok(r) => r,
-            Err(msg) => match msg {
-                ChildMsg::Child(_, msg) => Response::Msg(msg),
-                _ => Response::Used,
-            },
-        }
-    }
-}
+/// Widgets which are mouse/touch interactible yet do not support keyboard nav
+/// focus may return this on [`Event::PressStart`], allowing a parent to take
+/// the navigation focus.
+#[derive(Clone, Debug, Default)]
+pub struct MsgPressFocus;

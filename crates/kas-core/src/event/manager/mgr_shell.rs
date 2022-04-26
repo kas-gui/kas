@@ -75,7 +75,7 @@ impl EventState {
     /// renamed and removed widgets.
     pub fn full_configure<W>(&mut self, shell: &mut dyn ShellWindow, widget: &mut W)
     where
-        W: Widget<Msg = VoidMsg> + ?Sized,
+        W: Widget + ?Sized,
     {
         debug!("EventMgr::configure");
         self.action.remove(TkAction::RECONFIGURE);
@@ -129,10 +129,13 @@ impl EventState {
         let mut mgr = EventMgr {
             state: self,
             shell,
+            messages: vec![],
+            scroll: Scroll::None,
             action: TkAction::empty(),
         };
         f(&mut mgr);
         let action = mgr.action;
+        drop(mgr);
         self.send_action(action);
     }
 
@@ -140,11 +143,13 @@ impl EventState {
     #[inline]
     pub fn update<W>(&mut self, shell: &mut dyn ShellWindow, widget: &mut W) -> TkAction
     where
-        W: Widget<Msg = VoidMsg> + ?Sized,
+        W: Widget + ?Sized,
     {
         let mut mgr = EventMgr {
             state: self,
             shell,
+            messages: vec![],
+            scroll: Scroll::None,
             action: TkAction::empty(),
         };
 
@@ -217,7 +222,9 @@ impl EventState {
             mgr.send_event(widget, id, event);
         }
 
-        let action = mgr.action | self.action;
+        let action = mgr.action;
+        drop(mgr);
+        let action = action | self.action;
         self.action = TkAction::empty();
         action
     }
@@ -269,13 +276,9 @@ impl<'a> EventMgr<'a> {
     #[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
     pub fn handle_winit<W>(&mut self, widget: &mut W, event: winit::event::WindowEvent)
     where
-        W: Widget<Msg = VoidMsg> + ?Sized,
+        W: Widget + ?Sized,
     {
         use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent::*};
-
-        // Note: since <W as Handler>::Msg = VoidMsg, only two values of
-        // Response are possible: Used and Unused. We don't have any use for
-        // Unused events here, so we can freely ignore all responses.
 
         match event {
             CloseRequested => self.send_action(TkAction::CLOSE),

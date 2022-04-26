@@ -10,7 +10,6 @@
 //! thus only limited by the data types used (specifically the `i32` type used
 //! to calculate the maximum scroll offset).
 
-use kas::event::ChildMsg;
 use kas::prelude::*;
 use kas::updatable::*;
 use kas::widgets::view::{Driver, ListView};
@@ -18,20 +17,21 @@ use kas::widgets::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-#[derive(Clone, Debug, VoidMsg)]
+#[derive(Clone, Debug)]
 enum Control {
     Set(usize),
     Dir,
+    Update(String),
 }
 
-#[derive(Clone, Debug, VoidMsg)]
+#[derive(Clone, Debug)]
 enum Button {
     Decr,
     Incr,
     Set,
 }
 
-#[derive(Clone, Debug, VoidMsg)]
+#[derive(Clone, Debug)]
 enum EntryMsg {
     Select,
     Update(String),
@@ -41,77 +41,63 @@ enum EntryMsg {
 struct MyData {
     ver: u64,
     len: usize,
-    // (active index, map of strings)
-    data: RefCell<(usize, HashMap<usize, String>)>,
-    handle: UpdateHandle,
+    active: usize,
+    strings: HashMap<usize, String>,
 }
 impl MyData {
     fn new(len: usize) -> Self {
         MyData {
             ver: 1,
             len,
-            data: Default::default(),
+            active: 0,
+            strings: HashMap::new(),
+        }
+    }
+    fn get(&self, index: usize) -> String {
+        self.strings
+            .get(&index)
+            .cloned()
+            .unwrap_or_else(|| format!("Entry #{}", index + 1))
+    }
+}
+
+#[derive(Debug)]
+struct MySharedData {
+    data: RefCell<MyData>,
+    handle: UpdateHandle,
+}
+impl MySharedData {
+    fn new(len: usize) -> Self {
+        MySharedData {
+            data: RefCell::new(MyData::new(len)),
             handle: UpdateHandle::new(),
         }
     }
     fn set_len(&mut self, len: usize) -> (Option<String>, UpdateHandle) {
-        self.ver += 1;
-        self.len = len;
         let mut new_text = None;
         let mut data = self.data.borrow_mut();
-        if data.0 >= len && len > 0 {
-            let active = len - 1;
-            data.0 = active;
-            drop(data);
-            new_text = Some(self.get(active).1);
+        data.ver += 1;
+        data.len = len;
+        if data.active >= len && len > 0 {
+            data.active = len - 1;
+            new_text = Some(data.get(data.active));
         }
         (new_text, self.handle)
     }
-    fn get_active(&self) -> usize {
-        self.data.borrow().0
-    }
-    // Note: in general this method should update the data source and return
-    // self.handle, but for our uses this is sufficient.
-    fn set_active(&mut self, active: usize) -> String {
-        self.ver += 1;
-        self.data.borrow_mut().0 = active;
-        self.get(active).1
-    }
-    fn get(&self, index: usize) -> (bool, String) {
-        let data = self.data.borrow();
-        let is_active = data.0 == index;
-        let text = data.1.get(&index).cloned();
-        let text = text.unwrap_or_else(|| format!("Entry #{}", index + 1));
-        (is_active, text)
-    }
 }
-impl Updatable<usize, EntryMsg> for MyData {
-    fn handle(&self, key: &usize, msg: &EntryMsg) -> Option<UpdateHandle> {
-        match msg {
-            EntryMsg::Select => {
-                self.data.borrow_mut().0 = *key;
-                Some(self.handle)
-            }
-            EntryMsg::Update(text) => {
-                self.data.borrow_mut().1.insert(*key, text.clone());
-                Some(self.handle)
-            }
-        }
-    }
-}
-impl ListData for MyData {
+impl ListData for MySharedData {
     type Key = usize;
     type Item = (usize, bool, String);
 
-    fn update_handles(&self) -> Vec<UpdateHandle> {
-        vec![self.handle]
+    fn update_on_handles(&self, mgr: &mut EventState, id: &WidgetId) {
+        mgr.update_on_handle(self.handle, id.clone());
     }
     fn version(&self) -> u64 {
-        self.ver
+        self.data.borrow().ver
     }
 
     fn len(&self) -> usize {
-        self.len
+        self.data.borrow().len
     }
     fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
         parent.make_child(*key)
@@ -121,24 +107,43 @@ impl ListData for MyData {
     }
 
     fn contains_key(&self, key: &Self::Key) -> bool {
-        *key < self.len
+        *key < self.len()
     }
 
     fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
-        let (is_active, text) = self.get(*key);
-        Some((*key, is_active, text))
+        let index = *key;
+        let data = self.data.borrow();
+        let is_active = data.active == index;
+        let text = data.get(index);
+        Some((index, is_active, text))
     }
 
-    fn update(&self, _: &Self::Key, _: Self::Item) -> Option<UpdateHandle> {
-        unimplemented!()
+    fn update(&self, _: &mut EventMgr, _: &Self::Key, _: Self::Item) {}
+
+    fn handle_message(&self, mgr: &mut EventMgr, key: &Self::Key) {
+        if let Some(msg) = mgr.try_pop_msg() {
+            let mut data = self.data.borrow_mut();
+            data.ver += 1;
+            match msg {
+                EntryMsg::Select => {
+                    data.active = *key;
+                }
+                EntryMsg::Update(text) => {
+                    data.strings.insert(*key, text.clone());
+                }
+            }
+            mgr.push_msg(Control::Update(data.get(data.active)));
+            mgr.trigger_update(self.handle, 0);
+        }
     }
 
     fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
-        (0..limit.min(self.len)).collect()
+        (0..limit.min(self.len())).collect()
     }
 
     fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key> {
-        (start.min(self.len)..(start + limit).min(self.len)).collect()
+        let len = self.len();
+        (start.min(len)..(start + limit).min(len)).collect()
     }
 }
 
@@ -147,10 +152,8 @@ impl ListData for MyData {
 #[derive(Clone, Debug)]
 struct ListEntryGuard;
 impl EditGuard for ListEntryGuard {
-    type Msg = EntryMsg;
-
-    fn edit(entry: &mut EditField<Self>, _: &mut EventMgr) -> Option<Self::Msg> {
-        Some(EntryMsg::Update(entry.get_string()))
+    fn edit(entry: &mut EditField<Self>, mgr: &mut EventMgr) {
+        mgr.push_msg(EntryMsg::Update(entry.get_string()));
     }
 }
 
@@ -159,7 +162,6 @@ impl_scope! {
     #[derive(Clone, Debug)]
     #[widget{
         layout = column: *;
-        msg = EntryMsg;
     }]
     struct ListEntry {
         #[widget_core]
@@ -167,7 +169,7 @@ impl_scope! {
         #[widget]
         label: StringLabel,
         #[widget]
-        radio: RadioBox<EntryMsg>,
+        radio: RadioBox,
         #[widget]
         entry: EditBox<ListEntryGuard>,
     }
@@ -178,7 +180,6 @@ struct MyDriver {
     radio_group: RadioBoxGroup,
 }
 impl Driver<(usize, bool, String)> for MyDriver {
-    type Msg = EntryMsg;
     type Widget = ListEntry;
 
     fn make(&self) -> Self::Widget {
@@ -187,7 +188,7 @@ impl Driver<(usize, bool, String)> for MyDriver {
             core: Default::default(),
             label: Label::new(String::default()),
             radio: RadioBox::new("display this entry", self.radio_group.clone())
-                .on_select(move |_| Some(EntryMsg::Select)),
+                .on_select(|mgr| mgr.push_msg(EntryMsg::Select)),
             entry: EditBox::new(String::default()).with_guard(ListEntryGuard),
         }
     }
@@ -197,9 +198,6 @@ impl Driver<(usize, bool, String)> for MyDriver {
             | widget.radio.set_bool(data.1)
             | widget.entry.set_string(data.2)
     }
-    fn get(&self, _widget: &Self::Widget) -> Option<(usize, bool, String)> {
-        None // unused
-    }
 }
 
 fn main() -> kas::shell::Result<()> {
@@ -208,36 +206,39 @@ fn main() -> kas::shell::Result<()> {
     let controls = make_widget! {
         #[widget{
             layout = row: *;
-            msg = Control;
         }]
         struct {
             #[widget] _ = Label::new("Number of rows:"),
-            #[widget(flatmap_msg = activate)] edit: impl HasString = EditBox::new("3")
-                .on_afl(|text, _| text.parse::<usize>().ok()),
-            #[widget(map_msg = button)] _ = TextButton::new_msg("Set", Button::Set),
-            #[widget(map_msg = button)] _ = TextButton::new_msg("−", Button::Decr),
-            #[widget(map_msg = button)] _ = TextButton::new_msg("+", Button::Incr),
+            #[widget] edit: impl HasString = EditBox::new("3")
+                .on_afl(|text, mgr| match text.parse::<usize>() {
+                    Ok(n) => mgr.push_msg(n),
+                    Err(_) => (),
+                }),
+            #[widget] _ = TextButton::new_msg("Set", Button::Set),
+            #[widget] _ = TextButton::new_msg("−", Button::Decr),
+            #[widget] _ = TextButton::new_msg("+", Button::Incr),
             #[widget] _ = TextButton::new_msg("↓↑", Control::Dir),
             n: usize = 3,
         }
-        impl Self {
-            fn activate(&mut self, _: &mut EventMgr, n: usize) -> Response<Control> {
-                if n == self.n {
-                    Response::Used
-                } else {
+        impl Handler for Self {
+            fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
+                if index == widget_index![self.edit] {
+                    if let Some(n) = mgr.try_pop_msg::<usize>() {
+                        if n != self.n {
+                            self.n = n;
+                            mgr.push_msg(Control::Set(n))
+                        }
+                    }
+                } else if let Some(msg) = mgr.try_pop_msg::<Button>() {
+                    let n = match msg {
+                        Button::Decr => self.n.saturating_sub(1),
+                        Button::Incr => self.n.saturating_add(1),
+                        Button::Set => self.n,
+                    };
+                    *mgr |= self.edit.set_string(n.to_string());
                     self.n = n;
-                    Response::Msg(Control::Set(n))
+                    mgr.push_msg(Control::Set(n));
                 }
-            }
-            fn button(&mut self, mgr: &mut EventMgr, msg: Button) -> Control {
-                let n = match msg {
-                    Button::Decr => self.n.saturating_sub(1),
-                    Button::Incr => self.n.saturating_add(1),
-                    Button::Set => self.n,
-                };
-                *mgr |= self.edit.set_string(n.to_string());
-                self.n = n;
-                Control::Set(n)
             }
         }
     };
@@ -245,8 +246,8 @@ fn main() -> kas::shell::Result<()> {
     let driver = MyDriver {
         radio_group: Default::default(),
     };
-    let data = MyData::new(3);
-    type MyList = ListView<Direction, MyData, MyDriver>;
+    let data = MySharedData::new(3);
+    type MyList = ListView<Direction, MySharedData, MyDriver>;
     let list = ListView::new_with_dir_driver(Direction::Down, driver, data);
 
     let window = Window::new(
@@ -254,42 +255,32 @@ fn main() -> kas::shell::Result<()> {
         make_widget! {
             #[widget{
                 layout = column: *;
-                msg = VoidMsg;
             }]
             struct {
                 #[widget] _ = Label::new("Demonstration of dynamic widget creation / deletion"),
-                #[widget(use_msg = control)] controls -> Control = controls,
+                #[widget] _ = controls,
                 #[widget] _ = Label::new("Contents of selected entry:"),
-                #[widget] display: StringLabel = Label::from("Entry #0"),
+                #[widget] display: StringLabel = Label::from("Entry #1"),
                 #[widget] _ = Separator::new(),
-                #[widget(use_msg = set_radio)] list: ScrollBars<MyList> =
+                #[widget] list: ScrollBars<MyList> =
                     ScrollBars::new(list).with_bars(false, true),
             }
-            impl Self {
-                fn control(&mut self, mgr: &mut EventMgr, control: Control) {
-                    match control {
-                        Control::Set(len) => {
-                            let (opt_text, handle) = self.list.data_mut().set_len(len);
-                            if let Some(text) = opt_text {
-                                *mgr |= self.display.set_string(text);
+            impl Handler for Self {
+                fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+                    if let Some(control) = mgr.try_pop_msg::<Control>() {
+                        match control {
+                            Control::Set(len) => {
+                                let (opt_text, handle) = self.list.data_mut().set_len(len);
+                                if let Some(text) = opt_text {
+                                    *mgr |= self.display.set_string(text);
+                                }
+                                mgr.trigger_update(handle, 0);
                             }
-                            mgr.trigger_update(handle, 0);
-                        }
-                        Control::Dir => {
-                            let dir = self.list.direction().reversed();
-                            *mgr |= self.list.set_direction(dir);
-                        }
-                    }
-                }
-                fn set_radio(&mut self, mgr: &mut EventMgr, msg: ChildMsg<usize, EntryMsg>) {
-                    match msg {
-                        ChildMsg::Select(_) | ChildMsg::Deselect(_) => (),
-                        ChildMsg::Child(n, EntryMsg::Select) => {
-                            let text = self.list.data_mut().set_active(n);
-                            *mgr |= self.display.set_string(text);
-                        }
-                        ChildMsg::Child(n, EntryMsg::Update(text)) => {
-                            if n == self.list.data().get_active() {
+                            Control::Dir => {
+                                let dir = self.list.direction().reversed();
+                                *mgr |= self.list.set_direction(dir);
+                            }
+                            Control::Update(text) => {
                                 *mgr |= self.display.set_string(text);
                             }
                         }

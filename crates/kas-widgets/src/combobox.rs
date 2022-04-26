@@ -5,26 +5,34 @@
 
 //! Combobox
 
-use super::{menu::MenuEntry, IndexedColumn, PopupFrame};
+use super::{menu::MenuEntry, Column, PopupFrame};
 use kas::component::{Label, Mark};
-use kas::event::{self, Command};
+use kas::event::Command;
 use kas::layout;
 use kas::prelude::*;
 use kas::theme::{MarkStyle, TextClass};
 use kas::WindowId;
+use std::fmt::Debug;
 use std::rc::Rc;
+
+#[derive(Clone, Debug)]
+struct IndexMsg(usize);
 
 impl_scope! {
     /// A pop-up multiple choice menu
     ///
+    /// # Messages
+    ///
     /// A combobox presents a menu with a fixed set of choices when clicked.
+    /// Each choice has an associated "message" value of type `M`.
+    ///
+    /// If no selection handler exists, then the choice's message is emitted
+    /// when selected. If a handler is specified via [`Self::on_select`], then
+    /// this message is passed to the handler and not emitted.
     #[autoimpl(Debug ignore self.on_select)]
     #[derive(Clone)]
-    #[widget{
-        key_nav = true;
-        hover_highlight = true;
-    }]
-    pub struct ComboBox<M: 'static> {
+    #[widget]
+    pub struct ComboBox<M: Clone + Debug + 'static> {
         #[widget_core]
         core: CoreData,
         label: Label<String>,
@@ -32,11 +40,31 @@ impl_scope! {
         layout_list: layout::FixedRowStorage<2>,
         layout_frame: layout::FrameStorage,
         #[widget]
-        popup: ComboPopup,
+        popup: ComboPopup<M>,
         active: usize,
         opening: bool,
         popup_id: Option<WindowId>,
-        on_select: Option<Rc<dyn Fn(&mut EventMgr, usize) -> Option<M>>>,
+        on_select: Option<Rc<dyn Fn(&mut EventMgr, M)>>,
+    }
+
+    impl WidgetConfig for Self {
+        fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
+            self.core_data_mut().id = id;
+            mgr.new_accel_layer(self.id(), true);
+
+            let id = self.id_ref().make_child(widget_index![self.popup]);
+            self.popup.configure_recurse(mgr, id);
+
+            self.configure(mgr);
+        }
+
+        fn key_nav(&self) -> bool {
+            true
+        }
+
+        fn hover_highlight(&self) -> bool {
+            true
+        }
     }
 
     impl kas::Layout for Self {
@@ -60,17 +88,15 @@ impl_scope! {
         }
     }
 
-    impl event::Handler for Self {
-        type Msg = M;
-
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<M> {
+    impl Handler for Self {
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             let open_popup = |s: &mut Self, mgr: &mut EventMgr, key_focus: bool| {
                 s.popup_id = mgr.add_popup(kas::Popup {
                     id: s.popup.id(),
                     parent: s.id(),
                     direction: Direction::Down,
                 });
-                if let Some(id) = s.popup.inner.get_child(s.active).map(|w| w.id()) {
+                if let Some(id) = s.popup.inner.inner.get_child(s.active).map(|w| w.id()) {
                     mgr.set_nav_focus(id, key_focus);
                 }
             };
@@ -145,8 +171,7 @@ impl_scope! {
                                 return Response::Used;
                             }
                         } else if self.popup_id.is_some() && self.popup.is_ancestor_of(id) {
-                            let r = self.popup.send(mgr, id.clone(), Event::Activate);
-                            return self.map_response(mgr, id.clone(), event, r);
+                            return mgr.send(self, id.clone(), Event::Activate);
                         }
                     }
                     if let Some(id) = self.popup_id {
@@ -163,60 +188,51 @@ impl_scope! {
                 _ => Response::Unused,
             }
         }
-    }
 
-    impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            if self.eq_id(&id) {
-                EventMgr::handle_generic(self, mgr, event)
-            } else {
-                debug_assert!(self.popup.id().is_ancestor_of(&id));
-
-                if let Event::NavFocus(key_focus) = event {
-                    if self.popup_id.is_none() {
-                        // Steal focus since child is invisible
-                        mgr.set_nav_focus(self.id(), key_focus);
-                    }
-                    // Don't bother sending Response::Focus here since NavFocus will
-                    // be sent to this widget, and handle_generic will respond.
-                    return Response::Used;
+        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            if let Some(IndexMsg(index)) = mgr.try_pop_msg() {
+                *mgr |= self.set_active(index);
+                if let Some(id) = self.popup_id {
+                    mgr.close_window(id, true);
                 }
-
-                let r = self.popup.send(mgr, id.clone(), event.clone());
-                self.map_response(mgr, id, event, r)
+                if let Some(ref f) = self.on_select {
+                    if let Some(msg) = mgr.try_pop_msg() {
+                        (f)(mgr, msg);
+                    }
+                }
             }
         }
     }
 }
 
-impl ComboBox<VoidMsg> {
+impl<M: Clone + Debug + 'static> ComboBox<M> {
     /// Construct a combobox
     ///
     /// Constructs a combobox with labels derived from an iterator over string
-    /// types, and the chosen `active` entry. For example:
+    /// types. For example:
     /// ```
     /// # use kas_widgets::ComboBox;
-    /// let combobox = ComboBox::new_from_iter(&["zero", "one", "two"], 0);
+    /// let combobox = ComboBox::new_from_iter([("zero", 0), ("one", 1), ("two", 2)].into_iter());
     /// ```
+    ///
+    /// Initially, the first entry is active.
     #[inline]
-    pub fn new_from_iter<T: Into<AccelString>, I: IntoIterator<Item = T>>(
-        iter: I,
-        active: usize,
-    ) -> Self {
+    pub fn new_from_iter<T: Into<AccelString>, I: IntoIterator<Item = (T, M)>>(iter: I) -> Self {
         let entries = iter
             .into_iter()
-            .map(|label| MenuEntry::new(label, ()))
+            .map(|(label, msg)| MenuEntry::new(label, msg))
             .collect();
-        Self::new(entries, active)
+        Self::new(entries)
     }
 
     /// Construct a combobox with the given menu entries
     ///
-    /// A combobox presents a menu with a fixed set of choices when clicked,
-    /// with the `active` choice selected (0-based index).
+    /// A combobox presents a menu with a fixed set of choices when clicked.
+    ///
+    /// Initially, the first entry is active.
     #[inline]
-    pub fn new(entries: Vec<MenuEntry<()>>, active: usize) -> Self {
-        let label = entries.get(active).map(|entry| entry.get_string());
+    pub fn new(entries: Vec<MenuEntry<M>>) -> Self {
+        let label = entries.get(0).map(|entry| entry.get_string());
         let label = Label::new(label.unwrap_or("".to_string()), TextClass::Button);
         ComboBox {
             core: Default::default(),
@@ -226,9 +242,11 @@ impl ComboBox<VoidMsg> {
             layout_frame: Default::default(),
             popup: ComboPopup {
                 core: Default::default(),
-                inner: PopupFrame::new(IndexedColumn::new(entries)),
+                inner: PopupFrame::new(
+                    Column::new(entries).on_message(|mgr, index| mgr.push_msg(IndexMsg(index))),
+                ),
             },
-            active,
+            active: 0,
             opening: false,
             popup_id: None,
             on_select: None,
@@ -238,13 +256,12 @@ impl ComboBox<VoidMsg> {
     /// Set the selection handler `f`
     ///
     /// On selection of a new choice the closure `f` is called with the choice's
-    /// index. The result of `f` is converted to [`Response::Msg`] or
-    /// [`Response::Update`] and returned to the parent.
+    /// message.
     #[inline]
     #[must_use]
-    pub fn on_select<M, F>(self, f: F) -> ComboBox<M>
+    pub fn on_select<F>(self, f: F) -> ComboBox<M>
     where
-        F: Fn(&mut EventMgr, usize) -> Option<M> + 'static,
+        F: Fn(&mut EventMgr, M) + 'static,
     {
         ComboBox {
             core: self.core,
@@ -261,7 +278,7 @@ impl ComboBox<VoidMsg> {
     }
 }
 
-impl<M: 'static> ComboBox<M> {
+impl<M: Clone + Debug + 'static> ComboBox<M> {
     /// Get the index of the active choice
     ///
     /// This index is normally less than the number of choices (`self.len()`),
@@ -271,8 +288,14 @@ impl<M: 'static> ComboBox<M> {
         self.active
     }
 
-    /// Set the active choice
+    /// Set the active choice (inline style)
     #[inline]
+    pub fn with_active(mut self, index: usize) -> Self {
+        let _ = self.set_active(index);
+        self
+    }
+
+    /// Set the active choice
     pub fn set_active(&mut self, index: usize) -> TkAction {
         if self.active != index && index < self.popup.inner.len() {
             self.active = index;
@@ -311,9 +334,9 @@ impl<M: 'static> ComboBox<M> {
     //
     // TODO(opt): these methods cause full-window resize. They don't need to
     // resize at all if the menu is closed!
-    pub fn push<T: Into<AccelString>>(&mut self, mgr: &mut SetRectMgr, label: T) -> usize {
+    pub fn push<T: Into<AccelString>>(&mut self, mgr: &mut SetRectMgr, label: T, msg: M) -> usize {
         let column = &mut self.popup.inner;
-        column.push(mgr, MenuEntry::new(label, ()))
+        column.push(mgr, MenuEntry::new(label, msg))
     }
 
     /// Pops the last choice from the combobox
@@ -324,9 +347,15 @@ impl<M: 'static> ComboBox<M> {
     /// Add a choice at position `index`
     ///
     /// Panics if `index > len`.
-    pub fn insert<T: Into<AccelString>>(&mut self, mgr: &mut SetRectMgr, index: usize, label: T) {
+    pub fn insert<T: Into<AccelString>>(
+        &mut self,
+        mgr: &mut SetRectMgr,
+        index: usize,
+        label: T,
+        msg: M,
+    ) {
         let column = &mut self.popup.inner;
-        column.insert(mgr, index, MenuEntry::new(label, ()));
+        column.insert(mgr, index, MenuEntry::new(label, msg));
     }
 
     /// Removes the choice at position `index`
@@ -339,51 +368,16 @@ impl<M: 'static> ComboBox<M> {
     /// Replace the choice at `index`
     ///
     /// Panics if `index` is out of bounds.
-    pub fn replace<T: Into<AccelString>>(&mut self, mgr: &mut SetRectMgr, index: usize, label: T) {
+    pub fn replace<T: Into<AccelString>>(
+        &mut self,
+        mgr: &mut SetRectMgr,
+        index: usize,
+        label: T,
+        msg: M,
+    ) {
         self.popup
             .inner
-            .replace(mgr, index, MenuEntry::new(label, ()));
-    }
-}
-
-impl<M: 'static> ComboBox<M> {
-    fn map_response(
-        &mut self,
-        mgr: &mut EventMgr,
-        id: WidgetId,
-        event: Event,
-        r: Response<(usize, ())>,
-    ) -> Response<M> {
-        match r {
-            Response::Unused => EventMgr::handle_generic(self, mgr, event),
-            Response::Update | Response::Select => {
-                if let Some(id) = self.popup_id {
-                    mgr.close_window(id, true);
-                }
-                if let Some(index) = self.popup.inner.find_child_index(&id) {
-                    if index != self.active {
-                        *mgr |= self.set_active(index);
-                        return if let Some(ref f) = self.on_select {
-                            Response::update_or_msg((f)(mgr, index))
-                        } else {
-                            Response::Update
-                        };
-                    }
-                }
-                Response::Used
-            }
-            r => r.try_into().unwrap_or_else(|(index, ())| {
-                *mgr |= self.set_active(index);
-                if let Some(id) = self.popup_id {
-                    mgr.close_window(id, true);
-                }
-                if let Some(ref f) = self.on_select {
-                    Response::update_or_msg((f)(mgr, index))
-                } else {
-                    Response::Update
-                }
-            }),
-        }
+            .replace(mgr, index, MenuEntry::new(label, msg));
     }
 }
 
@@ -391,12 +385,11 @@ impl_scope! {
     #[derive(Clone, Debug)]
     #[widget{
         layout = single;
-        msg = (usize, ());
     }]
-    struct ComboPopup {
+    struct ComboPopup<M: Clone + Debug + 'static> {
         #[widget_core]
         core: CoreData,
         #[widget]
-        inner: PopupFrame<IndexedColumn<MenuEntry<()>>>,
+        inner: PopupFrame<Column<MenuEntry<M>>>,
     }
 }

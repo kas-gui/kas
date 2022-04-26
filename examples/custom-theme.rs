@@ -99,7 +99,7 @@ impl ThemeControl for CustomTheme {
     }
 }
 
-#[derive(Clone, Debug, VoidMsg)]
+#[derive(Clone, Debug)]
 enum Item {
     White,
     Red,
@@ -110,8 +110,12 @@ enum Item {
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let widgets = make_widget! {
-        #[widget{
+    let theme = CustomTheme::default();
+
+    let window = Window::new(
+        "Theme demo",
+        make_widget! {
+            #[widget{
             layout = grid: {
                 1, 1: "Custom theme demo\nChoose your colour!";
                 0, 1: self.white;
@@ -119,36 +123,23 @@ fn main() -> kas::shell::Result<()> {
                 2, 1: self.yellow;
                 1, 0: self.green;
             };
-            msg = Item;
-        }]
-        struct {
-            #[widget] white = TextButton::new_msg("&White", Item::White),
-            #[widget] red = TextButton::new_msg("&Red", Item::Red),
-            #[widget] yellow = TextButton::new_msg("&Yellow", Item::Yellow),
-            #[widget] green = TextButton::new_msg("&Green", Item::Green),
-        }
-    };
-
-    let theme = CustomTheme::default();
-
-    let window = Window::new(
-        "Theme demo",
-        make_widget! {
-            #[widget{
-                layout = single;
-                msg = VoidMsg;
             }]
             struct {
-                #[widget(use_msg = handler)] _ = widgets,
+                #[widget] white = TextButton::new_msg("&White", Item::White),
+                #[widget] red = TextButton::new_msg("&Red", Item::Red),
+                #[widget] yellow = TextButton::new_msg("&Yellow", Item::Yellow),
+                #[widget] green = TextButton::new_msg("&Green", Item::Green),
             }
-            impl Self {
-                fn handler(&mut self, _: &mut EventMgr, item: Item) {
-                    match item {
-                        Item::White => BACKGROUND.with(|b| b.set(Rgba::WHITE)),
-                        Item::Red => BACKGROUND.with(|b| b.set(Rgba::rgb(0.9, 0.2, 0.2))),
-                        Item::Green => BACKGROUND.with(|b| b.set(Rgba::rgb(0.2, 0.9, 0.2))),
-                        Item::Yellow => BACKGROUND.with(|b| b.set(Rgba::rgb(0.9, 0.9, 0.2))),
-                    };
+            impl Handler for Self {
+                fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+                    if let Some(item) = mgr.try_pop_msg::<Item>() {
+                        match item {
+                            Item::White => BACKGROUND.with(|b| b.set(Rgba::WHITE)),
+                            Item::Red => BACKGROUND.with(|b| b.set(Rgba::rgb(0.9, 0.2, 0.2))),
+                            Item::Green => BACKGROUND.with(|b| b.set(Rgba::rgb(0.2, 0.9, 0.2))),
+                            Item::Yellow => BACKGROUND.with(|b| b.set(Rgba::rgb(0.9, 0.9, 0.2))),
+                        }
+                    }
                 }
             }
         },

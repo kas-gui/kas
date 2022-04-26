@@ -8,17 +8,21 @@
 use std::fmt::Debug;
 
 use super::{DragHandle, ScrollRegion};
-use kas::{event, prelude::*};
+use kas::event::{MsgPressFocus, Scroll};
+use kas::prelude::*;
 
 impl_scope! {
     /// A scroll bar
     ///
     /// Scroll bars allow user-input of a value between 0 and a defined maximum,
     /// and allow the size of the handle to be specified.
+    ///
+    /// # Messages
+    ///
+    /// On value change, pushes a value of type `i32`.
     #[derive(Clone, Debug, Default)]
     #[widget{
         hover_highlight = true;
-        msg = i32;
     }]
     pub struct ScrollBar<D: Directional> {
         #[widget_core]
@@ -244,28 +248,31 @@ impl_scope! {
         }
     }
 
-    impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            let offset = if self.eq_id(&id) {
-                match event {
-                    Event::PressStart { source, coord, .. } => {
-                        self.handle.handle_press_on_track(mgr, source, coord)
+    impl Handler for Self {
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+            match event {
+                Event::PressStart { source, coord, .. } => {
+                    let offset = self.handle.handle_press_on_track(mgr, source, coord);
+                    let (offset, action) = self.handle.set_offset(offset);
+                    *mgr |= action;
+                    if self.set_offset(offset) {
+                        mgr.push_msg(self.value);
                     }
-                    _ => return Response::Unused,
+                    Response::Used
                 }
-            } else {
-                debug_assert!(self.handle.id().is_ancestor_of(&id));
-                match self.handle.send(mgr, id, event).try_into() {
-                    Ok(res) => return res,
-                    Err(offset) => offset,
-                }
-            };
+                _ => Response::Unused
+            }
+        }
 
-            if self.set_offset(offset) {
-                mgr.redraw(self.handle.id());
-                Response::Msg(self.value)
-            } else {
-                Response::Used
+        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            if let Some(MsgPressFocus) = mgr.try_pop_msg() {
+                // Useless to us, but we should remove it.
+            } else if let Some(offset) = mgr.try_pop_msg() {
+                let (offset, action) = self.handle.set_offset(offset);
+                *mgr |= action;
+                if self.set_offset(offset) {
+                    mgr.push_msg(self.value);
+                }
             }
         }
     }
@@ -276,10 +283,7 @@ impl_scope! {
 /// This trait should be implemented by widgets supporting scrolling, enabling
 /// a parent (such as the [`ScrollBars`] wrapper) to add controls.
 ///
-/// The implementing widget may use event handlers to scroll itself (e.g. in
-/// reaction to a mouse wheel or touch-drag), but when doing so should emit
-/// [`Response::Focus`] to notify any wrapper of the new position (usually with
-/// `Response::Focus(self.rect())`).
+/// If the widget scrolls itself it should set a scroll action via [`EventMgr::set_scroll`].
 pub trait Scrollable: Widget {
     /// Given size `size`, returns whether `(horiz, vert)` scrolling is required
     fn scroll_axes(&self, size: Size) -> (bool, bool);
@@ -307,16 +311,6 @@ pub trait Scrollable: Widget {
     /// The offset is clamped to the available scroll range and applied. The
     /// resulting offset is returned.
     fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset;
-
-    /// Scroll by a delta
-    ///
-    /// Returns the remaining (unused) delta.
-    #[inline]
-    fn scroll_by_delta(&mut self, mgr: &mut EventMgr, delta: Offset) -> Offset {
-        let old_offset = self.scroll_offset();
-        let new_offset = self.set_scroll_offset(mgr, old_offset - delta);
-        delta - old_offset + new_offset
-    }
 }
 
 impl_scope! {
@@ -330,7 +324,6 @@ impl_scope! {
     #[derive(Clone, Debug, Default)]
     #[widget{
         derive = self.0;
-        msg = <W as event::Handler>::Msg;
     }]
     pub struct ScrollBarRegion<W: Widget>(ScrollBars<ScrollRegion<W>>);
 
@@ -426,7 +419,7 @@ impl_scope! {
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Debug, Default)]
-    #[widget { msg = <W as event::Handler>::Msg; }]
+    #[widget]
     pub struct ScrollBars<W: Scrollable> {
         #[widget_core]
         core: CoreData,
@@ -636,40 +629,26 @@ impl_scope! {
         }
     }
 
-    impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            match self.find_child_index(&id) {
-                Some(widget_index![self.horiz_bar]) => self.horiz_bar
-                    .send(mgr, id, event)
-                    .try_into()
-                    .unwrap_or_else(|msg| {
-                        let offset = Offset(msg, self.inner.scroll_offset().1);
-                        self.inner.set_scroll_offset(mgr, offset);
-                        Response::Used
-                    }),
-                Some(widget_index![self.vert_bar]) => self.vert_bar
-                    .send(mgr, id, event)
-                    .try_into()
-                    .unwrap_or_else(|msg| {
-                        let offset = Offset(self.inner.scroll_offset().0, msg);
-                        self.inner.set_scroll_offset(mgr, offset);
-                        Response::Used
-                    }),
-                Some(widget_index![self.inner]) => {
-                    let r = self.inner.send(mgr, id, event);
-                    // We assume the inner already updated its positions; this is just to set bars
-                    if matches!(r, Response::Pan(_) | Response::Scrolled | Response::Focus(_)) {
-                        let offset = self.inner.scroll_offset();
-                        *mgr |= self.horiz_bar.set_value(offset.0) | self.vert_bar.set_value(offset.1);
-                    }
-                    r
+    impl Handler for Self {
+        fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
+            if index == widget_index![self.horiz_bar] {
+                if let Some(msg) = mgr.try_pop_msg() {
+                    let offset = Offset(msg, self.inner.scroll_offset().1);
+                    self.inner.set_scroll_offset(mgr, offset);
                 }
-                _ if self.eq_id(id) => self.handle(mgr, event),
-                _ => {
-                    debug_assert!(false, "SendEvent::send: bad WidgetId");
-                    Response::Unused
+            } else if index == widget_index![self.vert_bar] {
+                if let Some(msg) = mgr.try_pop_msg() {
+                    let offset = Offset(self.inner.scroll_offset().0, msg);
+                    self.inner.set_scroll_offset(mgr, offset);
                 }
             }
+        }
+
+        fn handle_scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) -> Scroll {
+            // We assume the inner already updated its positions; this is just to set bars
+            let offset = self.inner.scroll_offset();
+            *mgr |= self.horiz_bar.set_value(offset.0) | self.vert_bar.set_value(offset.1);
+            scroll
         }
     }
 }

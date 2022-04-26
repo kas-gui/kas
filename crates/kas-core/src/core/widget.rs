@@ -70,9 +70,9 @@ pub trait WidgetCore: Any + fmt::Debug {
     fn widget_name(&self) -> &'static str;
 
     /// Erase type
-    fn as_widget(&self) -> &dyn WidgetConfig;
+    fn as_widget(&self) -> &dyn Widget;
     /// Erase type
-    fn as_widget_mut(&mut self) -> &mut dyn WidgetConfig;
+    fn as_widget_mut(&mut self) -> &mut dyn Widget;
 }
 
 /// Listing of a widget's children
@@ -100,7 +100,7 @@ pub trait WidgetChildren: WidgetCore {
     /// For convenience, `Index<usize>` is implemented via this method.
     ///
     /// Required: `index < self.len()`.
-    fn get_child(&self, index: usize) -> Option<&dyn WidgetConfig>;
+    fn get_child(&self, index: usize) -> Option<&dyn Widget>;
 
     /// Mutable variant of get
     ///
@@ -108,7 +108,7 @@ pub trait WidgetChildren: WidgetCore {
     /// redraw may break the UI. If a widget is replaced, a reconfigure **must**
     /// be requested. This can be done via [`EventState::send_action`].
     /// This method may be removed in the future.
-    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig>;
+    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget>;
 
     /// Find the child which is an ancestor of this `id`, if any
     ///
@@ -401,9 +401,7 @@ pub trait Layout: WidgetChildren {
 /// -   [`Layout`] — handles sizing and positioning of self and children
 /// -   [`WidgetConfig`] — the last unparametrised trait allows customisation of
 ///     some aspects of widget behaviour
-/// -   [`event::Handler`] — parametrised widgets over a `Msg` type and handles
-///     events
-/// -   [`event::SendEvent`] — routes events to children and handles responses
+/// -   [`event::Handler`] — handles events
 /// -   [`Widget`] — the final trait
 ///
 /// Widgets **must** use the [`derive(Widget)`] macro to implement at least
@@ -413,14 +411,12 @@ pub trait Layout: WidgetChildren {
 /// implement *all except for `Layout`*. This opt-out derive behaviour means
 /// that adding additional traits into the family is not a breaking change.
 ///
-/// To refer to a widget via dyn trait, use `&dyn WidgetConfig` (or, if the
-/// message type is known, one may use `&dyn Widget<Msg = M>`).
-/// To refer to a widget in generic functions, use `<W: Widget>` or
-/// `<M, W: Widget<Msg = M>>`.
+/// To refer to a widget via dyn trait, use `&dyn Widget`.
+/// To refer to a widget in generic functions, use `<W: Widget>`.
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
-pub trait Widget: event::SendEvent {}
+pub trait Widget: event::Handler {}
 
 /// Extension trait over widgets
 pub trait WidgetExt: WidgetChildren {
@@ -488,7 +484,7 @@ pub trait WidgetExt: WidgetChildren {
     }
 
     /// Find the descendant with this `id`, if any
-    fn find_widget(&self, id: &WidgetId) -> Option<&dyn WidgetConfig> {
+    fn find_widget(&self, id: &WidgetId) -> Option<&dyn Widget> {
         if let Some(index) = self.find_child_index(id) {
             self.get_child(index)
                 .and_then(|child| child.find_widget(id))
@@ -500,7 +496,7 @@ pub trait WidgetExt: WidgetChildren {
     }
 
     /// Find the descendant with this `id`, if any
-    fn find_widget_mut(&mut self, id: &WidgetId) -> Option<&mut dyn WidgetConfig> {
+    fn find_widget_mut(&mut self, id: &WidgetId) -> Option<&mut dyn Widget> {
         if let Some(index) = self.find_child_index(id) {
             self.get_child_mut(index)
                 .and_then(|child| child.find_widget_mut(id))

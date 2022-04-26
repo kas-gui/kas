@@ -6,17 +6,15 @@
 //! Impls for data traits
 
 use super::*;
-use crate::event::UpdateHandle;
+use crate::event::{EventMgr, EventState};
 use crate::WidgetId;
 use std::fmt::Debug;
 
-impl<T: Clone + Debug> ListData for [T] {
+impl<T: Clone + Debug + 'static> ListData for [T] {
     type Key = usize;
     type Item = T;
 
-    fn update_handles(&self) -> Vec<UpdateHandle> {
-        vec![]
-    }
+    fn update_on_handles(&self, _: &mut EventState, _: &WidgetId) {}
     fn version(&self) -> u64 {
         1
     }
@@ -40,9 +38,8 @@ impl<T: Clone + Debug> ListData for [T] {
         self.get(*key).cloned()
     }
 
-    fn update(&self, _: &Self::Key, _: Self::Item) -> Option<UpdateHandle> {
+    fn update(&self, _: &mut EventMgr, _: &Self::Key, _: Self::Item) {
         // Note: plain [T] does not support update, but SharedRc<[T]> does.
-        None
     }
 
     fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
@@ -54,7 +51,7 @@ impl<T: Clone + Debug> ListData for [T] {
         (start.min(len)..(start + limit).min(len)).collect()
     }
 }
-impl<T: Clone + Debug> ListDataMut for [T] {
+impl<T: Clone + Debug + 'static> ListDataMut for [T] {
     fn set(&mut self, key: &Self::Key, item: Self::Item) {
         self[*key] = item;
     }

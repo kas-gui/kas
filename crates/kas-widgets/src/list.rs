@@ -6,38 +6,9 @@
 //! A row or column with run-time adjustable contents
 
 use kas::dir::{Down, Right};
-use kas::{event, layout, prelude::*};
+use kas::{layout, prelude::*};
 use std::collections::hash_map::{Entry, HashMap};
 use std::ops::{Index, IndexMut};
-
-/// Support for optionally-indexed messages
-pub trait FromIndexed<T> {
-    fn from_indexed(i: usize, t: T) -> Self;
-}
-impl<T> FromIndexed<T> for T {
-    #[inline]
-    fn from_indexed(_: usize, t: T) -> Self {
-        t
-    }
-}
-impl<T> FromIndexed<T> for (usize, T) {
-    #[inline]
-    fn from_indexed(i: usize, t: T) -> Self {
-        (i, t)
-    }
-}
-impl<T> FromIndexed<T> for (u32, T) {
-    #[inline]
-    fn from_indexed(i: usize, t: T) -> Self {
-        (i.cast(), t)
-    }
-}
-impl<T> FromIndexed<T> for (u64, T) {
-    #[inline]
-    fn from_indexed(i: usize, t: T) -> Self {
-        (i.cast(), t)
-    }
-}
 
 /// A generic row widget
 ///
@@ -49,95 +20,22 @@ pub type Row<W> = List<Right, W>;
 /// See documentation of [`List`] type. See also the [`column`](crate::column) macro.
 pub type Column<W> = List<Down, W>;
 
-/// A generic row widget
-///
-/// See documentation of [`IndexedList`] type.
-pub type IndexedRow<W> = IndexedList<Right, W>;
-
-/// A generic column widget
-///
-/// See documentation of [`IndexedList`] type.
-pub type IndexedColumn<W> = IndexedList<Down, W>;
-
 /// A row of boxed widgets
 ///
-/// This is parameterised over handler message type.
-///
 /// See documentation of [`List`] type.
-pub type BoxRow<M> = BoxList<Right, M>;
+pub type BoxRow = BoxList<Right>;
 
 /// A column of boxed widgets
 ///
-/// This is parameterised over handler message type.
-///
 /// See documentation of [`List`] type.
-pub type BoxColumn<M> = BoxList<Down, M>;
+pub type BoxColumn = BoxList<Down>;
 
 /// A row/column of boxed widgets
 ///
-/// This is parameterised over directionality and handler message type.
+/// This is parameterised over directionality.
 ///
 /// See documentation of [`List`] type.
-pub type BoxList<D, M> = List<D, Box<dyn Widget<Msg = M>>>;
-
-/// A generic row/column widget
-///
-/// This type is roughly [`Vec`] but for widgets. Generics:
-///
-/// -   `D:` [`Directional`] — fixed or run-time direction of layout
-/// -   `W:` [`Widget`] — type of widget
-///
-/// The `List` widget forwards messages from children: `M = <W as Handler>::Msg`.
-///
-/// ## Alternatives
-///
-/// Some more specific type-defs are available:
-///
-/// -   [`Row`] fixes the direction to [`Right`]
-/// -   [`Column`] fixes the direction to [`Down`]
-/// -   [`row`](crate::row) and [`column`](crate::column) macros
-/// -   [`BoxList`] is parameterised over the message type `M`, using boxed
-///     widgets: `Box<dyn Widget<Msg = M>>`
-/// -   [`BoxRow`] and [`BoxColumn`] are variants of [`BoxList`] with fixed direction
-///
-/// See also [`IndexedList`] and [`GenericList`] which allow other message types.
-///
-/// Where the entries are fixed, also consider custom [`Widget`] implementations.
-///
-/// ## Performance
-///
-/// Configuring and resizing elements is O(n) in the number of children.
-/// Drawing and event handling is O(log n) in the number of children (assuming
-/// only a small number are visible at any one time).
-pub type List<D, W> = GenericList<D, W, <W as Handler>::Msg>;
-
-/// A generic row/column widget
-///
-/// This type is roughly [`Vec`] but for widgets. Generics:
-///
-/// -   `D:` [`Directional`] — fixed or run-time direction of layout
-/// -   `W:` [`Widget`] — type of widget
-///
-/// The `IndexedList` widget forwards messages from children together with the
-/// child's index in the list: `(usize, M)` where `M = <W as Handler>::Msg`.
-///
-/// ## Alternatives
-///
-/// Some more specific type-defs are available:
-///
-/// -   [`IndexedRow`] fixes the direction to [`Right`]
-/// -   [`IndexedColumn`] fixes the direction to [`Down`]
-///
-/// See also [`List`] and [`GenericList`] which allow other message types.
-///
-/// Where the entries are fixed, also consider custom [`Widget`] implementations.
-///
-/// ## Performance
-///
-/// Configuring and resizing elements is O(n) in the number of children.
-/// Drawing and event handling is O(log n) in the number of children (assuming
-/// only a small number are visible at any one time).
-pub type IndexedList<D, W> = GenericList<D, W, (usize, <W as Handler>::Msg)>;
+pub type BoxList<D> = List<D, Box<dyn Widget>>;
 
 impl_scope! {
     /// A generic row/column widget
@@ -146,33 +44,31 @@ impl_scope! {
     ///
     /// -   `D:` [`Directional`] — fixed or run-time direction of layout
     /// -   `W:` [`Widget`] — type of widget
-    /// -   `M` — the message type; restricted to `M:` [`FromIndexed`]`<M2>` where
-    ///     `M2` is the child's message type; this is usually either `M2` or `(usize, M2)`
     ///
     /// ## Alternatives
     ///
     /// Some more specific type-defs are available:
     ///
-    /// -   [`List`] fixes the message type to that of the child widget type `M`
-    /// -   [`IndexedList`] fixes the message type to `(usize, M)`
-    /// -   [`Row`], [`Column`], [`IndexedRow`], [`BoxList`], etc.
-    ///
-    /// Where the entries are fixed, also consider custom [`Widget`] implementations.
+    /// -   [`Row`] and [`Column`] fix the direction `D`
+    /// -   [`BoxList`] fixes the widget type to `Box<dyn Widget>`
+    /// -   [`BoxRow`] and [`BoxColumn`] fix both type parameters
     ///
     /// ## Performance
     ///
     /// Configuring and resizing elements is O(n) in the number of children.
     /// Drawing and event handling is O(log n) in the number of children (assuming
     /// only a small number are visible at any one time).
+    ///
+    /// # Messages
+    ///
+    /// If a handler is specified via [`Self::on_message`] then this handler is
+    /// called when a child pushes a message. This allows associating the
+    /// child's index with a message.
     #[autoimpl(Clone where W: Clone)]
-    #[autoimpl(Debug)]
+    #[autoimpl(Debug ignore self.on_message)]
     #[autoimpl(Default where D: Default)]
-    #[widget { msg = M; }]
-    pub struct GenericList<
-        D: Directional,
-        W: Widget,
-        M: FromIndexed<<W as Handler>::Msg> + 'static,
-    > {
+    #[widget]
+    pub struct List<D: Directional, W: Widget> {
         #[widget_core]
         core: CoreData,
         layout_store: layout::DynRowStorage,
@@ -181,7 +77,7 @@ impl_scope! {
         size_solved: bool,
         next: usize,
         id_map: HashMap<usize, usize>, // map key of WidgetId to index
-        _pd: std::marker::PhantomData<M>,
+        on_message: Option<fn(&mut EventMgr, usize)>,
     }
 
     impl WidgetChildren for Self {
@@ -190,11 +86,11 @@ impl_scope! {
             self.widgets.len()
         }
         #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn WidgetConfig> {
+        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
             self.widgets.get(index).map(|w| w.as_widget())
         }
         #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
+        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
             self.widgets.get_mut(index).map(|w| w.as_widget_mut())
         }
 
@@ -255,27 +151,11 @@ impl_scope! {
         }
     }
 
-    impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            if let Some(index) = self.find_child_index(&id) {
-                if let Some(child) = self.widgets.get_mut(index) {
-                    let r = child.send(mgr, id.clone(), event);
-                    return match Response::try_from(r) {
-                        Ok(r) => r,
-                        Err(msg) => {
-                            log::trace!(
-                                "Received by {} from {}: {:?}",
-                                self.id(),
-                                id,
-                                kas::util::TryFormat(&msg)
-                            );
-                            Response::Msg(FromIndexed::from_indexed(index, msg))
-                        }
-                    };
-                }
+    impl Handler for Self {
+        fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
+            if let Some(f) = self.on_message {
+                f(mgr, index);
             }
-
-            Response::Unused
         }
     }
 
@@ -291,7 +171,7 @@ impl_scope! {
         }
     }
 
-    impl<W: Widget, M: FromIndexed<<W as Handler>::Msg> + 'static> GenericList<Direction, W, M> {
+    impl<W: Widget> List<Direction, W> {
         /// Set the direction of contents
         pub fn set_direction(&mut self, direction: Direction) -> TkAction {
             self.direction = direction;
@@ -326,7 +206,7 @@ impl_scope! {
         /// Construct a new instance with explicit direction
         #[inline]
         pub fn new_with_direction(direction: D, widgets: Vec<W>) -> Self {
-            GenericList {
+            List {
                 core: Default::default(),
                 layout_store: Default::default(),
                 widgets,
@@ -334,8 +214,27 @@ impl_scope! {
                 size_solved: false,
                 next: 0,
                 id_map: Default::default(),
-                _pd: Default::default(),
+                on_message: None,
             }
+        }
+
+        /// Assign a child message handler
+        ///
+        /// This handler (if any) is called when a child pushes a message:
+        /// `f(mgr, index)`, where `index` is the child's index.
+        #[inline]
+        pub fn set_on_message(&mut self, f: Option<fn(&mut EventMgr, usize)>) {
+            self.on_message = f;
+        }
+
+        /// Assign a child message handler (inline style)
+        ///
+        /// This handler is called when a child pushes a message:
+        /// `f(mgr, index)`, where `index` is the child's index.
+        #[inline]
+        pub fn on_message(mut self, f: fn(&mut EventMgr, usize)) -> Self {
+            self.on_message = Some(f);
+            self
         }
 
         /// Edit the list of children directly

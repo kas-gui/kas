@@ -281,6 +281,9 @@ impl PipeWindow {
     }
 }
 
+#[derive(Clone, Debug)]
+struct ViewUpdate;
+
 impl_scope! {
     #[derive(Clone, Debug)]
     #[widget]
@@ -329,6 +332,10 @@ impl_scope! {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.register_nav_fallback(self.id());
         }
+
+        fn key_nav(&self) -> bool {
+            true
+        }
     }
 
     impl Layout for Mandlebrot {
@@ -359,9 +366,7 @@ impl_scope! {
     }
 
     impl event::Handler for Mandlebrot {
-        type Msg = ();
-
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(cmd, _) => {
                     match cmd {
@@ -380,8 +385,7 @@ impl_scope! {
                             self.delta += self.alpha.complex_mul(delta);
                         }
                     }
-                    mgr.redraw(self.id());
-                    Response::Msg(())
+                    mgr.push_msg(ViewUpdate);
                 }
                 Event::Scroll(delta) => {
                     let factor = match delta {
@@ -389,8 +393,7 @@ impl_scope! {
                         event::ScrollDelta::PixelDelta(coord) => -0.01 * coord.1 as f64,
                     };
                     self.alpha = self.alpha * 2f64.powf(factor);
-                    mgr.redraw(self.id());
-                    Response::Msg(())
+                    mgr.push_msg(ViewUpdate);
                 }
                 Event::Pan { alpha, delta } => {
                     // Our full transform (from screen coordinates to world coordinates) is:
@@ -407,8 +410,7 @@ impl_scope! {
                         + (self.alpha - new_alpha).complex_mul(self.view_delta);
                     self.alpha = new_alpha;
 
-                    mgr.redraw(self.id());
-                    Response::Msg(())
+                    mgr.push_msg(ViewUpdate);
                 }
                 Event::PressStart { source, coord, .. } => {
                     mgr.grab_press(
@@ -418,10 +420,10 @@ impl_scope! {
                         event::GrabMode::PanFull,
                         Some(event::CursorIcon::Grabbing),
                     );
-                    Response::Used
                 }
-                _ => Response::Unused,
+                _ => return Response::Unused,
             }
+            Response::Used
         }
     }
 }
@@ -435,15 +437,14 @@ impl_scope! {
             0, 2: self.slider;
             1..3, 1..3: self.mbrot;
         };
-        msg = event::VoidMsg;
     }]
     struct MandlebrotWindow {
         #[widget_core] core: CoreData,
         #[widget] label: Label<String>,
         #[widget] iters: ReserveP<Label<String>>,
-        #[widget(use_msg = iter)] slider: Slider<i32, kas::dir::Up>,
+        #[widget] slider: Slider<i32, kas::dir::Up>,
         // extra col span allows use of Label's margin
-        #[widget(use_msg = mbrot)] mbrot: Mandlebrot,
+        #[widget] mbrot: Mandlebrot,
     }
 
     impl MandlebrotWindow {
@@ -461,13 +462,16 @@ impl_scope! {
             };
             Window::new("Mandlebrot", w)
         }
-
-        fn iter(&mut self, mgr: &mut EventMgr, iter: i32) {
-            self.mbrot.iter = iter;
-            *mgr |= self.iters.set_string(format!("{}", iter));
-        }
-        fn mbrot(&mut self, mgr: &mut EventMgr, _: ()) {
-            *mgr |= self.label.set_string(self.mbrot.loc());
+    }
+    impl Handler for Self {
+        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            if let Some(iter) = mgr.try_pop_msg() {
+                self.mbrot.iter = iter;
+                *mgr |= self.iters.set_string(format!("{}", iter));
+            } else if let Some(ViewUpdate) = mgr.try_pop_msg() {
+                mgr.redraw(self.mbrot.id());
+                *mgr |= self.label.set_string(self.mbrot.loc());
+            }
         }
     }
 }

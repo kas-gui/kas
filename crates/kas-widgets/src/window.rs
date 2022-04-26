@@ -60,17 +60,7 @@ impl_scope! {
         }
     }
 
-    impl SendEvent for Self where W::Msg: Into<VoidMsg> {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            if self.eq_id(&id) {
-                Response::Unused
-            } else {
-                self.w.send(mgr, id, event).into()
-            }
-        }
-    }
-
-    impl<M: Into<VoidMsg>, W: Widget<Msg = M> + 'static> kas::Window for Window<W> {
+    impl<W: Widget + 'static> kas::Window for Window<W> {
         fn title(&self) -> &str {
             &self.title
         }
@@ -202,7 +192,7 @@ impl<W: Widget> Window<W> {
 }
 
 // This is like WidgetChildren::find, but returns a translated Rect.
-fn find_rect(widget: &dyn WidgetConfig, id: WidgetId) -> Option<Rect> {
+fn find_rect(widget: &dyn Widget, id: WidgetId) -> Option<Rect> {
     match widget.find_child_index(&id) {
         Some(i) => {
             if let Some(w) = widget.get_child(i) {

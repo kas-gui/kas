@@ -11,6 +11,7 @@ use kas::event::{self, VirtualKeyCode, VirtualKeyCodes};
 use kas::layout;
 use kas::prelude::*;
 use kas::theme::TextClass;
+use std::fmt::Debug;
 use std::rc::Rc;
 
 impl_scope! {
@@ -22,7 +23,7 @@ impl_scope! {
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone)]
     #[widget]
-    pub struct Button<W: Widget<Msg = VoidMsg>, M: 'static> {
+    pub struct Button<W: Widget> {
         #[widget_core]
         core: kas::CoreData,
         keys1: VirtualKeyCodes,
@@ -30,7 +31,7 @@ impl_scope! {
         color: Option<Rgb>,
         #[widget]
         pub inner: W,
-        on_push: Option<Rc<dyn Fn(&mut EventMgr) -> Option<M>>>,
+        on_push: Option<Rc<dyn Fn(&mut EventMgr)>>,
     }
 
     impl WidgetConfig for Self {
@@ -53,7 +54,7 @@ impl_scope! {
         }
     }
 
-    impl<W: Widget<Msg = VoidMsg>> Button<W, VoidMsg> {
+    impl<W: Widget> Button<W> {
         /// Construct a button with given `inner` widget
         #[inline]
         pub fn new(inner: W) -> Self {
@@ -70,13 +71,12 @@ impl_scope! {
         /// Set event handler `f`
         ///
         /// On activation (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called. The result of `f` is converted to
-        /// [`Response::Msg`] or [`Response::Used`] and returned to the parent.
+        /// closure `f` is called.
         #[inline]
         #[must_use]
-        pub fn on_push<M, F>(self, f: F) -> Button<W, M>
+        pub fn on_push<F>(self, f: F) -> Button<W>
         where
-            F: Fn(&mut EventMgr) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr) + 'static,
         {
             Button {
                 core: self.core,
@@ -93,12 +93,11 @@ impl_scope! {
         /// Construct a button with a given `inner` widget and event handler `f`
         ///
         /// On activation (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called. The result of `f` is converted to
-        /// [`Response::Msg`] or [`Response::Used`] and returned to the parent.
+        /// closure `f` is called.
         #[inline]
         pub fn new_on<F>(inner: W, f: F) -> Self
         where
-            F: Fn(&mut EventMgr) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr) + 'static,
         {
             Button::new(inner).on_push(f)
         }
@@ -109,11 +108,8 @@ impl_scope! {
         /// of `msg` is returned to the parent widget. Click actions must be
         /// implemented through a handler on the parent widget (or other ancestor).
         #[inline]
-        pub fn new_msg(inner: W, msg: M) -> Self
-        where
-            M: Clone,
-        {
-            Self::new_on(inner, move |_| Some(msg.clone()))
+        pub fn new_msg<M: Clone + Debug + 'static>(inner: W, msg: M) -> Self {
+            Self::new_on(inner, move |mgr| mgr.push_msg(msg.clone()))
         }
 
         /// Add accelerator keys (chain style)
@@ -138,28 +134,20 @@ impl_scope! {
     }
 
     impl Handler for Self {
-        type Msg = M;
-
         #[inline]
         fn activation_via_press(&self) -> bool {
             true
         }
 
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<M> {
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
-                Event::Activate => Response::used_or_msg(self.on_push.as_ref().and_then(|f| f(mgr))),
+                Event::Activate => {
+                    if let Some(f) = self.on_push.as_ref() {
+                        f(mgr);
+                    }
+                    Response::Used
+                }
                 _ => Response::Unused,
-            }
-        }
-    }
-
-    impl SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<M> {
-            if self.eq_id(&id) {
-                EventMgr::handle_generic(self, mgr, event)
-            } else {
-                debug_assert!(self.inner.id().is_ancestor_of(&id));
-                self.inner.send(mgr, id, event).void_into()
             }
         }
     }
@@ -177,14 +165,14 @@ impl_scope! {
     #[autoimpl(Debug ignore self.on_push)]
     #[derive(Clone)]
     #[widget]
-    pub struct TextButton<M: 'static> {
+    pub struct TextButton {
         #[widget_core]
         core: kas::CoreData,
         keys1: VirtualKeyCodes,
         label: Label<AccelString>,
         layout_frame: layout::FrameStorage,
         color: Option<Rgb>,
-        on_push: Option<Rc<dyn Fn(&mut EventMgr) -> Option<M>>>,
+        on_push: Option<Rc<dyn Fn(&mut EventMgr)>>,
     }
 
     impl WidgetConfig for Self {
@@ -208,7 +196,7 @@ impl_scope! {
         }
     }
 
-    impl TextButton<VoidMsg> {
+    impl Self {
         /// Construct a button with given `label`
         #[inline]
         pub fn new<S: Into<AccelString>>(label: S) -> Self {
@@ -225,13 +213,12 @@ impl_scope! {
         /// Set event handler `f`
         ///
         /// On activation (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called. The result of `f` is converted to
-        /// [`Response::Msg`] or [`Response::Used`] and returned to the parent.
+        /// closure `f` is called.
         #[inline]
         #[must_use]
-        pub fn on_push<M, F>(self, f: F) -> TextButton<M>
+        pub fn on_push<F>(self, f: F) -> TextButton
         where
-            F: Fn(&mut EventMgr) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr) + 'static,
         {
             TextButton {
                 core: self.core,
@@ -242,18 +229,15 @@ impl_scope! {
                 on_push: Some(Rc::new(f)),
             }
         }
-    }
 
-    impl Self {
         /// Construct a button with a given `label` and event handler `f`
         ///
         /// On activation (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called. The result of `f` is converted to
-        /// [`Response::Msg`] or [`Response::Used`] and returned to the parent.
+        /// closure `f` is called.
         #[inline]
         pub fn new_on<S: Into<AccelString>, F>(label: S, f: F) -> Self
         where
-            F: Fn(&mut EventMgr) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr) + 'static,
         {
             TextButton::new(label).on_push(f)
         }
@@ -264,11 +248,8 @@ impl_scope! {
         /// of `msg` is returned to the parent widget. Click actions must be
         /// implemented through a handler on the parent widget (or other ancestor).
         #[inline]
-        pub fn new_msg<S: Into<AccelString>>(label: S, msg: M) -> Self
-        where
-            M: Clone,
-        {
-            Self::new_on(label, move |_| Some(msg.clone()))
+        pub fn new_msg<S: Into<AccelString>, M: Clone + Debug + 'static>(label: S, msg: M) -> Self {
+            Self::new_on(label, move |mgr| mgr.push_msg(msg.clone()))
         }
 
         /// Add accelerator keys (chain style)
@@ -312,16 +293,19 @@ impl_scope! {
     }
 
     impl event::Handler for Self {
-        type Msg = M;
-
         #[inline]
         fn activation_via_press(&self) -> bool {
             true
         }
 
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<M> {
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
-                Event::Activate => Response::used_or_msg(self.on_push.as_ref().and_then(|f| f(mgr))),
+                Event::Activate => {
+                    if let Some(f) = self.on_push.as_ref() {
+                        f(mgr);
+                    }
+                    Response::Used
+                }
                 _ => Response::Unused,
             }
         }

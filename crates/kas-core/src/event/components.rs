@@ -6,7 +6,7 @@
 //! Event handling components
 
 use super::ScrollDelta::{LineDelta, PixelDelta};
-use super::{Command, CursorIcon, Event, EventMgr, PressSource, Response, VoidMsg};
+use super::{Command, CursorIcon, Event, EventMgr, PressSource, Response, Scroll};
 use crate::cast::traits::*;
 use crate::geom::{Coord, Offset, Rect, Size, Vec2};
 #[allow(unused)]
@@ -151,7 +151,6 @@ impl ScrollComponent {
     /// The offset is clamped to the available scroll range.
     /// Returns [`TkAction::empty()`] if the offset is identical to the old offset,
     /// or [`TkAction::REGION_MOVED`] if the offset changes.
-    #[inline]
     pub fn set_offset(&mut self, offset: Offset) -> TkAction {
         let offset = offset.min(self.max_offset).max(Offset::ZERO);
         if offset == self.offset {
@@ -162,40 +161,41 @@ impl ScrollComponent {
         }
     }
 
-    /// Apply offset to an event being sent to the scrolled child
-    #[inline]
-    pub fn offset_event(&self, mut event: Event) -> Event {
-        match &mut event {
-            Event::PressStart { coord, .. } => {
-                *coord += self.offset;
-            }
-            Event::PressMove { coord, .. } => {
-                *coord += self.offset;
-            }
-            Event::PressEnd { coord, .. } => {
-                *coord += self.offset;
-            }
-            _ => {}
-        };
-        event
-    }
-
-    /// Handle [`Response::Focus`]
+    /// Scroll to make the given `rect` visible
     ///
     /// Inputs and outputs:
     ///
-    /// -   `rect`: the focus rect
+    /// -   `rect`: the rect to focus
     /// -   `window_rect`: the rect of the scroll window
-    /// -   returned `Rect`: the focus rect, adjusted for scroll offset; normally this should be
-    ///     returned via another [`Response::Focus`]
+    /// -   returned `Rect`: the focus rect, adjusted for scroll offset; this
+    ///     may be set via [`EventMgr::set_scroll`]
     /// -   returned `TkAction`: action to pass to the event manager
-    #[inline]
     pub fn focus_rect(&mut self, rect: Rect, window_rect: Rect) -> (Rect, TkAction) {
         let v = rect.pos - window_rect.pos;
         let off = Offset::conv(rect.size) - Offset::conv(window_rect.size);
         let offset = self.offset.max(v + off).min(v);
         let action = self.set_offset(offset);
         (rect - self.offset, action)
+    }
+
+    /// Handle a [`Scroll`] action
+    pub fn scroll(&mut self, mgr: &mut EventMgr, window_rect: Rect, scroll: Scroll) -> Scroll {
+        match scroll {
+            s @ Scroll::None | s @ Scroll::Scrolled => s,
+            Scroll::Offset(delta) => {
+                let old_offset = self.offset;
+                *mgr |= self.set_offset(old_offset - delta);
+                match delta - old_offset + self.offset {
+                    delta if delta == Offset::ZERO => Scroll::Scrolled,
+                    delta => Scroll::Offset(delta),
+                }
+            }
+            Scroll::Rect(rect) => {
+                let (rect, action) = self.focus_rect(rect, window_rect);
+                *mgr |= action;
+                Scroll::Rect(rect)
+            }
+        }
     }
 
     /// Use an event to scroll, if possible
@@ -212,59 +212,43 @@ impl ScrollComponent {
     /// depend on modifiers), and if so grabs press events from this `source`.
     /// `PressMove` is used to scroll by the motion delta and to track speed;
     /// `PressEnd` initiates momentum-scrolling if the speed is high enough.
-    ///
-    /// If the returned [`TkAction`] is `None`, the scroll offset has not changed and
-    /// the returned [`Response`] is either `Used` or `Unused`.
-    /// If the returned [`TkAction`] is not `None`, the scroll offset has been
-    /// updated and the second return value is `Response::Used`.
-    #[inline]
     pub fn scroll_by_event(
         &mut self,
         mgr: &mut EventMgr,
         event: Event,
         id: WidgetId,
-        window_size: Size,
-    ) -> (TkAction, Response<VoidMsg>) {
-        let mut action = TkAction::empty();
-        let mut response = Response::Used;
-
+        window_rect: Rect,
+    ) -> Response {
         match event {
-            Event::Command(Command::Home, _) => {
-                action = self.set_offset(Offset::ZERO);
-            }
-            Event::Command(Command::End, _) => {
-                action = self.set_offset(self.max_offset);
-            }
             Event::Command(cmd, _) => {
-                let delta = match cmd {
-                    Command::Left => LineDelta(-1.0, 0.0),
-                    Command::Right => LineDelta(1.0, 0.0),
-                    Command::Up => LineDelta(0.0, 1.0),
-                    Command::Down => LineDelta(0.0, -1.0),
-                    Command::PageUp => PixelDelta(Offset(0, window_size.1 / 2)),
-                    Command::PageDown => PixelDelta(Offset(0, -(window_size.1 / 2))),
-                    _ => return (action, Response::Unused),
+                let offset = match cmd {
+                    Command::Home => Offset::ZERO,
+                    Command::End => self.max_offset,
+                    cmd => {
+                        let delta = match cmd {
+                            Command::Left => LineDelta(-1.0, 0.0),
+                            Command::Right => LineDelta(1.0, 0.0),
+                            Command::Up => LineDelta(0.0, 1.0),
+                            Command::Down => LineDelta(0.0, -1.0),
+                            Command::PageUp => PixelDelta(Offset(0, window_rect.size.1 / 2)),
+                            Command::PageDown => PixelDelta(Offset(0, -(window_rect.size.1 / 2))),
+                            _ => return Response::Unused,
+                        };
+                        let delta = match delta {
+                            LineDelta(x, y) => mgr.config().scroll_distance((-x, y), None),
+                            PixelDelta(d) => d,
+                        };
+                        self.offset - delta
+                    }
                 };
-
-                let d = match delta {
-                    LineDelta(x, y) => mgr.config().scroll_distance((-x, y), None),
-                    PixelDelta(d) => d,
-                };
-                action = self.set_offset(self.offset - d);
+                *mgr |= self.set_offset(offset);
+                mgr.set_scroll(Scroll::Rect(window_rect));
             }
             Event::Scroll(delta) => {
-                let d = match delta {
+                mgr.set_scroll(Scroll::Offset(match delta {
                     LineDelta(x, y) => mgr.config().scroll_distance((-x, y), None),
                     PixelDelta(d) => d,
-                };
-                let old_offset = self.offset;
-                action = self.set_offset(old_offset - d);
-                let delta = d - (old_offset - self.offset);
-                response = if delta != Offset::ZERO {
-                    Response::Pan(delta)
-                } else {
-                    Response::Scrolled
-                };
+                }));
             }
             Event::PressStart { source, coord, .. }
                 if self.max_offset != Offset::ZERO && mgr.config_enable_pan(source) =>
@@ -272,16 +256,9 @@ impl ScrollComponent {
                 let icon = Some(CursorIcon::Grabbing);
                 mgr.grab_press_unique(id, source, coord, icon);
             }
-            Event::PressMove { mut delta, .. } => {
+            Event::PressMove { delta, .. } => {
                 self.glide.move_delta(delta);
-                let old_offset = self.offset;
-                action = self.set_offset(old_offset - delta);
-                delta = old_offset - self.offset;
-                response = if delta != Offset::ZERO {
-                    Response::Pan(delta)
-                } else {
-                    Response::Scrolled
-                };
+                mgr.set_scroll(Scroll::Offset(delta));
             }
             Event::PressEnd { .. } => {
                 if self.glide.opt_start(mgr.config().scroll_flick_timeout()) {
@@ -292,20 +269,21 @@ impl ScrollComponent {
                 // Momentum/glide scrolling: update per arbitrary step time until movment stops.
                 let decay = mgr.config().scroll_flick_decay();
                 if let Some(delta) = self.glide.step(decay) {
-                    action = self.set_offset(self.offset - delta);
+                    let action = self.set_offset(self.offset - delta);
+                    *mgr |= action;
                     if delta == Offset::ZERO || !action.is_empty() {
                         // Note: when FPS > pixels/sec, delta may be zero while
                         // still scrolling. Glide returns None when we're done,
                         // but we're also done if unable to scroll further.
                         let dur = Duration::from_millis(GLIDE_POLL_MS);
                         mgr.update_on_timer(dur, id, PAYLOAD_GLIDE);
-                        response = Response::Scrolled;
+                        mgr.set_scroll(Scroll::Scrolled);
                     }
                 }
             }
-            _ => response = Response::Unused,
+            _ => return Response::Unused,
         }
-        (action, response)
+        Response::Used
     }
 }
 

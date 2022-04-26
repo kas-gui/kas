@@ -5,11 +5,11 @@
 
 //! Counter example (simple button)
 
-use kas::event::{EventMgr, VoidMsg};
-use kas::macros::{make_widget, VoidMsg};
+use kas::event::{EventMgr, Handler};
+use kas::macros::make_widget;
 use kas::widgets::{EditField, RowSplitter, TextButton, Window};
 
-#[derive(Clone, Debug, VoidMsg)]
+#[derive(Clone, Debug)]
 enum Message {
     Decr,
     Incr,
@@ -21,7 +21,6 @@ fn main() -> kas::shell::Result<()> {
     let buttons = make_widget! {
         #[widget{
             layout = row: *;
-            msg = Message;
         }]
         struct {
             #[widget] _ = TextButton::new_msg("−", Message::Decr),
@@ -37,26 +36,27 @@ fn main() -> kas::shell::Result<()> {
             // TODO: use vertical splitter
             #[widget{
                 layout = column: *;
-                msg = VoidMsg;
             }]
             struct {
-                #[widget(use_msg = handle_button)] buttons -> Message = buttons,
+                #[widget] _ = buttons,
                 #[widget] panes: RowSplitter<EditField> = panes,
             }
-            impl Self {
-                fn handle_button(&mut self, mgr: &mut EventMgr, msg: Message) {
-                    match msg {
-                        Message::Decr => {
-                            mgr.set_rect_mgr(|mgr| self.panes.pop(mgr));
-                        }
-                        Message::Incr => {
-                            let n = self.panes.len() + 1;
-                            mgr.set_rect_mgr(|mgr| self.panes.push(
-                                mgr,
-                                EditField::new(format!("Pane {}", n)).multi_line(true)
-                            ));
-                        }
-                    };
+            impl Handler for Self {
+                fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+                    if let Some(msg) = mgr.try_pop_msg::<Message>() {
+                        match msg {
+                            Message::Decr => {
+                                mgr.set_rect_mgr(|mgr| self.panes.pop(mgr));
+                            }
+                            Message::Incr => {
+                                let n = self.panes.len() + 1;
+                                mgr.set_rect_mgr(|mgr| self.panes.push(
+                                    mgr,
+                                    EditField::new(format!("Pane {}", n)).multi_line(true)
+                                ));
+                            }
+                        };
+                    }
                 }
             }
         },

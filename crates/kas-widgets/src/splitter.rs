@@ -11,7 +11,7 @@ use std::ops::{Index, IndexMut};
 
 use super::DragHandle;
 use kas::dir::{Down, Right};
-use kas::event;
+use kas::event::MsgPressFocus;
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::prelude::*;
 
@@ -30,42 +30,38 @@ pub type ColumnSplitter<W> = Splitter<Down, W>;
 /// This is parameterised over handler message type.
 ///
 /// See documentation of [`Splitter`] type.
-pub type BoxRowSplitter<M> = BoxSplitter<Right, M>;
+pub type BoxRowSplitter = BoxSplitter<Right>;
 
 /// A column of boxed widgets
 ///
 /// This is parameterised over handler message type.
 ///
 /// See documentation of [`Splitter`] type.
-pub type BoxColumnSplitter<M> = BoxSplitter<Down, M>;
+pub type BoxColumnSplitter = BoxSplitter<Down>;
 
 /// A row/column of boxed widgets
 ///
-/// This is parameterised over directionality and handler message type.
+/// This is parameterised over directionality.
 ///
 /// See documentation of [`Splitter`] type.
-pub type BoxSplitter<D, M> = Splitter<D, Box<dyn Widget<Msg = M>>>;
+pub type BoxSplitter<D> = Splitter<D, Box<dyn Widget>>;
 
 /// A row of widget references
 ///
-/// This is parameterised over handler message type.
-///
 /// See documentation of [`Splitter`] type.
-pub type RefRowSplitter<'a, M> = RefSplitter<'a, Right, M>;
+pub type RefRowSplitter<'a> = RefSplitter<'a, Right>;
 
 /// A column of widget references
 ///
-/// This is parameterised over handler message type.
-///
 /// See documentation of [`Splitter`] type.
-pub type RefColumnSplitter<'a, M> = RefSplitter<'a, Down, M>;
+pub type RefColumnSplitter<'a> = RefSplitter<'a, Down>;
 
 /// A row/column of widget references
 ///
-/// This is parameterised over directionality and handler message type.
+/// This is parameterised over directionality.
 ///
 /// See documentation of [`Splitter`] type.
-pub type RefSplitter<'a, D, M> = Splitter<D, &'a mut dyn Widget<Msg = M>>;
+pub type RefSplitter<'a, D> = Splitter<D, &'a mut dyn Widget>;
 
 impl_scope! {
     /// A resizable row/column widget
@@ -73,7 +69,7 @@ impl_scope! {
     /// Similar to [`crate::List`] but with draggable handles between items.
     // TODO: better doc
     #[derive(Clone, Default, Debug)]
-    #[widget { msg = <W as event::Handler>::Msg; }]
+    #[widget]
     pub struct Splitter<D: Directional, W: Widget> {
         #[widget_core]
         core: CoreData,
@@ -106,7 +102,7 @@ impl_scope! {
                 let key = self.next;
                 self.next += 1;
                 if let Entry::Vacant(entry) = self.id_map.entry(key) {
-                    entry.insert(index);
+                    entry.insert(child_index);
                     return self.id_ref().make_child(key);
                 }
             }
@@ -119,7 +115,7 @@ impl_scope! {
             self.widgets.len() + self.handles.len()
         }
         #[inline]
-        fn get_child(&self, index: usize) -> Option<&dyn WidgetConfig> {
+        fn get_child(&self, index: usize) -> Option<&dyn Widget> {
             if (index & 1) != 0 {
                 self.handles.get(index >> 1).map(|w| w.as_widget())
             } else {
@@ -127,7 +123,7 @@ impl_scope! {
             }
         }
         #[inline]
-        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
+        fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
             if (index & 1) != 0 {
                 self.handles.get_mut(index >> 1).map(|w| w.as_widget_mut())
             } else {
@@ -267,30 +263,18 @@ impl_scope! {
         }
     }
 
-    impl event::SendEvent for Self {
-        fn send(&mut self, mgr: &mut EventMgr, id: WidgetId, event: Event) -> Response<Self::Msg> {
-            if !self.widgets.is_empty() {
-                if let Some(index) = self.find_child_index(&id) {
-                    if (index & 1) == 0 {
-                        if let Some(w) = self.widgets.get_mut(index >> 1) {
-                            return w.send(mgr, id, event);
-                        }
-                    } else {
-                        let n = index >> 1;
-                        if let Some(h) = self.handles.get_mut(n) {
-                            let r = h.send(mgr, id, event);
-                            return r.try_into().unwrap_or_else(|_| {
-                                // Message is the new offset relative to the track;
-                                // the handle has already adjusted its position
-                                mgr.set_rect_mgr(|mgr| self.adjust_size(mgr, n));
-                                Response::Used
-                            });
-                        }
-                    }
+    impl Handler for Self {
+        fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
+            if (index & 1) == 1 {
+                if let Some(MsgPressFocus) = mgr.try_pop_msg() {
+                    // Useless to us, but we should remove it.
+                } else if let Some(offset) = mgr.try_pop_msg::<Offset>() {
+                    let n = index >> 1;
+                    assert!(n < self.handles.len());
+                    *mgr |= self.handles[n].set_offset(offset).1;
+                    mgr.set_rect_mgr(|mgr| self.adjust_size(mgr, n));
                 }
             }
-
-            Response::Unused
         }
     }
 

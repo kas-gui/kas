@@ -7,7 +7,7 @@
 
 use super::Scrollable;
 use kas::event::components::{TextInput, TextInputAction};
-use kas::event::{self, Command, ScrollDelta};
+use kas::event::{self, Command, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
@@ -90,18 +90,21 @@ impl_scope! {
         }
 
         // Pan by given delta. Return `Response::Scrolled` or `Response::Pan(remaining)`.
-        fn pan_delta<U>(&mut self, mgr: &mut EventMgr, mut delta: Offset) -> Response<U> {
+        fn pan_delta(&mut self, mgr: &mut EventMgr, mut delta: Offset) -> Response {
             let new_offset = (self.view_offset - delta).min(self.max_scroll_offset()).max(Offset::ZERO);
             if new_offset != self.view_offset {
                 delta -= self.view_offset - new_offset;
                 self.view_offset = new_offset;
                 mgr.redraw(self.id());
             }
-            if delta == Offset::ZERO {
-                Response::Scrolled
-            } else {
-                Response::Pan(delta)
-            }
+
+            mgr.set_scroll(if delta == Offset::ZERO {
+                    Scroll::Scrolled
+                } else {
+                    Scroll::Offset(delta)
+                }
+            );
+            Response::Used
         }
 
         /// Update view_offset after edit_pos changes
@@ -142,9 +145,7 @@ impl_scope! {
     }
 
     impl event::Handler for Self {
-        type Msg = VoidMsg;
-
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(cmd, _) => match cmd {
                     Command::Escape | Command::Deselect if !self.selection.is_empty() => {

@@ -12,7 +12,7 @@ use super::{AlignHints, AxisInfo, Margins, SetRectMgr, SizeRules};
 use crate::cast::Conv;
 use crate::geom::{Rect, Size};
 use crate::theme::SizeMgr;
-use crate::{Widget, WidgetConfig, WidgetExt};
+use crate::{Widget, WidgetExt};
 
 /// A [`SizeRules`] solver for layouts
 ///
@@ -131,7 +131,7 @@ impl SolveCache {
     }
 
     /// Calculate required size of widget
-    pub fn find_constraints(widget: &mut dyn WidgetConfig, size_mgr: SizeMgr) -> Self {
+    pub fn find_constraints(widget: &mut dyn Widget, size_mgr: SizeMgr) -> Self {
         let start = std::time::Instant::now();
 
         let w = widget.size_rules(size_mgr.re(), AxisInfo::new(false, None));
@@ -180,7 +180,7 @@ impl SolveCache {
     /// last used).
     pub fn apply_rect(
         &mut self,
-        widget: &mut dyn WidgetConfig,
+        widget: &mut dyn Widget,
         mgr: &mut SetRectMgr,
         mut rect: Rect,
         inner_margin: bool,
@@ -230,17 +230,16 @@ impl SolveCache {
     }
 }
 
-struct WidgetHeirarchy<'a>(&'a dyn WidgetConfig, usize);
+struct WidgetHeirarchy<'a>(&'a dyn Widget, usize);
 impl<'a> fmt::Display for WidgetHeirarchy<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(
-            f,
-            "\n{}{}\tpos={:?}\tsize={:?}",
-            "| ".repeat(self.1),
-            self.0.identify(),
-            self.0.rect().pos,
-            self.0.rect().size,
-        )?;
+        let len = 40 - 2 * self.1;
+        let trail = "| ".repeat(self.1);
+        // Note: pre-format some items to ensure correct alignment
+        let identify = format!("{}", self.0.identify());
+        let pos = format!("{:?}", self.0.rect().pos);
+        let size = self.0.rect().size;
+        write!(f, "\n{trail}{identify:<len$}{pos:<20}{size:?}")?;
 
         for i in 0..self.0.num_children() {
             WidgetHeirarchy(self.0.get_child(i).unwrap(), self.1 + 1).fmt(f)?;

@@ -51,7 +51,9 @@ use crate::event::EventState;
 use crate::geom::{Size, Vec2};
 use crate::text::TextApi;
 use crate::theme::{SizeHandle, SizeMgr, TextClass};
-use crate::{TkAction, WidgetConfig, WidgetId};
+#[allow(unused)]
+use crate::WidgetConfig;
+use crate::{TkAction, Widget, WidgetId};
 use std::ops::{Deref, DerefMut};
 
 pub use align::{Align, AlignHints, CompleteAlignment};
@@ -194,7 +196,7 @@ impl<'a> SetRectMgr<'a> {
     /// Pass the `id` to assign to the widget: this should be constructed from
     /// the parent's id via [`WidgetId::make_child`].
     #[inline]
-    pub fn configure(&mut self, id: WidgetId, widget: &mut dyn WidgetConfig) {
+    pub fn configure(&mut self, id: WidgetId, widget: &mut dyn Widget) {
         // Yes, this method is just a shim! We reserve the option to add other code here in the
         // future, hence do not advise calling `configure_recurse` directly.
         widget.configure_recurse(self, id);

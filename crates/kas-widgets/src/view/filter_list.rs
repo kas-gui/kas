@@ -7,7 +7,7 @@
 
 use kas::prelude::*;
 use kas::updatable::filter::Filter;
-use kas::updatable::{ListData, SingleData, Updatable};
+use kas::updatable::{ListData, SingleData};
 use std::cell::RefCell;
 use std::fmt::Debug;
 
@@ -64,22 +64,13 @@ impl<T: ListData + 'static, F: Filter<T::Item> + SingleData> FilteredList<T, F> 
     }
 }
 
-impl<K, M, T: ListData + Updatable<K, M> + 'static, F: Filter<T::Item> + SingleData> Updatable<K, M>
-    for FilteredList<T, F>
-{
-    fn handle(&self, key: &K, msg: &M) -> Option<UpdateHandle> {
-        self.data.handle(key, msg)
-    }
-}
-
 impl<T: ListData + 'static, F: Filter<T::Item> + SingleData> ListData for FilteredList<T, F> {
     type Key = T::Key;
     type Item = T::Item;
 
-    fn update_handles(&self) -> Vec<UpdateHandle> {
-        let mut v = self.data.update_handles();
-        v.append(&mut self.filter.update_handles());
-        v
+    fn update_on_handles(&self, mgr: &mut EventState, id: &WidgetId) {
+        self.data.update_on_handles(mgr, id);
+        self.filter.update_on_handles(mgr, id);
     }
     fn version(&self) -> u64 {
         let ver = self.data.version() + self.filter.version();
@@ -111,7 +102,7 @@ impl<T: ListData + 'static, F: Filter<T::Item> + SingleData> ListData for Filter
             .filter(|item| self.filter.matches(item.clone()))
     }
 
-    fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle> {
+    fn update(&self, mgr: &mut EventMgr, key: &Self::Key, value: Self::Item) {
         // Filtering does not affect result, but does affect the view
         if self
             .data
@@ -120,10 +111,10 @@ impl<T: ListData + 'static, F: Filter<T::Item> + SingleData> ListData for Filter
             .unwrap_or(true)
         {
             // Not previously visible: no update occurs
-            return None;
+            return;
         }
 
-        self.data.update(key, value)
+        self.data.update(mgr, key, value);
     }
 
     fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key> {

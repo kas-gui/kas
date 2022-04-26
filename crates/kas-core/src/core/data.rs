@@ -8,7 +8,7 @@
 #[allow(unused)]
 use super::Layout;
 use super::{Widget, WidgetId};
-use crate::event::{self, EventMgr};
+use crate::event::EventMgr;
 use crate::geom::Rect;
 use crate::layout::{SetRectMgr, StorageChain};
 use crate::{dir::Direction, WindowId};
@@ -74,7 +74,7 @@ impl Clone for CoreData {
 /// visible). The window is responsible for calling these methods.
 //
 // NOTE: it's tempting to include a pointer to the widget here. There are two
-// options: (a) an unsafe aliased pointer or (b) Rc<RefCell<dyn WidgetConfig>>.
+// options: (a) an unsafe aliased pointer or (b) Rc<RefCell<dyn Widget>>.
 // Option (a) should work but is an unnecessary performance hack; (b) could in
 // theory work but requires adjusting WidgetChildren::get, find etc. to take a
 // closure instead of returning a reference, causing *significant* complication.
@@ -86,7 +86,7 @@ pub struct Popup {
 }
 
 /// Functionality required by a window
-pub trait Window: Widget<Msg = event::VoidMsg> {
+pub trait Window: Widget {
     /// Get the window title
     fn title(&self) -> &str;
 

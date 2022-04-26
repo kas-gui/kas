@@ -12,7 +12,7 @@ use kas::event::VirtualKeyCode as VK;
 use kas::prelude::*;
 use kas::widgets::{EditBox, TextButton, Window};
 
-#[derive(Clone, Debug, VoidMsg)]
+#[derive(Clone, Debug)]
 enum Key {
     Clear,
     Divide,
@@ -37,7 +37,6 @@ fn main() -> kas::shell::Result<()> {
                 3, 3..5: self.b_eq;
                 0..2, 4: self.b0; 2, 4: self.b_dot;
             };
-            msg = Key;
         }]
         struct {
             // Buttons get keyboard bindings through the "&" item (e.g. "&1"
@@ -74,17 +73,18 @@ fn main() -> kas::shell::Result<()> {
     let content = make_widget! {
         #[widget{
             layout = column: *;
-            msg = VoidMsg;
         }]
         struct {
             #[widget] display: impl HasString = EditBox::new("0").with_editable(false).multi_line(true),
-            #[widget(use_msg = handle_button)] buttons -> Key = buttons,
+            #[widget] _ = buttons,
             calc: Calculator = Calculator::new(),
         }
-        impl Self {
-            fn handle_button(&mut self, mgr: &mut EventMgr, msg: Key) {
-                if self.calc.handle(msg) {
-                    *mgr |= self.display.set_string(self.calc.display());
+        impl Handler for Self {
+            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+                if let Some(msg) = mgr.try_pop_msg::<Key>() {
+                    if self.calc.handle(msg) {
+                        *mgr |= self.display.set_string(self.calc.display());
+                    }
                 }
             }
         }

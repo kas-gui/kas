@@ -18,10 +18,10 @@ use std::time::Duration;
 
 use kas::draw::{color, Draw, DrawIface, DrawRounded, PassType};
 use kas::geom::{Offset, Quad, Vec2};
+use kas::prelude::*;
 use kas::shell::draw::DrawPipe;
 use kas::text::util::set_text_and_prepare;
 use kas::widgets::Window;
-use kas::{event, prelude::*};
 
 impl_scope! {
     #[derive(Clone, Debug)]
@@ -126,10 +126,8 @@ impl_scope! {
     }
 
     impl Handler for Clock {
-        type Msg = event::VoidMsg;
-
         #[inline]
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(0) => {
                     self.now = Local::now();

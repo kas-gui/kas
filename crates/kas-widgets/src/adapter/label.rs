@@ -18,7 +18,7 @@ impl_scope! {
     /// Mouse/touch input on the label sends events to the inner widget.
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[derive(Clone, Default, Debug)]
-    #[widget { msg = W::Msg; }]
+    #[widget]
     pub struct WithLabel<W: Widget, D: Directional> {
         #[widget_core]
         core: CoreData,

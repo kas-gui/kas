@@ -9,6 +9,7 @@ use super::AccelLabel;
 use kas::prelude::*;
 use kas::updatable::{SharedRc, SingleData};
 use log::trace;
+use std::fmt::Debug;
 use std::rc::Rc;
 
 /// Type of radiobox group
@@ -19,19 +20,17 @@ impl_scope! {
     #[autoimpl(Debug ignore self.on_select)]
     #[derive(Clone)]
     #[widget]
-    pub struct RadioBoxBare<M: 'static> {
+    pub struct RadioBoxBare {
         #[widget_core]
         core: CoreData,
         state: bool,
         group: RadioBoxGroup,
-        on_select: Option<Rc<dyn Fn(&mut EventMgr) -> Option<M>>>,
+        on_select: Option<Rc<dyn Fn(&mut EventMgr)>>,
     }
 
     impl WidgetConfig for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
-            for handle in self.group.update_handles().into_iter() {
-                mgr.update_on_handle(handle, self.id());
-            }
+            self.group.update_on_handles(mgr.ev_state(), self.id_ref());
         }
 
         fn key_nav(&self) -> bool {
@@ -43,37 +42,32 @@ impl_scope! {
     }
 
     impl Handler for Self {
-        type Msg = M;
-
         #[inline]
         fn activation_via_press(&self) -> bool {
             true
         }
 
-        fn handle(&mut self, mgr: &mut EventMgr, event: Event) -> Response<M> {
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Activate => {
                     if !self.state {
                         trace!("RadioBoxBare: set {}", self.id());
                         self.state = true;
                         mgr.redraw(self.id());
-                        if let Some(handle) = self.group.update(Some(self.id())) {
-                            mgr.trigger_update(handle, 0);
+                        self.group.update(mgr, Some(self.id()));
+                        if let Some(f) = self.on_select.as_ref() {
+                            f(mgr);
                         }
-                        Response::update_or_msg(self.on_select.as_ref().and_then(|f| f(mgr)))
-                    } else {
-                        Response::Used
                     }
+                    Response::Used
                 }
                 Event::HandleUpdate { .. } => {
                     if self.state && !self.eq_id(self.group.get_cloned()) {
                         trace!("RadioBoxBare: unset {}", self.id());
                         self.state = false;
                         mgr.redraw(self.id());
-                        Response::Update
-                    } else {
-                        Response::Used
                     }
+                    Response::Used
                 }
                 _ => Response::Unused,
             }
@@ -100,7 +94,7 @@ impl_scope! {
         }
     }
 
-    impl RadioBoxBare<VoidMsg> {
+    impl Self {
         /// Construct a radiobox
         ///
         /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
@@ -118,15 +112,14 @@ impl_scope! {
         /// Set event handler `f`
         ///
         /// On selection (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called. The result of `f` is converted to
-        /// [`Response::Msg`] or [`Response::Update`] and returned to the parent.
+        /// closure `f` is called.
         ///
-        /// No handler is called on deselection, but [`Response::Update`] is returned.
+        /// No handler is called on deselection.
         #[inline]
         #[must_use]
-        pub fn on_select<M, F>(self, f: F) -> RadioBoxBare<M>
+        pub fn on_select<F>(self, f: F) -> RadioBoxBare
         where
-            F: Fn(&mut EventMgr) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr) + 'static,
         {
             RadioBoxBare {
                 core: self.core,
@@ -135,23 +128,20 @@ impl_scope! {
                 on_select: Some(Rc::new(f)),
             }
         }
-    }
 
-    impl Self {
         /// Construct a radiobox with given `group` and event handler `f`
         ///
         /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
         /// same `group` will be considered part of a single group.
         ///
         /// On selection (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called. The result of `f` is converted to
-        /// [`Response::Msg`] or [`Response::Update`] and returned to the parent.
+        /// closure `f` is called.
         ///
-        /// No handler is called on deselection, but [`Response::Update`] is returned.
+        /// No handler is called on deselection.
         #[inline]
         pub fn new_on<F>(group: RadioBoxGroup, f: F) -> Self
         where
-            F: Fn(&mut EventMgr) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr) + 'static,
         {
             RadioBoxBare::new(group).on_select(f)
         }
@@ -169,9 +159,7 @@ impl_scope! {
         /// Note: state will not update until the next draw.
         #[inline]
         pub fn unset_all(&self, mgr: &mut EventMgr) {
-            if let Some(handle) = self.group.update(None) {
-                mgr.trigger_update(handle, 0);
-            }
+            self.group.update(mgr, None);
         }
     }
 
@@ -196,17 +184,13 @@ impl_scope! {
         find_id = Some(self.radiobox.id());
         layout = row: *;
     }]
-    pub struct RadioBox<M: 'static> {
+    pub struct RadioBox {
         #[widget_core]
         core: CoreData,
         #[widget]
-        radiobox: RadioBoxBare<M>,
+        radiobox: RadioBoxBare,
         #[widget]
         label: AccelLabel,
-    }
-
-    impl Handler for Self where M: From<VoidMsg> {
-        type Msg = M;
     }
 
     impl WidgetConfig for Self {
@@ -215,7 +199,7 @@ impl_scope! {
         }
     }
 
-    impl RadioBox<VoidMsg> {
+    impl Self {
         /// Construct a radiobox with a given `label` and `group`
         ///
         /// RadioBox labels are optional; if no label is desired, use an empty
@@ -235,15 +219,14 @@ impl_scope! {
         /// Set event handler `f`
         ///
         /// On selection (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called. The result of `f` is converted to
-        /// [`Response::Msg`] or [`Response::Update`] and returned to the parent.
+        /// closure `f` is called.
         ///
-        /// No handler is called on deselection, but [`Response::Update`] is returned.
+        /// No handler is called on deselection.
         #[inline]
         #[must_use]
-        pub fn on_select<M, F>(self, f: F) -> RadioBox<M>
+        pub fn on_select<F>(self, f: F) -> RadioBox
         where
-            F: Fn(&mut EventMgr) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr) + 'static,
         {
             RadioBox {
                 core: self.core,
@@ -251,9 +234,7 @@ impl_scope! {
                 label: self.label,
             }
         }
-    }
 
-    impl Self {
         /// Construct a radiobox with given `label`, `group` and event handler `f`
         ///
         /// RadioBox labels are optional; if no label is desired, use an empty
@@ -263,14 +244,13 @@ impl_scope! {
         /// same `group` will be considered part of a single group.
         ///
         /// On selection (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called. The result of `f` is converted to
-        /// [`Response::Msg`] or [`Response::Update`] and returned to the parent.
+        /// closure `f` is called.
         ///
-        /// No handler is called on deselection, but [`Response::Update`] is returned.
+        /// No handler is called on deselection.
         #[inline]
         pub fn new_on<T: Into<AccelString>, F>(label: T, group: RadioBoxGroup, f: F) -> Self
         where
-            F: Fn(&mut EventMgr) -> Option<M> + 'static,
+            F: Fn(&mut EventMgr) + 'static,
         {
             RadioBox::new(label, group).on_select(f)
         }
@@ -284,15 +264,16 @@ impl_scope! {
         /// same `group` will be considered part of a single group.
         ///
         /// On selection (through user input events or [`Event::Activate`]) a clone
-        /// of `msg` is returned to the parent widget via [`Response::Msg`].
+        /// of `msg` is returned to the parent widget via [`EventMgr::push_msg`].
         ///
-        /// No handler is called on deselection, but [`Response::Update`] is returned.
+        /// No handler is called on deselection.
         #[inline]
-        pub fn new_msg<S: Into<AccelString>>(label: S, group: RadioBoxGroup, msg: M) -> Self
+        pub fn new_msg<S, M: Clone>(label: S, group: RadioBoxGroup, msg: M) -> Self
         where
-            M: Clone,
+            S: Into<AccelString>,
+            M: Clone + Debug + 'static,
         {
-            Self::new_on(label, group, move |_| Some(msg.clone()))
+            Self::new_on(label, group, move |mgr| mgr.push_msg(msg.clone()))
         }
 
         /// Set the initial state of the radiobox.

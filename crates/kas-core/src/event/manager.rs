@@ -9,8 +9,9 @@
 #![cfg_attr(not(feature = "winit"), allow(unused))]
 
 use linear_map::{set::LinearSet, LinearMap};
-use log::trace;
+use log::{trace, warn};
 use smallvec::SmallVec;
+use std::any::Any;
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 use std::ops::{Deref, DerefMut};
@@ -353,6 +354,38 @@ impl EventState {
     }
 }
 
+// NOTE: we *want* to store Box<dyn Any + Debug> entries, but Rust doesn't
+// support multi-trait objects. An alternative would be to store Box<dyn Message>
+// where `trait Message: Any + Debug {}`, but Rust does not support
+// trait-object upcast, so we cannot downcast the result.
+//
+// Workaround: pre-format when the message is *pushed*.
+struct Message {
+    any: Box<dyn Any>,
+    #[cfg(debug_assertions)]
+    fmt: String,
+}
+impl Message {
+    fn new<M: Any + Debug>(msg: Box<M>) -> Self {
+        #[cfg(debug_assertions)]
+        let fmt = format!("{:?}", &msg);
+        let any = msg;
+        Message {
+            #[cfg(debug_assertions)]
+            fmt,
+            any,
+        }
+    }
+
+    fn is<T: 'static>(&self) -> bool {
+        self.any.is::<T>()
+    }
+
+    fn downcast<T: 'static>(self) -> Result<Box<T>, Box<dyn Any>> {
+        self.any.downcast::<T>()
+    }
+}
+
 /// Manager of event-handling and toolkit actions
 ///
 /// An `EventMgr` is in fact a handle around [`EventState`] and [`ShellWindow`]
@@ -367,6 +400,8 @@ impl EventState {
 pub struct EventMgr<'a> {
     state: &'a mut EventState,
     shell: &'a mut dyn ShellWindow,
+    messages: Vec<Message>,
+    scroll: Scroll,
     action: TkAction,
 }
 
@@ -379,6 +414,17 @@ impl<'a> Deref for EventMgr<'a> {
 impl<'a> DerefMut for EventMgr<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.state
+    }
+}
+
+impl<'a> Drop for EventMgr<'a> {
+    fn drop(&mut self) {
+        for _msg in self.messages.drain(..) {
+            #[cfg(debug_assertions)]
+            log::warn!("EventMgr: unhandled message: {}", _msg.fmt);
+            #[cfg(not(debug_assertions))]
+            log::warn!("EventMgr: unhandled message: [use debug build to see value]");
+        }
     }
 }
 
@@ -420,7 +466,7 @@ impl<'a> EventMgr<'a> {
 
     fn start_key_event<W>(&mut self, widget: &mut W, vkey: VirtualKeyCode, scancode: u32)
     where
-        W: Widget<Msg = VoidMsg> + ?Sized,
+        W: Widget + ?Sized,
     {
         trace!(
             "EventMgr::start_key_event: widget={}, vkey={:?}, scancode={}",
@@ -440,7 +486,7 @@ impl<'a> EventMgr<'a> {
         if let Some(cmd) = opt_command {
             if self.state.char_focus {
                 if let Some(id) = self.state.sel_focus.clone() {
-                    if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
+                    if self.send_event(widget, id, Event::Command(cmd, shift)) {
                         return;
                     }
                 }
@@ -448,28 +494,28 @@ impl<'a> EventMgr<'a> {
 
             if !self.state.modifiers.alt() {
                 if let Some(id) = self.state.nav_focus.clone() {
-                    if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
+                    if self.send_event(widget, id, Event::Command(cmd, shift)) {
                         return;
                     }
                 }
             }
 
             if let Some(id) = self.state.popups.last().map(|popup| popup.1.parent.clone()) {
-                if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
+                if self.send_event(widget, id, Event::Command(cmd, shift)) {
                     return;
                 }
             }
 
             if self.state.sel_focus != self.state.nav_focus && cmd.suitable_for_sel_focus() {
                 if let Some(id) = self.state.sel_focus.clone() {
-                    if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
+                    if self.send_event(widget, id, Event::Command(cmd, shift)) {
                         return;
                     }
                 }
             }
 
             if let Some(id) = self.state.nav_fallback.clone() {
-                if self.try_send_event(widget, id, Event::Command(cmd, shift)) {
+                if self.send_event(widget, id, Event::Command(cmd, shift)) {
                     return;
                 }
             }
@@ -544,38 +590,58 @@ impl<'a> EventMgr<'a> {
         }
     }
 
-    fn send_impl<W>(&mut self, widget: &mut W, mut id: WidgetId, event: Event) -> Response<W::Msg>
-    where
-        W: Widget + ?Sized,
-    {
-        // TODO(opt): we should be able to use binary search here
-        for d in &self.disabled {
-            if d.is_ancestor_of(&id) {
-                if let Some(p) = d.parent() {
-                    id = p;
-                } else {
-                    return Response::Unused;
-                }
+    // Traverse widget tree by recursive call
+    //
+    // Note: cannot use internal stack of mutable references due to borrow checker
+    fn send_recurse(
+        &mut self,
+        widget: &mut dyn Widget,
+        id: WidgetId,
+        disabled: bool,
+        event: Event,
+    ) -> Response {
+        let mut response;
+        if let Some(index) = widget.find_child_index(&id) {
+            let translation = widget.translation();
+            if disabled {
+                response = Response::Unused;
+            } else if let Some(w) = widget.get_child_mut(index) {
+                response = self.send_recurse(w, id, disabled, event.clone() + translation);
+            } else {
+                warn!(
+                    "Widget {} found index {index} for {id}, but child not found",
+                    widget.identify()
+                );
+                return Response::Unused;
             }
+
+            if matches!(response, Response::Unused) {
+                response = widget.handle_unused(self, index, event);
+            } else if self.has_msg() {
+                widget.handle_message(self, index);
+            }
+        } else if id == widget.id_ref() {
+            response = self.handle_generic(widget, event);
+        } else {
+            warn!("Widget {} cannot find path to {id}", widget.identify());
+            return Response::Unused;
         }
-        widget.send(self, id, event)
+
+        if self.scroll != Scroll::None {
+            self.scroll = widget.handle_scroll(self, self.scroll);
+        }
+        response
     }
 
-    fn send_event<W: Widget + ?Sized>(&mut self, widget: &mut W, id: WidgetId, event: Event) {
-        trace!("Send to {}: {:?}", id, event);
-        let _ = self.send_impl(widget, id, event);
-    }
-
-    // Similar to send_event, but return true only if response != Response::Unused
-    fn try_send_event<W: Widget + ?Sized>(
+    // Wrapper around Self::send; returns true when event is used
+    #[inline]
+    fn send_event<W: Widget + ?Sized>(
         &mut self,
         widget: &mut W,
         id: WidgetId,
         event: Event,
     ) -> bool {
-        trace!("Send to {}: {:?}", id, event);
-        let r = self.send_impl(widget, id, event);
-        !matches!(r, Response::Unused)
+        self.send(widget, id, event) == Response::Used
     }
 
     fn send_popup_first<W>(&mut self, widget: &mut W, id: Option<WidgetId>, event: Event)
@@ -589,7 +655,7 @@ impl<'a> EventMgr<'a> {
             .map(|(wid, p, _)| (*wid, p.parent.clone()))
         {
             trace!("Send to popup parent: {}: {:?}", parent, event);
-            match self.send_impl(widget, parent, event.clone()) {
+            match self.send(widget, parent, event.clone()) {
                 Response::Unused => (),
                 _ => return,
             }

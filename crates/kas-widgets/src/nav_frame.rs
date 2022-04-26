@@ -7,11 +7,21 @@
 
 use kas::{event, prelude::*};
 
+/// Message indicating that a child wishes to be selected
+///
+/// Emitted by [`NavFrame`].
+#[derive(Clone, Debug)]
+pub struct SelectMsg;
+
 impl_scope! {
     /// Navigation Frame wrapper
     ///
     /// This widget is a wrapper that can be used to make a static widget such as a
     /// `Label` navigable with the keyboard.
+    ///
+    /// # Messages
+    ///
+    /// When activated, this widget pushes [`SelectMsg`] to the message stack.
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Debug, Default)]
@@ -38,11 +48,12 @@ impl_scope! {
     }
 
     impl event::Handler for Self {
-        type Msg = <W as Handler>::Msg;
-
-        fn handle(&mut self, _mgr: &mut EventMgr, event: Event) -> Response<Self::Msg> {
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
-                Event::Activate => Response::Select,
+                Event::Activate => {
+                    mgr.push_msg(SelectMsg);
+                    Response::Used
+                }
                 _ => Response::Unused,
             }
         }

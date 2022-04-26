@@ -6,7 +6,7 @@
 //! Markdown parsing demo
 
 use kas::class::HasStr;
-use kas::event::{EventMgr, VoidMsg};
+use kas::event::{EventMgr, Handler};
 use kas::macros::make_widget;
 use kas::text::format::Markdown;
 use kas::widgets::{EditBox, EditField, EditGuard, Label, ScrollBarRegion, Window};
@@ -14,18 +14,13 @@ use kas::widgets::{EditBox, EditField, EditGuard, Label, ScrollBarRegion, Window
 #[derive(Debug)]
 struct Guard;
 impl EditGuard for Guard {
-    type Msg = Markdown;
-
-    fn edit(edit: &mut EditField<Self>, _: &mut EventMgr) -> Option<Markdown> {
+    fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
         let result = Markdown::new(edit.get_str());
         edit.set_error_state(result.is_err());
-        Some(match result {
-            Ok(md) => md,
-            Err(err) => {
-                let string = format!("```\n{}\n```", err);
-                Markdown::new(&string).unwrap()
-            }
-        })
+        mgr.push_msg(result.unwrap_or_else(|err| {
+            let string = format!("```\n{}\n```", err);
+            Markdown::new(&string).unwrap()
+        }));
     }
 }
 
@@ -62,17 +57,18 @@ It also supports lists:
         make_widget! {
             #[widget{
                 layout = row: *;
-                msg = VoidMsg;
             }]
             struct {
-                #[widget(use_msg=update)] editor: EditBox<Guard> =
+                #[widget] editor: EditBox<Guard> =
                     EditBox::new(doc).multi_line(true).with_guard(Guard),
                 #[widget] label: ScrollBarRegion<Label<Markdown>> =
                     ScrollBarRegion::new(Label::new(Markdown::new(doc)?)),
             }
-            impl Self {
-                fn update(&mut self, mgr: &mut EventMgr, md: Markdown) {
-                    *mgr |= self.label.set_text(md);
+            impl Handler for Self {
+                fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+                    if let Some(md) = mgr.try_pop_msg::<Markdown>() {
+                        *mgr |= self.label.set_text(md);
+                    }
                 }
             }
         },
