@@ -74,6 +74,10 @@ pub trait Handler: WidgetConfig {
     /// with non-zero translation very likely wants to implement this method
     /// anyway).
     ///
+    /// If the child is in an independent coordinate space, then this method
+    /// should call `mgr.set_scroll(Scroll::None)` to avoid any reactions to
+    /// child's scroll requests.
+    ///
     /// The default implementation does nothing.
     #[inline]
     fn handle_scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) {

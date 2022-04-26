@@ -8,7 +8,7 @@
 use super::{BoxedMenu, Menu, SubItems};
 use crate::PopupFrame;
 use kas::component::{Component, Label, Mark};
-use kas::event::Command;
+use kas::event::{Command, Scroll};
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::prelude::*;
 use kas::theme::{FrameStyle, MarkStyle, TextClass};
@@ -180,6 +180,10 @@ impl_scope! {
 
         fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
             self.close_menu(mgr, true);
+        }
+
+        fn handle_scroll(&mut self, mgr: &mut EventMgr, _: Scroll) {
+            mgr.set_scroll(Scroll::None);
         }
     }
 
