@@ -281,6 +281,7 @@ impl PipeWindow {
     }
 }
 
+#[derive(Clone, Debug)]
 struct ViewUpdate;
 
 impl_scope! {
