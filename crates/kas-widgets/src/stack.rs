@@ -90,7 +90,7 @@ impl_scope! {
         }
     }
 
-    impl WidgetConfig for Self {
+    impl Widget for Self {
         fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
             self.core_data_mut().id = id;
             self.id_map.clear();

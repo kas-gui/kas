@@ -394,44 +394,6 @@ impl_scope! {
         }
     }
 
-    impl WidgetConfig for Self {
-        fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
-            self.core_data_mut().id = id;
-
-            // If data is available but not loaded yet, make some widgets for
-            // use by size_rules (this allows better sizing). Configure the new
-            // widgets (this allows resource loading which may affect size.)
-            self.data_ver = self.data.version();
-            if self.widgets.len() == 0 && !self.data.is_empty() {
-                let cols = self.data.col_iter_vec(self.ideal_len.cols.cast());
-                let rows = self.data.row_iter_vec(self.ideal_len.rows.cast());
-                let len = cols.len() * rows.len();
-                debug!("allocating {} widgets", len);
-                self.widgets.reserve(len);
-                for row in rows.iter(){
-                    for col in cols.iter() {
-                        let key = T::make_key(col, row);
-                        let id = self.data.make_id(self.id_ref(), &key);
-                        let mut widget = self.view.make();
-                        mgr.configure(id, &mut widget);
-                        if let Some(item) = self.data.get_cloned(&key) {
-                            *mgr |= self.view.set(&mut widget, item);
-                        }
-                        let key = Some(key);
-                        self.widgets.push(WidgetData { key, widget });
-                    }
-                }
-            }
-
-            self.configure(mgr);
-        }
-
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            self.data.update_on_handles(mgr.ev_state(), self.id_ref());
-            mgr.register_nav_fallback(self.id());
-        }
-    }
-
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
@@ -609,6 +571,42 @@ impl_scope! {
     }
 
     impl Widget for Self {
+        fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
+            self.core_data_mut().id = id;
+
+            // If data is available but not loaded yet, make some widgets for
+            // use by size_rules (this allows better sizing). Configure the new
+            // widgets (this allows resource loading which may affect size.)
+            self.data_ver = self.data.version();
+            if self.widgets.len() == 0 && !self.data.is_empty() {
+                let cols = self.data.col_iter_vec(self.ideal_len.cols.cast());
+                let rows = self.data.row_iter_vec(self.ideal_len.rows.cast());
+                let len = cols.len() * rows.len();
+                debug!("allocating {} widgets", len);
+                self.widgets.reserve(len);
+                for row in rows.iter(){
+                    for col in cols.iter() {
+                        let key = T::make_key(col, row);
+                        let id = self.data.make_id(self.id_ref(), &key);
+                        let mut widget = self.view.make();
+                        mgr.configure(id, &mut widget);
+                        if let Some(item) = self.data.get_cloned(&key) {
+                            *mgr |= self.view.set(&mut widget, item);
+                        }
+                        let key = Some(key);
+                        self.widgets.push(WidgetData { key, widget });
+                    }
+                }
+            }
+
+            self.configure(mgr);
+        }
+
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
+            self.data.update_on_handles(mgr.ev_state(), self.id_ref());
+            mgr.register_nav_fallback(self.id());
+        }
+
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::HandleUpdate { .. } => {

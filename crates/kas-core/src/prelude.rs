@@ -39,4 +39,4 @@ pub use crate::WidgetId;
 #[doc(no_inline)]
 pub use crate::{Boxed, TkAction};
 #[doc(no_inline)]
-pub use crate::{Layout, Widget, WidgetChildren, WidgetConfig, WidgetCore, WidgetExt};
+pub use crate::{Layout, Widget, WidgetChildren, WidgetCore, WidgetExt};

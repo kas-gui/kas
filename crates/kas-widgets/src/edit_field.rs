@@ -7,7 +7,7 @@
 
 use super::Scrollable;
 use kas::event::components::{TextInput, TextInputAction};
-use kas::event::{self, Command, Scroll, ScrollDelta};
+use kas::event::{Command, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::layout::{self, FrameStorage};
 use kas::prelude::*;

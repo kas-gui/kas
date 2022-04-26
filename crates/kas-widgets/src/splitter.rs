@@ -136,25 +136,6 @@ impl_scope! {
         }
     }
 
-    impl WidgetConfig for Self {
-        fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
-            self.core_data_mut().id = id;
-            self.id_map.clear();
-
-            // It does not matter what order we choose widget/child ids:
-            for index in 0..self.widgets.len() {
-                let id = self.make_next_id(false, index);
-                self.widgets[index].configure_recurse(mgr, id);
-            }
-            for index in 0..self.handles.len() {
-                let id = self.make_next_id(true, index);
-                self.handles[index].configure_recurse(mgr, id);
-            }
-
-            self.configure(mgr);
-        }
-    }
-
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             if self.widgets.is_empty() {
@@ -264,6 +245,23 @@ impl_scope! {
     }
 
     impl Widget for Self {
+        fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
+            self.core_data_mut().id = id;
+            self.id_map.clear();
+
+            // It does not matter what order we choose widget/child ids:
+            for index in 0..self.widgets.len() {
+                let id = self.make_next_id(false, index);
+                self.widgets[index].configure_recurse(mgr, id);
+            }
+            for index in 0..self.handles.len() {
+                let id = self.make_next_id(true, index);
+                self.handles[index].configure_recurse(mgr, id);
+            }
+
+            self.configure(mgr);
+        }
+
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
             if (index & 1) == 1 {
                 if let Some(MsgPressFocus) = mgr.try_pop_msg() {

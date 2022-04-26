@@ -34,12 +34,10 @@ fn make_window() -> Box<dyn kas::Window> {
             saved: Duration = Duration::default(),
             start: Option<Instant> = None,
         }
-        impl kas::WidgetConfig for Self {
+        impl Widget for Self {
             fn configure(&mut self, mgr: &mut SetRectMgr) {
                 mgr.enable_alt_bypass(self.id_ref(), true);
             }
-        }
-        impl Widget for Self {
             fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
                 match event {
                     Event::TimerUpdate(0) => {

@@ -79,12 +79,10 @@ impl_scope! {
             Response::Used
         }
     }
-    impl WidgetConfig for TextEditPopup {
+    impl Widget for TextEditPopup {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.register_nav_fallback(self.id());
         }
-    }
-    impl Widget for TextEditPopup {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(Command::Escape, _) => self.close(mgr, false),

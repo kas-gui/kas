@@ -92,12 +92,6 @@ impl_scope! {
         }
     }
 
-    impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            mgr.register_nav_fallback(self.id());
-        }
-    }
-
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             let mut rules = self.inner.size_rules(size_mgr.re(), axis);
@@ -143,6 +137,10 @@ impl_scope! {
     }
 
     impl Widget for Self {
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
+            mgr.register_nav_fallback(self.id());
+        }
+
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             self.scroll.scroll_by_event(mgr, event, self.id(), self.core.rect).1
         }

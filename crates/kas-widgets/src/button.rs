@@ -34,19 +34,6 @@ impl_scope! {
         on_push: Option<Rc<dyn Fn(&mut EventMgr)>>,
     }
 
-    impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            mgr.add_accel_keys(self.id_ref(), &self.keys1);
-        }
-
-        fn key_nav(&self) -> bool {
-            true
-        }
-        fn hover_highlight(&self) -> bool {
-            true
-        }
-    }
-
     impl Layout for Self {
         fn layout(&mut self) -> layout::Layout<'_> {
             let inner = layout::Layout::single(&mut self.inner);
@@ -134,6 +121,17 @@ impl_scope! {
     }
 
     impl Widget for Self {
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
+            mgr.add_accel_keys(self.id_ref(), &self.keys1);
+        }
+
+        fn key_nav(&self) -> bool {
+            true
+        }
+        fn hover_highlight(&self) -> bool {
+            true
+        }
+
         fn handle_event(&mut self, mgr: &mut EventMgr, mut event: Event) -> Response {
             if let Some(response) = event.activate_on_press(mgr, self.id_ref()) {
                 return response;
@@ -172,20 +170,6 @@ impl_scope! {
         layout_frame: layout::FrameStorage,
         color: Option<Rgb>,
         on_push: Option<Rc<dyn Fn(&mut EventMgr)>>,
-    }
-
-    impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            mgr.add_accel_keys(self.id_ref(), &self.keys1);
-            mgr.add_accel_keys(self.id_ref(), self.label.keys());
-        }
-
-        fn key_nav(&self) -> bool {
-            true
-        }
-        fn hover_highlight(&self) -> bool {
-            true
-        }
     }
 
     impl Layout for Self {
@@ -292,6 +276,18 @@ impl_scope! {
     }
 
     impl Widget for Self {
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
+            mgr.add_accel_keys(self.id_ref(), &self.keys1);
+            mgr.add_accel_keys(self.id_ref(), self.label.keys());
+        }
+
+        fn key_nav(&self) -> bool {
+            true
+        }
+        fn hover_highlight(&self) -> bool {
+            true
+        }
+
         fn handle_event(&mut self, mgr: &mut EventMgr, mut event: Event) -> Response {
             if let Some(response) = event.activate_on_press(mgr, self.id_ref()) {
                 return response;

@@ -123,23 +123,6 @@ impl_scope! {
         }
     }
 
-    impl WidgetConfig for Self {
-        fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
-            self.core_data_mut().id = id;
-            mgr.add_accel_keys(self.id_ref(), self.label.keys());
-            mgr.new_accel_layer(self.id(), true);
-
-            let id = self.id_ref().make_child(widget_index![self.list]);
-            self.list.configure_recurse(mgr, id);
-
-            self.configure(mgr);
-        }
-
-        fn key_nav(&self) -> bool {
-            self.key_nav
-        }
-    }
-
     impl kas::Layout for Self {
         fn layout(&mut self) -> layout::Layout<'_> {
             layout::Layout::component(&mut self.label)
@@ -160,6 +143,21 @@ impl_scope! {
     }
 
     impl Widget for Self {
+        fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
+            self.core_data_mut().id = id;
+            mgr.add_accel_keys(self.id_ref(), self.label.keys());
+            mgr.new_accel_layer(self.id(), true);
+
+            let id = self.id_ref().make_child(widget_index![self.list]);
+            self.list.configure_recurse(mgr, id);
+
+            self.configure(mgr);
+        }
+
+        fn key_nav(&self) -> bool {
+            self.key_nav
+        }
+
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Activate => {

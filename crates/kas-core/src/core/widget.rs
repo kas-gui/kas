@@ -117,102 +117,10 @@ pub trait WidgetChildren: WidgetCore {
     ///
     /// The default implementation simply uses [`WidgetId::next_key_after`].
     /// Widgets may choose to assign children custom keys by overriding this
-    /// method and [`WidgetConfig::configure_recurse`].
+    /// method and [`Widget::configure_recurse`].
     #[inline]
     fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
         id.next_key_after(self.id_ref())
-    }
-}
-
-/// Widget configuration
-///
-/// This trait is part of the [`Widget`] family and is derived by
-/// [`derive(Widget)`] unless explicitly implemented.
-///
-/// Widgets are *configured* on window creation or dynamically via the
-/// parent calling [`SetRectMgr::configure`]. Parent widgets are responsible
-/// for ensuring that children are configured before calling
-/// [`Layout::size_rules`] or [`Layout::set_rect`]. Configuration may be
-/// repeated and may be used as a mechanism to change a child's [`WidgetId`],
-/// but this may be expensive.
-///
-/// Configuration invokes [`Self::configure_recurse`] which then calls
-/// [`Self::configure`]. The latter may be used to load assets before sizing.
-///
-/// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
-#[autoimpl(for<T: trait + ?Sized> Box<T>)]
-pub trait WidgetConfig: Layout {
-    /// Configure widget and children
-    ///
-    /// This method:
-    ///
-    /// 1.  Assigns `id` to self
-    /// 2.  Constructs an identifier for and call `configure_recurse` on each child
-    /// 3.  Calls [`Self::configure`]
-    ///
-    /// Normally the default implementation is used. A custom implementation
-    /// may be used to influence configuration of children, for example by
-    /// calling [`EventState::new_accel_layer`] or by constructing children's
-    /// [`WidgetId`] values in a non-standard manner (in this case ensure that
-    /// [`WidgetChildren::find_child_index`] has a correct implementation).
-    ///
-    /// To directly configure a child, call [`SetRectMgr::configure`] instead.
-    fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
-        self.core_data_mut().id = id;
-
-        for index in 0..self.num_children() {
-            let id = self.id_ref().make_child(index);
-            if let Some(widget) = self.get_child_mut(index) {
-                widget.configure_recurse(mgr, id);
-            }
-        }
-
-        self.configure(mgr);
-    }
-
-    /// Configure widget
-    ///
-    /// This method is part of configuration (see trait documentation).
-    ///
-    /// This method may be used to configure event handling and to load
-    /// resources, including resources affecting [`Layout::size_rules`].
-    ///
-    /// The window's scale factor (and thus any sizes available through
-    /// [`SetRectMgr::size_mgr`]) may not be correct initially (some platforms
-    /// construct all windows using scale factor 1) and/or may change in the
-    /// future. Changes to the scale factor result in recalculation of
-    /// [`Layout::size_rules`] but not repeated configuration.
-    fn configure(&mut self, mgr: &mut SetRectMgr) {
-        let _ = mgr;
-    }
-
-    /// Is this widget navigable via Tab key?
-    ///
-    /// Defaults to `false`.
-    #[inline]
-    fn key_nav(&self) -> bool {
-        false
-    }
-
-    /// Does this widget have hover-state highlighting?
-    ///
-    /// If true, a redraw will be requested whenever this widget gains or loses
-    /// mouse-hover status.
-    #[inline]
-    fn hover_highlight(&self) -> bool {
-        false
-    }
-
-    /// Which cursor icon should be used on hover?
-    ///
-    /// The "hovered" widget is determined by [`Layout::find_id`], thus is the
-    /// same widget which would receive click events. Other widgets do not
-    /// affect the cursor icon used.
-    ///
-    /// Defaults to [`event::CursorIcon::Default`].
-    #[inline]
-    fn cursor_icon(&self) -> event::CursorIcon {
-        event::CursorIcon::Default
     }
 }
 
@@ -272,7 +180,7 @@ pub trait Layout: WidgetChildren {
     /// A [`crate::layout::RulesSolver`] engine may be useful to calculate
     /// requirements of complex layouts.
     ///
-    /// [`WidgetConfig::configure`] will be called before this method and may
+    /// [`Widget::configure`] will be called before this method and may
     /// be used to load assets.
     fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         self.layout().size_rules(size_mgr, axis)
@@ -345,7 +253,7 @@ pub trait Layout: WidgetChildren {
     /// Translate a coordinate to a [`WidgetId`]
     ///
     /// This method is used in event handling, translating a mouse click or
-    /// touch input to a widget and resolving a [`WidgetConfig::cursor_icon`].
+    /// touch input to a widget and resolving a [`Widget::cursor_icon`].
     /// Usually, this is the widget which draws the target coordinate, but
     /// stealing focus is permitted: e.g. the `Button` widget handles clicks on
     /// inner content, while the `CheckBox` widget forwards click events to its
@@ -400,8 +308,6 @@ pub trait Layout: WidgetChildren {
 /// -   [`WidgetChildren`] — enumerates children and provides methods derived
 ///     from this
 /// -   [`Layout`] — handles sizing and positioning of self and children
-/// -   [`WidgetConfig`] — the last unparametrised trait allows customisation of
-///     some aspects of widget behaviour
 /// -   [`Widget`] — the final trait
 ///
 /// Widgets **must** use the [`derive(Widget)`] macro to implement at least
@@ -416,7 +322,85 @@ pub trait Layout: WidgetChildren {
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
-pub trait Widget: WidgetConfig {
+pub trait Widget: Layout {
+    /// Configure widget and children
+    ///
+    /// This method:
+    ///
+    /// 1.  Assigns `id` to self
+    /// 2.  Constructs an identifier for and call `configure_recurse` on each child
+    /// 3.  Calls [`Self::configure`]
+    ///
+    /// Normally the default implementation is used. A custom implementation
+    /// may be used to influence configuration of children, for example by
+    /// calling [`EventState::new_accel_layer`] or by constructing children's
+    /// [`WidgetId`] values in a non-standard manner (in this case ensure that
+    /// [`WidgetChildren::find_child_index`] has a correct implementation).
+    ///
+    /// To directly configure a child, call [`SetRectMgr::configure`] instead.
+    fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
+        self.core_data_mut().id = id;
+
+        for index in 0..self.num_children() {
+            let id = self.id_ref().make_child(index);
+            if let Some(widget) = self.get_child_mut(index) {
+                widget.configure_recurse(mgr, id);
+            }
+        }
+
+        self.configure(mgr);
+    }
+
+    /// Configure widget
+    ///
+    /// Widgets are *configured* on window creation or dynamically via the
+    /// parent calling [`SetRectMgr::configure`]. Parent widgets are responsible
+    /// for ensuring that children are configured before calling
+    /// [`Layout::size_rules`] or [`Layout::set_rect`]. Configuration may be
+    /// repeated and may be used as a mechanism to change a child's [`WidgetId`],
+    /// but this may be expensive.
+    ///
+    /// This method may be used to configure event handling and to load
+    /// resources, including resources affecting [`Layout::size_rules`].
+    ///
+    /// The window's scale factor (and thus any sizes available through
+    /// [`SetRectMgr::size_mgr`]) may not be correct initially (some platforms
+    /// construct all windows using scale factor 1) and/or may change in the
+    /// future. Changes to the scale factor result in recalculation of
+    /// [`Layout::size_rules`] but not repeated configuration.
+    fn configure(&mut self, mgr: &mut SetRectMgr) {
+        let _ = mgr;
+    }
+
+    /// Is this widget navigable via Tab key?
+    ///
+    /// Defaults to `false`.
+    #[inline]
+    fn key_nav(&self) -> bool {
+        false
+    }
+
+    /// Does this widget have hover-state highlighting?
+    ///
+    /// If true, a redraw will be requested whenever this widget gains or loses
+    /// mouse-hover status.
+    #[inline]
+    fn hover_highlight(&self) -> bool {
+        false
+    }
+
+    /// Which cursor icon should be used on hover?
+    ///
+    /// The "hovered" widget is determined by [`Layout::find_id`], thus is the
+    /// same widget which would receive click events. Other widgets do not
+    /// affect the cursor icon used.
+    ///
+    /// Defaults to [`event::CursorIcon::Default`].
+    #[inline]
+    fn cursor_icon(&self) -> event::CursorIcon {
+        event::CursorIcon::Default
+    }
+
     /// Handle an event sent to this widget
     ///
     /// An [`Event`] is some form of user input, timer or notification.
@@ -488,7 +472,7 @@ pub trait WidgetExt: WidgetChildren {
     ///
     /// Note that the default-constructed [`WidgetId`] is *invalid*: any
     /// operations on this value will cause a panic. Valid identifiers are
-    /// assigned by [`WidgetConfig::configure_recurse`].
+    /// assigned by [`Widget::configure_recurse`].
     #[inline]
     fn id(&self) -> WidgetId {
         self.core_data().id.clone()
@@ -498,7 +482,7 @@ pub trait WidgetExt: WidgetChildren {
     ///
     /// Note that the default-constructed [`WidgetId`] is *invalid*: any
     /// operations on this value will cause a panic. Valid identifiers are
-    /// assigned by [`WidgetConfig::configure_recurse`].
+    /// assigned by [`Widget::configure_recurse`].
     #[inline]
     fn id_ref(&self) -> &WidgetId {
         &self.core_data().id

@@ -53,12 +53,6 @@ impl_scope! {
         colour: Arc<Mutex<Rgba>>,
         handle: UpdateHandle,
     }
-    impl WidgetConfig for ColourSquare {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            // register to receive updates on this handle
-            mgr.update_on_handle(self.handle, self.id());
-        }
-    }
     impl Layout for ColourSquare {
         fn size_rules(&mut self, mgr: SizeMgr, _: AxisInfo) -> SizeRules {
             SizeRules::fixed_scaled(100.0, 10.0, mgr.scale_factor())
@@ -70,6 +64,10 @@ impl_scope! {
         }
     }
     impl Widget for ColourSquare {
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
+            // register to receive updates on this handle
+            mgr.update_on_handle(self.handle, self.id());
+        }
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::HandleUpdate { .. } => {

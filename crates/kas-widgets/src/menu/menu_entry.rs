@@ -28,16 +28,6 @@ impl_scope! {
         msg: M,
     }
 
-    impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            mgr.add_accel_keys(self.id_ref(), self.label.keys());
-        }
-
-        fn key_nav(&self) -> bool {
-            true
-        }
-    }
-
     impl Layout for Self {
         fn layout(&mut self) -> layout::Layout<'_> {
             layout::Layout::component(&mut self.label)
@@ -87,6 +77,14 @@ impl_scope! {
     }
 
     impl Widget for Self {
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
+            mgr.add_accel_keys(self.id_ref(), self.label.keys());
+        }
+
+        fn key_nav(&self) -> bool {
+            true
+        }
+
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Activate => {
@@ -123,7 +121,7 @@ impl_scope! {
         layout_list: layout::DynRowStorage,
     }
 
-    impl WidgetConfig for Self {
+    impl Widget for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.add_accel_keys(self.checkbox.id_ref(), self.label.keys());
         }

@@ -14,8 +14,6 @@ use super::*;
 use crate::cast::traits::*;
 use crate::geom::{Coord, DVec2};
 use crate::layout::SetRectMgr;
-#[allow(unused)]
-use crate::WidgetConfig; // for doc-links
 use crate::{ShellWindow, TkAction, Widget, WidgetId};
 
 // TODO: this should be configurable or derived from the system
@@ -69,8 +67,8 @@ impl EventState {
     /// This should be called by the toolkit on the widget tree when the window
     /// is created (before or after resizing).
     ///
-    /// This method calls [`WidgetConfig::configure_recurse`] in order to assign
-    /// [`WidgetId`] identifiers and call widgets' [`WidgetConfig::configure`]
+    /// This method calls [`Widget::configure_recurse`] in order to assign
+    /// [`WidgetId`] identifiers and call widgets' [`Widget::configure`]
     /// method. Additionally, it updates the [`EventState`] to account for
     /// renamed and removed widgets.
     pub fn full_configure<W>(&mut self, shell: &mut dyn ShellWindow, widget: &mut W)

@@ -99,20 +99,6 @@ impl_scope! {
         }
     }
 
-    impl WidgetConfig for Self {
-        fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
-            self.core_data_mut().id = id;
-            self.id_map.clear();
-
-            for index in 0..self.widgets.len() {
-                let id = self.make_next_id(index);
-                self.widgets[index].configure_recurse(mgr, id);
-            }
-
-            self.configure(mgr);
-        }
-    }
-
     impl Layout for Self {
         fn layout(&mut self) -> layout::Layout<'_> {
             layout::Layout::slice(&mut self.widgets, self.direction, &mut self.layout_store)
@@ -152,6 +138,18 @@ impl_scope! {
     }
 
     impl Widget for Self {
+        fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
+            self.core_data_mut().id = id;
+            self.id_map.clear();
+
+            for index in 0..self.widgets.len() {
+                let id = self.make_next_id(index);
+                self.widgets[index].configure_recurse(mgr, id);
+            }
+
+            self.configure(mgr);
+        }
+
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
             if let Some(f) = self.on_message {
                 f(mgr, index);

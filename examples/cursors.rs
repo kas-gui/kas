@@ -22,7 +22,7 @@ impl_scope! {
         label: StrLabel,
         cursor: CursorIcon,
     }
-    impl WidgetConfig for Self {
+    impl Widget for Self {
         fn cursor_icon(&self) -> CursorIcon {
             self.cursor
         }

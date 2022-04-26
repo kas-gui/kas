@@ -28,7 +28,7 @@ impl_scope! {
         on_select: Option<Rc<dyn Fn(&mut EventMgr)>>,
     }
 
-    impl WidgetConfig for Self {
+    impl Widget for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             self.group.update_on_handles(mgr.ev_state(), self.id_ref());
         }
@@ -39,9 +39,7 @@ impl_scope! {
         fn hover_highlight(&self) -> bool {
             true
         }
-    }
 
-    impl Widget for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, mut event: Event) -> Response {
             if let Some(response) = event.activate_on_press(mgr, self.id_ref()) {
                 return response;
@@ -192,7 +190,7 @@ impl_scope! {
         label: AccelLabel,
     }
 
-    impl WidgetConfig for Self {
+    impl Widget for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.add_accel_keys(self.radiobox.id_ref(), self.label.keys());
         }

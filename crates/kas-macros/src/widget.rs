@@ -40,7 +40,6 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let opt_derive = &attr.derive;
 
     let mut impl_widget_children = true;
-    let mut impl_widget_config = true;
     let mut impl_layout = true;
     let mut has_find_id_impl = attr.layout.is_some();
     let mut impl_widget = true;
@@ -108,18 +107,6 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     emit_warning!(impl_.span(), "use of `#![widget]` on children with custom `WidgetChildren` implementation");
                 }
                 impl_widget_children = false;
-            } else if *path == parse_quote! { ::kas::WidgetConfig }
-                || *path == parse_quote! { kas::WidgetConfig }
-                || *path == parse_quote! { WidgetConfig }
-            {
-                if opt_derive.is_some() {
-                    emit_error!(
-                        impl_.span(),
-                        "impl conflicts with use of #[widget(derive=FIELD)]"
-                    );
-                }
-                // TODO: if args.widget_attr.config.is_some() { warn unused }
-                impl_widget_config = false;
             } else if *path == parse_quote! { ::kas::Layout }
                 || *path == parse_quote! { kas::Layout }
                 || *path == parse_quote! { Layout }
@@ -257,71 +244,6 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
         }
     }
 
-    if impl_widget_config {
-        let methods = if let Some(inner) = opt_derive {
-            quote! {
-                #[inline]
-                fn configure_recurse(
-                    &mut self,
-                    mgr: &mut ::kas::layout::SetRectMgr,
-                    id: ::kas::WidgetId,
-                ) {
-                    self.#inner.configure_recurse(mgr, id);
-                }
-                #[inline]
-                fn configure(&mut self, mgr: &mut ::kas::layout::SetRectMgr) {
-                    self.#inner.configure(mgr);
-                }
-                #[inline]
-                fn key_nav(&self) -> bool {
-                    self.#inner.key_nav()
-                }
-                #[inline]
-                fn hover_highlight(&self) -> bool {
-                    self.#inner.hover_highlight()
-                }
-                #[inline]
-                fn cursor_icon(&self) -> ::kas::event::CursorIcon {
-                    self.#inner.cursor_icon()
-                }
-            }
-        } else {
-            let key_nav = attr.key_nav.value;
-            let hover_highlight = attr.hover_highlight.value;
-            let cursor_icon = attr.cursor_icon.value;
-
-            quote! {
-                fn key_nav(&self) -> bool {
-                    #key_nav
-                }
-                fn hover_highlight(&self) -> bool {
-                    #hover_highlight
-                }
-                fn cursor_icon(&self) -> ::kas::event::CursorIcon {
-                    #cursor_icon
-                }
-            }
-        };
-
-        scope.generated.push(quote! {
-            impl #impl_generics ::kas::WidgetConfig
-                    for #name #ty_generics #where_clause
-            {
-                #methods
-            }
-        });
-    } else {
-        if let Some(span) = attr.key_nav.span {
-            emit_warning!(span, "unused due to manual impl of `WidgetConfig`");
-        }
-        if let Some(span) = attr.hover_highlight.span {
-            emit_warning!(span, "unused due to manual impl of `WidgetConfig`");
-        }
-        if let Some(span) = attr.cursor_icon.span {
-            emit_warning!(span, "unused due to manual impl of `WidgetConfig`");
-        }
-    }
-
     if impl_layout {
         if let Some(inner) = opt_derive {
             scope.generated.push(quote! {
@@ -417,6 +339,31 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
         let methods = if let Some(inner) = opt_derive {
             quote! {
                 #[inline]
+                fn configure_recurse(
+                    &mut self,
+                    mgr: &mut ::kas::layout::SetRectMgr,
+                    id: ::kas::WidgetId,
+                ) {
+                    self.#inner.configure_recurse(mgr, id);
+                }
+                #[inline]
+                fn configure(&mut self, mgr: &mut ::kas::layout::SetRectMgr) {
+                    self.#inner.configure(mgr);
+                }
+                #[inline]
+                fn key_nav(&self) -> bool {
+                    self.#inner.key_nav()
+                }
+                #[inline]
+                fn hover_highlight(&self) -> bool {
+                    self.#inner.hover_highlight()
+                }
+                #[inline]
+                fn cursor_icon(&self) -> ::kas::event::CursorIcon {
+                    self.#inner.cursor_icon()
+                }
+
+                #[inline]
                 fn handle_event(
                     &mut self,
                     mgr: &mut ::kas::event::EventMgr,
@@ -451,7 +398,21 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 }
             }
         } else {
-            quote! {}
+            let key_nav = attr.key_nav.value;
+            let hover_highlight = attr.hover_highlight.value;
+            let cursor_icon = attr.cursor_icon.value;
+
+            quote! {
+                fn key_nav(&self) -> bool {
+                    #key_nav
+                }
+                fn hover_highlight(&self) -> bool {
+                    #hover_highlight
+                }
+                fn cursor_icon(&self) -> ::kas::event::CursorIcon {
+                    #cursor_icon
+                }
+            }
         };
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Widget
@@ -460,6 +421,16 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 #methods
             }
         });
+    } else {
+        if let Some(span) = attr.key_nav.span {
+            emit_warning!(span, "unused due to manual impl of `Widget`");
+        }
+        if let Some(span) = attr.hover_highlight.span {
+            emit_warning!(span, "unused due to manual impl of `Widget`");
+        }
+        if let Some(span) = attr.cursor_icon.span {
+            emit_warning!(span, "unused due to manual impl of `Widget`");
+        }
     }
 
     Ok(())

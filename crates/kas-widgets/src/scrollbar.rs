@@ -537,12 +537,6 @@ impl_scope! {
         }
     }
 
-    impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            mgr.register_nav_fallback(self.id());
-        }
-    }
-
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             let mut rules = self.inner.size_rules(size_mgr.re(), axis);
@@ -630,6 +624,10 @@ impl_scope! {
     }
 
     impl Widget for Self {
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
+            mgr.register_nav_fallback(self.id());
+        }
+
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
             if index == widget_index![self.horiz_bar] {
                 if let Some(msg) = mgr.try_pop_msg() {
