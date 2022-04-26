@@ -489,6 +489,7 @@ impl<'a> EventMgr<'a> {
             }
         }
 
+        self.scroll = Scroll::None;
         self.send_recurse(widget.as_widget_mut(), id, disabled, event)
     }
 
