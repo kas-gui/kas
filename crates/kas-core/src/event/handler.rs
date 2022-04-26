@@ -6,9 +6,9 @@
 //! Event handling - handler
 
 use super::*;
+use crate::WidgetConfig;
 #[allow(unused)]
 use crate::{Layout, Widget}; // for doc-links
-use crate::{WidgetConfig, WidgetExt};
 use kas_macros::autoimpl;
 
 /// Event handling for a [`Widget`]
@@ -20,19 +20,6 @@ use kas_macros::autoimpl;
 /// [`derive(Widget)`]: ../macros/index.html#the-derivewidget-macro
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait Handler: WidgetConfig {
-    /// Generic handler: focus rect on key navigation
-    ///
-    /// If true, then receiving `Event::NavFocus(true)` will automatically call
-    /// [`EventMgr::set_scroll`] with `Scroll::Rect(self.rect())` and the event
-    /// will be considered `Used` even if not matched explicitly. (The facility
-    /// provided by this method is pure convenience and may be done otherwise.)
-    ///
-    /// Default impl: return result of [`WidgetConfig::key_nav`].
-    #[inline]
-    fn focus_on_key_nav(&self) -> bool {
-        self.key_nav()
-    }
-
     /// Handle an event sent to this widget
     ///
     /// An [`Event`] is some form of user input, timer or notification.
@@ -91,18 +78,5 @@ pub trait Handler: WidgetConfig {
     #[inline]
     fn handle_scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) {
         let _ = (mgr, scroll);
-    }
-}
-
-impl<'a> EventMgr<'a> {
-    /// Generic event simplifier
-    pub(crate) fn handle_generic(&mut self, widget: &mut dyn Widget, event: Event) -> Response {
-        let mut response = Response::Unused;
-        if widget.focus_on_key_nav() && event == Event::NavFocus(true) {
-            self.set_scroll(Scroll::Rect(widget.rect()));
-            response = Response::Used;
-        }
-
-        response | widget.handle_event(self, event)
     }
 }

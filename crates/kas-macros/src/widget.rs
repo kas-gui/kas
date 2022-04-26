@@ -424,10 +424,6 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
         let handle = if let Some(inner) = opt_derive {
             quote! {
                 #[inline]
-                fn focus_on_key_nav(&self) -> bool {
-                    self.#inner.focus_on_key_nav()
-                }
-                #[inline]
                 fn handle_event(
                     &mut self,
                     mgr: &mut ::kas::event::EventMgr,

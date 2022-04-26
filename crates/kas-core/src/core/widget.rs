@@ -17,7 +17,7 @@ use crate::{CoreData, WidgetId};
 use kas_macros::autoimpl;
 
 #[allow(unused)]
-use crate::{event::{EventState, Handler}, TkAction};
+use crate::event::{EventState, Handler};
 
 impl dyn WidgetCore {
     /// Forwards to the method defined on the type `Any`.

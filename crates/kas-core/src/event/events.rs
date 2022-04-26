@@ -201,9 +201,9 @@ pub enum Event {
     /// This event may be used e.g. to request char focus or to
     /// steal focus from a child.
     ///
-    /// When `key_focus` is true, the widget's rect will be made visible (the
-    /// event sender automatically calls
-    /// `mgr.set_scroll(Scroll::Rect(widget.rect()));`).
+    /// Note: when `NavFocus(true)` is sent to a widget, the sender
+    /// automatically sets `Scroll::Rect(widget.rect())` to
+    /// [`EventMgr::set_scroll`] and considers the event used.
     NavFocus(bool),
 }
 
