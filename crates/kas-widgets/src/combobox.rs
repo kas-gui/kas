@@ -212,7 +212,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     /// types. For example:
     /// ```
     /// # use kas_widgets::ComboBox;
-    /// let combobox = ComboBox::new_from_iter(&["zero", "one", "two"], 0);
+    /// let combobox = ComboBox::new_from_iter([("zero", 0), ("one", 1), ("two", 2)].into_iter());
     /// ```
     ///
     /// Initially, the first entry is active.
