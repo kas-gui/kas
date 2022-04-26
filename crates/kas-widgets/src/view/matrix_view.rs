@@ -740,7 +740,11 @@ impl_scope! {
                 _ => (), // fall through to scroll handler
             }
 
-            self.scroll.scroll_by_event(mgr, event, self.id(), self.core.rect)
+            let (moved, r) = self.scroll.scroll_by_event(mgr, event, self.id(), self.core.rect);
+            if moved {
+                mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
+            }
+            r
         }
 
         fn handle_unused(&mut self, mgr: &mut EventMgr, index: usize, event: Event) -> Response {
