@@ -600,13 +600,16 @@ impl<'a> EventMgr<'a> {
         disabled: bool,
         event: Event,
     ) -> Response {
-        let mut response;
+        let mut response = Response::Unused;
         if let Some(index) = widget.find_child_index(&id) {
             let translation = widget.translation();
             if disabled {
-                response = Response::Unused;
+                // event is unused
             } else if let Some(w) = widget.get_child_mut(index) {
                 response = self.send_recurse(w, id, disabled, event.clone() + translation);
+                if self.scroll != Scroll::None {
+                    widget.handle_scroll(self, self.scroll);
+                }
             } else {
                 warn!(
                     "Widget {} found index {index} for {id}, but child not found",
@@ -621,15 +624,17 @@ impl<'a> EventMgr<'a> {
                 widget.handle_message(self, index);
             }
         } else if id == widget.id_ref() {
-            response = self.handle_generic(widget, event);
+            if event == Event::NavFocus(true) {
+                self.set_scroll(Scroll::Rect(widget.rect()));
+                response = Response::Used;
+            }
+
+            response |= widget.handle_event(self, event)
         } else {
             warn!("Widget {} cannot find path to {id}", widget.identify());
             return Response::Unused;
         }
 
-        if self.scroll != Scroll::None {
-            self.scroll = widget.handle_scroll(self, self.scroll);
-        }
         response
     }
 

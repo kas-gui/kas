@@ -17,7 +17,7 @@ use crate::{CoreData, WidgetId};
 use kas_macros::autoimpl;
 
 #[allow(unused)]
-use crate::{event::EventState, TkAction};
+use crate::event::{EventState, Handler};
 
 impl dyn WidgetCore {
     /// Forwards to the method defined on the type `Any`.
@@ -305,7 +305,8 @@ pub trait Layout: WidgetChildren {
     /// Get translation of children relative to this widget
     ///
     /// Usually this is zero; only widgets with scrollable or offset content
-    /// need implement this.
+    /// need implement this. Such widgets must also implement
+    /// [`Handler::handle_scroll`].
     ///
     /// Affects event handling via [`Self::find_id`] and affects the positioning
     /// of pop-up menus. [`Self::draw`] must be implemented directly using

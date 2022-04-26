@@ -424,14 +424,6 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
         let handle = if let Some(inner) = opt_derive {
             quote! {
                 #[inline]
-                fn activation_via_press(&self) -> bool {
-                    self.#inner.activation_via_press()
-                }
-                #[inline]
-                fn focus_on_key_nav(&self) -> bool {
-                    self.#inner.focus_on_key_nav()
-                }
-                #[inline]
                 fn handle_event(
                     &mut self,
                     mgr: &mut ::kas::event::EventMgr,
@@ -461,8 +453,8 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     &mut self,
                     mgr: &mut ::kas::event::EventMgr,
                     scroll: ::kas::event::Scroll,
-                ) -> ::kas::event::Scroll {
-                    self.#inner.handle_scroll(mgr, scroll)
+                ) {
+                    self.#inner.handle_scroll(mgr, scroll);
                 }
             }
         } else {

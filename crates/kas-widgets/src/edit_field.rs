@@ -442,11 +442,6 @@ impl_scope! {
     where
         G: 'static,
     {
-        #[inline]
-        fn focus_on_key_nav(&self) -> bool {
-            false
-        }
-
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             fn request_focus<G: EditGuard + 'static>(s: &mut EditField<G>, mgr: &mut EventMgr) {
                 if !s.has_key_focus && mgr.request_char_focus(s.id()) {

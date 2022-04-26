@@ -39,12 +39,19 @@ impl Response {
 
 impl std::ops::BitOr for Response {
     type Output = Self;
+    #[inline]
     fn bitor(self, rhs: Self) -> Self {
         use Response::{Unused, Used};
         match (self, rhs) {
             (Unused, Unused) => Unused,
             _ => Used,
         }
+    }
+}
+impl std::ops::BitOrAssign for Response {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: Self) {
+        *self = *self | rhs;
     }
 }
 

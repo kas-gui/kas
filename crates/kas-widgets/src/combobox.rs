@@ -7,7 +7,7 @@
 
 use super::{menu::MenuEntry, Column, PopupFrame};
 use kas::component::{Label, Mark};
-use kas::event::Command;
+use kas::event::{Command, Scroll};
 use kas::layout;
 use kas::prelude::*;
 use kas::theme::{MarkStyle, TextClass};
@@ -201,6 +201,10 @@ impl_scope! {
                     }
                 }
             }
+        }
+
+        fn handle_scroll(&mut self, mgr: &mut EventMgr, _: Scroll) {
+            mgr.set_scroll(Scroll::None);
         }
     }
 }

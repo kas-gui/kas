@@ -165,7 +165,7 @@ impl ScrollComponent {
     ///
     /// Inputs and outputs:
     ///
-    /// -   `rect`: the rect to focus
+    /// -   `rect`: the rect to focus in child's coordinate space
     /// -   `window_rect`: the rect of the scroll window
     /// -   returned `Rect`: the focus rect, adjusted for scroll offset; this
     ///     may be set via [`EventMgr::set_scroll`]
@@ -179,23 +179,35 @@ impl ScrollComponent {
     }
 
     /// Handle a [`Scroll`] action
-    pub fn scroll(&mut self, mgr: &mut EventMgr, window_rect: Rect, scroll: Scroll) -> Scroll {
+    pub fn scroll(&mut self, mgr: &mut EventMgr, window_rect: Rect, scroll: Scroll) {
         match scroll {
-            s @ Scroll::None | s @ Scroll::Scrolled => s,
+            Scroll::None | Scroll::Scrolled => (),
             Scroll::Offset(delta) => {
                 let old_offset = self.offset;
                 *mgr |= self.set_offset(old_offset - delta);
-                match delta - old_offset + self.offset {
+                mgr.set_scroll(match delta - old_offset + self.offset {
                     delta if delta == Offset::ZERO => Scroll::Scrolled,
                     delta => Scroll::Offset(delta),
-                }
+                });
             }
             Scroll::Rect(rect) => {
                 let (rect, action) = self.focus_rect(rect, window_rect);
                 *mgr |= action;
-                Scroll::Rect(rect)
+                mgr.set_scroll(Scroll::Rect(rect));
             }
         }
+    }
+
+    fn scroll_by_delta(&mut self, mgr: &mut EventMgr, d: Offset) -> bool {
+        let old_offset = self.offset;
+        *mgr |= self.set_offset(old_offset - d);
+        let delta = d - (old_offset - self.offset);
+        mgr.set_scroll(if delta != Offset::ZERO {
+            Scroll::Offset(delta)
+        } else {
+            Scroll::Scrolled
+        });
+        old_offset != self.offset
     }
 
     /// Use an event to scroll, if possible
@@ -212,13 +224,16 @@ impl ScrollComponent {
     /// depend on modifiers), and if so grabs press events from this `source`.
     /// `PressMove` is used to scroll by the motion delta and to track speed;
     /// `PressEnd` initiates momentum-scrolling if the speed is high enough.
+    ///
+    /// Returns `(moved, response)`.
     pub fn scroll_by_event(
         &mut self,
         mgr: &mut EventMgr,
         event: Event,
         id: WidgetId,
         window_rect: Rect,
-    ) -> Response {
+    ) -> (bool, Response) {
+        let mut moved = false;
         match event {
             Event::Command(cmd, _) => {
                 let offset = match cmd {
@@ -232,7 +247,7 @@ impl ScrollComponent {
                             Command::Down => LineDelta(0.0, -1.0),
                             Command::PageUp => PixelDelta(Offset(0, window_rect.size.1 / 2)),
                             Command::PageDown => PixelDelta(Offset(0, -(window_rect.size.1 / 2))),
-                            _ => return Response::Unused,
+                            _ => return (false, Response::Unused),
                         };
                         let delta = match delta {
                             LineDelta(x, y) => mgr.config().scroll_distance((-x, y), None),
@@ -241,14 +256,19 @@ impl ScrollComponent {
                         self.offset - delta
                     }
                 };
-                *mgr |= self.set_offset(offset);
+                let action = self.set_offset(offset);
+                if !action.is_empty() {
+                    moved = true;
+                    *mgr |= action;
+                }
                 mgr.set_scroll(Scroll::Rect(window_rect));
             }
             Event::Scroll(delta) => {
-                mgr.set_scroll(Scroll::Offset(match delta {
+                let delta = match delta {
                     LineDelta(x, y) => mgr.config().scroll_distance((-x, y), None),
                     PixelDelta(d) => d,
-                }));
+                };
+                moved = self.scroll_by_delta(mgr, delta);
             }
             Event::PressStart { source, coord, .. }
                 if self.max_offset != Offset::ZERO && mgr.config_enable_pan(source) =>
@@ -258,7 +278,7 @@ impl ScrollComponent {
             }
             Event::PressMove { delta, .. } => {
                 self.glide.move_delta(delta);
-                mgr.set_scroll(Scroll::Offset(delta));
+                moved = self.scroll_by_delta(mgr, delta);
             }
             Event::PressEnd { .. } => {
                 if self.glide.opt_start(mgr.config().scroll_flick_timeout()) {
@@ -270,7 +290,10 @@ impl ScrollComponent {
                 let decay = mgr.config().scroll_flick_decay();
                 if let Some(delta) = self.glide.step(decay) {
                     let action = self.set_offset(self.offset - delta);
-                    *mgr |= action;
+                    if !action.is_empty() {
+                        *mgr |= action;
+                        moved = true;
+                    }
                     if delta == Offset::ZERO || !action.is_empty() {
                         // Note: when FPS > pixels/sec, delta may be zero while
                         // still scrolling. Glide returns None when we're done,
@@ -281,9 +304,9 @@ impl ScrollComponent {
                     }
                 }
             }
-            _ => return Response::Unused,
+            _ => return (false, Response::Unused),
         }
-        Response::Used
+        (moved, Response::Used)
     }
 }
 
