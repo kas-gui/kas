@@ -7,7 +7,7 @@
 
 use super::Scrollable;
 use kas::event::components::{TextInput, TextInputAction};
-use kas::event::{Command, Scroll, ScrollDelta};
+use kas::event::{Command, CursorIcon, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::layout::{self, FrameStorage};
 use kas::prelude::*;
@@ -339,7 +339,7 @@ impl_scope! {
     #[widget{
         key_nav = true;
         hover_highlight = true;
-        cursor_icon = event::CursorIcon::Text;
+        cursor_icon = CursorIcon::Text;
     }]
     pub struct EditField<G: EditGuard = ()> {
         #[widget_core]

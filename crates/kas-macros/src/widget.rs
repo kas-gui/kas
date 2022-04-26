@@ -42,7 +42,7 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let mut impl_widget_children = true;
     let mut impl_layout = true;
     let mut has_find_id_impl = attr.layout.is_some();
-    let mut impl_widget = true;
+    let mut widget_impl = None;
 
     let fields = match &mut scope.item {
         ScopeItem::Struct { token, fields } => match fields {
@@ -91,7 +91,7 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
     crate::widget_index::visit_impls(&children, &mut scope.impls);
 
-    for impl_ in scope.impls.iter() {
+    for (index, impl_) in scope.impls.iter().enumerate() {
         if let Some((_, ref path, _)) = impl_.trait_ {
             if *path == parse_quote! { ::kas::WidgetChildren }
                 || *path == parse_quote! { kas::WidgetChildren }
@@ -135,7 +135,7 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                         "impl conflicts with use of #[widget(derive=FIELD)]"
                     );
                 }
-                impl_widget = false;
+                widget_impl = Some(index);
             }
         }
     }
@@ -335,7 +335,33 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
         emit_warning!(span, "unused without generated impl of `Layout`");
     }
 
-    if impl_widget {
+    if let Some(index) = widget_impl {
+        let widget_impl = &mut scope.impls[index];
+        if let Some(span) = attr.key_nav.span {
+            let value = attr.key_nav.value;
+            widget_impl.items.push(syn::parse_quote_spanned! {span=>
+                fn key_nav(&self) -> bool {
+                    #value
+                }
+            });
+        }
+        if let Some(span) = attr.hover_highlight.span {
+            let value = attr.hover_highlight.value;
+            widget_impl.items.push(syn::parse_quote_spanned! {span=>
+                fn hover_highlight(&self) -> bool {
+                    #value
+                }
+            });
+        }
+        if let Some(span) = attr.cursor_icon.span {
+            let value = attr.cursor_icon.value;
+            widget_impl.items.push(syn::parse_quote_spanned! {span=>
+                fn cursor_icon(&self) -> ::kas::event::CursorIcon {
+                    #value
+                }
+            });
+        }
+    } else {
         let methods = if let Some(inner) = opt_derive {
             quote! {
                 #[inline]
@@ -421,16 +447,6 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 #methods
             }
         });
-    } else {
-        if let Some(span) = attr.key_nav.span {
-            emit_warning!(span, "unused due to manual impl of `Widget`");
-        }
-        if let Some(span) = attr.hover_highlight.span {
-            emit_warning!(span, "unused due to manual impl of `Widget`");
-        }
-        if let Some(span) = attr.cursor_icon.span {
-            emit_warning!(span, "unused due to manual impl of `Widget`");
-        }
     }
 
     Ok(())

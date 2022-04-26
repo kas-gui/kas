@@ -7,7 +7,7 @@
 
 use super::Scrollable;
 use kas::event::components::{TextInput, TextInputAction};
-use kas::event::{Command, Scroll, ScrollDelta};
+use kas::event::{Command, CursorIcon, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
@@ -18,7 +18,7 @@ impl_scope! {
     /// A text label supporting scrolling and selection
     #[derive(Clone, Default, Debug)]
     #[widget{
-        cursor_icon = event::CursorIcon::Text;
+        cursor_icon = CursorIcon::Text;
     }]
     pub struct ScrollLabel<T: FormattableText + 'static> {
         #[widget_core]
