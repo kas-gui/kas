@@ -644,11 +644,10 @@ impl_scope! {
             }
         }
 
-        fn handle_scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) -> Scroll {
+        fn handle_scroll(&mut self, mgr: &mut EventMgr, _: Scroll) {
             // We assume the inner already updated its positions; this is just to set bars
             let offset = self.inner.scroll_offset();
             *mgr |= self.horiz_bar.set_value(offset.0) | self.vert_bar.set_value(offset.1);
-            scroll
         }
     }
 }

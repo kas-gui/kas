@@ -179,21 +179,21 @@ impl ScrollComponent {
     }
 
     /// Handle a [`Scroll`] action
-    pub fn scroll(&mut self, mgr: &mut EventMgr, window_rect: Rect, scroll: Scroll) -> Scroll {
+    pub fn scroll(&mut self, mgr: &mut EventMgr, window_rect: Rect, scroll: Scroll) {
         match scroll {
-            s @ Scroll::None | s @ Scroll::Scrolled => s,
+            Scroll::None | Scroll::Scrolled => (),
             Scroll::Offset(delta) => {
                 let old_offset = self.offset;
                 *mgr |= self.set_offset(old_offset - delta);
-                match delta - old_offset + self.offset {
+                mgr.set_scroll(match delta - old_offset + self.offset {
                     delta if delta == Offset::ZERO => Scroll::Scrolled,
                     delta => Scroll::Offset(delta),
-                }
+                });
             }
             Scroll::Rect(rect) => {
                 let (rect, action) = self.focus_rect(rect, window_rect);
                 *mgr |= action;
-                Scroll::Rect(rect)
+                mgr.set_scroll(Scroll::Rect(rect));
             }
         }
     }

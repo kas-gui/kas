@@ -783,10 +783,9 @@ impl_scope! {
             }
         }
 
-        fn handle_scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) -> Scroll {
-            let s = self.scroll.scroll(mgr, self.rect(), scroll);
+        fn handle_scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) {
+            self.scroll.scroll(mgr, self.rect(), scroll);
             mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
-            s
         }
     }
 }

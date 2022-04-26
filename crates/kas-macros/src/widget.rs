@@ -457,8 +457,8 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     &mut self,
                     mgr: &mut ::kas::event::EventMgr,
                     scroll: ::kas::event::Scroll,
-                ) -> ::kas::event::Scroll {
-                    self.#inner.handle_scroll(mgr, scroll)
+                ) {
+                    self.#inner.handle_scroll(mgr, scroll);
                 }
             }
         } else {
