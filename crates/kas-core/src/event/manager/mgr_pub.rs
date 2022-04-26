@@ -522,6 +522,11 @@ impl<'a> EventMgr<'a> {
     }
 
     /// Set a scroll action
+    ///
+    /// When setting [`Scroll::Rect`], use the widgets own coordinate space.
+    ///
+    /// Note that calling this method has no effect on the widget itself, but
+    /// affects parents via their [`Handler::handle_scroll`] method.
     #[inline]
     pub fn set_scroll(&mut self, scroll: Scroll) {
         self.scroll = scroll;

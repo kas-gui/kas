@@ -607,6 +607,9 @@ impl<'a> EventMgr<'a> {
                 response = Response::Unused;
             } else if let Some(w) = widget.get_child_mut(index) {
                 response = self.send_recurse(w, id, disabled, event.clone() + translation);
+                if self.scroll != Scroll::None {
+                    self.scroll = widget.handle_scroll(self, self.scroll);
+                }
             } else {
                 warn!(
                     "Widget {} found index {index} for {id}, but child not found",
@@ -627,9 +630,6 @@ impl<'a> EventMgr<'a> {
             return Response::Unused;
         }
 
-        if self.scroll != Scroll::None {
-            self.scroll = widget.handle_scroll(self, self.scroll);
-        }
         response
     }
 

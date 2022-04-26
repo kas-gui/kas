@@ -77,14 +77,15 @@ pub trait Handler: WidgetConfig {
 
     /// Handler for scrolling
     ///
-    /// This is the last "event handling step" for each widget. If
-    /// [`Self::handle_event`], [`Self::handle_unused`], [`Self::handle_message`] or any
-    /// child's event handlers set a non-empty scroll value
-    /// (via [`EventMgr::set_scroll`]), this gets called and the result set as
-    /// the new scroll value.
+    /// When a child calls [`EventMgr::set_scroll`] with a value other than
+    /// [`Scroll::None`], this method is called. (This method is not called
+    /// after [`Self::handle_event`] or other handlers called on self.)
     ///
-    /// If [`Layout::translation`] is non-zero and `scroll` is
-    /// `Scroll::Rect(_)`, then this method should undo the translation.
+    /// Note that [`Scroll::Rect`] values are in the child's coordinate space,
+    /// and must be translated to the widget's own coordinate space by this
+    /// method (this is not done by the default implementation since any widget
+    /// with non-zero translation very likely wants to implement this method
+    /// anyway).
     ///
     /// The default implementation simply returns `scroll`.
     #[inline]

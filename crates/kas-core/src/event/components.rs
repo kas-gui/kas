@@ -165,7 +165,7 @@ impl ScrollComponent {
     ///
     /// Inputs and outputs:
     ///
-    /// -   `rect`: the rect to focus
+    /// -   `rect`: the rect to focus in child's coordinate space
     /// -   `window_rect`: the rect of the scroll window
     /// -   returned `Rect`: the focus rect, adjusted for scroll offset; this
     ///     may be set via [`EventMgr::set_scroll`]
@@ -196,6 +196,17 @@ impl ScrollComponent {
                 Scroll::Rect(rect)
             }
         }
+    }
+
+    fn scroll_by_delta(&mut self, mgr: &mut EventMgr, d: Offset) {
+        let old_offset = self.offset;
+        *mgr |= self.set_offset(old_offset - d);
+        let delta = d - (old_offset - self.offset);
+        mgr.set_scroll(if delta != Offset::ZERO {
+            Scroll::Offset(delta)
+        } else {
+            Scroll::Scrolled
+        });
     }
 
     /// Use an event to scroll, if possible
@@ -245,10 +256,10 @@ impl ScrollComponent {
                 mgr.set_scroll(Scroll::Rect(window_rect));
             }
             Event::Scroll(delta) => {
-                mgr.set_scroll(Scroll::Offset(match delta {
+                self.scroll_by_delta(mgr, match delta {
                     LineDelta(x, y) => mgr.config().scroll_distance((-x, y), None),
                     PixelDelta(d) => d,
-                }));
+                });
             }
             Event::PressStart { source, coord, .. }
                 if self.max_offset != Offset::ZERO && mgr.config_enable_pan(source) =>
@@ -258,7 +269,7 @@ impl ScrollComponent {
             }
             Event::PressMove { delta, .. } => {
                 self.glide.move_delta(delta);
-                mgr.set_scroll(Scroll::Offset(delta));
+                self.scroll_by_delta(mgr, delta);
             }
             Event::PressEnd { .. } => {
                 if self.glide.opt_start(mgr.config().scroll_flick_timeout()) {
