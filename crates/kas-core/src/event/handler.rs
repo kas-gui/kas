@@ -20,19 +20,6 @@ use kas_macros::autoimpl;
 /// [`derive(Widget)`]: ../macros/index.html#the-derivewidget-macro
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait Handler: WidgetConfig {
-    /// Generic handler: translate presses to activations
-    ///
-    /// If true, [`Event::PressStart`] (and other press events) will not be sent
-    /// to [`Handler::handle_event`]; instead [`Event::Activate`] will be sent on
-    /// "click events".
-    ///
-    /// Default impl: return `false`.
-    // NOTE: not an associated constant because these are not object-safe
-    #[inline]
-    fn activation_via_press(&self) -> bool {
-        false
-    }
-
     /// Generic handler: focus rect on key navigation
     ///
     /// If true, then receiving `Event::NavFocus(true)` will automatically call
@@ -109,30 +96,7 @@ pub trait Handler: WidgetConfig {
 
 impl<'a> EventMgr<'a> {
     /// Generic event simplifier
-    pub(crate) fn handle_generic(&mut self, widget: &mut dyn Widget, mut event: Event) -> Response {
-        if widget.activation_via_press() {
-            // Translate press events
-            match event {
-                Event::PressStart { source, coord, .. } if source.is_primary() => {
-                    self.grab_press(widget.id(), source, coord, GrabMode::Grab, None);
-                    return Response::Used;
-                }
-                Event::PressMove { source, cur_id, .. } => {
-                    let cond = widget.eq_id(&cur_id);
-                    let target = if cond { cur_id } else { None };
-                    self.set_grab_depress(source, target);
-                    return Response::Used;
-                }
-                Event::PressEnd {
-                    end_id, success, ..
-                } if success && widget.eq_id(&end_id) => {
-                    event = Event::Activate;
-                }
-                Event::PressEnd { .. } => return Response::Used,
-                _ => (),
-            };
-        }
-
+    pub(crate) fn handle_generic(&mut self, widget: &mut dyn Widget, event: Event) -> Response {
         let mut response = Response::Unused;
         if widget.focus_on_key_nav() && event == Event::NavFocus(true) {
             self.set_scroll(Scroll::Rect(widget.rect()));

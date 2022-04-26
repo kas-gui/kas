@@ -128,12 +128,11 @@ impl_scope! {
     }
 
     impl event::Handler for Self {
-        #[inline]
-        fn activation_via_press(&self) -> bool {
-            true
-        }
+        fn handle_event(&mut self, mgr: &mut EventMgr, mut event: Event) -> Response {
+            if let Some(response) = event.activate_on_press(mgr, self.id_ref()) {
+                return response;
+            }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Activate if self.editable => {
                     self.state = !self.state;

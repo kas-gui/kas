@@ -134,12 +134,11 @@ impl_scope! {
     }
 
     impl Handler for Self {
-        #[inline]
-        fn activation_via_press(&self) -> bool {
-            true
-        }
+        fn handle_event(&mut self, mgr: &mut EventMgr, mut event: Event) -> Response {
+            if let Some(response) = event.activate_on_press(mgr, self.id_ref()) {
+                return response;
+            }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Activate => {
                     if let Some(f) = self.on_push.as_ref() {
@@ -293,12 +292,11 @@ impl_scope! {
     }
 
     impl event::Handler for Self {
-        #[inline]
-        fn activation_via_press(&self) -> bool {
-            true
-        }
+        fn handle_event(&mut self, mgr: &mut EventMgr, mut event: Event) -> Response {
+            if let Some(response) = event.activate_on_press(mgr, self.id_ref()) {
+                return response;
+            }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Activate => {
                     if let Some(f) = self.on_push.as_ref() {

@@ -11,7 +11,8 @@ use serde::{Deserialize, Serialize};
 #[allow(unused)]
 use super::{EventMgr, EventState, GrabMode, Response}; // for doc-links
 use super::{MouseButton, UpdateHandle, VirtualKeyCode};
-
+#[allow(unused)]
+use crate::event::Handler;
 use crate::geom::{Coord, DVec2, Offset};
 use crate::{dir::Direction, WidgetId, WindowId};
 
@@ -230,6 +231,60 @@ impl std::ops::AddAssign<Offset> for Event {
             }
             _ => (),
         }
+    }
+}
+
+impl Event {
+    /// Translate press-and-release (click or touch) to [`Event::Activate`]
+    ///
+    /// A convenient way to make a widget "clickable". Use from [`Handler::handle_event`] like this:
+    /// ```
+    /// # use kas_core::event::{Event, EventMgr, Response};
+    /// # use kas_core::{Widget, WidgetExt};
+    /// # trait T: Widget {
+    /// fn handle_event(&mut self, mgr: &mut EventMgr, mut event: Event) -> Response {
+    ///     if let Some(response) = event.activate_on_press(mgr, self.id_ref()) {
+    ///          return response;
+    ///     }
+    ///
+    ///     match event {
+    ///         Event::Activate => {
+    ///             // do something here
+    ///             Response::Used
+    ///         }
+    ///         _ => Response::Unused
+    ///     }
+    /// }
+    /// # }
+    /// ```
+    ///
+    /// This method requests a press-grab on [`Event::PressStart`], updates the
+    /// grab-depress state on [`Event::PressMove`] and translates
+    /// [`Event::PressEnd`] to [`Event::Activate`] (only when ending on self).
+    pub fn activate_on_press(&mut self, mgr: &mut EventMgr, id: &WidgetId) -> Option<Response> {
+        match self {
+            Event::PressStart { source, coord, .. } if source.is_primary() => {
+                mgr.grab_press(id.clone(), *source, *coord, GrabMode::Grab, None);
+                return Some(Response::Used);
+            }
+            Event::PressMove { source, cur_id, .. } => {
+                let target = if id == cur_id {
+                    std::mem::take(cur_id)
+                } else {
+                    None
+                };
+                mgr.set_grab_depress(*source, target);
+                return Some(Response::Used);
+            }
+            Event::PressEnd {
+                end_id, success, ..
+            } if *success && id == end_id => {
+                *self = Event::Activate;
+            }
+            Event::PressEnd { .. } => return Some(Response::Used),
+            _ => (),
+        };
+        None
     }
 }
 
