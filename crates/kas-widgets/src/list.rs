@@ -49,11 +49,9 @@ impl_scope! {
     ///
     /// Some more specific type-defs are available:
     ///
-    /// -   [`List`] fixes the message type to that of the child widget type `M`
-    /// -   [`IndexedList`] fixes the message type to `(usize, M)`
-    /// -   [`Row`], [`Column`], [`IndexedRow`], [`BoxList`], etc.
-    ///
-    /// Where the entries are fixed, also consider custom [`Widget`] implementations.
+    /// -   [`Row`] and [`Column`] fix the direction `D`
+    /// -   [`BoxList`] fixes the widget type to `Box<dyn Widget>`
+    /// -   [`BoxRow`] and [`BoxColumn`] fix both type parameters
     ///
     /// ## Performance
     ///
@@ -64,7 +62,8 @@ impl_scope! {
     /// # Messages
     ///
     /// If a handler is specified via [`Self::on_message`] then this handler is
-    /// called when a child pushes a message.
+    /// called when a child pushes a message. This allows associating the
+    /// child's index with a message.
     #[autoimpl(Clone where W: Clone)]
     #[autoimpl(Debug ignore self.on_message)]
     #[autoimpl(Default where D: Default)]

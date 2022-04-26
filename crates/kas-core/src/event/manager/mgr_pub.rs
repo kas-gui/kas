@@ -149,7 +149,7 @@ impl EventState {
     /// Set/unset a widget as disabled
     ///
     /// Disabled status applies to all descendants and blocks reception of
-    /// events ([`Response::Unhandled`] is returned automatically when the
+    /// events ([`Response::Unused`] is returned automatically when the
     /// recipient or any ancestor is disabled).
     pub fn set_disabled(&mut self, w_id: WidgetId, state: bool) {
         for (i, id) in self.disabled.iter().enumerate() {
@@ -540,7 +540,7 @@ impl<'a> EventMgr<'a> {
     /// ([`Event::PressMove`]) which may be used to navigate menus.
     /// The parent automatically receives the "depressed" visual state.
     ///
-    /// It is recommended to call [`EventMgr::set_nav_focus`] after this method.
+    /// It is recommended to call [`EventState::set_nav_focus`] after this method.
     ///
     /// A pop-up may be closed by calling [`EventMgr::close_window`] with
     /// the [`WindowId`] returned by this method.

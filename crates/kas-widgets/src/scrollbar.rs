@@ -283,10 +283,7 @@ impl_scope! {
 /// This trait should be implemented by widgets supporting scrolling, enabling
 /// a parent (such as the [`ScrollBars`] wrapper) to add controls.
 ///
-/// The implementing widget may use event handlers to scroll itself (e.g. in
-/// reaction to a mouse wheel or touch-drag), but when doing so should emit
-/// [`Response::Focus`] to notify any wrapper of the new position (usually with
-/// `Response::Focus(self.rect())`).
+/// If the widget scrolls itself it should set a scroll action via [`EventMgr::set_scroll`].
 pub trait Scrollable: Widget {
     /// Given size `size`, returns whether `(horiz, vert)` scrolling is required
     fn scroll_axes(&self, size: Size) -> (bool, bool);

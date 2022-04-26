@@ -37,7 +37,7 @@
 //! ### Keyboard focus
 //!
 //! Keyboard focus controls where otherwise undirected keyboard input is sent.
-//! This may be set via [`EventMgr::set_nav_focus`] but is typically controlled
+//! This may be set via [`EventState::set_nav_focus`] but is typically controlled
 //! via the <kbd>Tab</kbd> key, via [`EventMgr::next_nav_focus`].
 //!
 //! ### Pop-ups

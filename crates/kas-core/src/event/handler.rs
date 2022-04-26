@@ -7,7 +7,7 @@
 
 use super::*;
 #[allow(unused)]
-use crate::Widget; // for doc-links
+use crate::{Layout, Widget}; // for doc-links
 use crate::{WidgetConfig, WidgetExt};
 use kas_macros::autoimpl;
 
@@ -25,6 +25,8 @@ pub trait Handler: WidgetConfig {
     /// If true, [`Event::PressStart`] (and other press events) will not be sent
     /// to [`Handler::handle_event`]; instead [`Event::Activate`] will be sent on
     /// "click events".
+    ///
+    /// Default impl: return `false`.
     // NOTE: not an associated constant because these are not object-safe
     #[inline]
     fn activation_via_press(&self) -> bool {
@@ -33,9 +35,12 @@ pub trait Handler: WidgetConfig {
 
     /// Generic handler: focus rect on key navigation
     ///
-    /// If this widget receives [`Event::NavFocus`]`(true)` then return
-    /// [`Response::Focus`] with the widget's rect. By default this is true if
-    /// and only if [`WidgetConfig::key_nav`] is true.
+    /// If true, then receiving `Event::NavFocus(true)` will automatically call
+    /// [`EventMgr::set_scroll`] with `Scroll::Rect(self.rect())` and the event
+    /// will be considered `Used` even if not matched explicitly. (The facility
+    /// provided by this method is pure convenience and may be done otherwise.)
+    ///
+    /// Default impl: return result of [`WidgetConfig::key_nav`].
     #[inline]
     fn focus_on_key_nav(&self) -> bool {
         self.key_nav()
@@ -54,7 +59,7 @@ pub trait Handler: WidgetConfig {
     ///     [`Handler::handle_message`] is called on each parent until the stack is
     ///     empty (failing to empty the stack results in a warning in the log).
     /// -   If any scroll state is set by [`EventMgr::set_scroll`], then
-    ///     [`Handler::scroll`] is called for each parent
+    ///     [`Handler::handle_scroll`] is called for each parent
     ///
     /// Default implementation: do nothing; return [`Response::Unused`].
     #[inline]

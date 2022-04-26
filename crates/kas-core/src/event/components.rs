@@ -161,14 +161,14 @@ impl ScrollComponent {
         }
     }
 
-    /// Handle [`Response::Focus`]
+    /// Scroll to make the given `rect` visible
     ///
     /// Inputs and outputs:
     ///
-    /// -   `rect`: the focus rect
+    /// -   `rect`: the rect to focus
     /// -   `window_rect`: the rect of the scroll window
-    /// -   returned `Rect`: the focus rect, adjusted for scroll offset; normally this should be
-    ///     returned via another [`Response::Focus`]
+    /// -   returned `Rect`: the focus rect, adjusted for scroll offset; this
+    ///     may be set via [`EventMgr::set_scroll`]
     /// -   returned `TkAction`: action to pass to the event manager
     pub fn focus_rect(&mut self, rect: Rect, window_rect: Rect) -> (Rect, TkAction) {
         let v = rect.pos - window_rect.pos;
