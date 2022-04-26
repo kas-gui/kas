@@ -11,7 +11,6 @@ use crate::geom::{Offset, Rect};
 ///
 /// [`Handler::handle_event`]: super::Handler::handle_event
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-#[must_use]
 pub enum Response {
     /// Event was unused
     ///
