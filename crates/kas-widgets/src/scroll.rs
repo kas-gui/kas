@@ -142,7 +142,7 @@ impl_scope! {
         }
     }
 
-    impl Handler for Self {
+    impl Widget for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             self.scroll.scroll_by_event(mgr, event, self.id(), self.core.rect).1
         }

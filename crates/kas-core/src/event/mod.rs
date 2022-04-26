@@ -18,15 +18,15 @@
 //! [`WidgetId`]:
 //!
 //! -   In case any widget encountered is disabled, [`Unused`] is returned
-//! -   If the target is found, [`Handler::handle_event`] is called. This method may
+//! -   If the target is found, [`Widget::handle_event`] is called. This method may
 //!     handle the event and may push a message to the stack via
 //!     [`EventMgr::push_msg`].
 //! -   If no target is found, a warning is logged and [`Unused`] returned
 //!
 //! Then, for each parent back to the root,
 //!
-//! -   If [`Unused`] was returned, [`Handler::handle_unused`] is called
-//! -   Otherwise, if the message stack is non-empty, [`Handler::handle_message`]
+//! -   If [`Unused`] was returned, [`Widget::handle_unused`] is called
+//! -   Otherwise, if the message stack is non-empty, [`Widget::handle_message`]
 //!     is called
 //!
 //! This traversal of the widget tree is fast: (`O(len)`) where `len` is the
@@ -57,7 +57,6 @@ pub mod config;
 #[cfg(not(feature = "winit"))]
 mod enums;
 mod events;
-mod handler;
 mod manager;
 mod response;
 mod update;
@@ -77,10 +76,11 @@ pub use config::Config;
 #[cfg(not(feature = "winit"))]
 pub use enums::{CursorIcon, ModifiersState, MouseButton, VirtualKeyCode};
 pub use events::*;
-pub use handler::Handler;
 pub use manager::{EventMgr, EventState, GrabMode};
 pub use response::{Response, Scroll};
 pub use update::UpdateHandle;
+#[allow(unused)]
+use crate::Widget;
 
 /// A type supporting a small number of key bindings
 ///

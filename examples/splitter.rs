@@ -5,9 +5,10 @@
 
 //! Counter example (simple button)
 
-use kas::event::{EventMgr, Handler};
+use kas::event::EventMgr;
 use kas::macros::make_widget;
 use kas::widgets::{EditField, RowSplitter, TextButton, Window};
+use kas::Widget;
 
 #[derive(Clone, Debug)]
 enum Message {
@@ -41,7 +42,7 @@ fn main() -> kas::shell::Result<()> {
                 #[widget] _ = buttons,
                 #[widget] panes: RowSplitter<EditField> = panes,
             }
-            impl Handler for Self {
+            impl Widget for Self {
                 fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
                     if let Some(msg) = mgr.try_pop_msg::<Message>() {
                         match msg {

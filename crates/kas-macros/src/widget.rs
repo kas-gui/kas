@@ -43,7 +43,7 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let mut impl_widget_config = true;
     let mut impl_layout = true;
     let mut has_find_id_impl = attr.layout.is_some();
-    let mut handler_impl = None;
+    let mut impl_widget = true;
 
     let fields = match &mut scope.item {
         ScopeItem::Struct { token, fields } => match fields {
@@ -92,7 +92,7 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
     crate::widget_index::visit_impls(&children, &mut scope.impls);
 
-    for (index, impl_) in scope.impls.iter().enumerate() {
+    for impl_ in scope.impls.iter() {
         if let Some((_, ref path, _)) = impl_.trait_ {
             if *path == parse_quote! { ::kas::WidgetChildren }
                 || *path == parse_quote! { kas::WidgetChildren }
@@ -138,10 +138,9 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                         }
                     }
                 }
-            } else if *path == parse_quote! { ::kas::event::Handler }
-                || *path == parse_quote! { kas::event::Handler }
-                || *path == parse_quote! { event::Handler }
-                || *path == parse_quote! { Handler }
+            } else if *path == parse_quote! { ::kas::Widget }
+                || *path == parse_quote! { kas::Widget }
+                || *path == parse_quote! { Widget }
             {
                 if opt_derive.is_some() {
                     emit_error!(
@@ -149,8 +148,7 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                         "impl conflicts with use of #[widget(derive=FIELD)]"
                     );
                 }
-                // TODO: warn about unused handler stuff if present
-                handler_impl = Some(index);
+                impl_widget = false;
             }
         }
     }
@@ -159,7 +157,7 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
         emit_call_site_warning!("widget appears to have children yet does not implement Layout::layout or Layout::find_id; this may cause incorrect handling of mouse/touch events");
     }
 
-    let (mut impl_generics, ty_generics, mut where_clause) = scope.generics.split_for_impl();
+    let (impl_generics, ty_generics, where_clause) = scope.generics.split_for_impl();
     let widget_name = name.to_string();
 
     let (access_core_data, access_core_data_mut);
@@ -415,13 +413,8 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
         emit_warning!(span, "unused without generated impl of `Layout`");
     }
 
-    if let Some(index) = handler_impl {
-        // Manual Handler impl may add additional bounds:
-        let (a, _, c) = scope.impls[index].generics.split_for_impl();
-        impl_generics = a;
-        where_clause = c;
-    } else {
-        let handle = if let Some(inner) = opt_derive {
+    if impl_widget {
+        let methods = if let Some(inner) = opt_derive {
             quote! {
                 #[inline]
                 fn handle_event(
@@ -461,17 +454,13 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
             quote! {}
         };
         scope.generated.push(quote! {
-            impl #impl_generics ::kas::event::Handler
+            impl #impl_generics ::kas::Widget
                     for #name #ty_generics #where_clause
             {
-                #handle
+                #methods
             }
         });
     }
-
-    scope.generated.push(quote! {
-        impl #impl_generics ::kas::Widget for #name #ty_generics #where_clause {}
-    });
 
     Ok(())
 }

@@ -7,7 +7,7 @@
 
 use kas::component::Label;
 use kas::draw::color::Rgb;
-use kas::event::{self, VirtualKeyCode, VirtualKeyCodes};
+use kas::event::{VirtualKeyCode, VirtualKeyCodes};
 use kas::layout;
 use kas::prelude::*;
 use kas::theme::TextClass;
@@ -133,7 +133,7 @@ impl_scope! {
         }
     }
 
-    impl Handler for Self {
+    impl Widget for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, mut event: Event) -> Response {
             if let Some(response) = event.activate_on_press(mgr, self.id_ref()) {
                 return response;
@@ -291,7 +291,7 @@ impl_scope! {
         }
     }
 
-    impl event::Handler for Self {
+    impl Widget for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, mut event: Event) -> Response {
             if let Some(response) = event.activate_on_press(mgr, self.id_ref()) {
                 return response;

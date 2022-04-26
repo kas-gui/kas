@@ -79,7 +79,7 @@ fn main() -> kas::shell::Result<()> {
             #[widget] _ = buttons,
             calc: Calculator = Calculator::new(),
         }
-        impl Handler for Self {
+        impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
                 if let Some(msg) = mgr.try_pop_msg::<Key>() {
                     if self.calc.handle(msg) {

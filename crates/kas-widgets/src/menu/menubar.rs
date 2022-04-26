@@ -6,7 +6,7 @@
 //! Menubar
 
 use super::{Menu, SubMenu, SubMenuBuilder};
-use kas::event::{self, Command};
+use kas::event::Command;
 use kas::layout::{self, RowSetter, RowSolver, RulesSetter, RulesSolver};
 use kas::prelude::*;
 use kas::theme::FrameStyle;
@@ -102,7 +102,7 @@ impl_scope! {
         }
     }
 
-    impl<D: Directional> event::Handler for MenuBar<D> {
+    impl<D: Directional> Widget for MenuBar<D> {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(id_code) => {

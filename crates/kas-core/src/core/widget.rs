@@ -8,7 +8,7 @@
 use std::any::Any;
 use std::fmt;
 
-use crate::event;
+use crate::event::{self, Event, EventMgr, Response, Scroll};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{self, AlignHints, AxisInfo, SetRectMgr, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
@@ -17,7 +17,7 @@ use crate::{CoreData, WidgetId};
 use kas_macros::autoimpl;
 
 #[allow(unused)]
-use crate::event::{EventState, Handler};
+use crate::event::EventState;
 
 impl dyn WidgetCore {
     /// Forwards to the method defined on the type `Any`.
@@ -306,7 +306,7 @@ pub trait Layout: WidgetChildren {
     ///
     /// Usually this is zero; only widgets with scrollable or offset content
     /// need implement this. Such widgets must also implement
-    /// [`Handler::handle_scroll`].
+    /// [`Widget::handle_scroll`].
     ///
     /// Affects event handling via [`Self::find_id`] and affects the positioning
     /// of pop-up menus. [`Self::draw`] must be implemented directly using
@@ -402,7 +402,6 @@ pub trait Layout: WidgetChildren {
 /// -   [`Layout`] — handles sizing and positioning of self and children
 /// -   [`WidgetConfig`] — the last unparametrised trait allows customisation of
 ///     some aspects of widget behaviour
-/// -   [`event::Handler`] — handles events
 /// -   [`Widget`] — the final trait
 ///
 /// Widgets **must** use the [`derive(Widget)`] macro to implement at least
@@ -417,7 +416,71 @@ pub trait Layout: WidgetChildren {
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
-pub trait Widget: event::Handler {}
+pub trait Widget: WidgetConfig {
+    /// Handle an event sent to this widget
+    ///
+    /// An [`Event`] is some form of user input, timer or notification.
+    ///
+    /// This is the primary event handler for a widget. Secondary handlers are:
+    ///
+    /// -   If this method returns [`Response::Unused`], then
+    ///     [`Widget::handle_unused`] is called on each parent until the event
+    ///     is used (or the root widget is reached)
+    /// -   If a message is left on the stack by [`EventMgr::push_msg`], then
+    ///     [`Widget::handle_message`] is called on each parent until the stack is
+    ///     empty (failing to empty the stack results in a warning in the log).
+    /// -   If any scroll state is set by [`EventMgr::set_scroll`], then
+    ///     [`Widget::handle_scroll`] is called for each parent
+    ///
+    /// Default implementation: do nothing; return [`Response::Unused`].
+    #[inline]
+    fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        let _ = (mgr, event);
+        Response::Unused
+    }
+
+    /// Handle an event sent to child `index` but left unhandled
+    ///
+    /// Default implementation: call [`Self::handle_event`] with `event`.
+    #[inline]
+    fn handle_unused(&mut self, mgr: &mut EventMgr, index: usize, event: Event) -> Response {
+        let _ = index;
+        self.handle_event(mgr, event)
+    }
+
+    /// Handler for messages from children/descendants
+    ///
+    /// This method is called when a child leaves a message on the stack. *Some*
+    /// parent or ancestor widget should read this message.
+    ///
+    /// The default implementation does nothing.
+    #[inline]
+    fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
+        let _ = (mgr, index);
+    }
+
+    /// Handler for scrolling
+    ///
+    /// When a child calls [`EventMgr::set_scroll`] with a value other than
+    /// [`Scroll::None`], this method is called. (This method is not called
+    /// after [`Self::handle_event`] or other handlers called on self.)
+    ///
+    /// Note that [`Scroll::Rect`] values are in the child's coordinate space,
+    /// and must be translated to the widget's own coordinate space by this
+    /// method (this is not done by the default implementation since any widget
+    /// with non-zero translation very likely wants to implement this method
+    /// anyway).
+    ///
+    /// If the child is in an independent coordinate space, then this method
+    /// should call `mgr.set_scroll(Scroll::None)` to avoid any reactions to
+    /// child's scroll requests.
+    ///
+    /// The default implementation does nothing.
+    #[inline]
+    fn handle_scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) {
+        let _ = (mgr, scroll);
+    }
+}
 
 /// Extension trait over widgets
 pub trait WidgetExt: WidgetChildren {

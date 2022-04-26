@@ -84,7 +84,7 @@ impl_scope! {
             mgr.register_nav_fallback(self.id());
         }
     }
-    impl Handler for TextEditPopup {
+    impl Widget for TextEditPopup {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(Command::Escape, _) => self.close(mgr, false),
@@ -186,7 +186,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             #[widget] edit = TextButton::new_msg("&Edit", MsgEdit),
             future: Option<Future<Option<String>>> = None,
         }
-        impl Handler for Self {
+        impl Widget for Self {
             fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
                 match event {
                     Event::HandleUpdate { .. } => {
@@ -283,7 +283,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }),
             #[widget] pu = popup_edit_box,
         }
-        impl Handler for Self {
+        impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
                 if index == widget_index![self.sc] {
                     if let Some(msg) = mgr.try_pop_msg::<i32>() {
@@ -322,7 +322,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     for<W: Widget> ScrollBarRegion<W> =
                         ScrollBarRegion::new(widgets),
             }
-            impl Handler for Self {
+            impl Widget for Self {
                 fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
                     if let Some(msg) = mgr.try_pop_msg::<Menu>() {
                         match msg {

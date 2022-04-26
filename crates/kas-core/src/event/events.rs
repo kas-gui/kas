@@ -11,9 +11,9 @@ use serde::{Deserialize, Serialize};
 #[allow(unused)]
 use super::{EventMgr, EventState, GrabMode, Response}; // for doc-links
 use super::{MouseButton, UpdateHandle, VirtualKeyCode};
-#[allow(unused)]
-use crate::event::Handler;
 use crate::geom::{Coord, DVec2, Offset};
+#[allow(unused)]
+use crate::Widget;
 use crate::{dir::Direction, WidgetId, WindowId};
 
 /// Events addressed to a widget
@@ -237,7 +237,7 @@ impl std::ops::AddAssign<Offset> for Event {
 impl Event {
     /// Translate press-and-release (click or touch) to [`Event::Activate`]
     ///
-    /// A convenient way to make a widget "clickable". Use from [`Handler::handle_event`] like this:
+    /// A convenient way to make a widget "clickable". Use from [`Widget::handle_event`] like this:
     /// ```
     /// # use kas_core::event::{Event, EventMgr, Response};
     /// # use kas_core::{Widget, WidgetExt};

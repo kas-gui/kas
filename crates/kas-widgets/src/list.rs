@@ -151,7 +151,7 @@ impl_scope! {
         }
     }
 
-    impl Handler for Self {
+    impl Widget for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
             if let Some(f) = self.on_message {
                 f(mgr, index);

@@ -248,7 +248,7 @@ impl_scope! {
         }
     }
 
-    impl Handler for Self {
+    impl Widget for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::PressStart { source, coord, .. } => {
@@ -629,7 +629,7 @@ impl_scope! {
         }
     }
 
-    impl Handler for Self {
+    impl Widget for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
             if index == widget_index![self.horiz_bar] {
                 if let Some(msg) = mgr.try_pop_msg() {

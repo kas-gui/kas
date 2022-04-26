@@ -5,11 +5,12 @@
 
 //! A counter synchronised between multiple windows
 
-use kas::event::{EventMgr, Handler};
+use kas::event::EventMgr;
 use kas::macros::make_widget;
 use kas::updatable::SharedRc;
 use kas::widgets::view::SingleView;
 use kas::widgets::{TextButton, Window};
+use kas::Widget;
 
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
@@ -33,7 +34,7 @@ fn main() -> kas::shell::Result<()> {
                 #[widget] b_decr = TextButton::new_msg("−", Increment(-1)),
                 #[widget] b_incr = TextButton::new_msg("+", Increment(1)),
             }
-            impl Handler for Self {
+            impl Widget for Self {
                 fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
                     if let Some(Increment(x)) = mgr.try_pop_msg() {
                         self.counter.update_value(mgr, |v| v + x);

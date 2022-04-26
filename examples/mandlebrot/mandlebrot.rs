@@ -365,7 +365,7 @@ impl_scope! {
         }
     }
 
-    impl event::Handler for Mandlebrot {
+    impl Widget for Mandlebrot {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(cmd, _) => {
@@ -463,7 +463,7 @@ impl_scope! {
             Window::new("Mandlebrot", w)
         }
     }
-    impl Handler for Self {
+    impl Widget for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
             if let Some(iter) = mgr.try_pop_msg() {
                 self.mbrot.iter = iter;

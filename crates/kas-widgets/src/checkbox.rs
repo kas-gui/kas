@@ -6,7 +6,7 @@
 //! Toggle widgets
 
 use super::AccelLabel;
-use kas::{event, prelude::*};
+use kas::prelude::*;
 use std::rc::Rc;
 
 impl_scope! {
@@ -127,7 +127,7 @@ impl_scope! {
         }
     }
 
-    impl event::Handler for Self {
+    impl Widget for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, mut event: Event) -> Response {
             if let Some(response) = event.activate_on_press(mgr, self.id_ref()) {
                 return response;

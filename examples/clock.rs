@@ -125,7 +125,7 @@ impl_scope! {
         }
     }
 
-    impl Handler for Clock {
+    impl Widget for Clock {
         #[inline]
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {

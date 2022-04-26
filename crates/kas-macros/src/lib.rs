@@ -130,8 +130,8 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// This may *only* be used within the [`impl_scope!`] macro.
 ///
 /// Implements the [`WidgetCore`] and [`Widget`] traits for the deriving type.
-/// Implements the [`WidgetChildren`], [`WidgetConfig`], [`Layout`]
-/// and [`Handler`] traits only if not implemented explicitly within the
+/// Implements the [`WidgetChildren`], [`WidgetConfig`] and [`Layout`]
+/// traits only if not implemented explicitly within the
 /// defining [`impl_scope!`].
 ///
 /// Using the `derive` argument activates a special "thin wrapper" mode.
@@ -181,7 +181,6 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// [`WidgetChildren`]: https://docs.rs/kas/0.11/kas/trait.WidgetChildren.html
 /// [`WidgetConfig`]: https://docs.rs/kas/0.11/kas/trait.WidgetConfig.html
 /// [`Layout`]: https://docs.rs/kas/0.11/kas/trait.Layout.html
-/// [`Handler`]: https://docs.rs/kas/0.11/kas/event/trait.Handler.html
 /// [`CursorIcon`]: https://docs.rs/kas/0.11/kas/event/enum.CursorIcon.html
 /// [`Response`]: https://docs.rs/kas/0.11/kas/event/enum.Response.html
 /// [`CoreData`]: https://docs.rs/kas/0.11/kas/struct.CoreData.html

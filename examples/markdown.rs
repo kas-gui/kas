@@ -6,10 +6,11 @@
 //! Markdown parsing demo
 
 use kas::class::HasStr;
-use kas::event::{EventMgr, Handler};
+use kas::event::EventMgr;
 use kas::macros::make_widget;
 use kas::text::format::Markdown;
 use kas::widgets::{EditBox, EditField, EditGuard, Label, ScrollBarRegion, Window};
+use kas::Widget;
 
 #[derive(Debug)]
 struct Guard;
@@ -64,7 +65,7 @@ It also supports lists:
                 #[widget] label: ScrollBarRegion<Label<Markdown>> =
                     ScrollBarRegion::new(Label::new(Markdown::new(doc)?)),
             }
-            impl Handler for Self {
+            impl Widget for Self {
                 fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
                     if let Some(md) = mgr.try_pop_msg::<Markdown>() {
                         *mgr |= self.label.set_text(md);

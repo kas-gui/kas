@@ -69,7 +69,7 @@ impl_scope! {
             draw.rect((self.rect()).cast(), col);
         }
     }
-    impl Handler for ColourSquare {
+    impl Widget for ColourSquare {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::HandleUpdate { .. } => {

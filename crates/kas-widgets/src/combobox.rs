@@ -88,7 +88,7 @@ impl_scope! {
         }
     }
 
-    impl Handler for Self {
+    impl Widget for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             let open_popup = |s: &mut Self, mgr: &mut EventMgr, key_focus: bool| {
                 s.popup_id = mgr.add_popup(kas::Popup {

@@ -115,7 +115,7 @@ fn main() -> kas::shell::Result<()> {
             #[widget] _ = TextButton::new_msg("↓↑", Control::Dir),
             n: usize = 3,
         }
-        impl Handler for Self {
+        impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
                 if index == widget_index![self.edit] {
                     if let Some(n) = mgr.try_pop_msg::<usize>() {
@@ -161,7 +161,7 @@ fn main() -> kas::shell::Result<()> {
                     ScrollBarRegion::new(list).with_bars(false, true),
                 active: usize = 0,
             }
-            impl Handler for Self {
+            impl Widget for Self {
                 fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
                     if let Some(control) = mgr.try_pop_msg() {
                         match control {

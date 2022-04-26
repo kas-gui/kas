@@ -5,7 +5,7 @@
 
 //! A "navigable" wrapper
 
-use kas::{event, prelude::*};
+use kas::prelude::*;
 
 /// Message indicating that a child wishes to be selected
 ///
@@ -47,7 +47,7 @@ impl_scope! {
         }
     }
 
-    impl event::Handler for Self {
+    impl Widget for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Activate => {
