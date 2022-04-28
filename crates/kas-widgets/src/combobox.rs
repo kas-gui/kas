@@ -57,11 +57,6 @@ impl_scope! {
             layout::Layout::button(&mut self.layout_frame, list, None)
         }
 
-        fn spatial_nav(&mut self, _: &mut SetRectMgr, _: bool, _: Option<usize>) -> Option<usize> {
-            // We have no child within our rect
-            None
-        }
-
         fn draw(&mut self, draw: DrawMgr) {
             let id = self.id();
             self.layout().draw(draw, &id);
@@ -85,6 +80,11 @@ impl_scope! {
 
         fn hover_highlight(&self) -> bool {
             true
+        }
+
+        fn spatial_nav(&mut self, _: &mut SetRectMgr, _: bool, _: Option<usize>) -> Option<usize> {
+            // We have no child within our rect
+            None
         }
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {

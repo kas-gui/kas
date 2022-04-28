@@ -210,80 +210,6 @@ pub trait Layout: WidgetChildren {
         self.layout().set_rect(mgr, rect, align);
     }
 
-    /// Get translation of children relative to this widget
-    ///
-    /// Usually this is zero; only widgets with scrollable or offset content
-    /// need implement this. Such widgets must also implement
-    /// [`Widget::handle_scroll`].
-    ///
-    /// Affects event handling via [`Self::find_id`] and affects the positioning
-    /// of pop-up menus. [`Self::draw`] must be implemented directly using
-    /// [`DrawMgr::with_clip_region`] to offset contents.
-    #[inline]
-    fn translation(&self) -> Offset {
-        Offset::ZERO
-    }
-
-    /// Navigation in spatial order
-    ///
-    /// Controls <kbd>Tab</kbd> navigation order of children.
-    /// This method should:
-    ///
-    /// -   Return `None` if there is no next child
-    /// -   Determine the next child after `from` (if provided) or the whole
-    ///     range, optionally in `reverse` order
-    /// -   Ensure that the selected widget is addressable through
-    ///     [`WidgetChildren::get_child`]
-    ///
-    /// Both `from` and the return value use the widget index, as used by
-    /// [`WidgetChildren::get_child`].
-    ///
-    /// The default implementation often suffices: it will navigate through
-    /// children in order.
-    fn spatial_nav(
-        &mut self,
-        mgr: &mut SetRectMgr,
-        reverse: bool,
-        from: Option<usize>,
-    ) -> Option<usize> {
-        let _ = mgr;
-        crate::util::spatial_nav(reverse, from, self.num_children())
-    }
-
-    /// Translate a coordinate to a [`WidgetId`]
-    ///
-    /// This method is used in event handling, translating a mouse click or
-    /// touch input to a widget and resolving a [`Widget::cursor_icon`].
-    /// Usually, this is the widget which draws the target coordinate, but
-    /// stealing focus is permitted: e.g. the `Button` widget handles clicks on
-    /// inner content, while the `CheckBox` widget forwards click events to its
-    /// `CheckBoxBare` component.
-    ///
-    /// It is expected that [`Self::set_rect`] is called before this method,
-    /// but failure to do so should not cause a fatal error.
-    ///
-    /// The default implementation suffices unless:
-    ///
-    /// -   [`Self::layout`] is not implemented and there are child widgets
-    /// -   Event stealing from child widgets is desired (but note that
-    ///     [`crate::layout::Layout::button`] does this already)
-    /// -   The child widget is in a translated coordinate space *not equal* to
-    ///     [`Self::translation`]
-    ///
-    /// To implement directly:
-    ///
-    /// -   Return `None` if `coord` is not within `self.rect()`
-    /// -   Find the child which should respond to input at `coord`, if any, and
-    ///     call `find_id` recursively on this child
-    /// -   Otherwise return `self.id()`
-    fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-        if !self.rect().contains(coord) {
-            return None;
-        }
-        let coord = coord + self.translation();
-        self.layout().find_id(coord).or_else(|| Some(self.id()))
-    }
-
     /// Draw a widget and its children
     ///
     /// This method is invoked each frame to draw visible widgets. It should
@@ -399,6 +325,81 @@ pub trait Widget: Layout {
     #[inline]
     fn cursor_icon(&self) -> event::CursorIcon {
         event::CursorIcon::Default
+    }
+
+    /// Get translation of children relative to this widget
+    ///
+    /// Usually this is zero; only widgets with scrollable or offset content
+    /// need implement this. Such widgets must also implement
+    /// [`Widget::handle_scroll`].
+    ///
+    /// Affects event handling via [`Self::find_id`] and affects the positioning
+    /// of pop-up menus. [`Self::draw`] must be implemented directly using
+    /// [`DrawMgr::with_clip_region`] to offset contents.
+    #[inline]
+    fn translation(&self) -> Offset {
+        Offset::ZERO
+    }
+
+    /// Navigation in spatial order
+    ///
+    /// Controls <kbd>Tab</kbd> navigation order of children.
+    /// This method should:
+    ///
+    /// -   Return `None` if there is no next child
+    /// -   Determine the next child after `from` (if provided) or the whole
+    ///     range, optionally in `reverse` order
+    /// -   Ensure that the selected widget is addressable through
+    ///     [`WidgetChildren::get_child`]
+    ///
+    /// Both `from` and the return value use the widget index, as used by
+    /// [`WidgetChildren::get_child`].
+    ///
+    /// The default implementation often suffices: it will navigate through
+    /// children in order.
+    #[inline]
+    fn spatial_nav(
+        &mut self,
+        mgr: &mut SetRectMgr,
+        reverse: bool,
+        from: Option<usize>,
+    ) -> Option<usize> {
+        let _ = mgr;
+        crate::util::spatial_nav(reverse, from, self.num_children())
+    }
+
+    /// Translate a coordinate to a [`WidgetId`]
+    ///
+    /// This method is used in event handling, translating a mouse click or
+    /// touch input to a widget and resolving a [`Widget::cursor_icon`].
+    /// Usually, this is the widget which draws the target coordinate, but
+    /// stealing focus is permitted: e.g. the `Button` widget handles clicks on
+    /// inner content, while the `CheckBox` widget forwards click events to its
+    /// `CheckBoxBare` component.
+    ///
+    /// It is expected that [`Self::set_rect`] is called before this method,
+    /// but failure to do so should not cause a fatal error.
+    ///
+    /// The default implementation suffices unless:
+    ///
+    /// -   [`Self::layout`] is not implemented and there are child widgets
+    /// -   Event stealing from child widgets is desired (but note that
+    ///     [`crate::layout::Layout::button`] does this already)
+    /// -   The child widget is in a translated coordinate space *not equal* to
+    ///     [`Self::translation`]
+    ///
+    /// To implement directly:
+    ///
+    /// -   Return `None` if `coord` is not within `self.rect()`
+    /// -   Find the child which should respond to input at `coord`, if any, and
+    ///     call `find_id` recursively on this child
+    /// -   Otherwise return `self.id()`
+    fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        if !self.rect().contains(coord) {
+            return None;
+        }
+        let coord = coord + self.translation();
+        self.layout().find_id(coord).or_else(|| Some(self.id()))
     }
 
     /// Handle an event sent to this widget

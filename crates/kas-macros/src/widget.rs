@@ -7,7 +7,7 @@ use crate::args::{Child, WidgetArgs};
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::{Scope, ScopeAttr, ScopeItem, SimplePath};
 use proc_macro2::{Span, TokenStream};
-use proc_macro_error::{emit_call_site_warning, emit_error, emit_warning};
+use proc_macro_error::{emit_error, emit_warning};
 use quote::{quote, TokenStreamExt};
 use syn::spanned::Spanned;
 use syn::{parse_quote, Error, Ident, Index, Member, Result};
@@ -41,7 +41,6 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
     let mut impl_widget_children = true;
     let mut impl_layout = true;
-    let mut has_find_id_impl = attr.layout.is_some();
     let mut widget_impl = None;
 
     let fields = match &mut scope.item {
@@ -118,13 +117,6 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     );
                 }
                 impl_layout = false;
-                for item in &impl_.items {
-                    if let syn::ImplItem::Method(method) = item {
-                        if method.sig.ident == "layout" || method.sig.ident == "find_id" {
-                            has_find_id_impl = true;
-                        }
-                    }
-                }
             } else if *path == parse_quote! { ::kas::Widget }
                 || *path == parse_quote! { kas::Widget }
                 || *path == parse_quote! { Widget }
@@ -138,10 +130,6 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 widget_impl = Some(index);
             }
         }
-    }
-
-    if !has_find_id_impl && (!impl_widget_children || !children.is_empty()) {
-        emit_call_site_warning!("widget appears to have children yet does not implement Layout::layout or Layout::find_id; this may cause incorrect handling of mouse/touch events");
     }
 
     let (impl_generics, ty_generics, where_clause) = scope.generics.split_for_impl();
@@ -271,23 +259,6 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                         self.#inner.set_rect(mgr, rect, align);
                     }
                     #[inline]
-                    fn translation(&self) -> ::kas::geom::Offset {
-                        self.#inner.translation()
-                    }
-                    #[inline]
-                    fn spatial_nav(
-                        &mut self,
-                        mgr: &mut ::kas::layout::SetRectMgr,
-                        reverse: bool,
-                        from: Option<usize>,
-                    ) -> Option<usize> {
-                        self.#inner.spatial_nav(mgr, reverse, from)
-                    }
-                    #[inline]
-                    fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
-                        self.#inner.find_id(coord)
-                    }
-                    #[inline]
                     fn draw(
                         &mut self,
                         draw: ::kas::theme::DrawMgr,
@@ -297,18 +268,6 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 }
             });
         } else if let Some(layout) = attr.layout.take() {
-            let find_id = match attr.find_id.value {
-                None => quote! {},
-                Some(find_id) => quote! {
-                    fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
-                        if !self.rect().contains(coord) {
-                            return None;
-                        }
-                        #find_id
-                    }
-                },
-            };
-
             let core = if let Some(ref cd) = core_data {
                 cd
             } else {
@@ -326,13 +285,9 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                         let mut _chain = &mut self.#core.layout;
                         #layout
                     }
-
-                    #find_id
                 }
             });
         }
-    } else if let Some(span) = attr.find_id.span {
-        emit_warning!(span, "unused without generated impl of `Layout`");
     }
 
     if let Some(index) = widget_impl {
@@ -387,6 +342,24 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 #[inline]
                 fn cursor_icon(&self) -> ::kas::event::CursorIcon {
                     self.#inner.cursor_icon()
+                }
+
+                #[inline]
+                fn translation(&self) -> ::kas::geom::Offset {
+                    self.#inner.translation()
+                }
+                #[inline]
+                fn spatial_nav(
+                    &mut self,
+                    mgr: &mut ::kas::layout::SetRectMgr,
+                    reverse: bool,
+                    from: Option<usize>,
+                ) -> Option<usize> {
+                    self.#inner.spatial_nav(mgr, reverse, from)
+                }
+                #[inline]
+                fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
+                    self.#inner.find_id(coord)
                 }
 
                 #[inline]

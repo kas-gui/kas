@@ -161,8 +161,6 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///     (method of [`Widget`]; default is `CursorIcon::Default`)
 /// -   `layout` `=` _Layout_ — defines widget layout via an expression; see [`make_layout!`] for
 ///     documentation (method of [`Layout`]; defaults to an empty layout)
-/// -   `find_id` `=` _Expr_ — override default implementation of `kas::Layout::find_id` to
-///     return this expression when `self.rect().contains(coord)`
 ///
 /// Assuming the deriving type is a `struct` or `tuple struct`, fields support
 /// the following attributes:

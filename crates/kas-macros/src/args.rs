@@ -142,7 +142,6 @@ fn parse_attrs_inner(input: ParseStream, attrs: &mut Vec<Attribute>) -> Result<(
 mod kw {
     use syn::custom_keyword;
 
-    custom_keyword!(find_id);
     custom_keyword!(layout);
     custom_keyword!(col);
     custom_keyword!(row);
@@ -230,10 +229,6 @@ property!(
     CursorIcon: Expr = parse_quote! { ::kas::event::CursorIcon::Default };
     kw::cursor_icon : input => input.parse()?;
 );
-property!(
-    FindId: Option<Expr> = None;
-    kw::find_id : input => Some(input.parse()?);
-);
 
 #[derive(Debug, Default)]
 pub struct WidgetArgs {
@@ -242,7 +237,6 @@ pub struct WidgetArgs {
     pub cursor_icon: CursorIcon,
     pub derive: Option<Member>,
     pub layout: Option<make_layout::Tree>,
-    pub find_id: FindId,
 }
 
 impl Parse for WidgetArgs {
@@ -252,7 +246,6 @@ impl Parse for WidgetArgs {
         let mut cursor_icon = CursorIcon::default();
         let mut derive = None;
         let mut layout = None;
-        let mut find_id = FindId::default();
 
         while !content.is_empty() {
             let lookahead = content.lookahead1();
@@ -272,8 +265,6 @@ impl Parse for WidgetArgs {
                 let _: kw::layout = content.parse()?;
                 let _: Eq = content.parse()?;
                 layout = Some(content.parse()?);
-            } else if content.peek(kw::find_id) {
-                find_id = content.parse()?;
             } else {
                 return Err(lookahead.error());
             }
@@ -287,7 +278,6 @@ impl Parse for WidgetArgs {
             cursor_icon,
             derive,
             layout,
-            find_id,
         })
     }
 }

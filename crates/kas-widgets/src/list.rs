@@ -110,25 +110,6 @@ impl_scope! {
             self.size_solved = true;
         }
 
-        fn spatial_nav(
-            &mut self,
-            _: &mut SetRectMgr,
-            reverse: bool,
-            from: Option<usize>,
-        ) -> Option<usize> {
-            let reverse = reverse ^ self.direction.is_reversed();
-            kas::util::spatial_nav(reverse, from, self.num_children())
-        }
-
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) || !self.size_solved {
-                return None;
-            }
-
-            let coord = coord + self.translation();
-            self.layout().find_id(coord).or_else(|| Some(self.id()))
-        }
-
         fn draw(&mut self, draw: DrawMgr) {
             if self.size_solved {
                 let id = self.id(); // clone to avoid borrow conflict
@@ -148,6 +129,25 @@ impl_scope! {
             }
 
             self.configure(mgr);
+        }
+
+        fn spatial_nav(
+            &mut self,
+            _: &mut SetRectMgr,
+            reverse: bool,
+            from: Option<usize>,
+        ) -> Option<usize> {
+            let reverse = reverse ^ self.direction.is_reversed();
+            kas::util::spatial_nav(reverse, from, self.num_children())
+        }
+
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) || !self.size_solved {
+                return None;
+            }
+
+            let coord = coord + self.translation();
+            self.layout().find_id(coord).or_else(|| Some(self.id()))
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {

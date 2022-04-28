@@ -155,7 +155,6 @@ impl_scope! {
     #[derive(Clone, Default)]
     #[widget{
         layout = row: *;
-        find_id = Some(self.inner.id());
     }]
     pub struct CheckBox {
         #[widget_core]
@@ -169,6 +168,10 @@ impl_scope! {
     impl Widget for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.add_accel_keys(self.inner.id_ref(), self.label.keys());
+        }
+
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            self.rect().contains(coord).then(|| self.inner.id())
         }
     }
 

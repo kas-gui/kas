@@ -128,11 +128,6 @@ impl_scope! {
             layout::Layout::component(&mut self.label)
         }
 
-        fn spatial_nav(&mut self, _: &mut SetRectMgr, _: bool, _: Option<usize>) -> Option<usize> {
-            // We have no child within our rect
-            None
-        }
-
         fn draw(&mut self, mut draw: DrawMgr) {
             draw.frame(&*self, FrameStyle::MenuEntry, Default::default());
             self.label.draw(draw.re(), &self.core.id);
@@ -156,6 +151,11 @@ impl_scope! {
 
         fn key_nav(&self) -> bool {
             self.key_nav
+        }
+
+        fn spatial_nav(&mut self, _: &mut SetRectMgr, _: bool, _: Option<usize>) -> Option<usize> {
+            // We have no child within our rect
+            None
         }
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
@@ -361,6 +361,14 @@ impl_scope! {
             }
         }
 
+        fn draw(&mut self, mut draw: DrawMgr) {
+            for child in self.list.iter_mut() {
+                child.draw(draw.re());
+            }
+        }
+    }
+
+    impl Widget for Self {
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
@@ -372,12 +380,6 @@ impl_scope! {
                 }
             }
             Some(self.id())
-        }
-
-        fn draw(&mut self, mut draw: DrawMgr) {
-            for child in self.list.iter_mut() {
-                child.draw(draw.re());
-            }
         }
     }
 

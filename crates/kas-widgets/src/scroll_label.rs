@@ -42,11 +42,6 @@ impl_scope! {
             self.set_view_offset_from_edit_pos();
         }
 
-        #[inline]
-        fn translation(&self) -> Offset {
-            self.scroll_offset()
-        }
-
         fn draw(&mut self, mut draw: DrawMgr) {
             let class = TextClass::LabelScroll;
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
@@ -145,6 +140,11 @@ impl_scope! {
     }
 
     impl Widget for Self {
+        #[inline]
+        fn translation(&self) -> Offset {
+            self.scroll_offset()
+        }
+
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(cmd, _) => match cmd {

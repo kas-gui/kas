@@ -380,11 +380,6 @@ impl_scope! {
             self.set_view_offset_from_edit_pos();
         }
 
-        #[inline]
-        fn translation(&self) -> Offset {
-            self.scroll_offset()
-        }
-
         fn draw(&mut self, mut draw: DrawMgr) {
             let class = TextClass::Edit(self.multi_line);
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
@@ -413,32 +408,12 @@ impl_scope! {
         }
     }
 
-    impl HasStr for Self {
-        fn get_str(&self) -> &str {
-            self.text.text()
-        }
-    }
-
-    impl HasString for Self {
-        fn set_string(&mut self, string: String) -> TkAction {
-            // TODO: make text.set_string report bool for is changed?
-            if *self.text.text() == string {
-                return TkAction::empty();
-            }
-
-            self.text.set_string(string);
-            self.selection.clear();
-            if kas::text::fonts::fonts().num_faces() > 0 {
-                if let Some(req) = self.text.prepare() {
-                    self.required = req.into();
-                }
-            }
-            G::update(self);
-            TkAction::REDRAW
-        }
-    }
-
     impl Widget for Self {
+        #[inline]
+        fn translation(&self) -> Offset {
+            self.scroll_offset()
+        }
+
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             fn request_focus<G: EditGuard + 'static>(s: &mut EditField<G>, mgr: &mut EventMgr) {
                 if !s.has_key_focus && mgr.request_char_focus(s.id()) {
@@ -556,6 +531,31 @@ impl_scope! {
                 mgr.redraw(self.id());
             }
             new_offset
+        }
+    }
+
+    impl HasStr for Self {
+        fn get_str(&self) -> &str {
+            self.text.text()
+        }
+    }
+
+    impl HasString for Self {
+        fn set_string(&mut self, string: String) -> TkAction {
+            // TODO: make text.set_string report bool for is changed?
+            if *self.text.text() == string {
+                return TkAction::empty();
+            }
+
+            self.text.set_string(string);
+            self.selection.clear();
+            if kas::text::fonts::fonts().num_faces() > 0 {
+                if let Some(req) = self.text.prepare() {
+                    self.required = req.into();
+                }
+            }
+            G::update(self);
+            TkAction::REDRAW
         }
     }
 }

@@ -35,6 +35,20 @@ impl_scope! {
         }
 
         #[inline]
+        fn draw(&mut self, mut draw: DrawMgr) {
+            self.w.draw(draw.re());
+            for (_, popup) in &self.popups {
+                if let Some(widget) = self.w.find_widget_mut(&popup.id) {
+                    draw.with_overlay(widget.rect(), |mut draw| {
+                        widget.draw(draw.re());
+                    });
+                }
+            }
+        }
+    }
+
+    impl Widget for Self {
+        #[inline]
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
@@ -47,17 +61,6 @@ impl_scope! {
             self.w.find_id(coord).or(Some(self.id()))
         }
 
-        #[inline]
-        fn draw(&mut self, mut draw: DrawMgr) {
-            self.w.draw(draw.re());
-            for (_, popup) in &self.popups {
-                if let Some(widget) = self.w.find_widget_mut(&popup.id) {
-                    draw.with_overlay(widget.rect(), |mut draw| {
-                        widget.draw(draw.re());
-                    });
-                }
-            }
-        }
     }
 
     impl<W: Widget + 'static> kas::Window for Window<W> {

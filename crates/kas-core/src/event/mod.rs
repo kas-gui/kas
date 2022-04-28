@@ -71,6 +71,8 @@ pub use winit::event::{ModifiersState, MouseButton, VirtualKeyCode};
 #[cfg(feature = "winit")]
 pub use winit::window::CursorIcon;
 
+#[allow(unused)]
+use crate::Widget;
 #[doc(no_inline)]
 pub use config::Config;
 #[cfg(not(feature = "winit"))]
@@ -79,8 +81,6 @@ pub use events::*;
 pub use manager::{EventMgr, EventState, GrabMode};
 pub use response::{Response, Scroll};
 pub use update::UpdateHandle;
-#[allow(unused)]
-use crate::Widget;
 
 /// A type supporting a small number of key bindings
 ///

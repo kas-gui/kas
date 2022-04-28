@@ -121,12 +121,6 @@ impl_scope! {
         layout_list: layout::DynRowStorage,
     }
 
-    impl Widget for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            mgr.add_accel_keys(self.checkbox.id_ref(), self.label.keys());
-        }
-    }
-
     impl Layout for Self {
         fn layout(&mut self) -> layout::Layout<'_> {
             let list = [
@@ -136,17 +130,23 @@ impl_scope! {
             layout::Layout::list(list.into_iter(), Direction::Right, &mut self.layout_list)
         }
 
+        fn draw(&mut self, mut draw: DrawMgr) {
+            let id = self.checkbox.id();
+            draw.frame(IdRect(&id, self.rect()), FrameStyle::MenuEntry, Default::default());
+            self.layout().draw(draw, &id);
+        }
+    }
+
+    impl Widget for Self {
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
+            mgr.add_accel_keys(self.checkbox.id_ref(), self.label.keys());
+        }
+
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
             }
             Some(self.checkbox.id())
-        }
-
-        fn draw(&mut self, mut draw: DrawMgr) {
-            let id = self.checkbox.id();
-            draw.frame(IdRect(&id, self.rect()), FrameStyle::MenuEntry, Default::default());
-            self.layout().draw(draw, &id);
         }
     }
 
