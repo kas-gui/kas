@@ -11,7 +11,7 @@ use kas::event::{Command, CursorIcon, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::layout::{self, FrameStorage};
 use kas::prelude::*;
-use kas::text::SelectionHelper;
+use kas::text::{NotReady, SelectionHelper};
 use kas::theme::{Background, FrameStyle, IdRect, TextClass};
 use std::fmt::Debug;
 use std::ops::Range;
@@ -445,16 +445,17 @@ impl_scope! {
                     request_focus(self, mgr);
                     if self.has_key_focus {
                         match self.control_key(mgr, cmd, shift) {
-                            EditAction::None => Response::Used,
-                            EditAction::Unused => Response::Unused,
-                            EditAction::Activate => {
+                            Ok(EditAction::None) => Response::Used,
+                            Ok(EditAction::Unused) => Response::Unused,
+                            Ok(EditAction::Activate) => {
                                 G::activate(self, mgr);
                                 Response::Used
                             }
-                            EditAction::Edit => {
+                            Ok(EditAction::Edit) => {
                                 G::edit(self, mgr);
                                 Response::Used
                             }
+                            Err(NotReady) => Response::Used,
                         }
                     } else {
                         Response::Unused
@@ -743,9 +744,14 @@ impl<G: EditGuard> EditField<G> {
         true
     }
 
-    fn control_key(&mut self, mgr: &mut EventMgr, key: Command, mut shift: bool) -> EditAction {
+    fn control_key(
+        &mut self,
+        mgr: &mut EventMgr,
+        key: Command,
+        mut shift: bool,
+    ) -> Result<EditAction, NotReady> {
         if !self.editable {
-            return EditAction::Unused;
+            return Ok(EditAction::Unused);
         }
 
         let mut buf = [0u8; 4];
@@ -835,12 +841,12 @@ impl<G: EditGuard> EditField<G> {
                     Some(x) => x,
                     None => self
                         .text
-                        .text_glyph_pos(pos)
+                        .text_glyph_pos(pos)?
                         .next_back()
                         .map(|r| r.pos.0)
                         .unwrap_or(0.0),
                 };
-                let mut line = self.text.find_line(pos).map(|r| r.0).unwrap_or(0);
+                let mut line = self.text.find_line(pos)?.map(|r| r.0).unwrap_or(0);
                 // We can tolerate invalid line numbers here!
                 line = match key {
                     Command::Up => line.wrapping_sub(1),
@@ -853,18 +859,18 @@ impl<G: EditGuard> EditField<G> {
                     _ => 0,
                 };
                 self.text
-                    .line_index_nearest(line, x)
+                    .line_index_nearest(line, x)?
                     .map(|pos| Action::Move(pos, Some(x)))
                     .unwrap_or(Action::Move(nearest_end(), None))
             }
             Command::Home => {
-                let pos = self.text.find_line(pos).map(|r| r.1.start).unwrap_or(0);
+                let pos = self.text.find_line(pos)?.map(|r| r.1.start).unwrap_or(0);
                 Action::Move(pos, None)
             }
             Command::End => {
                 let pos = self
                     .text
-                    .find_line(pos)
+                    .find_line(pos)?
                     .map(|r| r.1.end)
                     .unwrap_or(self.text.str_len());
                 Action::Move(pos, None)
@@ -874,7 +880,7 @@ impl<G: EditGuard> EditField<G> {
             Command::PageUp | Command::PageDown => {
                 let mut v = self
                     .text
-                    .text_glyph_pos(pos)
+                    .text_glyph_pos(pos)?
                     .next_back()
                     .map(|r| r.pos.into())
                     .unwrap_or(Vec2::ZERO);
@@ -887,7 +893,7 @@ impl<G: EditGuard> EditField<G> {
                     h_dist *= -1.0;
                 }
                 v.1 += h_dist;
-                Action::Move(self.text.text_index_nearest(v.into()), Some(v.0))
+                Action::Move(self.text.text_index_nearest(v.into())?, Some(v.0))
             }
             Command::Delete | Command::DelBack if have_sel => Action::Delete(selection.clone()),
             Command::Delete => {
@@ -1037,13 +1043,14 @@ impl<G: EditGuard> EditField<G> {
             self.set_view_offset_from_edit_pos();
         }
 
-        result
+        Ok(result)
     }
 
     fn set_edit_pos_from_coord(&mut self, mgr: &mut EventMgr, coord: Coord) {
         let rel_pos = (coord - self.rect().pos + self.view_offset).cast();
-        self.selection
-            .set_edit_pos(self.text.text_index_nearest(rel_pos));
+        if let Ok(pos) = self.text.text_index_nearest(rel_pos) {
+            self.selection.set_edit_pos(pos);
+        }
         self.set_view_offset_from_edit_pos();
         self.edit_x_coord = None;
         mgr.redraw(self.id());
@@ -1073,7 +1080,12 @@ impl<G: EditGuard> EditField<G> {
     /// A redraw is assumed since edit_pos moved.
     fn set_view_offset_from_edit_pos(&mut self) {
         let edit_pos = self.selection.edit_pos();
-        if let Some(marker) = self.text.text_glyph_pos(edit_pos).next_back() {
+        if let Some(marker) = self
+            .text
+            .text_glyph_pos(edit_pos)
+            .ok()
+            .and_then(|mut m| m.next_back())
+        {
             let bounds = Vec2::from(self.text.env().bounds);
             let min_x = marker.pos.0 - bounds.0;
             let min_y = marker.pos.1 - marker.descent - bounds.1;

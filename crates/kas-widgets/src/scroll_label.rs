@@ -78,8 +78,9 @@ impl_scope! {
 
         fn set_edit_pos_from_coord(&mut self, mgr: &mut EventMgr, coord: Coord) {
             let rel_pos = (coord - self.rect().pos + self.view_offset).cast();
-            self.selection
-                .set_edit_pos(self.text.text_index_nearest(rel_pos));
+            if let Ok(pos) = self.text.text_index_nearest(rel_pos) {
+                self.selection.set_edit_pos(pos);
+            }
             self.set_view_offset_from_edit_pos();
             mgr.redraw(self.id());
         }
@@ -107,7 +108,12 @@ impl_scope! {
         /// A redraw is assumed since edit_pos moved.
         fn set_view_offset_from_edit_pos(&mut self) {
             let edit_pos = self.selection.edit_pos();
-            if let Some(marker) = self.text.text_glyph_pos(edit_pos).next_back() {
+            if let Some(marker) = self
+                .text
+                .text_glyph_pos(edit_pos)
+                .ok()
+                .and_then(|mut m| m.next_back())
+            {
                 let bounds = Vec2::from(self.text.env().bounds);
                 let min_x = marker.pos.0 - bounds.0;
                 let min_y = marker.pos.1 - marker.descent - bounds.1;

@@ -96,7 +96,8 @@ impl SelectionHelper {
     /// then before each time this method is called set the edit position.
     ///
     /// If `repeats <= 2`, the selection is expanded by words, otherwise it is
-    /// expanded by lines.
+    /// expanded by lines. Line expansion only works if text is line-wrapped
+    /// (layout has been solved).
     pub fn expand<T: TextApi>(&mut self, text: &T, repeats: u32) {
         let string = text.as_str();
         let mut range = self.edit_pos..self.anchor_pos;
@@ -123,11 +124,14 @@ impl SelectionHelper {
                 })
                 .unwrap_or(string.len());
         } else {
-            start = text.find_line(range.start).map(|r| r.1.start).unwrap_or(0);
-            end = text
-                .find_line(range.end)
-                .map(|r| r.1.end)
-                .unwrap_or(string.len());
+            start = match text.find_line(range.start) {
+                Ok(Some(r)) => r.1.start,
+                _ => 0,
+            };
+            end = match text.find_line(range.end) {
+                Ok(Some(r)) => r.1.end,
+                _ => string.len(),
+            };
         }
 
         if self.edit_pos < self.sel_pos {
