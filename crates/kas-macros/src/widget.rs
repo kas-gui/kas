@@ -8,7 +8,7 @@ use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::{Scope, ScopeAttr, ScopeItem, SimplePath};
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::{emit_error, emit_warning};
-use quote::{quote, TokenStreamExt};
+use quote::{quote, ToTokens, TokenStreamExt};
 use syn::spanned::Spanned;
 use syn::{parse_quote, Error, Ident, Index, Member, Result};
 
@@ -292,32 +292,50 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
     if let Some(index) = widget_impl {
         let widget_impl = &mut scope.impls[index];
-        if let Some(span) = attr.key_nav.span {
-            let value = attr.key_nav.value;
-            widget_impl.items.push(syn::parse_quote_spanned! {span=>
-                fn key_nav(&self) -> bool {
-                    #value
-                }
-            });
+        if let Some(item) = attr.key_nav {
+            widget_impl.items.push(item);
         }
-        if let Some(span) = attr.hover_highlight.span {
-            let value = attr.hover_highlight.value;
-            widget_impl.items.push(syn::parse_quote_spanned! {span=>
-                fn hover_highlight(&self) -> bool {
-                    #value
-                }
-            });
+        if let Some(item) = attr.hover_highlight {
+            widget_impl.items.push(item);
         }
-        if let Some(span) = attr.cursor_icon.span {
-            let value = attr.cursor_icon.value;
-            widget_impl.items.push(syn::parse_quote_spanned! {span=>
-                fn cursor_icon(&self) -> ::kas::event::CursorIcon {
-                    #value
-                }
-            });
+        if let Some(item) = attr.cursor_icon {
+            widget_impl.items.push(item);
         }
     } else {
         let methods = if let Some(inner) = opt_derive {
+            let key_nav = attr
+                .key_nav
+                .map(|item| item.to_token_stream())
+                .unwrap_or_else(|| {
+                    quote! {
+                        #[inline]
+                        fn key_nav(&self) -> bool {
+                            self.#inner.key_nav()
+                        }
+                    }
+                });
+            let hover_highlight = attr
+                .hover_highlight
+                .map(|item| item.to_token_stream())
+                .unwrap_or_else(|| {
+                    quote! {
+                        #[inline]
+                        fn hover_highlight(&self) -> bool {
+                            self.#inner.hover_highlight()
+                        }
+                    }
+                });
+            let cursor_icon = attr
+                .cursor_icon
+                .map(|item| item.to_token_stream())
+                .unwrap_or_else(|| {
+                    quote! {
+                        #[inline]
+                        fn cursor_icon(&self) -> ::kas::event::CursorIcon {
+                            self.#inner.cursor_icon()
+                        }
+                    }
+                });
             quote! {
                 #[inline]
                 fn configure_recurse(
@@ -331,18 +349,9 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 fn configure(&mut self, mgr: &mut ::kas::layout::SetRectMgr) {
                     self.#inner.configure(mgr);
                 }
-                #[inline]
-                fn key_nav(&self) -> bool {
-                    self.#inner.key_nav()
-                }
-                #[inline]
-                fn hover_highlight(&self) -> bool {
-                    self.#inner.hover_highlight()
-                }
-                #[inline]
-                fn cursor_icon(&self) -> ::kas::event::CursorIcon {
-                    self.#inner.cursor_icon()
-                }
+                #key_nav
+                #hover_highlight
+                #cursor_icon
 
                 #[inline]
                 fn translation(&self) -> ::kas::geom::Offset {
@@ -397,21 +406,17 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 }
             }
         } else {
-            let key_nav = attr.key_nav.value;
-            let hover_highlight = attr.hover_highlight.value;
-            let cursor_icon = attr.cursor_icon.value;
-
-            quote! {
-                fn key_nav(&self) -> bool {
-                    #key_nav
-                }
-                fn hover_highlight(&self) -> bool {
-                    #hover_highlight
-                }
-                fn cursor_icon(&self) -> ::kas::event::CursorIcon {
-                    #cursor_icon
-                }
+            let mut toks = TokenStream::new();
+            if let Some(item) = attr.key_nav {
+                item.to_tokens(&mut toks);
             }
+            if let Some(item) = attr.hover_highlight {
+                item.to_tokens(&mut toks);
+            }
+            if let Some(item) = attr.cursor_icon {
+                item.to_tokens(&mut toks);
+            }
+            toks
         };
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Widget
