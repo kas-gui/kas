@@ -232,16 +232,35 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
         }
     }
 
+    let layout = match attr.layout.take() {
+        Some(layout) => {
+            let layout = layout.generate(children.iter().map(|c| &c.ident))?;
+            Some(quote! {
+                fn layout<'a>(&'a mut self) -> ::kas::layout::Layout<'a> {
+                    use ::kas::{WidgetCore, layout};
+                    let mut _chain = &mut (#access_core_data_mut).layout;
+                    #layout
+                }
+            })
+        }
+        None => None,
+    };
+
     if impl_layout {
         if let Some(inner) = opt_derive {
-            scope.generated.push(quote! {
-                impl #impl_generics ::kas::Layout
-                        for #name #ty_generics #where_clause
-                {
+            let layout = layout.unwrap_or_else(|| {
+                quote! {
                     #[inline]
                     fn layout(&mut self) -> ::kas::layout::Layout<'_> {
                         self.#inner.layout()
                     }
+                }
+            });
+            scope.generated.push(quote! {
+                impl #impl_generics ::kas::Layout
+                        for #name #ty_generics #where_clause
+                {
+                    #layout
                     #[inline]
                     fn size_rules(&mut self,
                         size_mgr: ::kas::theme::SizeMgr,
@@ -267,24 +286,10 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     }
                 }
             });
-        } else if let Some(layout) = attr.layout.take() {
-            let core = if let Some(ref cd) = core_data {
-                cd
-            } else {
-                return Err(Error::new(
-                    fields.span(),
-                    "no field marked with #[widget_core]",
-                ));
-            };
-            let layout = layout.generate(children.iter().map(|c| &c.ident))?;
-
+        } else if let Some(layout) = layout {
             scope.generated.push(quote! {
                 impl #impl_generics ::kas::Layout for #name #ty_generics #where_clause {
-                    fn layout<'a>(&'a mut self) -> ::kas::layout::Layout<'a> {
-                        use ::kas::{WidgetCore, layout};
-                        let mut _chain = &mut self.#core.layout;
-                        #layout
-                    }
+                    #layout
                 }
             });
         }
