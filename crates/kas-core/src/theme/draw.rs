@@ -107,9 +107,9 @@ impl<'a> DrawMgr<'a> {
     ///
     /// Adds a new draw pass of type [`PassType::Clip`], with draw operations
     /// clipped to `rect` and translated by `offset.
-    pub fn with_clip_region<F: FnMut(DrawMgr)>(&mut self, rect: Rect, offset: Offset, mut f: F) {
+    pub fn with_clip_region<F: FnOnce(DrawMgr)>(&mut self, rect: Rect, offset: Offset, f: F) {
         self.h
-            .new_pass(rect, offset, PassType::Clip, &mut |h| f(DrawMgr { h }));
+            .new_pass(rect, offset, PassType::Clip, Box::new(|h| f(DrawMgr { h })));
     }
 
     /// Draw to a new pass as an overlay (e.g. for pop-up menus)
@@ -120,11 +120,13 @@ impl<'a> DrawMgr<'a> {
     /// The theme is permitted to enlarge the `rect` for the purpose of drawing
     /// a frame or shadow around this overlay, thus the
     /// [`Self::get_clip_rect`] may be larger than expected.
-    pub fn with_overlay<F: FnMut(DrawMgr)>(&mut self, rect: Rect, mut f: F) {
-        self.h
-            .new_pass(rect, Offset::ZERO, PassType::Overlay, &mut |h| {
-                f(DrawMgr { h })
-            });
+    pub fn with_overlay<F: FnOnce(DrawMgr)>(&mut self, rect: Rect, f: F) {
+        self.h.new_pass(
+            rect,
+            Offset::ZERO,
+            PassType::Overlay,
+            Box::new(|h| f(DrawMgr { h })),
+        );
     }
 
     /// Target area for drawing
@@ -343,12 +345,12 @@ pub trait DrawHandle {
     fn draw_device(&mut self) -> &mut dyn Draw;
 
     /// Construct a new pass
-    fn new_pass(
+    fn new_pass<'a>(
         &mut self,
         rect: Rect,
         offset: Offset,
         class: PassType,
-        f: &mut dyn FnMut(&mut dyn DrawHandle),
+        f: Box<dyn FnOnce(&mut dyn DrawHandle) + 'a>,
     );
 
     /// Target area for drawing
