@@ -8,7 +8,7 @@ use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::{Scope, ScopeAttr, ScopeItem, SimplePath};
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::{emit_error, emit_warning};
-use quote::{quote, ToTokens, TokenStreamExt};
+use quote::{quote, TokenStreamExt};
 use syn::spanned::Spanned;
 use syn::{parse2, parse_quote, Error, Ident, Index, Member, Result};
 
@@ -297,49 +297,40 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
     if let Some(index) = widget_impl {
         let widget_impl = &mut scope.impls[index];
         if let Some(item) = attr.key_nav {
-            widget_impl.items.push(item);
+            widget_impl.items.push(parse2(item)?);
         }
         if let Some(item) = attr.hover_highlight {
-            widget_impl.items.push(item);
+            widget_impl.items.push(parse2(item)?);
         }
         if let Some(item) = attr.cursor_icon {
-            widget_impl.items.push(item);
+            widget_impl.items.push(parse2(item)?);
         }
     } else {
         let methods = if let Some(inner) = opt_derive {
-            let key_nav = attr
-                .key_nav
-                .map(|item| item.to_token_stream())
-                .unwrap_or_else(|| {
-                    quote! {
-                        #[inline]
-                        fn key_nav(&self) -> bool {
-                            self.#inner.key_nav()
-                        }
+            let key_nav = attr.key_nav.unwrap_or_else(|| {
+                quote! {
+                    #[inline]
+                    fn key_nav(&self) -> bool {
+                        self.#inner.key_nav()
                     }
-                });
-            let hover_highlight = attr
-                .hover_highlight
-                .map(|item| item.to_token_stream())
-                .unwrap_or_else(|| {
-                    quote! {
-                        #[inline]
-                        fn hover_highlight(&self) -> bool {
-                            self.#inner.hover_highlight()
-                        }
+                }
+            });
+            let hover_highlight = attr.hover_highlight.unwrap_or_else(|| {
+                quote! {
+                    #[inline]
+                    fn hover_highlight(&self) -> bool {
+                        self.#inner.hover_highlight()
                     }
-                });
-            let cursor_icon = attr
-                .cursor_icon
-                .map(|item| item.to_token_stream())
-                .unwrap_or_else(|| {
-                    quote! {
-                        #[inline]
-                        fn cursor_icon(&self) -> ::kas::event::CursorIcon {
-                            self.#inner.cursor_icon()
-                        }
+                }
+            });
+            let cursor_icon = attr.cursor_icon.unwrap_or_else(|| {
+                quote! {
+                    #[inline]
+                    fn cursor_icon(&self) -> ::kas::event::CursorIcon {
+                        self.#inner.cursor_icon()
                     }
-                });
+                }
+            });
             quote! {
                 #[inline]
                 fn configure_recurse(
@@ -412,13 +403,13 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
         } else {
             let mut toks = TokenStream::new();
             if let Some(item) = attr.key_nav {
-                item.to_tokens(&mut toks);
+                toks.append_all(item);
             }
             if let Some(item) = attr.hover_highlight {
-                item.to_tokens(&mut toks);
+                toks.append_all(item);
             }
             if let Some(item) = attr.cursor_icon {
-                item.to_tokens(&mut toks);
+                toks.append_all(item);
             }
             toks
         };
