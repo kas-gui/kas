@@ -237,7 +237,7 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawMgr) {
             let dir = self.direction.as_direction();
-            draw.scrollbar(&*self, &self.handle, dir);
+            draw.scrollbar(self.rect(), &self.handle, dir);
         }
     }
 

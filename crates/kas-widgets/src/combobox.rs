@@ -56,11 +56,6 @@ impl_scope! {
             let list = layout::Layout::list(list.into_iter(), Direction::Right, &mut self.layout_list);
             layout::Layout::button(&mut self.layout_frame, list, None)
         }
-
-        fn draw(&mut self, draw: DrawMgr) {
-            let id = self.id();
-            self.layout().draw(draw, &id);
-        }
     }
 
     impl Widget for Self {

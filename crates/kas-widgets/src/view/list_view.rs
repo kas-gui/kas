@@ -512,7 +512,7 @@ impl_scope! {
                     draw.recurse(&mut child.widget);
                     if let Some(ref key) = child.key {
                         if self.selection.contains(key) {
-                            draw.selection_box(&child.widget);
+                            draw.selection_box(child.widget.rect());
                         }
                     }
                 }

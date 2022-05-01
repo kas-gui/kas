@@ -87,7 +87,7 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.radiobox(&*self, self.state);
+            draw.radiobox(self.rect(), self.state);
         }
     }
 

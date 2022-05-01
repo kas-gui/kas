@@ -220,8 +220,7 @@ pub trait Layout: WidgetChildren {
     ///
     /// The default impl draws elements as defined by [`Self::layout`].
     fn draw(&mut self, draw: DrawMgr) {
-        let id = self.id(); // clone to avoid borrow conflict
-        self.layout().draw(draw, &id);
+        self.layout().draw(draw);
     }
 }
 

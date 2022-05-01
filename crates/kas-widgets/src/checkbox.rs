@@ -41,7 +41,7 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.checkbox(&*self, self.state);
+            draw.checkbox(self.rect(), self.state);
         }
     }
 

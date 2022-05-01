@@ -8,7 +8,7 @@
 use super::{Menu, SubItems};
 use crate::CheckBoxBare;
 use kas::component::{Component, Label};
-use kas::theme::{FrameStyle, IdRect, TextClass};
+use kas::theme::{FrameStyle, TextClass};
 use kas::{layout, prelude::*};
 use std::fmt::Debug;
 
@@ -34,8 +34,8 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.frame(&*self, FrameStyle::MenuEntry, Default::default());
-            self.label.draw(draw, &self.core.id);
+            draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
+            self.label.draw(draw);
         }
     }
 
@@ -131,9 +131,9 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
+            draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             let id = self.checkbox.id();
-            draw.frame(IdRect(&id, self.rect()), FrameStyle::MenuEntry, Default::default());
-            self.layout().draw(draw, &id);
+            self.layout().draw(draw.re_id(id));
         }
     }
 

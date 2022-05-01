@@ -12,7 +12,7 @@ use kas::geom::Vec2;
 use kas::layout::{self, FrameStorage};
 use kas::prelude::*;
 use kas::text::{NotReady, SelectionHelper};
-use kas::theme::{Background, FrameStyle, IdRect, TextClass};
+use kas::theme::{Background, FrameStyle, TextClass};
 use std::fmt::Debug;
 use std::ops::Range;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
@@ -179,7 +179,7 @@ impl_scope! {
             } else {
                 Background::Default
             };
-            draw.frame(IdRect(self.inner.id_ref(), self.rect()), FrameStyle::EditBox, bg);
+            draw.frame(self.rect(), FrameStyle::EditBox, bg);
             draw.recurse(&mut self.inner);
         }
     }
@@ -384,13 +384,13 @@ impl_scope! {
             let class = TextClass::Edit(self.multi_line);
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
                 if self.selection.is_empty() {
-                    draw.text(&*self, self.text.as_ref(), class);
+                    draw.text(self.rect().pos, self.text.as_ref(), class);
                 } else {
                     // TODO(opt): we could cache the selection rectangles here to make
                     // drawing more efficient (self.text.highlight_lines(range) output).
                     // The same applies to the edit marker below.
                     draw.text_selected(
-                        &*self,
+                        self.rect().pos,
                         &self.text,
                         self.selection.range(),
                         class,
@@ -398,7 +398,7 @@ impl_scope! {
                 }
                 if self.editable && draw.ev_state().has_char_focus(self.id_ref()).0 {
                     draw.text_cursor(
-                        &*self,
+                        self.rect().pos,
                         self.text.as_ref(),
                         class,
                         self.selection.edit_pos(),

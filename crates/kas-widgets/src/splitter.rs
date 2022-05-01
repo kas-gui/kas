@@ -217,7 +217,7 @@ impl_scope! {
 
             let solver = layout::RowPositionSolver::new(self.direction);
             solver.for_children(&mut self.handles, draw.get_clip_rect(), |w| {
-                draw.separator(w)
+                draw.separator(w.rect())
             });
         }
     }

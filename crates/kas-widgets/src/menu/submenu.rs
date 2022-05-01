@@ -129,10 +129,10 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.frame(&*self, FrameStyle::MenuEntry, Default::default());
-            self.label.draw(draw.re_id(self.id()), &self.core.id);
+            draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
+            self.label.draw(draw.re_id(self.id()));
             if self.mark.rect.size != Size::ZERO {
-                self.mark.draw(draw, &self.core.id);
+                self.mark.draw(draw);
             }
         }
     }

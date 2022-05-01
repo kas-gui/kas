@@ -102,11 +102,6 @@ impl_scope! {
         fn layout(&mut self) -> layout::Layout<'_> {
             layout::Layout::slice(&mut self.widgets, self.direction, &mut self.layout_store)
         }
-
-        fn draw(&mut self, draw: DrawMgr) {
-            let id = self.id();
-            self.layout().draw(draw, &id);
-        }
     }
 
     impl Widget for Self {
