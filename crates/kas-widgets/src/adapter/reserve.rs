@@ -5,7 +5,6 @@
 
 //! Size reservation
 
-use kas::layout;
 use kas::prelude::*;
 
 /// Parameterisation of [`Reserve`] using a function pointer
@@ -26,7 +25,7 @@ impl_scope! {
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Default)]
-    #[widget]
+    #[widget{ layout = self.inner; }]
     pub struct Reserve<W: Widget, R: FnMut(SizeMgr, AxisInfo) -> SizeRules + 'static> {
         #[widget_core]
         core: CoreData,
@@ -74,10 +73,6 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn layout(&mut self) -> layout::Layout<'_> {
-            layout::Layout::single(&mut self.inner)
-        }
-
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             let inner_rules = self.inner.size_rules(size_mgr.re(), axis);
             let reserve_rules = (self.reserve)(size_mgr.re(), axis);

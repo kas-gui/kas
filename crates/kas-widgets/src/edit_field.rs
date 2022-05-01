@@ -9,7 +9,6 @@ use super::Scrollable;
 use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{Command, CursorIcon, Scroll, ScrollDelta};
 use kas::geom::Vec2;
-use kas::layout::{self, FrameStorage};
 use kas::prelude::*;
 use kas::text::{NotReady, SelectionHelper};
 use kas::theme::{Background, FrameStyle, TextClass};
@@ -158,21 +157,17 @@ impl_scope! {
     /// This is just a wrapper around [`EditField`] adding a frame.
     #[autoimpl(Deref, DerefMut, HasStr, HasString using self.inner)]
     #[derive(Clone, Default, Debug)]
-    #[widget]
+    #[widget{
+        layout = frame(FrameStyle::EditBox): self.inner;
+    }]
     pub struct EditBox<G: EditGuard = ()> {
         #[widget_core]
         core: CoreData,
         #[widget]
         inner: EditField<G>,
-        frame_storage: FrameStorage,
     }
 
     impl Layout for Self {
-        fn layout(&mut self) -> layout::Layout<'_> {
-            let inner = layout::Layout::single(&mut self.inner);
-            layout::Layout::frame(&mut self.frame_storage, inner, FrameStyle::EditBox)
-        }
-
         fn draw(&mut self, mut draw: DrawMgr) {
             let bg = if self.inner.has_error() {
                 Background::Error
@@ -192,7 +187,6 @@ impl EditBox<()> {
         EditBox {
             core: Default::default(),
             inner: EditField::new(text),
-            frame_storage: Default::default(),
         }
     }
 
@@ -209,7 +203,6 @@ impl EditBox<()> {
         EditBox {
             core: self.core,
             inner: self.inner.with_guard(guard),
-            frame_storage: self.frame_storage,
         }
     }
 

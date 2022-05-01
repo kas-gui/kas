@@ -15,7 +15,7 @@ impl_scope! {
     /// The main instantiation of the [`Window`] trait.
     #[autoimpl(Clone ignore self.popups, self.drop where W: Clone)]
     #[autoimpl(Debug ignore self.drop, self.icon)]
-    #[widget]
+    #[widget(layout = single;)]
     pub struct Window<W: Widget + 'static> {
         #[widget_core]
         core: CoreData,
@@ -29,11 +29,6 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        #[inline]
-        fn layout(&mut self) -> layout::Layout<'_> {
-            layout::Layout::single(&mut self.w)
-        }
-
         #[inline]
         fn draw(&mut self, mut draw: DrawMgr) {
             draw.recurse(&mut self.w);
