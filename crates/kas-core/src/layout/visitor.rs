@@ -278,7 +278,7 @@ impl<'a> Layout<'a> {
             LayoutType::None => (),
             LayoutType::Component(component) => component.draw(draw, id),
             LayoutType::BoxComponent(layout) => layout.draw(draw, id),
-            LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => child.draw(draw.re()),
+            LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => draw.recurse(*child),
             LayoutType::AlignLayout(layout, _) => layout.draw_(draw, id),
             LayoutType::Frame(child, storage, style) => {
                 draw.frame(IdRect(id, storage.rect), *style, Background::Default);
@@ -332,7 +332,7 @@ where
 
     fn draw(&mut self, mut draw: DrawMgr, id: &WidgetId) {
         for child in &mut self.children {
-            child.draw(draw.re(), id);
+            child.draw(draw.re_clone(), id);
         }
     }
 }
@@ -372,7 +372,7 @@ impl<'a, W: Widget, D: Directional> Component for Slice<'a, W, D> {
 
     fn draw(&mut self, mut draw: DrawMgr, _: &WidgetId) {
         let solver = RowPositionSolver::new(self.direction);
-        solver.for_children(self.children, draw.get_clip_rect(), |w| w.draw(draw.re()));
+        solver.for_children(self.children, draw.get_clip_rect(), |w| draw.recurse(w));
     }
 }
 
@@ -409,7 +409,7 @@ where
 
     fn draw(&mut self, mut draw: DrawMgr, id: &WidgetId) {
         for (_, child) in &mut self.children {
-            child.draw(draw.re(), id);
+            child.draw(draw.re_clone(), id);
         }
     }
 }

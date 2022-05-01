@@ -180,7 +180,7 @@ impl_scope! {
                 Background::Default
             };
             draw.frame(IdRect(self.inner.id_ref(), self.rect()), FrameStyle::EditBox, bg);
-            self.inner.draw(draw.re());
+            draw.recurse(&mut self.inner);
         }
     }
 }

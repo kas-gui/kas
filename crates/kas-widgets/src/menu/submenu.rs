@@ -130,7 +130,7 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawMgr) {
             draw.frame(&*self, FrameStyle::MenuEntry, Default::default());
-            self.label.draw(draw.re(), &self.core.id);
+            self.label.draw(draw.re_id(self.id()), &self.core.id);
             if self.mark.rect.size != Size::ZERO {
                 self.mark.draw(draw, &self.core.id);
             }
@@ -363,7 +363,7 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawMgr) {
             for child in self.list.iter_mut() {
-                child.draw(draw.re());
+                draw.recurse(child);
             }
         }
     }

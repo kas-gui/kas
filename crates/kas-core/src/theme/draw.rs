@@ -16,7 +16,7 @@ use crate::geom::{Coord, Offset, Rect};
 use crate::layout::SetRectMgr;
 use crate::macros::autoimpl;
 use crate::text::{TextApi, TextDisplay};
-use crate::{TkAction, WidgetId};
+use crate::{TkAction, Widget, WidgetExt, WidgetId};
 
 /// Optional background colour
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -40,6 +40,9 @@ impl Default for Background {
 /// This interface is provided to widgets in [`crate::Layout::draw`].
 /// Lower-level interfaces may be accessed through [`Self::draw_device`].
 ///
+/// `DrawMgr` is not a `Copy` or `Clone` type; instead it may be "reborrowed"
+/// via [`Self::re_id`] or [`Self::re_clone`].
+///
 /// Draw methods take a "feature"; any type convertible to [`IdRect`] or (for
 /// text methods) [`IdCoord`]. For convenience where the target [`Rect`] or
 /// [`Coord`] coincides with the widget's own `rect` (or `rect.pos`), this may
@@ -49,27 +52,50 @@ impl Default for Background {
 ///     `&W` from `&mut W`, since the latter would cause borrow conflicts
 pub struct DrawMgr<'a> {
     h: &'a mut dyn DrawHandle,
+    id: WidgetId,
 }
 
 impl<'a> DrawMgr<'a> {
-    /// Reborrow with a new lifetime
+    /// Reborrow with a new lifetime and new `id`
     ///
     /// Rust allows references like `&T` or `&mut T` to be "reborrowed" through
     /// coercion: essentially, the pointer is copied under a new, shorter, lifetime.
     /// Until rfcs#1403 lands, reborrows on user types require a method call.
     #[inline(always)]
-    pub fn re<'b>(&'b mut self) -> DrawMgr<'b>
+    pub fn re_id<'b>(&'b mut self, id: WidgetId) -> DrawMgr<'b>
     where
         'a: 'b,
     {
-        DrawMgr { h: self.h }
+        DrawMgr { h: self.h, id }
+    }
+
+    /// Reborrow with a new lifetime and same `id`
+    ///
+    /// Rust allows references like `&T` or `&mut T` to be "reborrowed" through
+    /// coercion: essentially, the pointer is copied under a new, shorter, lifetime.
+    /// Until rfcs#1403 lands, reborrows on user types require a method call.
+    #[inline(always)]
+    pub fn re_clone<'b>(&'b mut self) -> DrawMgr<'b>
+    where
+        'a: 'b,
+    {
+        DrawMgr {
+            h: self.h,
+            id: self.id.clone(),
+        }
+    }
+
+    /// Recurse drawing to a child
+    #[inline]
+    pub fn recurse(&mut self, child: &mut dyn Widget) {
+        child.draw(self.re_id(child.id()));
     }
 
     /// Construct from a [`DrawMgr`] and [`EventState`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn new(h: &'a mut dyn DrawHandle) -> Self {
-        DrawMgr { h }
+    pub fn new(h: &'a mut dyn DrawHandle, id: WidgetId) -> Self {
+        DrawMgr { h, id }
     }
 
     /// Access event-management state
@@ -108,8 +134,13 @@ impl<'a> DrawMgr<'a> {
     /// Adds a new draw pass of type [`PassType::Clip`], with draw operations
     /// clipped to `rect` and translated by `offset.
     pub fn with_clip_region<F: FnOnce(DrawMgr)>(&mut self, rect: Rect, offset: Offset, f: F) {
-        self.h
-            .new_pass(rect, offset, PassType::Clip, Box::new(|h| f(DrawMgr { h })));
+        let id = self.id.clone();
+        self.h.new_pass(
+            rect,
+            offset,
+            PassType::Clip,
+            Box::new(|h| f(DrawMgr { h, id })),
+        );
     }
 
     /// Draw to a new pass as an overlay (e.g. for pop-up menus)
@@ -121,11 +152,12 @@ impl<'a> DrawMgr<'a> {
     /// a frame or shadow around this overlay, thus the
     /// [`Self::get_clip_rect`] may be larger than expected.
     pub fn with_overlay<F: FnOnce(DrawMgr)>(&mut self, rect: Rect, f: F) {
+        let id = self.id.clone();
         self.h.new_pass(
             rect,
             Offset::ZERO,
             PassType::Overlay,
-            Box::new(|h| f(DrawMgr { h })),
+            Box::new(|h| f(DrawMgr { h, id })),
         );
     }
 

@@ -491,7 +491,7 @@ impl_scope! {
                     // visible, so check intersection before drawing:
                     if rect.intersection(&child.widget.rect()).is_some() {
                         if let Some(ref key) = child.key {
-                            child.widget.draw(draw.re());
+                            draw.recurse(&mut child.widget);
                             if self.selection.contains(key) {
                                 draw.selection_box(&child.widget);
                             }
