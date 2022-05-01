@@ -10,7 +10,7 @@ use proc_macro2::{Span, TokenStream};
 use proc_macro_error::{emit_error, emit_warning};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::spanned::Spanned;
-use syn::{parse_quote, Error, Ident, Index, Member, Result};
+use syn::{parse2, parse_quote, Error, Ident, Index, Member, Result};
 
 fn member(index: usize, ident: Option<Ident>) -> Member {
     match ident {
@@ -40,7 +40,7 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let opt_derive = &attr.derive;
 
     let mut impl_widget_children = true;
-    let mut impl_layout = true;
+    let mut layout_impl = None;
     let mut widget_impl = None;
 
     let fields = match &mut scope.item {
@@ -110,13 +110,7 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 || *path == parse_quote! { kas::Layout }
                 || *path == parse_quote! { Layout }
             {
-                if attr.layout.is_some() {
-                    emit_error!(
-                        impl_.span(),
-                        "impl conflicts with use of #[widget(layout=...;)]"
-                    );
-                }
-                impl_layout = false;
+                layout_impl = Some(index);
             } else if *path == parse_quote! { ::kas::Widget }
                 || *path == parse_quote! { kas::Widget }
                 || *path == parse_quote! { Widget }
@@ -246,7 +240,12 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
         None => None,
     };
 
-    if impl_layout {
+    if let Some(index) = layout_impl {
+        let layout_impl = &mut scope.impls[index];
+        if let Some(item) = layout {
+            layout_impl.items.push(parse2(item)?);
+        }
+    } else {
         if let Some(inner) = opt_derive {
             let layout = layout.unwrap_or_else(|| {
                 quote! {
