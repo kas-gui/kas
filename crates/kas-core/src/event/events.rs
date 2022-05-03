@@ -143,7 +143,7 @@ pub enum Event {
     ///     used, then the pop-up will be closed and the event sent again.
     ///
     /// If `cur_id` is `None`, no widget was found at the coordinate (either
-    /// outside the window or [`crate::Layout::find_id`] failed).
+    /// outside the window or [`crate::Widget::find_id`] failed).
     PressMove {
         source: PressSource,
         cur_id: Option<WidgetId>,
@@ -165,7 +165,7 @@ pub enum Event {
     ///     for the same mouse button or touched finger will be sent.
     ///
     /// If `cur_id` is `None`, no widget was found at the coordinate (either
-    /// outside the window or [`crate::Layout::find_id`] failed).
+    /// outside the window or [`crate::Widget::find_id`] failed).
     PressEnd {
         source: PressSource,
         end_id: Option<WidgetId>,

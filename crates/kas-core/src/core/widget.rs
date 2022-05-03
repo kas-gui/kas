@@ -152,7 +152,7 @@ pub trait Layout: WidgetChildren {
     /// Describe layout
     ///
     /// This is purely a helper method used to implement other methods:
-    /// [`Self::size_rules`], [`Self::set_rect`], [`Self::find_id`], [`Self::draw`].
+    /// [`Self::size_rules`], [`Self::set_rect`], [`Widget::find_id`], [`Self::draw`].
     /// If those methods are implemented directly (or their default
     /// implementation over the default "empty" layout provided by this method
     /// suffices), then this method need not be implemented.
@@ -316,7 +316,7 @@ pub trait Widget: Layout {
 
     /// Which cursor icon should be used on hover?
     ///
-    /// The "hovered" widget is determined by [`Layout::find_id`], thus is the
+    /// The "hovered" widget is determined by [`Widget::find_id`], thus is the
     /// same widget which would receive click events. Other widgets do not
     /// affect the cursor icon used.
     ///
@@ -333,7 +333,7 @@ pub trait Widget: Layout {
     /// [`Widget::handle_scroll`].
     ///
     /// Affects event handling via [`Self::find_id`] and affects the positioning
-    /// of pop-up menus. [`Self::draw`] must be implemented directly using
+    /// of pop-up menus. [`Layout::draw`] must be implemented directly using
     /// [`DrawMgr::with_clip_region`] to offset contents.
     #[inline]
     fn translation(&self) -> Offset {
@@ -376,12 +376,12 @@ pub trait Widget: Layout {
     /// inner content, while the `CheckBox` widget forwards click events to its
     /// `CheckBoxBare` component.
     ///
-    /// It is expected that [`Self::set_rect`] is called before this method,
+    /// It is expected that [`Layout::set_rect`] is called before this method,
     /// but failure to do so should not cause a fatal error.
     ///
     /// The default implementation suffices unless:
     ///
-    /// -   [`Self::layout`] is not implemented and there are child widgets
+    /// -   [`Layout::layout`] is not implemented and there are child widgets
     /// -   Event stealing from child widgets is desired (but note that
     ///     [`crate::layout::Layout::button`] does this already)
     /// -   The child widget is in a translated coordinate space *not equal* to

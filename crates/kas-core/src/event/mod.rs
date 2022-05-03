@@ -10,7 +10,7 @@
 //! ## Event delivery
 //!
 //! Events can be addressed only to a [`WidgetId`], so the first step (for
-//! mouse and touch events) is to use [`crate::Layout::find_id`] to translate a
+//! mouse and touch events) is to use [`crate::Widget::find_id`] to translate a
 //! coordinate to a [`WidgetId`].
 //!
 //! Events are then sent via [`EventMgr::send`] which traverses the widget tree
