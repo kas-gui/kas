@@ -110,7 +110,9 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 || *path == parse_quote! { kas::Layout }
                 || *path == parse_quote! { Layout }
             {
-                layout_impl = Some(index);
+                if layout_impl.is_none() {
+                    layout_impl = Some(index);
+                }
             } else if *path == parse_quote! { ::kas::Widget }
                 || *path == parse_quote! { kas::Widget }
                 || *path == parse_quote! { Widget }
@@ -121,7 +123,9 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                         "impl conflicts with use of #[widget(derive=FIELD)]"
                     );
                 }
-                widget_impl = Some(index);
+                if widget_impl.is_none() {
+                    widget_impl = Some(index);
+                }
             }
         }
     }
