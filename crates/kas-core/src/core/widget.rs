@@ -13,7 +13,7 @@ use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{self, AlignHints, AxisInfo, SetRectMgr, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::util::IdentifyWidget;
-use crate::{CoreData, WidgetId};
+use crate::WidgetId;
 use kas_macros::autoimpl;
 
 #[allow(unused)]
@@ -55,13 +55,6 @@ pub trait WidgetCore: Any + fmt::Debug {
 
     /// Get self as type `Any` (mutable)
     fn as_any_mut(&mut self) -> &mut dyn Any;
-
-    /// Get mutable access to the [`CoreData`] providing property storage.
-    ///
-    /// This should not normally be needed by user code.
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn core_data_mut(&mut self) -> &mut CoreData;
 
     /// Get the widget's identifier
     ///
@@ -211,14 +204,11 @@ pub trait Layout: WidgetChildren {
     /// itself within the excess space, according to the `align` hints provided.
     ///
     /// This method may be implemented through [`Self::layout`] or directly.
-    /// The default implementation assigns `self.core_data_mut().rect = rect`
+    /// The default implementation assigns `self.core.rect = rect`
     /// and applies the layout described by [`Self::layout`].
     ///
     /// [`Stretch`]: crate::layout::Stretch
-    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
-        self.core_data_mut().rect = rect;
-        self.layout().set_rect(mgr, rect, align);
-    }
+    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints);
 
     /// Draw a widget and its children
     ///
@@ -274,10 +264,7 @@ pub trait Widget: Layout {
     /// [`EventState::new_accel_layer`].
     ///
     /// Default impl: assign `id` to self
-    fn pre_configure(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
-        let _ = mgr;
-        self.core_data_mut().id = id;
-    }
+    fn pre_configure(&mut self, mgr: &mut SetRectMgr, id: WidgetId);
 
     /// Configure widget
     ///

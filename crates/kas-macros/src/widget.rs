@@ -10,7 +10,7 @@ use proc_macro2::{Span, TokenStream};
 use proc_macro_error::{emit_error, emit_warning};
 use quote::{quote, TokenStreamExt};
 use syn::spanned::Spanned;
-use syn::{parse2, parse_quote, Error, Ident, Index, Member, Result};
+use syn::{parse2, parse_quote, Error, Ident, ImplItem, Index, Member, Result};
 
 fn member(index: usize, ident: Option<Ident>) -> Member {
     match ident {
@@ -129,7 +129,7 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let (impl_generics, ty_generics, where_clause) = scope.generics.split_for_impl();
     let widget_name = name.to_string();
 
-    let (core_methods, access_core_data_mut);
+    let core_methods;
     if let Some(ref cd) = core_data {
         core_methods = quote! {
             #[inline]
@@ -141,7 +141,6 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 self.#cd.rect
             }
         };
-        access_core_data_mut = quote! { &mut self.#cd };
     } else if let Some(ref inner) = opt_derive {
         core_methods = quote! {
             #[inline]
@@ -153,7 +152,6 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 self.#inner.rect()
             }
         };
-        access_core_data_mut = quote! { self.#inner.core_data_mut() };
     } else {
         return Err(Error::new(
             fields.span(),
@@ -170,10 +168,6 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
             #[inline]
             fn as_any_mut(&mut self) -> &mut dyn std::any::Any { self }
 
-            #[inline]
-            fn core_data_mut(&mut self) -> &mut ::kas::CoreData {
-                #access_core_data_mut
-            }
             #core_methods
 
             #[inline]
@@ -357,6 +351,8 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
         return Ok(());
     }
 
+    let core_data = core_data.unwrap();
+
     if impl_widget_children {
         let count = children.len();
 
@@ -391,35 +387,67 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
         });
     }
 
-    let layout = match attr.layout.take() {
+    let fn_layout = match attr.layout.take() {
         Some(layout) => {
             let layout = layout.generate(children.iter().map(|c| &c.ident))?;
             Some(quote! {
                 fn layout<'a>(&'a mut self) -> ::kas::layout::Layout<'a> {
                     use ::kas::{WidgetCore, layout};
-                    let mut _chain = &mut (#access_core_data_mut).layout;
+                    let mut _chain = &mut self.#core_data.layout;
                     #layout
                 }
             })
         }
         None => None,
     };
+    let fn_set_rect = quote! {
+        fn set_rect(
+            &mut self,
+            mgr: &mut ::kas::layout::SetRectMgr,
+            rect: ::kas::geom::Rect,
+            align: ::kas::layout::AlignHints,
+        ) {
+            self.#core_data.rect = rect;
+            self.layout().set_rect(mgr, rect, align);
+        }
+    };
 
     if let Some(index) = layout_impl {
         let layout_impl = &mut scope.impls[index];
-        if let Some(item) = layout {
+        if !layout_impl
+            .items
+            .iter()
+            .any(|item| matches!(item, ImplItem::Method(m) if m.sig.ident == "set_rect"))
+        {
+            layout_impl.items.push(parse2(fn_set_rect)?);
+        }
+        if let Some(item) = fn_layout {
             layout_impl.items.push(parse2(item)?);
         }
-    } else if let Some(layout) = layout {
+    } else if let Some(fn_layout) = fn_layout {
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Layout for #name #ty_generics #where_clause {
-                #layout
+                #fn_layout
+                #fn_set_rect
             }
         });
     }
 
+    let fn_pre_configure = quote! {
+        fn pre_configure(&mut self, _: &mut ::kas::layout::SetRectMgr, id: ::kas::WidgetId) {
+            self.#core_data.id = id;
+        }
+    };
+
     if let Some(index) = widget_impl {
         let widget_impl = &mut scope.impls[index];
+        if !widget_impl
+            .items
+            .iter()
+            .any(|item| matches!(item, ImplItem::Method(m) if m.sig.ident == "pre_configure"))
+        {
+            widget_impl.items.push(parse2(fn_pre_configure)?);
+        }
         if let Some(item) = attr.key_nav {
             widget_impl.items.push(parse2(item)?);
         }
@@ -437,6 +465,7 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
             impl #impl_generics ::kas::Widget
                     for #name #ty_generics #where_clause
             {
+                #fn_pre_configure
                 #key_nav
                 #hover_highlight
                 #cursor_icon
