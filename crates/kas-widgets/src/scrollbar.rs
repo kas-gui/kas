@@ -599,15 +599,15 @@ impl_scope! {
         fn draw(&mut self, mut draw: DrawMgr) {
             // Enlarge clip region to *our* rect:
             draw.with_clip_region(self.core.rect, self.inner.scroll_offset(), |mut draw| {
-                self.inner.inner_mut().draw(draw.re())
+                draw.recurse(&mut self.inner);
             });
             // Use a second clip region to force draw order:
             draw.with_clip_region(self.core.rect, Offset::ZERO, |mut draw| {
                 if self.show_bars.0 {
-                    self.horiz_bar.draw(draw.re());
+                    draw.recurse(&mut self.horiz_bar);
                 }
                 if self.show_bars.1 {
-                    self.vert_bar.draw(draw.re());
+                    draw.recurse(&mut self.vert_bar);
                 }
             });
         }
