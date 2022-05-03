@@ -195,9 +195,16 @@ impl<'a> SetRectMgr<'a> {
     /// the parent's id via [`WidgetId::make_child`].
     #[inline]
     pub fn configure(&mut self, id: WidgetId, widget: &mut dyn Widget) {
-        // Yes, this method is just a shim! We reserve the option to add other code here in the
-        // future, hence do not advise calling `configure_recurse` directly.
-        widget.configure_recurse(self, id);
+        widget.pre_configure(self, id);
+
+        for index in 0..widget.num_children() {
+            let id = widget.make_child_id(index);
+            if let Some(widget) = widget.get_child_mut(index) {
+                self.configure(id, widget);
+            }
+        }
+
+        widget.configure(self);
     }
 
     /// Update a text object, setting font properties and wrap size

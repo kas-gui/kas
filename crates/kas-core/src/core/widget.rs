@@ -117,7 +117,7 @@ pub trait WidgetChildren: WidgetCore {
     ///
     /// The default implementation simply uses [`WidgetId::next_key_after`].
     /// Widgets may choose to assign children custom keys by overriding this
-    /// method and [`Widget::configure_recurse`].
+    /// method and [`Widget::make_child_id`].
     #[inline]
     fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
         id.next_key_after(self.id_ref())
@@ -267,34 +267,6 @@ pub trait Widget: Layout {
     fn pre_configure(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
         let _ = mgr;
         self.core_data_mut().id = id;
-    }
-
-    /// Configure widget and children
-    ///
-    /// This method:
-    ///
-    /// 1.  Assigns `id` to self
-    /// 2.  Constructs an identifier for and call `configure_recurse` on each child
-    /// 3.  Calls [`Self::configure`]
-    ///
-    /// Normally the default implementation is used. A custom implementation
-    /// may be used to influence configuration of children, for example by
-    /// calling [`EventState::new_accel_layer`] or by constructing children's
-    /// [`WidgetId`] values in a non-standard manner (in this case ensure that
-    /// [`WidgetChildren::find_child_index`] has a correct implementation).
-    ///
-    /// To directly configure a child, call [`SetRectMgr::configure`] instead.
-    fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
-        self.pre_configure(mgr, id);
-
-        for index in 0..self.num_children() {
-            let id = self.make_child_id(index);
-            if let Some(widget) = self.get_child_mut(index) {
-                widget.configure_recurse(mgr, id);
-            }
-        }
-
-        self.configure(mgr);
     }
 
     /// Configure widget
@@ -493,7 +465,7 @@ pub trait WidgetExt: WidgetChildren {
     ///
     /// Note that the default-constructed [`WidgetId`] is *invalid*: any
     /// operations on this value will cause a panic. Valid identifiers are
-    /// assigned by [`Widget::configure_recurse`].
+    /// assigned by [`Widget::pre_configure`].
     #[inline]
     fn id(&self) -> WidgetId {
         self.core_data().id.clone()
@@ -503,7 +475,7 @@ pub trait WidgetExt: WidgetChildren {
     ///
     /// Note that the default-constructed [`WidgetId`] is *invalid*: any
     /// operations on this value will cause a panic. Valid identifiers are
-    /// assigned by [`Widget::configure_recurse`].
+    /// assigned by [`Widget::pre_configure`].
     #[inline]
     fn id_ref(&self) -> &WidgetId {
         &self.core_data().id
