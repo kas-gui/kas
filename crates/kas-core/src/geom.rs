@@ -275,6 +275,8 @@ impl Size {
     }
 
     /// Construct, using the same value on all axes
+    ///
+    /// In debug mode, this asserts that components are non-negative.
     #[inline]
     pub fn splat(n: i32) -> Self {
         debug_assert!(n >= 0, "Size::splat({}): negative value", n);
@@ -323,6 +325,9 @@ impl std::ops::AddAssign for Size {
     }
 }
 
+/// Subtract a `Size` from a `Size`
+///
+/// In debug mode this asserts that the result is non-negative.
 impl std::ops::Sub for Size {
     type Output = Self;
 
@@ -335,6 +340,9 @@ impl std::ops::Sub for Size {
         Self(self.0 - rhs.0, self.1 - rhs.1)
     }
 }
+/// Subtract a `Size` from a `Size`
+///
+/// In debug mode this asserts that the result is non-negative.
 impl std::ops::SubAssign for Size {
     #[inline]
     fn sub_assign(&mut self, rhs: Self) {
@@ -347,6 +355,9 @@ impl std::ops::SubAssign for Size {
     }
 }
 
+/// Multiply a `Size` by an integer
+///
+/// In debug mode this asserts that the result is non-negative.
 impl std::ops::Mul<i32> for Size {
     type Output = Self;
 
@@ -356,6 +367,9 @@ impl std::ops::Mul<i32> for Size {
         Size(self.0 * x, self.1 * x)
     }
 }
+/// Divide a `Size` by an integer
+///
+/// In debug mode this asserts that the result is non-negative.
 impl std::ops::Div<i32> for Size {
     type Output = Self;
 
@@ -366,6 +380,9 @@ impl std::ops::Div<i32> for Size {
     }
 }
 
+/// Convert an [`Offset`] into a [`Coord`]
+///
+/// In debug mode this asserts that the result is non-negative.
 impl Conv<Offset> for Coord {
     #[inline]
     fn try_conv(v: Offset) -> Result<Self> {
@@ -374,6 +391,9 @@ impl Conv<Offset> for Coord {
     }
 }
 
+/// Convert an [`Offset`] into a [`Size`]
+///
+/// In debug mode this asserts that the result is non-negative.
 impl Conv<Offset> for Size {
     #[inline]
     fn try_conv(v: Offset) -> Result<Self> {
@@ -413,7 +433,6 @@ impl Conv<Size> for (u32, u32) {
 impl Conv<Size> for kas_text::Vec2 {
     #[inline]
     fn try_conv(size: Size) -> Result<Self> {
-        debug_assert!(size.0 >= 0 && size.1 >= 0);
         Ok(Vec2::try_conv(size)?.into())
     }
 }
@@ -575,6 +594,8 @@ impl Rect {
     }
 
     /// Expand self in all directions by the given `n`
+    ///
+    /// In debug mode this asserts that `n` is non-negative.
     #[inline]
     #[must_use = "method does not modify self but returns a new value"]
     pub fn expand(&self, n: i32) -> Rect {

@@ -261,6 +261,12 @@ where
         state: InputState,
     ) -> Quad {
         let inner = outer.shrink(self.w.dims.button_frame as f32);
+        #[cfg(debug_assertions)]
+        {
+            if !inner.a.lt(inner.b) {
+                log::warn!("frame too small: {outer:?}");
+            }
+        }
 
         if !(state.disabled() || state.depress()) {
             let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);

@@ -203,6 +203,12 @@ where
     fn draw_edit_box(&mut self, outer: Rect, bg_col: Rgba, nav_focus: bool) -> Quad {
         let outer = Quad::conv(outer);
         let inner = outer.shrink(self.w.dims.frame as f32);
+        #[cfg(debug_assertions)]
+        {
+            if !inner.a.lt(inner.b) {
+                log::warn!("frame too small: {outer:?}");
+            }
+        }
 
         let outer_col = self.cols.background;
         let inner_col = if nav_focus {
