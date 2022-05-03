@@ -335,6 +335,14 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     self.#inner.make_child_id(index)
                 }
                 #[inline]
+                fn pre_configure(
+                    &mut self,
+                    mgr: &mut ::kas::layout::SetRectMgr,
+                    id: ::kas::WidgetId,
+                ) {
+                    self.#inner.pre_configure(mgr, id)
+                }
+                #[inline]
                 fn configure_recurse(
                     &mut self,
                     mgr: &mut ::kas::layout::SetRectMgr,

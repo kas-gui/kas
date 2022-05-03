@@ -116,16 +116,9 @@ impl_scope! {
             }
         }
 
-        fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
-            self.core_data_mut().id = id;
+        fn pre_configure(&mut self, _: &mut SetRectMgr, id: WidgetId) {
+            self.core.id = id;
             self.id_map.clear();
-
-            for index in 0..self.widgets.len() {
-                let id = self.make_child_id(index);
-                self.widgets[index].configure_recurse(mgr, id);
-            }
-
-            self.configure(mgr);
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {

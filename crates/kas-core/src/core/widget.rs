@@ -256,6 +256,19 @@ pub trait Widget: Layout {
         self.id_ref().make_child(index)
     }
 
+    /// Pre-configuration
+    ///
+    /// This method is called before children are configured to assign a
+    /// [`WidgetId`]. Usually it does nothing else, but a custom implementation
+    /// may be used to affect child configuration, e.g. via
+    /// [`EventState::new_accel_layer`].
+    ///
+    /// Default impl: assign `id` to self
+    fn pre_configure(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
+        let _ = mgr;
+        self.core_data_mut().id = id;
+    }
+
     /// Configure widget and children
     ///
     /// This method:
@@ -272,7 +285,7 @@ pub trait Widget: Layout {
     ///
     /// To directly configure a child, call [`SetRectMgr::configure`] instead.
     fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
-        self.core_data_mut().id = id;
+        self.pre_configure(mgr, id);
 
         for index in 0..self.num_children() {
             let id = self.make_child_id(index);
