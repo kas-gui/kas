@@ -56,15 +56,22 @@ pub trait WidgetCore: Any + fmt::Debug {
     /// Get self as type `Any` (mutable)
     fn as_any_mut(&mut self) -> &mut dyn Any;
 
-    /// Get direct access to the [`CoreData`] providing property storage.
-    fn core_data(&self) -> &CoreData;
-
     /// Get mutable access to the [`CoreData`] providing property storage.
     ///
     /// This should not normally be needed by user code.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn core_data_mut(&mut self) -> &mut CoreData;
+
+    /// Get the widget's identifier
+    ///
+    /// Note that the default-constructed [`WidgetId`] is *invalid*: any
+    /// operations on this value will cause a panic. Valid identifiers are
+    /// assigned by [`Widget::pre_configure`].
+    fn id_ref(&self) -> &WidgetId;
+
+    /// Get the widget's region, relative to its parent.
+    fn rect(&self) -> Rect;
 
     /// Get the name of the widget struct
     fn widget_name(&self) -> &'static str;
@@ -464,33 +471,14 @@ pub trait Widget: Layout {
 
 /// Extension trait over widgets
 pub trait WidgetExt: WidgetChildren {
-    /// Get the widget's numeric identifier
+    /// Get the widget's identifier
     ///
     /// Note that the default-constructed [`WidgetId`] is *invalid*: any
     /// operations on this value will cause a panic. Valid identifiers are
     /// assigned by [`Widget::pre_configure`].
     #[inline]
     fn id(&self) -> WidgetId {
-        self.core_data().id.clone()
-    }
-
-    /// Get the widget's numeric identifier
-    ///
-    /// Note that the default-constructed [`WidgetId`] is *invalid*: any
-    /// operations on this value will cause a panic. Valid identifiers are
-    /// assigned by [`Widget::pre_configure`].
-    #[inline]
-    fn id_ref(&self) -> &WidgetId {
-        &self.core_data().id
-    }
-
-    /// Get the `u64` version of the widget identifier
-    ///
-    /// This may be used to approximately test identity (see notes on
-    /// [`WidgetId::as_u64`]).
-    #[inline]
-    fn id_u64(&self) -> u64 {
-        self.core_data().id.as_u64()
+        self.id_ref().clone()
     }
 
     /// Test widget identifier for equality
@@ -502,7 +490,7 @@ pub trait WidgetExt: WidgetChildren {
     where
         WidgetId: PartialEq<T>,
     {
-        self.core_data().id == rhs
+        *self.id_ref() == rhs
     }
 
     /// Display as "StructName#WidgetId"
@@ -549,12 +537,6 @@ pub trait WidgetExt: WidgetChildren {
         } else {
             None
         }
-    }
-
-    /// Get the widget's region, relative to its parent.
-    #[inline]
-    fn rect(&self) -> Rect {
-        self.core_data().rect
     }
 }
 impl<W: WidgetChildren + ?Sized> WidgetExt for W {}

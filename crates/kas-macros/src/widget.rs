@@ -129,12 +129,30 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let (impl_generics, ty_generics, where_clause) = scope.generics.split_for_impl();
     let widget_name = name.to_string();
 
-    let (access_core_data, access_core_data_mut);
+    let (core_methods, access_core_data_mut);
     if let Some(ref cd) = core_data {
-        access_core_data = quote! { &self.#cd };
+        core_methods = quote! {
+            #[inline]
+            fn id_ref(&self) -> &::kas::WidgetId {
+                &self.#cd.id
+            }
+            #[inline]
+            fn rect(&self) -> ::kas::geom::Rect {
+                self.#cd.rect
+            }
+        };
         access_core_data_mut = quote! { &mut self.#cd };
     } else if let Some(ref inner) = opt_derive {
-        access_core_data = quote! { self.#inner.core_data() };
+        core_methods = quote! {
+            #[inline]
+            fn id_ref(&self) -> &::kas::WidgetId {
+                self.#inner.id_ref()
+            }
+            #[inline]
+            fn rect(&self) -> ::kas::geom::Rect {
+                self.#inner.rect()
+            }
+        };
         access_core_data_mut = quote! { self.#inner.core_data_mut() };
     } else {
         return Err(Error::new(
@@ -147,22 +165,25 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
         impl #impl_generics ::kas::WidgetCore
             for #name #ty_generics #where_clause
         {
+            #[inline]
             fn as_any(&self) -> &dyn std::any::Any { self }
+            #[inline]
             fn as_any_mut(&mut self) -> &mut dyn std::any::Any { self }
 
-            fn core_data(&self) -> &::kas::CoreData {
-                #access_core_data
-            }
-
+            #[inline]
             fn core_data_mut(&mut self) -> &mut ::kas::CoreData {
                 #access_core_data_mut
             }
+            #core_methods
 
+            #[inline]
             fn widget_name(&self) -> &'static str {
                 #widget_name
             }
 
+            #[inline]
             fn as_widget(&self) -> &dyn ::kas::Widget { self }
+            #[inline]
             fn as_widget_mut(&mut self) -> &mut dyn ::kas::Widget { self }
         }
     });
