@@ -143,10 +143,7 @@ impl_scope! {
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-            Some(self.checkbox.id())
+            self.rect().contains(coord).then(|| self.checkbox.id())
         }
     }
 

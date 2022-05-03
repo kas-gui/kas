@@ -125,10 +125,7 @@ impl_scope! {
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-            Some(self.inner.id())
+            self.rect().contains(coord).then(|| self.inner.id())
         }
     }
 
