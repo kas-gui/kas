@@ -205,7 +205,9 @@ impl Parse for WidgetArgs {
         let mut key_nav = None;
         let mut hover_highlight = None;
         let mut cursor_icon = None;
+        let mut kw_derive = None;
         let mut derive = None;
+        let mut kw_layout = None;
         let mut layout = None;
 
         while !content.is_empty() {
@@ -232,13 +234,13 @@ impl Parse for WidgetArgs {
                     fn cursor_icon(&self) -> ::kas::event::CursorIcon { #value }
                 });
             } else if lookahead.peek(kw::derive) && derive.is_none() {
-                let _ = content.parse::<kw::derive>()?;
+                kw_derive = Some(content.parse::<kw::derive>()?);
                 let _: Eq = content.parse()?;
                 let _: Token![self] = content.parse()?;
                 let _: Token![.] = content.parse()?;
                 derive = Some(content.parse()?);
             } else if lookahead.peek(kw::layout) && layout.is_none() {
-                let _: kw::layout = content.parse()?;
+                kw_layout = Some(content.parse::<kw::layout>()?);
                 let _: Eq = content.parse()?;
                 layout = Some(content.parse()?);
             } else {
@@ -246,6 +248,15 @@ impl Parse for WidgetArgs {
             }
 
             let _ = content.parse::<Token![;]>()?;
+        }
+
+        if let Some(derive) = kw_derive {
+            if let Some(layout) = kw_layout {
+                emit_error!(
+                    layout, "incompatible with derive";
+                    note = derive.span() => "this derive"
+                );
+            }
         }
 
         Ok(WidgetArgs {
