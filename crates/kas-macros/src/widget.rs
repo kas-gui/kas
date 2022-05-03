@@ -245,53 +245,51 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
         if let Some(item) = layout {
             layout_impl.items.push(parse2(item)?);
         }
-    } else {
-        if let Some(inner) = opt_derive {
-            let layout = layout.unwrap_or_else(|| {
-                quote! {
-                    #[inline]
-                    fn layout(&mut self) -> ::kas::layout::Layout<'_> {
-                        self.#inner.layout()
-                    }
+    } else if let Some(inner) = opt_derive {
+        let layout = layout.unwrap_or_else(|| {
+            quote! {
+                #[inline]
+                fn layout(&mut self) -> ::kas::layout::Layout<'_> {
+                    self.#inner.layout()
                 }
-            });
-            scope.generated.push(quote! {
-                impl #impl_generics ::kas::Layout
-                        for #name #ty_generics #where_clause
-                {
-                    #layout
-                    #[inline]
-                    fn size_rules(&mut self,
-                        size_mgr: ::kas::theme::SizeMgr,
-                        axis: ::kas::layout::AxisInfo,
-                    ) -> ::kas::layout::SizeRules {
-                        self.#inner.size_rules(size_mgr, axis)
-                    }
-                    #[inline]
-                    fn set_rect(
-                        &mut self,
-                        mgr: &mut ::kas::layout::SetRectMgr,
-                        rect: ::kas::geom::Rect,
-                        align: ::kas::layout::AlignHints,
-                    ) {
-                        self.#inner.set_rect(mgr, rect, align);
-                    }
-                    #[inline]
-                    fn draw(
-                        &mut self,
-                        draw: ::kas::theme::DrawMgr,
-                    ) {
-                        self.#inner.draw(draw);
-                    }
+            }
+        });
+        scope.generated.push(quote! {
+            impl #impl_generics ::kas::Layout
+                    for #name #ty_generics #where_clause
+            {
+                #layout
+                #[inline]
+                fn size_rules(&mut self,
+                    size_mgr: ::kas::theme::SizeMgr,
+                    axis: ::kas::layout::AxisInfo,
+                ) -> ::kas::layout::SizeRules {
+                    self.#inner.size_rules(size_mgr, axis)
                 }
-            });
-        } else if let Some(layout) = layout {
-            scope.generated.push(quote! {
-                impl #impl_generics ::kas::Layout for #name #ty_generics #where_clause {
-                    #layout
+                #[inline]
+                fn set_rect(
+                    &mut self,
+                    mgr: &mut ::kas::layout::SetRectMgr,
+                    rect: ::kas::geom::Rect,
+                    align: ::kas::layout::AlignHints,
+                ) {
+                    self.#inner.set_rect(mgr, rect, align);
                 }
-            });
-        }
+                #[inline]
+                fn draw(
+                    &mut self,
+                    draw: ::kas::theme::DrawMgr,
+                ) {
+                    self.#inner.draw(draw);
+                }
+            }
+        });
+    } else if let Some(layout) = layout {
+        scope.generated.push(quote! {
+            impl #impl_generics ::kas::Layout for #name #ty_generics #where_clause {
+                #layout
+            }
+        });
     }
 
     if let Some(index) = widget_impl {

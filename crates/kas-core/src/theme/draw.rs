@@ -169,12 +169,12 @@ impl<'a> DrawMgr<'a> {
     /// Draw a frame inside the given `rect`
     ///
     /// The frame dimensions are given by [`SizeMgr::frame`].
-    pub fn frame<'b>(&mut self, rect: Rect, style: FrameStyle, bg: Background) {
+    pub fn frame(&mut self, rect: Rect, style: FrameStyle, bg: Background) {
         self.h.frame(&self.id, rect, style, bg)
     }
 
     /// Draw a separator in the given `rect`
-    pub fn separator<'b>(&mut self, rect: Rect) {
+    pub fn separator(&mut self, rect: Rect) {
         self.h.separator(rect);
     }
 
@@ -183,7 +183,7 @@ impl<'a> DrawMgr<'a> {
     /// This appears as a dashed box or similar around this `rect`. Note that
     /// the selection indicator is drawn *outside* of this rect, within a margin
     /// of size `inner_margin` that is expected to be present around this box.
-    pub fn selection_box<'b>(&mut self, rect: Rect) {
+    pub fn selection_box(&mut self, rect: Rect) {
         self.h.selection_box(rect);
     }
 
@@ -191,7 +191,7 @@ impl<'a> DrawMgr<'a> {
     ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text<'b>(&mut self, pos: Coord, text: &TextDisplay, class: TextClass) {
+    pub fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass) {
         self.h.text(&self.id, pos, text, class);
     }
 
@@ -203,7 +203,7 @@ impl<'a> DrawMgr<'a> {
     ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text_effects<'b>(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
+    pub fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
         self.h.text_effects(&self.id, pos, text, class);
     }
 
@@ -212,7 +212,7 @@ impl<'a> DrawMgr<'a> {
     /// Other than visually highlighting the selection, this method behaves
     /// identically to [`Self::text`]. It is likely to be replaced in the
     /// future by a higher-level API.
-    pub fn text_selected<'b, T: AsRef<TextDisplay>, R: RangeBounds<usize>>(
+    pub fn text_selected<T: AsRef<TextDisplay>, R: RangeBounds<usize>>(
         &mut self,
         pos: Coord,
         text: T,
@@ -238,13 +238,7 @@ impl<'a> DrawMgr<'a> {
     ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text_cursor<'b>(
-        &mut self,
-        pos: Coord,
-        text: &TextDisplay,
-        class: TextClass,
-        byte: usize,
-    ) {
+    pub fn text_cursor(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
         self.h.text_cursor(&self.id, pos, text, class, byte);
     }
 
@@ -253,30 +247,30 @@ impl<'a> DrawMgr<'a> {
     /// The checkbox is a small, usually square, box with or without a check
     /// mark. A checkbox widget may include a text label, but that label is not
     /// part of this element.
-    pub fn checkbox<'b>(&mut self, rect: Rect, checked: bool) {
+    pub fn checkbox(&mut self, rect: Rect, checked: bool) {
         self.h.checkbox(&self.id, rect, checked);
     }
 
     /// Draw UI element: radiobox
     ///
     /// This is similar in appearance to a checkbox.
-    pub fn radiobox<'b>(&mut self, rect: Rect, checked: bool) {
+    pub fn radiobox(&mut self, rect: Rect, checked: bool) {
         self.h.radiobox(&self.id, rect, checked);
     }
 
     /// Draw UI element: mark
-    pub fn mark<'b>(&mut self, rect: Rect, style: MarkStyle) {
+    pub fn mark(&mut self, rect: Rect, style: MarkStyle) {
         self.h.mark(&self.id, rect, style);
     }
 
     /// Draw UI element: scrollbar
-    pub fn scrollbar<'b, 'c>(&mut self, track_rect: Rect, handle: &dyn Widget, dir: Direction) {
+    pub fn scrollbar(&mut self, track_rect: Rect, handle: &dyn Widget, dir: Direction) {
         self.h
             .scrollbar(&self.id, handle.id_ref(), track_rect, handle.rect(), dir);
     }
 
     /// Draw UI element: slider
-    pub fn slider<'b, 'c>(&mut self, track_rect: Rect, handle: &dyn Widget, dir: Direction) {
+    pub fn slider(&mut self, track_rect: Rect, handle: &dyn Widget, dir: Direction) {
         self.h
             .slider(&self.id, handle.id_ref(), track_rect, handle.rect(), dir);
     }
@@ -287,12 +281,12 @@ impl<'a> DrawMgr<'a> {
     /// -   `dir`: direction of progress bar
     /// -   `state`: highlighting information
     /// -   `value`: progress value, between 0.0 and 1.0
-    pub fn progress_bar<'b>(&mut self, rect: Rect, dir: Direction, value: f32) {
+    pub fn progress_bar(&mut self, rect: Rect, dir: Direction, value: f32) {
         self.h.progress_bar(&self.id, rect, dir, value);
     }
 
     /// Draw an image
-    pub fn image<'b>(&mut self, rect: Rect, id: ImageId) {
+    pub fn image(&mut self, rect: Rect, id: ImageId) {
         self.h.image(id, rect);
     }
 }
