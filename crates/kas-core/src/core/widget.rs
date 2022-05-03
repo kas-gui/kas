@@ -248,6 +248,14 @@ pub trait Layout: WidgetChildren {
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait Widget: Layout {
+    /// Make an identifier for a child
+    ///
+    /// Default impl: `self.id_ref().make_child(index)`
+    #[inline]
+    fn make_child_id(&mut self, index: usize) -> WidgetId {
+        self.id_ref().make_child(index)
+    }
+
     /// Configure widget and children
     ///
     /// This method:
@@ -267,7 +275,7 @@ pub trait Widget: Layout {
         self.core_data_mut().id = id;
 
         for index in 0..self.num_children() {
-            let id = self.id_ref().make_child(index);
+            let id = self.make_child_id(index);
             if let Some(widget) = self.get_child_mut(index) {
                 widget.configure_recurse(mgr, id);
             }

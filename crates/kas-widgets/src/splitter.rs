@@ -223,6 +223,11 @@ impl_scope! {
     }
 
     impl Widget for Self {
+        fn make_child_id(&mut self, child_index: usize) -> WidgetId {
+            let is_handle = (child_index & 1) != 0;
+            self.make_next_id(is_handle, child_index / 2)
+        }
+
         fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
             self.core_data_mut().id = id;
             self.id_map.clear();
