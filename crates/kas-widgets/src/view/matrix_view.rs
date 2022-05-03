@@ -503,9 +503,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
-            self.core_data_mut().id = id;
-
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
             // If data is available but not loaded yet, make some widgets for
             // use by size_rules (this allows better sizing). Configure the new
             // widgets (this allows resource loading which may affect size.)
@@ -531,10 +529,6 @@ impl_scope! {
                 }
             }
 
-            self.configure(mgr);
-        }
-
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
             self.data.update_on_handles(mgr.ev_state(), self.id_ref());
             mgr.register_nav_fallback(self.id());
         }
