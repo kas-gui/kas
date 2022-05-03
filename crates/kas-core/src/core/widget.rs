@@ -188,23 +188,26 @@ pub trait Layout: WidgetChildren {
 
     /// Set size and position
     ///
-    /// This is the final step to layout solving. It may be influenced by
-    /// [`Self::size_rules`], but it is not guaranteed that `size_rules` is
-    /// called first. After calling `set_rect`, the widget must be ready for
-    /// calls to [`Self::draw`] and event handling.
+    /// This is the final step to layout solving. It is expected that [`Self::size_rules`] is called
+    /// for each axis before this method; if this does not happen then layout may be incorrect.
+    /// Note that `size_rules` may not be called again before the next call to `set_rect`.
+    /// After `set_rect` is called, the widget must be ready for drawing and event handling.
     ///
     /// The size of the assigned `rect` is normally at least the minimum size
     /// requested by [`Self::size_rules`], but this is not guaranteed. In case
     /// this minimum is not met, it is permissible for the widget to draw
     /// outside of its assigned `rect` and to not function as normal.
     ///
-    /// The assigned `rect` may be larger than the widget's size requirements.
+    /// The assigned `rect` may be larger than the widget's size requirements,
+    /// regardless of the [`Stretch`] policy used.
     /// It is up to the widget to either stretch to occupy this space or align
     /// itself within the excess space, according to the `align` hints provided.
     ///
     /// This method may be implemented through [`Self::layout`] or directly.
     /// The default implementation assigns `self.core_data_mut().rect = rect`
     /// and applies the layout described by [`Self::layout`].
+    ///
+    /// [`Stretch`]: crate::layout::Stretch
     fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
         self.core_data_mut().rect = rect;
         self.layout().set_rect(mgr, rect, align);

@@ -28,15 +28,14 @@ impl_scope! {
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             let size = size_mgr.checkbox();
-            self.core.rect.size = size;
             let margins = size_mgr.outer_margins();
             SizeRules::extract_fixed(axis, size, margins)
         }
 
-        fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             let rect = align
                 .complete(Align::Center, Align::Center)
-                .aligned_rect(self.rect().size, rect);
+                .aligned_rect(mgr.size_mgr().checkbox(), rect);
             self.core.rect = rect;
         }
 

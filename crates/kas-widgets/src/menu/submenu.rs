@@ -279,30 +279,45 @@ impl_scope! {
 
             for (row, child) in self.list.iter_mut().enumerate() {
                 let row = u32::conv(row);
-                if let Some(items) = child.sub_items() {
-                    if let Some(w) = items.toggle {
-                        let info = layout::GridChildInfo::new(0, row);
-                        solver.for_child(store, info, |axis| with_frame_rules(w.size_rules(mgr.re(), axis)));
-                    }
-                    if let Some(w) = items.icon {
-                        let info = layout::GridChildInfo::new(1, row);
-                        solver.for_child(store, info, |axis| with_frame_rules(w.size_rules(mgr.re(), axis)));
-                    }
-                    if let Some(w) = items.label {
-                        let info = layout::GridChildInfo::new(2, row);
-                        solver.for_child(store, info, |axis| with_frame_rules(w.size_rules(mgr.re(), axis)));
-                    }
-                    if let Some(w) = items.label2 {
-                        let info = layout::GridChildInfo::new(3, row);
-                        solver.for_child(store, info, |axis| with_frame_rules(w.size_rules(mgr.re(), axis)));
-                    }
-                    if let Some(w) = items.submenu {
-                        let info = layout::GridChildInfo::new(4, row);
-                        solver.for_child(store, info, |axis| with_frame_rules(w.size_rules(mgr.re(), axis)));
+                let info = menu_view_row_info(row);
+                if is_horiz {
+                    // Note: we are required to call child.size_rules even if sub_items are used
+                    // Note: axis is not modified by the solver in this case
+                    let row_rules = child.size_rules(mgr.re(), axis);
+
+                    if let Some(items) = child.sub_items() {
+                        if let Some(w) = items.toggle {
+                            let info = layout::GridChildInfo::new(0, row);
+                            solver.for_child(store, info, |axis| with_frame_rules(w.size_rules(mgr.re(), axis)));
+                        }
+                        if let Some(w) = items.icon {
+                            let info = layout::GridChildInfo::new(1, row);
+                            solver.for_child(store, info, |axis| with_frame_rules(w.size_rules(mgr.re(), axis)));
+                        }
+                        if let Some(w) = items.label {
+                            let info = layout::GridChildInfo::new(2, row);
+                            solver.for_child(store, info, |axis| with_frame_rules(w.size_rules(mgr.re(), axis)));
+                        }
+                        if let Some(w) = items.label2 {
+                            let info = layout::GridChildInfo::new(3, row);
+                            solver.for_child(store, info, |axis| with_frame_rules(w.size_rules(mgr.re(), axis)));
+                        }
+                        if let Some(w) = items.submenu {
+                            let info = layout::GridChildInfo::new(4, row);
+                            solver.for_child(store, info, |axis| with_frame_rules(w.size_rules(mgr.re(), axis)));
+                        }
+                    } else {
+                        solver.for_child(store, info, |_| row_rules);
                     }
                 } else {
-                    let info = menu_view_row_info(row);
-                    solver.for_child(store, info, |axis| child.size_rules(mgr.re(), axis));
+                    let has_sub_items = child.sub_items().is_some();
+                    solver.for_child(store, info, |axis| {
+                        let mut rules = child.size_rules(mgr.re(), axis);
+                        if has_sub_items {
+                            rules = with_frame_rules(rules);
+                        }
+                        rules
+                    });
                 }
             }
             solver.finish(store)
@@ -326,6 +341,8 @@ impl_scope! {
             for (row, child) in self.list.iter_mut().enumerate() {
                 let row = u32::conv(row);
                 let child_rect = setter.child_rect(store, menu_view_row_info(row));
+                // Note: we are required to call child.set_rect even if sub_items are used
+                child.set_rect(mgr, child_rect, align);
 
                 if let Some(items) = child.sub_items() {
                     if let Some(w) = items.toggle {
@@ -348,10 +365,6 @@ impl_scope! {
                         let info = layout::GridChildInfo::new(4, row);
                         w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)), align);
                     }
-
-                    child.core_data_mut().rect = child_rect;
-                } else {
-                    child.set_rect(mgr, child_rect, align);
                 }
             }
         }
