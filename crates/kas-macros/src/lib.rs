@@ -130,8 +130,8 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// This may *only* be used within the [`impl_scope!`] macro.
 ///
 /// Implements the [`WidgetCore`] and [`Widget`] traits for the deriving type.
-/// Implements the [`WidgetChildren`], [`WidgetConfig`], [`Layout`]
-/// and [`Handler`] traits only if not implemented explicitly within the
+/// Implements the [`WidgetChildren`] and [`Layout`]
+/// traits only if not implemented explicitly within the
 /// defining [`impl_scope!`].
 ///
 /// Using the `derive` argument activates a special "thin wrapper" mode.
@@ -154,15 +154,13 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// -   `derive` `=` `self` `.` _Member_ — if present, identifies a struct or struct tuple field
 ///     implementing [`Widget`] over which the `Self` type implements [`Widget`]
 /// -   `key_nav` `=` _Bool_ — whether this widget supports keyboard focus via
-///     <kbd>Tab</kbd> key (method of [`WidgetConfig`]; default is `false`)
+///     <kbd>Tab</kbd> key (method of [`Widget`]; default is `false`)
 /// -   `hover_highlight` `=` _Bool_ — whether to redraw when cursor hover
-///     status is gained/lost (method of [`WidgetConfig`]; default is `false`)
+///     status is gained/lost (method of [`Widget`]; default is `false`)
 /// -   `cursor_icon` `=` _Expr_ — an expression yielding a [`CursorIcon`]
-///     (method of [`WidgetConfig`]; default is `CursorIcon::Default`)
+///     (method of [`Widget`]; default is `CursorIcon::Default`)
 /// -   `layout` `=` _Layout_ — defines widget layout via an expression; see [`make_layout!`] for
 ///     documentation (method of [`Layout`]; defaults to an empty layout)
-/// -   `find_id` `=` _Expr_ — override default implementation of `kas::Layout::find_id` to
-///     return this expression when `self.rect().contains(coord)`
 ///
 /// Assuming the deriving type is a `struct` or `tuple struct`, fields support
 /// the following attributes:
@@ -179,9 +177,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// [`Widget`]: https://docs.rs/kas/0.11/kas/trait.Widget.html
 /// [`WidgetCore`]: https://docs.rs/kas/0.11/kas/trait.WidgetCore.html
 /// [`WidgetChildren`]: https://docs.rs/kas/0.11/kas/trait.WidgetChildren.html
-/// [`WidgetConfig`]: https://docs.rs/kas/0.11/kas/trait.WidgetConfig.html
 /// [`Layout`]: https://docs.rs/kas/0.11/kas/trait.Layout.html
-/// [`Handler`]: https://docs.rs/kas/0.11/kas/event/trait.Handler.html
 /// [`CursorIcon`]: https://docs.rs/kas/0.11/kas/event/enum.CursorIcon.html
 /// [`Response`]: https://docs.rs/kas/0.11/kas/event/enum.Response.html
 /// [`CoreData`]: https://docs.rs/kas/0.11/kas/struct.CoreData.html

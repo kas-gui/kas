@@ -14,7 +14,7 @@ use kas::event::{CursorIcon, EventState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{SetRectMgr, SolveCache};
 use kas::theme::{DrawMgr, SizeHandle, SizeMgr, ThemeControl};
-use kas::{TkAction, WindowId};
+use kas::{TkAction, WidgetExt, WindowId};
 use kas_theme::{Theme, Window as _};
 use winit::dpi::PhysicalSize;
 use winit::error::OsError;
@@ -397,7 +397,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
                     shared
                         .theme
                         .draw_handle(draw, &mut self.ev_state, &mut self.theme_window);
-                let draw_mgr = DrawMgr::new(&mut draw_handle);
+                let draw_mgr = DrawMgr::new(&mut draw_handle, self.widget.id());
                 self.widget.draw(draw_mgr);
             }
             #[cfg(feature = "gat")]
@@ -406,7 +406,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
                     shared
                         .theme
                         .draw_handle(draw, &mut self.ev_state, &mut self.theme_window);
-                let draw_mgr = DrawMgr::new(&mut draw_handle);
+                let draw_mgr = DrawMgr::new(&mut draw_handle, self.widget.id());
                 self.widget.draw(draw_mgr);
             }
         }

@@ -8,7 +8,7 @@
 use super::{Menu, SubItems};
 use crate::CheckBoxBare;
 use kas::component::{Component, Label};
-use kas::theme::{FrameStyle, IdRect, TextClass};
+use kas::theme::{FrameStyle, TextClass};
 use kas::{layout, prelude::*};
 use std::fmt::Debug;
 
@@ -28,24 +28,14 @@ impl_scope! {
         msg: M,
     }
 
-    impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            mgr.add_accel_keys(self.id_ref(), self.label.keys());
-        }
-
-        fn key_nav(&self) -> bool {
-            true
-        }
-    }
-
     impl Layout for Self {
         fn layout(&mut self) -> layout::Layout<'_> {
             layout::Layout::component(&mut self.label)
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.frame(&*self, FrameStyle::MenuEntry, Default::default());
-            self.label.draw(draw, &self.core.id);
+            draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
+            self.label.draw(draw);
         }
     }
 
@@ -86,7 +76,15 @@ impl_scope! {
         }
     }
 
-    impl Handler for Self {
+    impl Widget for Self {
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
+            mgr.add_accel_keys(self.id_ref(), self.label.keys());
+        }
+
+        fn key_nav(&self) -> bool {
+            true
+        }
+
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Activate => {
@@ -123,12 +121,6 @@ impl_scope! {
         layout_list: layout::DynRowStorage,
     }
 
-    impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            mgr.add_accel_keys(self.checkbox.id_ref(), self.label.keys());
-        }
-    }
-
     impl Layout for Self {
         fn layout(&mut self) -> layout::Layout<'_> {
             let list = [
@@ -138,17 +130,23 @@ impl_scope! {
             layout::Layout::list(list.into_iter(), Direction::Right, &mut self.layout_list)
         }
 
+        fn draw(&mut self, mut draw: DrawMgr) {
+            draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
+            let id = self.checkbox.id();
+            self.layout().draw(draw.re_id(id));
+        }
+    }
+
+    impl Widget for Self {
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
+            mgr.add_accel_keys(self.checkbox.id_ref(), self.label.keys());
+        }
+
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
             }
             Some(self.checkbox.id())
-        }
-
-        fn draw(&mut self, mut draw: DrawMgr) {
-            let id = self.checkbox.id();
-            draw.frame(IdRect(&id, self.rect()), FrameStyle::MenuEntry, Default::default());
-            self.layout().draw(draw, &id);
         }
     }
 

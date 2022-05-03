@@ -63,7 +63,7 @@ fn main() -> kas::shell::Result<()> {
             #[widget] b8 = TextButton::new_msg("&8", Key::Char('8')),
             #[widget] b9 = TextButton::new_msg("&9", Key::Char('9')),
         }
-        impl kas::WidgetConfig for Self {
+        impl kas::Widget for Self {
             fn configure(&mut self, mgr: &mut SetRectMgr) {
                 // Enable key bindings without Alt held:
                 mgr.enable_alt_bypass(self.id_ref(), true);
@@ -79,7 +79,7 @@ fn main() -> kas::shell::Result<()> {
             #[widget] _ = buttons,
             calc: Calculator = Calculator::new(),
         }
-        impl Handler for Self {
+        impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
                 if let Some(msg) = mgr.try_pop_msg::<Key>() {
                     if self.calc.handle(msg) {

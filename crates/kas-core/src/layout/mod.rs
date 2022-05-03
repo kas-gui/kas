@@ -51,8 +51,6 @@ use crate::event::EventState;
 use crate::geom::{Size, Vec2};
 use crate::text::TextApi;
 use crate::theme::{SizeHandle, SizeMgr, TextClass};
-#[allow(unused)]
-use crate::WidgetConfig;
 use crate::{TkAction, Widget, WidgetId};
 use std::ops::{Deref, DerefMut};
 
@@ -146,7 +144,7 @@ impl Directional for AxisInfo {
     }
 }
 
-/// Manager available to [`Layout::set_rect`] and [`WidgetConfig::configure`]
+/// Manager available to [`Layout::set_rect`] and [`Widget::configure`]
 ///
 /// This type is functionally a superset of [`SizeMgr`] and subset of
 /// [`crate::theme::DrawMgr`], with support for the appropriate conversions.
@@ -172,7 +170,7 @@ impl<'a> SetRectMgr<'a> {
     /// Warning: sizes are calculated using the window's current scale factor.
     /// This may change, even without user action, since some platforms
     /// always initialize windows with scale factor 1.
-    /// See also notes on [`WidgetConfig::configure`].
+    /// See also notes on [`Widget::configure`].
     pub fn size_mgr(&self) -> SizeMgr<'a> {
         SizeMgr::new(self.sh)
     }
@@ -190,7 +188,7 @@ impl<'a> SetRectMgr<'a> {
     /// Configure a widget
     ///
     /// All widgets must be configured after construction (see
-    /// [`WidgetConfig::configure`]). This method may be used to configure a new
+    /// [`Widget::configure`]). This method may be used to configure a new
     /// child widget without requiring the whole window to be reconfigured.
     ///
     /// Pass the `id` to assign to the widget: this should be constructed from

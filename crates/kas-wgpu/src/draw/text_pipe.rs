@@ -251,7 +251,7 @@ impl Window {
                 self.atlas.rect(pass, sprite.atlas, instance);
             }
         };
-        text.glyphs(for_glyph);
+        let _ = text.glyphs(for_glyph);
 
         self.duration += time.elapsed();
     }
@@ -304,9 +304,9 @@ impl Window {
                 let quad = Quad::from_coords(pos + Vec2(x1, y), pos + Vec2(x2, y2));
                 rects.push(quad);
             };
-            text.glyphs_with_effects(effects, (), for_glyph, for_rect);
+            let _ = text.glyphs_with_effects(effects, (), for_glyph, for_rect);
         } else {
-            text.glyphs(|face, dpem, glyph| for_glyph(face, dpem, glyph, 0, ()));
+            let _ = text.glyphs(|face, dpem, glyph| for_glyph(face, dpem, glyph, 0, ()));
         }
 
         self.duration += time.elapsed();
@@ -356,7 +356,7 @@ impl Window {
             rects.push((quad, col));
         };
 
-        text.glyphs_with_effects(effects, Rgba::BLACK, for_glyph, for_rect);
+        let _ = text.glyphs_with_effects(effects, Rgba::BLACK, for_glyph, for_rect);
 
         self.duration += time.elapsed();
         rects

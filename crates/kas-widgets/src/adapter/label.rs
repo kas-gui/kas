@@ -109,12 +109,6 @@ impl_scope! {
         }
     }
 
-    impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            mgr.add_accel_keys(self.inner.id_ref(), self.keys());
-        }
-    }
-
     impl Layout for Self {
         fn layout(&mut self) -> layout::Layout<'_> {
             let arr = [
@@ -122,6 +116,12 @@ impl_scope! {
                 layout::Layout::component(&mut self.label),
             ];
             layout::Layout::list(arr.into_iter(), self.dir, &mut self.layout_store)
+        }
+    }
+
+    impl Widget for Self {
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
+            mgr.add_accel_keys(self.inner.id_ref(), self.keys());
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {

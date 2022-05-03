@@ -14,7 +14,7 @@ use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
 use crate::component::Component;
 use crate::draw::color::Rgb;
 use crate::geom::{Coord, Offset, Rect, Size};
-use crate::theme::{Background, DrawMgr, FrameStyle, IdRect, SizeMgr};
+use crate::theme::{Background, DrawMgr, FrameStyle, SizeMgr};
 use crate::WidgetId;
 use crate::{dir::Directional, Widget};
 use std::any::Any;
@@ -270,27 +270,27 @@ impl<'a> Layout<'a> {
 
     /// Draw a widget's children
     #[inline]
-    pub fn draw(mut self, draw: DrawMgr, id: &WidgetId) {
-        self.draw_(draw, id);
+    pub fn draw(mut self, draw: DrawMgr) {
+        self.draw_(draw);
     }
-    fn draw_(&mut self, mut draw: DrawMgr, id: &WidgetId) {
+    fn draw_(&mut self, mut draw: DrawMgr) {
         match &mut self.layout {
             LayoutType::None => (),
-            LayoutType::Component(component) => component.draw(draw, id),
-            LayoutType::BoxComponent(layout) => layout.draw(draw, id),
-            LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => child.draw(draw.re()),
-            LayoutType::AlignLayout(layout, _) => layout.draw_(draw, id),
+            LayoutType::Component(component) => component.draw(draw),
+            LayoutType::BoxComponent(layout) => layout.draw(draw),
+            LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => draw.recurse(*child),
+            LayoutType::AlignLayout(layout, _) => layout.draw_(draw),
             LayoutType::Frame(child, storage, style) => {
-                draw.frame(IdRect(id, storage.rect), *style, Background::Default);
-                child.draw_(draw, id);
+                draw.frame(storage.rect, *style, Background::Default);
+                child.draw_(draw);
             }
             LayoutType::Button(child, storage, color) => {
                 let bg = match color {
                     Some(rgb) => Background::Rgb(*rgb),
                     None => Background::Default,
                 };
-                draw.frame(IdRect(id, storage.rect), FrameStyle::Button, bg);
-                child.draw_(draw, id);
+                draw.frame(storage.rect, FrameStyle::Button, bg);
+                child.draw_(draw);
             }
         }
     }
@@ -330,9 +330,9 @@ where
         self.children.find_map(|child| child.find_id(coord))
     }
 
-    fn draw(&mut self, mut draw: DrawMgr, id: &WidgetId) {
+    fn draw(&mut self, mut draw: DrawMgr) {
         for child in &mut self.children {
-            child.draw(draw.re(), id);
+            child.draw(draw.re_clone());
         }
     }
 }
@@ -370,9 +370,9 @@ impl<'a, W: Widget, D: Directional> Component for Slice<'a, W, D> {
             .and_then(|child| child.find_id(coord))
     }
 
-    fn draw(&mut self, mut draw: DrawMgr, _: &WidgetId) {
+    fn draw(&mut self, mut draw: DrawMgr) {
         let solver = RowPositionSolver::new(self.direction);
-        solver.for_children(self.children, draw.get_clip_rect(), |w| w.draw(draw.re()));
+        solver.for_children(self.children, draw.get_clip_rect(), |w| draw.recurse(w));
     }
 }
 
@@ -407,9 +407,9 @@ where
         self.children.find_map(|(_, child)| child.find_id(coord))
     }
 
-    fn draw(&mut self, mut draw: DrawMgr, id: &WidgetId) {
+    fn draw(&mut self, mut draw: DrawMgr) {
         for (_, child) in &mut self.children {
-            child.draw(draw.re(), id);
+            child.draw(draw.re_clone());
         }
     }
 }

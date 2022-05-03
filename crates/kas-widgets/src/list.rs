@@ -74,7 +74,6 @@ impl_scope! {
         layout_store: layout::DynRowStorage,
         widgets: Vec<W>,
         direction: D,
-        size_solved: bool,
         next: usize,
         id_map: HashMap<usize, usize>, // map key of WidgetId to index
         on_message: Option<fn(&mut EventMgr, usize)>,
@@ -99,7 +98,13 @@ impl_scope! {
         }
     }
 
-    impl WidgetConfig for Self {
+    impl Layout for Self {
+        fn layout(&mut self) -> layout::Layout<'_> {
+            layout::Layout::slice(&mut self.widgets, self.direction, &mut self.layout_store)
+        }
+    }
+
+    impl Widget for Self {
         fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
             self.core_data_mut().id = id;
             self.id_map.clear();
@@ -110,18 +115,6 @@ impl_scope! {
             }
 
             self.configure(mgr);
-        }
-    }
-
-    impl Layout for Self {
-        fn layout(&mut self) -> layout::Layout<'_> {
-            layout::Layout::slice(&mut self.widgets, self.direction, &mut self.layout_store)
-        }
-
-        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
-            self.core_data_mut().rect = rect;
-            self.layout().set_rect(mgr, rect, align);
-            self.size_solved = true;
         }
 
         fn spatial_nav(
@@ -135,7 +128,7 @@ impl_scope! {
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) || !self.size_solved {
+            if !self.rect().contains(coord) {
                 return None;
             }
 
@@ -143,15 +136,6 @@ impl_scope! {
             self.layout().find_id(coord).or_else(|| Some(self.id()))
         }
 
-        fn draw(&mut self, draw: DrawMgr) {
-            if self.size_solved {
-                let id = self.id(); // clone to avoid borrow conflict
-                self.layout().draw(draw, &id);
-            }
-        }
-    }
-
-    impl Handler for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
             if let Some(f) = self.on_message {
                 f(mgr, index);
@@ -211,7 +195,6 @@ impl_scope! {
                 layout_store: Default::default(),
                 widgets,
                 direction,
-                size_solved: false,
                 next: 0,
                 id_map: Default::default(),
                 on_message: None,
@@ -275,7 +258,6 @@ impl_scope! {
         /// Remove all child widgets
         pub fn clear(&mut self) {
             self.widgets.clear();
-            self.size_solved = false;
         }
 
         /// Append a child widget
@@ -289,7 +271,6 @@ impl_scope! {
             self.widgets.push(widget);
             let id = self.make_next_id(index);
             mgr.configure(id, &mut self.widgets[index]);
-            self.size_solved = false;
             *mgr |= TkAction::RESIZE;
             index
         }
@@ -325,7 +306,6 @@ impl_scope! {
             self.widgets.insert(index, widget);
             let id = self.make_next_id(index);
             mgr.configure(id, &mut self.widgets[index]);
-            self.size_solved = false;
             *mgr |= TkAction::RESIZE;
         }
 
@@ -369,7 +349,6 @@ impl_scope! {
             let id = self.make_next_id(index);
             mgr.configure(id, &mut self.widgets[index]);
 
-            self.size_solved = false;
             *mgr |= TkAction::RESIZE;
 
             w
@@ -386,7 +365,6 @@ impl_scope! {
                 mgr.configure(id, &mut self.widgets[index]);
             }
 
-            self.size_solved = false;
             *mgr |= TkAction::RESIZE;
         }
 
@@ -419,7 +397,6 @@ impl_scope! {
                     mgr.configure(id, &mut widget);
                     self.widgets.push(widget);
                 }
-                self.size_solved = false;
                 *mgr |= TkAction::RESIZE;
             }
         }

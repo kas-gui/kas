@@ -16,7 +16,7 @@ use crate::geom::{Coord, Offset, Vec2};
 use crate::layout::SetRectMgr;
 use crate::theme::{SizeMgr, ThemeControl};
 #[allow(unused)]
-use crate::WidgetConfig; // for doc-links
+use crate::Widget; // for doc-links
 use crate::{TkAction, WidgetExt, WidgetId, WindowId};
 
 impl<'a> std::ops::BitOrAssign<TkAction> for EventMgr<'a> {
@@ -183,7 +183,7 @@ impl EventState {
     /// `w_id` or `payload` are not merged (since presumably they have different
     /// purposes).
     ///
-    /// This may be called from [`WidgetConfig::configure`] or from an event
+    /// This may be called from [`Widget::configure`] or from an event
     /// handler. Note that previously-scheduled updates are cleared when
     /// widgets are reconfigured.
     pub fn update_on_timer(&mut self, delay: Duration, w_id: WidgetId, payload: u64) {
@@ -218,7 +218,7 @@ impl EventState {
     /// [`Event::HandleUpdate`] when [`EventMgr::trigger_update`]
     /// is called with the corresponding handle.
     ///
-    /// This should be called from [`WidgetConfig::configure`].
+    /// This should be called from [`Widget::configure`].
     pub fn update_on_handle(&mut self, handle: UpdateHandle, w_id: WidgetId) {
         trace!(
             "EventMgr::update_on_handle: update {} on handle {:?}",
@@ -326,7 +326,7 @@ impl EventState {
     /// pop-up, the key is only active when that pop-up is open.
     /// See [`EventState::new_accel_layer`].
     ///
-    /// This should only be called from [`WidgetConfig::configure`].
+    /// This should only be called from [`Widget::configure`].
     // TODO(type safety): consider only implementing on ConfigureManager
     #[inline]
     pub fn add_accel_keys(&mut self, id: &WidgetId, keys: &[VirtualKeyCode]) {
@@ -446,7 +446,7 @@ impl EventState {
 
     /// Set the keyboard navigation focus directly
     ///
-    /// Normally, [`WidgetConfig::key_nav`] will be true for the specified
+    /// Normally, [`Widget::key_nav`] will be true for the specified
     /// widget, but this is not required, e.g. a `ScrollLabel` can receive focus
     /// on text selection with the mouse. (Currently such widgets will receive
     /// events like any other with nav focus, but this may change.)
@@ -527,7 +527,7 @@ impl<'a> EventMgr<'a> {
     /// When setting [`Scroll::Rect`], use the widgets own coordinate space.
     ///
     /// Note that calling this method has no effect on the widget itself, but
-    /// affects parents via their [`Handler::handle_scroll`] method.
+    /// affects parents via their [`Widget::handle_scroll`] method.
     #[inline]
     pub fn set_scroll(&mut self, scroll: Scroll) {
         self.scroll = scroll;
@@ -666,7 +666,7 @@ impl<'a> EventMgr<'a> {
     /// Warning: sizes are calculated using the window's current scale factor.
     /// This may change, even without user action, since some platforms
     /// always initialize windows with scale factor 1.
-    /// See also notes on [`WidgetConfig::configure`].
+    /// See also notes on [`Widget::configure`].
     pub fn size_mgr<F: FnMut(SizeMgr) -> T, T>(&mut self, mut f: F) -> T {
         let mut result = None;
         self.shell.size_and_draw_shared(&mut |size_handle, _| {
@@ -823,7 +823,7 @@ impl<'a> EventMgr<'a> {
     /// Advance the keyboard navigation focus
     ///
     /// If some widget currently has nav focus, this will give focus to the next
-    /// (or previous) widget under `widget` where [`WidgetConfig::key_nav`]
+    /// (or previous) widget under `widget` where [`Widget::key_nav`]
     /// returns true; otherwise this will give focus to the first (or last)
     /// such widget.
     ///

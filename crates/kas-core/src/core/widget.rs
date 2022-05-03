@@ -8,7 +8,7 @@
 use std::any::Any;
 use std::fmt;
 
-use crate::event;
+use crate::event::{self, Event, EventMgr, Response, Scroll};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{self, AlignHints, AxisInfo, SetRectMgr, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
@@ -17,7 +17,7 @@ use crate::{CoreData, WidgetId};
 use kas_macros::autoimpl;
 
 #[allow(unused)]
-use crate::event::{EventState, Handler};
+use crate::event::EventState;
 
 impl dyn WidgetCore {
     /// Forwards to the method defined on the type `Any`.
@@ -117,31 +117,137 @@ pub trait WidgetChildren: WidgetCore {
     ///
     /// The default implementation simply uses [`WidgetId::next_key_after`].
     /// Widgets may choose to assign children custom keys by overriding this
-    /// method and [`WidgetConfig::configure_recurse`].
+    /// method and [`Widget::configure_recurse`].
     #[inline]
     fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
         id.next_key_after(self.id_ref())
     }
 }
 
-/// Widget configuration
+/// Positioning and drawing routines for widgets
 ///
-/// This trait is part of the [`Widget`] family and is derived by
-/// [`derive(Widget)`] unless explicitly implemented.
+/// This trait is part of the [`Widget`] family. It may be derived by
+/// the [`crate::macros::widget`] macro, but is not by default.
 ///
-/// Widgets are *configured* on window creation or dynamically via the
-/// parent calling [`SetRectMgr::configure`]. Parent widgets are responsible
-/// for ensuring that children are configured before calling
-/// [`Layout::size_rules`] or [`Layout::set_rect`]. Configuration may be
-/// repeated and may be used as a mechanism to change a child's [`WidgetId`],
-/// but this may be expensive.
+/// There are two methods of implementing this trait:
 ///
-/// Configuration invokes [`Self::configure_recurse`] which then calls
-/// [`Self::configure`]. The latter may be used to load assets before sizing.
+/// -   Implement [`Self::layout`]. This alone suffices in many cases; other
+///     methods may be overridden if necessary.
+/// -   Ignore [`Self::layout`] and implement [`Self::size_rules`] (to give the
+///     widget size) and [`Self::draw`] (to make it show something). Other
+///     methods may be required (e.g. [`Self::set_rect`] to position child
+///     elements).
+///
+/// Two methods of setting layout are possible:
+///
+/// 1.  Use [`layout::solve_size_rules`] or [`layout::SolveCache`] to solve and
+///     set layout. This functions by calling [`Self::size_rules`] for each
+///     axis then calling [`Self::set_rect`].
+/// 2.  Only call [`Self::set_rect`]. For some widgets this is fine but for
+///     others the internal layout will be incorrect.
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
-pub trait WidgetConfig: Layout {
+pub trait Layout: WidgetChildren {
+    /// Describe layout
+    ///
+    /// This is purely a helper method used to implement other methods:
+    /// [`Self::size_rules`], [`Self::set_rect`], [`Widget::find_id`], [`Self::draw`].
+    /// If those methods are implemented directly (or their default
+    /// implementation over the default "empty" layout provided by this method
+    /// suffices), then this method need not be implemented.
+    ///
+    /// The default implementation is for an empty layout (zero size required,
+    /// no child elements, no graphics).
+    #[inline]
+    fn layout(&mut self) -> layout::Layout<'_> {
+        Default::default()
+    }
+
+    /// Get size rules for the given axis
+    ///
+    /// For a description of the widget size model, see [`SizeRules`].
+    ///
+    /// Typically, this method is called twice: first for the horizontal axis,
+    /// second for the vertical axis (with resolved width available through
+    /// the `axis` parameter allowing content wrapping).
+    ///
+    /// When called, this method should cache any data required to determine
+    /// internal layout (of child widgets and other components), especially data
+    /// which requires calling `size_rules` on children.
+    ///
+    /// This method may be implemented through [`Self::layout`] or directly.
+    /// A [`crate::layout::RulesSolver`] engine may be useful to calculate
+    /// requirements of complex layouts.
+    ///
+    /// [`Widget::configure`] will be called before this method and may
+    /// be used to load assets.
+    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        self.layout().size_rules(size_mgr, axis)
+    }
+
+    /// Set size and position
+    ///
+    /// This is the final step to layout solving. It may be influenced by
+    /// [`Self::size_rules`], but it is not guaranteed that `size_rules` is
+    /// called first. After calling `set_rect`, the widget must be ready for
+    /// calls to [`Self::draw`] and event handling.
+    ///
+    /// The size of the assigned `rect` is normally at least the minimum size
+    /// requested by [`Self::size_rules`], but this is not guaranteed. In case
+    /// this minimum is not met, it is permissible for the widget to draw
+    /// outside of its assigned `rect` and to not function as normal.
+    ///
+    /// The assigned `rect` may be larger than the widget's size requirements.
+    /// It is up to the widget to either stretch to occupy this space or align
+    /// itself within the excess space, according to the `align` hints provided.
+    ///
+    /// This method may be implemented through [`Self::layout`] or directly.
+    /// The default implementation assigns `self.core_data_mut().rect = rect`
+    /// and applies the layout described by [`Self::layout`].
+    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+        self.core_data_mut().rect = rect;
+        self.layout().set_rect(mgr, rect, align);
+    }
+
+    /// Draw a widget and its children
+    ///
+    /// This method is invoked each frame to draw visible widgets. It should
+    /// draw itself and recurse into all visible children.
+    ///
+    /// It is expected that [`Self::set_rect`] is called before this method,
+    /// but failure to do so should not cause a fatal error.
+    ///
+    /// The default impl draws elements as defined by [`Self::layout`].
+    fn draw(&mut self, draw: DrawMgr) {
+        self.layout().draw(draw);
+    }
+}
+
+/// Widget trait
+///
+/// Widgets must implement a family of traits, of which this trait is the final
+/// member:
+///
+/// -   [`WidgetCore`] — base functionality (this trait is *always* derived)
+/// -   [`WidgetChildren`] — enumerates children and provides methods derived
+///     from this
+/// -   [`Layout`] — handles sizing and positioning of self and children
+/// -   [`Widget`] — the final trait
+///
+/// Widgets **must** use the [`derive(Widget)`] macro to implement at least
+/// [`WidgetCore`] and [`Widget`]; these two traits **must not** be implemented
+/// manually or users may face unexpected breaking changes.
+/// This macro can optionally implement *all* above traits, and by default will
+/// implement *all except for `Layout`*. This opt-out derive behaviour means
+/// that adding additional traits into the family is not a breaking change.
+///
+/// To refer to a widget via dyn trait, use `&dyn Widget`.
+/// To refer to a widget in generic functions, use `<W: Widget>`.
+///
+/// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
+#[autoimpl(for<T: trait + ?Sized> Box<T>)]
+pub trait Widget: Layout {
     /// Configure widget and children
     ///
     /// This method:
@@ -172,7 +278,12 @@ pub trait WidgetConfig: Layout {
 
     /// Configure widget
     ///
-    /// This method is part of configuration (see trait documentation).
+    /// Widgets are *configured* on window creation or dynamically via the
+    /// parent calling [`SetRectMgr::configure`]. Parent widgets are responsible
+    /// for ensuring that children are configured before calling
+    /// [`Layout::size_rules`] or [`Layout::set_rect`]. Configuration may be
+    /// repeated and may be used as a mechanism to change a child's [`WidgetId`],
+    /// but this may be expensive.
     ///
     /// This method may be used to configure event handling and to load
     /// resources, including resources affecting [`Layout::size_rules`].
@@ -205,7 +316,7 @@ pub trait WidgetConfig: Layout {
 
     /// Which cursor icon should be used on hover?
     ///
-    /// The "hovered" widget is determined by [`Layout::find_id`], thus is the
+    /// The "hovered" widget is determined by [`Widget::find_id`], thus is the
     /// same widget which would receive click events. Other widgets do not
     /// affect the cursor icon used.
     ///
@@ -214,102 +325,15 @@ pub trait WidgetConfig: Layout {
     fn cursor_icon(&self) -> event::CursorIcon {
         event::CursorIcon::Default
     }
-}
-
-/// Positioning and drawing routines for widgets
-///
-/// This trait is part of the [`Widget`] family. It may be derived by
-/// the [`crate::macros::widget`] macro, but is not by default.
-///
-/// There are two methods of implementing this trait:
-///
-/// -   Implement [`Self::layout`]. This alone suffices in many cases; other
-///     methods may be overridden if necessary.
-/// -   Ignore [`Self::layout`] and implement [`Self::size_rules`] (to give the
-///     widget size) and [`Self::draw`] (to make it show something). Other
-///     methods may be required (e.g. [`Self::set_rect`] to position child
-///     elements).
-///
-/// Two methods of setting layout are possible:
-///
-/// 1.  Use [`layout::solve_size_rules`] or [`layout::SolveCache`] to solve and
-///     set layout. This functions by calling [`Self::size_rules`] for each
-///     axis then calling [`Self::set_rect`].
-/// 2.  Only call [`Self::set_rect`]. For some widgets this is fine but for
-///     others the internal layout will be incorrect.
-///
-/// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
-#[autoimpl(for<T: trait + ?Sized> Box<T>)]
-pub trait Layout: WidgetChildren {
-    /// Describe layout
-    ///
-    /// This is purely a helper method used to implement other methods:
-    /// [`Self::size_rules`], [`Self::set_rect`], [`Self::find_id`], [`Self::draw`].
-    /// If those methods are implemented directly (or their default
-    /// implementation over the default "empty" layout provided by this method
-    /// suffices), then this method need not be implemented.
-    ///
-    /// The default implementation is for an empty layout (zero size required,
-    /// no child elements, no graphics).
-    #[inline]
-    fn layout(&mut self) -> layout::Layout<'_> {
-        Default::default()
-    }
-
-    /// Get size rules for the given axis
-    ///
-    /// For a description of the widget size model, see [`SizeRules`].
-    ///
-    /// Typically, this method is called twice: first for the horizontal axis,
-    /// second for the vertical axis (with resolved width available through
-    /// the `axis` parameter allowing content wrapping).
-    ///
-    /// When called, this method should cache any data required to determine
-    /// internal layout (of child widgets and other components), especially data
-    /// which requires calling `size_rules` on children.
-    ///
-    /// This method may be implemented through [`Self::layout`] or directly.
-    /// A [`crate::layout::RulesSolver`] engine may be useful to calculate
-    /// requirements of complex layouts.
-    ///
-    /// [`WidgetConfig::configure`] will be called before this method and may
-    /// be used to load assets.
-    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-        self.layout().size_rules(size_mgr, axis)
-    }
-
-    /// Set size and position
-    ///
-    /// This is the final step to layout solving. It may be influenced by
-    /// [`Self::size_rules`], but it is not guaranteed that `size_rules` is
-    /// called first. After calling `set_rect`, the widget must be ready for
-    /// calls to [`Self::draw`] and event handling.
-    ///
-    /// The size of the assigned `rect` is normally at least the minimum size
-    /// requested by [`Self::size_rules`], but this is not guaranteed. In case
-    /// this minimum is not met, it is permissible for the widget to draw
-    /// outside of its assigned `rect` and to not function as normal.
-    ///
-    /// The assigned `rect` may be larger than the widget's size requirements.
-    /// It is up to the widget to either stretch to occupy this space or align
-    /// itself within the excess space, according to the `align` hints provided.
-    ///
-    /// This method may be implemented through [`Self::layout`] or directly.
-    /// The default implementation assigns `self.core_data_mut().rect = rect`
-    /// and applies the layout described by [`Self::layout`].
-    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
-        self.core_data_mut().rect = rect;
-        self.layout().set_rect(mgr, rect, align);
-    }
 
     /// Get translation of children relative to this widget
     ///
     /// Usually this is zero; only widgets with scrollable or offset content
     /// need implement this. Such widgets must also implement
-    /// [`Handler::handle_scroll`].
+    /// [`Widget::handle_scroll`].
     ///
     /// Affects event handling via [`Self::find_id`] and affects the positioning
-    /// of pop-up menus. [`Self::draw`] must be implemented directly using
+    /// of pop-up menus. [`Layout::draw`] must be implemented directly using
     /// [`DrawMgr::with_clip_region`] to offset contents.
     #[inline]
     fn translation(&self) -> Offset {
@@ -332,6 +356,7 @@ pub trait Layout: WidgetChildren {
     ///
     /// The default implementation often suffices: it will navigate through
     /// children in order.
+    #[inline]
     fn spatial_nav(
         &mut self,
         mgr: &mut SetRectMgr,
@@ -345,18 +370,18 @@ pub trait Layout: WidgetChildren {
     /// Translate a coordinate to a [`WidgetId`]
     ///
     /// This method is used in event handling, translating a mouse click or
-    /// touch input to a widget and resolving a [`WidgetConfig::cursor_icon`].
+    /// touch input to a widget and resolving a [`Widget::cursor_icon`].
     /// Usually, this is the widget which draws the target coordinate, but
     /// stealing focus is permitted: e.g. the `Button` widget handles clicks on
     /// inner content, while the `CheckBox` widget forwards click events to its
     /// `CheckBoxBare` component.
     ///
-    /// It is expected that [`Self::set_rect`] is called before this method,
+    /// It is expected that [`Layout::set_rect`] is called before this method,
     /// but failure to do so should not cause a fatal error.
     ///
     /// The default implementation suffices unless:
     ///
-    /// -   [`Self::layout`] is not implemented and there are child widgets
+    /// -   [`Layout::layout`] is not implemented and there are child widgets
     /// -   Event stealing from child widgets is desired (but note that
     ///     [`crate::layout::Layout::button`] does this already)
     /// -   The child widget is in a translated coordinate space *not equal* to
@@ -376,48 +401,70 @@ pub trait Layout: WidgetChildren {
         self.layout().find_id(coord).or_else(|| Some(self.id()))
     }
 
-    /// Draw a widget and its children
+    /// Handle an event sent to this widget
     ///
-    /// This method is invoked each frame to draw visible widgets. It should
-    /// draw itself and recurse into all visible children.
+    /// An [`Event`] is some form of user input, timer or notification.
     ///
-    /// It is expected that [`Self::set_rect`] is called before this method,
-    /// but failure to do so should not cause a fatal error.
+    /// This is the primary event handler for a widget. Secondary handlers are:
     ///
-    /// The default impl draws elements as defined by [`Self::layout`].
-    fn draw(&mut self, draw: DrawMgr) {
-        let id = self.id(); // clone to avoid borrow conflict
-        self.layout().draw(draw, &id);
+    /// -   If this method returns [`Response::Unused`], then
+    ///     [`Widget::handle_unused`] is called on each parent until the event
+    ///     is used (or the root widget is reached)
+    /// -   If a message is left on the stack by [`EventMgr::push_msg`], then
+    ///     [`Widget::handle_message`] is called on each parent until the stack is
+    ///     empty (failing to empty the stack results in a warning in the log).
+    /// -   If any scroll state is set by [`EventMgr::set_scroll`], then
+    ///     [`Widget::handle_scroll`] is called for each parent
+    ///
+    /// Default implementation: do nothing; return [`Response::Unused`].
+    #[inline]
+    fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+        let _ = (mgr, event);
+        Response::Unused
+    }
+
+    /// Handle an event sent to child `index` but left unhandled
+    ///
+    /// Default implementation: call [`Self::handle_event`] with `event`.
+    #[inline]
+    fn handle_unused(&mut self, mgr: &mut EventMgr, index: usize, event: Event) -> Response {
+        let _ = index;
+        self.handle_event(mgr, event)
+    }
+
+    /// Handler for messages from children/descendants
+    ///
+    /// This method is called when a child leaves a message on the stack. *Some*
+    /// parent or ancestor widget should read this message.
+    ///
+    /// The default implementation does nothing.
+    #[inline]
+    fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
+        let _ = (mgr, index);
+    }
+
+    /// Handler for scrolling
+    ///
+    /// When a child calls [`EventMgr::set_scroll`] with a value other than
+    /// [`Scroll::None`], this method is called. (This method is not called
+    /// after [`Self::handle_event`] or other handlers called on self.)
+    ///
+    /// Note that [`Scroll::Rect`] values are in the child's coordinate space,
+    /// and must be translated to the widget's own coordinate space by this
+    /// method (this is not done by the default implementation since any widget
+    /// with non-zero translation very likely wants to implement this method
+    /// anyway).
+    ///
+    /// If the child is in an independent coordinate space, then this method
+    /// should call `mgr.set_scroll(Scroll::None)` to avoid any reactions to
+    /// child's scroll requests.
+    ///
+    /// The default implementation does nothing.
+    #[inline]
+    fn handle_scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) {
+        let _ = (mgr, scroll);
     }
 }
-
-/// Widget trait
-///
-/// Widgets must implement a family of traits, of which this trait is the final
-/// member:
-///
-/// -   [`WidgetCore`] — base functionality (this trait is *always* derived)
-/// -   [`WidgetChildren`] — enumerates children and provides methods derived
-///     from this
-/// -   [`Layout`] — handles sizing and positioning of self and children
-/// -   [`WidgetConfig`] — the last unparametrised trait allows customisation of
-///     some aspects of widget behaviour
-/// -   [`event::Handler`] — handles events
-/// -   [`Widget`] — the final trait
-///
-/// Widgets **must** use the [`derive(Widget)`] macro to implement at least
-/// [`WidgetCore`] and [`Widget`]; these two traits **must not** be implemented
-/// manually or users may face unexpected breaking changes.
-/// This macro can optionally implement *all* above traits, and by default will
-/// implement *all except for `Layout`*. This opt-out derive behaviour means
-/// that adding additional traits into the family is not a breaking change.
-///
-/// To refer to a widget via dyn trait, use `&dyn Widget`.
-/// To refer to a widget in generic functions, use `<W: Widget>`.
-///
-/// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
-#[autoimpl(for<T: trait + ?Sized> Box<T>)]
-pub trait Widget: event::Handler {}
 
 /// Extension trait over widgets
 pub trait WidgetExt: WidgetChildren {
@@ -425,7 +472,7 @@ pub trait WidgetExt: WidgetChildren {
     ///
     /// Note that the default-constructed [`WidgetId`] is *invalid*: any
     /// operations on this value will cause a panic. Valid identifiers are
-    /// assigned by [`WidgetConfig::configure_recurse`].
+    /// assigned by [`Widget::configure_recurse`].
     #[inline]
     fn id(&self) -> WidgetId {
         self.core_data().id.clone()
@@ -435,7 +482,7 @@ pub trait WidgetExt: WidgetChildren {
     ///
     /// Note that the default-constructed [`WidgetId`] is *invalid*: any
     /// operations on this value will cause a panic. Valid identifiers are
-    /// assigned by [`WidgetConfig::configure_recurse`].
+    /// assigned by [`Widget::configure_recurse`].
     #[inline]
     fn id_ref(&self) -> &WidgetId {
         &self.core_data().id

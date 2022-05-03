@@ -79,7 +79,7 @@ fn main() -> kas::shell::Result<()> {
                 }),
             #[widget] table: ScrollBars<MatrixView<TableData, DefaultNav>> = table,
         }
-        impl Handler for Self {
+        impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
                 if index == widget_index![self.max] {
                     if let Some(max) = mgr.try_pop_msg::<usize>() {

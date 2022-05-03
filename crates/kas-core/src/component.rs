@@ -8,7 +8,7 @@
 use crate::geom::{Coord, Rect, Size};
 use crate::layout::{Align, AlignHints, AxisInfo, SetRectMgr, SizeRules};
 use crate::text::{format, AccelString, Text, TextApi};
-use crate::theme::{DrawMgr, IdCoord, IdRect, MarkStyle, SizeMgr, TextClass};
+use crate::theme::{DrawMgr, MarkStyle, SizeMgr, TextClass};
 use crate::{TkAction, WidgetId};
 use kas_macros::{autoimpl, impl_scope};
 
@@ -27,7 +27,7 @@ pub trait Component {
     fn find_id(&mut self, coord: Coord) -> Option<WidgetId>;
 
     /// Draw the component and its children
-    fn draw(&mut self, draw: DrawMgr, id: &WidgetId);
+    fn draw(&mut self, draw: DrawMgr);
 }
 
 impl_scope! {
@@ -129,8 +129,8 @@ impl_scope! {
             None
         }
 
-        fn draw(&mut self, mut draw: DrawMgr, id: &WidgetId) {
-            draw.text_effects(IdCoord(id, self.pos), &self.text, self.class);
+        fn draw(&mut self, mut draw: DrawMgr) {
+            draw.text_effects(self.pos, &self.text, self.class);
         }
     }
 }
@@ -162,8 +162,8 @@ impl_scope! {
             None
         }
 
-        fn draw(&mut self, mut draw: DrawMgr, id: &WidgetId) {
-            draw.mark(IdRect(id, self.rect), self.style);
+        fn draw(&mut self, mut draw: DrawMgr) {
+            draw.mark(self.rect, self.style);
         }
     }
 }

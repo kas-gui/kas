@@ -11,9 +11,9 @@ use serde::{Deserialize, Serialize};
 #[allow(unused)]
 use super::{EventMgr, EventState, GrabMode, Response}; // for doc-links
 use super::{MouseButton, UpdateHandle, VirtualKeyCode};
-#[allow(unused)]
-use crate::event::Handler;
 use crate::geom::{Coord, DVec2, Offset};
+#[allow(unused)]
+use crate::Widget;
 use crate::{dir::Direction, WidgetId, WindowId};
 
 /// Events addressed to a widget
@@ -143,7 +143,7 @@ pub enum Event {
     ///     used, then the pop-up will be closed and the event sent again.
     ///
     /// If `cur_id` is `None`, no widget was found at the coordinate (either
-    /// outside the window or [`crate::Layout::find_id`] failed).
+    /// outside the window or [`crate::Widget::find_id`] failed).
     PressMove {
         source: PressSource,
         cur_id: Option<WidgetId>,
@@ -165,7 +165,7 @@ pub enum Event {
     ///     for the same mouse button or touched finger will be sent.
     ///
     /// If `cur_id` is `None`, no widget was found at the coordinate (either
-    /// outside the window or [`crate::Layout::find_id`] failed).
+    /// outside the window or [`crate::Widget::find_id`] failed).
     PressEnd {
         source: PressSource,
         end_id: Option<WidgetId>,
@@ -237,7 +237,7 @@ impl std::ops::AddAssign<Offset> for Event {
 impl Event {
     /// Translate press-and-release (click or touch) to [`Event::Activate`]
     ///
-    /// A convenient way to make a widget "clickable". Use from [`Handler::handle_event`] like this:
+    /// A convenient way to make a widget "clickable". Use from [`Widget::handle_event`] like this:
     /// ```
     /// # use kas_core::event::{Event, EventMgr, Response};
     /// # use kas_core::{Widget, WidgetExt};

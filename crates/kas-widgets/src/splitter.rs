@@ -136,25 +136,6 @@ impl_scope! {
         }
     }
 
-    impl WidgetConfig for Self {
-        fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
-            self.core_data_mut().id = id;
-            self.id_map.clear();
-
-            // It does not matter what order we choose widget/child ids:
-            for index in 0..self.widgets.len() {
-                let id = self.make_next_id(false, index);
-                self.widgets[index].configure_recurse(mgr, id);
-            }
-            for index in 0..self.handles.len() {
-                let id = self.make_next_id(true, index);
-                self.handles[index].configure_recurse(mgr, id);
-            }
-
-            self.configure(mgr);
-        }
-    }
-
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             if self.widgets.is_empty() {
@@ -223,6 +204,42 @@ impl_scope! {
             }
         }
 
+        fn draw(&mut self, mut draw: DrawMgr) {
+            if !self.size_solved {
+                return;
+            }
+            // as with find_id, there's not much harm in invoking the solver twice
+
+            let solver = layout::RowPositionSolver::new(self.direction);
+            solver.for_children(&mut self.widgets, draw.get_clip_rect(), |w| {
+                draw.recurse(w);
+            });
+
+            let solver = layout::RowPositionSolver::new(self.direction);
+            solver.for_children(&mut self.handles, draw.get_clip_rect(), |w| {
+                draw.separator(w.rect())
+            });
+        }
+    }
+
+    impl Widget for Self {
+        fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
+            self.core_data_mut().id = id;
+            self.id_map.clear();
+
+            // It does not matter what order we choose widget/child ids:
+            for index in 0..self.widgets.len() {
+                let id = self.make_next_id(false, index);
+                self.widgets[index].configure_recurse(mgr, id);
+            }
+            for index in 0..self.handles.len() {
+                let id = self.make_next_id(true, index);
+                self.handles[index].configure_recurse(mgr, id);
+            }
+
+            self.configure(mgr);
+        }
+
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) || !self.size_solved {
                 return None;
@@ -245,25 +262,6 @@ impl_scope! {
             Some(self.id())
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
-            if !self.size_solved {
-                return;
-            }
-            // as with find_id, there's not much harm in invoking the solver twice
-
-            let solver = layout::RowPositionSolver::new(self.direction);
-            solver.for_children(&mut self.widgets, draw.get_clip_rect(), |w| {
-                w.draw(draw.re())
-            });
-
-            let solver = layout::RowPositionSolver::new(self.direction);
-            solver.for_children(&mut self.handles, draw.get_clip_rect(), |w| {
-                draw.separator(w)
-            });
-        }
-    }
-
-    impl Handler for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
             if (index & 1) == 1 {
                 if let Some(MsgPressFocus) = mgr.try_pop_msg() {

@@ -92,12 +92,6 @@ impl_scope! {
         }
     }
 
-    impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            mgr.register_nav_fallback(self.id());
-        }
-    }
-
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             let mut rules = self.inner.size_rules(size_mgr.re(), axis);
@@ -123,6 +117,18 @@ impl_scope! {
                 .set_sizes(rect.size, child_size + self.frame_size);
         }
 
+        fn draw(&mut self, mut draw: DrawMgr) {
+            draw.with_clip_region(self.core.rect, self.scroll_offset(), |mut draw| {
+                draw.recurse(&mut self.inner);
+            });
+        }
+    }
+
+    impl Widget for Self {
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
+            mgr.register_nav_fallback(self.id());
+        }
+
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
@@ -135,14 +141,6 @@ impl_scope! {
             self.scroll_offset()
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
-            draw.with_clip_region(self.core.rect, self.scroll_offset(), |mut draw| {
-                self.inner.draw(draw.re())
-            });
-        }
-    }
-
-    impl Handler for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             self.scroll.scroll_by_event(mgr, event, self.id(), self.core.rect).1
         }

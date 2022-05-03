@@ -235,6 +235,13 @@ impl_scope! {
             let _ = self.update_handle();
         }
 
+        fn draw(&mut self, mut draw: DrawMgr) {
+            let dir = self.direction.as_direction();
+            draw.scrollbar(self.rect(), &self.handle, dir);
+        }
+    }
+
+    impl Widget for Self {
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
@@ -242,13 +249,6 @@ impl_scope! {
             self.handle.find_id(coord).or(Some(self.id()))
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
-            let dir = self.direction.as_direction();
-            draw.scrollbar(&*self, &self.handle, dir);
-        }
-    }
-
-    impl Handler for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::PressStart { source, coord, .. } => {
@@ -508,12 +508,12 @@ impl_scope! {
 
         fn draw_(&mut self, mut draw: DrawMgr) {
             if self.show_bars.0 {
-                self.horiz_bar.draw(draw.re());
+                draw.recurse(&mut self.horiz_bar);
             }
             if self.show_bars.1 {
-                self.vert_bar.draw(draw.re());
+                draw.recurse(&mut self.vert_bar);
             }
-            self.inner.draw(draw.re());
+            draw.recurse(&mut self.inner);
         }
     }
 
@@ -534,12 +534,6 @@ impl_scope! {
             let offset = self.inner.set_scroll_offset(mgr, offset);
             *mgr |= self.horiz_bar.set_value(offset.0) | self.vert_bar.set_value(offset.1);
             offset
-        }
-    }
-
-    impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            mgr.register_nav_fallback(self.id());
         }
     }
 
@@ -590,16 +584,6 @@ impl_scope! {
             }
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-            self.vert_bar.find_id(coord)
-                .or_else(|| self.horiz_bar.find_id(coord))
-                .or_else(|| self.inner.find_id(coord))
-                .or(Some(self.id()))
-        }
-
         #[cfg(feature = "min_spec")]
         default fn draw(&mut self, draw: DrawMgr) {
             self.draw_(draw);
@@ -615,21 +599,35 @@ impl_scope! {
         fn draw(&mut self, mut draw: DrawMgr) {
             // Enlarge clip region to *our* rect:
             draw.with_clip_region(self.core.rect, self.inner.scroll_offset(), |mut draw| {
-                self.inner.inner_mut().draw(draw.re())
+                draw.recurse(&mut self.inner);
             });
             // Use a second clip region to force draw order:
             draw.with_clip_region(self.core.rect, Offset::ZERO, |mut draw| {
                 if self.show_bars.0 {
-                    self.horiz_bar.draw(draw.re());
+                    draw.recurse(&mut self.horiz_bar);
                 }
                 if self.show_bars.1 {
-                    self.vert_bar.draw(draw.re());
+                    draw.recurse(&mut self.vert_bar);
                 }
             });
         }
     }
 
-    impl Handler for Self {
+    impl Widget for Self {
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
+            mgr.register_nav_fallback(self.id());
+        }
+
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) {
+                return None;
+            }
+            self.vert_bar.find_id(coord)
+                .or_else(|| self.horiz_bar.find_id(coord))
+                .or_else(|| self.inner.find_id(coord))
+                .or(Some(self.id()))
+        }
+
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
             if index == widget_index![self.horiz_bar] {
                 if let Some(msg) = mgr.try_pop_msg() {

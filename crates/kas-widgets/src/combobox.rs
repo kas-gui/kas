@@ -47,7 +47,18 @@ impl_scope! {
         on_select: Option<Rc<dyn Fn(&mut EventMgr, M)>>,
     }
 
-    impl WidgetConfig for Self {
+    impl kas::Layout for Self {
+        fn layout(&mut self) -> layout::Layout<'_> {
+            let list = [
+                layout::Layout::component(&mut self.label),
+                layout::Layout::component(&mut self.mark),
+            ];
+            let list = layout::Layout::list(list.into_iter(), Direction::Right, &mut self.layout_list);
+            layout::Layout::button(&mut self.layout_frame, list, None)
+        }
+    }
+
+    impl Widget for Self {
         fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
             self.core_data_mut().id = id;
             mgr.new_accel_layer(self.id(), true);
@@ -65,30 +76,12 @@ impl_scope! {
         fn hover_highlight(&self) -> bool {
             true
         }
-    }
-
-    impl kas::Layout for Self {
-        fn layout(&mut self) -> layout::Layout<'_> {
-            let list = [
-                layout::Layout::component(&mut self.label),
-                layout::Layout::component(&mut self.mark),
-            ];
-            let list = layout::Layout::list(list.into_iter(), Direction::Right, &mut self.layout_list);
-            layout::Layout::button(&mut self.layout_frame, list, None)
-        }
 
         fn spatial_nav(&mut self, _: &mut SetRectMgr, _: bool, _: Option<usize>) -> Option<usize> {
             // We have no child within our rect
             None
         }
 
-        fn draw(&mut self, draw: DrawMgr) {
-            let id = self.id();
-            self.layout().draw(draw, &id);
-        }
-    }
-
-    impl Handler for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             let open_popup = |s: &mut Self, mgr: &mut EventMgr, key_focus: bool| {
                 s.popup_id = mgr.add_popup(kas::Popup {

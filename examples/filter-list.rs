@@ -60,7 +60,7 @@ fn main() -> kas::shell::Result<()> {
             #[widget] list: ScrollBars<ListView> =
                 ScrollBars::new(ListView::new(filtered)),
         }
-        impl Handler for Self {
+        impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
                 if let Some(mode) = mgr.try_pop_msg() {
                     *mgr |= self.list.set_selection_mode(mode);

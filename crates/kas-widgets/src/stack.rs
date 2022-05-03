@@ -90,20 +90,6 @@ impl_scope! {
         }
     }
 
-    impl WidgetConfig for Self {
-        fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
-            self.core_data_mut().id = id;
-            self.id_map.clear();
-
-            for index in 0..self.widgets.len() {
-                let id = self.make_next_id(index);
-                self.widgets[index].configure_recurse(mgr, id);
-            }
-
-            self.configure(mgr);
-        }
-    }
-
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             let mut rules = SizeRules::EMPTY;
@@ -125,18 +111,32 @@ impl_scope! {
             }
         }
 
+        fn draw(&mut self, mut draw: DrawMgr) {
+            if self.sized_range.contains(&self.active) && self.active < self.widgets.len() {
+                draw.recurse(&mut self.widgets[self.active]);
+            }
+        }
+    }
+
+    impl Widget for Self {
+        fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
+            self.core_data_mut().id = id;
+            self.id_map.clear();
+
+            for index in 0..self.widgets.len() {
+                let id = self.make_next_id(index);
+                self.widgets[index].configure_recurse(mgr, id);
+            }
+
+            self.configure(mgr);
+        }
+
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             // Latter condition is implied, but compiler doesn't know this:
             if self.sized_range.contains(&self.active) && self.active < self.widgets.len() {
                 return self.widgets[self.active].find_id(coord);
             }
             None
-        }
-
-        fn draw(&mut self, mut draw: DrawMgr) {
-            if self.sized_range.contains(&self.active) && self.active < self.widgets.len() {
-                self.widgets[self.active].draw(draw.re());
-            }
         }
     }
 

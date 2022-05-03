@@ -244,12 +244,12 @@ where
         &mut self.draw
     }
 
-    fn new_pass(
+    fn new_pass<'b>(
         &mut self,
         inner_rect: Rect,
         offset: Offset,
         class: PassType,
-        f: &mut dyn FnMut(&mut dyn theme::DrawHandle),
+        f: Box<dyn FnOnce(&mut dyn theme::DrawHandle) + 'b>,
     ) {
         let mut shadow = Default::default();
         let mut outer_rect = inner_rect;

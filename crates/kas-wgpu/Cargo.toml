@@ -59,9 +59,9 @@ version = "0.10.0"
 default-features = false
 
 [dependencies.kas-text]
-version = "0.4.2"
+version = "0.5.0"
 git = "https://github.com/kas-gui/kas-text.git"
-rev = "179278f"
+rev = "d90004a0fb4fc794392ce3f1a9e46ca86a8a8b08"
 
 [build-dependencies]
 glob = "0.3"

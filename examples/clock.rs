@@ -119,14 +119,11 @@ impl_scope! {
         }
     }
 
-    impl WidgetConfig for Clock {
+    impl Widget for Clock {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.update_on_timer(Duration::new(0, 0), self.id(), 0);
         }
-    }
 
-    impl Handler for Clock {
-        #[inline]
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(0) => {

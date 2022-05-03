@@ -8,7 +8,7 @@
 use std::convert::AsRef;
 use std::ops::{Bound, Range, RangeBounds};
 
-use super::{FrameStyle, IdCoord, IdRect, MarkStyle, SizeHandle, SizeMgr, TextClass};
+use super::{FrameStyle, MarkStyle, SizeHandle, SizeMgr, TextClass};
 use crate::dir::Direction;
 use crate::draw::{color::Rgb, Draw, DrawShared, ImageId, PassType};
 use crate::event::EventState;
@@ -16,7 +16,7 @@ use crate::geom::{Coord, Offset, Rect};
 use crate::layout::SetRectMgr;
 use crate::macros::autoimpl;
 use crate::text::{TextApi, TextDisplay};
-use crate::{TkAction, WidgetId};
+use crate::{TkAction, Widget, WidgetExt, WidgetId};
 
 /// Optional background colour
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -40,36 +40,57 @@ impl Default for Background {
 /// This interface is provided to widgets in [`crate::Layout::draw`].
 /// Lower-level interfaces may be accessed through [`Self::draw_device`].
 ///
-/// Draw methods take a "feature"; any type convertible to [`IdRect`] or (for
-/// text methods) [`IdCoord`]. For convenience where the target [`Rect`] or
-/// [`Coord`] coincides with the widget's own `rect` (or `rect.pos`), this may
-/// be constructed from `&CoreData` or `&W where W: WidgetCore`. For example:
+/// `DrawMgr` is not a `Copy` or `Clone` type; instead it may be "reborrowed"
+/// via [`Self::re_id`] or [`Self::re_clone`].
 ///
 /// -   `draw.checkbox(&*self, self.state);` — note `&*self` to convert from to
 ///     `&W` from `&mut W`, since the latter would cause borrow conflicts
 pub struct DrawMgr<'a> {
     h: &'a mut dyn DrawHandle,
+    id: WidgetId,
 }
 
 impl<'a> DrawMgr<'a> {
-    /// Reborrow with a new lifetime
+    /// Reborrow with a new lifetime and new `id`
     ///
     /// Rust allows references like `&T` or `&mut T` to be "reborrowed" through
     /// coercion: essentially, the pointer is copied under a new, shorter, lifetime.
     /// Until rfcs#1403 lands, reborrows on user types require a method call.
     #[inline(always)]
-    pub fn re<'b>(&'b mut self) -> DrawMgr<'b>
+    pub fn re_id<'b>(&'b mut self, id: WidgetId) -> DrawMgr<'b>
     where
         'a: 'b,
     {
-        DrawMgr { h: self.h }
+        DrawMgr { h: self.h, id }
+    }
+
+    /// Reborrow with a new lifetime and same `id`
+    ///
+    /// Rust allows references like `&T` or `&mut T` to be "reborrowed" through
+    /// coercion: essentially, the pointer is copied under a new, shorter, lifetime.
+    /// Until rfcs#1403 lands, reborrows on user types require a method call.
+    #[inline(always)]
+    pub fn re_clone<'b>(&'b mut self) -> DrawMgr<'b>
+    where
+        'a: 'b,
+    {
+        DrawMgr {
+            h: self.h,
+            id: self.id.clone(),
+        }
+    }
+
+    /// Recurse drawing to a child
+    #[inline]
+    pub fn recurse(&mut self, child: &mut dyn Widget) {
+        child.draw(self.re_id(child.id()));
     }
 
     /// Construct from a [`DrawMgr`] and [`EventState`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn new(h: &'a mut dyn DrawHandle) -> Self {
-        DrawMgr { h }
+    pub fn new(h: &'a mut dyn DrawHandle, id: WidgetId) -> Self {
+        DrawMgr { h, id }
     }
 
     /// Access event-management state
@@ -107,9 +128,14 @@ impl<'a> DrawMgr<'a> {
     ///
     /// Adds a new draw pass of type [`PassType::Clip`], with draw operations
     /// clipped to `rect` and translated by `offset.
-    pub fn with_clip_region<F: FnMut(DrawMgr)>(&mut self, rect: Rect, offset: Offset, mut f: F) {
-        self.h
-            .new_pass(rect, offset, PassType::Clip, &mut |h| f(DrawMgr { h }));
+    pub fn with_clip_region<F: FnOnce(DrawMgr)>(&mut self, rect: Rect, offset: Offset, f: F) {
+        let id = self.id.clone();
+        self.h.new_pass(
+            rect,
+            offset,
+            PassType::Clip,
+            Box::new(|h| f(DrawMgr { h, id })),
+        );
     }
 
     /// Draw to a new pass as an overlay (e.g. for pop-up menus)
@@ -120,11 +146,14 @@ impl<'a> DrawMgr<'a> {
     /// The theme is permitted to enlarge the `rect` for the purpose of drawing
     /// a frame or shadow around this overlay, thus the
     /// [`Self::get_clip_rect`] may be larger than expected.
-    pub fn with_overlay<F: FnMut(DrawMgr)>(&mut self, rect: Rect, mut f: F) {
-        self.h
-            .new_pass(rect, Offset::ZERO, PassType::Overlay, &mut |h| {
-                f(DrawMgr { h })
-            });
+    pub fn with_overlay<F: FnOnce(DrawMgr)>(&mut self, rect: Rect, f: F) {
+        let id = self.id.clone();
+        self.h.new_pass(
+            rect,
+            Offset::ZERO,
+            PassType::Overlay,
+            Box::new(|h| f(DrawMgr { h, id })),
+        );
     }
 
     /// Target area for drawing
@@ -140,15 +169,13 @@ impl<'a> DrawMgr<'a> {
     /// Draw a frame inside the given `rect`
     ///
     /// The frame dimensions are given by [`SizeMgr::frame`].
-    pub fn frame<'b>(&mut self, feature: impl Into<IdRect<'b>>, style: FrameStyle, bg: Background) {
-        let f = feature.into();
-        self.h.frame(f.0, f.1, style, bg)
+    pub fn frame(&mut self, rect: Rect, style: FrameStyle, bg: Background) {
+        self.h.frame(&self.id, rect, style, bg)
     }
 
     /// Draw a separator in the given `rect`
-    pub fn separator<'b>(&mut self, feature: impl Into<IdRect<'b>>) {
-        let f = feature.into();
-        self.h.separator(f.1);
+    pub fn separator(&mut self, rect: Rect) {
+        self.h.separator(rect);
     }
 
     /// Draw a selection box
@@ -156,23 +183,16 @@ impl<'a> DrawMgr<'a> {
     /// This appears as a dashed box or similar around this `rect`. Note that
     /// the selection indicator is drawn *outside* of this rect, within a margin
     /// of size `inner_margin` that is expected to be present around this box.
-    pub fn selection_box<'b>(&mut self, feature: impl Into<IdRect<'b>>) {
-        let f = feature.into();
-        self.h.selection_box(f.1);
+    pub fn selection_box(&mut self, rect: Rect) {
+        self.h.selection_box(rect);
     }
 
     /// Draw text
     ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text<'b>(
-        &mut self,
-        feature: impl Into<IdCoord<'b>>,
-        text: &TextDisplay,
-        class: TextClass,
-    ) {
-        let f = feature.into();
-        self.h.text(f.0, f.1, text, class);
+    pub fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass) {
+        self.h.text(&self.id, pos, text, class);
     }
 
     /// Draw text with effects
@@ -183,14 +203,8 @@ impl<'a> DrawMgr<'a> {
     ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text_effects<'b>(
-        &mut self,
-        feature: impl Into<IdCoord<'b>>,
-        text: &dyn TextApi,
-        class: TextClass,
-    ) {
-        let f = feature.into();
-        self.h.text_effects(f.0, f.1, text, class);
+    pub fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
+        self.h.text_effects(&self.id, pos, text, class);
     }
 
     /// Draw some text using the standard font, with a subset selected
@@ -198,14 +212,13 @@ impl<'a> DrawMgr<'a> {
     /// Other than visually highlighting the selection, this method behaves
     /// identically to [`Self::text`]. It is likely to be replaced in the
     /// future by a higher-level API.
-    pub fn text_selected<'b, T: AsRef<TextDisplay>, R: RangeBounds<usize>>(
+    pub fn text_selected<T: AsRef<TextDisplay>, R: RangeBounds<usize>>(
         &mut self,
-        feature: impl Into<IdCoord<'b>>,
+        pos: Coord,
         text: T,
         range: R,
         class: TextClass,
     ) {
-        let f = feature.into();
         let start = match range.start_bound() {
             Bound::Included(n) => *n,
             Bound::Excluded(n) => *n + 1,
@@ -218,22 +231,15 @@ impl<'a> DrawMgr<'a> {
         };
         let range = Range { start, end };
         self.h
-            .text_selected_range(f.0, f.1, text.as_ref(), range, class);
+            .text_selected_range(&self.id, pos, text.as_ref(), range, class);
     }
 
     /// Draw an edit marker at the given `byte` index on this `text`
     ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text_cursor<'b>(
-        &mut self,
-        feature: impl Into<IdCoord<'b>>,
-        text: &TextDisplay,
-        class: TextClass,
-        byte: usize,
-    ) {
-        let f = feature.into();
-        self.h.text_cursor(f.0, f.1, text, class, byte);
+    pub fn text_cursor(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
+        self.h.text_cursor(&self.id, pos, text, class, byte);
     }
 
     /// Draw UI element: checkbox
@@ -241,57 +247,32 @@ impl<'a> DrawMgr<'a> {
     /// The checkbox is a small, usually square, box with or without a check
     /// mark. A checkbox widget may include a text label, but that label is not
     /// part of this element.
-    pub fn checkbox<'b>(&mut self, feature: impl Into<IdRect<'b>>, checked: bool) {
-        let f = feature.into();
-        self.h.checkbox(f.0, f.1, checked);
+    pub fn checkbox(&mut self, rect: Rect, checked: bool) {
+        self.h.checkbox(&self.id, rect, checked);
     }
 
     /// Draw UI element: radiobox
     ///
     /// This is similar in appearance to a checkbox.
-    pub fn radiobox<'b>(&mut self, feature: impl Into<IdRect<'b>>, checked: bool) {
-        let f = feature.into();
-        self.h.radiobox(f.0, f.1, checked);
+    pub fn radiobox(&mut self, rect: Rect, checked: bool) {
+        self.h.radiobox(&self.id, rect, checked);
     }
 
     /// Draw UI element: mark
-    pub fn mark<'b>(&mut self, feature: impl Into<IdRect<'b>>, style: MarkStyle) {
-        let f = feature.into();
-        self.h.mark(f.0, f.1, style);
+    pub fn mark(&mut self, rect: Rect, style: MarkStyle) {
+        self.h.mark(&self.id, rect, style);
     }
 
     /// Draw UI element: scrollbar
-    ///
-    /// -   `id2`: [`WidgetId`] of the handle
-    /// -   `rect`: area of whole widget (slider track)
-    /// -   `h_rect`: area of slider handle
-    /// -   `dir`: direction of bar
-    pub fn scrollbar<'b, 'c>(
-        &mut self,
-        feature: impl Into<IdRect<'b>>,
-        handle: impl Into<IdRect<'c>>,
-        dir: Direction,
-    ) {
-        let f = feature.into();
-        let g = handle.into();
-        self.h.scrollbar(f.0, g.0, f.1, g.1, dir);
+    pub fn scrollbar(&mut self, track_rect: Rect, handle: &dyn Widget, dir: Direction) {
+        self.h
+            .scrollbar(&self.id, handle.id_ref(), track_rect, handle.rect(), dir);
     }
 
     /// Draw UI element: slider
-    ///
-    /// -   `id2`: [`WidgetId`] of the handle
-    /// -   `rect`: area of whole widget (slider track)
-    /// -   `h_rect`: area of slider handle
-    /// -   `dir`: direction of slider (currently only LTR or TTB)
-    pub fn slider<'b, 'c>(
-        &mut self,
-        feature: impl Into<IdRect<'b>>,
-        handle: impl Into<IdRect<'c>>,
-        dir: Direction,
-    ) {
-        let f = feature.into();
-        let g = handle.into();
-        self.h.slider(f.0, g.0, f.1, g.1, dir);
+    pub fn slider(&mut self, track_rect: Rect, handle: &dyn Widget, dir: Direction) {
+        self.h
+            .slider(&self.id, handle.id_ref(), track_rect, handle.rect(), dir);
     }
 
     /// Draw UI element: progress bar
@@ -300,19 +281,13 @@ impl<'a> DrawMgr<'a> {
     /// -   `dir`: direction of progress bar
     /// -   `state`: highlighting information
     /// -   `value`: progress value, between 0.0 and 1.0
-    pub fn progress_bar<'b>(&mut self, feature: impl Into<IdRect<'b>>, dir: Direction, value: f32) {
-        let f = feature.into();
-        self.h.progress_bar(f.0, f.1, dir, value);
+    pub fn progress_bar(&mut self, rect: Rect, dir: Direction, value: f32) {
+        self.h.progress_bar(&self.id, rect, dir, value);
     }
 
     /// Draw an image
-    //
-    // NOTE: it would be tempting to use the following:
-    // pub fn image<'b>(&mut self, feature: impl Into<IdRect<'b>>, id: impl Into<ImageId>) { .. }
-    // but common usage would result in a borrow conflict!
-    pub fn image<'b>(&mut self, feature: impl Into<IdRect<'b>>, id: ImageId) {
-        let f = feature.into();
-        self.h.image(id, f.1);
+    pub fn image(&mut self, rect: Rect, id: ImageId) {
+        self.h.image(id, rect);
     }
 }
 
@@ -343,12 +318,12 @@ pub trait DrawHandle {
     fn draw_device(&mut self) -> &mut dyn Draw;
 
     /// Construct a new pass
-    fn new_pass(
+    fn new_pass<'a>(
         &mut self,
         rect: Rect,
         offset: Offset,
         class: PassType,
-        f: &mut dyn FnMut(&mut dyn DrawHandle),
+        f: Box<dyn FnOnce(&mut dyn DrawHandle) + 'a>,
     );
 
     /// Target area for drawing
@@ -474,9 +449,8 @@ mod test {
         let _scale = draw.size_mgr().scale_factor();
 
         let id = WidgetId::ROOT;
-        let feature = IdCoord(&id, Coord::ZERO);
         let text = crate::text::Text::new_single("sample");
         let class = TextClass::Label(false);
-        draw.text_selected(feature, &text, .., class)
+        draw.text_selected(Coord::ZERO, &text, .., class)
     }
 }

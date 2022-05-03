@@ -6,8 +6,8 @@
 //! Menubar
 
 use super::{Menu, SubMenu, SubMenuBuilder};
-use kas::event::{self, Command};
-use kas::layout::{self, RowSetter, RowSolver, RulesSetter, RulesSolver};
+use kas::event::Command;
+use kas::layout::{self, RowPositionSolver, RowSetter, RowSolver, RulesSetter, RulesSolver};
 use kas::prelude::*;
 use kas::theme::FrameStyle;
 
@@ -74,10 +74,6 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn layout(&mut self) -> layout::Layout<'_> {
-            layout::Layout::slice(&mut self.widgets, self.direction, &mut self.layout_store)
-        }
-
         fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             let dim = (self.direction, self.widgets.len());
             let mut solver = RowSolver::new(axis, dim, &mut self.layout_store);
@@ -100,9 +96,21 @@ impl_scope! {
                 child.set_rect(mgr, setter.child_rect(&mut self.layout_store, n), AlignHints::CENTER);
             }
         }
+
+        fn draw(&mut self, mut draw: DrawMgr) {
+            let solver = RowPositionSolver::new(self.direction);
+            solver.for_children(&mut self.widgets, self.core.rect, |w| draw.recurse(w));
+        }
     }
 
-    impl<D: Directional> event::Handler for MenuBar<D> {
+    impl<D: Directional> Widget for MenuBar<D> {
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            let solver = RowPositionSolver::new(self.direction);
+            solver
+                .find_child_mut(&mut self.widgets, coord)
+                .and_then(|child| child.find_id(coord))
+        }
+
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(id_code) => {

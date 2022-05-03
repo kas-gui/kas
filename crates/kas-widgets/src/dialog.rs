@@ -12,7 +12,7 @@ use crate::{Label, TextButton};
 use kas::event::VirtualKeyCode;
 use kas::prelude::*;
 use kas::text::format::FormattableText;
-use kas::WindowId;
+use kas::{Widget, Window, WindowId};
 
 #[derive(Copy, Clone, Debug)]
 struct MessageBoxOk;
@@ -48,21 +48,19 @@ impl_scope! {
         }
     }
 
-    impl kas::event::Handler for Self {
+    impl Widget for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
             if let Some(MessageBoxOk) = mgr.try_pop_msg() {
                 mgr.send_action(TkAction::CLOSE);
             }
         }
-    }
 
-    impl kas::WidgetConfig for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.enable_alt_bypass(self.id_ref(), true);
         }
     }
 
-    impl kas::Window for Self {
+    impl Window for Self {
         fn title(&self) -> &str {
             &self.title
         }

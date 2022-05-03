@@ -8,11 +8,11 @@
 use std::time::{Duration, Instant};
 
 use kas::class::HasString;
-use kas::event::{Event, EventMgr, Handler, Response};
+use kas::event::{Event, EventMgr, Response};
 use kas::layout::SetRectMgr;
 use kas::macros::make_widget;
 use kas::widgets::{Frame, Label, TextButton, Window};
-use kas::WidgetExt;
+use kas::{Widget, WidgetExt};
 
 #[derive(Clone, Debug)]
 struct MsgReset;
@@ -34,12 +34,10 @@ fn make_window() -> Box<dyn kas::Window> {
             saved: Duration = Duration::default(),
             start: Option<Instant> = None,
         }
-        impl kas::WidgetConfig for Self {
+        impl Widget for Self {
             fn configure(&mut self, mgr: &mut SetRectMgr) {
                 mgr.enable_alt_bypass(self.id_ref(), true);
             }
-        }
-        impl Handler for Self {
             fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
                 match event {
                     Event::TimerUpdate(0) => {

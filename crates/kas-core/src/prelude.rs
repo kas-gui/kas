@@ -17,7 +17,7 @@ pub use crate::dir::{Direction, Directional};
 #[doc(no_inline)]
 pub use crate::draw::{DrawShared, ImageHandle};
 #[doc(no_inline)]
-pub use crate::event::{components, Event, EventMgr, EventState, Handler, Response, UpdateHandle};
+pub use crate::event::{components, Event, EventMgr, EventState, Response, UpdateHandle};
 #[doc(no_inline)]
 pub use crate::geom::{Coord, Offset, Rect, Size};
 #[doc(no_inline)]
@@ -39,4 +39,4 @@ pub use crate::WidgetId;
 #[doc(no_inline)]
 pub use crate::{Boxed, TkAction};
 #[doc(no_inline)]
-pub use crate::{Layout, Widget, WidgetChildren, WidgetConfig, WidgetCore, WidgetExt};
+pub use crate::{Layout, Widget, WidgetChildren, WidgetCore, WidgetExt};

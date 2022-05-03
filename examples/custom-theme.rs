@@ -130,7 +130,7 @@ fn main() -> kas::shell::Result<()> {
                 #[widget] yellow = TextButton::new_msg("&Yellow", Item::Yellow),
                 #[widget] green = TextButton::new_msg("&Green", Item::Green),
             }
-            impl Handler for Self {
+            impl Widget for Self {
                 fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
                     if let Some(item) = mgr.try_pop_msg::<Item>() {
                         match item {

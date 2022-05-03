@@ -123,7 +123,21 @@ impl_scope! {
         }
     }
 
-    impl WidgetConfig for Self {
+    impl kas::Layout for Self {
+        fn layout(&mut self) -> layout::Layout<'_> {
+            layout::Layout::component(&mut self.label)
+        }
+
+        fn draw(&mut self, mut draw: DrawMgr) {
+            draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
+            self.label.draw(draw.re_id(self.id()));
+            if self.mark.rect.size != Size::ZERO {
+                self.mark.draw(draw);
+            }
+        }
+    }
+
+    impl Widget for Self {
         fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
             self.core_data_mut().id = id;
             mgr.add_accel_keys(self.id_ref(), self.label.keys());
@@ -138,28 +152,12 @@ impl_scope! {
         fn key_nav(&self) -> bool {
             self.key_nav
         }
-    }
-
-    impl kas::Layout for Self {
-        fn layout(&mut self) -> layout::Layout<'_> {
-            layout::Layout::component(&mut self.label)
-        }
 
         fn spatial_nav(&mut self, _: &mut SetRectMgr, _: bool, _: Option<usize>) -> Option<usize> {
             // We have no child within our rect
             None
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
-            draw.frame(&*self, FrameStyle::MenuEntry, Default::default());
-            self.label.draw(draw.re(), &self.core.id);
-            if self.mark.rect.size != Size::ZERO {
-                self.mark.draw(draw, &self.core.id);
-            }
-        }
-    }
-
-    impl Handler for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Activate => {
@@ -363,6 +361,14 @@ impl_scope! {
             }
         }
 
+        fn draw(&mut self, mut draw: DrawMgr) {
+            for child in self.list.iter_mut() {
+                draw.recurse(child);
+            }
+        }
+    }
+
+    impl Widget for Self {
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
@@ -374,12 +380,6 @@ impl_scope! {
                 }
             }
             Some(self.id())
-        }
-
-        fn draw(&mut self, mut draw: DrawMgr) {
-            for child in self.list.iter_mut() {
-                child.draw(draw.re());
-            }
         }
     }
 

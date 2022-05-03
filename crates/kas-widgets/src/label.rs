@@ -78,11 +78,11 @@ impl_scope! {
 
         #[cfg(feature = "min_spec")]
         default fn draw(&mut self, mut draw: DrawMgr) {
-            draw.text_effects(&*self, &self.label, TextClass::Label(self.wrap));
+            draw.text_effects(self.rect().pos, &self.label, TextClass::Label(self.wrap));
         }
         #[cfg(not(feature = "min_spec"))]
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.text_effects(&*self, &self.label, TextClass::Label(self.wrap));
+            draw.text_effects(self.rect().pos, &self.label, TextClass::Label(self.wrap));
         }
     }
 
@@ -106,13 +106,21 @@ impl_scope! {
 #[cfg(feature = "min_spec")]
 impl<'a> Layout for Label<&'a str> {
     fn draw(&mut self, mut draw: DrawMgr) {
-        draw.text(&*self, self.label.as_ref(), TextClass::Label(self.wrap));
+        draw.text(
+            self.rect().pos,
+            self.label.as_ref(),
+            TextClass::Label(self.wrap),
+        );
     }
 }
 #[cfg(feature = "min_spec")]
 impl Layout for StringLabel {
     fn draw(&mut self, mut draw: DrawMgr) {
-        draw.text(&*self, self.label.as_ref(), TextClass::Label(self.wrap));
+        draw.text(
+            self.rect().pos,
+            self.label.as_ref(),
+            TextClass::Label(self.wrap),
+        );
     }
 }
 
@@ -157,7 +165,7 @@ impl_scope! {
     /// Accelerator keys are not useful on plain labels. To be useful, a parent
     /// widget must do something like:
     /// ```no_test
-    /// impl WidgetConfig for Self {
+    /// impl Widget for Self {
     ///     fn configure(&mut self, mgr: &mut EventMgr) {
     ///         let target = self.id(); // widget receiving Event::Activate
     ///         mgr.add_accel_keys(target, self.label.keys());
@@ -218,7 +226,7 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.text_effects(&*self, &self.0.label, TextClass::AccelLabel(self.0.wrap));
+            draw.text_effects(self.rect().pos, &self.0.label, TextClass::AccelLabel(self.0.wrap));
         }
     }
 

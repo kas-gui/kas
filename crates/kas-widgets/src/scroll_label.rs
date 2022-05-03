@@ -7,7 +7,7 @@
 
 use super::Scrollable;
 use kas::event::components::{TextInput, TextInputAction};
-use kas::event::{self, Command, Scroll, ScrollDelta};
+use kas::event::{Command, CursorIcon, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
@@ -18,7 +18,7 @@ impl_scope! {
     /// A text label supporting scrolling and selection
     #[derive(Clone, Default, Debug)]
     #[widget{
-        cursor_icon = event::CursorIcon::Text;
+        cursor_icon = CursorIcon::Text;
     }]
     pub struct ScrollLabel<T: FormattableText + 'static> {
         #[widget_core]
@@ -42,22 +42,17 @@ impl_scope! {
             self.set_view_offset_from_edit_pos();
         }
 
-        #[inline]
-        fn translation(&self) -> Offset {
-            self.scroll_offset()
-        }
-
         fn draw(&mut self, mut draw: DrawMgr) {
             let class = TextClass::LabelScroll;
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
                 if self.selection.is_empty() {
-                    draw.text(&*self, self.text.as_ref(), class);
+                    draw.text(self.rect().pos, self.text.as_ref(), class);
                 } else {
                     // TODO(opt): we could cache the selection rectangles here to make
                     // drawing more efficient (self.text.highlight_lines(range) output).
                     // The same applies to the edit marker below.
                     draw.text_selected(
-                        &*self,
+                        self.rect().pos,
                         &self.text,
                         self.selection.range(),
                         class,
@@ -83,8 +78,9 @@ impl_scope! {
 
         fn set_edit_pos_from_coord(&mut self, mgr: &mut EventMgr, coord: Coord) {
             let rel_pos = (coord - self.rect().pos + self.view_offset).cast();
-            self.selection
-                .set_edit_pos(self.text.text_index_nearest(rel_pos));
+            if let Ok(pos) = self.text.text_index_nearest(rel_pos) {
+                self.selection.set_edit_pos(pos);
+            }
             self.set_view_offset_from_edit_pos();
             mgr.redraw(self.id());
         }
@@ -112,7 +108,12 @@ impl_scope! {
         /// A redraw is assumed since edit_pos moved.
         fn set_view_offset_from_edit_pos(&mut self) {
             let edit_pos = self.selection.edit_pos();
-            if let Some(marker) = self.text.text_glyph_pos(edit_pos).next_back() {
+            if let Some(marker) = self
+                .text
+                .text_glyph_pos(edit_pos)
+                .ok()
+                .and_then(|mut m| m.next_back())
+            {
                 let bounds = Vec2::from(self.text.env().bounds);
                 let min_x = marker.pos.0 - bounds.0;
                 let min_y = marker.pos.1 - marker.descent - bounds.1;
@@ -144,7 +145,12 @@ impl_scope! {
         }
     }
 
-    impl event::Handler for Self {
+    impl Widget for Self {
+        #[inline]
+        fn translation(&self) -> Offset {
+            self.scroll_offset()
+        }
+
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(cmd, _) => match cmd {

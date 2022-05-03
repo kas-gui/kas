@@ -328,16 +328,6 @@ impl_scope! {
         }
     }
 
-    impl WidgetConfig for Mandlebrot {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            mgr.register_nav_fallback(self.id());
-        }
-
-        fn key_nav(&self) -> bool {
-            true
-        }
-    }
-
     impl Layout for Mandlebrot {
         fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             // We use a reasonable minimum size of 300x200 and a large ideal
@@ -365,7 +355,15 @@ impl_scope! {
         }
     }
 
-    impl event::Handler for Mandlebrot {
+    impl Widget for Mandlebrot {
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
+            mgr.register_nav_fallback(self.id());
+        }
+
+        fn key_nav(&self) -> bool {
+            true
+        }
+
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(cmd, _) => {
@@ -463,7 +461,7 @@ impl_scope! {
             Window::new("Mandlebrot", w)
         }
     }
-    impl Handler for Self {
+    impl Widget for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
             if let Some(iter) = mgr.try_pop_msg() {
                 self.mbrot.iter = iter;

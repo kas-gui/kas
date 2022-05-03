@@ -106,16 +106,14 @@ impl_scope! {
         }
     }
 
-    impl WidgetConfig for Self {
+    impl Widget for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             self.data.update_on_handles(mgr.ev_state(), self.id_ref());
 
             // We set data now, after child is configured
             *mgr |= self.view.set(&mut self.child, self.data.get_cloned());
         }
-    }
 
-    impl Handler for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::HandleUpdate { .. } => {

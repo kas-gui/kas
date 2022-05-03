@@ -7,10 +7,10 @@ use crate::args::{Child, WidgetArgs};
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::{Scope, ScopeAttr, ScopeItem, SimplePath};
 use proc_macro2::{Span, TokenStream};
-use proc_macro_error::{emit_call_site_warning, emit_error, emit_warning};
+use proc_macro_error::{emit_error, emit_warning};
 use quote::{quote, TokenStreamExt};
 use syn::spanned::Spanned;
-use syn::{parse_quote, Error, Ident, Index, Member, Result};
+use syn::{parse2, parse_quote, Error, Ident, Index, Member, Result};
 
 fn member(index: usize, ident: Option<Ident>) -> Member {
     match ident {
@@ -40,10 +40,8 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let opt_derive = &attr.derive;
 
     let mut impl_widget_children = true;
-    let mut impl_widget_config = true;
-    let mut impl_layout = true;
-    let mut has_find_id_impl = attr.layout.is_some();
-    let mut handler_impl = None;
+    let mut layout_impl = None;
+    let mut widget_impl = None;
 
     let fields = match &mut scope.item {
         ScopeItem::Struct { token, fields } => match fields {
@@ -108,40 +106,14 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     emit_warning!(impl_.span(), "use of `#![widget]` on children with custom `WidgetChildren` implementation");
                 }
                 impl_widget_children = false;
-            } else if *path == parse_quote! { ::kas::WidgetConfig }
-                || *path == parse_quote! { kas::WidgetConfig }
-                || *path == parse_quote! { WidgetConfig }
-            {
-                if opt_derive.is_some() {
-                    emit_error!(
-                        impl_.span(),
-                        "impl conflicts with use of #[widget(derive=FIELD)]"
-                    );
-                }
-                // TODO: if args.widget_attr.config.is_some() { warn unused }
-                impl_widget_config = false;
             } else if *path == parse_quote! { ::kas::Layout }
                 || *path == parse_quote! { kas::Layout }
                 || *path == parse_quote! { Layout }
             {
-                if attr.layout.is_some() {
-                    emit_error!(
-                        impl_.span(),
-                        "impl conflicts with use of #[widget(layout=...;)]"
-                    );
-                }
-                impl_layout = false;
-                for item in &impl_.items {
-                    if let syn::ImplItem::Method(method) = item {
-                        if method.sig.ident == "layout" || method.sig.ident == "find_id" {
-                            has_find_id_impl = true;
-                        }
-                    }
-                }
-            } else if *path == parse_quote! { ::kas::event::Handler }
-                || *path == parse_quote! { kas::event::Handler }
-                || *path == parse_quote! { event::Handler }
-                || *path == parse_quote! { Handler }
+                layout_impl = Some(index);
+            } else if *path == parse_quote! { ::kas::Widget }
+                || *path == parse_quote! { kas::Widget }
+                || *path == parse_quote! { Widget }
             {
                 if opt_derive.is_some() {
                     emit_error!(
@@ -149,17 +121,12 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                         "impl conflicts with use of #[widget(derive=FIELD)]"
                     );
                 }
-                // TODO: warn about unused handler stuff if present
-                handler_impl = Some(index);
+                widget_impl = Some(index);
             }
         }
     }
 
-    if !has_find_id_impl && (!impl_widget_children || !children.is_empty()) {
-        emit_call_site_warning!("widget appears to have children yet does not implement Layout::layout or Layout::find_id; this may cause incorrect handling of mouse/touch events");
-    }
-
-    let (mut impl_generics, ty_generics, mut where_clause) = scope.generics.split_for_impl();
+    let (impl_generics, ty_generics, where_clause) = scope.generics.split_for_impl();
     let widget_name = name.to_string();
 
     let (access_core_data, access_core_data_mut);
@@ -259,8 +226,109 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
         }
     }
 
-    if impl_widget_config {
+    let layout = match attr.layout.take() {
+        Some(layout) => {
+            let layout = layout.generate(children.iter().map(|c| &c.ident))?;
+            Some(quote! {
+                fn layout<'a>(&'a mut self) -> ::kas::layout::Layout<'a> {
+                    use ::kas::{WidgetCore, layout};
+                    let mut _chain = &mut (#access_core_data_mut).layout;
+                    #layout
+                }
+            })
+        }
+        None => None,
+    };
+
+    if let Some(index) = layout_impl {
+        let layout_impl = &mut scope.impls[index];
+        if let Some(item) = layout {
+            layout_impl.items.push(parse2(item)?);
+        }
+    } else if let Some(inner) = opt_derive {
+        let layout = layout.unwrap_or_else(|| {
+            quote! {
+                #[inline]
+                fn layout(&mut self) -> ::kas::layout::Layout<'_> {
+                    self.#inner.layout()
+                }
+            }
+        });
+        scope.generated.push(quote! {
+            impl #impl_generics ::kas::Layout
+                    for #name #ty_generics #where_clause
+            {
+                #layout
+                #[inline]
+                fn size_rules(&mut self,
+                    size_mgr: ::kas::theme::SizeMgr,
+                    axis: ::kas::layout::AxisInfo,
+                ) -> ::kas::layout::SizeRules {
+                    self.#inner.size_rules(size_mgr, axis)
+                }
+                #[inline]
+                fn set_rect(
+                    &mut self,
+                    mgr: &mut ::kas::layout::SetRectMgr,
+                    rect: ::kas::geom::Rect,
+                    align: ::kas::layout::AlignHints,
+                ) {
+                    self.#inner.set_rect(mgr, rect, align);
+                }
+                #[inline]
+                fn draw(
+                    &mut self,
+                    draw: ::kas::theme::DrawMgr,
+                ) {
+                    self.#inner.draw(draw);
+                }
+            }
+        });
+    } else if let Some(layout) = layout {
+        scope.generated.push(quote! {
+            impl #impl_generics ::kas::Layout for #name #ty_generics #where_clause {
+                #layout
+            }
+        });
+    }
+
+    if let Some(index) = widget_impl {
+        let widget_impl = &mut scope.impls[index];
+        if let Some(item) = attr.key_nav {
+            widget_impl.items.push(parse2(item)?);
+        }
+        if let Some(item) = attr.hover_highlight {
+            widget_impl.items.push(parse2(item)?);
+        }
+        if let Some(item) = attr.cursor_icon {
+            widget_impl.items.push(parse2(item)?);
+        }
+    } else {
         let methods = if let Some(inner) = opt_derive {
+            let key_nav = attr.key_nav.unwrap_or_else(|| {
+                quote! {
+                    #[inline]
+                    fn key_nav(&self) -> bool {
+                        self.#inner.key_nav()
+                    }
+                }
+            });
+            let hover_highlight = attr.hover_highlight.unwrap_or_else(|| {
+                quote! {
+                    #[inline]
+                    fn hover_highlight(&self) -> bool {
+                        self.#inner.hover_highlight()
+                    }
+                }
+            });
+            let cursor_icon = attr.cursor_icon.unwrap_or_else(|| {
+                quote! {
+                    #[inline]
+                    fn cursor_icon(&self) -> ::kas::event::CursorIcon {
+                        self.#inner.cursor_icon()
+                    }
+                }
+            });
             quote! {
                 #[inline]
                 fn configure_recurse(
@@ -274,155 +342,28 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 fn configure(&mut self, mgr: &mut ::kas::layout::SetRectMgr) {
                     self.#inner.configure(mgr);
                 }
+                #key_nav
+                #hover_highlight
+                #cursor_icon
+
                 #[inline]
-                fn key_nav(&self) -> bool {
-                    self.#inner.key_nav()
+                fn translation(&self) -> ::kas::geom::Offset {
+                    self.#inner.translation()
                 }
                 #[inline]
-                fn hover_highlight(&self) -> bool {
-                    self.#inner.hover_highlight()
+                fn spatial_nav(
+                    &mut self,
+                    mgr: &mut ::kas::layout::SetRectMgr,
+                    reverse: bool,
+                    from: Option<usize>,
+                ) -> Option<usize> {
+                    self.#inner.spatial_nav(mgr, reverse, from)
                 }
                 #[inline]
-                fn cursor_icon(&self) -> ::kas::event::CursorIcon {
-                    self.#inner.cursor_icon()
+                fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
+                    self.#inner.find_id(coord)
                 }
-            }
-        } else {
-            let key_nav = attr.key_nav.value;
-            let hover_highlight = attr.hover_highlight.value;
-            let cursor_icon = attr.cursor_icon.value;
 
-            quote! {
-                fn key_nav(&self) -> bool {
-                    #key_nav
-                }
-                fn hover_highlight(&self) -> bool {
-                    #hover_highlight
-                }
-                fn cursor_icon(&self) -> ::kas::event::CursorIcon {
-                    #cursor_icon
-                }
-            }
-        };
-
-        scope.generated.push(quote! {
-            impl #impl_generics ::kas::WidgetConfig
-                    for #name #ty_generics #where_clause
-            {
-                #methods
-            }
-        });
-    } else {
-        if let Some(span) = attr.key_nav.span {
-            emit_warning!(span, "unused due to manual impl of `WidgetConfig`");
-        }
-        if let Some(span) = attr.hover_highlight.span {
-            emit_warning!(span, "unused due to manual impl of `WidgetConfig`");
-        }
-        if let Some(span) = attr.cursor_icon.span {
-            emit_warning!(span, "unused due to manual impl of `WidgetConfig`");
-        }
-    }
-
-    if impl_layout {
-        if let Some(inner) = opt_derive {
-            scope.generated.push(quote! {
-                impl #impl_generics ::kas::Layout
-                        for #name #ty_generics #where_clause
-                {
-                    #[inline]
-                    fn layout(&mut self) -> ::kas::layout::Layout<'_> {
-                        self.#inner.layout()
-                    }
-                    #[inline]
-                    fn size_rules(&mut self,
-                        size_mgr: ::kas::theme::SizeMgr,
-                        axis: ::kas::layout::AxisInfo,
-                    ) -> ::kas::layout::SizeRules {
-                        self.#inner.size_rules(size_mgr, axis)
-                    }
-                    #[inline]
-                    fn set_rect(
-                        &mut self,
-                        mgr: &mut ::kas::layout::SetRectMgr,
-                        rect: ::kas::geom::Rect,
-                        align: ::kas::layout::AlignHints,
-                    ) {
-                        self.#inner.set_rect(mgr, rect, align);
-                    }
-                    #[inline]
-                    fn translation(&self) -> ::kas::geom::Offset {
-                        self.#inner.translation()
-                    }
-                    #[inline]
-                    fn spatial_nav(
-                        &mut self,
-                        mgr: &mut ::kas::layout::SetRectMgr,
-                        reverse: bool,
-                        from: Option<usize>,
-                    ) -> Option<usize> {
-                        self.#inner.spatial_nav(mgr, reverse, from)
-                    }
-                    #[inline]
-                    fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
-                        self.#inner.find_id(coord)
-                    }
-                    #[inline]
-                    fn draw(
-                        &mut self,
-                        draw: ::kas::theme::DrawMgr,
-                    ) {
-                        self.#inner.draw(draw);
-                    }
-                }
-            });
-        } else if let Some(layout) = attr.layout.take() {
-            let find_id = match attr.find_id.value {
-                None => quote! {},
-                Some(find_id) => quote! {
-                    fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
-                        if !self.rect().contains(coord) {
-                            return None;
-                        }
-                        #find_id
-                    }
-                },
-            };
-
-            let core = if let Some(ref cd) = core_data {
-                cd
-            } else {
-                return Err(Error::new(
-                    fields.span(),
-                    "no field marked with #[widget_core]",
-                ));
-            };
-            let layout = layout.generate(children.iter().map(|c| &c.ident))?;
-
-            scope.generated.push(quote! {
-                impl #impl_generics ::kas::Layout for #name #ty_generics #where_clause {
-                    fn layout<'a>(&'a mut self) -> ::kas::layout::Layout<'a> {
-                        use ::kas::{WidgetCore, layout};
-                        let mut _chain = &mut self.#core.layout;
-                        #layout
-                    }
-
-                    #find_id
-                }
-            });
-        }
-    } else if let Some(span) = attr.find_id.span {
-        emit_warning!(span, "unused without generated impl of `Layout`");
-    }
-
-    if let Some(index) = handler_impl {
-        // Manual Handler impl may add additional bounds:
-        let (a, _, c) = scope.impls[index].generics.split_for_impl();
-        impl_generics = a;
-        where_clause = c;
-    } else {
-        let handle = if let Some(inner) = opt_derive {
-            quote! {
                 #[inline]
                 fn handle_event(
                     &mut self,
@@ -458,20 +399,26 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 }
             }
         } else {
-            quote! {}
+            let mut toks = TokenStream::new();
+            if let Some(item) = attr.key_nav {
+                toks.append_all(item);
+            }
+            if let Some(item) = attr.hover_highlight {
+                toks.append_all(item);
+            }
+            if let Some(item) = attr.cursor_icon {
+                toks.append_all(item);
+            }
+            toks
         };
         scope.generated.push(quote! {
-            impl #impl_generics ::kas::event::Handler
+            impl #impl_generics ::kas::Widget
                     for #name #ty_generics #where_clause
             {
-                #handle
+                #methods
             }
         });
     }
-
-    scope.generated.push(quote! {
-        impl #impl_generics ::kas::Widget for #name #ty_generics #where_clause {}
-    });
 
     Ok(())
 }

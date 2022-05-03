@@ -37,7 +37,7 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.separator(self);
+            draw.separator(self.rect());
         }
     }
 

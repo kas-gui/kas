@@ -163,7 +163,7 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawMgr) {
             if let Some(id) = self.handle.as_ref().map(|h| h.id()) {
-                draw.image(self, id);
+                draw.image(self.rect(), id);
             }
         }
     }

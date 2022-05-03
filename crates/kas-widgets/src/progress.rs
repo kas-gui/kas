@@ -102,7 +102,7 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawMgr) {
             let dir = self.direction.as_direction();
-            draw.progress_bar(&*self, dir, self.value);
+            draw.progress_bar(self.rect(), dir, self.value);
         }
     }
 }

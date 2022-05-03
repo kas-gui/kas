@@ -5,8 +5,9 @@
 
 use crate::make_layout;
 use impl_tools_lib::parse_attr_group;
-use proc_macro2::Span;
+use proc_macro2::TokenStream;
 use proc_macro_error::{abort, emit_error};
+use quote::quote_spanned;
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
@@ -142,7 +143,6 @@ fn parse_attrs_inner(input: ParseStream, attrs: &mut Vec<Attribute>) -> Result<(
 mod kw {
     use syn::custom_keyword;
 
-    custom_keyword!(find_id);
     custom_keyword!(layout);
     custom_keyword!(col);
     custom_keyword!(row);
@@ -191,79 +191,48 @@ impl Parse for WidgetDerive {
     }
 }
 
-macro_rules! property {
-    ($name:ident : $ty:ty = $def:expr ; $kw:path : $input:ident => $parse:expr ;) => {
-        #[derive(Debug)]
-        pub struct $name {
-            /// Some(span) if set, None if default
-            pub span: Option<Span>,
-            /// Value (default or set)
-            pub value: $ty,
-        }
-        impl Default for $name {
-            fn default() -> Self {
-                $name {
-                    span: None,
-                    value: $def,
-                }
-            }
-        }
-        impl Parse for $name {
-            fn parse($input: ParseStream) -> Result<Self> {
-                let span = Some($input.parse::<$kw>()?.span());
-                let _: Eq = $input.parse()?;
-                let value = $parse;
-                Ok($name { span, value })
-            }
-        }
-    };
-}
-property!(
-    KeyNav: bool = false;
-    kw::key_nav : input => input.parse::<syn::LitBool>()?.value;
-);
-property!(
-    HoverHighlight: bool = false;
-    kw::hover_highlight : input => input.parse::<syn::LitBool>()?.value;
-);
-property!(
-    CursorIcon: Expr = parse_quote! { ::kas::event::CursorIcon::Default };
-    kw::cursor_icon : input => input.parse()?;
-);
-property!(
-    FindId: Option<Expr> = None;
-    kw::find_id : input => Some(input.parse()?);
-);
-
 #[derive(Debug, Default)]
 pub struct WidgetArgs {
-    pub key_nav: KeyNav,
-    pub hover_highlight: HoverHighlight,
-    pub cursor_icon: CursorIcon,
+    pub key_nav: Option<TokenStream>,
+    pub hover_highlight: Option<TokenStream>,
+    pub cursor_icon: Option<TokenStream>,
     pub derive: Option<Member>,
     pub layout: Option<make_layout::Tree>,
-    pub find_id: FindId,
 }
 
 impl Parse for WidgetArgs {
     fn parse(content: ParseStream) -> Result<Self> {
-        let mut key_nav = KeyNav::default();
-        let mut hover_highlight = HoverHighlight::default();
-        let mut cursor_icon = CursorIcon::default();
+        let mut key_nav = None;
+        let mut hover_highlight = None;
+        let mut cursor_icon = None;
         let mut derive = None;
         let mut layout = None;
-        let mut find_id = FindId::default();
 
         while !content.is_empty() {
             let lookahead = content.lookahead1();
-            if lookahead.peek(kw::key_nav) && key_nav.span.is_none() {
-                key_nav = content.parse()?;
-            } else if lookahead.peek(kw::hover_highlight) && hover_highlight.span.is_none() {
-                hover_highlight = content.parse()?;
-            } else if lookahead.peek(kw::cursor_icon) && cursor_icon.span.is_none() {
-                cursor_icon = content.parse()?;
+            if lookahead.peek(kw::key_nav) && key_nav.is_none() {
+                let span = content.parse::<kw::key_nav>()?.span();
+                let _: Eq = content.parse()?;
+                let value = content.parse::<syn::LitBool>()?;
+                key_nav = Some(quote_spanned! {span=>
+                    fn key_nav(&self) -> bool { #value }
+                });
+            } else if lookahead.peek(kw::hover_highlight) && hover_highlight.is_none() {
+                let span = content.parse::<kw::hover_highlight>()?.span();
+                let _: Eq = content.parse()?;
+                let value = content.parse::<syn::LitBool>()?;
+                hover_highlight = Some(quote_spanned! {span=>
+                    fn hover_highlight(&self) -> bool { #value }
+                });
+            } else if lookahead.peek(kw::cursor_icon) && cursor_icon.is_none() {
+                let span = content.parse::<kw::cursor_icon>()?.span();
+                let _: Eq = content.parse()?;
+                let value = content.parse::<syn::Expr>()?;
+                cursor_icon = Some(quote_spanned! {span=>
+                    fn cursor_icon(&self) -> ::kas::event::CursorIcon { #value }
+                });
             } else if lookahead.peek(kw::derive) && derive.is_none() {
-                let _: kw::derive = content.parse()?;
+                let _ = content.parse::<kw::derive>()?;
                 let _: Eq = content.parse()?;
                 let _: Token![self] = content.parse()?;
                 let _: Token![.] = content.parse()?;
@@ -272,8 +241,6 @@ impl Parse for WidgetArgs {
                 let _: kw::layout = content.parse()?;
                 let _: Eq = content.parse()?;
                 layout = Some(content.parse()?);
-            } else if content.peek(kw::find_id) {
-                find_id = content.parse()?;
             } else {
                 return Err(lookahead.error());
             }
@@ -287,7 +254,6 @@ impl Parse for WidgetArgs {
             cursor_icon,
             derive,
             layout,
-            find_id,
         })
     }
 }

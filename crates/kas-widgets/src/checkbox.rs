@@ -6,7 +6,7 @@
 //! Toggle widgets
 
 use super::AccelLabel;
-use kas::{event, prelude::*};
+use kas::prelude::*;
 use std::rc::Rc;
 
 impl_scope! {
@@ -41,7 +41,7 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.checkbox(&*self, self.state);
+            draw.checkbox(self.rect(), self.state);
         }
     }
 
@@ -127,7 +127,7 @@ impl_scope! {
         }
     }
 
-    impl event::Handler for Self {
+    impl Widget for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, mut event: Event) -> Response {
             if let Some(response) = event.activate_on_press(mgr, self.id_ref()) {
                 return response;
@@ -155,7 +155,6 @@ impl_scope! {
     #[derive(Clone, Default)]
     #[widget{
         layout = row: *;
-        find_id = Some(self.inner.id());
     }]
     pub struct CheckBox {
         #[widget_core]
@@ -166,9 +165,13 @@ impl_scope! {
         label: AccelLabel,
     }
 
-    impl WidgetConfig for Self {
+    impl Widget for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.add_accel_keys(self.inner.id_ref(), self.label.keys());
+        }
+
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            self.rect().contains(coord).then(|| self.inner.id())
         }
     }
 

@@ -7,7 +7,7 @@
 
 use kas::component::Label;
 use kas::draw::color::Rgb;
-use kas::event::{self, VirtualKeyCode, VirtualKeyCodes};
+use kas::event::{VirtualKeyCode, VirtualKeyCodes};
 use kas::layout;
 use kas::prelude::*;
 use kas::theme::TextClass;
@@ -32,19 +32,6 @@ impl_scope! {
         #[widget]
         pub inner: W,
         on_push: Option<Rc<dyn Fn(&mut EventMgr)>>,
-    }
-
-    impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            mgr.add_accel_keys(self.id_ref(), &self.keys1);
-        }
-
-        fn key_nav(&self) -> bool {
-            true
-        }
-        fn hover_highlight(&self) -> bool {
-            true
-        }
     }
 
     impl Layout for Self {
@@ -133,7 +120,18 @@ impl_scope! {
         }
     }
 
-    impl Handler for Self {
+    impl Widget for Self {
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
+            mgr.add_accel_keys(self.id_ref(), &self.keys1);
+        }
+
+        fn key_nav(&self) -> bool {
+            true
+        }
+        fn hover_highlight(&self) -> bool {
+            true
+        }
+
         fn handle_event(&mut self, mgr: &mut EventMgr, mut event: Event) -> Response {
             if let Some(response) = event.activate_on_press(mgr, self.id_ref()) {
                 return response;
@@ -172,20 +170,6 @@ impl_scope! {
         layout_frame: layout::FrameStorage,
         color: Option<Rgb>,
         on_push: Option<Rc<dyn Fn(&mut EventMgr)>>,
-    }
-
-    impl WidgetConfig for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            mgr.add_accel_keys(self.id_ref(), &self.keys1);
-            mgr.add_accel_keys(self.id_ref(), self.label.keys());
-        }
-
-        fn key_nav(&self) -> bool {
-            true
-        }
-        fn hover_highlight(&self) -> bool {
-            true
-        }
     }
 
     impl Layout for Self {
@@ -291,7 +275,19 @@ impl_scope! {
         }
     }
 
-    impl event::Handler for Self {
+    impl Widget for Self {
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
+            mgr.add_accel_keys(self.id_ref(), &self.keys1);
+            mgr.add_accel_keys(self.id_ref(), self.label.keys());
+        }
+
+        fn key_nav(&self) -> bool {
+            true
+        }
+        fn hover_highlight(&self) -> bool {
+            true
+        }
+
         fn handle_event(&mut self, mgr: &mut EventMgr, mut event: Event) -> Response {
             if let Some(response) = event.activate_on_press(mgr, self.id_ref()) {
                 return response;

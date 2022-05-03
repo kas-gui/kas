@@ -68,7 +68,7 @@ impl_scope! {
         fn draw(&mut self, _: DrawMgr) {}
     }
 
-    impl Handler for DragHandle {
+    impl Widget for DragHandle {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::PressStart { source, coord, .. } => {

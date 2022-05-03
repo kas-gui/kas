@@ -337,12 +337,12 @@ where
         &mut self.draw
     }
 
-    fn new_pass(
+    fn new_pass<'b>(
         &mut self,
         inner_rect: Rect,
         offset: Offset,
         class: PassType,
-        f: &mut dyn FnMut(&mut dyn theme::DrawHandle),
+        f: Box<dyn FnOnce(&mut dyn theme::DrawHandle) + 'b>,
     ) {
         let mut shadow = Default::default();
         let mut outer_rect = inner_rect;
@@ -478,7 +478,11 @@ where
         let sel_col = self.cols.text_over(self.cols.text_sel_bg);
 
         // Draw background:
-        for (p1, p2) in &text.highlight_lines(range.clone()) {
+        for (p1, p2) in text
+            .highlight_lines(range.clone())
+            .iter()
+            .flat_map(|v| v.iter())
+        {
             let p1 = Vec2::from(*p1);
             let p2 = Vec2::from(*p2);
             let quad = Quad::from_coords(pos + p1, pos + p2);
@@ -521,7 +525,7 @@ where
         let pos = Vec2::conv(pos);
 
         let mut col = self.cols.nav_focus;
-        for cursor in text.text_glyph_pos(byte).rev() {
+        for cursor in text.text_glyph_pos(byte).iter_mut().flatten().rev() {
             let mut p1 = pos + Vec2::from(cursor.pos);
             let mut p2 = p1;
             p1.1 -= cursor.ascent;

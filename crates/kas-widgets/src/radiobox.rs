@@ -28,7 +28,7 @@ impl_scope! {
         on_select: Option<Rc<dyn Fn(&mut EventMgr)>>,
     }
 
-    impl WidgetConfig for Self {
+    impl Widget for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             self.group.update_on_handles(mgr.ev_state(), self.id_ref());
         }
@@ -39,9 +39,7 @@ impl_scope! {
         fn hover_highlight(&self) -> bool {
             true
         }
-    }
 
-    impl Handler for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, mut event: Event) -> Response {
             if let Some(response) = event.activate_on_press(mgr, self.id_ref()) {
                 return response;
@@ -89,7 +87,7 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.radiobox(&*self, self.state);
+            draw.radiobox(self.rect(), self.state);
         }
     }
 
@@ -177,24 +175,27 @@ impl_scope! {
 impl_scope! {
     /// A radiobox with label
     #[autoimpl(Debug)]
-    #[autoimpl(HasBool using self.radiobox)]
+    #[autoimpl(HasBool using self.inner)]
     #[derive(Clone)]
     #[widget{
-        find_id = Some(self.radiobox.id());
         layout = row: *;
     }]
     pub struct RadioBox {
         #[widget_core]
         core: CoreData,
         #[widget]
-        radiobox: RadioBoxBare,
+        inner: RadioBoxBare,
         #[widget]
         label: AccelLabel,
     }
 
-    impl WidgetConfig for Self {
+    impl Widget for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
-            mgr.add_accel_keys(self.radiobox.id_ref(), self.label.keys());
+            mgr.add_accel_keys(self.inner.id_ref(), self.label.keys());
+        }
+
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            self.rect().contains(coord).then(|| self.inner.id())
         }
     }
 
@@ -210,7 +211,7 @@ impl_scope! {
         pub fn new<T: Into<AccelString>>(label: T, group: RadioBoxGroup) -> Self {
             RadioBox {
                 core: Default::default(),
-                radiobox: RadioBoxBare::new(group),
+                inner: RadioBoxBare::new(group),
                 label: AccelLabel::new(label.into()),
             }
         }
@@ -229,7 +230,7 @@ impl_scope! {
         {
             RadioBox {
                 core: self.core,
-                radiobox: self.radiobox.on_select(f),
+                inner: self.inner.on_select(f),
                 label: self.label,
             }
         }
@@ -279,7 +280,7 @@ impl_scope! {
         #[inline]
         #[must_use]
         pub fn with_state(mut self, state: bool) -> Self {
-            self.radiobox = self.radiobox.with_state(state);
+            self.inner = self.inner.with_state(state);
             self
         }
 
@@ -288,7 +289,7 @@ impl_scope! {
         /// Note: state will not update until the next draw.
         #[inline]
         pub fn unset_all(&self, mgr: &mut EventMgr) {
-            self.radiobox.unset_all(mgr)
+            self.inner.unset_all(mgr)
         }
     }
 }
