@@ -286,7 +286,7 @@ pub fn make_widget(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; `make_layout` `!` `(` _CoreData_ `;` _Layout_ `)`
 /// >
 /// > _Layout_ :\
-/// > &nbsp;&nbsp; &nbsp;&nbsp; _Single_ | _List_ | _Slice_ | _Grid_ | _Align_ | _Frame_
+/// > &nbsp;&nbsp; &nbsp;&nbsp; _Single_ | _List_ | _Slice_ | _Grid_ | _Align_ | _Frame_ | _Button_
 /// >
 /// > _Single_ :\
 /// > &nbsp;&nbsp; `component`? `self` `.` _Member_
@@ -320,6 +320,9 @@ pub fn make_widget(input: TokenStream) -> TokenStream {
 /// >
 /// > _Frame_ :\
 /// > &nbsp;&nbsp; `frame` `(` _Style_ `)` _Storage_? `:` _Layout_
+/// >
+/// > _Button_ :\
+/// > &nbsp;&nbsp; `button` `(` _Color_ `)` ? _Storage_? `:` _Layout_
 /// >
 /// > _Storage_ :\
 /// > &nbsp;&nbsp; `'` _Ident_

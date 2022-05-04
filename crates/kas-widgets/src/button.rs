@@ -22,7 +22,9 @@ impl_scope! {
     #[autoimpl(Debug ignore self.on_push)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone)]
-    #[widget]
+    #[widget {
+        layout = button(self.color): self.inner;
+    }]
     pub struct Button<W: Widget> {
         core: widget_core!(),
         keys1: VirtualKeyCodes,
@@ -31,13 +33,6 @@ impl_scope! {
         #[widget]
         pub inner: W,
         on_push: Option<Rc<dyn Fn(&mut EventMgr)>>,
-    }
-
-    impl Layout for Self {
-        fn layout(&mut self) -> layout::Layout<'_> {
-            let inner = layout::Layout::single(&mut self.inner);
-            layout::Layout::button(&mut self.layout_frame, inner, self.color)
-        }
     }
 
     impl<W: Widget> Button<W> {
@@ -160,7 +155,9 @@ impl_scope! {
     /// parameters).
     #[autoimpl(Debug ignore self.on_push)]
     #[derive(Clone)]
-    #[widget]
+    #[widget {
+        layout = button(self.color): component self.label;
+    }]
     pub struct TextButton {
         core: widget_core!(),
         keys1: VirtualKeyCodes,
@@ -168,13 +165,6 @@ impl_scope! {
         layout_frame: layout::FrameStorage,
         color: Option<Rgb>,
         on_push: Option<Rc<dyn Fn(&mut EventMgr)>>,
-    }
-
-    impl Layout for Self {
-        fn layout(&mut self) -> layout::Layout<'_> {
-            let inner = layout::Layout::component(&mut self.label);
-            layout::Layout::button(&mut self.layout_frame, inner, self.color)
-        }
     }
 
     impl Self {

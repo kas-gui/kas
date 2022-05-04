@@ -31,7 +31,9 @@ impl_scope! {
     /// this message is passed to the handler and not emitted.
     #[autoimpl(Debug ignore self.on_select)]
     #[derive(Clone)]
-    #[widget]
+    #[widget {
+        layout = button: row: [component self.label, component self.mark];
+    }]
     pub struct ComboBox<M: Clone + Debug + 'static> {
         core: widget_core!(),
         label: Label<String>,
@@ -44,17 +46,6 @@ impl_scope! {
         opening: bool,
         popup_id: Option<WindowId>,
         on_select: Option<Rc<dyn Fn(&mut EventMgr, M)>>,
-    }
-
-    impl kas::Layout for Self {
-        fn layout(&mut self) -> layout::Layout<'_> {
-            let list = [
-                layout::Layout::component(&mut self.label),
-                layout::Layout::component(&mut self.mark),
-            ];
-            let list = layout::Layout::list(list.into_iter(), Direction::Right, &mut self.layout_list);
-            layout::Layout::button(&mut self.layout_frame, list, None)
-        }
     }
 
     impl Widget for Self {

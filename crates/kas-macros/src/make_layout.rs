@@ -23,6 +23,7 @@ mod kw {
     custom_keyword!(center);
     custom_keyword!(stretch);
     custom_keyword!(frame);
+    custom_keyword!(button);
     custom_keyword!(list);
     custom_keyword!(slice);
     custom_keyword!(grid);
@@ -90,6 +91,7 @@ enum Layout {
     Widget(Expr),
     Component(Expr),
     Frame(StorIdent, Box<Layout>, Expr),
+    Button(StorIdent, Box<Layout>, Expr),
     List(StorIdent, Direction, List),
     Slice(StorIdent, Direction, Expr),
     Grid(StorIdent, GridDimensions, Vec<(CellInfo, Layout)>),
@@ -262,6 +264,18 @@ impl Layout {
             let _: Token![:] = input.parse()?;
             let layout = Layout::parse(input, gen)?;
             Ok(Layout::Frame(stor, Box::new(layout), style))
+        } else if lookahead.peek(kw::button) {
+            let _: kw::button = input.parse()?;
+            let mut color: Expr = syn::parse_quote! { None };
+            if input.peek(syn::token::Paren) {
+                let inner;
+                let _ = parenthesized!(inner in input);
+                color = inner.parse()?;
+            }
+            let stor = gen.parse_or_next(input)?;
+            let _: Token![:] = input.parse()?;
+            let layout = Layout::parse(input, gen)?;
+            Ok(Layout::Button(stor, Box::new(layout), color))
         } else if lookahead.peek(kw::column) {
             let _: kw::column = input.parse()?;
             let dir = Direction::Down;
@@ -529,7 +543,7 @@ impl Layout {
                 layout.append_fields(ty_toks, def_toks);
             }
             Layout::AlignSingle(..) | Layout::Widget(_) | Layout::Component(_) => (),
-            Layout::Frame(stor, layout, _) => {
+            Layout::Frame(stor, layout, _) | Layout::Button(stor, layout, _) => {
                 stor.to_tokens(ty_toks);
                 ty_toks.append_all(quote! { : ::kas::layout::FrameStorage, });
                 stor.to_tokens(def_toks);
@@ -612,6 +626,12 @@ impl Layout {
                 let inner = layout.generate(core, children)?;
                 quote! {
                     layout::Layout::frame(&mut self.#core.#stor, #inner, #style)
+                }
+            }
+            Layout::Button(stor, layout, color) => {
+                let inner = layout.generate(core, children)?;
+                quote! {
+                    layout::Layout::button(&mut self.#core.#stor, #inner, #color)
                 }
             }
             Layout::List(stor, dir, list) => {
