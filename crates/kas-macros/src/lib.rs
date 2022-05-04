@@ -163,7 +163,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///     `Widget::cursor_icon`: returns the [`CursorIcon`] to use on hover
 ///     (default is `CursorIcon::Default`)
 /// -   <code>layout = <em>layout</em></code> — defines widget layout via an
-///     expression; see [`make_layout!`] for documentation (defaults to an empty layout)
+///     expression; [see below for documentation](#layout)
 ///
 /// The struct must contain a field of type `widget_core!()` (usually named
 /// `core`). The macro `widget_core!()` is a placeholder, expanded by
@@ -182,7 +182,84 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// -   `#[widget]`: marks the field as a [`Widget`] to be configured, enumerated by
 ///     [`WidgetChildren`] and included by glob layouts
 ///
-/// ## Example
+/// ## Layout
+///
+/// Widget layout may be specified either by implementing the `size_rules`,
+/// `draw` (and possibly more) methods, or via the `layout` property.
+/// The latter accepts the following syntax:
+///
+/// > _Layout_ :\
+/// > &nbsp;&nbsp; &nbsp;&nbsp; _Single_ | _List_ | _Slice_ | _Grid_ | _Align_ | _Frame_ | _Button_
+/// >
+/// > _Single_ :\
+/// > &nbsp;&nbsp; `component`? `self` `.` _Member_
+/// >
+/// > _List_ :\
+/// > &nbsp;&nbsp; _ListPre_ _Storage_? `:` `*` | (`[` _Layout_ `]`)
+/// >
+/// > _ListPre_ :\
+/// > &nbsp;&nbsp; `column` | `row` | `aligned_column` | `aligned_row` | `list` `(` _Direction_ `)`
+/// >
+/// > _Slice_ :\
+/// > &nbsp;&nbsp; `slice` `(` _Direction_ `)` _Storage_? `:` `self` `.` _Member_
+/// >
+/// > _Direction_ :\
+/// > &nbsp;&nbsp; `left` | `right` | `up` | `down`
+/// >
+/// > _Grid_ :\
+/// > &nbsp;&nbsp; `grid` _Storage_? `:` `{` _GridCell_* `}`
+/// >
+/// > _GridCell_ :\
+/// > &nbsp;&nbsp; _CellRange_ `,` _CellRange_ `:` _Layout_
+/// >
+/// > _CellRange_ :\
+/// > &nbsp;&nbsp; _LitInt_ ( `..` `+`? _LitInt_ )?
+///
+/// > _Align_ :\
+/// > &nbsp;&nbsp; `align` `(` _AlignType_ `)` `:` _Layout_
+/// >
+/// > _AlignType_ :\
+/// > &nbsp;&nbsp; `center` | `stretch`
+/// >
+/// > _Frame_ :\
+/// > &nbsp;&nbsp; `frame` `(` _Style_ `)` _Storage_? `:` _Layout_
+/// >
+/// > _Button_ :\
+/// > &nbsp;&nbsp; `button` `(` _Color_ `)` ? _Storage_? `:` _Layout_
+/// >
+/// > _Storage_ :\
+/// > &nbsp;&nbsp; `'` _Ident_
+///
+/// Both _Single_ and _Slice_ variants match `self.MEMBER` where `MEMBER` is the
+/// name of a field or number of a tuple field. More precisely, both match any
+/// expression starting with `self` and append with `.as_widget_mut()`.
+///
+/// `row` and `column` are abbreviations for `list(right)` and `list(down)`
+/// respectively. Glob syntax is allowed: `row: *` uses all children in a row
+/// layout.
+///
+/// `aligned_column` and `aligned_row` use restricted list syntax (items must
+/// be `row` or `column` respectively; glob syntax not allowed), but build a
+/// grid layout. Essentially, they are syntax sugar for simple table layouts.
+///
+/// _Slice_ is a variant of _List_ over a single struct field which supports
+/// `AsMut<W>` for some widget type `W`.
+///
+/// A _Grid_ is an aligned two-dimensional layout supporting item spans.
+/// Contents are declared as a collection of cells. Cell location is specified
+/// like `0, 1` (that is, col=0, row=1) with spans specified like `0..2, 1`
+/// (thus cols={0, 1}, row=1) or `2..+2, 1` (cols={2,3}, row=1).
+///
+/// Non-trivial layouts require a "storage" field within the generated
+/// `widget_core!()`. This storage field may be named via a "lifetime label"
+/// (e.g. `col 'col_storage: *`), otherwise the field name will be generated.
+///
+/// _Member_ is a field name (struct) or number (tuple struct).
+///
+/// ## Examples
+///
+/// A simple example is the
+/// [`Frame`](https://docs.rs/kas-widgets/latest/kas_widgets/struct.Frame.html) widget:
 ///
 /// ```ignore
 /// impl_scope! {
@@ -210,6 +287,20 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///         }
 ///     }
 /// }
+/// ```
+///
+/// A simple row layout: `layout = row: [self.a, self.b];`
+///
+/// Grid cells are defined by `row, column` ranges, where the ranges are either
+/// a half-open range or a single number (who's end is implicitly `start + 1`).
+///
+/// ```ignore
+/// layout = grid: {
+///     0..2, 0: self.merged_title;
+///     0, 1: self.a;
+///     1, 1: self.b;
+///     1, 2: self.c;
+/// };
 /// ```
 ///
 /// ## Derive
@@ -271,114 +362,6 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 pub fn make_widget(input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(input as args::MakeWidget);
     make_widget::make_widget(args)
-        .unwrap_or_else(|err| err.to_compile_error())
-        .into()
-}
-
-/// Macro to make a `kas::layout::Layout`
-///
-/// Generates some type of layout, often over child widgets.
-/// The widget's core data is required (usually a field named `core`).
-///
-/// # Syntax
-///
-/// > _MakeLayout_:\
-/// > &nbsp;&nbsp; `make_layout` `!` `(` _CoreData_ `;` _Layout_ `)`
-/// >
-/// > _Layout_ :\
-/// > &nbsp;&nbsp; &nbsp;&nbsp; _Single_ | _List_ | _Slice_ | _Grid_ | _Align_ | _Frame_ | _Button_
-/// >
-/// > _Single_ :\
-/// > &nbsp;&nbsp; `component`? `self` `.` _Member_
-/// >
-/// > _List_ :\
-/// > &nbsp;&nbsp; _ListPre_ _Storage_? `:` `*` | (`[` _Layout_ `]`)
-/// >
-/// > _ListPre_ :\
-/// > &nbsp;&nbsp; `column` | `row` | `aligned_column` | `aligned_row` | `list` `(` _Direction_ `)`
-/// >
-/// > _Slice_ :\
-/// > &nbsp;&nbsp; `slice` `(` _Direction_ `)` _Storage_? `:` `self` `.` _Member_
-/// >
-/// > _Direction_ :\
-/// > &nbsp;&nbsp; `left` | `right` | `up` | `down`
-/// >
-/// > _Grid_ :\
-/// > &nbsp;&nbsp; `grid` _Storage_? `:` `{` _GridCell_* `}`
-/// >
-/// > _GridCell_ :\
-/// > &nbsp;&nbsp; _CellRange_ `,` _CellRange_ `:` _Layout_
-/// >
-/// > _CellRange_ :\
-/// > &nbsp;&nbsp; _LitInt_ ( `..` `+`? _LitInt_ )?
-///
-/// > _Align_ :\
-/// > &nbsp;&nbsp; `align` `(` _AlignType_ `)` `:` _Layout_
-/// >
-/// > _AlignType_ :\
-/// > &nbsp;&nbsp; `center` | `stretch`
-/// >
-/// > _Frame_ :\
-/// > &nbsp;&nbsp; `frame` `(` _Style_ `)` _Storage_? `:` _Layout_
-/// >
-/// > _Button_ :\
-/// > &nbsp;&nbsp; `button` `(` _Color_ `)` ? _Storage_? `:` _Layout_
-/// >
-/// > _Storage_ :\
-/// > &nbsp;&nbsp; `'` _Ident_
-///
-/// ## Notes
-///
-/// Both _Single_ and _Slice_ variants match `self.MEMBER` where `MEMBER` is the
-/// name of a field or number of a tuple field. More precisely, both match any
-/// expression starting with `self` and append with `.as_widget_mut()`.
-///
-/// `row` and `column` are abbreviations for `list(right)` and `list(down)`
-/// respectively. Glob syntax is allowed: `row: *` uses all children in a row
-/// layout.
-///
-/// `aligned_column` and `aligned_row` use restricted list syntax (items must
-/// be `row` or `column` respectively; glob syntax not allowed), but build a
-/// grid layout. Essentially, they are syntax sugar for simple table layouts.
-///
-/// _Slice_ is a variant of _List_ over a single struct field which supports
-/// `AsMut<W>` for some widget type `W`.
-///
-/// A _Grid_ is an aligned two-dimensional layout supporting item spans.
-/// Contents are declared as a collection of cells. Cell location is specified
-/// like `0, 1` (that is, col=0, row=1) with spans specified like `0..2, 1`
-/// (thus cols={0, 1}, row=1) or `2..+2, 1` (cols={2,3}, row=1).
-///
-/// Non-trivial layouts require a "storage" field within the generated
-/// `widget_core!()`. This storage field may be named via a "lifetime label"
-/// (e.g. `col 'col_storage: *`), otherwise the field name will be generated.
-///
-/// _Member_ is a field name (struct) or number (tuple struct).
-///
-/// # Example
-///
-/// ```none
-/// make_layout!(self.core; row[self.a, self.b])
-/// ```
-///
-/// # Grid
-///
-/// Grid cells are defined by `row, column` ranges, where the ranges are either
-/// a half-open range or a single number (who's end is implicitly `start + 1`).
-///
-/// ```none
-/// make_layout!(self.core; grid: {
-///     0..2, 0: self.merged_title;
-///     0, 1: self.a;
-///     1, 1: self.b;
-///     1, 2: self.c;
-/// })
-/// ```
-#[proc_macro_error]
-#[proc_macro]
-pub fn make_layout(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as make_layout::Input);
-    make_layout::make_layout(input)
         .unwrap_or_else(|err| err.to_compile_error())
         .into()
 }

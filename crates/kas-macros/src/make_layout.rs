@@ -35,11 +35,6 @@ mod kw {
     custom_keyword!(component);
 }
 
-pub struct Input {
-    pub core: Ident,
-    pub layout: Tree,
-}
-
 #[derive(Debug)]
 pub struct Tree(Layout);
 impl Tree {
@@ -198,16 +193,6 @@ impl GridDimensions {
         if cell.row_end - cell.row > 1 {
             self.row_spans += 1;
         }
-    }
-}
-
-impl Parse for Input {
-    fn parse(input: ParseStream) -> Result<Self> {
-        let core = input.parse()?;
-        let _: Token![;] = input.parse()?;
-        let layout = input.parse()?;
-
-        Ok(Input { core, layout })
     }
 }
 
@@ -693,13 +678,4 @@ impl Layout {
             }
         })
     }
-}
-
-pub fn make_layout(input: Input) -> Result<Toks> {
-    let layout = input.layout.0;
-    let layout = layout.generate::<std::iter::Empty<&Member>>(&input.core.into(), None)?;
-    Ok(quote! { {
-        quote! { use ::kas::{WidgetCore, layout}; }
-        #layout
-    } })
 }
