@@ -190,23 +190,6 @@ impl<'a> Layout<'a> {
         self.size_rules_(mgr, axis)
     }
     fn size_rules_(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-        let frame = |mgr: SizeMgr, child: &mut Layout, storage: &mut FrameStorage, mut style| {
-            let frame_rules = mgr.frame(style, axis);
-            let child_rules = child.size_rules_(mgr, axis);
-            if axis.is_horizontal() && style == FrameStyle::MenuEntry {
-                style = FrameStyle::InnerMargin;
-            }
-            let (rules, offset, size) = match style {
-                FrameStyle::InnerMargin | FrameStyle::EditBox => {
-                    frame_rules.surround_with_margin(child_rules)
-                }
-                FrameStyle::NavFocus => frame_rules.surround_as_margin(child_rules),
-                _ => frame_rules.surround_no_margin(child_rules),
-            };
-            storage.offset.set_component(axis, offset);
-            storage.size.set_component(axis, size);
-            rules
-        };
         match &mut self.layout {
             LayoutType::None => SizeRules::EMPTY,
             LayoutType::Component(component) => component.size_rules(mgr, axis),
@@ -214,8 +197,14 @@ impl<'a> Layout<'a> {
             LayoutType::Single(child) => child.size_rules(mgr, axis),
             LayoutType::AlignSingle(child, _) => child.size_rules(mgr, axis),
             LayoutType::AlignLayout(layout, _) => layout.size_rules_(mgr, axis),
-            LayoutType::Frame(child, storage, style) => frame(mgr, child, storage, *style),
-            LayoutType::Button(child, storage, _) => frame(mgr, child, storage, FrameStyle::Button),
+            LayoutType::Frame(child, storage, style) => {
+                let child_rules = child.size_rules_(mgr.re(), axis);
+                storage.size_rules(mgr, axis, child_rules, *style)
+            }
+            LayoutType::Button(child, storage, _) => {
+                let child_rules = child.size_rules_(mgr.re(), axis);
+                storage.size_rules(mgr, axis, child_rules, FrameStyle::Button)
+            }
         }
     }
 
@@ -429,5 +418,30 @@ pub struct FrameStorage {
 impl Storage for FrameStorage {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
+    }
+}
+impl FrameStorage {
+    /// Generate [`SizeRules`]
+    pub fn size_rules(
+        &mut self,
+        mgr: SizeMgr,
+        axis: AxisInfo,
+        child_rules: SizeRules,
+        mut style: FrameStyle,
+    ) -> SizeRules {
+        let frame_rules = mgr.frame(style, axis);
+        if axis.is_horizontal() && style == FrameStyle::MenuEntry {
+            style = FrameStyle::InnerMargin;
+        }
+        let (rules, offset, size) = match style {
+            FrameStyle::InnerMargin | FrameStyle::EditBox => {
+                frame_rules.surround_with_margin(child_rules)
+            }
+            FrameStyle::NavFocus => frame_rules.surround_as_margin(child_rules),
+            _ => frame_rules.surround_no_margin(child_rules),
+        };
+        self.offset.set_component(axis, offset);
+        self.size.set_component(axis, size);
+        rules
     }
 }
