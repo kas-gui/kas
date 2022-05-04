@@ -6,6 +6,7 @@
 //! A grid widget
 
 use kas::layout::{DynGridStorage, GridChildInfo, GridDimensions};
+use kas::layout::{GridSetter, GridSolver, RulesSetter, RulesSolver};
 use kas::{layout, prelude::*};
 use std::ops::{Index, IndexMut};
 
@@ -77,16 +78,37 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn layout(&mut self) -> layout::Layout<'_> {
-            layout::Layout::grid(
-                self.widgets.iter_mut().map(move |(info, w)| (*info, layout::Layout::single(w))),
-                self.dim,
-                &mut self.data,
-            )
+        fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, &mut self.data);
+            for (info, child) in &mut self.widgets {
+                solver.for_child(&mut self.data, *info, |axis| child.size_rules(mgr.re(), axis));
+            }
+            solver.finish(&mut self.data)
+        }
+
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+            self.core.rect = rect;
+            let mut setter = GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, align, &mut self.data);
+            for (info, child) in &mut self.widgets {
+                child.set_rect(mgr, setter.child_rect(&mut self.data, *info), align);
+            }
+        }
+
+        fn draw(&mut self, mut draw: DrawMgr) {
+            for (_, child) in &mut self.widgets {
+                draw.recurse(child);
+            }
         }
     }
 
     impl Widget for Self {
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) {
+                return None;
+            }
+            self.widgets.iter_mut().find_map(|(_, child)| child.find_id(coord)).or_else(|| Some(self.id()))
+        }
+
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
             if let Some(f) = self.on_message {
                 f(mgr, index);
