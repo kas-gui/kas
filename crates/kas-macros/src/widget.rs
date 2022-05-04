@@ -10,7 +10,7 @@ use proc_macro2::{Span, TokenStream};
 use proc_macro_error::{emit_error, emit_warning};
 use quote::{quote, TokenStreamExt};
 use syn::spanned::Spanned;
-use syn::{parse2, parse_quote, Error, Ident, ImplItem, Index, Member, Result};
+use syn::{parse2, parse_quote, Error, Ident, ImplItem, Index, Member, Result, Type};
 
 fn member(index: usize, ident: Option<Ident>) -> Member {
     match ident {
@@ -34,10 +34,10 @@ impl ScopeAttr for AttrImplWidget {
     }
 }
 
-pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
+pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     scope.expand_impl_self();
     let name = &scope.ident;
-    let opt_derive = &attr.derive;
+    let opt_derive = &args.derive;
 
     let mut impl_widget_children = true;
     let mut layout_impl = None;
@@ -61,7 +61,7 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
         }
     };
 
-    let mut core_data = None;
+    let mut core_data: Option<Member> = None;
     let mut children = Vec::with_capacity(fields.len());
     for (i, field) in fields.iter_mut().enumerate() {
         let mut other_attrs = Vec::with_capacity(field.attrs.len());
@@ -69,6 +69,47 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
             if attr.path == parse_quote! { widget_core } {
                 if !attr.tokens.is_empty() {
                     return Err(Error::new(attr.tokens.span(), "unexpected token"));
+                }
+                match &field.ty {
+                    Type::Infer(_) => {
+                        if let Some(stor) = args.layout.as_ref().and_then(|l| l.storage_fields()) {
+                            let name = format!("Kas{}GeneratedCore", name);
+                            let core_type = Ident::new(&name, Span::call_site());
+                            scope.generated.push(quote! {
+                                #[derive(Default, Debug)]
+                                struct #core_type {
+                                    rect: ::kas::geom::Rect,
+                                    id: ::kas::WidgetId,
+                                    #stor
+                                }
+
+                                impl ::std::clone::Clone for #core_type {
+                                    fn clone(&self) -> Self {
+                                        #core_type {
+                                            rect: self.rect,
+                                            .. #core_type::default(),
+                                        }
+                                    }
+                                }
+                            });
+                            field.ty = Type::Path(syn::TypePath {
+                                qself: None,
+                                path: core_type.into(),
+                            });
+                        } else {
+                            field.ty = parse_quote! { ::kas::CoreData };
+                        }
+                    }
+                    Type::Path(p)
+                        if *p == parse_quote! { CoreData }
+                            || *p == parse_quote! { kas::CoreData }
+                            || *p == parse_quote! { ::kas::CoreData } =>
+                    {
+                        ()
+                    }
+                    other => {
+                        return Err(Error::new(other.span(), "expected `_` or `kas::CoreData`"));
+                    }
                 }
                 if core_data.is_none() {
                     core_data = Some(member(i, field.ident.clone()));
@@ -249,7 +290,7 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
         }
 
         if widget_impl.is_none() {
-            let key_nav = attr.key_nav.unwrap_or_else(|| {
+            let key_nav = args.key_nav.unwrap_or_else(|| {
                 quote! {
                     #[inline]
                     fn key_nav(&self) -> bool {
@@ -257,7 +298,7 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     }
                 }
             });
-            let hover_highlight = attr.hover_highlight.unwrap_or_else(|| {
+            let hover_highlight = args.hover_highlight.unwrap_or_else(|| {
                 quote! {
                     #[inline]
                     fn hover_highlight(&self) -> bool {
@@ -265,7 +306,7 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     }
                 }
             });
-            let cursor_icon = attr.cursor_icon.unwrap_or_else(|| {
+            let cursor_icon = args.cursor_icon.unwrap_or_else(|| {
                 quote! {
                     #[inline]
                     fn cursor_icon(&self) -> ::kas::event::CursorIcon {
@@ -391,7 +432,7 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
         });
     }
 
-    let fn_layout = match attr.layout.take() {
+    let fn_layout = match args.layout.take() {
         Some(layout) => {
             let layout = layout.generate(children.iter().map(|c| &c.ident))?;
             Some(quote! {
@@ -452,19 +493,19 @@ pub fn widget(mut attr: WidgetArgs, scope: &mut Scope) -> Result<()> {
         {
             widget_impl.items.push(parse2(fn_pre_configure)?);
         }
-        if let Some(item) = attr.key_nav {
+        if let Some(item) = args.key_nav {
             widget_impl.items.push(parse2(item)?);
         }
-        if let Some(item) = attr.hover_highlight {
+        if let Some(item) = args.hover_highlight {
             widget_impl.items.push(parse2(item)?);
         }
-        if let Some(item) = attr.cursor_icon {
+        if let Some(item) = args.cursor_icon {
             widget_impl.items.push(parse2(item)?);
         }
     } else {
-        let key_nav = attr.key_nav;
-        let hover_highlight = attr.hover_highlight;
-        let cursor_icon = attr.cursor_icon;
+        let key_nav = args.key_nav;
+        let hover_highlight = args.hover_highlight;
+        let cursor_icon = args.cursor_icon;
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Widget
                     for #name #ty_generics #where_clause

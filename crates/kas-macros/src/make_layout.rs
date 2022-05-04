@@ -41,6 +41,11 @@ pub struct Input {
 #[derive(Debug)]
 pub struct Tree(Layout);
 impl Tree {
+    /// If extra fields are needed for storage, return these (e.g. "layout_frame: FrameStorage,")
+    pub fn storage_fields(&self) -> Option<Toks> {
+        None
+    }
+
     pub fn generate<'a, I: ExactSizeIterator<Item = &'a Member>>(
         &'a self,
         children: I,

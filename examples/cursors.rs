@@ -16,7 +16,7 @@ impl_scope! {
     }]
     struct CursorWidget {
         #[widget_core]
-        core: CoreData,
+        core: _,
         #[widget]
         label: StrLabel,
         cursor: CursorIcon,
