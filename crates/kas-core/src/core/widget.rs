@@ -10,7 +10,7 @@ use std::fmt;
 
 use crate::event::{self, Event, EventMgr, Response, Scroll};
 use crate::geom::{Coord, Offset, Rect};
-use crate::layout::{self, AlignHints, AxisInfo, SetRectMgr, SizeRules};
+use crate::layout::{AlignHints, AxisInfo, SetRectMgr, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::util::IdentifyWidget;
 use crate::WidgetId;
@@ -18,6 +18,10 @@ use kas_macros::autoimpl;
 
 #[allow(unused)]
 use crate::event::EventState;
+#[allow(unused)]
+use crate::layout::{self, AutoLayout};
+#[allow(unused)]
+use kas_macros::widget;
 
 impl dyn WidgetCore {
     /// Forwards to the method defined on the type `Any`.
@@ -131,10 +135,9 @@ pub trait WidgetChildren: WidgetCore {
 ///
 /// There are two methods of implementing this trait:
 ///
-/// -   Implement [`Self::layout`]. This alone suffices in many cases; other
-///     methods may be overridden if necessary.
-/// -   Ignore [`Self::layout`] and implement [`Self::size_rules`] (to give the
-///     widget size) and [`Self::draw`] (to make it show something). Other
+/// -   Use the `#[widget{ layout = .. }]` property (see [`#[widget]`](widget) documentation)
+/// -   Implement [`Self::size_rules`] (to give the widget size) and
+///     [`Self::draw`] (to make it show something). Other
 ///     methods may be required (e.g. [`Self::set_rect`] to position child
 ///     elements).
 ///
@@ -149,21 +152,6 @@ pub trait WidgetChildren: WidgetCore {
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait Layout: WidgetChildren {
-    /// Describe layout
-    ///
-    /// This is purely a helper method used to implement other methods:
-    /// [`Self::size_rules`], [`Self::set_rect`], [`Widget::find_id`], [`Self::draw`].
-    /// If those methods are implemented directly (or their default
-    /// implementation over the default "empty" layout provided by this method
-    /// suffices), then this method need not be implemented.
-    ///
-    /// The default implementation is for an empty layout (zero size required,
-    /// no child elements, no graphics).
-    #[inline]
-    fn layout(&mut self) -> layout::Layout<'_> {
-        Default::default()
-    }
-
     /// Get size rules for the given axis
     ///
     /// For a description of the widget size model, see [`SizeRules`].
@@ -176,15 +164,17 @@ pub trait Layout: WidgetChildren {
     /// internal layout (of child widgets and other components), especially data
     /// which requires calling `size_rules` on children.
     ///
-    /// This method may be implemented through [`Self::layout`] or directly.
+    /// This method may be implemented through the `layout` property of
+    /// [`#[widget]`](widget).
     /// A [`crate::layout::RulesSolver`] engine may be useful to calculate
     /// requirements of complex layouts.
     ///
     /// [`Widget::configure`] will be called before this method and may
     /// be used to load assets.
-    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-        self.layout().size_rules(size_mgr, axis)
-    }
+    ///
+    /// Default: no default impl, but generated when `#[widget]` property
+    /// `layout = ..` is used (uses [`AutoLayout`]).
+    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
 
     /// Set size and position
     ///
@@ -203,11 +193,15 @@ pub trait Layout: WidgetChildren {
     /// It is up to the widget to either stretch to occupy this space or align
     /// itself within the excess space, according to the `align` hints provided.
     ///
-    /// This method may be implemented through [`Self::layout`] or directly.
+    /// This method may be implemented through the `layout` property of
+    /// [`#[widget]`](widget).
     /// The default implementation assigns `self.core.rect = rect`
-    /// and applies the layout described by [`Self::layout`].
+    /// and applies the layout described by the `layout` property.
     ///
     /// [`Stretch`]: crate::layout::Stretch
+    ///
+    /// Default: set `rect` of `widget_core!()` field. If `layout = ..` property
+    /// is used, also calls `<Self as AutoLayout>::set_rect`.
     fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints);
 
     /// Draw a widget and its children
@@ -218,10 +212,9 @@ pub trait Layout: WidgetChildren {
     /// It is expected that [`Self::set_rect`] is called before this method,
     /// but failure to do so should not cause a fatal error.
     ///
-    /// The default impl draws elements as defined by [`Self::layout`].
-    fn draw(&mut self, draw: DrawMgr) {
-        self.layout().draw(draw);
-    }
+    /// Default: no default impl, but generated when `#[widget]` property
+    /// `layout = ..` is used (uses [`AutoLayout`]).
+    fn draw(&mut self, draw: DrawMgr);
 }
 
 /// Widget trait
@@ -371,7 +364,8 @@ pub trait Widget: Layout {
     ///
     /// The default implementation suffices unless:
     ///
-    /// -   [`Layout::layout`] is not implemented and there are child widgets
+    /// -   The `layout` property of [`#[widget]`](widget) is not used but
+    ///     there are child widgets
     /// -   Event stealing from child widgets is desired (but note that
     ///     [`crate::layout::Layout::button`] does this already)
     /// -   The child widget is in a translated coordinate space *not equal* to
@@ -383,12 +377,13 @@ pub trait Widget: Layout {
     /// -   Find the child which should respond to input at `coord`, if any, and
     ///     call `find_id` recursively on this child
     /// -   Otherwise return `self.id()`
+    ///
+    /// Default: return `None` if `!self.rect().contains(coord)`, otherwise, if
+    /// the `layout = ..` property is used, return
+    /// `<Self as AutoLayout>::find_id(self, coord)`,
+    /// else return `Some(self.id())`.
     fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-        if !self.rect().contains(coord) {
-            return None;
-        }
-        let coord = coord + self.translation();
-        self.layout().find_id(coord).or_else(|| Some(self.id()))
+        self.rect().contains(coord).then(|| self.id())
     }
 
     /// Handle an event sent to this widget

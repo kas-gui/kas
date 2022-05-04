@@ -123,7 +123,7 @@ impl_scope! {
         fn draw(&mut self, mut draw: DrawMgr) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             let id = self.checkbox.id();
-            self.layout().draw(draw.re_id(id));
+            <Self as layout::AutoLayout>::draw(self, draw.re_id(id));
         }
     }
 

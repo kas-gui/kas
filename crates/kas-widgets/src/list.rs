@@ -135,15 +135,6 @@ impl_scope! {
             kas::util::spatial_nav(reverse, from, self.num_children())
         }
 
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-
-            let coord = coord + self.translation();
-            self.layout().find_id(coord).or_else(|| Some(self.id()))
-        }
-
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
             if let Some(f) = self.on_message {
                 f(mgr, index);
