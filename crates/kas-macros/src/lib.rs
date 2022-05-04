@@ -292,19 +292,19 @@ pub fn make_widget(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; `self` `.` _Member_
 /// >
 /// > _List_ :\
-/// > &nbsp;&nbsp; _ListPre_ `:` `*` | (`[` _Layout_ `]`)
+/// > &nbsp;&nbsp; _ListPre_ _Storage_? `:` `*` | (`[` _Layout_ `]`)
 /// >
 /// > _ListPre_ :\
 /// > &nbsp;&nbsp; `column` | `row` | `aligned_column` | `aligned_row` | `list` `(` _Direction_ `)`
 /// >
 /// > _Slice_ :\
-/// > &nbsp;&nbsp; `slice` `(` _Direction_ `)` `:` `self` `.` _Member_
+/// > &nbsp;&nbsp; `slice` `(` _Direction_ `)` _Storage_? `:` `self` `.` _Member_
 /// >
 /// > _Direction_ :\
 /// > &nbsp;&nbsp; `left` | `right` | `up` | `down`
 /// >
 /// > _Grid_ :\
-/// > &nbsp;&nbsp; `grid` `:` `{` _GridCell_* `}`
+/// > &nbsp;&nbsp; `grid` _Storage_? `:` `{` _GridCell_* `}`
 /// >
 /// > _GridCell_ :\
 /// > &nbsp;&nbsp; _CellRange_ `,` _CellRange_ `:` _Layout_
@@ -319,7 +319,10 @@ pub fn make_widget(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; `center` | `stretch`
 /// >
 /// > _Frame_ :\
-/// > &nbsp;&nbsp; `frame` `(` _Style_ `)` `:` _Layout_
+/// > &nbsp;&nbsp; `frame` `(` _Style_ `)` _Storage_? `:` _Layout_
+/// >
+/// > _Storage_ :\
+/// > &nbsp;&nbsp; `'` _Ident_
 ///
 /// ## Notes
 ///
@@ -342,6 +345,10 @@ pub fn make_widget(input: TokenStream) -> TokenStream {
 /// Contents are declared as a collection of cells. Cell location is specified
 /// like `0, 1` (that is, col=0, row=1) with spans specified like `0..2, 1`
 /// (thus cols={0, 1}, row=1) or `2..+2, 1` (cols={2,3}, row=1).
+///
+/// Non-trivial layouts require a "storage" field within the generated
+/// `widget_core!()`. This storage field may be named via a "lifetime label"
+/// (e.g. `col 'col_storage: *`), otherwise the field name will be generated.
 ///
 /// _Member_ is a field name (struct) or number (tuple struct).
 ///
