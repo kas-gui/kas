@@ -10,7 +10,7 @@ use super::Layout;
 use super::{Widget, WidgetId};
 use crate::event::EventMgr;
 use crate::geom::Rect;
-use crate::layout::{SetRectMgr, StorageChain};
+use crate::layout::SetRectMgr;
 use crate::{dir::Direction, WindowId};
 
 #[cfg(feature = "winit")]
@@ -41,17 +41,15 @@ impl Icon {
 /// This type may be used for a [`Widget`]'s `core: widget_core!()` field.
 #[derive(Default, Debug)]
 pub struct CoreData {
-    pub layout: StorageChain,
     pub rect: Rect,
     pub id: WidgetId,
 }
 
-/// Note: the clone has default-initialised layout storage and identifier.
+/// Note: the clone has default-initialised identifier.
 /// Configuration and layout solving is required as for any other widget.
 impl Clone for CoreData {
     fn clone(&self) -> Self {
         CoreData {
-            layout: StorageChain::default(),
             rect: self.rect,
             id: WidgetId::default(),
         }

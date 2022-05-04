@@ -20,40 +20,6 @@ use crate::{dir::Directional, Widget};
 use std::any::Any;
 use std::iter::ExactSizeIterator;
 
-/// Chaining layout storage
-///
-/// We support embedded layouts within a single widget which means that we must
-/// support storage for multiple layouts, though commonly zero or one layout is
-/// used. We therefore use a simple linked list.
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-#[derive(Debug, Default)]
-pub struct StorageChain(Option<(Box<StorageChain>, Box<dyn Storage>)>);
-
-impl StorageChain {
-    /// Access layout storage
-    ///
-    /// This storage is allocated and initialised via `f()` on first access.
-    ///
-    /// Panics if the type `T` differs from the initial usage.
-    pub fn storage<T: Storage, F: FnOnce() -> T>(&mut self, f: F) -> (&mut T, &mut StorageChain) {
-        if let StorageChain(Some(ref mut b)) = self {
-            let storage =
-                b.1.downcast_mut()
-                    .unwrap_or_else(|| panic!("StorageChain::storage::<T>(): incorrect type T"));
-            return (storage, &mut b.0);
-        }
-        // TODO(rust#42877): store (StorageChain, dyn Storage) tuple in a single box
-        let s = Box::new(StorageChain(None));
-        let t: Box<dyn Storage> = Box::new(f());
-        *self = StorageChain(Some((s, t)));
-        match self {
-            StorageChain(Some(b)) => (b.1.downcast_mut::<T>().unwrap(), &mut b.0),
-            _ => unreachable!(),
-        }
-    }
-}
-
 /// A layout visitor
 ///
 /// This constitutes a "visitor" which iterates over each child widget. Layout

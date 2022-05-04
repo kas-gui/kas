@@ -74,22 +74,33 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 core_data = Some(member(i, field.ident.clone()));
             }
 
-            if let Some(stor) = args.layout.as_ref().and_then(|l| l.storage_fields()) {
+            if let Some((stor_ty, stor_def)) = args.layout.as_ref().and_then(|l| l.storage_fields())
+            {
                 let name = format!("Kas{}GeneratedCore", name);
                 let core_type = Ident::new(&name, Span::call_site());
                 scope.generated.push(quote! {
-                    #[derive(Default, Debug)]
+                    #[derive(Debug)]
                     struct #core_type {
                         rect: ::kas::geom::Rect,
                         id: ::kas::WidgetId,
-                        #stor
+                        #stor_ty
                     }
 
-                    impl ::std::clone::Clone for #core_type {
+                    impl Default for #core_type {
+                        fn default() -> Self {
+                            #core_type {
+                                rect: Default::default(),
+                                id: Default::default(),
+                                #stor_def
+                            }
+                        }
+                    }
+
+                    impl Clone for #core_type {
                         fn clone(&self) -> Self {
                             #core_type {
                                 rect: self.rect,
-                                .. #core_type::default(),
+                                .. #core_type::default()
                             }
                         }
                     }
@@ -422,11 +433,10 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
     let fn_layout = match args.layout.take() {
         Some(layout) => {
-            let layout = layout.generate(children.iter().map(|c| &c.ident))?;
+            let layout = layout.generate(&core_data, children.iter().map(|c| &c.ident))?;
             Some(quote! {
                 fn layout<'a>(&'a mut self) -> ::kas::layout::Layout<'a> {
                     use ::kas::{WidgetCore, layout};
-                    let mut _chain = &mut self.#core_data.layout;
                     #layout
                 }
             })

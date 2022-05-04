@@ -62,7 +62,7 @@ pub use size_rules::SizeRules;
 pub use size_types::*;
 pub use sizer::{solve_size_rules, RulesSetter, RulesSolver, SolveCache};
 pub use storage::*;
-pub use visitor::{FrameStorage, Layout, StorageChain};
+pub use visitor::{FrameStorage, Layout};
 
 /// Information on which axis is being resized
 ///

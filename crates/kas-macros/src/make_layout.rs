@@ -4,7 +4,7 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 use proc_macro2::{Span, TokenStream as Toks};
-use quote::{quote, TokenStreamExt};
+use quote::{quote, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::{braced, bracketed, parenthesized, Expr, Ident, Lifetime, LitInt, LitStr, Member, Token};
@@ -34,23 +34,31 @@ mod kw {
 }
 
 pub struct Input {
-    pub core: Expr,
+    pub core: Ident,
     pub layout: Tree,
 }
 
 #[derive(Debug)]
 pub struct Tree(Layout);
 impl Tree {
-    /// If extra fields are needed for storage, return these (e.g. "layout_frame: FrameStorage,")
-    pub fn storage_fields(&self) -> Option<Toks> {
-        None
+    /// If extra fields are needed for storage, return these: `(fields_ty, fields_init)`
+    /// (e.g. `({ layout_frame: FrameStorage, }, { layout_frame: Default::default()), }`).
+    pub fn storage_fields(&self) -> Option<(Toks, Toks)> {
+        let (mut ty_toks, mut def_toks) = (Toks::new(), Toks::new());
+        self.0.append_fields(&mut ty_toks, &mut def_toks);
+        if ty_toks.is_empty() && def_toks.is_empty() {
+            None
+        } else {
+            Some((ty_toks, def_toks))
+        }
     }
 
     pub fn generate<'a, I: ExactSizeIterator<Item = &'a Member>>(
         &'a self,
+        core: &Member,
         children: I,
     ) -> Result<Toks> {
-        self.0.generate(Some(children))
+        self.0.generate(core, Some(children))
     }
 }
 
@@ -63,6 +71,14 @@ impl From<Lifetime> for StorIdent {
     fn from(lt: Lifetime) -> StorIdent {
         let span = lt.span();
         StorIdent::Named(lt.ident, span)
+    }
+}
+impl ToTokens for StorIdent {
+    fn to_tokens(&self, toks: &mut Toks) {
+        match self {
+            StorIdent::Named(ident, _) => ident.to_tokens(toks),
+            StorIdent::Generated(string, span) => Ident::new(string, *span).to_tokens(toks),
+        }
     }
 }
 
@@ -462,7 +478,7 @@ impl Parse for Direction {
     }
 }
 
-impl quote::ToTokens for Align {
+impl ToTokens for Align {
     fn to_tokens(&self, toks: &mut Toks) {
         toks.append_all(match self {
             Align::Default => quote! { layout::AlignHints::NONE },
@@ -476,7 +492,7 @@ impl quote::ToTokens for Align {
     }
 }
 
-impl quote::ToTokens for Direction {
+impl ToTokens for Direction {
     fn to_tokens(&self, toks: &mut Toks) {
         match self {
             Direction::Left => toks.append_all(quote! { ::kas::dir::Left }),
@@ -488,7 +504,7 @@ impl quote::ToTokens for Direction {
     }
 }
 
-impl quote::ToTokens for GridDimensions {
+impl ToTokens for GridDimensions {
     fn to_tokens(&self, toks: &mut Toks) {
         let (cols, rows) = (self.cols, self.rows);
         let (col_spans, row_spans) = (self.col_spans, self.row_spans);
@@ -502,17 +518,80 @@ impl quote::ToTokens for GridDimensions {
 }
 
 impl Layout {
+    fn append_fields(&self, ty_toks: &mut Toks, def_toks: &mut Toks) {
+        match self {
+            Layout::Align(layout, _) => {
+                layout.append_fields(ty_toks, def_toks);
+            }
+            Layout::AlignSingle(..) | Layout::Widget(_) => (),
+            Layout::Frame(stor, layout, _) => {
+                stor.to_tokens(ty_toks);
+                ty_toks.append_all(quote! { : ::kas::layout::FrameStorage, });
+                stor.to_tokens(def_toks);
+                def_toks.append_all(quote! { : Default::default(), });
+                layout.append_fields(ty_toks, def_toks);
+            }
+            Layout::List(stor, _, list) => {
+                stor.to_tokens(ty_toks);
+                stor.to_tokens(def_toks);
+                def_toks.append_all(quote! { : Default::default(), });
+                match list {
+                    List::List(vec) => {
+                        let len = vec.len();
+                        ty_toks.append_all(if len > 16 {
+                            quote! { : ::kas::layout::DynRowStorage, }
+                        } else {
+                            quote! { : ::kas::layout::FixedRowStorage<#len>, }
+                        });
+                        for item in vec {
+                            item.append_fields(ty_toks, def_toks);
+                        }
+                    }
+                    List::Glob(_) => {
+                        // TODO(opt): use FixedRowStorage?
+                        ty_toks.append_all(quote! { : ::kas::layout::DynRowStorage, });
+                        // only simple items supported, so there is nothing to recurse
+                    }
+                }
+            }
+            Layout::Slice(stor, _, _) => {
+                stor.to_tokens(ty_toks);
+                ty_toks.append_all(quote! { : ::kas::layout::DynRowStorage, });
+                stor.to_tokens(def_toks);
+                def_toks.append_all(quote! { : Default::default(), });
+            }
+            Layout::Grid(stor, dim, cells) => {
+                let (cols, rows) = (dim.cols as usize, dim.rows as usize);
+                stor.to_tokens(ty_toks);
+                ty_toks.append_all(quote! { : ::kas::layout::FixedGridStorage<#cols, #rows>, });
+                stor.to_tokens(def_toks);
+                def_toks.append_all(quote! { : Default::default(), });
+
+                for (_info, layout) in cells {
+                    layout.append_fields(ty_toks, def_toks);
+                }
+            }
+            Layout::Label(stor, text) => {
+                stor.to_tokens(ty_toks);
+                ty_toks.append_all(quote! { : ::kas::component::Label<&'static str>, });
+                stor.to_tokens(def_toks);
+                def_toks.append_all(quote! { : ::kas::component::Label::new(#text, ::kas::theme::TextClass::Label(false)), });
+            }
+        }
+    }
+
     // Optionally pass in the list of children, but not when already in a
     // multi-element layout (list/slice/grid).
     //
     // Required: `::kas::layout` must be in scope.
     fn generate<'a, I: ExactSizeIterator<Item = &'a Member>>(
         &'a self,
+        core: &Member,
         children: Option<I>,
     ) -> Result<Toks> {
         Ok(match self {
             Layout::Align(layout, align) => {
-                let inner = layout.generate(children)?;
+                let inner = layout.generate(core, children)?;
                 quote! { layout::Layout::align(#inner, #align) }
             }
             Layout::AlignSingle(expr, align) => {
@@ -522,27 +601,22 @@ impl Layout {
                 layout::Layout::single((#expr).as_widget_mut())
             },
             Layout::Frame(stor, layout, style) => {
-                let inner = layout.generate(children)?;
+                let inner = layout.generate(core, children)?;
                 quote! {
-                    let (data, next) = _chain.storage::<layout::FrameStorage, _>(Default::default);
-                    _chain = next;
-                    layout::Layout::frame(data, #inner, #style)
+                    layout::Layout::frame(&mut self.#core.#stor, #inner, #style)
                 }
             }
             Layout::List(stor, dir, list) => {
-                let len;
                 let mut items = Toks::new();
                 match list {
                     List::List(list) => {
-                        len = list.len();
                         for item in list {
-                            let item = item.generate::<std::iter::Empty<&Member>>(None)?;
+                            let item = item.generate::<std::iter::Empty<&Member>>(core, None)?;
                             items.append_all(quote! {{ #item },});
                         }
                     }
                     List::Glob(span) => {
                         if let Some(iter) = children {
-                            len = iter.len();
                             for member in iter {
                                 items.append_all(quote! {
                                     layout::Layout::single(self.#member.as_widget_mut()),
@@ -557,44 +631,19 @@ impl Layout {
                     }
                 }
 
-                let storage = if len > 16 {
-                    quote! { layout::DynRowStorage }
-                } else {
-                    quote! { layout::FixedRowStorage<#len> }
-                };
-                // Get a storage slot from the chain. Order doesn't matter.
-                let data = quote! { {
-                    let (data, next) = _chain.storage::<#storage, _>(Default::default);
-                    _chain = next;
-                    data
-                } };
-
                 let iter = quote! { { let arr = [#items]; arr.into_iter() } };
 
-                quote! { layout::Layout::list(#iter, #dir, #data) }
+                quote! { layout::Layout::list(#iter, #dir, &mut self.#core.#stor) }
             }
             Layout::Slice(stor, dir, expr) => {
-                let data = quote! { {
-                    let (data, next) = _chain.storage::<layout::DynRowStorage, _>(Default::default);
-                    _chain = next;
-                    data
-                } };
-                quote! { layout::Layout::slice(&mut #expr, #dir, #data) }
+                quote! { layout::Layout::slice(&mut #expr, #dir, &mut self.#core.#stor) }
             }
             Layout::Grid(stor, dim, cells) => {
-                let (cols, rows) = (dim.cols as usize, dim.rows as usize);
-                let data = quote! { {
-                    type Storage = layout::FixedGridStorage<#cols, #rows>;
-                    let (data, next) = _chain.storage::<Storage, _>(Default::default);
-                    _chain = next;
-                    data
-                } };
-
                 let mut items = Toks::new();
                 for item in cells {
                     let (col, col_end) = (item.0.col, item.0.col_end);
                     let (row, row_end) = (item.0.row, item.0.row_end);
-                    let layout = item.1.generate::<std::iter::Empty<&Member>>(None)?;
+                    let layout = item.1.generate::<std::iter::Empty<&Member>>(core, None)?;
                     items.append_all(quote! {
                         (
                             layout::GridChildInfo {
@@ -609,29 +658,20 @@ impl Layout {
                 }
                 let iter = quote! { { let arr = [#items]; arr.into_iter() } };
 
-                quote! { layout::Layout::grid(#iter, #dim, #data) }
+                quote! { layout::Layout::grid(#iter, #dim, &mut self.#core.#stor) }
             }
-            Layout::Label(stor, text) => {
-                let data = quote! { {
-                    type Label = kas::component::Label<&'static str>;
-                    let (data, next) = _chain.storage::<Label, _>(|| {
-                        Label::new(#text, kas::theme::TextClass::Label(false))
-                    });
-                    _chain = next;
-                    data
-                } };
-                quote! { layout::Layout::component(#data) }
+            Layout::Label(stor, _) => {
+                quote! { layout::Layout::component(&mut self.#core.#stor) }
             }
         })
     }
 }
 
 pub fn make_layout(input: Input) -> Result<Toks> {
-    let core = &input.core;
-    let layout = input.layout.0.generate::<std::iter::Empty<&Member>>(None)?;
+    let layout = input.layout.0;
+    let layout = layout.generate::<std::iter::Empty<&Member>>(&input.core.into(), None)?;
     Ok(quote! { {
-        use ::kas::{WidgetCore, layout};
-        let mut _chain = &mut #core.layout;
+        quote! { use ::kas::{WidgetCore, layout}; }
         #layout
     } })
 }
