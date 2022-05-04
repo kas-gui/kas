@@ -20,7 +20,9 @@ impl_scope! {
     /// A `MenuEntry` has an associated message value of type `M`. A clone of
     /// this value is pushed when the entry is activated.
     #[derive(Clone, Debug, Default)]
-    #[widget]
+    #[widget {
+        layout = component self.label;
+    }]
     pub struct MenuEntry<M: Clone + Debug + 'static> {
         core: widget_core!(),
         label: Label<AccelString>,
@@ -28,10 +30,6 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn layout(&mut self) -> layout::Layout<'_> {
-            layout::Layout::component(&mut self.label)
-        }
-
         fn draw(&mut self, mut draw: DrawMgr) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.label.draw(draw);
@@ -110,7 +108,9 @@ impl_scope! {
     #[autoimpl(Debug)]
     #[autoimpl(HasBool using self.checkbox)]
     #[derive(Clone, Default)]
-    #[widget]
+    #[widget {
+        layout = row: [self.checkbox, component self.label];
+    }]
     pub struct MenuToggle {
         core: widget_core!(),
         #[widget]
@@ -120,14 +120,6 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn layout(&mut self) -> layout::Layout<'_> {
-            let list = [
-                layout::Layout::single(&mut self.checkbox),
-                layout::Layout::component(&mut self.label),
-            ];
-            layout::Layout::list(list.into_iter(), Direction::Right, &mut self.layout_list)
-        }
-
         fn draw(&mut self, mut draw: DrawMgr) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             let id = self.checkbox.id();

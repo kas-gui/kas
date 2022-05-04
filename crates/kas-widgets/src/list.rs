@@ -67,10 +67,11 @@ impl_scope! {
     #[autoimpl(Clone where W: Clone)]
     #[autoimpl(Debug ignore self.on_message)]
     #[autoimpl(Default where D: Default)]
-    #[widget]
+    #[widget {
+        layout = slice(self.direction) 'layout: self.widgets;
+    }]
     pub struct List<D: Directional, W: Widget> {
         core: widget_core!(),
-        layout_store: layout::DynRowStorage,
         widgets: Vec<W>,
         direction: D,
         next: usize,
@@ -94,12 +95,6 @@ impl_scope! {
 
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
             id.next_key_after(self.id_ref()).and_then(|k| self.id_map.get(&k).cloned())
-        }
-    }
-
-    impl Layout for Self {
-        fn layout(&mut self) -> layout::Layout<'_> {
-            layout::Layout::slice(&mut self.widgets, self.direction, &mut self.layout_store)
         }
     }
 
@@ -183,7 +178,6 @@ impl_scope! {
         pub fn new_with_direction(direction: D, widgets: Vec<W>) -> Self {
             List {
                 core: Default::default(),
-                layout_store: Default::default(),
                 widgets,
                 direction,
                 next: 0,
@@ -233,7 +227,7 @@ impl_scope! {
         /// The number of columns/rows is [`Self.len`].
         #[inline]
         pub fn layout_storage(&mut self) -> &mut impl layout::RowStorage {
-            &mut self.layout_store
+            &mut self.core.layout
         }
 
         /// True if there are no child widgets

@@ -18,7 +18,9 @@ impl_scope! {
     /// Mouse/touch input on the label sends events to the inner widget.
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[derive(Clone, Default, Debug)]
-    #[widget]
+    #[widget {
+        layout = list(self.dir): [self.inner, component self.label];
+    }]
     pub struct WithLabel<W: Widget, D: Directional> {
         core: widget_core!(),
         dir: D,
@@ -105,16 +107,6 @@ impl_scope! {
         /// Get the accelerator keys
         pub fn keys(&self) -> &[event::VirtualKeyCode] {
             self.label.keys()
-        }
-    }
-
-    impl Layout for Self {
-        fn layout(&mut self) -> layout::Layout<'_> {
-            let arr = [
-                layout::Layout::single(&mut self.inner),
-                layout::Layout::component(&mut self.label),
-            ];
-            layout::Layout::list(arr.into_iter(), self.dir, &mut self.layout_store)
         }
     }
 

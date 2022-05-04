@@ -17,7 +17,9 @@ use kas::WindowId;
 impl_scope! {
     /// A sub-menu
     #[autoimpl(Debug where D: trait)]
-    #[widget]
+    #[widget {
+        layout = component self.label;
+    }]
     pub struct SubMenu<D: Directional> {
         core: widget_core!(),
         direction: D,
@@ -123,10 +125,6 @@ impl_scope! {
     }
 
     impl kas::Layout for Self {
-        fn layout(&mut self) -> layout::Layout<'_> {
-            layout::Layout::component(&mut self.label)
-        }
-
         fn draw(&mut self, mut draw: DrawMgr) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.label.draw(draw.re_id(self.id()));
