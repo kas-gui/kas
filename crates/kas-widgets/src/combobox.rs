@@ -376,7 +376,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
 impl_scope! {
     #[derive(Clone, Debug)]
     #[widget{
-        layout = single;
+        layout = self.inner;
     }]
     struct ComboPopup<M: Clone + Debug + 'static> {
         #[widget_core]

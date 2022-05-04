@@ -246,7 +246,7 @@ pub fn make_widget(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; &nbsp;&nbsp; _Single_ | _List_ | _Slice_ | _Grid_ | _Align_ | _Frame_
 /// >
 /// > _Single_ :\
-/// > &nbsp;&nbsp; `single` | `self` `.` _Member_
+/// > &nbsp;&nbsp; `self` `.` _Member_
 /// >
 /// > _List_ :\
 /// > &nbsp;&nbsp; _ListPre_ `:` `*` | (`[` _Layout_ `]`)

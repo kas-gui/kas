@@ -29,7 +29,7 @@ impl_scope! {
     #[autoimpl(Debug ignore self.view)]
     #[derive(Clone)]
     #[widget{
-        layout = single;
+        layout = self.child;
     }]
     pub struct SingleView<
         T: SingleData + 'static,

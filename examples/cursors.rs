@@ -12,7 +12,7 @@ use kas::widgets::{Column, Label, StrLabel, Window};
 impl_scope! {
     #[derive(Clone, Debug)]
     #[widget{
-        layout = single;
+        layout = self.label;
     }]
     struct CursorWidget {
         #[widget_core]

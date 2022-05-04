@@ -15,7 +15,7 @@ impl_scope! {
     /// The main instantiation of the [`Window`] trait.
     #[autoimpl(Clone ignore self.popups, self.drop where W: Clone)]
     #[autoimpl(Debug ignore self.drop, self.icon)]
-    #[widget(layout = single;)]
+    #[widget(layout = self.w;)]
     pub struct Window<W: Widget + 'static> {
         #[widget_core]
         core: CoreData,

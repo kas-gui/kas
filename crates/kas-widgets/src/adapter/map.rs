@@ -17,7 +17,7 @@ impl_scope! {
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone)]
     #[widget{
-        layout = single;
+        layout = self.inner;
     }]
     pub struct MapMessage<W: Widget, M: Debug + 'static, N: Debug + 'static, F: FnMut(M) -> N + 'static> {
         #[widget_core]

@@ -26,7 +26,6 @@ mod kw {
     custom_keyword!(list);
     custom_keyword!(slice);
     custom_keyword!(grid);
-    custom_keyword!(single);
     custom_keyword!(default);
     custom_keyword!(top);
     custom_keyword!(bottom);
@@ -54,7 +53,6 @@ impl Tree {
 enum Layout {
     Align(Box<Layout>, Align),
     AlignSingle(Expr, Align),
-    Single(Span),
     Widget(Expr),
     Frame(Box<Layout>, Expr),
     List(Direction, List),
@@ -198,9 +196,6 @@ impl Parse for Layout {
             }
         } else if lookahead.peek(Token![self]) {
             Ok(Layout::Widget(input.parse()?))
-        } else if lookahead.peek(kw::single) {
-            let tok: kw::single = input.parse()?;
-            Ok(Layout::Single(tok.span()))
         } else if lookahead.peek(kw::frame) {
             let _: kw::frame = input.parse()?;
             let inner;
@@ -472,25 +467,6 @@ impl Layout {
             Layout::Widget(expr) => quote! {
                 layout::Layout::single((#expr).as_widget_mut())
             },
-            Layout::Single(span) => {
-                if let Some(mut iter) = children {
-                    if iter.len() != 1 {
-                        return Err(Error::new(
-                            *span,
-                            "layout `single`: widget does not have exactly one child",
-                        ));
-                    }
-                    let child = iter.next().unwrap();
-                    quote! {
-                        layout::Layout::single(self.#child.as_widget_mut())
-                    }
-                } else {
-                    return Err(Error::new(
-                        *span,
-                        "layout `single` is unavailable in this context",
-                    ));
-                }
-            }
             Layout::Frame(layout, style) => {
                 let inner = layout.generate(children)?;
                 quote! {
