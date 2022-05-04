@@ -161,8 +161,7 @@ impl_scope! {
         layout = frame(FrameStyle::EditBox): self.inner;
     }]
     pub struct EditBox<G: EditGuard = ()> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         #[widget]
         inner: EditField<G>,
     }
@@ -335,8 +334,7 @@ impl_scope! {
         cursor_icon = CursorIcon::Text;
     }]
     pub struct EditField<G: EditGuard = ()> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         view_offset: Offset,
         editable: bool,
         multi_line: bool,

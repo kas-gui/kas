@@ -96,8 +96,7 @@ impl_scope! {
         hover_highlight = true;
     }]
     pub struct Slider<T: SliderType, D: Directional> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         direction: D,
         // Terminology assumes vertical orientation:
         range: (T, T),

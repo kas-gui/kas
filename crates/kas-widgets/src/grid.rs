@@ -54,8 +54,7 @@ impl_scope! {
     #[derive(Clone)]
     #[widget]
     pub struct Grid<W: Widget> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         widgets: Vec<(GridChildInfo, W)>,
         data: DynGridStorage,
         dim: GridDimensions,

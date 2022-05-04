@@ -42,8 +42,7 @@ impl_scope! {
         cursor_icon = CursorIcon::Grab;
     }]
     pub struct DragHandle {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         // The track is the area within which this DragHandle may move
         track: Rect,
         press_coord: Coord,

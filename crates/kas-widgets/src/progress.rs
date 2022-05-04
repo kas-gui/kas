@@ -16,8 +16,7 @@ impl_scope! {
     #[derive(Clone, Debug, Default)]
     #[widget]
     pub struct ProgressBar<D: Directional> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         direction: D,
         width: i32,
         value: f32,

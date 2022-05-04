@@ -23,8 +23,7 @@ impl_scope! {
     #[derive(Clone)]
     #[widget]
     pub struct Svg {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         tree: Option<usvg::Tree>,
         raw_size: Size,
         sprite: SpriteDisplay,

@@ -150,24 +150,67 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///
 /// Supported arguments (_WidgetAttrArg_) are:
 ///
-/// -   `derive` `=` `self` `.` _Member_ — if present, identifies a struct or struct tuple field
-///     implementing [`Widget`] over which the `Self` type implements [`Widget`]
-/// -   `key_nav` `=` _Bool_ — whether this widget supports keyboard focus via
-///     <kbd>Tab</kbd> key (method of [`Widget`]; default is `false`)
-/// -   `hover_highlight` `=` _Bool_ — whether to redraw when cursor hover
-///     status is gained/lost (method of [`Widget`]; default is `false`)
-/// -   `cursor_icon` `=` _Expr_ — an expression yielding a [`CursorIcon`]
-///     (method of [`Widget`]; default is `CursorIcon::Default`)
-/// -   `layout` `=` _Layout_ — defines widget layout via an expression; see [`make_layout!`] for
-///     documentation (method of [`Layout`]; defaults to an empty layout)
+/// -   <code>derive = self.<em>field</em></code> where
+///     <code><em>field</em></code> is the name (or number) of a field:
+///     enables "derive mode" ([see below](#derive)) over the given field
+/// -   <code>key_nav = <em>bool</em></code> — a quick implementation of
+///     `Widget::key_nav`: whether this widget supports keyboard focus via
+///     the <kbd>Tab</kbd> key (default is `false`)
+/// -   <code>hover_highlight = <em>bool</em></code> — a quick implementation of
+///     `Widget::hover_highlight`: whether to redraw when cursor hover
+///     status is gained/lost (default is `false`)
+/// -   <code>cursor_icon = <em>expr</em></code> — a quick implementation of
+///     `Widget::cursor_icon`: returns the [`CursorIcon`] to use on hover
+///     (default is `CursorIcon::Default`)
+/// -   <code>layout = <em>layout</em></code> — defines widget layout via an
+///     expression; see [`make_layout!`] for documentation (defaults to an empty layout)
+///
+/// The struct must contain a field of type `widget_core!()` (usually named
+/// `core`). The macro `widget_core!()` is a placeholder, expanded by
+/// `#[widget]` and used to identify the field used (name may be anything).
+/// This field *may* have type [`CoreData`] or may be a generated
+/// type; either way it has fields `id: WidgetId` (assigned by
+/// `Widget::pre_configure`) and `rect: Rect` (usually assigned by
+/// `Widget::set_rect`). It may contain additional fields for layout data. The
+/// type supports `Debug`, `Default` and `Clone` (although `Clone` actually
+/// default-initializes all fields other than `rect` since clones of widgets
+/// must themselves be configured).
 ///
 /// Assuming the deriving type is a `struct` or `tuple struct`, fields support
 /// the following attributes:
 ///
-/// -   `#[widget_core]`: required on one field of type [`CoreData`], unless `derive` argument is
-///     used
 /// -   `#[widget]`: marks the field as a [`Widget`] to be configured, enumerated by
 ///     [`WidgetChildren`] and included by glob layouts
+///
+/// ## Example
+///
+/// ```ignore
+/// impl_scope! {
+///     /// A frame around content
+///     #[autoimpl(Deref, DerefMut using self.inner)]
+///     #[autoimpl(class_traits using self.inner where W: trait)]
+///     #[derive(Clone, Debug, Default)]
+///     #[widget{
+///         layout = frame(kas::theme::FrameStyle::Frame): self.inner;
+///     }]
+///     pub struct Frame<W: Widget> {
+///         core: widget_core!(),
+///         #[widget]
+///         pub inner: W,
+///     }
+///
+///     impl Self {
+///         /// Construct a frame
+///         #[inline]
+///         pub fn new(inner: W) -> Self {
+///             Frame {
+///                 core: Default::default(),
+///                 inner,
+///             }
+///         }
+///     }
+/// }
+/// ```
 ///
 /// ## Derive
 ///
@@ -214,7 +257,7 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 /// Syntax is similar to using [`widget`](macro@widget) within [`impl_scope!`], except that:
 ///
 /// -   `#[derive(Debug)]` is added automatically
-/// -   a `#[widget_core] core: kas::CoreData` field is added automatically
+/// -   a `core: widget_core!()` field is added automatically
 /// -   all fields must have an initializer, e.g. `ident: ty = value,`
 /// -   the type of fields is optional: `ident = value,` works (but see note above)
 /// -   the name of fields is optional: `_: ty = value,` and `_ = value,` are valid

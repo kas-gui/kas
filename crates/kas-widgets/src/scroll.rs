@@ -30,8 +30,7 @@ impl_scope! {
     #[derive(Clone, Debug, Default)]
     #[widget]
     pub struct ScrollRegion<W: Widget> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         min_child_size: Size,
         offset: Offset,
         frame_size: Size,

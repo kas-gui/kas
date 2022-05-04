@@ -27,8 +27,7 @@ impl_scope! {
     #[derive(Clone, Default)]
     #[widget{ layout = self.inner; }]
     pub struct Reserve<W: Widget, R: FnMut(SizeMgr, AxisInfo) -> SizeRules + 'static> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         #[widget]
         pub inner: W,
         reserve: R,

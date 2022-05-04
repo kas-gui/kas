@@ -27,8 +27,7 @@ impl_scope! {
     #[derive(Clone, Debug)]
     #[widget]
     struct Clock {
-        #[widget_core]
-        core: kas::CoreData,
+        core: widget_core!(),
         date_pos: Coord,
         time_pos: Coord,
         now: DateTime<Local>,

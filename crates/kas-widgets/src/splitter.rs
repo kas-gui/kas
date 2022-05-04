@@ -71,8 +71,7 @@ impl_scope! {
     #[derive(Clone, Default, Debug)]
     #[widget]
     pub struct Splitter<D: Directional, W: Widget> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         widgets: Vec<W>,
         handles: Vec<DragHandle>,
         data: layout::DynRowStorage,

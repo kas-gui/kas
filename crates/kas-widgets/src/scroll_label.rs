@@ -21,8 +21,7 @@ impl_scope! {
         cursor_icon = CursorIcon::Text;
     }]
     pub struct ScrollLabel<T: FormattableText + 'static> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         view_offset: Offset,
         text: Text<T>,
         required: Vec2,

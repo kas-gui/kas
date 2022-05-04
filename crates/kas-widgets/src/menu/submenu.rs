@@ -19,8 +19,7 @@ impl_scope! {
     #[autoimpl(Debug where D: trait)]
     #[widget]
     pub struct SubMenu<D: Directional> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         direction: D,
         pub(crate) key_nav: bool,
         label: Label<AccelString>,
@@ -235,8 +234,7 @@ impl_scope! {
     #[autoimpl(Debug)]
     #[widget]
     struct MenuView<W: Menu> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         dim: layout::GridDimensions,
         store: layout::DynGridStorage, //NOTE(opt): number of columns is fixed
         list: Vec<W>,

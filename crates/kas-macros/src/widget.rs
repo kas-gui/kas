@@ -64,59 +64,50 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let mut core_data: Option<Member> = None;
     let mut children = Vec::with_capacity(fields.len());
     for (i, field) in fields.iter_mut().enumerate() {
-        let mut other_attrs = Vec::with_capacity(field.attrs.len());
-        for attr in field.attrs.drain(..) {
-            if attr.path == parse_quote! { widget_core } {
-                if !attr.tokens.is_empty() {
-                    return Err(Error::new(attr.tokens.span(), "unexpected token"));
-                }
-                match &field.ty {
-                    Type::Infer(_) => {
-                        if let Some(stor) = args.layout.as_ref().and_then(|l| l.storage_fields()) {
-                            let name = format!("Kas{}GeneratedCore", name);
-                            let core_type = Ident::new(&name, Span::call_site());
-                            scope.generated.push(quote! {
-                                #[derive(Default, Debug)]
-                                struct #core_type {
-                                    rect: ::kas::geom::Rect,
-                                    id: ::kas::WidgetId,
-                                    #stor
-                                }
+        if matches!(&field.ty, Type::Macro(mac) if mac.mac == parse_quote!{ widget_core!() }) {
+            if let Some(ref cd) = core_data {
+                emit_error!(
+                    field.ty, "multiple fields of type widget_core!()";
+                    note = cd.span() => "previous field of type widget_core!()";
+                );
+            } else {
+                core_data = Some(member(i, field.ident.clone()));
+            }
 
-                                impl ::std::clone::Clone for #core_type {
-                                    fn clone(&self) -> Self {
-                                        #core_type {
-                                            rect: self.rect,
-                                            .. #core_type::default(),
-                                        }
-                                    }
-                                }
-                            });
-                            field.ty = Type::Path(syn::TypePath {
-                                qself: None,
-                                path: core_type.into(),
-                            });
-                        } else {
-                            field.ty = parse_quote! { ::kas::CoreData };
+            if let Some(stor) = args.layout.as_ref().and_then(|l| l.storage_fields()) {
+                let name = format!("Kas{}GeneratedCore", name);
+                let core_type = Ident::new(&name, Span::call_site());
+                scope.generated.push(quote! {
+                    #[derive(Default, Debug)]
+                    struct #core_type {
+                        rect: ::kas::geom::Rect,
+                        id: ::kas::WidgetId,
+                        #stor
+                    }
+
+                    impl ::std::clone::Clone for #core_type {
+                        fn clone(&self) -> Self {
+                            #core_type {
+                                rect: self.rect,
+                                .. #core_type::default(),
+                            }
                         }
                     }
-                    Type::Path(p)
-                        if *p == parse_quote! { CoreData }
-                            || *p == parse_quote! { kas::CoreData }
-                            || *p == parse_quote! { ::kas::CoreData } =>
-                    {
-                        ()
-                    }
-                    other => {
-                        return Err(Error::new(other.span(), "expected `_` or `kas::CoreData`"));
-                    }
-                }
-                if core_data.is_none() {
-                    core_data = Some(member(i, field.ident.clone()));
-                } else {
-                    emit_error!(attr.span(), "multiple fields marked with #[widget_core]");
-                }
-            } else if attr.path == parse_quote! { widget } {
+                });
+                field.ty = Type::Path(syn::TypePath {
+                    qself: None,
+                    path: core_type.into(),
+                });
+            } else {
+                field.ty = parse_quote! { ::kas::CoreData };
+            }
+
+            continue;
+        }
+
+        let mut other_attrs = Vec::with_capacity(field.attrs.len());
+        for attr in field.attrs.drain(..) {
+            if attr.path == parse_quote! { widget } {
                 if !attr.tokens.is_empty() {
                     return Err(Error::new(attr.tokens.span(), "unexpected token"));
                 }
@@ -198,10 +189,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             }
         };
     } else {
-        return Err(Error::new(
-            fields.span(),
-            "no field marked with #[widget_core]",
-        ));
+        return Err(Error::new(fields.span(), "no field of type widget_core!()"));
     }
 
     scope.generated.push(quote! {

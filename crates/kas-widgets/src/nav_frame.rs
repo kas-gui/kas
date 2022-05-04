@@ -30,8 +30,7 @@ impl_scope! {
         layout = frame(kas::theme::FrameStyle::NavFocus): self.inner;
     }]
     pub struct NavFrame<W: Widget> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         #[widget]
         pub inner: W,
     }

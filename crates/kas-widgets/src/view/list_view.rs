@@ -55,8 +55,7 @@ impl_scope! {
         T: ListData + 'static,
         V: Driver<T::Item> = driver::Default,
     > {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         frame_offset: Offset,
         frame_size: Size,
         view: V,

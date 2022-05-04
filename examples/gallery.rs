@@ -53,8 +53,7 @@ impl_scope! {
         };
     }]
     struct TextEditPopup {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         #[widget] edit: EditBox,
         #[widget] fill: Filler,
         #[widget] cancel: TextButton,

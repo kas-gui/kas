@@ -15,8 +15,7 @@ impl_scope! {
         layout = self.label;
     }]
     struct CursorWidget {
-        #[widget_core]
-        core: _,
+        core: widget_core!(),
         #[widget]
         label: StrLabel,
         cursor: CursorIcon,

@@ -24,8 +24,7 @@ impl_scope! {
     #[derive(Clone)]
     #[widget]
     pub struct Button<W: Widget> {
-        #[widget_core]
-        core: kas::CoreData,
+        core: widget_core!(),
         keys1: VirtualKeyCodes,
         layout_frame: layout::FrameStorage,
         color: Option<Rgb>,
@@ -163,8 +162,7 @@ impl_scope! {
     #[derive(Clone)]
     #[widget]
     pub struct TextButton {
-        #[widget_core]
-        core: kas::CoreData,
+        core: widget_core!(),
         keys1: VirtualKeyCodes,
         label: Label<AccelString>,
         layout_frame: layout::FrameStorage,

@@ -17,8 +17,7 @@ impl_scope! {
     #[autoimpl(Debug ignore self.drop, self.icon)]
     #[widget(layout = self.w;)]
     pub struct Window<W: Widget + 'static> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         restrict_dimensions: (bool, bool),
         title: String,
         #[widget]

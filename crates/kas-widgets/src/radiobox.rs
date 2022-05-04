@@ -21,8 +21,7 @@ impl_scope! {
     #[derive(Clone)]
     #[widget]
     pub struct RadioBoxBare {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         state: bool,
         group: RadioBoxGroup,
         on_select: Option<Rc<dyn Fn(&mut EventMgr)>>,
@@ -180,8 +179,7 @@ impl_scope! {
         layout = row: *;
     }]
     pub struct RadioBox {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         #[widget]
         inner: RadioBoxBare,
         #[widget]

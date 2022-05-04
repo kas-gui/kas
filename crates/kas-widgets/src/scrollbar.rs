@@ -25,8 +25,7 @@ impl_scope! {
         hover_highlight = true;
     }]
     pub struct ScrollBar<D: Directional> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         direction: D,
         // Terminology assumes vertical orientation:
         width: i32,
@@ -421,8 +420,7 @@ impl_scope! {
     #[derive(Clone, Debug, Default)]
     #[widget]
     pub struct ScrollBars<W: Scrollable> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         auto_bars: bool,
         show_bars: (bool, bool),
         #[widget]

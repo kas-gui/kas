@@ -19,8 +19,7 @@ impl_scope! {
     #[autoimpl(Debug where D: trait)]
     #[widget]
     pub struct MenuBar<D: Directional = kas::dir::Right> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         direction: D,
         widgets: Vec<SubMenu<D::Flipped>>,
         layout_store: layout::DynRowStorage,

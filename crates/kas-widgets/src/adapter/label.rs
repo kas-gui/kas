@@ -20,8 +20,7 @@ impl_scope! {
     #[derive(Clone, Default, Debug)]
     #[widget]
     pub struct WithLabel<W: Widget, D: Directional> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         dir: D,
         #[widget]
         inner: W,

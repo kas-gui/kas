@@ -38,7 +38,7 @@ impl Icon {
 
 /// Common widget data
 ///
-/// All widgets should embed a `#[widget_core] core: CoreData` field.
+/// This type may be used for a [`Widget`]'s `core: widget_core!()` field.
 #[derive(Default, Debug)]
 pub struct CoreData {
     pub layout: StorageChain,

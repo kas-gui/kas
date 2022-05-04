@@ -17,8 +17,7 @@ impl_scope! {
     #[derive(Clone, Default, Debug)]
     #[widget]
     pub struct Label<T: FormattableText + 'static> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         wrap: bool,
         label: Text<T>,
     }

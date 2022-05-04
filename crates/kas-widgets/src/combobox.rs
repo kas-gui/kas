@@ -33,8 +33,7 @@ impl_scope! {
     #[derive(Clone)]
     #[widget]
     pub struct ComboBox<M: Clone + Debug + 'static> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         label: Label<String>,
         mark: Mark,
         layout_list: layout::FixedRowStorage<2>,
@@ -379,8 +378,7 @@ impl_scope! {
         layout = self.inner;
     }]
     struct ComboPopup<M: Clone + Debug + 'static> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         #[widget]
         inner: PopupFrame<Column<MenuEntry<M>>>,
     }

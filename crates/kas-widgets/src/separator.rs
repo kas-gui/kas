@@ -17,8 +17,7 @@ impl_scope! {
     #[derive(Clone, Debug, Default)]
     #[widget]
     pub struct Separator {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
     }
 
     impl Self {

@@ -22,8 +22,7 @@ impl_scope! {
     #[derive(Clone, Debug, Default)]
     #[widget]
     pub struct MenuEntry<M: Clone + Debug + 'static> {
-        #[widget_core]
-        core: kas::CoreData,
+        core: widget_core!(),
         label: Label<AccelString>,
         msg: M,
     }
@@ -113,8 +112,7 @@ impl_scope! {
     #[derive(Clone, Default)]
     #[widget]
     pub struct MenuToggle {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         #[widget]
         checkbox: CheckBoxBare,
         label: Label<AccelString>,

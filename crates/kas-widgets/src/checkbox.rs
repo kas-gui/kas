@@ -18,8 +18,7 @@ impl_scope! {
         hover_highlight = true;
     }]
     pub struct CheckBoxBare {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         state: bool,
         editable: bool,
         on_toggle: Option<Rc<dyn Fn(&mut EventMgr, bool)>>,
@@ -156,8 +155,7 @@ impl_scope! {
         layout = row: *;
     }]
     pub struct CheckBox {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         #[widget]
         inner: CheckBoxBare,
         #[widget]

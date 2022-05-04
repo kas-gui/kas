@@ -35,8 +35,7 @@ impl_scope! {
         T: SingleData + 'static,
         V: Driver<T::Item> = driver::Default,
     > {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         view: V,
         data: T,
         data_ver: u64,

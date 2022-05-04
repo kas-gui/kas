@@ -69,8 +69,7 @@ impl_scope! {
     #[autoimpl(Default where D: Default)]
     #[widget]
     pub struct List<D: Directional, W: Widget> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         layout_store: layout::DynRowStorage,
         widgets: Vec<W>,
         direction: D,
