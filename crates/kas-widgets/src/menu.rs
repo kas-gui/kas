@@ -61,10 +61,16 @@ pub trait Menu: Widget {
     /// Note further: if this returns `Some(_)`, then spacing for menu item frames is added
     /// "magically" by the caller. The implementor should draw a frame as follows:
     /// ```
+    /// # use kas::geom::Rect;
+    /// # use kas::theme::{DrawMgr, FrameStyle};
+    /// # struct S;
+    /// # impl S {
+    /// # fn rect(&self) -> Rect { Rect::ZERO }
     /// fn draw(&mut self, mut draw: DrawMgr) {
     ///     draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
     ///     // draw children here
     /// }
+    /// # }
     /// ```
     // TODO: adding frame spacing like this is quite hacky. Find a better approach?
     fn sub_items(&mut self) -> Option<SubItems> {
