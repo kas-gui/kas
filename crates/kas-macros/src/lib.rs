@@ -134,17 +134,16 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// traits only if not implemented explicitly within the
 /// defining [`impl_scope!`].
 ///
-/// Using the `derive` argument activates a special "thin wrapper" mode.
-/// In this case, layout may optionally be defined explicitly. Non-layout
-/// properties are not supported.
-///
-/// When not using `derive`, layout must be defined, either via the `layout`
-/// argument or by implementing [`Layout`]. All other properties are optional.
+/// This macro may inject methods into existing [`Layout`] / [`Widget`] implementations.
+/// This is used both to provide default implementations which could not be
+/// written on the trait and to implement properties like `key_nav`.
+/// (In the case of multiple implementations of the same trait, as used for
+/// specialization, only the first implementation of each trait is extended.)
 ///
 /// ## Syntax
 ///
 /// > _WidgetAttr_ :\
-/// > &nbsp;&nbsp; `#` `[` _WidgetAttrArgs_? `]`
+/// > &nbsp;&nbsp; `#` `[` `widget` _WidgetAttrArgs_? `]`
 /// >
 /// > _WidgetAttrArgs_ :\
 /// > &nbsp;&nbsp; `{` (_WidgetAttrArg_ `;`) * `}`
@@ -170,9 +169,23 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// -   `#[widget]`: marks the field as a [`Widget`] to be configured, enumerated by
 ///     [`WidgetChildren`] and included by glob layouts
 ///
-/// ## Layout
+/// ## Derive
 ///
-/// Widget layout must be described somehow
+/// It is possible to derive from a field which is itself a widget, e.g.:
+/// ```ignore
+/// impl_scope! {
+///     #[autoimpl(Deref, DerefMut using self.0)]
+///     #[derive(Clone, Debug, Default)]
+///     #[widget{ derive = self.0; }]
+///     pub struct ScrollBarRegion<W: Widget>(ScrollBars<ScrollRegion<W>>);
+/// }
+/// ```
+///
+/// This is a special mode where most features of `#[widget]` are not
+/// available. A few may still be used: `key_nav`, `hover_highlight`,
+/// `cursor_icon`. Additionally, it is currently permitted to implement
+/// [`WidgetChildren`], [`Layout`] and [`Widget`] traits manually (this option
+/// may be removed in the future if not deemed useful).
 ///
 /// [`Widget`]: https://docs.rs/kas/0.11/kas/trait.Widget.html
 /// [`WidgetCore`]: https://docs.rs/kas/0.11/kas/trait.WidgetCore.html

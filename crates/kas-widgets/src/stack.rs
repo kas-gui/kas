@@ -47,30 +47,6 @@ impl_scope! {
         id_map: HashMap<usize, usize>, // map key of WidgetId to index
     }
 
-    impl Self {
-        // Assumption: index is a valid entry of self.widgets
-        fn make_next_id(&mut self, index: usize) -> WidgetId {
-            if let Some(child) = self.widgets.get(index) {
-                // Use the widget's existing identifier, if any
-                if child.id_ref().is_valid() {
-                    if let Some(key) = child.id_ref().next_key_after(self.id_ref()) {
-                        self.id_map.insert(key, index);
-                        return child.id();
-                    }
-                }
-            }
-
-            loop {
-                let key = self.next;
-                self.next += 1;
-                if let Entry::Vacant(entry) = self.id_map.entry(key) {
-                    entry.insert(index);
-                    return self.id_ref().make_child(key);
-                }
-            }
-        }
-    }
-
     impl WidgetChildren for Self {
         #[inline]
         fn num_children(&self) -> usize {
@@ -119,16 +95,30 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
-            self.core_data_mut().id = id;
-            self.id_map.clear();
-
-            for index in 0..self.widgets.len() {
-                let id = self.make_next_id(index);
-                self.widgets[index].configure_recurse(mgr, id);
+        fn make_child_id(&mut self, index: usize) -> WidgetId {
+            if let Some(child) = self.widgets.get(index) {
+                // Use the widget's existing identifier, if any
+                if child.id_ref().is_valid() {
+                    if let Some(key) = child.id_ref().next_key_after(self.id_ref()) {
+                        self.id_map.insert(key, index);
+                        return child.id();
+                    }
+                }
             }
 
-            self.configure(mgr);
+            loop {
+                let key = self.next;
+                self.next += 1;
+                if let Entry::Vacant(entry) = self.id_map.entry(key) {
+                    entry.insert(index);
+                    return self.id_ref().make_child(key);
+                }
+            }
+        }
+
+        fn pre_configure(&mut self, _: &mut SetRectMgr, id: WidgetId) {
+            self.core.id = id;
+            self.id_map.clear();
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
@@ -271,7 +261,7 @@ impl<W: Widget> Stack<W> {
     pub fn push(&mut self, mgr: &mut SetRectMgr, widget: W) -> usize {
         let index = self.widgets.len();
         self.widgets.push(widget);
-        let id = self.make_next_id(index);
+        let id = self.make_child_id(index);
         mgr.configure(id, &mut self.widgets[index]);
         if index == self.active {
             *mgr |= TkAction::RESIZE;
@@ -324,7 +314,7 @@ impl<W: Widget> Stack<W> {
             }
         }
         self.widgets.insert(index, widget);
-        let id = self.make_next_id(index);
+        let id = self.make_child_id(index);
         mgr.configure(id, &mut self.widgets[index]);
     }
 
@@ -380,7 +370,7 @@ impl<W: Widget> Stack<W> {
             }
         }
 
-        let id = self.make_next_id(index);
+        let id = self.make_child_id(index);
         mgr.configure(id, &mut self.widgets[index]);
 
         if self.active < index {
@@ -404,7 +394,7 @@ impl<W: Widget> Stack<W> {
         let old_len = self.widgets.len();
         self.widgets.extend(iter);
         for index in old_len..self.widgets.len() {
-            let id = self.make_next_id(index);
+            let id = self.make_child_id(index);
             mgr.configure(id, &mut self.widgets[index]);
         }
 
@@ -438,7 +428,7 @@ impl<W: Widget> Stack<W> {
         if len > old_len {
             self.widgets.reserve(len - old_len);
             for index in old_len..len {
-                let id = self.make_next_id(index);
+                let id = self.make_child_id(index);
                 let mut widget = f(index);
                 mgr.configure(id, &mut widget);
                 self.widgets.push(widget);

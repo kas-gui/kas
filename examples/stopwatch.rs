@@ -12,7 +12,7 @@ use kas::event::{Event, EventMgr, Response};
 use kas::layout::SetRectMgr;
 use kas::macros::make_widget;
 use kas::widgets::{Frame, Label, TextButton, Window};
-use kas::{Widget, WidgetExt};
+use kas::{Widget, WidgetCore, WidgetExt};
 
 #[derive(Clone, Debug)]
 struct MsgReset;

@@ -58,38 +58,29 @@ impl Quad {
     }
 
     /// Shrink self in all directions by the given `value`
-    ///
-    /// In debug mode, this asserts `a.le(b)` after shrinking.
     #[inline]
     #[must_use = "method does not modify self but returns a new value"]
     pub fn shrink(&self, value: f32) -> Quad {
         let a = self.a + value;
         let b = self.b - value;
-        debug_assert!(a.le(b));
         Quad { a, b }
     }
 
     /// Grow self in all directions by the given `value`
-    ///
-    /// In debug mode, this asserts `a.le(b)` after shrinking.
     #[inline]
     #[must_use = "method does not modify self but returns a new value"]
     pub fn grow(&self, value: f32) -> Quad {
         let a = self.a - value;
         let b = self.b + value;
-        debug_assert!(a.le(b));
         Quad { a, b }
     }
 
     /// Shrink self in all directions by the given `value`
-    ///
-    /// In debug mode, this asserts `a.le(b)` after shrinking.
     #[inline]
     #[must_use = "method does not modify self but returns a new value"]
     pub fn shrink_vec(&self, value: Vec2) -> Quad {
         let a = self.a + value;
         let b = self.b - value;
-        debug_assert!(a.le(b));
         Quad { a, b }
     }
 

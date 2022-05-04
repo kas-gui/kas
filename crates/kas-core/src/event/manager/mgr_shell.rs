@@ -67,7 +67,7 @@ impl EventState {
     /// This should be called by the toolkit on the widget tree when the window
     /// is created (before or after resizing).
     ///
-    /// This method calls [`Widget::configure_recurse`] in order to assign
+    /// This method calls [`SetRectMgr::configure`] in order to assign
     /// [`WidgetId`] identifiers and call widgets' [`Widget::configure`]
     /// method. Additionally, it updates the [`EventState`] to account for
     /// renamed and removed widgets.

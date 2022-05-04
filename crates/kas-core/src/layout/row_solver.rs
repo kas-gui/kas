@@ -12,7 +12,7 @@ use super::{Align, AlignHints, AxisInfo, SizeRules};
 use super::{RowStorage, RowTemp, RulesSetter, RulesSolver};
 use crate::dir::{Direction, Directional};
 use crate::geom::{Coord, Rect};
-use crate::{Widget, WidgetExt};
+use crate::Widget;
 
 /// A [`RulesSolver`] for rows (and, without loss of generality, for columns).
 ///

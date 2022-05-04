@@ -52,15 +52,27 @@ pub struct SubItems<'a> {
 pub trait Menu: Widget {
     /// Access row items for aligned layout
     ///
-    /// If this is implemented, the row will be sized and layout through direct
-    /// access to these sub-components. [`Layout::size_rules`] will not be
-    /// invoked on `self`. [`Layout::set_rect`] will be, but should not set the
-    /// position of these items. [`Layout::draw`] should draw all components,
-    /// including a frame with style [`kas::theme::FrameStyle::MenuEntry`] on
-    /// self.
+    /// If this returns sub-items, then these items are aligned in the menu view. This involves
+    /// (1) calling `Self::size_rules` and `Self::set_rect` like usual, and (2) running an external
+    /// layout solver on these items (which also calls `size_rules` and `set_rect` on each item).
+    /// This is redundant, but ensures the expectations on [`Layout::size_rules`] and
+    /// [`Layout::set_rect`] are met.
     ///
-    /// Return value is `None` or `Some((label, opt_label2, opt_submenu, opt_icon, opt_toggle))`.
-    /// `opt_label2` is used to show shortcut labels. `opt_submenu` is a sub-menu indicator.
+    /// Note further: if this returns `Some(_)`, then spacing for menu item frames is added
+    /// "magically" by the caller. The implementor should draw a frame as follows:
+    /// ```
+    /// # use kas::geom::Rect;
+    /// # use kas::theme::{DrawMgr, FrameStyle};
+    /// # struct S;
+    /// # impl S {
+    /// # fn rect(&self) -> Rect { Rect::ZERO }
+    /// fn draw(&mut self, mut draw: DrawMgr) {
+    ///     draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
+    ///     // draw children here
+    /// }
+    /// # }
+    /// ```
+    // TODO: adding frame spacing like this is quite hacky. Find a better approach?
     fn sub_items(&mut self) -> Option<SubItems> {
         None
     }

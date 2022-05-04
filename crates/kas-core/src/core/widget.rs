@@ -13,7 +13,7 @@ use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{self, AlignHints, AxisInfo, SetRectMgr, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::util::IdentifyWidget;
-use crate::{CoreData, WidgetId};
+use crate::WidgetId;
 use kas_macros::autoimpl;
 
 #[allow(unused)]
@@ -56,15 +56,15 @@ pub trait WidgetCore: Any + fmt::Debug {
     /// Get self as type `Any` (mutable)
     fn as_any_mut(&mut self) -> &mut dyn Any;
 
-    /// Get direct access to the [`CoreData`] providing property storage.
-    fn core_data(&self) -> &CoreData;
-
-    /// Get mutable access to the [`CoreData`] providing property storage.
+    /// Get the widget's identifier
     ///
-    /// This should not normally be needed by user code.
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    fn core_data_mut(&mut self) -> &mut CoreData;
+    /// Note that the default-constructed [`WidgetId`] is *invalid*: any
+    /// operations on this value will cause a panic. Valid identifiers are
+    /// assigned by [`Widget::pre_configure`].
+    fn id_ref(&self) -> &WidgetId;
+
+    /// Get the widget's region, relative to its parent.
+    fn rect(&self) -> Rect;
 
     /// Get the name of the widget struct
     fn widget_name(&self) -> &'static str;
@@ -117,7 +117,7 @@ pub trait WidgetChildren: WidgetCore {
     ///
     /// The default implementation simply uses [`WidgetId::next_key_after`].
     /// Widgets may choose to assign children custom keys by overriding this
-    /// method and [`Widget::configure_recurse`].
+    /// method and [`Widget::make_child_id`].
     #[inline]
     fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
         id.next_key_after(self.id_ref())
@@ -188,27 +188,27 @@ pub trait Layout: WidgetChildren {
 
     /// Set size and position
     ///
-    /// This is the final step to layout solving. It may be influenced by
-    /// [`Self::size_rules`], but it is not guaranteed that `size_rules` is
-    /// called first. After calling `set_rect`, the widget must be ready for
-    /// calls to [`Self::draw`] and event handling.
+    /// This is the final step to layout solving. It is expected that [`Self::size_rules`] is called
+    /// for each axis before this method; if this does not happen then layout may be incorrect.
+    /// Note that `size_rules` may not be called again before the next call to `set_rect`.
+    /// After `set_rect` is called, the widget must be ready for drawing and event handling.
     ///
     /// The size of the assigned `rect` is normally at least the minimum size
     /// requested by [`Self::size_rules`], but this is not guaranteed. In case
     /// this minimum is not met, it is permissible for the widget to draw
     /// outside of its assigned `rect` and to not function as normal.
     ///
-    /// The assigned `rect` may be larger than the widget's size requirements.
+    /// The assigned `rect` may be larger than the widget's size requirements,
+    /// regardless of the [`Stretch`] policy used.
     /// It is up to the widget to either stretch to occupy this space or align
     /// itself within the excess space, according to the `align` hints provided.
     ///
     /// This method may be implemented through [`Self::layout`] or directly.
-    /// The default implementation assigns `self.core_data_mut().rect = rect`
+    /// The default implementation assigns `self.core.rect = rect`
     /// and applies the layout described by [`Self::layout`].
-    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
-        self.core_data_mut().rect = rect;
-        self.layout().set_rect(mgr, rect, align);
-    }
+    ///
+    /// [`Stretch`]: crate::layout::Stretch
+    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints);
 
     /// Draw a widget and its children
     ///
@@ -248,33 +248,23 @@ pub trait Layout: WidgetChildren {
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait Widget: Layout {
-    /// Configure widget and children
+    /// Make an identifier for a child
     ///
-    /// This method:
-    ///
-    /// 1.  Assigns `id` to self
-    /// 2.  Constructs an identifier for and call `configure_recurse` on each child
-    /// 3.  Calls [`Self::configure`]
-    ///
-    /// Normally the default implementation is used. A custom implementation
-    /// may be used to influence configuration of children, for example by
-    /// calling [`EventState::new_accel_layer`] or by constructing children's
-    /// [`WidgetId`] values in a non-standard manner (in this case ensure that
-    /// [`WidgetChildren::find_child_index`] has a correct implementation).
-    ///
-    /// To directly configure a child, call [`SetRectMgr::configure`] instead.
-    fn configure_recurse(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
-        self.core_data_mut().id = id;
-
-        for index in 0..self.num_children() {
-            let id = self.id_ref().make_child(index);
-            if let Some(widget) = self.get_child_mut(index) {
-                widget.configure_recurse(mgr, id);
-            }
-        }
-
-        self.configure(mgr);
+    /// Default impl: `self.id_ref().make_child(index)`
+    #[inline]
+    fn make_child_id(&mut self, index: usize) -> WidgetId {
+        self.id_ref().make_child(index)
     }
+
+    /// Pre-configuration
+    ///
+    /// This method is called before children are configured to assign a
+    /// [`WidgetId`]. Usually it does nothing else, but a custom implementation
+    /// may be used to affect child configuration, e.g. via
+    /// [`EventState::new_accel_layer`].
+    ///
+    /// Default impl: assign `id` to self
+    fn pre_configure(&mut self, mgr: &mut SetRectMgr, id: WidgetId);
 
     /// Configure widget
     ///
@@ -468,33 +458,14 @@ pub trait Widget: Layout {
 
 /// Extension trait over widgets
 pub trait WidgetExt: WidgetChildren {
-    /// Get the widget's numeric identifier
+    /// Get the widget's identifier
     ///
     /// Note that the default-constructed [`WidgetId`] is *invalid*: any
     /// operations on this value will cause a panic. Valid identifiers are
-    /// assigned by [`Widget::configure_recurse`].
+    /// assigned by [`Widget::pre_configure`].
     #[inline]
     fn id(&self) -> WidgetId {
-        self.core_data().id.clone()
-    }
-
-    /// Get the widget's numeric identifier
-    ///
-    /// Note that the default-constructed [`WidgetId`] is *invalid*: any
-    /// operations on this value will cause a panic. Valid identifiers are
-    /// assigned by [`Widget::configure_recurse`].
-    #[inline]
-    fn id_ref(&self) -> &WidgetId {
-        &self.core_data().id
-    }
-
-    /// Get the `u64` version of the widget identifier
-    ///
-    /// This may be used to approximately test identity (see notes on
-    /// [`WidgetId::as_u64`]).
-    #[inline]
-    fn id_u64(&self) -> u64 {
-        self.core_data().id.as_u64()
+        self.id_ref().clone()
     }
 
     /// Test widget identifier for equality
@@ -506,7 +477,7 @@ pub trait WidgetExt: WidgetChildren {
     where
         WidgetId: PartialEq<T>,
     {
-        self.core_data().id == rhs
+        *self.id_ref() == rhs
     }
 
     /// Display as "StructName#WidgetId"
@@ -553,12 +524,6 @@ pub trait WidgetExt: WidgetChildren {
         } else {
             None
         }
-    }
-
-    /// Get the widget's region, relative to its parent.
-    #[inline]
-    fn rect(&self) -> Rect {
-        self.core_data().rect
     }
 }
 impl<W: WidgetChildren + ?Sized> WidgetExt for W {}
