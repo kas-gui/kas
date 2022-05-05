@@ -71,10 +71,7 @@ impl EventState {
     /// [`WidgetId`] identifiers and call widgets' [`Widget::configure`]
     /// method. Additionally, it updates the [`EventState`] to account for
     /// renamed and removed widgets.
-    pub fn full_configure<W>(&mut self, shell: &mut dyn ShellWindow, widget: &mut W)
-    where
-        W: Widget + ?Sized,
-    {
+    pub fn full_configure(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Widget) {
         debug!("EventMgr::configure");
         self.action.remove(TkAction::RECONFIGURE);
 
@@ -86,7 +83,7 @@ impl EventState {
 
         shell.size_and_draw_shared(&mut |size_handle, draw_shared| {
             let mut mgr = SetRectMgr::new(size_handle, draw_shared, self);
-            mgr.configure(WidgetId::ROOT, widget.as_widget_mut());
+            mgr.configure(WidgetId::ROOT, widget);
         });
 
         let hover = widget.find_id(self.last_mouse_coord);
@@ -94,11 +91,7 @@ impl EventState {
     }
 
     /// Update the widgets under the cursor and touch events
-    pub fn region_moved<W: Widget + ?Sized>(
-        &mut self,
-        shell: &mut dyn ShellWindow,
-        widget: &mut W,
-    ) {
+    pub fn region_moved(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Widget) {
         trace!("EventMgr::region_moved");
         // Note: redraw is already implied.
 
@@ -139,10 +132,7 @@ impl EventState {
 
     /// Update, after receiving all events
     #[inline]
-    pub fn update<W>(&mut self, shell: &mut dyn ShellWindow, widget: &mut W) -> TkAction
-    where
-        W: Widget + ?Sized,
-    {
+    pub fn update(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Widget) -> TkAction {
         let mut mgr = EventMgr {
             state: self,
             shell,
@@ -233,7 +223,7 @@ impl EventState {
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 impl<'a> EventMgr<'a> {
     /// Update widgets due to timer
-    pub fn update_timer<W: Widget + ?Sized>(&mut self, widget: &mut W) {
+    pub fn update_timer(&mut self, widget: &mut dyn Widget) {
         let now = Instant::now();
 
         // assumption: time_updates are sorted in reverse order
@@ -250,12 +240,7 @@ impl<'a> EventMgr<'a> {
     }
 
     /// Update widgets due to handle
-    pub fn update_handle<W: Widget + ?Sized>(
-        &mut self,
-        widget: &mut W,
-        handle: UpdateHandle,
-        payload: u64,
-    ) {
+    pub fn update_handle(&mut self, widget: &mut dyn Widget, handle: UpdateHandle, payload: u64) {
         // NOTE: to avoid borrow conflict, we must clone values!
         if let Some(mut values) = self.state.handle_updates.get(&handle).cloned() {
             for w_id in values.drain() {
@@ -272,10 +257,7 @@ impl<'a> EventMgr<'a> {
     /// `Resized(size)`, `RedrawRequested`, `HiDpiFactorChanged(factor)`.
     #[cfg(feature = "winit")]
     #[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
-    pub fn handle_winit<W>(&mut self, widget: &mut W, event: winit::event::WindowEvent)
-    where
-        W: Widget + ?Sized,
-    {
+    pub fn handle_winit(&mut self, widget: &mut dyn Widget, event: winit::event::WindowEvent) {
         use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent::*};
 
         match event {

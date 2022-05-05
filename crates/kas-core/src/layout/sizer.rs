@@ -72,7 +72,7 @@ pub trait RulesSetter {
 ///
 /// Parameters `x_size` and `y_size` should be passed where this dimension is
 /// fixed and are used e.g. for text wrapping.
-pub fn solve_size_rules<W: Widget>(
+pub fn solve_size_rules<W: Widget + ?Sized>(
     widget: &mut W,
     size_mgr: SizeMgr,
     x_size: Option<i32>,
