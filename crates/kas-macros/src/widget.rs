@@ -437,7 +437,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     };
     let mut fn_draw = None;
     if let Some(layout) = args.layout.take() {
-        let core = core_data.clone().into();
+        let core = core_data.clone();
         let layout = layout.generate(&core, children.iter().map(|c| &c.ident))?;
         scope.generated.push(quote! {
             impl #impl_generics ::kas::layout::AutoLayout
@@ -524,18 +524,18 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     if let Some(index) = layout_impl {
         let layout_impl = &mut scope.impls[index];
         if let Some(method) = fn_size_rules {
-            if !has_method(&layout_impl, "size_rules") {
+            if !has_method(layout_impl, "size_rules") {
                 layout_impl.items.push(parse2(method)?);
             }
         }
-        if !has_method(&layout_impl, "set_rect") {
+        if !has_method(layout_impl, "set_rect") {
             layout_impl.items.push(parse2(fn_set_rect)?);
         }
-        if !has_method(&layout_impl, "find_id") {
+        if !has_method(layout_impl, "find_id") {
             layout_impl.items.push(parse2(fn_find_id)?);
         }
         if let Some(method) = fn_draw {
-            if !has_method(&layout_impl, "draw") {
+            if !has_method(layout_impl, "draw") {
                 layout_impl.items.push(parse2(method)?);
             }
         }
@@ -558,7 +558,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
     if let Some(index) = widget_impl {
         let widget_impl = &mut scope.impls[index];
-        if !has_method(&widget_impl, "pre_configure") {
+        if !has_method(widget_impl, "pre_configure") {
             widget_impl.items.push(parse2(fn_pre_configure)?);
         }
         if let Some(item) = args.key_nav {
