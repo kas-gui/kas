@@ -365,14 +365,6 @@ impl_scope! {
             }
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
-            for child in self.list.iter_mut() {
-                draw.recurse(child);
-            }
-        }
-    }
-
-    impl Widget for Self {
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
@@ -384,6 +376,12 @@ impl_scope! {
                 }
             }
             Some(self.id())
+        }
+
+        fn draw(&mut self, mut draw: DrawMgr) {
+            for child in self.list.iter_mut() {
+                draw.recurse(child);
+            }
         }
     }
 

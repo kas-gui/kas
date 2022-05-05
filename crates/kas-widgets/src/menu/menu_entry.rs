@@ -120,6 +120,10 @@ impl_scope! {
     }
 
     impl Layout for Self {
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            self.rect().contains(coord).then(|| self.checkbox.id())
+        }
+
         fn draw(&mut self, mut draw: DrawMgr) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             let id = self.checkbox.id();
@@ -130,10 +134,6 @@ impl_scope! {
     impl Widget for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.add_accel_keys(self.checkbox.id_ref(), self.label.keys());
-        }
-
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            self.rect().contains(coord).then(|| self.checkbox.id())
         }
     }
 

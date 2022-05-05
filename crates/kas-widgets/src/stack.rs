@@ -86,6 +86,14 @@ impl_scope! {
             }
         }
 
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            // Latter condition is implied, but compiler doesn't know this:
+            if self.sized_range.contains(&self.active) && self.active < self.widgets.len() {
+                return self.widgets[self.active].find_id(coord);
+            }
+            None
+        }
+
         fn draw(&mut self, mut draw: DrawMgr) {
             if self.sized_range.contains(&self.active) && self.active < self.widgets.len() {
                 draw.recurse(&mut self.widgets[self.active]);
@@ -118,14 +126,6 @@ impl_scope! {
         fn pre_configure(&mut self, _: &mut SetRectMgr, id: WidgetId) {
             self.core.id = id;
             self.id_map.clear();
-        }
-
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            // Latter condition is implied, but compiler doesn't know this:
-            if self.sized_range.contains(&self.active) && self.active < self.widgets.len() {
-                return self.widgets[self.active].find_id(coord);
-            }
-            None
         }
     }
 

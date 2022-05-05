@@ -94,6 +94,13 @@ impl_scope! {
             }
         }
 
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) {
+                return None;
+            }
+            self.widgets.iter_mut().find_map(|(_, child)| child.find_id(coord)).or_else(|| Some(self.id()))
+        }
+
         fn draw(&mut self, mut draw: DrawMgr) {
             for (_, child) in &mut self.widgets {
                 draw.recurse(child);
@@ -102,13 +109,6 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-            self.widgets.iter_mut().find_map(|(_, child)| child.find_id(coord)).or_else(|| Some(self.id()))
-        }
-
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
             if let Some(f) = self.on_message {
                 f(mgr, index);

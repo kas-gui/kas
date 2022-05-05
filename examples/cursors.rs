@@ -20,14 +20,15 @@ impl_scope! {
         label: StrLabel,
         cursor: CursorIcon,
     }
-    impl Widget for Self {
-        fn cursor_icon(&self) -> CursorIcon {
-            self.cursor
-        }
-
+    impl Layout for Self {
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             // Steal mouse focus: hover points to self, not self.label
             self.rect().contains(coord).then(|| self.id())
+        }
+    }
+    impl Widget for Self {
+        fn cursor_icon(&self) -> CursorIcon {
+            self.cursor
         }
     }
 }

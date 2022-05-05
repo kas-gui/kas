@@ -234,13 +234,6 @@ impl_scope! {
             let _ = self.update_handle();
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
-            let dir = self.direction.as_direction();
-            draw.scrollbar(self.rect(), &self.handle, dir);
-        }
-    }
-
-    impl Widget for Self {
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
@@ -248,6 +241,13 @@ impl_scope! {
             self.handle.find_id(coord).or(Some(self.id()))
         }
 
+        fn draw(&mut self, mut draw: DrawMgr) {
+            let dir = self.direction.as_direction();
+            draw.scrollbar(self.rect(), &self.handle, dir);
+        }
+    }
+
+    impl Widget for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::PressStart { source, coord, .. } => {
@@ -582,6 +582,16 @@ impl_scope! {
             }
         }
 
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) {
+                return None;
+            }
+            self.vert_bar.find_id(coord)
+                .or_else(|| self.horiz_bar.find_id(coord))
+                .or_else(|| self.inner.find_id(coord))
+                .or(Some(self.id()))
+        }
+
         #[cfg(feature = "min_spec")]
         default fn draw(&mut self, draw: DrawMgr) {
             self.draw_(draw);
@@ -614,16 +624,6 @@ impl_scope! {
     impl Widget for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.register_nav_fallback(self.id());
-        }
-
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-            self.vert_bar.find_id(coord)
-                .or_else(|| self.horiz_bar.find_id(coord))
-                .or_else(|| self.inner.find_id(coord))
-                .or(Some(self.id()))
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {

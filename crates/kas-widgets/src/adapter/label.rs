@@ -110,13 +110,15 @@ impl_scope! {
         }
     }
 
+    impl Layout for Self {
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            self.rect().contains(coord).then(|| self.inner.id())
+        }
+    }
+
     impl Widget for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.add_accel_keys(self.inner.id_ref(), self.keys());
-        }
-
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            self.rect().contains(coord).then(|| self.inner.id())
         }
     }
 

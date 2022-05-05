@@ -220,8 +220,14 @@ impl_scope! {
             self.0.size_rules(size_mgr, axis)
         }
 
+        #[inline]
         fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.0.set_rect(mgr, rect, align)
+        }
+
+        #[inline]
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            self.0.find_id(coord)
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {

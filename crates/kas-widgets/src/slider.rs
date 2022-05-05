@@ -247,13 +247,6 @@ impl_scope! {
             let _ = self.handle.set_size_and_offset(size, self.offset());
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
-            let dir = self.direction.as_direction();
-            draw.slider(self.rect(), &self.handle, dir);
-        }
-    }
-
-    impl Widget for Self {
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
@@ -261,6 +254,13 @@ impl_scope! {
             self.handle.find_id(coord).or(Some(self.id()))
         }
 
+        fn draw(&mut self, mut draw: DrawMgr) {
+            let dir = self.direction.as_direction();
+            draw.slider(self.rect(), &self.handle, dir);
+        }
+    }
+
+    impl Widget for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::NavFocus(true) => {

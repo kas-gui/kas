@@ -203,6 +203,28 @@ impl_scope! {
             }
         }
 
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) || !self.size_solved {
+                return None;
+            }
+
+            // find_child should gracefully handle the case that a coord is between
+            // widgets, so there's no harm (and only a small performance loss) in
+            // calling it twice.
+
+            let solver = layout::RowPositionSolver::new(self.direction);
+            if let Some(child) = solver.find_child_mut(&mut self.widgets, coord) {
+                return child.find_id(coord).or(Some(self.id()));
+            }
+
+            let solver = layout::RowPositionSolver::new(self.direction);
+            if let Some(child) = solver.find_child_mut(&mut self.handles, coord) {
+                return child.find_id(coord).or(Some(self.id()));
+            }
+
+            Some(self.id())
+        }
+
         fn draw(&mut self, mut draw: DrawMgr) {
             if !self.size_solved {
                 return;
@@ -230,28 +252,6 @@ impl_scope! {
         fn pre_configure(&mut self, _: &mut SetRectMgr, id: WidgetId) {
             self.core.id = id;
             self.id_map.clear();
-        }
-
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) || !self.size_solved {
-                return None;
-            }
-
-            // find_child should gracefully handle the case that a coord is between
-            // widgets, so there's no harm (and only a small performance loss) in
-            // calling it twice.
-
-            let solver = layout::RowPositionSolver::new(self.direction);
-            if let Some(child) = solver.find_child_mut(&mut self.widgets, coord) {
-                return child.find_id(coord).or(Some(self.id()));
-            }
-
-            let solver = layout::RowPositionSolver::new(self.direction);
-            if let Some(child) = solver.find_child_mut(&mut self.handles, coord) {
-                return child.find_id(coord).or(Some(self.id()));
-            }
-
-            Some(self.id())
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {

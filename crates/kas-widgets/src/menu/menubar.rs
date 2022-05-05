@@ -96,6 +96,14 @@ impl_scope! {
             }
         }
 
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            // TODO: doesn't check self.rect() first!
+            let solver = RowPositionSolver::new(self.direction);
+            solver
+                .find_child_mut(&mut self.widgets, coord)
+                .and_then(|child| child.find_id(coord))
+        }
+
         fn draw(&mut self, mut draw: DrawMgr) {
             let solver = RowPositionSolver::new(self.direction);
             solver.for_children(&mut self.widgets, self.core.rect, |w| draw.recurse(w));
@@ -103,13 +111,6 @@ impl_scope! {
     }
 
     impl<D: Directional> Widget for MenuBar<D> {
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            let solver = RowPositionSolver::new(self.direction);
-            solver
-                .find_child_mut(&mut self.widgets, coord)
-                .and_then(|child| child.find_id(coord))
-        }
-
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(id_code) => {

@@ -116,6 +116,13 @@ impl_scope! {
                 .set_sizes(rect.size, child_size + self.frame_size);
         }
 
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) {
+                return None;
+            }
+            self.inner.find_id(coord + self.translation())
+        }
+
         fn draw(&mut self, mut draw: DrawMgr) {
             draw.with_clip_region(self.core.rect, self.scroll_offset(), |mut draw| {
                 draw.recurse(&mut self.inner);
@@ -126,13 +133,6 @@ impl_scope! {
     impl Widget for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.register_nav_fallback(self.id());
-        }
-
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-            self.inner.find_id(coord + self.translation())
         }
 
         #[inline]

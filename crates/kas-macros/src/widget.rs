@@ -274,6 +274,10 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                         self.#inner.set_rect(mgr, rect, align);
                     }
                     #[inline]
+                    fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
+                        self.#inner.find_id(coord)
+                    }
+                    #[inline]
                     fn draw(
                         &mut self,
                         draw: ::kas::theme::DrawMgr,
@@ -345,10 +349,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                         from: Option<usize>,
                     ) -> Option<usize> {
                         self.#inner.spatial_nav(mgr, reverse, from)
-                    }
-                    #[inline]
-                    fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
-                        self.#inner.find_id(coord)
                     }
 
                     #[inline]
@@ -429,7 +429,12 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
     let mut fn_size_rules = None;
     let mut set_rect = None;
-    let mut fn_find_id = None;
+    let mut fn_find_id = quote! {
+        fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
+            use ::kas::{WidgetCore, WidgetExt};
+            self.rect().contains(coord).then(|| self.id())
+        }
+    };
     let mut fn_draw = None;
     if let Some(layout) = args.layout.take() {
         let core = core_data.clone().into();
@@ -481,16 +486,16 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         set_rect = Some(quote! {
             <Self as ::kas::layout::AutoLayout>::set_rect(self, mgr, rect, align);
         });
-        fn_find_id = Some(quote! {
+        fn_find_id = quote! {
             fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
-                use ::kas::WidgetCore;
+                use ::kas::{WidgetCore, Widget};
                 if !self.rect().contains(coord) {
                     return None;
                 }
                 let coord = coord + self.translation();
                 <Self as ::kas::layout::AutoLayout>::find_id(self, coord)
             }
-        });
+        };
         fn_draw = Some(quote! {
             fn draw(&mut self, draw: ::kas::theme::DrawMgr) {
                 <Self as ::kas::layout::AutoLayout>::draw(self, draw);
@@ -526,6 +531,9 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         if !has_method(&layout_impl, "set_rect") {
             layout_impl.items.push(parse2(fn_set_rect)?);
         }
+        if !has_method(&layout_impl, "find_id") {
+            layout_impl.items.push(parse2(fn_find_id)?);
+        }
         if let Some(method) = fn_draw {
             if !has_method(&layout_impl, "draw") {
                 layout_impl.items.push(parse2(method)?);
@@ -536,6 +544,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             impl #impl_generics ::kas::Layout for #name #ty_generics #where_clause {
                 #fn_size_rules
                 #fn_set_rect
+                #fn_find_id
                 #fn_draw
             }
         });
@@ -551,11 +560,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         let widget_impl = &mut scope.impls[index];
         if !has_method(&widget_impl, "pre_configure") {
             widget_impl.items.push(parse2(fn_pre_configure)?);
-        }
-        if let Some(method) = fn_find_id {
-            if !has_method(&widget_impl, "find_id") {
-                widget_impl.items.push(parse2(method)?);
-            }
         }
         if let Some(item) = args.key_nav {
             widget_impl.items.push(parse2(item)?);
@@ -578,7 +582,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 #key_nav
                 #hover_highlight
                 #cursor_icon
-                #fn_find_id
             }
         });
     }

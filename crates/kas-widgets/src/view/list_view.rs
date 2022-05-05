@@ -504,6 +504,20 @@ impl_scope! {
             self.update_widgets(mgr);
         }
 
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) {
+                return None;
+            }
+
+            let coord = coord + self.scroll.offset();
+            for child in &mut self.widgets[..self.cur_len.cast()] {
+                if let Some(id) = child.widget.find_id(coord) {
+                    return Some(id);
+                }
+            }
+            Some(self.id())
+        }
+
         fn draw(&mut self, mut draw: DrawMgr) {
             let offset = self.scroll_offset();
             draw.with_clip_region(self.core.rect, offset, |mut draw| {
@@ -585,20 +599,6 @@ impl_scope! {
         #[inline]
         fn translation(&self) -> Offset {
             self.scroll_offset()
-        }
-
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
-                return None;
-            }
-
-            let coord = coord + self.scroll.offset();
-            for child in &mut self.widgets[..self.cur_len.cast()] {
-                if let Some(id) = child.widget.find_id(coord) {
-                    return Some(id);
-                }
-            }
-            Some(self.id())
         }
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
