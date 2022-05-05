@@ -5,7 +5,6 @@
 
 //! Widget traits
 
-use std::any::Any;
 use std::fmt;
 
 use crate::event::{self, Event, EventMgr, Response, Scroll};
@@ -21,26 +20,6 @@ use crate::event::EventState;
 #[allow(unused)]
 use crate::layout::{self, AutoLayout};
 
-impl dyn WidgetCore {
-    /// Forwards to the method defined on the type `Any`.
-    #[inline]
-    pub fn is<T: Any>(&self) -> bool {
-        <dyn Any>::is::<T>(self.as_any())
-    }
-
-    /// Forwards to the method defined on the type `Any`.
-    #[inline]
-    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
-        <dyn Any>::downcast_ref::<T>(self.as_any())
-    }
-
-    /// Forwards to the method defined on the type `Any`.
-    #[inline]
-    pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
-        <dyn Any>::downcast_mut::<T>(self.as_any_mut())
-    }
-}
-
 /// Base widget functionality
 ///
 /// See the [`Widget`] trait for documentation of the widget family.
@@ -50,14 +29,8 @@ impl dyn WidgetCore {
 /// unexpected breaking changes.
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
-#[autoimpl(for<T: trait + ?Sized> Box<T>)]
-pub trait WidgetCore: Any + fmt::Debug {
-    /// Get self as type `Any`
-    fn as_any(&self) -> &dyn Any;
-
-    /// Get self as type `Any` (mutable)
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-
+#[autoimpl(for<'a, T: trait + ?Sized> &'a mut T, Box<T>)]
+pub trait WidgetCore: fmt::Debug {
     /// Get the widget's identifier
     ///
     /// Note that the default-constructed [`WidgetId`] is *invalid*: any
@@ -88,7 +61,7 @@ pub trait WidgetCore: Any + fmt::Debug {
 /// [`SetRectMgr::configure`].
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
-#[autoimpl(for<T: trait + ?Sized> Box<T>)]
+#[autoimpl(for<'a, T: trait + ?Sized> &'a mut T, Box<T>)]
 pub trait WidgetChildren: WidgetCore {
     /// Get the number of child widgets
     ///
@@ -154,7 +127,7 @@ pub trait WidgetChildren: WidgetCore {
 ///     others the internal layout will be incorrect.
 ///
 /// [`#[widget]`]: kas_macros::widget
-#[autoimpl(for<T: trait + ?Sized> Box<T>)]
+#[autoimpl(for<'a, T: trait + ?Sized> &'a mut T, Box<T>)]
 pub trait Layout {
     /// Get size rules for the given axis
     ///
@@ -289,7 +262,7 @@ pub trait Layout {
 /// To refer to a widget in generic functions, use `<W: Widget>`.
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
-#[autoimpl(for<T: trait + ?Sized> Box<T>)]
+#[autoimpl(for<'a, T: trait + ?Sized> &'a mut T, Box<T>)]
 pub trait Widget: WidgetChildren + Layout {
     /// Make an identifier for a child
     ///

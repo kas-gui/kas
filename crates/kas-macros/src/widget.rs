@@ -207,11 +207,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         impl #impl_generics ::kas::WidgetCore
             for #name #ty_generics #where_clause
         {
-            #[inline]
-            fn as_any(&self) -> &dyn std::any::Any { self }
-            #[inline]
-            fn as_any_mut(&mut self) -> &mut dyn std::any::Any { self }
-
             #core_methods
 
             #[inline]
