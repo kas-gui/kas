@@ -474,10 +474,7 @@ impl<'a> EventMgr<'a> {
     ///
     /// Messages may be left on the stack after this returns and scroll state
     /// may be adjusted.
-    pub fn send<W>(&mut self, widget: &mut W, mut id: WidgetId, event: Event) -> Response
-    where
-        W: Widget + ?Sized,
-    {
+    pub fn send(&mut self, widget: &mut dyn Widget, mut id: WidgetId, event: Event) -> Response {
         trace!("EventMgr::send to {}: {:?}", id, event);
 
         // TODO(opt): we should be able to use binary search here
@@ -490,7 +487,7 @@ impl<'a> EventMgr<'a> {
         }
 
         self.scroll = Scroll::None;
-        self.send_recurse(widget.as_widget_mut(), id, disabled, event)
+        self.send_recurse(widget, id, disabled, event)
     }
 
     /// Push a message to the stack
