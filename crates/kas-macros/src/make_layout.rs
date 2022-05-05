@@ -599,10 +599,10 @@ impl Layout {
                 quote! { layout::Visitor::align(#inner, #align) }
             }
             Layout::AlignSingle(expr, align) => {
-                quote! { layout::Visitor::align_single((#expr).as_widget_mut(), #align) }
+                quote! { layout::Visitor::align_single(&mut (#expr), #align) }
             }
             Layout::Widget(expr) => quote! {
-                layout::Visitor::single((#expr).as_widget_mut())
+                layout::Visitor::single(&mut (#expr))
             },
             Layout::Component(expr) => quote! {
                 layout::Visitor::component(&mut #expr)
@@ -632,7 +632,7 @@ impl Layout {
                         if let Some(iter) = children {
                             for member in iter {
                                 items.append_all(quote! {
-                                    layout::Visitor::single(self.#member.as_widget_mut()),
+                                    layout::Visitor::single(&mut self.#member),
                                 });
                             }
                         } else {

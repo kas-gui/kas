@@ -232,7 +232,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///
 /// Both _Single_ and _Slice_ variants match `self.MEMBER` where `MEMBER` is the
 /// name of a field or number of a tuple field. More precisely, both match any
-/// expression starting with `self` and append with `.as_widget_mut()`.
+/// expression starting with `self` and use `&mut (#expr)`.
 ///
 /// `row` and `column` are abbreviations for `list(right)` and `list(down)`
 /// respectively. Glob syntax is allowed: `row: *` uses all children in a row
