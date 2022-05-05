@@ -7,7 +7,7 @@
 
 use super::{BoxedMenu, Menu, SubItems};
 use crate::PopupFrame;
-use kas::component::{Component, Label, Mark};
+use kas::component::{Label, Mark};
 use kas::event::{Command, Scroll};
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::prelude::*;

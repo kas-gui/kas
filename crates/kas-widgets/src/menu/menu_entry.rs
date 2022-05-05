@@ -7,7 +7,7 @@
 
 use super::{Menu, SubItems};
 use crate::CheckBoxBare;
-use kas::component::{Component, Label};
+use kas::component::Label;
 use kas::theme::{FrameStyle, TextClass};
 use kas::{layout, prelude::*};
 use std::fmt::Debug;

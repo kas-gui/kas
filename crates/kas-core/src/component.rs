@@ -9,26 +9,8 @@ use crate::geom::{Coord, Rect, Size};
 use crate::layout::{Align, AlignHints, AxisInfo, SetRectMgr, SizeRules};
 use crate::text::{format, AccelString, Text, TextApi};
 use crate::theme::{DrawMgr, MarkStyle, SizeMgr, TextClass};
-use crate::{TkAction, WidgetId};
+use crate::{Layout, TkAction, WidgetId};
 use kas_macros::{autoimpl, impl_scope};
-
-/// Components are not true widgets, but support layout solving
-///
-/// TODO: since this is a sub-set of widget functionality, should [`crate::Widget`]
-/// extend `Component`? (Significant trait revision would be required.)
-pub trait Component {
-    /// Get size rules for the given axis
-    fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
-
-    /// Apply a given `rect` to self
-    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints);
-
-    /// Translate a coordinate to a [`WidgetId`]
-    fn find_id(&mut self, coord: Coord) -> Option<WidgetId>;
-
-    /// Draw the component and its children
-    fn draw(&mut self, draw: DrawMgr);
-}
 
 impl_scope! {
     /// A label component
@@ -110,7 +92,7 @@ impl_scope! {
         }
     }
 
-    impl Component for Self {
+    impl Layout for Self {
         fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             mgr.text_bound(&mut self.text, self.class, axis)
         }
@@ -149,7 +131,7 @@ impl_scope! {
             Mark { style, rect }
         }
     }
-    impl Component for Self {
+    impl Layout for Self {
         fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             mgr.mark(self.style, axis)
         }

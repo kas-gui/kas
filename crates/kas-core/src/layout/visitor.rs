@@ -11,12 +11,11 @@
 use super::{AlignHints, AxisInfo, RulesSetter, RulesSolver, SetRectMgr, SizeRules, Storage};
 use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
-use crate::component::Component;
 use crate::draw::color::Rgb;
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::theme::{Background, DrawMgr, FrameStyle, SizeMgr};
 use crate::WidgetId;
-use crate::{dir::Directional, Widget};
+use crate::{dir::Directional, Layout, Widget};
 use std::any::Any;
 use std::iter::ExactSizeIterator;
 
@@ -36,9 +35,9 @@ enum LayoutType<'a> {
     /// No layout
     None,
     /// A component
-    Component(&'a mut dyn Component),
+    Component(&'a mut dyn Layout),
     /// A boxed component
-    BoxComponent(Box<dyn Component + 'a>),
+    BoxComponent(Box<dyn Layout + 'a>),
     /// A single child widget
     Single(&'a mut dyn Widget),
     /// A single child widget with alignment
@@ -100,7 +99,7 @@ impl<'a> Visitor<'a> {
     }
 
     /// Place a component in the layout
-    pub fn component(component: &'a mut dyn Component) -> Self {
+    pub fn component(component: &'a mut dyn Layout) -> Self {
         let layout = LayoutType::Component(component);
         Visitor { layout }
     }
@@ -261,7 +260,7 @@ struct List<'a, S, D, I> {
     children: I,
 }
 
-impl<'a, S: RowStorage, D: Directional, I> Component for List<'a, S, D, I>
+impl<'a, S: RowStorage, D: Directional, I> Layout for List<'a, S, D, I>
 where
     I: ExactSizeIterator<Item = Visitor<'a>>,
 {
@@ -302,7 +301,7 @@ struct Slice<'a, W: Widget, D: Directional> {
     children: &'a mut [W],
 }
 
-impl<'a, W: Widget, D: Directional> Component for Slice<'a, W, D> {
+impl<'a, W: Widget, D: Directional> Layout for Slice<'a, W, D> {
     fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         let dim = (self.direction, self.children.len());
         let mut solver = RowSolver::new(axis, dim, self.data);
@@ -341,7 +340,7 @@ struct Grid<'a, S, I> {
     children: I,
 }
 
-impl<'a, S: GridStorage, I> Component for Grid<'a, S, I>
+impl<'a, S: GridStorage, I> Layout for Grid<'a, S, I>
 where
     I: Iterator<Item = (GridChildInfo, Visitor<'a>)>,
 {
