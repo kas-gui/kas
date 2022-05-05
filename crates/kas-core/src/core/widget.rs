@@ -130,8 +130,7 @@ pub trait WidgetChildren: WidgetCore {
 
 /// Positioning and drawing routines for widgets
 ///
-/// This trait is part of the [`Widget`] family. It may be derived by
-/// the [`crate::macros::widget`] macro, but is not by default.
+/// This trait is related to [`Widget`], but may be used independently.
 ///
 /// There are two methods of implementing this trait:
 ///
@@ -151,7 +150,7 @@ pub trait WidgetChildren: WidgetCore {
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
-pub trait Layout: WidgetChildren {
+pub trait Layout {
     /// Get size rules for the given axis
     ///
     /// For a description of the widget size model, see [`SizeRules`].
@@ -240,7 +239,7 @@ pub trait Layout: WidgetChildren {
 ///
 /// [`derive(Widget)`]: https://docs.rs/kas/latest/kas/macros/index.html#the-derivewidget-macro
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
-pub trait Widget: Layout {
+pub trait Widget: WidgetChildren + Layout {
     /// Make an identifier for a child
     ///
     /// Default impl: `self.id_ref().make_child(index)`
@@ -452,7 +451,7 @@ pub trait Widget: Layout {
 }
 
 /// Extension trait over widgets
-pub trait WidgetExt: WidgetChildren {
+pub trait WidgetExt: Widget {
     /// Get the widget's identifier
     ///
     /// Note that the default-constructed [`WidgetId`] is *invalid*: any
@@ -521,4 +520,4 @@ pub trait WidgetExt: WidgetChildren {
         }
     }
 }
-impl<W: WidgetChildren + ?Sized> WidgetExt for W {}
+impl<W: Widget + ?Sized> WidgetExt for W {}
