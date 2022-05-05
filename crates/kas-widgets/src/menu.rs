@@ -65,6 +65,7 @@ pub trait Menu: Widget {
     /// # impl S {
     /// # fn rect(&self) -> Rect { Rect::ZERO }
     /// fn draw(&mut self, mut draw: DrawMgr) {
+    ///     draw.set_id(self.id());
     ///     draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
     ///     // draw children here
     /// }

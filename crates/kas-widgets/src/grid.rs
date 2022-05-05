@@ -103,7 +103,7 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawMgr) {
             for (_, child) in &mut self.widgets {
-                draw.recurse(child);
+                child.draw(draw.re());
             }
         }
     }

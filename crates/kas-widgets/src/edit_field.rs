@@ -168,13 +168,14 @@ impl_scope! {
 
     impl Layout for Self {
         fn draw(&mut self, mut draw: DrawMgr) {
+            draw.set_id(self.id());
             let bg = if self.inner.has_error() {
                 Background::Error
             } else {
                 Background::Default
             };
             draw.frame(self.rect(), FrameStyle::EditBox, bg);
-            draw.recurse(&mut self.inner);
+            self.inner.draw(draw.re());
         }
     }
 }
@@ -372,6 +373,7 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
+            draw.set_id(self.id());
             let class = TextClass::Edit(self.multi_line);
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
                 if self.selection.is_empty() {

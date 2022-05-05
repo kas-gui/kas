@@ -126,8 +126,9 @@ impl_scope! {
 
     impl kas::Layout for Self {
         fn draw(&mut self, mut draw: DrawMgr) {
+            draw.set_id(self.id());
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
-            self.label.draw(draw.re_id(self.id()));
+            self.label.draw(draw.re());
             if self.mark.rect.size != Size::ZERO {
                 self.mark.draw(draw);
             }
@@ -380,7 +381,7 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawMgr) {
             for child in self.list.iter_mut() {
-                draw.recurse(child);
+                child.draw(draw.re());
             }
         }
     }

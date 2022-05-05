@@ -31,6 +31,7 @@ impl_scope! {
 
     impl Layout for Self {
         fn draw(&mut self, mut draw: DrawMgr) {
+            draw.set_id(self.id());
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.label.draw(draw);
         }
@@ -125,9 +126,9 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
+            draw.set_id(self.checkbox.id());
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
-            let id = self.checkbox.id();
-            <Self as layout::AutoLayout>::draw(self, draw.re_id(id));
+            <Self as layout::AutoLayout>::draw(self, draw.re());
         }
     }
 

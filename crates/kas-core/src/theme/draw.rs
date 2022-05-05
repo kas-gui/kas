@@ -16,7 +16,7 @@ use crate::geom::{Coord, Offset, Rect};
 use crate::layout::SetRectMgr;
 use crate::macros::autoimpl;
 use crate::text::{TextApi, TextDisplay};
-use crate::{TkAction, Widget, WidgetExt, WidgetId};
+use crate::{TkAction, Widget, WidgetId};
 
 /// Optional background colour
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -51,26 +51,15 @@ pub struct DrawMgr<'a> {
 }
 
 impl<'a> DrawMgr<'a> {
-    /// Reborrow with a new lifetime and new `id`
+    /// Reborrow with a new lifetime
     ///
     /// Rust allows references like `&T` or `&mut T` to be "reborrowed" through
     /// coercion: essentially, the pointer is copied under a new, shorter, lifetime.
     /// Until rfcs#1403 lands, reborrows on user types require a method call.
-    #[inline(always)]
-    pub fn re_id<'b>(&'b mut self, id: WidgetId) -> DrawMgr<'b>
-    where
-        'a: 'b,
-    {
-        DrawMgr { h: self.h, id }
-    }
-
-    /// Reborrow with a new lifetime and same `id`
     ///
-    /// Rust allows references like `&T` or `&mut T` to be "reborrowed" through
-    /// coercion: essentially, the pointer is copied under a new, shorter, lifetime.
-    /// Until rfcs#1403 lands, reborrows on user types require a method call.
+    /// The embedded [`WidgetId`] is cloned.
     #[inline(always)]
-    pub fn re_clone<'b>(&'b mut self) -> DrawMgr<'b>
+    pub fn re<'b>(&'b mut self) -> DrawMgr<'b>
     where
         'a: 'b,
     {
@@ -80,17 +69,17 @@ impl<'a> DrawMgr<'a> {
         }
     }
 
-    /// Recurse drawing to a child
-    #[inline]
-    pub fn recurse(&mut self, child: &mut dyn Widget) {
-        child.draw(self.re_id(child.id()));
-    }
-
     /// Construct from a [`DrawMgr`] and [`EventState`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub fn new(h: &'a mut dyn DrawHandle, id: WidgetId) -> Self {
         DrawMgr { h, id }
+    }
+
+    /// Assign a new [`WidgetId`]
+    #[inline(always)]
+    pub fn set_id(&mut self, id: WidgetId) {
+        self.id = id;
     }
 
     /// Access event-management state

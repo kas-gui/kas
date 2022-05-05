@@ -263,7 +263,8 @@ pub trait Layout {
     /// Default implementation:
     ///
     /// -   No default implementation, except,
-    /// -   For a widget with the `layout` property, call [`AutoLayout::draw`]
+    /// -   For a widget with the `layout` property, call [`Draw::set_id`] then
+    ///     [`AutoLayout::draw`]
     fn draw(&mut self, draw: DrawMgr);
 }
 

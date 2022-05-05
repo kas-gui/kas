@@ -498,6 +498,7 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
+            draw.set_id(self.id());
             let offset = self.scroll_offset();
             let rect = self.rect() + offset;
             let num = self.cur_len.cast();
@@ -507,7 +508,7 @@ impl_scope! {
                     // visible, so check intersection before drawing:
                     if rect.intersection(&child.widget.rect()).is_some() {
                         if let Some(ref key) = child.key {
-                            draw.recurse(&mut child.widget);
+                            child.widget.draw(draw.re());
                             if self.selection.contains(key) {
                                 draw.selection_box(child.widget.rect());
                             }

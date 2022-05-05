@@ -77,10 +77,12 @@ impl_scope! {
 
         #[cfg(feature = "min_spec")]
         default fn draw(&mut self, mut draw: DrawMgr) {
+            draw.set_id(self.id());
             draw.text_effects(self.rect().pos, &self.label, TextClass::Label(self.wrap));
         }
         #[cfg(not(feature = "min_spec"))]
         fn draw(&mut self, mut draw: DrawMgr) {
+            draw.set_id(self.id());
             draw.text_effects(self.rect().pos, &self.label, TextClass::Label(self.wrap));
         }
     }
@@ -105,6 +107,7 @@ impl_scope! {
 #[cfg(feature = "min_spec")]
 impl<'a> Layout for Label<&'a str> {
     fn draw(&mut self, mut draw: DrawMgr) {
+        draw.set_id(self.id());
         draw.text(
             self.rect().pos,
             self.label.as_ref(),
@@ -115,6 +118,7 @@ impl<'a> Layout for Label<&'a str> {
 #[cfg(feature = "min_spec")]
 impl Layout for StringLabel {
     fn draw(&mut self, mut draw: DrawMgr) {
+        draw.set_id(self.id());
         draw.text(
             self.rect().pos,
             self.label.as_ref(),
@@ -231,6 +235,7 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
+            draw.set_id(self.id());
             draw.text_effects(self.rect().pos, &self.0.label, TextClass::AccelLabel(self.0.wrap));
         }
     }

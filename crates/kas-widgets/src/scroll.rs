@@ -125,7 +125,7 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawMgr) {
             draw.with_clip_region(self.core.rect, self.scroll_offset(), |mut draw| {
-                draw.recurse(&mut self.inner);
+                self.inner.draw(draw.re());
             });
         }
     }

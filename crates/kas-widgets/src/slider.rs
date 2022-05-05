@@ -255,6 +255,7 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
+            draw.set_id(self.id());
             let dir = self.direction.as_direction();
             draw.slider(self.rect(), &self.handle, dir);
         }

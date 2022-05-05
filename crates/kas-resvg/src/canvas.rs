@@ -151,6 +151,7 @@ impl_scope! {
                 draw.draw_device().animate();
             }
             if let Some(id) = self.image.as_ref().map(|h| h.id()) {
+                draw.set_id(self.id());
                 draw.image(self.rect(), id);
             }
         }

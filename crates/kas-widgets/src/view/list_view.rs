@@ -519,10 +519,11 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
+            draw.set_id(self.id());
             let offset = self.scroll_offset();
             draw.with_clip_region(self.core.rect, offset, |mut draw| {
                 for child in &mut self.widgets[..self.cur_len.cast()] {
-                    draw.recurse(&mut child.widget);
+                    child.widget.draw(draw.re());
                     if let Some(ref key) = child.key {
                         if self.selection.contains(key) {
                             draw.selection_box(child.widget.rect());

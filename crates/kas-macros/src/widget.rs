@@ -497,7 +497,9 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             }
         };
         fn_draw = Some(quote! {
-            fn draw(&mut self, draw: ::kas::theme::DrawMgr) {
+            fn draw(&mut self, mut draw: ::kas::theme::DrawMgr) {
+                use ::kas::WidgetExt;
+                draw.set_id(self.id());
                 <Self as ::kas::layout::AutoLayout>::draw(self, draw);
             }
         });

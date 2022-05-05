@@ -96,7 +96,7 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawMgr) {
             if self.sized_range.contains(&self.active) && self.active < self.widgets.len() {
-                draw.recurse(&mut self.widgets[self.active]);
+                self.widgets[self.active].draw(draw.re());
             }
         }
     }

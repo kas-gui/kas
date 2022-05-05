@@ -39,6 +39,7 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
+            draw.set_id(self.id());
             draw.checkbox(self.rect(), self.state);
         }
     }

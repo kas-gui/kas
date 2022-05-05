@@ -43,11 +43,11 @@ impl_scope! {
 
         #[inline]
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.recurse(&mut self.w);
+            self.w.draw(draw.re());
             for (_, popup) in &self.popups {
                 if let Some(widget) = self.w.find_widget_mut(&popup.id) {
                     draw.with_overlay(widget.rect(), |mut draw| {
-                        draw.recurse(widget);
+                        widget.draw(draw.re());
                     });
                 }
             }

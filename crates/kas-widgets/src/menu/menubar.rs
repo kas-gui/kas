@@ -106,7 +106,7 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawMgr) {
             let solver = RowPositionSolver::new(self.direction);
-            solver.for_children(&mut self.widgets, self.core.rect, |w| draw.recurse(w));
+            solver.for_children(&mut self.widgets, self.core.rect, |w| w.draw(draw.re()));
         }
     }
 
