@@ -596,27 +596,27 @@ impl Layout {
         Ok(match self {
             Layout::Align(layout, align) => {
                 let inner = layout.generate(core, children)?;
-                quote! { layout::Layout::align(#inner, #align) }
+                quote! { layout::Visitor::align(#inner, #align) }
             }
             Layout::AlignSingle(expr, align) => {
-                quote! { layout::Layout::align_single((#expr).as_widget_mut(), #align) }
+                quote! { layout::Visitor::align_single((#expr).as_widget_mut(), #align) }
             }
             Layout::Widget(expr) => quote! {
-                layout::Layout::single((#expr).as_widget_mut())
+                layout::Visitor::single((#expr).as_widget_mut())
             },
             Layout::Component(expr) => quote! {
-                layout::Layout::component(&mut #expr)
+                layout::Visitor::component(&mut #expr)
             },
             Layout::Frame(stor, layout, style) => {
                 let inner = layout.generate(core, children)?;
                 quote! {
-                    layout::Layout::frame(&mut self.#core.#stor, #inner, #style)
+                    layout::Visitor::frame(&mut self.#core.#stor, #inner, #style)
                 }
             }
             Layout::Button(stor, layout, color) => {
                 let inner = layout.generate(core, children)?;
                 quote! {
-                    layout::Layout::button(&mut self.#core.#stor, #inner, #color)
+                    layout::Visitor::button(&mut self.#core.#stor, #inner, #color)
                 }
             }
             Layout::List(stor, dir, list) => {
@@ -632,7 +632,7 @@ impl Layout {
                         if let Some(iter) = children {
                             for member in iter {
                                 items.append_all(quote! {
-                                    layout::Layout::single(self.#member.as_widget_mut()),
+                                    layout::Visitor::single(self.#member.as_widget_mut()),
                                 });
                             }
                         } else {
@@ -646,10 +646,10 @@ impl Layout {
 
                 let iter = quote! { { let arr = [#items]; arr.into_iter() } };
 
-                quote! { layout::Layout::list(#iter, #dir, &mut self.#core.#stor) }
+                quote! { layout::Visitor::list(#iter, #dir, &mut self.#core.#stor) }
             }
             Layout::Slice(stor, dir, expr) => {
-                quote! { layout::Layout::slice(&mut #expr, #dir, &mut self.#core.#stor) }
+                quote! { layout::Visitor::slice(&mut #expr, #dir, &mut self.#core.#stor) }
             }
             Layout::Grid(stor, dim, cells) => {
                 let mut items = Toks::new();
@@ -671,10 +671,10 @@ impl Layout {
                 }
                 let iter = quote! { { let arr = [#items]; arr.into_iter() } };
 
-                quote! { layout::Layout::grid(#iter, #dim, &mut self.#core.#stor) }
+                quote! { layout::Visitor::grid(#iter, #dim, &mut self.#core.#stor) }
             }
             Layout::Label(stor, _) => {
-                quote! { layout::Layout::component(&mut self.#core.#stor) }
+                quote! { layout::Visitor::component(&mut self.#core.#stor) }
             }
         })
     }

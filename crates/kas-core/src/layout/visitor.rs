@@ -24,7 +24,10 @@ use std::iter::ExactSizeIterator;
 ///
 /// This constitutes a "visitor" which iterates over each child widget. Layout
 /// algorithm details are implemented over this visitor.
-pub struct Layout<'a> {
+///
+/// TODO: consider removal. This is currently used to implement the
+/// `layout = ..` property of `#[widget]`, but may not be the best approach.
+pub struct Visitor<'a> {
     layout: LayoutType<'a>,
 }
 
@@ -41,42 +44,42 @@ enum LayoutType<'a> {
     /// A single child widget with alignment
     AlignSingle(&'a mut dyn Widget, AlignHints),
     /// Apply alignment hints to some sub-layout
-    AlignLayout(Box<Layout<'a>>, AlignHints),
+    AlignLayout(Box<Visitor<'a>>, AlignHints),
     /// Frame around content
-    Frame(Box<Layout<'a>>, &'a mut FrameStorage, FrameStyle),
+    Frame(Box<Visitor<'a>>, &'a mut FrameStorage, FrameStyle),
     /// Button frame around content
-    Button(Box<Layout<'a>>, &'a mut FrameStorage, Option<Rgb>),
+    Button(Box<Visitor<'a>>, &'a mut FrameStorage, Option<Rgb>),
 }
 
-impl<'a> Default for Layout<'a> {
+impl<'a> Default for Visitor<'a> {
     fn default() -> Self {
-        Layout::none()
+        Visitor::none()
     }
 }
 
-impl<'a> Layout<'a> {
+impl<'a> Visitor<'a> {
     /// Construct an empty layout
     pub fn none() -> Self {
         let layout = LayoutType::None;
-        Layout { layout }
+        Visitor { layout }
     }
 
     /// Construct a single-item layout
     pub fn single(widget: &'a mut dyn Widget) -> Self {
         let layout = LayoutType::Single(widget);
-        Layout { layout }
+        Visitor { layout }
     }
 
     /// Construct a single-item layout with alignment hints
     pub fn align_single(widget: &'a mut dyn Widget, hints: AlignHints) -> Self {
         let layout = LayoutType::AlignSingle(widget, hints);
-        Layout { layout }
+        Visitor { layout }
     }
 
     /// Align a sub-layout
     pub fn align(layout: Self, hints: AlignHints) -> Self {
         let layout = LayoutType::AlignLayout(Box::new(layout), hints);
-        Layout { layout }
+        Visitor { layout }
     }
 
     /// Construct a frame around a sub-layout
@@ -84,7 +87,7 @@ impl<'a> Layout<'a> {
     /// This frame has dimensions according to [`SizeMgr::frame`].
     pub fn frame(data: &'a mut FrameStorage, child: Self, style: FrameStyle) -> Self {
         let layout = LayoutType::Frame(Box::new(child), data, style);
-        Layout { layout }
+        Visitor { layout }
     }
 
     /// Construct a button frame around a sub-layout
@@ -93,19 +96,19 @@ impl<'a> Layout<'a> {
     /// on the button reports input to `self`, not to the child node.
     pub fn button(data: &'a mut FrameStorage, child: Self, color: Option<Rgb>) -> Self {
         let layout = LayoutType::Button(Box::new(child), data, color);
-        Layout { layout }
+        Visitor { layout }
     }
 
     /// Place a component in the layout
     pub fn component(component: &'a mut dyn Component) -> Self {
         let layout = LayoutType::Component(component);
-        Layout { layout }
+        Visitor { layout }
     }
 
     /// Construct a row/column layout over an iterator of layouts
     pub fn list<I, D, S>(list: I, direction: D, data: &'a mut S) -> Self
     where
-        I: ExactSizeIterator<Item = Layout<'a>> + 'a,
+        I: ExactSizeIterator<Item = Visitor<'a>> + 'a,
         D: Directional,
         S: RowStorage,
     {
@@ -114,12 +117,12 @@ impl<'a> Layout<'a> {
             direction,
             children: list,
         }));
-        Layout { layout }
+        Visitor { layout }
     }
 
     /// Construct a row/column layout over a slice of widgets
     ///
-    /// In contrast to [`Layout::list`], `slice` can only be used over a slice
+    /// In contrast to [`Visitor::list`], `slice` can only be used over a slice
     /// of a single type of widget, enabling some optimisations: `O(log n)` for
     /// `draw` and `find_id`. Some other methods, however, remain `O(n)`, thus
     /// the optimisations are not (currently) so useful.
@@ -133,13 +136,13 @@ impl<'a> Layout<'a> {
             direction,
             children: slice,
         }));
-        Layout { layout }
+        Visitor { layout }
     }
 
     /// Construct a grid layout over an iterator of `(cell, layout)` items
     pub fn grid<I, S>(iter: I, dim: GridDimensions, data: &'a mut S) -> Self
     where
-        I: Iterator<Item = (GridChildInfo, Layout<'a>)> + 'a,
+        I: Iterator<Item = (GridChildInfo, Visitor<'a>)> + 'a,
         S: GridStorage,
     {
         let layout = LayoutType::BoxComponent(Box::new(Grid {
@@ -147,7 +150,7 @@ impl<'a> Layout<'a> {
             dim,
             children: iter,
         }));
-        Layout { layout }
+        Visitor { layout }
     }
 
     /// Get size rules for the given axis
@@ -205,7 +208,7 @@ impl<'a> Layout<'a> {
     /// Find a widget by coordinate
     ///
     /// Does not return the widget's own identifier. See example usage in
-    /// [`Layout::find_id`].
+    /// [`Visitor::find_id`].
     #[inline]
     pub fn find_id(mut self, coord: Coord) -> Option<WidgetId> {
         self.find_id_(coord)
@@ -260,7 +263,7 @@ struct List<'a, S, D, I> {
 
 impl<'a, S: RowStorage, D: Directional, I> Component for List<'a, S, D, I>
 where
-    I: ExactSizeIterator<Item = Layout<'a>>,
+    I: ExactSizeIterator<Item = Visitor<'a>>,
 {
     fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         let dim = (self.direction, self.children.len());
@@ -340,7 +343,7 @@ struct Grid<'a, S, I> {
 
 impl<'a, S: GridStorage, I> Component for Grid<'a, S, I>
 where
-    I: Iterator<Item = (GridChildInfo, Layout<'a>)>,
+    I: Iterator<Item = (GridChildInfo, Visitor<'a>)>,
 {
     fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         let mut solver = GridSolver::<Vec<_>, Vec<_>, _>::new(axis, self.dim, self.data);
