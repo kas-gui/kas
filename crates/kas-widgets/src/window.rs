@@ -207,7 +207,7 @@ impl<W: Widget> Window<W> {
         let r = self.core.rect;
         let popup = &mut self.popups[index].1;
 
-        let c = find_rect(self.w.as_widget(), popup.parent.clone()).unwrap();
+        let c = find_rect(&self.w, popup.parent.clone()).unwrap();
         let widget = self.w.find_widget_mut(&popup.id).unwrap();
         let mut cache = layout::SolveCache::find_constraints(widget, mgr.size_mgr());
         let ideal = cache.ideal(false);
