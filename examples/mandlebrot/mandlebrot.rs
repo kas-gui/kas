@@ -288,8 +288,7 @@ impl_scope! {
     #[derive(Clone, Debug)]
     #[widget]
     struct Mandlebrot {
-        #[widget_core]
-        core: kas::CoreData,
+        core: widget_core!(),
         alpha: DVec2,
         delta: DVec2,
         view_delta: DVec2,
@@ -437,7 +436,7 @@ impl_scope! {
         };
     }]
     struct MandlebrotWindow {
-        #[widget_core] core: CoreData,
+        core: widget_core!(),
         #[widget] label: Label<String>,
         #[widget] iters: ReserveP<Label<String>>,
         #[widget] slider: Slider<i32, kas::dir::Up>,

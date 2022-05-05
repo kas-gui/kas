@@ -7,7 +7,7 @@
 
 use super::{Menu, SubItems};
 use crate::CheckBoxBare;
-use kas::component::{Component, Label};
+use kas::component::Label;
 use kas::theme::{FrameStyle, TextClass};
 use kas::{layout, prelude::*};
 use std::fmt::Debug;
@@ -20,19 +20,16 @@ impl_scope! {
     /// A `MenuEntry` has an associated message value of type `M`. A clone of
     /// this value is pushed when the entry is activated.
     #[derive(Clone, Debug, Default)]
-    #[widget]
+    #[widget {
+        layout = component self.label;
+    }]
     pub struct MenuEntry<M: Clone + Debug + 'static> {
-        #[widget_core]
-        core: kas::CoreData,
+        core: widget_core!(),
         label: Label<AccelString>,
         msg: M,
     }
 
     impl Layout for Self {
-        fn layout(&mut self) -> layout::Layout<'_> {
-            layout::Layout::component(&mut self.label)
-        }
-
         fn draw(&mut self, mut draw: DrawMgr) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.label.draw(draw);
@@ -111,10 +108,11 @@ impl_scope! {
     #[autoimpl(Debug)]
     #[autoimpl(HasBool using self.checkbox)]
     #[derive(Clone, Default)]
-    #[widget]
+    #[widget {
+        layout = row: [self.checkbox, component self.label];
+    }]
     pub struct MenuToggle {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         #[widget]
         checkbox: CheckBoxBare,
         label: Label<AccelString>,
@@ -122,28 +120,20 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn layout(&mut self) -> layout::Layout<'_> {
-            let list = [
-                layout::Layout::single(&mut self.checkbox),
-                layout::Layout::component(&mut self.label),
-            ];
-            layout::Layout::list(list.into_iter(), Direction::Right, &mut self.layout_list)
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            self.rect().contains(coord).then(|| self.checkbox.id())
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             let id = self.checkbox.id();
-            self.layout().draw(draw.re_id(id));
+            <Self as layout::AutoLayout>::draw(self, draw.re_id(id));
         }
     }
 
     impl Widget for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.add_accel_keys(self.checkbox.id_ref(), self.label.keys());
-        }
-
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            self.rect().contains(coord).then(|| self.checkbox.id())
         }
     }
 

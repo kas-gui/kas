@@ -18,10 +18,11 @@ impl_scope! {
     /// Mouse/touch input on the label sends events to the inner widget.
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[derive(Clone, Default, Debug)]
-    #[widget]
+    #[widget {
+        layout = list(self.dir): [self.inner, component self.label];
+    }]
     pub struct WithLabel<W: Widget, D: Directional> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         dir: D,
         #[widget]
         inner: W,
@@ -110,22 +111,14 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn layout(&mut self) -> layout::Layout<'_> {
-            let arr = [
-                layout::Layout::single(&mut self.inner),
-                layout::Layout::component(&mut self.label),
-            ];
-            layout::Layout::list(arr.into_iter(), self.dir, &mut self.layout_store)
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            self.rect().contains(coord).then(|| self.inner.id())
         }
     }
 
     impl Widget for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.add_accel_keys(self.inner.id_ref(), self.keys());
-        }
-
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            self.rect().contains(coord).then(|| self.inner.id())
         }
     }
 

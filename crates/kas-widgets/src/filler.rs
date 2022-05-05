@@ -15,8 +15,7 @@ impl_scope! {
     #[derive(Clone, Debug, Default)]
     #[widget]
     pub struct Filler {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         horiz: Stretch,
         vert: Stretch,
     }

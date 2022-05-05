@@ -50,8 +50,7 @@ impl_scope! {
     #[derive(Clone, Debug,)]
     #[widget]
     pub struct Canvas<P: CanvasProgram> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         sprite: SpriteDisplay,
         pixmap: Option<Pixmap>,
         image: Option<ImageHandle>,

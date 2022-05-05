@@ -164,8 +164,7 @@ impl_scope! {
         layout = column: *;
     }]
     struct ListEntry {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         #[widget]
         label: StringLabel,
         #[widget]

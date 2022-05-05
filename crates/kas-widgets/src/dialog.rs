@@ -24,8 +24,7 @@ impl_scope! {
         layout = column: *;
     }]
     pub struct MessageBox<T: FormattableText + 'static> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         title: String,
         #[widget]
         label: Label<T>,

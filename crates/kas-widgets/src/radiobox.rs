@@ -21,8 +21,7 @@ impl_scope! {
     #[derive(Clone)]
     #[widget]
     pub struct RadioBoxBare {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         state: bool,
         group: RadioBoxGroup,
         on_select: Option<Rc<dyn Fn(&mut EventMgr)>>,
@@ -180,21 +179,22 @@ impl_scope! {
         layout = row: *;
     }]
     pub struct RadioBox {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         #[widget]
         inner: RadioBoxBare,
         #[widget]
         label: AccelLabel,
     }
 
+    impl Layout for Self {
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            self.rect().contains(coord).then(|| self.inner.id())
+        }
+    }
+
     impl Widget for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.add_accel_keys(self.inner.id_ref(), self.label.keys());
-        }
-
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            self.rect().contains(coord).then(|| self.inner.id())
         }
     }
 

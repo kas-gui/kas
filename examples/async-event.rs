@@ -48,8 +48,7 @@ impl_scope! {
     #[derive(Debug)]
     #[widget]
     struct ColourSquare {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         colour: Arc<Mutex<Rgba>>,
         handle: UpdateHandle,
     }

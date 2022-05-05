@@ -41,8 +41,7 @@ impl_scope! {
     #[derive(Clone, Debug, Default)]
     #[widget]
     pub struct Image {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         sprite: SpriteDisplay,
         raw_size: Size,
         handle: Option<ImageHandle>,

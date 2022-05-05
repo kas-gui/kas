@@ -19,8 +19,7 @@ impl_scope! {
         layout = frame(kas::theme::FrameStyle::Frame): self.inner;
     }]
     pub struct Frame<W: Widget> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         #[widget]
         pub inner: W,
     }
@@ -48,8 +47,7 @@ impl_scope! {
         layout = frame(kas::theme::FrameStyle::Popup): self.inner;
     }]
     pub struct PopupFrame<W: Widget> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         #[widget]
         pub inner: W,
     }

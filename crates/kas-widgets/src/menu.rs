@@ -18,7 +18,6 @@
 //! -   [`Separator`]
 
 use crate::Separator;
-use kas::component::Component;
 use kas::dir::Right;
 use kas::prelude::*;
 use std::fmt::Debug;
@@ -35,16 +34,15 @@ pub use submenu::SubMenu;
 #[derive(Default)]
 pub struct SubItems<'a> {
     /// Primary label
-    pub label: Option<&'a mut dyn Component>,
+    pub label: Option<&'a mut dyn Layout>,
     /// Secondary label, often used to show shortcut key
-    pub label2: Option<&'a mut dyn Component>,
+    pub label2: Option<&'a mut dyn Layout>,
     /// Sub-menu indicator
-    pub submenu: Option<&'a mut dyn Component>,
+    pub submenu: Option<&'a mut dyn Layout>,
     /// Icon
-    pub icon: Option<&'a mut dyn Component>,
+    pub icon: Option<&'a mut dyn Layout>,
     /// Toggle mark
-    // TODO: should be a component?
-    pub toggle: Option<&'a mut dyn Widget>,
+    pub toggle: Option<&'a mut dyn Layout>,
 }
 
 /// Trait governing menus, sub-menus and menu-entries

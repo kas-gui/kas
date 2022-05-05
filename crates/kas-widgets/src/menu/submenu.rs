@@ -7,7 +7,7 @@
 
 use super::{BoxedMenu, Menu, SubItems};
 use crate::PopupFrame;
-use kas::component::{Component, Label, Mark};
+use kas::component::{Label, Mark};
 use kas::event::{Command, Scroll};
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::prelude::*;
@@ -17,10 +17,11 @@ use kas::WindowId;
 impl_scope! {
     /// A sub-menu
     #[autoimpl(Debug where D: trait)]
-    #[widget]
+    #[widget {
+        layout = component self.label;
+    }]
     pub struct SubMenu<D: Directional> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         direction: D,
         pub(crate) key_nav: bool,
         label: Label<AccelString>,
@@ -124,10 +125,6 @@ impl_scope! {
     }
 
     impl kas::Layout for Self {
-        fn layout(&mut self) -> layout::Layout<'_> {
-            layout::Layout::component(&mut self.label)
-        }
-
         fn draw(&mut self, mut draw: DrawMgr) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.label.draw(draw.re_id(self.id()));
@@ -235,8 +232,7 @@ impl_scope! {
     #[autoimpl(Debug)]
     #[widget]
     struct MenuView<W: Menu> {
-        #[widget_core]
-        core: CoreData,
+        core: widget_core!(),
         dim: layout::GridDimensions,
         store: layout::DynGridStorage, //NOTE(opt): number of columns is fixed
         list: Vec<W>,
@@ -369,14 +365,6 @@ impl_scope! {
             }
         }
 
-        fn draw(&mut self, mut draw: DrawMgr) {
-            for child in self.list.iter_mut() {
-                draw.recurse(child);
-            }
-        }
-    }
-
-    impl Widget for Self {
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             if !self.rect().contains(coord) {
                 return None;
@@ -388,6 +376,12 @@ impl_scope! {
                 }
             }
             Some(self.id())
+        }
+
+        fn draw(&mut self, mut draw: DrawMgr) {
+            for child in self.list.iter_mut() {
+                draw.recurse(child);
+            }
         }
     }
 

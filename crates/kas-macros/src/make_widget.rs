@@ -14,7 +14,7 @@ use std::fmt::Write;
 use syn::parse_quote;
 use syn::punctuated::Punctuated;
 use syn::token::Comma;
-use syn::{AttrStyle, Attribute, Ident, Result, Type, TypePath, Visibility, WhereClause};
+use syn::{Ident, Result, Type, TypePath, Visibility, WhereClause};
 
 pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
     // Used to make fresh identifiers for generic types
@@ -30,17 +30,11 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
     // fields of anonymous struct:
     let mut fields = Punctuated::<Field, Comma>::new();
     fields.push_value(Field {
-        attrs: vec![Attribute {
-            pound_token: Default::default(),
-            style: AttrStyle::Outer,
-            bracket_token: Default::default(),
-            path: parse_quote! { widget_core },
-            tokens: Default::default(),
-        }],
+        attrs: vec![],
         vis: Visibility::Inherited,
         ident: Some(core_ident),
         colon_token: Default::default(),
-        ty: parse_quote! { ::kas::CoreData },
+        ty: parse_quote! { widget_core!() },
         assign: None,
     });
     fields.push_punct(Default::default());
