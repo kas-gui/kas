@@ -21,7 +21,7 @@ impl_scope! {
     /// this value is pushed when the entry is activated.
     #[derive(Clone, Debug, Default)]
     #[widget {
-        layout = component self.label;
+        layout = self.label;
     }]
     pub struct MenuEntry<M: Clone + Debug + 'static> {
         core: widget_core!(),
@@ -110,7 +110,7 @@ impl_scope! {
     #[autoimpl(HasBool using self.checkbox)]
     #[derive(Clone, Default)]
     #[widget {
-        layout = row: [self.checkbox, component self.label];
+        layout = row: [self.checkbox, self.label];
     }]
     pub struct MenuToggle {
         core: widget_core!(),

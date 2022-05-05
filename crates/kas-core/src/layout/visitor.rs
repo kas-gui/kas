@@ -34,14 +34,12 @@ pub struct Visitor<'a> {
 enum LayoutType<'a> {
     /// No layout
     None,
-    /// A component
-    Component(&'a mut dyn Layout),
     /// A boxed component
-    BoxComponent(Box<dyn Layout + 'a>),
+    BoxSingle(Box<dyn Layout + 'a>),
     /// A single child widget
-    Single(&'a mut dyn Widget),
+    Single(&'a mut dyn Layout),
     /// A single child widget with alignment
-    AlignSingle(&'a mut dyn Widget, AlignHints),
+    AlignSingle(&'a mut dyn Layout, AlignHints),
     /// Apply alignment hints to some sub-layout
     AlignLayout(Box<Visitor<'a>>, AlignHints),
     /// Frame around content
@@ -64,13 +62,13 @@ impl<'a> Visitor<'a> {
     }
 
     /// Construct a single-item layout
-    pub fn single(widget: &'a mut dyn Widget) -> Self {
+    pub fn single(widget: &'a mut dyn Layout) -> Self {
         let layout = LayoutType::Single(widget);
         Visitor { layout }
     }
 
     /// Construct a single-item layout with alignment hints
-    pub fn align_single(widget: &'a mut dyn Widget, hints: AlignHints) -> Self {
+    pub fn align_single(widget: &'a mut dyn Layout, hints: AlignHints) -> Self {
         let layout = LayoutType::AlignSingle(widget, hints);
         Visitor { layout }
     }
@@ -98,12 +96,6 @@ impl<'a> Visitor<'a> {
         Visitor { layout }
     }
 
-    /// Place a component in the layout
-    pub fn component(component: &'a mut dyn Layout) -> Self {
-        let layout = LayoutType::Component(component);
-        Visitor { layout }
-    }
-
     /// Construct a row/column layout over an iterator of layouts
     pub fn list<I, D, S>(list: I, direction: D, data: &'a mut S) -> Self
     where
@@ -111,7 +103,7 @@ impl<'a> Visitor<'a> {
         D: Directional,
         S: RowStorage,
     {
-        let layout = LayoutType::BoxComponent(Box::new(List {
+        let layout = LayoutType::BoxSingle(Box::new(List {
             data,
             direction,
             children: list,
@@ -130,7 +122,7 @@ impl<'a> Visitor<'a> {
         W: Widget,
         D: Directional,
     {
-        let layout = LayoutType::BoxComponent(Box::new(Slice {
+        let layout = LayoutType::BoxSingle(Box::new(Slice {
             data,
             direction,
             children: slice,
@@ -144,7 +136,7 @@ impl<'a> Visitor<'a> {
         I: Iterator<Item = (GridChildInfo, Visitor<'a>)> + 'a,
         S: GridStorage,
     {
-        let layout = LayoutType::BoxComponent(Box::new(Grid {
+        let layout = LayoutType::BoxSingle(Box::new(Grid {
             data,
             dim,
             children: iter,
@@ -160,8 +152,7 @@ impl<'a> Visitor<'a> {
     fn size_rules_(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         match &mut self.layout {
             LayoutType::None => SizeRules::EMPTY,
-            LayoutType::Component(component) => component.size_rules(mgr, axis),
-            LayoutType::BoxComponent(component) => component.size_rules(mgr, axis),
+            LayoutType::BoxSingle(component) => component.size_rules(mgr, axis),
             LayoutType::Single(child) => child.size_rules(mgr, axis),
             LayoutType::AlignSingle(child, _) => child.size_rules(mgr, axis),
             LayoutType::AlignLayout(layout, _) => layout.size_rules_(mgr, axis),
@@ -184,8 +175,7 @@ impl<'a> Visitor<'a> {
     fn set_rect_(&mut self, mgr: &mut SetRectMgr, mut rect: Rect, align: AlignHints) {
         match &mut self.layout {
             LayoutType::None => (),
-            LayoutType::Component(component) => component.set_rect(mgr, rect, align),
-            LayoutType::BoxComponent(layout) => layout.set_rect(mgr, rect, align),
+            LayoutType::BoxSingle(layout) => layout.set_rect(mgr, rect, align),
             LayoutType::Single(child) => child.set_rect(mgr, rect, align),
             LayoutType::AlignSingle(child, hints) => {
                 let align = hints.combine(align);
@@ -215,8 +205,7 @@ impl<'a> Visitor<'a> {
     fn find_id_(&mut self, coord: Coord) -> Option<WidgetId> {
         match &mut self.layout {
             LayoutType::None => None,
-            LayoutType::Component(component) => component.find_id(coord),
-            LayoutType::BoxComponent(layout) => layout.find_id(coord),
+            LayoutType::BoxSingle(layout) => layout.find_id(coord),
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => child.find_id(coord),
             LayoutType::AlignLayout(layout, _) => layout.find_id_(coord),
             LayoutType::Frame(child, _, _) => child.find_id_(coord),
@@ -233,8 +222,7 @@ impl<'a> Visitor<'a> {
     fn draw_(&mut self, mut draw: DrawMgr) {
         match &mut self.layout {
             LayoutType::None => (),
-            LayoutType::Component(component) => component.draw(draw),
-            LayoutType::BoxComponent(layout) => layout.draw(draw),
+            LayoutType::BoxSingle(layout) => layout.draw(draw),
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => child.draw(draw),
             LayoutType::AlignLayout(layout, _) => layout.draw_(draw),
             LayoutType::Frame(child, storage, style) => {

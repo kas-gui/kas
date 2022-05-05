@@ -32,7 +32,7 @@ impl_scope! {
     #[autoimpl(Debug ignore self.on_select)]
     #[derive(Clone)]
     #[widget {
-        layout = button: row: [component self.label, component self.mark];
+        layout = button: row: [self.label, self.mark];
     }]
     pub struct ComboBox<M: Clone + Debug + 'static> {
         core: widget_core!(),

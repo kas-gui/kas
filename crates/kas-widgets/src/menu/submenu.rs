@@ -18,7 +18,7 @@ impl_scope! {
     /// A sub-menu
     #[autoimpl(Debug where D: trait)]
     #[widget {
-        layout = component self.label;
+        layout = self.label;
     }]
     pub struct SubMenu<D: Directional> {
         core: widget_core!(),

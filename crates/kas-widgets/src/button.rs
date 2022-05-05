@@ -156,7 +156,8 @@ impl_scope! {
     #[autoimpl(Debug ignore self.on_push)]
     #[derive(Clone)]
     #[widget {
-        layout = button(self.color): component self.label;
+        layout = button(self.color):
+        self.label;
     }]
     pub struct TextButton {
         core: widget_core!(),
