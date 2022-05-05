@@ -29,7 +29,7 @@ use std::marker::PhantomData;
 ///
 /// -   [`Default`](struct@Default) will choose a sensible widget to view the data
 /// -   [`DefaultNav`] will choose a sensible widget to view the data
-pub trait Driver<T>: Debug + 'static {
+pub trait Driver<T>: Debug {
     /// Type of the widget used to view data
     type Widget: kas::Widget;
 
