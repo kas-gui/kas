@@ -60,15 +60,24 @@ pub trait Menu: Widget {
     /// "magically" by the caller. The implementor should draw a frame as follows:
     /// ```
     /// # use kas::geom::Rect;
-    /// # use kas::theme::{DrawMgr, FrameStyle};
-    /// # struct S;
-    /// # impl S {
-    /// # fn rect(&self) -> Rect { Rect::ZERO }
+    /// # use kas::layout::{AxisInfo, SizeRules};
+    /// # use kas::theme::{DrawMgr, FrameStyle, SizeMgr};
+    /// # use kas::{Layout, WidgetCore, WidgetExt};
+    /// # use kas::macros::impl_scope;
+    /// # impl_scope! {
+    /// #   #[widget]
+    /// #   #[derive(Debug)]
+    /// #   struct S {
+    /// #       core: widget_core!(),
+    /// #   }
+    /// #   impl Layout for S {
+    /// #       fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules { SizeRules::EMPTY }
     /// fn draw(&mut self, mut draw: DrawMgr) {
     ///     draw.set_id(self.id());
     ///     draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
     ///     // draw children here
     /// }
+    /// #   }
     /// # }
     /// ```
     // TODO: adding frame spacing like this is quite hacky. Find a better approach?
