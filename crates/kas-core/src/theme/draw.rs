@@ -41,7 +41,8 @@ impl Default for Background {
 /// Lower-level interfaces may be accessed through [`Self::draw_device`].
 ///
 /// `DrawMgr` is not a `Copy` or `Clone` type; instead it may be "reborrowed"
-/// via [`Self::re_id`] or [`Self::re_clone`].
+/// via [`Self::re`]. Widgets should assign their [`WidgetId`] via
+/// [`DrawMgr::set_id`] before draw operations.
 ///
 /// -   `draw.checkbox(&*self, self.state);` — note `&*self` to convert from to
 ///     `&W` from `&mut W`, since the latter would cause borrow conflicts
