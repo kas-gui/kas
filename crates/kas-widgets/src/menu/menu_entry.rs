@@ -117,7 +117,6 @@ impl_scope! {
         #[widget]
         checkbox: CheckBoxBare,
         label: Label<AccelString>,
-        layout_list: layout::DynRowStorage,
     }
 
     impl Layout for Self {
@@ -156,7 +155,6 @@ impl_scope! {
                 core: Default::default(),
                 checkbox: CheckBoxBare::new(),
                 label: Label::new(label.into(), TextClass::MenuLabel),
-                layout_list: Default::default(),
             }
         }
 
@@ -174,7 +172,6 @@ impl_scope! {
                 core: self.core,
                 checkbox: self.checkbox.on_toggle(f),
                 label: self.label,
-                layout_list: self.layout_list,
             }
         }
     }

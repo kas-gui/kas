@@ -8,7 +8,6 @@
 use kas::component::Label;
 use kas::draw::color::Rgb;
 use kas::event::{VirtualKeyCode, VirtualKeyCodes};
-use kas::layout;
 use kas::prelude::*;
 use kas::theme::TextClass;
 use std::fmt::Debug;
@@ -28,7 +27,6 @@ impl_scope! {
     pub struct Button<W: Widget> {
         core: widget_core!(),
         keys1: VirtualKeyCodes,
-        layout_frame: layout::FrameStorage,
         color: Option<Rgb>,
         #[widget]
         pub inner: W,
@@ -42,7 +40,6 @@ impl_scope! {
             Button {
                 core: Default::default(),
                 keys1: Default::default(),
-                layout_frame: Default::default(),
                 color: None,
                 inner,
                 on_push: None,
@@ -62,7 +59,6 @@ impl_scope! {
             Button {
                 core: self.core,
                 keys1: self.keys1,
-                layout_frame: self.layout_frame,
                 color: self.color,
                 inner: self.inner,
                 on_push: Some(Rc::new(f)),
@@ -156,14 +152,12 @@ impl_scope! {
     #[autoimpl(Debug ignore self.on_push)]
     #[derive(Clone)]
     #[widget {
-        layout = button(self.color):
-        self.label;
+        layout = button(self.color) 'frame: self.label;
     }]
     pub struct TextButton {
         core: widget_core!(),
         keys1: VirtualKeyCodes,
         label: Label<AccelString>,
-        layout_frame: layout::FrameStorage,
         color: Option<Rgb>,
         on_push: Option<Rc<dyn Fn(&mut EventMgr)>>,
     }
@@ -176,7 +170,6 @@ impl_scope! {
                 core: Default::default(),
                 keys1: Default::default(),
                 label: Label::new(label.into(), TextClass::Button),
-                layout_frame: Default::default(),
                 color: None,
                 on_push: None,
             }
@@ -195,7 +188,6 @@ impl_scope! {
             TextButton {
                 core: self.core,
                 keys1: self.keys1,
-                layout_frame: self.layout_frame,
                 color: self.color,
                 label: self.label,
                 on_push: Some(Rc::new(f)),
@@ -259,7 +251,7 @@ impl_scope! {
             if self.label.keys() != string.keys() {
                 action |= TkAction::RECONFIGURE;
             }
-            let avail = self.core.rect.size.clamped_sub(self.layout_frame.size);
+            let avail = self.core.rect.size.clamped_sub(self.core.frame.size);
             action | self.label.set_text_and_prepare(string, avail)
         }
     }

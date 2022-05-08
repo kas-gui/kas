@@ -8,7 +8,6 @@
 use super::{menu::MenuEntry, Column, PopupFrame};
 use kas::component::{Label, Mark};
 use kas::event::{Command, Scroll};
-use kas::layout;
 use kas::prelude::*;
 use kas::theme::{MarkStyle, TextClass};
 use kas::WindowId;
@@ -32,14 +31,12 @@ impl_scope! {
     #[autoimpl(Debug ignore self.on_select)]
     #[derive(Clone)]
     #[widget {
-        layout = button: row: [self.label, self.mark];
+        layout = button 'frame: row: [self.label, self.mark];
     }]
     pub struct ComboBox<M: Clone + Debug + 'static> {
         core: widget_core!(),
         label: Label<String>,
         mark: Mark,
-        layout_list: layout::FixedRowStorage<2>,
-        layout_frame: layout::FrameStorage,
         #[widget]
         popup: ComboPopup<M>,
         active: usize,
@@ -220,8 +217,6 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
             core: Default::default(),
             label,
             mark: Mark::new(MarkStyle::Point(Direction::Down)),
-            layout_list: Default::default(),
-            layout_frame: Default::default(),
             popup: ComboPopup {
                 core: Default::default(),
                 inner: PopupFrame::new(
@@ -249,8 +244,6 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
             core: self.core,
             label: self.label,
             mark: self.mark,
-            layout_list: self.layout_list,
-            layout_frame: self.layout_frame,
             popup: self.popup,
             active: self.active,
             opening: self.opening,
@@ -286,7 +279,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
             } else {
                 "".to_string()
             };
-            let avail = self.core.rect.size.clamped_sub(self.layout_frame.size);
+            let avail = self.core.rect.size.clamped_sub(self.core.frame.size);
             self.label.set_text_and_prepare(string, avail)
         } else {
             TkAction::empty()
