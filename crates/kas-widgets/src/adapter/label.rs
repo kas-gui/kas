@@ -19,7 +19,7 @@ impl_scope! {
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[derive(Clone, Default, Debug)]
     #[widget {
-        layout = list(self.dir): [self.inner, component self.label];
+        layout = list(self.dir) 'row: [self.inner, component self.label];
     }]
     pub struct WithLabel<W: Widget, D: Directional> {
         core: widget_core!(),
@@ -27,7 +27,6 @@ impl_scope! {
         #[widget]
         inner: W,
         wrap: bool,
-        layout_store: layout::FixedRowStorage<2>,
         label: Label<AccelString>,
     }
 
@@ -49,7 +48,6 @@ impl_scope! {
                 dir: direction,
                 inner,
                 wrap,
-                layout_store: Default::default(),
                 label: Label::new(label.into(), TextClass::Label(wrap)),
             }
         }
@@ -72,7 +70,7 @@ impl_scope! {
         /// the `label` (in this order, regardless of direction).
         #[inline]
         pub fn layout_storage(&mut self) -> &mut impl layout::RowStorage {
-            &mut self.layout_store
+            &mut self.core.row
         }
 
         /// Get whether line-wrapping is enabled
