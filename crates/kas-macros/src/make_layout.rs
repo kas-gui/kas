@@ -78,7 +78,8 @@ impl ToTokens for StorIdent {
 enum Layout {
     Align(Box<Layout>, Align),
     AlignSingle(Expr, Align),
-    Widget(Expr),
+    Single(Expr),
+    Widget(StorIdent, Expr),
     Component(Expr),
     Frame(StorIdent, Box<Layout>, Expr),
     Button(StorIdent, Box<Layout>, Expr),
@@ -225,15 +226,19 @@ impl Layout {
                 Ok(Layout::Align(Box::new(layout), align))
             }
         } else if lookahead.peek(Token![self]) {
-            Ok(Layout::Widget(input.parse()?))
+            Ok(Layout::Single(input.parse()?))
         } else if lookahead.peek(kw::component) {
             let _: kw::component = input.parse()?;
             Ok(Layout::Component(input.parse()?))
         } else if lookahead.peek(kw::frame) {
             let _: kw::frame = input.parse()?;
-            let inner;
-            let _ = parenthesized!(inner in input);
-            let style: Expr = inner.parse()?;
+            let style: Expr = if input.peek(syn::token::Paren) {
+                let inner;
+                let _ = parenthesized!(inner in input);
+                inner.parse()?
+            } else {
+                syn::parse_quote! { ::kas::theme::FrameStyle::Frame }
+            };
             let stor = gen.parse_or_next(input)?;
             let _: Token![:] = input.parse()?;
             let layout = Layout::parse(input, gen)?;
@@ -308,6 +313,19 @@ impl Layout {
             let stor = gen.next();
             Ok(Layout::Label(stor, input.parse()?))
         } else {
+            if let Ok(ident) = input.fork().parse::<Ident>() {
+                if ident
+                    .to_string()
+                    .chars()
+                    .next()
+                    .map(|c| c.is_ascii_uppercase())
+                    .unwrap_or(false)
+                {
+                    let stor = gen.next();
+                    let expr = input.parse()?;
+                    return Ok(Layout::Widget(stor, expr));
+                }
+            }
             Err(lookahead.error())
         }
     }
@@ -508,7 +526,14 @@ impl Layout {
             Layout::Align(layout, _) => {
                 layout.append_fields(ty_toks, def_toks, children);
             }
-            Layout::AlignSingle(..) | Layout::Widget(_) | Layout::Component(_) => (),
+            Layout::AlignSingle(..) | Layout::Single(_) | Layout::Component(_) => (),
+            Layout::Widget(stor, expr) => {
+                children.push(stor.to_token_stream());
+                stor.to_tokens(ty_toks);
+                ty_toks.append_all(quote! { : Box<dyn ::kas::Widget>, });
+                stor.to_tokens(def_toks);
+                def_toks.append_all(quote! { : Box::new(#expr), });
+            }
             Layout::Frame(stor, layout, _) | Layout::Button(stor, layout, _) => {
                 stor.to_tokens(ty_toks);
                 ty_toks.append_all(quote! { : ::kas::layout::FrameStorage, });
@@ -571,8 +596,11 @@ impl Layout {
             Layout::AlignSingle(expr, align) => {
                 quote! { layout::Visitor::align_single(&mut (#expr), #align) }
             }
-            Layout::Widget(expr) => quote! {
+            Layout::Single(expr) => quote! {
                 layout::Visitor::single(&mut (#expr))
+            },
+            Layout::Widget(stor, _) => quote! {
+                layout::Visitor::single(&mut self.#core.#stor)
             },
             Layout::Component(expr) => quote! {
                 layout::Visitor::component(&mut #expr)

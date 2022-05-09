@@ -192,7 +192,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; &nbsp;&nbsp; _Single_ | _List_ | _Slice_ | _Grid_ | _Align_ | _Frame_ | _Button_
 /// >
 /// > _Single_ :\
-/// > &nbsp;&nbsp; `component`? `self` `.` _Member_
+/// > &nbsp;&nbsp; `component`? `self` `.` _Member_ | _Expr_
 /// >
 /// > _List_ :\
 /// > &nbsp;&nbsp; _ListPre_ _Storage_? `:` `[` _Layout_ `]`
@@ -233,6 +233,10 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// Both _Single_ and _Slice_ variants match `self.MEMBER` where `MEMBER` is the
 /// name of a field or number of a tuple field. More precisely, both match any
 /// expression starting with `self` and use `&mut (#expr)`.
+/// Additionally, _Single_ matches an expression starting with an identifier
+/// which starts with a capital letter. This is assumed to be a constructor for
+/// a widget, which, when boxed, is placed into a `Box<dyn Widget>` field within
+/// the core and included as a child.
 ///
 /// `row` and `column` are abbreviations for `list(right)` and `list(down)`
 /// respectively.
