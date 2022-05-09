@@ -39,9 +39,9 @@ pub struct Tree(Layout);
 impl Tree {
     /// If extra fields are needed for storage, return these: `(fields_ty, fields_init)`
     /// (e.g. `({ layout_frame: FrameStorage, }, { layout_frame: Default::default()), }`).
-    pub fn storage_fields(&self) -> Option<(Toks, Toks)> {
+    pub fn storage_fields(&self, children: &mut Vec<Toks>) -> Option<(Toks, Toks)> {
         let (mut ty_toks, mut def_toks) = (Toks::new(), Toks::new());
-        self.0.append_fields(&mut ty_toks, &mut def_toks);
+        self.0.append_fields(&mut ty_toks, &mut def_toks, children);
         if ty_toks.is_empty() && def_toks.is_empty() {
             None
         } else {
@@ -503,10 +503,10 @@ impl ToTokens for GridDimensions {
 }
 
 impl Layout {
-    fn append_fields(&self, ty_toks: &mut Toks, def_toks: &mut Toks) {
+    fn append_fields(&self, ty_toks: &mut Toks, def_toks: &mut Toks, children: &mut Vec<Toks>) {
         match self {
             Layout::Align(layout, _) => {
-                layout.append_fields(ty_toks, def_toks);
+                layout.append_fields(ty_toks, def_toks, children);
             }
             Layout::AlignSingle(..) | Layout::Widget(_) | Layout::Component(_) => (),
             Layout::Frame(stor, layout, _) | Layout::Button(stor, layout, _) => {
@@ -514,7 +514,7 @@ impl Layout {
                 ty_toks.append_all(quote! { : ::kas::layout::FrameStorage, });
                 stor.to_tokens(def_toks);
                 def_toks.append_all(quote! { : Default::default(), });
-                layout.append_fields(ty_toks, def_toks);
+                layout.append_fields(ty_toks, def_toks, children);
             }
             Layout::List(stor, _, vec) => {
                 stor.to_tokens(ty_toks);
@@ -528,7 +528,7 @@ impl Layout {
                     quote! { : ::kas::layout::FixedRowStorage<#len>, }
                 });
                 for item in vec {
-                    item.append_fields(ty_toks, def_toks);
+                    item.append_fields(ty_toks, def_toks, children);
                 }
             }
             Layout::Slice(stor, _, _) => {
@@ -545,14 +545,15 @@ impl Layout {
                 def_toks.append_all(quote! { : Default::default(), });
 
                 for (_info, layout) in cells {
-                    layout.append_fields(ty_toks, def_toks);
+                    layout.append_fields(ty_toks, def_toks, children);
                 }
             }
             Layout::Label(stor, text) => {
+                children.push(stor.to_token_stream());
                 stor.to_tokens(ty_toks);
-                ty_toks.append_all(quote! { : ::kas::component::Label<&'static str>, });
+                ty_toks.append_all(quote! { : ::kas::widgets::StrLabel, });
                 stor.to_tokens(def_toks);
-                def_toks.append_all(quote! { : ::kas::component::Label::new(#text, ::kas::theme::TextClass::Label(false)), });
+                def_toks.append_all(quote! { : ::kas::widgets::StrLabel::new(#text), });
             }
         }
     }
