@@ -176,7 +176,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let popup_edit_box = make_widget! {
         #[widget{
-            layout = row: *;
+            layout = row: [self.label, self.edit];
         }]
         struct {
             #[widget] label: StringLabel = Label::from("Use button to edit →"),

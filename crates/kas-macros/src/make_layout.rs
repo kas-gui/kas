@@ -6,7 +6,6 @@
 use proc_macro2::{Span, TokenStream as Toks};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
-use syn::spanned::Spanned;
 use syn::{braced, bracketed, parenthesized, Expr, Ident, Lifetime, LitInt, LitStr, Member, Token};
 
 #[allow(non_camel_case_types)]
@@ -50,12 +49,8 @@ impl Tree {
         }
     }
 
-    pub fn generate<'a, I: ExactSizeIterator<Item = &'a Member>>(
-        &'a self,
-        core: &Member,
-        children: I,
-    ) -> Result<Toks> {
-        self.0.generate(core, Some(children))
+    pub fn generate(&self, core: &Member) -> Result<Toks> {
+        self.0.generate(core)
     }
 }
 
@@ -87,16 +82,10 @@ enum Layout {
     Component(Expr),
     Frame(StorIdent, Box<Layout>, Expr),
     Button(StorIdent, Box<Layout>, Expr),
-    List(StorIdent, Direction, List),
+    List(StorIdent, Direction, Vec<Layout>),
     Slice(StorIdent, Direction, Expr),
     Grid(StorIdent, GridDimensions, Vec<(CellInfo, Layout)>),
     Label(StorIdent, LitStr),
-}
-
-#[derive(Debug)]
-enum List {
-    List(Vec<Layout>),
-    Glob(Span),
 }
 
 #[derive(Debug)]
@@ -355,30 +344,22 @@ fn parse_align(input: ParseStream) -> Result<Align> {
     }
 }
 
-fn parse_layout_list(input: ParseStream, gen: &mut NameGenerator) -> Result<List> {
-    let lookahead = input.lookahead1();
-    if lookahead.peek(Token![*]) {
-        let tok = input.parse::<Token![*]>()?;
-        Ok(List::Glob(tok.span()))
-    } else if lookahead.peek(syn::token::Bracket) {
-        let inner;
-        let _ = bracketed!(inner in input);
+fn parse_layout_list(input: ParseStream, gen: &mut NameGenerator) -> Result<Vec<Layout>> {
+    let inner;
+    let _ = bracketed!(inner in input);
 
-        let mut list = vec![];
-        while !inner.is_empty() {
-            list.push(Layout::parse(&inner, gen)?);
+    let mut list = vec![];
+    while !inner.is_empty() {
+        list.push(Layout::parse(&inner, gen)?);
 
-            if inner.is_empty() {
-                break;
-            }
-
-            let _: Token![,] = inner.parse()?;
+        if inner.is_empty() {
+            break;
         }
 
-        Ok(List::List(list))
-    } else {
-        Err(lookahead.error())
+        let _: Token![,] = inner.parse()?;
     }
+
+    Ok(list)
 }
 
 fn parse_grid_as_list_of_lists<KW: Parse>(
@@ -535,27 +516,19 @@ impl Layout {
                 def_toks.append_all(quote! { : Default::default(), });
                 layout.append_fields(ty_toks, def_toks);
             }
-            Layout::List(stor, _, list) => {
+            Layout::List(stor, _, vec) => {
                 stor.to_tokens(ty_toks);
                 stor.to_tokens(def_toks);
                 def_toks.append_all(quote! { : Default::default(), });
-                match list {
-                    List::List(vec) => {
-                        let len = vec.len();
-                        ty_toks.append_all(if len > 16 {
-                            quote! { : ::kas::layout::DynRowStorage, }
-                        } else {
-                            quote! { : ::kas::layout::FixedRowStorage<#len>, }
-                        });
-                        for item in vec {
-                            item.append_fields(ty_toks, def_toks);
-                        }
-                    }
-                    List::Glob(_) => {
-                        // TODO(opt): use FixedRowStorage?
-                        ty_toks.append_all(quote! { : ::kas::layout::DynRowStorage, });
-                        // only simple items supported, so there is nothing to recurse
-                    }
+
+                let len = vec.len();
+                ty_toks.append_all(if len > 16 {
+                    quote! { : ::kas::layout::DynRowStorage, }
+                } else {
+                    quote! { : ::kas::layout::FixedRowStorage<#len>, }
+                });
+                for item in vec {
+                    item.append_fields(ty_toks, def_toks);
                 }
             }
             Layout::Slice(stor, _, _) => {
@@ -588,14 +561,10 @@ impl Layout {
     // multi-element layout (list/slice/grid).
     //
     // Required: `::kas::layout` must be in scope.
-    fn generate<'a, I: ExactSizeIterator<Item = &'a Member>>(
-        &'a self,
-        core: &Member,
-        children: Option<I>,
-    ) -> Result<Toks> {
+    fn generate(&self, core: &Member) -> Result<Toks> {
         Ok(match self {
             Layout::Align(layout, align) => {
-                let inner = layout.generate(core, children)?;
+                let inner = layout.generate(core)?;
                 quote! { layout::Visitor::align(#inner, #align) }
             }
             Layout::AlignSingle(expr, align) => {
@@ -608,44 +577,24 @@ impl Layout {
                 layout::Visitor::component(&mut #expr)
             },
             Layout::Frame(stor, layout, style) => {
-                let inner = layout.generate(core, children)?;
+                let inner = layout.generate(core)?;
                 quote! {
                     layout::Visitor::frame(&mut self.#core.#stor, #inner, #style)
                 }
             }
             Layout::Button(stor, layout, color) => {
-                let inner = layout.generate(core, children)?;
+                let inner = layout.generate(core)?;
                 quote! {
                     layout::Visitor::button(&mut self.#core.#stor, #inner, #color)
                 }
             }
             Layout::List(stor, dir, list) => {
                 let mut items = Toks::new();
-                match list {
-                    List::List(list) => {
-                        for item in list {
-                            let item = item.generate::<std::iter::Empty<&Member>>(core, None)?;
-                            items.append_all(quote! {{ #item },});
-                        }
-                    }
-                    List::Glob(span) => {
-                        if let Some(iter) = children {
-                            for member in iter {
-                                items.append_all(quote! {
-                                    layout::Visitor::single(&mut self.#member),
-                                });
-                            }
-                        } else {
-                            return Err(Error::new(
-                                *span,
-                                "glob `*` is unavailable in this context",
-                            ));
-                        }
-                    }
+                for item in list {
+                    let item = item.generate(core)?;
+                    items.append_all(quote! {{ #item },});
                 }
-
                 let iter = quote! { { let arr = [#items]; arr.into_iter() } };
-
                 quote! { layout::Visitor::list(#iter, #dir, &mut self.#core.#stor) }
             }
             Layout::Slice(stor, dir, expr) => {
@@ -656,7 +605,7 @@ impl Layout {
                 for item in cells {
                     let (col, col_end) = (item.0.col, item.0.col_end);
                     let (row, row_end) = (item.0.row, item.0.row_end);
-                    let layout = item.1.generate::<std::iter::Empty<&Member>>(core, None)?;
+                    let layout = item.1.generate(core)?;
                     items.append_all(quote! {
                         (
                             layout::GridChildInfo {

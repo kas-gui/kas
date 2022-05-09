@@ -433,7 +433,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let mut fn_draw = None;
     if let Some(layout) = args.layout.take() {
         let core = core_data.clone();
-        let layout = layout.generate(&core, children.iter().map(|c| &c.ident))?;
+        let layout = layout.generate(&core)?;
         scope.generated.push(quote! {
             impl #impl_generics ::kas::layout::AutoLayout
                     for #name #ty_generics #where_clause
