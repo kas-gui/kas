@@ -6,8 +6,7 @@
 //! Sub-menu
 
 use super::{BoxedMenu, Menu, SubItems};
-use crate::{AccelLabel, PopupFrame};
-use kas::component::Mark;
+use crate::{AccelLabel, Mark, PopupFrame};
 use kas::event::{Command, Scroll};
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::prelude::*;
@@ -18,13 +17,15 @@ impl_scope! {
     /// A sub-menu
     #[autoimpl(Debug where D: trait)]
     #[widget {
-        layout = component self.label;
+        layout = self.label;
     }]
     pub struct SubMenu<D: Directional> {
         core: widget_core!(),
         direction: D,
         pub(crate) key_nav: bool,
+        #[widget]
         label: AccelLabel,
+        #[widget]
         mark: Mark,
         #[widget]
         list: PopupFrame<MenuView<BoxedMenu>>,
@@ -128,7 +129,7 @@ impl_scope! {
         fn draw(&mut self, mut draw: DrawMgr) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.label.draw(draw.re_id(self.id()));
-            if self.mark.rect.size != Size::ZERO {
+            if self.mark.rect().size != Size::ZERO {
                 self.mark.draw(draw);
             }
         }

@@ -3,26 +3,40 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Widget components
+//! Mark widget
 
-use crate::geom::{Coord, Rect};
-use crate::layout::{AlignHints, AxisInfo, SetRectMgr, SizeRules};
-use crate::theme::{DrawMgr, MarkStyle, SizeMgr};
-use crate::{Layout, WidgetId};
+use kas::layout::{AxisInfo, SizeRules};
+use kas::theme::{DrawMgr, MarkStyle, SizeMgr};
+use kas::Layout;
 use kas_macros::impl_scope;
 
 impl_scope! {
     /// A mark
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    #[derive(Clone, Debug)]
+    #[widget]
     pub struct Mark {
-        pub style: MarkStyle,
-        pub rect: Rect,
+        core: widget_core!(),
+        style: MarkStyle,
     }
     impl Self {
         /// Construct
         pub fn new(style: MarkStyle) -> Self {
-            let rect = Rect::ZERO;
-            Mark { style, rect }
+            Mark {
+                core: Default::default(),
+                style,
+            }
+        }
+
+        /// Get mark style
+        #[inline]
+        pub fn mark(&self) -> MarkStyle {
+            self.style
+        }
+
+        /// Set mark style
+        #[inline]
+        pub fn set_mark(&mut self, mark: MarkStyle) {
+            self.style = mark;
         }
     }
     impl Layout for Self {
@@ -30,16 +44,8 @@ impl_scope! {
             mgr.mark(self.style, axis)
         }
 
-        fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, _: AlignHints) {
-            self.rect = rect;
-        }
-
-        fn find_id(&mut self, _: Coord) -> Option<WidgetId> {
-            None
-        }
-
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.mark(self.rect, self.style);
+            draw.mark(self.core.rect, self.style);
         }
     }
 }

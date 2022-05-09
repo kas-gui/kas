@@ -5,8 +5,7 @@
 
 //! Combobox
 
-use super::{menu::MenuEntry, Column, PopupFrame, StringLabel};
-use kas::component::Mark;
+use super::{menu::MenuEntry, Column, Mark, PopupFrame, StringLabel};
 use kas::event::{Command, Scroll};
 use kas::prelude::*;
 use kas::theme::{MarkStyle, TextClass};
@@ -31,11 +30,12 @@ impl_scope! {
     #[autoimpl(Debug ignore self.on_select)]
     #[derive(Clone)]
     #[widget {
-        layout = button 'frame: row: [component self.label, component self.mark];
+        layout = button 'frame: row: [self.label, self.mark];
     }]
     pub struct ComboBox<M: Clone + Debug + 'static> {
         core: widget_core!(),
         label: StringLabel,
+        #[widget]
         mark: Mark,
         #[widget]
         popup: ComboPopup<M>,
