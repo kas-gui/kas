@@ -5,7 +5,7 @@
 
 //! Push-buttons
 
-use kas::component::Label;
+use crate::AccelLabel;
 use kas::draw::color::Rgb;
 use kas::event::{VirtualKeyCode, VirtualKeyCodes};
 use kas::prelude::*;
@@ -152,12 +152,13 @@ impl_scope! {
     #[autoimpl(Debug ignore self.on_push)]
     #[derive(Clone)]
     #[widget {
-        layout = button(self.color) 'frame: component self.label;
+        layout = button(self.color): component self.label;
     }]
     pub struct TextButton {
         core: widget_core!(),
         keys1: VirtualKeyCodes,
-        label: Label<AccelString>,
+        #[widget]
+        label: AccelLabel,
         color: Option<Rgb>,
         on_push: Option<Rc<dyn Fn(&mut EventMgr)>>,
     }
@@ -169,7 +170,7 @@ impl_scope! {
             TextButton {
                 core: Default::default(),
                 keys1: Default::default(),
-                label: Label::new(label.into(), TextClass::Button),
+                label: AccelLabel::new(label).with_class(TextClass::Button),
                 color: None,
                 on_push: None,
             }
@@ -241,18 +242,14 @@ impl_scope! {
 
     impl HasStr for Self {
         fn get_str(&self) -> &str {
-            self.label.as_str()
+            self.label.get_str()
         }
     }
 
     impl SetAccel for Self {
+        #[inline]
         fn set_accel_string(&mut self, string: AccelString) -> TkAction {
-            let mut action = TkAction::empty();
-            if self.label.keys() != string.keys() {
-                action |= TkAction::RECONFIGURE;
-            }
-            let avail = self.core.rect.size.clamped_sub(self.core.frame.size);
-            action | self.label.set_text_and_prepare(string, avail)
+            self.label.set_accel_string(string)
         }
     }
 
