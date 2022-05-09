@@ -250,6 +250,11 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// like `0, 1` (that is, col=0, row=1) with spans specified like `0..2, 1`
 /// (thus cols={0, 1}, row=1) or `2..+2, 1` (cols={2,3}, row=1).
 ///
+/// _Frame_ and _Button_ are two variants of the same thing: a button is a frame
+/// using `FrameStyle::Button`, but may optionally also have a color (a field of
+/// type `Option<Rgb>`). Additionally, a button automatically uses centered
+/// alignment of content.
+///
 /// Non-trivial layouts require a "storage" field within the generated
 /// `widget_core!()`. This storage field may be named via a "lifetime label"
 /// (e.g. `col 'col_storage: *`), otherwise the field name will be generated.

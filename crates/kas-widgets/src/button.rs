@@ -16,8 +16,7 @@ use std::rc::Rc;
 impl_scope! {
     /// A push-button with a generic label
     ///
-    /// Default alignment is centred. Content (label) alignment is derived from the
-    /// button alignment.
+    /// Default alignment of content is centered.
     #[autoimpl(Debug ignore self.on_push)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone)]
@@ -146,9 +145,7 @@ impl_scope! {
     /// This is a specialised variant of [`Button`] supporting key shortcuts from an
     /// [`AccelString`] label and using a custom text class (and thus theme colour).
     ///
-    /// Default alignment of the button is to stretch horizontally and centre
-    /// vertically. The text label is always centred (irrespective of alignment
-    /// parameters).
+    /// Default alignment of content is centered.
     #[autoimpl(Debug ignore self.on_push)]
     #[derive(Clone)]
     #[widget {
