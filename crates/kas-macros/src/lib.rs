@@ -192,7 +192,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; &nbsp;&nbsp; _Single_ | _List_ | _Slice_ | _Grid_ | _Align_ | _Frame_ | _Button_
 /// >
 /// > _Single_ :\
-/// > &nbsp;&nbsp; `component`? `self` `.` _Member_ | _Expr_
+/// > &nbsp;&nbsp; `self` `.` _Member_ | _Expr_
 /// >
 /// > _List_ :\
 /// > &nbsp;&nbsp; _ListPre_ _Storage_? `:` `[` _Layout_ `]`

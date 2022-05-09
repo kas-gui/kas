@@ -31,7 +31,6 @@ mod kw {
     custom_keyword!(bottom);
     custom_keyword!(aligned_column);
     custom_keyword!(aligned_row);
-    custom_keyword!(component);
 }
 
 #[derive(Debug)]
@@ -80,7 +79,6 @@ enum Layout {
     AlignSingle(Expr, Align),
     Single(Expr),
     Widget(StorIdent, Expr),
-    Component(Expr),
     Frame(StorIdent, Box<Layout>, Expr),
     Button(StorIdent, Box<Layout>, Expr),
     List(StorIdent, Direction, Vec<Layout>),
@@ -227,9 +225,6 @@ impl Layout {
             }
         } else if lookahead.peek(Token![self]) {
             Ok(Layout::Single(input.parse()?))
-        } else if lookahead.peek(kw::component) {
-            let _: kw::component = input.parse()?;
-            Ok(Layout::Component(input.parse()?))
         } else if lookahead.peek(kw::frame) {
             let _: kw::frame = input.parse()?;
             let style: Expr = if input.peek(syn::token::Paren) {
@@ -526,7 +521,7 @@ impl Layout {
             Layout::Align(layout, _) => {
                 layout.append_fields(ty_toks, def_toks, children);
             }
-            Layout::AlignSingle(..) | Layout::Single(_) | Layout::Component(_) => (),
+            Layout::AlignSingle(..) | Layout::Single(_) => (),
             Layout::Widget(stor, expr) => {
                 children.push(stor.to_token_stream());
                 stor.to_tokens(ty_toks);
@@ -601,9 +596,6 @@ impl Layout {
             },
             Layout::Widget(stor, _) => quote! {
                 layout::Visitor::single(&mut self.#core.#stor)
-            },
-            Layout::Component(expr) => quote! {
-                layout::Visitor::component(&mut #expr)
             },
             Layout::Frame(stor, layout, style) => {
                 let inner = layout.generate(core)?;
