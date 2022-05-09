@@ -25,12 +25,14 @@ fn make_window() -> Box<dyn kas::Window> {
     // Construct a row widget, with state and children
     let stopwatch = make_widget! {
         #[widget{
-            layout = row: *;
+            layout = row: [
+                self.display,
+                TextButton::new_msg("&reset", MsgReset),
+                TextButton::new_msg("&start / &stop", MsgStart),
+            ];
         }]
         struct {
             #[widget] display: impl HasString = Frame::new(Label::new("0.000".to_string())),
-            #[widget] reset = TextButton::new_msg("&reset", MsgReset),
-            #[widget] ss = TextButton::new_msg("&start / &stop", MsgStart),
             saved: Duration = Duration::default(),
             start: Option<Instant> = None,
         }

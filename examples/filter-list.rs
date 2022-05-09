@@ -9,7 +9,7 @@ use kas::dir::Down;
 use kas::prelude::*;
 use kas::updatable::{filter::ContainsCaseInsensitive, SingleData};
 use kas::widgets::view::{self, driver, SelectionMode, SelectionMsg};
-use kas::widgets::{EditBox, Label, RadioBox, RadioBoxGroup, ScrollBars, Window};
+use kas::widgets::{EditBox, RadioBox, RadioBoxGroup, ScrollBars, Window};
 
 const MONTHS: &[&str] = &[
     "January",
@@ -30,17 +30,6 @@ fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
     let r = RadioBoxGroup::default();
-    let selection_mode = make_widget! {
-        #[widget{
-            layout = list(right): *;
-        }]
-        struct {
-            #[widget] _ = Label::new("Selection:"),
-            #[widget] _ = RadioBox::new_msg("none", r.clone(), SelectionMode::None).with_state(true),
-            #[widget] _ = RadioBox::new_msg("single", r.clone(), SelectionMode::Single),
-            #[widget] _ = RadioBox::new_msg("multiple", r, SelectionMode::Multiple),
-        }
-    };
 
     let data = MONTHS;
     println!("filter-list: {} entries", data.len());
@@ -51,10 +40,16 @@ fn main() -> kas::shell::Result<()> {
 
     let widget = make_widget! {
         #[widget{
-            layout = list(down): *;
+            layout = column: [
+                row: ["Selection:", self.r0, self.r1, self.r2],
+                self.filter,
+                self.list,
+            ];
         }]
         struct {
-            #[widget] _ = selection_mode,
+            #[widget] r0 = RadioBox::new_msg("none", r.clone(), SelectionMode::None).with_state(true),
+            #[widget] r1 = RadioBox::new_msg("single", r.clone(), SelectionMode::Single),
+            #[widget] r2 = RadioBox::new_msg("multiple", r, SelectionMode::Multiple),
             #[widget] filter = EditBox::new("")
                 .on_edit(move |s, mgr| filter.update(mgr, s.to_string())),
             #[widget] list: ScrollBars<ListView> =

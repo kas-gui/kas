@@ -27,59 +27,51 @@ fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
     let buttons = make_widget! {
+        // Buttons get keyboard bindings through the "&" item (e.g. "&1"
+        // binds both main and numpad 1 key) and via `with_keys`.
         #[widget{
             layout = grid: {
-                0, 0: self.b_clear; 1, 0: self.b_div; 2, 0: self.b_mul; 3, 0: self.b_sub;
-                0, 1: self.b7; 1, 1: self.b8; 2, 1: self.b9;
-                3, 1..3: self.b_add;
-                0, 2: self.b4; 1, 2: self.b5; 2, 2: self.b6;
-                0, 3: self.b1; 1, 3: self.b2; 2, 3: self.b3;
-                3, 3..5: self.b_eq;
-                0..2, 4: self.b0; 2, 4: self.b_dot;
+                0, 0: TextButton::new_msg("&clear", Key::Clear).with_keys(&[VK::Delete]);
+                1, 0: TextButton::new_msg("&÷", Key::Divide).with_keys(&[VK::Slash]);
+                2, 0: TextButton::new_msg("&×", Key::Multiply).with_keys(&[VK::Asterisk]);
+                3, 0: TextButton::new_msg("&−", Key::Subtract);
+                0, 1: TextButton::new_msg("&7", Key::Char('7'));
+                1, 1: TextButton::new_msg("&8", Key::Char('8'));
+                2, 1: TextButton::new_msg("&9", Key::Char('9'));
+                3, 1..3: TextButton::new_msg("&+", Key::Add);
+                0, 2: TextButton::new_msg("&4", Key::Char('4'));
+                1, 2: TextButton::new_msg("&5", Key::Char('5'));
+                2, 2: TextButton::new_msg("&6", Key::Char('6'));
+                0, 3: TextButton::new_msg("&1", Key::Char('1'));
+                1, 3: TextButton::new_msg("&2", Key::Char('2'));
+                2, 3: TextButton::new_msg("&3", Key::Char('3'));
+                3, 3..5:  TextButton::new_msg("&=", Key::Equals)
+                    .with_keys(&[VK::Return, VK::NumpadEnter]);
+                0..2, 4: TextButton::new_msg("&0", Key::Char('0'));
+                2, 4: TextButton::new_msg("&.", Key::Char('.'));
             };
         }]
-        struct {
-            // Buttons get keyboard bindings through the "&" item (e.g. "&1"
-            // binds both main and numpad 1 key) and via `with_keys`.
-            #[widget] b_clear = TextButton::new_msg("&clear", Key::Clear)
-                .with_keys(&[VK::Delete]),
-            #[widget] b_eq = TextButton::new_msg("&=", Key::Equals)
-                .with_keys(&[VK::Return, VK::NumpadEnter]),
-            #[widget] b_sub = TextButton::new_msg("&−", Key::Subtract),
-            #[widget] b_add = TextButton::new_msg("&+", Key::Add),
-            #[widget] b_div = TextButton::new_msg("&÷", Key::Divide)
-                .with_keys(&[VK::Slash]),
-            #[widget] b_mul = TextButton::new_msg("&×", Key::Multiply)
-                .with_keys(&[VK::Asterisk]),
-            #[widget] b_dot = TextButton::new_msg("&.", Key::Char('.')),
-            #[widget] b0 = TextButton::new_msg("&0", Key::Char('0')),
-            #[widget] b1 = TextButton::new_msg("&1", Key::Char('1')),
-            #[widget] b2 = TextButton::new_msg("&2", Key::Char('2')),
-            #[widget] b3 = TextButton::new_msg("&3", Key::Char('3')),
-            #[widget] b4 = TextButton::new_msg("&4", Key::Char('4')),
-            #[widget] b5 = TextButton::new_msg("&5", Key::Char('5')),
-            #[widget] b6 = TextButton::new_msg("&6", Key::Char('6')),
-            #[widget] b7 = TextButton::new_msg("&7", Key::Char('7')),
-            #[widget] b8 = TextButton::new_msg("&8", Key::Char('8')),
-            #[widget] b9 = TextButton::new_msg("&9", Key::Char('9')),
-        }
+        struct {}
         impl kas::Widget for Self {
-            fn configure(&mut self, mgr: &mut SetRectMgr) {
-                // Enable key bindings without Alt held:
-                mgr.enable_alt_bypass(self.id_ref(), true);
-            }
         }
     };
     let content = make_widget! {
         #[widget{
-            layout = column: *;
+            layout = column: [
+                self.display,
+                self.buttons,
+            ];
         }]
         struct {
             #[widget] display: impl HasString = EditBox::new("0").with_editable(false).multi_line(true),
-            #[widget] _ = buttons,
+            #[widget] buttons = buttons,
             calc: Calculator = Calculator::new(),
         }
         impl Widget for Self {
+            fn configure(&mut self, mgr: &mut SetRectMgr) {
+                // Enable key bindings without Alt held:
+                mgr.enable_alt_bypass(self.id_ref(), true);
+            }
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
                 if let Some(msg) = mgr.try_pop_msg::<Key>() {
                     if self.calc.handle(msg) {
