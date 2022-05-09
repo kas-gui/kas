@@ -6,8 +6,8 @@
 //! Sub-menu
 
 use super::{BoxedMenu, Menu, SubItems};
-use crate::PopupFrame;
-use kas::component::{Label, Mark};
+use crate::{AccelLabel, PopupFrame};
+use kas::component::Mark;
 use kas::event::{Command, Scroll};
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::prelude::*;
@@ -24,7 +24,7 @@ impl_scope! {
         core: widget_core!(),
         direction: D,
         pub(crate) key_nav: bool,
-        label: Label<AccelString>,
+        label: AccelLabel,
         mark: Mark,
         #[widget]
         list: PopupFrame<MenuView<BoxedMenu>>,
@@ -70,7 +70,7 @@ impl_scope! {
                 core: Default::default(),
                 direction,
                 key_nav: true,
-                label: Label::new(label.into(), TextClass::MenuLabel),
+                label: AccelLabel::new(label).with_class(TextClass::MenuLabel),
                 mark: Mark::new(MarkStyle::Point(direction.as_direction())),
                 list: PopupFrame::new(MenuView::new(list)),
                 popup_id: None,
@@ -212,7 +212,7 @@ impl_scope! {
 
     impl HasStr for Self {
         fn get_str(&self) -> &str {
-            self.label.as_str()
+            self.label.get_str()
         }
     }
 }

@@ -5,8 +5,8 @@
 
 //! Combobox
 
-use super::{menu::MenuEntry, Column, PopupFrame};
-use kas::component::{Label, Mark};
+use super::{menu::MenuEntry, Column, PopupFrame, StringLabel};
+use kas::component::Mark;
 use kas::event::{Command, Scroll};
 use kas::prelude::*;
 use kas::theme::{MarkStyle, TextClass};
@@ -35,7 +35,7 @@ impl_scope! {
     }]
     pub struct ComboBox<M: Clone + Debug + 'static> {
         core: widget_core!(),
-        label: Label<String>,
+        label: StringLabel,
         mark: Mark,
         #[widget]
         popup: ComboPopup<M>,
@@ -212,7 +212,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     #[inline]
     pub fn new(entries: Vec<MenuEntry<M>>) -> Self {
         let label = entries.get(0).map(|entry| entry.get_string());
-        let label = Label::new(label.unwrap_or("".to_string()), TextClass::Button);
+        let label = StringLabel::new(label.unwrap_or("".to_string())).with_class(TextClass::Button);
         ComboBox {
             core: Default::default(),
             label,
@@ -279,8 +279,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
             } else {
                 "".to_string()
             };
-            let avail = self.core.rect.size.clamped_sub(self.core.frame.size);
-            self.label.set_text_and_prepare(string, avail)
+            self.label.set_string(string)
         } else {
             TkAction::empty()
         }
