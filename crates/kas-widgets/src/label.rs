@@ -14,11 +14,12 @@ impl_scope! {
     ///
     /// This type is generic over the text type. Some aliases are available:
     /// [`StrLabel`], [`StringLabel`], [`AccelLabel`].
-    #[derive(Clone, Default, Debug)]
+    #[impl_default(where T: Default)]
+    #[derive(Clone, Debug)]
     #[widget]
     pub struct Label<T: FormattableText + 'static> {
         core: widget_core!(),
-        wrap: bool,
+        class: TextClass = TextClass::Label(true),
         label: Text<T>,
     }
 
@@ -28,29 +29,54 @@ impl_scope! {
         pub fn new(label: T) -> Self {
             Label {
                 core: Default::default(),
-                wrap: true,
+                class: TextClass::Label(true),
                 label: Text::new_multi(label),
             }
+        }
+
+        /// Get text class
+        #[inline]
+        pub fn class(&self) -> TextClass {
+            self.class
+        }
+
+        /// Set text class
+        ///
+        /// Default: `TextClass::Label(true)`
+        #[inline]
+        pub fn set_class(&mut self, class: TextClass) {
+            self.class = class;
+        }
+
+        /// Set text class (inline)
+        ///
+        /// Default: `TextClass::Label(true)`
+        #[inline]
+        pub fn with_class(mut self, class: TextClass) -> Self {
+            self.class = class;
+            self
         }
 
         /// Get whether line-wrapping is enabled
         #[inline]
         pub fn wrap(&self) -> bool {
-            self.wrap
+            self.class.multi_line()
         }
 
         /// Enable/disable line wrapping
         ///
+        /// This is equivalent to `label.set_class(TextClass::Label(wrap))`.
+        ///
         /// By default this is enabled.
         #[inline]
         pub fn set_wrap(&mut self, wrap: bool) {
-            self.wrap = wrap;
+            self.class = TextClass::Label(wrap);
         }
 
         /// Enable/disable line wrapping (inline)
         #[inline]
         pub fn with_wrap(mut self, wrap: bool) -> Self {
-            self.wrap = wrap;
+            self.class = TextClass::Label(wrap);
             self
         }
 
@@ -66,22 +92,22 @@ impl_scope! {
     impl Layout for Self {
         #[inline]
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            size_mgr.text_bound(&mut self.label, TextClass::Label(self.wrap), axis)
+            size_mgr.text_bound(&mut self.label, self.class, axis)
         }
 
         fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             let align = align.unwrap_or(Align::Default, Align::Center);
-            mgr.text_set_size(&mut self.label, TextClass::Label(self.wrap), rect.size, align);
+            mgr.text_set_size(&mut self.label, self.class, rect.size, align);
         }
 
         #[cfg(feature = "min_spec")]
         default fn draw(&mut self, mut draw: DrawMgr) {
-            draw.text_effects(self.rect().pos, &self.label, TextClass::Label(self.wrap));
+            draw.text_effects(self.rect().pos, &self.label, self.class);
         }
         #[cfg(not(feature = "min_spec"))]
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.text_effects(self.rect().pos, &self.label, TextClass::Label(self.wrap));
+            draw.text_effects(self.rect().pos, &self.label, self.class);
         }
     }
 
@@ -105,21 +131,13 @@ impl_scope! {
 #[cfg(feature = "min_spec")]
 impl<'a> Layout for Label<&'a str> {
     fn draw(&mut self, mut draw: DrawMgr) {
-        draw.text(
-            self.rect().pos,
-            self.label.as_ref(),
-            TextClass::Label(self.wrap),
-        );
+        draw.text(self.rect().pos, self.label.as_ref(), self.class);
     }
 }
 #[cfg(feature = "min_spec")]
 impl Layout for StringLabel {
     fn draw(&mut self, mut draw: DrawMgr) {
-        draw.text(
-            self.rect().pos,
-            self.label.as_ref(),
-            TextClass::Label(self.wrap),
-        );
+        draw.text(self.rect().pos, self.label.as_ref(), self.class);
     }
 }
 
@@ -171,37 +189,69 @@ impl_scope! {
     ///     }
     //// }
     /// ```
-    #[derive(Clone, Default, Debug)]
+    #[derive(Clone, Debug)]
     #[widget{
         derive = self.0;
     }]
     pub struct AccelLabel(Label<AccelString>);
 
+    impl Default for Self {
+        fn default() -> Self {
+            AccelLabel::new("")
+        }
+    }
+
     impl Self {
         /// Construct from `label`
         #[inline]
-        pub fn new(label: AccelString) -> Self {
-            AccelLabel(Label::new(label))
+        pub fn new<S: Into<AccelString>>(label: S) -> Self {
+            let label = label.into();
+            AccelLabel(Label::new(label)).with_class(TextClass::AccelLabel(true))
+        }
+
+        /// Get text class
+        #[inline]
+        pub fn class(&self) -> TextClass {
+            self.0.class
+        }
+
+        /// Set text class
+        ///
+        /// Default: `AccelLabel::Label(true)`
+        #[inline]
+        pub fn set_class(&mut self, class: TextClass) {
+            self.0.set_class(class);
+        }
+
+        /// Set text class (inline)
+        ///
+        /// Default: `AccelLabel::Label(true)`
+        #[inline]
+        pub fn with_class(mut self, class: TextClass) -> Self {
+            self.0.set_class(class);
+            self
         }
 
         /// Get whether line-wrapping is enabled
         #[inline]
         pub fn wrap(&self) -> bool {
-            self.0.wrap
+            self.0.wrap()
         }
 
         /// Enable/disable line wrapping
         ///
+        /// This is equivalent to `label.set_class(AccelLabel::Label(wrap))`.
+        ///
         /// By default this is enabled.
         #[inline]
         pub fn set_wrap(&mut self, wrap: bool) {
-            self.0.wrap = wrap;
+            self.0.set_wrap(wrap);
         }
 
         /// Enable/disable line wrapping (inline)
         #[inline]
         pub fn with_wrap(mut self, wrap: bool) -> Self {
-            self.0.wrap = wrap;
+            self.0.set_wrap(wrap);
             self
         }
 
@@ -231,7 +281,7 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.text_effects(self.rect().pos, &self.0.label, TextClass::AccelLabel(self.0.wrap));
+            draw.text_effects(self.rect().pos, &self.0.label, self.0.class);
         }
     }
 
