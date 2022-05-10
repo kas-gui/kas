@@ -4,7 +4,6 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 use crate::make_layout;
-use impl_tools_lib::parse_attr_group;
 use proc_macro2::TokenStream;
 use proc_macro_error::{abort, emit_error};
 use quote::quote_spanned;
@@ -290,7 +289,6 @@ pub struct WidgetField {
 
 #[derive(Debug)]
 pub struct MakeWidget {
-    pub attr_widget: WidgetArgs,
     pub attrs: Vec<Attribute>,
 
     pub token: Token![struct],
@@ -304,26 +302,7 @@ pub struct MakeWidget {
 
 impl Parse for MakeWidget {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut attrs = input.call(Attribute::parse_outer)?;
-        let mut index = None;
-        for (i, attr) in attrs.iter().enumerate() {
-            if attr.path == parse_quote! { widget } {
-                if index.is_none() {
-                    index = Some(i);
-                } else {
-                    emit_error!(attr.span(), "multiple #[widget(..)] attributes on type");
-                }
-            }
-        }
-
-        let attr_widget;
-        if let Some(i) = index {
-            let attr = attrs.remove(i);
-            let (_, tokens) = parse_attr_group(attr.tokens)?;
-            attr_widget = syn::parse2(tokens)?;
-        } else {
-            attr_widget = Default::default();
-        }
+        let attrs = input.call(Attribute::parse_outer)?;
 
         let token = input.parse::<Token![struct]>()?;
 
@@ -342,7 +321,6 @@ impl Parse for MakeWidget {
         }
 
         Ok(MakeWidget {
-            attr_widget,
             attrs,
 
             token,

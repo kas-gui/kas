@@ -112,6 +112,8 @@ pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
     toks
 }
 
+const IMPL_SCOPE_RULES: [&'static dyn ScopeAttr; 2] = [&AttrImplDefault, &widget::AttrImplWidget];
+
 /// Implementation scope
 ///
 /// See [`impl_tools::impl_scope`](https://docs.rs/impl-tools/0.3/impl_tools/macro.impl_scope.html)
@@ -120,8 +122,12 @@ pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn impl_scope(input: TokenStream) -> TokenStream {
     let mut scope = parse_macro_input!(input as Scope);
-    let rules: [&'static dyn ScopeAttr; 2] = [&AttrImplDefault, &widget::AttrImplWidget];
-    scope.apply_attrs(|path| rules.iter().cloned().find(|rule| rule.path().matches(path)));
+    scope.apply_attrs(|path| {
+        IMPL_SCOPE_RULES
+            .iter()
+            .cloned()
+            .find(|rule| rule.path().matches(path))
+    });
     scope.expand().into()
 }
 

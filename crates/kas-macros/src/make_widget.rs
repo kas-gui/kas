@@ -14,7 +14,7 @@ use std::fmt::Write;
 use syn::parse_quote;
 use syn::punctuated::Punctuated;
 use syn::token::Comma;
-use syn::{Ident, Result, Type, TypePath, Visibility, WhereClause};
+use syn::{Ident, Result, Type, TypePath, Visibility};
 
 pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
     // Used to make fresh identifiers for generic types
@@ -27,14 +27,6 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
 
     let mut fields = Punctuated::<Field, Comma>::new();
     let mut field_val_toks = quote! {};
-
-    if args.generics.where_clause.is_none() {
-        args.generics.where_clause = Some(WhereClause {
-            where_token: Default::default(),
-            predicates: Default::default(),
-        });
-    }
-    let clauses = &mut args.generics.where_clause.as_mut().unwrap().predicates;
 
     for (index, pair) in args.fields.into_pairs().enumerate() {
         let (field, opt_comma) = pair.into_tuple();
@@ -97,10 +89,6 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
         }
     }
 
-    if clauses.is_empty() {
-        args.generics.where_clause = None;
-    }
-
     let mut scope = Scope {
         attrs: args.attrs,
         vis: Visibility::Inherited,
@@ -117,7 +105,12 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
         impls: args.impls,
         generated: vec![],
     };
-    crate::widget::widget(args.attr_widget, &mut scope)?;
+    scope.apply_attrs(|path| {
+        crate::IMPL_SCOPE_RULES
+            .iter()
+            .cloned()
+            .find(|rule| rule.path().matches(path))
+    });
     scope.expand_impl_self();
 
     let toks = quote! { {
