@@ -94,8 +94,11 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
             }
         };
 
-        let value = &field.value;
-        field_val_toks.append_all(quote! { #ident: #value, });
+        if let Some(ref value) = field.value {
+            field_val_toks.append_all(quote! { #ident: #value, });
+        } else {
+            field_val_toks.append_all(quote! { #ident: Default::default(), });
+        }
 
         fields.push_value(Field {
             attrs: field.attrs,

@@ -180,7 +180,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }]
         struct {
             #[widget] label: StringLabel = Label::from("Use button to edit →"),
-            future: Option<Future<Option<String>>> = None,
+            future: Option<Future<Option<String>>>,
         }
         impl Widget for Self {
             fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {

@@ -357,7 +357,7 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// -   `#[derive(Debug)]` is added automatically
 /// -   a `core: widget_core!()` field is added automatically
-/// -   all fields must have an initializer, e.g. `ident: ty = value,`
+/// -   fields may have an initializer, e.g. `ident: ty = value,` (otherwise they must implement `Default`)
 /// -   the type of fields is optional: `ident = value,` works (but see note above)
 /// -   the name of fields is optional: `_: ty = value,` and `_ = value,` are valid
 /// -   instead of a type, a type bound may be used: `ident: impl Trait = value,`

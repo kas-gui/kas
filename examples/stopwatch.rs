@@ -33,8 +33,8 @@ fn make_window() -> Box<dyn kas::Window> {
         }]
         struct {
             #[widget] display: impl HasString = Frame::new(Label::new("0.000".to_string())),
-            saved: Duration = Duration::default(),
-            start: Option<Instant> = None,
+            saved: Duration,
+            start: Option<Instant>,
         }
         impl Widget for Self {
             fn configure(&mut self, mgr: &mut SetRectMgr) {

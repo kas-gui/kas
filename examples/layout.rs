@@ -29,7 +29,7 @@ fn main() -> kas::shell::Result<()> {
             }]
             struct {
                 #[widget] edit = EditBox::new("A small\nsample\nof text").multi_line(true),
-                #[widget] check = CheckBoxBare::new(),
+                #[widget] check: CheckBoxBare,
             }
         },
     );

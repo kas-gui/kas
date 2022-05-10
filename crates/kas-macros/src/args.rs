@@ -285,7 +285,7 @@ pub struct WidgetField {
     pub ident: Option<Ident>,
     pub colon_token: Option<Colon>,
     pub ty: ChildType,
-    pub value: Expr,
+    pub value: Option<Expr>,
 }
 
 #[derive(Debug)]
@@ -435,8 +435,15 @@ impl Parse for WidgetField {
             ChildType::Generic(None)
         };
 
-        let _: Eq = input.parse()?;
-        let value: Expr = input.parse()?;
+        let mut value = None;
+        if let Ok(_) = input.parse::<Eq>() {
+            value = Some(input.parse()?);
+        } else if !matches!(&ty, ChildType::Fixed(_)) {
+            return Err(Error::new(
+                input.span(),
+                "require either a fixed type or a value assignment",
+            ));
+        }
 
         Ok(WidgetField {
             attrs,

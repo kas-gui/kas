@@ -33,7 +33,7 @@ fn main() -> kas::shell::Result<()> {
             }]
             struct {
                 // SingleView embeds a shared value, here default-constructed to 0
-                #[widget] counter: SingleView<SharedRc<i32>> = Default::default(),
+                #[widget] counter: SingleView<SharedRc<i32>>,
             }
             impl Widget for Self {
                 fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
