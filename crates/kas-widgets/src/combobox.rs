@@ -34,6 +34,7 @@ impl_scope! {
     }]
     pub struct ComboBox<M: Clone + Debug + 'static> {
         core: widget_core!(),
+        #[widget]
         label: StringLabel,
         #[widget]
         mark: Mark,
