@@ -31,6 +31,7 @@ fn main() -> kas::shell::Result<()> {
                     ],
                 ];
             }]
+            #[derive(Debug)]
             struct {
                 core: widget_core!(),
                 // SingleView embeds a shared value, here default-constructed to 0

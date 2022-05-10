@@ -35,6 +35,7 @@ fn main() -> kas::shell::Result<()> {
                     self.panes,
                 ];
             }]
+            #[derive(Debug)]
             struct {
                 core: widget_core!(),
                 #[widget] panes: RowSplitter<EditField> = panes,

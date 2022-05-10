@@ -101,8 +101,6 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
         args.generics.where_clause = None;
     }
 
-    args.attrs.insert(0, parse_quote! { #[derive(Debug)] });
-
     let mut scope = Scope {
         attrs: args.attrs,
         vis: Visibility::Inherited,

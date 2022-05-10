@@ -14,26 +14,25 @@ const CRASIT: &'static str = "Cras sit amet justo ipsum. Aliquam in nunc posuere
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let window = Window::new(
-        "Layout demo",
-        make_widget! {
-            #[widget{
-                layout = grid: {
-                    1, 0: "Layout demo";
-                    2, 0: self.check;
-                    0..3, 1: Label::new(LIPSUM);
-                    0, 2: align(center): "abc אבג def";
-                    1..3, 2..4: align(stretch): ScrollLabel::new(CRASIT);
-                    0, 3: self.edit;
-                };
-            }]
-            struct {
-                core: widget_core!(),
-                #[widget] edit = EditBox::new("A small\nsample\nof text").multi_line(true),
-                #[widget] check: CheckBoxBare,
-            }
-        },
-    );
+    let demo = make_widget! {
+        #[widget{
+            layout = grid: {
+                1, 0: "Layout demo";
+                2, 0: self.check;
+                0..3, 1: Label::new(LIPSUM);
+                0, 2: align(center): "abc אבג def";
+                1..3, 2..4: align(stretch): ScrollLabel::new(CRASIT);
+                0, 3: self.edit;
+            };
+        }]
+        #[derive(Debug)]
+        struct {
+            core: widget_core!(),
+            #[widget] edit = EditBox::new("A small\nsample\nof text").multi_line(true),
+            #[widget] check: CheckBoxBare,
+        }
+    };
+    let window = Window::new("Layout demo", demo);
 
     let theme = kas::theme::FlatTheme::new();
     kas::shell::Toolkit::new(theme)?.with(window)?.run()

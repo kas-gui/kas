@@ -178,6 +178,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 TextButton::new_msg("&Edit", MsgEdit),
             ];
         }]
+        #[derive(Debug)]
         struct {
             core: widget_core!(),
             #[widget] label: StringLabel = Label::from("Use button to edit →"),
@@ -243,6 +244,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 row: ["Child window", self.pu],
             ];
         }]
+        #[derive(Debug)]
         struct {
             core: widget_core!(),
             #[widget] sl = ScrollLabel::new(text),
@@ -304,6 +306,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     self.gallery,
                 ];
             }]
+            #[derive(Debug)]
             struct {
                 core: widget_core!(),
                 #[widget] menubar = menubar,

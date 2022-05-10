@@ -355,7 +355,6 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// Syntax is similar to using [`widget`](macro@widget) within [`impl_scope!`], except that:
 ///
-/// -   `#[derive(Debug)]` is added automatically
 /// -   fields may have an initializer, e.g. `ident: ty = value,` (otherwise they must implement `Default`)
 /// -   the type of fields is optional: `ident = value,` works (but see note above)
 /// -   the name of fields is optional: `_: ty = value,` and `_ = value,` are valid

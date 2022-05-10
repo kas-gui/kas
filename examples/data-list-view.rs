@@ -216,6 +216,7 @@ fn main() -> kas::shell::Result<()> {
                 TextButton::new_msg("↓↑", Control::Dir),
             ];
         }]
+        #[derive(Debug)]
         struct {
             core: widget_core!(),
             #[widget] edit: impl HasString = EditBox::new("3")
@@ -268,6 +269,7 @@ fn main() -> kas::shell::Result<()> {
                     self.list,
                 ];
             }]
+            #[derive(Debug)]
             struct {
                 core: widget_core!(),
                 #[widget] controls = controls,

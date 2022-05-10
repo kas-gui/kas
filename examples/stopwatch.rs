@@ -31,6 +31,7 @@ fn make_window() -> Box<dyn kas::Window> {
                 TextButton::new_msg("&start / &stop", MsgStart),
             ];
         }]
+        #[derive(Debug)]
         struct {
             core: widget_core!(),
             #[widget] display: impl HasString = Frame::new(Label::new("0.000".to_string())),

@@ -46,6 +46,7 @@ fn main() -> kas::shell::Result<()> {
                 self.list,
             ];
         }]
+        #[derive(Debug)]
         struct {
             core: widget_core!(),
             #[widget] r0 = RadioBox::new_msg("none", r.clone(), SelectionMode::None).with_state(true),

@@ -59,6 +59,7 @@ It also supports lists:
             #[widget{
                 layout = row: [self.editor, self.label];
             }]
+            #[derive(Debug)]
             struct {
                 core: widget_core!(),
                 #[widget] editor: EditBox<Guard> =
