@@ -32,6 +32,7 @@ fn main() -> kas::shell::Result<()> {
                 ];
             }]
             struct {
+                core: widget_core!(),
                 // SingleView embeds a shared value, here default-constructed to 0
                 #[widget] counter: SingleView<SharedRc<i32>>,
             }

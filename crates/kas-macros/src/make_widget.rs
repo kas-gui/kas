@@ -25,24 +25,8 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
         Ident::new(&name_buf, Span::call_site())
     };
 
-    let core_ident: Ident = parse_quote! { core };
-
-    // fields of anonymous struct:
     let mut fields = Punctuated::<Field, Comma>::new();
-    fields.push_value(Field {
-        attrs: vec![],
-        vis: Visibility::Inherited,
-        ident: Some(core_ident),
-        colon_token: Default::default(),
-        ty: parse_quote! { widget_core!() },
-        assign: None,
-    });
-    fields.push_punct(Default::default());
-
-    // initialisers for these fields:
-    let mut field_val_toks = quote! {
-        core: Default::default(),
-    };
+    let mut field_val_toks = quote! {};
 
     if args.generics.where_clause.is_none() {
         args.generics.where_clause = Some(WhereClause {

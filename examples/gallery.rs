@@ -179,6 +179,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ];
         }]
         struct {
+            core: widget_core!(),
             #[widget] label: StringLabel = Label::from("Use button to edit →"),
             future: Option<Future<Option<String>>>,
         }
@@ -243,6 +244,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ];
         }]
         struct {
+            core: widget_core!(),
             #[widget] sl = ScrollLabel::new(text),
             #[widget] eb = EditBox::new("edit me").with_guard(Guard),
             #[widget] tb = TextButton::new_msg("&Press me", Item::Button),
@@ -303,6 +305,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ];
             }]
             struct {
+                core: widget_core!(),
                 #[widget] menubar = menubar,
                 #[widget] img_gallery = img_gallery,
                 #[widget] gallery:

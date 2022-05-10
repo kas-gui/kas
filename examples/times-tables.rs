@@ -72,6 +72,7 @@ fn main() -> kas::shell::Result<()> {
             ];
         }]
         struct {
+            core: widget_core!(),
             #[widget] max: impl HasString = EditBox::new("12")
                 .on_afl(|text, mgr| match text.parse::<usize>() {
                     Ok(n) => mgr.push_msg(n),

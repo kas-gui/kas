@@ -217,6 +217,7 @@ fn main() -> kas::shell::Result<()> {
             ];
         }]
         struct {
+            core: widget_core!(),
             #[widget] edit: impl HasString = EditBox::new("3")
                 .on_afl(|text, mgr| match text.parse::<usize>() {
                     Ok(n) => mgr.push_msg(n),
@@ -268,6 +269,7 @@ fn main() -> kas::shell::Result<()> {
                 ];
             }]
             struct {
+                core: widget_core!(),
                 #[widget] controls = controls,
                 #[widget] display: StringLabel = Label::from("Entry #1"),
                 #[widget] list: ScrollBars<MyList> =

@@ -28,6 +28,7 @@ fn main() -> kas::shell::Result<()> {
                 };
             }]
             struct {
+                core: widget_core!(),
                 #[widget] edit = EditBox::new("A small\nsample\nof text").multi_line(true),
                 #[widget] check: CheckBoxBare,
             }

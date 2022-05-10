@@ -60,6 +60,7 @@ It also supports lists:
                 layout = row: [self.editor, self.label];
             }]
             struct {
+                core: widget_core!(),
                 #[widget] editor: EditBox<Guard> =
                     EditBox::new(doc).multi_line(true).with_guard(Guard),
                 #[widget] label: ScrollBarRegion<Label<Markdown>> =
