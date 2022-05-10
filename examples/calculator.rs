@@ -52,9 +52,7 @@ fn main() -> kas::shell::Result<()> {
             };
         }]
         #[derive(Debug, Default)]
-        struct Buttons {
-            core: widget_core!(),
-        }
+        struct Buttons(widget_core!());
     };
 
     impl_scope! {

@@ -123,9 +123,7 @@ fn main() -> kas::shell::Result<()> {
         };
         }]
         #[derive(Debug, Default)]
-        struct Demo {
-            core: widget_core!(),
-        }
+        struct Demo(widget_core!());
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
                 if let Some(item) = mgr.try_pop_msg::<Item>() {
