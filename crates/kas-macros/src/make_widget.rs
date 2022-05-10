@@ -10,19 +10,21 @@ use impl_tools_lib::{
 };
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, TokenStreamExt};
+use std::collections::HashMap;
 use std::fmt::Write;
 use syn::parse_quote;
 use syn::punctuated::Punctuated;
 use syn::token::Comma;
+use syn::{visit_mut, ConstParam, GenericParam, Lifetime, LifetimeDef, TypeParam};
 use syn::{Ident, Result, Type, TypePath, Visibility};
 
 pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
     // Used to make fresh identifiers for generic types
     let mut name_buf = String::with_capacity(32);
-    let mut make_ident = move |args: std::fmt::Arguments| -> Ident {
+    let mut make_ident = move |args: std::fmt::Arguments, span| -> Ident {
         name_buf.clear();
         name_buf.write_fmt(args).unwrap();
-        Ident::new(&name_buf, Span::call_site())
+        Ident::new(&name_buf, span)
     };
 
     let mut fields = Punctuated::<Field, Comma>::new();
@@ -33,7 +35,7 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
 
         let ident = match field.ident {
             Some(ident) => ident,
-            None => make_ident(format_args!("mw_anon_{}", index)),
+            None => make_ident(format_args!("_field{index}"), Span::call_site()),
         };
 
         let is_widget = field
@@ -42,25 +44,51 @@ pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
             .any(|attr| (attr.path == parse_quote! { widget }));
 
         let ty: Type = match field.ty {
-            ChildType::Fixed(ty) => ty.clone(),
-            ChildType::InternGeneric(gen_args, ty) => {
+            ChildType::Fixed(ty) => ty,
+            ChildType::InternGeneric(mut gen_args, mut ty) => {
+                struct RenameUnique(HashMap<Ident, Ident>);
+                let mut renames = RenameUnique(HashMap::new());
+
+                for param in &mut gen_args {
+                    let ident = match param {
+                        GenericParam::Type(TypeParam { ident, .. }) => ident,
+                        GenericParam::Lifetime(LifetimeDef {
+                            lifetime: Lifetime { ident, .. },
+                            ..
+                        }) => ident,
+                        GenericParam::Const(ConstParam { ident, .. }) => ident,
+                    };
+                    let from = ident.clone();
+                    let to = make_ident(format_args!("_Field{index}{from}"), from.span());
+                    *ident = to.clone();
+                    renames.0.insert(from, to);
+                }
                 args.generics.params.extend(gen_args);
-                ty.clone()
+
+                impl visit_mut::VisitMut for RenameUnique {
+                    fn visit_ident_mut(&mut self, ident: &mut Ident) {
+                        if let Some(repl) = self.0.get(ident) {
+                            *ident = repl.clone();
+                        }
+                    }
+                }
+                visit_mut::visit_type_mut(&mut renames, &mut ty);
+                ty
             }
             ChildType::Generic(gen_bound) => {
-                let ty = make_ident(format_args!("MWAnon{}", index));
+                let ty = make_ident(format_args!("_Field{index}"), Span::call_site());
 
-                if is_widget {
-                    if let Some(mut bound) = gen_bound {
+                if let Some(mut bound) = gen_bound {
+                    if is_widget {
                         bound.bounds.push(parse_quote! { ::kas::Widget });
-                        args.generics.params.push(parse_quote! { #ty: #bound });
-                    } else {
-                        args.generics
-                            .params
-                            .push(parse_quote! { #ty: ::kas::Widget });
                     }
+                    args.generics.params.push(parse_quote! { #ty: #bound });
                 } else {
-                    args.generics.params.push(parse_quote! { #ty });
+                    args.generics.params.push(if is_widget {
+                        parse_quote! { #ty: ::kas::Widget }
+                    } else {
+                        parse_quote! { #ty }
+                    });
                 }
 
                 Type::Path(TypePath {

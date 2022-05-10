@@ -188,7 +188,7 @@ impl GridDimensions {
 struct NameGenerator(usize);
 impl NameGenerator {
     fn next(&mut self) -> StorIdent {
-        let name = format!("stor{}", self.0);
+        let name = format!("_stor{}", self.0);
         self.0 += 1;
         StorIdent::Generated(name, Span::call_site())
     }
