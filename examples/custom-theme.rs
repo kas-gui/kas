@@ -118,18 +118,13 @@ fn main() -> kas::shell::Result<()> {
             #[widget{
             layout = grid: {
                 1, 1: "Custom theme demo\nChoose your colour!";
-                0, 1: self.white;
-                1, 2: self.red;
-                2, 1: self.yellow;
-                1, 0: self.green;
+                0, 1: TextButton::new_msg("&White", Item::White);
+                1, 2: TextButton::new_msg("&Red", Item::Red);
+                2, 1: TextButton::new_msg("&Yellow", Item::Yellow);
+                1, 0: TextButton::new_msg("&Green", Item::Green);
             };
             }]
-            struct {
-                #[widget] white = TextButton::new_msg("&White", Item::White),
-                #[widget] red = TextButton::new_msg("&Red", Item::Red),
-                #[widget] yellow = TextButton::new_msg("&Yellow", Item::Yellow),
-                #[widget] green = TextButton::new_msg("&Green", Item::Green),
-            }
+            struct {}
             impl Widget for Self {
                 fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
                     if let Some(item) = mgr.try_pop_msg::<Item>() {

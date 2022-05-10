@@ -49,15 +49,15 @@ impl_scope! {
     #[widget{
         layout = grid: {
             0..3, 0: self.edit;
-            0, 1: self.fill; 1, 1: self.cancel; 2, 1: self.save;
+            0, 1: Filler::maximize();
+            1, 1: TextButton::new_msg("&Cancel", MsgClose(false));
+            2, 1: TextButton::new_msg("&Save", MsgClose(true));
         };
     }]
     struct TextEditPopup {
         core: widget_core!(),
-        #[widget] edit: EditBox,
-        #[widget] fill: Filler,
-        #[widget] cancel: TextButton,
-        #[widget] save: TextButton,
+        #[widget]
+        edit: EditBox,
         commit: bool,
     }
     impl TextEditPopup {
@@ -65,9 +65,6 @@ impl_scope! {
             TextEditPopup {
                 core: Default::default(),
                 edit: EditBox::new(text).multi_line(true),
-                fill: Filler::maximize(),
-                cancel: TextButton::new_msg("&Cancel", MsgClose(false)),
-                save: TextButton::new_msg("&Save", MsgClose(true)),
                 commit: false,
             }
         }
@@ -176,11 +173,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let popup_edit_box = make_widget! {
         #[widget{
-            layout = row: *;
+            layout = row: [
+                self.label,
+                TextButton::new_msg("&Edit", MsgEdit),
+            ];
         }]
         struct {
             #[widget] label: StringLabel = Label::from("Use button to edit →"),
-            #[widget] edit = TextButton::new_msg("&Edit", MsgEdit),
             future: Option<Future<Option<String>>> = None,
         }
         impl Widget for Self {
@@ -293,28 +292,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    let head = make_widget! {
-        #[widget{
-            layout = row: ["Widget Gallery", self.img];
-        }]
-        struct {
-            #[widget] img = img_gallery,
-        }
-    };
-
     let window = Window::new(
         "Widget Gallery",
         make_widget! {
             #[widget{
                 layout = column: [
                     self.menubar,
-                    align(center): self.head,
+                    frame: align(center): row: ["Widget Gallery", self.img_gallery],
                     self.gallery,
                 ];
             }]
             struct {
                 #[widget] menubar = menubar,
-                #[widget] head = Frame::new(head),
+                #[widget] img_gallery = img_gallery,
                 #[widget] gallery:
                     for<W: Widget> ScrollBarRegion<W> =
                         ScrollBarRegion::new(widgets),

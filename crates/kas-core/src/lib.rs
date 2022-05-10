@@ -26,7 +26,6 @@ mod toolkit;
 
 // public implementations:
 pub mod class;
-pub mod component;
 #[cfg(feature = "config")]
 #[cfg_attr(doc_cfg, doc(cfg(feature = "config")))]
 pub mod config;

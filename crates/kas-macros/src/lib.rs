@@ -192,10 +192,10 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; &nbsp;&nbsp; _Single_ | _List_ | _Slice_ | _Grid_ | _Align_ | _Frame_ | _Button_
 /// >
 /// > _Single_ :\
-/// > &nbsp;&nbsp; `component`? `self` `.` _Member_
+/// > &nbsp;&nbsp; `self` `.` _Member_ | _Expr_
 /// >
 /// > _List_ :\
-/// > &nbsp;&nbsp; _ListPre_ _Storage_? `:` `*` | (`[` _Layout_ `]`)
+/// > &nbsp;&nbsp; _ListPre_ _Storage_? `:` `[` _Layout_ `]`
 /// >
 /// > _ListPre_ :\
 /// > &nbsp;&nbsp; `column` | `row` | `aligned_column` | `aligned_row` | `list` `(` _Direction_ `)`
@@ -232,11 +232,14 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///
 /// Both _Single_ and _Slice_ variants match `self.MEMBER` where `MEMBER` is the
 /// name of a field or number of a tuple field. More precisely, both match any
-/// expression starting with `self` and append with `.as_widget_mut()`.
+/// expression starting with `self` and use `&mut (#expr)`.
+/// Additionally, _Single_ matches an expression starting with an identifier
+/// which starts with a capital letter. This is assumed to be a constructor for
+/// a widget, which, when boxed, is placed into a `Box<dyn Widget>` field within
+/// the core and included as a child.
 ///
 /// `row` and `column` are abbreviations for `list(right)` and `list(down)`
-/// respectively. Glob syntax is allowed: `row: *` uses all children in a row
-/// layout.
+/// respectively.
 ///
 /// `aligned_column` and `aligned_row` use restricted list syntax (items must
 /// be `row` or `column` respectively; glob syntax not allowed), but build a
@@ -250,9 +253,14 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// like `0, 1` (that is, col=0, row=1) with spans specified like `0..2, 1`
 /// (thus cols={0, 1}, row=1) or `2..+2, 1` (cols={2,3}, row=1).
 ///
+/// _Frame_ and _Button_ are two variants of the same thing: a button is a frame
+/// using `FrameStyle::Button`, but may optionally also have a color (a field of
+/// type `Option<Rgb>`). Additionally, a button automatically uses centered
+/// alignment of content.
+///
 /// Non-trivial layouts require a "storage" field within the generated
 /// `widget_core!()`. This storage field may be named via a "lifetime label"
-/// (e.g. `col 'col_storage: *`), otherwise the field name will be generated.
+/// (e.g. `col 'col_storage: [...]`), otherwise the field name will be generated.
 ///
 /// _Member_ is a field name (struct) or number (tuple struct).
 ///

@@ -12,15 +12,3 @@ mod widget_id;
 pub use data::*;
 pub use widget::*;
 pub use widget_id::*;
-
-/// Provides a convenient `.boxed()` method on implementors
-pub trait Boxed<T: ?Sized> {
-    /// Boxing method
-    fn boxed(self) -> Box<T>;
-}
-
-impl<W: Widget + Sized> Boxed<dyn Widget> for W {
-    fn boxed(self) -> Box<dyn Widget> {
-        Box::new(self)
-    }
-}

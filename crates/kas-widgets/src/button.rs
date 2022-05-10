@@ -5,10 +5,9 @@
 
 //! Push-buttons
 
-use kas::component::Label;
+use crate::AccelLabel;
 use kas::draw::color::Rgb;
 use kas::event::{VirtualKeyCode, VirtualKeyCodes};
-use kas::layout;
 use kas::prelude::*;
 use kas::theme::TextClass;
 use std::fmt::Debug;
@@ -17,8 +16,7 @@ use std::rc::Rc;
 impl_scope! {
     /// A push-button with a generic label
     ///
-    /// Default alignment is centred. Content (label) alignment is derived from the
-    /// button alignment.
+    /// Default alignment of content is centered.
     #[autoimpl(Debug ignore self.on_push)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone)]
@@ -28,7 +26,6 @@ impl_scope! {
     pub struct Button<W: Widget> {
         core: widget_core!(),
         keys1: VirtualKeyCodes,
-        layout_frame: layout::FrameStorage,
         color: Option<Rgb>,
         #[widget]
         pub inner: W,
@@ -42,7 +39,6 @@ impl_scope! {
             Button {
                 core: Default::default(),
                 keys1: Default::default(),
-                layout_frame: Default::default(),
                 color: None,
                 inner,
                 on_push: None,
@@ -62,7 +58,6 @@ impl_scope! {
             Button {
                 core: self.core,
                 keys1: self.keys1,
-                layout_frame: self.layout_frame,
                 color: self.color,
                 inner: self.inner,
                 on_push: Some(Rc::new(f)),
@@ -150,19 +145,17 @@ impl_scope! {
     /// This is a specialised variant of [`Button`] supporting key shortcuts from an
     /// [`AccelString`] label and using a custom text class (and thus theme colour).
     ///
-    /// Default alignment of the button is to stretch horizontally and centre
-    /// vertically. The text label is always centred (irrespective of alignment
-    /// parameters).
+    /// Default alignment of content is centered.
     #[autoimpl(Debug ignore self.on_push)]
     #[derive(Clone)]
     #[widget {
-        layout = button(self.color): component self.label;
+        layout = button(self.color): self.label;
     }]
     pub struct TextButton {
         core: widget_core!(),
         keys1: VirtualKeyCodes,
-        label: Label<AccelString>,
-        layout_frame: layout::FrameStorage,
+        #[widget]
+        label: AccelLabel,
         color: Option<Rgb>,
         on_push: Option<Rc<dyn Fn(&mut EventMgr)>>,
     }
@@ -174,8 +167,7 @@ impl_scope! {
             TextButton {
                 core: Default::default(),
                 keys1: Default::default(),
-                label: Label::new(label.into(), TextClass::Button),
-                layout_frame: Default::default(),
+                label: AccelLabel::new(label).with_class(TextClass::Button),
                 color: None,
                 on_push: None,
             }
@@ -194,7 +186,6 @@ impl_scope! {
             TextButton {
                 core: self.core,
                 keys1: self.keys1,
-                layout_frame: self.layout_frame,
                 color: self.color,
                 label: self.label,
                 on_push: Some(Rc::new(f)),
@@ -248,18 +239,14 @@ impl_scope! {
 
     impl HasStr for Self {
         fn get_str(&self) -> &str {
-            self.label.as_str()
+            self.label.get_str()
         }
     }
 
     impl SetAccel for Self {
+        #[inline]
         fn set_accel_string(&mut self, string: AccelString) -> TkAction {
-            let mut action = TkAction::empty();
-            if self.label.keys() != string.keys() {
-                action |= TkAction::RECONFIGURE;
-            }
-            let avail = self.core.rect.size.clamped_sub(self.layout_frame.size);
-            action | self.label.set_text_and_prepare(string, avail)
+            self.label.set_accel_string(string)
         }
     }
 

@@ -6,8 +6,7 @@
 //! Menu Entries
 
 use super::{Menu, SubItems};
-use crate::CheckBoxBare;
-use kas::component::Label;
+use crate::{AccelLabel, CheckBoxBare};
 use kas::theme::{FrameStyle, TextClass};
 use kas::{layout, prelude::*};
 use std::fmt::Debug;
@@ -21,11 +20,12 @@ impl_scope! {
     /// this value is pushed when the entry is activated.
     #[derive(Clone, Debug, Default)]
     #[widget {
-        layout = component self.label;
+        layout = self.label;
     }]
     pub struct MenuEntry<M: Clone + Debug + 'static> {
         core: widget_core!(),
-        label: Label<AccelString>,
+        #[widget]
+        label: AccelLabel,
         msg: M,
     }
 
@@ -45,7 +45,7 @@ impl_scope! {
         pub fn new<S: Into<AccelString>>(label: S, msg: M) -> Self {
             MenuEntry {
                 core: Default::default(),
-                label: Label::new(label.into(), TextClass::MenuLabel),
+                label: AccelLabel::new(label).with_class(TextClass::MenuLabel),
                 msg,
             }
         }
@@ -58,18 +58,14 @@ impl_scope! {
 
     impl HasStr for Self {
         fn get_str(&self) -> &str {
-            self.label.as_str()
+            self.label.get_str()
         }
     }
 
     impl SetAccel for Self {
+        #[inline]
         fn set_accel_string(&mut self, string: AccelString) -> TkAction {
-            let mut action = TkAction::empty();
-            if self.label.keys() != string.keys() {
-                action |= TkAction::RECONFIGURE;
-            }
-            let avail = self.core.rect.size;
-            action | self.label.set_text_and_prepare(string, avail)
+            self.label.set_accel_string(string)
         }
     }
 
@@ -109,14 +105,14 @@ impl_scope! {
     #[autoimpl(HasBool using self.checkbox)]
     #[derive(Clone, Default)]
     #[widget {
-        layout = row: [self.checkbox, component self.label];
+        layout = row: [self.checkbox, self.label];
     }]
     pub struct MenuToggle {
         core: widget_core!(),
         #[widget]
         checkbox: CheckBoxBare,
-        label: Label<AccelString>,
-        layout_list: layout::DynRowStorage,
+        #[widget]
+        label: AccelLabel,
     }
 
     impl Layout for Self {
@@ -154,8 +150,7 @@ impl_scope! {
             MenuToggle {
                 core: Default::default(),
                 checkbox: CheckBoxBare::new(),
-                label: Label::new(label.into(), TextClass::MenuLabel),
-                layout_list: Default::default(),
+                label: AccelLabel::new(label).with_class(TextClass::MenuLabel),
             }
         }
 
@@ -173,7 +168,6 @@ impl_scope! {
                 core: self.core,
                 checkbox: self.checkbox.on_toggle(f),
                 label: self.label,
-                layout_list: self.layout_list,
             }
         }
     }

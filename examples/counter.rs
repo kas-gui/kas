@@ -19,16 +19,15 @@ fn main() -> kas::shell::Result<()> {
         #[widget{
             layout = column: [
                 align(center): self.display,
-                row: [self.b_decr, self.b_incr],
+                row: [
+                    TextButton::new_msg("−", Increment(-1)),
+                    TextButton::new_msg("+", Increment(1)),
+                ],
             ];
         }]
         struct {
             #[widget]
             display: Label<String> = Label::from("0"),
-            #[widget]
-            b_decr = TextButton::new_msg("−", Increment(-1)),
-            #[widget]
-            b_incr = TextButton::new_msg("+", Increment(1)),
             count: i32 = 0,
         }
         impl Widget for Self {

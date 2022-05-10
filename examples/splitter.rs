@@ -19,15 +19,6 @@ enum Message {
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let buttons = make_widget! {
-        #[widget{
-            layout = row: *;
-        }]
-        struct {
-            #[widget] _ = TextButton::new_msg("−", Message::Decr),
-            #[widget] _ = TextButton::new_msg("+", Message::Incr),
-        }
-    };
     let panes = (0..2).map(|n| EditField::new(format!("Pane {}", n + 1)).multi_line(true));
     let panes = RowSplitter::<EditField>::new(panes.collect());
 
@@ -36,10 +27,15 @@ fn main() -> kas::shell::Result<()> {
         make_widget! {
             // TODO: use vertical splitter
             #[widget{
-                layout = column: *;
+                layout = column: [
+                    row: [
+                        TextButton::new_msg("−", Message::Decr),
+                        TextButton::new_msg("+", Message::Incr),
+                    ],
+                    self.panes,
+                ];
             }]
             struct {
-                #[widget] _ = buttons,
                 #[widget] panes: RowSplitter<EditField> = panes,
             }
             impl Widget for Self {

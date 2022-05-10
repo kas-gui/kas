@@ -25,14 +25,15 @@ fn main() -> kas::shell::Result<()> {
             #[widget{
                 layout = column: [
                     align(center): self.counter,
-                    row: [self.b_decr, self.b_incr],
+                    row: [
+                        TextButton::new_msg("−", Increment(-1)),
+                        TextButton::new_msg("+", Increment(1)),
+                    ],
                 ];
             }]
             struct {
                 // SingleView embeds a shared value, here default-constructed to 0
                 #[widget] counter: SingleView<SharedRc<i32>> = Default::default(),
-                #[widget] b_decr = TextButton::new_msg("−", Increment(-1)),
-                #[widget] b_incr = TextButton::new_msg("+", Increment(1)),
             }
             impl Widget for Self {
                 fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {

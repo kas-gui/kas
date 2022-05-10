@@ -54,6 +54,9 @@ use crate::theme::{DrawMgr, SizeHandle, SizeMgr, TextClass};
 use crate::{TkAction, Widget, WidgetId};
 use std::ops::{Deref, DerefMut};
 
+#[allow(unused)]
+use crate::Layout;
+
 pub use align::{Align, AlignHints, CompleteAlignment};
 pub use grid_solver::{DefaultWithLen, GridChildInfo, GridDimensions, GridSetter, GridSolver};
 pub use row_solver::{RowPositionSolver, RowSetter, RowSolver};

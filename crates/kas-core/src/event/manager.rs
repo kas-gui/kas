@@ -428,7 +428,7 @@ impl<'a> Drop for EventMgr<'a> {
 
 /// Internal methods
 impl<'a> EventMgr<'a> {
-    fn set_hover<W: Widget + ?Sized>(&mut self, widget: &W, w_id: Option<WidgetId>) {
+    fn set_hover(&mut self, widget: &dyn Widget, w_id: Option<WidgetId>) {
         if self.state.hover != w_id {
             trace!("EventMgr: hover = {:?}", w_id);
             if let Some(id) = self.state.hover.take() {
@@ -462,10 +462,7 @@ impl<'a> EventMgr<'a> {
         }
     }
 
-    fn start_key_event<W>(&mut self, widget: &mut W, vkey: VirtualKeyCode, scancode: u32)
-    where
-        W: Widget + ?Sized,
-    {
+    fn start_key_event(&mut self, widget: &mut dyn Widget, vkey: VirtualKeyCode, scancode: u32) {
         trace!(
             "EventMgr::start_key_event: widget={}, vkey={:?}, scancode={}",
             widget.id(),
@@ -560,7 +557,7 @@ impl<'a> EventMgr<'a> {
             self.send_event(widget, id, Event::Activate);
         } else if vkey == VK::Tab {
             self.clear_char_focus();
-            self.next_nav_focus(widget.as_widget_mut(), shift, true);
+            self.next_nav_focus(widget, shift, true);
         } else if vkey == VK::Escape {
             if let Some(id) = self.state.popups.last().map(|(id, _, _)| *id) {
                 self.close_window(id, true);
@@ -638,19 +635,11 @@ impl<'a> EventMgr<'a> {
 
     // Wrapper around Self::send; returns true when event is used
     #[inline]
-    fn send_event<W: Widget + ?Sized>(
-        &mut self,
-        widget: &mut W,
-        id: WidgetId,
-        event: Event,
-    ) -> bool {
+    fn send_event(&mut self, widget: &mut dyn Widget, id: WidgetId, event: Event) -> bool {
         self.send(widget, id, event) == Response::Used
     }
 
-    fn send_popup_first<W>(&mut self, widget: &mut W, id: Option<WidgetId>, event: Event)
-    where
-        W: Widget + ?Sized,
-    {
+    fn send_popup_first(&mut self, widget: &mut dyn Widget, id: Option<WidgetId>, event: Event) {
         while let Some((wid, parent)) = self
             .state
             .popups

@@ -5,10 +5,8 @@
 
 //! Combobox
 
-use super::{menu::MenuEntry, Column, PopupFrame};
-use kas::component::{Label, Mark};
+use super::{menu::MenuEntry, Column, Mark, PopupFrame, StringLabel};
 use kas::event::{Command, Scroll};
-use kas::layout;
 use kas::prelude::*;
 use kas::theme::{MarkStyle, TextClass};
 use kas::WindowId;
@@ -32,14 +30,14 @@ impl_scope! {
     #[autoimpl(Debug ignore self.on_select)]
     #[derive(Clone)]
     #[widget {
-        layout = button: row: [component self.label, component self.mark];
+        layout = button 'frame: row: [self.label, self.mark];
     }]
     pub struct ComboBox<M: Clone + Debug + 'static> {
         core: widget_core!(),
-        label: Label<String>,
+        #[widget]
+        label: StringLabel,
+        #[widget]
         mark: Mark,
-        layout_list: layout::FixedRowStorage<2>,
-        layout_frame: layout::FrameStorage,
         #[widget]
         popup: ComboPopup<M>,
         active: usize,
@@ -215,13 +213,11 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     #[inline]
     pub fn new(entries: Vec<MenuEntry<M>>) -> Self {
         let label = entries.get(0).map(|entry| entry.get_string());
-        let label = Label::new(label.unwrap_or("".to_string()), TextClass::Button);
+        let label = StringLabel::new(label.unwrap_or("".to_string())).with_class(TextClass::Button);
         ComboBox {
             core: Default::default(),
             label,
             mark: Mark::new(MarkStyle::Point(Direction::Down)),
-            layout_list: Default::default(),
-            layout_frame: Default::default(),
             popup: ComboPopup {
                 core: Default::default(),
                 inner: PopupFrame::new(
@@ -249,8 +245,6 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
             core: self.core,
             label: self.label,
             mark: self.mark,
-            layout_list: self.layout_list,
-            layout_frame: self.layout_frame,
             popup: self.popup,
             active: self.active,
             opening: self.opening,
@@ -286,8 +280,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
             } else {
                 "".to_string()
             };
-            let avail = self.core.rect.size.clamped_sub(self.layout_frame.size);
-            self.label.set_text_and_prepare(string, avail)
+            self.label.set_string(string)
         } else {
             TkAction::empty()
         }

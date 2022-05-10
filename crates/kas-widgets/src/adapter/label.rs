@@ -5,8 +5,7 @@
 
 //! Wrapper adding a label
 
-use kas::component::Label;
-use kas::theme::TextClass;
+use crate::AccelLabel;
 use kas::{event, layout, prelude::*};
 
 impl_scope! {
@@ -19,16 +18,15 @@ impl_scope! {
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[derive(Clone, Default, Debug)]
     #[widget {
-        layout = list(self.dir): [self.inner, component self.label];
+        layout = list(self.dir) 'row: [self.inner, self.label];
     }]
     pub struct WithLabel<W: Widget, D: Directional> {
         core: widget_core!(),
         dir: D,
         #[widget]
         inner: W,
-        wrap: bool,
-        layout_store: layout::FixedRowStorage<2>,
-        label: Label<AccelString>,
+        #[widget]
+        label: AccelLabel,
     }
 
     impl Self where D: Default {
@@ -43,14 +41,11 @@ impl_scope! {
         /// Construct from `direction`, `inner` widget and `label`
         #[inline]
         pub fn new_with_direction<T: Into<AccelString>>(direction: D, inner: W, label: T) -> Self {
-            let wrap = true;
             WithLabel {
                 core: Default::default(),
                 dir: direction,
                 inner,
-                wrap,
-                layout_store: Default::default(),
-                label: Label::new(label.into(), TextClass::Label(wrap)),
+                label: AccelLabel::new(label.into()),
             }
         }
 
@@ -72,13 +67,13 @@ impl_scope! {
         /// the `label` (in this order, regardless of direction).
         #[inline]
         pub fn layout_storage(&mut self) -> &mut impl layout::RowStorage {
-            &mut self.layout_store
+            &mut self.core.row
         }
 
         /// Get whether line-wrapping is enabled
         #[inline]
         pub fn wrap(&self) -> bool {
-            self.wrap
+            self.label.wrap()
         }
 
         /// Enable/disable line wrapping
@@ -86,22 +81,22 @@ impl_scope! {
         /// By default this is enabled.
         #[inline]
         pub fn set_wrap(&mut self, wrap: bool) {
-            self.wrap = wrap;
+            self.label.set_wrap(wrap);
         }
 
         /// Enable/disable line wrapping (inline)
         #[inline]
         pub fn with_wrap(mut self, wrap: bool) -> Self {
-            self.wrap = wrap;
+            self.label.set_wrap(wrap);
             self
         }
 
-        /// Set text in an existing `Label`
+        /// Set text
         ///
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
         pub fn set_text<T: Into<AccelString>>(&mut self, text: T) -> TkAction {
-            self.label.set_text_and_prepare(text.into(), self.core.rect.size)
+            self.label.set_text(text.into())
         }
 
         /// Get the accelerator keys
@@ -122,19 +117,10 @@ impl_scope! {
         }
     }
 
-    impl HasStr for Self {
-        fn get_str(&self) -> &str {
-            self.label.as_str()
-        }
-    }
-
     impl SetAccel for Self {
+        #[inline]
         fn set_accel_string(&mut self, string: AccelString) -> TkAction {
-            let mut action = TkAction::empty();
-            if self.label.keys() != string.keys() {
-                action |= TkAction::RECONFIGURE;
-            }
-            action | self.label.set_text_and_prepare(string, self.core.rect.size)
+            self.label.set_accel_string(string)
         }
     }
 }

@@ -195,7 +195,14 @@ impl<'a> Visitor<'a> {
                 let align = hints.combine(align);
                 layout.set_rect_(mgr, rect, align);
             }
-            LayoutType::Frame(child, storage, _) | LayoutType::Button(child, storage, _) => {
+            LayoutType::Frame(child, storage, _) => {
+                storage.rect = rect;
+                rect.pos += storage.offset;
+                rect.size -= storage.size;
+                child.set_rect_(mgr, rect, align);
+            }
+            LayoutType::Button(child, storage, _) => {
+                let align = AlignHints::CENTER.combine(align);
                 storage.rect = rect;
                 rect.pos += storage.offset;
                 rect.size -= storage.size;

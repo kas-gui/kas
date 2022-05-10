@@ -78,7 +78,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
         let mut ev_state = EventState::new(shared.config.clone(), scale_factor);
         let mut tkw = TkWindow::new(shared, None, &mut theme_window);
-        ev_state.full_configure(&mut tkw, &mut *widget);
+        ev_state.full_configure(&mut tkw, widget.as_widget_mut());
 
         let size_mgr = SizeMgr::new(theme_window.size_handle());
         let mut solve_cache = SolveCache::find_constraints(widget.as_widget_mut(), size_mgr);
@@ -182,7 +182,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
                 let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
                 let widget = &mut *self.widget;
                 self.ev_state.with(&mut tkw, |mgr| {
-                    mgr.handle_winit(widget, event);
+                    mgr.handle_winit(widget.as_widget_mut(), event);
                 });
 
                 if self.ev_state.action.contains(TkAction::RECONFIGURE) {
@@ -197,7 +197,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
     /// Update, after receiving all events
     pub fn update(&mut self, shared: &mut SharedState<C, T>) -> (TkAction, Option<Instant>) {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-        let action = self.ev_state.update(&mut tkw, &mut *self.widget);
+        let action = self.ev_state.update(&mut tkw, self.widget.as_widget_mut());
         drop(tkw);
 
         if action.contains(TkAction::CLOSE | TkAction::EXIT) {
@@ -243,7 +243,8 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         } else*/
         if action.contains(TkAction::REGION_MOVED) {
             let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-            self.ev_state.region_moved(&mut tkw, &mut *self.widget);
+            self.ev_state
+                .region_moved(&mut tkw, self.widget.as_widget_mut());
         }
         if !action.is_empty() {
             self.queued_frame_time = Some(self.next_avail_frame_time);
@@ -256,14 +257,14 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         self.ev_state.with(&mut tkw, |mgr| {
             widget.handle_closure(mgr);
         });
-        self.ev_state.update(&mut tkw, &mut *self.widget)
+        self.ev_state.update(&mut tkw, self.widget.as_widget_mut())
     }
 
     pub fn update_timer(&mut self, shared: &mut SharedState<C, T>) -> Option<Instant> {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let widget = &mut *self.widget;
         self.ev_state.with(&mut tkw, |mgr| {
-            mgr.update_timer(widget);
+            mgr.update_timer(widget.as_widget_mut());
         });
         self.next_resume()
     }
@@ -277,7 +278,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let widget = &mut *self.widget;
         self.ev_state.with(&mut tkw, |mgr| {
-            mgr.update_handle(widget, handle, payload);
+            mgr.update_handle(widget.as_widget_mut(), handle, payload);
         });
     }
 
@@ -318,7 +319,8 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         debug!("Window::reconfigure");
 
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-        self.ev_state.full_configure(&mut tkw, &mut *self.widget);
+        self.ev_state
+            .full_configure(&mut tkw, self.widget.as_widget_mut());
 
         self.solve_cache.invalidate_rule_cache();
         self.apply_size(shared, false);

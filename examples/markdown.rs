@@ -57,7 +57,7 @@ It also supports lists:
         "Markdown parser",
         make_widget! {
             #[widget{
-                layout = row: *;
+                layout = row: [self.editor, self.label];
             }]
             struct {
                 #[widget] editor: EditBox<Guard> =

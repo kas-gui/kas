@@ -161,7 +161,10 @@ impl_scope! {
     // The list entry
     #[derive(Clone, Debug)]
     #[widget{
-        layout = column: *;
+        layout = column: [
+            row: [self.label, self.radio],
+            self.entry,
+        ];
     }]
     struct ListEntry {
         core: widget_core!(),
@@ -204,19 +207,21 @@ fn main() -> kas::shell::Result<()> {
 
     let controls = make_widget! {
         #[widget{
-            layout = row: *;
+            layout = row: [
+                "Number of rows:",
+                self.edit,
+                TextButton::new_msg("Set", Button::Set),
+                TextButton::new_msg("−", Button::Decr),
+                TextButton::new_msg("+", Button::Incr),
+                TextButton::new_msg("↓↑", Control::Dir),
+            ];
         }]
         struct {
-            #[widget] _ = Label::new("Number of rows:"),
             #[widget] edit: impl HasString = EditBox::new("3")
                 .on_afl(|text, mgr| match text.parse::<usize>() {
                     Ok(n) => mgr.push_msg(n),
                     Err(_) => (),
                 }),
-            #[widget] _ = TextButton::new_msg("Set", Button::Set),
-            #[widget] _ = TextButton::new_msg("−", Button::Decr),
-            #[widget] _ = TextButton::new_msg("+", Button::Incr),
-            #[widget] _ = TextButton::new_msg("↓↑", Control::Dir),
             n: usize = 3,
         }
         impl Widget for Self {
@@ -253,14 +258,18 @@ fn main() -> kas::shell::Result<()> {
         "Dynamic widget demo",
         make_widget! {
             #[widget{
-                layout = column: *;
+                layout = column: [
+                    "Demonstration of dynamic widget creation / deletion",
+                    self.controls,
+                    "Contents of selected entry:",
+                    self.display,
+                    Separator::new(),
+                    self.list,
+                ];
             }]
             struct {
-                #[widget] _ = Label::new("Demonstration of dynamic widget creation / deletion"),
-                #[widget] _ = controls,
-                #[widget] _ = Label::new("Contents of selected entry:"),
+                #[widget] controls = controls,
                 #[widget] display: StringLabel = Label::from("Entry #1"),
-                #[widget] _ = Separator::new(),
                 #[widget] list: ScrollBars<MyList> =
                     ScrollBars::new(list).with_bars(false, true),
             }

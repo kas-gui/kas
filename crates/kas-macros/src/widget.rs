@@ -63,6 +63,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
     let mut core_data: Option<Member> = None;
     let mut children = Vec::with_capacity(fields.len());
+    let mut layout_children = Vec::new();
     for (i, field) in fields.iter_mut().enumerate() {
         if matches!(&field.ty, Type::Macro(mac) if mac.mac == parse_quote!{ widget_core!() }) {
             if let Some(ref cd) = core_data {
@@ -74,7 +75,10 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 core_data = Some(member(i, field.ident.clone()));
             }
 
-            if let Some((stor_ty, stor_def)) = args.layout.as_ref().and_then(|l| l.storage_fields())
+            if let Some((stor_ty, stor_def)) = args
+                .layout
+                .as_ref()
+                .and_then(|l| l.storage_fields(&mut layout_children))
             {
                 let name = format!("Kas{}GeneratedCore", name);
                 let core_type = Ident::new(&name, Span::call_site());
@@ -140,13 +144,18 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 || *path == parse_quote! { WidgetChildren }
             {
                 if opt_derive.is_some() {
-                    emit_error!(
-                        impl_.span(),
-                        "impl conflicts with use of #[widget(derive=FIELD)]"
-                    );
+                    emit_error!(impl_, "impl conflicts with use of #[widget(derive=FIELD)]");
                 }
                 if !children.is_empty() {
-                    emit_warning!(impl_.span(), "use of `#![widget]` on children with custom `WidgetChildren` implementation");
+                    emit_warning!(
+                        impl_,
+                        "custom `WidgetChildren` implementation when using `#[widget]` on fields"
+                    );
+                } else if !layout_children.is_empty() {
+                    emit_warning!(
+                        impl_,
+                        "custom `WidgetChildren` implementation when using layout-defined children"
+                    );
                 }
                 impl_widget_children = false;
             } else if *path == parse_quote! { ::kas::Layout }
@@ -161,10 +170,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 || *path == parse_quote! { Widget }
             {
                 if opt_derive.is_some() {
-                    emit_error!(
-                        impl_.span(),
-                        "impl conflicts with use of #[widget(derive=FIELD)]"
-                    );
+                    emit_error!(impl_, "impl conflicts with use of #[widget(derive=FIELD)]");
                 }
                 if widget_impl.is_none() {
                     widget_impl = Some(index);
@@ -207,11 +213,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         impl #impl_generics ::kas::WidgetCore
             for #name #ty_generics #where_clause
         {
-            #[inline]
-            fn as_any(&self) -> &dyn std::any::Any { self }
-            #[inline]
-            fn as_any_mut(&mut self) -> &mut dyn std::any::Any { self }
-
             #core_methods
 
             #[inline]
@@ -391,10 +392,10 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         return Ok(());
     }
 
-    let core_data = core_data.unwrap();
+    let core = core_data.unwrap();
 
     if impl_widget_children {
-        let count = children.len();
+        let mut count = children.len();
 
         let mut get_rules = quote! {};
         let mut get_mut_rules = quote! {};
@@ -403,6 +404,12 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             get_rules.append_all(quote! { #i => Some(&self.#ident), });
             get_mut_rules.append_all(quote! { #i => Some(&mut self.#ident), });
         }
+        for (i, path) in layout_children.iter().enumerate() {
+            let index = count + i;
+            get_rules.append_all(quote! { #index => Some(&self.#core.#path), });
+            get_mut_rules.append_all(quote! { #index => Some(&mut self.#core.#path), });
+        }
+        count += layout_children.len();
 
         scope.generated.push(quote! {
             impl #impl_generics ::kas::WidgetChildren
@@ -437,8 +444,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     };
     let mut fn_draw = None;
     if let Some(layout) = args.layout.take() {
-        let core = core_data.clone();
-        let layout = layout.generate(&core, children.iter().map(|c| &c.ident))?;
+        let layout = layout.generate(&core)?;
         scope.generated.push(quote! {
             impl #impl_generics ::kas::layout::AutoLayout
                     for #name #ty_generics #where_clause
@@ -509,7 +515,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             rect: ::kas::geom::Rect,
             align: ::kas::layout::AlignHints,
         ) {
-            self.#core_data.rect = rect;
+            self.#core.rect = rect;
             #set_rect
         }
     };
@@ -552,7 +558,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
     let fn_pre_configure = quote! {
         fn pre_configure(&mut self, _: &mut ::kas::layout::SetRectMgr, id: ::kas::WidgetId) {
-            self.#core_data.id = id;
+            self.#core.id = id;
         }
     };
 

@@ -272,7 +272,7 @@ impl<D: 'static> SizeHandle for Window<D> {
             let bound = i32::conv_ceil(required.1);
             let min = match class {
                 _ if class.single_line() => self.dims.line_height,
-                TextClass::Label(true) => bound,
+                TextClass::Label(true) | TextClass::AccelLabel(true) => bound,
                 TextClass::LabelScroll => bound.min(self.dims.line_height * 3),
                 TextClass::Edit(true) => self.dims.line_height * 3,
                 _ => unreachable!(),

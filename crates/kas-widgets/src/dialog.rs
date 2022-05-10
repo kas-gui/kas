@@ -21,7 +21,7 @@ impl_scope! {
     /// A simple message box.
     #[derive(Clone, Debug)]
     #[widget{
-        layout = column: *;
+        layout = column: [self.label, self.button];
     }]
     pub struct MessageBox<T: FormattableText + 'static> {
         core: widget_core!(),

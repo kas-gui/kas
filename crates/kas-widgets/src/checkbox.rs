@@ -152,7 +152,7 @@ impl_scope! {
     #[autoimpl(HasBool using self.inner)]
     #[derive(Clone, Default)]
     #[widget{
-        layout = row: *;
+        layout = row: [self.inner, self.label];
     }]
     pub struct CheckBox {
         core: widget_core!(),

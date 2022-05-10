@@ -176,7 +176,7 @@ impl_scope! {
     #[autoimpl(HasBool using self.inner)]
     #[derive(Clone)]
     #[widget{
-        layout = row: *;
+        layout = row: [self.inner, self.label];
     }]
     pub struct RadioBox {
         core: widget_core!(),
