@@ -64,3 +64,19 @@ pub fn spatial_nav(reverse: bool, from: Option<usize>, len: usize) -> Option<usi
         }
     }
 }
+
+/// Load a window icon from a path
+#[cfg(feature = "image")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "image")))]
+pub fn load_icon_from_path<P: AsRef<std::path::Path>>(
+    path: P,
+) -> Result<Icon, Box<dyn std::error::Error>> {
+    // TODO(opt): image loading could be de-duplicated with
+    // DrawShared::image_from_path, but this may not be worthwhile.
+    let im = image::io::Reader::open(path)?
+        .with_guessed_format()?
+        .decode()?
+        .into_rgba8();
+    let (w, h) = im.dimensions();
+    Ok(Icon::from_rgba(im.into_vec(), w, h)?)
+}

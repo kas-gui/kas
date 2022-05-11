@@ -9,7 +9,7 @@ use kas::dir::Down;
 use kas::prelude::*;
 use kas::updatable::{filter::ContainsCaseInsensitive, SingleData};
 use kas::widgets::view::{self, driver, SelectionMode, SelectionMsg};
-use kas::widgets::{EditBox, RadioBox, RadioBoxGroup, ScrollBars, Window};
+use kas::widgets::{EditBox, RadioBox, RadioBoxGroup, ScrollBars};
 
 const MONTHS: &[&str] = &[
     "January",
@@ -38,7 +38,7 @@ fn main() -> kas::shell::Result<()> {
     type ListView = view::ListView<Down, FilteredList, driver::DefaultNav>;
     let filtered = FilteredList::new(data, filter.clone());
 
-    let widget = impl_singleton! {
+    let window = impl_singleton! {
         #[widget{
             layout = column: [
                 row: ["Selection:", self.r0, self.r1, self.r2],
@@ -66,8 +66,10 @@ fn main() -> kas::shell::Result<()> {
                 }
             }
         }
+        impl Window for Self {
+            fn title(&self) -> &str { "Filter-list" }
+        }
     };
-    let window = Window::new("Filter-list", widget);
 
     let theme = kas::theme::ShadedTheme::new();
     kas::shell::Toolkit::new(theme)?.with(window)?.run()

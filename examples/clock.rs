@@ -21,7 +21,6 @@ use kas::geom::{Offset, Quad, Vec2};
 use kas::prelude::*;
 use kas::shell::draw::DrawPipe;
 use kas::text::util::set_text_and_prepare;
-use kas::widgets::Window;
 
 impl_scope! {
     #[derive(Clone, Debug)]
@@ -162,13 +161,15 @@ impl_scope! {
             }
         }
     }
+
+    impl Window for Self {
+        fn title(&self) -> &str { "Clock" }
+    }
 }
 
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let window = Window::new("Clock", Clock::new());
-
     let theme = kas::theme::FlatTheme::new();
-    kas::shell::Toolkit::new(theme)?.with(window)?.run()
+    kas::shell::Toolkit::new(theme)?.with(Clock::new())?.run()
 }

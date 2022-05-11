@@ -88,7 +88,12 @@ pub trait Window: Widget {
     fn title(&self) -> &str;
 
     /// Get the window icon, if any
-    fn icon(&self) -> Option<Icon>;
+    ///
+    /// Default: `None`
+    #[inline]
+    fn icon(&self) -> Option<Icon> {
+        None
+    }
 
     /// Whether to limit the maximum size of a window
     ///
@@ -100,10 +105,17 @@ pub trait Window: Widget {
     /// Return value is `(restrict_min, restrict_max)`. Suggested is to use
     /// `(true, true)` for simple dialog boxes and `(true, false)` for complex
     /// windows.
-    fn restrict_dimensions(&self) -> (bool, bool);
+    ///
+    /// Default: `(true, false)`
+    #[inline]
+    fn restrict_dimensions(&self) -> (bool, bool) {
+        (true, false)
+    }
 
     /// Handle closure of self
     ///
-    /// This allows for actions on destruction, but doesn't need to do anything.
+    /// This allows for actions on destruction.
+    ///
+    /// Default: do nothing.
     fn handle_closure(&mut self, _mgr: &mut EventMgr) {}
 }

@@ -12,7 +12,61 @@ use crate::{Label, TextButton};
 use kas::event::VirtualKeyCode;
 use kas::prelude::*;
 use kas::text::format::FormattableText;
-use kas::{Widget, Window};
+use kas::{Icon, Widget};
+
+impl_scope! {
+    /// A simple window around a widget
+    #[autoimpl(Clone where W: Clone)]
+    #[autoimpl(Debug ignore self.icon)]
+    #[widget(layout = self.inner;)]
+    pub struct Window<W: Widget> {
+        core: widget_core!(),
+        restrict_dimensions: (bool, bool),
+        title: String,
+        #[widget]
+        inner: W,
+        icon: Option<Icon>,
+    }
+
+    impl<W: Widget> kas::Window for Window<W> {
+        fn title(&self) -> &str {
+            &self.title
+        }
+
+        fn icon(&self) -> Option<Icon> {
+            self.icon.clone()
+        }
+
+        fn restrict_dimensions(&self) -> (bool, bool) {
+            self.restrict_dimensions
+        }
+    }
+}
+
+impl<W: Widget> Window<W> {
+    /// Construct
+    pub fn new<T: ToString>(title: T, inner: W) -> Window<W> {
+        Window {
+            core: Default::default(),
+            restrict_dimensions: (true, false),
+            title: title.to_string(),
+            inner,
+            icon: None,
+        }
+    }
+
+    /// Configure whether min/max dimensions are forced
+    ///
+    /// By default, the min size is enforced but not the max.
+    pub fn set_restrict_dimensions(&mut self, min: bool, max: bool) {
+        self.restrict_dimensions = (min, max);
+    }
+
+    /// Set the window icon
+    pub fn set_icon(&mut self, icon: Option<Icon>) {
+        self.icon = icon;
+    }
+}
 
 #[derive(Copy, Clone, Debug)]
 struct MessageBoxOk;
@@ -59,7 +113,7 @@ impl_scope! {
         }
     }
 
-    impl Window for Self {
+    impl kas::Window for Self {
         fn title(&self) -> &str {
             &self.title
         }

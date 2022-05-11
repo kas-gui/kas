@@ -6,7 +6,7 @@
 //! Counter example (simple button)
 
 use kas::prelude::*;
-use kas::widgets::{Label, TextButton, Window};
+use kas::widgets::{Label, TextButton};
 
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
@@ -48,10 +48,13 @@ fn main() -> kas::shell::Result<()> {
                 }
             }
         }
+        impl Window for Self {
+            fn title(&self) -> &str { "Counter" }
+        }
     };
 
-    let window = Window::new("Counter", Counter::new(0));
-
     let theme = kas::theme::ShadedTheme::new().with_font_size(24.0);
-    kas::shell::Toolkit::new(theme)?.with(window)?.run()
+    kas::shell::Toolkit::new(theme)?
+        .with(Counter::new(0))?
+        .run()
 }

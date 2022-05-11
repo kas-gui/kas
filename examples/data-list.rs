@@ -151,62 +151,62 @@ fn main() -> kas::shell::Result<()> {
     ];
     let list = List::new_with_direction(Direction::Down, entries);
 
-    let window = Window::new(
-        "Dynamic widget demo",
-        impl_singleton! {
-            #[widget{
-                layout = column: [
-                    "Demonstration of dynamic widget creation / deletion",
-                    self.controls,
-                    "Contents of selected entry:",
-                    self.display,
-                    Separator::new(),
-                    self.list,
-                ];
-            }]
-            #[derive(Debug)]
-            struct {
-                core: widget_core!(),
-                #[widget] controls = controls,
-                #[widget] display: StringLabel = Label::from("Entry #1"),
-                #[widget] list: ScrollBarRegion<List<Direction, ListEntry>> =
-                    ScrollBarRegion::new(list).with_bars(false, true),
-                active: usize = 0,
-            }
-            impl Widget for Self {
-                fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-                    if let Some(control) = mgr.try_pop_msg() {
-                        match control {
-                            Control::Set(len) => {
-                                let active = self.active;
-                                mgr.set_rect_mgr(|mgr| {
-                                    self.list.inner_mut()
-                                        .resize_with(mgr, len, |n| ListEntry::new(n, n == active))
-                                });
-                            }
-                            Control::Dir => {
-                                let dir = self.list.direction().reversed();
-                                *mgr |= self.list.set_direction(dir);
-                            }
+    let window = impl_singleton! {
+        #[widget{
+            layout = column: [
+                "Demonstration of dynamic widget creation / deletion",
+                self.controls,
+                "Contents of selected entry:",
+                self.display,
+                Separator::new(),
+                self.list,
+            ];
+        }]
+        #[derive(Debug)]
+        struct {
+            core: widget_core!(),
+            #[widget] controls = controls,
+            #[widget] display: StringLabel = Label::from("Entry #1"),
+            #[widget] list: ScrollBarRegion<List<Direction, ListEntry>> =
+                ScrollBarRegion::new(list).with_bars(false, true),
+            active: usize = 0,
+        }
+        impl Widget for Self {
+            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+                if let Some(control) = mgr.try_pop_msg() {
+                    match control {
+                        Control::Set(len) => {
+                            let active = self.active;
+                            mgr.set_rect_mgr(|mgr| {
+                                self.list.inner_mut()
+                                    .resize_with(mgr, len, |n| ListEntry::new(n, n == active))
+                            });
                         }
-                    } else if let Some(msg) = mgr.try_pop_msg() {
-                        match msg {
-                            EntryMsg::Select(n) => {
-                                self.active = n;
-                                let text = self.list[n].entry.get_string();
+                        Control::Dir => {
+                            let dir = self.list.direction().reversed();
+                            *mgr |= self.list.set_direction(dir);
+                        }
+                    }
+                } else if let Some(msg) = mgr.try_pop_msg() {
+                    match msg {
+                        EntryMsg::Select(n) => {
+                            self.active = n;
+                            let text = self.list[n].entry.get_string();
+                            *mgr |= self.display.set_string(text);
+                        }
+                        EntryMsg::Update(n, text) => {
+                            if n == self.active {
                                 *mgr |= self.display.set_string(text);
-                            }
-                            EntryMsg::Update(n, text) => {
-                                if n == self.active {
-                                    *mgr |= self.display.set_string(text);
-                                }
                             }
                         }
                     }
                 }
             }
-        },
-    );
+        }
+        impl Window for Self {
+            fn title(&self) -> &str { "Dynamic widget demo" }
+        }
+    };
 
     let theme = kas::theme::ShadedTheme::new();
     kas::shell::Toolkit::new(theme)?.with(window)?.run()
