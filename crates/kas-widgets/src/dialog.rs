@@ -8,11 +8,13 @@
 //! KAS dialog boxes are pre-configured windows, usually allowing some
 //! customisation.
 
-use crate::{Label, TextButton};
-use kas::event::VirtualKeyCode;
+use crate::{EditBox, Filler, Label, TextButton};
+use kas::event::{Command, VirtualKeyCode};
 use kas::prelude::*;
 use kas::text::format::FormattableText;
+use kas::updatable::{SharedRc, SingleData};
 use kas::{Icon, Widget};
+use std::borrow::Cow;
 
 impl_scope! {
     /// A simple window around a widget
@@ -124,6 +126,80 @@ impl_scope! {
 
         fn restrict_dimensions(&self) -> (bool, bool) {
             (true, true)
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct MsgClose(bool);
+
+impl_scope! {
+    #[derive(Debug)]
+    #[widget{
+        layout = grid: {
+            0..3, 0: self.edit;
+            0, 1: Filler::maximize();
+            1, 1: TextButton::new_msg("&Cancel", MsgClose(false));
+            2, 1: TextButton::new_msg("&Save", MsgClose(true));
+        };
+    }]
+    /// An editor over a shared `String`
+    pub struct TextEdit<T: SingleData<Item = String> = SharedRc<String>> {
+        core: widget_core!(),
+        title: Cow<'static, str>,
+        data: T,
+        #[widget]
+        edit: EditBox,
+    }
+
+    impl Self {
+        /// Construct
+        pub fn new(title: impl Into<Cow<'static, str>>, multi_line: bool, data: T) -> Self {
+            let text = data.get_cloned();
+            TextEdit {
+                core: Default::default(),
+                title: title.into(),
+                data,
+                edit: EditBox::new(text).multi_line(multi_line),
+            }
+        }
+
+        fn close(&mut self, mgr: &mut EventMgr, commit: bool) -> Response {
+            if commit {
+                self.data.update(mgr, self.edit.get_string());
+            }
+            mgr.send_action(TkAction::CLOSE);
+            Response::Used
+        }
+    }
+
+    impl Widget for Self {
+        fn configure(&mut self, mgr: &mut SetRectMgr) {
+            mgr.register_nav_fallback(self.id());
+
+            // Hack: set initial nav focus to the edit field (inner widget of self.edit).
+            // Pretend this is a keyboard action (param true) so that it requests char focus.
+            mgr.set_nav_focus((*self.edit).id(), true);
+        }
+
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+            match event {
+                Event::Command(Command::Escape, _) => self.close(mgr, false),
+                Event::Command(Command::Return, _) => self.close(mgr, true),
+                _ => Response::Unused,
+            }
+        }
+
+        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            if let Some(MsgClose(commit)) = mgr.try_pop_msg() {
+                let _ = self.close(mgr, commit);
+            }
+        }
+    }
+
+    impl kas::Window for Self {
+        fn title(&self) -> &str {
+            &self.title
         }
     }
 }

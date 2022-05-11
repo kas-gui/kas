@@ -9,13 +9,11 @@
 //! (excepting custom graphics).
 
 use kas::dir::Right;
-use kas::event::Command;
 use kas::event::VirtualKeyCode as VK;
 use kas::prelude::*;
 use kas::resvg::Svg;
-use kas::widgets::{menu::MenuEntry, *};
-use std::cell::RefCell;
-use std::rc::Rc;
+use kas::updatable::SharedRc;
+use kas::widgets::{menu::MenuEntry, view::SingleView, *};
 
 #[derive(Clone, Debug)]
 enum Item {
@@ -40,70 +38,6 @@ impl EditGuard for Guard {
     fn edit(edit: &mut EditField<Self>, _: &mut EventMgr) {
         // 7a is the colour of *magic*!
         edit.set_error_state(edit.get_str().len() % (7 + 1) == 0);
-    }
-}
-
-#[derive(Clone, Debug)]
-struct MsgClose(bool);
-
-impl_scope! {
-    #[derive(Debug)]
-    #[widget{
-        layout = grid: {
-            0..3, 0: self.edit;
-            0, 1: Filler::maximize();
-            1, 1: TextButton::new_msg("&Cancel", MsgClose(false));
-            2, 1: TextButton::new_msg("&Save", MsgClose(true));
-        };
-    }]
-    struct TextEditPopup {
-        core: widget_core!(),
-        #[widget]
-        edit: EditBox,
-        receiver: (UpdateHandle, Rc<RefCell<Option<String>>>),
-    }
-    impl TextEditPopup {
-        fn new<S: ToString>(text: S, receiver: (UpdateHandle, Rc<RefCell<Option<String>>>)) -> Self {
-            TextEditPopup {
-                core: Default::default(),
-                edit: EditBox::new(text).multi_line(true),
-                receiver,
-            }
-        }
-
-        fn close(&mut self, mgr: &mut EventMgr, commit: bool) -> Response {
-            if commit {
-                let mut cell = self.receiver.1.borrow_mut();
-                *cell = Some(self.edit.get_string());
-                mgr.trigger_update(self.receiver.0, 0);
-            }
-            mgr.send_action(TkAction::CLOSE);
-            Response::Used
-        }
-    }
-    impl Widget for TextEditPopup {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            mgr.register_nav_fallback(self.id());
-
-            // Hack: set initial nav focus to the edit field (inner widget of self.edit).
-            // Pretend this is a keyboard action (param true) so that it requests char focus.
-            mgr.set_nav_focus((*self.edit).id(), true);
-        }
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
-            match event {
-                Event::Command(Command::Escape, _) => self.close(mgr, false),
-                Event::Command(Command::Return, _) => self.close(mgr, true),
-                _ => Response::Unused,
-            }
-        }
-        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-            if let Some(MsgClose(commit)) = mgr.try_pop_msg() {
-                let _ = self.close(mgr, commit);
-            }
-        }
-    }
-    impl Window for TextEditPopup {
-        fn title(&self) -> &str { "Edit text" }
     }
 }
 
@@ -194,30 +128,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         #[derive(Debug)]
         struct {
             core: widget_core!(),
-            #[widget] label: StringLabel = Label::from("Use button to edit →"),
-            receiver: (UpdateHandle, Rc<RefCell<Option<String>>>),
+            #[widget] label: SingleView<SharedRc<String>> =
+                SingleView::new(SharedRc::new("Use button to edit →".to_string())),
         }
         impl Widget for Self {
-            fn configure(&mut self, mgr: &mut SetRectMgr) {
-                mgr.update_on_handle(self.receiver.0, self.id());
-            }
-            fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
-                match event {
-                    Event::HandleUpdate { handle, .. } => {
-                        if handle == self.receiver.0 {
-                            if let Some(text) = self.receiver.1.borrow_mut().take() {
-                                *mgr |= self.label.set_string(text);
-                            }
-                        }
-                        Response::Used
-                    }
-                    _ => Response::Unused,
-                }
-            }
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
                 if let Some(MsgEdit) = mgr.try_pop_msg() {
-                    let text = self.label.get_string();
-                    let window = TextEditPopup::new(text, self.receiver.clone());
+                    let text = self.label.data().clone();
+                    let window = dialog::TextEdit::new("Edit text", true, text);
                     mgr.add_window(Box::new(window));
                 }
             }
