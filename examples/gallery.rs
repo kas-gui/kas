@@ -8,12 +8,14 @@
 //! This is a test-bed to demonstrate most toolkit functionality
 //! (excepting custom graphics).
 
+use kas::dir::Right;
 use kas::event::Command;
 use kas::event::VirtualKeyCode as VK;
 use kas::prelude::*;
 use kas::resvg::Svg;
 use kas::widgets::{menu::MenuEntry, *};
-use kas::{dir::Right, Future};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 #[derive(Clone, Debug)]
 enum Item {
@@ -58,19 +60,23 @@ impl_scope! {
         core: widget_core!(),
         #[widget]
         edit: EditBox,
-        commit: bool,
+        receiver: (UpdateHandle, Rc<RefCell<Option<String>>>),
     }
     impl TextEditPopup {
-        fn new<S: ToString>(text: S) -> Self {
+        fn new<S: ToString>(text: S, receiver: (UpdateHandle, Rc<RefCell<Option<String>>>)) -> Self {
             TextEditPopup {
                 core: Default::default(),
                 edit: EditBox::new(text).multi_line(true),
-                commit: false,
+                receiver,
             }
         }
 
         fn close(&mut self, mgr: &mut EventMgr, commit: bool) -> Response {
-            self.commit = commit;
+            if commit {
+                let mut cell = self.receiver.1.borrow_mut();
+                *cell = Some(self.edit.get_string());
+                mgr.trigger_update(self.receiver.0, 0);
+            }
             mgr.send_action(TkAction::CLOSE);
             Response::Used
         }
@@ -95,6 +101,11 @@ impl_scope! {
                 let _ = self.close(mgr, commit);
             }
         }
+    }
+    impl kas::Window for TextEditPopup {
+        fn title(&self) -> &str { "Edit text" }
+        fn icon(&self) -> Option<kas::Icon> { None }
+        fn restrict_dimensions(&self) -> (bool, bool) { (true, false) }
     }
 }
 
@@ -186,17 +197,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         struct {
             core: widget_core!(),
             #[widget] label: StringLabel = Label::from("Use button to edit →"),
-            future: Option<Future<Option<String>>>,
+            receiver: (UpdateHandle, Rc<RefCell<Option<String>>>),
         }
         impl Widget for Self {
+            fn configure(&mut self, mgr: &mut SetRectMgr) {
+                mgr.update_on_handle(self.receiver.0, self.id());
+            }
             fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
                 match event {
-                    Event::HandleUpdate { .. } => {
-                        // There should be no other source of this event,
-                        // so we can assume our future is finished
-                        if let Some(future) = self.future.take() {
-                            let result = future.try_finish().unwrap();
-                            if let Some(text) = result {
+                    Event::HandleUpdate { handle, .. } => {
+                        if handle == self.receiver.0 {
+                            if let Some(text) = self.receiver.1.borrow_mut().take() {
                                 *mgr |= self.label.set_string(text);
                             }
                         }
@@ -207,18 +218,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
                 if let Some(MsgEdit) = mgr.try_pop_msg() {
-                    if self.future.is_none() {
-                        let text = self.label.get_string();
-                        let mut window = Window::new("Edit text", TextEditPopup::new(text));
-                        let (future, update) = window.on_drop(|w: &mut TextEditPopup| if w.commit {
-                            Some(w.edit.get_string())
-                        } else {
-                            None
-                        });
-                        self.future = Some(future);
-                        mgr.update_on_handle(update, self.id());
-                        mgr.add_window(Box::new(window));
-                    }
+                    let text = self.label.get_string();
+                    let window = TextEditPopup::new(text, self.receiver.clone());
+                    mgr.add_window(Box::new(window));
                 }
             }
         }
