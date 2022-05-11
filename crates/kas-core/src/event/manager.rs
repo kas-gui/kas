@@ -479,9 +479,23 @@ impl<'a> EventMgr<'a> {
             .shortcuts(|s| s.get(self.state.modifiers, vkey));
 
         if let Some(cmd) = opt_command {
+            let mut targets = vec![];
+            let mut send = |_self: &mut Self, id: WidgetId, cmd| -> bool {
+                if !targets.contains(&id) {
+                    let used = _self.send_event(widget, id.clone(), Event::Command(cmd, shift));
+                    if used {
+                        _self.add_key_depress(scancode, id.clone());
+                    }
+                    targets.push(id);
+                    used
+                } else {
+                    false
+                }
+            };
+
             if self.state.char_focus {
                 if let Some(id) = self.state.sel_focus.clone() {
-                    if self.send_event(widget, id, Event::Command(cmd, shift)) {
+                    if send(self, id, cmd) {
                         return;
                     }
                 }
@@ -489,28 +503,28 @@ impl<'a> EventMgr<'a> {
 
             if !self.state.modifiers.alt() {
                 if let Some(id) = self.state.nav_focus.clone() {
-                    if self.send_event(widget, id, Event::Command(cmd, shift)) {
+                    if send(self, id, cmd) {
                         return;
                     }
                 }
             }
 
             if let Some(id) = self.state.popups.last().map(|popup| popup.1.parent.clone()) {
-                if self.send_event(widget, id, Event::Command(cmd, shift)) {
+                if send(self, id, cmd) {
                     return;
                 }
             }
 
-            if self.state.sel_focus != self.state.nav_focus && cmd.suitable_for_sel_focus() {
+            if cmd.suitable_for_sel_focus() {
                 if let Some(id) = self.state.sel_focus.clone() {
-                    if self.send_event(widget, id, Event::Command(cmd, shift)) {
+                    if send(self, id, cmd) {
                         return;
                     }
                 }
             }
 
             if let Some(id) = self.state.nav_fallback.clone() {
-                if self.send_event(widget, id, Event::Command(cmd, shift)) {
+                if send(self, id, cmd) {
                     return;
                 }
             }
