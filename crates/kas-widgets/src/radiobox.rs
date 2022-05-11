@@ -39,13 +39,17 @@ impl_scope! {
             true
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, mut event: Event) -> Response {
-            if let Some(response) = event.activate_on_press(mgr, self.id_ref()) {
-                return response;
-            }
-
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
-                Event::Activate => {
+                Event::HandleUpdate { .. } => {
+                    if self.state && !self.eq_id(self.group.get_cloned()) {
+                        trace!("RadioBoxBare: unset {}", self.id());
+                        self.state = false;
+                        mgr.redraw(self.id());
+                    }
+                    Response::Used
+                }
+                event => event.on_activate(mgr, self.id(), |mgr| {
                     if !self.state {
                         trace!("RadioBoxBare: set {}", self.id());
                         self.state = true;
@@ -56,16 +60,7 @@ impl_scope! {
                         }
                     }
                     Response::Used
-                }
-                Event::HandleUpdate { .. } => {
-                    if self.state && !self.eq_id(self.group.get_cloned()) {
-                        trace!("RadioBoxBare: unset {}", self.id());
-                        self.state = false;
-                        mgr.redraw(self.id());
-                    }
-                    Response::Used
-                }
-                _ => Response::Unused,
+                })
             }
         }
     }

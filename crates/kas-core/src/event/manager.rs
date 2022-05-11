@@ -576,13 +576,6 @@ impl<'a> EventMgr<'a> {
             if let Some(id) = self.state.popups.last().map(|(id, _, _)| *id) {
                 self.close_window(id, true);
             }
-        } else if !self.state.char_focus {
-            if let Some(id) = self.state.nav_focus.clone() {
-                if vkey == VK::Space || vkey == VK::Return || vkey == VK::NumpadEnter {
-                    self.add_key_depress(scancode, id.clone());
-                    self.send_event(widget, id, Event::Activate);
-                }
-            }
         }
     }
 
