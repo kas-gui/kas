@@ -168,13 +168,14 @@ impl_scope! {
 
     impl Layout for Self {
         fn draw(&mut self, mut draw: DrawMgr) {
+            let mut draw = draw.re_id(self.inner.id());
             let bg = if self.inner.has_error() {
                 Background::Error
             } else {
                 Background::Default
             };
             draw.frame(self.rect(), FrameStyle::EditBox, bg);
-            draw.recurse(&mut self.inner);
+            self.inner.draw(draw);
         }
     }
 }
