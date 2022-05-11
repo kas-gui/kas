@@ -78,6 +78,10 @@ impl_scope! {
     impl Widget for TextEditPopup {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.register_nav_fallback(self.id());
+
+            // Hack: set initial nav focus to the edit field (inner widget of self.edit).
+            // Pretend this is a keyboard action (param true) so that it requests char focus.
+            mgr.set_nav_focus((*self.edit).id(), true);
         }
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
