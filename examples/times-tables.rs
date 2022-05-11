@@ -64,14 +64,16 @@ fn main() -> kas::shell::Result<()> {
         .with_selection_mode(SelectionMode::Single);
     let table = ScrollBars::new(table);
 
-    let layout = make_widget! {
+    let layout = impl_singleton! {
         #[widget{
             layout = column: [
                 row: ["From 1 to", self.max],
                 align(right): self.table,
             ];
         }]
+        #[derive(Debug)]
         struct {
+            core: widget_core!(),
             #[widget] max: impl HasString = EditBox::new("12")
                 .on_afl(|text, mgr| match text.parse::<usize>() {
                     Ok(n) => mgr.push_msg(n),

@@ -38,7 +38,7 @@ fn main() -> kas::shell::Result<()> {
     type ListView = view::ListView<Down, FilteredList, driver::DefaultNav>;
     let filtered = FilteredList::new(data, filter.clone());
 
-    let widget = make_widget! {
+    let widget = impl_singleton! {
         #[widget{
             layout = column: [
                 row: ["Selection:", self.r0, self.r1, self.r2],
@@ -46,7 +46,9 @@ fn main() -> kas::shell::Result<()> {
                 self.list,
             ];
         }]
+        #[derive(Debug)]
         struct {
+            core: widget_core!(),
             #[widget] r0 = RadioBox::new_msg("none", r.clone(), SelectionMode::None).with_state(true),
             #[widget] r1 = RadioBox::new_msg("single", r.clone(), SelectionMode::Single),
             #[widget] r2 = RadioBox::new_msg("multiple", r, SelectionMode::Multiple),

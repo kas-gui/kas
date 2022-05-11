@@ -171,16 +171,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[derive(Clone, Debug)]
     struct MsgEdit;
 
-    let popup_edit_box = make_widget! {
+    let popup_edit_box = impl_singleton! {
         #[widget{
             layout = row: [
                 self.label,
                 TextButton::new_msg("&Edit", MsgEdit),
             ];
         }]
+        #[derive(Debug)]
         struct {
+            core: widget_core!(),
             #[widget] label: StringLabel = Label::from("Use button to edit →"),
-            future: Option<Future<Option<String>>> = None,
+            future: Option<Future<Option<String>>>,
         }
         impl Widget for Self {
             fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
@@ -224,7 +226,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 טקסט לדוגמא במספר שפות.";
 
     let radio = RadioBoxGroup::default();
-    let widgets = make_widget! {
+    let widgets = impl_singleton! {
         #[widget{
             layout = aligned_column: [
                 row: ["ScrollLabel", self.sl],
@@ -242,7 +244,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 row: ["Child window", self.pu],
             ];
         }]
+        #[derive(Debug)]
         struct {
+            core: widget_core!(),
             #[widget] sl = ScrollLabel::new(text),
             #[widget] eb = EditBox::new("edit me").with_guard(Guard),
             #[widget] tb = TextButton::new_msg("&Press me", Item::Button),
@@ -294,7 +298,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let window = Window::new(
         "Widget Gallery",
-        make_widget! {
+        impl_singleton! {
             #[widget{
                 layout = column: [
                     self.menubar,
@@ -302,7 +306,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     self.gallery,
                 ];
             }]
+            #[derive(Debug)]
             struct {
+                core: widget_core!(),
                 #[widget] menubar = menubar,
                 #[widget] img_gallery = img_gallery,
                 #[widget] gallery:

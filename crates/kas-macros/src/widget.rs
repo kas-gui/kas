@@ -206,7 +206,10 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             }
         };
     } else {
-        return Err(Error::new(fields.span(), "no field of type widget_core!()"));
+        return Err(Error::new(
+            scope.ident.span(),
+            "when applying #[widget]: no field of type widget_core!()",
+        ));
     }
 
     scope.generated.push(quote! {

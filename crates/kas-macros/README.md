@@ -12,10 +12,7 @@ Stable vs nightly
 -----------------
 
 Note that proc macros may emit error messages on stable rust, but currently can
-only emit warnings with nightly `rustc`. Warning lints may be emitted by:
-
--   the `#[widget]` attribute macro
--   `make_widget!`, which uses `#[widget]`
+only emit warnings with nightly `rustc`.
 
 
 Copyright and Licence

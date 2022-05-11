@@ -205,7 +205,7 @@ impl Driver<(usize, bool, String)> for MyDriver {
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let controls = make_widget! {
+    let controls = impl_singleton! {
         #[widget{
             layout = row: [
                 "Number of rows:",
@@ -216,7 +216,9 @@ fn main() -> kas::shell::Result<()> {
                 TextButton::new_msg("↓↑", Control::Dir),
             ];
         }]
+        #[derive(Debug)]
         struct {
+            core: widget_core!(),
             #[widget] edit: impl HasString = EditBox::new("3")
                 .on_afl(|text, mgr| match text.parse::<usize>() {
                     Ok(n) => mgr.push_msg(n),
@@ -256,7 +258,7 @@ fn main() -> kas::shell::Result<()> {
 
     let window = Window::new(
         "Dynamic widget demo",
-        make_widget! {
+        impl_singleton! {
             #[widget{
                 layout = column: [
                     "Demonstration of dynamic widget creation / deletion",
@@ -267,7 +269,9 @@ fn main() -> kas::shell::Result<()> {
                     self.list,
                 ];
             }]
+            #[derive(Debug)]
             struct {
+                core: widget_core!(),
                 #[widget] controls = controls,
                 #[widget] display: StringLabel = Label::from("Entry #1"),
                 #[widget] list: ScrollBars<MyList> =

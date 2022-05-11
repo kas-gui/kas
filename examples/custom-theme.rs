@@ -112,33 +112,33 @@ fn main() -> kas::shell::Result<()> {
 
     let theme = CustomTheme::default();
 
-    let window = Window::new(
-        "Theme demo",
-        make_widget! {
-            #[widget{
-            layout = grid: {
-                1, 1: "Custom theme demo\nChoose your colour!";
-                0, 1: TextButton::new_msg("&White", Item::White);
-                1, 2: TextButton::new_msg("&Red", Item::Red);
-                2, 1: TextButton::new_msg("&Yellow", Item::Yellow);
-                1, 0: TextButton::new_msg("&Green", Item::Green);
-            };
-            }]
-            struct {}
-            impl Widget for Self {
-                fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-                    if let Some(item) = mgr.try_pop_msg::<Item>() {
-                        match item {
-                            Item::White => BACKGROUND.with(|b| b.set(Rgba::WHITE)),
-                            Item::Red => BACKGROUND.with(|b| b.set(Rgba::rgb(0.9, 0.2, 0.2))),
-                            Item::Green => BACKGROUND.with(|b| b.set(Rgba::rgb(0.2, 0.9, 0.2))),
-                            Item::Yellow => BACKGROUND.with(|b| b.set(Rgba::rgb(0.9, 0.9, 0.2))),
-                        }
+    impl_scope! {
+        #[widget{
+        layout = grid: {
+            1, 1: "Custom theme demo\nChoose your colour!";
+            0, 1: TextButton::new_msg("&White", Item::White);
+            1, 2: TextButton::new_msg("&Red", Item::Red);
+            2, 1: TextButton::new_msg("&Yellow", Item::Yellow);
+            1, 0: TextButton::new_msg("&Green", Item::Green);
+        };
+        }]
+        #[derive(Debug, Default)]
+        struct Demo(widget_core!());
+        impl Widget for Self {
+            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+                if let Some(item) = mgr.try_pop_msg::<Item>() {
+                    match item {
+                        Item::White => BACKGROUND.with(|b| b.set(Rgba::WHITE)),
+                        Item::Red => BACKGROUND.with(|b| b.set(Rgba::rgb(0.9, 0.2, 0.2))),
+                        Item::Green => BACKGROUND.with(|b| b.set(Rgba::rgb(0.2, 0.9, 0.2))),
+                        Item::Yellow => BACKGROUND.with(|b| b.set(Rgba::rgb(0.9, 0.9, 0.2))),
                     }
                 }
             }
-        },
-    );
+        }
+    }
+
+    let window = Window::new("Theme demo", Demo::default());
 
     kas::shell::Toolkit::new(theme)?.with(window)?.run()
 }

@@ -26,7 +26,7 @@ enum Key {
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let buttons = make_widget! {
+    impl_scope! {
         // Buttons get keyboard bindings through the "&" item (e.g. "&1"
         // binds both main and numpad 1 key) and via `with_keys`.
         #[widget{
@@ -51,20 +51,22 @@ fn main() -> kas::shell::Result<()> {
                 2, 4: TextButton::new_msg("&.", Key::Char('.'));
             };
         }]
-        struct {}
-        impl kas::Widget for Self {
-        }
+        #[derive(Debug, Default)]
+        struct Buttons(widget_core!());
     };
-    let content = make_widget! {
+
+    impl_scope! {
+        #[impl_default]
         #[widget{
             layout = column: [
                 self.display,
-                self.buttons,
+                Buttons::default(),
             ];
         }]
-        struct {
-            #[widget] display: impl HasString = EditBox::new("0").with_editable(false).multi_line(true),
-            #[widget] buttons = buttons,
+        #[derive(Debug)]
+        struct CalcUI {
+            core: widget_core!(),
+            #[widget] display: EditBox = EditBox::new("0").with_editable(false).multi_line(true),
             calc: Calculator = Calculator::new(),
         }
         impl Widget for Self {
@@ -80,8 +82,9 @@ fn main() -> kas::shell::Result<()> {
                 }
             }
         }
-    };
-    let window = Window::new("Calculator", content);
+    }
+
+    let window = Window::new("Calculator", CalcUI::default());
 
     let theme = kas::theme::ShadedTheme::new().with_font_size(16.0);
     kas::shell::Toolkit::new(theme)?.with(window)?.run()

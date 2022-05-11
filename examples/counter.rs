@@ -5,7 +5,6 @@
 
 //! Counter example (simple button)
 
-use kas::macros::make_widget;
 use kas::prelude::*;
 use kas::widgets::{Label, TextButton, Window};
 
@@ -15,7 +14,7 @@ fn main() -> kas::shell::Result<()> {
     #[derive(Clone, Debug)]
     struct Increment(i32);
 
-    let counter = make_widget! {
+    impl_scope! {
         #[widget{
             layout = column: [
                 align(center): self.display,
@@ -25,10 +24,21 @@ fn main() -> kas::shell::Result<()> {
                 ],
             ];
         }]
-        struct {
+        #[derive(Debug)]
+        struct Counter {
+            core: widget_core!(),
             #[widget]
-            display: Label<String> = Label::from("0"),
-            count: i32 = 0,
+            display: Label<String>,
+            count: i32,
+        }
+        impl Self {
+            fn new(count: i32) -> Self {
+                Counter {
+                    core: Default::default(),
+                    display: Label::from(count.to_string()),
+                    count,
+                }
+            }
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
@@ -40,7 +50,7 @@ fn main() -> kas::shell::Result<()> {
         }
     };
 
-    let window = Window::new("Counter", counter);
+    let window = Window::new("Counter", Counter::new(0));
 
     let theme = kas::theme::ShadedTheme::new().with_font_size(24.0);
     kas::shell::Toolkit::new(theme)?.with(window)?.run()

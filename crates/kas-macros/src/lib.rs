@@ -11,6 +11,7 @@
 #![allow(clippy::let_and_return)]
 #![allow(clippy::large_enum_variant)]
 #![allow(clippy::needless_late_init)]
+#![allow(clippy::redundant_pattern_matching)]
 
 extern crate proc_macro;
 
@@ -22,8 +23,8 @@ use syn::parse_macro_input;
 
 mod args;
 mod class_traits;
+mod impl_singleton;
 mod make_layout;
-mod make_widget;
 mod storage;
 mod widget;
 mod widget_index;
@@ -112,6 +113,8 @@ pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
     toks
 }
 
+const IMPL_SCOPE_RULES: [&'static dyn ScopeAttr; 2] = [&AttrImplDefault, &widget::AttrImplWidget];
+
 /// Implementation scope
 ///
 /// See [`impl_tools::impl_scope`](https://docs.rs/impl-tools/0.3/impl_tools/macro.impl_scope.html)
@@ -120,8 +123,12 @@ pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn impl_scope(input: TokenStream) -> TokenStream {
     let mut scope = parse_macro_input!(input as Scope);
-    let rules: [&'static dyn ScopeAttr; 2] = [&AttrImplDefault, &widget::AttrImplWidget];
-    scope.apply_attrs(|path| rules.iter().cloned().find(|rule| rule.path().matches(path)));
+    scope.apply_attrs(|path| {
+        IMPL_SCOPE_RULES
+            .iter()
+            .cloned()
+            .find(|rule| rule.path().matches(path))
+    });
     scope.expand().into()
 }
 
@@ -348,28 +355,54 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 /// Rust doesn't currently support [`impl Trait { ... }` expressions](https://github.com/canndrew/rfcs/blob/impl-trait-expressions/text/0000-impl-trait-expressions.md)
 /// or implicit typing of struct fields. This macro is a **hack** allowing that.
 ///
-/// Implicit typing is emulated using type parameters plus "smart" bounds. These
-/// don't always work and can result in terrible error messages. Another result
-/// is that fields cannot be accessed outside the type definition except
-/// through their type or a trait bound.
+/// Example:
+/// ```
+/// use std::fmt;
+/// use kas_macros::impl_singleton;
+/// fn main() {
+///     let world = "world";
+///     let says_hello_world = impl_singleton! {
+///         struct(impl fmt::Display = world);
+///         impl fmt::Display for Self {
+///             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+///                 write!(f, "hello {}", self.0)
+///             }
+///         }
+///     };
+///     assert_eq!(format!("{}", says_hello_world), "hello world");
+/// }
+/// ```
 ///
-/// Syntax is similar to using [`widget`](macro@widget) within [`impl_scope!`], except that:
+/// That is, this macro creates an anonymous struct type (must be a struct),
+/// which may have trait implementations, then creates an instance of that
+/// struct.
 ///
-/// -   `#[derive(Debug)]` is added automatically
-/// -   a `core: widget_core!()` field is added automatically
-/// -   all fields must have an initializer, e.g. `ident: ty = value,`
-/// -   the type of fields is optional: `ident = value,` works (but see note above)
-/// -   the name of fields is optional: `_: ty = value,` and `_ = value,` are valid
-/// -   instead of a type, a type bound may be used: `ident: impl Trait = value,`
-/// -   type generics may be used:
-///     `#[widget] display: for<W: Widget> Frame<W> = value,`
+/// Struct fields may have a fixed type or may be generic. Syntax is as follows:
 ///
-/// Refer to [examples](https://github.com/search?q=make_widget+repo%3Akas-gui%2Fkas+path%3Aexamples&type=Code) for usage.
+/// -   **regular struct:** `ident: ty = value`
+/// -   **regular struct:** `ident: ty` — uses `Default` to construct value
+/// -   **regular struct:** `ident = value` — type is generic without bounds
+/// -   **tuple struct:** `ty = value`
+/// -   **tuple struct:** `ty`
+/// -   **tuple struct:** `_ = value`
+///
+/// The `ident` may be `_` (anonymous field).
+///
+/// The `ty` expression may be replaced with one of the following:
+///
+/// -   `impl Trait` (or `impl A + B + C`) — type is generic with given bounds
+/// -   `for<'a, T> std::borrow::Cow<'a, T>` — a generic with locally declared
+///     type parameters (note: parameter names are made unique)
+///
+/// As a special rule, any field using the `#[widget]` attribute and without a
+/// fixed type has the `::kas::Widget` trait bound applied.
+///
+/// Refer to [examples](https://github.com/search?q=impl_singleton+repo%3Akas-gui%2Fkas+path%3Aexamples&type=Code) for usage.
 #[proc_macro_error]
 #[proc_macro]
-pub fn make_widget(input: TokenStream) -> TokenStream {
-    let args = parse_macro_input!(input as args::MakeWidget);
-    make_widget::make_widget(args)
+pub fn impl_singleton(input: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(input as args::ImplSingleton);
+    impl_singleton::impl_singleton(args)
         .unwrap_or_else(|err| err.to_compile_error())
         .into()
 }
