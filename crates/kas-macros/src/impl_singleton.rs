@@ -3,9 +3,9 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::args::{ChildType, ImplSingleton};
+use crate::args::{ChildType, ImplSingleton, StructStyle};
 use impl_tools_lib::{
-    fields::{Field, Fields, FieldsNamed},
+    fields::{Field, Fields, FieldsNamed, FieldsUnnamed},
     Scope, ScopeItem,
 };
 use proc_macro2::{Span, TokenStream};
@@ -16,7 +16,7 @@ use syn::parse_quote;
 use syn::punctuated::Punctuated;
 use syn::token::Comma;
 use syn::{visit_mut, ConstParam, GenericParam, Lifetime, LifetimeDef, TypeParam};
-use syn::{Ident, Result, Type, TypePath, Visibility};
+use syn::{Ident, Member, Result, Type, TypePath, Visibility};
 
 pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
     // Used to make fresh identifiers for generic types
@@ -33,9 +33,20 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
     for (index, pair) in args.fields.into_pairs().enumerate() {
         let (field, opt_comma) = pair.into_tuple();
 
-        let ident = match field.ident {
-            Some(ident) => ident,
-            None => make_ident(format_args!("_field{index}"), Span::call_site()),
+        let mut ident = field.ident.clone();
+        let mem = match args.style {
+            StructStyle::Regular(_) => {
+                let id = ident.unwrap_or_else(|| {
+                    make_ident(format_args!("_field{index}"), Span::call_site())
+                });
+                ident = Some(id.clone());
+                Member::Named(id)
+            }
+            StructStyle::Tuple(_, _) => Member::Unnamed(syn::Index {
+                index: index as u32,
+                span: Span::call_site(),
+            }),
+            _ => unreachable!(),
         };
 
         let is_widget = field
@@ -99,15 +110,15 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
         };
 
         if let Some(ref value) = field.value {
-            field_val_toks.append_all(quote! { #ident: #value, });
+            field_val_toks.append_all(quote! { #mem: #value, });
         } else {
-            field_val_toks.append_all(quote! { #ident: Default::default(), });
+            field_val_toks.append_all(quote! { #mem: Default::default(), });
         }
 
         fields.push_value(Field {
             attrs: field.attrs,
             vis: field.vis,
-            ident: Some(ident),
+            ident,
             colon_token: field.colon_token.or_else(|| Some(Default::default())),
             ty,
             assign: None,
@@ -117,6 +128,24 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
         }
     }
 
+    let (fields, semi) = match args.style {
+        StructStyle::Unit(semi) => (Fields::Unit, Some(semi)),
+        StructStyle::Regular(brace_token) => (
+            Fields::Named(FieldsNamed {
+                brace_token,
+                fields,
+            }),
+            None,
+        ),
+        StructStyle::Tuple(paren_token, semi) => (
+            Fields::Unnamed(FieldsUnnamed {
+                paren_token,
+                fields,
+            }),
+            Some(semi),
+        ),
+    };
+
     let mut scope = Scope {
         attrs: args.attrs,
         vis: Visibility::Inherited,
@@ -124,12 +153,9 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
         generics: args.generics,
         item: ScopeItem::Struct {
             token: args.token,
-            fields: Fields::Named(FieldsNamed {
-                brace_token: args.brace_token,
-                fields,
-            }),
+            fields,
         },
-        semi: None,
+        semi,
         impls: args.impls,
         generated: vec![],
     };

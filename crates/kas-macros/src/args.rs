@@ -10,7 +10,7 @@ use quote::quote_spanned;
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::token::{Brace, Colon, Comma, Eq};
+use syn::token::{Brace, Colon, Comma, Eq, Paren, Semi};
 use syn::{braced, bracketed, parenthesized, parse_quote};
 use syn::{
     AttrStyle, Attribute, ConstParam, Expr, GenericParam, Generics, Ident, ItemImpl, Lifetime,
@@ -269,6 +269,13 @@ impl Parse for WidgetArgs {
 }
 
 #[derive(Debug)]
+pub enum StructStyle {
+    Unit(Semi),
+    Tuple(Paren, Semi),
+    Regular(Brace),
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub enum ChildType {
     Fixed(Type), // fixed type
     // A given type using generics internally
@@ -290,30 +297,55 @@ pub struct SingletonField {
 #[derive(Debug)]
 pub struct ImplSingleton {
     pub attrs: Vec<Attribute>,
-
     pub token: Token![struct],
     pub generics: Generics,
-
-    pub brace_token: Brace,
+    pub style: StructStyle,
     pub fields: Punctuated<SingletonField, Comma>,
-
     pub impls: Vec<ItemImpl>,
 }
 
 impl Parse for ImplSingleton {
     fn parse(input: ParseStream) -> Result<Self> {
         let attrs = input.call(Attribute::parse_outer)?;
-
         let token = input.parse::<Token![struct]>()?;
 
         let mut generics = input.parse::<Generics>()?;
-        if input.peek(Token![where]) {
+
+        let mut lookahead = input.lookahead1();
+        if lookahead.peek(Token![where]) {
             generics.where_clause = Some(input.parse()?);
+            lookahead = input.lookahead1();
         }
 
-        let content;
-        let brace_token = braced!(content in input);
-        let fields = content.parse_terminated(SingletonField::parse)?;
+        let style;
+        let fields;
+        if generics.where_clause.is_none() && lookahead.peek(Paren) {
+            let content;
+            let paren_token = parenthesized!(content in input);
+            fields = content.parse_terminated(SingletonField::parse_unnamed)?;
+
+            lookahead = input.lookahead1();
+            if lookahead.peek(Token![where]) {
+                generics.where_clause = Some(input.parse()?);
+                lookahead = input.lookahead1();
+            }
+
+            if lookahead.peek(Semi) {
+                style = StructStyle::Tuple(paren_token, input.parse()?);
+            } else {
+                return Err(lookahead.error());
+            }
+        } else if lookahead.peek(Brace) {
+            let content;
+            let brace_token = braced!(content in input);
+            style = StructStyle::Regular(brace_token);
+            fields = content.parse_terminated(SingletonField::parse_named)?;
+        } else if lookahead.peek(Semi) {
+            style = StructStyle::Unit(input.parse()?);
+            fields = Punctuated::new();
+        } else {
+            return Err(lookahead.error());
+        }
 
         let mut impls = Vec::new();
         while !input.is_empty() {
@@ -322,20 +354,78 @@ impl Parse for ImplSingleton {
 
         Ok(ImplSingleton {
             attrs,
-
             token,
             generics,
-
-            brace_token,
+            style,
             fields,
-
             impls,
         })
     }
 }
 
-impl Parse for SingletonField {
-    fn parse(input: ParseStream) -> Result<Self> {
+impl SingletonField {
+    fn parse_ty(input: ParseStream) -> Result<ChildType> {
+        if input.peek(Token![for]) {
+            // internal generic
+            let _: Token![for] = input.parse()?;
+
+            // copied from syn::Generic's Parse impl
+            let _: Token![<] = input.parse()?;
+
+            let mut params = Punctuated::new();
+            let mut allow_lifetime_param = true;
+            let mut allow_type_param = true;
+            loop {
+                if input.peek(Token![>]) {
+                    break;
+                }
+
+                let attrs = input.call(Attribute::parse_outer)?;
+                let lookahead = input.lookahead1();
+                if allow_lifetime_param && lookahead.peek(Lifetime) {
+                    params.push_value(GenericParam::Lifetime(LifetimeDef {
+                        attrs,
+                        ..input.parse()?
+                    }));
+                } else if allow_type_param && lookahead.peek(Ident) {
+                    allow_lifetime_param = false;
+                    params.push_value(GenericParam::Type(TypeParam {
+                        attrs,
+                        ..input.parse()?
+                    }));
+                } else if lookahead.peek(Token![const]) {
+                    allow_lifetime_param = false;
+                    allow_type_param = false;
+                    params.push_value(GenericParam::Const(ConstParam {
+                        attrs,
+                        ..input.parse()?
+                    }));
+                } else {
+                    return Err(lookahead.error());
+                }
+
+                if input.peek(Token![>]) {
+                    break;
+                }
+                let punct = input.parse()?;
+                params.push_punct(punct);
+            }
+
+            let _: Token![>] = input.parse()?;
+
+            let ty = input.parse()?;
+            Ok(ChildType::InternGeneric(params, ty))
+        } else if input.peek(Token![impl]) {
+            // generic with trait bound
+            let _: Token![impl] = input.parse()?;
+            let bound: TypeTraitObject = input.parse()?;
+            Ok(ChildType::Generic(Some(bound)))
+        } else {
+            Ok(ChildType::Fixed(input.parse()?))
+        }
+    }
+
+    fn parse_named(input: ParseStream) -> Result<Self> {
         let attrs = input.call(Attribute::parse_outer)?;
         let vis = input.parse()?;
 
@@ -351,64 +441,7 @@ impl Parse for SingletonField {
         // Note: Colon matches `::` but that results in confusing error messages
         let ty = if input.peek(Colon) && !input.peek2(Colon) {
             colon_token = Some(input.parse()?);
-            if input.peek(Token![for]) {
-                // internal generic
-                let _: Token![for] = input.parse()?;
-
-                // copied from syn::Generic's Parse impl
-                let _: Token![<] = input.parse()?;
-
-                let mut params = Punctuated::new();
-                let mut allow_lifetime_param = true;
-                let mut allow_type_param = true;
-                loop {
-                    if input.peek(Token![>]) {
-                        break;
-                    }
-
-                    let attrs = input.call(Attribute::parse_outer)?;
-                    let lookahead = input.lookahead1();
-                    if allow_lifetime_param && lookahead.peek(Lifetime) {
-                        params.push_value(GenericParam::Lifetime(LifetimeDef {
-                            attrs,
-                            ..input.parse()?
-                        }));
-                    } else if allow_type_param && lookahead.peek(Ident) {
-                        allow_lifetime_param = false;
-                        params.push_value(GenericParam::Type(TypeParam {
-                            attrs,
-                            ..input.parse()?
-                        }));
-                    } else if lookahead.peek(Token![const]) {
-                        allow_lifetime_param = false;
-                        allow_type_param = false;
-                        params.push_value(GenericParam::Const(ConstParam {
-                            attrs,
-                            ..input.parse()?
-                        }));
-                    } else {
-                        return Err(lookahead.error());
-                    }
-
-                    if input.peek(Token![>]) {
-                        break;
-                    }
-                    let punct = input.parse()?;
-                    params.push_punct(punct);
-                }
-
-                let _: Token![>] = input.parse()?;
-
-                let ty = input.parse()?;
-                ChildType::InternGeneric(params, ty)
-            } else if input.peek(Token![impl]) {
-                // generic with trait bound
-                let _: Token![impl] = input.parse()?;
-                let bound: TypeTraitObject = input.parse()?;
-                ChildType::Generic(Some(bound))
-            } else {
-                ChildType::Fixed(input.parse()?)
-            }
+            Self::parse_ty(input)?
         } else {
             ChildType::Generic(None)
         };
@@ -428,6 +461,35 @@ impl Parse for SingletonField {
             vis,
             ident,
             colon_token,
+            ty,
+            value,
+        })
+    }
+
+    fn parse_unnamed(input: ParseStream) -> Result<Self> {
+        let attrs = input.call(Attribute::parse_outer)?;
+        let vis = input.parse()?;
+
+        let mut ty = Self::parse_ty(input)?;
+        if ty == ChildType::Fixed(parse_quote! { _ }) {
+            ty = ChildType::Generic(None);
+        }
+
+        let mut value = None;
+        if let Ok(_) = input.parse::<Eq>() {
+            value = Some(input.parse()?);
+        } else if !matches!(&ty, ChildType::Fixed(_)) {
+            return Err(Error::new(
+                input.span(),
+                "require either a fixed type or a value assignment",
+            ));
+        }
+
+        Ok(SingletonField {
+            attrs,
+            vis,
+            ident: None,
+            colon_token: None,
             ty,
             value,
         })

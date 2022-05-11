@@ -361,12 +361,10 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 /// fn main() {
 ///     let world = "world";
 ///     let says_hello_world = impl_singleton! {
-///         struct {
-///             name: impl fmt::Display = world,
-///         }
+///         struct(impl fmt::Display = world);
 ///         impl fmt::Display for Self {
 ///             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-///                 write!(f, "hello {}", self.name)
+///                 write!(f, "hello {}", self.0)
 ///             }
 ///         }
 ///     };
@@ -374,21 +372,29 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 /// }
 /// ```
 ///
-/// That is, this macro creates an anonymous struct type (currently only
-/// standard structs are supported), which may have trait implementations, then
-/// creates an instance of that struct.
+/// That is, this macro creates an anonymous struct type (must be a struct),
+/// which may have trait implementations, then creates an instance of that
+/// struct.
 ///
-/// Struct fields may appear as follows:
+/// Struct fields may have a fixed type or may be generic. Syntax is as follows:
 ///
-/// -   `ident: ty = value`
-/// -   `ident: ty` — uses `Default` to construct value
-/// -   `_: ty = value` — field name may be anonymous
-/// -   `ident = value` — uses a type parameter instead of a defined type
-/// -   `ident: impl Trait = value` — uses a type parameter with trait bound(s)
-/// -   `ident: for<'a, T> std::borrow::Cow<'a, T> = value` — use explicit generic parameters
+/// -   **regular struct:** `ident: ty = value`
+/// -   **regular struct:** `ident: ty` — uses `Default` to construct value
+/// -   **regular struct:** `ident = value` — type is generic without bounds
+/// -   **tuple struct:** `ty = value`
+/// -   **tuple struct:** `ty`
+/// -   **tuple struct:** `_ = value`
+///
+/// The `ident` may be `_` (anonymous field).
+///
+/// The `ty` expression may be replaced with one of the following:
+///
+/// -   `impl Trait` (or `impl A + B + C`) — type is generic with given bounds
+/// -   `for<'a, T> std::borrow::Cow<'a, T>` — a generic with locally declared
+///     type parameters (note: parameter names are made unique)
 ///
 /// As a special rule, any field using the `#[widget]` attribute and without a
-/// fixed type is bound by the `::kas::Widget` trait.
+/// fixed type has the `::kas::Widget` trait bound applied.
 ///
 /// Refer to [examples](https://github.com/search?q=impl_singleton+repo%3Akas-gui%2Fkas+path%3Aexamples&type=Code) for usage.
 #[proc_macro_error]
