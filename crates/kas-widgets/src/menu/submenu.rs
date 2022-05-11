@@ -126,6 +126,10 @@ impl_scope! {
     }
 
     impl kas::Layout for Self {
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            self.rect().contains(coord).then(|| self.id())
+        }
+
         fn draw(&mut self, mut draw: DrawMgr) {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.label.draw(draw.re_id(self.id()));
