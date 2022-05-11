@@ -278,7 +278,7 @@ pub enum ChildType {
 }
 
 #[derive(Debug)]
-pub struct WidgetField {
+pub struct SingletonField {
     pub attrs: Vec<Attribute>,
     pub vis: Visibility,
     pub ident: Option<Ident>,
@@ -288,19 +288,19 @@ pub struct WidgetField {
 }
 
 #[derive(Debug)]
-pub struct MakeWidget {
+pub struct ImplSingleton {
     pub attrs: Vec<Attribute>,
 
     pub token: Token![struct],
     pub generics: Generics,
 
     pub brace_token: Brace,
-    pub fields: Punctuated<WidgetField, Comma>,
+    pub fields: Punctuated<SingletonField, Comma>,
 
     pub impls: Vec<ItemImpl>,
 }
 
-impl Parse for MakeWidget {
+impl Parse for ImplSingleton {
     fn parse(input: ParseStream) -> Result<Self> {
         let attrs = input.call(Attribute::parse_outer)?;
 
@@ -313,14 +313,14 @@ impl Parse for MakeWidget {
 
         let content;
         let brace_token = braced!(content in input);
-        let fields = content.parse_terminated(WidgetField::parse)?;
+        let fields = content.parse_terminated(SingletonField::parse)?;
 
         let mut impls = Vec::new();
         while !input.is_empty() {
             impls.push(parse_impl(None, input)?);
         }
 
-        Ok(MakeWidget {
+        Ok(ImplSingleton {
             attrs,
 
             token,
@@ -334,7 +334,7 @@ impl Parse for MakeWidget {
     }
 }
 
-impl Parse for WidgetField {
+impl Parse for SingletonField {
     fn parse(input: ParseStream) -> Result<Self> {
         let attrs = input.call(Attribute::parse_outer)?;
         let vis = input.parse()?;
@@ -423,7 +423,7 @@ impl Parse for WidgetField {
             ));
         }
 
-        Ok(WidgetField {
+        Ok(SingletonField {
             attrs,
             vis,
             ident,

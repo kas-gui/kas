@@ -7,7 +7,7 @@
 
 use kas::class::HasStr;
 use kas::event::EventMgr;
-use kas::macros::make_widget;
+use kas::macros::impl_singleton;
 use kas::text::format::Markdown;
 use kas::widgets::{EditBox, EditField, EditGuard, Label, ScrollBarRegion, Window};
 use kas::Widget;
@@ -55,7 +55,7 @@ It also supports lists:
 
     let window = Window::new(
         "Markdown parser",
-        make_widget! {
+        impl_singleton! {
             #[widget{
                 layout = row: [self.editor, self.label];
             }]

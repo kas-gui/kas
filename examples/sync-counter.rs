@@ -6,7 +6,7 @@
 //! A counter synchronised between multiple windows
 
 use kas::event::EventMgr;
-use kas::macros::make_widget;
+use kas::macros::impl_singleton;
 use kas::updatable::SharedRc;
 use kas::widgets::view::SingleView;
 use kas::widgets::{TextButton, Window};
@@ -20,7 +20,7 @@ fn main() -> kas::shell::Result<()> {
 
     let window = Window::new(
         "Counter",
-        make_widget! {
+        impl_singleton! {
             #[derive(Clone)]
             #[widget{
                 layout = column: [

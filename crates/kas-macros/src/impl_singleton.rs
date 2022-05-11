@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::args::{ChildType, MakeWidget};
+use crate::args::{ChildType, ImplSingleton};
 use impl_tools_lib::{
     fields::{Field, Fields, FieldsNamed},
     Scope, ScopeItem,
@@ -18,7 +18,7 @@ use syn::token::Comma;
 use syn::{visit_mut, ConstParam, GenericParam, Lifetime, LifetimeDef, TypeParam};
 use syn::{Ident, Result, Type, TypePath, Visibility};
 
-pub(crate) fn make_widget(mut args: MakeWidget) -> Result<TokenStream> {
+pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
     // Used to make fresh identifiers for generic types
     let mut name_buf = String::with_capacity(32);
     let mut make_ident = move |args: std::fmt::Arguments, span| -> Ident {

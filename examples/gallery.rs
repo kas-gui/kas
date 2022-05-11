@@ -171,7 +171,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[derive(Clone, Debug)]
     struct MsgEdit;
 
-    let popup_edit_box = make_widget! {
+    let popup_edit_box = impl_singleton! {
         #[widget{
             layout = row: [
                 self.label,
@@ -226,7 +226,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 טקסט לדוגמא במספר שפות.";
 
     let radio = RadioBoxGroup::default();
-    let widgets = make_widget! {
+    let widgets = impl_singleton! {
         #[widget{
             layout = aligned_column: [
                 row: ["ScrollLabel", self.sl],
@@ -298,7 +298,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let window = Window::new(
         "Widget Gallery",
-        make_widget! {
+        impl_singleton! {
             #[widget{
                 layout = column: [
                     self.menubar,

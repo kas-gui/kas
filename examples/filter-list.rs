@@ -38,7 +38,7 @@ fn main() -> kas::shell::Result<()> {
     type ListView = view::ListView<Down, FilteredList, driver::DefaultNav>;
     let filtered = FilteredList::new(data, filter.clone());
 
-    let widget = make_widget! {
+    let widget = impl_singleton! {
         #[widget{
             layout = column: [
                 row: ["Selection:", self.r0, self.r1, self.r2],

@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use kas::class::HasString;
 use kas::event::{Event, EventMgr, Response};
 use kas::layout::SetRectMgr;
-use kas::macros::make_widget;
+use kas::macros::impl_singleton;
 use kas::widgets::{Frame, Label, TextButton, Window};
 use kas::{Widget, WidgetCore, WidgetExt};
 
@@ -23,7 +23,7 @@ struct MsgStart;
 // There's no reason for this, but it demonstrates usage of Toolkit::add_boxed
 fn make_window() -> Box<dyn kas::Window> {
     // Construct a row widget, with state and children
-    let stopwatch = make_widget! {
+    let stopwatch = impl_singleton! {
         #[widget{
             layout = row: [
                 self.display,

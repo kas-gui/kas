@@ -6,7 +6,7 @@
 //! Counter example (simple button)
 
 use kas::event::EventMgr;
-use kas::macros::make_widget;
+use kas::macros::impl_singleton;
 use kas::widgets::{EditField, RowSplitter, TextButton, Window};
 use kas::Widget;
 
@@ -24,7 +24,7 @@ fn main() -> kas::shell::Result<()> {
 
     let window = Window::new(
         "Slitter panes",
-        make_widget! {
+        impl_singleton! {
             // TODO: use vertical splitter
             #[widget{
                 layout = column: [

@@ -22,8 +22,8 @@ use syn::parse_macro_input;
 
 mod args;
 mod class_traits;
+mod impl_singleton;
 mod make_layout;
-mod make_widget;
 mod storage;
 mod widget;
 mod widget_index;
@@ -354,26 +354,48 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 /// Rust doesn't currently support [`impl Trait { ... }` expressions](https://github.com/canndrew/rfcs/blob/impl-trait-expressions/text/0000-impl-trait-expressions.md)
 /// or implicit typing of struct fields. This macro is a **hack** allowing that.
 ///
-/// Implicit typing is emulated using type parameters plus "smart" bounds. These
-/// don't always work and can result in terrible error messages. Another result
-/// is that fields cannot be accessed outside the type definition except
-/// through their type or a trait bound.
+/// Example:
+/// ```
+/// use std::fmt;
+/// use kas_macros::impl_singleton;
+/// fn main() {
+///     let world = "world";
+///     let says_hello_world = impl_singleton! {
+///         struct {
+///             name: impl fmt::Display = world,
+///         }
+///         impl fmt::Display for Self {
+///             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+///                 write!(f, "hello {}", self.name)
+///             }
+///         }
+///     };
+///     assert_eq!(format!("{}", says_hello_world), "hello world");
+/// }
+/// ```
 ///
-/// Syntax is similar to using [`widget`](macro@widget) within [`impl_scope!`], except that:
+/// That is, this macro creates an anonymous struct type (currently only
+/// standard structs are supported), which may have trait implementations, then
+/// creates an instance of that struct.
 ///
-/// -   fields may have an initializer, e.g. `ident: ty = value,` (otherwise they must implement `Default`)
-/// -   the type of fields is optional: `ident = value,` works (but see note above)
-/// -   the name of fields is optional: `_: ty = value,` and `_ = value,` are valid
-/// -   instead of a type, a type bound may be used: `ident: impl Trait = value,`
-/// -   type generics may be used:
-///     `#[widget] display: for<W: Widget> Frame<W> = value,`
+/// Struct fields may appear as follows:
 ///
-/// Refer to [examples](https://github.com/search?q=make_widget+repo%3Akas-gui%2Fkas+path%3Aexamples&type=Code) for usage.
+/// -   `ident: ty = value`
+/// -   `ident: ty` — uses `Default` to construct value
+/// -   `_: ty = value` — field name may be anonymous
+/// -   `ident = value` — uses a type parameter instead of a defined type
+/// -   `ident: impl Trait = value` — uses a type parameter with trait bound(s)
+/// -   `ident: for<'a, T> std::borrow::Cow<'a, T> = value` — use explicit generic parameters
+///
+/// As a special rule, any field using the `#[widget]` attribute and without a
+/// fixed type is bound by the `::kas::Widget` trait.
+///
+/// Refer to [examples](https://github.com/search?q=impl_singleton+repo%3Akas-gui%2Fkas+path%3Aexamples&type=Code) for usage.
 #[proc_macro_error]
 #[proc_macro]
-pub fn make_widget(input: TokenStream) -> TokenStream {
-    let args = parse_macro_input!(input as args::MakeWidget);
-    make_widget::make_widget(args)
+pub fn impl_singleton(input: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(input as args::ImplSingleton);
+    impl_singleton::impl_singleton(args)
         .unwrap_or_else(|err| err.to_compile_error())
         .into()
 }

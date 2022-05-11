@@ -100,7 +100,7 @@ impl ListEntry {
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let controls = make_widget! {
+    let controls = impl_singleton! {
         #[widget{
             layout = row: [
                 "Number of rows:",
@@ -153,7 +153,7 @@ fn main() -> kas::shell::Result<()> {
 
     let window = Window::new(
         "Dynamic widget demo",
-        make_widget! {
+        impl_singleton! {
             #[widget{
                 layout = column: [
                     "Demonstration of dynamic widget creation / deletion",
