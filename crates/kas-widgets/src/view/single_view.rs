@@ -33,7 +33,7 @@ impl_scope! {
     }]
     pub struct SingleView<
         T: SingleData + 'static,
-        V: Driver<T::Item> = driver::Default,
+        V: Driver<T::Item> = driver::DefaultView,
     > {
         core: widget_core!(),
         view: V,

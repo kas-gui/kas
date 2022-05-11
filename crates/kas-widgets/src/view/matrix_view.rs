@@ -58,7 +58,7 @@ impl_scope! {
     #[widget]
     pub struct MatrixView<
         T: MatrixData + 'static,
-        V: Driver<T::Item> = driver::Default,
+        V: Driver<T::Item> = driver::DefaultView,
     > {
         core: widget_core!(),
         frame_offset: Offset,

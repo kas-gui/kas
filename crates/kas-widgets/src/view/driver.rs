@@ -6,13 +6,14 @@
 //! View drivers
 //!
 //! Intended usage is to import the module name rather than its contents, thus
-//! allowing referal to e.g. `driver::Default`.
+//! allowing referal to e.g. `driver::DefaultView`.
 
 use crate::{
     CheckBoxBare, EditBox, EditField, EditGuard, Label, NavFrame, ProgressBar, RadioBoxGroup,
     SliderType,
 };
 use kas::prelude::*;
+use std::default::Default;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
@@ -27,7 +28,7 @@ use std::marker::PhantomData;
 ///
 /// Several existing implementations are available, most notably:
 ///
-/// -   [`Default`](struct@Default) will choose a sensible widget to view the data
+/// -   [`DefaultView`] will choose a sensible widget to view the data
 /// -   [`DefaultNav`] will choose a sensible widget to view the data
 pub trait Driver<T>: Debug {
     /// Type of the widget used to view data
@@ -52,7 +53,7 @@ pub trait Driver<T>: Debug {
 /// -   [`crate::Label`] for `String`, `&str`, integer and float types
 /// -   [`crate::CheckBoxBare`] (disabled) for the bool type
 #[derive(Clone, Debug, Default)]
-pub struct Default;
+pub struct DefaultView;
 
 /// Default view widget constructor supporting keyboard navigation
 ///
@@ -67,9 +68,9 @@ pub struct DefaultNav;
 
 macro_rules! impl_via_to_string {
     ($t:ty) => {
-        impl Driver<$t> for Default {
+        impl Driver<$t> for DefaultView {
             type Widget = Label<String>;
-            fn make(&self) -> Self::Widget where $t: std::default::Default {
+            fn make(&self) -> Self::Widget {
                 Label::new("".to_string())
             }
             fn set(&self, widget: &mut Self::Widget, data: $t) -> TkAction {
@@ -78,7 +79,7 @@ macro_rules! impl_via_to_string {
         }
         impl Driver<$t> for DefaultNav {
             type Widget = NavFrame<Label<String>>;
-            fn make(&self) -> Self::Widget where $t: std::default::Default {
+            fn make(&self) -> Self::Widget {
                 NavFrame::new(Label::new("".to_string()))
             }
             fn set(&self, widget: &mut Self::Widget, data: $t) -> TkAction {
@@ -96,7 +97,7 @@ impl_via_to_string!(i8, i16, i32, i64, i128, isize);
 impl_via_to_string!(u8, u16, u32, u64, u128, usize);
 impl_via_to_string!(f32, f64);
 
-impl Driver<bool> for Default {
+impl Driver<bool> for DefaultView {
     type Widget = CheckBoxBare;
     fn make(&self) -> Self::Widget {
         CheckBoxBare::new().with_editable(false)
@@ -124,7 +125,7 @@ impl Driver<bool> for DefaultNav {
 pub struct Widget<W: kas::Widget> {
     _pd: PhantomData<W>,
 }
-impl<W: kas::Widget> std::default::Default for Widget<W> {
+impl<W: kas::Widget> Default for Widget<W> {
     fn default() -> Self {
         Widget {
             _pd: PhantomData::default(),
@@ -132,20 +133,20 @@ impl<W: kas::Widget> std::default::Default for Widget<W> {
     }
 }
 
-impl<T> Driver<T> for Widget<<Default as Driver<T>>::Widget>
+impl<T> Driver<T> for Widget<<DefaultView as Driver<T>>::Widget>
 where
-    Default: Driver<T>,
+    DefaultView: Driver<T>,
 {
-    type Widget = <Default as Driver<T>>::Widget;
+    type Widget = <DefaultView as Driver<T>>::Widget;
     fn make(&self) -> Self::Widget {
-        Default.make()
+        DefaultView.make()
     }
     fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction {
-        Default.set(widget, data)
+        DefaultView.set(widget, data)
     }
 }
 
-impl<G: EditGuard + std::default::Default> Driver<String> for Widget<EditField<G>> {
+impl<G: EditGuard + Default> Driver<String> for Widget<EditField<G>> {
     type Widget = EditField<G>;
     fn make(&self) -> Self::Widget {
         let guard = G::default();
@@ -155,7 +156,7 @@ impl<G: EditGuard + std::default::Default> Driver<String> for Widget<EditField<G
         widget.set_string(data)
     }
 }
-impl<G: EditGuard + std::default::Default> Driver<String> for Widget<EditBox<G>> {
+impl<G: EditGuard + Default> Driver<String> for Widget<EditBox<G>> {
     type Widget = EditBox<G>;
     fn make(&self) -> Self::Widget {
         let guard = G::default();
@@ -166,7 +167,7 @@ impl<G: EditGuard + std::default::Default> Driver<String> for Widget<EditBox<G>>
     }
 }
 
-impl<D: Directional + std::default::Default> Driver<f32> for Widget<ProgressBar<D>> {
+impl<D: Directional + Default> Driver<f32> for Widget<ProgressBar<D>> {
     type Widget = ProgressBar<D>;
     fn make(&self) -> Self::Widget {
         ProgressBar::new()
@@ -251,7 +252,7 @@ pub struct Slider<T: SliderType, D: Directional> {
     step: T,
     direction: D,
 }
-impl<T: SliderType, D: Directional + std::default::Default> Slider<T, D> {
+impl<T: SliderType, D: Directional + Default> Slider<T, D> {
     /// Construct, with given `min`, `max` and `step` (see [`crate::Slider::new`])
     pub fn make(min: T, max: T, step: T) -> Self {
         Slider {
