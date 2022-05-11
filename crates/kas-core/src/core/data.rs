@@ -8,10 +8,9 @@
 #[allow(unused)]
 use super::Layout;
 use super::{Widget, WidgetId};
+use crate::dir::Direction;
 use crate::event::EventMgr;
 use crate::geom::Rect;
-use crate::layout::SetRectMgr;
-use crate::{dir::Direction, WindowId};
 
 #[cfg(feature = "winit")]
 pub use winit::window::Icon;
@@ -102,22 +101,6 @@ pub trait Window: Widget {
     /// `(true, true)` for simple dialog boxes and `(true, false)` for complex
     /// windows.
     fn restrict_dimensions(&self) -> (bool, bool);
-
-    /// Add a pop-up as a layer in the current window
-    ///
-    /// Each [`Popup`] is assigned a [`WindowId`]; both are passed.
-    fn add_popup(&mut self, mgr: &mut EventMgr, id: WindowId, popup: Popup);
-
-    /// Resize popups
-    ///
-    /// This is called immediately after [`Layout::set_rect`] to resize
-    /// existing pop-ups.
-    fn resize_popups(&mut self, mgr: &mut SetRectMgr);
-
-    /// Trigger closure of a pop-up
-    ///
-    /// If the given `id` refers to a pop-up, it should be closed.
-    fn remove_popup(&mut self, mgr: &mut EventMgr, id: WindowId);
 
     /// Handle closure of self
     ///

@@ -12,7 +12,7 @@ use crate::{Label, TextButton};
 use kas::event::VirtualKeyCode;
 use kas::prelude::*;
 use kas::text::format::FormattableText;
-use kas::{Widget, Window, WindowId};
+use kas::{Widget, Window};
 
 #[derive(Copy, Clone, Debug)]
 struct MessageBoxOk;
@@ -71,13 +71,5 @@ impl_scope! {
         fn restrict_dimensions(&self) -> (bool, bool) {
             (true, true)
         }
-
-        // do not support overlays (yet?)
-        fn add_popup(&mut self, _: &mut EventMgr, _: WindowId, _: kas::Popup) {
-            panic!("MessageBox does not (currently) support pop-ups");
-        }
-
-        fn remove_popup(&mut self, _: &mut EventMgr, _: WindowId) {}
-        fn resize_popups(&mut self, _: &mut SetRectMgr) {}
     }
 }

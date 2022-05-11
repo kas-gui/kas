@@ -22,6 +22,7 @@ pub extern crate kas_macros as macros;
 // internal modules:
 mod core;
 mod future;
+mod root;
 mod toolkit;
 
 // public implementations:
@@ -44,3 +45,4 @@ pub mod util;
 pub use crate::core::*;
 pub use crate::future::*;
 pub use crate::toolkit::*;
+pub use root::RootWidget;
