@@ -19,7 +19,10 @@ impl_scope! {
     /// A bare radiobox (no label)
     #[autoimpl(Debug ignore self.on_select)]
     #[derive(Clone)]
-    #[widget]
+    #[widget {
+        key_nav = true;
+        hover_highlight = true;
+    }]
     pub struct RadioBoxBare {
         core: widget_core!(),
         state: bool,
@@ -30,13 +33,6 @@ impl_scope! {
     impl Widget for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             self.group.update_on_handles(mgr.ev_state(), self.id_ref());
-        }
-
-        fn key_nav(&self) -> bool {
-            true
-        }
-        fn hover_highlight(&self) -> bool {
-            true
         }
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {

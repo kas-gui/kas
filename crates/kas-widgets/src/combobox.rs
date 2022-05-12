@@ -31,6 +31,8 @@ impl_scope! {
     #[derive(Clone)]
     #[widget {
         layout = button 'frame: row: [self.label, self.mark];
+        key_nav = true;
+        hover_highlight = true;
     }]
     pub struct ComboBox<M: Clone + Debug + 'static> {
         core: widget_core!(),
@@ -50,14 +52,6 @@ impl_scope! {
         fn pre_configure(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
             self.core.id = id;
             mgr.new_accel_layer(self.id(), true);
-        }
-
-        fn key_nav(&self) -> bool {
-            true
-        }
-
-        fn hover_highlight(&self) -> bool {
-            true
         }
 
         fn spatial_nav(&mut self, _: &mut SetRectMgr, _: bool, _: Option<usize>) -> Option<usize> {
