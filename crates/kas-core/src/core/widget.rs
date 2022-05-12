@@ -280,35 +280,100 @@ pub trait Layout {
 ///     otherwise some (default) method implementations are injected where
 ///     these methods are not directly implemented.
 ///
-/// A simple example follows. See also
+/// Some simple examples follow. See also
 /// [examples apps](https://github.com/kas-gui/kas/tree/master/examples)
 /// and [`kas_widgets`](https://docs.rs/kas-widgets/latest/kas_widgets/) code.
 /// ```
 /// # extern crate kas_core as kas;
-/// # use kas_macros::{autoimpl, impl_scope};
-/// use kas::{Widget, theme::FrameStyle};
+/// use kas::prelude::*;
+/// use kas::event;
+/// use kas::theme::TextClass;
+/// use std::fmt::Debug;
+///
 /// impl_scope! {
-///     /// A frame around content
-///     #[autoimpl(Deref, DerefMut using self.inner)]
-///     #[autoimpl(class_traits using self.inner where W: trait)]
-///     #[derive(Clone, Debug, Default)]
-///     #[widget{
-///         layout = frame(FrameStyle::Frame): self.inner;
-///     }]
-///     pub struct Frame<W: Widget> {
+///     /// A text label
+///     #[derive(Clone, Debug)]
+///     #[widget]
+///     pub struct AccelLabel {
 ///         core: widget_core!(),
-///         #[widget]
-///         pub inner: W,
+///         class: TextClass,
+///         label: Text<AccelString>,
 ///     }
 ///
 ///     impl Self {
-///         /// Construct a frame
-///         #[inline]
-///         pub fn new(inner: W) -> Self {
-///             Frame {
+///         /// Construct from `label`
+///         pub fn new(label: impl Into<AccelString>) -> Self {
+///             AccelLabel {
 ///                 core: Default::default(),
-///                 inner,
+///                 class: TextClass::AccelLabel(true),
+///                 label: Text::new_multi(label.into()),
 ///             }
+///         }
+///
+///         /// Set text class (inline)
+///         pub fn with_class(mut self, class: TextClass) -> Self {
+///             self.class = class;
+///             self
+///         }
+///
+///         /// Get the accelerator keys
+///         pub fn keys(&self) -> &[event::VirtualKeyCode] {
+///             self.label.text().keys()
+///         }
+///     }
+///
+///     impl Layout for Self {
+///         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+///             size_mgr.text_bound(&mut self.label, self.class, axis)
+///         }
+///
+///         fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+///             self.core.rect = rect;
+///             let align = align.unwrap_or(Align::Default, Align::Center);
+///             mgr.text_set_size(&mut self.label, self.class, rect.size, align);
+///         }
+///
+///         fn draw(&mut self, mut draw: DrawMgr) {
+///             draw.text_effects(self.rect().pos, &self.label, self.class);
+///         }
+///     }
+/// }
+///
+/// impl_scope! {
+///     /// A push-button with a text label
+///     #[derive(Debug)]
+///     #[widget {
+///         layout = button: self.label;
+///         key_nav = true;
+///         hover_highlight = true;
+///     }]
+///     pub struct TextButton<M: Clone + Debug + 'static> {
+///         core: widget_core!(),
+///         #[widget]
+///         label: AccelLabel,
+///         message: M,
+///     }
+///
+///     impl Self {
+///         /// Construct a button with given `label`
+///         pub fn new(label: impl Into<AccelString>, message: M) -> Self {
+///             TextButton {
+///                 core: Default::default(),
+///                 label: AccelLabel::new(label).with_class(TextClass::Button),
+///                 message,
+///             }
+///         }
+///     }
+///     impl Widget for Self {
+///         fn configure(&mut self, mgr: &mut SetRectMgr) {
+///             mgr.add_accel_keys(self.id_ref(), self.label.keys());
+///         }
+///
+///         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+///             event.on_activate(mgr, self.id(), |mgr| {
+///                 mgr.push_msg(self.message.clone());
+///                 Response::Used
+///             })
 ///         }
 ///     }
 /// }
