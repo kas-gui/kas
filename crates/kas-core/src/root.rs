@@ -81,7 +81,7 @@ impl RootWidget {
 
     /// Add a pop-up as a layer in the current window
     ///
-    /// Each [`Popup`] is assigned a [`WindowId`]; both are passed.
+    /// Each [`crate::Popup`] is assigned a [`WindowId`]; both are passed.
     pub fn add_popup(&mut self, mgr: &mut EventMgr, id: WindowId, popup: kas::Popup) {
         let index = self.popups.len();
         self.popups.push((id, popup));

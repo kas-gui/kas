@@ -5,9 +5,9 @@
 
 //! KAS widget library
 //!
-//! ## Dialogs
+//! ## Dialogs / pre-made windows
 //!
-//! -   [`MessageBox`]: a simple window with a message and an "Ok" button
+//! See [`dialog`] module.
 //!
 //! ## Container widgets
 //!
@@ -16,8 +16,6 @@
 //! -   [`Stack`]: a stack of widgets in the same rect (TODO: `TabbedStack`)
 //! -   [`List`]: a dynamic row / column of children
 //! -   [`Splitter`]: similar to [`List`] but with resizing handles
-//! -   [`Window`] is usually the root widget and has special handling for
-//!     pop-ups and callbacks
 //!
 //! ## Menus
 //!

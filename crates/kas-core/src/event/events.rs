@@ -257,7 +257,7 @@ impl Event {
             Event::Activate => f(mgr),
             Event::Command(cmd, _) if cmd.is_activate() => f(mgr),
             Event::PressStart { source, coord, .. } if source.is_primary() => {
-                mgr.grab_press(id.clone(), source, coord, GrabMode::Grab, None);
+                mgr.grab_press(id, source, coord, GrabMode::Grab, None);
                 Response::Used
             }
             Event::PressMove { source, cur_id, .. } => {
