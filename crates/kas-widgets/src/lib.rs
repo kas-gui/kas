@@ -79,6 +79,7 @@ mod scroll_label;
 mod scrollbar;
 mod separator;
 mod slider;
+mod spinner;
 mod splitter;
 mod stack;
 
@@ -105,5 +106,6 @@ pub use scroll_label::ScrollLabel;
 pub use scrollbar::{ScrollBar, ScrollBarRegion, ScrollBars, Scrollable};
 pub use separator::Separator;
 pub use slider::{Slider, SliderType};
+pub use spinner::Spinner;
 pub use splitter::*;
 pub use stack::{BoxStack, RefStack, Stack};

@@ -159,6 +159,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 row: ["RadioBox", self.rb],
                 row: ["RadioBox", self.rb2],
                 row: ["ComboBox", self.cbb],
+                row: ["Spinner", self.spin],
                 row: ["Slider", self.sd],
                 row: ["ScrollBar", self.sc],
                 row: ["ProgressBar", self.pg],
@@ -193,6 +194,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 MenuEntry::new("T&wo", Item::Combo(2)),
                 MenuEntry::new("Th&ree", Item::Combo(3)),
             ]),
+            #[widget] spin = Spinner::new(0),
             #[widget] sd = Slider::<i32, Right>::new(0, 10, 1)
                 .with_value(0)
                 .map_msg(|msg: i32| Item::Slider(msg)),
