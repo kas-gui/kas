@@ -45,7 +45,7 @@ impl_scope! {
             let class = TextClass::LabelScroll;
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
                 if self.selection.is_empty() {
-                    draw.text(self.rect().pos, self.text.as_ref(), class);
+                    draw.text(self.rect().pos, &self.text, class);
                 } else {
                     // TODO(opt): we could cache the selection rectangles here to make
                     // drawing more efficient (self.text.highlight_lines(range) output).

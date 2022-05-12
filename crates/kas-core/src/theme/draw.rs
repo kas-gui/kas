@@ -191,8 +191,8 @@ impl<'a> DrawMgr<'a> {
     ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass) {
-        self.h.text(&self.id, pos, text, class);
+    pub fn text(&mut self, pos: Coord, text: impl AsRef<TextDisplay>, class: TextClass) {
+        self.h.text(&self.id, pos, text.as_ref(), class);
     }
 
     /// Draw text with effects
@@ -212,10 +212,10 @@ impl<'a> DrawMgr<'a> {
     /// Other than visually highlighting the selection, this method behaves
     /// identically to [`Self::text`]. It is likely to be replaced in the
     /// future by a higher-level API.
-    pub fn text_selected<T: AsRef<TextDisplay>, R: RangeBounds<usize>>(
+    pub fn text_selected<R: RangeBounds<usize>>(
         &mut self,
         pos: Coord,
-        text: T,
+        text: impl AsRef<TextDisplay>,
         range: R,
         class: TextClass,
     ) {
@@ -238,8 +238,15 @@ impl<'a> DrawMgr<'a> {
     ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text_cursor(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
-        self.h.text_cursor(&self.id, pos, text, class, byte);
+    pub fn text_cursor(
+        &mut self,
+        pos: Coord,
+        text: impl AsRef<TextDisplay>,
+        class: TextClass,
+        byte: usize,
+    ) {
+        self.h
+            .text_cursor(&self.id, pos, text.as_ref(), class, byte);
     }
 
     /// Draw UI element: checkbox
@@ -264,13 +271,13 @@ impl<'a> DrawMgr<'a> {
     }
 
     /// Draw UI element: scrollbar
-    pub fn scrollbar(&mut self, track_rect: Rect, handle: &dyn Widget, dir: Direction) {
+    pub fn scrollbar<W: Widget>(&mut self, track_rect: Rect, handle: &W, dir: Direction) {
         self.h
             .scrollbar(&self.id, handle.id_ref(), track_rect, handle.rect(), dir);
     }
 
     /// Draw UI element: slider
-    pub fn slider(&mut self, track_rect: Rect, handle: &dyn Widget, dir: Direction) {
+    pub fn slider<W: Widget>(&mut self, track_rect: Rect, handle: &W, dir: Direction) {
         self.h
             .slider(&self.id, handle.id_ref(), track_rect, handle.rect(), dir);
     }
