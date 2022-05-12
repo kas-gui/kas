@@ -13,7 +13,6 @@ use std::time::{Duration, Instant};
 
 use kas::draw::color::Rgba;
 use kas::prelude::*;
-use kas::widgets::Window;
 
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
@@ -40,8 +39,7 @@ fn main() -> kas::shell::Result<()> {
         handle,
     };
 
-    let window = Window::new("Async event demo", widget);
-    toolkit.with(window)?.run()
+    toolkit.with(widget)?.run()
 }
 
 impl_scope! {
@@ -78,6 +76,9 @@ impl_scope! {
                 _ => Response::Unused,
             }
         }
+    }
+    impl Window for Self {
+        fn title(&self) -> &str { "Async event demo" }
     }
 }
 

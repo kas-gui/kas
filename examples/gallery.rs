@@ -8,12 +8,12 @@
 //! This is a test-bed to demonstrate most toolkit functionality
 //! (excepting custom graphics).
 
-use kas::event::Command;
+use kas::dir::Right;
 use kas::event::VirtualKeyCode as VK;
 use kas::prelude::*;
 use kas::resvg::Svg;
-use kas::widgets::{menu::MenuEntry, *};
-use kas::{dir::Right, Future};
+use kas::updatable::SharedRc;
+use kas::widgets::{menu::MenuEntry, view::SingleView, *};
 
 #[derive(Clone, Debug)]
 enum Item {
@@ -38,59 +38,6 @@ impl EditGuard for Guard {
     fn edit(edit: &mut EditField<Self>, _: &mut EventMgr) {
         // 7a is the colour of *magic*!
         edit.set_error_state(edit.get_str().len() % (7 + 1) == 0);
-    }
-}
-
-#[derive(Clone, Debug)]
-struct MsgClose(bool);
-
-impl_scope! {
-    #[derive(Debug)]
-    #[widget{
-        layout = grid: {
-            0..3, 0: self.edit;
-            0, 1: Filler::maximize();
-            1, 1: TextButton::new_msg("&Cancel", MsgClose(false));
-            2, 1: TextButton::new_msg("&Save", MsgClose(true));
-        };
-    }]
-    struct TextEditPopup {
-        core: widget_core!(),
-        #[widget]
-        edit: EditBox,
-        commit: bool,
-    }
-    impl TextEditPopup {
-        fn new<S: ToString>(text: S) -> Self {
-            TextEditPopup {
-                core: Default::default(),
-                edit: EditBox::new(text).multi_line(true),
-                commit: false,
-            }
-        }
-
-        fn close(&mut self, mgr: &mut EventMgr, commit: bool) -> Response {
-            self.commit = commit;
-            mgr.send_action(TkAction::CLOSE);
-            Response::Used
-        }
-    }
-    impl Widget for TextEditPopup {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            mgr.register_nav_fallback(self.id());
-        }
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
-            match event {
-                Event::Command(Command::Escape, _) => self.close(mgr, false),
-                Event::Command(Command::Return, _) => self.close(mgr, true),
-                _ => Response::Unused,
-            }
-        }
-        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-            if let Some(MsgClose(commit)) = mgr.try_pop_msg() {
-                let _ = self.close(mgr, commit);
-            }
-        }
     }
 }
 
@@ -181,40 +128,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         #[derive(Debug)]
         struct {
             core: widget_core!(),
-            #[widget] label: StringLabel = Label::from("Use button to edit →"),
-            future: Option<Future<Option<String>>>,
+            #[widget] label: SingleView<SharedRc<String>> =
+                SingleView::new(SharedRc::new("Use button to edit →".to_string())),
         }
         impl Widget for Self {
-            fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
-                match event {
-                    Event::HandleUpdate { .. } => {
-                        // There should be no other source of this event,
-                        // so we can assume our future is finished
-                        if let Some(future) = self.future.take() {
-                            let result = future.try_finish().unwrap();
-                            if let Some(text) = result {
-                                *mgr |= self.label.set_string(text);
-                            }
-                        }
-                        Response::Used
-                    }
-                    _ => Response::Unused,
-                }
-            }
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
                 if let Some(MsgEdit) = mgr.try_pop_msg() {
-                    if self.future.is_none() {
-                        let text = self.label.get_string();
-                        let mut window = Window::new("Edit text", TextEditPopup::new(text));
-                        let (future, update) = window.on_drop(|w: &mut TextEditPopup| if w.commit {
-                            Some(w.edit.get_string())
-                        } else {
-                            None
-                        });
-                        self.future = Some(future);
-                        mgr.update_on_handle(update, self.id());
-                        mgr.add_window(Box::new(window));
-                    }
+                    let text = self.label.data().clone();
+                    let window = dialog::TextEdit::new("Edit text", true, text);
+                    mgr.add_window(Box::new(window));
                 }
             }
         }
@@ -296,64 +218,66 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    let window = Window::new(
-        "Widget Gallery",
-        impl_singleton! {
-            #[widget{
-                layout = column: [
-                    self.menubar,
-                    frame: align(center): row: ["Widget Gallery", self.img_gallery],
-                    self.gallery,
-                ];
-            }]
-            #[derive(Debug)]
-            struct {
-                core: widget_core!(),
-                #[widget] menubar = menubar,
-                #[widget] img_gallery = img_gallery,
-                #[widget] gallery:
-                    for<W: Widget> ScrollBarRegion<W> =
-                        ScrollBarRegion::new(widgets),
-            }
-            impl Widget for Self {
-                fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-                    if let Some(msg) = mgr.try_pop_msg::<Menu>() {
-                        match msg {
-                            Menu::Theme(name) => {
-                                println!("Theme: {:?}", name);
-                                #[cfg(not(feature = "stack_dst"))]
-                                println!("Warning: switching themes requires feature 'stack_dst'");
+    let window = impl_singleton! {
+        #[widget{
+            layout = column: [
+                self.menubar,
+                frame: align(center): row: ["Widget Gallery", self.img_gallery],
+                self.gallery,
+            ];
+        }]
+        #[derive(Debug)]
+        struct {
+            core: widget_core!(),
+            #[widget] menubar = menubar,
+            #[widget] img_gallery = img_gallery,
+            #[widget] gallery:
+                for<W: Widget> ScrollBarRegion<W> =
+                    ScrollBarRegion::new(widgets),
+        }
+        impl Widget for Self {
+            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+                if let Some(msg) = mgr.try_pop_msg::<Menu>() {
+                    match msg {
+                        Menu::Theme(name) => {
+                            println!("Theme: {:?}", name);
+                            #[cfg(not(feature = "stack_dst"))]
+                            println!("Warning: switching themes requires feature 'stack_dst'");
 
-                                mgr.adjust_theme(|theme| theme.set_theme(name));
-                            }
-                            Menu::Colour(name) => {
-                                println!("Colour scheme: {:?}", name);
-                                mgr.adjust_theme(|theme| theme.set_scheme(&name));
-                            }
-                            Menu::Disabled(state) => {
-                                mgr.set_disabled(self.gallery.inner().id(), state);
-                            }
-                            Menu::Quit => {
-                                *mgr |= TkAction::EXIT;
-                            }
+                            mgr.adjust_theme(|theme| theme.set_theme(name));
                         }
-                    } else if let Some(item) = mgr.try_pop_msg::<Item>() {
-                        match item {
-                            Item::Button => println!("Clicked!"),
-                            Item::LightTheme => mgr.adjust_theme(|theme| theme.set_scheme("light")),
-                            Item::DarkTheme => mgr.adjust_theme(|theme| theme.set_scheme("dark")),
-                            Item::Check(b) => println!("CheckBox: {}", b),
-                            Item::Combo(c) => println!("ComboBox: {}", c),
-                            Item::Radio(id) => println!("RadioBox: {}", id),
-                            Item::Edit(s) => println!("Edited: {}", s),
-                            Item::Slider(p) => println!("Slider: {}", p),
-                            Item::Scroll(p) => println!("ScrollBar: {}", p),
+                        Menu::Colour(name) => {
+                            println!("Colour scheme: {:?}", name);
+                            mgr.adjust_theme(|theme| theme.set_scheme(&name));
                         }
+                        Menu::Disabled(state) => {
+                            mgr.set_disabled(self.gallery.inner().id(), state);
+                        }
+                        Menu::Quit => {
+                            *mgr |= TkAction::EXIT;
+                        }
+                    }
+                } else if let Some(item) = mgr.try_pop_msg::<Item>() {
+                    match item {
+                        Item::Button => println!("Clicked!"),
+                        Item::LightTheme => mgr.adjust_theme(|theme| theme.set_scheme("light")),
+                        Item::DarkTheme => mgr.adjust_theme(|theme| theme.set_scheme("dark")),
+                        Item::Check(b) => println!("CheckBox: {}", b),
+                        Item::Combo(c) => println!("ComboBox: {}", c),
+                        Item::Radio(id) => println!("RadioBox: {}", id),
+                        Item::Edit(s) => println!("Edited: {}", s),
+                        Item::Slider(p) => println!("Slider: {}", p),
+                        Item::Scroll(p) => println!("ScrollBar: {}", p),
                     }
                 }
             }
-        },
-    );
+        }
+        impl Window for Self {
+            fn title(&self) -> &str {
+                "Window Gallery"
+            }
+        }
+    };
 
     toolkit.add(window)?;
     toolkit.run()

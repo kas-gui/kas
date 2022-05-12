@@ -256,51 +256,51 @@ fn main() -> kas::shell::Result<()> {
     type MyList = ListView<Direction, MySharedData, MyDriver>;
     let list = ListView::new_with_dir_driver(Direction::Down, driver, data);
 
-    let window = Window::new(
-        "Dynamic widget demo",
-        impl_singleton! {
-            #[widget{
-                layout = column: [
-                    "Demonstration of dynamic widget creation / deletion",
-                    self.controls,
-                    "Contents of selected entry:",
-                    self.display,
-                    Separator::new(),
-                    self.list,
-                ];
-            }]
-            #[derive(Debug)]
-            struct {
-                core: widget_core!(),
-                #[widget] controls = controls,
-                #[widget] display: StringLabel = Label::from("Entry #1"),
-                #[widget] list: ScrollBars<MyList> =
-                    ScrollBars::new(list).with_bars(false, true),
-            }
-            impl Widget for Self {
-                fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-                    if let Some(control) = mgr.try_pop_msg::<Control>() {
-                        match control {
-                            Control::Set(len) => {
-                                let (opt_text, handle) = self.list.data_mut().set_len(len);
-                                if let Some(text) = opt_text {
-                                    *mgr |= self.display.set_string(text);
-                                }
-                                mgr.trigger_update(handle, 0);
-                            }
-                            Control::Dir => {
-                                let dir = self.list.direction().reversed();
-                                *mgr |= self.list.set_direction(dir);
-                            }
-                            Control::Update(text) => {
+    let window = impl_singleton! {
+        #[widget{
+            layout = column: [
+                "Demonstration of dynamic widget creation / deletion",
+                self.controls,
+                "Contents of selected entry:",
+                self.display,
+                Separator::new(),
+                self.list,
+            ];
+        }]
+        #[derive(Debug)]
+        struct {
+            core: widget_core!(),
+            #[widget] controls = controls,
+            #[widget] display: StringLabel = Label::from("Entry #1"),
+            #[widget] list: ScrollBars<MyList> =
+                ScrollBars::new(list).with_bars(false, true),
+        }
+        impl Widget for Self {
+            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+                if let Some(control) = mgr.try_pop_msg::<Control>() {
+                    match control {
+                        Control::Set(len) => {
+                            let (opt_text, handle) = self.list.data_mut().set_len(len);
+                            if let Some(text) = opt_text {
                                 *mgr |= self.display.set_string(text);
                             }
+                            mgr.trigger_update(handle, 0);
+                        }
+                        Control::Dir => {
+                            let dir = self.list.direction().reversed();
+                            *mgr |= self.list.set_direction(dir);
+                        }
+                        Control::Update(text) => {
+                            *mgr |= self.display.set_string(text);
                         }
                     }
                 }
             }
-        },
-    );
+        }
+        impl Window for Self {
+            fn title(&self) -> &str { "Dynamic widget demo" }
+        }
+    };
 
     let theme = kas::theme::ShadedTheme::new();
     kas::shell::Toolkit::new(theme)?.with(window)?.run()

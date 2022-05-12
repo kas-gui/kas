@@ -14,7 +14,7 @@ use kas::event::{CursorIcon, EventState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{SetRectMgr, SolveCache};
 use kas::theme::{DrawMgr, SizeHandle, SizeMgr, ThemeControl};
-use kas::{TkAction, WidgetExt, WindowId};
+use kas::{Layout, TkAction, WidgetCore, WidgetExt, WindowId};
 use kas_theme::{Theme, Window as _};
 use winit::dpi::PhysicalSize;
 use winit::error::OsError;
@@ -28,7 +28,7 @@ use crate::ProxyAction;
 
 /// Per-window data
 pub(crate) struct Window<C: CustomPipe, T: Theme<DrawPipe<C>>> {
-    pub(crate) widget: Box<dyn kas::Window>,
+    pub(crate) widget: kas::RootWidget,
     pub(crate) window_id: WindowId,
     ev_state: EventState,
     solve_cache: SolveCache,
@@ -49,9 +49,11 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         shared: &mut SharedState<C, T>,
         elwt: &EventLoopWindowTarget<ProxyAction>,
         window_id: WindowId,
-        mut widget: Box<dyn kas::Window>,
+        widget: Box<dyn kas::Window>,
     ) -> Result<Self, OsError> {
         let time = Instant::now();
+
+        let mut widget = kas::RootWidget::new(widget);
 
         // Wayland only supports windows constructed via logical size
         #[allow(unused_assignments, unused_mut)]
@@ -180,9 +182,9 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             }
             event => {
                 let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-                let widget = &mut *self.widget;
+                let widget = self.widget.as_widget_mut();
                 self.ev_state.with(&mut tkw, |mgr| {
-                    mgr.handle_winit(widget.as_widget_mut(), event);
+                    mgr.handle_winit(widget, event);
                 });
 
                 if self.ev_state.action.contains(TkAction::RECONFIGURE) {
@@ -253,7 +255,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
     pub fn handle_closure(mut self, shared: &mut SharedState<C, T>) -> TkAction {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-        let widget = &mut *self.widget;
+        let widget = &mut self.widget;
         self.ev_state.with(&mut tkw, |mgr| {
             widget.handle_closure(mgr);
         });
@@ -262,10 +264,8 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
     pub fn update_timer(&mut self, shared: &mut SharedState<C, T>) -> Option<Instant> {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-        let widget = &mut *self.widget;
-        self.ev_state.with(&mut tkw, |mgr| {
-            mgr.update_timer(widget.as_widget_mut());
-        });
+        let widget = self.widget.as_widget_mut();
+        self.ev_state.with(&mut tkw, |mgr| mgr.update_timer(widget));
         self.next_resume()
     }
 
@@ -276,18 +276,16 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         payload: u64,
     ) {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-        let widget = &mut *self.widget;
-        self.ev_state.with(&mut tkw, |mgr| {
-            mgr.update_handle(widget.as_widget_mut(), handle, payload);
-        });
+        let widget = self.widget.as_widget_mut();
+        self.ev_state
+            .with(&mut tkw, |mgr| mgr.update_handle(widget, handle, payload));
     }
 
     pub fn add_popup(&mut self, shared: &mut SharedState<C, T>, id: WindowId, popup: kas::Popup) {
-        let window = &mut *self.widget;
+        let widget = &mut self.widget;
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-        self.ev_state.with(&mut tkw, |mgr| {
-            kas::Window::add_popup(window, mgr, id, popup);
-        });
+        self.ev_state
+            .with(&mut tkw, |mgr| widget.add_popup(mgr, id, popup));
     }
 
     pub fn send_action(&mut self, action: TkAction) {
@@ -299,10 +297,9 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             self.ev_state.send_action(TkAction::CLOSE);
         } else {
             let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-            let widget = &mut *self.widget;
-            self.ev_state.with(&mut tkw, |mgr| {
-                widget.remove_popup(mgr, id);
-            });
+            let widget = &mut self.widget;
+            self.ev_state
+                .with(&mut tkw, |mgr| widget.remove_popup(mgr, id));
         }
     }
 }

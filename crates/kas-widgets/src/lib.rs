@@ -5,9 +5,9 @@
 
 //! KAS widget library
 //!
-//! ## Dialogs
+//! ## Dialogs / pre-made windows
 //!
-//! -   [`MessageBox`]: a simple window with a message and an "Ok" button
+//! See [`dialog`] module.
 //!
 //! ## Container widgets
 //!
@@ -16,8 +16,6 @@
 //! -   [`Stack`]: a stack of widgets in the same rect (TODO: `TabbedStack`)
 //! -   [`List`]: a dynamic row / column of children
 //! -   [`Splitter`]: similar to [`List`] but with resizing handles
-//! -   [`Window`] is usually the root widget and has special handling for
-//!     pop-ups and callbacks
 //!
 //! ## Menus
 //!
@@ -60,7 +58,7 @@
 mod button;
 mod checkbox;
 mod combobox;
-mod dialog;
+pub mod dialog;
 mod drag;
 mod edit_field;
 mod filler;
@@ -83,7 +81,6 @@ mod separator;
 mod slider;
 mod splitter;
 mod stack;
-mod window;
 
 pub mod adapter;
 pub mod view;
@@ -92,7 +89,6 @@ pub use crate::image::Image;
 pub use button::{Button, TextButton};
 pub use checkbox::{CheckBox, CheckBoxBare};
 pub use combobox::ComboBox;
-pub use dialog::MessageBox;
 pub use drag::DragHandle;
 pub use edit_field::{EditBox, EditField, EditGuard};
 pub use filler::Filler;
@@ -111,4 +107,3 @@ pub use separator::Separator;
 pub use slider::{Slider, SliderType};
 pub use splitter::*;
 pub use stack::{BoxStack, RefStack, Stack};
-pub use window::Window;

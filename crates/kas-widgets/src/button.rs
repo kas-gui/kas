@@ -121,20 +121,13 @@ impl_scope! {
             true
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, mut event: Event) -> Response {
-            if let Some(response) = event.activate_on_press(mgr, self.id_ref()) {
-                return response;
-            }
-
-            match event {
-                Event::Activate => {
-                    if let Some(f) = self.on_push.as_ref() {
-                        f(mgr);
-                    }
-                    Response::Used
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+            event.on_activate(mgr, self.id(), |mgr| {
+                if let Some(f) = self.on_push.as_ref() {
+                    f(mgr);
                 }
-                _ => Response::Unused,
-            }
+                Response::Used
+            })
         }
     }
 }
@@ -263,20 +256,13 @@ impl_scope! {
             true
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, mut event: Event) -> Response {
-            if let Some(response) = event.activate_on_press(mgr, self.id_ref()) {
-                return response;
-            }
-
-            match event {
-                Event::Activate => {
-                    if let Some(f) = self.on_push.as_ref() {
-                        f(mgr);
-                    }
-                    Response::Used
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+            event.on_activate(mgr, self.id(), |mgr| {
+                if let Some(f) = self.on_push.as_ref() {
+                    f(mgr);
                 }
-                _ => Response::Unused,
-            }
+                Response::Used
+            })
         }
     }
 }

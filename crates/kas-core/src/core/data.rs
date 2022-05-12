@@ -8,10 +8,9 @@
 #[allow(unused)]
 use super::Layout;
 use super::{Widget, WidgetId};
+use crate::dir::Direction;
 use crate::event::EventMgr;
 use crate::geom::Rect;
-use crate::layout::SetRectMgr;
-use crate::{dir::Direction, WindowId};
 
 #[cfg(feature = "winit")]
 pub use winit::window::Icon;
@@ -89,7 +88,12 @@ pub trait Window: Widget {
     fn title(&self) -> &str;
 
     /// Get the window icon, if any
-    fn icon(&self) -> Option<Icon>;
+    ///
+    /// Default: `None`
+    #[inline]
+    fn icon(&self) -> Option<Icon> {
+        None
+    }
 
     /// Whether to limit the maximum size of a window
     ///
@@ -101,26 +105,17 @@ pub trait Window: Widget {
     /// Return value is `(restrict_min, restrict_max)`. Suggested is to use
     /// `(true, true)` for simple dialog boxes and `(true, false)` for complex
     /// windows.
-    fn restrict_dimensions(&self) -> (bool, bool);
-
-    /// Add a pop-up as a layer in the current window
     ///
-    /// Each [`Popup`] is assigned a [`WindowId`]; both are passed.
-    fn add_popup(&mut self, mgr: &mut EventMgr, id: WindowId, popup: Popup);
-
-    /// Resize popups
-    ///
-    /// This is called immediately after [`Layout::set_rect`] to resize
-    /// existing pop-ups.
-    fn resize_popups(&mut self, mgr: &mut SetRectMgr);
-
-    /// Trigger closure of a pop-up
-    ///
-    /// If the given `id` refers to a pop-up, it should be closed.
-    fn remove_popup(&mut self, mgr: &mut EventMgr, id: WindowId);
+    /// Default: `(true, false)`
+    #[inline]
+    fn restrict_dimensions(&self) -> (bool, bool) {
+        (true, false)
+    }
 
     /// Handle closure of self
     ///
-    /// This allows for actions on destruction, but doesn't need to do anything.
+    /// This allows for actions on destruction.
+    ///
+    /// Default: do nothing.
     fn handle_closure(&mut self, _mgr: &mut EventMgr) {}
 }

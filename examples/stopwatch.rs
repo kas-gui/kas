@@ -11,8 +11,8 @@ use kas::class::HasString;
 use kas::event::{Event, EventMgr, Response};
 use kas::layout::SetRectMgr;
 use kas::macros::impl_singleton;
-use kas::widgets::{Frame, Label, TextButton, Window};
-use kas::{Widget, WidgetCore, WidgetExt};
+use kas::widgets::{Frame, Label, TextButton};
+use kas::{Widget, WidgetCore, WidgetExt, Window};
 
 #[derive(Clone, Debug)]
 struct MsgReset;
@@ -22,8 +22,7 @@ struct MsgStart;
 // Unlike most examples, we encapsulate the GUI configuration into a function.
 // There's no reason for this, but it demonstrates usage of Toolkit::add_boxed
 fn make_window() -> Box<dyn kas::Window> {
-    // Construct a row widget, with state and children
-    let stopwatch = impl_singleton! {
+    Box::new(impl_singleton! {
         #[widget{
             layout = row: [
                 self.display,
@@ -72,11 +71,13 @@ fn make_window() -> Box<dyn kas::Window> {
                 }
             }
         }
-    };
-
-    let mut window = Window::new("Stopwatch", stopwatch);
-    window.set_restrict_dimensions(true, true);
-    Box::new(window)
+        impl Window for Self {
+            fn title(&self) -> &str { "Stopwatch" }
+            fn restrict_dimensions(&self) -> (bool, bool) {
+                (true, true)
+            }
+        }
+    })
 }
 
 fn main() -> kas::shell::Result<()> {

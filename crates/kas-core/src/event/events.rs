@@ -27,6 +27,10 @@ pub enum Event {
     /// "Activate" is triggered e.g. by clicking on a control or using keyboard
     /// navigation to trigger a control. It should then perform the widget's
     /// primary function, e.g. a button or menu action, toggle a checkbox, etc.
+    ///
+    /// Note: this is a synthetic event and not automatically generated for
+    /// click or <kbd>Enter</kbd>. Consider using [`Event::on_activate`]
+    /// instead.
     Activate,
     /// (Keyboard) command input
     ///
@@ -235,56 +239,38 @@ impl std::ops::AddAssign<Offset> for Event {
 }
 
 impl Event {
-    /// Translate press-and-release (click or touch) to [`Event::Activate`]
+    /// Call `f` on any "activation" event
     ///
-    /// A convenient way to make a widget "clickable". Use from [`Widget::handle_event`] like this:
-    /// ```
-    /// # use kas_core::event::{Event, EventMgr, Response};
-    /// # use kas_core::{Widget, WidgetExt};
-    /// # trait T: Widget {
-    /// fn handle_event(&mut self, mgr: &mut EventMgr, mut event: Event) -> Response {
-    ///     if let Some(response) = event.activate_on_press(mgr, self.id_ref()) {
-    ///          return response;
-    ///     }
+    /// Activation is considered:
     ///
-    ///     match event {
-    ///         Event::Activate => {
-    ///             // do something here
-    ///             Response::Used
-    ///         }
-    ///         _ => Response::Unused
-    ///     }
-    /// }
-    /// # }
-    /// ```
-    ///
-    /// This method requests a press-grab on [`Event::PressStart`], updates the
-    /// grab-depress state on [`Event::PressMove`] and translates
-    /// [`Event::PressEnd`] to [`Event::Activate`] (only when ending on self).
-    pub fn activate_on_press(&mut self, mgr: &mut EventMgr, id: &WidgetId) -> Option<Response> {
+    /// -   Mouse click and release on the same widget
+    /// -   Touchscreen press and release on the same widget
+    /// -   <kbd>Enter</kbd>, <kbd>Return</kbd>, <kbd>Space</kbd>
+    /// -   [`Event::Activate`]
+    pub fn on_activate<F: FnOnce(&mut EventMgr) -> Response>(
+        self,
+        mgr: &mut EventMgr,
+        id: WidgetId,
+        f: F,
+    ) -> Response {
         match self {
+            Event::Activate => f(mgr),
+            Event::Command(cmd, _) if cmd.is_activate() => f(mgr),
             Event::PressStart { source, coord, .. } if source.is_primary() => {
-                mgr.grab_press(id.clone(), *source, *coord, GrabMode::Grab, None);
-                return Some(Response::Used);
+                mgr.grab_press(id, source, coord, GrabMode::Grab, None);
+                Response::Used
             }
             Event::PressMove { source, cur_id, .. } => {
-                let target = if id == cur_id {
-                    std::mem::take(cur_id)
-                } else {
-                    None
-                };
-                mgr.set_grab_depress(*source, target);
-                return Some(Response::Used);
+                let target = if id == cur_id { cur_id } else { None };
+                mgr.set_grab_depress(source, target);
+                Response::Used
             }
             Event::PressEnd {
                 end_id, success, ..
-            } if *success && id == end_id => {
-                *self = Event::Activate;
-            }
-            Event::PressEnd { .. } => return Some(Response::Used),
-            _ => (),
-        };
-        None
+            } if success && id == end_id => f(mgr),
+            Event::PressEnd { .. } => Response::Used,
+            _ => Response::Unused,
+        }
     }
 }
 
@@ -310,10 +296,9 @@ pub enum Command {
     /// Return / enter key
     ///
     /// This may insert a line-break or may activate something.
-    ///
-    /// This is only sent to widgets with char focus.
-    /// In other cases a widget may receive [`Event::Activate`].
     Return,
+    /// Space key
+    Space,
     /// Tab key
     ///
     /// This key is used to insert (horizontal) tabulators as well as to
@@ -460,6 +445,7 @@ impl Command {
             Escape => Command::Escape,
             Snapshot => Command::Snapshot,
             Scroll => Command::ScrollLock,
+            Space => Command::Space,
             Pause => Command::Pause,
             Insert => Command::Insert,
             Home => Command::Home,
@@ -482,6 +468,14 @@ impl Command {
             Paste => Command::Paste,
             _ => return None,
         })
+    }
+
+    /// True if this is an "activation" key
+    ///
+    /// True for: <kbd>Enter</kbd>, <kbd>Return</kbd>, <kbd>Space</kbd>
+    pub fn is_activate(self) -> bool {
+        use Command::*;
+        matches!(self, Return | Space)
     }
 
     /// Convert to selection-focus command

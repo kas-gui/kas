@@ -136,9 +136,12 @@ fn main() -> kas::shell::Result<()> {
                 }
             }
         }
+        impl Window for Self {
+            fn title(&self) -> &str { "Theme demo" }
+        }
     }
 
-    let window = Window::new("Theme demo", Demo::default());
-
-    kas::shell::Toolkit::new(theme)?.with(window)?.run()
+    kas::shell::Toolkit::new(theme)?
+        .with(Demo::default())?
+        .run()
 }

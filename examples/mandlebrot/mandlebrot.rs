@@ -18,7 +18,7 @@ use kas::prelude::*;
 use kas::shell::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawPipe};
 use kas::shell::Options;
 use kas::widgets::adapter::ReserveP;
-use kas::widgets::{Label, Slider, Window};
+use kas::widgets::{Label, Slider};
 
 #[cfg(not(feature = "shader64"))]
 type ShaderVec2 = Vec2;
@@ -445,10 +445,10 @@ impl_scope! {
     }
 
     impl MandlebrotWindow {
-        fn new_window() -> Window<MandlebrotWindow> {
+        fn new() -> MandlebrotWindow {
             let slider = Slider::new(0, 256, 1).with_value(64);
             let mbrot = Mandlebrot::new();
-            let w = MandlebrotWindow {
+            MandlebrotWindow {
                 core: Default::default(),
                 label: Label::new(mbrot.loc()),
                 iters: ReserveP::new(Label::from("64"), |size_mgr, axis| {
@@ -456,8 +456,7 @@ impl_scope! {
                 }),
                 slider,
                 mbrot,
-            };
-            Window::new("Mandlebrot", w)
+            }
         }
     }
     impl Widget for Self {
@@ -471,6 +470,9 @@ impl_scope! {
             }
         }
     }
+    impl Window for Self {
+        fn title(&self) -> &str { "Mandlebrot" }
+    }
 }
 
 fn main() -> kas::shell::Result<()> {
@@ -479,6 +481,6 @@ fn main() -> kas::shell::Result<()> {
     let theme = kas::theme::FlatTheme::new().with_colours("dark");
 
     kas::shell::Toolkit::new_custom(PipeBuilder, theme, Options::from_env())?
-        .with(MandlebrotWindow::new_window())?
+        .with(MandlebrotWindow::new())?
         .run()
 }

@@ -12,7 +12,7 @@ use kas::cast::Conv;
 use kas::geom::Vec2;
 use kas::layout::LogicalSize;
 use kas::resvg::{tiny_skia::*, Canvas, CanvasProgram};
-use kas::widgets::Window;
+use kas::widgets::dialog::Window;
 use std::time::Instant;
 
 #[derive(Debug)]

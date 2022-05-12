@@ -179,7 +179,7 @@ impl_scope! {
                             mgr.set_nav_focus(id.clone(), false);
                             let delay = mgr.config().menu_delay();
                             mgr.update_on_timer(delay, self.id(), id.as_u64());
-                            self.delayed_open = Some(id.clone());
+                            self.delayed_open = Some(id);
                         }
                     } else {
                         self.delayed_open = None;

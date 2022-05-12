@@ -126,22 +126,14 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn handle_event(&mut self, mgr: &mut EventMgr, mut event: Event) -> Response {
-            if let Some(response) = event.activate_on_press(mgr, self.id_ref()) {
-                return response;
-            }
-
-            match event {
-                Event::Activate if self.editable => {
-                    self.state = !self.state;
-                    mgr.redraw(self.id());
-                    if let Some(f) = self.on_toggle.as_ref() {
-                        f(mgr, self.state);
-                    }
-                    Response::Used
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+            event.on_activate(mgr, self.id(), |mgr| {
+                self.state = !self.state;
+                if let Some(f) = self.on_toggle.as_ref() {
+                    f(mgr, self.state);
                 }
-                _ => Response::Unused,
-            }
+                Response::Used
+            })
         }
     }
 }

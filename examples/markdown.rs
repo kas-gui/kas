@@ -9,8 +9,8 @@ use kas::class::HasStr;
 use kas::event::EventMgr;
 use kas::macros::impl_singleton;
 use kas::text::format::Markdown;
-use kas::widgets::{EditBox, EditField, EditGuard, Label, ScrollBarRegion, Window};
-use kas::Widget;
+use kas::widgets::{EditBox, EditField, EditGuard, Label, ScrollBarRegion};
+use kas::{Widget, Window};
 
 #[derive(Debug)]
 struct Guard;
@@ -51,31 +51,34 @@ It also supports lists:
 
 -   Unenumerated item
 -   Another item
+
+**Note:** KAS's support for Markdown is a pale imitation of the real thing;
+the *true* purpose of this feature is easy entry for rich text.
 ";
 
-    let window = Window::new(
-        "Markdown parser",
-        impl_singleton! {
-            #[widget{
-                layout = row: [self.editor, self.label];
-            }]
-            #[derive(Debug)]
-            struct {
-                core: widget_core!(),
-                #[widget] editor: EditBox<Guard> =
-                    EditBox::new(doc).multi_line(true).with_guard(Guard),
-                #[widget] label: ScrollBarRegion<Label<Markdown>> =
-                    ScrollBarRegion::new(Label::new(Markdown::new(doc)?)),
-            }
-            impl Widget for Self {
-                fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-                    if let Some(md) = mgr.try_pop_msg::<Markdown>() {
-                        *mgr |= self.label.set_text(md);
-                    }
+    let window = impl_singleton! {
+        #[widget{
+            layout = row: [self.editor, self.label];
+        }]
+        #[derive(Debug)]
+        struct {
+            core: widget_core!(),
+            #[widget] editor: EditBox<Guard> =
+                EditBox::new(doc).multi_line(true).with_guard(Guard),
+            #[widget] label: ScrollBarRegion<Label<Markdown>> =
+                ScrollBarRegion::new(Label::new(Markdown::new(doc)?)),
+        }
+        impl Widget for Self {
+            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+                if let Some(md) = mgr.try_pop_msg::<Markdown>() {
+                    *mgr |= self.label.set_text(md);
                 }
             }
-        },
-    );
+        }
+        impl Window for Self {
+            fn title(&self) -> &str { "Markdown parser" }
+        }
+    };
 
     shell.with(window)?.run()
 }

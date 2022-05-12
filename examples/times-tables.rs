@@ -3,7 +3,7 @@
 use kas::prelude::*;
 use kas::updatable::MatrixData;
 use kas::widgets::view::{driver::DefaultNav, MatrixView, SelectionMode};
-use kas::widgets::{EditBox, ScrollBars, Window};
+use kas::widgets::{EditBox, ScrollBars};
 
 #[derive(Debug)]
 struct TableData(u64, usize);
@@ -64,7 +64,7 @@ fn main() -> kas::shell::Result<()> {
         .with_selection_mode(SelectionMode::Single);
     let table = ScrollBars::new(table);
 
-    let layout = impl_singleton! {
+    let window = impl_singleton! {
         #[widget{
             layout = column: [
                 row: ["From 1 to", self.max],
@@ -95,8 +95,10 @@ fn main() -> kas::shell::Result<()> {
                 }
             }
         }
+        impl Window for Self {
+            fn title(&self) -> &str { "Times-Tables" }
+        }
     };
-    let window = Window::new("Times-Tables", layout);
 
     let theme = kas::theme::ShadedTheme::new().with_font_size(16.0);
     kas::shell::Toolkit::new(theme)?.with(window)?.run()

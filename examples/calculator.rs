@@ -10,7 +10,7 @@ use std::str::FromStr;
 
 use kas::event::VirtualKeyCode as VK;
 use kas::prelude::*;
-use kas::widgets::{EditBox, TextButton, Window};
+use kas::widgets::{EditBox, TextButton};
 
 #[derive(Clone, Debug)]
 enum Key {
@@ -82,12 +82,15 @@ fn main() -> kas::shell::Result<()> {
                 }
             }
         }
+        impl Window for Self {
+            fn title(&self) -> &str { "Calculator" }
+        }
     }
 
-    let window = Window::new("Calculator", CalcUI::default());
-
     let theme = kas::theme::ShadedTheme::new().with_font_size(16.0);
-    kas::shell::Toolkit::new(theme)?.with(window)?.run()
+    kas::shell::Toolkit::new(theme)?
+        .with(CalcUI::default())?
+        .run()
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
