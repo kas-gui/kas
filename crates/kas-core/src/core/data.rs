@@ -117,5 +117,7 @@ pub trait Window: Widget {
     /// This allows for actions on destruction.
     ///
     /// Default: do nothing.
-    fn handle_closure(&mut self, _mgr: &mut EventMgr) {}
+    fn handle_closure(&mut self, mgr: &mut EventMgr) {
+        let _ = mgr;
+    }
 }

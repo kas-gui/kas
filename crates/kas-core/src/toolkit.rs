@@ -75,7 +75,7 @@ bitflags! {
         const RESIZE = 1 << 9;
         /// Update theme memory
         const THEME_UPDATE = 1 << 10;
-        /// Window requires reconfiguring
+        /// Reconfigure all widgets of the window
         ///
         /// *Configuring* widgets assigns [`WidgetId`] identifiers and calls
         /// [`crate::Widget::configure`].
