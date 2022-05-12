@@ -96,7 +96,7 @@ pub use frame::{Frame, PopupFrame};
 pub use grid::{BoxGrid, Grid};
 pub use label::{AccelLabel, Label, StrLabel, StringLabel};
 pub use list::*;
-pub use mark::Mark;
+pub use mark::{Mark, MarkButton};
 pub use nav_frame::{NavFrame, SelectMsg};
 pub use progress::ProgressBar;
 pub use radiobox::{RadioBox, RadioBoxBare, RadioBoxGroup};
