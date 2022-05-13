@@ -100,8 +100,6 @@ impl_scope! {
                 MarkButton::new(MarkStyle::Point(Direction::Down), SpinBtn::Down),
             ],
         ];
-        key_nav = true;
-        hover_highlight = true;
     }]
     pub struct Spinner<T: SpinnerType> {
         core: widget_core!(),
