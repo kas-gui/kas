@@ -28,9 +28,8 @@ impl EditGuard for SpinnerGuard {
         if edit.has_error() {
             *mgr |= edit.set_string(edit.guard.0.to_string());
             edit.set_error_state(false);
-        } else {
-            mgr.push_msg(edit.guard.0);
         }
+        mgr.push_msg(edit.guard.0);
     }
 
     fn focus_lost(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
@@ -123,6 +122,7 @@ impl_scope! {
                     SpinBtn::Up => 1,
                 };
                 *mgr |= self.set_value(self.value() + delta);
+                mgr.push_msg(self.value());
             }
         }
     }

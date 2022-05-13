@@ -26,6 +26,7 @@ enum Item {
     Edit(String),
     Slider(i32),
     Scroll(i32),
+    Spinner(i32),
 }
 
 #[derive(Debug)]
@@ -194,10 +195,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 MenuEntry::new("T&wo", Item::Combo(2)),
                 MenuEntry::new("Th&ree", Item::Combo(3)),
             ]),
-            #[widget] spin = Spinner::new(0..=10),
-            #[widget] sd = Slider::<i32, Right>::new(0, 10, 1)
-                .with_value(0)
-                .map_msg(|msg: i32| Item::Slider(msg)),
+            #[widget] spin: Spinner = Spinner::new(0..=10),
+            #[widget] sd: Slider<i32, Right> = Slider::new(0, 10, 1),
             #[widget] sc: ScrollBar<Right> = ScrollBar::new().with_limits(100, 20),
             #[widget] pg: ProgressBar<Right> = ProgressBar::new(),
             #[widget] sv = img_rustacean.with_scaling(|s| {
@@ -209,8 +208,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
-                if index == widget_index![self.sc] {
-                    if let Some(msg) = mgr.try_pop_msg::<i32>() {
+                if let Some(msg) = mgr.try_pop_msg::<i32>() {
+                    if index == widget_index![self.spin] {
+                        *mgr |= self.sd.set_value(msg);
+                        mgr.push_msg(Item::Spinner(msg));
+                    } else if index == widget_index![self.sd] {
+                        *mgr |= self.spin.set_value(msg);
+                        mgr.push_msg(Item::Slider(msg));
+                    } else if index == widget_index![self.sc] {
                         let ratio = msg as f32 / self.sc.max_value() as f32;
                         *mgr |= self.pg.set_value(ratio);
                         mgr.push_msg(Item::Scroll(msg))
@@ -260,16 +265,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
                 } else if let Some(item) = mgr.try_pop_msg::<Item>() {
+                    println!("Message: {item:?}");
                     match item {
-                        Item::Button => println!("Clicked!"),
                         Item::LightTheme => mgr.adjust_theme(|theme| theme.set_scheme("light")),
                         Item::DarkTheme => mgr.adjust_theme(|theme| theme.set_scheme("dark")),
-                        Item::Check(b) => println!("CheckBox: {}", b),
-                        Item::Combo(c) => println!("ComboBox: {}", c),
-                        Item::Radio(id) => println!("RadioBox: {}", id),
-                        Item::Edit(s) => println!("Edited: {}", s),
-                        Item::Slider(p) => println!("Slider: {}", p),
-                        Item::Scroll(p) => println!("ScrollBar: {}", p),
+                        _ => (),
                     }
                 }
             }
