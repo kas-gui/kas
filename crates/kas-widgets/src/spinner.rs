@@ -8,6 +8,7 @@
 use crate::{EditBox, EditField, EditGuard, MarkButton};
 use kas::prelude::*;
 use kas::theme::MarkStyle;
+use std::ops::RangeInclusive;
 
 #[derive(Clone, Debug)]
 enum SpinBtn {
@@ -16,10 +17,18 @@ enum SpinBtn {
 }
 
 #[derive(Clone, Debug)]
-struct SpinnerGuard(i32);
+struct SpinnerGuard(i32, RangeInclusive<i32>);
+impl SpinnerGuard {
+    fn set_value(&mut self, value: i32) {
+        self.0 = value.min(*self.1.end()).max(*self.1.start());
+    }
+}
 impl EditGuard for SpinnerGuard {
     fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        if !edit.has_error() {
+        if edit.has_error() {
+            *mgr |= edit.set_string(edit.guard.0.to_string());
+            edit.set_error_state(false);
+        } else {
             mgr.push_msg(edit.guard.0);
         }
     }
@@ -29,11 +38,18 @@ impl EditGuard for SpinnerGuard {
     }
 
     fn edit(edit: &mut EditField<Self>, _: &mut EventMgr) {
-        let parse = edit.get_str().parse();
-        edit.set_error_state(parse.is_err());
-        if let Ok(val) = parse {
-            edit.guard.0 = val;
-        }
+        let is_err = match edit.get_str().parse() {
+            Ok(value) if edit.guard.1.contains(&value) => {
+                edit.guard.0 = value;
+                false
+            }
+            Ok(value) => {
+                edit.guard.set_value(value);
+                true
+            }
+            _ => true,
+        };
+        edit.set_error_state(is_err);
     }
 }
 
@@ -61,10 +77,13 @@ impl_scope! {
 
     impl Self {
         /// Construct
-        pub fn new(value: i32) -> Self {
+        pub fn new(range: RangeInclusive<i32>) -> Self {
+            let mut guard = SpinnerGuard(0, range);
+            guard.set_value(0);
+
             Spinner {
                 core: Default::default(),
-                edit: EditBox::new(value.to_string()).with_guard(SpinnerGuard(value)),
+                edit: EditBox::new(guard.0.to_string()).with_guard(guard),
             }
         }
 
@@ -72,7 +91,7 @@ impl_scope! {
         #[inline]
         #[must_use]
         pub fn with_value(mut self, value: i32) -> Self {
-            self.edit.guard.0 = value;
+            self.edit.guard.set_value(value);
             self
         }
 
@@ -90,8 +109,9 @@ impl_scope! {
                 return TkAction::empty();
             }
 
-            self.edit.guard.0 = value;
-            self.edit.set_string(value.to_string())
+            self.edit.guard.set_value(value);
+            self.edit.set_error_state(false);
+            self.edit.set_string(self.edit.guard.0.to_string())
         }
     }
 

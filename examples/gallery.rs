@@ -194,7 +194,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 MenuEntry::new("T&wo", Item::Combo(2)),
                 MenuEntry::new("Th&ree", Item::Combo(3)),
             ]),
-            #[widget] spin = Spinner::new(0),
+            #[widget] spin = Spinner::new(0..=10),
             #[widget] sd = Slider::<i32, Right>::new(0, 10, 1)
                 .with_value(0)
                 .map_msg(|msg: i32| Item::Slider(msg)),
