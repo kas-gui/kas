@@ -31,7 +31,6 @@
 //! The user may implement a [`Driver`] or may use a standard one:
 //!
 //! -   [`driver::DefaultView`] constructs a default view widget over various data types
-//! -   [`driver::DefaultEdit`] chooses a widget allowing editing of the shared data
 //! -   [`driver::DefaultNav`] is a variant of the above, ensuring items support
 //!     keyboard navigation (e.g. useful to allow selection of static items)
 //! -   [`driver::CheckBox`] and [`driver::RadioBox`] support the `bool` type
