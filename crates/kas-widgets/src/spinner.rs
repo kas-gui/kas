@@ -15,7 +15,7 @@ pub trait SpinnerType:
     Copy
     + Add<Output = Self>
     + Sub<Output = Self>
-    + Ord
+    + PartialOrd
     + std::fmt::Debug
     + std::str::FromStr
     + ToString
@@ -27,7 +27,7 @@ impl<
         T: Copy
             + Add<Output = Self>
             + Sub<Output = Self>
-            + Ord
+            + PartialOrd
             + std::fmt::Debug
             + std::str::FromStr
             + ToString
@@ -46,8 +46,15 @@ enum SpinBtn {
 #[derive(Clone, Debug)]
 struct SpinnerGuard<T: SpinnerType>(T, RangeInclusive<T>);
 impl<T: SpinnerType> SpinnerGuard<T> {
+    #[allow(clippy::neg_cmp_op_on_partial_ord)]
     fn set_value(&mut self, value: T) {
-        self.0 = value.min(*self.1.end()).max(*self.1.start());
+        self.0 = if !(value >= *self.1.start()) {
+            *self.1.start()
+        } else if !(value <= *self.1.end()) {
+            *self.1.end()
+        } else {
+            value
+        };
     }
 }
 impl<T: SpinnerType> EditGuard for SpinnerGuard<T> {

@@ -147,13 +147,8 @@ impl_scope! {
         /// Set the initial value
         #[inline]
         #[must_use]
-        pub fn with_value(mut self, mut value: T) -> Self {
-            if value < self.range.0 {
-                value = self.range.0;
-            } else if value > self.range.1 {
-                value = self.range.1;
-            }
-            self.value = value;
+        pub fn with_value(mut self, value: T) -> Self {
+            self.value = self.clamp_value(value);
             self
         }
 
