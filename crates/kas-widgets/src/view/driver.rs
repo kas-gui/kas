@@ -10,7 +10,7 @@
 
 use crate::{
     CheckBoxBare, EditBox, EditField, EditGuard, Label, NavFrame, ProgressBar, RadioBoxGroup,
-    SliderType,
+    SliderType, SpinnerType,
 };
 use kas::prelude::*;
 use std::default::Default;
@@ -276,6 +276,28 @@ impl<T: SliderType, D: Directional> Driver<T> for Slider<T, D> {
     type Widget = crate::Slider<T, D>;
     fn make(&self) -> Self::Widget {
         crate::Slider::new_with_direction(self.range.clone(), self.step, self.direction)
+    }
+    fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction {
+        widget.set_value(data)
+    }
+}
+
+/// [`crate::Spinner`] view widget constructor
+#[derive(Clone, Debug)]
+pub struct Spinner<T: SpinnerType> {
+    range: RangeInclusive<T>,
+    step: T,
+}
+impl<T: SpinnerType + Default> Spinner<T> {
+    /// Construct, with given `range` and `step` (see [`crate::Spinner::new`])
+    pub fn make(range: RangeInclusive<T>, step: T) -> Self {
+        Spinner { range, step }
+    }
+}
+impl<T: SpinnerType> Driver<T> for Spinner<T> {
+    type Widget = crate::Spinner<T>;
+    fn make(&self) -> Self::Widget {
+        crate::Spinner::new(self.range.clone(), self.step)
     }
     fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction {
         widget.set_value(data)
