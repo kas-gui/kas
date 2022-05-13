@@ -18,8 +18,7 @@ use kas::widgets::{menu::MenuEntry, view::SingleView, *};
 #[derive(Clone, Debug)]
 enum Item {
     Button,
-    LightTheme,
-    DarkTheme,
+    Theme(&'static str),
     Check(bool),
     Combo(i32),
     Radio(u32),
@@ -175,11 +174,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             #[widget] eb = EditBox::new("edit me").with_guard(Guard),
             #[widget] tb = TextButton::new_msg("&Press me", Item::Button),
             #[widget] bi = row![
-                Button::new_msg(img_light, Item::LightTheme)
-                    .with_color("#FAFAFA".parse().unwrap())
+                Button::new_msg(img_light.clone(), Item::Theme("light"))
+                    .with_color("#B38DF9".parse().unwrap())
                     .with_keys(&[VK::L]),
-                Button::new_msg(img_dark, Item::DarkTheme)
-                    .with_color("#404040".parse().unwrap())
+                Button::new_msg(img_light, Item::Theme("blue"))
+                    .with_color("#7CDAFF".parse().unwrap())
+                    .with_keys(&[VK::L]),
+                Button::new_msg(img_dark, Item::Theme("dark"))
+                    .with_color("#E77346".parse().unwrap())
                     .with_keys(&[VK::K]),
             ],
             #[widget] cb = CheckBox::new("&Check me")
@@ -267,8 +269,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 } else if let Some(item) = mgr.try_pop_msg::<Item>() {
                     println!("Message: {item:?}");
                     match item {
-                        Item::LightTheme => mgr.adjust_theme(|theme| theme.set_scheme("light")),
-                        Item::DarkTheme => mgr.adjust_theme(|theme| theme.set_scheme("dark")),
+                        Item::Theme(name) => mgr.adjust_theme(|theme| theme.set_scheme(name)),
                         _ => (),
                     }
                 }
