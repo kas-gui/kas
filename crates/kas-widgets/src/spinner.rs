@@ -8,7 +8,34 @@
 use crate::{EditBox, EditField, EditGuard, MarkButton};
 use kas::prelude::*;
 use kas::theme::MarkStyle;
-use std::ops::RangeInclusive;
+use std::ops::{Add, RangeInclusive, Sub};
+
+/// Requirements on type used by [`Spinner`]
+pub trait SpinnerType:
+    Copy
+    + Add<Output = Self>
+    + Sub<Output = Self>
+    + Ord
+    + std::fmt::Debug
+    + std::str::FromStr
+    + ToString
+    + Sized
+    + 'static
+{
+}
+impl<
+        T: Copy
+            + Add<Output = Self>
+            + Sub<Output = Self>
+            + Ord
+            + std::fmt::Debug
+            + std::str::FromStr
+            + ToString
+            + Sized
+            + 'static,
+    > SpinnerType for T
+{
+}
 
 #[derive(Clone, Debug)]
 enum SpinBtn {
@@ -17,13 +44,13 @@ enum SpinBtn {
 }
 
 #[derive(Clone, Debug)]
-struct SpinnerGuard(i32, RangeInclusive<i32>);
-impl SpinnerGuard {
-    fn set_value(&mut self, value: i32) {
+struct SpinnerGuard<T: SpinnerType>(T, RangeInclusive<T>);
+impl<T: SpinnerType> SpinnerGuard<T> {
+    fn set_value(&mut self, value: T) {
         self.0 = value.min(*self.1.end()).max(*self.1.start());
     }
 }
-impl EditGuard for SpinnerGuard {
+impl<T: SpinnerType> EditGuard for SpinnerGuard<T> {
     fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
         if edit.has_error() {
             *mgr |= edit.set_string(edit.guard.0.to_string());
@@ -55,7 +82,7 @@ impl EditGuard for SpinnerGuard {
 impl_scope! {
     /// A numeric entry widget with up/down arrows
     ///
-    /// Sends an `i32` message on edit.
+    /// Sends a message of type `T` on edit.
     #[derive(Clone, Debug)]
     #[widget {
         layout = row: [
@@ -68,42 +95,45 @@ impl_scope! {
         key_nav = true;
         hover_highlight = true;
     }]
-    pub struct Spinner {
+    pub struct Spinner<T: SpinnerType> {
         core: widget_core!(),
         #[widget]
-        edit: EditBox<SpinnerGuard>,
+        edit: EditBox<SpinnerGuard<T>>,
+        step: T,
     }
 
     impl Self {
         /// Construct
-        pub fn new(range: RangeInclusive<i32>) -> Self {
-            let mut guard = SpinnerGuard(0, range);
-            guard.set_value(0);
+        pub fn new(range: RangeInclusive<T>, step: T) -> Self {
+            let min = *range.start();
+            let mut guard = SpinnerGuard(min, range);
+            guard.set_value(min);
 
             Spinner {
                 core: Default::default(),
                 edit: EditBox::new(guard.0.to_string()).with_guard(guard),
+                step,
             }
         }
 
         /// Set the initial value
         #[inline]
         #[must_use]
-        pub fn with_value(mut self, value: i32) -> Self {
+        pub fn with_value(mut self, value: T) -> Self {
             self.edit.guard.set_value(value);
             self
         }
 
         /// Get the current value
         #[inline]
-        pub fn value(&self) -> i32 {
+        pub fn value(&self) -> T {
             self.edit.guard.0
         }
 
         /// Set the value
         ///
         /// Returns [`TkAction::REDRAW`] if a redraw is required.
-        pub fn set_value(&mut self, value: i32) -> TkAction {
+        pub fn set_value(&mut self, value: T) -> TkAction {
             if self.edit.guard.0 == value {
                 return TkAction::empty();
             }
@@ -117,11 +147,11 @@ impl_scope! {
     impl Widget for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
             if let Some(btn) = mgr.try_pop_msg() {
-                let delta = match btn {
-                    SpinBtn::Down => -1,
-                    SpinBtn::Up => 1,
+                let value = match btn {
+                    SpinBtn::Down => self.value() - self.step,
+                    SpinBtn::Up => self.value() + self.step,
                 };
-                *mgr |= self.set_value(self.value() + delta);
+                *mgr |= self.set_value(value);
                 mgr.push_msg(self.value());
             }
         }

@@ -106,6 +106,6 @@ pub use scroll_label::ScrollLabel;
 pub use scrollbar::{ScrollBar, ScrollBarRegion, ScrollBars, Scrollable};
 pub use separator::Separator;
 pub use slider::{Slider, SliderType};
-pub use spinner::Spinner;
+pub use spinner::{Spinner, SpinnerType};
 pub use splitter::*;
 pub use stack::{BoxStack, RefStack, Stack};

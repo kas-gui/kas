@@ -195,7 +195,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 MenuEntry::new("T&wo", Item::Combo(2)),
                 MenuEntry::new("Th&ree", Item::Combo(3)),
             ]),
-            #[widget] spin: Spinner = Spinner::new(0..=10),
+            #[widget] spin: Spinner<i32> = Spinner::new(0..=10, 1),
             #[widget] sd: Slider<i32, Right> = Slider::new(0, 10, 1),
             #[widget] sc: ScrollBar<Right> = ScrollBar::new().with_limits(100, 20),
             #[widget] pg: ProgressBar<Right> = ProgressBar::new(),
