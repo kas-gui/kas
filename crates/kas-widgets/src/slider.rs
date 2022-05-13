@@ -6,7 +6,7 @@
 //! `Slider` control
 
 use std::fmt::Debug;
-use std::ops::{Add, Sub};
+use std::ops::{Add, RangeInclusive, Sub};
 use std::time::Duration;
 
 use super::DragHandle;
@@ -90,7 +90,7 @@ impl_scope! {
     /// # Messages
     ///
     /// On value change, pushes a value of type `T`.
-    #[derive(Clone, Debug, Default)]
+    #[derive(Clone, Debug)]
     #[widget{
         key_nav = true;
         hover_highlight = true;
@@ -99,7 +99,7 @@ impl_scope! {
         core: widget_core!(),
         direction: D,
         // Terminology assumes vertical orientation:
-        range: (T, T),
+        range: RangeInclusive<T>,
         step: T,
         value: T,
         #[widget]
@@ -109,35 +109,35 @@ impl_scope! {
     impl Self where D: Default {
         /// Construct a slider
         ///
-        /// Values vary between the given `min` and `max`. When keyboard navigation
+        /// Values vary within the given `range`. When keyboard navigation
         /// is used, arrow keys will increment the value by `step` and page up/down
         /// keys by `step * 16`.
         ///
         /// The initial value defaults to the range's
         /// lower bound but may be specified via [`Slider::with_value`].
         #[inline]
-        pub fn new(min: T, max: T, step: T) -> Self {
-            Slider::new_with_direction(min, max, step, D::default())
+        pub fn new(range: RangeInclusive<T>, step: T) -> Self {
+            Slider::new_with_direction(range, step, D::default())
         }
     }
 
     impl Self {
         /// Construct a slider with the given `direction`
         ///
-        /// Values vary between the given `min` and `max`. When keyboard navigation
+        /// Values vary within the given `range`. When keyboard navigation
         /// is used, arrow keys will increment the value by `step` and page up/down
         /// keys by `step * 16`.
         ///
         /// The initial value defaults to the range's
         /// lower bound but may be specified via [`Slider::with_value`].
         #[inline]
-        pub fn new_with_direction(min: T, max: T, step: T, direction: D) -> Self {
-            assert!(min <= max);
-            let value = min;
+        pub fn new_with_direction(range: RangeInclusive<T>, step: T, direction: D) -> Self {
+            assert!(!range.is_empty());
+            let value = *range.start();
             Slider {
                 core: Default::default(),
                 direction,
-                range: (min, max),
+                range,
                 step,
                 value,
                 handle: DragHandle::new(),
@@ -161,10 +161,10 @@ impl_scope! {
         #[inline]
         #[allow(clippy::neg_cmp_op_on_partial_ord)]
         fn clamp_value(&self, value: T) -> T {
-            if !(value >= self.range.0) {
-                self.range.0
-            } else if !(value <= self.range.1) {
-                self.range.1
+            if !(value >= *self.range.start()) {
+                *self.range.start()
+            } else if !(value <= *self.range.end()) {
+                *self.range.end()
             } else {
                 value
             }
@@ -185,8 +185,8 @@ impl_scope! {
 
         // translate value to offset in local coordinates
         fn offset(&self) -> Offset {
-            let a = self.value - self.range.0;
-            let b = self.range.1 - self.range.0;
+            let a = self.value - *self.range.start();
+            let b = *self.range.end() - *self.range.start();
             let max_offset = self.handle.max_offset();
             let mut frac = a.div_as_f64(b);
             assert!((0.0..=1.0).contains(&frac));
@@ -200,7 +200,7 @@ impl_scope! {
         }
 
         fn set_offset_and_push_msg(&mut self, mgr: &mut EventMgr, offset: Offset) {
-            let b = self.range.1 - self.range.0;
+            let b = *self.range.end() - *self.range.start();
             let max_offset = self.handle.max_offset();
             let mut a = match self.direction.is_vertical() {
                 false => b.mul_f64(offset.0 as f64 / max_offset.0 as f64),
@@ -209,7 +209,7 @@ impl_scope! {
             if self.direction.is_reversed() {
                 a = b - a;
             }
-            let value = self.clamp_value(a + self.range.0);
+            let value = self.clamp_value(a + *self.range.start());
             if value != self.value {
                 self.value = value;
                 *mgr |= self.handle.set_offset(self.offset()).1;
@@ -283,8 +283,8 @@ impl_scope! {
                                 true => self.value - x,
                             }
                         }
-                        Command::Home => self.range.0,
-                        Command::End => self.range.1,
+                        Command::Home => *self.range.start(),
+                        Command::End => *self.range.end(),
                         _ => return Response::Unused,
                     };
                     let action = self.set_value(v);

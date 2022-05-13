@@ -16,6 +16,7 @@ use kas::prelude::*;
 use std::default::Default;
 use std::fmt::Debug;
 use std::marker::PhantomData;
+use std::ops::RangeInclusive;
 
 /// View widget driver/binder
 ///
@@ -245,30 +246,27 @@ impl Driver<bool> for RadioBox {
 }
 
 /// [`crate::Slider`] view widget constructor
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Slider<T: SliderType, D: Directional> {
-    min: T,
-    max: T,
+    range: RangeInclusive<T>,
     step: T,
     direction: D,
 }
 impl<T: SliderType, D: Directional + Default> Slider<T, D> {
-    /// Construct, with given `min`, `max` and `step` (see [`crate::Slider::new`])
-    pub fn make(min: T, max: T, step: T) -> Self {
+    /// Construct, with given `range` and `step` (see [`crate::Slider::new`])
+    pub fn make(range: RangeInclusive<T>, step: T) -> Self {
         Slider {
-            min,
-            max,
+            range,
             step,
             direction: D::default(),
         }
     }
 }
 impl<T: SliderType, D: Directional> Slider<T, D> {
-    /// Construct, with given `min`, `max`, `step` and `direction` (see [`Slider::new_with_direction`])
-    pub fn new_with_direction(min: T, max: T, step: T, direction: D) -> Self {
+    /// Construct, with given `range`, `step` and `direction` (see [`Slider::new_with_direction`])
+    pub fn new_with_direction(range: RangeInclusive<T>, step: T, direction: D) -> Self {
         Slider {
-            min,
-            max,
+            range,
             step,
             direction,
         }
@@ -277,7 +275,7 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
 impl<T: SliderType, D: Directional> Driver<T> for Slider<T, D> {
     type Widget = crate::Slider<T, D>;
     fn make(&self) -> Self::Widget {
-        crate::Slider::new_with_direction(self.min, self.max, self.step, self.direction)
+        crate::Slider::new_with_direction(self.range.clone(), self.step, self.direction)
     }
     fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction {
         widget.set_value(data)

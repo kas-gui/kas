@@ -112,6 +112,7 @@ impl_scope! {
     impl Self {
         /// Construct
         pub fn new(range: RangeInclusive<T>, step: T) -> Self {
+            assert!(!range.is_empty());
             let min = *range.start();
             let mut guard = SpinnerGuard(min, range);
             guard.set_value(min);
