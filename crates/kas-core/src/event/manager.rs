@@ -603,7 +603,9 @@ impl<'a> EventMgr<'a> {
         event: Event,
     ) -> Response {
         let mut response = Response::Unused;
-        if let Some(index) = widget.find_child_index(&id) {
+        if widget.steal_event(self, &id, &event) == Response::Used {
+            response = Response::Used;
+        } else if let Some(index) = widget.find_child_index(&id) {
             let translation = widget.translation();
             if disabled {
                 // event is unused
@@ -617,7 +619,6 @@ impl<'a> EventMgr<'a> {
                     "Widget {} found index {index} for {id}, but child not found",
                     widget.identify()
                 );
-                return Response::Unused;
             }
 
             if matches!(response, Response::Unused) {
@@ -634,7 +635,6 @@ impl<'a> EventMgr<'a> {
             response |= widget.handle_event(self, event)
         } else {
             warn!("Widget {} cannot find path to {id}", widget.identify());
-            return Response::Unused;
         }
 
         response

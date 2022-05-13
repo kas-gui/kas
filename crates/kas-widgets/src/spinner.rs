@@ -6,6 +6,7 @@
 //! Spinner widget
 
 use crate::{EditBox, EditField, EditGuard, MarkButton};
+use kas::event::{Command, ScrollDelta};
 use kas::prelude::*;
 use kas::theme::MarkStyle;
 use std::ops::{Add, RangeInclusive, Sub};
@@ -150,9 +151,38 @@ impl_scope! {
             self.edit.set_error_state(false);
             self.edit.set_string(self.edit.guard.0.to_string())
         }
+
+        fn set_and_emit(&mut self, mgr: &mut EventMgr, value: T) -> Response {
+            *mgr |= self.set_value(value);
+            mgr.push_msg(self.value());
+            Response::Used
+        }
     }
 
     impl Widget for Self {
+        fn steal_event(&mut self, mgr: &mut EventMgr, _: &WidgetId, event: &Event) -> Response {
+            match event {
+                Event::Command(cmd, _) => {
+                    let value = match cmd {
+                        Command::Down => self.value() - self.step,
+                        Command::Up => self.value() + self.step,
+                        _ => return Response::Unused,
+                    };
+                    self.set_and_emit(mgr, value)
+                }
+                Event::Scroll(ScrollDelta::LineDelta(_, y)) => {
+                    if *y > 0.0 {
+                        self.set_and_emit(mgr, self.value() + self.step)
+                    } else if *y < 0.0 {
+                        self.set_and_emit(mgr, self.value() - self.step)
+                    } else {
+                        Response::Unused
+                    }
+                }
+                _ => Response::Unused,
+            }
+        }
+
         fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
             if let Some(btn) = mgr.try_pop_msg() {
                 let value = match btn {

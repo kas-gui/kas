@@ -511,6 +511,19 @@ pub trait Widget: WidgetChildren + Layout {
         Response::Unused
     }
 
+    /// Potentially steal an event before it reaches a child
+    ///
+    /// This is called on each widget while sending an event, including when the
+    /// target is self.
+    /// If this returns [`Response::Used`], the event is not sent further.
+    ///
+    /// Default implementation: return [`Response::Unused`].
+    #[inline]
+    fn steal_event(&mut self, mgr: &mut EventMgr, id: &WidgetId, event: &Event) -> Response {
+        let _ = (mgr, id, event);
+        Response::Unused
+    }
+
     /// Handle an event sent to child `index` but left unhandled
     ///
     /// Default implementation: call [`Self::handle_event`] with `event`.
