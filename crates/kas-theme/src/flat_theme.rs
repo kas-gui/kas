@@ -628,6 +628,8 @@ where
     fn mark(&mut self, id: &WidgetId, rect: Rect, style: MarkStyle) {
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
+        } else if self.ev.is_hovered(id) {
+            self.cols.accent
         } else {
             self.cols.text
         };
