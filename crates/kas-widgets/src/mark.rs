@@ -5,10 +5,9 @@
 
 //! Mark widget
 
-use kas::layout::{AxisInfo, SizeRules};
-use kas::theme::{DrawMgr, MarkStyle, SizeMgr};
-use kas::Layout;
-use kas_macros::impl_scope;
+use kas::prelude::*;
+use kas::theme::MarkStyle;
+use std::fmt::Debug;
 
 impl_scope! {
     /// A mark
@@ -46,6 +45,53 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawMgr) {
             draw.mark(self.core.rect, self.style);
+        }
+    }
+}
+
+impl_scope! {
+    /// A mark which is also a button
+    ///
+    /// This button is not keyboard navigable; only mouse/touch interactive.
+    #[derive(Clone, Debug)]
+    #[widget {
+        hover_highlight = true;
+    }]
+    pub struct MarkButton<M: Clone + Debug + 'static> {
+        core: widget_core!(),
+        style: MarkStyle,
+        msg: M,
+    }
+
+    impl Self {
+        /// Construct
+        ///
+        /// A clone of `msg` is sent as a message on click.
+        pub fn new(style: MarkStyle, msg: M) -> Self {
+            MarkButton {
+                core: Default::default(),
+                style,
+                msg,
+            }
+        }
+    }
+
+    impl Layout for Self {
+        fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            mgr.mark(self.style, axis)
+        }
+
+        fn draw(&mut self, mut draw: DrawMgr) {
+            draw.mark(self.core.rect, self.style);
+        }
+    }
+
+    impl Widget for Self {
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+            event.on_activate(mgr, self.id(), |mgr| {
+                mgr.push_msg(self.msg.clone());
+                Response::Used
+            })
         }
     }
 }

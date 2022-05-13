@@ -22,6 +22,8 @@ impl_scope! {
     #[derive(Clone)]
     #[widget {
         layout = button(self.color): self.inner;
+        key_nav = true;
+        hover_highlight = true;
     }]
     pub struct Button<W: Widget> {
         core: widget_core!(),
@@ -114,13 +116,6 @@ impl_scope! {
             mgr.add_accel_keys(self.id_ref(), &self.keys1);
         }
 
-        fn key_nav(&self) -> bool {
-            true
-        }
-        fn hover_highlight(&self) -> bool {
-            true
-        }
-
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             event.on_activate(mgr, self.id(), |mgr| {
                 if let Some(f) = self.on_push.as_ref() {
@@ -143,6 +138,8 @@ impl_scope! {
     #[derive(Clone)]
     #[widget {
         layout = button(self.color): self.label;
+        key_nav = true;
+        hover_highlight = true;
     }]
     pub struct TextButton {
         core: widget_core!(),
@@ -247,13 +244,6 @@ impl_scope! {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.add_accel_keys(self.id_ref(), &self.keys1);
             mgr.add_accel_keys(self.id_ref(), self.label.keys());
-        }
-
-        fn key_nav(&self) -> bool {
-            true
-        }
-        fn hover_highlight(&self) -> bool {
-            true
         }
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {

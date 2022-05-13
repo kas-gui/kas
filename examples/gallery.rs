@@ -18,14 +18,14 @@ use kas::widgets::{menu::MenuEntry, view::SingleView, *};
 #[derive(Clone, Debug)]
 enum Item {
     Button,
-    LightTheme,
-    DarkTheme,
+    Theme(&'static str),
     Check(bool),
     Combo(i32),
     Radio(u32),
     Edit(String),
     Slider(i32),
     Scroll(i32),
+    Spinner(i32),
 }
 
 #[derive(Debug)]
@@ -159,6 +159,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 row: ["RadioBox", self.rb],
                 row: ["RadioBox", self.rb2],
                 row: ["ComboBox", self.cbb],
+                row: ["Spinner", self.spin],
                 row: ["Slider", self.sd],
                 row: ["ScrollBar", self.sc],
                 row: ["ProgressBar", self.pg],
@@ -173,11 +174,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             #[widget] eb = EditBox::new("edit me").with_guard(Guard),
             #[widget] tb = TextButton::new_msg("&Press me", Item::Button),
             #[widget] bi = row![
-                Button::new_msg(img_light, Item::LightTheme)
-                    .with_color("#FAFAFA".parse().unwrap())
+                Button::new_msg(img_light.clone(), Item::Theme("light"))
+                    .with_color("#B38DF9".parse().unwrap())
                     .with_keys(&[VK::L]),
-                Button::new_msg(img_dark, Item::DarkTheme)
-                    .with_color("#404040".parse().unwrap())
+                Button::new_msg(img_light, Item::Theme("blue"))
+                    .with_color("#7CDAFF".parse().unwrap())
+                    .with_keys(&[VK::L]),
+                Button::new_msg(img_dark, Item::Theme("dark"))
+                    .with_color("#E77346".parse().unwrap())
                     .with_keys(&[VK::K]),
             ],
             #[widget] cb = CheckBox::new("&Check me")
@@ -193,9 +197,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 MenuEntry::new("T&wo", Item::Combo(2)),
                 MenuEntry::new("Th&ree", Item::Combo(3)),
             ]),
-            #[widget] sd = Slider::<i32, Right>::new(0, 10, 1)
-                .with_value(0)
-                .map_msg(|msg: i32| Item::Slider(msg)),
+            #[widget] spin: Spinner<i32> = Spinner::new(0..=10, 1),
+            #[widget] sd: Slider<i32, Right> = Slider::new(0..=10, 1),
             #[widget] sc: ScrollBar<Right> = ScrollBar::new().with_limits(100, 20),
             #[widget] pg: ProgressBar<Right> = ProgressBar::new(),
             #[widget] sv = img_rustacean.with_scaling(|s| {
@@ -207,8 +210,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
-                if index == widget_index![self.sc] {
-                    if let Some(msg) = mgr.try_pop_msg::<i32>() {
+                if let Some(msg) = mgr.try_pop_msg::<i32>() {
+                    if index == widget_index![self.spin] {
+                        *mgr |= self.sd.set_value(msg);
+                        mgr.push_msg(Item::Spinner(msg));
+                    } else if index == widget_index![self.sd] {
+                        *mgr |= self.spin.set_value(msg);
+                        mgr.push_msg(Item::Slider(msg));
+                    } else if index == widget_index![self.sc] {
                         let ratio = msg as f32 / self.sc.max_value() as f32;
                         *mgr |= self.pg.set_value(ratio);
                         mgr.push_msg(Item::Scroll(msg))
@@ -258,16 +267,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
                 } else if let Some(item) = mgr.try_pop_msg::<Item>() {
+                    println!("Message: {item:?}");
                     match item {
-                        Item::Button => println!("Clicked!"),
-                        Item::LightTheme => mgr.adjust_theme(|theme| theme.set_scheme("light")),
-                        Item::DarkTheme => mgr.adjust_theme(|theme| theme.set_scheme("dark")),
-                        Item::Check(b) => println!("CheckBox: {}", b),
-                        Item::Combo(c) => println!("ComboBox: {}", c),
-                        Item::Radio(id) => println!("RadioBox: {}", id),
-                        Item::Edit(s) => println!("Edited: {}", s),
-                        Item::Slider(p) => println!("Slider: {}", p),
-                        Item::Scroll(p) => println!("ScrollBar: {}", p),
+                        Item::Theme(name) => mgr.adjust_theme(|theme| theme.set_scheme(name)),
+                        _ => (),
                     }
                 }
             }

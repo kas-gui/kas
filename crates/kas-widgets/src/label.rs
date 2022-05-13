@@ -131,13 +131,13 @@ impl_scope! {
 #[cfg(feature = "min_spec")]
 impl<'a> Layout for Label<&'a str> {
     fn draw(&mut self, mut draw: DrawMgr) {
-        draw.text(self.rect().pos, self.label.as_ref(), self.class);
+        draw.text(self.rect().pos, &self.label, self.class);
     }
 }
 #[cfg(feature = "min_spec")]
 impl Layout for StringLabel {
     fn draw(&mut self, mut draw: DrawMgr) {
-        draw.text(self.rect().pos, self.label.as_ref(), self.class);
+        draw.text(self.rect().pos, &self.label, self.class);
     }
 }
 

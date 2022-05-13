@@ -21,6 +21,7 @@ impl_scope! {
     #[derive(Clone, Debug, Default)]
     #[widget {
         layout = self.label;
+        key_nav = true;
     }]
     pub struct MenuEntry<M: Clone + Debug + 'static> {
         core: widget_core!(),
@@ -76,10 +77,6 @@ impl_scope! {
     impl Widget for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.add_accel_keys(self.id_ref(), self.label.keys());
-        }
-
-        fn key_nav(&self) -> bool {
-            true
         }
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {

@@ -376,7 +376,7 @@ impl_scope! {
             let class = TextClass::Edit(self.multi_line);
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
                 if self.selection.is_empty() {
-                    draw.text(self.rect().pos, self.text.as_ref(), class);
+                    draw.text(self.rect().pos, &self.text, class);
                 } else {
                     // TODO(opt): we could cache the selection rectangles here to make
                     // drawing more efficient (self.text.highlight_lines(range) output).
@@ -391,7 +391,7 @@ impl_scope! {
                 if self.editable && draw.ev_state().has_char_focus(self.id_ref()).0 {
                     draw.text_cursor(
                         self.rect().pos,
-                        self.text.as_ref(),
+                        &self.text,
                         class,
                         self.selection.edit_pos(),
                     );

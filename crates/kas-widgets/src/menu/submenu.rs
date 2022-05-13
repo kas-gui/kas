@@ -134,7 +134,7 @@ impl_scope! {
             draw.frame(self.rect(), FrameStyle::MenuEntry, Default::default());
             self.label.draw(draw.re_id(self.id()));
             if self.mark.rect().size != Size::ZERO {
-                self.mark.draw(draw);
+                draw.recurse(&mut self.mark);
             }
         }
     }

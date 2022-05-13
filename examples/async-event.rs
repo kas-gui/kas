@@ -13,6 +13,7 @@ use std::time::{Duration, Instant};
 
 use kas::draw::color::Rgba;
 use kas::prelude::*;
+use kas::theme::TextClass;
 
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
@@ -33,11 +34,7 @@ fn main() -> kas::shell::Result<()> {
 
     thread::spawn(move || generate_colors(proxy, handle, colour2));
 
-    let widget = ColourSquare {
-        core: Default::default(),
-        colour,
-        handle,
-    };
+    let widget = ColourSquare::new(colour, handle);
 
     toolkit.with(widget)?.run()
 }
@@ -49,15 +46,39 @@ impl_scope! {
         core: widget_core!(),
         colour: Arc<Mutex<Rgba>>,
         handle: UpdateHandle,
+        loading_text: Text<&'static str>,
+        loaded: bool,
+    }
+    impl Self {
+        fn new(colour: Arc<Mutex<Rgba>>, handle: UpdateHandle) -> Self {
+            ColourSquare {
+                core: Default::default(),
+                colour,
+                handle,
+                loading_text: Text::new_single("Loading..."),
+                loaded: false,
+            }
+        }
     }
     impl Layout for ColourSquare {
         fn size_rules(&mut self, mgr: SizeMgr, _: AxisInfo) -> SizeRules {
             SizeRules::fixed_scaled(100.0, 10.0, mgr.scale_factor())
         }
+
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+            self.core.rect = rect;
+            let align = align.unwrap_or(Align::Center, Align::Center);
+            mgr.text_set_size(&mut self.loading_text, TextClass::Label(false), rect.size, align);
+        }
+
         fn draw(&mut self, mut draw: DrawMgr) {
-            let draw = draw.draw_device();
-            let col = *self.colour.lock().unwrap();
-            draw.rect((self.rect()).cast(), col);
+            if !self.loaded {
+                draw.text(self.core.rect.pos, &self.loading_text, TextClass::Label(false));
+            } else {
+                let draw = draw.draw_device();
+                let col = *self.colour.lock().unwrap();
+                draw.rect((self.rect()).cast(), col);
+            }
         }
     }
     impl Widget for ColourSquare {
@@ -70,6 +91,7 @@ impl_scope! {
                 Event::HandleUpdate { .. } => {
                     // Note: event has `handle` and `payload` params.
                     // We only need to request a redraw.
+                    self.loaded = true;
                     mgr.redraw(self.id());
                     Response::Used
                 }
@@ -87,6 +109,9 @@ fn generate_colors(
     handle: UpdateHandle,
     colour: Arc<Mutex<Rgba>>,
 ) {
+    // Loading takes time:
+    thread::sleep(Duration::from_secs(1));
+
     // This function is called in a separate thread, and runs until the program ends.
     let start_time = Instant::now();
 
