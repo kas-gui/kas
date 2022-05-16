@@ -11,6 +11,7 @@ use linear_map::LinearMap;
 use std::f32;
 use std::ops::Range;
 use std::rc::Rc;
+use std::time::Instant;
 
 use crate::{dim, ColorsLinear, Config, InputState, Theme};
 use kas::cast::traits::*;
@@ -555,8 +556,8 @@ where
         }
     }
 
-    fn checkbox(&mut self, id: &WidgetId, rect: Rect, checked: bool) {
-        let anim_fade = self.w.anim.fade_bool_1m(self.draw.draw, id, checked);
+    fn checkbox(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>) {
+        let anim_fade = 1.0 - self.w.anim.fade_bool(self.draw.draw, checked, last_change);
 
         let state = InputState::new_all(self.ev, id);
         let outer = Quad::conv(rect);
@@ -586,8 +587,8 @@ where
         }
     }
 
-    fn radiobox(&mut self, id: &WidgetId, rect: Rect, checked: bool) {
-        let anim_fade = self.w.anim.fade_bool_1m(self.draw.draw, id, checked);
+    fn radiobox(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>) {
+        let anim_fade = 1.0 - self.w.anim.fade_bool(self.draw.draw, checked, last_change);
 
         let state = InputState::new_all(self.ev, id);
         let outer = Quad::conv(rect);

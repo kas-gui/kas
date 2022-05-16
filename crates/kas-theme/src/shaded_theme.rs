@@ -7,6 +7,7 @@
 
 use std::f32;
 use std::ops::Range;
+use std::time::Instant;
 
 use crate::{dim, ColorsLinear, Config, FlatTheme, InputState, Theme};
 use crate::{DrawShaded, DrawShadedImpl};
@@ -375,9 +376,9 @@ where
         self.as_flat().text_cursor(id, pos, text, class, byte);
     }
 
-    fn checkbox(&mut self, id: &WidgetId, rect: Rect, checked: bool) {
+    fn checkbox(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>) {
         let state = InputState::new_all(self.ev, id);
-        let anim_fade = self.w.anim.fade_bool_1m(self.draw.draw, id, checked);
+        let anim_fade = 1.0 - self.w.anim.fade_bool(self.draw.draw, checked, last_change);
 
         let bg_col = self.cols.from_edit_bg(Default::default(), state);
 
@@ -391,9 +392,9 @@ where
         }
     }
 
-    fn radiobox(&mut self, id: &WidgetId, rect: Rect, checked: bool) {
+    fn radiobox(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>) {
         let state = InputState::new_all(self.ev, id);
-        let anim_fade = self.w.anim.fade_bool_1m(self.draw.draw, id, checked);
+        let anim_fade = 1.0 - self.w.anim.fade_bool(self.draw.draw, checked, last_change);
 
         let bg_col = self.cols.from_edit_bg(Default::default(), state);
 

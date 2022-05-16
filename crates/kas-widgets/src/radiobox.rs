@@ -11,6 +11,7 @@ use kas::updatable::{SharedRc, SingleData};
 use log::trace;
 use std::fmt::Debug;
 use std::rc::Rc;
+use std::time::Instant;
 
 /// Type of radiobox group
 pub type RadioBoxGroup = SharedRc<Option<WidgetId>>;
@@ -26,6 +27,7 @@ impl_scope! {
     pub struct RadioBoxBare {
         core: widget_core!(),
         state: bool,
+        last_change: Option<Instant>,
         group: RadioBoxGroup,
         on_select: Option<Rc<dyn Fn(&mut EventMgr)>>,
     }
@@ -41,6 +43,7 @@ impl_scope! {
                     if self.state && !self.eq_id(self.group.get_cloned()) {
                         trace!("RadioBoxBare: unset {}", self.id());
                         self.state = false;
+                        self.last_change = Some(Instant::now());
                         mgr.redraw(self.id());
                     }
                     Response::Used
@@ -49,6 +52,7 @@ impl_scope! {
                     if !self.state {
                         trace!("RadioBoxBare: set {}", self.id());
                         self.state = true;
+                        self.last_change = Some(Instant::now());
                         mgr.redraw(self.id());
                         self.group.update(mgr, Some(self.id()));
                         if let Some(f) = self.on_select.as_ref() {
@@ -76,7 +80,7 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.radiobox(self.rect(), self.state);
+            draw.radiobox(self.rect(), self.state, self.last_change);
         }
     }
 
@@ -90,6 +94,7 @@ impl_scope! {
             RadioBoxBare {
                 core: Default::default(),
                 state: false,
+                last_change: None,
                 group,
                 on_select: None,
             }
@@ -110,6 +115,7 @@ impl_scope! {
             RadioBoxBare {
                 core: self.core,
                 state: self.state,
+                last_change: self.last_change,
                 group: self.group,
                 on_select: Some(Rc::new(f)),
             }
@@ -137,6 +143,7 @@ impl_scope! {
         #[must_use]
         pub fn with_state(mut self, state: bool) -> Self {
             self.state = state;
+            self.last_change = None;
             self
         }
 
@@ -155,7 +162,12 @@ impl_scope! {
         }
 
         fn set_bool(&mut self, state: bool) -> TkAction {
+            if state == self.state {
+                return TkAction::empty();
+            }
+
             self.state = state;
+            self.last_change = None;
             TkAction::REDRAW
         }
     }
