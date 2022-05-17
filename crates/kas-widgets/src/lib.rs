@@ -16,7 +16,7 @@
 //!
 //! -   [`Frame`], [`NavFrame`], [`PopupFrame`]: frames around content
 //! -   [`ScrollRegion`], [`ScrollBarRegion`]: larger on the inside
-//! -   [`Stack`]: a stack of widgets in the same rect (TODO: `TabbedStack`)
+//! -   [`Stack`], [`TabStack`]: a stack of widgets in the same rect
 //! -   [`List`]: a row / column of children
 //! -   [`Splitter`]: like [`List`] but with resizing handles
 //!
@@ -82,6 +82,7 @@ mod slider;
 mod spinner;
 mod splitter;
 mod stack;
+mod tab_stack;
 
 pub mod adapter;
 pub mod view;
@@ -109,3 +110,4 @@ pub use slider::{Slider, SliderType};
 pub use spinner::{Spinner, SpinnerType};
 pub use splitter::*;
 pub use stack::{BoxStack, RefStack, Stack};
+pub use tab_stack::{BoxTabStack, Tab, TabStack};

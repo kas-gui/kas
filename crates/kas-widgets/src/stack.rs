@@ -33,7 +33,8 @@ impl_scope! {
     /// Configuring is `O(n)` in the number of pages `n`. Resizing may be `O(n)`
     /// or may be limited: see [`Self::set_size_limit`]. Drawing is `O(1)`, and
     /// so is event handling in the expected case.
-    #[derive(Clone, Default, Debug)]
+    #[autoimpl(Default)]
+    #[derive(Clone, Debug)]
     #[widget]
     pub struct Stack<W: Widget> {
         core: widget_core!(),
