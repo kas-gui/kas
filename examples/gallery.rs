@@ -173,7 +173,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             #[widget] sl = ScrollLabel::new(text),
             #[widget] eb = EditBox::new("edit me").with_guard(Guard),
             #[widget] tb = TextButton::new_msg("&Press me", Item::Button),
-            #[widget] bi = row![
+            #[widget] bi = Row::new(vec![
                 Button::new_msg(img_light.clone(), Item::Theme("light"))
                     .with_color("#B38DF9".parse().unwrap())
                     .with_keys(&[VK::L]),
@@ -183,7 +183,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Button::new_msg(img_dark, Item::Theme("dark"))
                     .with_color("#E77346".parse().unwrap())
                     .with_keys(&[VK::K]),
-            ],
+            ]),
             #[widget] cb = CheckBox::new("&Check me")
                 .with_state(true)
                 .on_toggle(|mgr, check| mgr.push_msg(Item::Check(check))),

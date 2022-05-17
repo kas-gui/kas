@@ -12,12 +12,12 @@ use std::ops::{Index, IndexMut};
 
 /// A generic row widget
 ///
-/// See documentation of [`List`] type. See also the [`row`](crate::row) macro.
+/// See documentation of [`List`] type.
 pub type Row<W> = List<Right, W>;
 
 /// A generic column widget
 ///
-/// See documentation of [`List`] type. See also the [`column`](crate::column) macro.
+/// See documentation of [`List`] type.
 pub type Column<W> = List<Down, W>;
 
 /// A row of boxed widgets

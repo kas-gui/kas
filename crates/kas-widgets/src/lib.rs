@@ -67,8 +67,6 @@ mod grid;
 mod image;
 mod label;
 mod list;
-#[macro_use]
-mod macros;
 mod mark;
 pub mod menu;
 mod nav_frame;
