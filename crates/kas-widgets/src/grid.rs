@@ -407,6 +407,16 @@ impl<'a, W: Widget> GridBuilder<'a, W> {
     }
 }
 
+impl<W: Widget> FromIterator<(GridChildInfo, W)> for Grid<W> {
+    #[inline]
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = (GridChildInfo, W)>,
+    {
+        Self::new_vec(iter.into_iter().collect())
+    }
+}
+
 impl<W: Widget> Index<usize> for Grid<W> {
     type Output = (GridChildInfo, W);
 

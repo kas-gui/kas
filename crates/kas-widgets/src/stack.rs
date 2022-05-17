@@ -467,3 +467,13 @@ impl<W: Widget> Stack<W> {
         }
     }
 }
+
+impl<W: Widget> FromIterator<W> for Stack<W> {
+    #[inline]
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = W>,
+    {
+        Self::new_vec(iter.into_iter().collect())
+    }
+}
