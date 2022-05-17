@@ -28,36 +28,11 @@ enum Item {
     Spinner(i32),
 }
 
-#[derive(Debug)]
-struct Guard;
-impl EditGuard for Guard {
-    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        mgr.push_msg(Item::Edit(edit.get_string()));
-    }
-
-    fn edit(edit: &mut EditField<Self>, _: &mut EventMgr) {
-        // 7a is the colour of *magic*!
-        edit.set_error_state(edit.get_str().len() % (7 + 1) == 0);
-    }
-}
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    env_logger::init();
-
-    #[cfg(feature = "stack_dst")]
-    let theme = kas::theme::MultiTheme::builder()
-        .add("flat", kas::theme::FlatTheme::new())
-        .add("shaded", kas::theme::ShadedTheme::new())
-        .build();
-    #[cfg(not(feature = "stack_dst"))]
-    let theme = kas::theme::ShadedTheme::new();
-    let mut toolkit = kas::shell::Toolkit::new(theme)?;
-
+fn widgets() -> Box<dyn Widget> {
     // A real app might use async loading of resources here (Svg permits loading
     // from a data slice; DrawShared allows allocation from data slice).
     let img_light = Svg::new(include_bytes!("../res/contrast-2-line.svg"));
     let img_dark = Svg::new(include_bytes!("../res/contrast-2-fill.svg"));
-    let img_gallery = Svg::new(include_bytes!("../res/gallery-line.svg"));
     const SVG_WARNING: &'static [u8] = include_bytes!("../res/error-warning-line.svg");
     let img_rustacean = match Svg::new_path("res/rustacean-flat-happy.svg") {
         Ok(svg) => svg,
@@ -67,53 +42,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    #[derive(Clone, Debug)]
-    enum Menu {
-        Theme(&'static str),
-        Colour(String),
-        Disabled(bool),
-        Quit,
-    }
+    #[derive(Debug)]
+    struct Guard;
+    impl EditGuard for Guard {
+        fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+            mgr.push_msg(Item::Edit(edit.get_string()));
+        }
 
-    let menubar = menu::MenuBar::<Right>::builder()
-        .menu("&App", |menu| {
-            menu.entry("&Quit", Menu::Quit);
-        })
-        .menu("&Theme", |menu| {
-            menu.entry("&Flat", Menu::Theme("flat"))
-                .entry("&Shaded", Menu::Theme("shaded"));
-        })
-        .menu("&Style", |menu| {
-            menu.submenu("&Colours", |mut menu| {
-                // Enumerate colour schemes. Access through the toolkit since
-                // this handles config loading.
-                for name in toolkit.theme().list_schemes().iter() {
-                    let mut title = String::with_capacity(name.len() + 1);
-                    match name {
-                        &"" => title.push_str("&Default"),
-                        &"dark" => title.push_str("Dar&k"),
-                        name => {
-                            let mut iter = name.char_indices();
-                            if let Some((_, c)) = iter.next() {
-                                title.push('&');
-                                for c in c.to_uppercase() {
-                                    title.push(c);
-                                }
-                                if let Some((i, _)) = iter.next() {
-                                    title.push_str(&name[i..]);
-                                }
-                            }
-                        }
-                    }
-                    menu.push_entry(title, Menu::Colour(name.to_string()));
-                }
-            })
-            .separator()
-            .toggle("&Disabled", |mgr, state| {
-                mgr.push_msg(Menu::Disabled(state))
-            });
-        })
-        .build();
+        fn edit(edit: &mut EditField<Self>, _: &mut EventMgr) {
+            // 7a is the colour of *magic*!
+            edit.set_error_state(edit.get_str().len() % (7 + 1) == 0);
+        }
+    }
 
     #[derive(Clone, Debug)]
     struct MsgEdit;
@@ -148,7 +88,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 טקסט לדוגמא במספר שפות.";
 
     let radio = RadioBoxGroup::default();
-    let widgets = impl_singleton! {
+
+    Box::new(impl_singleton! {
         #[widget{
             layout = aligned_column: [
                 row: ["ScrollLabel", self.sl],
@@ -225,7 +166,70 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
-    };
+    })
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
+
+    #[cfg(feature = "stack_dst")]
+    let theme = kas::theme::MultiTheme::builder()
+        .add("flat", kas::theme::FlatTheme::new())
+        .add("shaded", kas::theme::ShadedTheme::new())
+        .build();
+    #[cfg(not(feature = "stack_dst"))]
+    let theme = kas::theme::ShadedTheme::new();
+    let mut toolkit = kas::shell::Toolkit::new(theme)?;
+
+    let img_gallery = Svg::new(include_bytes!("../res/gallery-line.svg"));
+
+    #[derive(Clone, Debug)]
+    enum Menu {
+        Theme(&'static str),
+        Colour(String),
+        Disabled(bool),
+        Quit,
+    }
+
+    let menubar = menu::MenuBar::<Right>::builder()
+        .menu("&App", |menu| {
+            menu.entry("&Quit", Menu::Quit);
+        })
+        .menu("&Theme", |menu| {
+            menu.entry("&Flat", Menu::Theme("flat"))
+                .entry("&Shaded", Menu::Theme("shaded"));
+        })
+        .menu("&Style", |menu| {
+            menu.submenu("&Colours", |mut menu| {
+                // Enumerate colour schemes. Access through the toolkit since
+                // this handles config loading.
+                for name in toolkit.theme().list_schemes().iter() {
+                    let mut title = String::with_capacity(name.len() + 1);
+                    match name {
+                        &"" => title.push_str("&Default"),
+                        &"dark" => title.push_str("Dar&k"),
+                        name => {
+                            let mut iter = name.char_indices();
+                            if let Some((_, c)) = iter.next() {
+                                title.push('&');
+                                for c in c.to_uppercase() {
+                                    title.push(c);
+                                }
+                                if let Some((i, _)) = iter.next() {
+                                    title.push_str(&name[i..]);
+                                }
+                            }
+                        }
+                    }
+                    menu.push_entry(title, Menu::Colour(name.to_string()));
+                }
+            })
+            .separator()
+            .toggle("&Disabled", |mgr, state| {
+                mgr.push_msg(Menu::Disabled(state))
+            });
+        })
+        .build();
 
     let window = impl_singleton! {
         #[widget{
@@ -242,7 +246,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             #[widget] img_gallery = img_gallery,
             #[widget] gallery:
                 for<W: Widget> ScrollBarRegion<W> =
-                    ScrollBarRegion::new(widgets),
+                    ScrollBarRegion::new(widgets()),
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
