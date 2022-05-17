@@ -9,6 +9,12 @@ use crate::{Row, Stack, TextButton};
 use kas::prelude::*;
 use std::fmt::Debug;
 
+#[derive(Clone, Debug)]
+struct MsgSelect;
+
+#[derive(Clone, Debug)]
+struct MsgSelectIndex(usize);
+
 /// A tab
 ///
 /// TODO: a tab is not a button! Support directional graphics, icon and close button.
@@ -59,7 +65,11 @@ impl_scope! {
                 core: Default::default(),
                 direction: Direction::Up,
                 stack: Stack::new(),
-                tabs: Row::new(),
+                tabs: Row::new().on_message(|mgr, index| {
+                    if let Some(MsgSelect) = mgr.try_pop_msg() {
+                        mgr.push_msg(MsgSelectIndex(index));
+                    }
+                }),
             }
         }
 
@@ -70,6 +80,14 @@ impl_scope! {
             self.direction = direction;
             // Note: most of the time SET_SIZE would be enough, but margins can be different
             TkAction::RESIZE
+        }
+    }
+
+    impl Widget for Self {
+        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            if let Some(MsgSelectIndex(index)) = mgr.try_pop_msg() {
+                mgr.set_rect_mgr(|mgr| self.set_active(mgr, index));
+            }
         }
     }
 }
@@ -176,7 +194,7 @@ impl<W: Widget> TabStack<W> {
     ///
     /// Does not configure or size child.
     pub fn with_title(self, title: impl Into<AccelString>, widget: W) -> Self {
-        self.with_tab(Tab::new(title), widget)
+        self.with_tab(Tab::new_on(title, |mgr| mgr.push_msg(MsgSelect)), widget)
     }
 
     /// Append a page
