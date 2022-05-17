@@ -28,7 +28,19 @@ enum Item {
     Spinner(i32),
 }
 
-fn widgets() -> Box<dyn Widget> {
+// Using a trait allows control of content
+#[autoimpl(for<T: trait> Box<T>)]
+trait SetDisabled: Widget {
+    fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool);
+}
+impl<T: SetDisabled> SetDisabled for ScrollBarRegion<T> {
+    // Disable content, but not scrollbars
+    fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool) {
+        self.inner_mut().set_disabled(mgr, state);
+    }
+}
+
+fn widgets() -> Box<dyn SetDisabled> {
     // A real app might use async loading of resources here (Svg permits loading
     // from a data slice; DrawShared allows allocation from data slice).
     let img_light = Svg::new(include_bytes!("../res/contrast-2-line.svg"));
@@ -89,7 +101,7 @@ fn widgets() -> Box<dyn Widget> {
 
     let radio = RadioBoxGroup::default();
 
-    Box::new(impl_singleton! {
+    Box::new(ScrollBarRegion::new(impl_singleton! {
         #[widget{
             layout = aligned_column: [
                 row: ["ScrollLabel", self.sl],
@@ -166,7 +178,12 @@ fn widgets() -> Box<dyn Widget> {
                 }
             }
         }
-    })
+        impl SetDisabled for Self {
+            fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool) {
+                mgr.set_disabled(self.id(), state);
+            }
+        }
+    }))
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -244,9 +261,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             core: widget_core!(),
             #[widget] menubar = menubar,
             #[widget] img_gallery = img_gallery,
-            #[widget] gallery:
-                for<W: Widget> ScrollBarRegion<W> =
-                    ScrollBarRegion::new(widgets()),
+            #[widget] gallery: Box<dyn SetDisabled> = widgets(),
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
@@ -264,7 +279,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             mgr.adjust_theme(|theme| theme.set_scheme(&name));
                         }
                         Menu::Disabled(state) => {
-                            mgr.set_disabled(self.gallery.inner().id(), state);
+                            self.gallery.set_disabled(mgr, state);
                         }
                         Menu::Quit => {
                             *mgr |= TkAction::EXIT;
