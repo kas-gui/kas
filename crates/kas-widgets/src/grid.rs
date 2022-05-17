@@ -119,7 +119,14 @@ impl_scope! {
 
 impl<W: Widget> Grid<W> {
     /// Construct a new instance
-    pub fn new(widgets: Vec<(GridChildInfo, W)>) -> Self {
+    #[inline]
+    pub fn new() -> Self {
+        Self::new_vec(vec![])
+    }
+
+    /// Construct a new instance
+    #[inline]
+    pub fn new_vec(widgets: Vec<(GridChildInfo, W)>) -> Self {
         let mut grid = Grid {
             widgets,
             ..Default::default()

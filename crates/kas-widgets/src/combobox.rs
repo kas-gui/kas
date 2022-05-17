@@ -179,24 +179,37 @@ impl_scope! {
     }
 }
 
-impl<M: Clone + Debug + 'static> ComboBox<M> {
+impl<M, T, I> From<I> for ComboBox<M>
+where
+    M: Clone + Debug + 'static,
+    T: Into<AccelString>,
+    I: IntoIterator<Item = (T, M)>,
+{
     /// Construct a combobox
     ///
     /// Constructs a combobox with labels derived from an iterator over string
     /// types. For example:
     /// ```
     /// # use kas_widgets::ComboBox;
-    /// let combobox = ComboBox::new_from_iter([("zero", 0), ("one", 1), ("two", 2)].into_iter());
+    /// let combobox = ComboBox::from([("zero", 0), ("one", 1), ("two", 2)]);
     /// ```
     ///
     /// Initially, the first entry is active.
     #[inline]
-    pub fn new_from_iter<T: Into<AccelString>, I: IntoIterator<Item = (T, M)>>(iter: I) -> Self {
+    fn from(iter: I) -> Self {
         let entries = iter
             .into_iter()
             .map(|(label, msg)| MenuEntry::new(label, msg))
             .collect();
-        Self::new(entries)
+        Self::new_vec(entries)
+    }
+}
+
+impl<M: Clone + Debug + 'static> ComboBox<M> {
+    /// Construct an empty combobox
+    #[inline]
+    pub fn new() -> Self {
+        Self::new_vec(vec![])
     }
 
     /// Construct a combobox with the given menu entries
@@ -205,7 +218,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     ///
     /// Initially, the first entry is active.
     #[inline]
-    pub fn new(entries: Vec<MenuEntry<M>>) -> Self {
+    pub fn new_vec(entries: Vec<MenuEntry<M>>) -> Self {
         let label = entries.get(0).map(|entry| entry.get_string());
         let label = StringLabel::new(label.unwrap_or("".to_string())).with_class(TextClass::Button);
         ComboBox {
@@ -215,7 +228,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
             popup: ComboPopup {
                 core: Default::default(),
                 inner: PopupFrame::new(
-                    Column::new(entries).on_message(|mgr, index| mgr.push_msg(IndexMsg(index))),
+                    Column::new_vec(entries).on_message(|mgr, index| mgr.push_msg(IndexMsg(index))),
                 ),
             },
             active: 0,

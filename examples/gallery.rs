@@ -173,7 +173,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             #[widget] sl = ScrollLabel::new(text),
             #[widget] eb = EditBox::new("edit me").with_guard(Guard),
             #[widget] tb = TextButton::new_msg("&Press me", Item::Button),
-            #[widget] bi = Row::new(vec![
+            #[widget] bi = Row::new_vec(vec![
                 Button::new_msg(img_light.clone(), Item::Theme("light"))
                     .with_color("#B38DF9".parse().unwrap())
                     .with_keys(&[VK::L]),
@@ -192,7 +192,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             #[widget] rb2 = RadioBox::new("radio box &2", radio)
                 .with_state(true)
                 .on_select(|mgr| mgr.push_msg(Item::Radio(2))),
-            #[widget] cbb = ComboBox::new(vec![
+            #[widget] cbb = ComboBox::new_vec(vec![
                 MenuEntry::new("&One", Item::Combo(1)),
                 MenuEntry::new("T&wo", Item::Combo(2)),
                 MenuEntry::new("Th&ree", Item::Combo(3)),

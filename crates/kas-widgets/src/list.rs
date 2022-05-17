@@ -147,10 +147,20 @@ impl_scope! {
         ///
         /// This constructor is available where the direction is determined by the
         /// type: for `D: Directional + Default`. In other cases, use
-        /// [`Self::new_with_direction`].
+        /// [`Self::new_dir`].
         #[inline]
-        pub fn new(widgets: Vec<W>) -> Self {
-            Self::new_with_direction(D::default(), widgets)
+        pub fn new() -> Self {
+            Self::new_vec(vec![])
+        }
+
+        /// Construct a new instance with vec
+        ///
+        /// This constructor is available where the direction is determined by the
+        /// type: for `D: Directional + Default`. In other cases, use
+        /// [`Self::new_dir_vec`].
+        #[inline]
+        pub fn new_vec(widgets: Vec<W>) -> Self {
+            Self::new_dir_vec(D::default(), widgets)
         }
     }
 
@@ -166,7 +176,13 @@ impl_scope! {
     impl Self {
         /// Construct a new instance with explicit direction
         #[inline]
-        pub fn new_with_direction(direction: D, widgets: Vec<W>) -> Self {
+        pub fn new_dir(direction: D) -> Self {
+            List::new_dir_vec(direction, vec![])
+        }
+
+        /// Construct a new instance with explicit direction and vec
+        #[inline]
+        pub fn new_dir_vec(direction: D, widgets: Vec<W>) -> Self {
             List {
                 core: Default::default(),
                 widgets,
