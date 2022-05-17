@@ -269,6 +269,16 @@ impl<W: Widget> Stack<W> {
         self.sized_range = 0..0;
     }
 
+    /// Returns a reference to the page, if any
+    pub fn get(&self, index: usize) -> Option<&W> {
+        self.widgets.get(index)
+    }
+
+    /// Returns a mutable reference to the page, if any
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut W> {
+        self.widgets.get_mut(index)
+    }
+
     /// Append a page
     ///
     /// The new page is configured immediately. If it becomes the active page
