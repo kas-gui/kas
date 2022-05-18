@@ -75,6 +75,14 @@ impl_scope! {
             }
         }
 
+        /// Set text in an existing `Label`
+        ///
+        /// Note: this must not be called before fonts have been initialised
+        /// (usually done by the theme when the main loop starts).
+        pub fn set_text(&mut self, text: T) -> TkAction {
+            kas::text::util::set_text_and_prepare(&mut self.text, text, self.core.rect.size)
+        }
+
         fn set_edit_pos_from_coord(&mut self, mgr: &mut EventMgr, coord: Coord) {
             let rel_pos = (coord - self.rect().pos + self.view_offset).cast();
             if let Ok(pos) = self.text.text_index_nearest(rel_pos) {

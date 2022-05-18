@@ -49,11 +49,6 @@ impl<T: SetDisabled> SetDisabled for TabStack<T> {
         }
     }
 }
-impl<G: EditGuard> SetDisabled for EditBox<G> {
-    fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool) {
-        mgr.set_disabled(self.id(), state);
-    }
-}
 
 fn widgets() -> Box<dyn SetDisabled> {
     // A real app might use async loading of resources here (Svg permits loading
@@ -202,7 +197,61 @@ fn widgets() -> Box<dyn SetDisabled> {
 }
 
 fn editor() -> Box<dyn SetDisabled> {
-    Box::new(EditBox::new("").multi_line(true))
+    use kas::text::format::Markdown;
+
+    #[derive(Debug)]
+    struct Guard;
+    impl EditGuard for Guard {
+        fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+            let result = Markdown::new(edit.get_str());
+            edit.set_error_state(result.is_err());
+            mgr.push_msg(result.unwrap_or_else(|err| Markdown::new(&format!("{}", err)).unwrap()));
+        }
+    }
+
+    let doc = r"# Formatted text editing
+
+Demonstration of *as-you-type* formatting from **Markdown**.
+
+1. Edit below
+2. View the result
+3. In case of error, be informed
+
+### Not all Markdown supported
+```
+> Block quotations
+
+<h3>HTML</h3>
+
+-----------------
+```
+";
+
+    Box::new(impl_singleton! {
+        #[widget{
+            layout = list(up): [self.editor, self.label];
+        }]
+        #[derive(Debug)]
+        struct {
+            core: widget_core!(),
+            #[widget] editor: EditBox<Guard> =
+                EditBox::new(doc).multi_line(true).with_guard(Guard),
+            #[widget] label: ScrollLabel<Markdown> =
+                ScrollLabel::new(Markdown::new(doc).unwrap()),
+        }
+        impl Widget for Self {
+            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+                if let Some(md) = mgr.try_pop_msg::<Markdown>() {
+                    *mgr |= self.label.set_text(md);
+                }
+            }
+        }
+        impl SetDisabled for Self {
+            fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool) {
+                mgr.set_disabled(self.id(), state);
+            }
+        }
+    })
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
