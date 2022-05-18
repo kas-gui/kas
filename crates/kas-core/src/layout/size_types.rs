@@ -87,6 +87,20 @@ impl From<(u32, u32)> for LogicalSize {
     }
 }
 
+impl From<Vec2> for LogicalSize {
+    #[inline]
+    fn from(Vec2(w, h): Vec2) -> Self {
+        LogicalSize(w, h)
+    }
+}
+
+impl From<LogicalSize> for Vec2 {
+    #[inline]
+    fn from(LogicalSize(w, h): LogicalSize) -> Self {
+        Vec2(w, h)
+    }
+}
+
 /// Margin sizes
 ///
 /// Used by the layout system for margins around child widgets. Margins may be
@@ -287,7 +301,9 @@ impl SpriteDisplay {
     /// Constrains and aligns within `rect`
     ///
     /// If `self.stretch == Stretch::None`, maximum size is limited.
-    /// If `self.fix_aspect`, size is corrected for aspect ratio.
+    ///
+    /// If `self.fix_aspect`, size is corrected for aspect ratio relative to
+    /// `raw_size` (if non-zero) or `self.size` (if `Logical`).
     ///
     /// The resulting size is then aligned using the `align` hints, defaulting to centered.
     pub fn align_rect(
@@ -304,8 +320,9 @@ impl SpriteDisplay {
             size = size.min(ideal);
         }
 
-        let raw_size = Vec2::conv(raw_size);
-        let Vec2(rw, rh) = Vec2::conv(size) / raw_size;
+        let mut raw_size = Vec2::conv(raw_size);
+        let size_f32 = Vec2::conv(size);
+        let Vec2(mut rw, mut rh) = size_f32 / raw_size;
 
         if self.int_scale_factor {
             if rw.is_finite() && rh.is_finite() {
@@ -317,11 +334,19 @@ impl SpriteDisplay {
                 size = Size(size.0 * rw, size.1 * rh);
             }
         } else if self.fix_aspect {
-            // Use smaller ratio, which must be finite
+            if !rw.is_finite() || !rh.is_finite() {
+                if let SpriteSize::Logical(logical) = self.size {
+                    raw_size = Vec2::from(logical);
+                    rw = size_f32.0 / logical.0;
+                    rh = size_f32.1 / logical.1;
+                }
+            }
+
+            // Use smaller ratio, if any is finite
             if rw < rh {
-                size = Size(size.0, i32::conv_nearest(rw * raw_size.1));
+                size.1 = i32::conv_nearest(rw * raw_size.1);
             } else if rh < rw {
-                size = Size(i32::conv_nearest(rh * raw_size.0), size.1);
+                size.0 = i32::conv_nearest(rh * raw_size.0);
             }
         }
 
