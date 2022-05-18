@@ -29,14 +29,29 @@ enum Item {
 }
 
 // Using a trait allows control of content
-#[autoimpl(for<T: trait> Box<T>)]
+//
+// We do not wish to disable navigation, but do with to disable controls.
+#[autoimpl(for<T: trait + ?Sized> Box<T>)]
 trait SetDisabled: Widget {
     fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool);
 }
 impl<T: SetDisabled> SetDisabled for ScrollBarRegion<T> {
-    // Disable content, but not scrollbars
     fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool) {
         self.inner_mut().set_disabled(mgr, state);
+    }
+}
+impl<T: SetDisabled> SetDisabled for TabStack<T> {
+    fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool) {
+        for index in 0..self.len() {
+            if let Some(w) = self.get_mut(index) {
+                w.set_disabled(mgr, state);
+            }
+        }
+    }
+}
+impl<G: EditGuard> SetDisabled for EditBox<G> {
+    fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool) {
+        mgr.set_disabled(self.id(), state);
     }
 }
 
@@ -186,6 +201,10 @@ fn widgets() -> Box<dyn SetDisabled> {
     }))
 }
 
+fn editor() -> Box<dyn SetDisabled> {
+    Box::new(EditBox::new("").multi_line(true))
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
@@ -198,7 +217,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let theme = kas::theme::ShadedTheme::new();
     let mut toolkit = kas::shell::Toolkit::new(theme)?;
 
-    let img_gallery = Svg::new(include_bytes!("../res/gallery-line.svg"));
+    // TODO: use as logo of tab
+    // let img_gallery = Svg::new(include_bytes!("../res/gallery-line.svg"));
 
     #[derive(Clone, Debug)]
     enum Menu {
@@ -252,16 +272,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         #[widget{
             layout = column: [
                 self.menubar,
-                frame: align(center): row: ["Widget Gallery", self.img_gallery],
-                self.gallery,
+                self.stack,
             ];
         }]
         #[derive(Debug)]
         struct {
             core: widget_core!(),
             #[widget] menubar = menubar,
-            #[widget] img_gallery = img_gallery,
-            #[widget] gallery: Box<dyn SetDisabled> = widgets(),
+            #[widget] stack: TabStack<Box<dyn SetDisabled>> = TabStack::new()
+                .with_title("Widgets", widgets()) //TODO: use img_gallery as logo
+                .with_title("Text editor", editor()),
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
@@ -279,7 +299,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             mgr.adjust_theme(|theme| theme.set_scheme(&name));
                         }
                         Menu::Disabled(state) => {
-                            self.gallery.set_disabled(mgr, state);
+                            self.stack.set_disabled(mgr, state);
                         }
                         Menu::Quit => {
                             *mgr |= TkAction::EXIT;
@@ -296,7 +316,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         impl Window for Self {
             fn title(&self) -> &str {
-                "Window Gallery"
+                "Widget Gallery"
             }
         }
     };

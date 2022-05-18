@@ -46,7 +46,9 @@ impl_scope! {
     pub struct TabStack<W: Widget> {
         core: widget_core!(),
         direction: Direction = Direction::Up,
+        #[widget]
         stack: Stack<W>,
+        #[widget]
         tabs: Row<Tab>, // TODO: want a TabBar widget for scrolling support?
     }
 
@@ -159,6 +161,22 @@ impl<W: Widget> TabStack<W> {
     /// Get a tab
     pub fn get_tab_mut(&mut self, index: usize) -> Option<&mut Tab> {
         self.tabs.get_mut(index)
+    }
+
+    /// Append a page (inline)
+    ///
+    /// Does not configure or size child.
+    pub fn with_tab(mut self, tab: Tab, widget: W) -> Self {
+        let _ = self.stack.edit(|widgets| widgets.push(widget));
+        let _ = self.tabs.edit(|tabs| tabs.push(tab));
+        self
+    }
+
+    /// Append a page (inline)
+    ///
+    /// Does not configure or size child.
+    pub fn with_title(self, title: impl Into<AccelString>, widget: W) -> Self {
+        self.with_tab(Tab::new(title), widget)
     }
 
     /// Append a page
