@@ -165,8 +165,8 @@ fn widgets() -> Box<dyn SetDisabled> {
             #[widget] sc: ScrollBar<Right> = ScrollBar::new().with_limits(100, 20),
             #[widget] pg: ProgressBar<Right> = ProgressBar::new(),
             #[widget] sv = img_rustacean.with_scaling(|s| {
-                s.size = kas::layout::SpriteSize::Relative(0.1);
-                s.ideal_factor = 2.0;
+                s.min_factor = 0.1;
+                s.ideal_factor = 0.2;
                 s.stretch = kas::layout::Stretch::High;
             }),
             #[widget] pu = popup_edit_box,
@@ -340,7 +340,7 @@ fn canvas() -> Box<dyn SetDisabled> {
         #[derive(Debug)]
         struct {
             core: widget_core!(),
-            #[widget] canvas = Canvas::new(Program(Instant::now()), LogicalSize::from((100, 100))),
+            #[widget] canvas = Canvas::new(Program(Instant::now())),
         }
         impl SetDisabled for Self {
             fn set_disabled(&mut self, _: &mut EventMgr, _: bool) {}

@@ -6,7 +6,7 @@
 //! Canvas widget
 
 use kas::draw::{ImageFormat, ImageHandle};
-use kas::layout::{SpriteDisplay, SpriteSize};
+use kas::layout::PixmapScaling;
 use kas::prelude::*;
 use tiny_skia::{Color, Pixmap};
 
@@ -51,7 +51,7 @@ impl_scope! {
     #[widget]
     pub struct Canvas<P: CanvasProgram> {
         core: widget_core!(),
-        sprite: SpriteDisplay,
+        scaling: PixmapScaling,
         pixmap: Option<Pixmap>,
         image: Option<ImageHandle>,
         /// The program drawing to the canvas
@@ -59,14 +59,15 @@ impl_scope! {
     }
 
     impl Self {
-        /// Construct with given size
+        /// Construct
+        ///
+        /// Use [`Self::with_size`] or [`Self::with_scaling`] to set the initial size.
         #[inline]
-        pub fn new(program: P, size: LogicalSize) -> Self {
+        pub fn new(program: P) -> Self {
             Canvas {
                 core: Default::default(),
-                sprite: SpriteDisplay {
-                    size: SpriteSize::Logical(size),
-                    fix_aspect: true,
+                scaling: PixmapScaling {
+                    size: LogicalSize(128.0, 128.0),
                     stretch: Stretch::High,
                     ..Default::default()
                 },
@@ -76,26 +77,34 @@ impl_scope! {
             }
         }
 
-        /// Adjust scaling
+        /// Assign size
         ///
-        /// By default, uses `size` as provided to [`Self::new`],
-        /// `fix_aspect: true` and `stretch: Stretch::High`.
-        /// Other fields use [`SpriteDisplay`]'s default values.
+        /// Default size is 128 × 128.
         #[inline]
         #[must_use]
-        pub fn with_scaling(mut self, f: impl FnOnce(&mut SpriteDisplay)) -> Self {
-            f(&mut self.sprite);
+        pub fn with_size(mut self, size: LogicalSize) -> Self {
+            self.scaling.size = size;
             self
         }
 
         /// Adjust scaling
         ///
-        /// By default, uses `size` as provided to [`Self::new`],
-        /// `fix_aspect: true` and `stretch: Stretch::High`.
-        /// Other fields use [`SpriteDisplay`]'s default values.
+        /// Default size is 128 × 128; default stretch is [`Stretch::High`].
+        /// Other fields use [`PixmapScaling`]'s default values.
         #[inline]
-        pub fn set_scaling(&mut self, f: impl FnOnce(&mut SpriteDisplay)) -> TkAction {
-            f(&mut self.sprite);
+        #[must_use]
+        pub fn with_scaling(mut self, f: impl FnOnce(&mut PixmapScaling)) -> Self {
+            f(&mut self.scaling);
+            self
+        }
+
+        /// Adjust scaling
+        ///
+        /// Default size is 128 × 128; default stretch is [`Stretch::High`].
+        /// Other fields use [`PixmapScaling`]'s default values.
+        #[inline]
+        pub fn set_scaling(&mut self, f: impl FnOnce(&mut PixmapScaling)) -> TkAction {
+            f(&mut self.scaling);
             // NOTE: if only `aspect` is changed, REDRAW is enough
             TkAction::RESIZE
         }
@@ -117,12 +126,12 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            self.sprite.size_rules(size_mgr, axis, Size::ZERO)
+            self.scaling.size_rules(size_mgr, axis)
         }
 
         fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             let scale_factor = mgr.size_mgr().scale_factor();
-            self.core.rect = self.sprite.align_rect(rect, align, Size::ZERO, scale_factor);
+            self.core.rect = self.scaling.align_rect(rect, align, scale_factor);
             let size: (u32, u32) = self.core.rect.size.cast();
 
             let pm_size = self.pixmap.as_ref().map(|pm| (pm.width(), pm.height()));
