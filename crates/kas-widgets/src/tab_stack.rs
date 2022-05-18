@@ -53,9 +53,9 @@ impl_scope! {
         core: widget_core!(),
         direction: Direction = Direction::Up,
         #[widget]
-        stack: Stack<W>,
-        #[widget]
         tabs: Row<Tab>, // TODO: want a TabBar widget for scrolling support?
+        #[widget]
+        stack: Stack<W>,
     }
 
     impl Self {

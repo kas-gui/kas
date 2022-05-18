@@ -128,6 +128,18 @@ impl_scope! {
             self.core.id = id;
             self.id_map.clear();
         }
+
+        fn spatial_nav(&mut self,
+            _: &mut SetRectMgr,
+            _: bool,
+            from: Option<usize>,
+        ) -> Option<usize> {
+            match from {
+                None => Some(self.active),
+                Some(active) if active != self.active => Some(self.active),
+                _ => None,
+            }
+        }
     }
 
     impl Index<usize> for Self {
