@@ -199,6 +199,9 @@ fn widgets() -> Box<dyn SetDisabled> {
 fn editor() -> Box<dyn SetDisabled> {
     use kas::text::format::Markdown;
 
+    #[derive(Clone, Debug)]
+    struct MsgDirection;
+
     #[derive(Debug)]
     struct Guard;
     impl EditGuard for Guard {
@@ -229,11 +232,16 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 
     Box::new(impl_singleton! {
         #[widget{
-            layout = list(up): [self.editor, self.label];
+            layout = column: [
+                // TODO: can we make this button float over the top-right corner?
+                TextButton::new_msg("↻", MsgDirection),
+                list(self.dir): [self.editor, self.label],
+            ];
         }]
         #[derive(Debug)]
         struct {
             core: widget_core!(),
+            dir: Direction = Direction::Up,
             #[widget] editor: EditBox<Guard> =
                 EditBox::new(doc).multi_line(true).with_guard(Guard),
             #[widget] label: ScrollLabel<Markdown> =
@@ -241,7 +249,13 @@ Demonstration of *as-you-type* formatting from **Markdown**.
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-                if let Some(md) = mgr.try_pop_msg::<Markdown>() {
+                if let Some(MsgDirection) = mgr.try_pop_msg() {
+                    self.dir = match self.dir {
+                        Direction::Up => Direction::Right,
+                        _ => Direction::Up,
+                    };
+                    *mgr |= TkAction::RESIZE;
+                } else if let Some(md) = mgr.try_pop_msg::<Markdown>() {
                     *mgr |= self.label.set_text(md);
                 }
             }
