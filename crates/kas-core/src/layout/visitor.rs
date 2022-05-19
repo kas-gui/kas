@@ -8,7 +8,9 @@
 // Methods have to take `&mut self`
 #![allow(clippy::wrong_self_convention)]
 
-use super::{AlignHints, AxisInfo, RulesSetter, RulesSolver, SetRectMgr, SizeRules, Storage};
+use super::{
+    Align, AlignHints, AxisInfo, RulesSetter, RulesSolver, SetRectMgr, SizeRules, Storage,
+};
 use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
 use crate::draw::color::Rgb;
@@ -189,11 +191,13 @@ impl<'a> Visitor<'a> {
     }
 
     /// Apply a given `rect` to self
+    ///
+    /// Return the aligned rect.
     #[inline]
-    pub fn set_rect(mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
-        self.set_rect_(mgr, rect, align);
+    pub fn set_rect(mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) -> Rect {
+        self.set_rect_(mgr, rect, align)
     }
-    fn set_rect_(&mut self, mgr: &mut SetRectMgr, mut rect: Rect, align: AlignHints) {
+    fn set_rect_(&mut self, mgr: &mut SetRectMgr, mut rect: Rect, align: AlignHints) -> Rect {
         match &mut self.layout {
             LayoutType::None => (),
             LayoutType::Component(component) => component.set_rect(mgr, rect, align),
@@ -209,17 +213,25 @@ impl<'a> Visitor<'a> {
             }
             LayoutType::Frame(child, storage, _) => {
                 storage.rect = rect;
-                rect.pos += storage.offset;
-                rect.size -= storage.size;
-                child.set_rect_(mgr, rect, align);
+                let child_rect = Rect {
+                    pos: rect.pos + storage.offset,
+                    size: rect.size - storage.size,
+                };
+                child.set_rect_(mgr, child_rect, align);
             }
             LayoutType::Button(child, storage, _) => {
+                rect = align
+                    .complete(Align::Stretch, Align::Stretch)
+                    .aligned_rect(storage.ideal_size, rect);
                 storage.rect = rect;
-                rect.pos += storage.offset;
-                rect.size -= storage.size;
-                child.set_rect_(mgr, rect, AlignHints::CENTER);
+                let child_rect = Rect {
+                    pos: rect.pos + storage.offset,
+                    size: rect.size - storage.size,
+                };
+                child.set_rect_(mgr, child_rect, AlignHints::CENTER);
             }
         }
+        rect
     }
 
     /// Find a widget by coordinate
@@ -437,6 +449,7 @@ pub struct FrameStorage {
     pub size: Size,
     /// Offset of frame contents from parent position
     pub offset: Offset,
+    ideal_size: Size,
     // NOTE: potentially rect is redundant (e.g. with widget's rect) but if we
     // want an alternative as a generic solution then all draw methods must
     // calculate and pass the child's rect, which is probably worse.
@@ -469,6 +482,7 @@ impl FrameStorage {
         };
         self.offset.set_component(axis, offset);
         self.size.set_component(axis, size);
+        self.ideal_size.set_component(axis, rules.ideal_size());
         rules
     }
 }

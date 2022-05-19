@@ -181,9 +181,9 @@ pub trait Layout {
     /// outside of its assigned `rect` and to not function as normal.
     ///
     /// The assigned `rect` may be larger than the widget's size requirements,
-    /// regardless of the [`Stretch`] policy used.
-    /// It is up to the widget to either stretch to occupy this space or align
-    /// itself within the excess space, according to the `align` hints provided.
+    /// regardless of the [`Stretch`] policy used. The [`AlignHints`] should be
+    /// used to align content such as text within this space, and also content
+    /// such as a button (which could, but does not need to, stretch).
     ///
     /// The [`AlignHints`] are usually passed down to children, though there are
     /// some exceptions: a `Button` always centers content; a `ScrollRegion`
