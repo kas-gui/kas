@@ -28,6 +28,7 @@ impl_scope! {
     /// when selected. If a handler is specified via [`Self::on_select`], then
     /// this message is passed to the handler and not emitted.
     #[autoimpl(Debug ignore self.on_select)]
+    #[impl_default]
     #[derive(Clone)]
     #[widget {
         layout = button 'frame: row: [self.label, self.mark];
@@ -39,7 +40,7 @@ impl_scope! {
         #[widget]
         label: StringLabel,
         #[widget]
-        mark: Mark,
+        mark: Mark = Mark::new(MarkStyle::Point(Direction::Down)),
         #[widget]
         popup: ComboPopup<M>,
         active: usize,
@@ -209,7 +210,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     /// Construct an empty combobox
     #[inline]
     pub fn new() -> Self {
-        Self::new_vec(vec![])
+        Self::default()
     }
 
     /// Construct a combobox with the given menu entries
@@ -222,19 +223,14 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
         let label = entries.get(0).map(|entry| entry.get_string());
         let label = StringLabel::new(label.unwrap_or("".to_string())).with_class(TextClass::Button);
         ComboBox {
-            core: Default::default(),
             label,
-            mark: Mark::new(MarkStyle::Point(Direction::Down)),
             popup: ComboPopup {
                 core: Default::default(),
                 inner: PopupFrame::new(
                     Column::new_vec(entries).on_message(|mgr, index| mgr.push_msg(IndexMsg(index))),
                 ),
             },
-            active: 0,
-            opening: false,
-            popup_id: None,
-            on_select: None,
+            ..Default::default()
         }
     }
 
@@ -364,6 +360,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
 }
 
 impl_scope! {
+    #[autoimpl(Default)]
     #[derive(Clone, Debug)]
     #[widget{
         layout = self.inner;
