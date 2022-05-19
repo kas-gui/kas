@@ -5,10 +5,10 @@
 
 //! Spinner widget
 
-use crate::{EditBox, EditField, EditGuard, MarkButton};
+use crate::{EditField, EditGuard, MarkButton};
 use kas::event::{Command, ScrollDelta};
 use kas::prelude::*;
-use kas::theme::MarkStyle;
+use kas::theme::{Background, FrameStyle, MarkStyle};
 use std::ops::{Add, RangeInclusive, Sub};
 
 /// Requirements on type used by [`Spinner`]
@@ -93,18 +93,19 @@ impl_scope! {
     /// Sends a message of type `T` on edit.
     #[derive(Clone, Debug)]
     #[widget {
-        layout = row: [
+        layout = frame(FrameStyle::EditBox): row: [
             self.edit,
-            align(center): column: [
-                MarkButton::new(MarkStyle::Point(Direction::Up), SpinBtn::Up),
-                MarkButton::new(MarkStyle::Point(Direction::Down), SpinBtn::Down),
-            ],
+            align(stretch): column: [self.b_up, self.b_down],
         ];
     }]
     pub struct Spinner<T: SpinnerType> {
         core: widget_core!(),
         #[widget]
-        edit: EditBox<SpinnerGuard<T>>,
+        edit: EditField<SpinnerGuard<T>>,
+        #[widget]
+        b_up: MarkButton<SpinBtn>,
+        #[widget]
+        b_down: MarkButton<SpinBtn>,
         step: T,
     }
 
@@ -118,7 +119,9 @@ impl_scope! {
 
             Spinner {
                 core: Default::default(),
-                edit: EditBox::new(guard.0.to_string()).with_guard(guard),
+                edit: EditField::new(guard.0.to_string()).with_guard(guard),
+                b_up: MarkButton::new(MarkStyle::Point(Direction::Up), SpinBtn::Up),
+                b_down: MarkButton::new(MarkStyle::Point(Direction::Down), SpinBtn::Down),
                 step,
             }
         }
@@ -154,6 +157,20 @@ impl_scope! {
             *mgr |= self.set_value(value);
             mgr.push_msg(self.value());
             Response::Used
+        }
+    }
+
+    impl Layout for Self {
+        fn draw(&mut self, mut draw: DrawMgr) {
+            let bg = if self.edit.has_error() {
+                Background::Error
+            } else {
+                Background::Default
+            };
+            draw.frame(self.rect(), FrameStyle::EditBox, bg);
+            draw.recurse(&mut self.edit);
+            draw.recurse(&mut self.b_up);
+            draw.recurse(&mut self.b_down);
         }
     }
 
