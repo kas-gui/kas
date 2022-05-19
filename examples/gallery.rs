@@ -233,7 +233,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
     Box::new(impl_singleton! {
         #[widget{
             layout = float: [
-                align(top): TextButton::new_msg("↻", MsgDirection),
+                align(right, top): TextButton::new_msg("↻", MsgDirection),
                 list(self.dir): [self.editor, self.label],
             ];
         }]

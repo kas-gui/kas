@@ -76,8 +76,8 @@ impl ToTokens for StorIdent {
 
 #[derive(Debug)]
 enum Layout {
-    Align(Box<Layout>, Align),
-    AlignSingle(Expr, Align),
+    Align(Box<Layout>, AlignHints),
+    AlignSingle(Expr, AlignHints),
     Single(Expr),
     Widget(StorIdent, Expr),
     Frame(StorIdent, Box<Layout>, Expr),
@@ -98,16 +98,18 @@ enum Direction {
     Expr(Toks),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Align {
+    None,
     Default,
+    TL,
     Center,
+    BR,
     Stretch,
-    Top,
-    Bottom,
-    Left,
-    Right,
 }
+
+#[derive(Debug, PartialEq, Eq)]
+struct AlignHints(Align, Align);
 
 #[derive(Debug, Default)]
 struct GridDimensions {
@@ -333,34 +335,62 @@ impl Layout {
     }
 }
 
-fn parse_align(input: ParseStream) -> Result<Align> {
+impl Align {
+    fn parse(inner: ParseStream, first: bool) -> Result<Option<Self>> {
+        let lookahead = inner.lookahead1();
+        Ok(Some(if lookahead.peek(kw::default) {
+            let _: kw::default = inner.parse()?;
+            Align::Default
+        } else if lookahead.peek(kw::center) {
+            let _: kw::center = inner.parse()?;
+            Align::Center
+        } else if lookahead.peek(kw::stretch) {
+            let _: kw::stretch = inner.parse()?;
+            Align::Stretch
+        } else if lookahead.peek(kw::top) {
+            if first {
+                return Ok(None);
+            }
+            let _: kw::top = inner.parse()?;
+            Align::TL
+        } else if lookahead.peek(kw::bottom) {
+            if first {
+                return Ok(None);
+            }
+            let _: kw::bottom = inner.parse()?;
+            Align::BR
+        } else if lookahead.peek(kw::left) && first {
+            let _: kw::left = inner.parse()?;
+            Align::TL
+        } else if lookahead.peek(kw::right) && first {
+            let _: kw::right = inner.parse()?;
+            Align::BR
+        } else {
+            return Err(lookahead.error());
+        }))
+    }
+}
+
+fn parse_align(input: ParseStream) -> Result<AlignHints> {
     let inner;
     let _ = parenthesized!(inner in input);
 
-    let lookahead = inner.lookahead1();
-    if lookahead.peek(kw::default) {
-        let _: kw::default = inner.parse()?;
-        Ok(Align::Default)
-    } else if lookahead.peek(kw::center) {
-        let _: kw::center = inner.parse()?;
-        Ok(Align::Center)
-    } else if lookahead.peek(kw::stretch) {
-        let _: kw::stretch = inner.parse()?;
-        Ok(Align::Stretch)
-    } else if lookahead.peek(kw::top) {
-        let _: kw::top = inner.parse()?;
-        Ok(Align::Top)
-    } else if lookahead.peek(kw::bottom) {
-        let _: kw::bottom = inner.parse()?;
-        Ok(Align::Bottom)
-    } else if lookahead.peek(kw::left) {
-        let _: kw::left = inner.parse()?;
-        Ok(Align::Left)
-    } else if lookahead.peek(kw::right) {
-        let _: kw::right = inner.parse()?;
-        Ok(Align::Right)
-    } else {
-        Err(lookahead.error())
+    match Align::parse(&inner, true)? {
+        None => {
+            let first = Align::None;
+            let second = Align::parse(&inner, false)?.unwrap();
+            Ok(AlignHints(first, second))
+        }
+        Some(first) => {
+            let second = if let Ok(_) = inner.parse::<Token![,]>() {
+                Align::parse(&inner, false)?.unwrap()
+            } else if matches!(first, Align::TL | Align::BR) {
+                Align::None
+            } else {
+                first
+            };
+            Ok(AlignHints(first, second))
+        }
     }
 }
 
@@ -483,16 +513,23 @@ impl Parse for Direction {
     }
 }
 
-impl ToTokens for Align {
+impl ToTokens for AlignHints {
     fn to_tokens(&self, toks: &mut Toks) {
-        toks.append_all(match self {
-            Align::Default => quote! { layout::AlignHints::NONE },
-            Align::Center => quote! { layout::AlignHints::CENTER },
-            Align::Stretch => quote! { layout::AlignHints::STRETCH },
-            Align::Top => quote! { layout::AlignHints::new(None, Some(layout::Align::TL))},
-            Align::Bottom => quote! { layout::AlignHints::new(None, Some(layout::Align::BR)) },
-            Align::Left => quote! { layout::AlignHints::new(Some(layout::Align::TL), None) },
-            Align::Right => quote! { layout::AlignHints::new(Some(layout::Align::BR), None) },
+        fn align_toks(align: &Align) -> Toks {
+            match align {
+                Align::None => quote! { None },
+                Align::Default => quote! { Some(layout::Align::Default) },
+                Align::Center => quote! { Some(layout::Align::Center) },
+                Align::Stretch => quote! { Some(layout::Align::Stretch) },
+                Align::TL => quote! { Some(layout::Align::TL) },
+                Align::BR => quote! { Some(layout::Align::BR) },
+            }
+        }
+        let horiz = align_toks(&self.0);
+        let vert = align_toks(&self.1);
+
+        toks.append_all(quote! {
+            layout::AlignHints::new(#horiz, #vert)
         });
     }
 }
