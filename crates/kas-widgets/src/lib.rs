@@ -5,42 +5,44 @@
 
 //! KAS widget library
 //!
-//! ## Dialogs / pre-made windows
+//! ## Sub-modules
 //!
-//! See [`dialog`] module.
+//! -   [`adapter::AdaptWidget`]: provides `map_msg`, `with_reserve` and `with_label` methods
+//! -   [`dialog`]: pre-made dialog widgets
+//! -   [`menu`]: support for pop-up menus ([`ComboBox`], [`menu::MenuBar`])
+//! -   [`view`]: data models
 //!
 //! ## Container widgets
 //!
-//! -   [`Frame`]: a simple frame around a single child
-//! -   [`ScrollRegion`]: may be larger on the inside than the outside
-//! -   [`Stack`]: a stack of widgets in the same rect (TODO: `TabbedStack`)
-//! -   [`List`]: a dynamic row / column of children
-//! -   [`Splitter`]: similar to [`List`] but with resizing handles
-//!
-//! ## Menus
-//!
-//! See the [`menu`] module.
+//! -   [`Frame`], [`NavFrame`], [`PopupFrame`]: frames around content
+//! -   [`ScrollRegion`], [`ScrollBarRegion`]: larger on the inside
+//! -   [`Stack`], [`TabStack`]: a stack of widgets in the same rect
+//! -   [`List`]: a row / column of children
+//! -   [`Splitter`]: like [`List`] but with resizing handles
 //!
 //! ## Controls
 //!
-//! -   [`TextButton`]: a simple button
-//! -   [`CheckBox`]: a checkable box
-//! -   [`RadioBox`]: a checkable box bound to a group
-//! -   [`EditBox`]: a text-editing box
+//! -   [`TextButton`], [`Button`], [`MarkButton`]: button widgets
+//! -   [`CheckBox`], [`RadioBox`]: checkable boxes
+//! -   [`EditBox`], [`EditField`]: text editing with/without a frame
 //! -   [`ScrollBar`]: a scrollbar
 //! -   [`Slider`]: a slider
+//! -   [`Spinner`]: numeric entry
 //!
-//! ## Static widgets
+//! ## Displays
 //!
 //! -   [`Filler`]: an empty widget, sometimes used to fill space
 //! -   [`Separator`]: a visible bar to separate things
+//! -   [`Mark`]: a small mark
 //! -   [`Label`]: a simple text label
+//! -   [`ScrollLabel`]: text label supporting scrolling and selection
+//! -   [`Image`]: a pixmap image
+//! -   [`ProgressBar`]: show completion level
 //!
 //! ## Components
 //!
 //! -   [`AccelLabel`]: a label which parses accelerator keys
-//! -   [`CheckBoxBare`]: `CheckBox` without its label
-//! -   [`RadioBoxBare`]: `RadioBox` without its label
+//! -   [`CheckBoxBare`], [`RadioBoxBare`]: components of checkable boxes
 //! -   [`DragHandle`]: a handle (e.g. for a slider, splitter or scrollbar)
 
 // Use ``never_loop`` until: https://github.com/rust-lang/rust-clippy/issues/7397 is fixed
@@ -67,8 +69,6 @@ mod grid;
 mod image;
 mod label;
 mod list;
-#[macro_use]
-mod macros;
 mod mark;
 pub mod menu;
 mod nav_frame;
@@ -82,6 +82,7 @@ mod slider;
 mod spinner;
 mod splitter;
 mod stack;
+mod tab_stack;
 
 pub mod adapter;
 pub mod view;
@@ -109,3 +110,4 @@ pub use slider::{Slider, SliderType};
 pub use spinner::{Spinner, SpinnerType};
 pub use splitter::*;
 pub use stack::{BoxStack, RefStack, Stack};
+pub use tab_stack::{BoxTabStack, Tab, TabStack};

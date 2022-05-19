@@ -8,6 +8,7 @@
 use super::AccelLabel;
 use kas::prelude::*;
 use std::rc::Rc;
+use std::time::Instant;
 
 impl_scope! {
     /// A bare checkbox (no label)
@@ -21,6 +22,7 @@ impl_scope! {
         core: widget_core!(),
         state: bool,
         editable: bool,
+        last_change: Option<Instant>,
         on_toggle: Option<Rc<dyn Fn(&mut EventMgr, bool)>>,
     }
 
@@ -39,7 +41,7 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.checkbox(self.rect(), self.state);
+            draw.checkbox(self.rect(), self.state, self.last_change);
         }
     }
 
@@ -51,6 +53,7 @@ impl_scope! {
                 core: Default::default(),
                 state: false,
                 editable: true,
+                last_change: None,
                 on_toggle: None,
             }
         }
@@ -69,6 +72,7 @@ impl_scope! {
                 core: self.core,
                 state: self.state,
                 editable: self.editable,
+                last_change: self.last_change,
                 on_toggle: Some(Rc::new(f)),
             }
         }
@@ -90,6 +94,7 @@ impl_scope! {
         #[must_use]
         pub fn with_state(mut self, state: bool) -> Self {
             self.state = state;
+            self.last_change = None;
             self
         }
 
@@ -120,7 +125,12 @@ impl_scope! {
         }
 
         fn set_bool(&mut self, state: bool) -> TkAction {
+            if state == self.state {
+                return TkAction::empty();
+            }
+
             self.state = state;
+            self.last_change = None;
             TkAction::REDRAW
         }
     }
@@ -129,6 +139,7 @@ impl_scope! {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             event.on_activate(mgr, self.id(), |mgr| {
                 self.state = !self.state;
+                self.last_change = Some(Instant::now());
                 if let Some(f) = self.on_toggle.as_ref() {
                     f(mgr, self.state);
                 }

@@ -5,9 +5,6 @@
 
 //! "Handle" types used by themes
 
-use std::convert::AsRef;
-use std::ops::{Bound, Range, RangeBounds};
-
 use super::{FrameStyle, MarkStyle, SizeHandle, SizeMgr, TextClass};
 use crate::dir::Direction;
 use crate::draw::{color::Rgb, Draw, DrawShared, ImageId, PassType};
@@ -17,6 +14,9 @@ use crate::layout::SetRectMgr;
 use crate::macros::autoimpl;
 use crate::text::{TextApi, TextDisplay};
 use crate::{TkAction, Widget, WidgetExt, WidgetId};
+use std::convert::AsRef;
+use std::ops::{Bound, Range, RangeBounds};
+use std::time::Instant;
 
 /// Optional background colour
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -254,15 +254,23 @@ impl<'a> DrawMgr<'a> {
     /// The checkbox is a small, usually square, box with or without a check
     /// mark. A checkbox widget may include a text label, but that label is not
     /// part of this element.
-    pub fn checkbox(&mut self, rect: Rect, checked: bool) {
-        self.h.checkbox(&self.id, rect, checked);
+    ///
+    /// The theme may animate transitions. To achieve this, `last_change` should be
+    /// the time of the last state change caused by the user, or none when the
+    /// last state change was programmatic.
+    pub fn checkbox(&mut self, rect: Rect, checked: bool, last_change: Option<Instant>) {
+        self.h.checkbox(&self.id, rect, checked, last_change);
     }
 
     /// Draw UI element: radiobox
     ///
     /// This is similar in appearance to a checkbox.
-    pub fn radiobox(&mut self, rect: Rect, checked: bool) {
-        self.h.radiobox(&self.id, rect, checked);
+    ///
+    /// The theme may animate transitions. To achieve this, `last_change` should be
+    /// the time of the last state change caused by the user, or none when the
+    /// last state change was programmatic.
+    pub fn radiobox(&mut self, rect: Rect, checked: bool, last_change: Option<Instant>) {
+        self.h.radiobox(&self.id, rect, checked, last_change);
     }
 
     /// Draw UI element: mark
@@ -398,12 +406,20 @@ pub trait DrawHandle {
     /// The checkbox is a small, usually square, box with or without a check
     /// mark. A checkbox widget may include a text label, but that label is not
     /// part of this element.
-    fn checkbox(&mut self, id: &WidgetId, rect: Rect, checked: bool);
+    ///
+    /// The theme may animate transitions. To achieve this, `last_change` should be
+    /// the time of the last state change caused by the user, or none when the
+    /// last state change was programmatic.
+    fn checkbox(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>);
 
     /// Draw UI element: radiobox
     ///
     /// This is similar in appearance to a checkbox.
-    fn radiobox(&mut self, id: &WidgetId, rect: Rect, checked: bool);
+    ///
+    /// The theme may animate transitions. To achieve this, `last_change` should be
+    /// the time of the last state change caused by the user, or none when the
+    /// last state change was programmatic.
+    fn radiobox(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>);
 
     /// Draw UI element: mark
     fn mark(&mut self, id: &WidgetId, rect: Rect, style: MarkStyle);

@@ -5,7 +5,7 @@
 
 //! 2D pixmap widget
 
-use kas::layout::SpriteDisplay;
+use kas::layout::PixmapScaling;
 use kas::prelude::*;
 
 /// Image loading errors
@@ -42,8 +42,7 @@ impl_scope! {
     #[widget]
     pub struct Image {
         core: widget_core!(),
-        sprite: SpriteDisplay,
-        raw_size: Size,
+        scaling: PixmapScaling,
         handle: Option<ImageHandle>,
     }
 
@@ -75,7 +74,7 @@ impl_scope! {
         /// Returns `TkAction::RESIZE` on success. On error, `self` is unchanged.
         pub fn set(&mut self, handle: ImageHandle, draw: &mut dyn DrawShared) -> Option<TkAction> {
             if let Some(size) = draw.image_size(&handle) {
-                self.raw_size = size;
+                self.scaling.size = size.cast();
                 self.handle = Some(handle);
                 Some(TkAction::RESIZE)
             } else {
@@ -110,7 +109,7 @@ impl_scope! {
                 draw.image_free(old_handle);
             }
 
-            self.raw_size = size.into();
+            self.scaling.size = size.cast();
             self.handle = Some(handle);
 
             Ok(TkAction::RESIZE)
@@ -120,7 +119,6 @@ impl_scope! {
         pub fn clear(&mut self, draw: &mut dyn DrawShared) -> TkAction {
             if let Some(handle) = self.handle.take() {
                 draw.image_free(handle);
-                self.raw_size = Size::ZERO;
                 TkAction::RESIZE
             } else {
                 TkAction::empty()
@@ -129,22 +127,22 @@ impl_scope! {
 
         /// Adjust scaling
         ///
-        /// By default, this is [`SpriteDisplay::default`] except with
+        /// By default, this is [`PixmapScaling::default`] except with
         /// `fix_aspect: true`.
         #[inline]
         #[must_use]
-        pub fn with_scaling(mut self, f: impl FnOnce(&mut SpriteDisplay)) -> Self {
-            f(&mut self.sprite);
+        pub fn with_scaling(mut self, f: impl FnOnce(&mut PixmapScaling)) -> Self {
+            f(&mut self.scaling);
             self
         }
 
         /// Adjust scaling
         ///
-        /// By default, this is [`SpriteDisplay::default`] except with
+        /// By default, this is [`PixmapScaling::default`] except with
         /// `fix_aspect: true`.
         #[inline]
-        pub fn set_scaling(&mut self, f: impl FnOnce(&mut SpriteDisplay)) -> TkAction {
-            f(&mut self.sprite);
+        pub fn set_scaling(&mut self, f: impl FnOnce(&mut PixmapScaling)) -> TkAction {
+            f(&mut self.scaling);
             // NOTE: if only `aspect` is changed, REDRAW is enough
             TkAction::RESIZE
         }
@@ -152,12 +150,12 @@ impl_scope! {
 
     impl Layout for Image {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            self.sprite.size_rules(size_mgr, axis, self.raw_size)
+            self.scaling.size_rules(size_mgr, axis)
         }
 
         fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             let scale_factor = mgr.size_mgr().scale_factor();
-            self.core.rect = self.sprite.align_rect(rect, align, self.raw_size, scale_factor);
+            self.core.rect = self.scaling.align_rect(rect, align, scale_factor);
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {

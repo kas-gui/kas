@@ -33,7 +33,8 @@ impl_scope! {
     /// Configuring is `O(n)` in the number of pages `n`. Resizing may be `O(n)`
     /// or may be limited: see [`Self::set_size_limit`]. Drawing is `O(1)`, and
     /// so is event handling in the expected case.
-    #[derive(Clone, Default, Debug)]
+    #[autoimpl(Default)]
+    #[derive(Clone, Debug)]
     #[widget]
     pub struct Stack<W: Widget> {
         core: widget_core!(),
@@ -127,6 +128,18 @@ impl_scope! {
             self.core.id = id;
             self.id_map.clear();
         }
+
+        fn spatial_nav(&mut self,
+            _: &mut SetRectMgr,
+            _: bool,
+            from: Option<usize>,
+        ) -> Option<usize> {
+            match from {
+                None => Some(self.active),
+                Some(active) if active != self.active => Some(self.active),
+                _ => None,
+            }
+        }
     }
 
     impl Index<usize> for Self {
@@ -145,17 +158,24 @@ impl_scope! {
 }
 
 impl<W: Widget> Stack<W> {
+    /// Construct a new, empty instance
+    #[inline]
+    pub fn new() -> Self {
+        Self::new_vec(vec![])
+    }
+
     /// Construct a new instance
     ///
-    /// If `active < widgets.len()`, then `widgets[active]` will initially be
-    /// shown; otherwise, no page will be visible or receive press events.
-    pub fn new(widgets: Vec<W>, active: usize) -> Self {
+    /// Initially, the first page (if any) will be shown. Use
+    /// [`Self::with_active`] to change this.
+    #[inline]
+    pub fn new_vec(widgets: Vec<W>) -> Self {
         Stack {
             core: Default::default(),
             align_hints: Default::default(),
             widgets,
             sized_range: 0..0,
-            active,
+            active: 0,
             size_limit: usize::MAX,
             next: 0,
             id_map: Default::default(),
@@ -189,8 +209,19 @@ impl<W: Widget> Stack<W> {
     }
 
     /// Get the index of the active widget
-    pub fn active_index(&self) -> usize {
+    #[inline]
+    pub fn active(&self) -> usize {
         self.active
+    }
+
+    /// Set the active widget (inline)
+    ///
+    /// Unlike [`Self::set_active`], this does not update anything; it is
+    /// assumed that sizing happens afterwards.
+    #[inline]
+    pub fn with_active(mut self, active: usize) -> Self {
+        self.active = active;
+        self
     }
 
     /// Set the active page
@@ -225,7 +256,7 @@ impl<W: Widget> Stack<W> {
     }
 
     /// Get a direct reference to the active child widget, if any
-    pub fn active(&self) -> Option<&W> {
+    pub fn get_active(&self) -> Option<&W> {
         if self.active < self.widgets.len() {
             Some(&self.widgets[self.active])
         } else {
@@ -249,6 +280,16 @@ impl<W: Widget> Stack<W> {
     pub fn clear(&mut self) {
         self.widgets.clear();
         self.sized_range = 0..0;
+    }
+
+    /// Returns a reference to the page, if any
+    pub fn get(&self, index: usize) -> Option<&W> {
+        self.widgets.get(index)
+    }
+
+    /// Returns a mutable reference to the page, if any
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut W> {
+        self.widgets.get_mut(index)
     }
 
     /// Append a page
@@ -437,5 +478,15 @@ impl<W: Widget> Stack<W> {
                 *mgr |= TkAction::RESIZE;
             }
         }
+    }
+}
+
+impl<W: Widget> FromIterator<W> for Stack<W> {
+    #[inline]
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = W>,
+    {
+        Self::new_vec(iter.into_iter().collect())
     }
 }

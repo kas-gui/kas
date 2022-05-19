@@ -12,12 +12,12 @@ use std::ops::{Index, IndexMut};
 
 /// A generic row widget
 ///
-/// See documentation of [`List`] type. See also the [`row`](crate::row) macro.
+/// See documentation of [`List`] type.
 pub type Row<W> = List<Right, W>;
 
 /// A generic column widget
 ///
-/// See documentation of [`List`] type. See also the [`column`](crate::column) macro.
+/// See documentation of [`List`] type.
 pub type Column<W> = List<Down, W>;
 
 /// A row of boxed widgets
@@ -147,10 +147,20 @@ impl_scope! {
         ///
         /// This constructor is available where the direction is determined by the
         /// type: for `D: Directional + Default`. In other cases, use
-        /// [`Self::new_with_direction`].
+        /// [`Self::new_dir`].
         #[inline]
-        pub fn new(widgets: Vec<W>) -> Self {
-            Self::new_with_direction(D::default(), widgets)
+        pub fn new() -> Self {
+            Self::new_vec(vec![])
+        }
+
+        /// Construct a new instance with vec
+        ///
+        /// This constructor is available where the direction is determined by the
+        /// type: for `D: Directional + Default`. In other cases, use
+        /// [`Self::new_dir_vec`].
+        #[inline]
+        pub fn new_vec(widgets: Vec<W>) -> Self {
+            Self::new_dir_vec(D::default(), widgets)
         }
     }
 
@@ -166,7 +176,13 @@ impl_scope! {
     impl Self {
         /// Construct a new instance with explicit direction
         #[inline]
-        pub fn new_with_direction(direction: D, widgets: Vec<W>) -> Self {
+        pub fn new_dir(direction: D) -> Self {
+            List::new_dir_vec(direction, vec![])
+        }
+
+        /// Construct a new instance with explicit direction and vec
+        #[inline]
+        pub fn new_dir_vec(direction: D, widgets: Vec<W>) -> Self {
             List {
                 core: Default::default(),
                 widgets,
@@ -234,6 +250,16 @@ impl_scope! {
         /// Remove all child widgets
         pub fn clear(&mut self) {
             self.widgets.clear();
+        }
+
+        /// Returns a reference to the child, if any
+        pub fn get(&self, index: usize) -> Option<&W> {
+            self.widgets.get(index)
+        }
+
+        /// Returns a mutable reference to the child, if any
+        pub fn get_mut(&mut self, index: usize) -> Option<&mut W> {
+            self.widgets.get_mut(index)
         }
 
         /// Append a child widget
@@ -404,6 +430,16 @@ impl_scope! {
         fn index_mut(&mut self, index: usize) -> &mut Self::Output {
             &mut self.widgets[index]
         }
+    }
+}
+
+impl<D: Directional + Default, W: Widget> FromIterator<W> for List<D, W> {
+    #[inline]
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = W>,
+    {
+        Self::new_vec(iter.into_iter().collect())
     }
 }
 

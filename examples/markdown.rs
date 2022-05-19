@@ -9,7 +9,7 @@ use kas::class::HasStr;
 use kas::event::EventMgr;
 use kas::macros::impl_singleton;
 use kas::text::format::Markdown;
-use kas::widgets::{EditBox, EditField, EditGuard, Label, ScrollBarRegion};
+use kas::widgets::{EditBox, EditField, EditGuard, ScrollLabel};
 use kas::{Widget, Window};
 
 #[derive(Debug)]
@@ -18,10 +18,7 @@ impl EditGuard for Guard {
     fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
         let result = Markdown::new(edit.get_str());
         edit.set_error_state(result.is_err());
-        mgr.push_msg(result.unwrap_or_else(|err| {
-            let string = format!("```\n{}\n```", err);
-            Markdown::new(&string).unwrap()
-        }));
+        mgr.push_msg(result.unwrap_or_else(|err| Markdown::new(&format!("{}", err)).unwrap()));
     }
 }
 
@@ -65,8 +62,8 @@ the *true* purpose of this feature is easy entry for rich text.
             core: widget_core!(),
             #[widget] editor: EditBox<Guard> =
                 EditBox::new(doc).multi_line(true).with_guard(Guard),
-            #[widget] label: ScrollBarRegion<Label<Markdown>> =
-                ScrollBarRegion::new(Label::new(Markdown::new(doc)?)),
+            #[widget] label: ScrollLabel<Markdown> =
+                ScrollLabel::new(Markdown::new(doc)?),
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {

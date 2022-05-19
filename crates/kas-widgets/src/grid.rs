@@ -119,7 +119,14 @@ impl_scope! {
 
 impl<W: Widget> Grid<W> {
     /// Construct a new instance
-    pub fn new(widgets: Vec<(GridChildInfo, W)>) -> Self {
+    #[inline]
+    pub fn new() -> Self {
+        Self::new_vec(vec![])
+    }
+
+    /// Construct a new instance
+    #[inline]
+    pub fn new_vec(widgets: Vec<(GridChildInfo, W)>) -> Self {
         let mut grid = Grid {
             widgets,
             ..Default::default()
@@ -205,6 +212,16 @@ impl<W: Widget> Grid<W> {
     /// Returns the number of child widgets
     pub fn len(&self) -> usize {
         self.widgets.len()
+    }
+
+    /// Returns a reference to the child, if any
+    pub fn get(&self, index: usize) -> Option<&W> {
+        self.widgets.get(index).map(|t| &t.1)
+    }
+
+    /// Returns a mutable reference to the child, if any
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut W> {
+        self.widgets.get_mut(index).map(|t| &mut t.1)
     }
 
     /// Iterate over childern
@@ -387,6 +404,16 @@ impl<'a, W: Widget> GridBuilder<'a, W> {
     /// Mutably iterate over childern
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut (GridChildInfo, W)> {
         ListIterMut { list: self.0 }
+    }
+}
+
+impl<W: Widget> FromIterator<(GridChildInfo, W)> for Grid<W> {
+    #[inline]
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = (GridChildInfo, W)>,
+    {
+        Self::new_vec(iter.into_iter().collect())
     }
 }
 

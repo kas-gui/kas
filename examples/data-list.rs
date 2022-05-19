@@ -149,7 +149,7 @@ fn main() -> kas::shell::Result<()> {
         ListEntry::new(1, false),
         ListEntry::new(2, false),
     ];
-    let list = List::new_with_direction(Direction::Down, entries);
+    let list = List::new_dir_vec(Direction::Down, entries);
 
     let window = impl_singleton! {
         #[widget{

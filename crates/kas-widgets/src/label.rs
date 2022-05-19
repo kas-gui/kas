@@ -12,8 +12,8 @@ use kas::{event, prelude::*};
 impl_scope! {
     /// A text label
     ///
-    /// This type is generic over the text type. Some aliases are available:
-    /// [`StrLabel`], [`StringLabel`], [`AccelLabel`].
+    /// This type is generic over the text type.
+    /// See also: [`StrLabel`], [`StringLabel`], [`AccelLabel`].
     #[impl_default(where T: Default)]
     #[derive(Clone, Debug)]
     #[widget]

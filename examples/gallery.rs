@@ -28,17 +28,324 @@ enum Item {
     Spinner(i32),
 }
 
-#[derive(Debug)]
-struct Guard;
-impl EditGuard for Guard {
-    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        mgr.push_msg(Item::Edit(edit.get_string()));
+// Using a trait allows control of content
+//
+// We do not wish to disable navigation, but do with to disable controls.
+#[autoimpl(for<T: trait + ?Sized> Box<T>)]
+trait SetDisabled: Widget {
+    fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool);
+}
+impl<T: SetDisabled> SetDisabled for ScrollBarRegion<T> {
+    fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool) {
+        self.inner_mut().set_disabled(mgr, state);
+    }
+}
+impl<T: SetDisabled> SetDisabled for TabStack<T> {
+    fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool) {
+        for index in 0..self.len() {
+            if let Some(w) = self.get_mut(index) {
+                w.set_disabled(mgr, state);
+            }
+        }
+    }
+}
+
+fn widgets() -> Box<dyn SetDisabled> {
+    // A real app might use async loading of resources here (Svg permits loading
+    // from a data slice; DrawShared allows allocation from data slice).
+    let img_light = Svg::new(include_bytes!("../res/contrast-2-line.svg"));
+    let img_dark = Svg::new(include_bytes!("../res/contrast-2-fill.svg"));
+    const SVG_WARNING: &'static [u8] = include_bytes!("../res/error-warning-line.svg");
+    let img_rustacean = match Svg::new_path("res/rustacean-flat-happy.svg") {
+        Ok(svg) => svg,
+        Err(e) => {
+            println!("Failed to load res/rustacean-flat-happy.svg: {}", e);
+            Svg::new(SVG_WARNING)
+        }
+    };
+
+    #[derive(Debug)]
+    struct Guard;
+    impl EditGuard for Guard {
+        fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+            mgr.push_msg(Item::Edit(edit.get_string()));
+        }
+
+        fn edit(edit: &mut EditField<Self>, _: &mut EventMgr) {
+            // 7a is the colour of *magic*!
+            edit.set_error_state(edit.get_str().len() % (7 + 1) == 0);
+        }
     }
 
-    fn edit(edit: &mut EditField<Self>, _: &mut EventMgr) {
-        // 7a is the colour of *magic*!
-        edit.set_error_state(edit.get_str().len() % (7 + 1) == 0);
+    #[derive(Clone, Debug)]
+    struct MsgEdit;
+
+    let popup_edit_box = impl_singleton! {
+        #[widget{
+            layout = row: [
+                self.label,
+                TextButton::new_msg("&Edit", MsgEdit),
+            ];
+        }]
+        #[derive(Debug)]
+        struct {
+            core: widget_core!(),
+            #[widget] label: SingleView<SharedRc<String>> =
+                SingleView::new(SharedRc::new("Use button to edit →".to_string())),
+        }
+        impl Widget for Self {
+            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+                if let Some(MsgEdit) = mgr.try_pop_msg() {
+                    let text = self.label.data().clone();
+                    let window = dialog::TextEdit::new("Edit text", true, text);
+                    mgr.add_window(Box::new(window));
+                }
+            }
+        }
+    };
+
+    let text = "Example text in multiple languages.
+مثال على نص بلغات متعددة.
+Пример текста на нескольких языках.
+טקסט לדוגמא במספר שפות.";
+
+    let radio = RadioBoxGroup::default();
+
+    Box::new(ScrollBarRegion::new(impl_singleton! {
+        #[widget{
+            layout = aligned_column: [
+                row: ["ScrollLabel", self.sl],
+                row: ["EditBox", self.eb],
+                row: ["TextButton", self.tb],
+                row: ["Button<Image>", self.bi],
+                row: ["CheckBox", self.cb],
+                row: ["RadioBox", self.rb],
+                row: ["RadioBox", self.rb2],
+                row: ["ComboBox", self.cbb],
+                row: ["Spinner", self.spin],
+                row: ["Slider", self.sd],
+                row: ["ScrollBar", self.sc],
+                row: ["ProgressBar", self.pg],
+                row: ["SVG", align(center): self.sv],
+                row: ["Child window", self.pu],
+            ];
+        }]
+        #[derive(Debug)]
+        struct {
+            core: widget_core!(),
+            #[widget] sl = ScrollLabel::new(text),
+            #[widget] eb = EditBox::new("edit me").with_guard(Guard),
+            #[widget] tb = TextButton::new_msg("&Press me", Item::Button),
+            #[widget] bi = Row::new_vec(vec![
+                Button::new_msg(img_light.clone(), Item::Theme("light"))
+                    .with_color("#B38DF9".parse().unwrap())
+                    .with_keys(&[VK::L]),
+                Button::new_msg(img_light, Item::Theme("blue"))
+                    .with_color("#7CDAFF".parse().unwrap())
+                    .with_keys(&[VK::L]),
+                Button::new_msg(img_dark, Item::Theme("dark"))
+                    .with_color("#E77346".parse().unwrap())
+                    .with_keys(&[VK::K]),
+            ]),
+            #[widget] cb = CheckBox::new("&Check me")
+                .with_state(true)
+                .on_toggle(|mgr, check| mgr.push_msg(Item::Check(check))),
+            #[widget] rb = RadioBox::new("radio box &1", radio.clone())
+                .on_select(|mgr| mgr.push_msg(Item::Radio(1))),
+            #[widget] rb2 = RadioBox::new("radio box &2", radio)
+                .with_state(true)
+                .on_select(|mgr| mgr.push_msg(Item::Radio(2))),
+            #[widget] cbb = ComboBox::new_vec(vec![
+                MenuEntry::new("&One", Item::Combo(1)),
+                MenuEntry::new("T&wo", Item::Combo(2)),
+                MenuEntry::new("Th&ree", Item::Combo(3)),
+            ]),
+            #[widget] spin: Spinner<i32> = Spinner::new(0..=10, 1),
+            #[widget] sd: Slider<i32, Right> = Slider::new(0..=10, 1),
+            #[widget] sc: ScrollBar<Right> = ScrollBar::new().with_limits(100, 20),
+            #[widget] pg: ProgressBar<Right> = ProgressBar::new(),
+            #[widget] sv = img_rustacean.with_scaling(|s| {
+                s.min_factor = 0.1;
+                s.ideal_factor = 0.2;
+                s.stretch = kas::layout::Stretch::High;
+            }),
+            #[widget] pu = popup_edit_box,
+        }
+        impl Widget for Self {
+            fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
+                if let Some(msg) = mgr.try_pop_msg::<i32>() {
+                    if index == widget_index![self.spin] {
+                        *mgr |= self.sd.set_value(msg);
+                        mgr.push_msg(Item::Spinner(msg));
+                    } else if index == widget_index![self.sd] {
+                        *mgr |= self.spin.set_value(msg);
+                        mgr.push_msg(Item::Slider(msg));
+                    } else if index == widget_index![self.sc] {
+                        let ratio = msg as f32 / self.sc.max_value() as f32;
+                        *mgr |= self.pg.set_value(ratio);
+                        mgr.push_msg(Item::Scroll(msg))
+                    }
+                }
+            }
+        }
+        impl SetDisabled for Self {
+            fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool) {
+                mgr.set_disabled(self.id(), state);
+            }
+        }
+    }))
+}
+
+fn editor() -> Box<dyn SetDisabled> {
+    use kas::text::format::Markdown;
+
+    #[derive(Debug)]
+    struct Guard;
+    impl EditGuard for Guard {
+        fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+            let result = Markdown::new(edit.get_str());
+            edit.set_error_state(result.is_err());
+            mgr.push_msg(result.unwrap_or_else(|err| Markdown::new(&format!("{}", err)).unwrap()));
+        }
     }
+
+    let doc = r"# Formatted text editing
+
+Demonstration of *as-you-type* formatting from **Markdown**.
+
+1. Edit below
+2. View the result
+3. In case of error, be informed
+
+### Not all Markdown supported
+```
+> Block quotations
+
+<h3>HTML</h3>
+
+-----------------
+```
+";
+
+    Box::new(impl_singleton! {
+        #[widget{
+            layout = list(up): [self.editor, self.label];
+        }]
+        #[derive(Debug)]
+        struct {
+            core: widget_core!(),
+            #[widget] editor: EditBox<Guard> =
+                EditBox::new(doc).multi_line(true).with_guard(Guard),
+            #[widget] label: ScrollLabel<Markdown> =
+                ScrollLabel::new(Markdown::new(doc).unwrap()),
+        }
+        impl Widget for Self {
+            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+                if let Some(md) = mgr.try_pop_msg::<Markdown>() {
+                    *mgr |= self.label.set_text(md);
+                }
+            }
+        }
+        impl SetDisabled for Self {
+            fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool) {
+                mgr.set_disabled(self.id(), state);
+            }
+        }
+    })
+}
+
+fn canvas() -> Box<dyn SetDisabled> {
+    use kas::geom::Vec2;
+    use kas_resvg::tiny_skia::*;
+    use kas_resvg::{Canvas, CanvasProgram};
+    use std::time::Instant;
+
+    #[derive(Debug)]
+    struct Program(Instant);
+    impl CanvasProgram for Program {
+        fn draw(&mut self, pixmap: &mut Pixmap) {
+            let size = (200.0, 200.0);
+            let scale = Transform::from_scale(
+                f32::conv(pixmap.width()) / size.0,
+                f32::conv(pixmap.height()) / size.1,
+            );
+
+            let paint = Paint {
+                shader: LinearGradient::new(
+                    Point::from_xy(0.0, 0.0),
+                    Point::from_xy(size.0, size.1),
+                    vec![
+                        GradientStop::new(0.0, Color::BLACK),
+                        GradientStop::new(1.0, Color::from_rgba8(0, 255, 200, 255)),
+                    ],
+                    SpreadMode::Pad,
+                    Transform::identity(),
+                )
+                .unwrap(),
+                ..Default::default()
+            };
+
+            let p = Vec2(110.0, 90.0);
+            let t = self.0.elapsed().as_secs_f32();
+            let c = t.cos();
+            let s = t.sin();
+
+            let mut vv = [
+                Vec2(-90.0, -40.0),
+                Vec2(-50.0, -30.0),
+                Vec2(-30.0, 20.0),
+                Vec2(-30.0, -5.0),
+                Vec2(-10.0, -30.0),
+                Vec2(-50.0, -50.0),
+            ];
+            for v in &mut vv {
+                *v = p + Vec2(c * v.0 - s * v.1, s * v.0 + c * v.1);
+            }
+
+            let mut path = PathBuilder::new();
+            path.push_circle(p.0 + 10.0, p.1, 100.0);
+            path.push_circle(p.0, p.1, 50.0);
+            let path = path.finish().unwrap();
+            pixmap.fill_path(&path, &paint, FillRule::EvenOdd, scale, None);
+
+            let path = PathBuilder::from_circle(30.0, 180.0, 20.0).unwrap();
+            pixmap.fill_path(&path, &paint, FillRule::Winding, scale, None);
+
+            let mut paint = Paint::default();
+            paint.set_color_rgba8(230, 90, 50, 255);
+            let mut path = PathBuilder::new();
+            path.move_to(vv[0].0, vv[0].1);
+            path.quad_to(vv[1].0, vv[1].1, vv[2].0, vv[2].1);
+            path.quad_to(vv[3].0, vv[3].1, vv[4].0, vv[4].1);
+            path.quad_to(vv[5].0, vv[5].1, vv[0].0, vv[0].1);
+            let path = path.finish().unwrap();
+            pixmap.fill_path(&path, &paint, FillRule::Winding, scale, None);
+        }
+
+        fn do_redraw_animate(&mut self) -> (bool, bool) {
+            // Set false to disable animation
+            (true, true)
+        }
+    }
+
+    Box::new(impl_singleton! {
+        #[widget{
+            layout = column: [
+                "Animated canvas demo",
+                "This example uses kas_resvg::Canvas, which is CPU-rendered.",
+                "Embedded GPU-rendered content is also possible (see separate Mandlebrot example).",
+                self.canvas,
+            ];
+        }]
+        #[derive(Debug)]
+        struct {
+            core: widget_core!(),
+            #[widget] canvas = Canvas::new(Program(Instant::now())),
+        }
+        impl SetDisabled for Self {
+            fn set_disabled(&mut self, _: &mut EventMgr, _: bool) {}
+        }
+    })
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -53,19 +360,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let theme = kas::theme::ShadedTheme::new();
     let mut toolkit = kas::shell::Toolkit::new(theme)?;
 
-    // A real app might use async loading of resources here (Svg permits loading
-    // from a data slice; DrawShared allows allocation from data slice).
-    let img_light = Svg::new(include_bytes!("../res/contrast-2-line.svg"));
-    let img_dark = Svg::new(include_bytes!("../res/contrast-2-fill.svg"));
-    let img_gallery = Svg::new(include_bytes!("../res/gallery-line.svg"));
-    const SVG_WARNING: &'static [u8] = include_bytes!("../res/error-warning-line.svg");
-    let img_rustacean = match Svg::new_path("res/rustacean-flat-happy.svg") {
-        Ok(svg) => svg,
-        Err(e) => {
-            println!("Failed to load res/rustacean-flat-happy.svg: {}", e);
-            Svg::new(SVG_WARNING)
-        }
-    };
+    // TODO: use as logo of tab
+    // let img_gallery = Svg::new(include_bytes!("../res/gallery-line.svg"));
 
     #[derive(Clone, Debug)]
     enum Menu {
@@ -115,134 +411,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .build();
 
-    #[derive(Clone, Debug)]
-    struct MsgEdit;
-
-    let popup_edit_box = impl_singleton! {
-        #[widget{
-            layout = row: [
-                self.label,
-                TextButton::new_msg("&Edit", MsgEdit),
-            ];
-        }]
-        #[derive(Debug)]
-        struct {
-            core: widget_core!(),
-            #[widget] label: SingleView<SharedRc<String>> =
-                SingleView::new(SharedRc::new("Use button to edit →".to_string())),
-        }
-        impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-                if let Some(MsgEdit) = mgr.try_pop_msg() {
-                    let text = self.label.data().clone();
-                    let window = dialog::TextEdit::new("Edit text", true, text);
-                    mgr.add_window(Box::new(window));
-                }
-            }
-        }
-    };
-
-    let text = "Example text in multiple languages.
-مثال على نص بلغات متعددة.
-Пример текста на нескольких языках.
-טקסט לדוגמא במספר שפות.";
-
-    let radio = RadioBoxGroup::default();
-    let widgets = impl_singleton! {
-        #[widget{
-            layout = aligned_column: [
-                row: ["ScrollLabel", self.sl],
-                row: ["EditBox", self.eb],
-                row: ["TextButton", self.tb],
-                row: ["Button<Image>", self.bi],
-                row: ["CheckBox", self.cb],
-                row: ["RadioBox", self.rb],
-                row: ["RadioBox", self.rb2],
-                row: ["ComboBox", self.cbb],
-                row: ["Spinner", self.spin],
-                row: ["Slider", self.sd],
-                row: ["ScrollBar", self.sc],
-                row: ["ProgressBar", self.pg],
-                row: ["SVG", align(center): self.sv],
-                row: ["Child window", self.pu],
-            ];
-        }]
-        #[derive(Debug)]
-        struct {
-            core: widget_core!(),
-            #[widget] sl = ScrollLabel::new(text),
-            #[widget] eb = EditBox::new("edit me").with_guard(Guard),
-            #[widget] tb = TextButton::new_msg("&Press me", Item::Button),
-            #[widget] bi = row![
-                Button::new_msg(img_light.clone(), Item::Theme("light"))
-                    .with_color("#B38DF9".parse().unwrap())
-                    .with_keys(&[VK::L]),
-                Button::new_msg(img_light, Item::Theme("blue"))
-                    .with_color("#7CDAFF".parse().unwrap())
-                    .with_keys(&[VK::L]),
-                Button::new_msg(img_dark, Item::Theme("dark"))
-                    .with_color("#E77346".parse().unwrap())
-                    .with_keys(&[VK::K]),
-            ],
-            #[widget] cb = CheckBox::new("&Check me")
-                .with_state(true)
-                .on_toggle(|mgr, check| mgr.push_msg(Item::Check(check))),
-            #[widget] rb = RadioBox::new("radio box &1", radio.clone())
-                .on_select(|mgr| mgr.push_msg(Item::Radio(1))),
-            #[widget] rb2 = RadioBox::new("radio box &2", radio)
-                .with_state(true)
-                .on_select(|mgr| mgr.push_msg(Item::Radio(2))),
-            #[widget] cbb = ComboBox::new(vec![
-                MenuEntry::new("&One", Item::Combo(1)),
-                MenuEntry::new("T&wo", Item::Combo(2)),
-                MenuEntry::new("Th&ree", Item::Combo(3)),
-            ]),
-            #[widget] spin: Spinner<i32> = Spinner::new(0..=10, 1),
-            #[widget] sd: Slider<i32, Right> = Slider::new(0..=10, 1),
-            #[widget] sc: ScrollBar<Right> = ScrollBar::new().with_limits(100, 20),
-            #[widget] pg: ProgressBar<Right> = ProgressBar::new(),
-            #[widget] sv = img_rustacean.with_scaling(|s| {
-                s.size = kas::layout::SpriteSize::Relative(0.1);
-                s.ideal_factor = 2.0;
-                s.stretch = kas::layout::Stretch::High;
-            }),
-            #[widget] pu = popup_edit_box,
-        }
-        impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
-                if let Some(msg) = mgr.try_pop_msg::<i32>() {
-                    if index == widget_index![self.spin] {
-                        *mgr |= self.sd.set_value(msg);
-                        mgr.push_msg(Item::Spinner(msg));
-                    } else if index == widget_index![self.sd] {
-                        *mgr |= self.spin.set_value(msg);
-                        mgr.push_msg(Item::Slider(msg));
-                    } else if index == widget_index![self.sc] {
-                        let ratio = msg as f32 / self.sc.max_value() as f32;
-                        *mgr |= self.pg.set_value(ratio);
-                        mgr.push_msg(Item::Scroll(msg))
-                    }
-                }
-            }
-        }
-    };
-
     let window = impl_singleton! {
         #[widget{
             layout = column: [
                 self.menubar,
-                frame: align(center): row: ["Widget Gallery", self.img_gallery],
-                self.gallery,
+                self.stack,
             ];
         }]
         #[derive(Debug)]
         struct {
             core: widget_core!(),
             #[widget] menubar = menubar,
-            #[widget] img_gallery = img_gallery,
-            #[widget] gallery:
-                for<W: Widget> ScrollBarRegion<W> =
-                    ScrollBarRegion::new(widgets),
+            #[widget] stack: TabStack<Box<dyn SetDisabled>> = TabStack::new()
+                .with_title("Widgets", widgets()) //TODO: use img_gallery as logo
+                .with_title("Text editor", editor())
+                .with_title("Canvas", canvas()),
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
@@ -260,7 +443,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             mgr.adjust_theme(|theme| theme.set_scheme(&name));
                         }
                         Menu::Disabled(state) => {
-                            mgr.set_disabled(self.gallery.inner().id(), state);
+                            self.stack.set_disabled(mgr, state);
                         }
                         Menu::Quit => {
                             *mgr |= TkAction::EXIT;
@@ -277,7 +460,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         impl Window for Self {
             fn title(&self) -> &str {
-                "Window Gallery"
+                "Widget Gallery"
             }
         }
     };

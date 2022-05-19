@@ -7,7 +7,7 @@
 
 use kas::draw::{ImageFormat, ImageHandle};
 use kas::geom::Size;
-use kas::layout::{SpriteDisplay, SpriteSize};
+use kas::layout::PixmapScaling;
 use kas::prelude::*;
 use std::io::Result;
 use std::path::Path;
@@ -25,8 +25,7 @@ impl_scope! {
     pub struct Svg {
         core: widget_core!(),
         tree: Option<usvg::Tree>,
-        raw_size: Size,
-        sprite: SpriteDisplay,
+        scaling: PixmapScaling,
         ideal_size: Size,
         pixmap: Option<Pixmap>,
         image: Option<ImageHandle>,
@@ -48,6 +47,8 @@ impl_scope! {
         }
 
         /// Load from `data`
+        ///
+        /// This sets [`PixmapScaling::size`] from the SVG.
         pub fn load(&mut self, data: &[u8], resources_dir: Option<&Path>) {
             let fonts_db = kas::text::fonts::fonts().read_db();
             let fontdb = fonts_db.db();
@@ -77,9 +78,9 @@ impl_scope! {
             };
 
             self.tree = Some(usvg::Tree::from_data(data, &opts).unwrap());
-            self.raw_size = self.tree.as_ref()
-                .map(|tree| Size::from(tree.svg_node().size.to_screen_size().dimensions()))
-                .unwrap_or(Size(128, 128));
+            self.scaling.size = self.tree.as_ref()
+                .map(|tree| LogicalSize::conv(tree.svg_node().size.to_screen_size().dimensions()))
+                .unwrap_or(LogicalSize(128.0, 128.0));
         }
 
         /// Load from a path
@@ -97,22 +98,28 @@ impl_scope! {
         #[inline]
         #[must_use]
         pub fn with_size(mut self, size: LogicalSize) -> Self {
-            self.sprite.size = SpriteSize::Logical(size);
+            self.scaling.size = size;
             self
         }
 
         /// Adjust scaling
+        ///
+        /// [`PixmapScaling::size`] is set from the SVG on loading (it may also be set here).
+        /// Other scaling parameters take their default values from [`PixmapScaling`].
         #[inline]
         #[must_use]
-        pub fn with_scaling(mut self, f: impl FnOnce(&mut SpriteDisplay)) -> Self {
-            f(&mut self.sprite);
+        pub fn with_scaling(mut self, f: impl FnOnce(&mut PixmapScaling)) -> Self {
+            f(&mut self.scaling);
             self
         }
 
         /// Adjust scaling
+        ///
+        /// [`PixmapScaling::size`] is set from the SVG on loading (it may also be set here).
+        /// Other scaling parameters take their default values from [`PixmapScaling`].
         #[inline]
-        pub fn set_scaling(&mut self, f: impl FnOnce(&mut SpriteDisplay)) -> TkAction {
-            f(&mut self.sprite);
+        pub fn set_scaling(&mut self, f: impl FnOnce(&mut PixmapScaling)) -> TkAction {
+            f(&mut self.scaling);
             // NOTE: if only `aspect` is changed, REDRAW is enough
             TkAction::RESIZE
         }
@@ -120,12 +127,12 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            self.sprite.size_rules(size_mgr, axis, self.raw_size)
+            self.scaling.size_rules(size_mgr, axis)
         }
 
         fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             let scale_factor = mgr.size_mgr().scale_factor();
-            self.core.rect = self.sprite.align_rect(rect, align, self.raw_size, scale_factor);
+            self.core.rect = self.scaling.align_rect(rect, align, scale_factor);
             let size: (u32, u32) = self.core.rect.size.cast();
 
             let pm_size = self.pixmap.as_ref().map(|pm| (pm.width(), pm.height()));

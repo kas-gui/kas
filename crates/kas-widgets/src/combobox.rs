@@ -28,6 +28,7 @@ impl_scope! {
     /// when selected. If a handler is specified via [`Self::on_select`], then
     /// this message is passed to the handler and not emitted.
     #[autoimpl(Debug ignore self.on_select)]
+    #[impl_default]
     #[derive(Clone)]
     #[widget {
         layout = button 'frame: row: [self.label, self.mark];
@@ -39,7 +40,7 @@ impl_scope! {
         #[widget]
         label: StringLabel,
         #[widget]
-        mark: Mark,
+        mark: Mark = Mark::new(MarkStyle::Point(Direction::Down)),
         #[widget]
         popup: ComboPopup<M>,
         active: usize,
@@ -70,14 +71,19 @@ impl_scope! {
                     mgr.set_nav_focus(id, key_focus);
                 }
             };
+
+            let activate = |s: &mut Self, mgr: &mut EventMgr| -> Response {
+                if let Some(id) = s.popup_id {
+                    mgr.close_window(id, true);
+                } else {
+                    open_popup(s, mgr, true);
+                }
+                Response::Used
+            };
+
             match event {
                 Event::Activate => {
-                    if let Some(id) = self.popup_id {
-                        mgr.close_window(id, true);
-                    } else {
-                        open_popup(self, mgr, true);
-                    }
-                    Response::Used
+                    activate(self, mgr)
                 }
                 Event::Command(cmd, _) => {
                     let next = |mgr: &mut EventMgr, s, clr, rev| {
@@ -88,6 +94,7 @@ impl_scope! {
                         Response::Used
                     };
                     match cmd {
+                        cmd if cmd.is_activate() => activate(self, mgr),
                         Command::Up => next(mgr, self, false, true),
                         Command::Down => next(mgr, self, false, false),
                         Command::Home => next(mgr, self, true, false),
@@ -179,24 +186,37 @@ impl_scope! {
     }
 }
 
-impl<M: Clone + Debug + 'static> ComboBox<M> {
+impl<M, T, I> From<I> for ComboBox<M>
+where
+    M: Clone + Debug + 'static,
+    T: Into<AccelString>,
+    I: IntoIterator<Item = (T, M)>,
+{
     /// Construct a combobox
     ///
     /// Constructs a combobox with labels derived from an iterator over string
     /// types. For example:
     /// ```
     /// # use kas_widgets::ComboBox;
-    /// let combobox = ComboBox::new_from_iter([("zero", 0), ("one", 1), ("two", 2)].into_iter());
+    /// let combobox = ComboBox::from([("zero", 0), ("one", 1), ("two", 2)]);
     /// ```
     ///
     /// Initially, the first entry is active.
     #[inline]
-    pub fn new_from_iter<T: Into<AccelString>, I: IntoIterator<Item = (T, M)>>(iter: I) -> Self {
+    fn from(iter: I) -> Self {
         let entries = iter
             .into_iter()
             .map(|(label, msg)| MenuEntry::new(label, msg))
             .collect();
-        Self::new(entries)
+        Self::new_vec(entries)
+    }
+}
+
+impl<M: Clone + Debug + 'static> ComboBox<M> {
+    /// Construct an empty combobox
+    #[inline]
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Construct a combobox with the given menu entries
@@ -205,23 +225,18 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     ///
     /// Initially, the first entry is active.
     #[inline]
-    pub fn new(entries: Vec<MenuEntry<M>>) -> Self {
+    pub fn new_vec(entries: Vec<MenuEntry<M>>) -> Self {
         let label = entries.get(0).map(|entry| entry.get_string());
         let label = StringLabel::new(label.unwrap_or("".to_string())).with_class(TextClass::Button);
         ComboBox {
-            core: Default::default(),
             label,
-            mark: Mark::new(MarkStyle::Point(Direction::Down)),
             popup: ComboPopup {
                 core: Default::default(),
                 inner: PopupFrame::new(
-                    Column::new(entries).on_message(|mgr, index| mgr.push_msg(IndexMsg(index))),
+                    Column::new_vec(entries).on_message(|mgr, index| mgr.push_msg(IndexMsg(index))),
                 ),
             },
-            active: 0,
-            opening: false,
-            popup_id: None,
-            on_select: None,
+            ..Default::default()
         }
     }
 
@@ -351,6 +366,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
 }
 
 impl_scope! {
+    #[autoimpl(Default)]
     #[derive(Clone, Debug)]
     #[widget{
         layout = self.inner;

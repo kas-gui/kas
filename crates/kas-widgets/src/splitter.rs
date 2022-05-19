@@ -379,6 +379,16 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         self.size_solved = false;
     }
 
+    /// Returns a reference to the child, if any
+    pub fn get(&self, index: usize) -> Option<&W> {
+        self.widgets.get(index)
+    }
+
+    /// Returns a mutable reference to the child, if any
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut W> {
+        self.widgets.get_mut(index)
+    }
+
     /// Append a child widget
     ///
     /// The new child is configured immediately. [`TkAction::RESIZE`] is
