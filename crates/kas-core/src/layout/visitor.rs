@@ -202,11 +202,10 @@ impl<'a> Visitor<'a> {
                 child.set_rect_(mgr, rect, align);
             }
             LayoutType::Button(child, storage, _) => {
-                let align = AlignHints::CENTER.combine(align);
                 storage.rect = rect;
                 rect.pos += storage.offset;
                 rect.size -= storage.size;
-                child.set_rect_(mgr, rect, align);
+                child.set_rect_(mgr, rect, AlignHints::CENTER);
             }
         }
     }

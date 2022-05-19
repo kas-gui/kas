@@ -461,7 +461,7 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, mut align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
 
             let mut child_size = rect.size - self.frame_size;
@@ -470,14 +470,12 @@ impl_scope! {
                     .min(self.child_size_ideal)
                     .max(self.child_size_min);
                 let skip = child_size.0 + self.child_inter_margin;
-                align.horiz = None;
                 (rect.size.0 + skip - 1) / skip + 1
             } else {
                 child_size.1 = (child_size.1 / self.ideal_visible)
                     .min(self.child_size_ideal)
                     .max(self.child_size_min);
                 let skip = child_size.1 + self.child_inter_margin;
-                align.vert = None;
                 (rect.size.1 + skip - 1) / skip + 1
             };
 

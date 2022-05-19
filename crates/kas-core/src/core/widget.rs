@@ -185,6 +185,10 @@ pub trait Layout {
     /// It is up to the widget to either stretch to occupy this space or align
     /// itself within the excess space, according to the `align` hints provided.
     ///
+    /// The [`AlignHints`] are usually passed down to children, though there are
+    /// some exceptions: a `Button` always centers content; a `ScrollRegion`
+    /// isolates the inside from outside influence over layout.
+    ///
     /// Default implementation:
     ///
     /// -   Independent usage: no default

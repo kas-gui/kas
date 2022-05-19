@@ -5,7 +5,6 @@
 
 //! A row or column with sizes adjustable via dividing handles
 
-use log::warn;
 use std::collections::hash_map::{Entry, HashMap};
 use std::ops::{Index, IndexMut};
 
@@ -175,11 +174,6 @@ impl_scope! {
             assert!(self.handles.len() + 1 == self.widgets.len());
 
             let dim = (self.direction, self.num_children());
-            let is_horiz = dim.0.is_horizontal();
-            let aa = if is_horiz { align.horiz } else { align.vert };
-            if aa.unwrap_or(Align::Stretch) != Align::Stretch {
-                warn!("Splitter: found alignment != Stretch");
-            }
             let mut setter = layout::RowSetter::<D, Vec<i32>, _>::new(rect, dim, align, &mut self.data);
 
             let mut n = 0;
