@@ -126,7 +126,7 @@ fn widgets() -> Box<dyn SetDisabled> {
                 row: ["Slider", self.sd],
                 row: ["ScrollBar", self.sc],
                 row: ["ProgressBar", self.pg],
-                row: ["SVG", align(center): self.sv],
+                row: ["SVG", self.sv],
                 row: ["Child window", self.pu],
             ];
         }]

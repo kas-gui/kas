@@ -16,6 +16,9 @@ use kas::theme::TextClass;
 
 impl_scope! {
     /// A text label supporting scrolling and selection
+    ///
+    /// Line-wrapping is enabled; default alignment is derived from the script
+    /// (usually top-left).
     #[derive(Clone, Default, Debug)]
     #[widget{
         cursor_icon = CursorIcon::Text;

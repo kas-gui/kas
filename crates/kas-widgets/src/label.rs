@@ -12,6 +12,10 @@ use kas::{event, prelude::*};
 impl_scope! {
     /// A text label
     ///
+    /// A text label. Vertical alignment defaults to centred, horizontal
+    /// alignment depends on the script direction if not specified.
+    /// Line-wrapping is enabled by default.
+    ///
     /// This type is generic over the text type.
     /// See also: [`StrLabel`], [`StringLabel`], [`AccelLabel`].
     #[impl_default(where T: Default)]
