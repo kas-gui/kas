@@ -193,8 +193,7 @@ pub trait Layout {
     ///
     /// -   Independent usage: no default
     /// -   For a widget without `layout` property, set `rect` field of `widget_core!()`
-    /// -   For a widget with the `layout` property, set `rect` field of `widget_core!()` and
-    ///     call [`AutoLayout::set_rect`]
+    /// -   For a widget with the `layout` property, call [`AutoLayout::set_rect`]
     ///
     /// Default: set `rect` of `widget_core!()` field. If `layout = ..` property
     /// is used, also calls `<Self as AutoLayout>::set_rect`.
@@ -234,9 +233,7 @@ pub trait Layout {
     ///
     /// -   Independent usage: no default
     /// -   For a widget without `layout` property, `self.rect().contains(coord).then(|| self.id())`
-    /// -   For a widget with the `layout` property, return `None` if
-    ///     `!self.rect().contains(coord)`, otherwise call [`AutoLayout::find_id`] with the
-    ///     coord translated by [`Widget::translation`].
+    /// -   For a widget with the `layout` property, call [`AutoLayout::find_id`]
     ///
     /// [`#[widget]`]: kas_macros::widget
     fn find_id(&mut self, coord: Coord) -> Option<WidgetId>;

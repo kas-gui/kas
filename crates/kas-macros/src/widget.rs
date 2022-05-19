@@ -438,12 +438,10 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     }
 
     let mut fn_size_rules = None;
-    let mut set_rect = None;
-    let mut fn_find_id = quote! {
-        fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
-            use ::kas::{WidgetCore, WidgetExt};
-            self.rect().contains(coord).then(|| self.id())
-        }
+    let mut set_rect = quote! { self.#core.rect = rect; };
+    let mut find_id = quote! {
+        use ::kas::{WidgetCore, WidgetExt};
+        self.rect().contains(coord).then(|| self.id())
     };
     let mut fn_draw = None;
     if let Some(layout) = args.layout.take() {
@@ -468,11 +466,16 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     align: ::kas::layout::AlignHints,
                 ) {
                     use ::kas::{WidgetCore, layout};
+                    self.#core.rect = rect;
                     (#layout).set_rect(mgr, rect, align);
                 }
 
                 fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
-                    use ::kas::{layout, WidgetCore, WidgetExt};
+                    use ::kas::{layout, Widget, WidgetCore, WidgetExt};
+                    if !self.rect().contains(coord) {
+                        return None;
+                    }
+                    let coord = coord + self.translation();
                     (#layout).find_id(coord).or_else(|| Some(self.id()))
                 }
 
@@ -492,18 +495,11 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 <Self as ::kas::layout::AutoLayout>::size_rules(self, size_mgr, axis)
             }
         });
-        set_rect = Some(quote! {
+        set_rect = quote! {
             <Self as ::kas::layout::AutoLayout>::set_rect(self, mgr, rect, align);
-        });
-        fn_find_id = quote! {
-            fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
-                use ::kas::{WidgetCore, Widget};
-                if !self.rect().contains(coord) {
-                    return None;
-                }
-                let coord = coord + self.translation();
-                <Self as ::kas::layout::AutoLayout>::find_id(self, coord)
-            }
+        };
+        find_id = quote! {
+            <Self as ::kas::layout::AutoLayout>::find_id(self, coord)
         };
         fn_draw = Some(quote! {
             fn draw(&mut self, draw: ::kas::theme::DrawMgr) {
@@ -518,8 +514,12 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             rect: ::kas::geom::Rect,
             align: ::kas::layout::AlignHints,
         ) {
-            self.#core.rect = rect;
             #set_rect
+        }
+    };
+    let fn_find_id = quote! {
+        fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
+            #find_id
         }
     };
 
