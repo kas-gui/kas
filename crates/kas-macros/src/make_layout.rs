@@ -31,6 +31,7 @@ mod kw {
     custom_keyword!(bottom);
     custom_keyword!(aligned_column);
     custom_keyword!(aligned_row);
+    custom_keyword!(float);
 }
 
 #[derive(Debug)]
@@ -82,6 +83,7 @@ enum Layout {
     Frame(StorIdent, Box<Layout>, Expr),
     Button(StorIdent, Box<Layout>, Expr),
     List(StorIdent, Direction, Vec<Layout>),
+    Float(Vec<Layout>),
     Slice(StorIdent, Direction, Expr),
     Grid(StorIdent, GridDimensions, Vec<(CellInfo, Layout)>),
     Label(StorIdent, LitStr),
@@ -273,6 +275,11 @@ impl Layout {
             let _: Token![:] = input.parse()?;
             let list = parse_layout_list(input, gen)?;
             Ok(Layout::List(stor, dir, list))
+        } else if lookahead.peek(kw::float) {
+            let _: kw::float = input.parse()?;
+            let _: Token![:] = input.parse()?;
+            let list = parse_layout_list(input, gen)?;
+            Ok(Layout::Float(list))
         } else if lookahead.peek(kw::aligned_column) {
             let _: kw::aligned_column = input.parse()?;
             let stor = gen.parse_or_next(input)?;
@@ -551,6 +558,11 @@ impl Layout {
                     item.append_fields(ty_toks, def_toks, children);
                 }
             }
+            Layout::Float(vec) => {
+                for item in vec {
+                    item.append_fields(ty_toks, def_toks, children);
+                }
+            }
             Layout::Slice(stor, _, _) => {
                 stor.to_tokens(ty_toks);
                 ty_toks.append_all(quote! { : ::kas::layout::DynRowStorage, });
@@ -642,6 +654,15 @@ impl Layout {
                 let iter = quote! { { let arr = [#items]; arr.into_iter() } };
 
                 quote! { layout::Visitor::grid(#iter, #dim, &mut self.#core.#stor) }
+            }
+            Layout::Float(list) => {
+                let mut items = Toks::new();
+                for item in list {
+                    let item = item.generate(core)?;
+                    items.append_all(quote! {{ #item },});
+                }
+                let iter = quote! { { let arr = [#items]; arr.into_iter() } };
+                quote! { layout::Visitor::float(#iter) }
             }
             Layout::Label(stor, _) => {
                 quote! { layout::Visitor::component(&mut self.#core.#stor) }

@@ -152,6 +152,18 @@ impl<'a> Visitor<'a> {
         Visitor { layout }
     }
 
+    /// Construct a float of layouts
+    ///
+    /// This is a stack, but showing all items simultaneously.
+    /// The first item is drawn on top and has first input priority.
+    pub fn float<I>(list: I) -> Self
+    where
+        I: DoubleEndedIterator<Item = Visitor<'a>> + 'a,
+    {
+        let layout = LayoutType::BoxComponent(Box::new(Float { children: list }));
+        Visitor { layout }
+    }
+
     /// Get size rules for the given axis
     #[inline]
     pub fn size_rules(mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
@@ -296,6 +308,47 @@ where
     fn draw(&mut self, mut draw: DrawMgr) {
         for child in &mut self.children {
             child.draw(draw.re_clone());
+        }
+    }
+}
+
+/// Float layout
+struct Float<'a, I>
+where
+    I: DoubleEndedIterator<Item = Visitor<'a>>,
+{
+    children: I,
+}
+
+impl<'a, I> Layout for Float<'a, I>
+where
+    I: DoubleEndedIterator<Item = Visitor<'a>>,
+{
+    fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        let mut rules = SizeRules::EMPTY;
+        for child in &mut self.children {
+            rules = rules.max(child.size_rules(mgr.re(), axis));
+        }
+        rules
+    }
+
+    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+        for child in &mut self.children {
+            child.set_rect(mgr, rect, align);
+        }
+    }
+
+    fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+        self.children.find_map(|child| child.find_id(coord))
+    }
+
+    fn draw(&mut self, mut draw: DrawMgr) {
+        let mut iter = (&mut self.children).rev();
+        if let Some(first) = iter.next() {
+            first.draw(draw.re_clone());
+        }
+        for child in iter {
+            draw.with_pass(|draw| child.draw(draw));
         }
     }
 }

@@ -232,9 +232,8 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 
     Box::new(impl_singleton! {
         #[widget{
-            layout = column: [
-                // TODO: can we make this button float over the top-right corner?
-                TextButton::new_msg("↻", MsgDirection),
+            layout = float: [
+                align(top): TextButton::new_msg("↻", MsgDirection),
                 list(self.dir): [self.editor, self.label],
             ];
         }]

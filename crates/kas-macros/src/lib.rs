@@ -196,13 +196,13 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// The latter accepts the following syntax:
 ///
 /// > _Layout_ :\
-/// > &nbsp;&nbsp; &nbsp;&nbsp; _Single_ | _List_ | _Slice_ | _Grid_ | _Align_ | _Frame_ | _Button_
+/// > &nbsp;&nbsp; &nbsp;&nbsp; _Single_ | _List_ | _Slice_ | _Grid_ | _Float_ | _Align_ | _Frame_ | _Button_
 /// >
 /// > _Single_ :\
 /// > &nbsp;&nbsp; `self` `.` _Member_ | _Expr_
 /// >
 /// > _List_ :\
-/// > &nbsp;&nbsp; _ListPre_ _Storage_? `:` `[` _Layout_ `]`
+/// > &nbsp;&nbsp; _ListPre_ _Storage_? `:` `[` ( _Layout_ `,`? ) * `]`
 /// >
 /// > _ListPre_ :\
 /// > &nbsp;&nbsp; `column` | `row` | `aligned_column` | `aligned_row` | `list` `(` _Direction_ `)`
@@ -221,6 +221,9 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// >
 /// > _CellRange_ :\
 /// > &nbsp;&nbsp; _LitInt_ ( `..` `+`? _LitInt_ )?
+///
+/// > _Float_ :\
+/// > &nbsp;&nbsp; _float_ `:` `[` ( _Layout_ `,`? ) * `]`
 ///
 /// > _Align_ :\
 /// > &nbsp;&nbsp; `align` `(` _AlignType_ `)` `:` _Layout_
