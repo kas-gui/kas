@@ -222,6 +222,12 @@ impl SizeRules {
         self.stretch = stretch;
     }
 
+    /// Set margins
+    #[inline]
+    pub fn set_margins(&mut self, margins: (u16, u16)) {
+        self.m = margins;
+    }
+
     /// Set margins to max of own margins and given margins
     pub fn include_margins(&mut self, margins: (u16, u16)) {
         self.m.0 = self.m.0.max(margins.0);

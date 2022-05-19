@@ -32,6 +32,7 @@ mod kw {
     custom_keyword!(aligned_column);
     custom_keyword!(aligned_row);
     custom_keyword!(float);
+    custom_keyword!(margins);
 }
 
 #[derive(Debug)]
@@ -78,6 +79,7 @@ impl ToTokens for StorIdent {
 enum Layout {
     Align(Box<Layout>, AlignHints),
     AlignSingle(Expr, AlignHints),
+    Margins(Box<Layout>, Directions, Toks),
     Single(Expr),
     Widget(StorIdent, Expr),
     Frame(StorIdent, Box<Layout>, Expr),
@@ -96,6 +98,16 @@ enum Direction {
     Up,
     Down,
     Expr(Toks),
+}
+
+bitflags::bitflags! {
+    // NOTE: this must match kas::dir::Directions!
+    struct Directions: u8 {
+        const LEFT = 0b0001;
+        const RIGHT = 0b0010;
+        const UP = 0b0100;
+        const DOWN = 0b1000;
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -227,6 +239,43 @@ impl Layout {
                 let layout = Layout::parse(input, gen)?;
                 Ok(Layout::Align(Box::new(layout), align))
             }
+        } else if lookahead.peek(kw::margins) {
+            let _ = input.parse::<kw::margins>()?;
+            let inner;
+            let _ = parenthesized!(inner in input);
+
+            let mut dirs = Directions::all();
+            if inner.peek2(Token![=]) {
+                let ident = inner.parse::<Ident>()?;
+                dirs = match ident {
+                    id if id == "horiz" || id == "horizontal" => Directions::LEFT | Directions::RIGHT,
+                    id if id == "vert" || id == "vertical" => Directions::UP | Directions::DOWN,
+                    id if id == "left" => Directions::LEFT,
+                    id if id == "right" => Directions::RIGHT,
+                    id if id == "top" => Directions::UP,
+                    id if id == "bottom" => Directions::DOWN,
+                    _ => return Err(Error::new(ident.span(), "expected one of: horiz, horizontal, vert, vertical, left, right, top, bottom")),
+                };
+                let _ = inner.parse::<Token![=]>()?;
+            }
+
+            let ident = inner.parse::<Ident>()?;
+            let margins = match ident {
+                id if id == "none" => quote! { None },
+                id if id == "outer" => quote! { Outer },
+                id if id == "inner" => quote! { Inner },
+                id if id == "text" => quote! { Text },
+                _ => {
+                    return Err(Error::new(
+                        ident.span(),
+                        "expected one of: none, outer, inner, text",
+                    ))
+                }
+            };
+
+            let _ = input.parse::<Token![:]>()?;
+            let layout = Layout::parse(input, gen)?;
+            Ok(Layout::Margins(Box::new(layout), dirs, margins))
         } else if lookahead.peek(Token![self]) {
             Ok(Layout::Single(input.parse()?))
         } else if lookahead.peek(kw::frame) {
@@ -513,6 +562,13 @@ impl Parse for Direction {
     }
 }
 
+impl ToTokens for Directions {
+    fn to_tokens(&self, toks: &mut Toks) {
+        let dirs = self.bits();
+        toks.append_all(quote! { #dirs })
+    }
+}
+
 impl ToTokens for AlignHints {
     fn to_tokens(&self, toks: &mut Toks) {
         fn align_toks(align: &Align) -> Toks {
@@ -565,7 +621,7 @@ impl Layout {
             Layout::Align(layout, _) => {
                 layout.append_fields(ty_toks, def_toks, children);
             }
-            Layout::AlignSingle(..) | Layout::Single(_) => (),
+            Layout::AlignSingle(..) | Layout::Margins(..) | Layout::Single(_) => (),
             Layout::Widget(stor, expr) => {
                 children.push(stor.to_token_stream());
                 stor.to_tokens(ty_toks);
@@ -639,6 +695,14 @@ impl Layout {
             }
             Layout::AlignSingle(expr, align) => {
                 quote! { layout::Visitor::align_single(&mut (#expr), #align) }
+            }
+            Layout::Margins(layout, dirs, selector) => {
+                let inner = layout.generate(core)?;
+                quote! { layout::Visitor::margins(
+                    #inner,
+                    ::kas::dir::Directions::from_bits(#dirs).unwrap(),
+                    layout::MarginSelector::#selector,
+                ) }
             }
             Layout::Single(expr) => quote! {
                 layout::Visitor::single(&mut (#expr))

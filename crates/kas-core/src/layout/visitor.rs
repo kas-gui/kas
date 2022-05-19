@@ -8,16 +8,15 @@
 // Methods have to take `&mut self`
 #![allow(clippy::wrong_self_convention)]
 
-use super::{
-    Align, AlignHints, AxisInfo, RulesSetter, RulesSolver, SetRectMgr, SizeRules, Storage,
-};
+use super::{Align, AlignHints, AxisInfo, MarginSelector, SetRectMgr, SizeRules};
 use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
+use super::{RulesSetter, RulesSolver, Storage};
 use crate::draw::color::Rgb;
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::theme::{Background, DrawMgr, FrameStyle, SizeMgr};
 use crate::WidgetId;
-use crate::{dir::Directional, Layout, Widget};
+use crate::{dir::Directional, dir::Directions, Layout, Widget};
 use std::any::Any;
 use std::iter::ExactSizeIterator;
 
@@ -46,6 +45,8 @@ enum LayoutType<'a> {
     AlignSingle(&'a mut dyn Widget, AlignHints),
     /// Apply alignment hints to some sub-layout
     AlignLayout(Box<Visitor<'a>>, AlignHints),
+    /// Replace (some) margins
+    Margins(Box<Visitor<'a>>, Directions, MarginSelector),
     /// Frame around content
     Frame(Box<Visitor<'a>>, &'a mut FrameStorage, FrameStyle),
     /// Button frame around content
@@ -80,6 +81,12 @@ impl<'a> Visitor<'a> {
     /// Align a sub-layout
     pub fn align(layout: Self, hints: AlignHints) -> Self {
         let layout = LayoutType::AlignLayout(Box::new(layout), hints);
+        Visitor { layout }
+    }
+
+    /// Replace the margins of a sub-layout
+    pub fn margins(layout: Self, dirs: Directions, margins: MarginSelector) -> Self {
+        let layout = LayoutType::Margins(Box::new(layout), dirs, margins);
         Visitor { layout }
     }
 
@@ -179,6 +186,21 @@ impl<'a> Visitor<'a> {
             LayoutType::Single(child) => child.size_rules(mgr, axis),
             LayoutType::AlignSingle(child, _) => child.size_rules(mgr, axis),
             LayoutType::AlignLayout(layout, _) => layout.size_rules_(mgr, axis),
+            LayoutType::Margins(child, dirs, margins) => {
+                let mut child_rules = child.size_rules_(mgr.re(), axis);
+                if dirs.intersects(Directions::from(axis)) {
+                    let mut rule_margins = child_rules.margins();
+                    let margins = margins.select(mgr).extract(axis);
+                    if dirs.intersects(Directions::LEFT | Directions::UP) {
+                        rule_margins.0 = margins.0;
+                    }
+                    if dirs.intersects(Directions::RIGHT | Directions::DOWN) {
+                        rule_margins.1 = margins.1;
+                    }
+                    child_rules.set_margins(rule_margins);
+                }
+                child_rules
+            }
             LayoutType::Frame(child, storage, style) => {
                 let child_rules = child.size_rules_(mgr.re(), axis);
                 storage.size_rules(mgr, axis, child_rules, *style)
@@ -209,8 +231,9 @@ impl<'a> Visitor<'a> {
             }
             LayoutType::AlignLayout(layout, hints) => {
                 let align = hints.combine(align);
-                layout.set_rect_(mgr, rect, align);
+                return layout.set_rect_(mgr, rect, align);
             }
+            LayoutType::Margins(child, _, _) => return child.set_rect_(mgr, rect, align),
             LayoutType::Frame(child, storage, _) => {
                 storage.rect = rect;
                 let child_rect = Rect {
@@ -249,6 +272,7 @@ impl<'a> Visitor<'a> {
             LayoutType::BoxComponent(layout) => layout.find_id(coord),
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => child.find_id(coord),
             LayoutType::AlignLayout(layout, _) => layout.find_id_(coord),
+            LayoutType::Margins(layout, _, _) => layout.find_id_(coord),
             LayoutType::Frame(child, _, _) => child.find_id_(coord),
             // Buttons steal clicks, hence Button never returns ID of content
             LayoutType::Button(_, _, _) => None,
@@ -267,6 +291,7 @@ impl<'a> Visitor<'a> {
             LayoutType::BoxComponent(layout) => layout.draw(draw),
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => draw.recurse(*child),
             LayoutType::AlignLayout(layout, _) => layout.draw_(draw),
+            LayoutType::Margins(layout, _, _) => layout.draw_(draw),
             LayoutType::Frame(child, storage, style) => {
                 draw.frame(storage.rect, *style, Background::Default);
                 child.draw_(draw);

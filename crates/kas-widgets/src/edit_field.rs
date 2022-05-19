@@ -542,6 +542,7 @@ impl_scope! {
 
             self.text.set_string(string);
             self.selection.clear();
+            self.view_offset = Offset::ZERO;
             if kas::text::fonts::fonts().num_faces() > 0 {
                 if let Some(req) = self.text.prepare() {
                     self.required = req.into();

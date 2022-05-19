@@ -45,7 +45,7 @@ mod sizer;
 mod storage;
 mod visitor;
 
-use crate::dir::{Direction, Directional};
+use crate::dir::{Direction, Directional, Directions};
 use crate::draw::DrawShared;
 use crate::event::EventState;
 use crate::geom::{Coord, Rect, Size, Vec2};
@@ -143,6 +143,15 @@ impl Directional for AxisInfo {
         match self.vertical {
             false => Direction::Right,
             true => Direction::Down,
+        }
+    }
+}
+
+impl From<AxisInfo> for Directions {
+    fn from(axis: AxisInfo) -> Directions {
+        match axis.vertical {
+            false => Directions::LEFT | Directions::RIGHT,
+            true => Directions::UP | Directions::DOWN,
         }
     }
 }

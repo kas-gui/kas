@@ -95,7 +95,10 @@ impl_scope! {
     #[widget {
         layout = frame(FrameStyle::EditBox): row: [
             self.edit,
-            align(stretch): column: [self.b_up, self.b_down],
+            align(stretch): column: [
+                margins(none): self.b_up,
+                margins(none): self.b_down,
+            ],
         ];
     }]
     pub struct Spinner<T: SpinnerType> {
