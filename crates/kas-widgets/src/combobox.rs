@@ -71,14 +71,19 @@ impl_scope! {
                     mgr.set_nav_focus(id, key_focus);
                 }
             };
+
+            let activate = |s: &mut Self, mgr: &mut EventMgr| -> Response {
+                if let Some(id) = s.popup_id {
+                    mgr.close_window(id, true);
+                } else {
+                    open_popup(s, mgr, true);
+                }
+                Response::Used
+            };
+
             match event {
                 Event::Activate => {
-                    if let Some(id) = self.popup_id {
-                        mgr.close_window(id, true);
-                    } else {
-                        open_popup(self, mgr, true);
-                    }
-                    Response::Used
+                    activate(self, mgr)
                 }
                 Event::Command(cmd, _) => {
                     let next = |mgr: &mut EventMgr, s, clr, rev| {
@@ -89,6 +94,7 @@ impl_scope! {
                         Response::Used
                     };
                     match cmd {
+                        cmd if cmd.is_activate() => activate(self, mgr),
                         Command::Up => next(mgr, self, false, true),
                         Command::Down => next(mgr, self, false, false),
                         Command::Home => next(mgr, self, true, false),
