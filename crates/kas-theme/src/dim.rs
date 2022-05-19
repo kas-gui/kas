@@ -264,7 +264,6 @@ impl<D: 'static> SizeHandle for Window<D> {
             // space). This is a hard layout problem; for now don't do this.
             let stretch = match class {
                 TextClass::MenuLabel => Stretch::None,
-                TextClass::Button => Stretch::Filler,
                 _ => Stretch::Low,
             };
             SizeRules::new(min, ideal, margins, stretch)

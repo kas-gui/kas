@@ -53,6 +53,8 @@ impl_scope! {
     /// A mark which is also a button
     ///
     /// This button is not keyboard navigable; only mouse/touch interactive.
+    ///
+    /// Uses stretch policy [`Stretch::Low`].
     #[derive(Clone, Debug)]
     #[widget {
         hover_highlight = true;
@@ -78,7 +80,7 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            mgr.mark(self.style, axis)
+            mgr.mark(self.style, axis).with_stretch(Stretch::Low)
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
