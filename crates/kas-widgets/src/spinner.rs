@@ -180,7 +180,7 @@ impl_scope! {
     impl Widget for Self {
         fn steal_event(&mut self, mgr: &mut EventMgr, _: &WidgetId, event: &Event) -> Response {
             match event {
-                Event::Command(cmd, _) => {
+                Event::Command(cmd) => {
                     let value = match cmd {
                         Command::Down => self.value() - self.step,
                         Command::Up => self.value() + self.step,

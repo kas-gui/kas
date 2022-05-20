@@ -85,7 +85,7 @@ impl_scope! {
                 Event::Activate => {
                     activate(self, mgr)
                 }
-                Event::Command(cmd, _) => {
+                Event::Command(cmd) => {
                     let next = |mgr: &mut EventMgr, s, clr, rev| {
                         if clr {
                             mgr.clear_nav_focus();

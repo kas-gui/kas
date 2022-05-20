@@ -168,7 +168,7 @@ impl_scope! {
                     self.popup_id = None;
                     Response::Used
                 }
-                Event::Command(cmd, _) => self.handle_dir_key(mgr, cmd),
+                Event::Command(cmd) => self.handle_dir_key(mgr, cmd),
                 _ => Response::Unused,
             }
         }

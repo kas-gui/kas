@@ -673,7 +673,7 @@ impl_scope! {
                         return Response::Used;
                     }
                 }
-                Event::Command(cmd, _) => {
+                Event::Command(cmd) => {
                     let last = self.data.len().wrapping_sub(1);
                     if last == usize::MAX || !self.widgets[0].widget.key_nav() {
                         return Response::Unused;

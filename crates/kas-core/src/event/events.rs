@@ -43,9 +43,7 @@ pub enum Event {
     /// In some cases keys are remapped, e.g. a widget with selection focus but
     /// not character or navigation focus may receive [`Command::Deselect`]
     /// when the <kbd>Esc</kbd> key is pressed.
-    ///
-    /// The state of the shift key is included (true = pressed).
-    Command(Command, bool),
+    Command(Command),
     /// Widget lost keyboard input focus
     LostCharFocus,
     /// Widget lost selection focus
@@ -255,7 +253,7 @@ impl Event {
     ) -> Response {
         match self {
             Event::Activate => f(mgr),
-            Event::Command(cmd, _) if cmd.is_activate() => f(mgr),
+            Event::Command(cmd) if cmd.is_activate() => f(mgr),
             Event::PressStart { source, coord, .. } if source.is_primary() => {
                 mgr.grab_press(id, source, coord, GrabMode::Grab, None);
                 Response::Used

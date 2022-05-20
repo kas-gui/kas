@@ -471,7 +471,6 @@ impl<'a> EventMgr<'a> {
         );
 
         use VirtualKeyCode as VK;
-        let shift = self.state.modifiers.shift();
 
         let opt_command = self
             .state
@@ -482,7 +481,7 @@ impl<'a> EventMgr<'a> {
             let mut targets = vec![];
             let mut send = |_self: &mut Self, id: WidgetId, cmd| -> bool {
                 if !targets.contains(&id) {
-                    let used = _self.send_event(widget, id.clone(), Event::Command(cmd, shift));
+                    let used = _self.send_event(widget, id.clone(), Event::Command(cmd));
                     if used {
                         _self.add_key_depress(scancode, id.clone());
                     }
@@ -571,6 +570,7 @@ impl<'a> EventMgr<'a> {
             self.send_event(widget, id, Event::Activate);
         } else if vkey == VK::Tab {
             self.clear_char_focus();
+            let shift = self.state.modifiers.shift();
             self.next_nav_focus(widget, shift, true);
         } else if vkey == VK::Escape {
             if let Some(id) = self.state.popups.last().map(|(id, _, _)| *id) {

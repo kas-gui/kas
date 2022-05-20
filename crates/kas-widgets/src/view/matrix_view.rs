@@ -673,7 +673,7 @@ impl_scope! {
                         return Response::Used;
                     }
                 }
-                Event::Command(cmd, _) => {
+                Event::Command(cmd) => {
                     if self.data.is_empty() || !self.widgets[0].widget.key_nav() {
                         return Response::Unused;
                     }

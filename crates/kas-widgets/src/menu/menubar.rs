@@ -200,7 +200,7 @@ impl_scope! {
                     Response::Used
                 }
                 Event::PressEnd { .. } => Response::Used,
-                Event::Command(cmd, _) => {
+                Event::Command(cmd) => {
                     // Arrow keys can switch to the next / previous menu
                     // as well as to the first / last item of an open menu.
                     use Command::{Left, Up};
