@@ -567,7 +567,7 @@ impl<'a> EventMgr<'a> {
                 self.set_nav_focus(id.clone(), true);
             }
             self.add_key_depress(scancode, id.clone());
-            self.send_event(widget, id, Event::Activate);
+            self.send_event(widget, id, Event::Command(Command::Activate));
         } else if vkey == VK::Tab {
             self.clear_char_focus();
             let shift = self.state.modifiers.shift();

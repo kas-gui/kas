@@ -415,7 +415,7 @@ impl_scope! {
                 }
             }
             match event {
-                Event::Activate | Event::NavFocus(true) => {
+                Event::NavFocus(true) => {
                     request_focus(self, mgr);
                     Response::Used
                 }
@@ -765,6 +765,7 @@ impl<G: EditGuard> EditField<G> {
                 mgr.redraw(self.id());
                 Action::None
             }
+            Command::Activate => Action::Activate,
             Command::Return if shift || !self.multi_line => Action::Activate,
             Command::Return if self.multi_line => {
                 Action::Insert('\n'.encode_utf8(&mut buf), LastEdit::Insert)

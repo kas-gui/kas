@@ -22,16 +22,6 @@ use crate::{dir::Direction, WidgetId, WindowId};
 pub enum Event {
     /// No event
     None,
-    /// Widget activation
-    ///
-    /// "Activate" is triggered e.g. by clicking on a control or using keyboard
-    /// navigation to trigger a control. It should then perform the widget's
-    /// primary function, e.g. a button or menu action, toggle a checkbox, etc.
-    ///
-    /// Note: this is a synthetic event and not automatically generated for
-    /// click or <kbd>Enter</kbd>. Consider using [`Event::on_activate`]
-    /// instead.
-    Activate,
     /// (Keyboard) command input
     ///
     /// This represents a control or navigation action, usually from the
@@ -243,8 +233,7 @@ impl Event {
     ///
     /// -   Mouse click and release on the same widget
     /// -   Touchscreen press and release on the same widget
-    /// -   <kbd>Enter</kbd>, <kbd>Return</kbd>, <kbd>Space</kbd>
-    /// -   [`Event::Activate`]
+    /// -   `Event::Command(cmd, _)` where [`cmd.is_activate()`](Command::is_activate)
     pub fn on_activate<F: FnOnce(&mut EventMgr) -> Response>(
         self,
         mgr: &mut EventMgr,
@@ -252,7 +241,6 @@ impl Event {
         f: F,
     ) -> Response {
         match self {
-            Event::Activate => f(mgr),
             Event::Command(cmd) if cmd.is_activate() => f(mgr),
             Event::PressStart { source, coord, .. } if source.is_primary() => {
                 mgr.grab_press(id, source, coord, GrabMode::Grab, None);
@@ -291,6 +279,12 @@ pub enum Command {
     ///
     /// This is in some cases remapped to [`Command::Deselect`].
     Escape,
+    /// Programmatic activation
+    ///
+    /// A synthetic event to activate widgets. Consider matching
+    /// [`Command::is_activate`] or using using [`Event::on_activate`]
+    /// instead for generally applicable activation.
+    Activate,
     /// Return / enter key
     ///
     /// This may insert a line-break or may activate something.
@@ -468,12 +462,16 @@ impl Command {
         })
     }
 
-    /// True if this is an "activation" key
+    /// True for "activation" commands
     ///
-    /// True for: <kbd>Enter</kbd>, <kbd>Return</kbd>, <kbd>Space</kbd>
+    /// This matches:
+    ///
+    /// -   [`Self::Activate`] — programmatic activation
+    /// -   [`Self::Return`] —  <kbd>Enter</kbd> and <kbd>Return</kbd> keys
+    /// -   [`Space`] — <kbd>Space</kbd> key
     pub fn is_activate(self) -> bool {
         use Command::*;
-        matches!(self, Return | Space)
+        matches!(self, Activate | Return | Space)
     }
 
     /// Convert to selection-focus command
