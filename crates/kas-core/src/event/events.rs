@@ -258,6 +258,22 @@ impl Event {
             _ => Response::Unused,
         }
     }
+
+    /// Pass to disabled widgets?
+    ///
+    /// Disabled status should disable input handling but not prevent other
+    /// notifications.
+    pub fn pass_when_disabled(&self) -> bool {
+        use Event::*;
+        match self {
+            None | Command(_) => false,
+            LostCharFocus | LostSelFocus => true,
+            ReceivedCharacter(_) | Scroll(_) | Pan { .. } => false,
+            PressStart { .. } | PressMove { .. } | PressEnd { .. } => false,
+            TimerUpdate(_) | HandleUpdate { .. } | PopupRemoved(_) => true,
+            NavFocus(_) => false,
+        }
+    }
 }
 
 /// Command input ([`Event::Command`])

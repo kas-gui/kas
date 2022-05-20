@@ -479,10 +479,15 @@ impl<'a> EventMgr<'a> {
 
         // TODO(opt): we should be able to use binary search here
         let mut disabled = false;
-        for d in &self.disabled {
-            if d.is_ancestor_of(&id) {
-                id = d.clone();
-                disabled = true;
+        if !event.pass_when_disabled() {
+            for d in &self.disabled {
+                if d.is_ancestor_of(&id) {
+                    id = d.clone();
+                    disabled = true;
+                }
+            }
+            if disabled {
+                trace!("EventMgr::send: target is disabled; sending instead to {id}");
             }
         }
 
