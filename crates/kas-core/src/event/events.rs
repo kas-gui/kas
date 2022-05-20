@@ -486,7 +486,7 @@ impl Command {
     ///
     /// -   [`Self::Activate`] — programmatic activation
     /// -   [`Self::Return`] —  <kbd>Enter</kbd> and <kbd>Return</kbd> keys
-    /// -   [`Space`] — <kbd>Space</kbd> key
+    /// -   [`Self::Space`] — <kbd>Space</kbd> key
     pub fn is_activate(self) -> bool {
         use Command::*;
         matches!(self, Activate | Return | Space)

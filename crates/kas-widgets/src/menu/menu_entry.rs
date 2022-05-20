@@ -157,8 +157,7 @@ impl_scope! {
 
         /// Set event handler `f`
         ///
-        /// On toggle (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called.
+        /// When the checkbox is set or unset, the closure `f` is called.
         #[inline]
         #[must_use]
         pub fn on_toggle<F>(self, f: F) -> Self
@@ -176,8 +175,7 @@ impl_scope! {
     impl Self {
         /// Construct a toggleable menu entry with a given `label` and event handler `f`
         ///
-        /// On toggle (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called.
+        /// When the checkbox is set or unset, the closure `f` is called.
         #[inline]
         pub fn new_on<T: Into<AccelString>, F>(label: T, f: F) -> Self
         where

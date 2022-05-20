@@ -98,8 +98,7 @@ impl_scope! {
 
         /// Set event handler `f`
         ///
-        /// On selection (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called.
+        /// When the radiobox is selected, the closure `f` is called.
         ///
         /// No handler is called on deselection.
         #[inline]
@@ -122,8 +121,7 @@ impl_scope! {
         /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
         /// same `group` will be considered part of a single group.
         ///
-        /// On selection (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called.
+        /// When the radiobox is selected, the closure `f` is called.
         ///
         /// No handler is called on deselection.
         #[inline]
@@ -216,8 +214,7 @@ impl_scope! {
 
         /// Set event handler `f`
         ///
-        /// On selection (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called.
+        /// When the radiobox is selected, the closure `f` is called.
         ///
         /// No handler is called on deselection.
         #[inline]
@@ -241,8 +238,7 @@ impl_scope! {
         /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
         /// same `group` will be considered part of a single group.
         ///
-        /// On selection (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called.
+        /// When the radiobox is selected, the closure `f` is called.
         ///
         /// No handler is called on deselection.
         #[inline]
@@ -261,7 +257,7 @@ impl_scope! {
         /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
         /// same `group` will be considered part of a single group.
         ///
-        /// On selection (through user input events or [`Event::Activate`]) a clone
+        /// When the radiobox is selected, a clone
         /// of `msg` is returned to the parent widget via [`EventMgr::push_msg`].
         ///
         /// No handler is called on deselection.

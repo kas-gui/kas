@@ -241,8 +241,7 @@ impl EventState {
     ///
     /// In case a navigation key is pressed (see [`Command`]) but no widget has
     /// navigation focus, then, if a fallback has been set, that widget will
-    /// receive the key via [`Event::Command`]. (This does not include
-    /// [`Event::Activate`].)
+    /// receive the key via [`Event::Command`].
     ///
     /// Only one widget can be a fallback, and the *first* to set itself wins.
     /// This is primarily used to allow scroll-region widgets to
@@ -297,7 +296,7 @@ impl EventState {
     /// An *accelerator key* is a shortcut key able to directly open menus,
     /// activate buttons, etc. A user triggers the key by pressing `Alt+Key`,
     /// or (if `alt_bypass` is enabled) by simply pressing the key.
-    /// The widget with this `id` then receives [`Event::Activate`].
+    /// The widget with this `id` then receives [`Command::Activate`].
     ///
     /// Note that accelerator keys may be automatically derived from labels:
     /// see [`crate::text::AccelString`].

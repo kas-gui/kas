@@ -60,8 +60,7 @@ impl_scope! {
 
         /// Set event handler `f`
         ///
-        /// On toggle (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called.
+        /// When the checkbox is set or unset, the closure `f` is called.
         #[inline]
         #[must_use]
         pub fn on_toggle<F>(self, f: F) -> CheckBoxBare
@@ -79,8 +78,7 @@ impl_scope! {
 
         /// Construct a checkbox with event handler `f`
         ///
-        /// On activation (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called.
+        /// When the checkbox is set or unset, the closure `f` is called.
         #[inline]
         pub fn new_on<F>(f: F) -> Self
         where
@@ -193,8 +191,7 @@ impl_scope! {
 
         /// Set event handler `f`
         ///
-        /// On toggle (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called.
+        /// When the checkbox is set or unset, the closure `f` is called.
         #[inline]
         #[must_use]
         pub fn on_toggle<F>(self, f: F) -> CheckBox
@@ -213,8 +210,7 @@ impl_scope! {
         /// CheckBox labels are optional; if no label is desired, use an empty
         /// string.
         ///
-        /// On toggle (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called.
+        /// When the checkbox is set or unset, the closure `f` is called.
         #[inline]
         pub fn new_on<T: Into<AccelString>, F>(label: T, f: F) -> Self
         where

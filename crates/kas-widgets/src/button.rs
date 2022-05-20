@@ -49,8 +49,7 @@ impl_scope! {
 
         /// Set event handler `f`
         ///
-        /// On activation (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called.
+        /// This closure is called when the button is activated.
         #[inline]
         #[must_use]
         pub fn on_push<F>(self, f: F) -> Button<W>
@@ -70,8 +69,7 @@ impl_scope! {
     impl Self {
         /// Construct a button with a given `inner` widget and event handler `f`
         ///
-        /// On activation (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called.
+        /// This closure is called when the button is activated.
         #[inline]
         pub fn new_on<F>(inner: W, f: F) -> Self
         where
@@ -82,9 +80,9 @@ impl_scope! {
 
         /// Construct a button with a given `inner` and payload `msg`
         ///
-        /// On activation (through user input events or [`Event::Activate`]) a clone
-        /// of `msg` is returned to the parent widget. Click actions must be
-        /// implemented through a handler on the parent widget (or other ancestor).
+        /// When the button is activated, a clone of `msg` is sent to the
+        /// parent widget. The parent (or an ancestor) should handle this using
+        /// [`Widget::handle_message`].
         #[inline]
         pub fn new_msg<M: Clone + Debug + 'static>(inner: W, msg: M) -> Self {
             Self::new_on(inner, move |mgr| mgr.push_msg(msg.clone()))
@@ -165,8 +163,7 @@ impl_scope! {
 
         /// Set event handler `f`
         ///
-        /// On activation (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called.
+        /// This closure is called when the button is activated.
         #[inline]
         #[must_use]
         pub fn on_push<F>(self, f: F) -> TextButton
@@ -184,8 +181,7 @@ impl_scope! {
 
         /// Construct a button with a given `label` and event handler `f`
         ///
-        /// On activation (through user input events or [`Event::Activate`]) the
-        /// closure `f` is called.
+        /// This closure is called when the button is activated.
         #[inline]
         pub fn new_on<S: Into<AccelString>, F>(label: S, f: F) -> Self
         where
@@ -196,9 +192,9 @@ impl_scope! {
 
         /// Construct a button with a given `label` and payload `msg`
         ///
-        /// On activation (through user input events or [`Event::Activate`]) a clone
-        /// of `msg` is returned to the parent widget. Click actions must be
-        /// implemented through a handler on the parent widget (or other ancestor).
+        /// When the button is activated, a clone of `msg` is sent to the
+        /// parent widget. The parent (or an ancestor) should handle this using
+        /// [`Widget::handle_message`].
         #[inline]
         pub fn new_msg<S: Into<AccelString>, M: Clone + Debug + 'static>(label: S, msg: M) -> Self {
             Self::new_on(label, move |mgr| mgr.push_msg(msg.clone()))
