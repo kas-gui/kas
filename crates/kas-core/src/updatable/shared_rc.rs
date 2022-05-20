@@ -11,7 +11,7 @@
 //! Probably this question requires seeing more examples/applications to answer.
 
 use crate::event::EventMgr;
-use crate::event::UpdateHandle;
+use crate::event::UpdateId;
 use crate::updatable::*;
 use crate::WidgetId;
 use std::cell::RefCell;
@@ -20,20 +20,22 @@ use std::rc::Rc;
 
 /// Wrapper for single-thread shared data
 ///
-/// This wrapper adds an [`UpdateHandle`].
+/// This wrapper adds an [`UpdateId`].
 #[derive(Clone, Debug, Default)]
-pub struct SharedRc<T: Debug>(Rc<(UpdateHandle, RefCell<(T, u64)>)>);
+pub struct SharedRc<T: Debug>(Rc<(UpdateId, RefCell<(T, u64)>)>);
 
 impl<T: Debug> SharedRc<T> {
     /// Construct with given data
     pub fn new(data: T) -> Self {
-        let handle = UpdateHandle::new();
+        let id = UpdateId::new();
         let data = RefCell::new((data, 1));
-        SharedRc(Rc::new((handle, data)))
+        SharedRc(Rc::new((id, data)))
     }
 
-    /// Access update handle
-    pub fn handle(&self) -> UpdateHandle {
+    /// Access update identifier
+    ///
+    /// Data updates via this [`SharedRc`] are triggered using this [`UpdateId`].
+    pub fn id(&self) -> UpdateId {
         (self.0).0
     }
 }

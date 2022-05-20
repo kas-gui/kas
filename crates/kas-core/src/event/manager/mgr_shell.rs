@@ -237,12 +237,12 @@ impl<'a> EventMgr<'a> {
         self.state.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
     }
 
-    /// Update widgets due to handle
-    pub fn update_handle(&mut self, widget: &mut dyn Widget, handle: UpdateHandle, payload: u64) {
+    /// Update widgets with an [`UpdateId`]
+    pub fn update_widgets(&mut self, widget: &mut dyn Widget, id: UpdateId, payload: u64) {
         let start = Instant::now();
-        let count = self.send_all(widget, Event::HandleUpdate { handle, payload });
+        let count = self.send_all(widget, Event::Update { id, payload });
         debug!(
-            "Sent HandleUpdate ({handle:?}) to {count} widgets in {}μs",
+            "Sent Update ({id:?}) to {count} widgets in {}μs",
             start.elapsed().as_micros()
         );
     }

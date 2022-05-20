@@ -7,7 +7,7 @@
 
 use crate::event::EventMgr;
 #[allow(unused)] // doc links
-use crate::event::{Event, UpdateHandle};
+use crate::event::{Event, UpdateId};
 use crate::macros::autoimpl;
 use crate::WidgetId;
 #[allow(unused)] // doc links

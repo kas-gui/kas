@@ -10,7 +10,7 @@ use std::time::Instant;
 
 use kas::cast::Cast;
 use kas::draw::{AnimationState, DrawIface, DrawShared, PassId};
-use kas::event::{CursorIcon, EventState, UpdateHandle};
+use kas::event::{CursorIcon, EventState, UpdateId};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{SetRectMgr, SolveCache};
 use kas::theme::{DrawMgr, SizeHandle, SizeMgr, ThemeControl};
@@ -269,16 +269,11 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         self.next_resume()
     }
 
-    pub fn update_handle(
-        &mut self,
-        shared: &mut SharedState<C, T>,
-        handle: UpdateHandle,
-        payload: u64,
-    ) {
+    pub fn update_widgets(&mut self, shared: &mut SharedState<C, T>, id: UpdateId, payload: u64) {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let widget = self.widget.as_widget_mut();
         self.ev_state
-            .with(&mut tkw, |mgr| mgr.update_handle(widget, handle, payload));
+            .with(&mut tkw, |mgr| mgr.update_widgets(widget, id, payload));
     }
 
     pub fn add_popup(&mut self, shared: &mut SharedState<C, T>, id: WindowId, popup: kas::Popup) {
@@ -532,8 +527,8 @@ where
         self.shared.pending.push(PendingAction::CloseWindow(id));
     }
 
-    fn trigger_update(&mut self, handle: UpdateHandle, payload: u64) {
-        self.shared.trigger_update(handle, payload);
+    fn trigger_update(&mut self, id: UpdateId, payload: u64) {
+        self.shared.trigger_update(id, payload);
     }
 
     #[inline]

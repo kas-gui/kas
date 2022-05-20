@@ -106,7 +106,7 @@ impl_scope! {
 
             self.max_value = max_value.max(0);
             self.value = self.value.clamp(0, self.max_value);
-            self.update_handle()
+            self.update_widgets()
         }
 
         /// Read the current max value
@@ -150,7 +150,7 @@ impl_scope! {
             }
         }
 
-        fn update_handle(&mut self) -> TkAction {
+        fn update_widgets(&mut self) -> TkAction {
             let len = self.bar_len();
             let total = i64::from(self.max_value) + i64::from(self.handle_value);
             let handle_len = i64::from(self.handle_value) * i64::conv(len) / total;
@@ -231,7 +231,7 @@ impl_scope! {
             self.core.rect = rect;
             self.handle.set_rect(mgr, rect, align);
             self.min_handle_len = (mgr.size_mgr().scrollbar().0).0;
-            let _ = self.update_handle();
+            let _ = self.update_widgets();
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {

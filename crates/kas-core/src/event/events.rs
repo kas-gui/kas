@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 #[allow(unused)]
 use super::{EventMgr, EventState, GrabMode, Response}; // for doc-links
-use super::{MouseButton, UpdateHandle, VirtualKeyCode};
+use super::{MouseButton, UpdateId, VirtualKeyCode};
 use crate::geom::{Coord, DVec2, Offset};
 #[allow(unused)]
 use crate::Widget;
@@ -172,7 +172,7 @@ pub enum Event {
     /// The `u64` payload may be used to identify the corresponding
     /// [`EventState::update_on_timer`] call.
     TimerUpdate(u64),
-    /// Update triggerred via an [`UpdateHandle`]
+    /// Update triggerred via an [`UpdateId`]
     ///
     /// This event is received by all widgets when [`EventMgr::trigger_update`]
     /// is called.
@@ -181,7 +181,7 @@ pub enum Event {
     /// not by [`Widget::steal_event`] or [`Widget::handle_unused`].
     /// Messages and scroll actions will *not* be handled by parent's
     /// [`Widget::handle_message`] or [`Widget::handle_scroll`] methods.
-    HandleUpdate { handle: UpdateHandle, payload: u64 },
+    Update { id: UpdateId, payload: u64 },
     /// Notification that a popup has been destroyed
     ///
     /// This is sent to the popup's parent after a popup has been removed.
@@ -272,7 +272,7 @@ impl Event {
             LostCharFocus | LostSelFocus => true,
             ReceivedCharacter(_) | Scroll(_) | Pan { .. } => false,
             PressStart { .. } | PressMove { .. } | PressEnd { .. } => false,
-            TimerUpdate(_) | HandleUpdate { .. } | PopupRemoved(_) => true,
+            TimerUpdate(_) | Update { .. } | PopupRemoved(_) => true,
             NavFocus(_) => false,
         }
     }

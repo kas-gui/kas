@@ -8,35 +8,33 @@
 use std::num::NonZeroU32;
 use std::sync::atomic::{AtomicU32, Ordering::Relaxed};
 
-/// An update handle
+/// An update identifier
 ///
-/// Update handles are used to trigger an update event on all widgets which are
-/// subscribed to the same handle.
+/// Used to identify the origin of an [`Event::Update`](crate::event::Event::Update).
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[must_use]
-pub struct UpdateHandle(NonZeroU32);
+pub struct UpdateId(NonZeroU32);
 
-impl UpdateHandle {
-    /// Issue a new [`UpdateHandle`]
+impl UpdateId {
+    /// Issue a new [`UpdateId`]
     ///
     /// A total of 2<sup>32</sup> - 1 update handles are available.
     /// Attempting to issue 2<sup>32</sup> handles will result in a panic.
-    pub fn new() -> UpdateHandle {
+    pub fn new() -> UpdateId {
         static COUNT: AtomicU32 = AtomicU32::new(0);
 
         loop {
             let c = COUNT.load(Relaxed);
             let h = c.wrapping_add(1);
-            let nz = NonZeroU32::new(h).unwrap_or_else(|| {
-                panic!("UpdateHandle::new: all available handles have been issued")
-            });
+            let nz = NonZeroU32::new(h)
+                .unwrap_or_else(|| panic!("UpdateId::new: all available handles have been issued"));
             if COUNT.compare_exchange(c, h, Relaxed, Relaxed).is_ok() {
-                break UpdateHandle(nz);
+                break UpdateId(nz);
             }
         }
     }
 }
-impl Default for UpdateHandle {
+impl Default for UpdateId {
     fn default() -> Self {
         Self::new()
     }

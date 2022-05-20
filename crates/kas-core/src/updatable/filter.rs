@@ -5,7 +5,7 @@
 
 //! Filters over data
 
-use crate::event::{EventMgr, UpdateHandle};
+use crate::event::{EventMgr, UpdateId};
 use crate::updatable::*;
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -20,14 +20,14 @@ pub trait Filter<T>: 'static {
 
 /// Filter: target contains self (case-sensitive string match)
 #[derive(Debug, Default, Clone)]
-pub struct ContainsString(Rc<(UpdateHandle, RefCell<(String, u64)>)>);
+pub struct ContainsString(Rc<(UpdateId, RefCell<(String, u64)>)>);
 
 impl ContainsString {
     /// Construct with given string
     pub fn new<S: ToString>(s: S) -> Self {
-        let handle = UpdateHandle::new();
+        let id = UpdateId::new();
         let data = RefCell::new((s.to_string(), 1));
-        ContainsString(Rc::new((handle, data)))
+        ContainsString(Rc::new((id, data)))
     }
 }
 impl SingleData for ContainsString {
@@ -74,16 +74,16 @@ impl Filter<String> for ContainsString {
 //
 // [question on StackOverflow]: https://stackoverflow.com/questions/47298336/case-insensitive-string-matching-in-rust
 #[derive(Debug, Default, Clone)]
-pub struct ContainsCaseInsensitive(Rc<(UpdateHandle, RefCell<(String, String, u64)>)>);
+pub struct ContainsCaseInsensitive(Rc<(UpdateId, RefCell<(String, String, u64)>)>);
 
 impl ContainsCaseInsensitive {
     /// Construct with given string
     pub fn new<S: ToString>(s: S) -> Self {
-        let handle = UpdateHandle::new();
+        let id = UpdateId::new();
         let s = s.to_string();
         let u = s.to_uppercase();
         let data = RefCell::new((s, u, 1));
-        ContainsCaseInsensitive(Rc::new((handle, data)))
+        ContainsCaseInsensitive(Rc::new((id, data)))
     }
 }
 impl SingleData for ContainsCaseInsensitive {

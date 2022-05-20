@@ -615,12 +615,12 @@ impl<'a> EventMgr<'a> {
 
     /// Notify all widgets
     ///
-    /// All widgets across all windows will receive [`Event::HandleUpdate`] with
-    /// the given `handle` and `payload`.
+    /// All widgets across all windows will receive [`Event::Update`] with
+    /// the given `id` and `payload`.
     #[inline]
-    pub fn trigger_update(&mut self, handle: UpdateHandle, payload: u64) {
-        debug!("trigger_update: handle={:?}, payload={}", handle, payload);
-        self.shell.trigger_update(handle, payload);
+    pub fn trigger_update(&mut self, id: UpdateId, payload: u64) {
+        debug!("trigger_update: id={:?}, payload={}", id, payload);
+        self.shell.trigger_update(id, payload);
     }
 
     /// Attempt to get clipboard contents

@@ -64,16 +64,16 @@ impl MyData {
 #[derive(Debug)]
 struct MySharedData {
     data: RefCell<MyData>,
-    handle: UpdateHandle,
+    id: UpdateId,
 }
 impl MySharedData {
     fn new(len: usize) -> Self {
         MySharedData {
             data: RefCell::new(MyData::new(len)),
-            handle: UpdateHandle::new(),
+            id: UpdateId::new(),
         }
     }
-    fn set_len(&mut self, len: usize) -> (Option<String>, UpdateHandle) {
+    fn set_len(&mut self, len: usize) -> (Option<String>, UpdateId) {
         let mut new_text = None;
         let mut data = self.data.borrow_mut();
         data.ver += 1;
@@ -82,7 +82,7 @@ impl MySharedData {
             data.active = len - 1;
             new_text = Some(data.get(data.active));
         }
-        (new_text, self.handle)
+        (new_text, self.id)
     }
 }
 impl ListData for MySharedData {
@@ -130,7 +130,7 @@ impl ListData for MySharedData {
                 }
             }
             mgr.push_msg(Control::Update(data.get(data.active)));
-            mgr.trigger_update(self.handle, 0);
+            mgr.trigger_update(self.id, 0);
         }
     }
 
@@ -277,11 +277,11 @@ fn main() -> kas::shell::Result<()> {
                 if let Some(control) = mgr.try_pop_msg::<Control>() {
                     match control {
                         Control::Set(len) => {
-                            let (opt_text, handle) = self.list.data_mut().set_len(len);
+                            let (opt_text, update) = self.list.data_mut().set_len(len);
                             if let Some(text) = opt_text {
                                 *mgr |= self.display.set_string(text);
                             }
-                            mgr.trigger_update(handle, 0);
+                            mgr.trigger_update(update, 0);
                         }
                         Control::Dir => {
                             let dir = self.list.direction().reversed();

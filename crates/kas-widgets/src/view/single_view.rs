@@ -113,7 +113,7 @@ impl_scope! {
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
-                Event::HandleUpdate { .. } => {
+                Event::Update { .. } => {
                     let data_ver = self.data.version();
                     if data_ver > self.data_ver {
                         let value = self.data.get_cloned();

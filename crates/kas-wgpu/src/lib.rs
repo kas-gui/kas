@@ -35,7 +35,7 @@ use std::rc::Rc;
 use thiserror::Error;
 
 use kas::draw::DrawShared;
-use kas::event::UpdateHandle;
+use kas::event::UpdateId;
 use kas::WindowId;
 use kas_theme::Theme;
 use winit::error::OsError;
@@ -291,14 +291,14 @@ impl ToolkitProxy {
             .map_err(|_| ClosedError)
     }
 
-    /// Trigger an update handle
+    /// Trigger an update
     pub fn trigger_update(
         &self,
-        handle: UpdateHandle,
+        id: UpdateId,
         payload: u64,
     ) -> std::result::Result<(), ClosedError> {
         self.proxy
-            .send_event(ProxyAction::Update(handle, payload))
+            .send_event(ProxyAction::Update(id, payload))
             .map_err(|_| ClosedError)
     }
 }
@@ -307,5 +307,5 @@ impl ToolkitProxy {
 enum ProxyAction {
     CloseAll,
     Close(WindowId),
-    Update(UpdateHandle, u64),
+    Update(UpdateId, u64),
 }
