@@ -100,7 +100,8 @@ impl_scope! {
             if self.menu_is_open() {
                 if let Some(dir) = cmd.as_direction() {
                     if dir.is_vertical() {
-                        mgr.next_nav_focus(self, false, true);
+                        let rev = dir.is_reversed();
+                        mgr.next_nav_focus(self, rev, true);
                         Response::Used
                     } else if dir == self.direction.as_direction().reversed() {
                         self.close_menu(mgr, true);
