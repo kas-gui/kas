@@ -545,7 +545,6 @@ impl_scope! {
                 }
             }
 
-            self.data.update_on_handles(mgr.ev_state(), self.id_ref());
             mgr.register_nav_fallback(self.id());
         }
 

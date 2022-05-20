@@ -212,25 +212,6 @@ impl EventState {
         self.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
     }
 
-    /// Subscribe to an update handle
-    ///
-    /// All widgets subscribed to an update handle will be sent
-    /// [`Event::HandleUpdate`] when [`EventMgr::trigger_update`]
-    /// is called with the corresponding handle.
-    ///
-    /// This should be called from [`Widget::configure`].
-    pub fn update_on_handle(&mut self, handle: UpdateHandle, w_id: WidgetId) {
-        trace!(
-            "EventMgr::update_on_handle: update {} on handle {:?}",
-            w_id,
-            handle
-        );
-        self.handle_updates
-            .entry(handle)
-            .or_insert_with(Default::default)
-            .insert(w_id);
-    }
-
     /// Notify that a widget must be redrawn
     ///
     /// Currently the entire window is redrawn on any redraw request and the
@@ -632,10 +613,10 @@ impl<'a> EventMgr<'a> {
         self.shell.close_window(id);
     }
 
-    /// Updates all subscribed widgets
+    /// Notify all widgets
     ///
-    /// All widgets subscribed to the given [`UpdateHandle`], across all
-    /// windows, will receive an update.
+    /// All widgets across all windows will receive [`Event::HandleUpdate`] with
+    /// the given `handle` and `payload`.
     #[inline]
     pub fn trigger_update(&mut self, handle: UpdateHandle, payload: u64) {
         debug!("trigger_update: handle={:?}, payload={}", handle, payload);

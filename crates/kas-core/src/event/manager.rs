@@ -8,7 +8,7 @@
 // Without winit, several things go unused
 #![cfg_attr(not(feature = "winit"), allow(unused))]
 
-use linear_map::{set::LinearSet, LinearMap};
+use linear_map::LinearMap;
 use log::{trace, warn};
 use smallvec::SmallVec;
 use std::any::Any;
@@ -168,9 +168,6 @@ pub struct EventState {
     popups: SmallVec<[(WindowId, crate::Popup, Option<WidgetId>); 16]>,
     popup_removed: SmallVec<[(WidgetId, WindowId); 16]>,
     time_updates: Vec<(Instant, WidgetId, u64)>,
-    // TODO(opt): consider other containers, e.g. C++ multimap
-    // or sorted Vec with binary search yielding a range
-    handle_updates: HashMap<UpdateHandle, LinearSet<WidgetId>>,
     pending: SmallVec<[Pending; 8]>,
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]

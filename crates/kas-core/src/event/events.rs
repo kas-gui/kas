@@ -174,11 +174,13 @@ pub enum Event {
     TimerUpdate(u64),
     /// Update triggerred via an [`UpdateHandle`]
     ///
-    /// This event may be received after registering an [`UpdateHandle`] via
-    /// [`EventState::update_on_handle`].
+    /// This event is received by all widgets when [`EventMgr::trigger_update`]
+    /// is called.
     ///
-    /// A user-defined payload is passed. Interpretation of this payload is
-    /// user-defined and unfortunately not type safe.
+    /// Note that this event is only received by [`Widget::handle_event`] and
+    /// not by [`Widget::steal_event`] or [`Widget::handle_unused`].
+    /// Messages and scroll actions will *not* be handled by parent's
+    /// [`Widget::handle_message`] or [`Widget::handle_scroll`] methods.
     HandleUpdate { handle: UpdateHandle, payload: u64 },
     /// Notification that a popup has been destroyed
     ///

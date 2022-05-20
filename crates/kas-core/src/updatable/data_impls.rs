@@ -6,7 +6,7 @@
 //! Impls for data traits
 
 use super::*;
-use crate::event::{EventMgr, EventState};
+use crate::event::EventMgr;
 use crate::WidgetId;
 use std::fmt::Debug;
 
@@ -14,7 +14,6 @@ impl<T: Clone + Debug + 'static> ListData for [T] {
     type Key = usize;
     type Item = T;
 
-    fn update_on_handles(&self, _: &mut EventState, _: &WidgetId) {}
     fn version(&self) -> u64 {
         1
     }

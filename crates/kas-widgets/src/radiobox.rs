@@ -33,13 +33,9 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            self.group.update_on_handles(mgr.ev_state(), self.id_ref());
-        }
-
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
-                Event::HandleUpdate { .. } => {
+                Event::HandleUpdate { handle, .. } if handle == self.group.handle() => {
                     if self.state && !self.eq_id(self.group.get_cloned()) {
                         trace!("RadioBoxBare: unset {}", self.id());
                         self.state = false;

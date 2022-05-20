@@ -89,9 +89,6 @@ impl ListData for MySharedData {
     type Key = usize;
     type Item = (usize, bool, String);
 
-    fn update_on_handles(&self, mgr: &mut EventState, id: &WidgetId) {
-        mgr.update_on_handle(self.handle, id.clone());
-    }
     fn version(&self) -> u64 {
         self.data.borrow().ver
     }

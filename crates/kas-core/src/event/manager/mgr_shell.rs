@@ -7,7 +7,6 @@
 
 use log::*;
 use smallvec::SmallVec;
-use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use super::*;
@@ -51,7 +50,6 @@ impl EventState {
             popups: Default::default(),
             popup_removed: Default::default(),
             time_updates: vec![],
-            handle_updates: HashMap::new(),
             pending: SmallVec::new(),
             action: TkAction::empty(),
         }

@@ -82,15 +82,9 @@ impl_scope! {
         }
     }
     impl Widget for ColourSquare {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            // register to receive updates on this handle
-            mgr.update_on_handle(self.handle, self.id());
-        }
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
-                Event::HandleUpdate { .. } => {
-                    // Note: event has `handle` and `payload` params.
-                    // We only need to request a redraw.
+                Event::HandleUpdate { handle, .. } if handle == self.handle => {
                     self.loaded = true;
                     mgr.redraw(self.id());
                     Response::Used
