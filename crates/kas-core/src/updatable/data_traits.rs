@@ -15,8 +15,6 @@ use std::cell::RefCell;
 use std::fmt::Debug;
 
 /// Trait for viewable single data items
-// Note: we require Debug + 'static to allow widgets using this to implement
-// WidgetCore, which requires Debug + Any.
 #[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait SingleData: Debug {
     /// Output type
@@ -77,7 +75,7 @@ pub trait SingleDataMut: SingleData {
 #[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait ListData: Debug {
     /// Key type
-    type Key: Clone + Debug + PartialEq + Eq;
+    type Key: Clone + Debug + PartialEq + Eq + 'static;
 
     /// Item type
     type Item: Clone + Debug + 'static;
@@ -179,11 +177,11 @@ pub trait ListDataMut: ListData {
 #[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait MatrixData: Debug {
     /// Column key type
-    type ColKey: Clone + Debug + PartialEq + Eq;
+    type ColKey: Clone + Debug + PartialEq + Eq + 'static;
     /// Row key type
-    type RowKey: Clone + Debug + PartialEq + Eq;
+    type RowKey: Clone + Debug + PartialEq + Eq + 'static;
     /// Full key type
-    type Key: Clone + Debug + PartialEq + Eq;
+    type Key: Clone + Debug + PartialEq + Eq + 'static;
     /// Item type
     type Item: Clone + Debug + 'static;
 

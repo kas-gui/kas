@@ -57,7 +57,7 @@ impl_scope! {
     #[derive(Clone, Debug)]
     #[widget]
     pub struct MatrixView<
-        T: MatrixData + 'static,
+        T: MatrixData,
         V: Driver<T::Item> = driver::DefaultView,
     > {
         core: widget_core!(),

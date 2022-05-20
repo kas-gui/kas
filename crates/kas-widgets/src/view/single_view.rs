@@ -32,7 +32,7 @@ impl_scope! {
         layout = self.child;
     }]
     pub struct SingleView<
-        T: SingleData + 'static,
+        T: SingleData,
         V: Driver<T::Item> = driver::DefaultView,
     > {
         core: widget_core!(),

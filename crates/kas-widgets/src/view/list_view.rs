@@ -52,7 +52,7 @@ impl_scope! {
     #[widget]
     pub struct ListView<
         D: Directional,
-        T: ListData + 'static,
+        T: ListData,
         V: Driver<T::Item> = driver::DefaultView,
     > {
         core: widget_core!(),

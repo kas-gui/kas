@@ -37,7 +37,7 @@ pub struct FilteredList<T: ListData, F: Filter<T::Item> + SingleData> {
     view: RefCell<(u64, Vec<T::Key>)>,
 }
 
-impl<T: ListData + 'static, F: Filter<T::Item> + SingleData> FilteredList<T, F> {
+impl<T: ListData, F: Filter<T::Item> + SingleData> FilteredList<T, F> {
     /// Construct from `data` and a `filter`
     #[inline]
     pub fn new(data: T, filter: F) -> Self {
@@ -64,7 +64,7 @@ impl<T: ListData + 'static, F: Filter<T::Item> + SingleData> FilteredList<T, F> 
     }
 }
 
-impl<T: ListData + 'static, F: Filter<T::Item> + SingleData> ListData for FilteredList<T, F> {
+impl<T: ListData, F: Filter<T::Item> + SingleData> ListData for FilteredList<T, F> {
     type Key = T::Key;
     type Item = T::Item;
 
