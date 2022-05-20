@@ -241,13 +241,12 @@ impl<'a> EventMgr<'a> {
 
     /// Update widgets due to handle
     pub fn update_handle(&mut self, widget: &mut dyn Widget, handle: UpdateHandle, payload: u64) {
-        // NOTE: to avoid borrow conflict, we must clone values!
-        if let Some(mut values) = self.state.handle_updates.get(&handle).cloned() {
-            for w_id in values.drain() {
-                let event = Event::HandleUpdate { handle, payload };
-                self.send_event(widget, w_id, event);
-            }
-        }
+        let start = Instant::now();
+        let count = self.send_all(widget, Event::HandleUpdate { handle, payload });
+        debug!(
+            "Sent HandleUpdate ({handle:?}) to {count} widgets in {}μs",
+            start.elapsed().as_micros()
+        );
     }
 
     /// Handle a winit `WindowEvent`.

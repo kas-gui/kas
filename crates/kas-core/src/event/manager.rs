@@ -592,7 +592,7 @@ impl<'a> EventMgr<'a> {
         }
     }
 
-    // Traverse widget tree by recursive call
+    // Traverse widget tree by recursive call to a specific target
     //
     // Note: cannot use internal stack of mutable references due to borrow checker
     fn send_recurse(
@@ -638,6 +638,19 @@ impl<'a> EventMgr<'a> {
         }
 
         response
+    }
+
+    // Traverse widget tree by recursive call, broadcasting
+    fn send_all(&mut self, widget: &mut dyn Widget, event: Event) -> usize {
+        let child_event = event.clone() + widget.translation();
+        widget.handle_event(self, event);
+        let mut count = 1;
+        for index in 0..widget.num_children() {
+            if let Some(w) = widget.get_child_mut(index) {
+                count += self.send_all(w, child_event.clone());
+            }
+        }
+        count
     }
 
     // Wrapper around Self::send; returns true when event is used
