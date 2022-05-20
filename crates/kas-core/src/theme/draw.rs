@@ -124,6 +124,20 @@ impl<'a> DrawMgr<'a> {
         self.h.draw_device()
     }
 
+    /// Draw to a new pass
+    ///
+    /// Adds a new draw pass for purposes of enforcing draw order. Content of
+    /// the new pass will be drawn after content in the parent pass.
+    pub fn with_pass<F: FnOnce(DrawMgr)>(&mut self, f: F) {
+        let id = self.id.clone();
+        self.h.new_pass(
+            self.h.get_clip_rect(),
+            Offset::ZERO,
+            PassType::Clip,
+            Box::new(|h| f(DrawMgr { h, id })),
+        );
+    }
+
     /// Draw to a new pass with clipping and offset (e.g. for scrolling)
     ///
     /// Adds a new draw pass of type [`PassType::Clip`], with draw operations

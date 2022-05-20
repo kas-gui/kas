@@ -187,6 +187,8 @@ impl From<Size> for Margins {
 #[impl_default(MarginSelector::Outer)]
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum MarginSelector {
+    /// No margins
+    None,
     /// Use the theme's default around-widget margins
     Outer,
     /// Use the theme's default within-widget margins
@@ -203,6 +205,7 @@ impl MarginSelector {
     /// Convert to fixed [`Margins`]
     pub fn select(&self, mgr: SizeMgr) -> Margins {
         match self {
+            MarginSelector::None => Margins::ZERO,
             MarginSelector::Outer => mgr.outer_margins(),
             MarginSelector::Inner => Margins::from(mgr.inner_margin()),
             MarginSelector::Text => mgr.text_margins(),

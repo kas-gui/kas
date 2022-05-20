@@ -196,13 +196,13 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// The latter accepts the following syntax:
 ///
 /// > _Layout_ :\
-/// > &nbsp;&nbsp; &nbsp;&nbsp; _Single_ | _List_ | _Slice_ | _Grid_ | _Align_ | _Frame_ | _Button_
+/// > &nbsp;&nbsp; &nbsp;&nbsp; _Single_ | _List_ | _Slice_ | _Grid_ | _Float_ | _Align_ | _Frame_ | _Button_
 /// >
 /// > _Single_ :\
 /// > &nbsp;&nbsp; `self` `.` _Member_ | _Expr_
 /// >
 /// > _List_ :\
-/// > &nbsp;&nbsp; _ListPre_ _Storage_? `:` `[` _Layout_ `]`
+/// > &nbsp;&nbsp; _ListPre_ _Storage_? `:` `[` ( _Layout_ `,`? ) * `]`
 /// >
 /// > _ListPre_ :\
 /// > &nbsp;&nbsp; `column` | `row` | `aligned_column` | `aligned_row` | `list` `(` _Direction_ `)`
@@ -222,11 +222,14 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > _CellRange_ :\
 /// > &nbsp;&nbsp; _LitInt_ ( `..` `+`? _LitInt_ )?
 ///
+/// > _Float_ :\
+/// > &nbsp;&nbsp; _float_ `:` `[` ( _Layout_ `,`? ) * `]`
+///
 /// > _Align_ :\
-/// > &nbsp;&nbsp; `align` `(` _AlignType_ `)` `:` _Layout_
+/// > &nbsp;&nbsp; `align` `(` _AlignType_ ( `,` _AlignType_ )? `)` `:` _Layout_
 /// >
 /// > _AlignType_ :\
-/// > &nbsp;&nbsp; `center` | `stretch`
+/// > &nbsp;&nbsp; `default` | `center` | `stretch` | `top` | `bottom` | `left` | `right`
 /// >
 /// > _Frame_ :\
 /// > &nbsp;&nbsp; `frame` `(` _Style_ `)` _Storage_? `:` _Layout_
@@ -251,6 +254,12 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// `aligned_column` and `aligned_row` use restricted list syntax (items must
 /// be `row` or `column` respectively; glob syntax not allowed), but build a
 /// grid layout. Essentially, they are syntax sugar for simple table layouts.
+///
+/// _Align_ applies an alignment specifier. `default`, `center` and `stretch`
+/// apply to both axes if only one _AlignType_ keyword is given; in case two
+/// keywords are used, the first applies to the horizontal axis and the second
+/// to the vertical (thus `top, left` is invalid; use `left, top`). `default`
+/// forces content-default alignment when the widget would set alignment.
 ///
 /// _Slice_ is a variant of _List_ over a single struct field which supports
 /// `AsMut<W>` for some widget type `W`.

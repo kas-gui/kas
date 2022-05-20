@@ -31,6 +31,8 @@ mod kw {
     custom_keyword!(bottom);
     custom_keyword!(aligned_column);
     custom_keyword!(aligned_row);
+    custom_keyword!(float);
+    custom_keyword!(margins);
 }
 
 #[derive(Debug)]
@@ -75,13 +77,15 @@ impl ToTokens for StorIdent {
 
 #[derive(Debug)]
 enum Layout {
-    Align(Box<Layout>, Align),
-    AlignSingle(Expr, Align),
+    Align(Box<Layout>, AlignHints),
+    AlignSingle(Expr, AlignHints),
+    Margins(Box<Layout>, Directions, Toks),
     Single(Expr),
     Widget(StorIdent, Expr),
     Frame(StorIdent, Box<Layout>, Expr),
     Button(StorIdent, Box<Layout>, Expr),
     List(StorIdent, Direction, Vec<Layout>),
+    Float(Vec<Layout>),
     Slice(StorIdent, Direction, Expr),
     Grid(StorIdent, GridDimensions, Vec<(CellInfo, Layout)>),
     Label(StorIdent, LitStr),
@@ -96,16 +100,28 @@ enum Direction {
     Expr(Toks),
 }
 
-#[derive(Debug)]
-enum Align {
-    Default,
-    Center,
-    Stretch,
-    Top,
-    Bottom,
-    Left,
-    Right,
+bitflags::bitflags! {
+    // NOTE: this must match kas::dir::Directions!
+    struct Directions: u8 {
+        const LEFT = 0b0001;
+        const RIGHT = 0b0010;
+        const UP = 0b0100;
+        const DOWN = 0b1000;
+    }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Align {
+    None,
+    Default,
+    TL,
+    Center,
+    BR,
+    Stretch,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct AlignHints(Align, Align);
 
 #[derive(Debug, Default)]
 struct GridDimensions {
@@ -223,6 +239,43 @@ impl Layout {
                 let layout = Layout::parse(input, gen)?;
                 Ok(Layout::Align(Box::new(layout), align))
             }
+        } else if lookahead.peek(kw::margins) {
+            let _ = input.parse::<kw::margins>()?;
+            let inner;
+            let _ = parenthesized!(inner in input);
+
+            let mut dirs = Directions::all();
+            if inner.peek2(Token![=]) {
+                let ident = inner.parse::<Ident>()?;
+                dirs = match ident {
+                    id if id == "horiz" || id == "horizontal" => Directions::LEFT | Directions::RIGHT,
+                    id if id == "vert" || id == "vertical" => Directions::UP | Directions::DOWN,
+                    id if id == "left" => Directions::LEFT,
+                    id if id == "right" => Directions::RIGHT,
+                    id if id == "top" => Directions::UP,
+                    id if id == "bottom" => Directions::DOWN,
+                    _ => return Err(Error::new(ident.span(), "expected one of: horiz, horizontal, vert, vertical, left, right, top, bottom")),
+                };
+                let _ = inner.parse::<Token![=]>()?;
+            }
+
+            let ident = inner.parse::<Ident>()?;
+            let margins = match ident {
+                id if id == "none" => quote! { None },
+                id if id == "outer" => quote! { Outer },
+                id if id == "inner" => quote! { Inner },
+                id if id == "text" => quote! { Text },
+                _ => {
+                    return Err(Error::new(
+                        ident.span(),
+                        "expected one of: none, outer, inner, text",
+                    ))
+                }
+            };
+
+            let _ = input.parse::<Token![:]>()?;
+            let layout = Layout::parse(input, gen)?;
+            Ok(Layout::Margins(Box::new(layout), dirs, margins))
         } else if lookahead.peek(Token![self]) {
             Ok(Layout::Single(input.parse()?))
         } else if lookahead.peek(kw::frame) {
@@ -273,6 +326,11 @@ impl Layout {
             let _: Token![:] = input.parse()?;
             let list = parse_layout_list(input, gen)?;
             Ok(Layout::List(stor, dir, list))
+        } else if lookahead.peek(kw::float) {
+            let _: kw::float = input.parse()?;
+            let _: Token![:] = input.parse()?;
+            let list = parse_layout_list(input, gen)?;
+            Ok(Layout::Float(list))
         } else if lookahead.peek(kw::aligned_column) {
             let _: kw::aligned_column = input.parse()?;
             let stor = gen.parse_or_next(input)?;
@@ -326,34 +384,62 @@ impl Layout {
     }
 }
 
-fn parse_align(input: ParseStream) -> Result<Align> {
+impl Align {
+    fn parse(inner: ParseStream, first: bool) -> Result<Option<Self>> {
+        let lookahead = inner.lookahead1();
+        Ok(Some(if lookahead.peek(kw::default) {
+            let _: kw::default = inner.parse()?;
+            Align::Default
+        } else if lookahead.peek(kw::center) {
+            let _: kw::center = inner.parse()?;
+            Align::Center
+        } else if lookahead.peek(kw::stretch) {
+            let _: kw::stretch = inner.parse()?;
+            Align::Stretch
+        } else if lookahead.peek(kw::top) {
+            if first {
+                return Ok(None);
+            }
+            let _: kw::top = inner.parse()?;
+            Align::TL
+        } else if lookahead.peek(kw::bottom) {
+            if first {
+                return Ok(None);
+            }
+            let _: kw::bottom = inner.parse()?;
+            Align::BR
+        } else if lookahead.peek(kw::left) && first {
+            let _: kw::left = inner.parse()?;
+            Align::TL
+        } else if lookahead.peek(kw::right) && first {
+            let _: kw::right = inner.parse()?;
+            Align::BR
+        } else {
+            return Err(lookahead.error());
+        }))
+    }
+}
+
+fn parse_align(input: ParseStream) -> Result<AlignHints> {
     let inner;
     let _ = parenthesized!(inner in input);
 
-    let lookahead = inner.lookahead1();
-    if lookahead.peek(kw::default) {
-        let _: kw::default = inner.parse()?;
-        Ok(Align::Default)
-    } else if lookahead.peek(kw::center) {
-        let _: kw::center = inner.parse()?;
-        Ok(Align::Center)
-    } else if lookahead.peek(kw::stretch) {
-        let _: kw::stretch = inner.parse()?;
-        Ok(Align::Stretch)
-    } else if lookahead.peek(kw::top) {
-        let _: kw::top = inner.parse()?;
-        Ok(Align::Top)
-    } else if lookahead.peek(kw::bottom) {
-        let _: kw::bottom = inner.parse()?;
-        Ok(Align::Bottom)
-    } else if lookahead.peek(kw::left) {
-        let _: kw::left = inner.parse()?;
-        Ok(Align::Left)
-    } else if lookahead.peek(kw::right) {
-        let _: kw::right = inner.parse()?;
-        Ok(Align::Right)
-    } else {
-        Err(lookahead.error())
+    match Align::parse(&inner, true)? {
+        None => {
+            let first = Align::None;
+            let second = Align::parse(&inner, false)?.unwrap();
+            Ok(AlignHints(first, second))
+        }
+        Some(first) => {
+            let second = if let Ok(_) = inner.parse::<Token![,]>() {
+                Align::parse(&inner, false)?.unwrap()
+            } else if matches!(first, Align::TL | Align::BR) {
+                Align::None
+            } else {
+                first
+            };
+            Ok(AlignHints(first, second))
+        }
     }
 }
 
@@ -476,16 +562,30 @@ impl Parse for Direction {
     }
 }
 
-impl ToTokens for Align {
+impl ToTokens for Directions {
     fn to_tokens(&self, toks: &mut Toks) {
-        toks.append_all(match self {
-            Align::Default => quote! { layout::AlignHints::NONE },
-            Align::Center => quote! { layout::AlignHints::CENTER },
-            Align::Stretch => quote! { layout::AlignHints::STRETCH },
-            Align::Top => quote! { layout::AlignHints::new(None, Some(layout::Align::TL))},
-            Align::Bottom => quote! { layout::AlignHints::new(None, Some(layout::Align::BR)) },
-            Align::Left => quote! { layout::AlignHints::new(Some(layout::Align::TL), None) },
-            Align::Right => quote! { layout::AlignHints::new(Some(layout::Align::BR), None) },
+        let dirs = self.bits();
+        toks.append_all(quote! { #dirs })
+    }
+}
+
+impl ToTokens for AlignHints {
+    fn to_tokens(&self, toks: &mut Toks) {
+        fn align_toks(align: &Align) -> Toks {
+            match align {
+                Align::None => quote! { None },
+                Align::Default => quote! { Some(layout::Align::Default) },
+                Align::Center => quote! { Some(layout::Align::Center) },
+                Align::Stretch => quote! { Some(layout::Align::Stretch) },
+                Align::TL => quote! { Some(layout::Align::TL) },
+                Align::BR => quote! { Some(layout::Align::BR) },
+            }
+        }
+        let horiz = align_toks(&self.0);
+        let vert = align_toks(&self.1);
+
+        toks.append_all(quote! {
+            layout::AlignHints::new(#horiz, #vert)
         });
     }
 }
@@ -521,7 +621,7 @@ impl Layout {
             Layout::Align(layout, _) => {
                 layout.append_fields(ty_toks, def_toks, children);
             }
-            Layout::AlignSingle(..) | Layout::Single(_) => (),
+            Layout::AlignSingle(..) | Layout::Margins(..) | Layout::Single(_) => (),
             Layout::Widget(stor, expr) => {
                 children.push(stor.to_token_stream());
                 stor.to_tokens(ty_toks);
@@ -547,6 +647,11 @@ impl Layout {
                 } else {
                     quote! { : ::kas::layout::FixedRowStorage<#len>, }
                 });
+                for item in vec {
+                    item.append_fields(ty_toks, def_toks, children);
+                }
+            }
+            Layout::Float(vec) => {
                 for item in vec {
                     item.append_fields(ty_toks, def_toks, children);
                 }
@@ -590,6 +695,14 @@ impl Layout {
             }
             Layout::AlignSingle(expr, align) => {
                 quote! { layout::Visitor::align_single(&mut (#expr), #align) }
+            }
+            Layout::Margins(layout, dirs, selector) => {
+                let inner = layout.generate(core)?;
+                quote! { layout::Visitor::margins(
+                    #inner,
+                    ::kas::dir::Directions::from_bits(#dirs).unwrap(),
+                    layout::MarginSelector::#selector,
+                ) }
             }
             Layout::Single(expr) => quote! {
                 layout::Visitor::single(&mut (#expr))
@@ -642,6 +755,15 @@ impl Layout {
                 let iter = quote! { { let arr = [#items]; arr.into_iter() } };
 
                 quote! { layout::Visitor::grid(#iter, #dim, &mut self.#core.#stor) }
+            }
+            Layout::Float(list) => {
+                let mut items = Toks::new();
+                for item in list {
+                    let item = item.generate(core)?;
+                    items.append_all(quote! {{ #item },});
+                }
+                let iter = quote! { { let arr = [#items]; arr.into_iter() } };
+                quote! { layout::Visitor::float(#iter) }
             }
             Layout::Label(stor, _) => {
                 quote! { layout::Visitor::component(&mut self.#core.#stor) }

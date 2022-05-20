@@ -141,3 +141,13 @@ impl Directional for Direction {
         self
     }
 }
+
+bitflags! {
+    /// Multi-direction selector
+    pub struct Directions: u8 {
+        const LEFT = 0b0001;
+        const RIGHT = 0b0010;
+        const UP = 0b0100;
+        const DOWN = 0b1000;
+    }
+}
