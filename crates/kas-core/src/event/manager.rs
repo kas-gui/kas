@@ -604,9 +604,7 @@ impl<'a> EventMgr<'a> {
             response = Response::Used;
         } else if let Some(index) = widget.find_child_index(&id) {
             let translation = widget.translation();
-            if disabled {
-                // event is unused
-            } else if let Some(w) = widget.get_child_mut(index) {
+            if let Some(w) = widget.get_child_mut(index) {
                 response = self.send_recurse(w, id, disabled, event.clone() + translation);
                 if self.scroll != Scroll::None {
                     widget.handle_scroll(self, self.scroll);
@@ -623,6 +621,8 @@ impl<'a> EventMgr<'a> {
             } else if self.has_msg() {
                 widget.handle_message(self, index);
             }
+        } else if disabled {
+            // event is unused
         } else if id == widget.id_ref() {
             if event == Event::NavFocus(true) {
                 self.set_scroll(Scroll::Rect(widget.rect()));
