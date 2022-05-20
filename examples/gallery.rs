@@ -286,10 +286,12 @@ fn filter_list() -> Box<dyn SetDisabled> {
         "November",
         "December",
     ];
+    let data: Vec<String> = (2019..=2022)
+        .flat_map(|year| MONTHS.iter().map(move |m| format!("{m} {year}")))
+        .collect();
 
-    let data = MONTHS;
     let filter = ContainsCaseInsensitive::new("");
-    type FilteredList = view::FilteredList<&'static [&'static str], ContainsCaseInsensitive>;
+    type FilteredList = view::FilteredList<Vec<String>, ContainsCaseInsensitive>;
     type ListView = view::ListView<Down, FilteredList, driver::DefaultNav>;
     let filtered = FilteredList::new(data, filter.clone());
 
@@ -299,7 +301,7 @@ fn filter_list() -> Box<dyn SetDisabled> {
         #[widget{
             layout = column: [
                 row: ["Selection:", self.r0, self.r1, self.r2],
-                self.filter,
+                row: ["Filter:", self.filter],
                 self.list,
             ];
         }]
