@@ -21,7 +21,6 @@ pub extern crate kas_macros as macros;
 
 // internal modules:
 mod core;
-mod future;
 mod root;
 mod toolkit;
 
@@ -43,6 +42,5 @@ pub mod util;
 
 // export most important members directly for convenience and less redundancy:
 pub use crate::core::*;
-pub use crate::future::*;
 pub use crate::toolkit::*;
 pub use root::RootWidget;
