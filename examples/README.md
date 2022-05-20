@@ -19,12 +19,6 @@ A simple calculator show-casing the grid layout and keyboard support.
 
 ![Calculator](https://github.com/kas-gui/data-dump/blob/master/screenshots/calculator.png)
 
-### Canvas
-
-Test drawing with the `Canvas` widget.
-
-![Canvas](https://github.com/kas-gui/data-dump/blob/master/screenshots/canvas.png)
-
 ### Clock
 
 A simple clock. An example of a custom widget using mid-level draw routines and
@@ -68,13 +62,6 @@ same UI, but different internals:
 
 ![Data list](https://github.com/kas-gui/data-dump/blob/master/screenshots/data-list.png)
 
-### Filter list
-
-Demonstrates usage of `ListView` with a filter, and allows testing single- and
-multiple-item selection modes.
-
-![Filtler-list](https://github.com/kas-gui/data-dump/blob/master/screenshots/filter-list.png)
-
 ### Gallery
 
 A testbed demoing most widgets along with theme and colour switching.
@@ -102,17 +89,6 @@ GPU-accelerated fractals via a custom embedded WGPU graphics pipeline.
 
 ![Mandlebrot](https://github.com/kas-gui/data-dump/blob/master/screenshots/mandlebrot.png)
 
-### Markdown
-
-Markdown parsing and rich-text rendering. This is a demonstrator for
-[KAS-text](https://github.com/kas-gui/kas-text/)'s rich text support, using
-Markdown as an input language.
-
-Note that the goal of the Markdown parser is easy rich text entry, *not* full
-compliance with the Markdown standard. Many Markdown features are not supported.
-
-![Markdown](https://github.com/kas-gui/data-dump/blob/master/screenshots/markdown.png)
-
 ### Splitter
 
 Demonstrates resizable panes.
@@ -129,6 +105,10 @@ Ready? Set! Go!
 
 A variant of [Counter](#Counter), demonstrating multiple windows and the
 `SingleView` widget (the simplest shared data widget).
+
+### Times-tables
+
+A simple demonstration of the `MatrixView` widget.
 
 
 Copyright and Licence
