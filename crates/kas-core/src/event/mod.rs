@@ -80,7 +80,7 @@ pub use enums::{CursorIcon, ModifiersState, MouseButton, VirtualKeyCode};
 pub use events::*;
 pub use manager::{EventMgr, EventState, GrabMode};
 pub use response::{Response, Scroll};
-pub use update::UpdateHandle;
+pub use update::UpdateId;
 
 /// A type supporting a small number of key bindings
 ///

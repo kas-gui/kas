@@ -10,8 +10,8 @@
 //! If not, we can probably remove `ListDataMut` and other `*Mut` traits too.
 //! Probably this question requires seeing more examples/applications to answer.
 
-use crate::event::UpdateHandle;
-use crate::event::{EventMgr, EventState};
+use crate::event::EventMgr;
+use crate::event::UpdateId;
 use crate::updatable::*;
 use crate::WidgetId;
 use std::cell::RefCell;
@@ -20,25 +20,29 @@ use std::rc::Rc;
 
 /// Wrapper for single-thread shared data
 ///
-/// This wrapper adds an [`UpdateHandle`].
+/// This wrapper adds an [`UpdateId`].
 #[derive(Clone, Debug, Default)]
-pub struct SharedRc<T: Debug>(Rc<(UpdateHandle, RefCell<(T, u64)>)>);
+pub struct SharedRc<T: Debug>(Rc<(UpdateId, RefCell<(T, u64)>)>);
 
 impl<T: Debug> SharedRc<T> {
     /// Construct with given data
     pub fn new(data: T) -> Self {
-        let handle = UpdateHandle::new();
+        let id = UpdateId::new();
         let data = RefCell::new((data, 1));
-        SharedRc(Rc::new((handle, data)))
+        SharedRc(Rc::new((id, data)))
+    }
+
+    /// Access update identifier
+    ///
+    /// Data updates via this [`SharedRc`] are triggered using this [`UpdateId`].
+    pub fn id(&self) -> UpdateId {
+        (self.0).0
     }
 }
 
 impl<T: Clone + Debug + 'static> SingleData for SharedRc<T> {
     type Item = T;
 
-    fn update_on_handles(&self, mgr: &mut EventState, id: &WidgetId) {
-        mgr.update_on_handle((self.0).0, id.clone());
-    }
     fn version(&self) -> u64 {
         (self.0).1.borrow().1
     }
@@ -64,9 +68,6 @@ impl<T: ListDataMut> ListData for SharedRc<T> {
     type Key = T::Key;
     type Item = T::Item;
 
-    fn update_on_handles(&self, mgr: &mut EventState, id: &WidgetId) {
-        mgr.update_on_handle((self.0).0, id.clone());
-    }
     fn version(&self) -> u64 {
         let cell = (self.0).1.borrow();
         cell.0.version() + cell.1
@@ -118,9 +119,6 @@ impl<T: MatrixDataMut> MatrixData for SharedRc<T> {
     type Key = T::Key;
     type Item = T::Item;
 
-    fn update_on_handles(&self, mgr: &mut EventState, id: &WidgetId) {
-        mgr.update_on_handle((self.0).0, id.clone());
-    }
     fn version(&self) -> u64 {
         let cell = (self.0).1.borrow();
         cell.0.version() + cell.1

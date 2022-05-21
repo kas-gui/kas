@@ -14,7 +14,7 @@
 
 use crate::draw::DrawShared;
 use crate::event;
-use crate::event::UpdateHandle;
+use crate::event::UpdateId;
 use crate::theme::{SizeHandle, ThemeControl};
 use std::num::NonZeroU32;
 
@@ -121,9 +121,9 @@ pub trait ShellWindow {
 
     /// Updates all subscribed widgets
     ///
-    /// All widgets subscribed to the given [`UpdateHandle`], across all
+    /// All widgets subscribed to the given [`UpdateId`], across all
     /// windows, will receive an update.
-    fn trigger_update(&mut self, handle: UpdateHandle, payload: u64);
+    fn trigger_update(&mut self, id: UpdateId, payload: u64);
 
     /// Attempt to get clipboard contents
     ///

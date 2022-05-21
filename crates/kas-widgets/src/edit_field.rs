@@ -415,7 +415,7 @@ impl_scope! {
                 }
             }
             match event {
-                Event::Activate | Event::NavFocus(true) => {
+                Event::NavFocus(true) => {
                     request_focus(self, mgr);
                     Response::Used
                 }
@@ -431,12 +431,12 @@ impl_scope! {
                     mgr.redraw(self.id());
                     Response::Used
                 }
-                Event::Command(cmd, shift) => {
+                Event::Command(cmd) => {
                     // Note: we can receive a Command without char focus, but should
                     // ensure we have focus before acting on it.
                     request_focus(self, mgr);
                     if self.has_key_focus {
-                        match self.control_key(mgr, cmd, shift) {
+                        match self.control_key(mgr, cmd) {
                             Ok(EditAction::None) => Response::Used,
                             Ok(EditAction::Unused) => Response::Unused,
                             Ok(EditAction::Activate) => {
@@ -737,16 +737,12 @@ impl<G: EditGuard> EditField<G> {
         true
     }
 
-    fn control_key(
-        &mut self,
-        mgr: &mut EventMgr,
-        key: Command,
-        mut shift: bool,
-    ) -> Result<EditAction, NotReady> {
+    fn control_key(&mut self, mgr: &mut EventMgr, key: Command) -> Result<EditAction, NotReady> {
         if !self.editable {
             return Ok(EditAction::Unused);
         }
 
+        let mut shift = mgr.modifiers().shift();
         let mut buf = [0u8; 4];
         let pos = self.selection.edit_pos();
         let selection = self.selection.range();
@@ -769,6 +765,7 @@ impl<G: EditGuard> EditField<G> {
                 mgr.redraw(self.id());
                 Action::None
             }
+            Command::Activate => Action::Activate,
             Command::Return if shift || !self.multi_line => Action::Activate,
             Command::Return if self.multi_line => {
                 Action::Insert('\n'.encode_utf8(&mut buf), LastEdit::Insert)

@@ -49,7 +49,7 @@ impl_scope! {
     impl Widget for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
-                Event::Activate => {
+                Event::Command(cmd) if cmd.is_activate() => {
                     mgr.push_msg(SelectMsg);
                     Response::Used
                 }

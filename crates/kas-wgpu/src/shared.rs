@@ -15,7 +15,7 @@ use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe, DrawWindow};
 use crate::{warn_about_error, Error, Options, WindowId};
 use kas::cast::Conv;
 use kas::draw;
-use kas::event::UpdateHandle;
+use kas::event::UpdateId;
 use kas::TkAction;
 use kas_theme::{Theme, ThemeConfig};
 
@@ -144,8 +144,8 @@ where
         }
     }
 
-    pub fn trigger_update(&mut self, handle: UpdateHandle, payload: u64) {
-        self.pending.push(PendingAction::Update(handle, payload));
+    pub fn trigger_update(&mut self, id: UpdateId, payload: u64) {
+        self.pending.push(PendingAction::Update(id, payload));
     }
 
     pub fn on_exit(&self) {
@@ -163,6 +163,6 @@ pub enum PendingAction {
     AddPopup(winit::window::WindowId, WindowId, kas::Popup),
     AddWindow(WindowId, Box<dyn kas::Window>),
     CloseWindow(WindowId),
-    Update(kas::event::UpdateHandle, u64),
+    Update(kas::event::UpdateId, u64),
     TkAction(TkAction),
 }

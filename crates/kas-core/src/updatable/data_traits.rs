@@ -5,9 +5,9 @@
 
 //! Traits for shared data objects
 
+use crate::event::EventMgr;
 #[allow(unused)] // doc links
-use crate::event::{Event, UpdateHandle};
-use crate::event::{EventMgr, EventState};
+use crate::event::{Event, UpdateId};
 use crate::macros::autoimpl;
 use crate::WidgetId;
 #[allow(unused)] // doc links
@@ -15,35 +15,20 @@ use std::cell::RefCell;
 use std::fmt::Debug;
 
 /// Trait for viewable single data items
-// Note: we require Debug + 'static to allow widgets using this to implement
-// WidgetCore, which requires Debug + Any.
 #[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait SingleData: Debug {
     /// Output type
     type Item: Clone + Debug + 'static;
 
-    /// Register `id` for updates on all used [`UpdateHandle`] values
-    ///
-    /// If the data supports updates through shared references (e.g. via an
-    /// internal [`RefCell`]), then it should have an [`UpdateHandle`] for
-    /// notifying other users of the data of the update. All [`UpdateHandle`]s
-    /// used will notify `id` of updates.
-    ///
-    /// View widgets should check the data version and update their view when
-    /// [`Event::HandleUpdate`] is received.
-    fn update_on_handles(&self, mgr: &mut EventState, id: &WidgetId);
-
     /// Get the data version
     ///
-    /// Views over shared data must check the data's `version` before first
-    /// reading from the data and whenever an [`UpdateHandle`] from the data is
-    /// triggered. The view may track the last known data version and refresh
-    /// its view of the data only when the version number is increased, or may
-    /// refresh its view whenever an [`UpdateHandle`] is triggered.
+    /// The version is increased on change and may be used to detect when views
+    /// over the data need to be refreshed. The initial version number must be
+    /// at least 1 (allowing 0 to represent an uninitialized state).
     ///
-    /// The initial version number must be at least 1 (allowing 0 to represent
-    /// an uninitialized state). Each modification of the data structure must
-    /// increase the version number (allowing change detection).
+    /// Whenever the data is updated, [`Event::Update`] must be sent via
+    /// [`EventMgr::trigger_update`] to notify other users of this data of the
+    /// update.
     fn version(&self) -> u64;
 
     // TODO(gat): add get<'a>(&self) -> Self::ItemRef<'a> and get_mut
@@ -53,29 +38,17 @@ pub trait SingleData: Debug {
 
     /// Update data, if supported
     ///
-    /// This is optional and required only to support data updates through view
-    /// widgets.
+    /// Shared data with internal mutability (e.g. via [`RefCell`]) should
+    /// update itself here, increase its version number and call
+    /// [`EventMgr::trigger_update`].
     ///
-    /// If an update occurs, then the number returned by [`Self::version`]
-    /// should be increased and [`EventMgr::trigger_update`] should be called
-    /// with the relevant [`UpdateHandle`] (or handles).
-    ///
-    /// This method takes only `&self`, thus some mechanism such as [`RefCell`]
-    /// is required to obtain `&mut` and lower to [`SingleDataMut::set`]. The
-    /// provider of this lowering should also provide an [`UpdateHandle`].
+    /// Data types without internal mutability should do nothing.
     fn update(&self, mgr: &mut EventMgr, value: Self::Item);
 
     /// Handle a message from a widget
     ///
     /// This method is called when a view widget returns with a message.
     /// It may use [`EventMgr::try_pop_msg`] and update self.
-    ///
-    /// If `self` is updated, then as with [`Self::update`], the version number
-    /// must be increased and [`EventMgr::trigger_update`] called.
-    ///
-    /// This method takes only `&self`, thus some mechanism such as [`RefCell`]
-    /// is required to obtain `&mut` and lower to [`SingleDataMut::set`]. The
-    /// provider of this lowering should also provide an [`UpdateHandle`].
     ///
     /// The default implementation attempts to extract a value of type
     /// [`Self::Item`], passing this to [`Self::update`] on success.
@@ -92,7 +65,8 @@ pub trait SingleDataMut: SingleData {
     /// Set data, given a mutable (unique) reference
     ///
     /// It can be assumed that no synchronisation is required when a mutable
-    /// reference can be obtained. The `version` number need not be affected.
+    /// reference can be obtained, thus it is not required to increase the
+    /// version number or trigger an update.
     fn set(&mut self, value: Self::Item);
 }
 
@@ -101,33 +75,20 @@ pub trait SingleDataMut: SingleData {
 #[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait ListData: Debug {
     /// Key type
-    type Key: Clone + Debug + PartialEq + Eq;
+    type Key: Clone + Debug + PartialEq + Eq + 'static;
 
     /// Item type
     type Item: Clone + Debug + 'static;
 
-    /// Register `id` for updates on all used [`UpdateHandle`] values
-    ///
-    /// If the data supports updates through shared references (e.g. via an
-    /// internal [`RefCell`]), then it should have an [`UpdateHandle`] for
-    /// notifying other users of the data of the update. All [`UpdateHandle`]s
-    /// used will notify `id` of updates.
-    ///
-    /// View widgets should check the data version and update their view when
-    /// [`Event::HandleUpdate`] is received.
-    fn update_on_handles(&self, mgr: &mut EventState, id: &WidgetId);
-
     /// Get the data version
     ///
-    /// Views over shared data must check the data's `version` before first
-    /// reading from the data and whenever an [`UpdateHandle`] from the data is
-    /// triggered. The view may track the last known data version and refresh
-    /// its view of the data only when the version number is increased, or may
-    /// refresh its view whenever an [`UpdateHandle`] is triggered.
+    /// The version is increased on change and may be used to detect when views
+    /// over the data need to be refreshed. The initial version number must be
+    /// at least 1 (allowing 0 to represent an uninitialized state).
     ///
-    /// The initial version number must be at least 1 (allowing 0 to represent
-    /// an uninitialized state). Each modification of the data structure must
-    /// increase the version number (allowing change detection).
+    /// Whenever the data is updated, [`Event::Update`] must be sent via
+    /// [`EventMgr::trigger_update`] to notify other users of this data of the
+    /// update.
     fn version(&self) -> u64;
 
     /// No data is available
@@ -164,29 +125,17 @@ pub trait ListData: Debug {
 
     /// Update data, if supported
     ///
-    /// This is optional and required only to support data updates through view
-    /// widgets.
+    /// Shared data with internal mutability (e.g. via [`RefCell`]) should
+    /// update itself here, increase its version number and call
+    /// [`EventMgr::trigger_update`].
     ///
-    /// If an update occurs, then the number returned by [`Self::version`]
-    /// should be increased and [`EventMgr::trigger_update`] should be called
-    /// with the relevant [`UpdateHandle`] (or handles).
-    ///
-    /// This method takes only `&self`, thus some mechanism such as [`RefCell`]
-    /// is required to obtain `&mut` and lower to [`ListDataMut::set`]. The
-    /// provider of this lowering should also provide an [`UpdateHandle`].
+    /// Data types without internal mutability should do nothing.
     fn update(&self, mgr: &mut EventMgr, key: &Self::Key, value: Self::Item);
 
     /// Handle a message from a widget
     ///
     /// This method is called when a view widget returns with a message.
     /// It may use [`EventMgr::try_pop_msg`] and update self.
-    ///
-    /// If `self` is updated, then as with [`Self::update`], the version number
-    /// must be increased and [`EventMgr::trigger_update`] called.
-    ///
-    /// This method takes only `&self`, thus some mechanism such as [`RefCell`]
-    /// is required to obtain `&mut` and lower to [`ListDataMut::set`]. The
-    /// provider of this lowering should also provide an [`UpdateHandle`].
     ///
     /// The default implementation attempts to extract a value of type
     /// [`Self::Item`], passing this to [`Self::update`] on success.
@@ -228,36 +177,23 @@ pub trait ListDataMut: ListData {
 #[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait MatrixData: Debug {
     /// Column key type
-    type ColKey: Clone + Debug + PartialEq + Eq;
+    type ColKey: Clone + Debug + PartialEq + Eq + 'static;
     /// Row key type
-    type RowKey: Clone + Debug + PartialEq + Eq;
+    type RowKey: Clone + Debug + PartialEq + Eq + 'static;
     /// Full key type
-    type Key: Clone + Debug + PartialEq + Eq;
+    type Key: Clone + Debug + PartialEq + Eq + 'static;
     /// Item type
     type Item: Clone + Debug + 'static;
 
-    /// Register `id` for updates on all used [`UpdateHandle`] values
-    ///
-    /// If the data supports updates through shared references (e.g. via an
-    /// internal [`RefCell`]), then it should have an [`UpdateHandle`] for
-    /// notifying other users of the data of the update. All [`UpdateHandle`]s
-    /// used will notify `id` of updates.
-    ///
-    /// View widgets should check the data version and update their view when
-    /// [`Event::HandleUpdate`] is received.
-    fn update_on_handles(&self, mgr: &mut EventState, id: &WidgetId);
-
     /// Get the data version
     ///
-    /// Views over shared data must check the data's `version` before first
-    /// reading from the data and whenever an [`UpdateHandle`] from the data is
-    /// triggered. The view may track the last known data version and refresh
-    /// its view of the data only when the version number is increased, or may
-    /// refresh its view whenever an [`UpdateHandle`] is triggered.
+    /// The version is increased on change and may be used to detect when views
+    /// over the data need to be refreshed. The initial version number must be
+    /// at least 1 (allowing 0 to represent an uninitialized state).
     ///
-    /// The initial version number must be at least 1 (allowing 0 to represent
-    /// an uninitialized state). Each modification of the data structure must
-    /// increase the version number (allowing change detection).
+    /// Whenever the data is updated, [`Event::Update`] must be sent via
+    /// [`EventMgr::trigger_update`] to notify other users of this data of the
+    /// update.
     fn version(&self) -> u64;
 
     /// No data is available
@@ -292,29 +228,17 @@ pub trait MatrixData: Debug {
 
     /// Update data, if supported
     ///
-    /// This is optional and required only to support data updates through view
-    /// widgets.
+    /// Shared data with internal mutability (e.g. via [`RefCell`]) should
+    /// update itself here, increase its version number and call
+    /// [`EventMgr::trigger_update`].
     ///
-    /// If an update occurs, then the number returned by [`Self::version`]
-    /// should be increased and [`EventMgr::trigger_update`] should be called
-    /// with the relevant [`UpdateHandle`] (or handles).
-    ///
-    /// This method takes only `&self`, thus some mechanism such as [`RefCell`]
-    /// is required to obtain `&mut` and lower to [`MatrixDataMut::set`]. The
-    /// provider of this lowering should also provide an [`UpdateHandle`].
+    /// Data types without internal mutability should do nothing.
     fn update(&self, mgr: &mut EventMgr, key: &Self::Key, value: Self::Item);
 
     /// Handle a message from a widget
     ///
     /// This method is called when a view widget returns with a message.
     /// It may use [`EventMgr::try_pop_msg`] and update self.
-    ///
-    /// If `self` is updated, then as with [`Self::update`], the version number
-    /// must be increased and [`EventMgr::trigger_update`] called.
-    ///
-    /// This method takes only `&self`, thus some mechanism such as [`RefCell`]
-    /// is required to obtain `&mut` and lower to [`MatrixDataMut::set`]. The
-    /// provider of this lowering should also provide an [`UpdateHandle`].
     ///
     /// The default implementation attempts to extract a value of type
     /// [`Self::Item`], passing this to [`Self::update`] on success.

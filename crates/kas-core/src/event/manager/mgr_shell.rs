@@ -7,7 +7,6 @@
 
 use log::*;
 use smallvec::SmallVec;
-use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use super::*;
@@ -51,7 +50,6 @@ impl EventState {
             popups: Default::default(),
             popup_removed: Default::default(),
             time_updates: vec![],
-            handle_updates: HashMap::new(),
             pending: SmallVec::new(),
             action: TkAction::empty(),
         }
@@ -239,15 +237,14 @@ impl<'a> EventMgr<'a> {
         self.state.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
     }
 
-    /// Update widgets due to handle
-    pub fn update_handle(&mut self, widget: &mut dyn Widget, handle: UpdateHandle, payload: u64) {
-        // NOTE: to avoid borrow conflict, we must clone values!
-        if let Some(mut values) = self.state.handle_updates.get(&handle).cloned() {
-            for w_id in values.drain() {
-                let event = Event::HandleUpdate { handle, payload };
-                self.send_event(widget, w_id, event);
-            }
-        }
+    /// Update widgets with an [`UpdateId`]
+    pub fn update_widgets(&mut self, widget: &mut dyn Widget, id: UpdateId, payload: u64) {
+        let start = Instant::now();
+        let count = self.send_all(widget, Event::Update { id, payload });
+        debug!(
+            "Sent Update ({id:?}) to {count} widgets in {}μs",
+            start.elapsed().as_micros()
+        );
     }
 
     /// Handle a winit `WindowEvent`.

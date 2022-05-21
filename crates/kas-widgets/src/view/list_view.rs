@@ -52,7 +52,7 @@ impl_scope! {
     #[widget]
     pub struct ListView<
         D: Directional,
-        T: ListData + 'static,
+        T: ListData,
         V: Driver<T::Item> = driver::DefaultView,
     > {
         core: widget_core!(),
@@ -554,7 +554,6 @@ impl_scope! {
                 }
             }
 
-            self.data.update_on_handles(mgr.ev_state(), self.id_ref());
             mgr.register_nav_fallback(self.id());
         }
 
@@ -601,7 +600,7 @@ impl_scope! {
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
-                Event::HandleUpdate { .. } => {
+                Event::Update { .. } => {
                     let data_ver = self.data.version();
                     if data_ver > self.data_ver {
                         // TODO(opt): use the update payload to indicate which widgets need updating?
@@ -673,7 +672,7 @@ impl_scope! {
                         return Response::Used;
                     }
                 }
-                Event::Command(cmd, _) => {
+                Event::Command(cmd) => {
                     let last = self.data.len().wrapping_sub(1);
                     if last == usize::MAX || !self.widgets[0].widget.key_nav() {
                         return Response::Unused;

@@ -212,25 +212,6 @@ impl EventState {
         self.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
     }
 
-    /// Subscribe to an update handle
-    ///
-    /// All widgets subscribed to an update handle will be sent
-    /// [`Event::HandleUpdate`] when [`EventMgr::trigger_update`]
-    /// is called with the corresponding handle.
-    ///
-    /// This should be called from [`Widget::configure`].
-    pub fn update_on_handle(&mut self, handle: UpdateHandle, w_id: WidgetId) {
-        trace!(
-            "EventMgr::update_on_handle: update {} on handle {:?}",
-            w_id,
-            handle
-        );
-        self.handle_updates
-            .entry(handle)
-            .or_insert_with(Default::default)
-            .insert(w_id);
-    }
-
     /// Notify that a widget must be redrawn
     ///
     /// Currently the entire window is redrawn on any redraw request and the
@@ -260,8 +241,7 @@ impl EventState {
     ///
     /// In case a navigation key is pressed (see [`Command`]) but no widget has
     /// navigation focus, then, if a fallback has been set, that widget will
-    /// receive the key via [`Event::Command`]. (This does not include
-    /// [`Event::Activate`].)
+    /// receive the key via [`Event::Command`].
     ///
     /// Only one widget can be a fallback, and the *first* to set itself wins.
     /// This is primarily used to allow scroll-region widgets to
@@ -316,7 +296,7 @@ impl EventState {
     /// An *accelerator key* is a shortcut key able to directly open menus,
     /// activate buttons, etc. A user triggers the key by pressing `Alt+Key`,
     /// or (if `alt_bypass` is enabled) by simply pressing the key.
-    /// The widget with this `id` then receives [`Event::Activate`].
+    /// The widget with this `id` then receives [`Command::Activate`].
     ///
     /// Note that accelerator keys may be automatically derived from labels:
     /// see [`crate::text::AccelString`].
@@ -479,10 +459,15 @@ impl<'a> EventMgr<'a> {
 
         // TODO(opt): we should be able to use binary search here
         let mut disabled = false;
-        for d in &self.disabled {
-            if d.is_ancestor_of(&id) {
-                id = d.clone();
-                disabled = true;
+        if !event.pass_when_disabled() {
+            for d in &self.disabled {
+                if d.is_ancestor_of(&id) {
+                    id = d.clone();
+                    disabled = true;
+                }
+            }
+            if disabled {
+                trace!("EventMgr::send: target is disabled; sending instead to {id}");
             }
         }
 
@@ -627,14 +612,14 @@ impl<'a> EventMgr<'a> {
         self.shell.close_window(id);
     }
 
-    /// Updates all subscribed widgets
+    /// Notify all widgets
     ///
-    /// All widgets subscribed to the given [`UpdateHandle`], across all
-    /// windows, will receive an update.
+    /// All widgets across all windows will receive [`Event::Update`] with
+    /// the given `id` and `payload`.
     #[inline]
-    pub fn trigger_update(&mut self, handle: UpdateHandle, payload: u64) {
-        debug!("trigger_update: handle={:?}, payload={}", handle, payload);
-        self.shell.trigger_update(handle, payload);
+    pub fn trigger_update(&mut self, id: UpdateId, payload: u64) {
+        debug!("trigger_update: id={:?}, payload={}", id, payload);
+        self.shell.trigger_update(id, payload);
     }
 
     /// Attempt to get clipboard contents

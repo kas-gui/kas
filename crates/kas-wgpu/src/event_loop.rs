@@ -254,7 +254,7 @@ where
                 }
                 PendingAction::Update(handle, payload) => {
                     for window in self.windows.values_mut() {
-                        window.update_handle(&mut self.shared, handle, payload);
+                        window.update_widgets(&mut self.shared, handle, payload);
                     }
                 }
             }

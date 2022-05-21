@@ -23,8 +23,7 @@ fn main() -> kas::shell::Result<()> {
     // We construct a proxy from the toolkit to enable cross-thread communication.
     let proxy = toolkit.create_proxy();
 
-    // An "update handle" is used to notify our widget.
-    let handle = UpdateHandle::new();
+    let update_id = UpdateId::new();
 
     // The sender and receiver need to communicate. We use Arc<Mutex<T>>, but
     // could instead use global statics or std::sync::mpsc or even encode our
@@ -32,9 +31,9 @@ fn main() -> kas::shell::Result<()> {
     let colour = Arc::new(Mutex::new(Rgba::grey(1.0)));
     let colour2 = colour.clone();
 
-    thread::spawn(move || generate_colors(proxy, handle, colour2));
+    thread::spawn(move || generate_colors(proxy, update_id, colour2));
 
-    let widget = ColourSquare::new(colour, handle);
+    let widget = ColourSquare::new(colour, update_id);
 
     toolkit.with(widget)?.run()
 }
@@ -45,16 +44,16 @@ impl_scope! {
     struct ColourSquare {
         core: widget_core!(),
         colour: Arc<Mutex<Rgba>>,
-        handle: UpdateHandle,
+        update_id: UpdateId,
         loading_text: Text<&'static str>,
         loaded: bool,
     }
     impl Self {
-        fn new(colour: Arc<Mutex<Rgba>>, handle: UpdateHandle) -> Self {
+        fn new(colour: Arc<Mutex<Rgba>>, update_id: UpdateId) -> Self {
             ColourSquare {
                 core: Default::default(),
                 colour,
-                handle,
+                update_id,
                 loading_text: Text::new_single("Loading..."),
                 loaded: false,
             }
@@ -82,15 +81,9 @@ impl_scope! {
         }
     }
     impl Widget for ColourSquare {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
-            // register to receive updates on this handle
-            mgr.update_on_handle(self.handle, self.id());
-        }
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
-                Event::HandleUpdate { .. } => {
-                    // Note: event has `handle` and `payload` params.
-                    // We only need to request a redraw.
+                Event::Update { id, .. } if id == self.update_id => {
                     self.loaded = true;
                     mgr.redraw(self.id());
                     Response::Used
@@ -104,11 +97,7 @@ impl_scope! {
     }
 }
 
-fn generate_colors(
-    proxy: kas::shell::ToolkitProxy,
-    handle: UpdateHandle,
-    colour: Arc<Mutex<Rgba>>,
-) {
+fn generate_colors(proxy: kas::shell::ToolkitProxy, update_id: UpdateId, colour: Arc<Mutex<Rgba>>) {
     // Loading takes time:
     thread::sleep(Duration::from_secs(1));
 
@@ -129,7 +118,7 @@ fn generate_colors(
         *colour.lock().unwrap() = c;
         // .. and notify of an update.
         // (Note: the 0 here is the u64 payload, which could pass useful data!)
-        if proxy.trigger_update(handle, 0).is_err() {
+        if proxy.trigger_update(update_id, 0).is_err() {
             // Sending failed; we should quit
             break;
         }

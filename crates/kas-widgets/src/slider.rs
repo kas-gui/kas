@@ -261,7 +261,7 @@ impl_scope! {
                 Event::NavFocus(true) => {
                     mgr.set_scroll(Scroll::Rect(self.rect()));
                 }
-                Event::Command(cmd, _) => {
+                Event::Command(cmd) => {
                     let rev = self.direction.is_reversed();
                     let v = match cmd {
                         Command::Left | Command::Up => match rev {

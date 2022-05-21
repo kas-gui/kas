@@ -57,7 +57,7 @@ impl_scope! {
     #[derive(Clone, Debug)]
     #[widget]
     pub struct MatrixView<
-        T: MatrixData + 'static,
+        T: MatrixData,
         V: Driver<T::Item> = driver::DefaultView,
     > {
         core: widget_core!(),
@@ -545,7 +545,6 @@ impl_scope! {
                 }
             }
 
-            self.data.update_on_handles(mgr.ev_state(), self.id_ref());
             mgr.register_nav_fallback(self.id());
         }
 
@@ -602,7 +601,7 @@ impl_scope! {
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
-                Event::HandleUpdate { .. } => {
+                Event::Update { .. } => {
                     let data_ver = self.data.version();
                     if data_ver > self.data_ver {
                         self.update_view(mgr);
@@ -673,7 +672,7 @@ impl_scope! {
                         return Response::Used;
                     }
                 }
-                Event::Command(cmd, _) => {
+                Event::Command(cmd) => {
                     if self.data.is_empty() || !self.widgets[0].widget.key_nav() {
                         return Response::Unused;
                     }

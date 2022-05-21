@@ -365,7 +365,7 @@ impl_scope! {
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
-                Event::Command(cmd, _) => {
+                Event::Command(cmd) => {
                     match cmd {
                         Command::Home | Command::End => self.reset_view(),
                         Command::PageUp => self.alpha = self.alpha / 2f64.sqrt(),

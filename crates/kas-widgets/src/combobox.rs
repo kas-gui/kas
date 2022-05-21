@@ -72,20 +72,8 @@ impl_scope! {
                 }
             };
 
-            let activate = |s: &mut Self, mgr: &mut EventMgr| -> Response {
-                if let Some(id) = s.popup_id {
-                    mgr.close_window(id, true);
-                } else {
-                    open_popup(s, mgr, true);
-                }
-                Response::Used
-            };
-
             match event {
-                Event::Activate => {
-                    activate(self, mgr)
-                }
-                Event::Command(cmd, _) => {
+                Event::Command(cmd) => {
                     let next = |mgr: &mut EventMgr, s, clr, rev| {
                         if clr {
                             mgr.clear_nav_focus();
@@ -94,7 +82,14 @@ impl_scope! {
                         Response::Used
                     };
                     match cmd {
-                        cmd if cmd.is_activate() => activate(self, mgr),
+                        cmd if cmd.is_activate() => {
+                            if let Some(id) = self.popup_id {
+                                mgr.close_window(id, true);
+                            } else {
+                                open_popup(self, mgr, true);
+                            }
+                            Response::Used
+                        }
                         Command::Up => next(mgr, self, false, true),
                         Command::Down => next(mgr, self, false, false),
                         Command::Home => next(mgr, self, true, false),
@@ -148,7 +143,7 @@ impl_scope! {
                                 return Response::Used;
                             }
                         } else if self.popup_id.is_some() && self.popup.is_ancestor_of(id) {
-                            return mgr.send(self, id.clone(), Event::Activate);
+                            return mgr.send(self, id.clone(), Event::Command(Command::Activate));
                         }
                     }
                     if let Some(id) = self.popup_id {

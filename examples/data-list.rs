@@ -55,15 +55,6 @@ impl EditGuard for ListEntryGuard {
 
 impl_scope! {
     // The list entry
-    //
-    // Use of a compound listing here with five child widgets (RadioBox is a
-    // compound widget) slows down list resizing significantly (more so in debug
-    // builds).
-    //
-    // Use of an embedded RadioBox demonstrates another performance issue:
-    // activating any RadioBox sends a message to all others using the same
-    // UpdateHandle, which is quite slow with thousands of entries!
-    // (This issue does not occur when RadioBoxes are independent.)
     #[derive(Clone, Debug)]
     #[widget{
         layout = column: [

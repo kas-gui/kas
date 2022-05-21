@@ -37,7 +37,7 @@ pub struct FilteredList<T: ListData, F: Filter<T::Item> + SingleData> {
     view: RefCell<(u64, Vec<T::Key>)>,
 }
 
-impl<T: ListData + 'static, F: Filter<T::Item> + SingleData> FilteredList<T, F> {
+impl<T: ListData, F: Filter<T::Item> + SingleData> FilteredList<T, F> {
     /// Construct from `data` and a `filter`
     #[inline]
     pub fn new(data: T, filter: F) -> Self {
@@ -64,14 +64,10 @@ impl<T: ListData + 'static, F: Filter<T::Item> + SingleData> FilteredList<T, F> 
     }
 }
 
-impl<T: ListData + 'static, F: Filter<T::Item> + SingleData> ListData for FilteredList<T, F> {
+impl<T: ListData, F: Filter<T::Item> + SingleData> ListData for FilteredList<T, F> {
     type Key = T::Key;
     type Item = T::Item;
 
-    fn update_on_handles(&self, mgr: &mut EventState, id: &WidgetId) {
-        self.data.update_on_handles(mgr, id);
-        self.filter.update_on_handles(mgr, id);
-    }
     fn version(&self) -> u64 {
         let ver = self.data.version() + self.filter.version();
         if ver > self.view.borrow().0 {

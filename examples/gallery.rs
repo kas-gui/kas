@@ -267,6 +267,72 @@ Demonstration of *as-you-type* formatting from **Markdown**.
     })
 }
 
+fn filter_list() -> Box<dyn SetDisabled> {
+    use kas::dir::Down;
+    use kas::updatable::{filter::ContainsCaseInsensitive, SingleData};
+    use kas::widgets::view::{driver, SelectionMode, SelectionMsg};
+
+    const MONTHS: &[&str] = &[
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    ];
+    let data: Vec<String> = (2019..=2022)
+        .flat_map(|year| MONTHS.iter().map(move |m| format!("{m} {year}")))
+        .collect();
+
+    let filter = ContainsCaseInsensitive::new("");
+    type FilteredList = view::FilteredList<Vec<String>, ContainsCaseInsensitive>;
+    type ListView = view::ListView<Down, FilteredList, driver::DefaultNav>;
+    let filtered = FilteredList::new(data, filter.clone());
+
+    let r = RadioBoxGroup::default();
+
+    Box::new(impl_singleton! {
+        #[widget{
+            layout = column: [
+                row: ["Selection:", self.r0, self.r1, self.r2],
+                row: ["Filter:", self.filter],
+                self.list,
+            ];
+        }]
+        #[derive(Debug)]
+        struct {
+            core: widget_core!(),
+            #[widget] r0 = RadioBox::new_msg("none", r.clone(), SelectionMode::None).with_state(true),
+            #[widget] r1 = RadioBox::new_msg("single", r.clone(), SelectionMode::Single),
+            #[widget] r2 = RadioBox::new_msg("multiple", r, SelectionMode::Multiple),
+            #[widget] filter = EditBox::new("")
+                .on_edit(move |s, mgr| filter.update(mgr, s.to_string())),
+            #[widget] list: ScrollBars<ListView> =
+                ScrollBars::new(ListView::new(filtered)),
+        }
+        impl Widget for Self {
+            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+                if let Some(mode) = mgr.try_pop_msg() {
+                    *mgr |= self.list.set_selection_mode(mode);
+                } else if let Some(msg) = mgr.try_pop_msg::<SelectionMsg<usize>>() {
+                    println!("Selection message: {:?}", msg);
+                }
+            }
+        }
+        impl SetDisabled for Self {
+            fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool) {
+                mgr.set_disabled(self.id(), state);
+            }
+        }
+    })
+}
+
 fn canvas() -> Box<dyn SetDisabled> {
     use kas::geom::Vec2;
     use kas_resvg::tiny_skia::*;
@@ -438,6 +504,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             #[widget] stack: TabStack<Box<dyn SetDisabled>> = TabStack::new()
                 .with_title("Widgets", widgets()) //TODO: use img_gallery as logo
                 .with_title("Text editor", editor())
+                .with_title("List", filter_list())
                 .with_title("Canvas", canvas()),
         }
         impl Widget for Self {

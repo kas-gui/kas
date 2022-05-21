@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 #[allow(unused)]
 use super::{EventMgr, EventState, GrabMode, Response}; // for doc-links
-use super::{MouseButton, UpdateHandle, VirtualKeyCode};
+use super::{MouseButton, UpdateId, VirtualKeyCode};
 use crate::geom::{Coord, DVec2, Offset};
 #[allow(unused)]
 use crate::Widget;
@@ -22,16 +22,6 @@ use crate::{dir::Direction, WidgetId, WindowId};
 pub enum Event {
     /// No event
     None,
-    /// Widget activation
-    ///
-    /// "Activate" is triggered e.g. by clicking on a control or using keyboard
-    /// navigation to trigger a control. It should then perform the widget's
-    /// primary function, e.g. a button or menu action, toggle a checkbox, etc.
-    ///
-    /// Note: this is a synthetic event and not automatically generated for
-    /// click or <kbd>Enter</kbd>. Consider using [`Event::on_activate`]
-    /// instead.
-    Activate,
     /// (Keyboard) command input
     ///
     /// This represents a control or navigation action, usually from the
@@ -43,9 +33,7 @@ pub enum Event {
     /// In some cases keys are remapped, e.g. a widget with selection focus but
     /// not character or navigation focus may receive [`Command::Deselect`]
     /// when the <kbd>Esc</kbd> key is pressed.
-    ///
-    /// The state of the shift key is included (true = pressed).
-    Command(Command, bool),
+    Command(Command),
     /// Widget lost keyboard input focus
     LostCharFocus,
     /// Widget lost selection focus
@@ -184,14 +172,16 @@ pub enum Event {
     /// The `u64` payload may be used to identify the corresponding
     /// [`EventState::update_on_timer`] call.
     TimerUpdate(u64),
-    /// Update triggerred via an [`UpdateHandle`]
+    /// Update triggerred via an [`UpdateId`]
     ///
-    /// This event may be received after registering an [`UpdateHandle`] via
-    /// [`EventState::update_on_handle`].
+    /// This event is received by all widgets when [`EventMgr::trigger_update`]
+    /// is called.
     ///
-    /// A user-defined payload is passed. Interpretation of this payload is
-    /// user-defined and unfortunately not type safe.
-    HandleUpdate { handle: UpdateHandle, payload: u64 },
+    /// Note that this event is only received by [`Widget::handle_event`] and
+    /// not by [`Widget::steal_event`] or [`Widget::handle_unused`].
+    /// Messages and scroll actions will *not* be handled by parent's
+    /// [`Widget::handle_message`] or [`Widget::handle_scroll`] methods.
+    Update { id: UpdateId, payload: u64 },
     /// Notification that a popup has been destroyed
     ///
     /// This is sent to the popup's parent after a popup has been removed.
@@ -245,8 +235,7 @@ impl Event {
     ///
     /// -   Mouse click and release on the same widget
     /// -   Touchscreen press and release on the same widget
-    /// -   <kbd>Enter</kbd>, <kbd>Return</kbd>, <kbd>Space</kbd>
-    /// -   [`Event::Activate`]
+    /// -   `Event::Command(cmd, _)` where [`cmd.is_activate()`](Command::is_activate)
     pub fn on_activate<F: FnOnce(&mut EventMgr) -> Response>(
         self,
         mgr: &mut EventMgr,
@@ -254,8 +243,7 @@ impl Event {
         f: F,
     ) -> Response {
         match self {
-            Event::Activate => f(mgr),
-            Event::Command(cmd, _) if cmd.is_activate() => f(mgr),
+            Event::Command(cmd) if cmd.is_activate() => f(mgr),
             Event::PressStart { source, coord, .. } if source.is_primary() => {
                 mgr.grab_press(id, source, coord, GrabMode::Grab, None);
                 Response::Used
@@ -270,6 +258,22 @@ impl Event {
             } if success && id == end_id => f(mgr),
             Event::PressEnd { .. } => Response::Used,
             _ => Response::Unused,
+        }
+    }
+
+    /// Pass to disabled widgets?
+    ///
+    /// Disabled status should disable input handling but not prevent other
+    /// notifications.
+    pub fn pass_when_disabled(&self) -> bool {
+        use Event::*;
+        match self {
+            None | Command(_) => false,
+            LostCharFocus | LostSelFocus => true,
+            ReceivedCharacter(_) | Scroll(_) | Pan { .. } => false,
+            PressStart { .. } | PressMove { .. } | PressEnd { .. } => false,
+            TimerUpdate(_) | Update { .. } | PopupRemoved(_) => true,
+            NavFocus(_) => false,
         }
     }
 }
@@ -293,6 +297,12 @@ pub enum Command {
     ///
     /// This is in some cases remapped to [`Command::Deselect`].
     Escape,
+    /// Programmatic activation
+    ///
+    /// A synthetic event to activate widgets. Consider matching
+    /// [`Command::is_activate`] or using using [`Event::on_activate`]
+    /// instead for generally applicable activation.
+    Activate,
     /// Return / enter key
     ///
     /// This may insert a line-break or may activate something.
@@ -470,12 +480,16 @@ impl Command {
         })
     }
 
-    /// True if this is an "activation" key
+    /// True for "activation" commands
     ///
-    /// True for: <kbd>Enter</kbd>, <kbd>Return</kbd>, <kbd>Space</kbd>
+    /// This matches:
+    ///
+    /// -   [`Self::Activate`] — programmatic activation
+    /// -   [`Self::Return`] —  <kbd>Enter</kbd> and <kbd>Return</kbd> keys
+    /// -   [`Self::Space`] — <kbd>Space</kbd> key
     pub fn is_activate(self) -> bool {
         use Command::*;
-        matches!(self, Return | Space)
+        matches!(self, Activate | Return | Space)
     }
 
     /// Convert to selection-focus command

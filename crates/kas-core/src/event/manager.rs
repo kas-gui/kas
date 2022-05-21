@@ -8,7 +8,7 @@
 // Without winit, several things go unused
 #![cfg_attr(not(feature = "winit"), allow(unused))]
 
-use linear_map::{set::LinearSet, LinearMap};
+use linear_map::LinearMap;
 use log::{trace, warn};
 use smallvec::SmallVec;
 use std::any::Any;
@@ -168,9 +168,6 @@ pub struct EventState {
     popups: SmallVec<[(WindowId, crate::Popup, Option<WidgetId>); 16]>,
     popup_removed: SmallVec<[(WidgetId, WindowId); 16]>,
     time_updates: Vec<(Instant, WidgetId, u64)>,
-    // TODO(opt): consider other containers, e.g. C++ multimap
-    // or sorted Vec with binary search yielding a range
-    handle_updates: HashMap<UpdateHandle, LinearSet<WidgetId>>,
     pending: SmallVec<[Pending; 8]>,
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
@@ -471,7 +468,6 @@ impl<'a> EventMgr<'a> {
         );
 
         use VirtualKeyCode as VK;
-        let shift = self.state.modifiers.shift();
 
         let opt_command = self
             .state
@@ -482,7 +478,7 @@ impl<'a> EventMgr<'a> {
             let mut targets = vec![];
             let mut send = |_self: &mut Self, id: WidgetId, cmd| -> bool {
                 if !targets.contains(&id) {
-                    let used = _self.send_event(widget, id.clone(), Event::Command(cmd, shift));
+                    let used = _self.send_event(widget, id.clone(), Event::Command(cmd));
                     if used {
                         _self.add_key_depress(scancode, id.clone());
                     }
@@ -568,9 +564,10 @@ impl<'a> EventMgr<'a> {
                 self.set_nav_focus(id.clone(), true);
             }
             self.add_key_depress(scancode, id.clone());
-            self.send_event(widget, id, Event::Activate);
+            self.send_event(widget, id, Event::Command(Command::Activate));
         } else if vkey == VK::Tab {
             self.clear_char_focus();
+            let shift = self.state.modifiers.shift();
             self.next_nav_focus(widget, shift, true);
         } else if vkey == VK::Escape {
             if let Some(id) = self.state.popups.last().map(|(id, _, _)| *id) {
@@ -592,7 +589,7 @@ impl<'a> EventMgr<'a> {
         }
     }
 
-    // Traverse widget tree by recursive call
+    // Traverse widget tree by recursive call to a specific target
     //
     // Note: cannot use internal stack of mutable references due to borrow checker
     fn send_recurse(
@@ -607,9 +604,7 @@ impl<'a> EventMgr<'a> {
             response = Response::Used;
         } else if let Some(index) = widget.find_child_index(&id) {
             let translation = widget.translation();
-            if disabled {
-                // event is unused
-            } else if let Some(w) = widget.get_child_mut(index) {
+            if let Some(w) = widget.get_child_mut(index) {
                 response = self.send_recurse(w, id, disabled, event.clone() + translation);
                 if self.scroll != Scroll::None {
                     widget.handle_scroll(self, self.scroll);
@@ -626,6 +621,8 @@ impl<'a> EventMgr<'a> {
             } else if self.has_msg() {
                 widget.handle_message(self, index);
             }
+        } else if disabled {
+            // event is unused
         } else if id == widget.id_ref() {
             if event == Event::NavFocus(true) {
                 self.set_scroll(Scroll::Rect(widget.rect()));
@@ -638,6 +635,19 @@ impl<'a> EventMgr<'a> {
         }
 
         response
+    }
+
+    // Traverse widget tree by recursive call, broadcasting
+    fn send_all(&mut self, widget: &mut dyn Widget, event: Event) -> usize {
+        let child_event = event.clone() + widget.translation();
+        widget.handle_event(self, event);
+        let mut count = 1;
+        for index in 0..widget.num_children() {
+            if let Some(w) = widget.get_child_mut(index) {
+                count += self.send_all(w, child_event.clone());
+            }
+        }
+        count
     }
 
     // Wrapper around Self::send; returns true when event is used

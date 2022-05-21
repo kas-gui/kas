@@ -100,7 +100,8 @@ impl_scope! {
             if self.menu_is_open() {
                 if let Some(dir) = cmd.as_direction() {
                     if dir.is_vertical() {
-                        mgr.next_nav_focus(self, false, true);
+                        let rev = dir.is_reversed();
+                        mgr.next_nav_focus(self, rev, true);
                         Response::Used
                     } else if dir == self.direction.as_direction().reversed() {
                         self.close_menu(mgr, true);
@@ -157,18 +158,18 @@ impl_scope! {
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
-                Event::Activate => {
+                Event::Command(cmd) if cmd.is_activate() => {
                     if self.popup_id.is_none() {
                         self.open_menu(mgr, true);
                     }
                     Response::Used
                 }
+                Event::Command(cmd) => self.handle_dir_key(mgr, cmd),
                 Event::PopupRemoved(id) => {
                     debug_assert_eq!(Some(id), self.popup_id);
                     self.popup_id = None;
                     Response::Used
                 }
-                Event::Command(cmd, _) => self.handle_dir_key(mgr, cmd),
                 _ => Response::Unused,
             }
         }

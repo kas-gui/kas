@@ -32,7 +32,7 @@ impl_scope! {
         layout = self.child;
     }]
     pub struct SingleView<
-        T: SingleData + 'static,
+        T: SingleData,
         V: Driver<T::Item> = driver::DefaultView,
     > {
         core: widget_core!(),
@@ -107,15 +107,13 @@ impl_scope! {
 
     impl Widget for Self {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
-            self.data.update_on_handles(mgr.ev_state(), self.id_ref());
-
             // We set data now, after child is configured
             *mgr |= self.view.set(&mut self.child, self.data.get_cloned());
         }
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
-                Event::HandleUpdate { .. } => {
+                Event::Update { .. } => {
                     let data_ver = self.data.version();
                     if data_ver > self.data_ver {
                         let value = self.data.get_cloned();
