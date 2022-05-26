@@ -59,6 +59,9 @@ impl_scope! {
         frame_offset: Offset,
         frame_size: Size,
         view: V,
+        /// Empty widget used for sizing; this must be stored between horiz and vert size rule
+        /// calculations for correct line wrapping/layout.
+        default_widget: V::Widget,
         data: T,
         data_ver: u64,
         widgets: Vec<WidgetData<T::Key, V::Widget>>,
@@ -111,11 +114,13 @@ impl_scope! {
     impl Self {
         /// Construct a new instance with explicit direction and view
         pub fn new_with_dir_driver(direction: D, view: V, data: T) -> Self {
+            let default_widget = view.make();
             ListView {
                 core: Default::default(),
                 frame_offset: Default::default(),
                 frame_size: Default::default(),
                 view,
+                default_widget,
                 data,
                 data_ver: 0,
                 widgets: Default::default(),
@@ -426,8 +431,7 @@ impl_scope! {
             let inner_margin = size_mgr.inner_margin().extract(axis);
             let frame = kas::layout::FrameRules::new_sym(0, inner_margin, 0);
 
-            // We use a default widget to find the minimum child size:
-            let mut rules = self.view.make().size_rules(size_mgr.re(), axis);
+            let mut rules = self.default_widget.size_rules(size_mgr.re(), axis);
             if axis.is_vertical() == self.direction.is_vertical() {
                 self.child_size_min = rules.min_size();
             }
