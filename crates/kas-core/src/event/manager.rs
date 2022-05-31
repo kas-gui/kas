@@ -154,6 +154,7 @@ pub struct EventState {
     nav_focus: Option<WidgetId>,
     nav_fallback: Option<WidgetId>,
     hover: Option<WidgetId>,
+    hover_highlight: bool,
     hover_icon: CursorIcon,
     key_depress: LinearMap<u32, WidgetId>,
     last_mouse_coord: Coord,
@@ -429,11 +430,7 @@ impl<'a> EventMgr<'a> {
         if self.state.hover != w_id {
             trace!("EventMgr: hover = {:?}", w_id);
             if let Some(id) = self.state.hover.take() {
-                if widget
-                    .find_widget(&id)
-                    .map(|w| w.hover_highlight())
-                    .unwrap_or(false)
-                {
+                if self.state.hover_highlight {
                     self.redraw(id);
                 }
             }
@@ -443,7 +440,8 @@ impl<'a> EventMgr<'a> {
                 let mut icon = Default::default();
                 if !self.is_disabled(&id) {
                     if let Some(w) = widget.find_widget(&id) {
-                        if w.hover_highlight() {
+                        self.state.hover_highlight = w.hover_highlight();
+                        if self.state.hover_highlight {
                             self.redraw(id);
                         }
                         icon = w.cursor_icon();

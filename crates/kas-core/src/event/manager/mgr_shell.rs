@@ -37,6 +37,7 @@ impl EventState {
             nav_focus: None,
             nav_fallback: None,
             hover: None,
+            hover_highlight: false,
             hover_icon: CursorIcon::Default,
             key_depress: Default::default(),
             last_mouse_coord: Coord::ZERO,
