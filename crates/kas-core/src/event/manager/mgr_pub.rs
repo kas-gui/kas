@@ -418,7 +418,7 @@ impl EventState {
     pub fn clear_nav_focus(&mut self) {
         if let Some(id) = self.nav_focus.take() {
             self.send_action(TkAction::REDRAW);
-            self.pending.push(Pending::LostNavFocus(id));
+            self.pending.push_back(Pending::LostNavFocus(id));
         }
         self.clear_char_focus();
         trace!("EventMgr: nav_focus = None");
@@ -439,14 +439,14 @@ impl EventState {
         if id != self.nav_focus {
             self.send_action(TkAction::REDRAW);
             if let Some(old_id) = self.nav_focus.take() {
-                self.pending.push(Pending::LostNavFocus(old_id));
+                self.pending.push_back(Pending::LostNavFocus(old_id));
             }
             if id != self.sel_focus {
                 self.clear_char_focus();
             }
             self.nav_focus = Some(id.clone());
             trace!("EventMgr: nav_focus = Some({})", id);
-            self.pending.push(Pending::SetNavFocus(id, key_focus));
+            self.pending.push_back(Pending::SetNavFocus(id, key_focus));
         }
     }
 }
@@ -924,14 +924,16 @@ impl<'a> EventMgr<'a> {
         }
 
         if let Some(id) = old_nav_focus {
-            self.pending.push(Pending::LostNavFocus(id));
+            self.pending.push_back(Pending::LostNavFocus(id));
         }
 
         if let Some(id) = opt_id {
             if id != self.state.sel_focus {
                 self.clear_char_focus();
             }
-            self.state.pending.push(Pending::SetNavFocus(id, key_focus));
+            self.state
+                .pending
+                .push_back(Pending::SetNavFocus(id, key_focus));
             true
         } else {
             // Most likely an error occurred

@@ -50,7 +50,7 @@ impl EventState {
             popups: Default::default(),
             popup_removed: Default::default(),
             time_updates: vec![],
-            pending: SmallVec::new(),
+            pending: Default::default(),
             action: TkAction::empty(),
         }
     }
@@ -198,7 +198,7 @@ impl EventState {
 
         // Warning: infinite loops are possible here if widgets always queue a
         // new pending event when evaluating one of these:
-        while let Some(item) = mgr.state.pending.pop() {
+        while let Some(item) = mgr.state.pending.pop_front() {
             trace!("Handling Pending::{:?}", item);
             let (id, event) = match item {
                 Pending::SetNavFocus(id, key_focus) => (id, Event::NavFocus(key_focus)),

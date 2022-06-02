@@ -13,7 +13,7 @@ use log::{trace, warn};
 use smallvec::SmallVec;
 use std::any::Any;
 use std::cell::RefCell;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::time::Instant;
@@ -171,7 +171,8 @@ pub struct EventState {
     popups: SmallVec<[(WindowId, crate::Popup, Option<WidgetId>); 16]>,
     popup_removed: SmallVec<[(WidgetId, WindowId); 16]>,
     time_updates: Vec<(Instant, WidgetId, u64)>,
-    pending: SmallVec<[Pending; 8]>,
+    // FIFO queue of events pending handling
+    pending: VecDeque<Pending>,
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub action: TkAction,
@@ -318,7 +319,7 @@ impl EventState {
         if let Some(id) = self.char_focus() {
             // If widget has char focus, this is lost
             self.char_focus = false;
-            self.pending.push(Pending::LostCharFocus(id));
+            self.pending.push_back(Pending::LostCharFocus(id));
         }
     }
 
@@ -340,11 +341,11 @@ impl EventState {
         if let Some(id) = self.sel_focus.clone() {
             if self.char_focus {
                 // If widget has char focus, this is lost
-                self.pending.push(Pending::LostCharFocus(id.clone()));
+                self.pending.push_back(Pending::LostCharFocus(id.clone()));
             }
 
             // Selection focus is lost if another widget receives char focus
-            self.pending.push(Pending::LostSelFocus(id));
+            self.pending.push_back(Pending::LostSelFocus(id));
         }
 
         self.char_focus = char_focus;
@@ -432,7 +433,7 @@ impl<'a> EventMgr<'a> {
         if self.state.hover != w_id {
             trace!("EventMgr: hover = {:?}", w_id);
             if let Some(id) = self.state.hover.take() {
-                self.pending.push(Pending::LostMouseHover(id));
+                self.pending.push_back(Pending::LostMouseHover(id));
             }
             self.state.hover = w_id.clone();
 
@@ -443,7 +444,7 @@ impl<'a> EventMgr<'a> {
                         icon = w.cursor_icon();
                     }
                 }
-                self.pending.push(Pending::MouseHover(id));
+                self.pending.push_back(Pending::MouseHover(id));
                 if icon != self.state.hover_icon {
                     self.state.hover_icon = icon;
                     if self.state.mouse_grab.is_none() {
