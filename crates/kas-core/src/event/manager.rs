@@ -272,8 +272,8 @@ impl EventState {
             return;
         }
 
-        self.key_depress.insert(scancode, id.clone());
-        self.redraw(id);
+        self.key_depress.insert(scancode, id);
+        self.send_action(TkAction::REDRAW);
     }
 
     fn end_key_event(&mut self, scancode: u32) {

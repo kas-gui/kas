@@ -162,7 +162,7 @@ impl EventState {
             }
         }
         if state {
-            self.redraw(w_id.clone());
+            self.send_action(TkAction::REDRAW);
             self.disabled.push(w_id);
         }
     }
@@ -214,8 +214,8 @@ impl EventState {
 
     /// Notify that a widget must be redrawn
     ///
-    /// Currently the entire window is redrawn on any redraw request and the
-    /// [`WidgetId`] is ignored. In the future partial redraws may be used.
+    /// Note: currently, only full-window redraws are supported, thus this is
+    /// equivalent to: `mgr.send_action(TkAction::REDRAW);`
     #[inline]
     pub fn redraw(&mut self, _id: WidgetId) {
         // Theoretically, notifying by WidgetId allows selective redrawing
@@ -416,10 +416,9 @@ impl EventState {
 
     /// Clear keyboard navigation focus
     pub fn clear_nav_focus(&mut self) {
-        if let Some(id) = self.nav_focus.clone() {
+        if let Some(id) = self.nav_focus.take() {
             self.redraw(id);
         }
-        self.nav_focus = None;
         self.clear_char_focus();
         trace!("EventMgr: nav_focus = None");
     }
@@ -437,7 +436,7 @@ impl EventState {
     /// mouse or touch input.
     pub fn set_nav_focus(&mut self, id: WidgetId, key_focus: bool) {
         if id != self.nav_focus {
-            self.redraw(id.clone());
+            self.send_action(TkAction::REDRAW);
             if id != self.sel_focus {
                 self.clear_char_focus();
             }
@@ -733,7 +732,7 @@ impl<'a> EventMgr<'a> {
                     button,
                     repetitions,
                     start_id: start_id.clone(),
-                    cur_id: Some(start_id.clone()),
+                    cur_id: Some(start_id),
                     depress: Some(id),
                     mode,
                     pan_grab,
@@ -755,7 +754,7 @@ impl<'a> EventMgr<'a> {
                 trace!("EventMgr: start touch grab by {}", start_id);
                 self.state.touch_grab.push(TouchGrab {
                     id: touch_id,
-                    start_id: start_id.clone(),
+                    start_id,
                     depress: Some(id.clone()),
                     cur_id: Some(id),
                     last_move: coord,
@@ -766,7 +765,7 @@ impl<'a> EventMgr<'a> {
             }
         }
 
-        self.redraw(start_id);
+        self.send_action(TkAction::REDRAW);
     }
 
     /// A variant of [`Self::grab_press`], where a unique grab is desired
