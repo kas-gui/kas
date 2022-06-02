@@ -193,7 +193,7 @@ impl Parse for WidgetDerive {
 #[derive(Debug, Default)]
 pub struct WidgetArgs {
     pub key_nav: Option<TokenStream>,
-    pub hover_highlight: Option<TokenStream>,
+    pub hover_highlight: Option<bool>,
     pub cursor_icon: Option<TokenStream>,
     pub derive: Option<Member>,
     pub layout: Option<make_layout::Tree>,
@@ -219,12 +219,10 @@ impl Parse for WidgetArgs {
                     fn key_nav(&self) -> bool { #value }
                 });
             } else if lookahead.peek(kw::hover_highlight) && hover_highlight.is_none() {
-                let span = content.parse::<kw::hover_highlight>()?.span();
+                let _ = content.parse::<kw::hover_highlight>()?;
                 let _: Eq = content.parse()?;
                 let value = content.parse::<syn::LitBool>()?;
-                hover_highlight = Some(quote_spanned! {span=>
-                    fn hover_highlight(&self) -> bool { #value }
-                });
+                hover_highlight = Some(value.value);
             } else if lookahead.peek(kw::cursor_icon) && cursor_icon.is_none() {
                 let span = content.parse::<kw::cursor_icon>()?.span();
                 let _: Eq = content.parse()?;

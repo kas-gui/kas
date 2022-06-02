@@ -230,6 +230,27 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         }
     });
 
+    let hover_highlight = match args.hover_highlight.unwrap_or(false) {
+        false => quote! {},
+        true => quote! {
+            if matches!(event, Event::MouseHover | Event::LostMouseHover) {
+                mgr.redraw(self.id());
+                return Response::Used;
+            }
+        },
+    };
+    let pre_handle_event = quote! {
+        fn pre_handle_event(
+            &mut self,
+            mgr: &mut ::kas::event::EventMgr,
+            event: ::kas::event::Event,
+        ) -> ::kas::event::Response {
+            use ::kas::{event::{Event, Response}, WidgetExt};
+            #hover_highlight
+            self.handle_event(mgr, event)
+        }
+    };
+
     if let Some(inner) = opt_derive {
         if impl_widget_children {
             scope.generated.push(quote! {
@@ -301,14 +322,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     }
                 }
             });
-            let hover_highlight = args.hover_highlight.unwrap_or_else(|| {
-                quote! {
-                    #[inline]
-                    fn hover_highlight(&self) -> bool {
-                        self.#inner.hover_highlight()
-                    }
-                }
-            });
             let cursor_icon = args.cursor_icon.unwrap_or_else(|| {
                 quote! {
                     #[inline]
@@ -338,7 +351,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                         self.#inner.configure(mgr);
                     }
                     #key_nav
-                    #hover_highlight
                     #cursor_icon
 
                     #[inline]
@@ -354,6 +366,8 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     ) -> Option<usize> {
                         self.#inner.spatial_nav(mgr, reverse, from)
                     }
+
+                    #pre_handle_event
 
                     #[inline]
                     fn handle_event(
@@ -572,15 +586,12 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         if let Some(item) = args.key_nav {
             widget_impl.items.push(parse2(item)?);
         }
-        if let Some(item) = args.hover_highlight {
-            widget_impl.items.push(parse2(item)?);
-        }
         if let Some(item) = args.cursor_icon {
             widget_impl.items.push(parse2(item)?);
         }
+        widget_impl.items.push(parse2(pre_handle_event)?);
     } else {
         let key_nav = args.key_nav;
-        let hover_highlight = args.hover_highlight;
         let cursor_icon = args.cursor_icon;
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Widget
@@ -588,8 +599,8 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             {
                 #fn_pre_configure
                 #key_nav
-                #hover_highlight
                 #cursor_icon
+                #pre_handle_event
             }
         });
     }

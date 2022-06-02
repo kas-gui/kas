@@ -157,7 +157,6 @@ pub struct EventState {
     nav_focus: Option<WidgetId>,
     nav_fallback: Option<WidgetId>,
     hover: Option<WidgetId>,
-    hover_highlight: bool,
     hover_icon: CursorIcon,
     key_depress: LinearMap<u32, WidgetId>,
     last_mouse_coord: Coord,
@@ -433,10 +432,7 @@ impl<'a> EventMgr<'a> {
         if self.state.hover != w_id {
             trace!("EventMgr: hover = {:?}", w_id);
             if let Some(id) = self.state.hover.take() {
-                if self.state.hover_highlight {
-                    self.send_action(TkAction::REDRAW);
-                    self.pending.push(Pending::LostMouseHover(id));
-                }
+                self.pending.push(Pending::LostMouseHover(id));
             }
             self.state.hover = w_id.clone();
 
@@ -444,10 +440,6 @@ impl<'a> EventMgr<'a> {
                 let mut icon = Default::default();
                 if !self.is_disabled(&id) {
                     if let Some(w) = widget.find_widget(&id) {
-                        self.state.hover_highlight = w.hover_highlight();
-                        if self.state.hover_highlight {
-                            self.send_action(TkAction::REDRAW);
-                        }
                         icon = w.cursor_icon();
                     }
                 }
@@ -632,7 +624,7 @@ impl<'a> EventMgr<'a> {
                 response = Response::Used;
             }
 
-            response |= widget.handle_event(self, event)
+            response |= widget.pre_handle_event(self, event)
         } else {
             warn!("Widget {} cannot find path to {id}", widget.identify());
         }
@@ -643,7 +635,7 @@ impl<'a> EventMgr<'a> {
     // Traverse widget tree by recursive call, broadcasting
     fn send_all(&mut self, widget: &mut dyn Widget, event: Event) -> usize {
         let child_event = event.clone() + widget.translation();
-        widget.handle_event(self, event);
+        widget.pre_handle_event(self, event);
         let mut count = 1;
         for index in 0..widget.num_children() {
             if let Some(w) = widget.get_child_mut(index) {
