@@ -230,10 +230,26 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         }
     });
 
-    let hover_highlight = match args.hover_highlight.unwrap_or(false) {
-        false => quote! {},
-        true => quote! {
+    let hover_highlight = args.hover_highlight.unwrap_or(false);
+    let pre_handle_event = match (hover_highlight, args.cursor_icon.take()) {
+        (false, None) => quote! {},
+        (true, None) => quote! {
             if matches!(event, Event::MouseHover | Event::LostMouseHover) {
+                mgr.redraw(self.id());
+                return Response::Used;
+            }
+        },
+        (false, Some(icon_expr)) => quote! {
+            if matches!(event, Event::MouseHover) {
+                mgr.set_cursor_icon(#icon_expr);
+                return Response::Used;
+            }
+        },
+        (true, Some(icon_expr)) => quote! {
+            if matches!(event, Event::MouseHover | Event::LostMouseHover) {
+                if matches!(event, Event::MouseHover) {
+                    mgr.set_cursor_icon(#icon_expr);
+                }
                 mgr.redraw(self.id());
                 return Response::Used;
             }
@@ -246,7 +262,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             event: ::kas::event::Event,
         ) -> ::kas::event::Response {
             use ::kas::{event::{Event, Response}, WidgetExt};
-            #hover_highlight
+            #pre_handle_event
             self.handle_event(mgr, event)
         }
     };
@@ -322,14 +338,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     }
                 }
             });
-            let cursor_icon = args.cursor_icon.unwrap_or_else(|| {
-                quote! {
-                    #[inline]
-                    fn cursor_icon(&self) -> ::kas::event::CursorIcon {
-                        self.#inner.cursor_icon()
-                    }
-                }
-            });
             scope.generated.push(quote! {
                 impl #impl_generics ::kas::Widget
                         for #name #ty_generics #where_clause
@@ -351,7 +359,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                         self.#inner.configure(mgr);
                     }
                     #key_nav
-                    #cursor_icon
 
                     #[inline]
                     fn translation(&self) -> ::kas::geom::Offset {
@@ -586,20 +593,15 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         if let Some(item) = args.key_nav {
             widget_impl.items.push(parse2(item)?);
         }
-        if let Some(item) = args.cursor_icon {
-            widget_impl.items.push(parse2(item)?);
-        }
         widget_impl.items.push(parse2(pre_handle_event)?);
     } else {
         let key_nav = args.key_nav;
-        let cursor_icon = args.cursor_icon;
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Widget
                     for #name #ty_generics #where_clause
             {
                 #fn_pre_configure
                 #key_nav
-                #cursor_icon
                 #pre_handle_event
             }
         });

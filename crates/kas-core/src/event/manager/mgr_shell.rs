@@ -85,7 +85,7 @@ impl EventState {
         });
 
         let hover = widget.find_id(self.last_mouse_coord);
-        self.with(shell, |mgr| mgr.set_hover(widget, hover));
+        self.with(shell, |mgr| mgr.set_hover(hover));
     }
 
     /// Update the widgets under the cursor and touch events
@@ -95,7 +95,7 @@ impl EventState {
 
         // Update hovered widget
         let hover = widget.find_id(self.last_mouse_coord);
-        self.with(shell, |mgr| mgr.set_hover(widget, hover));
+        self.with(shell, |mgr| mgr.set_hover(hover));
 
         for grab in self.touch_grab.iter_mut() {
             grab.cur_id = widget.find_id(grab.coord);
@@ -131,6 +131,8 @@ impl EventState {
     /// Update, after receiving all events
     #[inline]
     pub fn update(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Widget) -> TkAction {
+        let old_hover_icon = self.hover_icon;
+
         let mut mgr = EventMgr {
             state: self,
             shell,
@@ -204,7 +206,10 @@ impl EventState {
                 Pending::SetNavFocus(id, key_focus) => (id, Event::NavFocus(key_focus)),
                 Pending::MouseHover(id) => (id, Event::MouseHover),
                 Pending::LostNavFocus(id) => (id, Event::LostNavFocus),
-                Pending::LostMouseHover(id) => (id, Event::LostMouseHover),
+                Pending::LostMouseHover(id) => {
+                    mgr.state.hover_icon = Default::default();
+                    (id, Event::LostMouseHover)
+                }
                 Pending::LostCharFocus(id) => (id, Event::LostCharFocus),
                 Pending::LostSelFocus(id) => (id, Event::LostSelFocus),
             };
@@ -213,6 +218,13 @@ impl EventState {
 
         let action = mgr.action;
         drop(mgr);
+
+        if self.hover_icon != old_hover_icon {
+            if self.mouse_grab.is_none() {
+                shell.set_cursor_icon(self.hover_icon);
+            }
+        }
+
         let action = action | self.action;
         self.action = TkAction::empty();
         action
@@ -317,7 +329,7 @@ impl<'a> EventMgr<'a> {
                 // Update hovered widget
                 let cur_id = widget.find_id(coord);
                 let delta = coord - self.state.last_mouse_coord;
-                self.set_hover(widget, cur_id.clone());
+                self.set_hover(cur_id.clone());
 
                 if let Some(grab) = self.state.mouse_grab.as_mut() {
                     if grab.mode == GrabMode::Grab {
@@ -353,7 +365,7 @@ impl<'a> EventMgr<'a> {
                     // If there's a mouse grab, we will continue to receive
                     // coordinates; if not, set a fake coordinate off the window
                     self.state.last_mouse_coord = Coord(-1, -1);
-                    self.set_hover(widget, None);
+                    self.set_hover(None);
                 }
             }
             MouseWheel { delta, .. } => {

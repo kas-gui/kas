@@ -449,6 +449,18 @@ impl EventState {
             self.pending.push_back(Pending::SetNavFocus(id, key_focus));
         }
     }
+
+    /// Set the cursor icon
+    ///
+    /// This is normally called when handling [`Event::MouseHover`]. In other
+    /// cases, calling this method may be ineffective. The cursor is
+    /// automatically "unset" when the widget is no longer hovered.
+    ///
+    /// If a mouse grab ([`EventMgr::grab_press`]) is active, its icon takes precedence.
+    pub fn set_cursor_icon(&mut self, icon: CursorIcon) {
+        // Note: this is acted on by EventState::update
+        self.hover_icon = icon;
+    }
 }
 
 /// Public API

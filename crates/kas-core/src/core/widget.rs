@@ -7,7 +7,7 @@
 
 use std::fmt;
 
-use crate::event::{self, Event, EventMgr, Response, Scroll};
+use crate::event::{Event, EventMgr, Response, Scroll};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{AlignHints, AxisInfo, SetRectMgr, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
@@ -426,18 +426,6 @@ pub trait Widget: WidgetChildren + Layout {
     #[inline]
     fn key_nav(&self) -> bool {
         false
-    }
-
-    /// Which cursor icon should be used on hover?
-    ///
-    /// The "hovered" widget is determined by [`Layout::find_id`], thus is the
-    /// same widget which would receive click events. Other widgets do not
-    /// affect the cursor icon used.
-    ///
-    /// Defaults to [`event::CursorIcon::Default`].
-    #[inline]
-    fn cursor_icon(&self) -> event::CursorIcon {
-        event::CursorIcon::Default
     }
 
     /// Get translation of children relative to this widget

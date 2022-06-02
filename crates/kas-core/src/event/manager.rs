@@ -429,7 +429,7 @@ impl<'a> Drop for EventMgr<'a> {
 
 /// Internal methods
 impl<'a> EventMgr<'a> {
-    fn set_hover(&mut self, widget: &dyn Widget, w_id: Option<WidgetId>) {
+    fn set_hover(&mut self, w_id: Option<WidgetId>) {
         if self.state.hover != w_id {
             trace!("EventMgr: hover = {:?}", w_id);
             if let Some(id) = self.state.hover.take() {
@@ -438,19 +438,7 @@ impl<'a> EventMgr<'a> {
             self.state.hover = w_id.clone();
 
             if let Some(id) = w_id {
-                let mut icon = Default::default();
-                if !self.is_disabled(&id) {
-                    if let Some(w) = widget.find_widget(&id) {
-                        icon = w.cursor_icon();
-                    }
-                }
                 self.pending.push_back(Pending::MouseHover(id));
-                if icon != self.state.hover_icon {
-                    self.state.hover_icon = icon;
-                    if self.state.mouse_grab.is_none() {
-                        self.shell.set_cursor_icon(icon);
-                    }
-                }
             }
         }
     }

@@ -194,7 +194,7 @@ impl Parse for WidgetDerive {
 pub struct WidgetArgs {
     pub key_nav: Option<TokenStream>,
     pub hover_highlight: Option<bool>,
-    pub cursor_icon: Option<TokenStream>,
+    pub cursor_icon: Option<Expr>,
     pub derive: Option<Member>,
     pub layout: Option<make_layout::Tree>,
 }
@@ -224,12 +224,9 @@ impl Parse for WidgetArgs {
                 let value = content.parse::<syn::LitBool>()?;
                 hover_highlight = Some(value.value);
             } else if lookahead.peek(kw::cursor_icon) && cursor_icon.is_none() {
-                let span = content.parse::<kw::cursor_icon>()?.span();
+                let _ = content.parse::<kw::cursor_icon>()?;
                 let _: Eq = content.parse()?;
-                let value = content.parse::<syn::Expr>()?;
-                cursor_icon = Some(quote_spanned! {span=>
-                    fn cursor_icon(&self) -> ::kas::event::CursorIcon { #value }
-                });
+                cursor_icon = Some(content.parse::<syn::Expr>()?);
             } else if lookahead.peek(kw::derive) && derive.is_none() {
                 kw_derive = Some(content.parse::<kw::derive>()?);
                 let _: Eq = content.parse()?;
