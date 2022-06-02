@@ -34,13 +34,6 @@ pub enum Event {
     /// not character or navigation focus may receive [`Command::Deselect`]
     /// when the <kbd>Esc</kbd> key is pressed.
     Command(Command),
-    /// Widget lost keyboard input focus
-    LostCharFocus,
-    /// Widget lost selection focus
-    ///
-    /// Selection focus implies character focus, so this event implies that the
-    /// widget has already received [`Event::LostCharFocus`].
-    LostSelFocus,
     /// Widget receives a character of text input
     ///
     /// This is only received by a widget with character focus (see
@@ -188,7 +181,7 @@ pub enum Event {
     /// Since popups may be removed directly by the EventMgr, the parent should
     /// clean up any associated state here.
     PopupRemoved(WindowId),
-    /// Sent when a widget receives focus
+    /// Sent when a widget receives (keyboard) navigation focus
     ///
     /// When the payload, `key_focus`, is true when the focus was triggered by
     /// the keyboard, not the mouse or a touch event.
@@ -199,6 +192,20 @@ pub enum Event {
     /// automatically sets `Scroll::Rect(widget.rect())` to
     /// [`EventMgr::set_scroll`] and considers the event used.
     NavFocus(bool),
+    /// Sent when a widget loses navigation focus
+    LostNavFocus,
+    /// Widget lost keyboard input focus
+    ///
+    /// This focus is gained through the widget calling [`EventState::request_char_focus`].
+    LostCharFocus,
+    /// Widget lost selection focus
+    ///
+    /// This focus is gained through the widget calling [`EventState::request_sel_focus`]
+    /// or [`EventState::request_char_focus`].
+    ///
+    /// In the case the widget also had character focus, [`Event::LostCharFocus`] is
+    /// received first.
+    LostSelFocus,
 }
 
 impl std::ops::Add<Offset> for Event {
@@ -269,11 +276,11 @@ impl Event {
         use Event::*;
         match self {
             None | Command(_) => false,
-            LostCharFocus | LostSelFocus => true,
             ReceivedCharacter(_) | Scroll(_) | Pan { .. } => false,
             PressStart { .. } | PressMove { .. } | PressEnd { .. } => false,
             TimerUpdate(_) | Update { .. } | PopupRemoved(_) => true,
             NavFocus(_) => false,
+            LostNavFocus | LostCharFocus | LostSelFocus => true,
         }
     }
 }

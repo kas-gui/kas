@@ -417,7 +417,8 @@ impl EventState {
     /// Clear keyboard navigation focus
     pub fn clear_nav_focus(&mut self) {
         if let Some(id) = self.nav_focus.take() {
-            self.redraw(id);
+            self.send_action(TkAction::REDRAW);
+            self.pending.push(Pending::LostNavFocus(id));
         }
         self.clear_char_focus();
         trace!("EventMgr: nav_focus = None");
@@ -437,6 +438,9 @@ impl EventState {
     pub fn set_nav_focus(&mut self, id: WidgetId, key_focus: bool) {
         if id != self.nav_focus {
             self.send_action(TkAction::REDRAW);
+            if let Some(old_id) = self.nav_focus.take() {
+                self.pending.push(Pending::LostNavFocus(old_id));
+            }
             if id != self.sel_focus {
                 self.clear_char_focus();
             }
@@ -832,6 +836,7 @@ impl<'a> EventMgr<'a> {
         // We redraw in all cases. Since this is not part of widget event
         // processing, we can push directly to self.state.action.
         self.state.send_action(TkAction::REDRAW);
+        let old_nav_focus = self.state.nav_focus.take();
 
         fn nav(
             mgr: &mut SetRectMgr,
@@ -903,10 +908,9 @@ impl<'a> EventMgr<'a> {
         // Whether to restart from the beginning on failure
         let restart = self.state.nav_focus.is_some();
 
-        let focus = self.state.nav_focus.clone();
         let mut opt_id = None;
         self.set_rect_mgr(|mgr| {
-            opt_id = nav(mgr, widget, focus.as_ref(), reverse);
+            opt_id = nav(mgr, widget, old_nav_focus.as_ref(), reverse);
             if restart && opt_id.is_none() {
                 opt_id = nav(mgr, widget, None, reverse);
             }
@@ -914,6 +918,14 @@ impl<'a> EventMgr<'a> {
 
         trace!("EventMgr: nav_focus = {:?}", opt_id);
         self.state.nav_focus = opt_id.clone();
+
+        if opt_id == old_nav_focus {
+            return opt_id.is_some();
+        }
+
+        if let Some(id) = old_nav_focus {
+            self.pending.push(Pending::LostNavFocus(id));
+        }
 
         if let Some(id) = opt_id {
             if id != self.state.sel_focus {
@@ -924,7 +936,6 @@ impl<'a> EventMgr<'a> {
         } else {
             // Most likely an error occurred
             self.clear_char_focus();
-            self.state.nav_focus = None;
             false
         }
     }
