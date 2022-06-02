@@ -104,7 +104,7 @@ pub use progress::ProgressBar;
 pub use radiobox::{RadioBox, RadioBoxBare, RadioBoxGroup};
 pub use scroll::ScrollRegion;
 pub use scroll_label::ScrollLabel;
-pub use scrollbar::{ScrollBar, ScrollBarRegion, ScrollBars, Scrollable};
+pub use scrollbar::{ScrollBar, ScrollBarRegion, ScrollBars};
 pub use separator::Separator;
 pub use slider::{Slider, SliderType};
 pub use spinner::{Spinner, SpinnerType};

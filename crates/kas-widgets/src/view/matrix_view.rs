@@ -8,7 +8,7 @@
 use super::{driver, Driver, PressPhase, SelectionError, SelectionMode, SelectionMsg};
 #[allow(unused)] // doc links
 use crate::ScrollBars;
-use crate::{Scrollable, SelectMsg};
+use crate::SelectMsg;
 use kas::event::components::ScrollComponent;
 use kas::event::{Command, CursorIcon, Scroll};
 use kas::layout::solve_size_rules;

@@ -277,134 +277,6 @@ impl_scope! {
     }
 }
 
-/// Additional functionality on scrollable widgets
-///
-/// This trait should be implemented by widgets supporting scrolling, enabling
-/// a parent (such as the [`ScrollBars`] wrapper) to add controls.
-///
-/// If the widget scrolls itself it should set a scroll action via [`EventMgr::set_scroll`].
-pub trait Scrollable: Widget {
-    /// Given size `size`, returns whether `(horiz, vert)` scrolling is required
-    fn scroll_axes(&self, size: Size) -> (bool, bool);
-
-    /// Get the maximum scroll offset
-    ///
-    /// Note: the minimum scroll offset is always zero.
-    fn max_scroll_offset(&self) -> Offset;
-
-    /// Get the current scroll offset
-    ///
-    /// Contents of the scroll region are translated by this offset (to convert
-    /// coordinates from the outer region to the scroll region, add this offset).
-    ///
-    /// The offset is restricted between [`Offset::ZERO`] and
-    /// [`ScrollRegion::max_scroll_offset`].
-    fn scroll_offset(&self) -> Offset;
-
-    /// Set the scroll offset
-    ///
-    /// This may be used for programmatic scrolling, e.g. by a wrapping widget
-    /// with scroll controls. Note that calling this method directly on the
-    /// scrolling widget will not update any controls in a wrapping widget.
-    ///
-    /// The offset is clamped to the available scroll range and applied. The
-    /// resulting offset is returned.
-    fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset;
-}
-
-impl_scope! {
-    /// A scrollable region with bars
-    ///
-    /// This is essentially a `ScrollBars<ScrollRegion<W>>`:
-    /// [`ScrollRegion`] handles the actual scrolling and wheel/touch events,
-    /// while [`ScrollBars`] adds scrollbar controls.
-    #[autoimpl(Deref, DerefMut using self.0)]
-    #[autoimpl(class_traits using self.0 where W: trait)]
-    #[derive(Clone, Debug, Default)]
-    #[widget{
-        derive = self.0;
-    }]
-    pub struct ScrollBarRegion<W: Widget>(ScrollBars<ScrollRegion<W>>);
-
-    impl Self {
-        /// Construct a `ScrollBarRegion<W>`
-        #[inline]
-        pub fn new(inner: W) -> Self {
-            ScrollBarRegion(ScrollBars::new(ScrollRegion::new(inner)))
-        }
-
-        /// Auto-enable bars
-        ///
-        /// If enabled (default), this automatically enables/disables scroll bars
-        /// as required when resized.
-        ///
-        /// This has the side-effect of reserving enough space for scroll bars even
-        /// when not required.
-        #[inline]
-        #[must_use]
-        pub fn with_auto_bars(self, enable: bool) -> Self {
-            ScrollBarRegion(self.0.with_auto_bars(enable))
-        }
-
-        /// Set which scroll bars are visible
-        ///
-        /// Calling this method also disables automatic scroll bars.
-        #[inline]
-        #[must_use]
-        pub fn with_bars(self, horiz: bool, vert: bool) -> Self {
-            ScrollBarRegion(self.0.with_bars(horiz, vert))
-        }
-
-        /// Set which scroll bars are visible
-        ///
-        /// Calling this method also disables automatic scroll bars.
-        /// A resize is required to update the child and scrollbar widgets.
-        #[inline]
-        pub fn set_bars(&mut self, horiz: bool, vert: bool) -> TkAction {
-            self.0.set_bars(horiz, vert)
-        }
-
-        /// Query which scroll bars are visible
-        ///
-        /// Returns `(horiz, vert)` tuple.
-        #[inline]
-        pub fn bars(&self) -> (bool, bool) {
-            self.0.bars()
-        }
-
-        /// Access inner widget directly
-        #[inline]
-        pub fn inner(&self) -> &W {
-            self.0.inner.inner()
-        }
-
-        /// Access inner widget directly
-        #[inline]
-        pub fn inner_mut(&mut self) -> &mut W {
-            self.0.inner.inner_mut()
-        }
-    }
-
-    impl Scrollable for Self {
-        #[inline]
-        fn scroll_axes(&self, size: Size) -> (bool, bool) {
-            self.0.inner.scroll_axes(size)
-        }
-        #[inline]
-        fn max_scroll_offset(&self) -> Offset {
-            self.0.inner.max_scroll_offset()
-        }
-        #[inline]
-        fn scroll_offset(&self) -> Offset {
-            self.0.inner.scroll_offset()
-        }
-        #[inline]
-        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
-            self.0.set_scroll_offset(mgr, offset)
-        }
-    }
-}
-
 impl_scope! {
     /// Scrollbar controls
     ///
@@ -644,6 +516,99 @@ impl_scope! {
             // We assume the inner already updated its positions; this is just to set bars
             let offset = self.inner.scroll_offset();
             *mgr |= self.horiz_bar.set_value(offset.0) | self.vert_bar.set_value(offset.1);
+        }
+    }
+}
+
+impl_scope! {
+    /// A scrollable region with bars
+    ///
+    /// This is essentially a `ScrollBars<ScrollRegion<W>>`:
+    /// [`ScrollRegion`] handles the actual scrolling and wheel/touch events,
+    /// while [`ScrollBars`] adds scrollbar controls.
+    #[autoimpl(Deref, DerefMut using self.0)]
+    #[autoimpl(class_traits using self.0 where W: trait)]
+    #[derive(Clone, Debug, Default)]
+    #[widget{
+        derive = self.0;
+    }]
+    pub struct ScrollBarRegion<W: Widget>(ScrollBars<ScrollRegion<W>>);
+
+    impl Self {
+        /// Construct a `ScrollBarRegion<W>`
+        #[inline]
+        pub fn new(inner: W) -> Self {
+            ScrollBarRegion(ScrollBars::new(ScrollRegion::new(inner)))
+        }
+
+        /// Auto-enable bars
+        ///
+        /// If enabled (default), this automatically enables/disables scroll bars
+        /// as required when resized.
+        ///
+        /// This has the side-effect of reserving enough space for scroll bars even
+        /// when not required.
+        #[inline]
+        #[must_use]
+        pub fn with_auto_bars(self, enable: bool) -> Self {
+            ScrollBarRegion(self.0.with_auto_bars(enable))
+        }
+
+        /// Set which scroll bars are visible
+        ///
+        /// Calling this method also disables automatic scroll bars.
+        #[inline]
+        #[must_use]
+        pub fn with_bars(self, horiz: bool, vert: bool) -> Self {
+            ScrollBarRegion(self.0.with_bars(horiz, vert))
+        }
+
+        /// Set which scroll bars are visible
+        ///
+        /// Calling this method also disables automatic scroll bars.
+        /// A resize is required to update the child and scrollbar widgets.
+        #[inline]
+        pub fn set_bars(&mut self, horiz: bool, vert: bool) -> TkAction {
+            self.0.set_bars(horiz, vert)
+        }
+
+        /// Query which scroll bars are visible
+        ///
+        /// Returns `(horiz, vert)` tuple.
+        #[inline]
+        pub fn bars(&self) -> (bool, bool) {
+            self.0.bars()
+        }
+
+        /// Access inner widget directly
+        #[inline]
+        pub fn inner(&self) -> &W {
+            self.0.inner.inner()
+        }
+
+        /// Access inner widget directly
+        #[inline]
+        pub fn inner_mut(&mut self) -> &mut W {
+            self.0.inner.inner_mut()
+        }
+    }
+
+    impl Scrollable for Self {
+        #[inline]
+        fn scroll_axes(&self, size: Size) -> (bool, bool) {
+            self.0.inner.scroll_axes(size)
+        }
+        #[inline]
+        fn max_scroll_offset(&self) -> Offset {
+            self.0.inner.max_scroll_offset()
+        }
+        #[inline]
+        fn scroll_offset(&self) -> Offset {
+            self.0.inner.scroll_offset()
+        }
+        #[inline]
+        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
+            self.0.set_scroll_offset(mgr, offset)
         }
     }
 }

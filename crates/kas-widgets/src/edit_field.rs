@@ -5,7 +5,6 @@
 
 //! Text-edit field
 
-use super::Scrollable;
 use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{Command, CursorIcon, Scroll, ScrollDelta};
 use kas::geom::Vec2;

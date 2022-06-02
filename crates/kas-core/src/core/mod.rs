@@ -6,9 +6,11 @@
 //! Core widget types
 
 mod data;
+mod scroll_traits;
 mod widget;
 mod widget_id;
 
 pub use data::*;
+pub use scroll_traits::*;
 pub use widget::*;
 pub use widget_id::*;
