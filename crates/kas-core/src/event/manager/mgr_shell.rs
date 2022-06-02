@@ -202,10 +202,12 @@ impl EventState {
         while let Some(item) = mgr.state.pending.pop() {
             trace!("Handling Pending::{:?}", item);
             let (id, event) = match item {
+                Pending::SetNavFocus(id, key_focus) => (id, Event::NavFocus(key_focus)),
+                Pending::MouseHover(id) => (id, Event::MouseHover),
                 Pending::LostNavFocus(id) => (id, Event::LostNavFocus),
+                Pending::LostMouseHover(id) => (id, Event::LostMouseHover),
                 Pending::LostCharFocus(id) => (id, Event::LostCharFocus),
                 Pending::LostSelFocus(id) => (id, Event::LostSelFocus),
-                Pending::SetNavFocus(id, key_focus) => (id, Event::NavFocus(key_focus)),
             };
             mgr.send_event(widget, id, event);
         }

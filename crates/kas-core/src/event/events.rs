@@ -17,6 +17,10 @@ use crate::Widget;
 use crate::{dir::Direction, WidgetId, WindowId};
 
 /// Events addressed to a widget
+///
+/// Note regarding disabled widgets: [`Event::Update`], [`Event::PopupRemoved`]
+/// and `Lost..` events are received regardless of status; other events are not
+/// received by disabled widgets. See [`Event::pass_when_disabled`].
 #[non_exhaustive]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Event {
@@ -192,8 +196,12 @@ pub enum Event {
     /// automatically sets `Scroll::Rect(widget.rect())` to
     /// [`EventMgr::set_scroll`] and considers the event used.
     NavFocus(bool),
+    /// Sent when a widget becomes the mouse hover target
+    MouseHover,
     /// Sent when a widget loses navigation focus
     LostNavFocus,
+    /// Sent when a widget is no longer the mouse hover target
+    LostMouseHover,
     /// Widget lost keyboard input focus
     ///
     /// This focus is gained through the widget calling [`EventState::request_char_focus`].
@@ -279,8 +287,8 @@ impl Event {
             ReceivedCharacter(_) | Scroll(_) | Pan { .. } => false,
             PressStart { .. } | PressMove { .. } | PressEnd { .. } => false,
             TimerUpdate(_) | Update { .. } | PopupRemoved(_) => true,
-            NavFocus(_) => false,
-            LostNavFocus | LostCharFocus | LostSelFocus => true,
+            NavFocus(_) | MouseHover => false,
+            LostNavFocus | LostMouseHover | LostCharFocus | LostSelFocus => true,
         }
     }
 }

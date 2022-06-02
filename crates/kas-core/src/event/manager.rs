@@ -118,10 +118,12 @@ struct PanGrab {
 #[derive(Clone, Debug)]
 #[allow(clippy::enum_variant_names)] // they all happen to be about Focus
 enum Pending {
+    SetNavFocus(WidgetId, bool),
+    MouseHover(WidgetId),
     LostNavFocus(WidgetId),
+    LostMouseHover(WidgetId),
     LostCharFocus(WidgetId),
     LostSelFocus(WidgetId),
-    SetNavFocus(WidgetId, bool),
 }
 
 type AccelLayer = (bool, HashMap<VirtualKeyCode, WidgetId>);
@@ -432,7 +434,8 @@ impl<'a> EventMgr<'a> {
             trace!("EventMgr: hover = {:?}", w_id);
             if let Some(id) = self.state.hover.take() {
                 if self.state.hover_highlight {
-                    self.redraw(id);
+                    self.send_action(TkAction::REDRAW);
+                    self.pending.push(Pending::LostMouseHover(id));
                 }
             }
             self.state.hover = w_id.clone();
@@ -443,11 +446,12 @@ impl<'a> EventMgr<'a> {
                     if let Some(w) = widget.find_widget(&id) {
                         self.state.hover_highlight = w.hover_highlight();
                         if self.state.hover_highlight {
-                            self.redraw(id);
+                            self.send_action(TkAction::REDRAW);
                         }
                         icon = w.cursor_icon();
                     }
                 }
+                self.pending.push(Pending::MouseHover(id));
                 if icon != self.state.hover_icon {
                     self.state.hover_icon = icon;
                     if self.state.mouse_grab.is_none() {
