@@ -13,7 +13,7 @@ use log::{trace, warn};
 use smallvec::SmallVec;
 use std::any::Any;
 use std::cell::RefCell;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::time::Instant;
@@ -118,9 +118,12 @@ struct PanGrab {
 #[derive(Clone, Debug)]
 #[allow(clippy::enum_variant_names)] // they all happen to be about Focus
 enum Pending {
+    SetNavFocus(WidgetId, bool),
+    MouseHover(WidgetId),
+    LostNavFocus(WidgetId),
+    LostMouseHover(WidgetId),
     LostCharFocus(WidgetId),
     LostSelFocus(WidgetId),
-    SetNavFocus(WidgetId, bool),
 }
 
 type AccelLayer = (bool, HashMap<VirtualKeyCode, WidgetId>);
@@ -168,7 +171,8 @@ pub struct EventState {
     popups: SmallVec<[(WindowId, crate::Popup, Option<WidgetId>); 16]>,
     popup_removed: SmallVec<[(WidgetId, WindowId); 16]>,
     time_updates: Vec<(Instant, WidgetId, u64)>,
-    pending: SmallVec<[Pending; 8]>,
+    // FIFO queue of events pending handling
+    pending: VecDeque<Pending>,
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub action: TkAction,
@@ -271,8 +275,8 @@ impl EventState {
             return;
         }
 
-        self.key_depress.insert(scancode, id.clone());
-        self.redraw(id);
+        self.key_depress.insert(scancode, id);
+        self.send_action(TkAction::REDRAW);
     }
 
     fn end_key_event(&mut self, scancode: u32) {
@@ -315,7 +319,7 @@ impl EventState {
         if let Some(id) = self.char_focus() {
             // If widget has char focus, this is lost
             self.char_focus = false;
-            self.pending.push(Pending::LostCharFocus(id));
+            self.pending.push_back(Pending::LostCharFocus(id));
         }
     }
 
@@ -337,11 +341,11 @@ impl EventState {
         if let Some(id) = self.sel_focus.clone() {
             if self.char_focus {
                 // If widget has char focus, this is lost
-                self.pending.push(Pending::LostCharFocus(id.clone()));
+                self.pending.push_back(Pending::LostCharFocus(id.clone()));
             }
 
             // Selection focus is lost if another widget receives char focus
-            self.pending.push(Pending::LostSelFocus(id));
+            self.pending.push_back(Pending::LostSelFocus(id));
         }
 
         self.char_focus = char_focus;
@@ -425,36 +429,16 @@ impl<'a> Drop for EventMgr<'a> {
 
 /// Internal methods
 impl<'a> EventMgr<'a> {
-    fn set_hover(&mut self, widget: &dyn Widget, w_id: Option<WidgetId>) {
+    fn set_hover(&mut self, w_id: Option<WidgetId>) {
         if self.state.hover != w_id {
             trace!("EventMgr: hover = {:?}", w_id);
             if let Some(id) = self.state.hover.take() {
-                if widget
-                    .find_widget(&id)
-                    .map(|w| w.hover_highlight())
-                    .unwrap_or(false)
-                {
-                    self.redraw(id);
-                }
+                self.pending.push_back(Pending::LostMouseHover(id));
             }
             self.state.hover = w_id.clone();
 
             if let Some(id) = w_id {
-                let mut icon = Default::default();
-                if !self.is_disabled(&id) {
-                    if let Some(w) = widget.find_widget(&id) {
-                        if w.hover_highlight() {
-                            self.redraw(id);
-                        }
-                        icon = w.cursor_icon();
-                    }
-                }
-                if icon != self.state.hover_icon {
-                    self.state.hover_icon = icon;
-                    if self.state.mouse_grab.is_none() {
-                        self.shell.set_cursor_icon(icon);
-                    }
-                }
+                self.pending.push_back(Pending::MouseHover(id));
             }
         }
     }
@@ -629,7 +613,7 @@ impl<'a> EventMgr<'a> {
                 response = Response::Used;
             }
 
-            response |= widget.handle_event(self, event)
+            response |= widget.pre_handle_event(self, event)
         } else {
             warn!("Widget {} cannot find path to {id}", widget.identify());
         }
@@ -640,7 +624,7 @@ impl<'a> EventMgr<'a> {
     // Traverse widget tree by recursive call, broadcasting
     fn send_all(&mut self, widget: &mut dyn Widget, event: Event) -> usize {
         let child_event = event.clone() + widget.translation();
-        widget.handle_event(self, event);
+        widget.pre_handle_event(self, event);
         let mut count = 1;
         for index in 0..widget.num_children() {
             if let Some(w) = widget.get_child_mut(index) {

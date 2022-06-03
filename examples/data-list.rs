@@ -159,7 +159,7 @@ fn main() -> kas::shell::Result<()> {
             #[widget] controls = controls,
             #[widget] display: StringLabel = Label::from("Entry #1"),
             #[widget] list: ScrollBarRegion<List<Direction, ListEntry>> =
-                ScrollBarRegion::new(list).with_bars(false, true),
+                ScrollBarRegion::new(list).with_fixed_bars(false, true),
             active: usize = 0,
         }
         impl Widget for Self {

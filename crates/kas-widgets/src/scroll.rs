@@ -5,7 +5,6 @@
 
 //! Scroll region
 
-use super::Scrollable;
 use kas::event::{components::ScrollComponent, Scroll};
 use kas::prelude::*;
 use kas::theme::TextClass;

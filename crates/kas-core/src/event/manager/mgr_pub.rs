@@ -162,7 +162,7 @@ impl EventState {
             }
         }
         if state {
-            self.redraw(w_id.clone());
+            self.send_action(TkAction::REDRAW);
             self.disabled.push(w_id);
         }
     }
@@ -214,8 +214,8 @@ impl EventState {
 
     /// Notify that a widget must be redrawn
     ///
-    /// Currently the entire window is redrawn on any redraw request and the
-    /// [`WidgetId`] is ignored. In the future partial redraws may be used.
+    /// Note: currently, only full-window redraws are supported, thus this is
+    /// equivalent to: `mgr.send_action(TkAction::REDRAW);`
     #[inline]
     pub fn redraw(&mut self, _id: WidgetId) {
         // Theoretically, notifying by WidgetId allows selective redrawing
@@ -416,10 +416,10 @@ impl EventState {
 
     /// Clear keyboard navigation focus
     pub fn clear_nav_focus(&mut self) {
-        if let Some(id) = self.nav_focus.clone() {
-            self.redraw(id);
+        if let Some(id) = self.nav_focus.take() {
+            self.send_action(TkAction::REDRAW);
+            self.pending.push_back(Pending::LostNavFocus(id));
         }
-        self.nav_focus = None;
         self.clear_char_focus();
         trace!("EventMgr: nav_focus = None");
     }
@@ -437,14 +437,29 @@ impl EventState {
     /// mouse or touch input.
     pub fn set_nav_focus(&mut self, id: WidgetId, key_focus: bool) {
         if id != self.nav_focus {
-            self.redraw(id.clone());
+            self.send_action(TkAction::REDRAW);
+            if let Some(old_id) = self.nav_focus.take() {
+                self.pending.push_back(Pending::LostNavFocus(old_id));
+            }
             if id != self.sel_focus {
                 self.clear_char_focus();
             }
             self.nav_focus = Some(id.clone());
             trace!("EventMgr: nav_focus = Some({})", id);
-            self.pending.push(Pending::SetNavFocus(id, key_focus));
+            self.pending.push_back(Pending::SetNavFocus(id, key_focus));
         }
+    }
+
+    /// Set the cursor icon
+    ///
+    /// This is normally called when handling [`Event::MouseHover`]. In other
+    /// cases, calling this method may be ineffective. The cursor is
+    /// automatically "unset" when the widget is no longer hovered.
+    ///
+    /// If a mouse grab ([`EventMgr::grab_press`]) is active, its icon takes precedence.
+    pub fn set_cursor_icon(&mut self, icon: CursorIcon) {
+        // Note: this is acted on by EventState::update
+        self.hover_icon = icon;
     }
 }
 
@@ -733,7 +748,7 @@ impl<'a> EventMgr<'a> {
                     button,
                     repetitions,
                     start_id: start_id.clone(),
-                    cur_id: Some(start_id.clone()),
+                    cur_id: Some(start_id),
                     depress: Some(id),
                     mode,
                     pan_grab,
@@ -755,7 +770,7 @@ impl<'a> EventMgr<'a> {
                 trace!("EventMgr: start touch grab by {}", start_id);
                 self.state.touch_grab.push(TouchGrab {
                     id: touch_id,
-                    start_id: start_id.clone(),
+                    start_id,
                     depress: Some(id.clone()),
                     cur_id: Some(id),
                     last_move: coord,
@@ -766,7 +781,7 @@ impl<'a> EventMgr<'a> {
             }
         }
 
-        self.redraw(start_id);
+        self.send_action(TkAction::REDRAW);
     }
 
     /// A variant of [`Self::grab_press`], where a unique grab is desired
@@ -833,6 +848,7 @@ impl<'a> EventMgr<'a> {
         // We redraw in all cases. Since this is not part of widget event
         // processing, we can push directly to self.state.action.
         self.state.send_action(TkAction::REDRAW);
+        let old_nav_focus = self.state.nav_focus.take();
 
         fn nav(
             mgr: &mut SetRectMgr,
@@ -904,10 +920,9 @@ impl<'a> EventMgr<'a> {
         // Whether to restart from the beginning on failure
         let restart = self.state.nav_focus.is_some();
 
-        let focus = self.state.nav_focus.clone();
         let mut opt_id = None;
         self.set_rect_mgr(|mgr| {
-            opt_id = nav(mgr, widget, focus.as_ref(), reverse);
+            opt_id = nav(mgr, widget, old_nav_focus.as_ref(), reverse);
             if restart && opt_id.is_none() {
                 opt_id = nav(mgr, widget, None, reverse);
             }
@@ -916,16 +931,25 @@ impl<'a> EventMgr<'a> {
         trace!("EventMgr: nav_focus = {:?}", opt_id);
         self.state.nav_focus = opt_id.clone();
 
+        if opt_id == old_nav_focus {
+            return opt_id.is_some();
+        }
+
+        if let Some(id) = old_nav_focus {
+            self.pending.push_back(Pending::LostNavFocus(id));
+        }
+
         if let Some(id) = opt_id {
             if id != self.state.sel_focus {
                 self.clear_char_focus();
             }
-            self.state.pending.push(Pending::SetNavFocus(id, key_focus));
+            self.state
+                .pending
+                .push_back(Pending::SetNavFocus(id, key_focus));
             true
         } else {
             // Most likely an error occurred
             self.clear_char_focus();
-            self.state.nav_focus = None;
             false
         }
     }

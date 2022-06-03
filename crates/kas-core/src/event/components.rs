@@ -12,6 +12,7 @@ use crate::geom::{Coord, Offset, Rect, Size, Vec2};
 #[allow(unused)]
 use crate::text::SelectionHelper;
 use crate::{TkAction, WidgetId};
+use kas_macros::impl_default;
 use std::time::{Duration, Instant};
 
 const PAYLOAD_SELECT: u64 = 1 << 60;
@@ -310,19 +311,13 @@ impl ScrollComponent {
     }
 }
 
+#[impl_default(TouchPhase::None)]
 #[derive(Clone, Debug, PartialEq)]
 enum TouchPhase {
+    None,
     Start(u64, Coord), // id, coord
     Pan(u64),          // id
     Cursor(u64),       // id
-}
-
-impl Default for TouchPhase {
-    fn default() -> Self {
-        // The value doesn't matter much: it'll be replaced on PressStart and we
-        // don't get events before then.
-        TouchPhase::Start(!0, Coord::ZERO)
-    }
 }
 
 /// Handles text selection and panning from mouse and touch events
@@ -423,6 +418,7 @@ impl TextInput {
                     && (matches!(source, PressSource::Touch(id) if self.touch_phase == TouchPhase::Pan(id))
                         || matches!(source, PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan()))
                 {
+                    self.touch_phase = TouchPhase::None;
                     mgr.update_on_timer(Duration::new(0, 0), w_id, PAYLOAD_GLIDE);
                 }
                 Action::None

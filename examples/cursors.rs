@@ -13,6 +13,7 @@ impl_scope! {
     #[derive(Clone, Debug)]
     #[widget{
         layout = self.label;
+        cursor_icon = self.cursor;
     }]
     struct CursorWidget {
         core: widget_core!(),
@@ -24,11 +25,6 @@ impl_scope! {
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             // Steal mouse focus: hover points to self, not self.label
             self.rect().contains(coord).then(|| self.id())
-        }
-    }
-    impl Widget for Self {
-        fn cursor_icon(&self) -> CursorIcon {
-            self.cursor
         }
     }
 }

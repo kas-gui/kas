@@ -163,12 +163,11 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// -   <code>key_nav = <em>bool</em></code> — a quick implementation of
 ///     `Widget::key_nav`: whether this widget supports keyboard focus via
 ///     the <kbd>Tab</kbd> key (default is `false`)
-/// -   <code>hover_highlight = <em>bool</em></code> — a quick implementation of
-///     `Widget::hover_highlight`: whether to redraw when cursor hover
-///     status is gained/lost (default is `false`)
-/// -   <code>cursor_icon = <em>expr</em></code> — a quick implementation of
-///     `Widget::cursor_icon`: returns the [`CursorIcon`] to use on hover
-///     (default is `CursorIcon::Default`)
+/// -   <code>hover_highlight = <em>bool</em></code> — if true, then match
+///     `Event::MouseHover` and `Event::LostMouseHover`, requesting redraw and
+///     returning `Response::Used`
+/// -   <code>cursor_icon = <em>expr</em></code> — if used, then match
+///     `Event::MouseHover`, calling `mgr.set_cursor_icon(expr)`
 /// -   <code>layout = <em>layout</em></code> — defines widget layout via an
 ///     expression; [see below for documentation](#layout)
 ///

@@ -61,7 +61,6 @@ pub struct Dimensions {
     pub dpp: f32,
     pub pt_size: f32,
     pub mark_line: f32,
-    pub line_height: i32,
     pub min_line_length: i32,
     pub outer_margin: u16,
     pub inner_margin: u16,
@@ -81,14 +80,8 @@ pub struct Dimensions {
 
 impl Dimensions {
     pub fn new(params: &Parameters, pt_size: f32, scale_factor: f32) -> Self {
-        let font_id = Default::default();
         let dpp = scale_factor * (96.0 / 72.0);
         let dpem = dpp * pt_size;
-        let line_height = i32::conv_ceil(
-            kas::text::fonts::fonts()
-                .get_first_face(font_id)
-                .height(dpem),
-        );
 
         let outer_margin = (params.outer_margin * scale_factor).cast_nearest();
         let inner_margin = (params.inner_margin * scale_factor).cast_nearest();
@@ -106,7 +99,6 @@ impl Dimensions {
             dpp,
             pt_size,
             mark_line: (1.2 * dpp).round().max(1.0),
-            line_height,
             min_line_length: (8.0 * dpem).cast_nearest(),
             outer_margin,
             inner_margin,
@@ -208,8 +200,13 @@ impl<D: 'static> SizeHandle for Window<D> {
         Margins::hv_splat(self.dims.text_margin)
     }
 
-    fn line_height(&self, _: TextClass) -> i32 {
-        self.dims.line_height
+    fn line_height(&self, class: TextClass) -> i32 {
+        let font_id = self.fonts.get(&class).cloned().unwrap_or_default();
+        let dpem = self.dims.dpp * self.dims.pt_size;
+        kas::text::fonts::fonts()
+            .get_first_face(font_id)
+            .height(dpem)
+            .cast_ceil()
     }
 
     fn text_bound(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules {
@@ -269,12 +266,16 @@ impl<D: 'static> SizeHandle for Window<D> {
             SizeRules::new(min, ideal, margins, stretch)
         } else {
             let bound = i32::conv_ceil(required.1);
-            let min = match class {
-                _ if class.single_line() => self.dims.line_height,
-                TextClass::Label(true) | TextClass::AccelLabel(true) => bound,
-                TextClass::LabelScroll => bound.min(self.dims.line_height * 3),
-                TextClass::Edit(true) => self.dims.line_height * 3,
-                _ => unreachable!(),
+            let min = if matches!(class, TextClass::Label(true) | TextClass::AccelLabel(true)) {
+                bound
+            } else {
+                let line_height = self.line_height(class);
+                match class {
+                    _ if class.single_line() => line_height,
+                    TextClass::LabelScroll => bound.min(line_height * 3),
+                    TextClass::Edit(true) => line_height * 3,
+                    _ => unreachable!(),
+                }
             };
             let ideal = bound.max(min);
             let stretch = match class {
