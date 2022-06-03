@@ -270,7 +270,7 @@ fn main() -> kas::shell::Result<()> {
             #[widget] controls = controls,
             #[widget] display: StringLabel = Label::from("Entry #1"),
             #[widget] list: ScrollBars<MyList> =
-                ScrollBars::new(list).with_bars(false, true),
+                ScrollBars::new(list).with_fixed_bars(false, true),
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {

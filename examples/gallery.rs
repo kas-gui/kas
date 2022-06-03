@@ -111,7 +111,7 @@ fn widgets() -> Box<dyn SetDisabled> {
 
     let radio = RadioBoxGroup::default();
 
-    Box::new(ScrollBarRegion::new(impl_singleton! {
+    let widgets = impl_singleton! {
         #[widget{
             layout = aligned_column: [
                 row: ["ScrollLabel", self.sl],
@@ -193,7 +193,8 @@ fn widgets() -> Box<dyn SetDisabled> {
                 mgr.set_disabled(self.id(), state);
             }
         }
-    }))
+    };
+    Box::new(ScrollBarRegion::new(widgets).with_invisible_bars(true, true))
 }
 
 fn editor() -> Box<dyn SetDisabled> {
@@ -314,7 +315,7 @@ fn filter_list() -> Box<dyn SetDisabled> {
             #[widget] filter = EditBox::new("")
                 .on_edit(move |s, mgr| filter.update(mgr, s.to_string())),
             #[widget] list: ScrollBars<ListView> =
-                ScrollBars::new(ListView::new(filtered)),
+                ScrollBars::new(ListView::new(filtered))
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {

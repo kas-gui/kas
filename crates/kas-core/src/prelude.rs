@@ -35,10 +35,10 @@ pub use crate::theme::{DrawMgr, SizeMgr, ThemeControl};
 #[doc(no_inline)]
 pub use crate::CoreData;
 #[doc(no_inline)]
-pub use crate::Scrollable;
-#[doc(no_inline)]
 pub use crate::TkAction;
 #[doc(no_inline)]
 pub use crate::WidgetId;
+#[doc(no_inline)]
+pub use crate::{HasScrollBars, ScrollBarMode, Scrollable};
 #[doc(no_inline)]
 pub use crate::{Layout, Widget, WidgetChildren, WidgetCore, WidgetExt, Window};
