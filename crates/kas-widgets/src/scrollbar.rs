@@ -9,7 +9,6 @@ use super::{DragHandle, ScrollRegion};
 use kas::event::{MsgPressFocus, Scroll};
 use kas::prelude::*;
 use std::fmt::Debug;
-use std::time::Instant;
 
 impl_scope! {
     /// A scroll bar
@@ -330,7 +329,6 @@ impl_scope! {
         core: widget_core!(),
         mode: ScrollBarMode,
         show_bars: (bool, bool), // set by user (or set_rect when mode == Auto)
-        visible_timeout: Instant = Instant::now(),
         #[widget]
         horiz_bar: ScrollBar<kas::dir::Right>,
         #[widget]
@@ -350,7 +348,6 @@ impl_scope! {
                 core: Default::default(),
                 mode: ScrollBarMode::Auto,
                 show_bars: (false, false),
-                visible_timeout: Instant::now(),
                 horiz_bar: ScrollBar::new(),
                 vert_bar: ScrollBar::new(),
                 inner,
@@ -383,8 +380,7 @@ impl_scope! {
             self.horiz_bar.force_visible = horiz;
             self.vert_bar.force_visible = vert;
             let delay = mgr.config().menu_delay();
-            mgr.update_on_timer(delay, self.id(), 0);
-            self.visible_timeout = Instant::now() + delay;
+            mgr.request_update(self.id(), 0, delay, false);
         }
     }
 
@@ -529,14 +525,9 @@ impl_scope! {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::TimerUpdate(_) => {
-                    let now = Instant::now();
-                    if now >= self.visible_timeout {
-                        self.horiz_bar.force_visible = false;
-                        self.vert_bar.force_visible = false;
-                        *mgr |= TkAction::REDRAW;
-                    } else {
-                        mgr.update_on_timer(self.visible_timeout - now, self.id(), 0);
-                    }
+                    self.horiz_bar.force_visible = false;
+                    self.vert_bar.force_visible = false;
+                    *mgr |= TkAction::REDRAW;
                     Response::Used
                 }
                 _ => Response::Unused,

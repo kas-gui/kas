@@ -169,44 +169,36 @@ impl EventState {
 
     /// Schedule an update
     ///
-    /// Widgets requiring animation should schedule an update; as a result,
-    /// the widget will receive [`Event::TimerUpdate`] (with this `payload`)
-    /// at approximately `time = now + delay`.
+    /// Widget updates may be used for animation and timed responses. See also
+    /// [`Draw::animate`](crate::draw::Draw::animate) for animation.
     ///
-    /// Timings may be a few ms out, but should be sufficient for e.g. updating
-    /// a clock each second. Very short positive durations (e.g. 1ns) may be
-    /// used to schedule an update on the next frame. Frames should in any case
-    /// be limited by vsync, avoiding excessive frame rates.
+    /// Widget `w_id` will receive [`Event::TimerUpdate`] with this `payload` at
+    /// approximately `time = now + delay` (or possibly a little later due to
+    /// frame-rate limiters and processing time).
     ///
-    /// If multiple updates with the same `w_id` and `payload` are requested,
-    /// these are merged (using the earliest time). Updates with differing
-    /// `w_id` or `payload` are not merged (since presumably they have different
-    /// purposes).
+    /// Requesting an update with `delay == 0` is valid, except from an
+    /// [`Event::TimerUpdate`] handler (where it may cause an infinite loop).
     ///
-    /// This may be called from [`Widget::configure`] or from an event
-    /// handler. Note that previously-scheduled updates are cleared when
-    /// widgets are reconfigured.
-    pub fn update_on_timer(&mut self, delay: Duration, w_id: WidgetId, payload: u64) {
-        trace!(
-            "EventMgr::update_on_timer: queing update for {} at now+{}ms",
-            w_id,
-            delay.as_millis()
-        );
+    /// If multiple updates with the same `id` and `payload` are requested,
+    /// these are merged (using the earliest time if `first` is true).
+    pub fn request_update(&mut self, id: WidgetId, payload: u64, delay: Duration, first: bool) {
         let time = Instant::now() + delay;
-        'outer: loop {
-            for row in &mut self.time_updates {
-                if row.1 == w_id && row.2 == payload {
-                    if row.0 <= time {
-                        return;
-                    } else {
-                        row.0 = time;
-                        break 'outer;
-                    }
-                }
+        if let Some(row) = self
+            .time_updates
+            .iter_mut()
+            .find(|row| row.1 == id && row.2 == payload)
+        {
+            if (first && row.0 <= time) || (!first && row.0 >= time) {
+                return;
             }
 
-            self.time_updates.push((time, w_id, payload));
-            break;
+            row.0 = time;
+            trace!(
+                "EventMgr::request_update: update {id} at now+{}ms",
+                delay.as_millis()
+            );
+        } else {
+            self.time_updates.push((time, id, payload));
         }
 
         self.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort

@@ -164,10 +164,9 @@ pub enum Event {
     /// Update from a timer
     ///
     /// This event is received after requesting timed wake-up(s)
-    /// (see [`EventState::update_on_timer`]).
+    /// (see [`EventState::request_update`]).
     ///
-    /// The `u64` payload may be used to identify the corresponding
-    /// [`EventState::update_on_timer`] call.
+    /// The `u64` payload is copied from [`EventState::request_update`].
     TimerUpdate(u64),
     /// Update triggerred via an [`UpdateId`]
     ///
