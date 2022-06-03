@@ -5,11 +5,11 @@
 
 //! `ScrollBar` control
 
-use std::fmt::Debug;
-
 use super::{DragHandle, ScrollRegion};
 use kas::event::{MsgPressFocus, Scroll};
 use kas::prelude::*;
+use std::fmt::Debug;
+use std::time::Instant;
 
 impl_scope! {
     /// A scroll bar
@@ -37,6 +37,7 @@ impl_scope! {
         value: i32,
         invisible: bool,
         hover: bool,
+        force_visible: bool,
         #[widget]
         handle: DragHandle,
     }
@@ -66,6 +67,7 @@ impl_scope! {
                 value: 0,
                 invisible: false,
                 hover: false,
+                force_visible: false,
                 handle: DragHandle::new(),
             }
         }
@@ -258,7 +260,7 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawMgr) {
             if !self.invisible ||
-                (self.hover && self.max_value != 0) ||
+                (self.max_value != 0 && (self.hover || self.force_visible)) ||
                 draw.ev_state().is_depressed(self.handle.id_ref())
             {
                 let dir = self.direction.as_direction();
@@ -321,12 +323,14 @@ impl_scope! {
     /// [`ScrollRegion`] already does this.
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
-    #[derive(Clone, Debug, Default)]
+    #[impl_default(where W: trait)]
+    #[derive(Clone, Debug)]
     #[widget]
     pub struct ScrollBars<W: Scrollable> {
         core: widget_core!(),
         mode: ScrollBarMode,
         show_bars: (bool, bool), // set by user (or set_rect when mode == Auto)
+        visible_timeout: Instant = Instant::now(),
         #[widget]
         horiz_bar: ScrollBar<kas::dir::Right>,
         #[widget]
@@ -346,6 +350,7 @@ impl_scope! {
                 core: Default::default(),
                 mode: ScrollBarMode::Auto,
                 show_bars: (false, false),
+                visible_timeout: Instant::now(),
                 horiz_bar: ScrollBar::new(),
                 vert_bar: ScrollBar::new(),
                 inner,
@@ -372,6 +377,14 @@ impl_scope! {
                 draw.recurse(&mut self.vert_bar);
             }
             draw.recurse(&mut self.inner);
+        }
+
+        fn force_visible_bars(&mut self, mgr: &mut EventMgr, horiz: bool, vert: bool) {
+            self.horiz_bar.force_visible = horiz;
+            self.vert_bar.force_visible = vert;
+            let delay = mgr.config().menu_delay();
+            mgr.update_on_timer(delay, self.id(), 0);
+            self.visible_timeout = Instant::now() + delay;
         }
     }
 
@@ -412,6 +425,7 @@ impl_scope! {
         fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
             let offset = self.inner.set_scroll_offset(mgr, offset);
             *mgr |= self.horiz_bar.set_value(offset.0) | self.vert_bar.set_value(offset.1);
+            self.force_visible_bars(mgr, true, true);
             offset
         }
     }
@@ -512,6 +526,23 @@ impl_scope! {
             mgr.register_nav_fallback(self.id());
         }
 
+        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+            match event {
+                Event::TimerUpdate(_) => {
+                    let now = Instant::now();
+                    if now >= self.visible_timeout {
+                        self.horiz_bar.force_visible = false;
+                        self.vert_bar.force_visible = false;
+                        *mgr |= TkAction::REDRAW;
+                    } else {
+                        mgr.update_on_timer(self.visible_timeout - now, self.id(), 0);
+                    }
+                    Response::Used
+                }
+                _ => Response::Unused,
+            }
+        }
+
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
             if index == widget_index![self.horiz_bar] {
                 if let Some(msg) = mgr.try_pop_msg() {
@@ -530,6 +561,7 @@ impl_scope! {
             // We assume the inner already updated its positions; this is just to set bars
             let offset = self.inner.scroll_offset();
             *mgr |= self.horiz_bar.set_value(offset.0) | self.vert_bar.set_value(offset.1);
+            self.force_visible_bars(mgr, true, true);
         }
     }
 }
