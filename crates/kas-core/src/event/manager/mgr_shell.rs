@@ -219,10 +219,8 @@ impl EventState {
         let action = mgr.action;
         drop(mgr);
 
-        if self.hover_icon != old_hover_icon {
-            if self.mouse_grab.is_none() {
-                shell.set_cursor_icon(self.hover_icon);
-            }
+        if self.hover_icon != old_hover_icon && self.mouse_grab.is_none() {
+            shell.set_cursor_icon(self.hover_icon);
         }
 
         let action = action | self.action;
