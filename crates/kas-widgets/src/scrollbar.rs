@@ -341,7 +341,7 @@ impl_scope! {
         /// Construct
         ///
         /// By default scrollbars are automatically enabled based on requirements.
-        /// See [`ScrollBars::with_mode`] and [`ScrollBars::with_bars`].
+        /// Use the [`HasScrollBars`] trait to adjust this behaviour.
         #[inline]
         pub fn new(inner: W) -> Self {
             ScrollBars {
@@ -563,6 +563,8 @@ impl_scope! {
     /// This is essentially a `ScrollBars<ScrollRegion<W>>`:
     /// [`ScrollRegion`] handles the actual scrolling and wheel/touch events,
     /// while [`ScrollBars`] adds scrollbar controls.
+    ///
+    /// Use the [`HasScrollBars`] trait to adjust scrollbar behaviour.
     #[autoimpl(Deref, DerefMut using self.0)]
     #[autoimpl(class_traits using self.0 where W: trait)]
     #[derive(Clone, Debug, Default)]

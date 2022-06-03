@@ -31,7 +31,7 @@ pub trait Scrollable: Widget {
     /// coordinates from the outer region to the scroll region, add this offset).
     ///
     /// The offset is restricted between [`Offset::ZERO`] and
-    /// [`ScrollRegion::max_scroll_offset`].
+    /// [`Self::max_scroll_offset`].
     fn scroll_offset(&self) -> Offset;
 
     /// Set the scroll offset

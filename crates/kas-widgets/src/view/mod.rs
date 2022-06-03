@@ -55,7 +55,7 @@
 //! -   ideally allowing `O(v)` performance where `v` is the number of visible
 //!     data items, thus allowing good scaling to large data sets (this depends
 //!     on the performance of the model)
-//! -   supporting scrolling (see [`super::Scrollable`])
+//! -   supporting scrolling (see [`kas::Scrollable`])
 //! -   supporting item selection
 //! -   controlling scrolling and selection via otherwise unhandled events
 //!
