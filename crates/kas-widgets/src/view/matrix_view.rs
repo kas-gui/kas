@@ -642,11 +642,9 @@ impl_scope! {
                     } else if end_id.is_some() {
                         if let Some(ref key) = self.press_target {
                             if mgr.config().mouse_nav_focus() {
-                                for w in &self.widgets {
+                                for w in &mut self.widgets {
                                     if w.key.as_ref().map(|k| k == key).unwrap_or(false) {
-                                        if w.widget.key_nav() {
-                                            mgr.set_nav_focus(w.widget.id(), false);
-                                        }
+                                        mgr.next_nav_focus(&mut w.widget, false, false);
                                         break;
                                     }
                                 }

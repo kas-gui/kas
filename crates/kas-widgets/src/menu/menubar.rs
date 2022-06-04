@@ -172,7 +172,7 @@ impl_scope! {
                         // We instantly open a sub-menu on motion over the bar,
                         // but delay when over a sub-menu (most intuitive?)
                         if self.rect().contains(coord) {
-                            mgr.set_nav_focus(self.id(), false);
+                            mgr.clear_nav_focus();
                             self.delayed_open = None;
                             self.set_menu_path(mgr, Some(&id), false);
                         } else if id != self.delayed_open {
