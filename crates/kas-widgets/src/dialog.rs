@@ -177,9 +177,10 @@ impl_scope! {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
             mgr.register_nav_fallback(self.id());
 
-            // Hack: set initial nav focus to the edit field (inner widget of self.edit).
-            // Pretend this is a keyboard action (param true) so that it requests char focus.
-            mgr.set_nav_focus((*self.edit).id(), true);
+            // Focus first item initially:
+            if mgr.nav_focus().is_none() {
+                mgr.next_nav_focus(self, false, true);
+            }
         }
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
