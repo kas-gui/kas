@@ -5,13 +5,14 @@
 
 //! Size and EventState manager
 
+use super::Pending;
 use crate::draw::DrawShared;
 use crate::event::EventState;
 use crate::geom::{Size, Vec2};
 use crate::layout::Align;
 use crate::text::TextApi;
 use crate::theme::{SizeHandle, SizeMgr, TextClass};
-use crate::{TkAction, Widget, WidgetId};
+use crate::{TkAction, Widget, WidgetExt, WidgetId};
 use std::ops::{Deref, DerefMut};
 
 #[allow(unused)]
@@ -92,6 +93,138 @@ impl<'a> SetRectMgr<'a> {
         align: (Align, Align),
     ) -> Vec2 {
         self.sh.text_set_size(text, class, size, align)
+    }
+
+    /// Advance the keyboard navigation focus
+    ///
+    /// If some widget currently has nav focus, this will give focus to the next
+    /// (or previous) widget under `widget` where [`Widget::key_nav`]
+    /// returns true; otherwise this will give focus to the first (or last)
+    /// such widget.
+    ///
+    /// Returns true on success, false if there are no navigable widgets or
+    /// some error occurred.
+    ///
+    /// The target widget will receive [`Event::NavFocus`] with `key_focus` as
+    /// the payload. This boolean should be true if focussing in response to
+    /// keyboard input, false if reacting to mouse or touch input.
+    pub fn next_nav_focus(
+        &mut self,
+        mut widget: &mut dyn Widget,
+        reverse: bool,
+        key_focus: bool,
+    ) -> bool {
+        if let Some(id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
+            if let Some(w) = widget.find_widget_mut(&id) {
+                widget = w;
+            } else {
+                // This is a corner-case. Do nothing.
+                return false;
+            }
+        }
+
+        // We redraw in all cases. Since this is not part of widget event
+        // processing, we can push directly to self.action.
+        self.send_action(TkAction::REDRAW);
+        let old_nav_focus = self.nav_focus.take();
+
+        fn nav(
+            mgr: &mut SetRectMgr,
+            widget: &mut dyn Widget,
+            focus: Option<&WidgetId>,
+            rev: bool,
+        ) -> Option<WidgetId> {
+            if mgr.ev_state().is_disabled(widget.id_ref()) {
+                return None;
+            }
+
+            let mut child = focus.and_then(|id| widget.find_child_index(id));
+
+            if !rev {
+                if let Some(index) = child {
+                    if let Some(id) = widget
+                        .get_child_mut(index)
+                        .and_then(|w| nav(mgr, w, focus, rev))
+                    {
+                        return Some(id);
+                    }
+                } else if !widget.eq_id(focus) && widget.key_nav() {
+                    return Some(widget.id());
+                }
+
+                loop {
+                    if let Some(index) = widget.spatial_nav(mgr, rev, child) {
+                        if let Some(id) = widget
+                            .get_child_mut(index)
+                            .and_then(|w| nav(mgr, w, focus, rev))
+                        {
+                            return Some(id);
+                        }
+                        child = Some(index);
+                    } else {
+                        return None;
+                    }
+                }
+            } else {
+                if let Some(index) = child {
+                    if let Some(id) = widget
+                        .get_child_mut(index)
+                        .and_then(|w| nav(mgr, w, focus, rev))
+                    {
+                        return Some(id);
+                    }
+                }
+
+                loop {
+                    if let Some(index) = widget.spatial_nav(mgr, rev, child) {
+                        if let Some(id) = widget
+                            .get_child_mut(index)
+                            .and_then(|w| nav(mgr, w, focus, rev))
+                        {
+                            return Some(id);
+                        }
+                        child = Some(index);
+                    } else {
+                        return if !widget.eq_id(focus) && widget.key_nav() {
+                            Some(widget.id())
+                        } else {
+                            None
+                        };
+                    }
+                }
+            }
+        }
+
+        // Whether to restart from the beginning on failure
+        let restart = self.nav_focus.is_some();
+
+        let mut opt_id = nav(self, widget, old_nav_focus.as_ref(), reverse);
+        if restart && opt_id.is_none() {
+            opt_id = nav(self, widget, None, reverse);
+        }
+
+        log::trace!("EventMgr: nav_focus = {:?}", opt_id);
+        self.nav_focus = opt_id.clone();
+
+        if opt_id == old_nav_focus {
+            return opt_id.is_some();
+        }
+
+        if let Some(id) = old_nav_focus {
+            self.pending.push_back(Pending::LostNavFocus(id));
+        }
+
+        if let Some(id) = opt_id {
+            if id != self.sel_focus {
+                self.clear_char_focus();
+            }
+            self.pending.push_back(Pending::SetNavFocus(id, key_focus));
+            true
+        } else {
+            // Most likely an error occurred
+            self.clear_char_focus();
+            false
+        }
     }
 }
 
