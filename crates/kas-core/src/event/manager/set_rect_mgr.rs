@@ -16,7 +16,7 @@ use crate::{TkAction, Widget, WidgetExt, WidgetId};
 use std::ops::{Deref, DerefMut};
 
 #[allow(unused)]
-use crate::Layout;
+use crate::{event::Event, Layout};
 
 /// Manager available to [`Layout::set_rect`] and [`Widget::configure`]
 ///

@@ -52,7 +52,7 @@ use crate::theme::{DrawMgr, SizeMgr};
 use crate::WidgetId;
 
 #[allow(unused)]
-use crate::Layout;
+use crate::Widget;
 
 pub use align::{Align, AlignHints, CompleteAlignment};
 pub use grid_solver::{DefaultWithLen, GridChildInfo, GridDimensions, GridSetter, GridSolver};
