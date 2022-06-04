@@ -545,21 +545,20 @@ impl<'a> EventMgr<'a> {
     pub fn add_popup(&mut self, popup: crate::Popup) -> Option<WindowId> {
         trace!("Manager::add_popup({:?})", popup);
         let new_id = &popup.id;
-        while let Some((_, popup, _)) = self.state.popups.last() {
+        while let Some((_, popup, _)) = self.popups.last() {
             if popup.parent.is_ancestor_of(new_id) {
                 break;
             }
-            let (wid, popup, _old_nav_focus) = self.state.popups.pop().unwrap();
+            let (wid, popup, _old_nav_focus) = self.popups.pop().unwrap();
             self.shell.close_window(wid);
-            self.state.popup_removed.push((popup.parent, wid));
+            self.popup_removed.push((popup.parent, wid));
             // Don't restore old nav focus: assume new focus will be set by new popup
         }
 
         let opt_id = self.shell.add_popup(popup.clone());
         if let Some(id) = opt_id {
-            self.state
-                .popups
-                .push((id, popup, self.state.nav_focus.clone()));
+            let nav_focus = self.nav_focus.clone();
+            self.popups.push((id, popup, nav_focus));
         }
         self.clear_nav_focus();
         opt_id
@@ -588,20 +587,15 @@ impl<'a> EventMgr<'a> {
     /// where focus has already been changed.)
     pub fn close_window(&mut self, id: WindowId, restore_focus: bool) {
         if let Some(index) =
-            self.state.popups.iter().enumerate().find_map(
-                |(i, p)| {
-                    if p.0 == id {
-                        Some(i)
-                    } else {
-                        None
-                    }
-                },
-            )
+            self.popups
+                .iter()
+                .enumerate()
+                .find_map(|(i, p)| if p.0 == id { Some(i) } else { None })
         {
             let mut old_nav_focus = None;
-            while self.state.popups.len() > index {
-                let (wid, popup, onf) = self.state.popups.pop().unwrap();
-                self.state.popup_removed.push((popup.parent, wid));
+            while self.popups.len() > index {
+                let (wid, popup, onf) = self.popups.pop().unwrap();
+                self.popup_removed.push((popup.parent, wid));
                 self.shell.close_window(wid);
                 old_nav_focus = onf;
             }
@@ -733,10 +727,10 @@ impl<'a> EventMgr<'a> {
                     log::error!("grab_press: existing mouse grab!");
                 }
                 if mode != GrabMode::Grab {
-                    pan_grab = self.state.set_pan_on(id.clone(), mode, false, coord);
+                    pan_grab = self.set_pan_on(id.clone(), mode, false, coord);
                 }
                 trace!("EventMgr: start mouse grab by {}", start_id);
-                self.state.mouse_grab = Some(MouseGrab {
+                self.mouse_grab = Some(MouseGrab {
                     button,
                     repetitions,
                     start_id: start_id.clone(),
@@ -757,10 +751,10 @@ impl<'a> EventMgr<'a> {
                     log::error!("grab_press: existing touch grab!");
                 }
                 if mode != GrabMode::Grab {
-                    pan_grab = self.state.set_pan_on(id.clone(), mode, true, coord);
+                    pan_grab = self.set_pan_on(id.clone(), mode, true, coord);
                 }
                 trace!("EventMgr: start touch grab by {}", start_id);
-                self.state.touch_grab.push(TouchGrab {
+                self.touch_grab.push(TouchGrab {
                     id: touch_id,
                     start_id,
                     depress: Some(id.clone()),
@@ -788,10 +782,10 @@ impl<'a> EventMgr<'a> {
         coord: Coord,
         cursor: Option<CursorIcon>,
     ) {
-        if id == self.state.mouse_grab.as_ref().map(|grab| &grab.start_id) {
+        if id == self.mouse_grab.as_ref().map(|grab| &grab.start_id) {
             self.remove_mouse_grab();
         }
-        self.state.touch_grab.retain(|grab| id != grab.start_id);
+        self.touch_grab.retain(|grab| id != grab.start_id);
 
         self.grab_press(id, source, coord, GrabMode::Grab, cursor);
     }
@@ -802,7 +796,7 @@ impl<'a> EventMgr<'a> {
     /// [`EventMgr::grab_press`]). The cursor will be reset when the mouse-grab
     /// ends.
     pub fn update_grab_cursor(&mut self, id: WidgetId, icon: CursorIcon) {
-        if let Some(ref grab) = self.state.mouse_grab {
+        if let Some(ref grab) = self.mouse_grab {
             if grab.start_id == id {
                 self.shell.set_cursor_icon(icon);
             }
@@ -828,7 +822,7 @@ impl<'a> EventMgr<'a> {
         reverse: bool,
         key_focus: bool,
     ) -> bool {
-        if let Some(id) = self.state.popups.last().map(|(_, p, _)| p.id.clone()) {
+        if let Some(id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
             if let Some(w) = widget.find_widget_mut(&id) {
                 widget = w;
             } else {
@@ -838,9 +832,9 @@ impl<'a> EventMgr<'a> {
         }
 
         // We redraw in all cases. Since this is not part of widget event
-        // processing, we can push directly to self.state.action.
-        self.state.send_action(TkAction::REDRAW);
-        let old_nav_focus = self.state.nav_focus.take();
+        // processing, we can push directly to self.action.
+        self.send_action(TkAction::REDRAW);
+        let old_nav_focus = self.nav_focus.take();
 
         fn nav(
             mgr: &mut SetRectMgr,
@@ -910,7 +904,7 @@ impl<'a> EventMgr<'a> {
         }
 
         // Whether to restart from the beginning on failure
-        let restart = self.state.nav_focus.is_some();
+        let restart = self.nav_focus.is_some();
 
         let mut opt_id = None;
         self.set_rect_mgr(|mgr| {
@@ -921,7 +915,7 @@ impl<'a> EventMgr<'a> {
         });
 
         trace!("EventMgr: nav_focus = {:?}", opt_id);
-        self.state.nav_focus = opt_id.clone();
+        self.nav_focus = opt_id.clone();
 
         if opt_id == old_nav_focus {
             return opt_id.is_some();
@@ -932,12 +926,10 @@ impl<'a> EventMgr<'a> {
         }
 
         if let Some(id) = opt_id {
-            if id != self.state.sel_focus {
+            if id != self.sel_focus {
                 self.clear_char_focus();
             }
-            self.state
-                .pending
-                .push_back(Pending::SetNavFocus(id, key_focus));
+            self.pending.push_back(Pending::SetNavFocus(id, key_focus));
             true
         } else {
             // Most likely an error occurred

@@ -430,12 +430,12 @@ impl<'a> Drop for EventMgr<'a> {
 /// Internal methods
 impl<'a> EventMgr<'a> {
     fn set_hover(&mut self, w_id: Option<WidgetId>) {
-        if self.state.hover != w_id {
+        if self.hover != w_id {
             trace!("EventMgr: hover = {:?}", w_id);
-            if let Some(id) = self.state.hover.take() {
+            if let Some(id) = self.hover.take() {
                 self.pending.push_back(Pending::LostMouseHover(id));
             }
-            self.state.hover = w_id.clone();
+            self.hover = w_id.clone();
 
             if let Some(id) = w_id {
                 self.pending.push_back(Pending::MouseHover(id));
@@ -453,10 +453,7 @@ impl<'a> EventMgr<'a> {
 
         use VirtualKeyCode as VK;
 
-        let opt_command = self
-            .state
-            .config
-            .shortcuts(|s| s.get(self.state.modifiers, vkey));
+        let opt_command = self.config.shortcuts(|s| s.get(self.modifiers, vkey));
 
         if let Some(cmd) = opt_command {
             let mut targets = vec![];
@@ -473,37 +470,37 @@ impl<'a> EventMgr<'a> {
                 }
             };
 
-            if self.state.char_focus {
-                if let Some(id) = self.state.sel_focus.clone() {
+            if self.char_focus {
+                if let Some(id) = self.sel_focus.clone() {
                     if send(self, id, cmd) {
                         return;
                     }
                 }
             }
 
-            if !self.state.modifiers.alt() {
-                if let Some(id) = self.state.nav_focus.clone() {
+            if !self.modifiers.alt() {
+                if let Some(id) = self.nav_focus.clone() {
                     if send(self, id, cmd) {
                         return;
                     }
                 }
             }
 
-            if let Some(id) = self.state.popups.last().map(|popup| popup.1.parent.clone()) {
+            if let Some(id) = self.popups.last().map(|popup| popup.1.parent.clone()) {
                 if send(self, id, cmd) {
                     return;
                 }
             }
 
             if cmd.suitable_for_sel_focus() {
-                if let Some(id) = self.state.sel_focus.clone() {
+                if let Some(id) = self.sel_focus.clone() {
                     if send(self, id, cmd) {
                         return;
                     }
                 }
             }
 
-            if let Some(id) = self.state.nav_fallback.clone() {
+            if let Some(id) = self.nav_fallback.clone() {
                 if send(self, id, cmd) {
                     return;
                 }
@@ -513,14 +510,14 @@ impl<'a> EventMgr<'a> {
         // Next priority goes to accelerator keys when Alt is held or alt_bypass is true
         let mut target = None;
         let mut n = 0;
-        for (i, id) in (self.state.popups.iter().rev())
+        for (i, id) in (self.popups.iter().rev())
             .map(|(_, popup, _)| popup.parent.clone())
             .chain(std::iter::once(widget.id()))
             .enumerate()
         {
-            if let Some(layer) = self.state.accel_layers.get(&id) {
+            if let Some(layer) = self.accel_layers.get(&id) {
                 // but only when Alt is held or alt-bypass is enabled:
-                if self.state.modifiers.alt() || layer.0 {
+                if self.modifiers.alt() || layer.0 {
                     if let Some(id) = layer.1.get(&vkey).cloned() {
                         target = Some(id);
                         n = i;
@@ -532,9 +529,9 @@ impl<'a> EventMgr<'a> {
 
         // If we found a key binding below the top layer, we should close everything above
         if n > 0 {
-            let len = self.state.popups.len();
+            let len = self.popups.len();
             for i in ((len - n)..len).rev() {
-                let id = self.state.popups[i].0;
+                let id = self.popups[i].0;
                 self.close_window(id, false);
             }
         }
@@ -551,10 +548,10 @@ impl<'a> EventMgr<'a> {
             self.send_event(widget, id, Event::Command(Command::Activate));
         } else if vkey == VK::Tab {
             self.clear_char_focus();
-            let shift = self.state.modifiers.shift();
+            let shift = self.modifiers.shift();
             self.next_nav_focus(widget, shift, true);
         } else if vkey == VK::Escape {
-            if let Some(id) = self.state.popups.last().map(|(id, _, _)| *id) {
+            if let Some(id) = self.popups.last().map(|(id, _, _)| *id) {
                 self.close_window(id, true);
             }
         }
@@ -562,11 +559,11 @@ impl<'a> EventMgr<'a> {
 
     // Clears mouse grab and pan grab, resets cursor and redraws
     fn remove_mouse_grab(&mut self) -> Option<MouseGrab> {
-        if let Some(grab) = self.state.mouse_grab.take() {
+        if let Some(grab) = self.mouse_grab.take() {
             trace!("EventMgr: end mouse grab by {}", grab.start_id);
-            self.shell.set_cursor_icon(self.state.hover_icon);
+            self.shell.set_cursor_icon(self.hover_icon);
             self.send_action(TkAction::REDRAW); // redraw(..)
-            self.state.remove_pan_grab(grab.pan_grab);
+            self.remove_pan_grab(grab.pan_grab);
             Some(grab)
         } else {
             None
@@ -642,7 +639,6 @@ impl<'a> EventMgr<'a> {
 
     fn send_popup_first(&mut self, widget: &mut dyn Widget, id: Option<WidgetId>, event: Event) {
         while let Some((wid, parent)) = self
-            .state
             .popups
             .last()
             .map(|(wid, p, _)| (*wid, p.parent.clone()))
