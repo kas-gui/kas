@@ -235,7 +235,7 @@ impl<'a> Iterator for WidgetPathIter<'a> {
 ///
 /// [`Display`]: std::fmt::Display
 /// [`TkAction::RECONFIGURE`]: crate::TkAction::RECONFIGURE
-/// [`SetRectMgr::configure`]: crate::layout::SetRectMgr::configure
+/// [`SetRectMgr::configure`]: crate::event::SetRectMgr::configure
 #[derive(Clone)]
 pub struct WidgetId(IntOrPtr);
 

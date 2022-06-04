@@ -8,8 +8,9 @@
 use log::trace;
 use std::fmt;
 
-use super::{AlignHints, AxisInfo, Margins, SetRectMgr, SizeRules};
+use super::{AlignHints, AxisInfo, Margins, SizeRules};
 use crate::cast::Conv;
+use crate::event::SetRectMgr;
 use crate::geom::{Rect, Size};
 use crate::theme::SizeMgr;
 use crate::{Widget, WidgetExt};

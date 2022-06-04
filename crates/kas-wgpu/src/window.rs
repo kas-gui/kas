@@ -10,9 +10,9 @@ use std::time::Instant;
 
 use kas::cast::Cast;
 use kas::draw::{AnimationState, DrawIface, DrawShared, PassId};
-use kas::event::{CursorIcon, EventState, UpdateId};
+use kas::event::{CursorIcon, EventState, SetRectMgr, UpdateId};
 use kas::geom::{Coord, Rect, Size};
-use kas::layout::{SetRectMgr, SolveCache};
+use kas::layout::SolveCache;
 use kas::theme::{DrawMgr, SizeHandle, SizeMgr, ThemeControl};
 use kas::{Layout, TkAction, WidgetCore, WidgetExt, WindowId};
 use kas_theme::{Theme, Window as _};

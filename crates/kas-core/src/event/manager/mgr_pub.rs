@@ -13,7 +13,6 @@ use super::*;
 use crate::cast::Conv;
 use crate::draw::DrawShared;
 use crate::geom::{Coord, Offset, Vec2};
-use crate::layout::SetRectMgr;
 use crate::theme::{SizeMgr, ThemeControl};
 #[allow(unused)]
 use crate::Widget; // for doc-links

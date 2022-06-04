@@ -7,9 +7,9 @@
 
 use std::fmt;
 
-use crate::event::{Event, EventMgr, Response, Scroll};
+use crate::event::{Event, EventMgr, Response, Scroll, SetRectMgr};
 use crate::geom::{Coord, Offset, Rect};
-use crate::layout::{AlignHints, AxisInfo, SetRectMgr, SizeRules};
+use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::util::IdentifyWidget;
 use crate::WidgetId;

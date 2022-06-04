@@ -12,7 +12,6 @@ use std::time::{Duration, Instant};
 use super::*;
 use crate::cast::traits::*;
 use crate::geom::{Coord, DVec2};
-use crate::layout::SetRectMgr;
 use crate::{ShellWindow, TkAction, Widget, WidgetId};
 
 // TODO: this should be configurable or derived from the system
