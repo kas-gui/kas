@@ -6,7 +6,7 @@
 //! Combobox
 
 use super::{menu::MenuEntry, Column, Mark, PopupFrame, StringLabel};
-use kas::event::{Command, Scroll};
+use kas::event::{Command, Scroll, ScrollDelta};
 use kas::prelude::*;
 use kas::theme::{MarkStyle, TextClass};
 use kas::WindowId;
@@ -67,35 +67,49 @@ impl_scope! {
                     parent: s.id(),
                     direction: Direction::Down,
                 });
-                if let Some(id) = s.popup.inner.inner.get_child(s.active).map(|w| w.id()) {
-                    mgr.set_nav_focus(id, key_focus);
+                if let Some(w) = s.popup.inner.inner.get_child_mut(s.active) {
+                    mgr.next_nav_focus(w, false, key_focus);
                 }
             };
 
             match event {
                 Event::Command(cmd) => {
-                    let next = |mgr: &mut EventMgr, s, clr, rev| {
-                        if clr {
-                            mgr.clear_nav_focus();
-                        }
-                        mgr.next_nav_focus(s, rev, true);
-                        Response::Used
-                    };
-                    match cmd {
-                        cmd if cmd.is_activate() => {
-                            if let Some(id) = self.popup_id {
-                                mgr.close_window(id, true);
-                            } else {
-                                open_popup(self, mgr, true);
+                    if let Some(popup_id) = self.popup_id {
+                        let next = |mgr: &mut EventMgr, s, clr, rev| {
+                            if clr {
+                                mgr.clear_nav_focus();
                             }
-                            Response::Used
+                            mgr.next_nav_focus(s, rev, true);
+                        };
+                        match cmd {
+                            cmd if cmd.is_activate() => mgr.close_window(popup_id, true),
+                            Command::Up => next(mgr, self, false, true),
+                            Command::Down => next(mgr, self, false, false),
+                            Command::Home => next(mgr, self, true, false),
+                            Command::End => next(mgr, self, true, true),
+                            _ => return Response::Unused,
                         }
-                        Command::Up => next(mgr, self, false, true),
-                        Command::Down => next(mgr, self, false, false),
-                        Command::Home => next(mgr, self, true, false),
-                        Command::End => next(mgr, self, true, true),
-                        _ => Response::Unused,
+                    } else {
+                        let last = self.len().saturating_sub(1);
+                        match cmd {
+                            cmd if cmd.is_activate() => open_popup(self, mgr, true),
+                            Command::Up => *mgr |= self.set_active(self.active.saturating_sub(1)),
+                            Command::Down => *mgr |= self.set_active((self.active + 1).min(last)),
+                            Command::Home => *mgr |= self.set_active(0),
+                            Command::End => *mgr |= self.set_active(last),
+                            _ => return Response::Unused,
+                        }
                     }
+                    Response::Used
+                }
+                Event::Scroll(ScrollDelta::LineDelta(_, y)) if self.popup_id.is_none() => {
+                    if y > 0.0 {
+                        *mgr |= self.set_active(self.active.saturating_sub(1));
+                    } else if y < 0.0 {
+                        let last = self.len().saturating_sub(1);
+                        *mgr |= self.set_active((self.active + 1).min(last));
+                    }
+                    Response::Used
                 }
                 Event::PressStart {
                     source,

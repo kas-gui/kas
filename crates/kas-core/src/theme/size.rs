@@ -14,7 +14,7 @@ use crate::layout::{AxisInfo, FrameRules, Margins, SizeRules};
 use crate::macros::autoimpl;
 use crate::text::{Align, TextApi};
 #[allow(unused)]
-use crate::{layout::SetRectMgr, theme::DrawMgr};
+use crate::{event::SetRectMgr, theme::DrawMgr};
 
 // for doc use
 #[allow(unused)]

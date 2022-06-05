@@ -119,7 +119,7 @@ impl_scope! {
 
     impl Widget for Clock {
         fn configure(&mut self, mgr: &mut SetRectMgr) {
-            mgr.update_on_timer(Duration::new(0, 0), self.id(), 0);
+            mgr.request_update(self.id(), 0, Duration::new(0, 0), true);
         }
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
@@ -134,7 +134,7 @@ impl_scope! {
                         | set_text_and_prepare(&mut self.time, time, avail);
                     let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
                     info!("Requesting update in {}ns", ns);
-                    mgr.update_on_timer(Duration::new(0, ns), self.id(), 0);
+                    mgr.request_update(self.id(), 0, Duration::new(0, ns), true);
                     Response::Used
                 }
                 _ => Response::Unused,

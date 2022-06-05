@@ -8,8 +8,7 @@
 use std::time::{Duration, Instant};
 
 use kas::class::HasString;
-use kas::event::{Event, EventMgr, Response};
-use kas::layout::SetRectMgr;
+use kas::event::{Event, EventMgr, Response, SetRectMgr};
 use kas::macros::impl_singleton;
 use kas::widgets::{Frame, Label, TextButton};
 use kas::{Widget, WidgetCore, WidgetExt, Window};
@@ -48,7 +47,7 @@ fn make_window() -> Box<dyn kas::Window> {
                             let dur = self.saved + (Instant::now() - start);
                             let text = format!("{}.{:03}", dur.as_secs(), dur.subsec_millis());
                             *mgr |= self.display.set_string(text);
-                            mgr.update_on_timer(Duration::new(0, 1), self.id(), 0);
+                            mgr.request_update(self.id(), 0, Duration::new(0, 1), true);
                         }
                         Response::Used
                     }
@@ -66,7 +65,7 @@ fn make_window() -> Box<dyn kas::Window> {
                         self.start = None;
                     } else {
                         self.start = Some(Instant::now());
-                        mgr.update_on_timer(Duration::new(0, 0), self.id(), 0);
+                        mgr.request_update(self.id(), 0, Duration::new(0, 0), true);
                     }
                 }
             }

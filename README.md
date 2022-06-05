@@ -28,13 +28,18 @@ KAS is a widget-first GUI toolkit:
 
 ### Limitations
 
--   Slow compile times. See [Faster builds](#faster-builds) below.
--   Large binaries. Distributing feature-heavy applications without shared
-    libraries will always have this problem, but if you seek a minimal GUI
-    toolkit then you should probably look elsewhere.
+-   Slow compile times. See [Faster builds](https://github.com/kas-gui/kas/wiki/Getting-started#faster-builds).
+-   Somewhat large binaries; e.g. for the `gallery` example: 333M (debug),
+    38M (debug + strip), 20M (release), 12M (release + strip).
+    Note that these binaries are statically linked, as is the norm for Rust.
+    Some improvements may be possible, e.g. disabling features such as `shaping`
+    and `image` or replacing the rendering backend.
 
 ### Documentation
 
+-   Wiki: [Getting started](https://github.com/kas-gui/kas/wiki/Getting-started),
+    [Configuration](https://github.com/kas-gui/kas/wiki/Configuration),
+    [Troubleshooting](https://github.com/kas-gui/kas/wiki/Troubleshooting)
 -   API docs: <https://docs.rs/kas>, <https://docs.rs/kas-core>,
     <https://docs.rs/kas-widgets>, <https://docs.rs/kas-theme>, <https://docs.rs/kas-wgpu>
 -   [KAS Tutorials](https://kas-gui.github.io/tutorials/)
@@ -77,133 +82,6 @@ trade-offs of a widget-first design:
     widget-first model, and less flexible
 
 
-Getting started
----------------
-
-### Dependencies
-
-KAS requires a [Rust] compiler, version (MSRV) 1.58 or greater.
-Using the **nightly** channel does have a few advantages:
-
--   Procedural macros can only emit warnings using nightly `rustc`.
-    missed without nightly rustc, hence **nightly is recommended for development**.
--   The `nightly` (`min_spec`) feature allows some visual improvements (see below).
--   The `doc_cfg` feature may be used for API docs.
-
-#### Linux libraries
-
-Install dependencies (glslc is optional; see [kas-wgpu's README](crates/kas-wgpu/README.md)):
-```sh
-# For Ubuntu:
-sudo apt-get install build-essential git libxcb-shape0-dev libxcb-xfixes0-dev libharfbuzz-dev
-
-# For Fedora:
-sudo dnf install libxcb-devel harfbuzz-devel glslc
-```
-
-### Running examples
-
-Clone the repository and run the examples as follows:
-```sh
-git clone https://github.com/kas-gui/kas.git
-cd kas
-cargo run --example gallery
-cargo run --example layout
-cargo run --example filter-list
-cd examples/mandlebrot; cargo run
-```
-
-#### Buliding documentation locally
-
-```
-RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=nightly --all --no-deps --open
-```
-
-### Faster builds
-
-People variously complain that Rust / KAS is slow to compile, and they have a
-point: just recompiling the `gallery` example takes over six seconds on a 5800X!
-
-There are two strategies we can use to speed this up:
-
-1.  Dynamic linking. I wouldn't recommend *shipping* code with dynamic linking
-    due to dependency complications (although it is possible and potentially
-    useful, especially within Linux distributions), but during development it
-    can make a lot of sense.
-
-    Enabling dynamic linking is very easy: use `--features dynamic`.
-
-2.  A faster linker: [LLD](https://lld.llvm.org/) or better yet
-    [mold](https://github.com/rui314/mold).
-
-    Using LLD: (1) install (e.g. via Linux distribution packages), (2) create
-    `$HOME/.cargo/config`, (3) add this:
-
-    ```toml
-    [build]
-    rustflags = ["-C", "link-arg=-fuse-ld=lld"]
-    ```
-
-    Using Mold: (1) install (see project page), (2) prefix build commands with
-    `mold -run`.
-
-Here are some crude benchmarks. **Method:** build the gallery example, touch
-(or re-save) `gallery.rs`, and rebuild. Use the Unix `time` command, run three
-times, and report the best `real` time of the three. **Machine:** 5800X, Fedora
-34, SSD.
-
-| configuration | time | version |
-| ------------- | ---- | ------- |
-| standard | 0m6.124s | rustc 1.54.0 (a178d0322 2021-07-26) |
-| dynamic | 0m2.275s | |
-| lld | 0m1.537s | LLD 12.0.1 (lld-12.0.1-1.fc34.src.rpm) |
-| lld + dynamic | 0m1.061s | |
-| mold | 0m1.147s | mold 0.9.3 (ec3319b37f653dccfa4d1a859a5c687565ab722d) |
-| mold + dynamic | 0m0.971s | |
-
-
-### Run-time configuration
-
-#### Graphics
-
-KAS uses [WGPU] for rendering, which targets Vulkan and OpenGL on Linux and
-Android, Vulkan, DX12 and DX11 on Windows, and finally Metal on MacOS and iOS.
-This should satisfy *most* devices, albeit support may be incomplete (refer to
-[WGPU] documentation).
-
-To force use of a specific backend, set `KAS_BACKENDS`, for example:
-```
-export KAS_BACKENDS=GL
-```
-To prefer use of a discrete GPU over integrated graphics, set:
-```
-export KAS_POWER_PREFERENCE=HighPerformance
-```
-
-#### Config files
-
-Configuration support is built but not enabled by default, since formats are not
-yet stable. It may also be used programmatically.
-
-To use, specify paths (`KAS_CONFIG`, `KAS_THEME_CONFIG`) and mode
-(`KAS_CONFIG_MODE`: `Read` (default), `ReadWrite` or `WriteDefault`).
-
-To get started:
-```sh
-export KAS_CONFIG=kas.yaml
-export KAS_THEME_CONFIG=theme.yaml
-export KAS_CONFIG_MODE=readwrite
-
-# Optionally, force creation of default files:
-KAS_CONFIG_MODE=WriteDefault cargo run --example gallery
-
-# Now, just run:
-cargo run --example gallery
-```
-
-For further documentation, see [`kas_wgpu::Options`].
-
-
 Crates and features
 -------------------
 
@@ -220,15 +98,11 @@ Crates and features
 -   `kas-wgpu`: provides windowing via [winit] and rendering via [WGPU]
 -   `kas-dylib`: support for dynamic linking
 -   <https://docs.rs/easy-cast>: spin-off crate for checked casts
+-   <https://docs.rs/impl-tools>: spin-off macro support crate
 
 At this point in time, `kas-wgpu` is the only windowing/rendering implementation
 and `kas-theme` the only theme (high-level drawing) implementation, thus `kas`
 uses these crates by default, though they are optional.
-
-Futher, capabilities such as text shaping and Markdown processing are enabled by
-default. Image-loading support is not currently optional, and includes all
-formats supported by the `image` crate. Some improvements to binary size and
-compile time should be possible here.
 
 ### Feature flags
 
@@ -237,7 +111,8 @@ requiring nightly `rustc`. Other crates enable fewer features by defualt.
 
 The following non-default features of `kas` are highlighted:
 
--   `dynamic`: enable dynamic linking for `kas` (see [Faster builds](#faster-builds))
+-   `dynamic`: enable dynamic linking for `kas` (see
+    [Faster builds](https://github.com/kas-gui/kas/wiki/Getting-started#faster-builds))
 -   `internal_doc`: turns on some extra documentation intended for internal
     usage but not for end users. (This only affects generated documentation.)
 -   `nightly`: enables the less problematic unstable features

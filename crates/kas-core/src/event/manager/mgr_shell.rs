@@ -12,7 +12,6 @@ use std::time::{Duration, Instant};
 use super::*;
 use crate::cast::traits::*;
 use crate::geom::{Coord, DVec2};
-use crate::layout::SetRectMgr;
 use crate::{ShellWindow, TkAction, Widget, WidgetId};
 
 // TODO: this should be configurable or derived from the system
@@ -141,7 +140,7 @@ impl EventState {
             action: TkAction::empty(),
         };
 
-        while let Some((parent, wid)) = mgr.state.popup_removed.pop() {
+        while let Some((parent, wid)) = mgr.popup_removed.pop() {
             mgr.send_event(widget, parent, Event::PopupRemoved(wid));
         }
 
@@ -149,14 +148,14 @@ impl EventState {
             mgr.send_event(widget, id, event);
         }
 
-        for i in 0..mgr.state.touch_grab.len() {
-            if let Some((id, event)) = mgr.state.touch_grab[i].flush_move() {
+        for i in 0..mgr.touch_grab.len() {
+            if let Some((id, event)) = mgr.touch_grab[i].flush_move() {
                 mgr.send_event(widget, id, event);
             }
         }
 
-        for gi in 0..mgr.state.pan_grab.len() {
-            let grab = &mut mgr.state.pan_grab[gi];
+        for gi in 0..mgr.pan_grab.len() {
+            let grab = &mut mgr.pan_grab[gi];
             debug_assert!(grab.mode != GrabMode::Grab);
             assert!(grab.n > 0);
 
@@ -200,14 +199,14 @@ impl EventState {
 
         // Warning: infinite loops are possible here if widgets always queue a
         // new pending event when evaluating one of these:
-        while let Some(item) = mgr.state.pending.pop_front() {
+        while let Some(item) = mgr.pending.pop_front() {
             trace!("Handling Pending::{:?}", item);
             let (id, event) = match item {
                 Pending::SetNavFocus(id, key_focus) => (id, Event::NavFocus(key_focus)),
                 Pending::MouseHover(id) => (id, Event::MouseHover),
                 Pending::LostNavFocus(id) => (id, Event::LostNavFocus),
                 Pending::LostMouseHover(id) => {
-                    mgr.state.hover_icon = Default::default();
+                    mgr.hover_icon = Default::default();
                     (id, Event::LostMouseHover)
                 }
                 Pending::LostCharFocus(id) => (id, Event::LostCharFocus),
@@ -238,16 +237,16 @@ impl<'a> EventMgr<'a> {
         let now = Instant::now();
 
         // assumption: time_updates are sorted in reverse order
-        while !self.state.time_updates.is_empty() {
-            if self.state.time_updates.last().unwrap().0 > now {
+        while !self.time_updates.is_empty() {
+            if self.time_updates.last().unwrap().0 > now {
                 break;
             }
 
-            let update = self.state.time_updates.pop().unwrap();
+            let update = self.time_updates.pop().unwrap();
             self.send_event(widget, update.1, Event::TimerUpdate(update.2));
         }
 
-        self.state.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
+        self.time_updates.sort_by(|a, b| b.0.cmp(&a.0)); // reverse sort
     }
 
     /// Update widgets with an [`UpdateId`]
@@ -278,7 +277,7 @@ impl<'a> EventMgr<'a> {
             HoveredFileCancelled => ,
             */
             ReceivedCharacter(c) => {
-                if let Some(id) = self.state.char_focus() {
+                if let Some(id) = self.char_focus() {
                     // Filter out control codes (Unicode 5.11). These may be
                     // generated from combinations such as Ctrl+C by some other
                     // layer. We use our own shortcut system instead.
@@ -289,13 +288,13 @@ impl<'a> EventMgr<'a> {
                 }
             }
             Focused(state) => {
-                self.state.window_has_focus = state;
+                self.window_has_focus = state;
                 if state {
                     // Required to restart theme animations
-                    self.state.send_action(TkAction::REDRAW);
+                    self.send_action(TkAction::REDRAW);
                 } else {
                     // Window focus lost: close all popups
-                    while let Some(id) = self.state.popups.last().map(|(id, _, _)| *id) {
+                    while let Some(id) = self.popups.last().map(|(id, _, _)| *id) {
                         self.close_window(id, true);
                     }
                 }
@@ -314,19 +313,19 @@ impl<'a> EventMgr<'a> {
                 }
             }
             ModifiersChanged(state) => {
-                if state.alt() != self.state.modifiers.alt() {
+                if state.alt() != self.modifiers.alt() {
                     // This controls drawing of accelerator key indicators
-                    self.state.send_action(TkAction::REDRAW);
+                    self.send_action(TkAction::REDRAW);
                 }
-                self.state.modifiers = state;
+                self.modifiers = state;
             }
             CursorMoved { position, .. } => {
-                self.state.last_click_button = FAKE_MOUSE_BUTTON;
+                self.last_click_button = FAKE_MOUSE_BUTTON;
                 let coord = position.cast_approx();
 
                 // Update hovered widget
                 let cur_id = widget.find_id(coord);
-                let delta = coord - self.state.last_mouse_coord;
+                let delta = coord - self.last_mouse_coord;
                 self.set_hover(cur_id.clone());
 
                 if let Some(grab) = self.state.mouse_grab.as_mut() {
@@ -339,8 +338,7 @@ impl<'a> EventMgr<'a> {
                     {
                         pan.coords[usize::conv(grab.pan_grab.1)].1 = coord;
                     }
-                } else if let Some(id) = self.state.popups.last().map(|(_, p, _)| p.parent.clone())
-                {
+                } else if let Some(id) = self.popups.last().map(|(_, p, _)| p.parent.clone()) {
                     let source = PressSource::Mouse(FAKE_MOUSE_BUTTON, 0);
                     let event = Event::PressMove {
                         source,
@@ -353,16 +351,16 @@ impl<'a> EventMgr<'a> {
                     // We don't forward move events without a grab
                 }
 
-                self.state.last_mouse_coord = coord;
+                self.last_mouse_coord = coord;
             }
             // CursorEntered { .. },
             CursorLeft { .. } => {
-                self.state.last_click_button = FAKE_MOUSE_BUTTON;
+                self.last_click_button = FAKE_MOUSE_BUTTON;
 
                 if self.mouse_grab().is_none() {
                     // If there's a mouse grab, we will continue to receive
                     // coordinates; if not, set a fake coordinate off the window
-                    self.state.last_mouse_coord = Coord(-1, -1);
+                    self.last_mouse_coord = Coord(-1, -1);
                     self.set_hover(None);
                 }
             }
@@ -371,7 +369,7 @@ impl<'a> EventMgr<'a> {
                     self.send_event(widget, id, event);
                 }
 
-                self.state.last_click_button = FAKE_MOUSE_BUTTON;
+                self.last_click_button = FAKE_MOUSE_BUTTON;
 
                 let event = Event::Scroll(match delta {
                     MouseScrollDelta::LineDelta(x, y) => ScrollDelta::LineDelta(x, y),
@@ -382,7 +380,7 @@ impl<'a> EventMgr<'a> {
                         ScrollDelta::PixelDelta(coord.cast())
                     }
                 });
-                if let Some(id) = self.state.hover.clone() {
+                if let Some(id) = self.hover.clone() {
                     self.send_event(widget, id, event);
                 }
             }
@@ -391,17 +389,16 @@ impl<'a> EventMgr<'a> {
                     self.send_event(widget, id, event);
                 }
 
-                let coord = self.state.last_mouse_coord;
+                let coord = self.last_mouse_coord;
 
                 if state == ElementState::Pressed {
                     let now = Instant::now();
-                    if button != self.state.last_click_button || self.state.last_click_timeout < now
-                    {
-                        self.state.last_click_button = button;
-                        self.state.last_click_repetitions = 0;
+                    if button != self.last_click_button || self.last_click_timeout < now {
+                        self.last_click_button = button;
+                        self.last_click_repetitions = 0;
                     }
-                    self.state.last_click_repetitions += 1;
-                    self.state.last_click_timeout = now + DOUBLE_CLICK_TIMEOUT;
+                    self.last_click_repetitions += 1;
+                    self.last_click_timeout = now + DOUBLE_CLICK_TIMEOUT;
                 }
 
                 if let Some(grab) = self.remove_mouse_grab() {
@@ -410,7 +407,7 @@ impl<'a> EventMgr<'a> {
                         // Note: any button release may end the grab (intended).
                         let event = Event::PressEnd {
                             source: PressSource::Mouse(grab.button, grab.repetitions),
-                            end_id: self.state.hover.clone(),
+                            end_id: self.hover.clone(),
                             coord,
                             success: state == ElementState::Released,
                         };
@@ -420,9 +417,9 @@ impl<'a> EventMgr<'a> {
                 }
 
                 if state == ElementState::Pressed {
-                    if let Some(start_id) = self.state.hover.clone() {
+                    if let Some(start_id) = self.hover.clone() {
                         // No mouse grab but have a hover target
-                        if self.state.config.mouse_nav_focus() {
+                        if self.config.mouse_nav_focus() {
                             if let Some(w) = widget.find_widget(&start_id) {
                                 if w.key_nav() {
                                     self.set_nav_focus(w.id(), false);
@@ -431,13 +428,13 @@ impl<'a> EventMgr<'a> {
                         }
                     }
 
-                    let source = PressSource::Mouse(button, self.state.last_click_repetitions);
+                    let source = PressSource::Mouse(button, self.last_click_repetitions);
                     let event = Event::PressStart {
                         source,
-                        start_id: self.state.hover.clone(),
+                        start_id: self.hover.clone(),
                         coord,
                     };
-                    self.send_popup_first(widget, self.state.hover.clone(), event);
+                    self.send_popup_first(widget, self.hover.clone(), event);
                 }
             }
             // TouchpadPressure { pressure: f32, stage: i64, },
@@ -449,7 +446,7 @@ impl<'a> EventMgr<'a> {
                     TouchPhase::Started => {
                         let start_id = widget.find_id(coord);
                         if let Some(id) = start_id.as_ref() {
-                            if self.state.config.touch_nav_focus() {
+                            if self.config.touch_nav_focus() {
                                 if let Some(w) = widget.find_widget(id) {
                                     if w.key_nav() {
                                         self.set_nav_focus(w.id(), false);
@@ -487,9 +484,7 @@ impl<'a> EventMgr<'a> {
                             self.send_action(TkAction::REDRAW);
                         } else if let Some(pan_grab) = pan_grab {
                             if usize::conv(pan_grab.1) < MAX_PAN_GRABS {
-                                if let Some(pan) =
-                                    self.state.pan_grab.get_mut(usize::conv(pan_grab.0))
-                                {
+                                if let Some(pan) = self.pan_grab.get_mut(usize::conv(pan_grab.0)) {
                                     pan.coords[usize::conv(pan_grab.1)].1 = coord;
                                 }
                             }

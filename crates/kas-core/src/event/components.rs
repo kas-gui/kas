@@ -283,7 +283,7 @@ impl ScrollComponent {
             }
             Event::PressEnd { .. } => {
                 if self.glide.opt_start(mgr.config().scroll_flick_timeout()) {
-                    mgr.update_on_timer(Duration::new(0, 0), id, PAYLOAD_GLIDE);
+                    mgr.request_update(id, PAYLOAD_GLIDE, Duration::new(0, 0), true);
                 }
             }
             Event::TimerUpdate(pl) if pl == PAYLOAD_GLIDE => {
@@ -300,7 +300,7 @@ impl ScrollComponent {
                         // still scrolling. Glide returns None when we're done,
                         // but we're also done if unable to scroll further.
                         let dur = Duration::from_millis(GLIDE_POLL_MS);
-                        mgr.update_on_timer(dur, id, PAYLOAD_GLIDE);
+                        mgr.request_update(id, PAYLOAD_GLIDE, dur, true);
                         mgr.set_scroll(Scroll::Scrolled);
                     }
                 }
@@ -372,7 +372,7 @@ impl TextInput {
                     PressSource::Touch(touch_id) => {
                         self.touch_phase = TouchPhase::Start(touch_id, coord);
                         let delay = mgr.config().touch_select_delay();
-                        mgr.update_on_timer(delay, w_id.clone(), PAYLOAD_SELECT);
+                        mgr.request_update(w_id.clone(), PAYLOAD_SELECT, delay, false);
                         (Action::Focus, None)
                     }
                     PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan() => {
@@ -419,7 +419,7 @@ impl TextInput {
                         || matches!(source, PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan()))
                 {
                     self.touch_phase = TouchPhase::None;
-                    mgr.update_on_timer(Duration::new(0, 0), w_id, PAYLOAD_GLIDE);
+                    mgr.request_update(w_id, PAYLOAD_GLIDE, Duration::new(0, 0), true);
                 }
                 Action::None
             }
@@ -439,7 +439,8 @@ impl TextInput {
                 // Momentum/glide scrolling: update per arbitrary step time until movment stops.
                 let decay = mgr.config().scroll_flick_decay();
                 if let Some(delta) = self.glide.step(decay) {
-                    mgr.update_on_timer(Duration::from_millis(GLIDE_POLL_MS), w_id, 0);
+                    let dur = Duration::from_millis(GLIDE_POLL_MS);
+                    mgr.request_update(w_id, PAYLOAD_GLIDE, dur, true);
                     Action::Pan(delta)
                 } else {
                     Action::None

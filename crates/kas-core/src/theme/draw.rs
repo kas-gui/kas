@@ -8,9 +8,8 @@
 use super::{FrameStyle, MarkStyle, SizeHandle, SizeMgr, TextClass};
 use crate::dir::Direction;
 use crate::draw::{color::Rgb, Draw, DrawShared, ImageId, PassType};
-use crate::event::EventState;
+use crate::event::{EventState, SetRectMgr};
 use crate::geom::{Coord, Offset, Rect};
-use crate::layout::SetRectMgr;
 use crate::macros::autoimpl;
 use crate::text::{TextApi, TextDisplay};
 use crate::{TkAction, Widget, WidgetExt, WidgetId};

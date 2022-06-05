@@ -8,11 +8,12 @@
 // Methods have to take `&mut self`
 #![allow(clippy::wrong_self_convention)]
 
-use super::{Align, AlignHints, AxisInfo, MarginSelector, SetRectMgr, SizeRules};
+use super::{Align, AlignHints, AxisInfo, MarginSelector, SizeRules};
 use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
 use super::{RulesSetter, RulesSolver, Storage};
 use crate::draw::color::Rgb;
+use crate::event::SetRectMgr;
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::theme::{Background, DrawMgr, FrameStyle, SizeMgr};
 use crate::WidgetId;

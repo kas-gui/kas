@@ -6,9 +6,9 @@
 //! Window widgets
 
 use crate::dir::Directional;
-use crate::event::EventMgr;
+use crate::event::{EventMgr, SetRectMgr};
 use crate::geom::{Coord, Rect, Size};
-use crate::layout::{self, AlignHints, AxisInfo, SetRectMgr, SizeRules};
+use crate::layout::{self, AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::{Layout, TkAction, Widget, WidgetExt, WidgetId, Window, WindowId};
 use kas_macros::{autoimpl, impl_scope};
