@@ -7,7 +7,7 @@
 
 use kas::draw::{color, DrawIface, DrawSharedImpl, SharedState};
 use kas::event::EventState;
-use kas::theme::{SizeHandle, ThemeControl, ThemeDraw};
+use kas::theme::{ThemeControl, ThemeDraw, ThemeSize};
 use kas::TkAction;
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
@@ -135,8 +135,8 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
 /// The main reason for this separation is to allow proper handling of
 /// multi-window applications across screens with differing DPIs.
 pub trait Window: 'static {
-    /// Construct a [`SizeHandle`] object
-    fn size_handle(&self) -> &dyn SizeHandle;
+    /// Construct a [`ThemeSize`] object
+    fn size_handle(&self) -> &dyn ThemeSize;
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
@@ -196,7 +196,7 @@ impl<T: Theme<DS>, DS: DrawSharedImpl> Theme<DS> for Box<T> {
 }
 
 impl<W: Window> Window for Box<W> {
-    fn size_handle(&self) -> &dyn SizeHandle {
+    fn size_handle(&self) -> &dyn ThemeSize {
         self.deref().size_handle()
     }
 

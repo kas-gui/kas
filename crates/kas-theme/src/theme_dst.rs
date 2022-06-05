@@ -12,7 +12,7 @@ use std::ops::{Deref, DerefMut};
 use super::{StackDst, Theme, Window};
 use kas::draw::{color, DrawIface, DrawSharedImpl, SharedState};
 use kas::event::EventState;
-use kas::theme::{SizeHandle, ThemeControl, ThemeDraw};
+use kas::theme::{ThemeControl, ThemeDraw, ThemeSize};
 use kas::TkAction;
 
 /// An optionally-owning (boxed) reference
@@ -210,7 +210,7 @@ impl<'a, DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T {
 }
 
 impl Window for StackDst<dyn Window> {
-    fn size_handle(&self) -> &dyn SizeHandle {
+    fn size_handle(&self) -> &dyn ThemeSize {
         self.deref().size_handle()
     }
 

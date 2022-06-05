@@ -17,7 +17,7 @@ use kas::draw::{color::Rgba, *};
 use kas::event::EventState;
 use kas::geom::*;
 use kas::text::{TextApi, TextDisplay};
-use kas::theme::{Background, SizeHandle, ThemeControl, ThemeDraw};
+use kas::theme::{Background, ThemeControl, ThemeDraw, ThemeSize};
 use kas::theme::{FrameStyle, MarkStyle, TextClass};
 use kas::{TkAction, WidgetId};
 
@@ -243,7 +243,7 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl + DrawShadedImpl,
 {
-    fn components(&mut self) -> (&dyn SizeHandle, &mut dyn DrawShared, &mut EventState) {
+    fn components(&mut self) -> (&dyn ThemeSize, &mut dyn DrawShared, &mut EventState) {
         (self.w, self.draw.shared, self.ev)
     }
 

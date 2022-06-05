@@ -11,7 +11,7 @@ use crate::event::EventState;
 use crate::geom::{Size, Vec2};
 use crate::layout::Align;
 use crate::text::TextApi;
-use crate::theme::{SizeHandle, SizeMgr, TextClass};
+use crate::theme::{SizeMgr, TextClass, ThemeSize};
 use crate::{TkAction, Widget, WidgetExt, WidgetId};
 use std::ops::{Deref, DerefMut};
 
@@ -26,7 +26,7 @@ use crate::{event::Event, Layout};
 /// `SetRectMgr` supports [`Deref`] and [`DerefMut`] with target [`EventState`].
 #[must_use]
 pub struct SetRectMgr<'a> {
-    sh: &'a dyn SizeHandle,
+    sh: &'a dyn ThemeSize,
     ds: &'a mut dyn DrawShared,
     pub(crate) ev: &'a mut EventState,
 }
@@ -35,7 +35,7 @@ impl<'a> SetRectMgr<'a> {
     /// Construct
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn new(sh: &'a dyn SizeHandle, ds: &'a mut dyn DrawShared, ev: &'a mut EventState) -> Self {
+    pub fn new(sh: &'a dyn ThemeSize, ds: &'a mut dyn DrawShared, ev: &'a mut EventState) -> Self {
         SetRectMgr { sh, ds, ev }
     }
 

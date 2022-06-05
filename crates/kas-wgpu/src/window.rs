@@ -13,7 +13,7 @@ use kas::draw::{AnimationState, DrawIface, DrawShared, PassId};
 use kas::event::{CursorIcon, EventState, SetRectMgr, UpdateId};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
-use kas::theme::{DrawMgr, SizeHandle, SizeMgr, ThemeControl};
+use kas::theme::{DrawMgr, SizeMgr, ThemeControl, ThemeSize};
 use kas::{Layout, TkAction, WidgetCore, WidgetExt, WindowId};
 use kas_theme::{Theme, Window as _};
 use winit::dpi::PhysicalSize;
@@ -546,10 +546,7 @@ where
         self.shared.pending.push(PendingAction::TkAction(action));
     }
 
-    fn size_and_draw_shared(
-        &mut self,
-        f: &mut dyn FnMut(&mut dyn SizeHandle, &mut dyn DrawShared),
-    ) {
+    fn size_and_draw_shared(&mut self, f: &mut dyn FnMut(&mut dyn ThemeSize, &mut dyn DrawShared)) {
         use kas_theme::Window;
         let mut size_handle = self.theme_window.size_handle();
         f(&mut size_handle, &mut self.shared.draw);

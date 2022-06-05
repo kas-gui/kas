@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Common implementation of [`kas::theme::SizeHandle`]
+//! Common implementation of [`kas::theme::ThemeSize`]
 
 use linear_map::LinearMap;
 use std::any::Any;
@@ -16,7 +16,7 @@ use kas::dir::Directional;
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, Stretch};
 use kas::text::{fonts::FontId, Align, TextApi, TextApiExt};
-use kas::theme::{FrameStyle, MarkStyle, SizeHandle, TextClass};
+use kas::theme::{FrameStyle, MarkStyle, TextClass, ThemeSize};
 
 /// Parameterisation of [`Dimensions`]
 ///
@@ -146,7 +146,7 @@ impl<D> Window<D> {
 }
 
 impl<D: 'static> crate::Window for Window<D> {
-    fn size_handle(&self) -> &dyn SizeHandle {
+    fn size_handle(&self) -> &dyn ThemeSize {
         self
     }
 
@@ -155,7 +155,7 @@ impl<D: 'static> crate::Window for Window<D> {
     }
 }
 
-impl<D: 'static> SizeHandle for Window<D> {
+impl<D: 'static> ThemeSize for Window<D> {
     fn scale_factor(&self) -> f32 {
         self.dims.scale_factor
     }

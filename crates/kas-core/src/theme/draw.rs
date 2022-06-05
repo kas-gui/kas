@@ -5,7 +5,7 @@
 
 //! "Handle" types used by themes
 
-use super::{FrameStyle, MarkStyle, SizeHandle, SizeMgr, TextClass};
+use super::{FrameStyle, MarkStyle, SizeMgr, TextClass, ThemeSize};
 use crate::dir::Direction;
 use crate::draw::{color::Rgb, Draw, DrawShared, ImageId, PassType};
 use crate::event::{EventState, SetRectMgr};
@@ -335,8 +335,8 @@ impl<'a> std::ops::BitOrAssign<TkAction> for DrawMgr<'a> {
     stack_dst::ValueA<H, S>
 ))]
 pub trait ThemeDraw {
-    /// Access components: [`SizeHandle`], [`DrawShared`], [`EventState`]
-    fn components(&mut self) -> (&dyn SizeHandle, &mut dyn DrawShared, &mut EventState);
+    /// Access components: [`ThemeSize`], [`DrawShared`], [`EventState`]
+    fn components(&mut self) -> (&dyn ThemeSize, &mut dyn DrawShared, &mut EventState);
 
     /// Access the low-level draw device
     ///
@@ -362,7 +362,7 @@ pub trait ThemeDraw {
 
     /// Draw a frame inside the given `rect`
     ///
-    /// The frame dimensions are given by [`SizeHandle::frame`].
+    /// The frame dimensions are given by [`ThemeSize::frame`].
     fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle, bg: Background);
 
     /// Draw a separator in the given `rect`

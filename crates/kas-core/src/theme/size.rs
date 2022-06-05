@@ -28,13 +28,13 @@ use crate::text::TextApiExt;
 ///
 /// Most methods get or calculate the size of some feature. These same features
 /// may be drawn through [`DrawMgr`].
-pub struct SizeMgr<'a>(&'a dyn SizeHandle);
+pub struct SizeMgr<'a>(&'a dyn ThemeSize);
 
 impl<'a> SizeMgr<'a> {
-    /// Construct from a [`SizeHandle`]
+    /// Construct from a [`ThemeSize`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn new(h: &'a dyn SizeHandle) -> Self {
+    pub fn new(h: &'a dyn ThemeSize) -> Self {
         SizeMgr(h)
     }
 
@@ -195,11 +195,11 @@ impl<'a> SizeMgr<'a> {
     }
 }
 
-/// A handle to the active theme, used for sizing
+/// Theme sizing implementation
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 #[autoimpl(for<S: trait + ?Sized, R: Deref<Target = S>> R)]
-pub trait SizeHandle {
+pub trait ThemeSize {
     /// Get the scale (DPI) factor
     fn scale_factor(&self) -> f32;
 

@@ -10,7 +10,7 @@ mod size;
 mod style;
 
 pub use draw::{Background, DrawMgr, ThemeDraw};
-pub use size::{SizeHandle, SizeMgr};
+pub use size::{SizeMgr, ThemeSize};
 pub use style::*;
 
 #[allow(unused)]

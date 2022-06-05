@@ -21,7 +21,7 @@ use kas::event::EventState;
 use kas::geom::*;
 use kas::text::{fonts, Effect, TextApi, TextDisplay};
 use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
-use kas::theme::{SizeHandle, ThemeControl, ThemeDraw};
+use kas::theme::{ThemeControl, ThemeDraw, ThemeSize};
 use kas::{TkAction, WidgetId};
 
 // Used to ensure a rectangular background is inside a circular corner.
@@ -336,7 +336,7 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl,
 {
-    fn components(&mut self) -> (&dyn SizeHandle, &mut dyn DrawShared, &mut EventState) {
+    fn components(&mut self) -> (&dyn ThemeSize, &mut dyn DrawShared, &mut EventState) {
         (self.w, self.draw.shared, self.ev)
     }
 
