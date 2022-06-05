@@ -478,7 +478,7 @@ pub trait ThemeDraw {
 mod test {
     use super::*;
 
-    fn _draw_handle_ext(mut draw: DrawMgr) {
+    fn _draw_ext(mut draw: DrawMgr) {
         // We can't call this method without constructing an actual ThemeDraw.
         // But we don't need to: we just want to test that methods are callable.
 

@@ -82,7 +82,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let mut tkw = TkWindow::new(shared, None, &mut theme_window);
         ev_state.full_configure(&mut tkw, widget.as_widget_mut());
 
-        let size_mgr = SizeMgr::new(theme_window.size_handle());
+        let size_mgr = SizeMgr::new(theme_window.size());
         let mut solve_cache = SolveCache::find_constraints(widget.as_widget_mut(), size_mgr);
 
         // Opening a zero-size window causes a crash, so force at least 1x1:
@@ -327,7 +327,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let solve_cache = &mut self.solve_cache;
         let widget = &mut self.widget;
         let mut mgr = SetRectMgr::new(
-            self.theme_window.size_handle(),
+            self.theme_window.size(),
             &mut shared.draw,
             &mut self.ev_state,
         );
@@ -386,21 +386,19 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
             #[cfg(not(feature = "gat"))]
             unsafe {
-                // Safety: lifetimes do not escape the returned draw_handle value.
-                let mut draw_handle =
-                    shared
-                        .theme
-                        .draw_handle(draw, &mut self.ev_state, &mut self.theme_window);
-                let draw_mgr = DrawMgr::new(&mut draw_handle, self.widget.id());
+                // Safety: lifetimes do not escape the returned draw value.
+                let mut draw = shared
+                    .theme
+                    .draw(draw, &mut self.ev_state, &mut self.theme_window);
+                let draw_mgr = DrawMgr::new(&mut draw, self.widget.id());
                 self.widget.draw(draw_mgr);
             }
             #[cfg(feature = "gat")]
             {
-                let mut draw_handle =
-                    shared
-                        .theme
-                        .draw_handle(draw, &mut self.ev_state, &mut self.theme_window);
-                let draw_mgr = DrawMgr::new(&mut draw_handle, self.widget.id());
+                let mut draw = shared
+                    .theme
+                    .draw(draw, &mut self.ev_state, &mut self.theme_window);
+                let draw_mgr = DrawMgr::new(&mut draw, self.widget.id());
                 self.widget.draw(draw_mgr);
             }
         }
@@ -548,8 +546,8 @@ where
 
     fn size_and_draw_shared(&mut self, f: &mut dyn FnMut(&mut dyn ThemeSize, &mut dyn DrawShared)) {
         use kas_theme::Window;
-        let mut size_handle = self.theme_window.size_handle();
-        f(&mut size_handle, &mut self.shared.draw);
+        let mut size = self.theme_window.size();
+        f(&mut size, &mut self.shared.draw);
     }
 
     #[inline]

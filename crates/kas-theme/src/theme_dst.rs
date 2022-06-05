@@ -67,13 +67,13 @@ pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
     ///
     /// Uses a [`StackDst`] to avoid requiring an associated type.
     ///
-    /// See also [`Theme::draw_handle`].
+    /// See also [`Theme::draw`].
     ///
     /// # Safety
     ///
     /// All references passed into the method must outlive the returned object.
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle(
+    unsafe fn draw(
         &self,
         draw: DrawIface<DS>,
         ev: &mut EventState,
@@ -84,9 +84,9 @@ pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
     ///
     /// Uses a [`StackDst`] to avoid requiring an associated type.
     ///
-    /// See also [`Theme::draw_handle`].
+    /// See also [`Theme::draw`].
     #[cfg(feature = "gat")]
-    fn draw_handle<'a>(
+    fn draw<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
         ev: &'a mut EventState,
@@ -102,7 +102,7 @@ pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
 #[cfg(not(feature = "gat"))]
 impl<'a, DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T
 where
-    <T as Theme<DS>>::DrawHandle: 'static,
+    <T as Theme<DS>>::Draw: 'static,
 {
     fn config(&self) -> MaybeBoxed<dyn Any> {
         match self.config() {
@@ -141,14 +141,14 @@ where
         self.update_window(window, dpi_factor);
     }
 
-    unsafe fn draw_handle(
+    unsafe fn draw(
         &self,
         draw: DrawIface<DS>,
         ev: &mut EventState,
         window: &mut dyn Window,
     ) -> StackDst<dyn ThemeDraw> {
         let window = window.as_any_mut().downcast_mut().unwrap();
-        let h = <T as Theme<DS>>::draw_handle(self, draw, ev, window);
+        let h = <T as Theme<DS>>::draw(self, draw, ev, window);
         #[cfg(feature = "unsize")]
         {
             StackDst::new_or_boxed(h)
@@ -193,14 +193,14 @@ impl<'a, DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T {
         self.update_window(window, dpi_factor);
     }
 
-    fn draw_handle<'b>(
+    fn draw<'b>(
         &'b self,
         draw: DrawIface<'b, DS>,
         ev: &'b mut EventState,
         window: &'b mut dyn Window,
     ) -> StackDst<dyn ThemeDraw + 'b> {
         let window = window.as_any_mut().downcast_mut().unwrap();
-        let h = <T as Theme<DS>>::draw_handle(self, draw, ev, window);
+        let h = <T as Theme<DS>>::draw(self, draw, ev, window);
         StackDst::new_or_boxed(h)
     }
 
@@ -210,8 +210,8 @@ impl<'a, DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T {
 }
 
 impl Window for StackDst<dyn Window> {
-    fn size_handle(&self) -> &dyn ThemeSize {
-        self.deref().size_handle()
+    fn size(&self) -> &dyn ThemeSize {
+        self.deref().size()
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any {

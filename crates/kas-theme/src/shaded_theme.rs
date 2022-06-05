@@ -94,9 +94,9 @@ where
     type Window = dim::Window<DS::Draw>;
 
     #[cfg(not(feature = "gat"))]
-    type DrawHandle = DrawHandle<'static, DS>;
+    type Draw = DrawHandle<'static, DS>;
     #[cfg(feature = "gat")]
-    type DrawHandle<'a> = DrawHandle<'a, DS>;
+    type Draw<'a> = DrawHandle<'a, DS>;
 
     fn config(&self) -> std::borrow::Cow<Self::Config> {
         <FlatTheme as Theme<DS>>::config(&self.flat)
@@ -120,12 +120,12 @@ where
     }
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle(
+    unsafe fn draw(
         &self,
         draw: DrawIface<DS>,
         ev: &mut EventState,
         w: &mut Self::Window,
-    ) -> Self::DrawHandle {
+    ) -> Self::Draw {
         w.anim.update();
 
         unsafe fn extend_lifetime<'b, T: ?Sized>(r: &'b T) -> &'static T {
@@ -146,12 +146,12 @@ where
         }
     }
     #[cfg(feature = "gat")]
-    fn draw_handle<'a>(
+    fn draw<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
         ev: &'a mut EventState,
         w: &'a mut Self::Window,
-    ) -> Self::DrawHandle<'a> {
+    ) -> Self::Draw<'a> {
         w.anim.update();
 
         DrawHandle {

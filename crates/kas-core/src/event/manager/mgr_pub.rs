@@ -652,21 +652,20 @@ impl<'a> EventMgr<'a> {
     /// See also notes on [`Widget::configure`].
     pub fn size_mgr<F: FnMut(SizeMgr) -> T, T>(&mut self, mut f: F) -> T {
         let mut result = None;
-        self.shell.size_and_draw_shared(&mut |size_handle, _| {
-            result = Some(f(SizeMgr::new(size_handle)));
+        self.shell.size_and_draw_shared(&mut |size, _| {
+            result = Some(f(SizeMgr::new(size)));
         });
-        result.expect("ShellWindow::size_handle impl failed to call function argument")
+        result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
     }
 
     /// Access a [`SetRectMgr`]
     pub fn set_rect_mgr<F: FnMut(&mut SetRectMgr) -> T, T>(&mut self, mut f: F) -> T {
         let mut result = None;
-        self.shell
-            .size_and_draw_shared(&mut |size_handle, draw_shared| {
-                let mut mgr = SetRectMgr::new(size_handle, draw_shared, self.state);
-                result = Some(f(&mut mgr));
-            });
-        result.expect("ShellWindow::size_handle impl failed to call function argument")
+        self.shell.size_and_draw_shared(&mut |size, draw_shared| {
+            let mut mgr = SetRectMgr::new(size, draw_shared, self.state);
+            result = Some(f(&mut mgr));
+        });
+        result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
     }
 
     /// Access a [`DrawShared`]
@@ -675,7 +674,7 @@ impl<'a> EventMgr<'a> {
         self.shell.size_and_draw_shared(&mut |_, draw_shared| {
             result = Some(f(draw_shared));
         });
-        result.expect("ShellWindow::draw_shared impl failed to call function argument")
+        result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
     }
 
     /// Grab "press" events for `source` (a mouse or finger)

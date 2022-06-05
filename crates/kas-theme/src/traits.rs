@@ -7,6 +7,7 @@
 
 use kas::draw::{color, DrawIface, DrawSharedImpl, SharedState};
 use kas::event::EventState;
+use kas::macros::autoimpl;
 use kas::theme::{ThemeControl, ThemeDraw, ThemeSize};
 use kas::TkAction;
 use std::any::Any;
@@ -52,9 +53,9 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
 
     /// The associated [`ThemeDraw`] implementation.
     #[cfg(not(feature = "gat"))]
-    type DrawHandle: ThemeDraw;
+    type Draw: ThemeDraw;
     #[cfg(feature = "gat")]
-    type DrawHandle<'a>: ThemeDraw
+    type Draw<'a>: ThemeDraw
     where
         DS: 'a,
         Self: 'a;
@@ -101,8 +102,7 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
     /// Drawing via this [`ThemeDraw`] object is restricted to the specified `rect`.
     ///
     /// The `window` is guaranteed to be one created by a call to
-    /// [`Theme::new_window`] on `self`, and the `draw` reference is guaranteed
-    /// to be identical to the one passed to [`Theme::new_window`].
+    /// [`Theme::new_window`] on `self`.
     ///
     /// # Safety
     ///
@@ -110,19 +110,19 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
     ///
     /// All references passed into the method must outlive the returned object.
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle(
+    unsafe fn draw(
         &self,
         draw: DrawIface<DS>,
         ev: &mut EventState,
         window: &mut Self::Window,
-    ) -> Self::DrawHandle;
+    ) -> Self::Draw;
     #[cfg(feature = "gat")]
-    fn draw_handle<'a>(
+    fn draw<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
         ev: &'a mut EventState,
         window: &'a mut Self::Window,
-    ) -> Self::DrawHandle<'a>;
+    ) -> Self::Draw<'a>;
 
     /// Background colour
     fn clear_color(&self) -> color::Rgba;
@@ -134,9 +134,10 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
 ///
 /// The main reason for this separation is to allow proper handling of
 /// multi-window applications across screens with differing DPIs.
+#[autoimpl(for<T: trait> Box<T>)]
 pub trait Window: 'static {
     /// Construct a [`ThemeSize`] object
-    fn size_handle(&self) -> &dyn ThemeSize;
+    fn size(&self) -> &dyn ThemeSize;
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
@@ -146,12 +147,12 @@ impl<T: Theme<DS>, DS: DrawSharedImpl> Theme<DS> for Box<T> {
     type Config = <T as Theme<DS>>::Config;
 
     #[cfg(not(feature = "gat"))]
-    type DrawHandle = <T as Theme<DS>>::DrawHandle;
+    type Draw = <T as Theme<DS>>::Draw;
     #[cfg(feature = "gat")]
-    type DrawHandle<'a>
+    type Draw<'a>
     where
         T: 'a,
-    = <T as Theme<DS>>::DrawHandle<'a>;
+    = <T as Theme<DS>>::Draw<'a>;
 
     fn config(&self) -> std::borrow::Cow<Self::Config> {
         self.deref().config()
@@ -172,35 +173,25 @@ impl<T: Theme<DS>, DS: DrawSharedImpl> Theme<DS> for Box<T> {
     }
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle(
+    unsafe fn draw(
         &self,
         draw: DrawIface<DS>,
         ev: &mut EventState,
         window: &mut Self::Window,
-    ) -> Self::DrawHandle {
-        self.deref().draw_handle(draw, ev, window)
+    ) -> Self::Draw {
+        self.deref().draw(draw, ev, window)
     }
     #[cfg(feature = "gat")]
-    fn draw_handle<'a>(
+    fn draw<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
         ev: &'a mut EventState,
         window: &'a mut Self::Window,
-    ) -> Self::DrawHandle<'a> {
-        self.deref().draw_handle(draw, ev, window)
+    ) -> Self::Draw<'a> {
+        self.deref().draw(draw, ev, window)
     }
 
     fn clear_color(&self) -> color::Rgba {
         self.deref().clear_color()
-    }
-}
-
-impl<W: Window> Window for Box<W> {
-    fn size_handle(&self) -> &dyn ThemeSize {
-        self.deref().size_handle()
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self.deref_mut().as_any_mut()
     }
 }

@@ -143,7 +143,7 @@ pub trait ShellWindow {
     /// Access [`ThemeSize`] and [`DrawShared`] objects
     ///
     /// Implementations should call the given function argument once; not doing
-    /// so is memory-safe but will cause a panic when `size_handle` is called.
+    /// so is memory-safe but will cause panics in `EventMgr` methods.
     /// User-code *must not* depend on `f` being called for memory safety.
     fn size_and_draw_shared(&mut self, f: &mut dyn FnMut(&mut dyn ThemeSize, &mut dyn DrawShared));
 

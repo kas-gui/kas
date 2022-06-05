@@ -37,9 +37,9 @@ where
     type Window = <FlatTheme as Theme<DS>>::Window;
 
     #[cfg(not(feature = "gat"))]
-    type DrawHandle = <FlatTheme as Theme<DS>>::DrawHandle;
+    type Draw = <FlatTheme as Theme<DS>>::Draw;
     #[cfg(feature = "gat")]
-    type DrawHandle<'a> = <FlatTheme as Theme<DS>>::DrawHandle<'a>;
+    type Draw<'a> = <FlatTheme as Theme<DS>>::Draw<'a>;
 
     fn config(&self) -> std::borrow::Cow<Self::Config> {
         Theme::<DS>::config(&self.inner)
@@ -62,22 +62,22 @@ where
     }
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle(
+    unsafe fn draw(
         &self,
         draw: DrawIface<DS>,
         ev: &mut EventState,
         window: &mut Self::Window,
-    ) -> Self::DrawHandle {
-        Theme::<DS>::draw_handle(&self.inner, draw, ev, window)
+    ) -> Self::Draw {
+        Theme::<DS>::draw(&self.inner, draw, ev, window)
     }
     #[cfg(feature = "gat")]
-    fn draw_handle<'a>(
+    fn draw<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
         ev: &'a mut EventState,
         window: &'a mut Self::Window,
-    ) -> Self::DrawHandle<'a> {
-        Theme::<DS>::draw_handle(&self.inner, draw, ev, window)
+    ) -> Self::Draw<'a> {
+        Theme::<DS>::draw(&self.inner, draw, ev, window)
     }
 
     fn clear_color(&self) -> Rgba {

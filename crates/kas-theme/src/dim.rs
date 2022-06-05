@@ -146,7 +146,7 @@ impl<D> Window<D> {
 }
 
 impl<D: 'static> crate::Window for Window<D> {
-    fn size_handle(&self) -> &dyn ThemeSize {
+    fn size(&self) -> &dyn ThemeSize {
         self
     }
 
