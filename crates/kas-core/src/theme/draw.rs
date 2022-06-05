@@ -45,7 +45,7 @@ impl Default for Background {
 /// -   `draw.checkbox(&*self, self.state);` — note `&*self` to convert from to
 ///     `&W` from `&mut W`, since the latter would cause borrow conflicts
 pub struct DrawMgr<'a> {
-    h: &'a mut dyn DrawHandle,
+    h: &'a mut dyn ThemeDraw,
     id: WidgetId,
 }
 
@@ -88,7 +88,7 @@ impl<'a> DrawMgr<'a> {
     /// Construct from a [`DrawMgr`] and [`EventState`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn new(h: &'a mut dyn DrawHandle, id: WidgetId) -> Self {
+    pub fn new(h: &'a mut dyn ThemeDraw, id: WidgetId) -> Self {
         DrawMgr { h, id }
     }
 
@@ -326,7 +326,7 @@ impl<'a> std::ops::BitOrAssign<TkAction> for DrawMgr<'a> {
     }
 }
 
-/// A handle to the active theme, used for drawing
+/// Theme drawing implementation
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 #[autoimpl(for<H: trait + ?Sized> Box<H>)]
@@ -334,7 +334,7 @@ impl<'a> std::ops::BitOrAssign<TkAction> for DrawMgr<'a> {
     for<H: trait + ?Sized, S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>>
     stack_dst::ValueA<H, S>
 ))]
-pub trait DrawHandle {
+pub trait ThemeDraw {
     /// Access components: [`SizeHandle`], [`DrawShared`], [`EventState`]
     fn components(&mut self) -> (&dyn SizeHandle, &mut dyn DrawShared, &mut EventState);
 
@@ -351,7 +351,7 @@ pub trait DrawHandle {
         rect: Rect,
         offset: Offset,
         class: PassType,
-        f: Box<dyn FnOnce(&mut dyn DrawHandle) + 'a>,
+        f: Box<dyn FnOnce(&mut dyn ThemeDraw) + 'a>,
     );
 
     /// Target area for drawing
@@ -383,7 +383,7 @@ pub trait DrawHandle {
 
     /// Draw text with effects
     ///
-    /// [`DrawHandle::text`] already supports *font* effects: bold,
+    /// [`ThemeDraw::text`] already supports *font* effects: bold,
     /// emphasis, text size. In addition, this method supports underline and
     /// strikethrough effects.
     ///
@@ -479,7 +479,7 @@ mod test {
     use super::*;
 
     fn _draw_handle_ext(mut draw: DrawMgr) {
-        // We can't call this method without constructing an actual DrawHandle.
+        // We can't call this method without constructing an actual ThemeDraw.
         // But we don't need to: we just want to test that methods are callable.
 
         let _scale = draw.size_mgr().scale_factor();

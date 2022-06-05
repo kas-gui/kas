@@ -12,7 +12,7 @@ use std::marker::Unsize;
 use crate::{Config, StackDst, Theme, ThemeDst, Window};
 use kas::draw::{color, DrawIface, DrawSharedImpl, SharedState};
 use kas::event::EventState;
-use kas::theme::{DrawHandle, ThemeControl};
+use kas::theme::{ThemeControl, ThemeDraw};
 use kas::TkAction;
 
 #[cfg(feature = "unsize")]
@@ -110,9 +110,9 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
     type Window = StackDst<dyn Window>;
 
     #[cfg(not(feature = "gat"))]
-    type DrawHandle = StackDst<dyn DrawHandle>;
+    type DrawHandle = StackDst<dyn ThemeDraw>;
     #[cfg(feature = "gat")]
-    type DrawHandle<'a> = StackDst<dyn DrawHandle + 'a>;
+    type DrawHandle<'a> = StackDst<dyn ThemeDraw + 'a>;
 
     fn config(&self) -> std::borrow::Cow<Self::Config> {
         let boxed_config = self.themes[self.active].config();
@@ -153,7 +153,7 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
         draw: DrawIface<DS>,
         ev: &mut EventState,
         window: &mut Self::Window,
-    ) -> StackDst<dyn DrawHandle> {
+    ) -> StackDst<dyn ThemeDraw> {
         unsafe fn extend_lifetime_mut<'b, T: ?Sized>(r: &'b mut T) -> &'static mut T {
             std::mem::transmute::<&'b mut T, &'static mut T>(r)
         }
@@ -174,7 +174,7 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
         draw: DrawIface<'a, DS>,
         ev: &'a mut EventState,
         window: &'a mut Self::Window,
-    ) -> StackDst<dyn DrawHandle + 'a> {
+    ) -> StackDst<dyn ThemeDraw + 'a> {
         self.themes[self.active].draw_handle(draw, ev, window)
     }
 

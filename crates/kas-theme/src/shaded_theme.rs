@@ -17,7 +17,7 @@ use kas::draw::{color::Rgba, *};
 use kas::event::EventState;
 use kas::geom::*;
 use kas::text::{TextApi, TextDisplay};
-use kas::theme::{self, Background, SizeHandle, ThemeControl};
+use kas::theme::{Background, SizeHandle, ThemeControl, ThemeDraw};
 use kas::theme::{FrameStyle, MarkStyle, TextClass};
 use kas::{TkAction, WidgetId};
 
@@ -239,7 +239,7 @@ where
     }
 }
 
-impl<'a, DS: DrawSharedImpl> theme::DrawHandle for DrawHandle<'a, DS>
+impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl + DrawShadedImpl,
 {
@@ -256,7 +256,7 @@ where
         inner_rect: Rect,
         offset: Offset,
         class: PassType,
-        f: Box<dyn FnOnce(&mut dyn theme::DrawHandle) + 'b>,
+        f: Box<dyn FnOnce(&mut dyn ThemeDraw) + 'b>,
     ) {
         let mut shadow = Default::default();
         let mut outer_rect = inner_rect;

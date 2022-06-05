@@ -20,8 +20,8 @@ use kas::draw::{color::Rgba, *};
 use kas::event::EventState;
 use kas::geom::*;
 use kas::text::{fonts, Effect, TextApi, TextDisplay};
-use kas::theme::{self, SizeHandle, ThemeControl};
 use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
+use kas::theme::{SizeHandle, ThemeControl, ThemeDraw};
 use kas::{TkAction, WidgetId};
 
 // Used to ensure a rectangular background is inside a circular corner.
@@ -332,7 +332,7 @@ where
     }
 }
 
-impl<'a, DS: DrawSharedImpl> theme::DrawHandle for DrawHandle<'a, DS>
+impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl,
 {
@@ -349,7 +349,7 @@ where
         inner_rect: Rect,
         offset: Offset,
         class: PassType,
-        f: Box<dyn FnOnce(&mut dyn theme::DrawHandle) + 'b>,
+        f: Box<dyn FnOnce(&mut dyn ThemeDraw) + 'b>,
     ) {
         let mut shadow = Default::default();
         let mut outer_rect = inner_rect;

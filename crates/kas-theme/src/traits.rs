@@ -7,7 +7,7 @@
 
 use kas::draw::{color, DrawIface, DrawSharedImpl, SharedState};
 use kas::event::EventState;
-use kas::theme::{DrawHandle, SizeHandle, ThemeControl};
+use kas::theme::{SizeHandle, ThemeControl, ThemeDraw};
 use kas::TkAction;
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
@@ -50,11 +50,11 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
     /// The associated [`Window`] implementation.
     type Window: Window;
 
-    /// The associated [`DrawHandle`] implementation.
+    /// The associated [`ThemeDraw`] implementation.
     #[cfg(not(feature = "gat"))]
-    type DrawHandle: DrawHandle;
+    type DrawHandle: ThemeDraw;
     #[cfg(feature = "gat")]
-    type DrawHandle<'a>: DrawHandle
+    type DrawHandle<'a>: ThemeDraw
     where
         DS: 'a,
         Self: 'a;
@@ -92,13 +92,13 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
     /// This is called when the DPI factor changes or theme dimensions change.
     fn update_window(&self, window: &mut Self::Window, dpi_factor: f32);
 
-    /// Prepare to draw and construct a [`DrawHandle`] object
+    /// Prepare to draw and construct a [`ThemeDraw`] object
     ///
     /// This is called once per window per frame and should do any necessary
     /// preparation such as loading fonts and textures which are loaded on
     /// demand.
     ///
-    /// Drawing via this [`DrawHandle`] is restricted to the specified `rect`.
+    /// Drawing via this [`ThemeDraw`] object is restricted to the specified `rect`.
     ///
     /// The `window` is guaranteed to be one created by a call to
     /// [`Theme::new_window`] on `self`, and the `draw` reference is guaranteed
