@@ -331,6 +331,18 @@ impl<'a> std::ops::BitOrAssign<TkAction> for DrawMgr<'a> {
 ///
 /// # Theme extension
 ///
+/// Most themes will not want to implement *everything*, but rather derive
+/// not-explicitly-implemented methods from a base theme. This may be achieved
+/// with the [`kas_macros::extends`] macro:
+/// ```ignore
+/// #[extends(ThemeDraw, base = self.base())]
+/// impl ThemeDraw {
+///     // only implement some methods here
+/// }
+/// ```
+/// Note: [`Self::components`] and [`Self::draw_device`] must be implemented
+/// explicitly since these methods return references.
+///
 /// If Rust had stable specialization + GATs + negative trait bounds we could
 /// allow theme extension without macros as follows.
 /// <details>

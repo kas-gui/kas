@@ -239,6 +239,7 @@ where
     }
 }
 
+#[kas::macros::extends(ThemeDraw, base=self.as_flat())]
 impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl + DrawShadedImpl,
@@ -341,41 +342,6 @@ where
         self.draw.shaded_round_frame(outer, inner, norm, col);
     }
 
-    fn selection_box(&mut self, rect: Rect) {
-        self.as_flat().selection_box(rect);
-    }
-
-    fn text(&mut self, id: &WidgetId, pos: Coord, text: &TextDisplay, class: TextClass) {
-        self.as_flat().text(id, pos, text, class);
-    }
-
-    fn text_effects(&mut self, id: &WidgetId, pos: Coord, text: &dyn TextApi, class: TextClass) {
-        self.as_flat().text_effects(id, pos, text, class);
-    }
-
-    fn text_selected_range(
-        &mut self,
-        id: &WidgetId,
-        pos: Coord,
-        text: &TextDisplay,
-        range: Range<usize>,
-        class: TextClass,
-    ) {
-        self.as_flat()
-            .text_selected_range(id, pos, text, range, class);
-    }
-
-    fn text_cursor(
-        &mut self,
-        id: &WidgetId,
-        pos: Coord,
-        text: &TextDisplay,
-        class: TextClass,
-        byte: usize,
-    ) {
-        self.as_flat().text_cursor(id, pos, text, class, byte);
-    }
-
     fn checkbox(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>) {
         let state = InputState::new_all(self.ev, id);
         let anim_fade = 1.0 - self.w.anim.fade_bool(self.draw.draw, checked, last_change);
@@ -406,10 +372,6 @@ where
             let col = self.cols.check_mark_state(state);
             self.draw.shaded_circle(inner, (0.0, 1.0), col);
         }
-    }
-
-    fn mark(&mut self, id: &WidgetId, rect: Rect, style: MarkStyle) {
-        self.as_flat().mark(id, rect, style);
     }
 
     fn scrollbar(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, _: Direction) {
@@ -458,9 +420,5 @@ where
         let inner = outer.shrink(thickness);
         let col = self.cols.accent_soft;
         self.draw.shaded_round_frame(outer, inner, (0.0, 0.6), col);
-    }
-
-    fn image(&mut self, id: ImageId, rect: Rect) {
-        self.as_flat().image(id, rect);
     }
 }
