@@ -285,7 +285,7 @@ where
         f(&mut handle);
     }
 
-    fn get_clip_rect(&self) -> Rect {
+    fn get_clip_rect(&mut self) -> Rect {
         self.draw.get_clip_rect()
     }
 

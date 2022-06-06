@@ -128,9 +128,10 @@ impl<'a> DrawMgr<'a> {
     /// Adds a new draw pass for purposes of enforcing draw order. Content of
     /// the new pass will be drawn after content in the parent pass.
     pub fn with_pass<F: FnOnce(DrawMgr)>(&mut self, f: F) {
+        let clip_rect = self.h.get_clip_rect();
         let id = self.id.clone();
         self.h.new_pass(
-            self.h.get_clip_rect(),
+            clip_rect,
             Offset::ZERO,
             PassType::Clip,
             Box::new(|h| f(DrawMgr { h, id })),
@@ -175,7 +176,7 @@ impl<'a> DrawMgr<'a> {
     /// [clip region](Self::with_clip_region) or an
     /// [overlay](Self::with_overlay). This may be used to cull hidden
     /// items from lists inside a scrollable view.
-    pub fn get_clip_rect(&self) -> Rect {
+    pub fn get_clip_rect(&mut self) -> Rect {
         self.h.get_clip_rect()
     }
 
@@ -327,6 +328,29 @@ impl<'a> std::ops::BitOrAssign<TkAction> for DrawMgr<'a> {
 }
 
 /// Theme drawing implementation
+///
+/// # Theme extension
+///
+/// If Rust had stable specialization + GATs + negative trait bounds we could
+/// allow theme extension without macros as follows.
+/// <details>
+/// ```
+/// /// Provides a default implementation of each theme method over a base theme
+/// pub trait ThemeDrawExtends: ThemeDraw {
+///     /// Type of base implementation
+///     type Base<'a>: ThemeDraw where Self: 'a;
+///
+///     /// Access the base theme
+///     fn base<'a>(&'a mut self) -> Self::Base<'a>;
+/// }
+///
+/// // Note: we may need negative trait bounds here to avoid conflict with impl for Box<H>
+/// impl<D: ThemeDrawExtends> ThemeDraw for D {
+///     default fn draw_device(&mut self) -> &mut dyn Draw { self.base().draw_device() }
+///     // And so on for other methods...
+/// }
+/// ```
+/// </details>
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 #[autoimpl(for<H: trait + ?Sized> Box<H>)]
@@ -358,7 +382,7 @@ pub trait ThemeDraw {
     ///
     /// Drawing is restricted to this [`Rect`]. Affected by [`Self::new_pass`].
     /// This may be used to cull hidden items from lists inside a scrollable view.
-    fn get_clip_rect(&self) -> Rect;
+    fn get_clip_rect(&mut self) -> Rect;
 
     /// Draw a frame inside the given `rect`
     ///
