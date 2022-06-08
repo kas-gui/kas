@@ -244,12 +244,8 @@ impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl + DrawShadedImpl,
 {
-    fn components(&mut self) -> (&dyn ThemeSize, &mut dyn DrawShared, &mut EventState) {
-        (self.w, self.draw.shared, self.ev)
-    }
-
-    fn draw_device(&mut self) -> &mut dyn Draw {
-        &mut self.draw
+    fn components(&mut self) -> (&dyn ThemeSize, &mut dyn Draw, &mut EventState) {
+        (self.w, &mut self.draw, self.ev)
     }
 
     fn new_pass<'b>(

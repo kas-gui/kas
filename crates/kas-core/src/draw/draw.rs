@@ -8,7 +8,7 @@
 use super::{color::Rgba, AnimationState};
 #[allow(unused)]
 use super::{DrawRounded, DrawRoundedImpl};
-use super::{DrawSharedImpl, ImageId, PassId, PassType, SharedState};
+use super::{DrawShared, DrawSharedImpl, ImageId, PassId, PassType, SharedState};
 use crate::geom::{Offset, Quad, Rect, Vec2};
 #[allow(unused)]
 use crate::text::TextApi;
@@ -123,6 +123,9 @@ impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
 /// accessing these requires reconstruction of the implementing type via
 /// [`DrawIface::downcast_from`].
 pub trait Draw {
+    /// Access shared draw state
+    fn shared(&mut self) -> &mut dyn DrawShared;
+
     /// Request redraw at the next frame time
     ///
     /// Animations should call this each frame until complete.
@@ -224,6 +227,10 @@ pub trait Draw {
 }
 
 impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
+    fn shared(&mut self) -> &mut dyn DrawShared {
+        self.shared
+    }
+
     fn animate(&mut self) {
         self.draw.animate();
     }

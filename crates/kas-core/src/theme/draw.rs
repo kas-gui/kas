@@ -104,14 +104,14 @@ impl<'a> DrawMgr<'a> {
 
     /// Access a [`SetRectMgr`]
     pub fn set_rect_mgr<F: FnMut(&mut SetRectMgr) -> T, T>(&mut self, mut f: F) -> T {
-        let (sh, ds, ev) = self.h.components();
-        let mut mgr = SetRectMgr::new(sh, ds, ev);
+        let (sh, draw, ev) = self.h.components();
+        let mut mgr = SetRectMgr::new(sh, draw.shared(), ev);
         f(&mut mgr)
     }
 
     /// Access a [`DrawShared`]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
-        self.h.components().1
+        self.h.components().1.shared()
     }
 
     /// Access the low-level draw device
@@ -120,7 +120,7 @@ impl<'a> DrawMgr<'a> {
     /// base trait [`Draw`]. To access further functionality, it is necessary
     /// to downcast with [`crate::draw::DrawIface::downcast_from`].
     pub fn draw_device(&mut self) -> &mut dyn Draw {
-        self.h.draw_device()
+        self.h.components().1
     }
 
     /// Draw to a new pass
@@ -371,15 +371,8 @@ impl<'a> std::ops::BitOrAssign<TkAction> for DrawMgr<'a> {
     stack_dst::ValueA<H, S>
 ))]
 pub trait ThemeDraw {
-    /// Access components: [`ThemeSize`], [`DrawShared`], [`EventState`]
-    fn components(&mut self) -> (&dyn ThemeSize, &mut dyn DrawShared, &mut EventState);
-
-    /// Access the low-level draw device
-    ///
-    /// Note: this drawing API is modular, with limited functionality in the
-    /// base trait [`Draw`]. To access further functionality, it is necessary
-    /// to downcast with [`crate::draw::DrawIface::downcast_from`].
-    fn draw_device(&mut self) -> &mut dyn Draw;
+    /// Access components: [`ThemeSize`], [`Draw`], [`EventState`]
+    fn components(&mut self) -> (&dyn ThemeSize, &mut dyn Draw, &mut EventState);
 
     /// Construct a new pass
     fn new_pass<'a>(
