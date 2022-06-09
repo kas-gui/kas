@@ -3,9 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Widget styling
-//!
-//! Widget size and appearance can be modified through themes.
+//! Flat theme
 
 use linear_map::LinearMap;
 use std::f32;
@@ -53,14 +51,10 @@ impl FlatTheme {
     #[inline]
     pub fn new() -> Self {
         let cols = ColorsLinear::default();
-        let mut dims = DIMS;
-        if cols.is_dark {
-            dims.shadow_rel_offset = Vec2::ZERO;
-        }
         FlatTheme {
             config: Default::default(),
             cols,
-            dims,
+            dims: DIMS,
             fonts: None,
         }
     }
@@ -89,19 +83,8 @@ impl FlatTheme {
     }
 
     pub fn set_colors(&mut self, cols: ColorsLinear) -> TkAction {
-        let mut action = TkAction::REDRAW;
-        if cols.is_dark != self.cols.is_dark {
-            action |= TkAction::THEME_UPDATE;
-            if cols.is_dark {
-                self.dims.shadow_size = DARK_SHADOW_SIZE;
-                self.dims.shadow_rel_offset = DARK_SHADOW_OFFSET;
-            } else {
-                self.dims.shadow_size = DIMS.shadow_size;
-                self.dims.shadow_rel_offset = DIMS.shadow_rel_offset;
-            }
-        }
         self.cols = cols;
-        action
+        TkAction::REDRAW
     }
 }
 
@@ -122,8 +105,6 @@ const DIMS: dim::Parameters = dim::Parameters {
     shadow_size: Vec2(4.0, 4.0),
     shadow_rel_offset: Vec2(0.2, 0.3),
 };
-const DARK_SHADOW_SIZE: Vec2 = Vec2::splat(5.0);
-const DARK_SHADOW_OFFSET: Vec2 = Vec2::ZERO;
 
 pub struct DrawHandle<'a, DS: DrawSharedImpl> {
     pub(crate) draw: DrawIface<'a, DS>,
@@ -269,7 +250,7 @@ where
             }
         }
 
-        if !(state.disabled() || state.depress()) {
+        if !self.cols.is_dark && !(state.disabled() || state.depress()) {
             let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
             if state.hover() {
                 a = a * SHADOW_HOVER;
@@ -307,7 +288,7 @@ where
         self.draw
             .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
 
-        if !state.disabled() && (state.nav_focus() || state.hover()) {
+        if !state.disabled() && !self.cols.is_dark && (state.nav_focus() || state.hover()) {
             let r = 0.5 * self.w.dims.button_frame as f32;
             let y = outer.b.1 - r;
             let a = Vec2(outer.a.0 + r, y);
@@ -590,7 +571,7 @@ where
         let outer = Quad::conv(rect);
         let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
 
-        if !(state.disabled() || state.depress()) {
+        if !self.cols.is_dark && !(state.disabled() || state.depress()) {
             let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
             let mut mult = 0.65;
             if state.hover() {
@@ -693,27 +674,16 @@ where
         let (mut first, mut second);
         if dir.is_horizontal() {
             outer = outer.shrink_vec(Vec2(0.0, outer.size().1 * (1.0 / 3.0)));
-            first = outer;
-            second = outer;
-            if !dir.is_reversed() {
-                first.b.0 = mid.0;
-                second.a.0 = mid.0;
-            } else {
-                first.a.0 = mid.0;
-                second.b.0 = mid.0;
-            }
+            first = Quad::from_coords(outer.a, Vec2(mid.0, outer.b.1));
+            second = Quad::from_coords(Vec2(mid.0, outer.a.1), outer.b);
         } else {
             outer = outer.shrink_vec(Vec2(outer.size().0 * (1.0 / 3.0), 0.0));
-            first = outer;
-            second = outer;
-            if !dir.is_reversed() {
-                first.b.1 = mid.1;
-                second.a.1 = mid.1;
-            } else {
-                first.a.1 = mid.1;
-                second.b.1 = mid.1;
-            }
+            first = Quad::from_coords(outer.a, Vec2(outer.b.0, mid.1));
+            second = Quad::from_coords(Vec2(outer.a.0, mid.1), outer.b);
         };
+        if dir.is_reversed() {
+            std::mem::swap(&mut first, &mut second);
+        }
 
         let inner = first.shrink(first.size().min_comp() / 2.0);
         self.draw.rounded_frame(first, inner, 0.0, self.cols.accent);
@@ -733,7 +703,7 @@ where
         };
         let col = ColorsLinear::adjust_for_state(col, state);
 
-        if !state.contains(InputState::DISABLED | InputState::DEPRESS) {
+        if !self.cols.is_dark && !state.contains(InputState::DISABLED | InputState::DEPRESS) {
             let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
             let mut mult = 0.6;
             if state.hover() {
