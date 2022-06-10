@@ -12,7 +12,7 @@ use std::marker::Unsize;
 use crate::{Config, StackDst, Theme, ThemeDst, Window};
 use kas::draw::{color, DrawIface, DrawSharedImpl, SharedState};
 use kas::event::EventState;
-use kas::theme::{DrawHandle, ThemeControl};
+use kas::theme::{ThemeControl, ThemeDraw};
 use kas::TkAction;
 
 #[cfg(feature = "unsize")]
@@ -110,9 +110,9 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
     type Window = StackDst<dyn Window>;
 
     #[cfg(not(feature = "gat"))]
-    type DrawHandle = StackDst<dyn DrawHandle>;
+    type Draw = StackDst<dyn ThemeDraw>;
     #[cfg(feature = "gat")]
-    type DrawHandle<'a> = StackDst<dyn DrawHandle + 'a>;
+    type Draw<'a> = StackDst<dyn ThemeDraw + 'a>;
 
     fn config(&self) -> std::borrow::Cow<Self::Config> {
         let boxed_config = self.themes[self.active].config();
@@ -148,16 +148,16 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
     }
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle(
+    unsafe fn draw(
         &self,
         draw: DrawIface<DS>,
         ev: &mut EventState,
         window: &mut Self::Window,
-    ) -> StackDst<dyn DrawHandle> {
+    ) -> StackDst<dyn ThemeDraw> {
         unsafe fn extend_lifetime_mut<'b, T: ?Sized>(r: &'b mut T) -> &'static mut T {
             std::mem::transmute::<&'b mut T, &'static mut T>(r)
         }
-        self.themes[self.active].draw_handle(
+        self.themes[self.active].draw(
             DrawIface {
                 draw: extend_lifetime_mut(draw.draw),
                 shared: extend_lifetime_mut(draw.shared),
@@ -169,13 +169,13 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
     }
 
     #[cfg(feature = "gat")]
-    fn draw_handle<'a>(
+    fn draw<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
         ev: &'a mut EventState,
         window: &'a mut Self::Window,
-    ) -> StackDst<dyn DrawHandle + 'a> {
-        self.themes[self.active].draw_handle(draw, ev, window)
+    ) -> StackDst<dyn ThemeDraw + 'a> {
+        self.themes[self.active].draw(draw, ev, window)
     }
 
     fn clear_color(&self) -> color::Rgba {

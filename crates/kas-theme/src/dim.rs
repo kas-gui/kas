@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Common implementation of [`kas::theme::SizeHandle`]
+//! Common implementation of [`kas::theme::ThemeSize`]
 
 use linear_map::LinearMap;
 use std::any::Any;
@@ -13,10 +13,10 @@ use std::rc::Rc;
 use crate::anim::AnimState;
 use kas::cast::traits::*;
 use kas::dir::Directional;
-use kas::geom::{Size, Vec2};
-use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, Stretch};
+use kas::geom::{Rect, Size, Vec2};
+use kas::layout::{AlignHints, AxisInfo, FrameRules, Margins, SizeRules, Stretch};
 use kas::text::{fonts::FontId, Align, TextApi, TextApiExt};
-use kas::theme::{FrameStyle, MarkStyle, SizeHandle, TextClass};
+use kas::theme::{Feature, FrameStyle, MarkStyle, TextClass, ThemeSize};
 
 /// Parameterisation of [`Dimensions`]
 ///
@@ -146,7 +146,7 @@ impl<D> Window<D> {
 }
 
 impl<D: 'static> crate::Window for Window<D> {
-    fn size_handle(&self) -> &dyn SizeHandle {
+    fn size(&self) -> &dyn ThemeSize {
         self
     }
 
@@ -155,7 +155,7 @@ impl<D: 'static> crate::Window for Window<D> {
     }
 }
 
-impl<D: 'static> SizeHandle for Window<D> {
+impl<D: 'static> ThemeSize for Window<D> {
     fn scale_factor(&self) -> f32 {
         self.dims.scale_factor
     }
@@ -166,6 +166,85 @@ impl<D: 'static> SizeHandle for Window<D> {
 
     fn pixels_from_em(&self, em: f32) -> f32 {
         self.dims.dpp * self.dims.pt_size * em
+    }
+
+    fn inner_margin(&self) -> Size {
+        Size::splat(self.dims.inner_margin.into())
+    }
+
+    fn outer_margins(&self) -> Margins {
+        Margins::splat(self.dims.outer_margin)
+    }
+
+    fn text_margins(&self) -> Margins {
+        Margins::hv_splat(self.dims.text_margin)
+    }
+
+    fn feature(&self, feature: Feature, axis_is_vertical: bool) -> SizeRules {
+        let dir_is_vertical;
+        let mut size;
+        let mut ideal_mul = 3;
+
+        match feature {
+            Feature::Separator => {
+                return SizeRules::fixed_splat(self.dims.frame, 0);
+            }
+            Feature::Mark(MarkStyle::Point(dir)) => {
+                let w = match dir.is_vertical() == axis_is_vertical {
+                    true => self.dims.mark / 2 + i32::conv_ceil(self.dims.mark_line),
+                    false => self.dims.mark + i32::conv_ceil(self.dims.mark_line),
+                };
+                return SizeRules::fixed_splat(w, self.dims.outer_margin);
+            }
+            Feature::CheckBox | Feature::RadioBox => {
+                return SizeRules::fixed_splat(self.dims.checkbox, self.dims.outer_margin);
+            }
+            Feature::ScrollBar(dir) => {
+                dir_is_vertical = dir.is_vertical();
+                size = self.dims.scrollbar;
+            }
+            Feature::Slider(dir) => {
+                dir_is_vertical = dir.is_vertical();
+                size = self.dims.slider;
+                ideal_mul = 5;
+            }
+            Feature::ProgressBar(dir) => {
+                dir_is_vertical = dir.is_vertical();
+                size = self.dims.progress_bar;
+            }
+        }
+
+        let mut stretch = Stretch::High;
+        if dir_is_vertical != axis_is_vertical {
+            size = size.transpose();
+            ideal_mul = 1;
+            stretch = Stretch::None;
+        }
+        let m = self.dims.outer_margin;
+        SizeRules::new(size.0, ideal_mul * size.0, (m, m), stretch)
+    }
+
+    fn align_feature(&self, feature: Feature, rect: Rect, hints: AlignHints) -> Rect {
+        let mut ideal_size = rect.size;
+        match feature {
+            Feature::Separator => (), // has no direction so we cannot align
+            Feature::Mark(_) => (),   // aligned when drawn instead
+            Feature::CheckBox | Feature::RadioBox => {
+                ideal_size = Size::splat(self.dims.checkbox);
+            }
+            Feature::ScrollBar(dir) => {
+                ideal_size.set_component(dir.flipped(), self.dims.scrollbar.1);
+            }
+            Feature::Slider(dir) => {
+                ideal_size.set_component(dir.flipped(), self.dims.slider.1);
+            }
+            Feature::ProgressBar(dir) => {
+                ideal_size.set_component(dir.flipped(), self.dims.progress_bar.1);
+            }
+        }
+        hints
+            .complete(Align::Center, Align::Center)
+            .aligned_rect(ideal_size, rect)
     }
 
     fn frame(&self, style: FrameStyle, _is_vert: bool) -> FrameRules {
@@ -182,22 +261,6 @@ impl<D: 'static> SizeHandle for Window<D> {
             }
             FrameStyle::EditBox => FrameRules::new_sym(self.dims.frame, inner, 0),
         }
-    }
-
-    fn separator(&self) -> Size {
-        Size::splat(self.dims.frame)
-    }
-
-    fn inner_margin(&self) -> Size {
-        Size::splat(self.dims.inner_margin.into())
-    }
-
-    fn outer_margins(&self) -> Margins {
-        Margins::splat(self.dims.outer_margin)
-    }
-
-    fn text_margins(&self) -> Margins {
-        Margins::hv_splat(self.dims.text_margin)
     }
 
     fn line_height(&self, class: TextClass) -> i32 {
@@ -306,41 +369,5 @@ impl<D: 'static> SizeHandle for Window<D> {
             env.set_wrap(class.multi_line());
         })
         .into()
-    }
-
-    fn checkbox(&self) -> Size {
-        Size::splat(self.dims.checkbox)
-    }
-
-    #[inline]
-    fn radiobox(&self) -> Size {
-        self.checkbox()
-    }
-
-    fn mark(&self, style: MarkStyle, is_vert: bool) -> SizeRules {
-        match style {
-            MarkStyle::Point(dir) => {
-                let w = match dir.is_vertical() == is_vert {
-                    true => self.dims.mark / 2 + i32::conv_ceil(self.dims.mark_line),
-                    false => self.dims.mark + i32::conv_ceil(self.dims.mark_line),
-                };
-                let m = self.dims.outer_margin;
-                SizeRules::fixed(w, (m, m))
-            }
-        }
-    }
-
-    fn scrollbar(&self) -> (Size, i32) {
-        let size = self.dims.scrollbar;
-        (size, 3 * size.0)
-    }
-
-    fn slider(&self) -> (Size, i32) {
-        let size = self.dims.slider;
-        (size, 5 * size.0)
-    }
-
-    fn progress_bar(&self) -> Size {
-        self.dims.progress_bar
     }
 }

@@ -13,6 +13,7 @@ use kas::dir::{Down, Right};
 use kas::event::MsgPressFocus;
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::prelude::*;
+use kas::theme::Feature;
 
 /// A generic row widget
 ///
@@ -141,7 +142,7 @@ impl_scope! {
             }
             assert_eq!(self.handles.len() + 1, self.widgets.len());
 
-            let handle_size = size_mgr.separator().extract(axis);
+            let handle_rules = size_mgr.feature(Feature::Separator, axis);
 
             let dim = (self.direction, self.num_children());
             let mut solver = layout::RowSolver::new(axis, dim, &mut self.data);
@@ -157,9 +158,7 @@ impl_scope! {
                 if n >= self.handles.len() {
                     break;
                 }
-                solver.for_child(&mut self.data, (n << 1) + 1, |_axis| {
-                    SizeRules::fixed(handle_size, (0, 0))
-                });
+                solver.for_child(&mut self.data, (n << 1) + 1, |_axis| handle_rules);
                 n += 1;
             }
             solver.finish(&mut self.data)

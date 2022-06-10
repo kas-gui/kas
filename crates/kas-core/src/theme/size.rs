@@ -7,10 +7,10 @@
 
 use std::ops::Deref;
 
-use super::{FrameStyle, MarkStyle, TextClass};
+use super::{Feature, FrameStyle, TextClass};
 use crate::dir::Directional;
-use crate::geom::{Size, Vec2};
-use crate::layout::{AxisInfo, FrameRules, Margins, SizeRules};
+use crate::geom::{Rect, Size, Vec2};
+use crate::layout::{AlignHints, AxisInfo, FrameRules, Margins, SizeRules};
 use crate::macros::autoimpl;
 use crate::text::{Align, TextApi};
 #[allow(unused)]
@@ -28,13 +28,13 @@ use crate::text::TextApiExt;
 ///
 /// Most methods get or calculate the size of some feature. These same features
 /// may be drawn through [`DrawMgr`].
-pub struct SizeMgr<'a>(&'a dyn SizeHandle);
+pub struct SizeMgr<'a>(&'a dyn ThemeSize);
 
 impl<'a> SizeMgr<'a> {
-    /// Construct from a [`SizeHandle`]
+    /// Construct from a [`ThemeSize`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn new(h: &'a dyn SizeHandle) -> Self {
+    pub fn new(h: &'a dyn ThemeSize) -> Self {
         SizeMgr(h)
     }
 
@@ -88,16 +88,6 @@ impl<'a> SizeMgr<'a> {
         self.0.pixels_from_em(em)
     }
 
-    /// Size of a frame around another element
-    pub fn frame(&self, style: FrameStyle, dir: impl Directional) -> FrameRules {
-        self.0.frame(style, dir.is_vertical())
-    }
-
-    /// Size of a separator frame between items
-    pub fn separator(&self) -> Size {
-        self.0.separator()
-    }
-
     /// The margin around content within a widget
     ///
     /// Though inner margins are *usually* empty, they are sometimes drawn to,
@@ -119,6 +109,16 @@ impl<'a> SizeMgr<'a> {
     /// labels which do not have a visible hard edge.
     pub fn text_margins(&self) -> Margins {
         self.0.text_margins()
+    }
+
+    /// Size rules for a feature
+    pub fn feature(&self, feature: Feature, axis: impl Directional) -> SizeRules {
+        self.0.feature(feature, axis.is_vertical())
+    }
+
+    /// Size of a frame around another element
+    pub fn frame(&self, style: FrameStyle, axis: impl Directional) -> FrameRules {
+        self.0.frame(style, axis.is_vertical())
     }
 
     /// The height of a line of text
@@ -143,63 +143,13 @@ impl<'a> SizeMgr<'a> {
     ) -> SizeRules {
         self.0.text_bound(text, class, axis)
     }
-
-    /// Size of the element drawn by [`DrawMgr::checkbox`].
-    pub fn checkbox(&self) -> Size {
-        self.0.checkbox()
-    }
-
-    /// Size of the element drawn by [`DrawMgr::radiobox`].
-    pub fn radiobox(&self) -> Size {
-        self.0.radiobox()
-    }
-
-    /// A simple mark
-    pub fn mark(&self, style: MarkStyle, dir: impl Directional) -> SizeRules {
-        self.0.mark(style, dir.is_vertical())
-    }
-
-    /// Dimensions for a scrollbar
-    ///
-    /// Returns:
-    ///
-    /// -   `size`: minimum size of handle in horizontal orientation;
-    ///     `size.1` is also the width of the scrollbar
-    /// -   `min_len`: minimum length for the whole bar
-    ///
-    /// Required bound: `min_len >= size.0`.
-    pub fn scrollbar(&self) -> (Size, i32) {
-        self.0.scrollbar()
-    }
-
-    /// Dimensions for a slider
-    ///
-    /// Returns:
-    ///
-    /// -   `size`: minimum size of handle in horizontal orientation;
-    ///     `size.1` is also the width of the slider
-    /// -   `min_len`: minimum length for the whole bar
-    ///
-    /// Required bound: `min_len >= size.0`.
-    pub fn slider(&self) -> (Size, i32) {
-        self.0.slider()
-    }
-
-    /// Dimensions for a progress bar
-    ///
-    /// Returns the minimum size for a horizontal progress bar. It is assumed
-    /// that the width is adjustable while the height is (preferably) not.
-    /// For a vertical bar, the values are swapped.
-    pub fn progress_bar(&self) -> Size {
-        self.0.progress_bar()
-    }
 }
 
-/// A handle to the active theme, used for sizing
+/// Theme sizing implementation
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 #[autoimpl(for<S: trait + ?Sized, R: Deref<Target = S>> R)]
-pub trait SizeHandle {
+pub trait ThemeSize {
     /// Get the scale (DPI) factor
     fn scale_factor(&self) -> f32;
 
@@ -210,12 +160,6 @@ pub trait SizeHandle {
     ///
     /// (This depends on the font size.)
     fn pixels_from_em(&self, em: f32) -> f32;
-
-    /// Size of a frame around another element
-    fn frame(&self, style: FrameStyle, is_vert: bool) -> FrameRules;
-
-    /// Size of a separator frame between items
-    fn separator(&self) -> Size;
 
     /// The margin around content within a widget
     ///
@@ -233,6 +177,18 @@ pub trait SizeHandle {
     /// Similar to [`Self::outer_margins`], but intended for things like text
     /// labels which do not have a visible hard edge.
     fn text_margins(&self) -> Margins;
+
+    /// Size rules for a feature
+    fn feature(&self, feature: Feature, axis_is_vertical: bool) -> SizeRules;
+
+    /// Align a feature's rect
+    ///
+    /// In case the input `rect` is larger than desired on either axis, it is
+    /// reduced in size and offset within the original `rect` as is preferred.
+    fn align_feature(&self, feature: Feature, rect: Rect, hints: AlignHints) -> Rect;
+
+    /// Size of a frame around another element
+    fn frame(&self, style: FrameStyle, axis_is_vertical: bool) -> FrameRules;
 
     /// The height of a line of text
     fn line_height(&self, class: TextClass) -> i32;
@@ -258,42 +214,4 @@ pub trait SizeHandle {
         size: Size,
         align: (Align, Align),
     ) -> Vec2;
-
-    /// Size of the element drawn by [`DrawMgr::checkbox`].
-    fn checkbox(&self) -> Size;
-
-    /// Size of the element drawn by [`DrawMgr::radiobox`].
-    fn radiobox(&self) -> Size;
-
-    /// A simple mark
-    fn mark(&self, style: MarkStyle, is_vert: bool) -> SizeRules;
-
-    /// Dimensions for a scrollbar
-    ///
-    /// Returns:
-    ///
-    /// -   `size`: minimum size of handle in horizontal orientation;
-    ///     `size.1` is also the width of the scrollbar
-    /// -   `min_len`: minimum length for the whole bar
-    ///
-    /// Required bound: `min_len >= size.0`.
-    fn scrollbar(&self) -> (Size, i32);
-
-    /// Dimensions for a slider
-    ///
-    /// Returns:
-    ///
-    /// -   `size`: minimum size of handle in horizontal orientation;
-    ///     `size.1` is also the width of the slider
-    /// -   `min_len`: minimum length for the whole bar
-    ///
-    /// Required bound: `min_len >= size.0`.
-    fn slider(&self) -> (Size, i32);
-
-    /// Dimensions for a progress bar
-    ///
-    /// Returns the minimum size for a horizontal progress bar. It is assumed
-    /// that the width is adjustable while the height is (preferably) not.
-    /// For a vertical bar, the values are swapped.
-    fn progress_bar(&self) -> Size;
 }

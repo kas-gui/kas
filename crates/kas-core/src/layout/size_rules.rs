@@ -125,6 +125,12 @@ impl SizeRules {
         }
     }
 
+    /// A fixed size with given (symmetric) `margin`
+    #[inline]
+    pub fn fixed_splat(size: i32, margin: u16) -> Self {
+        Self::fixed(size, (margin, margin))
+    }
+
     /// A fixed size, scaled from virtual pixels
     ///
     /// This is a shortcut to [`SizeRules::fixed`] using virtual-pixel sizes

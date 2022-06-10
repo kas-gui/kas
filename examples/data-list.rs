@@ -5,17 +5,16 @@
 
 //! Data list example (direct representation)
 //!
-//! This example exists in part to demonstrate use of dynamically-allocated
-//! widgets (note also one can use `Column<Box<dyn Widget>>`).
+//! Objective: test performance using a naive list design; stress test with
+//! ridiculous numbers of widgets.
 //!
-//! In part, this also serves as a stress-test of how many widgets it is viable
-//! to have in an app. In my testing:
+//! Compare: `data-list-view.rs` has the same functionality but with a dynamic
+//! view, and thus scales *much* better to large numbers of rows.
 //!
-//! -   hundreds of widgets performs mostly flawlessly even in debug mode
-//! -   thousands of widgets performs flawlessly in release mode
-//! -   hundreds of thousands of widgets has some issues (slow creation,
-//!     very slow activation of a RadioBox in a chain hundreds-of-thousands
-//!     long), but in many ways still performs well in release mode
+//! Conclusion: naive lists are perfectly fine for 100 entries; even with 10k
+//! entries in a debug build only initialisation (and to a lesser extent
+//! resizing) is slow.
+//! In a release build, 250k entries (1M widgets) is quite viable!
 
 use kas::prelude::*;
 use kas::widgets::*;

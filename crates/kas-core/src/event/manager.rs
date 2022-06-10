@@ -11,7 +11,7 @@
 use linear_map::LinearMap;
 use log::{trace, warn};
 use smallvec::SmallVec;
-use std::any::Any;
+use std::any::{type_name, Any};
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::ops::{Deref, DerefMut};
@@ -369,7 +369,7 @@ struct Message {
 impl Message {
     fn new<M: Any + Debug>(msg: Box<M>) -> Self {
         #[cfg(debug_assertions)]
-        let fmt = format!("{:?}", &msg);
+        let fmt = format!("{}::{:?}", type_name::<M>(), &msg);
         let any = msg;
         Message {
             #[cfg(debug_assertions)]

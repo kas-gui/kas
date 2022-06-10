@@ -5,7 +5,7 @@
 
 //! "Handle" types used by themes
 
-use super::{FrameStyle, MarkStyle, SizeHandle, SizeMgr, TextClass};
+use super::{FrameStyle, MarkStyle, SizeMgr, TextClass, ThemeSize};
 use crate::dir::Direction;
 use crate::draw::{color::Rgb, Draw, DrawShared, ImageId, PassType};
 use crate::event::{EventState, SetRectMgr};
@@ -45,7 +45,7 @@ impl Default for Background {
 /// -   `draw.checkbox(&*self, self.state);` — note `&*self` to convert from to
 ///     `&W` from `&mut W`, since the latter would cause borrow conflicts
 pub struct DrawMgr<'a> {
-    h: &'a mut dyn DrawHandle,
+    h: &'a mut dyn ThemeDraw,
     id: WidgetId,
 }
 
@@ -88,7 +88,7 @@ impl<'a> DrawMgr<'a> {
     /// Construct from a [`DrawMgr`] and [`EventState`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn new(h: &'a mut dyn DrawHandle, id: WidgetId) -> Self {
+    pub fn new(h: &'a mut dyn ThemeDraw, id: WidgetId) -> Self {
         DrawMgr { h, id }
     }
 
@@ -104,14 +104,14 @@ impl<'a> DrawMgr<'a> {
 
     /// Access a [`SetRectMgr`]
     pub fn set_rect_mgr<F: FnMut(&mut SetRectMgr) -> T, T>(&mut self, mut f: F) -> T {
-        let (sh, ds, ev) = self.h.components();
-        let mut mgr = SetRectMgr::new(sh, ds, ev);
+        let (sh, draw, ev) = self.h.components();
+        let mut mgr = SetRectMgr::new(sh, draw.shared(), ev);
         f(&mut mgr)
     }
 
     /// Access a [`DrawShared`]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
-        self.h.components().1
+        self.h.components().1.shared()
     }
 
     /// Access the low-level draw device
@@ -120,7 +120,7 @@ impl<'a> DrawMgr<'a> {
     /// base trait [`Draw`]. To access further functionality, it is necessary
     /// to downcast with [`crate::draw::DrawIface::downcast_from`].
     pub fn draw_device(&mut self) -> &mut dyn Draw {
-        self.h.draw_device()
+        self.h.components().1
     }
 
     /// Draw to a new pass
@@ -128,9 +128,10 @@ impl<'a> DrawMgr<'a> {
     /// Adds a new draw pass for purposes of enforcing draw order. Content of
     /// the new pass will be drawn after content in the parent pass.
     pub fn with_pass<F: FnOnce(DrawMgr)>(&mut self, f: F) {
+        let clip_rect = self.h.get_clip_rect();
         let id = self.id.clone();
         self.h.new_pass(
-            self.h.get_clip_rect(),
+            clip_rect,
             Offset::ZERO,
             PassType::Clip,
             Box::new(|h| f(DrawMgr { h, id })),
@@ -175,7 +176,7 @@ impl<'a> DrawMgr<'a> {
     /// [clip region](Self::with_clip_region) or an
     /// [overlay](Self::with_overlay). This may be used to cull hidden
     /// items from lists inside a scrollable view.
-    pub fn get_clip_rect(&self) -> Rect {
+    pub fn get_clip_rect(&mut self) -> Rect {
         self.h.get_clip_rect()
     }
 
@@ -326,7 +327,50 @@ impl<'a> std::ops::BitOrAssign<TkAction> for DrawMgr<'a> {
     }
 }
 
-/// A handle to the active theme, used for drawing
+/// Theme drawing implementation
+///
+/// # Theme extension
+///
+/// Most themes will not want to implement *everything*, but rather derive
+/// not-explicitly-implemented methods from a base theme. This may be achieved
+/// with the [`kas_macros::extends`] macro:
+/// ```ignore
+/// #[extends(ThemeDraw, base = self.base())]
+/// impl ThemeDraw {
+///     // only implement some methods here
+/// }
+/// ```
+/// Note: [`Self::components`] must be implemented
+/// explicitly since this method returns references.
+///
+/// If Rust had stable specialization + GATs + negative trait bounds we could
+/// allow theme extension without macros as follows.
+/// <details>
+///
+/// ```ignore
+/// #![feature(generic_associated_types)]
+/// #![feature(specialization)]
+/// # use kas_core::geom::Rect;
+/// # use kas_core::theme::ThemeDraw;
+/// /// Provides a default implementation of each theme method over a base theme
+/// pub trait ThemeDrawExtends: ThemeDraw {
+///     /// Type of base implementation
+///     type Base<'a>: ThemeDraw where Self: 'a;
+///
+///     /// Access the base theme
+///     fn base<'a>(&'a mut self) -> Self::Base<'a>;
+/// }
+///
+/// // Note: we may need negative trait bounds here to avoid conflict with impl for Box<H>
+/// impl<D: ThemeDrawExtends> ThemeDraw for D {
+///     default fn get_clip_rect(&mut self) -> Rect {
+///         self.base().get_clip_rect()
+///     }
+///
+///     // And so on for other methods...
+/// }
+/// ```
+/// </details>
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 #[autoimpl(for<H: trait + ?Sized> Box<H>)]
@@ -334,16 +378,9 @@ impl<'a> std::ops::BitOrAssign<TkAction> for DrawMgr<'a> {
     for<H: trait + ?Sized, S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>>
     stack_dst::ValueA<H, S>
 ))]
-pub trait DrawHandle {
-    /// Access components: [`SizeHandle`], [`DrawShared`], [`EventState`]
-    fn components(&mut self) -> (&dyn SizeHandle, &mut dyn DrawShared, &mut EventState);
-
-    /// Access the low-level draw device
-    ///
-    /// Note: this drawing API is modular, with limited functionality in the
-    /// base trait [`Draw`]. To access further functionality, it is necessary
-    /// to downcast with [`crate::draw::DrawIface::downcast_from`].
-    fn draw_device(&mut self) -> &mut dyn Draw;
+pub trait ThemeDraw {
+    /// Access components: [`ThemeSize`], [`Draw`], [`EventState`]
+    fn components(&mut self) -> (&dyn ThemeSize, &mut dyn Draw, &mut EventState);
 
     /// Construct a new pass
     fn new_pass<'a>(
@@ -351,18 +388,18 @@ pub trait DrawHandle {
         rect: Rect,
         offset: Offset,
         class: PassType,
-        f: Box<dyn FnOnce(&mut dyn DrawHandle) + 'a>,
+        f: Box<dyn FnOnce(&mut dyn ThemeDraw) + 'a>,
     );
 
     /// Target area for drawing
     ///
     /// Drawing is restricted to this [`Rect`]. Affected by [`Self::new_pass`].
     /// This may be used to cull hidden items from lists inside a scrollable view.
-    fn get_clip_rect(&self) -> Rect;
+    fn get_clip_rect(&mut self) -> Rect;
 
     /// Draw a frame inside the given `rect`
     ///
-    /// The frame dimensions are given by [`SizeHandle::frame`].
+    /// The frame dimensions are given by [`ThemeSize::frame`].
     fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle, bg: Background);
 
     /// Draw a separator in the given `rect`
@@ -383,7 +420,7 @@ pub trait DrawHandle {
 
     /// Draw text with effects
     ///
-    /// [`DrawHandle::text`] already supports *font* effects: bold,
+    /// [`ThemeDraw::text`] already supports *font* effects: bold,
     /// emphasis, text size. In addition, this method supports underline and
     /// strikethrough effects.
     ///
@@ -478,8 +515,8 @@ pub trait DrawHandle {
 mod test {
     use super::*;
 
-    fn _draw_handle_ext(mut draw: DrawMgr) {
-        // We can't call this method without constructing an actual DrawHandle.
+    fn _draw_ext(mut draw: DrawMgr) {
+        // We can't call this method without constructing an actual ThemeDraw.
         // But we don't need to: we just want to test that methods are callable.
 
         let _scale = draw.size_mgr().scale_factor();

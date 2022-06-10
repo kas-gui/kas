@@ -246,6 +246,11 @@ pub trait Layout {
     /// It is expected that [`Self::set_rect`] is called before this method,
     /// but failure to do so should not cause a fatal error.
     ///
+    /// The `draw` parameter is pre-parameterized with this widget's
+    /// [`WidgetId`], allowing drawn components to react to input state. This
+    /// implies that when calling `draw` on children, the child's `id` must be
+    /// supplied via [`DrawMgr::re_id`] or [`DrawMgr::recurse`].
+    ///
     /// Default implementation:
     ///
     /// -   No default implementation, except,

@@ -8,6 +8,7 @@
 use std::fmt::Debug;
 
 use kas::prelude::*;
+use kas::theme::Feature;
 
 impl_scope! {
     /// A progress bar
@@ -18,7 +19,6 @@ impl_scope! {
     pub struct ProgressBar<D: Directional> {
         core: widget_core!(),
         direction: D,
-        width: i32,
         value: f32,
     }
 
@@ -41,9 +41,14 @@ impl_scope! {
             ProgressBar {
                 core: Default::default(),
                 direction,
-                width: 0,
                 value: 0.0,
             }
+        }
+
+        /// Get the progress bar's direction
+        #[inline]
+        pub fn direction(&self) -> Direction {
+            self.direction.as_direction()
         }
 
         /// Set the initial value
@@ -77,25 +82,11 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            let mut size = size_mgr.progress_bar();
-            if self.direction.is_vertical() {
-                size = size.transpose();
-            }
-            let margins = (0, 0);
-            if self.direction.is_vertical() == axis.is_vertical() {
-                SizeRules::new(size.0, size.0, margins, Stretch::High)
-            } else {
-                self.width = size.1;
-                SizeRules::fixed(size.1, margins)
-            }
+            size_mgr.feature(Feature::ProgressBar(self.direction()), axis)
         }
 
-        fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, align: AlignHints) {
-            let mut ideal_size = Size::splat(self.width);
-            ideal_size.set_component(self.direction, i32::MAX);
-            let rect = align
-                .complete(Align::Center, Align::Center)
-                .aligned_rect(ideal_size, rect);
+        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+            let rect = mgr.align_feature(Feature::ProgressBar(self.direction()), rect, align);
             self.core.rect = rect;
         }
 

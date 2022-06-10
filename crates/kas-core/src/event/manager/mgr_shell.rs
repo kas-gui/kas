@@ -78,8 +78,8 @@ impl EventState {
 
         self.new_accel_layer(WidgetId::ROOT, false);
 
-        shell.size_and_draw_shared(&mut |size_handle, draw_shared| {
-            let mut mgr = SetRectMgr::new(size_handle, draw_shared, self);
+        shell.size_and_draw_shared(&mut |size, draw_shared| {
+            let mut mgr = SetRectMgr::new(size, draw_shared, self);
             mgr.configure(WidgetId::ROOT, widget);
         });
 

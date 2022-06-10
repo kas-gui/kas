@@ -23,6 +23,7 @@ use syn::parse_macro_input;
 
 mod args;
 mod class_traits;
+mod extends;
 mod impl_singleton;
 mod make_layout;
 mod storage;
@@ -431,4 +432,32 @@ pub fn widget_index(input: TokenStream) -> TokenStream {
     let input2 = input.clone();
     let _ = parse_macro_input!(input2 as widget_index::BaseInput);
     input
+}
+
+/// A trait implementation is an extension over some base
+///
+/// Usage as follows:
+/// ```ignore
+/// #[extends(ThemeDraw, base = self.base())]
+/// impl ThemeDraw for Object {
+///     // All methods not present are implemented automatically over
+///     // `self.base()`, which mut return an object implementing ThemeDraw
+/// }
+/// ```
+#[proc_macro_attribute]
+#[proc_macro_error]
+pub fn extends(attr: TokenStream, item: TokenStream) -> TokenStream {
+    match syn::parse::<extends::Extends>(attr) {
+        Ok(extends) => match extends.extend(item.into()) {
+            Ok(result) => result.into(),
+            Err(err) => {
+                emit_call_site_error!(err);
+                TokenStream::new()
+            }
+        },
+        Err(err) => {
+            emit_call_site_error!(err);
+            item
+        }
+    }
 }

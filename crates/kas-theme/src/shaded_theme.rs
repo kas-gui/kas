@@ -17,7 +17,7 @@ use kas::draw::{color::Rgba, *};
 use kas::event::EventState;
 use kas::geom::*;
 use kas::text::{TextApi, TextDisplay};
-use kas::theme::{self, Background, SizeHandle, ThemeControl};
+use kas::theme::{Background, ThemeControl, ThemeDraw, ThemeSize};
 use kas::theme::{FrameStyle, MarkStyle, TextClass};
 use kas::{TkAction, WidgetId};
 
@@ -94,9 +94,9 @@ where
     type Window = dim::Window<DS::Draw>;
 
     #[cfg(not(feature = "gat"))]
-    type DrawHandle = DrawHandle<'static, DS>;
+    type Draw = DrawHandle<'static, DS>;
     #[cfg(feature = "gat")]
-    type DrawHandle<'a> = DrawHandle<'a, DS>;
+    type Draw<'a> = DrawHandle<'a, DS>;
 
     fn config(&self) -> std::borrow::Cow<Self::Config> {
         <FlatTheme as Theme<DS>>::config(&self.flat)
@@ -120,12 +120,12 @@ where
     }
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn draw_handle(
+    unsafe fn draw(
         &self,
         draw: DrawIface<DS>,
         ev: &mut EventState,
         w: &mut Self::Window,
-    ) -> Self::DrawHandle {
+    ) -> Self::Draw {
         w.anim.update();
 
         unsafe fn extend_lifetime<'b, T: ?Sized>(r: &'b T) -> &'static T {
@@ -146,12 +146,12 @@ where
         }
     }
     #[cfg(feature = "gat")]
-    fn draw_handle<'a>(
+    fn draw<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
         ev: &'a mut EventState,
         w: &'a mut Self::Window,
-    ) -> Self::DrawHandle<'a> {
+    ) -> Self::Draw<'a> {
         w.anim.update();
 
         DrawHandle {
@@ -239,16 +239,13 @@ where
     }
 }
 
-impl<'a, DS: DrawSharedImpl> theme::DrawHandle for DrawHandle<'a, DS>
+#[kas::macros::extends(ThemeDraw, base=self.as_flat())]
+impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl + DrawShadedImpl,
 {
-    fn components(&mut self) -> (&dyn SizeHandle, &mut dyn DrawShared, &mut EventState) {
-        (self.w, self.draw.shared, self.ev)
-    }
-
-    fn draw_device(&mut self) -> &mut dyn Draw {
-        &mut self.draw
+    fn components(&mut self) -> (&dyn ThemeSize, &mut dyn Draw, &mut EventState) {
+        (self.w, &mut self.draw, self.ev)
     }
 
     fn new_pass<'b>(
@@ -256,7 +253,7 @@ where
         inner_rect: Rect,
         offset: Offset,
         class: PassType,
-        f: Box<dyn FnOnce(&mut dyn theme::DrawHandle) + 'b>,
+        f: Box<dyn FnOnce(&mut dyn ThemeDraw) + 'b>,
     ) {
         let mut shadow = Default::default();
         let mut outer_rect = inner_rect;
@@ -285,7 +282,7 @@ where
         f(&mut handle);
     }
 
-    fn get_clip_rect(&self) -> Rect {
+    fn get_clip_rect(&mut self) -> Rect {
         self.draw.get_clip_rect()
     }
 
@@ -341,41 +338,6 @@ where
         self.draw.shaded_round_frame(outer, inner, norm, col);
     }
 
-    fn selection_box(&mut self, rect: Rect) {
-        self.as_flat().selection_box(rect);
-    }
-
-    fn text(&mut self, id: &WidgetId, pos: Coord, text: &TextDisplay, class: TextClass) {
-        self.as_flat().text(id, pos, text, class);
-    }
-
-    fn text_effects(&mut self, id: &WidgetId, pos: Coord, text: &dyn TextApi, class: TextClass) {
-        self.as_flat().text_effects(id, pos, text, class);
-    }
-
-    fn text_selected_range(
-        &mut self,
-        id: &WidgetId,
-        pos: Coord,
-        text: &TextDisplay,
-        range: Range<usize>,
-        class: TextClass,
-    ) {
-        self.as_flat()
-            .text_selected_range(id, pos, text, range, class);
-    }
-
-    fn text_cursor(
-        &mut self,
-        id: &WidgetId,
-        pos: Coord,
-        text: &TextDisplay,
-        class: TextClass,
-        byte: usize,
-    ) {
-        self.as_flat().text_cursor(id, pos, text, class, byte);
-    }
-
     fn checkbox(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>) {
         let state = InputState::new_all(self.ev, id);
         let anim_fade = 1.0 - self.w.anim.fade_bool(self.draw.draw, checked, last_change);
@@ -406,10 +368,6 @@ where
             let col = self.cols.check_mark_state(state);
             self.draw.shaded_circle(inner, (0.0, 1.0), col);
         }
-    }
-
-    fn mark(&mut self, id: &WidgetId, rect: Rect, style: MarkStyle) {
-        self.as_flat().mark(id, rect, style);
     }
 
     fn scrollbar(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, _: Direction) {
@@ -458,9 +416,5 @@ where
         let inner = outer.shrink(thickness);
         let col = self.cols.accent_soft;
         self.draw.shaded_round_frame(outer, inner, (0.0, 0.6), col);
-    }
-
-    fn image(&mut self, id: ImageId, rect: Rect) {
-        self.as_flat().image(id, rect);
     }
 }

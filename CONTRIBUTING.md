@@ -37,7 +37,7 @@ KAS optionally uses several Rust nightly features, but is functional without
 Usage of `unsafe` is allowed, but not preferred. Current use cases:
 
 -   Defining constants requiring `unwrap` (tracker: [`const_option`](https://github.com/rust-lang/rust/issues/58732)). Note that since 1.57, `panic!` in const fns is supported, hence a work-around using `match` is possible.
--   To get around lifetime restrictions on the `draw_handle` and `size_handle`
+-   To get around lifetime restrictions on the theme API's `Theme::draw` and `Window::size`
     methods; this will no longer require `unsafe` once the
     `generic_associated_types` feature is stabilised.
 -   `WidgetId` uses `unsafe` code to support both inline and heap-allocated

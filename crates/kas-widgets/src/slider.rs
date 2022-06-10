@@ -12,6 +12,7 @@ use std::time::Duration;
 use super::DragHandle;
 use kas::event::{Command, MsgPressFocus, Scroll};
 use kas::prelude::*;
+use kas::theme::Feature;
 
 /// Requirements on type used by [`Slider`]
 pub trait SliderType:
@@ -144,6 +145,12 @@ impl_scope! {
             }
         }
 
+        /// Get the slider's direction
+        #[inline]
+        pub fn direction(&self) -> Direction {
+            self.direction.as_direction()
+        }
+
         /// Set the initial value
         #[inline]
         #[must_use]
@@ -220,24 +227,19 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            let (size, min_len) = size_mgr.slider();
-            let margins = (0, 0);
-            if self.direction.is_vertical() == axis.is_vertical() {
-                SizeRules::new(min_len, min_len, margins, Stretch::High)
-            } else {
-                SizeRules::fixed(size.1, margins)
-            }
+            size_mgr.feature(Feature::Slider(self.direction()), axis)
         }
 
         fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             self.handle.set_rect(mgr, rect, align);
-            let min_handle_size = (mgr.size_mgr().slider().0).0;
+            let dir = Direction::Right;
+            let handle_size = mgr.size_mgr().feature(Feature::Slider(dir), dir).min_size();
             let mut size = rect.size;
             if self.direction.is_horizontal() {
-                size.0 = min_handle_size.min(rect.size.0);
+                size.0 = size.0.min(handle_size);
             } else {
-                size.1 = min_handle_size.min(rect.size.1);
+                size.1 = size.1.min(handle_size);
             }
             let _ = self.handle.set_size_and_offset(size, self.offset());
         }

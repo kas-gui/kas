@@ -15,7 +15,7 @@
 use crate::draw::DrawShared;
 use crate::event;
 use crate::event::UpdateId;
-use crate::theme::{SizeHandle, ThemeControl};
+use crate::theme::{ThemeControl, ThemeSize};
 use std::num::NonZeroU32;
 
 /// Identifier for a window or pop-up
@@ -140,12 +140,12 @@ pub trait ShellWindow {
     /// returned from the closure.
     fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeControl) -> TkAction);
 
-    /// Access a [`SizeHandle`] and a [`DrawShared`]
+    /// Access [`ThemeSize`] and [`DrawShared`] objects
     ///
     /// Implementations should call the given function argument once; not doing
-    /// so is memory-safe but will cause a panic when `size_handle` is called.
+    /// so is memory-safe but will cause panics in `EventMgr` methods.
     /// User-code *must not* depend on `f` being called for memory safety.
-    fn size_and_draw_shared(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle, &mut dyn DrawShared));
+    fn size_and_draw_shared(&mut self, f: &mut dyn FnMut(&mut dyn ThemeSize, &mut dyn DrawShared));
 
     /// Set the mouse cursor
     fn set_cursor_icon(&mut self, icon: event::CursorIcon);
