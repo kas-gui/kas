@@ -340,8 +340,8 @@ impl<'a> std::ops::BitOrAssign<TkAction> for DrawMgr<'a> {
 ///     // only implement some methods here
 /// }
 /// ```
-/// Note: [`Self::components`] and [`Self::draw_device`] must be implemented
-/// explicitly since these methods return references.
+/// Note: [`Self::components`] must be implemented
+/// explicitly since this method returns references.
 ///
 /// If Rust had stable specialization + GATs + negative trait bounds we could
 /// allow theme extension without macros as follows.

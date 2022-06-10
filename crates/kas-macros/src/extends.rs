@@ -155,7 +155,7 @@ impl Extends {
 
         impl_
             .items
-            .extend(methods.into_iter().map(|m| ImplItem::Method(m)));
+            .extend(methods.into_iter().map(ImplItem::Method));
 
         Ok(quote! { #impl_ })
     }

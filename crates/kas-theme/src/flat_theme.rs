@@ -250,7 +250,7 @@ where
             }
         }
 
-        if !self.cols.is_dark && !(state.disabled() || state.depress()) {
+        if !(self.cols.is_dark || state.disabled() || state.depress()) {
             let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
             if state.hover() {
                 a = a * SHADOW_HOVER;
@@ -571,7 +571,7 @@ where
         let outer = Quad::conv(rect);
         let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
 
-        if !self.cols.is_dark && !(state.disabled() || state.depress()) {
+        if !(self.cols.is_dark || state.disabled() || state.depress()) {
             let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
             let mut mult = 0.65;
             if state.hover() {
