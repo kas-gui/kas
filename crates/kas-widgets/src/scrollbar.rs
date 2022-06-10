@@ -8,6 +8,7 @@
 use super::{DragHandle, ScrollRegion};
 use kas::event::{MsgPressFocus, Scroll};
 use kas::prelude::*;
+use kas::theme::Feature;
 use std::fmt::Debug;
 
 impl_scope! {
@@ -69,6 +70,12 @@ impl_scope! {
                 force_visible: false,
                 handle: DragHandle::new(),
             }
+        }
+
+        /// Get the scroll bar's direction
+        #[inline]
+        pub fn direction(&self) -> Direction {
+            self.direction.as_direction()
         }
 
         /// Set invisible property
@@ -225,25 +232,15 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            let (size, min_len) = size_mgr.scrollbar();
-            let margins = (0, 0);
-            if self.direction.is_vertical() == axis.is_vertical() {
-                SizeRules::new(min_len, min_len, margins, Stretch::High)
-            } else {
-                SizeRules::fixed(size.1, margins)
-            }
+            size_mgr.feature(Feature::ScrollBar(self.direction()), axis)
         }
 
         fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
-            let width = mgr.size_mgr().scrollbar().0.1;
-            let mut ideal_size = Size::splat(width);
-            ideal_size.set_component(self.direction, i32::MAX);
-            let rect = align
-                .complete(Align::Center, Align::Center)
-                .aligned_rect(ideal_size, rect);
+            let rect = mgr.align_feature(Feature::ScrollBar(self.direction()), rect, align);
             self.core.rect = rect;
             self.handle.set_rect(mgr, rect, align);
-            self.min_handle_len = (mgr.size_mgr().scrollbar().0).0;
+            let dir = Direction::Right;
+            self.min_handle_len = mgr.size_mgr().feature(Feature::ScrollBar(dir), dir).min_size();
             let _ = self.update_widgets();
         }
 
@@ -447,7 +444,8 @@ impl_scope! {
             let pos = rect.pos;
             let mut child_size = rect.size;
 
-            let bar_width = (mgr.size_mgr().scrollbar().0).1;
+            let dir = Direction::Right;
+            let bar_width = mgr.size_mgr().feature(Feature::ScrollBar(dir), dir.flipped()).min_size();
             if self.mode == ScrollBarMode::Auto {
                 self.show_bars = self.inner.scroll_axes(child_size);
             }

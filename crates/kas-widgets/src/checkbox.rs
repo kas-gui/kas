@@ -7,6 +7,7 @@
 
 use super::AccelLabel;
 use kas::prelude::*;
+use kas::theme::Feature;
 use std::rc::Rc;
 use std::time::Instant;
 
@@ -28,15 +29,11 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            let size = size_mgr.checkbox();
-            let margins = size_mgr.outer_margins();
-            SizeRules::extract_fixed(axis, size, margins)
+            size_mgr.feature(Feature::CheckBox, axis)
         }
 
         fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
-            let rect = align
-                .complete(Align::Center, Align::Center)
-                .aligned_rect(mgr.size_mgr().checkbox(), rect);
+            let rect = mgr.align_feature(Feature::CheckBox, rect, align);
             self.core.rect = rect;
         }
 

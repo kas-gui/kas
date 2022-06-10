@@ -8,10 +8,10 @@
 use super::Pending;
 use crate::draw::DrawShared;
 use crate::event::EventState;
-use crate::geom::{Size, Vec2};
-use crate::layout::Align;
+use crate::geom::{Rect, Size, Vec2};
+use crate::layout::{Align, AlignHints};
 use crate::text::TextApi;
-use crate::theme::{SizeMgr, TextClass, ThemeSize};
+use crate::theme::{Feature, SizeMgr, TextClass, ThemeSize};
 use crate::{TkAction, Widget, WidgetExt, WidgetId};
 use std::ops::{Deref, DerefMut};
 
@@ -79,6 +79,15 @@ impl<'a> SetRectMgr<'a> {
         }
 
         widget.configure(self);
+    }
+
+    /// Align a feature's rect
+    ///
+    /// In case the input `rect` is larger than desired on either axis, it is
+    /// reduced in size and offset within the original `rect` as is preferred.
+    #[inline]
+    pub fn align_feature(&self, feature: Feature, rect: Rect, hints: AlignHints) -> Rect {
+        self.sh.align_feature(feature, rect, hints)
     }
 
     /// Update a text object, setting font properties and wrap size

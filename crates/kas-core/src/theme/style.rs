@@ -7,6 +7,54 @@
 
 use crate::dir::Direction;
 
+/// Style of marks
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub enum MarkStyle {
+    /// An arrowhead/angle-bracket/triangle pointing in the given direction
+    Point(Direction),
+}
+
+/// Various features which may be sized and drawn
+///
+/// Includes most types of features excepting text and frames.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub enum Feature {
+    Separator,
+    Mark(MarkStyle),
+    CheckBox,
+    RadioBox,
+    ScrollBar(Direction),
+    Slider(Direction),
+    ProgressBar(Direction),
+}
+
+impl From<MarkStyle> for Feature {
+    fn from(style: MarkStyle) -> Self {
+        Feature::Mark(style)
+    }
+}
+
+/// Style of a frame
+///
+/// A "frame" is an element surrounding another element.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub enum FrameStyle {
+    /// An invisible frame which forces all margins to be interior
+    InnerMargin,
+    /// A frame for grouping content
+    Frame,
+    /// A frame around pop-ups
+    Popup,
+    /// Border around a pop-up menu entry
+    MenuEntry,
+    /// Frame used to indicate navigation focus
+    NavFocus,
+    /// Border of a button
+    Button,
+    /// Box used to contain editable text
+    EditBox,
+}
+
 /// Class of text drawn
 ///
 /// Themes choose font, font size, colour, and alignment based on this.
@@ -68,32 +116,4 @@ impl TextClass {
         use TextClass::*;
         matches!(self, AccelLabel(_) | Button | MenuLabel)
     }
-}
-
-/// Style of a frame
-///
-/// A "frame" is an element surrounding another element.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
-pub enum FrameStyle {
-    /// An invisible frame which forces all margins to be interior
-    InnerMargin,
-    /// A frame for grouping content
-    Frame,
-    /// A frame around pop-ups
-    Popup,
-    /// Border around a pop-up menu entry
-    MenuEntry,
-    /// Frame used to indicate navigation focus
-    NavFocus,
-    /// Border of a button
-    Button,
-    /// Box used to contain editable text
-    EditBox,
-}
-
-/// Style of marks
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
-pub enum MarkStyle {
-    /// An arrowhead/angle-bracket/triangle pointing in the given direction
-    Point(Direction),
 }

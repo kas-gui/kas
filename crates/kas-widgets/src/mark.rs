@@ -40,7 +40,7 @@ impl_scope! {
     }
     impl Layout for Self {
         fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            mgr.mark(self.style, axis)
+            mgr.feature(self.style.into(), axis)
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
@@ -80,7 +80,7 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            mgr.mark(self.style, axis).with_stretch(Stretch::Low)
+            mgr.feature(self.style.into(), axis).with_stretch(Stretch::Low)
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {

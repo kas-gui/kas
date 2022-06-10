@@ -32,7 +32,7 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            SizeRules::extract_fixed(axis, size_mgr.separator(), Margins::ZERO)
+            size_mgr.feature(kas::theme::Feature::Separator, axis)
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {

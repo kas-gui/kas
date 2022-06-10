@@ -7,6 +7,7 @@
 
 use super::AccelLabel;
 use kas::prelude::*;
+use kas::theme::Feature;
 use kas::updatable::{SharedRc, SingleData};
 use log::trace;
 use std::fmt::Debug;
@@ -63,15 +64,11 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            let size = size_mgr.radiobox();
-            let margins = size_mgr.outer_margins();
-            SizeRules::extract_fixed(axis, size, margins)
+            size_mgr.feature(Feature::RadioBox, axis)
         }
 
         fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
-            let rect = align
-                .complete(Align::Center, Align::Center)
-                .aligned_rect(mgr.size_mgr().radiobox(), rect);
+            let rect = mgr.align_feature(Feature::RadioBox, rect, align);
             self.core.rect = rect;
         }
 
