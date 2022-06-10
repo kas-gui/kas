@@ -27,6 +27,10 @@ As is industry standard, APIs should use US-English spellings.
 This rule is not enforced for documentation or local variables,
 so long readability is not significantly impaired.
 
+Notes:
+
+-   'Config' is used as an abbreviation for 'configuration' (noun), *not* for 'configure' (verb)
+
 ### Nightly features
 
 KAS optionally uses several Rust nightly features, but is functional without

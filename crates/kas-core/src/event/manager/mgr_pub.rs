@@ -298,7 +298,6 @@ impl EventState {
     /// See [`EventState::new_accel_layer`].
     ///
     /// This should only be called from [`Widget::configure`].
-    // TODO(type safety): consider only implementing on ConfigureManager
     #[inline]
     pub fn add_accel_keys(&mut self, id: &WidgetId, keys: &[VirtualKeyCode]) {
         if let Some(layer) = self.accel_layer_for_id(id) {
