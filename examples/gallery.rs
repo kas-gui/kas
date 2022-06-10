@@ -109,7 +109,7 @@ fn widgets() -> Box<dyn SetDisabled> {
 Пример текста на нескольких языках.
 טקסט לדוגמא במספר שפות.";
 
-    let radio = RadioBoxGroup::default();
+    let radio = RadioGroup::default();
 
     let widgets = impl_singleton! {
         #[widget{
@@ -296,7 +296,7 @@ fn filter_list() -> Box<dyn SetDisabled> {
     type ListView = view::ListView<Down, FilteredList, driver::DefaultNav>;
     let filtered = FilteredList::new(data, filter.clone());
 
-    let r = RadioBoxGroup::default();
+    let r = RadioGroup::default();
 
     Box::new(impl_singleton! {
         #[widget{

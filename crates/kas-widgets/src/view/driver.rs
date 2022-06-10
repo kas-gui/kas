@@ -9,7 +9,7 @@
 //! allowing referal to e.g. `driver::DefaultView`.
 
 use crate::{
-    CheckBoxBare, EditBox, EditField, EditGuard, Label, NavFrame, ProgressBar, RadioBoxGroup,
+    CheckBoxBare, EditBox, EditField, EditGuard, Label, NavFrame, ProgressBar, RadioGroup,
     SliderType, SpinnerType,
 };
 use kas::prelude::*;
@@ -203,11 +203,11 @@ impl Driver<bool> for CheckBox {
 /// [`crate::RadioBoxBare`] view widget constructor
 #[derive(Clone, Debug, Default)]
 pub struct RadioBoxBare {
-    group: RadioBoxGroup,
+    group: RadioGroup,
 }
 impl RadioBoxBare {
     /// Construct, with given `group`
-    pub fn make(group: RadioBoxGroup) -> Self {
+    pub fn make(group: RadioGroup) -> Self {
         RadioBoxBare { group }
     }
 }
@@ -225,11 +225,11 @@ impl Driver<bool> for RadioBoxBare {
 #[derive(Clone, Debug, Default)]
 pub struct RadioBox {
     label: AccelString,
-    group: RadioBoxGroup,
+    group: RadioGroup,
 }
 impl RadioBox {
     /// Construct, with given `label` and `group`
-    pub fn make<T: Into<AccelString>>(label: T, group: RadioBoxGroup) -> Self {
+    pub fn make<T: Into<AccelString>>(label: T, group: RadioGroup) -> Self {
         let label = label.into();
         RadioBox { label, group }
     }

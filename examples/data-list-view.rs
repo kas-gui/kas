@@ -176,7 +176,7 @@ impl_scope! {
 
 #[derive(Debug)]
 struct MyDriver {
-    radio_group: RadioBoxGroup,
+    radio_group: RadioGroup,
 }
 impl Driver<(usize, bool, String)> for MyDriver {
     type Widget = ListEntry;

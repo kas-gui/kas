@@ -20,7 +20,7 @@ use kas::prelude::*;
 use kas::widgets::*;
 
 thread_local! {
-    pub static RADIO: RadioBoxGroup = Default::default();
+    pub static RADIO: RadioGroup = Default::default();
 }
 
 #[derive(Clone, Debug)]

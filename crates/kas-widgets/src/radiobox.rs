@@ -14,8 +14,10 @@ use std::fmt::Debug;
 use std::rc::Rc;
 use std::time::Instant;
 
-/// Type of radiobox group
-pub type RadioBoxGroup = SharedRc<Option<WidgetId>>;
+/// A group used by [`RadioBox`] and [`RadioBoxBare`]
+///
+/// This type can (and likely should) be default constructed.
+pub type RadioGroup = SharedRc<Option<WidgetId>>;
 
 impl_scope! {
     /// A bare radiobox (no label)
@@ -29,7 +31,7 @@ impl_scope! {
         core: widget_core!(),
         state: bool,
         last_change: Option<Instant>,
-        group: RadioBoxGroup,
+        group: RadioGroup,
         on_select: Option<Rc<dyn Fn(&mut EventMgr)>>,
     }
 
@@ -83,7 +85,7 @@ impl_scope! {
         /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
         /// same `group` will be considered part of a single group.
         #[inline]
-        pub fn new(group: RadioBoxGroup) -> Self {
+        pub fn new(group: RadioGroup) -> Self {
             RadioBoxBare {
                 core: Default::default(),
                 state: false,
@@ -122,7 +124,7 @@ impl_scope! {
         ///
         /// No handler is called on deselection.
         #[inline]
-        pub fn new_on<F>(group: RadioBoxGroup, f: F) -> Self
+        pub fn new_on<F>(group: RadioGroup, f: F) -> Self
         where
             F: Fn(&mut EventMgr) + 'static,
         {
@@ -201,7 +203,7 @@ impl_scope! {
         /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
         /// same `group` will be considered part of a single group.
         #[inline]
-        pub fn new<T: Into<AccelString>>(label: T, group: RadioBoxGroup) -> Self {
+        pub fn new<T: Into<AccelString>>(label: T, group: RadioGroup) -> Self {
             RadioBox {
                 core: Default::default(),
                 inner: RadioBoxBare::new(group),
@@ -239,7 +241,7 @@ impl_scope! {
         ///
         /// No handler is called on deselection.
         #[inline]
-        pub fn new_on<T: Into<AccelString>, F>(label: T, group: RadioBoxGroup, f: F) -> Self
+        pub fn new_on<T: Into<AccelString>, F>(label: T, group: RadioGroup, f: F) -> Self
         where
             F: Fn(&mut EventMgr) + 'static,
         {
@@ -259,7 +261,7 @@ impl_scope! {
         ///
         /// No handler is called on deselection.
         #[inline]
-        pub fn new_msg<S, M: Clone>(label: S, group: RadioBoxGroup, msg: M) -> Self
+        pub fn new_msg<S, M: Clone>(label: S, group: RadioGroup, msg: M) -> Self
         where
             S: Into<AccelString>,
             M: Clone + Debug + 'static,
