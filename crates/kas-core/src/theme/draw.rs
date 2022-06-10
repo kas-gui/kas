@@ -346,7 +346,12 @@ impl<'a> std::ops::BitOrAssign<TkAction> for DrawMgr<'a> {
 /// If Rust had stable specialization + GATs + negative trait bounds we could
 /// allow theme extension without macros as follows.
 /// <details>
-/// ```
+///
+/// ```ignore
+/// #![feature(generic_associated_types)]
+/// #![feature(specialization)]
+/// # use kas_core::geom::Rect;
+/// # use kas_core::theme::ThemeDraw;
 /// /// Provides a default implementation of each theme method over a base theme
 /// pub trait ThemeDrawExtends: ThemeDraw {
 ///     /// Type of base implementation
@@ -358,7 +363,10 @@ impl<'a> std::ops::BitOrAssign<TkAction> for DrawMgr<'a> {
 ///
 /// // Note: we may need negative trait bounds here to avoid conflict with impl for Box<H>
 /// impl<D: ThemeDrawExtends> ThemeDraw for D {
-///     default fn draw_device(&mut self) -> &mut dyn Draw { self.base().draw_device() }
+///     default fn get_clip_rect(&mut self) -> Rect {
+///         self.base().get_clip_rect()
+///     }
+///
 ///     // And so on for other methods...
 /// }
 /// ```
