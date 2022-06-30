@@ -97,7 +97,12 @@ kas-core = { version = "0.10.1", path = "crates/kas-core" }
 kas-dylib = { version = "0.10.0", path = "crates/kas-dylib", optional = true }
 kas-widgets = { version = "0.10.0", path = "crates/kas-widgets" }
 kas-resvg = { version = "0.10.0", path = "crates/kas-resvg" }
-kas-theme = { version = "0.10.0", path = "crates/kas-theme", optional = true, default-features = false }
+
+[dependencies.kas-theme]
+version = "0.10.0" # used in doc links
+path = "crates/kas-theme"
+optional = true
+default-features = false
 
 [dependencies.kas-wgpu]
 version = "0.10.0"

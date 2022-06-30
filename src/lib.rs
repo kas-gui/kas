@@ -5,23 +5,24 @@
 
 //! KAS GUI Toolkit
 //!
-//! This is the main KAS crate, featuring:
+//! This, the main KAS crate, is merely a wrapper over other crates:
 //!
-//! -   the [`Widget`] trait family, with [`macros`] to implement them
-//! -   high-level themable and mid-level [`draw`] APIs
-//! -   [`event`] handling code
-//! -   [`geom`]-etry types and widget [`layout`] solvers
-//! -   the standard [`widgets`] library
+//! -   [`kas_core`] is the core of the library
+//! -   [`kas_theme`] provides high-level (themed) drawing
+//! -   [`kas_widgets`] provides common high-level widgets
+//! -   [`kas_wgpu`] is the shell, providing system integration and graphics
+//!     implementations (this should become less dependant on WGPU in the future)
 //!
-//! See also these external crates:
+//! All items from [`kas_core`] are directly re-exported from this crate
+//! (e.g. [`kas::geom::Size`](crate::geom::Size)); other crates are re-exported
+//! as a sub-module (e.g. [`kas::shell::Toolkit`](crate::shell::Toolkit)).
 //!
-//! -   `kas-theme` - [crates.io](https://crates.io/crates/kas-theme) - [docs.rs](https://docs.rs/kas-theme) - theme API + themes
-//! -   `kas-wgpu` - [crates.io](https://crates.io/crates/kas-wgpu) - [docs.rs](https://docs.rs/kas-wgpu) - wgpu + winit backend
+//! The [easy-cast](https://docs.rs/easy-cast/0.5/easy_cast) library is re-export as `kas::cast`.
 //!
 //! Also refer to:
 //!
 //! -   [KAS Tutorials](https://kas-gui.github.io/tutorials/)
-//! -   [Examples](https://github.com/kas-gui/kas/tree/master/kas-wgpu/examples)
+//! -   [Examples](https://github.com/kas-gui/kas/tree/master/examples)
 //! -   [Discuss](https://github.com/kas-gui/kas/discussions)
 //! -   [easy-cast API docs](https://docs.rs/easy-cast) (this is re-exported as `cast`)
 
@@ -32,23 +33,26 @@ pub mod prelude;
 
 pub use kas_core::*;
 
-pub use kas_widgets as widgets;
+pub extern crate kas_widgets as widgets;
 
 #[cfg(any(feature = "canvas", feature = "svg"))]
-pub use kas_resvg as resvg;
+#[cfg_attr(doc_cfg, doc(cfg(any(feature = "canvas", feature = "svg"))))]
+pub extern crate kas_resvg as resvg;
 
 /// Themes
 ///
-/// This module merges [`kas_core::theme`] and (with the `theme` feature) [`kas_theme`].
+/// This module merges [`kas_core::theme`](https://docs.rs/kas-theme/0.11/kas_theme) and [`kas_theme`].
 pub mod theme {
     pub use kas_core::theme::*;
 
     #[cfg(feature = "theme")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "theme")))]
     pub use kas_theme::*;
 }
 
 #[cfg(feature = "wgpu")]
-pub use kas_wgpu as shell;
+#[cfg_attr(doc_cfg, doc(cfg(feature = "wgpu")))]
+pub extern crate kas_wgpu as shell;
 
 #[cfg(feature = "dynamic")]
 #[allow(unused_imports)]

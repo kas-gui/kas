@@ -288,7 +288,7 @@ pub trait Layout {
 ///
 /// Some simple examples follow. See also
 /// [examples apps](https://github.com/kas-gui/kas/tree/master/examples)
-/// and [`kas_widgets`](https://docs.rs/kas-widgets/latest/kas_widgets/) code.
+/// and [`kas_widgets` code](https://github.com/kas-gui/kas/tree/master/crates/kas-widgets).
 /// ```
 /// # extern crate kas_core as kas;
 /// use kas::prelude::*;
