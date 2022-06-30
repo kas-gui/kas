@@ -6,7 +6,7 @@
 //! Menu Entries
 
 use super::{Menu, SubItems};
-use crate::{AccelLabel, CheckBoxBare};
+use crate::{AccelLabel, CheckBox};
 use kas::theme::{FrameStyle, TextClass};
 use kas::{layout, prelude::*};
 use std::fmt::Debug;
@@ -111,7 +111,7 @@ impl_scope! {
     pub struct MenuToggle {
         core: widget_core!(),
         #[widget]
-        checkbox: CheckBoxBare,
+        checkbox: CheckBox,
         #[widget]
         label: AccelLabel,
     }
@@ -150,7 +150,7 @@ impl_scope! {
         pub fn new<T: Into<AccelString>>(label: T) -> Self {
             MenuToggle {
                 core: Default::default(),
-                checkbox: CheckBoxBare::new(),
+                checkbox: CheckBox::new(),
                 label: AccelLabel::new(label).with_class(TextClass::MenuLabel),
             }
         }

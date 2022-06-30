@@ -14,20 +14,22 @@ use std::fmt::Debug;
 use std::rc::Rc;
 use std::time::Instant;
 
-/// A group used by [`RadioBox`] and [`RadioBoxBare`]
+/// A group used by [`RadioButton`] and [`RadioBox`]
 ///
 /// This type can (and likely should) be default constructed.
 pub type RadioGroup = SharedRc<Option<WidgetId>>;
 
 impl_scope! {
     /// A bare radio box (no label)
+    ///
+    /// See also [`RadioButton`] which includes a label.
     #[autoimpl(Debug ignore self.on_select)]
     #[derive(Clone)]
     #[widget {
         key_nav = true;
         hover_highlight = true;
     }]
-    pub struct RadioBoxBare {
+    pub struct RadioBox {
         core: widget_core!(),
         state: bool,
         last_change: Option<Instant>,
@@ -40,7 +42,7 @@ impl_scope! {
             match event {
                 Event::Update { id, .. } if id == self.group.id() => {
                     if self.state && !self.eq_id(self.group.get_cloned()) {
-                        trace!("RadioBoxBare: unset {}", self.id());
+                        trace!("RadioBox: unset {}", self.id());
                         self.state = false;
                         self.last_change = Some(Instant::now());
                         mgr.redraw(self.id());
@@ -49,7 +51,7 @@ impl_scope! {
                 }
                 event => event.on_activate(mgr, self.id(), |mgr| {
                     if !self.state {
-                        trace!("RadioBoxBare: set {}", self.id());
+                        trace!("RadioBox: set {}", self.id());
                         self.state = true;
                         self.last_change = Some(Instant::now());
                         mgr.redraw(self.id());
@@ -82,11 +84,11 @@ impl_scope! {
     impl Self {
         /// Construct a radio box
         ///
-        /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
+        /// All instances of [`RadioBox`] and [`RadioButton`] constructed over the
         /// same `group` will be considered part of a single group.
         #[inline]
         pub fn new(group: RadioGroup) -> Self {
-            RadioBoxBare {
+            RadioBox {
                 core: Default::default(),
                 state: false,
                 last_change: None,
@@ -102,11 +104,11 @@ impl_scope! {
         /// No handler is called on deselection.
         #[inline]
         #[must_use]
-        pub fn on_select<F>(self, f: F) -> RadioBoxBare
+        pub fn on_select<F>(self, f: F) -> RadioBox
         where
             F: Fn(&mut EventMgr) + 'static,
         {
-            RadioBoxBare {
+            RadioBox {
                 core: self.core,
                 state: self.state,
                 last_change: self.last_change,
@@ -117,7 +119,7 @@ impl_scope! {
 
         /// Construct a radio box with given `group` and event handler `f`
         ///
-        /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
+        /// All instances of [`RadioBox`] and [`RadioButton`] constructed over the
         /// same `group` will be considered part of a single group.
         ///
         /// When the radio box is selected, the closure `f` is called.
@@ -128,7 +130,7 @@ impl_scope! {
         where
             F: Fn(&mut EventMgr) + 'static,
         {
-            RadioBoxBare::new(group).on_select(f)
+            RadioBox::new(group).on_select(f)
         }
 
         /// Set the initial state of the radio box.
@@ -167,17 +169,19 @@ impl_scope! {
 }
 
 impl_scope! {
-    /// A radio box with label
+    /// A radio button with label
+    ///
+    /// See also [`RadioBox`] which excludes the label.
     #[autoimpl(Debug)]
     #[autoimpl(HasBool using self.inner)]
     #[derive(Clone)]
     #[widget{
         layout = row: [self.inner, self.label];
     }]
-    pub struct RadioBox {
+    pub struct RadioButton {
         core: widget_core!(),
         #[widget]
-        inner: RadioBoxBare,
+        inner: RadioBox,
         #[widget]
         label: AccelLabel,
     }
@@ -195,49 +199,49 @@ impl_scope! {
     }
 
     impl Self {
-        /// Construct a radio box with a given `label` and `group`
+        /// Construct a radio button with a given `label` and `group`
         ///
-        /// RadioBox labels are optional; if no label is desired, use an empty
-        /// string.
+        /// RadioButton labels are optional; if no label is desired, use an empty
+        /// string or use [`RadioBox`] instead.
         ///
-        /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
+        /// All instances of [`RadioBox`] and [`RadioButton`] constructed over the
         /// same `group` will be considered part of a single group.
         #[inline]
         pub fn new<T: Into<AccelString>>(label: T, group: RadioGroup) -> Self {
-            RadioBox {
+            RadioButton {
                 core: Default::default(),
-                inner: RadioBoxBare::new(group),
+                inner: RadioBox::new(group),
                 label: AccelLabel::new(label.into()),
             }
         }
 
         /// Set event handler `f`
         ///
-        /// When the radio box is selected, the closure `f` is called.
+        /// When the radio button is selected, the closure `f` is called.
         ///
         /// No handler is called on deselection.
         #[inline]
         #[must_use]
-        pub fn on_select<F>(self, f: F) -> RadioBox
+        pub fn on_select<F>(self, f: F) -> RadioButton
         where
             F: Fn(&mut EventMgr) + 'static,
         {
-            RadioBox {
+            RadioButton {
                 core: self.core,
                 inner: self.inner.on_select(f),
                 label: self.label,
             }
         }
 
-        /// Construct a radio box with given `label`, `group` and event handler `f`
+        /// Construct a radio button with given `label`, `group` and event handler `f`
         ///
-        /// RadioBox labels are optional; if no label is desired, use an empty
+        /// RadioButton labels are optional; if no label is desired, use an empty
         /// string.
         ///
-        /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
+        /// All instances of [`RadioBox`] and [`RadioButton`] constructed over the
         /// same `group` will be considered part of a single group.
         ///
-        /// When the radio box is selected, the closure `f` is called.
+        /// When the radio button is selected, the closure `f` is called.
         ///
         /// No handler is called on deselection.
         #[inline]
@@ -245,18 +249,18 @@ impl_scope! {
         where
             F: Fn(&mut EventMgr) + 'static,
         {
-            RadioBox::new(label, group).on_select(f)
+            RadioButton::new(label, group).on_select(f)
         }
 
-        /// Construct a radio box with given `label`, `group` and payload `msg`
+        /// Construct a radio button with given `label`, `group` and payload `msg`
         ///
-        /// RadioBox labels are optional; if no label is desired, use an empty
+        /// RadioButton labels are optional; if no label is desired, use an empty
         /// string.
         ///
-        /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
+        /// All instances of [`RadioBox`] and [`RadioButton`] constructed over the
         /// same `group` will be considered part of a single group.
         ///
-        /// When the radio box is selected, a clone
+        /// When the radio button is selected, a clone
         /// of `msg` is returned to the parent widget via [`EventMgr::push_msg`].
         ///
         /// No handler is called on deselection.
@@ -269,7 +273,7 @@ impl_scope! {
             Self::new_on(label, group, move |mgr| mgr.push_msg(msg.clone()))
         }
 
-        /// Set the initial state of the radio box.
+        /// Set the initial state of the radio button.
         #[inline]
         #[must_use]
         pub fn with_state(mut self, state: bool) -> Self {

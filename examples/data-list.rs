@@ -66,7 +66,7 @@ impl_scope! {
         #[widget]
         label: StringLabel,
         #[widget]
-        radio: RadioBox,
+        radio: RadioButton,
         #[widget]
         entry: EditBox<ListEntryGuard>,
     }
@@ -79,7 +79,7 @@ impl ListEntry {
         ListEntry {
             core: Default::default(),
             label: Label::new(format!("Entry number {}", n + 1)),
-            radio: RadioBox::new("display this entry", RADIO.with(|g| g.clone()))
+            radio: RadioButton::new("display this entry", RADIO.with(|g| g.clone()))
                 .with_state(active)
                 .on_select(move |mgr| mgr.push_msg(EntryMsg::Select(n))),
             entry: EditBox::new(format!("Entry #{}", n + 1)).with_guard(ListEntryGuard(n)),

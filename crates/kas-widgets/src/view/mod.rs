@@ -33,7 +33,7 @@
 //! -   [`driver::DefaultView`] constructs a default view widget over various data types
 //! -   [`driver::DefaultNav`] is a variant of the above, ensuring items support
 //!     keyboard navigation (e.g. useful to allow selection of static items)
-//! -   [`driver::CheckBox`] and [`driver::RadioBox`] support the `bool` type
+//! -   [`driver::CheckButton`] and [`driver::RadioButton`] support the `bool` type
 //! -   [`driver::Slider`] constructs a slider with a fixed range
 //!
 //! In MVC terminology, the driver is perhaps most similar to the controller,

@@ -118,9 +118,9 @@ fn widgets() -> Box<dyn SetDisabled> {
                 row: ["EditBox", self.eb],
                 row: ["TextButton", self.tb],
                 row: ["Button<Image>", self.bi],
-                row: ["CheckBox", self.cb],
-                row: ["RadioBox", self.rb],
-                row: ["RadioBox", self.rb2],
+                row: ["CheckButton", self.cb],
+                row: ["RadioButton", self.rb],
+                row: ["RadioButton", self.rb2],
                 row: ["ComboBox", self.cbb],
                 row: ["Spinner", self.spin],
                 row: ["Slider", self.sd],
@@ -147,12 +147,12 @@ fn widgets() -> Box<dyn SetDisabled> {
                     .with_color("#E77346".parse().unwrap())
                     .with_keys(&[VK::K]),
             ]),
-            #[widget] cb = CheckBox::new("&Check me")
+            #[widget] cb = CheckButton::new("&Check me")
                 .with_state(true)
                 .on_toggle(|mgr, check| mgr.push_msg(Item::Check(check))),
-            #[widget] rb = RadioBox::new("radio box &1", radio.clone())
+            #[widget] rb = RadioButton::new("radio button &1", radio.clone())
                 .on_select(|mgr| mgr.push_msg(Item::Radio(1))),
-            #[widget] rb2 = RadioBox::new("radio box &2", radio)
+            #[widget] rb2 = RadioButton::new("radio button &2", radio)
                 .with_state(true)
                 .on_select(|mgr| mgr.push_msg(Item::Radio(2))),
             #[widget] cbb = ComboBox::new_vec(vec![
@@ -309,9 +309,9 @@ fn filter_list() -> Box<dyn SetDisabled> {
         #[derive(Debug)]
         struct {
             core: widget_core!(),
-            #[widget] r0 = RadioBox::new_msg("none", r.clone(), SelectionMode::None).with_state(true),
-            #[widget] r1 = RadioBox::new_msg("single", r.clone(), SelectionMode::Single),
-            #[widget] r2 = RadioBox::new_msg("multiple", r, SelectionMode::Multiple),
+            #[widget] r0 = RadioButton::new_msg("none", r.clone(), SelectionMode::None).with_state(true),
+            #[widget] r1 = RadioButton::new_msg("single", r.clone(), SelectionMode::Single),
+            #[widget] r2 = RadioButton::new_msg("multiple", r, SelectionMode::Multiple),
             #[widget] filter = EditBox::new("")
                 .on_edit(move |s, mgr| filter.update(mgr, s.to_string())),
             #[widget] list: ScrollBars<ListView> =

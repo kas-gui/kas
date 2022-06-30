@@ -168,7 +168,7 @@ impl_scope! {
         #[widget]
         label: StringLabel,
         #[widget]
-        radio: RadioBox,
+        radio: RadioButton,
         #[widget]
         entry: EditBox<ListEntryGuard>,
     }
@@ -186,7 +186,7 @@ impl Driver<(usize, bool, String)> for MyDriver {
         ListEntry {
             core: Default::default(),
             label: Label::new(String::default()),
-            radio: RadioBox::new("display this entry", self.radio_group.clone())
+            radio: RadioButton::new("display this entry", self.radio_group.clone())
                 .on_select(|mgr| mgr.push_msg(EntryMsg::Select)),
             entry: EditBox::new(String::default()).with_guard(ListEntryGuard),
         }
