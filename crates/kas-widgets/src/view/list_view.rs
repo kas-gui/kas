@@ -12,8 +12,8 @@ use crate::SelectMsg;
 use kas::event::components::ScrollComponent;
 use kas::event::{Command, CursorIcon, Scroll};
 use kas::layout::solve_size_rules;
+use kas::model::ListData;
 use kas::prelude::*;
-use kas::updatable::ListData;
 use linear_map::set::LinearSet;
 use log::{debug, trace};
 use std::time::Instant;
@@ -30,7 +30,7 @@ impl_scope! {
     /// This widget supports a view over a list of shared data items.
     ///
     /// The shared data type `T` must support [`ListData`].
-    /// One may use [`kas::updatable::SharedRc`]
+    /// One may use [`kas::model::SharedRc`]
     /// or a custom shared data type.
     ///
     /// The driver `V` must implement [`Driver`], with data type

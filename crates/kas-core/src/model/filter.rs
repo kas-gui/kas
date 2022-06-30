@@ -6,7 +6,7 @@
 //! Filters over data
 
 use crate::event::{EventMgr, UpdateId};
-use crate::updatable::*;
+use crate::model::*;
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;

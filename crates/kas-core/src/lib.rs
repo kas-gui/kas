@@ -43,10 +43,10 @@ pub mod draw;
 pub mod event;
 pub mod geom;
 pub mod layout;
+pub mod model;
 pub mod prelude;
 pub mod text;
 pub mod theme;
-pub mod updatable;
 pub mod util;
 
 // export most important members directly for convenience and less redundancy:

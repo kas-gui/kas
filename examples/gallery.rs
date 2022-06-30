@@ -10,9 +10,9 @@
 
 use kas::dir::Right;
 use kas::event::VirtualKeyCode as VK;
+use kas::model::SharedRc;
 use kas::prelude::*;
 use kas::resvg::Svg;
-use kas::updatable::SharedRc;
 use kas::widgets::{menu::MenuEntry, view::SingleView, *};
 
 #[derive(Clone, Debug)]
@@ -270,7 +270,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 
 fn filter_list() -> Box<dyn SetDisabled> {
     use kas::dir::Down;
-    use kas::updatable::{filter::ContainsCaseInsensitive, SingleData};
+    use kas::model::{filter::ContainsCaseInsensitive, SingleData};
     use kas::widgets::view::{driver, SelectionMode, SelectionMsg};
 
     const MONTHS: &[&str] = &[

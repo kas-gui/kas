@@ -13,7 +13,7 @@
 //! # Shared data and *model*
 //!
 //! Shared data must implement several traits, namely those in
-//! [`kas::updatable`] and one of the "view" traits: [`SingleData`],
+//! [`kas::model`] and one of the "view" traits: [`SingleData`],
 //! [`ListData`] or [`MatrixData`]. These traits together form the "model".
 //!
 //! For simpler cases it is not always necessary to implement your own shared
@@ -68,7 +68,7 @@
 #[allow(unused)]
 use kas::event::UpdateId;
 #[allow(unused)]
-use kas::updatable::{ListData, MatrixData, SharedRc, SingleData};
+use kas::model::{ListData, MatrixData, SharedRc, SingleData};
 use thiserror::Error;
 
 mod filter_list;

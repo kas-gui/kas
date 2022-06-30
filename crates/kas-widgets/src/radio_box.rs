@@ -6,9 +6,9 @@
 //! Toggle widgets
 
 use super::AccelLabel;
+use kas::model::{SharedRc, SingleData};
 use kas::prelude::*;
 use kas::theme::Feature;
-use kas::updatable::{SharedRc, SingleData};
 use log::trace;
 use std::fmt::Debug;
 use std::rc::Rc;

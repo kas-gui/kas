@@ -10,8 +10,8 @@
 //! thus only limited by the data types used (specifically the `i32` type used
 //! to calculate the maximum scroll offset).
 
+use kas::model::*;
 use kas::prelude::*;
-use kas::updatable::*;
 use kas::widgets::view::{Driver, ListView};
 use kas::widgets::*;
 use std::cell::RefCell;

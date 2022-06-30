@@ -12,7 +12,7 @@
 
 use crate::event::EventMgr;
 use crate::event::UpdateId;
-use crate::updatable::*;
+use crate::model::*;
 use crate::WidgetId;
 use std::cell::RefCell;
 use std::fmt::Debug;

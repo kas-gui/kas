@@ -10,9 +10,9 @@
 
 use crate::{EditBox, Filler, Label, TextButton};
 use kas::event::{Command, VirtualKeyCode};
+use kas::model::{SharedRc, SingleData};
 use kas::prelude::*;
 use kas::text::format::FormattableText;
-use kas::updatable::{SharedRc, SingleData};
 use kas::{Icon, Widget};
 use std::borrow::Cow;
 

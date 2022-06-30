@@ -1,7 +1,7 @@
 //! Do you know your times tables?
 
+use kas::model::MatrixData;
 use kas::prelude::*;
-use kas::updatable::MatrixData;
 use kas::widgets::view::{driver::DefaultNav, MatrixView, SelectionMode};
 use kas::widgets::{EditBox, ScrollBars};
 
