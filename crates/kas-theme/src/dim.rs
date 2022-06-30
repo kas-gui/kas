@@ -257,7 +257,7 @@ impl<D: 'static> ThemeSize for Window<D> {
             FrameStyle::NavFocus => FrameRules::new_sym(self.dims.inner_margin.into(), 0, 0),
             FrameStyle::Button => {
                 let outer = self.dims.outer_margin;
-                FrameRules::new_sym(self.dims.frame, inner, outer)
+                FrameRules::new_sym(self.dims.frame, 0, outer)
             }
             FrameStyle::EditBox => FrameRules::new_sym(self.dims.frame, inner, 0),
         }
