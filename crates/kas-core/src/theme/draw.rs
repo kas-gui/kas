@@ -42,7 +42,7 @@ impl Default for Background {
 /// `DrawMgr` is not a `Copy` or `Clone` type; instead it may be "reborrowed"
 /// via [`Self::re_id`] or [`Self::re_clone`].
 ///
-/// -   `draw.checkbox(&*self, self.state);` — note `&*self` to convert from to
+/// -   `draw.check_box(&*self, self.state);` — note `&*self` to convert from to
 ///     `&W` from `&mut W`, since the latter would cause borrow conflicts
 pub struct DrawMgr<'a> {
     h: &'a mut dyn ThemeDraw,
@@ -263,28 +263,28 @@ impl<'a> DrawMgr<'a> {
             .text_cursor(&self.id, pos, text.as_ref(), class, byte);
     }
 
-    /// Draw UI element: checkbox
+    /// Draw UI element: check box (without label)
     ///
-    /// The checkbox is a small, usually square, box with or without a check
-    /// mark. A checkbox widget may include a text label, but that label is not
-    /// part of this element.
+    /// The check box is a small visual element, typically a distinctive square
+    /// box with or without a "check" selection mark.
     ///
     /// The theme may animate transitions. To achieve this, `last_change` should be
     /// the time of the last state change caused by the user, or none when the
     /// last state change was programmatic.
-    pub fn checkbox(&mut self, rect: Rect, checked: bool, last_change: Option<Instant>) {
-        self.h.checkbox(&self.id, rect, checked, last_change);
+    pub fn check_box(&mut self, rect: Rect, checked: bool, last_change: Option<Instant>) {
+        self.h.check_box(&self.id, rect, checked, last_change);
     }
 
-    /// Draw UI element: radiobox
+    /// Draw UI element: radio box (without label)
     ///
-    /// This is similar in appearance to a checkbox.
+    /// The radio box is a small visual element, typically a disinctive
+    /// circular box with or without a "radio" selection mark.
     ///
     /// The theme may animate transitions. To achieve this, `last_change` should be
     /// the time of the last state change caused by the user, or none when the
     /// last state change was programmatic.
-    pub fn radiobox(&mut self, rect: Rect, checked: bool, last_change: Option<Instant>) {
-        self.h.radiobox(&self.id, rect, checked, last_change);
+    pub fn radio_box(&mut self, rect: Rect, checked: bool, last_change: Option<Instant>) {
+        self.h.radio_box(&self.id, rect, checked, last_change);
     }
 
     /// Draw UI element: mark
@@ -292,10 +292,10 @@ impl<'a> DrawMgr<'a> {
         self.h.mark(&self.id, rect, style);
     }
 
-    /// Draw UI element: scrollbar
-    pub fn scrollbar<W: Widget>(&mut self, track_rect: Rect, handle: &W, dir: Direction) {
+    /// Draw UI element: scroll bar
+    pub fn scroll_bar<W: Widget>(&mut self, track_rect: Rect, handle: &W, dir: Direction) {
         self.h
-            .scrollbar(&self.id, handle.id_ref(), track_rect, handle.rect(), dir);
+            .scroll_bar(&self.id, handle.id_ref(), track_rect, handle.rect(), dir);
     }
 
     /// Draw UI element: slider
@@ -451,37 +451,37 @@ pub trait ThemeDraw {
         byte: usize,
     );
 
-    /// Draw UI element: checkbox
+    /// Draw UI element: check box
     ///
-    /// The checkbox is a small, usually square, box with or without a check
-    /// mark. A checkbox widget may include a text label, but that label is not
-    /// part of this element.
+    /// The check box is a small visual element, typically a distinctive square
+    /// box with or without a "check" selection mark.
     ///
     /// The theme may animate transitions. To achieve this, `last_change` should be
     /// the time of the last state change caused by the user, or none when the
     /// last state change was programmatic.
-    fn checkbox(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>);
+    fn check_box(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>);
 
-    /// Draw UI element: radiobox
+    /// Draw UI element: radio button
     ///
-    /// This is similar in appearance to a checkbox.
+    /// The radio box is a small visual element, typically a disinctive
+    /// circular box with or without a "radio" selection mark.
     ///
     /// The theme may animate transitions. To achieve this, `last_change` should be
     /// the time of the last state change caused by the user, or none when the
     /// last state change was programmatic.
-    fn radiobox(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>);
+    fn radio_box(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>);
 
     /// Draw UI element: mark
     fn mark(&mut self, id: &WidgetId, rect: Rect, style: MarkStyle);
 
-    /// Draw UI element: scrollbar
+    /// Draw UI element: scroll bar
     ///
     /// -   `id`: [`WidgetId`] of the bar
     /// -   `id2`: [`WidgetId`] of the handle
     /// -   `rect`: area of whole widget (slider track)
     /// -   `h_rect`: area of slider handle
     /// -   `dir`: direction of bar
-    fn scrollbar(
+    fn scroll_bar(
         &mut self,
         id: &WidgetId,
         id2: &WidgetId,

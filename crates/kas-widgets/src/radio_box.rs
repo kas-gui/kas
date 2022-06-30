@@ -20,7 +20,7 @@ use std::time::Instant;
 pub type RadioGroup = SharedRc<Option<WidgetId>>;
 
 impl_scope! {
-    /// A bare radiobox (no label)
+    /// A bare radio box (no label)
     #[autoimpl(Debug ignore self.on_select)]
     #[derive(Clone)]
     #[widget {
@@ -75,12 +75,12 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.radiobox(self.rect(), self.state, self.last_change);
+            draw.radio_box(self.rect(), self.state, self.last_change);
         }
     }
 
     impl Self {
-        /// Construct a radiobox
+        /// Construct a radio box
         ///
         /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
         /// same `group` will be considered part of a single group.
@@ -97,7 +97,7 @@ impl_scope! {
 
         /// Set event handler `f`
         ///
-        /// When the radiobox is selected, the closure `f` is called.
+        /// When the radio box is selected, the closure `f` is called.
         ///
         /// No handler is called on deselection.
         #[inline]
@@ -115,12 +115,12 @@ impl_scope! {
             }
         }
 
-        /// Construct a radiobox with given `group` and event handler `f`
+        /// Construct a radio box with given `group` and event handler `f`
         ///
         /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
         /// same `group` will be considered part of a single group.
         ///
-        /// When the radiobox is selected, the closure `f` is called.
+        /// When the radio box is selected, the closure `f` is called.
         ///
         /// No handler is called on deselection.
         #[inline]
@@ -131,7 +131,7 @@ impl_scope! {
             RadioBoxBare::new(group).on_select(f)
         }
 
-        /// Set the initial state of the radiobox.
+        /// Set the initial state of the radio box.
         #[inline]
         #[must_use]
         pub fn with_state(mut self, state: bool) -> Self {
@@ -140,7 +140,7 @@ impl_scope! {
             self
         }
 
-        /// Unset all radioboxes in the group
+        /// Unset all radio boxes in the group
         ///
         /// Note: state will not update until the next draw.
         #[inline]
@@ -167,7 +167,7 @@ impl_scope! {
 }
 
 impl_scope! {
-    /// A radiobox with label
+    /// A radio box with label
     #[autoimpl(Debug)]
     #[autoimpl(HasBool using self.inner)]
     #[derive(Clone)]
@@ -195,7 +195,7 @@ impl_scope! {
     }
 
     impl Self {
-        /// Construct a radiobox with a given `label` and `group`
+        /// Construct a radio box with a given `label` and `group`
         ///
         /// RadioBox labels are optional; if no label is desired, use an empty
         /// string.
@@ -213,7 +213,7 @@ impl_scope! {
 
         /// Set event handler `f`
         ///
-        /// When the radiobox is selected, the closure `f` is called.
+        /// When the radio box is selected, the closure `f` is called.
         ///
         /// No handler is called on deselection.
         #[inline]
@@ -229,7 +229,7 @@ impl_scope! {
             }
         }
 
-        /// Construct a radiobox with given `label`, `group` and event handler `f`
+        /// Construct a radio box with given `label`, `group` and event handler `f`
         ///
         /// RadioBox labels are optional; if no label is desired, use an empty
         /// string.
@@ -237,7 +237,7 @@ impl_scope! {
         /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
         /// same `group` will be considered part of a single group.
         ///
-        /// When the radiobox is selected, the closure `f` is called.
+        /// When the radio box is selected, the closure `f` is called.
         ///
         /// No handler is called on deselection.
         #[inline]
@@ -248,7 +248,7 @@ impl_scope! {
             RadioBox::new(label, group).on_select(f)
         }
 
-        /// Construct a radiobox with given `label`, `group` and payload `msg`
+        /// Construct a radio box with given `label`, `group` and payload `msg`
         ///
         /// RadioBox labels are optional; if no label is desired, use an empty
         /// string.
@@ -256,7 +256,7 @@ impl_scope! {
         /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
         /// same `group` will be considered part of a single group.
         ///
-        /// When the radiobox is selected, a clone
+        /// When the radio box is selected, a clone
         /// of `msg` is returned to the parent widget via [`EventMgr::push_msg`].
         ///
         /// No handler is called on deselection.
@@ -269,7 +269,7 @@ impl_scope! {
             Self::new_on(label, group, move |mgr| mgr.push_msg(msg.clone()))
         }
 
-        /// Set the initial state of the radiobox.
+        /// Set the initial state of the radio box.
         #[inline]
         #[must_use]
         pub fn with_state(mut self, state: bool) -> Self {
@@ -277,7 +277,7 @@ impl_scope! {
             self
         }
 
-        /// Unset all radioboxes in the group
+        /// Unset all radio boxes in the group
         ///
         /// Note: state will not update until the next draw.
         #[inline]

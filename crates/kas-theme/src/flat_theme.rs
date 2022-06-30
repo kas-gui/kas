@@ -97,9 +97,9 @@ const DIMS: dim::Parameters = dim::Parameters {
     menu_frame: 2.4,
     // NOTE: visual thickness is (button_frame * scale_factor).round() * (1 - BG_SHRINK_FACTOR)
     button_frame: 2.4,
-    checkbox_inner: 7.0,
+    check_box_inner: 7.0,
     mark: 8.0,
-    scrollbar_size: Vec2::splat(8.0),
+    scroll_bar_size: Vec2::splat(8.0),
     slider_size: Vec2(16.0, 16.0),
     progress_bar: Vec2::splat(8.0),
     shadow_size: Vec2(4.0, 4.0),
@@ -533,7 +533,13 @@ where
         }
     }
 
-    fn checkbox(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>) {
+    fn check_box(
+        &mut self,
+        id: &WidgetId,
+        rect: Rect,
+        checked: bool,
+        last_change: Option<Instant>,
+    ) {
         let anim_fade = 1.0 - self.w.anim.fade_bool(self.draw.draw, checked, last_change);
 
         let state = InputState::new_all(self.ev, id);
@@ -564,7 +570,13 @@ where
         }
     }
 
-    fn radiobox(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>) {
+    fn radio_box(
+        &mut self,
+        id: &WidgetId,
+        rect: Rect,
+        checked: bool,
+        last_change: Option<Instant>,
+    ) {
         let anim_fade = 1.0 - self.w.anim.fade_bool(self.draw.draw, checked, last_change);
 
         let state = InputState::new_all(self.ev, id);
@@ -589,7 +601,7 @@ where
         let col_bg = self.cols.from_edit_bg(Default::default(), state);
         self.draw.circle(outer, 0.0, col_bg);
 
-        const F: f32 = 2.0 * (1.0 - BG_SHRINK_FACTOR); // match checkbox frame
+        const F: f32 = 2.0 * (1.0 - BG_SHRINK_FACTOR); // match check box frame
         let r = 1.0 - F * self.w.dims.button_frame as f32 / rect.size.0 as f32;
         self.draw.circle(outer, r, col);
 
@@ -647,7 +659,14 @@ where
         }
     }
 
-    fn scrollbar(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, _: Direction) {
+    fn scroll_bar(
+        &mut self,
+        id: &WidgetId,
+        id2: &WidgetId,
+        rect: Rect,
+        h_rect: Rect,
+        _: Direction,
+    ) {
         // track
         let outer = Quad::conv(rect);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);

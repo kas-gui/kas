@@ -344,7 +344,7 @@ impl ColorsLinear {
         Self::adjust_for_state(self.accent_soft, state)
     }
 
-    /// Get colour for a checkbox mark, depending on state
+    /// Get colour for a check box mark, depending on state
     #[inline]
     pub fn check_mark_state(&self, state: InputState) -> Rgba {
         Self::adjust_for_state(self.accent, state)

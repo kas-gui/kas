@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Scrollbar traits
+//! Scroll bar traits
 
 use super::Widget;
 use crate::event::EventMgr;
@@ -45,25 +45,25 @@ pub trait Scrollable: Widget {
     fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset;
 }
 
-/// Scrollbar mode
+/// Scroll bar mode
 ///
 /// Note that in addition to this mode, bars may be disabled on each axis.
 #[kas_macros::impl_default(ScrollBarMode::Auto)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ScrollBarMode {
-    /// Scrollbars are always shown if enabled.
+    /// Scroll bars are always shown if enabled.
     Fixed,
-    /// Automatically enable/disable scrollbars as required when resized.
+    /// Automatically enable/disable scroll bars as required when resized.
     ///
     /// This has the side-effect of reserving enough space for scroll bars even
     /// when not required.
     Auto,
-    /// Scrollbars float over content and are only drawn when hovered over by
+    /// Scroll bars float over content and are only drawn when hovered over by
     /// the mouse.
     Invisible,
 }
 
-/// Scrollbar control
+/// Scroll bar control
 pub trait HasScrollBars {
     /// Get mode
     fn get_mode(&self) -> ScrollBarMode;

@@ -39,11 +39,11 @@ pub struct Parameters {
     /// Button frame size (non-flat outer region)
     pub button_frame: f32,
     /// CheckBox inner size in Points
-    pub checkbox_inner: f32,
+    pub check_box_inner: f32,
     /// Larger size of a mark in Points
     pub mark: f32,
-    /// Scrollbar minimum handle size
-    pub scrollbar_size: Vec2,
+    /// Scroll bar minimum handle size
+    pub scroll_bar_size: Vec2,
     /// Slider minimum handle size
     pub slider_size: Vec2,
     /// Progress bar size (horizontal)
@@ -69,9 +69,9 @@ pub struct Dimensions {
     pub popup_frame: i32,
     pub menu_frame: i32,
     pub button_frame: i32,
-    pub checkbox: i32,
+    pub check_box: i32,
     pub mark: i32,
-    pub scrollbar: Size,
+    pub scroll_bar: Size,
     pub slider: Size,
     pub progress_bar: Size,
     pub shadow_a: Vec2,
@@ -107,10 +107,10 @@ impl Dimensions {
             popup_frame,
             menu_frame,
             button_frame: (params.button_frame * scale_factor).cast_nearest(),
-            checkbox: i32::conv_nearest(params.checkbox_inner * dpp)
+            check_box: i32::conv_nearest(params.check_box_inner * dpp)
                 + 2 * (i32::from(inner_margin) + frame),
             mark: i32::conv_nearest(params.mark * dpp),
-            scrollbar: Size::conv_nearest(params.scrollbar_size * scale_factor),
+            scroll_bar: Size::conv_nearest(params.scroll_bar_size * scale_factor),
             slider: Size::conv_nearest(params.slider_size * scale_factor),
             progress_bar: Size::conv_nearest(params.progress_bar * scale_factor),
             shadow_a: shadow_offset - shadow_size,
@@ -197,11 +197,11 @@ impl<D: 'static> ThemeSize for Window<D> {
                 return SizeRules::fixed_splat(w, self.dims.outer_margin);
             }
             Feature::CheckBox | Feature::RadioBox => {
-                return SizeRules::fixed_splat(self.dims.checkbox, self.dims.outer_margin);
+                return SizeRules::fixed_splat(self.dims.check_box, self.dims.outer_margin);
             }
             Feature::ScrollBar(dir) => {
                 dir_is_vertical = dir.is_vertical();
-                size = self.dims.scrollbar;
+                size = self.dims.scroll_bar;
             }
             Feature::Slider(dir) => {
                 dir_is_vertical = dir.is_vertical();
@@ -230,10 +230,10 @@ impl<D: 'static> ThemeSize for Window<D> {
             Feature::Separator => (), // has no direction so we cannot align
             Feature::Mark(_) => (),   // aligned when drawn instead
             Feature::CheckBox | Feature::RadioBox => {
-                ideal_size = Size::splat(self.dims.checkbox);
+                ideal_size = Size::splat(self.dims.check_box);
             }
             Feature::ScrollBar(dir) => {
-                ideal_size.set_component(dir.flipped(), self.dims.scrollbar.1);
+                ideal_size.set_component(dir.flipped(), self.dims.scroll_bar.1);
             }
             Feature::Slider(dir) => {
                 ideal_size.set_component(dir.flipped(), self.dims.slider.1);

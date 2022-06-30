@@ -21,7 +21,7 @@ impl_scope! {
     /// fixed at the height of three lines of standard text). The inner size
     /// (content size) is `max(content_min_size, outer_size - content_margin)`.
     ///
-    /// Scrollbars are not included; use [`ScrollBarRegion`] if you want those.
+    /// Scroll bars are not included; use [`ScrollBarRegion`] if you want those.
     ///
     /// [`ScrollBarRegion`]: crate::ScrollBarRegion
     #[autoimpl(Deref, DerefMut using self.inner)]

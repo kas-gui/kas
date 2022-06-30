@@ -70,9 +70,9 @@ const DIMS: dim::Parameters = dim::Parameters {
     popup_frame_size: 0.0,
     menu_frame: 2.4,
     button_frame: 5.0,
-    checkbox_inner: 9.0,
+    check_box_inner: 9.0,
     mark: 9.0,
-    scrollbar_size: Vec2::splat(8.0),
+    scroll_bar_size: Vec2::splat(8.0),
     slider_size: Vec2(12.0, 25.0),
     progress_bar: Vec2::splat(12.0),
     shadow_size: Vec2::splat(6.0),
@@ -224,7 +224,7 @@ where
         inner.shrink(self.w.dims.inner_margin as f32)
     }
 
-    /// Draw a handle (for slider, scrollbar)
+    /// Draw a handle (for slider, scroll bar)
     fn draw_handle(&mut self, rect: Rect, state: InputState) {
         let outer = Quad::conv(rect);
         let thickness = outer.size().min_comp() / 2.0;
@@ -338,7 +338,13 @@ where
         self.draw.shaded_round_frame(outer, inner, norm, col);
     }
 
-    fn checkbox(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>) {
+    fn check_box(
+        &mut self,
+        id: &WidgetId,
+        rect: Rect,
+        checked: bool,
+        last_change: Option<Instant>,
+    ) {
         let state = InputState::new_all(self.ev, id);
         let anim_fade = 1.0 - self.w.anim.fade_bool(self.draw.draw, checked, last_change);
 
@@ -354,7 +360,13 @@ where
         }
     }
 
-    fn radiobox(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>) {
+    fn radio_box(
+        &mut self,
+        id: &WidgetId,
+        rect: Rect,
+        checked: bool,
+        last_change: Option<Instant>,
+    ) {
         let state = InputState::new_all(self.ev, id);
         let anim_fade = 1.0 - self.w.anim.fade_bool(self.draw.draw, checked, last_change);
 
@@ -370,7 +382,14 @@ where
         }
     }
 
-    fn scrollbar(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, _: Direction) {
+    fn scroll_bar(
+        &mut self,
+        id: &WidgetId,
+        id2: &WidgetId,
+        rect: Rect,
+        h_rect: Rect,
+        _: Direction,
+    ) {
         // track
         let outer = Quad::conv(rect);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);

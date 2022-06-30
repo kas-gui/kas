@@ -25,7 +25,7 @@
 //! -   [`TextButton`], [`Button`], [`MarkButton`]: button widgets
 //! -   [`CheckBox`], [`RadioBox`]: checkable boxes
 //! -   [`EditBox`], [`EditField`]: text editing with/without a frame
-//! -   [`ScrollBar`]: a scrollbar
+//! -   [`ScrollBar`]: a scroll bar
 //! -   [`Slider`]: a slider
 //! -   [`Spinner`]: numeric entry
 //!
@@ -43,7 +43,7 @@
 //!
 //! -   [`AccelLabel`]: a label which parses accelerator keys
 //! -   [`CheckBoxBare`], [`RadioBoxBare`]: components of checkable boxes
-//! -   [`DragHandle`]: a handle (e.g. for a slider, splitter or scrollbar)
+//! -   [`DragHandle`]: a handle (e.g. for a slider, splitter or scroll_bar)
 
 // Use ``never_loop`` until: https://github.com/rust-lang/rust-clippy/issues/7397 is fixed
 #![allow(
@@ -58,7 +58,7 @@
 #![cfg_attr(feature = "min_spec", feature(min_specialization))]
 
 mod button;
-mod checkbox;
+mod check_box;
 mod combobox;
 pub mod dialog;
 mod drag;
@@ -73,10 +73,10 @@ mod mark;
 pub mod menu;
 mod nav_frame;
 mod progress;
-mod radiobox;
+mod radio_box;
 mod scroll;
+mod scroll_bar;
 mod scroll_label;
-mod scrollbar;
 mod separator;
 mod slider;
 mod spinner;
@@ -89,7 +89,7 @@ pub mod view;
 
 pub use crate::image::Image;
 pub use button::{Button, TextButton};
-pub use checkbox::{CheckBox, CheckBoxBare};
+pub use check_box::{CheckBox, CheckBoxBare};
 pub use combobox::ComboBox;
 pub use drag::DragHandle;
 pub use edit_field::{EditBox, EditField, EditGuard};
@@ -101,10 +101,10 @@ pub use list::*;
 pub use mark::{Mark, MarkButton};
 pub use nav_frame::{NavFrame, SelectMsg};
 pub use progress::ProgressBar;
-pub use radiobox::{RadioBox, RadioBoxBare, RadioGroup};
+pub use radio_box::{RadioBox, RadioBoxBare, RadioGroup};
 pub use scroll::ScrollRegion;
+pub use scroll_bar::{ScrollBar, ScrollBarRegion, ScrollBars};
 pub use scroll_label::ScrollLabel;
-pub use scrollbar::{ScrollBar, ScrollBarRegion, ScrollBars};
 pub use separator::Separator;
 pub use slider::{Slider, SliderType};
 pub use spinner::{Spinner, SpinnerType};

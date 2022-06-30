@@ -367,7 +367,7 @@ impl_scope! {
 
     impl Scrollable for Self {
         fn scroll_axes(&self, size: Size) -> (bool, bool) {
-            // TODO: maybe we should support a scrollbar on the other axis?
+            // TODO: maybe we should support a scroll bar on the other axis?
             // We would need to report a fake min-child-size to enable scrolling.
             let item_min = self.child_size_min + self.child_inter_margin;
             let num = i32::conv(self.data.len());

@@ -12,7 +12,7 @@ use std::rc::Rc;
 use std::time::Instant;
 
 impl_scope! {
-    /// A bare checkbox (no label)
+    /// A bare check box (no label)
     #[autoimpl(Debug ignore self.on_toggle)]
     #[derive(Clone, Default)]
     #[widget{
@@ -38,12 +38,12 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.checkbox(self.rect(), self.state, self.last_change);
+            draw.check_box(self.rect(), self.state, self.last_change);
         }
     }
 
     impl Self {
-        /// Construct a checkbox
+        /// Construct a check box
         #[inline]
         pub fn new() -> Self {
             CheckBoxBare {
@@ -57,7 +57,7 @@ impl_scope! {
 
         /// Set event handler `f`
         ///
-        /// When the checkbox is set or unset, the closure `f` is called.
+        /// When the check box is set or unset, the closure `f` is called.
         #[inline]
         #[must_use]
         pub fn on_toggle<F>(self, f: F) -> CheckBoxBare
@@ -73,9 +73,9 @@ impl_scope! {
             }
         }
 
-        /// Construct a checkbox with event handler `f`
+        /// Construct a check box with event handler `f`
         ///
-        /// When the checkbox is set or unset, the closure `f` is called.
+        /// When the check box is set or unset, the closure `f` is called.
         #[inline]
         pub fn new_on<F>(f: F) -> Self
         where
@@ -84,7 +84,7 @@ impl_scope! {
             CheckBoxBare::new().on_toggle(f)
         }
 
-        /// Set the initial state of the checkbox.
+        /// Set the initial state of the check box.
         #[inline]
         #[must_use]
         pub fn with_state(mut self, state: bool) -> Self {
@@ -145,7 +145,7 @@ impl_scope! {
 }
 
 impl_scope! {
-    /// A checkbox with label
+    /// A check box with label
     #[autoimpl(Debug)]
     #[autoimpl(HasBool using self.inner)]
     #[derive(Clone, Default)]
@@ -173,7 +173,7 @@ impl_scope! {
     }
 
     impl Self {
-        /// Construct a checkbox with a given `label`
+        /// Construct a check box with a given `label`
         ///
         /// CheckBox labels are optional; if no label is desired, use an empty
         /// string.
@@ -188,7 +188,7 @@ impl_scope! {
 
         /// Set event handler `f`
         ///
-        /// When the checkbox is set or unset, the closure `f` is called.
+        /// When the check box is set or unset, the closure `f` is called.
         #[inline]
         #[must_use]
         pub fn on_toggle<F>(self, f: F) -> CheckBox
@@ -202,12 +202,12 @@ impl_scope! {
             }
         }
 
-        /// Construct a checkbox with a given `label` and event handler `f`
+        /// Construct a check box with a given `label` and event handler `f`
         ///
         /// CheckBox labels are optional; if no label is desired, use an empty
         /// string.
         ///
-        /// When the checkbox is set or unset, the closure `f` is called.
+        /// When the check box is set or unset, the closure `f` is called.
         #[inline]
         pub fn new_on<T: Into<AccelString>, F>(label: T, f: F) -> Self
         where
@@ -216,7 +216,7 @@ impl_scope! {
             CheckBox::new(label).on_toggle(f)
         }
 
-        /// Set the initial state of the checkbox.
+        /// Set the initial state of the check box.
         #[inline]
         #[must_use]
         pub fn with_state(mut self, state: bool) -> Self {

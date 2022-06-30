@@ -97,7 +97,7 @@ impl Glide {
 
 /// Logic for a scroll region
 ///
-/// This struct handles some scroll logic. It does not provide scrollbars.
+/// This struct handles some scroll logic. It does not provide scroll bars.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ScrollComponent {
     max_offset: Offset,

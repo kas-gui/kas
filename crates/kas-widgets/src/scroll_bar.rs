@@ -80,7 +80,7 @@ impl_scope! {
 
         /// Set invisible property
         ///
-        /// An "invisible" scrollbar is only drawn on mouse-hover
+        /// An "invisible" scroll bar is only drawn on mouse-hover
         #[inline]
         pub fn set_invisible(&mut self, invisible: bool) {
             self.invisible = invisible;
@@ -260,7 +260,7 @@ impl_scope! {
                 draw.ev_state().is_depressed(self.handle.id_ref())
             {
                 let dir = self.direction.as_direction();
-                draw.scrollbar(self.rect(), &self.handle, dir);
+                draw.scroll_bar(self.rect(), &self.handle, dir);
             }
         }
     }
@@ -310,7 +310,7 @@ impl_scope! {
 impl_scope! {
     /// Scroll bar controls
     ///
-    /// This is a wrapper adding scrollbar controls around a child. Note that this
+    /// This is a wrapper adding scroll bar controls around a child. Note that this
     /// widget does not enable scrolling; see [`ScrollBarRegion`] for that.
     ///
     /// Scroll bar positioning does not respect the inner widgets margins, since
@@ -337,7 +337,7 @@ impl_scope! {
     impl Self {
         /// Construct
         ///
-        /// By default scrollbars are automatically enabled based on requirements.
+        /// By default scroll bars are automatically enabled based on requirements.
         /// Use the [`HasScrollBars`] trait to adjust this behaviour.
         #[inline]
         pub fn new(inner: W) -> Self {
@@ -560,9 +560,9 @@ impl_scope! {
     ///
     /// This is essentially a `ScrollBars<ScrollRegion<W>>`:
     /// [`ScrollRegion`] handles the actual scrolling and wheel/touch events,
-    /// while [`ScrollBars`] adds scrollbar controls.
+    /// while [`ScrollBars`] adds scroll bar controls.
     ///
-    /// Use the [`HasScrollBars`] trait to adjust scrollbar behaviour.
+    /// Use the [`HasScrollBars`] trait to adjust scroll bar behaviour.
     #[autoimpl(Deref, DerefMut using self.0)]
     #[autoimpl(class_traits using self.0 where W: trait)]
     #[derive(Clone, Debug, Default)]

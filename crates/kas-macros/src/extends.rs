@@ -106,19 +106,19 @@ impl Extends {
                 (#base).text_cursor(id, pos, text, class, byte);
             }
 
-            fn checkbox(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>) {
-                (#base).checkbox(id, rect, checked, last_change);
+            fn check_box(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>) {
+                (#base).check_box(id, rect, checked, last_change);
             }
 
-            fn radiobox(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>) {
-                (#base).radiobox(id, rect, checked, last_change);
+            fn radio_box(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>) {
+                (#base).radio_box(id, rect, checked, last_change);
             }
 
             fn mark(&mut self, id: &WidgetId, rect: Rect, style: MarkStyle) {
                 (#base).mark(id, rect, style);
             }
 
-            fn scrollbar(
+            fn scroll_bar(
                 &mut self,
                 id: &WidgetId,
                 id2: &WidgetId,
@@ -126,7 +126,7 @@ impl Extends {
                 h_rect: Rect,
                 dir: Direction,
             ) {
-                (#base).scrollbar(id, id2, rect, h_rect, dir);
+                (#base).scroll_bar(id, id2, rect, h_rect, dir);
             }
 
             fn slider(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction) {
