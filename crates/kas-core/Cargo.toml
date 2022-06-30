@@ -13,7 +13,7 @@ repository = "https://github.com/kas-gui/kas"
 exclude = ["/screenshots"]
 
 [package.metadata.docs.rs]
-features = ["nightly", "stack_dst", "winit", "markdown", "yaml", "json", "ron"]
+features = ["stack_dst", "winit", "markdown", "yaml", "json", "ron"]
 rustdoc-args = ["--cfg", "doc_cfg"]
 # To build locally:
 # RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=internal_doc,markdown,yaml,json,ron,stack_dst --no-deps --open
