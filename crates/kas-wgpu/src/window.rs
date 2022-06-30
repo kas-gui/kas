@@ -525,8 +525,8 @@ where
         self.shared.pending.push(PendingAction::CloseWindow(id));
     }
 
-    fn trigger_update(&mut self, id: UpdateId, payload: u64) {
-        self.shared.trigger_update(id, payload);
+    fn update_all(&mut self, id: UpdateId, payload: u64) {
+        self.shared.update_all(id, payload);
     }
 
     #[inline]

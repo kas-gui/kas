@@ -123,7 +123,7 @@ pub trait ShellWindow {
     ///
     /// All widgets subscribed to the given [`UpdateId`], across all
     /// windows, will receive an update.
-    fn trigger_update(&mut self, id: UpdateId, payload: u64);
+    fn update_all(&mut self, id: UpdateId, payload: u64);
 
     /// Attempt to get clipboard contents
     ///

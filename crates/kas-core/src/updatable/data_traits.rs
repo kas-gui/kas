@@ -27,7 +27,7 @@ pub trait SingleData: Debug {
     /// at least 1 (allowing 0 to represent an uninitialized state).
     ///
     /// Whenever the data is updated, [`Event::Update`] must be sent via
-    /// [`EventMgr::trigger_update`] to notify other users of this data of the
+    /// [`EventMgr::update_all`] to notify other users of this data of the
     /// update.
     fn version(&self) -> u64;
 
@@ -40,7 +40,7 @@ pub trait SingleData: Debug {
     ///
     /// Shared data with internal mutability (e.g. via [`RefCell`]) should
     /// update itself here, increase its version number and call
-    /// [`EventMgr::trigger_update`].
+    /// [`EventMgr::update_all`].
     ///
     /// Data types without internal mutability should do nothing.
     fn update(&self, mgr: &mut EventMgr, value: Self::Item);
@@ -87,7 +87,7 @@ pub trait ListData: Debug {
     /// at least 1 (allowing 0 to represent an uninitialized state).
     ///
     /// Whenever the data is updated, [`Event::Update`] must be sent via
-    /// [`EventMgr::trigger_update`] to notify other users of this data of the
+    /// [`EventMgr::update_all`] to notify other users of this data of the
     /// update.
     fn version(&self) -> u64;
 
@@ -127,7 +127,7 @@ pub trait ListData: Debug {
     ///
     /// Shared data with internal mutability (e.g. via [`RefCell`]) should
     /// update itself here, increase its version number and call
-    /// [`EventMgr::trigger_update`].
+    /// [`EventMgr::update_all`].
     ///
     /// Data types without internal mutability should do nothing.
     fn update(&self, mgr: &mut EventMgr, key: &Self::Key, value: Self::Item);
@@ -192,7 +192,7 @@ pub trait MatrixData: Debug {
     /// at least 1 (allowing 0 to represent an uninitialized state).
     ///
     /// Whenever the data is updated, [`Event::Update`] must be sent via
-    /// [`EventMgr::trigger_update`] to notify other users of this data of the
+    /// [`EventMgr::update_all`] to notify other users of this data of the
     /// update.
     fn version(&self) -> u64;
 
@@ -230,7 +230,7 @@ pub trait MatrixData: Debug {
     ///
     /// Shared data with internal mutability (e.g. via [`RefCell`]) should
     /// update itself here, increase its version number and call
-    /// [`EventMgr::trigger_update`].
+    /// [`EventMgr::update_all`].
     ///
     /// Data types without internal mutability should do nothing.
     fn update(&self, mgr: &mut EventMgr, key: &Self::Key, value: Self::Item);

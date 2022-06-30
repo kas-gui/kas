@@ -612,14 +612,14 @@ impl<'a> EventMgr<'a> {
         self.shell.close_window(id);
     }
 
-    /// Notify all widgets
+    /// Send [`Event::Update`] to all widgets
     ///
     /// All widgets across all windows will receive [`Event::Update`] with
     /// the given `id` and `payload`.
     #[inline]
-    pub fn trigger_update(&mut self, id: UpdateId, payload: u64) {
-        debug!("trigger_update: id={:?}, payload={}", id, payload);
-        self.shell.trigger_update(id, payload);
+    pub fn update_all(&mut self, id: UpdateId, payload: u64) {
+        debug!("update_all: id={:?}, payload={}", id, payload);
+        self.shell.update_all(id, payload);
     }
 
     /// Attempt to get clipboard contents

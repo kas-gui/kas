@@ -130,7 +130,7 @@ impl ListData for MySharedData {
                 }
             }
             mgr.push_msg(Control::Update(data.get(data.active)));
-            mgr.trigger_update(self.id, 0);
+            mgr.update_all(self.id, 0);
         }
     }
 
@@ -281,7 +281,7 @@ fn main() -> kas::shell::Result<()> {
                             if let Some(text) = opt_text {
                                 *mgr |= self.display.set_string(text);
                             }
-                            mgr.trigger_update(update, 0);
+                            mgr.update_all(update, 0);
                         }
                         Control::Dir => {
                             let dir = self.list.direction().reversed();

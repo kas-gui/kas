@@ -170,7 +170,7 @@ pub enum Event {
     TimerUpdate(u64),
     /// Update triggerred via an [`UpdateId`]
     ///
-    /// This event is received by all widgets when [`EventMgr::trigger_update`]
+    /// This event is received by all widgets when [`EventMgr::update_all`]
     /// is called.
     ///
     /// Note that this event is only received by [`Widget::handle_event`] and

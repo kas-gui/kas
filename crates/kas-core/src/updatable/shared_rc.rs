@@ -55,7 +55,7 @@ impl<T: Clone + Debug + 'static> SingleData for SharedRc<T> {
         let mut cell = (self.0).1.borrow_mut();
         cell.0 = value;
         cell.1 += 1;
-        mgr.trigger_update((self.0).0, 0);
+        mgr.update_all((self.0).0, 0);
     }
 }
 impl<T: Clone + Debug + 'static> SingleDataMut for SharedRc<T> {
@@ -96,7 +96,7 @@ impl<T: ListDataMut> ListData for SharedRc<T> {
         let mut cell = (self.0).1.borrow_mut();
         cell.0.set(key, value);
         cell.1 += 1;
-        mgr.trigger_update((self.0).0, 0);
+        mgr.update_all((self.0).0, 0);
     }
 
     fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
@@ -149,7 +149,7 @@ impl<T: MatrixDataMut> MatrixData for SharedRc<T> {
         let mut cell = (self.0).1.borrow_mut();
         cell.0.set(key, value);
         cell.1 += 1;
-        mgr.trigger_update((self.0).0, 0);
+        mgr.update_all((self.0).0, 0);
     }
 
     fn col_iter_vec(&self, limit: usize) -> Vec<Self::ColKey> {

@@ -118,7 +118,7 @@ fn generate_colors(proxy: kas::shell::ToolkitProxy, update_id: UpdateId, colour:
         *colour.lock().unwrap() = c;
         // .. and notify of an update.
         // (Note: the 0 here is the u64 payload, which could pass useful data!)
-        if proxy.trigger_update(update_id, 0).is_err() {
+        if proxy.update_all(update_id, 0).is_err() {
             // Sending failed; we should quit
             break;
         }
