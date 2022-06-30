@@ -18,7 +18,8 @@ const MIN_HIGHLIGHT: f32 = 0.2;
 bitflags::bitflags! {
     /// Input and highlighting state of a widget
     ///
-    /// This struct is used to adjust the appearance of [`DrawMgr`]'s primitives.
+    /// This is mostly an implementation detail used to control the appearance
+    /// of theme-drawn elements.
     #[derive(Default)]
     pub struct InputState: u8 {
         /// Disabled widgets are not responsive to input and usually drawn in grey.
