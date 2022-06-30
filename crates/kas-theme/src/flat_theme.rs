@@ -235,7 +235,7 @@ impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl,
 {
-    fn button_frame(
+    pub fn button_frame(
         &mut self,
         outer: Quad,
         col_frame: Rgba,
@@ -276,7 +276,7 @@ where
         inner
     }
 
-    fn edit_box(&mut self, id: &WidgetId, outer: Quad, bg: Background) {
+    pub fn edit_box(&mut self, id: &WidgetId, outer: Quad, bg: Background) {
         let state = InputState::new_except_depress(self.ev, id);
         let col_bg = self.cols.from_edit_bg(bg, state);
         if col_bg != self.cols.background {
@@ -309,6 +309,35 @@ where
             self.draw.rounded_frame_2col(outer, inner, col1, col2);
 
             self.draw.rounded_line(a, b, r, col);
+        }
+    }
+
+    pub fn check_mark(
+        &mut self,
+        inner: Quad,
+        state: InputState,
+        checked: bool,
+        last_change: Option<Instant>,
+    ) {
+        let anim_fade = 1.0 - self.w.anim.fade_bool(self.draw.draw, checked, last_change);
+        if anim_fade < 1.0 {
+            let inner = inner.shrink(self.w.dims.inner_margin as f32);
+            let v = inner.size() * (anim_fade / 2.0);
+            let inner = Quad::from_coords(inner.a + v, inner.b - v);
+            let col = self.cols.check_mark_state(state);
+            let f = self.w.dims.frame as f32 * 0.5;
+            if inner.size().min_comp() >= 2.0 * f {
+                let inner = inner.shrink(f);
+                let size = inner.size();
+                let vstep = size.1 * 0.125;
+                let a = Vec2(inner.a.0, inner.b.1 - 3.0 * vstep);
+                let b = Vec2(inner.a.0 + size.0 * 0.25, inner.b.1 - vstep);
+                let c = Vec2(inner.b.0, inner.a.1 + vstep);
+                self.draw.rounded_line(a, b, f, col);
+                self.draw.rounded_line(b, c, f, col);
+            } else {
+                self.draw.rect(inner, col);
+            }
         }
     }
 }
@@ -540,8 +569,6 @@ where
         checked: bool,
         last_change: Option<Instant>,
     ) {
-        let anim_fade = 1.0 - self.w.anim.fade_bool(self.draw.draw, checked, last_change);
-
         let state = InputState::new_all(self.ev, id);
         let outer = Quad::conv(rect);
 
@@ -549,25 +576,7 @@ where
         let col_bg = self.cols.from_edit_bg(Default::default(), state);
         let inner = self.button_frame(outer, col_frame, col_bg, state);
 
-        if anim_fade < 1.0 {
-            let inner = inner.shrink(self.w.dims.inner_margin as f32);
-            let v = inner.size() * (anim_fade / 2.0);
-            let inner = Quad::from_coords(inner.a + v, inner.b - v);
-            let col = self.cols.check_mark_state(state);
-            let f = self.w.dims.frame as f32 * 0.5;
-            if inner.size().min_comp() >= 2.0 * f {
-                let inner = inner.shrink(f);
-                let size = inner.size();
-                let vstep = size.1 * 0.125;
-                let a = Vec2(inner.a.0, inner.b.1 - 3.0 * vstep);
-                let b = Vec2(inner.a.0 + size.0 * 0.25, inner.b.1 - vstep);
-                let c = Vec2(inner.b.0, inner.a.1 + vstep);
-                self.draw.rounded_line(a, b, f, col);
-                self.draw.rounded_line(b, c, f, col);
-            } else {
-                self.draw.rect(inner, col);
-            }
-        }
+        self.check_mark(inner, state, checked, last_change);
     }
 
     fn radio_box(

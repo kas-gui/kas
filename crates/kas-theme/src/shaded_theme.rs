@@ -79,6 +79,11 @@ const DIMS: dim::Parameters = dim::Parameters {
     shadow_rel_offset: Vec2::ZERO,
 };
 
+const NORMS_FRAME: (f32, f32) = (-0.7, 0.7);
+const NORMS_TRACK: (f32, f32) = (0.0, -0.7);
+const NORMS_SUNK: (f32, f32) = (-0.7, 0.0);
+const NORMS_RAISED: (f32, f32) = (0.0, 0.7);
+
 pub struct DrawHandle<'a, DS: DrawSharedImpl> {
     draw: DrawIface<'a, DS>,
     ev: &'a mut EventState,
@@ -218,10 +223,10 @@ where
             outer_col
         };
         self.draw
-            .shaded_square_frame(outer, inner, (-0.6, 0.0), outer_col, inner_col);
+            .shaded_square_frame(outer, inner, NORMS_SUNK, outer_col, inner_col);
 
         self.draw.rect(inner, bg_col);
-        inner.shrink(self.w.dims.inner_margin as f32)
+        inner
     }
 
     /// Draw a handle (for slider, scroll bar)
@@ -230,7 +235,8 @@ where
         let thickness = outer.size().min_comp() / 2.0;
         let inner = outer.shrink(thickness);
         let col = self.cols.accent_soft_state(state);
-        self.draw.shaded_round_frame(outer, inner, (0.0, 0.6), col);
+        self.draw
+            .shaded_round_frame(outer, inner, NORMS_RAISED, col);
 
         if let Some(col) = self.cols.nav_region(state) {
             let outer = outer.shrink(thickness / 4.0);
@@ -291,9 +297,8 @@ where
             FrameStyle::Frame => {
                 let outer = Quad::conv(rect);
                 let inner = outer.shrink(self.w.dims.frame as f32);
-                let norm = (0.7, -0.7);
                 let col = self.cols.background;
-                self.draw.shaded_round_frame(outer, inner, norm, col);
+                self.draw.shaded_round_frame(outer, inner, NORMS_FRAME, col);
             }
             FrameStyle::Popup => {
                 let outer = Quad::conv(rect);
@@ -313,7 +318,7 @@ where
                 let col_bg = self.cols.from_bg(bg, state, true);
 
                 self.draw
-                    .shaded_round_frame(outer, inner, (0.0, 0.6), col_bg);
+                    .shaded_round_frame(outer, inner, NORMS_RAISED, col_bg);
                 self.draw.rect(inner, col_bg);
 
                 if let Some(col) = self.cols.nav_region(state) {
@@ -333,9 +338,8 @@ where
     fn separator(&mut self, rect: Rect) {
         let outer = Quad::conv(rect);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
-        let norm = (0.0, -0.7);
         let col = self.cols.background;
-        self.draw.shaded_round_frame(outer, inner, norm, col);
+        self.draw.shaded_round_frame(outer, inner, NORMS_TRACK, col);
     }
 
     fn check_box(
@@ -346,18 +350,11 @@ where
         last_change: Option<Instant>,
     ) {
         let state = InputState::new_all(self.ev, id);
-        let anim_fade = 1.0 - self.w.anim.fade_bool(self.draw.draw, checked, last_change);
-
         let bg_col = self.cols.from_edit_bg(Default::default(), state);
-
         let inner = self.draw_edit_box(rect, bg_col, state.nav_focus());
 
-        if anim_fade < 1.0 {
-            let v = inner.size() * (anim_fade / 2.0);
-            let inner = Quad::from_coords(inner.a + v, inner.b - v);
-            let col = self.cols.check_mark_state(state);
-            self.draw.shaded_square(inner, (0.0, 0.4), col);
-        }
+        self.as_flat()
+            .check_mark(inner, state, checked, last_change);
     }
 
     fn radio_box(
@@ -372,13 +369,15 @@ where
 
         let bg_col = self.cols.from_edit_bg(Default::default(), state);
 
-        let inner = self.draw_edit_box(rect, bg_col, state.nav_focus());
+        let inner = self
+            .draw_edit_box(rect, bg_col, state.nav_focus())
+            .shrink(self.w.dims.inner_margin as f32);
 
         if anim_fade < 1.0 {
             let v = inner.size() * (anim_fade / 2.0);
             let inner = Quad::from_coords(inner.a + v, inner.b - v);
             let col = self.cols.check_mark_state(state);
-            self.draw.shaded_circle(inner, (0.0, 1.0), col);
+            self.draw.shaded_circle(inner, NORMS_RAISED, col);
         }
     }
 
@@ -393,9 +392,8 @@ where
         // track
         let outer = Quad::conv(rect);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
-        let norm = (0.0, -0.7);
         let col = self.cols.background;
-        self.draw.shaded_round_frame(outer, inner, norm, col);
+        self.draw.shaded_round_frame(outer, inner, NORMS_TRACK, col);
 
         // handle
         let state = InputState::new2(self.ev, id, id2);
@@ -410,9 +408,8 @@ where
             false => outer.shrink_vec(Vec2(outer.size().0 * (3.0 / 8.0), 0.0)),
         };
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
-        let norm = (0.0, -0.7);
         let col = self.cols.background;
-        self.draw.shaded_round_frame(outer, inner, norm, col);
+        self.draw.shaded_round_frame(outer, inner, NORMS_TRACK, col);
 
         // handle
         let state = InputState::new2(self.ev, id, id2);
@@ -422,9 +419,8 @@ where
     fn progress_bar(&mut self, _: &WidgetId, rect: Rect, dir: Direction, value: f32) {
         let mut outer = Quad::conv(rect);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
-        let norm = (0.0, -0.7);
         let col = self.cols.frame;
-        self.draw.shaded_round_frame(outer, inner, norm, col);
+        self.draw.shaded_round_frame(outer, inner, NORMS_TRACK, col);
 
         if dir.is_horizontal() {
             outer.b.0 = outer.a.0 + value * (outer.b.0 - outer.a.0);
@@ -434,6 +430,7 @@ where
         let thickness = outer.size().min_comp() / 2.0;
         let inner = outer.shrink(thickness);
         let col = self.cols.accent_soft;
-        self.draw.shaded_round_frame(outer, inner, (0.0, 0.6), col);
+        self.draw
+            .shaded_round_frame(outer, inner, NORMS_RAISED, col);
     }
 }
