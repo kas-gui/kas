@@ -13,7 +13,7 @@ use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
 use super::{RulesSetter, RulesSolver, Storage};
 use crate::draw::color::Rgb;
-use crate::event::SetRectMgr;
+use crate::event::ConfigMgr;
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::theme::{Background, DrawMgr, FrameStyle, SizeMgr};
 use crate::WidgetId;
@@ -217,10 +217,10 @@ impl<'a> Visitor<'a> {
     ///
     /// Return the aligned rect.
     #[inline]
-    pub fn set_rect(mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) -> Rect {
+    pub fn set_rect(mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) -> Rect {
         self.set_rect_(mgr, rect, align)
     }
-    fn set_rect_(&mut self, mgr: &mut SetRectMgr, mut rect: Rect, align: AlignHints) -> Rect {
+    fn set_rect_(&mut self, mgr: &mut ConfigMgr, mut rect: Rect, align: AlignHints) -> Rect {
         match &mut self.layout {
             LayoutType::None => (),
             LayoutType::Component(component) => component.set_rect(mgr, rect, align),
@@ -329,7 +329,7 @@ where
         solver.finish(self.data)
     }
 
-    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
         let dim = (self.direction, self.children.len());
         let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, align, self.data);
 
@@ -370,7 +370,7 @@ where
         rules
     }
 
-    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
         for child in &mut self.children {
             child.set_rect(mgr, rect, align);
         }
@@ -408,7 +408,7 @@ impl<'a, W: Widget, D: Directional> Layout for Slice<'a, W, D> {
         solver.finish(self.data)
     }
 
-    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
         let dim = (self.direction, self.children.len());
         let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, align, self.data);
 
@@ -449,7 +449,7 @@ where
         solver.finish(self.data)
     }
 
-    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
         let mut setter = GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, align, self.data);
         for (info, child) in &mut self.children {
             child.set_rect(mgr, setter.child_rect(self.data, info), align);

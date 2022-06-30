@@ -42,11 +42,11 @@ fn main() -> kas::shell::Result<()> {
                 if let Some(msg) = mgr.try_pop_msg::<Message>() {
                     match msg {
                         Message::Decr => {
-                            mgr.set_rect_mgr(|mgr| self.panes.pop(mgr));
+                            mgr.config_mgr(|mgr| self.panes.pop(mgr));
                         }
                         Message::Incr => {
                             let n = self.panes.len() + 1;
-                            mgr.set_rect_mgr(|mgr| self.panes.push(
+                            mgr.config_mgr(|mgr| self.panes.push(
                                 mgr,
                                 EditField::new(format!("Pane {}", n)).multi_line(true)
                             ));

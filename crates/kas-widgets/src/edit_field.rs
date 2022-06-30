@@ -357,7 +357,7 @@ impl_scope! {
             size_mgr.text_bound(&mut self.text, class, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
             let valign = if self.multi_line {
                 Align::Default
             } else {

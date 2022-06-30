@@ -8,7 +8,7 @@
 use super::{FrameStyle, MarkStyle, SizeMgr, TextClass, ThemeSize};
 use crate::dir::Direction;
 use crate::draw::{color::Rgb, Draw, DrawShared, ImageId, PassType};
-use crate::event::{EventState, SetRectMgr};
+use crate::event::{ConfigMgr, EventState};
 use crate::geom::{Coord, Offset, Rect};
 use crate::macros::autoimpl;
 use crate::text::{TextApi, TextDisplay};
@@ -102,10 +102,10 @@ impl<'a> DrawMgr<'a> {
         SizeMgr::new(self.h.components().0)
     }
 
-    /// Access a [`SetRectMgr`]
-    pub fn set_rect_mgr<F: FnMut(&mut SetRectMgr) -> T, T>(&mut self, mut f: F) -> T {
+    /// Access a [`ConfigMgr`]
+    pub fn config_mgr<F: FnMut(&mut ConfigMgr) -> T, T>(&mut self, mut f: F) -> T {
         let (sh, draw, ev) = self.h.components();
-        let mut mgr = SetRectMgr::new(sh, draw.shared(), ev);
+        let mut mgr = ConfigMgr::new(sh, draw.shared(), ev);
         f(&mut mgr)
     }
 

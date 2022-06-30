@@ -164,7 +164,7 @@ impl_scope! {
             solver.finish(&mut self.data)
         }
 
-        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             self.size_solved = true;
             if self.widgets.is_empty() {
@@ -242,7 +242,7 @@ impl_scope! {
             self.make_next_id(is_handle, child_index / 2)
         }
 
-        fn pre_configure(&mut self, _: &mut SetRectMgr, id: WidgetId) {
+        fn pre_configure(&mut self, _: &mut ConfigMgr, id: WidgetId) {
             self.core.id = id;
             self.id_map.clear();
         }
@@ -255,7 +255,7 @@ impl_scope! {
                     let n = index >> 1;
                     assert!(n < self.handles.len());
                     *mgr |= self.handles[n].set_offset(offset).1;
-                    mgr.set_rect_mgr(|mgr| self.adjust_size(mgr, n));
+                    mgr.config_mgr(|mgr| self.adjust_size(mgr, n));
                 }
             }
         }
@@ -319,7 +319,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         TkAction::RECONFIGURE
     }
 
-    fn adjust_size(&mut self, mgr: &mut SetRectMgr, n: usize) {
+    fn adjust_size(&mut self, mgr: &mut ConfigMgr, n: usize) {
         assert!(n < self.handles.len());
         assert_eq!(self.widgets.len(), self.handles.len() + 1);
         let index = 2 * n + 1;
@@ -388,7 +388,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// triggered.
     ///
     /// Returns the new element's index.
-    pub fn push(&mut self, mgr: &mut SetRectMgr, widget: W) -> usize {
+    pub fn push(&mut self, mgr: &mut ConfigMgr, widget: W) -> usize {
         let index = self.widgets.len();
         if index > 0 {
             let len = self.handles.len();
@@ -407,7 +407,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// Remove the last child widget (if any) and return
     ///
     /// Triggers [`TkAction::RESIZE`].
-    pub fn pop(&mut self, mgr: &mut SetRectMgr) -> Option<W> {
+    pub fn pop(&mut self, mgr: &mut ConfigMgr) -> Option<W> {
         let result = self.widgets.pop();
         if let Some(w) = result.as_ref() {
             *mgr |= TkAction::RESIZE;
@@ -434,7 +434,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// Panics if `index > len`.
     ///
     /// The new child is configured immediately. Triggers [`TkAction::RESIZE`].
-    pub fn insert(&mut self, mgr: &mut SetRectMgr, index: usize, widget: W) {
+    pub fn insert(&mut self, mgr: &mut ConfigMgr, index: usize, widget: W) {
         for v in self.id_map.values_mut() {
             if *v >= index {
                 *v += 2;
@@ -461,7 +461,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// Panics if `index` is out of bounds.
     ///
     /// Triggers [`TkAction::RESIZE`].
-    pub fn remove(&mut self, mgr: &mut SetRectMgr, index: usize) -> W {
+    pub fn remove(&mut self, mgr: &mut ConfigMgr, index: usize) -> W {
         if !self.handles.is_empty() {
             let index = index.min(self.handles.len());
             let w = self.handles.remove(index);
@@ -492,7 +492,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// Panics if `index` is out of bounds.
     ///
     /// The new child is configured immediately. Triggers [`TkAction::RESIZE`].
-    pub fn replace(&mut self, mgr: &mut SetRectMgr, index: usize, mut w: W) -> W {
+    pub fn replace(&mut self, mgr: &mut ConfigMgr, index: usize, mut w: W) -> W {
         std::mem::swap(&mut w, &mut self.widgets[index]);
 
         if w.id_ref().is_valid() {

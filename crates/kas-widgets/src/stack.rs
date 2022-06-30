@@ -79,7 +79,7 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             self.align_hints = align;
             if let Some(child) = self.widgets.get_mut(self.active) {
@@ -124,13 +124,13 @@ impl_scope! {
             }
         }
 
-        fn pre_configure(&mut self, _: &mut SetRectMgr, id: WidgetId) {
+        fn pre_configure(&mut self, _: &mut ConfigMgr, id: WidgetId) {
             self.core.id = id;
             self.id_map.clear();
         }
 
         fn spatial_nav(&mut self,
-            _: &mut SetRectMgr,
+            _: &mut ConfigMgr,
             _: bool,
             from: Option<usize>,
         ) -> Option<usize> {
@@ -235,7 +235,7 @@ impl<W: Widget> Stack<W> {
     /// -   `SizeRules` were solved: set layout ([`Layout::set_rect`]) and
     ///     update mouse-cursor target ([`TkAction::REGION_MOVED`])
     /// -   Otherwise: resize the whole window ([`TkAction::RESIZE`])
-    pub fn set_active(&mut self, mgr: &mut SetRectMgr, index: usize) {
+    pub fn set_active(&mut self, mgr: &mut ConfigMgr, index: usize) {
         let old_index = self.active;
         self.active = index;
         if index >= self.widgets.len() {
@@ -298,7 +298,7 @@ impl<W: Widget> Stack<W> {
     /// and then [`TkAction::RESIZE`] will be triggered.
     ///
     /// Returns the new page's index.
-    pub fn push(&mut self, mgr: &mut SetRectMgr, widget: W) -> usize {
+    pub fn push(&mut self, mgr: &mut ConfigMgr, widget: W) -> usize {
         let index = self.widgets.len();
         self.widgets.push(widget);
         let id = self.make_child_id(index);
@@ -313,7 +313,7 @@ impl<W: Widget> Stack<W> {
     /// Remove the last child widget (if any) and return
     ///
     /// If this page was active then the previous page becomes active.
-    pub fn pop(&mut self, mgr: &mut SetRectMgr) -> Option<W> {
+    pub fn pop(&mut self, mgr: &mut ConfigMgr) -> Option<W> {
         let result = self.widgets.pop();
         if let Some(w) = result.as_ref() {
             if self.active > 0 && self.active == self.widgets.len() {
@@ -340,7 +340,7 @@ impl<W: Widget> Stack<W> {
     ///
     /// The new child is configured immediately. The active page does not
     /// change.
-    pub fn insert(&mut self, mgr: &mut SetRectMgr, index: usize, widget: W) {
+    pub fn insert(&mut self, mgr: &mut ConfigMgr, index: usize, widget: W) {
         if self.active < index {
             self.sized_range.end = self.sized_range.end.min(index);
         } else {
@@ -364,7 +364,7 @@ impl<W: Widget> Stack<W> {
     ///
     /// If the active page is removed then the previous page (if any) becomes
     /// active.
-    pub fn remove(&mut self, mgr: &mut SetRectMgr, index: usize) -> W {
+    pub fn remove(&mut self, mgr: &mut ConfigMgr, index: usize) -> W {
         let w = self.widgets.remove(index);
         if w.id_ref().is_valid() {
             if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
@@ -401,7 +401,7 @@ impl<W: Widget> Stack<W> {
     ///
     /// The new child is configured immediately. If it replaces the active page,
     /// then [`TkAction::RESIZE`] is triggered.
-    pub fn replace(&mut self, mgr: &mut SetRectMgr, index: usize, mut w: W) -> W {
+    pub fn replace(&mut self, mgr: &mut ConfigMgr, index: usize, mut w: W) -> W {
         std::mem::swap(&mut w, &mut self.widgets[index]);
 
         if w.id_ref().is_valid() {
@@ -430,7 +430,7 @@ impl<W: Widget> Stack<W> {
     ///
     /// New children are configured immediately. If a new page becomes active,
     /// then [`TkAction::RESIZE`] is triggered.
-    pub fn extend<T: IntoIterator<Item = W>>(&mut self, mgr: &mut SetRectMgr, iter: T) {
+    pub fn extend<T: IntoIterator<Item = W>>(&mut self, mgr: &mut ConfigMgr, iter: T) {
         let old_len = self.widgets.len();
         self.widgets.extend(iter);
         for index in old_len..self.widgets.len() {
@@ -447,7 +447,7 @@ impl<W: Widget> Stack<W> {
     ///
     /// New children are configured immediately. If a new page becomes active,
     /// then [`TkAction::RESIZE`] is triggered.
-    pub fn resize_with<F: Fn(usize) -> W>(&mut self, mgr: &mut SetRectMgr, len: usize, f: F) {
+    pub fn resize_with<F: Fn(usize) -> W>(&mut self, mgr: &mut ConfigMgr, len: usize, f: F) {
         let old_len = self.widgets.len();
 
         if len < old_len {

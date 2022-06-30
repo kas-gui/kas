@@ -34,7 +34,7 @@ impl_scope! {
             size_mgr.feature(Feature::CheckBox, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
             let rect = mgr.align_feature(Feature::CheckBox, rect, align);
             self.core.rect = rect;
         }
@@ -171,7 +171,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.add_accel_keys(self.inner.id_ref(), self.label.keys());
         }
     }

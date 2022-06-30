@@ -25,10 +25,10 @@ use crate::cast::Cast;
 use crate::geom::{Coord, Offset};
 use crate::{ShellWindow, TkAction, Widget, WidgetExt, WidgetId, WindowId};
 
+mod config_mgr;
 mod mgr_pub;
 mod mgr_shell;
-mod set_rect_mgr;
-pub use set_rect_mgr::SetRectMgr;
+pub use config_mgr::ConfigMgr;
 
 /// Controls the types of events delivered by [`EventMgr::grab_press`]
 #[derive(Clone, Copy, Debug, PartialEq)]

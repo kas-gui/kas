@@ -115,7 +115,7 @@ impl_scope! {
         /// (re)created: on start and on resizing.
         ///
         /// This method does nothing before a backing pixmap has been created.
-        pub fn redraw(&mut self, mgr: &mut SetRectMgr) {
+        pub fn redraw(&mut self, mgr: &mut ConfigMgr) {
             if let Some((pm, h)) = self.pixmap.as_mut().zip(self.image.as_ref()) {
                 pm.fill(Color::TRANSPARENT);
                 self.program.draw(pm);
@@ -129,7 +129,7 @@ impl_scope! {
             self.scaling.size_rules(size_mgr, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
             let scale_factor = mgr.size_mgr().scale_factor();
             self.core.rect = self.scaling.align_rect(rect, align, scale_factor);
             let size: (u32, u32) = self.core.rect.size.cast();
@@ -154,7 +154,7 @@ impl_scope! {
         fn draw(&mut self, mut draw: DrawMgr) {
             let (redraw, animate) = self.program.do_redraw_animate();
             if redraw {
-                draw.set_rect_mgr(|mgr| self.redraw(mgr));
+                draw.config_mgr(|mgr| self.redraw(mgr));
             }
             if animate {
                 draw.draw_device().animate();

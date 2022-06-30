@@ -10,7 +10,7 @@ use std::fmt;
 
 use super::{AlignHints, AxisInfo, Margins, SizeRules};
 use crate::cast::Conv;
-use crate::event::SetRectMgr;
+use crate::event::ConfigMgr;
 use crate::geom::{Rect, Size};
 use crate::theme::SizeMgr;
 use crate::{Widget, WidgetExt};
@@ -182,7 +182,7 @@ impl SolveCache {
     pub fn apply_rect(
         &mut self,
         widget: &mut dyn Widget,
-        mgr: &mut SetRectMgr,
+        mgr: &mut ConfigMgr,
         mut rect: Rect,
         inner_margin: bool,
         print_heirarchy: bool,

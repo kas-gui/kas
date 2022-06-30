@@ -308,7 +308,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     #[inline]
                     fn set_rect(
                         &mut self,
-                        mgr: &mut ::kas::event::SetRectMgr,
+                        mgr: &mut ::kas::event::ConfigMgr,
                         rect: ::kas::geom::Rect,
                         align: ::kas::layout::AlignHints,
                     ) {
@@ -349,13 +349,13 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     #[inline]
                     fn pre_configure(
                         &mut self,
-                        mgr: &mut ::kas::event::SetRectMgr,
+                        mgr: &mut ::kas::event::ConfigMgr,
                         id: ::kas::WidgetId,
                     ) {
                         self.#inner.pre_configure(mgr, id)
                     }
                     #[inline]
-                    fn configure(&mut self, mgr: &mut ::kas::event::SetRectMgr) {
+                    fn configure(&mut self, mgr: &mut ::kas::event::ConfigMgr) {
                         self.#inner.configure(mgr);
                     }
                     #key_nav
@@ -367,7 +367,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     #[inline]
                     fn spatial_nav(
                         &mut self,
-                        mgr: &mut ::kas::event::SetRectMgr,
+                        mgr: &mut ::kas::event::ConfigMgr,
                         reverse: bool,
                         from: Option<usize>,
                     ) -> Option<usize> {
@@ -482,7 +482,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
                 fn set_rect(
                     &mut self,
-                    mgr: &mut ::kas::event::SetRectMgr,
+                    mgr: &mut ::kas::event::ConfigMgr,
                     rect: ::kas::geom::Rect,
                     align: ::kas::layout::AlignHints,
                 ) {
@@ -530,7 +530,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let fn_set_rect = quote! {
         fn set_rect(
             &mut self,
-            mgr: &mut ::kas::event::SetRectMgr,
+            mgr: &mut ::kas::event::ConfigMgr,
             rect: ::kas::geom::Rect,
             align: ::kas::layout::AlignHints,
         ) {
@@ -580,7 +580,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     }
 
     let fn_pre_configure = quote! {
-        fn pre_configure(&mut self, _: &mut ::kas::event::SetRectMgr, id: ::kas::WidgetId) {
+        fn pre_configure(&mut self, _: &mut ::kas::event::ConfigMgr, id: ::kas::WidgetId) {
             self.#core.id = id;
         }
     };

@@ -64,7 +64,7 @@ impl EventState {
     /// This should be called by the toolkit on the widget tree when the window
     /// is created (before or after resizing).
     ///
-    /// This method calls [`SetRectMgr::configure`] in order to assign
+    /// This method calls [`ConfigMgr::configure`] in order to assign
     /// [`WidgetId`] identifiers and call widgets' [`Widget::configure`]
     /// method. Additionally, it updates the [`EventState`] to account for
     /// renamed and removed widgets.
@@ -79,7 +79,7 @@ impl EventState {
         self.new_accel_layer(WidgetId::ROOT, false);
 
         shell.size_and_draw_shared(&mut |size, draw_shared| {
-            let mut mgr = SetRectMgr::new(size, draw_shared, self);
+            let mut mgr = ConfigMgr::new(size, draw_shared, self);
             mgr.configure(WidgetId::ROOT, widget);
         });
 

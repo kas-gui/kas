@@ -248,7 +248,7 @@ impl_scope! {
             for w in &mut self.widgets {
                 w.key = None;
             }
-            mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
+            mgr.config_mgr(|mgr| self.update_widgets(mgr));
             // Force SET_SIZE so that scroll-bar wrappers get updated
             trace!("update_view triggers SET_SIZE");
             *mgr |= TkAction::SET_SIZE;
@@ -266,7 +266,7 @@ impl_scope! {
 
         /// Construct a position solver. Note: this does more work and updates to
         /// self than is necessary in several cases where it is used.
-        fn position_solver(&mut self, mgr: &mut SetRectMgr) -> PositionSolver {
+        fn position_solver(&mut self, mgr: &mut ConfigMgr) -> PositionSolver {
             let (d_cols, d_rows) = self.data.len();
             let data_len = Size(d_cols.cast(), d_rows.cast());
             let view_size = self.rect().size;
@@ -294,7 +294,7 @@ impl_scope! {
             }
         }
 
-        fn update_widgets(&mut self, mgr: &mut SetRectMgr) -> PositionSolver {
+        fn update_widgets(&mut self, mgr: &mut ConfigMgr) -> PositionSolver {
             let time = Instant::now();
             let solver = self.position_solver(mgr);
 
@@ -364,7 +364,7 @@ impl_scope! {
         #[inline]
         fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
             *mgr |= self.scroll.set_offset(offset);
-            mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
+            mgr.config_mgr(|mgr| self.update_widgets(mgr));
             self.scroll.offset()
         }
     }
@@ -441,7 +441,7 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
 
             let avail = rect.size - self.frame_size;
@@ -523,7 +523,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             // If data is available but not loaded yet, make some widgets for
             // use by size_rules (this allows better sizing). Configure the new
             // widgets (this allows resource loading which may affect size.)
@@ -554,7 +554,7 @@ impl_scope! {
 
         fn spatial_nav(
             &mut self,
-            mgr: &mut SetRectMgr,
+            mgr: &mut ConfigMgr,
             reverse: bool,
             from: Option<usize>,
         ) -> Option<usize> {
@@ -681,7 +681,7 @@ impl_scope! {
                     let (d_cols, d_rows) = self.data.len();
                     let (last_col, last_row) = (d_cols.wrapping_sub(1), d_rows.wrapping_sub(1));
 
-                    let mut solver = mgr.set_rect_mgr(|mgr| self.position_solver(mgr));
+                    let mut solver = mgr.config_mgr(|mgr| self.position_solver(mgr));
                     let (ci, ri) = match mgr.nav_focus().and_then(|id| self.find_child_index(id)) {
                         Some(index) => solver.child_to_data(index),
                         None => return Response::Unused,
@@ -711,7 +711,7 @@ impl_scope! {
                         let (rect, action) = self.scroll.focus_rect(solver.rect(ci, ri), self.core.rect);
                         if !action.is_empty() {
                             *mgr |= action;
-                            solver = mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
+                            solver = mgr.config_mgr(|mgr| self.update_widgets(mgr));
                         }
 
                         let index = solver.data_to_child(ci, ri);
@@ -737,7 +737,7 @@ impl_scope! {
 
             let (moved, r) = self.scroll.scroll_by_event(mgr, event, self.id(), self.core.rect);
             if moved {
-                mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
+                mgr.config_mgr(|mgr| self.update_widgets(mgr));
             }
             r
         }
@@ -791,7 +791,7 @@ impl_scope! {
 
         fn handle_scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) {
             self.scroll.scroll(mgr, self.rect(), scroll);
-            mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
+            mgr.config_mgr(|mgr| self.update_widgets(mgr));
         }
     }
 }

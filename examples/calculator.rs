@@ -70,7 +70,7 @@ fn main() -> kas::shell::Result<()> {
             calc: Calculator = Calculator::new(),
         }
         impl Widget for Self {
-            fn configure(&mut self, mgr: &mut SetRectMgr) {
+            fn configure(&mut self, mgr: &mut ConfigMgr) {
                 // Enable key bindings without Alt held:
                 mgr.enable_alt_bypass(self.id_ref(), true);
             }

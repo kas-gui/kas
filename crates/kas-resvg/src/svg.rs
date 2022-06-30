@@ -130,7 +130,7 @@ impl_scope! {
             self.scaling.size_rules(size_mgr, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
             let scale_factor = mgr.size_mgr().scale_factor();
             self.core.rect = self.scaling.align_rect(rect, align, scale_factor);
             let size: (u32, u32) = self.core.rect.size.cast();

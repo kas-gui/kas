@@ -657,11 +657,11 @@ impl<'a> EventMgr<'a> {
         result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
     }
 
-    /// Access a [`SetRectMgr`]
-    pub fn set_rect_mgr<F: FnMut(&mut SetRectMgr) -> T, T>(&mut self, mut f: F) -> T {
+    /// Access a [`ConfigMgr`]
+    pub fn config_mgr<F: FnMut(&mut ConfigMgr) -> T, T>(&mut self, mut f: F) -> T {
         let mut result = None;
         self.shell.size_and_draw_shared(&mut |size, draw_shared| {
-            let mut mgr = SetRectMgr::new(size, draw_shared, self.state);
+            let mut mgr = ConfigMgr::new(size, draw_shared, self.state);
             result = Some(f(&mut mgr));
         });
         result.expect("ShellWindow::size_and_draw_shared impl failed to call function argument")
@@ -803,7 +803,7 @@ impl<'a> EventMgr<'a> {
 
     /// Advance the keyboard navigation focus
     ///
-    /// This is a shim around [`SetRectMgr::next_nav_focus`].
+    /// This is a shim around [`ConfigMgr::next_nav_focus`].
     #[inline]
     pub fn next_nav_focus(
         &mut self,
@@ -811,6 +811,6 @@ impl<'a> EventMgr<'a> {
         reverse: bool,
         key_focus: bool,
     ) -> bool {
-        self.set_rect_mgr(|mgr| mgr.next_nav_focus(widget, reverse, key_focus))
+        self.config_mgr(|mgr| mgr.next_nav_focus(widget, reverse, key_focus))
     }
 }

@@ -42,7 +42,7 @@ impl_scope! {
         }
 
         #[inline]
-        fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, _align: AlignHints) {
+        fn set_rect(&mut self, _: &mut ConfigMgr, rect: Rect, _align: AlignHints) {
             // Force to square
             let size = rect.size.0.min(rect.size.1);
             let size = Size::splat(size);
@@ -118,7 +118,7 @@ impl_scope! {
     }
 
     impl Widget for Clock {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.request_update(self.id(), 0, Duration::new(0, 0), true);
         }
 

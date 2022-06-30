@@ -14,7 +14,7 @@ use crate::layout::{AlignHints, AxisInfo, FrameRules, Margins, SizeRules};
 use crate::macros::autoimpl;
 use crate::text::{Align, TextApi};
 #[allow(unused)]
-use crate::{event::SetRectMgr, theme::DrawMgr};
+use crate::{event::ConfigMgr, theme::DrawMgr};
 
 // for doc use
 #[allow(unused)]
@@ -132,7 +132,7 @@ impl<'a> SizeMgr<'a> {
     /// calculate size requirements.
     ///
     /// It is necessary to update the environment *again* once the target `rect`
-    /// is known: use [`SetRectMgr::text_set_size`] to do this.
+    /// is known: use [`ConfigMgr::text_set_size`] to do this.
     ///
     /// [`Environment`]: crate::text::Environment
     pub fn text_bound(

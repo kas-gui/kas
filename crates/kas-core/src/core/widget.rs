@@ -7,7 +7,7 @@
 
 use std::fmt;
 
-use crate::event::{Event, EventMgr, Response, Scroll, SetRectMgr};
+use crate::event::{ConfigMgr, Event, EventMgr, Response, Scroll};
 use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
@@ -70,7 +70,7 @@ pub trait WidgetCore: fmt::Debug {
 ///
 /// Note that parents are responsible for ensuring that newly added children
 /// get configured, either by sending [`TkAction::RECONFIGURE`] by calling
-/// [`SetRectMgr::configure`].
+/// [`ConfigMgr::configure`].
 #[autoimpl(for<'a, T: trait + ?Sized> &'a mut T, Box<T>)]
 pub trait WidgetChildren: WidgetCore {
     /// Get the number of child widgets
@@ -200,7 +200,7 @@ pub trait Layout {
     ///
     /// [`Stretch`]: crate::layout::Stretch
     /// [`#[widget]`]: kas_macros::widget
-    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints);
+    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints);
 
     /// Translate a coordinate to a [`WidgetId`]
     ///
@@ -333,7 +333,7 @@ pub trait Layout {
 ///             size_mgr.text_bound(&mut self.label, self.class, axis)
 ///         }
 ///
-///         fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+///         fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
 ///             self.core.rect = rect;
 ///             let align = align.unwrap_or(Align::Default, Align::Center);
 ///             mgr.text_set_size(&mut self.label, self.class, rect.size, align);
@@ -371,7 +371,7 @@ pub trait Layout {
 ///         }
 ///     }
 ///     impl Widget for Self {
-///         fn configure(&mut self, mgr: &mut SetRectMgr) {
+///         fn configure(&mut self, mgr: &mut ConfigMgr) {
 ///             mgr.add_accel_keys(self.id_ref(), self.label.keys());
 ///         }
 ///
@@ -402,12 +402,12 @@ pub trait Widget: WidgetChildren + Layout {
     /// [`EventState::new_accel_layer`].
     ///
     /// Default impl: assign `id` to self
-    fn pre_configure(&mut self, mgr: &mut SetRectMgr, id: WidgetId);
+    fn pre_configure(&mut self, mgr: &mut ConfigMgr, id: WidgetId);
 
     /// Configure widget
     ///
     /// Widgets are *configured* on window creation or dynamically via the
-    /// parent calling [`SetRectMgr::configure`]. Parent widgets are responsible
+    /// parent calling [`ConfigMgr::configure`]. Parent widgets are responsible
     /// for ensuring that children are configured before calling
     /// [`Layout::size_rules`] or [`Layout::set_rect`]. Configuration may be
     /// repeated and may be used as a mechanism to change a child's [`WidgetId`],
@@ -417,11 +417,11 @@ pub trait Widget: WidgetChildren + Layout {
     /// resources, including resources affecting [`Layout::size_rules`].
     ///
     /// The window's scale factor (and thus any sizes available through
-    /// [`SetRectMgr::size_mgr`]) may not be correct initially (some platforms
+    /// [`ConfigMgr::size_mgr`]) may not be correct initially (some platforms
     /// construct all windows using scale factor 1) and/or may change in the
     /// future. Changes to the scale factor result in recalculation of
     /// [`Layout::size_rules`] but not repeated configuration.
-    fn configure(&mut self, mgr: &mut SetRectMgr) {
+    fn configure(&mut self, mgr: &mut ConfigMgr) {
         let _ = mgr;
     }
 
@@ -466,7 +466,7 @@ pub trait Widget: WidgetChildren + Layout {
     #[inline]
     fn spatial_nav(
         &mut self,
-        mgr: &mut SetRectMgr,
+        mgr: &mut ConfigMgr,
         reverse: bool,
         from: Option<usize>,
     ) -> Option<usize> {
