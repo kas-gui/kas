@@ -26,6 +26,7 @@ mod flat_theme;
 #[cfg(feature = "stack_dst")]
 mod multi;
 mod shaded_theme;
+mod simple_theme;
 #[cfg(feature = "stack_dst")]
 mod theme_dst;
 mod traits;
@@ -39,6 +40,7 @@ pub use flat_theme::FlatTheme;
 #[cfg(feature = "stack_dst")]
 pub use multi::{MultiTheme, MultiThemeBuilder};
 pub use shaded_theme::ShadedTheme;
+pub use simple_theme::SimpleTheme;
 #[cfg(feature = "stack_dst")]
 pub use theme_dst::{MaybeBoxed, ThemeDst};
 pub use traits::{Theme, ThemeConfig, Window};

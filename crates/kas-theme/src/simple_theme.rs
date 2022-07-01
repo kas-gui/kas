@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Flat theme
+//! Simple theme
 
 use linear_map::LinearMap;
 use std::f32;
@@ -17,41 +17,32 @@ use kas::dir::{Direction, Directional};
 use kas::draw::{color::Rgba, *};
 use kas::event::EventState;
 use kas::geom::*;
-use kas::text::{fonts, TextApi, TextDisplay};
+use kas::text::{fonts, Effect, TextApi, TextDisplay};
 use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use kas::theme::{ThemeControl, ThemeDraw, ThemeSize};
 use kas::{TkAction, WidgetId};
 
-// Used to ensure a rectangular background is inside a circular corner.
-// Also the maximum inner radius of circular borders to overlap with this rect.
-const BG_SHRINK_FACTOR: f32 = 1.0 - std::f32::consts::FRAC_1_SQRT_2;
-
-// Shadow enlargement on hover
-const SHADOW_HOVER: f32 = 1.1;
-// Shadow enlargement for pop-ups
-const SHADOW_POPUP: f32 = 1.2;
-
-/// A theme with flat (unshaded) rendering
+/// A simple theme
 #[derive(Clone, Debug)]
-pub struct FlatTheme {
+pub struct SimpleTheme {
     pub(crate) config: Config,
     pub(crate) cols: ColorsLinear,
     dims: dim::Parameters,
     pub(crate) fonts: Option<Rc<LinearMap<TextClass, fonts::FontId>>>,
 }
 
-impl Default for FlatTheme {
+impl Default for SimpleTheme {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl FlatTheme {
+impl SimpleTheme {
     /// Construct
     #[inline]
     pub fn new() -> Self {
         let cols = ColorsLinear::default();
-        FlatTheme {
+        SimpleTheme {
             config: Default::default(),
             cols,
             dims: DIMS,
@@ -95,15 +86,14 @@ const DIMS: dim::Parameters = dim::Parameters {
     frame_size: 2.4,
     popup_frame_size: 0.0,
     menu_frame: 2.4,
-    // NOTE: visual thickness is (button_frame * scale_factor).round() * (1 - BG_SHRINK_FACTOR)
     button_frame: 2.4,
     check_box_inner: 7.0,
     mark: 8.0,
     scroll_bar_size: Vec2::splat(8.0),
-    slider_size: Vec2(16.0, 16.0),
+    slider_size: Vec2::splat(12.0),
     progress_bar: Vec2::splat(8.0),
-    shadow_size: Vec2(4.0, 4.0),
-    shadow_rel_offset: Vec2(0.2, 0.3),
+    shadow_size: Vec2::ZERO,
+    shadow_rel_offset: Vec2::ZERO,
 };
 
 pub struct DrawHandle<'a, DS: DrawSharedImpl> {
@@ -113,7 +103,7 @@ pub struct DrawHandle<'a, DS: DrawSharedImpl> {
     pub(crate) cols: &'a ColorsLinear,
 }
 
-impl<DS: DrawSharedImpl> Theme<DS> for FlatTheme
+impl<DS: DrawSharedImpl> Theme<DS> for SimpleTheme
 where
     DS::Draw: DrawRoundedImpl,
 {
@@ -207,7 +197,7 @@ where
     }
 }
 
-impl ThemeControl for FlatTheme {
+impl ThemeControl for SimpleTheme {
     fn set_font_size(&mut self, pt_size: f32) -> TkAction {
         self.config.set_font_size(pt_size);
         TkAction::RESIZE | TkAction::THEME_UPDATE
@@ -235,26 +225,12 @@ impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl,
 {
-    // Type-cast to simple_theme's DrawHandle. Should be equivalent to transmute.
-    fn as_simple<'b, 'c>(&'b mut self) -> super::simple_theme::DrawHandle<'c, DS>
-    where
-        'a: 'c,
-        'b: 'c,
-    {
-        super::simple_theme::DrawHandle {
-            draw: self.draw.re(),
-            ev: self.ev,
-            w: self.w,
-            cols: self.cols,
-        }
-    }
-
     pub fn button_frame(
         &mut self,
         outer: Quad,
         col_frame: Rgba,
         col_bg: Rgba,
-        state: InputState,
+        _: InputState,
     ) -> Quad {
         let inner = outer.shrink(self.w.dims.button_frame as f32);
         #[cfg(debug_assertions)]
@@ -264,29 +240,10 @@ where
             }
         }
 
-        if !(self.cols.is_dark || state.disabled() || state.depress()) {
-            let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
-            if state.hover() {
-                a = a * SHADOW_HOVER;
-                b = b * SHADOW_HOVER;
-            }
-            let shadow_outer = Quad::from_coords(a + inner.a, b + inner.b);
-            let col1 = if self.cols.is_dark {
-                col_frame
-            } else {
-                Rgba::BLACK
-            };
-            let mut col2 = col1;
-            col2.a = 0.0;
-            self.draw
-                .rounded_frame_2col(shadow_outer, inner, col1, col2);
-        }
-
-        let bgr = outer.shrink(self.w.dims.button_frame as f32 * BG_SHRINK_FACTOR);
+        let bgr = outer.shrink(self.w.dims.button_frame as f32);
         self.draw.rect(bgr, col_bg);
 
-        self.draw
-            .rounded_frame(outer, inner, BG_SHRINK_FACTOR, col_frame);
+        self.draw.frame(outer, inner, col_frame);
         inner
     }
 
@@ -294,69 +251,26 @@ where
         let state = InputState::new_except_depress(self.ev, id);
         let col_bg = self.cols.from_edit_bg(bg, state);
         if col_bg != self.cols.background {
-            let inner = outer.shrink(self.w.dims.button_frame as f32 * BG_SHRINK_FACTOR);
+            let inner = outer.shrink(self.w.dims.button_frame as f32);
             self.draw.rect(inner, col_bg);
         }
 
         let inner = outer.shrink(self.w.dims.button_frame as f32);
-        self.draw
-            .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
+        self.draw.frame(outer, inner, self.cols.frame);
 
         if !state.disabled() && !self.cols.is_dark && (state.nav_focus() || state.hover()) {
-            let r = 0.5 * self.w.dims.button_frame as f32;
-            let y = outer.b.1 - r;
-            let a = Vec2(outer.a.0 + r, y);
-            let b = Vec2(outer.b.0 - r, y);
+            let mut line = outer;
+            line.a.1 = line.b.1 - self.w.dims.button_frame as f32;
             let col = if state.nav_focus() {
                 self.cols.nav_focus
             } else {
                 self.cols.text
             };
-
-            const F: f32 = 0.6;
-            let (sa, sb) = (self.w.dims.shadow_a * F, self.w.dims.shadow_b * F);
-            let outer = Quad::from_coords(a + sa, b + sb);
-            let inner = Quad::from_coords(a, b);
-            let col1 = if self.cols.is_dark { col } else { Rgba::BLACK };
-            let mut col2 = col1;
-            col2.a = 0.0;
-            self.draw.rounded_frame_2col(outer, inner, col1, col2);
-
-            self.draw.rounded_line(a, b, r, col);
-        }
-    }
-
-    pub fn check_mark(
-        &mut self,
-        inner: Quad,
-        state: InputState,
-        checked: bool,
-        last_change: Option<Instant>,
-    ) {
-        let anim_fade = 1.0 - self.w.anim.fade_bool(self.draw.draw, checked, last_change);
-        if anim_fade < 1.0 {
-            let inner = inner.shrink(self.w.dims.inner_margin as f32);
-            let v = inner.size() * (anim_fade / 2.0);
-            let inner = Quad::from_coords(inner.a + v, inner.b - v);
-            let col = self.cols.check_mark_state(state);
-            let f = self.w.dims.frame as f32 * 0.5;
-            if inner.size().min_comp() >= 2.0 * f {
-                let inner = inner.shrink(f);
-                let size = inner.size();
-                let vstep = size.1 * 0.125;
-                let a = Vec2(inner.a.0, inner.b.1 - 3.0 * vstep);
-                let b = Vec2(inner.a.0 + size.0 * 0.25, inner.b.1 - vstep);
-                let c = Vec2(inner.b.0, inner.a.1 + vstep);
-                self.draw.rounded_line(a, b, f, col);
-                self.draw.rounded_line(b, c, f, col);
-            } else {
-                self.draw.rect(inner, col);
-            }
+            self.draw.rect(line, col);
         }
     }
 }
 
-#[kas::macros::extends(ThemeDraw, base=self.as_simple())]
 impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl,
@@ -372,24 +286,7 @@ where
         class: PassType,
         f: Box<dyn FnOnce(&mut dyn ThemeDraw) + 'b>,
     ) {
-        let mut shadow = Default::default();
-        let mut outer_rect = inner_rect;
-        if class == PassType::Overlay {
-            shadow = Quad::conv(inner_rect);
-            shadow.a += self.w.dims.shadow_a * SHADOW_POPUP;
-            shadow.b += self.w.dims.shadow_b * SHADOW_POPUP;
-            let a = Coord::conv_floor(shadow.a);
-            let b = Coord::conv_ceil(shadow.b);
-            outer_rect = Rect::new(a, (b - a).cast());
-        }
-        let mut draw = self.draw.new_pass(outer_rect, offset, class);
-
-        if class == PassType::Overlay {
-            shadow += offset.cast();
-            let inner = Quad::conv(inner_rect + offset).shrink(self.w.dims.frame as f32);
-            draw.rounded_frame_2col(shadow, inner, Rgba::BLACK, Rgba::TRANSPARENT);
-        }
-
+        let draw = self.draw.new_pass(inner_rect, offset, class);
         let mut handle = DrawHandle {
             draw,
             ev: self.ev,
@@ -409,8 +306,7 @@ where
             FrameStyle::InnerMargin => (),
             FrameStyle::Frame => {
                 let inner = outer.shrink(self.w.dims.frame as f32);
-                self.draw
-                    .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
+                self.draw.frame(outer, inner, self.cols.frame);
             }
             FrameStyle::Popup => {
                 // We cheat here by using zero-sized popup-frame, but assuming that contents are
@@ -418,26 +314,20 @@ where
                 // widgets are used in the popup.
                 let size = self.w.dims.menu_frame as f32;
                 let inner = outer.shrink(size);
-                self.draw
-                    .rounded_frame(outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
-                let inner = outer.shrink(size * BG_SHRINK_FACTOR);
+                self.draw.frame(outer, inner, self.cols.frame);
                 self.draw.rect(inner, self.cols.background);
             }
             FrameStyle::MenuEntry => {
                 let state = InputState::new_all(self.ev, id);
                 if let Some(col) = self.cols.menu_entry(state) {
-                    let size = self.w.dims.menu_frame as f32;
-                    let inner = outer.shrink(size);
-                    self.draw.rounded_frame(outer, inner, BG_SHRINK_FACTOR, col);
-                    let inner = outer.shrink(size * BG_SHRINK_FACTOR);
-                    self.draw.rect(inner, col);
+                    self.draw.rect(outer, col);
                 }
             }
             FrameStyle::NavFocus => {
                 let state = InputState::new_all(self.ev, id);
                 if let Some(col) = self.cols.nav_region(state) {
                     let inner = outer.shrink(self.w.dims.inner_margin as f32);
-                    self.draw.rounded_frame(outer, inner, 0.0, col);
+                    self.draw.frame(outer, inner, col);
                 }
             }
             FrameStyle::Button => {
@@ -452,13 +342,132 @@ where
         }
     }
 
-    fn check_box(
+    fn separator(&mut self, rect: Rect) {
+        let outer = Quad::conv(rect);
+        self.draw.rect(outer, self.cols.frame);
+    }
+
+    fn selection_box(&mut self, rect: Rect) {
+        let inner = Quad::conv(rect);
+        let outer = inner.grow(self.w.dims.inner_margin.into());
+        // TODO: this should use its own colour and a stippled pattern
+        let col = self.cols.text_sel_bg;
+        self.draw.frame(outer, inner, col);
+    }
+
+    fn text(&mut self, id: &WidgetId, pos: Coord, text: &TextDisplay, _: TextClass) {
+        let col = if self.ev.is_disabled(id) {
+            self.cols.text_disabled
+        } else {
+            self.cols.text
+        };
+        self.draw.text(pos.cast(), text, col);
+    }
+
+    fn text_effects(&mut self, id: &WidgetId, pos: Coord, text: &dyn TextApi, class: TextClass) {
+        let pos = Vec2::conv(pos);
+        let col = if self.ev.is_disabled(id) {
+            self.cols.text_disabled
+        } else {
+            self.cols.text
+        };
+        if class.is_accel() && !self.ev.show_accel_labels() {
+            self.draw.text(pos, text.display(), col);
+        } else {
+            self.draw
+                .text_col_effects(pos, text.display(), col, text.effect_tokens());
+        }
+    }
+
+    fn text_selected_range(
         &mut self,
         id: &WidgetId,
-        rect: Rect,
-        checked: bool,
-        last_change: Option<Instant>,
+        pos: Coord,
+        text: &TextDisplay,
+        range: Range<usize>,
+        _: TextClass,
     ) {
+        let pos = Vec2::conv(pos);
+        let col = if self.ev.is_disabled(id) {
+            self.cols.text_disabled
+        } else {
+            self.cols.text
+        };
+        let sel_col = self.cols.text_over(self.cols.text_sel_bg);
+
+        // Draw background:
+        for (p1, p2) in text
+            .highlight_lines(range.clone())
+            .iter()
+            .flat_map(|v| v.iter())
+        {
+            let p1 = Vec2::from(*p1);
+            let p2 = Vec2::from(*p2);
+            let quad = Quad::from_coords(pos + p1, pos + p2);
+            self.draw.rect(quad, self.cols.text_sel_bg);
+        }
+
+        let effects = [
+            Effect {
+                start: 0,
+                flags: Default::default(),
+                aux: col,
+            },
+            Effect {
+                start: range.start.cast(),
+                flags: Default::default(),
+                aux: sel_col,
+            },
+            Effect {
+                start: range.end.cast(),
+                flags: Default::default(),
+                aux: col,
+            },
+        ];
+        self.draw.text_effects(pos, text, &effects);
+    }
+
+    fn text_cursor(
+        &mut self,
+        id: &WidgetId,
+        pos: Coord,
+        text: &TextDisplay,
+        _: TextClass,
+        byte: usize,
+    ) {
+        if self.ev.window_has_focus() && !self.w.anim.text_cursor(self.draw.draw, id, byte) {
+            return;
+        }
+
+        let width = self.w.dims.mark_line;
+        let pos = Vec2::conv(pos);
+
+        let mut col = self.cols.nav_focus;
+        for cursor in text.text_glyph_pos(byte).iter_mut().flatten().rev() {
+            let mut p1 = pos + Vec2::from(cursor.pos);
+            let mut p2 = p1;
+            p1.1 -= cursor.ascent;
+            p2.1 -= cursor.descent;
+            p2.0 += width;
+            let quad = Quad::from_coords(p1, p2);
+            self.draw.rect(quad, col);
+
+            if cursor.embedding_level() > 0 {
+                // Add a hat to indicate directionality.
+                let height = width;
+                let quad = if cursor.is_ltr() {
+                    Quad::from_coords(Vec2(p2.0, p1.1), Vec2(p2.0 + width, p1.1 + height))
+                } else {
+                    Quad::from_coords(Vec2(p1.0 - width, p1.1), Vec2(p1.0, p1.1 + height))
+                };
+                self.draw.rect(quad, col);
+            }
+            // hack to make secondary marker grey:
+            col = col.average();
+        }
+    }
+
+    fn check_box(&mut self, id: &WidgetId, rect: Rect, checked: bool, _: Option<Instant>) {
         let state = InputState::new_all(self.ev, id);
         let outer = Quad::conv(rect);
 
@@ -466,7 +475,11 @@ where
         let col_bg = self.cols.from_edit_bg(Default::default(), state);
         let inner = self.button_frame(outer, col_frame, col_bg, state);
 
-        self.check_mark(inner, state, checked, last_change);
+        if checked {
+            let inner = inner.shrink(self.w.dims.inner_margin as f32);
+            let col = self.cols.check_mark_state(state);
+            self.draw.rect(inner, col);
+        }
     }
 
     fn radio_box(
@@ -476,41 +489,50 @@ where
         checked: bool,
         last_change: Option<Instant>,
     ) {
-        let anim_fade = 1.0 - self.w.anim.fade_bool(self.draw.draw, checked, last_change);
+        self.check_box(id, rect, checked, last_change);
+    }
 
-        let state = InputState::new_all(self.ev, id);
-        let outer = Quad::conv(rect);
-        let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
+    fn mark(&mut self, id: &WidgetId, rect: Rect, style: MarkStyle) {
+        let col = if self.ev.is_disabled(id) {
+            self.cols.text_disabled
+        } else if self.ev.is_hovered(id) {
+            self.cols.accent
+        } else {
+            self.cols.text
+        };
 
-        if !(self.cols.is_dark || state.disabled() || state.depress()) {
-            let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
-            let mut mult = 0.65;
-            if state.hover() {
-                mult *= SHADOW_HOVER;
+        match style {
+            MarkStyle::Point(dir) => {
+                let size = match dir.is_horizontal() {
+                    true => Size(self.w.dims.mark / 2, self.w.dims.mark),
+                    false => Size(self.w.dims.mark, self.w.dims.mark / 2),
+                };
+                let offset = Offset::conv(rect.size.clamped_sub(size) / 2);
+                let q = Quad::conv(Rect::new(rect.pos + offset, size));
+
+                let (p1, p2, p3);
+                if dir.is_horizontal() {
+                    let (mut x1, mut x2) = (q.a.0, q.b.0);
+                    if dir.is_reversed() {
+                        std::mem::swap(&mut x1, &mut x2);
+                    }
+                    p1 = Vec2(x1, q.a.1);
+                    p2 = Vec2(x2, 0.5 * (q.a.1 + q.b.1));
+                    p3 = Vec2(x1, q.b.1);
+                } else {
+                    let (mut y1, mut y2) = (q.a.1, q.b.1);
+                    if dir.is_reversed() {
+                        std::mem::swap(&mut y1, &mut y2);
+                    }
+                    p1 = Vec2(q.a.0, y1);
+                    p2 = Vec2(0.5 * (q.a.0 + q.b.0), y2);
+                    p3 = Vec2(q.b.0, y1);
+                };
+
+                let f = 0.5 * self.w.dims.mark_line;
+                self.draw.rounded_line(p1, p2, f, col);
+                self.draw.rounded_line(p2, p3, f, col);
             }
-            a = a * mult;
-            b = b * mult;
-            let shadow_outer = Quad::from_coords(a + outer.a, b + outer.b);
-            let col1 = if self.cols.is_dark { col } else { Rgba::BLACK };
-            let mut col2 = col1;
-            col2.a = 0.0;
-            self.draw.circle_2col(shadow_outer, col1, col2);
-        }
-
-        let col_bg = self.cols.from_edit_bg(Default::default(), state);
-        self.draw.circle(outer, 0.0, col_bg);
-
-        const F: f32 = 2.0 * (1.0 - BG_SHRINK_FACTOR); // match check box frame
-        let r = 1.0 - F * self.w.dims.button_frame as f32 / rect.size.0 as f32;
-        self.draw.circle(outer, r, col);
-
-        if anim_fade < 1.0 {
-            let r = self.w.dims.button_frame + self.w.dims.inner_margin as i32;
-            let inner = outer.shrink(r as f32);
-            let v = inner.size() * (anim_fade / 2.0);
-            let inner = Quad::from_coords(inner.a + v, inner.b - v);
-            let col = self.cols.check_mark_state(state);
-            self.draw.circle(inner, 0.0, col);
         }
     }
 
@@ -522,93 +544,35 @@ where
         h_rect: Rect,
         _: Direction,
     ) {
-        // track
-        let outer = Quad::conv(rect);
-        let inner = outer.shrink(outer.size().min_comp() / 2.0);
-        let mut col = self.cols.frame;
-        col.a = 0.5; // HACK
-        self.draw.rounded_frame(outer, inner, 0.0, col);
+        let track = Quad::conv(rect);
+        self.draw.rect(track, self.cols.frame);
 
-        // handle
-        let outer = Quad::conv(h_rect);
-        let r = outer.size().min_comp() * 0.125;
-        let outer = outer.shrink(r);
-        let inner = outer.shrink(3.0 * r);
+        let handle = Quad::conv(h_rect);
         let state = InputState::new2(self.ev, id, id2);
         let col = self.cols.accent_soft_state(state);
-        self.draw.rounded_frame(outer, inner, 0.0, col);
+        self.draw.rect(handle, col);
     }
 
-    fn slider(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, dir: Direction) {
+    fn slider(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, _: Direction) {
+        let track = Quad::conv(rect);
+        self.draw.rect(track, self.cols.frame);
+
+        let handle = Quad::conv(h_rect);
         let state = InputState::new2(self.ev, id, id2);
-
-        // track
-        let mut outer = Quad::conv(rect);
-        let mid = Vec2::conv(h_rect.pos + h_rect.size / 2);
-        let (mut first, mut second);
-        if dir.is_horizontal() {
-            outer = outer.shrink_vec(Vec2(0.0, outer.size().1 * (1.0 / 3.0)));
-            first = Quad::from_coords(outer.a, Vec2(mid.0, outer.b.1));
-            second = Quad::from_coords(Vec2(mid.0, outer.a.1), outer.b);
-        } else {
-            outer = outer.shrink_vec(Vec2(outer.size().0 * (1.0 / 3.0), 0.0));
-            first = Quad::from_coords(outer.a, Vec2(outer.b.0, mid.1));
-            second = Quad::from_coords(Vec2(outer.a.0, mid.1), outer.b);
-        };
-        if dir.is_reversed() {
-            std::mem::swap(&mut first, &mut second);
-        }
-
-        let inner = first.shrink(first.size().min_comp() / 2.0);
-        self.draw.rounded_frame(first, inner, 0.0, self.cols.accent);
-        let inner = second.shrink(second.size().min_comp() / 2.0);
-        self.draw
-            .rounded_frame(second, inner, 1.0 / 3.0, self.cols.frame);
-
-        // handle; force it to be square
-        let size = Size::splat(h_rect.size.0.min(h_rect.size.1));
-        let offset = Offset::conv((h_rect.size - size) / 2);
-        let outer = Quad::conv(Rect::new(h_rect.pos + offset, size));
-
-        let col = if state.nav_focus() && !state.disabled() {
-            self.cols.accent_soft
-        } else {
-            self.cols.background
-        };
-        let col = ColorsLinear::adjust_for_state(col, state);
-
-        if !self.cols.is_dark && !state.contains(InputState::DISABLED | InputState::DEPRESS) {
-            let (mut a, mut b) = (self.w.dims.shadow_a, self.w.dims.shadow_b);
-            let mut mult = 0.6;
-            if state.hover() {
-                mult *= SHADOW_HOVER;
-            }
-            a = a * mult;
-            b = b * mult;
-            let shadow_outer = Quad::from_coords(a + outer.a, b + outer.b);
-            let col1 = if self.cols.is_dark { col } else { Rgba::BLACK };
-            let mut col2 = col1;
-            col2.a = 0.0;
-            self.draw.circle_2col(shadow_outer, col1, col2);
-        }
-
-        self.draw.circle(outer, 0.0, col);
-        let col = self.cols.nav_region(state).unwrap_or(self.cols.frame);
-        self.draw.circle(outer, 14.0 / 16.0, col);
+        let col = self.cols.accent_soft_state(state);
+        self.draw.rect(handle, col);
     }
 
     fn progress_bar(&mut self, _: &WidgetId, rect: Rect, dir: Direction, value: f32) {
         let mut outer = Quad::conv(rect);
-        let inner = outer.shrink(outer.size().min_comp() / 2.0);
-        self.draw.rounded_frame(outer, inner, 0.75, self.cols.frame);
+        self.draw.rect(outer, self.cols.frame);
 
         if dir.is_horizontal() {
             outer.b.0 = outer.a.0 + value * (outer.b.0 - outer.a.0);
         } else {
             outer.b.1 = outer.a.1 + value * (outer.b.1 - outer.a.1);
         }
-        let inner = outer.shrink(outer.size().min_comp() / 2.0);
-        self.draw.rounded_frame(outer, inner, 0.0, self.cols.accent);
+        self.draw.rect(outer, self.cols.accent);
     }
 
     fn image(&mut self, id: ImageId, rect: Rect) {

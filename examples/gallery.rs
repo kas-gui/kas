@@ -434,10 +434,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(feature = "stack_dst")]
     let theme = kas::theme::MultiTheme::builder()
         .add("flat", kas::theme::FlatTheme::new())
+        .add("simple", kas::theme::SimpleTheme::new())
         .add("shaded", kas::theme::ShadedTheme::new())
         .build();
     #[cfg(not(feature = "stack_dst"))]
-    let theme = kas::theme::ShadedTheme::new();
+    let theme = kas::theme::FlatTheme::new();
     let mut toolkit = kas::shell::Toolkit::new(theme)?;
 
     // TODO: use as logo of tab
@@ -456,8 +457,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             menu.entry("&Quit", Menu::Quit);
         })
         .menu("&Theme", |menu| {
-            menu.entry("&Flat", Menu::Theme("flat"))
-                .entry("&Shaded", Menu::Theme("shaded"));
+            menu.entry("&Simple", Menu::Theme("simple"))
+                .entry("&Flat", Menu::Theme("flat"))
+                .entry("S&haded", Menu::Theme("shaded"));
         })
         .menu("&Style", |menu| {
             menu.submenu("&Colours", |mut menu| {
