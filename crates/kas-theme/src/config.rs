@@ -74,7 +74,7 @@ impl Default for Config {
 ///
 /// These are not used by the theme, but passed through to the rendering
 /// backend.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "config", derive(serde::Serialize, serde::Deserialize))]
 pub struct RasterConfig {
     //// Raster mode/engine (backend dependent)
@@ -243,6 +243,7 @@ impl ThemeConfig for Config {
     }
 }
 
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "config", derive(serde::Serialize, serde::Deserialize))]
 pub struct FontAliases {

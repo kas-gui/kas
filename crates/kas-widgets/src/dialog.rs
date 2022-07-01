@@ -10,9 +10,9 @@
 
 use crate::{EditBox, Filler, Label, TextButton};
 use kas::event::{Command, VirtualKeyCode};
+use kas::model::{SharedRc, SingleData};
 use kas::prelude::*;
 use kas::text::format::FormattableText;
-use kas::updatable::{SharedRc, SingleData};
 use kas::{Icon, Widget};
 use std::borrow::Cow;
 
@@ -110,7 +110,7 @@ impl_scope! {
             }
         }
 
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.enable_alt_bypass(self.id_ref(), true);
         }
     }
@@ -174,7 +174,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.register_nav_fallback(self.id());
 
             // Focus first item initially:

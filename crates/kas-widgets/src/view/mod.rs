@@ -13,7 +13,7 @@
 //! # Shared data and *model*
 //!
 //! Shared data must implement several traits, namely those in
-//! [`kas::updatable`] and one of the "view" traits: [`SingleData`],
+//! [`kas::model`] and one of the "view" traits: [`SingleData`],
 //! [`ListData`] or [`MatrixData`]. These traits together form the "model".
 //!
 //! For simpler cases it is not always necessary to implement your own shared
@@ -33,7 +33,7 @@
 //! -   [`driver::DefaultView`] constructs a default view widget over various data types
 //! -   [`driver::DefaultNav`] is a variant of the above, ensuring items support
 //!     keyboard navigation (e.g. useful to allow selection of static items)
-//! -   [`driver::CheckBox`] and [`driver::RadioBox`] support the `bool` type
+//! -   [`driver::CheckButton`] and [`driver::RadioButton`] support the `bool` type
 //! -   [`driver::Slider`] constructs a slider with a fixed range
 //!
 //! In MVC terminology, the driver is perhaps most similar to the controller,
@@ -68,7 +68,7 @@
 #[allow(unused)]
 use kas::event::UpdateId;
 #[allow(unused)]
-use kas::updatable::{ListData, MatrixData, SharedRc, SingleData};
+use kas::model::{ListData, MatrixData, SharedRc, SingleData};
 use thiserror::Error;
 
 mod filter_list;

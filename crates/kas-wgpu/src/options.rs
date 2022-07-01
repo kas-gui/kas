@@ -17,7 +17,7 @@ pub use wgpu::{Backends, PowerPreference};
 /// Config mode
 ///
 /// See [`Options::from_env`] documentation.
-#[derive(Clone, PartialEq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum ConfigMode {
     /// Read-only mode
     Read,
@@ -32,7 +32,7 @@ pub enum ConfigMode {
 }
 
 /// Shell options
-#[derive(Clone, PartialEq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Options {
     /// Config file path. Default: empty. See `KAS_CONFIG` doc.
     pub config_path: PathBuf,

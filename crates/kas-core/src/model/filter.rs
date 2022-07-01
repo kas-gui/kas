@@ -6,7 +6,7 @@
 //! Filters over data
 
 use crate::event::{EventMgr, UpdateId};
-use crate::updatable::*;
+use crate::model::*;
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;
@@ -44,7 +44,7 @@ impl SingleData for ContainsString {
         let mut cell = (self.0).1.borrow_mut();
         cell.0 = value;
         cell.1 += 1;
-        mgr.trigger_update((self.0).0, 0);
+        mgr.update_all((self.0).0, 0);
     }
 }
 impl SingleDataMut for ContainsString {
@@ -101,7 +101,7 @@ impl SingleData for ContainsCaseInsensitive {
         cell.0 = value;
         cell.1 = cell.0.to_uppercase();
         cell.2 += 1;
-        mgr.trigger_update((self.0).0, 0);
+        mgr.update_all((self.0).0, 0);
     }
 }
 impl SingleDataMut for ContainsCaseInsensitive {

@@ -96,9 +96,7 @@ impl_scope! {
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
             id.next_key_after(self.id_ref()).and_then(|k| self.id_map.get(&k).cloned())
         }
-    }
 
-    impl Widget for Self {
         fn make_child_id(&mut self, index: usize) -> WidgetId {
             if let Some(child) = self.widgets.get(index) {
                 // Use the widget's existing identifier, if any
@@ -119,15 +117,17 @@ impl_scope! {
                 }
             }
         }
+    }
 
-        fn pre_configure(&mut self, _: &mut SetRectMgr, id: WidgetId) {
+    impl Widget for Self {
+        fn pre_configure(&mut self, _: &mut ConfigMgr, id: WidgetId) {
             self.core.id = id;
             self.id_map.clear();
         }
 
         fn spatial_nav(
             &mut self,
-            _: &mut SetRectMgr,
+            _: &mut ConfigMgr,
             reverse: bool,
             from: Option<usize>,
         ) -> Option<usize> {
@@ -268,7 +268,7 @@ impl_scope! {
         /// triggered.
         ///
         /// Returns the new element's index.
-        pub fn push(&mut self, mgr: &mut SetRectMgr, widget: W) -> usize {
+        pub fn push(&mut self, mgr: &mut ConfigMgr, widget: W) -> usize {
             let index = self.widgets.len();
             self.widgets.push(widget);
             let id = self.make_child_id(index);
@@ -280,7 +280,7 @@ impl_scope! {
         /// Remove the last child widget (if any) and return
         ///
         /// Triggers [`TkAction::RESIZE`].
-        pub fn pop(&mut self, mgr: &mut SetRectMgr) -> Option<W> {
+        pub fn pop(&mut self, mgr: &mut ConfigMgr) -> Option<W> {
             let result = self.widgets.pop();
             if let Some(w) = result.as_ref() {
                 *mgr |= TkAction::RESIZE;
@@ -299,7 +299,7 @@ impl_scope! {
         /// Panics if `index > len`.
         ///
         /// The new child is configured immediately. Triggers [`TkAction::RESIZE`].
-        pub fn insert(&mut self, mgr: &mut SetRectMgr, index: usize, widget: W) {
+        pub fn insert(&mut self, mgr: &mut ConfigMgr, index: usize, widget: W) {
             for v in self.id_map.values_mut() {
                 if *v >= index {
                     *v += 1;
@@ -316,7 +316,7 @@ impl_scope! {
         /// Panics if `index` is out of bounds.
         ///
         /// Triggers [`TkAction::RESIZE`].
-        pub fn remove(&mut self, mgr: &mut SetRectMgr, index: usize) -> W {
+        pub fn remove(&mut self, mgr: &mut ConfigMgr, index: usize) -> W {
             let w = self.widgets.remove(index);
             if w.id_ref().is_valid() {
                 if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
@@ -339,7 +339,7 @@ impl_scope! {
         /// Panics if `index` is out of bounds.
         ///
         /// The new child is configured immediately. Triggers [`TkAction::RESIZE`].
-        pub fn replace(&mut self, mgr: &mut SetRectMgr, index: usize, mut w: W) -> W {
+        pub fn replace(&mut self, mgr: &mut ConfigMgr, index: usize, mut w: W) -> W {
             std::mem::swap(&mut w, &mut self.widgets[index]);
 
             if w.id_ref().is_valid() {
@@ -359,7 +359,7 @@ impl_scope! {
         /// Append child widgets from an iterator
         ///
         /// New children are configured immediately. Triggers [`TkAction::RESIZE`].
-        pub fn extend<T: IntoIterator<Item = W>>(&mut self, mgr: &mut SetRectMgr, iter: T) {
+        pub fn extend<T: IntoIterator<Item = W>>(&mut self, mgr: &mut ConfigMgr, iter: T) {
             let old_len = self.widgets.len();
             self.widgets.extend(iter);
             for index in old_len..self.widgets.len() {
@@ -373,7 +373,7 @@ impl_scope! {
         /// Resize, using the given closure to construct new widgets
         ///
         /// New children are configured immediately. Triggers [`TkAction::RESIZE`].
-        pub fn resize_with<F: Fn(usize) -> W>(&mut self, mgr: &mut SetRectMgr, len: usize, f: F) {
+        pub fn resize_with<F: Fn(usize) -> W>(&mut self, mgr: &mut ConfigMgr, len: usize, f: F) {
             let old_len = self.widgets.len();
 
             if len < old_len {

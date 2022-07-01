@@ -10,7 +10,7 @@ use std::time::Instant;
 
 use kas::cast::Cast;
 use kas::draw::{AnimationState, DrawIface, DrawShared, PassId};
-use kas::event::{CursorIcon, EventState, SetRectMgr, UpdateId};
+use kas::event::{ConfigMgr, CursorIcon, EventState, UpdateId};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
 use kas::theme::{DrawMgr, SizeMgr, ThemeControl, ThemeSize};
@@ -326,7 +326,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
         let solve_cache = &mut self.solve_cache;
         let widget = &mut self.widget;
-        let mut mgr = SetRectMgr::new(
+        let mut mgr = ConfigMgr::new(
             self.theme_window.size(),
             &mut shared.draw,
             &mut self.ev_state,
@@ -525,8 +525,8 @@ where
         self.shared.pending.push(PendingAction::CloseWindow(id));
     }
 
-    fn trigger_update(&mut self, id: UpdateId, payload: u64) {
-        self.shared.trigger_update(id, payload);
+    fn update_all(&mut self, id: UpdateId, payload: u64) {
+        self.shared.update_all(id, payload);
     }
 
     #[inline]

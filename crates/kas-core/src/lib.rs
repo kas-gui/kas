@@ -4,6 +4,15 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! KAS GUI core
+//!
+//! This core library provides:
+//!
+//! -   the [`Widget`] trait family, with [`macros`] to implement them
+//! -   high-level themable and mid-level [`draw`] APIs
+//! -   [`event`] handling code
+//! -   [`geom`]-etry types and widget [`layout`] solvers
+//!
+//! The [easy-cast](https://docs.rs/easy-cast/0.5/easy_cast) library is re-export as `kas_core::cast`.
 
 // Use ``never_loop`` until: https://github.com/rust-lang/rust-clippy/issues/7397 is fixed
 #![allow(clippy::identity_op, clippy::never_loop, clippy::enum_variant_names)]
@@ -34,10 +43,10 @@ pub mod draw;
 pub mod event;
 pub mod geom;
 pub mod layout;
+pub mod model;
 pub mod prelude;
 pub mod text;
 pub mod theme;
-pub mod updatable;
 pub mod util;
 
 // export most important members directly for convenience and less redundancy:

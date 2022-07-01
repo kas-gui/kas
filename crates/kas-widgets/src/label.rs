@@ -99,7 +99,7 @@ impl_scope! {
             size_mgr.text_bound(&mut self.label, self.class, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             let align = align.unwrap_or(Align::Default, Align::Center);
             mgr.text_set_size(&mut self.label, self.class, rect.size, align);
@@ -275,7 +275,7 @@ impl_scope! {
         }
 
         #[inline]
-        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
             self.0.set_rect(mgr, rect, align)
         }
 

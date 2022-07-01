@@ -7,7 +7,7 @@
 
 use kas::event::EventMgr;
 use kas::macros::impl_scope;
-use kas::updatable::SharedRc;
+use kas::model::SharedRc;
 use kas::widgets::view::SingleView;
 use kas::widgets::TextButton;
 use kas::{Widget, Window};

@@ -6,7 +6,7 @@
 //! Window widgets
 
 use crate::dir::Directional;
-use crate::event::{EventMgr, SetRectMgr};
+use crate::event::{ConfigMgr, EventMgr};
 use crate::geom::{Coord, Rect, Size};
 use crate::layout::{self, AlignHints, AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
@@ -35,7 +35,7 @@ impl_scope! {
         }
 
         #[inline]
-        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             self.w.set_rect(mgr, rect, align);
         }
@@ -85,7 +85,7 @@ impl RootWidget {
     pub fn add_popup(&mut self, mgr: &mut EventMgr, id: WindowId, popup: kas::Popup) {
         let index = self.popups.len();
         self.popups.push((id, popup));
-        mgr.set_rect_mgr(|mgr| self.resize_popup(mgr, index));
+        mgr.config_mgr(|mgr| self.resize_popup(mgr, index));
         mgr.send_action(TkAction::REDRAW);
     }
 
@@ -106,7 +106,7 @@ impl RootWidget {
     ///
     /// This is called immediately after [`Layout::set_rect`] to resize
     /// existing pop-ups.
-    pub fn resize_popups(&mut self, mgr: &mut SetRectMgr) {
+    pub fn resize_popups(&mut self, mgr: &mut ConfigMgr) {
         for i in 0..self.popups.len() {
             self.resize_popup(mgr, i);
         }
@@ -129,7 +129,7 @@ fn find_rect(widget: &dyn Widget, id: WidgetId) -> Option<Rect> {
 }
 
 impl RootWidget {
-    fn resize_popup(&mut self, mgr: &mut SetRectMgr, index: usize) {
+    fn resize_popup(&mut self, mgr: &mut ConfigMgr, index: usize) {
         // Notation: p=point/coord, s=size, m=margin
         // r=window/root rect, c=anchor rect
         let r = self.core.rect;

@@ -5,9 +5,9 @@
 
 //! Filter-list view widget
 
+use kas::model::filter::Filter;
+use kas::model::{ListData, SingleData};
 use kas::prelude::*;
-use kas::updatable::filter::Filter;
-use kas::updatable::{ListData, SingleData};
 use std::cell::RefCell;
 use std::fmt::Debug;
 

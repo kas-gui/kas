@@ -36,7 +36,7 @@ impl_scope! {
             size_mgr.text_bound(&mut self.text, TextClass::LabelScroll, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             let align = align.unwrap_or(Align::Default, Align::Default);
             self.required = mgr.text_set_size(&mut self.text, TextClass::LabelScroll, rect.size, align);

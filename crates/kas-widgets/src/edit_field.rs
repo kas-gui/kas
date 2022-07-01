@@ -357,7 +357,7 @@ impl_scope! {
             size_mgr.text_bound(&mut self.text, class, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
             let valign = if self.multi_line {
                 Align::Default
             } else {
@@ -721,10 +721,10 @@ impl<G: EditGuard> EditField<G> {
         if have_sel {
             let mut buf = [0u8; 4];
             let s = c.encode_utf8(&mut buf);
-            let _ = self.text.replace_range(selection.clone(), s);
+            self.text.replace_range(selection.clone(), s);
             self.selection.set_pos(selection.start + s.len());
         } else {
-            let _ = self.text.insert_char(pos, c);
+            self.text.insert_char(pos, c);
             self.selection.set_pos(pos + c.len_utf8());
         }
         self.edit_x_coord = None;

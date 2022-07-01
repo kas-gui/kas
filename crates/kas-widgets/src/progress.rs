@@ -85,7 +85,7 @@ impl_scope! {
             size_mgr.feature(Feature::ProgressBar(self.direction()), axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
             let rect = mgr.align_feature(Feature::ProgressBar(self.direction()), rect, align);
             self.core.rect = rect;
         }

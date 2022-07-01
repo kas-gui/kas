@@ -112,7 +112,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.add_accel_keys(self.inner.id_ref(), self.keys());
         }
     }

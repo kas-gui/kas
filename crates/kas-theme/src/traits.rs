@@ -60,7 +60,7 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
         DS: 'a,
         Self: 'a;
 
-    /// Get current config
+    /// Get current configuration
     fn config(&self) -> std::borrow::Cow<Self::Config>;
 
     /// Apply/set the passed config

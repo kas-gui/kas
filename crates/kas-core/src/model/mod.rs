@@ -3,10 +3,10 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Traits for shared data objects
+//! Shared data models
 //!
-//! These traits are used for "view widgets", enabling views (and editing) over
-//! shared data.
+//! Models of 0-, 1- and 2-dimensional data. These are used by "view widgets",
+//! enabling synchronized views over shared data.
 
 mod data_impls;
 mod data_traits;

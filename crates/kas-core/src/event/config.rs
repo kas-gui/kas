@@ -243,7 +243,7 @@ impl Config {
 /// For non-text cases, this does not conflict with other event handlers since
 /// panning is only possible when events are otherwise unused, thus `Always` is
 /// acceptable (equivalent to touch scrolling).
-#[derive(Clone, Copy, Debug, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "config", derive(Serialize, Deserialize))]
 #[derive(num_enum::IntoPrimitive, num_enum::TryFromPrimitive)]
 #[repr(u8)]

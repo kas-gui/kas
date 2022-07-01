@@ -10,8 +10,8 @@
 //! thus only limited by the data types used (specifically the `i32` type used
 //! to calculate the maximum scroll offset).
 
+use kas::model::*;
 use kas::prelude::*;
-use kas::updatable::*;
 use kas::widgets::view::{Driver, ListView};
 use kas::widgets::*;
 use std::cell::RefCell;
@@ -130,7 +130,7 @@ impl ListData for MySharedData {
                 }
             }
             mgr.push_msg(Control::Update(data.get(data.active)));
-            mgr.trigger_update(self.id, 0);
+            mgr.update_all(self.id, 0);
         }
     }
 
@@ -168,7 +168,7 @@ impl_scope! {
         #[widget]
         label: StringLabel,
         #[widget]
-        radio: RadioBox,
+        radio: RadioButton,
         #[widget]
         entry: EditBox<ListEntryGuard>,
     }
@@ -176,7 +176,7 @@ impl_scope! {
 
 #[derive(Debug)]
 struct MyDriver {
-    radio_group: RadioBoxGroup,
+    radio_group: RadioGroup,
 }
 impl Driver<(usize, bool, String)> for MyDriver {
     type Widget = ListEntry;
@@ -186,7 +186,7 @@ impl Driver<(usize, bool, String)> for MyDriver {
         ListEntry {
             core: Default::default(),
             label: Label::new(String::default()),
-            radio: RadioBox::new("display this entry", self.radio_group.clone())
+            radio: RadioButton::new("display this entry", self.radio_group.clone())
                 .on_select(|mgr| mgr.push_msg(EntryMsg::Select)),
             entry: EditBox::new(String::default()).with_guard(ListEntryGuard),
         }
@@ -281,7 +281,7 @@ fn main() -> kas::shell::Result<()> {
                             if let Some(text) = opt_text {
                                 *mgr |= self.display.set_string(text);
                             }
-                            mgr.trigger_update(update, 0);
+                            mgr.update_all(update, 0);
                         }
                         Control::Dir => {
                             let dir = self.list.direction().reversed();

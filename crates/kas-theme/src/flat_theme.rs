@@ -97,9 +97,9 @@ const DIMS: dim::Parameters = dim::Parameters {
     menu_frame: 2.4,
     // NOTE: visual thickness is (button_frame * scale_factor).round() * (1 - BG_SHRINK_FACTOR)
     button_frame: 2.4,
-    checkbox_inner: 7.0,
+    check_box_inner: 7.0,
     mark: 8.0,
-    scrollbar_size: Vec2::splat(8.0),
+    scroll_bar_size: Vec2::splat(8.0),
     slider_size: Vec2(16.0, 16.0),
     progress_bar: Vec2::splat(8.0),
     shadow_size: Vec2(4.0, 4.0),
@@ -235,7 +235,7 @@ impl<'a, DS: DrawSharedImpl> DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl,
 {
-    fn button_frame(
+    pub fn button_frame(
         &mut self,
         outer: Quad,
         col_frame: Rgba,
@@ -276,7 +276,7 @@ where
         inner
     }
 
-    fn edit_box(&mut self, id: &WidgetId, outer: Quad, bg: Background) {
+    pub fn edit_box(&mut self, id: &WidgetId, outer: Quad, bg: Background) {
         let state = InputState::new_except_depress(self.ev, id);
         let col_bg = self.cols.from_edit_bg(bg, state);
         if col_bg != self.cols.background {
@@ -309,6 +309,35 @@ where
             self.draw.rounded_frame_2col(outer, inner, col1, col2);
 
             self.draw.rounded_line(a, b, r, col);
+        }
+    }
+
+    pub fn check_mark(
+        &mut self,
+        inner: Quad,
+        state: InputState,
+        checked: bool,
+        last_change: Option<Instant>,
+    ) {
+        let anim_fade = 1.0 - self.w.anim.fade_bool(self.draw.draw, checked, last_change);
+        if anim_fade < 1.0 {
+            let inner = inner.shrink(self.w.dims.inner_margin as f32);
+            let v = inner.size() * (anim_fade / 2.0);
+            let inner = Quad::from_coords(inner.a + v, inner.b - v);
+            let col = self.cols.check_mark_state(state);
+            let f = self.w.dims.frame as f32 * 0.5;
+            if inner.size().min_comp() >= 2.0 * f {
+                let inner = inner.shrink(f);
+                let size = inner.size();
+                let vstep = size.1 * 0.125;
+                let a = Vec2(inner.a.0, inner.b.1 - 3.0 * vstep);
+                let b = Vec2(inner.a.0 + size.0 * 0.25, inner.b.1 - vstep);
+                let c = Vec2(inner.b.0, inner.a.1 + vstep);
+                self.draw.rounded_line(a, b, f, col);
+                self.draw.rounded_line(b, c, f, col);
+            } else {
+                self.draw.rect(inner, col);
+            }
         }
     }
 }
@@ -533,9 +562,13 @@ where
         }
     }
 
-    fn checkbox(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>) {
-        let anim_fade = 1.0 - self.w.anim.fade_bool(self.draw.draw, checked, last_change);
-
+    fn check_box(
+        &mut self,
+        id: &WidgetId,
+        rect: Rect,
+        checked: bool,
+        last_change: Option<Instant>,
+    ) {
         let state = InputState::new_all(self.ev, id);
         let outer = Quad::conv(rect);
 
@@ -543,28 +576,16 @@ where
         let col_bg = self.cols.from_edit_bg(Default::default(), state);
         let inner = self.button_frame(outer, col_frame, col_bg, state);
 
-        if anim_fade < 1.0 {
-            let inner = inner.shrink(self.w.dims.inner_margin as f32);
-            let v = inner.size() * (anim_fade / 2.0);
-            let inner = Quad::from_coords(inner.a + v, inner.b - v);
-            let col = self.cols.check_mark_state(state);
-            let f = self.w.dims.frame as f32 * 0.5;
-            if inner.size().min_comp() >= 2.0 * f {
-                let inner = inner.shrink(f);
-                let size = inner.size();
-                let vstep = size.1 * 0.125;
-                let a = Vec2(inner.a.0, inner.b.1 - 3.0 * vstep);
-                let b = Vec2(inner.a.0 + size.0 * 0.25, inner.b.1 - vstep);
-                let c = Vec2(inner.b.0, inner.a.1 + vstep);
-                self.draw.rounded_line(a, b, f, col);
-                self.draw.rounded_line(b, c, f, col);
-            } else {
-                self.draw.rect(inner, col);
-            }
-        }
+        self.check_mark(inner, state, checked, last_change);
     }
 
-    fn radiobox(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>) {
+    fn radio_box(
+        &mut self,
+        id: &WidgetId,
+        rect: Rect,
+        checked: bool,
+        last_change: Option<Instant>,
+    ) {
         let anim_fade = 1.0 - self.w.anim.fade_bool(self.draw.draw, checked, last_change);
 
         let state = InputState::new_all(self.ev, id);
@@ -589,7 +610,7 @@ where
         let col_bg = self.cols.from_edit_bg(Default::default(), state);
         self.draw.circle(outer, 0.0, col_bg);
 
-        const F: f32 = 2.0 * (1.0 - BG_SHRINK_FACTOR); // match checkbox frame
+        const F: f32 = 2.0 * (1.0 - BG_SHRINK_FACTOR); // match check box frame
         let r = 1.0 - F * self.w.dims.button_frame as f32 / rect.size.0 as f32;
         self.draw.circle(outer, r, col);
 
@@ -647,7 +668,14 @@ where
         }
     }
 
-    fn scrollbar(&mut self, id: &WidgetId, id2: &WidgetId, rect: Rect, h_rect: Rect, _: Direction) {
+    fn scroll_bar(
+        &mut self,
+        id: &WidgetId,
+        id2: &WidgetId,
+        rect: Rect,
+        h_rect: Rect,
+        _: Direction,
+    ) {
         // track
         let outer = Quad::conv(rect);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);

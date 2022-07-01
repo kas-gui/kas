@@ -144,7 +144,7 @@ where
         }
     }
 
-    pub fn trigger_update(&mut self, id: UpdateId, payload: u64) {
+    pub fn update_all(&mut self, id: UpdateId, payload: u64) {
         self.pending.push(PendingAction::Update(id, payload));
     }
 

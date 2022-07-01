@@ -40,7 +40,7 @@ impl<T: ?Sized> AsRef<T> for MaybeBoxed<'_, T> {
 /// trait is required.
 #[cfg_attr(doc_cfg, doc(cfg(feature = "stack_dst")))]
 pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
-    /// Get current config
+    /// Get current configuration
     fn config(&self) -> MaybeBoxed<dyn Any>;
 
     /// Apply/set the passed config
@@ -100,7 +100,7 @@ pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
 }
 
 #[cfg(not(feature = "gat"))]
-impl<'a, DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T
+impl<DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T
 where
     <T as Theme<DS>>::Draw: 'static,
 {

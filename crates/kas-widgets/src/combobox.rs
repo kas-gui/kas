@@ -50,12 +50,12 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn pre_configure(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
+        fn pre_configure(&mut self, mgr: &mut ConfigMgr, id: WidgetId) {
             self.core.id = id;
             mgr.new_accel_layer(self.id(), true);
         }
 
-        fn spatial_nav(&mut self, _: &mut SetRectMgr, _: bool, _: Option<usize>) -> Option<usize> {
+        fn spatial_nav(&mut self, _: &mut ConfigMgr, _: bool, _: Option<usize>) -> Option<usize> {
             // We have no child within our rect
             None
         }
@@ -327,13 +327,13 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     //
     // TODO(opt): these methods cause full-window resize. They don't need to
     // resize at all if the menu is closed!
-    pub fn push<T: Into<AccelString>>(&mut self, mgr: &mut SetRectMgr, label: T, msg: M) -> usize {
+    pub fn push<T: Into<AccelString>>(&mut self, mgr: &mut ConfigMgr, label: T, msg: M) -> usize {
         let column = &mut self.popup.inner;
         column.push(mgr, MenuEntry::new(label, msg))
     }
 
     /// Pops the last choice from the combobox
-    pub fn pop(&mut self, mgr: &mut SetRectMgr) -> Option<()> {
+    pub fn pop(&mut self, mgr: &mut ConfigMgr) -> Option<()> {
         self.popup.inner.pop(mgr).map(|_| ())
     }
 
@@ -342,7 +342,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     /// Panics if `index > len`.
     pub fn insert<T: Into<AccelString>>(
         &mut self,
-        mgr: &mut SetRectMgr,
+        mgr: &mut ConfigMgr,
         index: usize,
         label: T,
         msg: M,
@@ -354,7 +354,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     /// Removes the choice at position `index`
     ///
     /// Panics if `index` is out of bounds.
-    pub fn remove(&mut self, mgr: &mut SetRectMgr, index: usize) {
+    pub fn remove(&mut self, mgr: &mut ConfigMgr, index: usize) {
         self.popup.inner.remove(mgr, index);
     }
 
@@ -363,7 +363,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     /// Panics if `index` is out of bounds.
     pub fn replace<T: Into<AccelString>>(
         &mut self,
-        mgr: &mut SetRectMgr,
+        mgr: &mut ConfigMgr,
         index: usize,
         label: T,
         msg: M,

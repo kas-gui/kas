@@ -20,7 +20,7 @@ use kas::prelude::*;
 use kas::widgets::*;
 
 thread_local! {
-    pub static RADIO: RadioBoxGroup = Default::default();
+    pub static RADIO: RadioGroup = Default::default();
 }
 
 #[derive(Clone, Debug)]
@@ -66,7 +66,7 @@ impl_scope! {
         #[widget]
         label: StringLabel,
         #[widget]
-        radio: RadioBox,
+        radio: RadioButton,
         #[widget]
         entry: EditBox<ListEntryGuard>,
     }
@@ -79,7 +79,7 @@ impl ListEntry {
         ListEntry {
             core: Default::default(),
             label: Label::new(format!("Entry number {}", n + 1)),
-            radio: RadioBox::new("display this entry", RADIO.with(|g| g.clone()))
+            radio: RadioButton::new("display this entry", RADIO.with(|g| g.clone()))
                 .with_state(active)
                 .on_select(move |mgr| mgr.push_msg(EntryMsg::Select(n))),
             entry: EditBox::new(format!("Entry #{}", n + 1)).with_guard(ListEntryGuard(n)),
@@ -167,7 +167,7 @@ fn main() -> kas::shell::Result<()> {
                     match control {
                         Control::Set(len) => {
                             let active = self.active;
-                            mgr.set_rect_mgr(|mgr| {
+                            mgr.config_mgr(|mgr| {
                                 self.list.inner_mut()
                                     .resize_with(mgr, len, |n| ListEntry::new(n, n == active))
                             });

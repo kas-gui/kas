@@ -230,7 +230,7 @@ impl_scope! {
             size_mgr.feature(Feature::Slider(self.direction()), axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             self.handle.set_rect(mgr, rect, align);
             let dir = Direction::Right;

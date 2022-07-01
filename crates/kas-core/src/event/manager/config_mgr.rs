@@ -18,25 +18,24 @@ use std::ops::{Deref, DerefMut};
 #[allow(unused)]
 use crate::{event::Event, Layout};
 
-/// Manager available to [`Layout::set_rect`] and [`Widget::configure`]
+/// Manager used to configure widgets and layout
 ///
-/// This type is functionally a superset of [`SizeMgr`] and subset of
-/// [`crate::theme::DrawMgr`], with support for the appropriate conversions.
-///
-/// `SetRectMgr` supports [`Deref`] and [`DerefMut`] with target [`EventState`].
+/// This type supports easy access to [`EventState`] (via [`Deref`],
+/// [`DerefMut`] and [`Self::ev_state`]) as well as [`SizeMgr`]
+/// ([`Self::size_mgr`]) and [`DrawShared`] ([`Self::draw_shared`]).
 #[must_use]
-pub struct SetRectMgr<'a> {
+pub struct ConfigMgr<'a> {
     sh: &'a dyn ThemeSize,
     ds: &'a mut dyn DrawShared,
     pub(crate) ev: &'a mut EventState,
 }
 
-impl<'a> SetRectMgr<'a> {
+impl<'a> ConfigMgr<'a> {
     /// Construct
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub fn new(sh: &'a dyn ThemeSize, ds: &'a mut dyn DrawShared, ev: &'a mut EventState) -> Self {
-        SetRectMgr { sh, ds, ev }
+        ConfigMgr { sh, ds, ev }
     }
 
     /// Access a [`SizeMgr`]
@@ -138,7 +137,7 @@ impl<'a> SetRectMgr<'a> {
         let old_nav_focus = self.nav_focus.take();
 
         fn nav(
-            mgr: &mut SetRectMgr,
+            mgr: &mut ConfigMgr,
             widget: &mut dyn Widget,
             focus: Option<&WidgetId>,
             rev: bool,
@@ -237,20 +236,20 @@ impl<'a> SetRectMgr<'a> {
     }
 }
 
-impl<'a> std::ops::BitOrAssign<TkAction> for SetRectMgr<'a> {
+impl<'a> std::ops::BitOrAssign<TkAction> for ConfigMgr<'a> {
     #[inline]
     fn bitor_assign(&mut self, action: TkAction) {
         self.ev.send_action(action);
     }
 }
 
-impl<'a> Deref for SetRectMgr<'a> {
+impl<'a> Deref for ConfigMgr<'a> {
     type Target = EventState;
     fn deref(&self) -> &EventState {
         self.ev
     }
 }
-impl<'a> DerefMut for SetRectMgr<'a> {
+impl<'a> DerefMut for ConfigMgr<'a> {
     fn deref_mut(&mut self) -> &mut EventState {
         self.ev
     }

@@ -21,7 +21,7 @@ impl_scope! {
     /// fixed at the height of three lines of standard text). The inner size
     /// (content size) is `max(content_min_size, outer_size - content_margin)`.
     ///
-    /// Scrollbars are not included; use [`ScrollBarRegion`] if you want those.
+    /// Scroll bars are not included; use [`ScrollBarRegion`] if you want those.
     ///
     /// [`ScrollBarRegion`]: crate::ScrollBarRegion
     #[autoimpl(Deref, DerefMut using self.inner)]
@@ -105,7 +105,7 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, _: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, _: AlignHints) {
             self.core.rect = rect;
             let child_size = (rect.size - self.frame_size).max(self.min_child_size);
             let child_rect = Rect::new(rect.pos + self.offset, child_size);
@@ -130,7 +130,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.register_nav_fallback(self.id());
         }
 

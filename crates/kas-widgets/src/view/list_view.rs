@@ -12,8 +12,8 @@ use crate::SelectMsg;
 use kas::event::components::ScrollComponent;
 use kas::event::{Command, CursorIcon, Scroll};
 use kas::layout::solve_size_rules;
+use kas::model::ListData;
 use kas::prelude::*;
-use kas::updatable::ListData;
 use linear_map::set::LinearSet;
 use log::{debug, trace};
 use std::time::Instant;
@@ -30,7 +30,7 @@ impl_scope! {
     /// This widget supports a view over a list of shared data items.
     ///
     /// The shared data type `T` must support [`ListData`].
-    /// One may use [`kas::updatable::SharedRc`]
+    /// One may use [`kas::model::SharedRc`]
     /// or a custom shared data type.
     ///
     /// The driver `V` must implement [`Driver`], with data type
@@ -266,7 +266,7 @@ impl_scope! {
             for w in &mut self.widgets {
                 w.key = None;
             }
-            mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
+            mgr.config_mgr(|mgr| self.update_widgets(mgr));
             // Force SET_SIZE so that scroll-bar wrappers get updated
             trace!("update_view triggers SET_SIZE");
             *mgr |= TkAction::SET_SIZE;
@@ -289,7 +289,7 @@ impl_scope! {
 
         /// Construct a position solver. Note: this does more work and updates to
         /// self than is necessary in several cases where it is used.
-        fn position_solver(&mut self, mgr: &mut SetRectMgr) -> PositionSolver {
+        fn position_solver(&mut self, mgr: &mut ConfigMgr) -> PositionSolver {
             let data_len = self.data.len();
             let data_len32 = i32::conv(data_len);
             let view_size = self.rect().size;
@@ -328,7 +328,7 @@ impl_scope! {
             }
         }
 
-        fn update_widgets(&mut self, mgr: &mut SetRectMgr) {
+        fn update_widgets(&mut self, mgr: &mut ConfigMgr) {
             let time = Instant::now();
             let solver = self.position_solver(mgr);
 
@@ -367,7 +367,7 @@ impl_scope! {
 
     impl Scrollable for Self {
         fn scroll_axes(&self, size: Size) -> (bool, bool) {
-            // TODO: maybe we should support a scrollbar on the other axis?
+            // TODO: maybe we should support a scroll bar on the other axis?
             // We would need to report a fake min-child-size to enable scrolling.
             let item_min = self.child_size_min + self.child_inter_margin;
             let num = i32::conv(self.data.len());
@@ -391,7 +391,7 @@ impl_scope! {
         #[inline]
         fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
             *mgr |= self.scroll.set_offset(offset);
-            mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
+            mgr.config_mgr(|mgr| self.update_widgets(mgr));
             self.scroll.offset()
         }
     }
@@ -465,7 +465,7 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
 
             let mut child_size = rect.size - self.frame_size;
@@ -536,7 +536,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             // If data is available but not loaded yet, make some widgets for
             // use by size_rules (this allows better sizing). Configure the new
             // widgets (this allows resource loading which may affect size.)
@@ -563,7 +563,7 @@ impl_scope! {
 
         fn spatial_nav(
             &mut self,
-            mgr: &mut SetRectMgr,
+            mgr: &mut ConfigMgr,
             reverse: bool,
             from: Option<usize>,
         ) -> Option<usize> {
@@ -680,7 +680,7 @@ impl_scope! {
                         return Response::Unused;
                     }
 
-                    let solver = mgr.set_rect_mgr(|mgr| self.position_solver(mgr));
+                    let solver = mgr.config_mgr(|mgr| self.position_solver(mgr));
                     let cur = match mgr.nav_focus().and_then(|id| self.find_child_index(id)) {
                         Some(index) => solver.child_to_data(index),
                         None => return Response::Unused,
@@ -706,7 +706,7 @@ impl_scope! {
                         let (rect, action) = self.scroll.focus_rect(solver.rect(i_data), self.core.rect);
                         if !action.is_empty() {
                             *mgr |= action;
-                            mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
+                            mgr.config_mgr(|mgr| self.update_widgets(mgr));
                         }
                         let index = i_data % usize::conv(self.cur_len);
                         mgr.next_nav_focus(&mut self.widgets[index].widget, false, true);
@@ -721,7 +721,7 @@ impl_scope! {
 
             let (moved, r) = self.scroll.scroll_by_event(mgr, event, self.id(), self.core.rect);
             if moved {
-                mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
+                mgr.config_mgr(|mgr| self.update_widgets(mgr));
             }
             r
         }
@@ -775,7 +775,7 @@ impl_scope! {
 
         fn handle_scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) {
             self.scroll.scroll(mgr, self.rect(), scroll);
-            mgr.set_rect_mgr(|mgr| self.update_widgets(mgr));
+            mgr.config_mgr(|mgr| self.update_widgets(mgr));
         }
     }
 }

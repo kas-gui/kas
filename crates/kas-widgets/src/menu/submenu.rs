@@ -141,7 +141,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn pre_configure(&mut self, mgr: &mut SetRectMgr, id: WidgetId) {
+        fn pre_configure(&mut self, mgr: &mut ConfigMgr, id: WidgetId) {
             self.core.id = id;
             mgr.add_accel_keys(self.id_ref(), self.label.keys());
             mgr.new_accel_layer(self.id(), true);
@@ -151,7 +151,7 @@ impl_scope! {
             self.key_nav
         }
 
-        fn spatial_nav(&mut self, _: &mut SetRectMgr, _: bool, _: Option<usize>) -> Option<usize> {
+        fn spatial_nav(&mut self, _: &mut ConfigMgr, _: bool, _: Option<usize>) -> Option<usize> {
             // We have no child within our rect
             None
         }
@@ -325,7 +325,7 @@ impl_scope! {
             solver.finish(store)
         }
 
-        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             let store = &mut self.store;
             let mut setter = layout::GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, align, store);

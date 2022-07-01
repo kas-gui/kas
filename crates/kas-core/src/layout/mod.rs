@@ -46,7 +46,7 @@ mod storage;
 mod visitor;
 
 use crate::dir::{Direction, Directional, Directions};
-use crate::event::SetRectMgr;
+use crate::event::ConfigMgr;
 use crate::geom::{Coord, Rect};
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::WidgetId;
@@ -162,7 +162,7 @@ impl From<AxisInfo> for Directions {
 ///     then translates `coord` before calling `AutoLayout::find_id`
 pub trait AutoLayout {
     fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
-    fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints);
+    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints);
     fn find_id(&mut self, coord: Coord) -> Option<WidgetId>;
     fn draw(&mut self, draw: DrawMgr);
 }

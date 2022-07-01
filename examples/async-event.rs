@@ -64,7 +64,7 @@ impl_scope! {
             SizeRules::fixed_scaled(100.0, 10.0, mgr.scale_factor())
         }
 
-        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             let align = align.unwrap_or(Align::Center, Align::Center);
             mgr.text_set_size(&mut self.loading_text, TextClass::Label(false), rect.size, align);
@@ -118,7 +118,7 @@ fn generate_colors(proxy: kas::shell::ToolkitProxy, update_id: UpdateId, colour:
         *colour.lock().unwrap() = c;
         // .. and notify of an update.
         // (Note: the 0 here is the u64 payload, which could pass useful data!)
-        if proxy.trigger_update(update_id, 0).is_err() {
+        if proxy.update_all(update_id, 0).is_err() {
             // Sending failed; we should quit
             break;
         }

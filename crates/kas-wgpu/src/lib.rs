@@ -23,6 +23,7 @@
 //! [clipboard]: https://crates.io/crates/clipboard
 
 #![cfg_attr(feature = "gat", feature(generic_associated_types))]
+#![allow(clippy::drop_non_drop)]
 
 pub mod draw;
 mod event_loop;
@@ -292,11 +293,7 @@ impl ToolkitProxy {
     }
 
     /// Trigger an update
-    pub fn trigger_update(
-        &self,
-        id: UpdateId,
-        payload: u64,
-    ) -> std::result::Result<(), ClosedError> {
+    pub fn update_all(&self, id: UpdateId, payload: u64) -> std::result::Result<(), ClosedError> {
         self.proxy
             .send_event(ProxyAction::Update(id, payload))
             .map_err(|_| ClosedError)

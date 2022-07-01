@@ -63,7 +63,7 @@ pub enum Scroll {
     None,
     /// Child has scrolled; no further scrolling needed
     ///
-    /// External scrollbars use this as a notification to update self.
+    /// External scroll bars use this as a notification to update self.
     Scrolled,
     /// Pan region by the given offset
     ///

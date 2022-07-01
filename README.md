@@ -117,8 +117,8 @@ The following non-default features of `kas` are highlighted:
     usage but not for end users. (This only affects generated documentation.)
 -   `nightly`: enables the less problematic unstable features
 -   `min_spec` (enabled by `nightly`): use `min_specialization` for some visual
-    improvements: scrolled regions are drawn under scrollbars,
-    underlines on checkbox accelerator keys show with the <kbd>Alt</kbd> key.
+    improvements: scrolled regions are drawn under scroll bars,
+    underlines on check-box accelerator keys show with the <kbd>Alt</kbd> key.
 -   `spec`: use `specialization` to enable `TryFormat`
 
 For full documentation of feature flags, see the [`Cargo.toml`](Cargo.toml).

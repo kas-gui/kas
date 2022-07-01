@@ -9,8 +9,8 @@
 //! allowing referal to e.g. `driver::DefaultView`.
 
 use crate::{
-    CheckBoxBare, EditBox, EditField, EditGuard, Label, NavFrame, ProgressBar, RadioBoxGroup,
-    SliderType, SpinnerType,
+    CheckBox, EditBox, EditField, EditGuard, Label, NavFrame, ProgressBar, RadioGroup, SliderType,
+    SpinnerType,
 };
 use kas::prelude::*;
 use std::default::Default;
@@ -52,7 +52,7 @@ pub trait Driver<T>: Debug {
 /// This struct implements [`Driver`], using a default widget for the data type:
 ///
 /// -   [`crate::Label`] for `String`, `&str`, integer and float types
-/// -   [`crate::CheckBoxBare`] (disabled) for the bool type
+/// -   [`crate::CheckBox`] (disabled) for the bool type
 #[derive(Clone, Debug, Default)]
 pub struct DefaultView;
 
@@ -63,7 +63,7 @@ pub struct DefaultView;
 ///
 /// -   [`crate::NavFrame`] around a [`crate::Label`] for `String`, `&str`,
 ///     integer and float types
-/// -   [`crate::CheckBoxBare`] (disabled) for the bool type
+/// -   [`crate::CheckBox`] (disabled) for the bool type
 #[derive(Clone, Debug, Default)]
 pub struct DefaultNav;
 
@@ -99,9 +99,9 @@ impl_via_to_string!(u8, u16, u32, u64, u128, usize);
 impl_via_to_string!(f32, f64);
 
 impl Driver<bool> for DefaultView {
-    type Widget = CheckBoxBare;
+    type Widget = CheckBox;
     fn make(&self) -> Self::Widget {
-        CheckBoxBare::new().with_editable(false)
+        CheckBox::new().with_editable(false)
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
@@ -109,9 +109,9 @@ impl Driver<bool> for DefaultView {
 }
 
 impl Driver<bool> for DefaultNav {
-    type Widget = CheckBoxBare;
+    type Widget = CheckBox;
     fn make(&self) -> Self::Widget {
-        CheckBoxBare::new().with_editable(false)
+        CheckBox::new().with_editable(false)
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
@@ -178,43 +178,22 @@ impl<D: Directional + Default> Driver<f32> for Widget<ProgressBar<D>> {
     }
 }
 
-/// [`crate::CheckBox`] view widget constructor
+/// [`crate::CheckButton`] view widget constructor
 #[derive(Clone, Debug, Default)]
-pub struct CheckBox {
+pub struct CheckButton {
     label: AccelString,
 }
-impl CheckBox {
+impl CheckButton {
     /// Construct, with given `label`
     pub fn make<T: Into<AccelString>>(label: T) -> Self {
         let label = label.into();
-        CheckBox { label }
+        CheckButton { label }
     }
 }
-impl Driver<bool> for CheckBox {
-    type Widget = crate::CheckBox;
+impl Driver<bool> for CheckButton {
+    type Widget = crate::CheckButton;
     fn make(&self) -> Self::Widget {
-        crate::CheckBox::new(self.label.clone()).on_toggle(|mgr, state| mgr.push_msg(state))
-    }
-    fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
-        widget.set_bool(data)
-    }
-}
-
-/// [`crate::RadioBoxBare`] view widget constructor
-#[derive(Clone, Debug, Default)]
-pub struct RadioBoxBare {
-    group: RadioBoxGroup,
-}
-impl RadioBoxBare {
-    /// Construct, with given `group`
-    pub fn make(group: RadioBoxGroup) -> Self {
-        RadioBoxBare { group }
-    }
-}
-impl Driver<bool> for RadioBoxBare {
-    type Widget = crate::RadioBoxBare;
-    fn make(&self) -> Self::Widget {
-        crate::RadioBoxBare::new(self.group.clone()).on_select(|mgr| mgr.push_msg(true))
+        crate::CheckButton::new(self.label.clone()).on_toggle(|mgr, state| mgr.push_msg(state))
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
@@ -224,20 +203,41 @@ impl Driver<bool> for RadioBoxBare {
 /// [`crate::RadioBox`] view widget constructor
 #[derive(Clone, Debug, Default)]
 pub struct RadioBox {
-    label: AccelString,
-    group: RadioBoxGroup,
+    group: RadioGroup,
 }
 impl RadioBox {
-    /// Construct, with given `label` and `group`
-    pub fn make<T: Into<AccelString>>(label: T, group: RadioBoxGroup) -> Self {
-        let label = label.into();
-        RadioBox { label, group }
+    /// Construct, with given `group`
+    pub fn make(group: RadioGroup) -> Self {
+        RadioBox { group }
     }
 }
 impl Driver<bool> for RadioBox {
     type Widget = crate::RadioBox;
     fn make(&self) -> Self::Widget {
-        crate::RadioBox::new(self.label.clone(), self.group.clone())
+        crate::RadioBox::new(self.group.clone()).on_select(|mgr| mgr.push_msg(true))
+    }
+    fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
+        widget.set_bool(data)
+    }
+}
+
+/// [`crate::RadioButton`] view widget constructor
+#[derive(Clone, Debug, Default)]
+pub struct RadioButton {
+    label: AccelString,
+    group: RadioGroup,
+}
+impl RadioButton {
+    /// Construct, with given `label` and `group`
+    pub fn make<T: Into<AccelString>>(label: T, group: RadioGroup) -> Self {
+        let label = label.into();
+        RadioButton { label, group }
+    }
+}
+impl Driver<bool> for RadioButton {
+    type Widget = crate::RadioButton;
+    fn make(&self) -> Self::Widget {
+        crate::RadioButton::new(self.label.clone(), self.group.clone())
             .on_select(|mgr| mgr.push_msg(true))
     }
     fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {

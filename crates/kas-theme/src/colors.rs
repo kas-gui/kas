@@ -18,7 +18,8 @@ const MIN_HIGHLIGHT: f32 = 0.2;
 bitflags::bitflags! {
     /// Input and highlighting state of a widget
     ///
-    /// This struct is used to adjust the appearance of [`DrawMgr`]'s primitives.
+    /// This is mostly an implementation detail used to control the appearance
+    /// of theme-drawn elements.
     #[derive(Default)]
     pub struct InputState: u8 {
         /// Disabled widgets are not responsive to input and usually drawn in grey.
@@ -122,6 +123,7 @@ impl InputState {
 }
 
 /// Provides standard theme colours
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "config", derive(serde::Serialize, serde::Deserialize))]
 pub struct Colors<C> {
@@ -344,7 +346,7 @@ impl ColorsLinear {
         Self::adjust_for_state(self.accent_soft, state)
     }
 
-    /// Get colour for a checkbox mark, depending on state
+    /// Get colour for a check box mark, depending on state
     #[inline]
     pub fn check_mark_state(&self, state: InputState) -> Rgba {
         Self::adjust_for_state(self.accent, state)

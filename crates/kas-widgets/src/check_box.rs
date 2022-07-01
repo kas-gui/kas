@@ -12,14 +12,16 @@ use std::rc::Rc;
 use std::time::Instant;
 
 impl_scope! {
-    /// A bare checkbox (no label)
+    /// A bare check box (no label)
+    ///
+    /// See also [`CheckButton`] which includes a label.
     #[autoimpl(Debug ignore self.on_toggle)]
     #[derive(Clone, Default)]
     #[widget{
         key_nav = true;
         hover_highlight = true;
     }]
-    pub struct CheckBoxBare {
+    pub struct CheckBox {
         core: widget_core!(),
         state: bool,
         editable: bool,
@@ -32,21 +34,21 @@ impl_scope! {
             size_mgr.feature(Feature::CheckBox, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut SetRectMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
             let rect = mgr.align_feature(Feature::CheckBox, rect, align);
             self.core.rect = rect;
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.checkbox(self.rect(), self.state, self.last_change);
+            draw.check_box(self.rect(), self.state, self.last_change);
         }
     }
 
     impl Self {
-        /// Construct a checkbox
+        /// Construct a check box
         #[inline]
         pub fn new() -> Self {
-            CheckBoxBare {
+            CheckBox {
                 core: Default::default(),
                 state: false,
                 editable: true,
@@ -57,14 +59,14 @@ impl_scope! {
 
         /// Set event handler `f`
         ///
-        /// When the checkbox is set or unset, the closure `f` is called.
+        /// When the check box is set or unset, the closure `f` is called.
         #[inline]
         #[must_use]
-        pub fn on_toggle<F>(self, f: F) -> CheckBoxBare
+        pub fn on_toggle<F>(self, f: F) -> CheckBox
         where
             F: Fn(&mut EventMgr, bool) + 'static,
         {
-            CheckBoxBare {
+            CheckBox {
                 core: self.core,
                 state: self.state,
                 editable: self.editable,
@@ -73,18 +75,18 @@ impl_scope! {
             }
         }
 
-        /// Construct a checkbox with event handler `f`
+        /// Construct a check box with event handler `f`
         ///
-        /// When the checkbox is set or unset, the closure `f` is called.
+        /// When the check box is set or unset, the closure `f` is called.
         #[inline]
         pub fn new_on<F>(f: F) -> Self
         where
             F: Fn(&mut EventMgr, bool) + 'static,
         {
-            CheckBoxBare::new().on_toggle(f)
+            CheckBox::new().on_toggle(f)
         }
 
-        /// Set the initial state of the checkbox.
+        /// Set the initial state of the check box.
         #[inline]
         #[must_use]
         pub fn with_state(mut self, state: bool) -> Self {
@@ -145,17 +147,19 @@ impl_scope! {
 }
 
 impl_scope! {
-    /// A checkbox with label
+    /// A check button with label
+    ///
+    /// See also [`CheckBox`] which excludes the label.
     #[autoimpl(Debug)]
     #[autoimpl(HasBool using self.inner)]
     #[derive(Clone, Default)]
     #[widget{
         layout = row: [self.inner, self.label];
     }]
-    pub struct CheckBox {
+    pub struct CheckButton {
         core: widget_core!(),
         #[widget]
-        inner: CheckBoxBare,
+        inner: CheckBox,
         #[widget]
         label: AccelLabel,
     }
@@ -167,56 +171,56 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.add_accel_keys(self.inner.id_ref(), self.label.keys());
         }
     }
 
     impl Self {
-        /// Construct a checkbox with a given `label`
+        /// Construct a check button with a given `label`
         ///
-        /// CheckBox labels are optional; if no label is desired, use an empty
-        /// string.
+        /// CheckButton labels are optional; if no label is desired, use an empty
+        /// string or use [`CheckBox`] instead.
         #[inline]
         pub fn new<T: Into<AccelString>>(label: T) -> Self {
-            CheckBox {
+            CheckButton {
                 core: Default::default(),
-                inner: CheckBoxBare::new(),
+                inner: CheckBox::new(),
                 label: AccelLabel::new(label.into()),
             }
         }
 
         /// Set event handler `f`
         ///
-        /// When the checkbox is set or unset, the closure `f` is called.
+        /// When the check button is set or unset, the closure `f` is called.
         #[inline]
         #[must_use]
-        pub fn on_toggle<F>(self, f: F) -> CheckBox
+        pub fn on_toggle<F>(self, f: F) -> CheckButton
         where
             F: Fn(&mut EventMgr, bool) + 'static,
         {
-            CheckBox {
+            CheckButton {
                 core: self.core,
                 inner: self.inner.on_toggle(f),
                 label: self.label,
             }
         }
 
-        /// Construct a checkbox with a given `label` and event handler `f`
+        /// Construct a check button with a given `label` and event handler `f`
         ///
-        /// CheckBox labels are optional; if no label is desired, use an empty
-        /// string.
+        /// CheckButton labels are optional; if no label is desired, use an empty
+        /// string or use [`CheckBox`] instead.
         ///
-        /// When the checkbox is set or unset, the closure `f` is called.
+        /// When the check button is set or unset, the closure `f` is called.
         #[inline]
         pub fn new_on<T: Into<AccelString>, F>(label: T, f: F) -> Self
         where
             F: Fn(&mut EventMgr, bool) + 'static,
         {
-            CheckBox::new(label).on_toggle(f)
+            CheckButton::new(label).on_toggle(f)
         }
 
-        /// Set the initial state of the checkbox.
+        /// Set the initial state of the check button.
         #[inline]
         #[must_use]
         pub fn with_state(mut self, state: bool) -> Self {

@@ -337,7 +337,7 @@ impl_scope! {
         }
 
         #[inline]
-        fn set_rect(&mut self, _: &mut SetRectMgr, rect: Rect, _: AlignHints) {
+        fn set_rect(&mut self, _: &mut ConfigMgr, rect: Rect, _: AlignHints) {
             self.core.rect = rect;
             let size = DVec2::conv(rect.size);
             let rel_width = DVec2(size.0 / size.1, 1.0);
@@ -355,7 +355,7 @@ impl_scope! {
     }
 
     impl Widget for Mandlebrot {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.register_nav_fallback(self.id());
         }
 
@@ -429,10 +429,10 @@ impl_scope! {
     #[derive(Debug)]
     #[widget{
         layout = grid: {
-            0..2, 0: self.label;
+            1, 0: self.label;
             0, 1: align(center): self.iters;
             0, 2: self.slider;
-            1..3, 1..3: self.mbrot;
+            1..3, 1..4: self.mbrot;
         };
     }]
     struct MandlebrotWindow {

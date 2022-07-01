@@ -6,8 +6,8 @@
 //! Single view widget
 
 use super::{driver, Driver};
+use kas::model::SingleData;
 use kas::prelude::*;
-use kas::updatable::SingleData;
 
 impl_scope! {
     /// Single view widget
@@ -15,7 +15,7 @@ impl_scope! {
     /// This widget supports a view over a shared data item.
     ///
     /// The shared data type `T` must support [`SingleData`].
-    /// One may use [`kas::updatable::SharedRc`]
+    /// One may use [`kas::model::SharedRc`]
     /// or a custom shared data type.
     ///
     /// The driver `V` must implement [`Driver`], with data type
@@ -106,7 +106,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn configure(&mut self, mgr: &mut SetRectMgr) {
+        fn configure(&mut self, mgr: &mut ConfigMgr) {
             // We set data now, after child is configured
             *mgr |= self.view.set(&mut self.child, self.data.get_cloned());
         }
