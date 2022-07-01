@@ -133,6 +133,11 @@ impl_scope! {
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
             id.next_key_after(self.id_ref()).and_then(|k| self.id_map.get(&k).cloned())
         }
+
+        fn make_child_id(&mut self, child_index: usize) -> WidgetId {
+            let is_handle = (child_index & 1) != 0;
+            self.make_next_id(is_handle, child_index / 2)
+        }
     }
 
     impl Layout for Self {
@@ -237,11 +242,6 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn make_child_id(&mut self, child_index: usize) -> WidgetId {
-            let is_handle = (child_index & 1) != 0;
-            self.make_next_id(is_handle, child_index / 2)
-        }
-
         fn pre_configure(&mut self, _: &mut ConfigMgr, id: WidgetId) {
             self.core.id = id;
             self.id_map.clear();

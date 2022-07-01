@@ -96,9 +96,7 @@ impl_scope! {
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
             id.next_key_after(self.id_ref()).and_then(|k| self.id_map.get(&k).cloned())
         }
-    }
 
-    impl Widget for Self {
         fn make_child_id(&mut self, index: usize) -> WidgetId {
             if let Some(child) = self.widgets.get(index) {
                 // Use the widget's existing identifier, if any
@@ -119,7 +117,9 @@ impl_scope! {
                 }
             }
         }
+    }
 
+    impl Widget for Self {
         fn pre_configure(&mut self, _: &mut ConfigMgr, id: WidgetId) {
             self.core.id = id;
             self.id_map.clear();

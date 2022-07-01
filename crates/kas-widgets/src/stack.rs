@@ -64,6 +64,27 @@ impl_scope! {
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
             id.next_key_after(self.id_ref()).and_then(|k| self.id_map.get(&k).cloned())
         }
+
+        fn make_child_id(&mut self, index: usize) -> WidgetId {
+            if let Some(child) = self.widgets.get(index) {
+                // Use the widget's existing identifier, if any
+                if child.id_ref().is_valid() {
+                    if let Some(key) = child.id_ref().next_key_after(self.id_ref()) {
+                        self.id_map.insert(key, index);
+                        return child.id();
+                    }
+                }
+            }
+
+            loop {
+                let key = self.next;
+                self.next += 1;
+                if let Entry::Vacant(entry) = self.id_map.entry(key) {
+                    entry.insert(index);
+                    return self.id_ref().make_child(key);
+                }
+            }
+        }
     }
 
     impl Layout for Self {
@@ -103,27 +124,6 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn make_child_id(&mut self, index: usize) -> WidgetId {
-            if let Some(child) = self.widgets.get(index) {
-                // Use the widget's existing identifier, if any
-                if child.id_ref().is_valid() {
-                    if let Some(key) = child.id_ref().next_key_after(self.id_ref()) {
-                        self.id_map.insert(key, index);
-                        return child.id();
-                    }
-                }
-            }
-
-            loop {
-                let key = self.next;
-                self.next += 1;
-                if let Entry::Vacant(entry) = self.id_map.entry(key) {
-                    entry.insert(index);
-                    return self.id_ref().make_child(key);
-                }
-            }
-        }
-
         fn pre_configure(&mut self, _: &mut ConfigMgr, id: WidgetId) {
             self.core.id = id;
             self.id_map.clear();

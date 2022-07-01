@@ -289,6 +289,10 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     fn find_child_index(&self, id: &::kas::WidgetId) -> Option<usize> {
                         self.#inner.find_child_index(id)
                     }
+                    #[inline]
+                    fn make_child_id(&mut self, index: usize) -> ::kas::WidgetId {
+                        self.#inner.make_child_id(index)
+                    }
                 }
             });
         }
@@ -342,10 +346,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 impl #impl_generics ::kas::Widget
                         for #name #ty_generics #where_clause
                 {
-                    #[inline]
-                    fn make_child_id(&mut self, index: usize) -> ::kas::WidgetId {
-                        self.#inner.make_child_id(index)
-                    }
                     #[inline]
                     fn pre_configure(
                         &mut self,

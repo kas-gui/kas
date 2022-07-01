@@ -102,10 +102,18 @@ pub trait WidgetChildren: WidgetCore {
     ///
     /// The default implementation simply uses [`WidgetId::next_key_after`].
     /// Widgets may choose to assign children custom keys by overriding this
-    /// method and [`Widget::make_child_id`].
+    /// method and [`Self::make_child_id`].
     #[inline]
     fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
         id.next_key_after(self.id_ref())
+    }
+
+    /// Make an identifier for a child
+    ///
+    /// Default impl: `self.id_ref().make_child(index)`
+    #[inline]
+    fn make_child_id(&mut self, index: usize) -> WidgetId {
+        self.id_ref().make_child(index)
     }
 }
 
@@ -386,14 +394,6 @@ pub trait Layout {
 /// ```
 #[autoimpl(for<'a, T: trait + ?Sized> &'a mut T, Box<T>)]
 pub trait Widget: WidgetChildren + Layout {
-    /// Make an identifier for a child
-    ///
-    /// Default impl: `self.id_ref().make_child(index)`
-    #[inline]
-    fn make_child_id(&mut self, index: usize) -> WidgetId {
-        self.id_ref().make_child(index)
-    }
-
     /// Pre-configuration
     ///
     /// This method is called before children are configured to assign a
