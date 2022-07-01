@@ -364,13 +364,15 @@ impl_scope! {
         }
 
         fn draw_(&mut self, mut draw: DrawMgr) {
-            if self.show_bars.0 {
-                draw.recurse(&mut self.horiz_bar);
-            }
-            if self.show_bars.1 {
-                draw.recurse(&mut self.vert_bar);
-            }
             draw.recurse(&mut self.inner);
+            draw.with_pass(|mut draw| {
+                if self.show_bars.0 {
+                    draw.recurse(&mut self.horiz_bar);
+                }
+                if self.show_bars.1 {
+                    draw.recurse(&mut self.vert_bar);
+                }
+            });
         }
 
         fn force_visible_bars(&mut self, mgr: &mut EventMgr, horiz: bool, vert: bool) {
