@@ -100,7 +100,7 @@ pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
 }
 
 #[cfg(not(feature = "gat"))]
-impl<'a, DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T
+impl<DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T
 where
     <T as Theme<DS>>::Draw: 'static,
 {

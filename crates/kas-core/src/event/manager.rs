@@ -31,7 +31,7 @@ mod mgr_shell;
 pub use config_mgr::ConfigMgr;
 
 /// Controls the types of events delivered by [`EventMgr::grab_press`]
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GrabMode {
     /// Deliver [`Event::PressMove`] and [`Event::PressEnd`] for each grabbed press
     Grab,

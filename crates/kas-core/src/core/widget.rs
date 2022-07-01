@@ -31,7 +31,7 @@ use kas_macros as macros;
 /// Implementations of this trait are generated via macro.
 /// **Directly implementing this trait is not supported**.
 /// See [`Widget`] trait documentation.
-#[autoimpl(for<'a, T: trait + ?Sized> &'a mut T, Box<T>)]
+#[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
 pub trait WidgetCore: fmt::Debug {
     /// Get the widget's identifier
     ///
@@ -71,7 +71,7 @@ pub trait WidgetCore: fmt::Debug {
 /// Note that parents are responsible for ensuring that newly added children
 /// get configured, either by sending [`TkAction::RECONFIGURE`] by calling
 /// [`ConfigMgr::configure`].
-#[autoimpl(for<'a, T: trait + ?Sized> &'a mut T, Box<T>)]
+#[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
 pub trait WidgetChildren: WidgetCore {
     /// Get the number of child widgets
     ///
@@ -147,7 +147,7 @@ pub trait WidgetChildren: WidgetCore {
 /// Usually, [`Layout::size_rules`] methods are called recursively. To instead
 /// solve layout for a single widget/layout object, it may be useful to use
 /// [`layout::solve_size_rules`] or [`layout::SolveCache`].
-#[autoimpl(for<'a, T: trait + ?Sized> &'a mut T, Box<T>)]
+#[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
 pub trait Layout {
     /// Get size rules for the given axis
     ///
@@ -392,7 +392,7 @@ pub trait Layout {
 ///     }
 /// }
 /// ```
-#[autoimpl(for<'a, T: trait + ?Sized> &'a mut T, Box<T>)]
+#[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
 pub trait Widget: WidgetChildren + Layout {
     /// Pre-configuration
     ///

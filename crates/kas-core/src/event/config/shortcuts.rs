@@ -16,6 +16,7 @@ use std::collections::HashMap;
 use std::fmt;
 
 /// Shortcut manager
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct Shortcuts {
     map: LinearMap<ModifiersState, HashMap<VirtualKeyCode, Command>>,

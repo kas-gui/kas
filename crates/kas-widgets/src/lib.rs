@@ -54,6 +54,7 @@
     clippy::collapsible_else_if,
     clippy::len_zero
 )]
+#![allow(clippy::type_complexity)]
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![cfg_attr(feature = "min_spec", feature(min_specialization))]
 

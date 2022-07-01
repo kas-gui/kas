@@ -123,6 +123,7 @@ impl InputState {
 }
 
 /// Provides standard theme colours
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "config", derive(serde::Serialize, serde::Deserialize))]
 pub struct Colors<C> {

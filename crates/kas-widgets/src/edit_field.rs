@@ -721,10 +721,10 @@ impl<G: EditGuard> EditField<G> {
         if have_sel {
             let mut buf = [0u8; 4];
             let s = c.encode_utf8(&mut buf);
-            let _ = self.text.replace_range(selection.clone(), s);
+            self.text.replace_range(selection.clone(), s);
             self.selection.set_pos(selection.start + s.len());
         } else {
-            let _ = self.text.insert_char(pos, c);
+            self.text.insert_char(pos, c);
             self.selection.set_pos(pos + c.len_utf8());
         }
         self.edit_x_coord = None;
