@@ -429,10 +429,10 @@ impl_scope! {
     #[derive(Debug)]
     #[widget{
         layout = grid: {
-            0..2, 0: self.label;
+            1, 0: self.label;
             0, 1: align(center): self.iters;
             0, 2: self.slider;
-            1..3, 1..3: self.mbrot;
+            1..3, 1..4: self.mbrot;
         };
     }]
     struct MandlebrotWindow {
