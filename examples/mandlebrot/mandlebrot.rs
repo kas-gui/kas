@@ -144,7 +144,7 @@ impl CustomPipeBuilder for PipeBuilder {
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Cw,
                 cull_mode: Some(wgpu::Face::Back), // not required
-                clamp_depth: false,
+                unclipped_depth: false,
                 polygon_mode: wgpu::PolygonMode::Fill,
                 conservative: false,
             },
@@ -159,6 +159,7 @@ impl CustomPipeBuilder for PipeBuilder {
                     write_mask: wgpu::ColorWrites::ALL,
                 }],
             }),
+            multiview: None,
         });
 
         Pipe { render_pipeline }
