@@ -27,7 +27,6 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         // Create staging belt and a local pool
         let staging_belt = wgpu::util::StagingBelt::new(1024);
-        let local_pool = futures::executor::LocalPool::new();
 
         let bgl_common = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("common bind group layout"),
@@ -82,7 +81,6 @@ impl<C: CustomPipe> DrawPipe<C> {
         DrawPipe {
             device,
             queue,
-            local_pool,
             staging_belt,
             bgl_common,
             light_norm_buf,
@@ -225,14 +223,14 @@ impl<C: CustomPipe> DrawPipe<C> {
             .text
             .write_buffers(&self.device, &mut self.staging_belt, &mut encoder);
 
-        let mut color_attachments = [wgpu::RenderPassColorAttachment {
+        let mut color_attachments = [Some(wgpu::RenderPassColorAttachment {
             view: frame_view,
             resolve_target: None,
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Clear(clear_color),
                 store: true,
             },
-        }];
+        })];
 
         // We use a separate render pass for each clipped region.
         for (pass, (rect, _)) in window.clip_regions.iter().enumerate() {
@@ -274,7 +272,7 @@ impl<C: CustomPipe> DrawPipe<C> {
                 self.text.render(&window.text, pass, &mut rpass, bg_common);
             }
 
-            color_attachments[0].ops.load = wgpu::LoadOp::Load;
+            color_attachments[0].as_mut().unwrap().ops.load = wgpu::LoadOp::Load;
         }
 
         let size = window.clip_regions[0].0.size;
@@ -293,12 +291,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         self.staging_belt.finish();
         self.queue.submit(std::iter::once(encoder.finish()));
 
-        use futures::task::SpawnExt;
-        self.local_pool
-            .spawner()
-            .spawn(self.staging_belt.recall())
-            .expect("Recall staging belt");
-        self.local_pool.run_until_stalled();
+        self.staging_belt.recall();
     }
 }
 

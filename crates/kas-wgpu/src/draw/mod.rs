@@ -38,7 +38,6 @@ type Scale = [f32; 4];
 pub struct DrawPipe<C> {
     pub(crate) device: wgpu::Device,
     queue: wgpu::Queue,
-    local_pool: futures::executor::LocalPool,
     staging_belt: wgpu::util::StagingBelt,
     bgl_common: wgpu::BindGroupLayout,
     light_norm_buf: wgpu::Buffer,
