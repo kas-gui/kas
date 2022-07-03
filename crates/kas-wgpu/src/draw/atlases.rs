@@ -96,6 +96,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
     /// -   `tex_format`: texture format
     pub fn new(
         device: &wgpu::Device,
+        label: Option<&'static str>,
         bg_common: &wgpu::BindGroupLayout,
         tex_size: i32,
         tex_format: wgpu::TextureFormat,
@@ -131,7 +132,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
         });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("atlas render pipeline"),
+            label,
             layout: Some(&pipeline_layout),
             vertex,
             primitive: wgpu::PrimitiveState {

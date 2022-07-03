@@ -89,6 +89,7 @@ impl Images {
     ) -> Self {
         let atlas_pipe = atlases::Pipeline::new(
             device,
+            Some("images pipe"),
             bgl_common,
             2048,
             wgpu::TextureFormat::Rgba8UnormSrgb,

@@ -61,6 +61,7 @@ impl Pipeline {
     ) -> Self {
         let atlas_pipe = atlases::Pipeline::new(
             device,
+            Some("text pipe"),
             bgl_common,
             512,
             wgpu::TextureFormat::R8Unorm,
