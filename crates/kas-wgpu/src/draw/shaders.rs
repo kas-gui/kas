@@ -5,7 +5,7 @@
 
 //! Shader management
 
-use wgpu::{include_spirv, ShaderModule};
+use wgpu::{include_wgsl, ShaderModule};
 
 /// Shader manager
 pub struct ShaderManager {
@@ -25,25 +25,25 @@ pub struct ShaderManager {
 
 macro_rules! create {
     ($device:ident, $path:expr) => {{
-        $device.create_shader_module(&include_spirv!($path))
+        $device.create_shader_module(&include_wgsl!($path))
     }};
 }
 
 impl ShaderManager {
     pub fn new(device: &wgpu::Device) -> Self {
-        let vert_flat_round = create!(device, "shaders/flat_round.vert.spv");
-        let vert_round_2col = create!(device, "shaders/round_2col.vert.spv");
-        let vert_shaded_square = create!(device, "shaders/shaded_square.vert.spv");
-        let vert_shaded_round = create!(device, "shaders/shaded_round.vert.spv");
-        let vert_image = create!(device, "shaders/image.vert.spv");
-        let vert_glyph = create!(device, "shaders/glyph.vert.spv");
+        let vert_flat_round = create!(device, "shaders/flat_round.vert.wgsl");
+        let vert_round_2col = create!(device, "shaders/round_2col.vert.wgsl");
+        let vert_shaded_square = create!(device, "shaders/shaded_square.vert.wgsl");
+        let vert_shaded_round = create!(device, "shaders/shaded_round.vert.wgsl");
+        let vert_image = create!(device, "shaders/image.vert.wgsl");
+        let vert_glyph = create!(device, "shaders/glyph.vert.wgsl");
 
-        let frag_flat_round = create!(device, "shaders/flat_round.frag.spv");
-        let frag_round_2col = create!(device, "shaders/round_2col.frag.spv");
-        let frag_shaded_square = create!(device, "shaders/shaded_square.frag.spv");
-        let frag_shaded_round = create!(device, "shaders/shaded_round.frag.spv");
-        let frag_image = create!(device, "shaders/image.frag.spv");
-        let frag_glyph = create!(device, "shaders/glyph.frag.spv");
+        let frag_flat_round = create!(device, "shaders/flat_round.frag.wgsl");
+        let frag_round_2col = create!(device, "shaders/round_2col.frag.wgsl");
+        let frag_shaded_square = create!(device, "shaders/shaded_square.frag.wgsl");
+        let frag_shaded_round = create!(device, "shaders/shaded_round.frag.wgsl");
+        let frag_image = create!(device, "shaders/image.frag.wgsl");
+        let frag_glyph = create!(device, "shaders/glyph.frag.wgsl");
 
         ShaderManager {
             vert_image,
