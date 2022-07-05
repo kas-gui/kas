@@ -78,7 +78,7 @@ path = "../kas-macros"
 [dependencies.kas-text]
 version = "0.5.0"
 git = "https://github.com/kas-gui/kas-text.git"
-rev = "d90004a0fb4fc794392ce3f1a9e46ca86a8a8b08"
+rev = "02a1e4449a8ec48fc691afc43241201366fa67cb"
 
 [dependencies.easy-cast]
 git = "https://github.com/kas-gui/easy-cast.git"

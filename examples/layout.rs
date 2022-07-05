@@ -21,7 +21,7 @@ fn main() -> kas::shell::Result<()> {
                 2, 0: self.check;
                 0..3, 1: Label::new(LIPSUM);
                 0, 2: align(center): "abc אבג def";
-                1..3, 2..4: align(stretch): ScrollLabel::new(CRASIT);
+                1..3, 3: align(stretch): ScrollLabel::new(CRASIT);
                 0, 3: self.edit;
             };
         }]
