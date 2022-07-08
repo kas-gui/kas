@@ -89,7 +89,7 @@ impl_scope! {
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, text: T) -> TkAction {
-            kas::text::util::set_text_and_prepare(&mut self.label, text, self.core.rect.size)
+            kas::text::util::set_text_and_prepare(&mut self.label, text)
         }
     }
 
@@ -126,7 +126,7 @@ impl_scope! {
         T: EditableText,
     {
         fn set_string(&mut self, string: String) -> TkAction {
-            kas::text::util::set_string_and_prepare(&mut self.label, string, self.core.rect.size)
+            kas::text::util::set_string_and_prepare(&mut self.label, string)
         }
     }
 }
@@ -264,7 +264,7 @@ impl_scope! {
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, text: AccelString) -> TkAction {
-            kas::text::util::set_text_and_prepare(&mut self.0.label, text, self.0.core.rect.size)
+            kas::text::util::set_text_and_prepare(&mut self.0.label, text)
         }
     }
 
@@ -308,7 +308,7 @@ impl_scope! {
             if self.0.label.text().keys() != string.keys() {
                 action |= TkAction::RECONFIGURE;
             }
-            action | kas::text::util::set_text_and_prepare(&mut self.0.label, string, self.0.core.rect.size)
+            action | kas::text::util::set_text_and_prepare(&mut self.0.label, string)
         }
     }
 }

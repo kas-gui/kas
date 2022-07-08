@@ -82,7 +82,7 @@ impl_scope! {
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, text: T) -> TkAction {
-            kas::text::util::set_text_and_prepare(&mut self.text, text, self.core.rect.size)
+            kas::text::util::set_text_and_prepare(&mut self.text, text)
         }
 
         fn set_edit_pos_from_coord(&mut self, mgr: &mut EventMgr, coord: Coord) {
@@ -149,8 +149,7 @@ impl_scope! {
         T: EditableText,
     {
         fn set_string(&mut self, string: String) -> TkAction {
-            let avail = self.core.rect.size;
-            kas::text::util::set_string_and_prepare(&mut self.text, string, avail)
+            kas::text::util::set_string_and_prepare(&mut self.text, string)
         }
     }
 
