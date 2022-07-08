@@ -121,7 +121,11 @@ impl<'a> SizeMgr<'a> {
         self.0.frame(style, axis.is_vertical())
     }
 
-    /// The height of a line of text
+    /// The height of a line of text using the standard font
+    ///
+    /// Note: `self.pixels_from_em(1.0)` returns approximately the same value
+    /// and is faster since it only converts units.
+    /// This method reads font metrics.
     pub fn line_height(&self, class: TextClass) -> i32 {
         self.0.line_height(class)
     }
@@ -190,7 +194,7 @@ pub trait ThemeSize {
     /// Size of a frame around another element
     fn frame(&self, style: FrameStyle, axis_is_vertical: bool) -> FrameRules;
 
-    /// The height of a line of text
+    /// The height of a line of text using the standard font
     fn line_height(&self, class: TextClass) -> i32;
 
     /// Update a text object, setting font properties and getting a size bound
