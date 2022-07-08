@@ -59,7 +59,7 @@ pub struct Parameters {
 pub struct Dimensions {
     pub scale_factor: f32,
     pub dpp: f32,
-    pub pt_size: f32,
+    pub dpem: f32,
     pub mark_line: f32,
     pub min_line_length: i32,
     pub outer_margin: u16,
@@ -97,7 +97,7 @@ impl Dimensions {
         Dimensions {
             scale_factor,
             dpp,
-            pt_size,
+            dpem,
             mark_line: (1.2 * dpp).round().max(1.0),
             min_line_length: (8.0 * dpem).cast_nearest(),
             outer_margin,
@@ -165,7 +165,7 @@ impl<D: 'static> ThemeSize for Window<D> {
     }
 
     fn pixels_from_em(&self, em: f32) -> f32 {
-        self.dims.dpp * self.dims.pt_size * em
+        self.dims.dpem * em
     }
 
     fn inner_margin(&self) -> Size {
@@ -265,10 +265,9 @@ impl<D: 'static> ThemeSize for Window<D> {
 
     fn line_height(&self, class: TextClass) -> i32 {
         let font_id = self.fonts.get(&class).cloned().unwrap_or_default();
-        let dpem = self.dims.dpp * self.dims.pt_size;
         kas::text::fonts::fonts()
             .get_first_face(font_id)
-            .height(dpem)
+            .height(self.dims.dpem)
             .cast_ceil()
     }
 
@@ -295,8 +294,7 @@ impl<D: 'static> ThemeSize for Window<D> {
             if let Some(font_id) = self.fonts.get(&class).cloned() {
                 env.set_font_id(font_id);
             }
-            env.set_dpp(self.dims.dpp);
-            env.set_pt_size(self.dims.pt_size);
+            env.set_dpem(self.dims.dpem);
 
             let mut bounds = kas::text::Vec2::INFINITY;
             if let Some(size) = axis.size_other_if_fixed(false) {
@@ -361,8 +359,7 @@ impl<D: 'static> ThemeSize for Window<D> {
             if let Some(font_id) = self.fonts.get(&class).cloned() {
                 env.set_font_id(font_id);
             }
-            env.set_dpp(self.dims.dpp);
-            env.set_pt_size(self.dims.pt_size);
+            env.set_dpem(self.dims.dpem);
 
             env.set_bounds(size.cast());
             env.set_align(align);

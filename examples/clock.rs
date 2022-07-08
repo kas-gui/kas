@@ -50,15 +50,13 @@ impl_scope! {
             let pos = rect.pos + excess / 2;
             self.core.rect = Rect { pos, size };
 
-            // Note: font size is calculated as dpem = dpp * pt_size. Instead of
-            // the usual semantics we set dpp=1 (in constructor) and pt_size=dpem.
             let half_size = Size(size.0, size.1 / 2);
             self.date.update_env(|env| {
-                env.set_pt_size(size.1 as f32 * 0.12);
+                env.set_dpem(size.1 as f32 * 0.12);
                 env.set_bounds(half_size.cast());
             });
             self.time.update_env(|env| {
-                env.set_pt_size(size.1 as f32 * 0.15);
+                env.set_dpem(size.1 as f32 * 0.15);
                 env.set_bounds(half_size.cast());
             });
             self.date_pos = pos + Size(0, size.1 - half_size.1);
@@ -146,7 +144,6 @@ impl_scope! {
         fn new() -> Self {
             let env = kas::text::Environment {
                 align: (Align::Center, Align::Center),
-                dpp: 1.0,
                 ..Default::default()
             };
             let date = Text::new(env.clone(), "0000-00-00".into());
