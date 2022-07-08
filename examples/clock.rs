@@ -50,17 +50,22 @@ impl_scope! {
             let pos = rect.pos + excess / 2;
             self.core.rect = Rect { pos, size };
 
-            let half_size = Size(size.0, size.1 / 2);
-            self.date.update_env(|env| {
-                env.set_dpem(size.1 as f32 * 0.12);
-                env.set_bounds(half_size.cast());
-            });
-            self.time.update_env(|env| {
-                env.set_dpem(size.1 as f32 * 0.15);
-                env.set_bounds(half_size.cast());
-            });
-            self.date_pos = pos + Size(0, size.1 - half_size.1);
-            self.time_pos = pos;
+            let text_height = size.1 / 3;
+            let half_size = Size(size.0, text_height).cast();
+
+            let mut env = self.date.env();
+            env.dpem = size.1 as f32 * 0.12;
+            env.bounds = half_size;
+            self.date.update_env(env);
+
+            let mut env = self.time.env();
+            env.dpem = size.1 as f32 * 0.15;
+            env.bounds = half_size;
+            self.time.update_env(env);
+
+            let mid_pos = pos + Offset(0, size.1 / 2);
+            self.date_pos = mid_pos;
+            self.time_pos = mid_pos - Offset(0, text_height);
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
@@ -146,7 +151,7 @@ impl_scope! {
                 align: (Align::Center, Align::Center),
                 ..Default::default()
             };
-            let date = Text::new_env(env.clone(), "0000-00-00".into());
+            let date = Text::new_env(env, "0000-00-00".into());
             let time = Text::new_env(env, "00:00:00".into());
             Clock {
                 core: Default::default(),

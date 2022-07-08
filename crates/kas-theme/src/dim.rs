@@ -15,7 +15,7 @@ use kas::cast::traits::*;
 use kas::dir::Directional;
 use kas::geom::{Rect, Size, Vec2};
 use kas::layout::{AlignHints, AxisInfo, FrameRules, Margins, SizeRules, Stretch};
-use kas::text::{fonts::FontId, Align, TextApi, TextApiExt};
+use kas::text::{fonts::FontId, Align, TextApi};
 use kas::theme::{Feature, FrameStyle, MarkStyle, TextClass, ThemeSize};
 
 /// Parameterisation of [`Dimensions`]
@@ -290,22 +290,24 @@ impl<D: 'static> ThemeSize for Window<D> {
             }
         }
 
-        let required = text.update_env(|env| {
-            if let Some(font_id) = self.fonts.get(&class).cloned() {
-                env.set_font_id(font_id);
-            }
-            env.set_dpem(self.dims.dpem);
+        let mut env = text.env();
 
-            let mut bounds = kas::text::Vec2::INFINITY;
-            if let Some(size) = axis.size_other_if_fixed(false) {
-                bounds.1 = size.cast();
-            } else if let Some(size) = axis.size_other_if_fixed(true) {
-                bounds.0 = size.cast();
-            }
-            env.set_bounds(bounds);
-            env.set_align((Align::TL, Align::TL)); // force top-left alignment for sizing
-            env.set_wrap(class.multi_line());
-        });
+        if let Some(font_id) = self.fonts.get(&class).cloned() {
+            env.font_id = font_id;
+        }
+        env.dpem = self.dims.dpem;
+
+        env.bounds = kas::text::Vec2::INFINITY;
+        if let Some(size) = axis.size_other_if_fixed(false) {
+            env.bounds.1 = size.cast();
+        } else if let Some(size) = axis.size_other_if_fixed(true) {
+            env.bounds.0 = size.cast();
+        }
+        env.align = (Align::TL, Align::TL); // force top-left alignment for sizing
+        env.wrap = class.multi_line();
+
+        text.set_env(env);
+        let required = text.prepare_lines();
 
         if axis.is_horizontal() {
             let min = self.dims.min_line_length;
@@ -354,17 +356,18 @@ impl<D: 'static> ThemeSize for Window<D> {
         size: Size,
         align: (Align, Align),
     ) -> Vec2 {
-        // TODO(opt): we don't always need to do this work
-        text.update_env(|env| {
-            if let Some(font_id) = self.fonts.get(&class).cloned() {
-                env.set_font_id(font_id);
-            }
-            env.set_dpem(self.dims.dpem);
+        let mut env = text.env();
+        if let Some(font_id) = self.fonts.get(&class).cloned() {
+            env.font_id = font_id;
+        }
+        env.dpem = self.dims.dpem;
 
-            env.set_bounds(size.cast());
-            env.set_align(align);
-            env.set_wrap(class.multi_line());
-        })
-        .into()
+        env.bounds = size.cast();
+        env.align = align;
+        env.wrap = class.multi_line();
+
+        text.set_env(env);
+        // TODO(opt): we don't always need to do this work
+        text.prepare_lines().into()
     }
 }
