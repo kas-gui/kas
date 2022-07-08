@@ -70,7 +70,7 @@ impl_scope! {
             ScrollLabel {
                 core: Default::default(),
                 view_offset: Default::default(),
-                text: Text::new_multi(text),
+                text: Text::new(text),
                 required: Vec2::ZERO,
                 selection: SelectionHelper::new(0, 0),
                 input_handler: Default::default(),

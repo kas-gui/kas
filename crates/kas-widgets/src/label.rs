@@ -34,7 +34,7 @@ impl_scope! {
             Label {
                 core: Default::default(),
                 class: TextClass::Label(true),
-                label: Text::new_multi(label),
+                label: Text::new(label),
             }
         }
 

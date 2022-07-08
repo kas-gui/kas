@@ -146,8 +146,8 @@ impl_scope! {
                 align: (Align::Center, Align::Center),
                 ..Default::default()
             };
-            let date = Text::new(env.clone(), "0000-00-00".into());
-            let time = Text::new(env, "00:00:00".into());
+            let date = Text::new_env(env.clone(), "0000-00-00".into());
+            let time = Text::new_env(env, "00:00:00".into());
             Clock {
                 core: Default::default(),
                 date_pos: Coord::ZERO,

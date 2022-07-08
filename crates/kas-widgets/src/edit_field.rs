@@ -564,7 +564,7 @@ impl EditField<()> {
             view_offset: Default::default(),
             editable: true,
             multi_line: false,
-            text: Text::new(Default::default(), text),
+            text: Text::new(text),
             required: Vec2::ZERO,
             selection: SelectionHelper::new(len, len),
             edit_x_coord: None,
