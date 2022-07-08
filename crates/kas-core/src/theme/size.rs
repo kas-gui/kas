@@ -9,7 +9,7 @@ use std::ops::Deref;
 
 use super::{Feature, FrameStyle, TextClass};
 use crate::dir::Directional;
-use crate::geom::{Rect, Size, Vec2};
+use crate::geom::{Rect, Size};
 use crate::layout::{AlignHints, AxisInfo, FrameRules, Margins, SizeRules};
 use crate::macros::autoimpl;
 use crate::text::{Align, TextApi};
@@ -205,13 +205,11 @@ pub trait ThemeSize {
     fn text_bound(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules;
 
     /// Update a text object, setting font properties and wrap size
-    ///
-    /// Returns required size.
     fn text_set_size(
         &self,
         text: &mut dyn TextApi,
         class: TextClass,
         size: Size,
         align: (Align, Align),
-    ) -> Vec2;
+    );
 }

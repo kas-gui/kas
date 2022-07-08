@@ -57,12 +57,9 @@ pub mod util {
             return TkAction::empty();
         }
 
-        if let Some(req) = text.prepare() {
-            let avail = text.env().bounds;
-            if !(req.0 <= avail.0 && req.1 <= avail.1) {
-                trace!("set_text_and_prepare triggers RESIZE");
-                return TkAction::RESIZE;
-            }
+        if text.prepare() {
+            trace!("set_text_and_prepare triggers RESIZE");
+            return TkAction::RESIZE;
         }
 
         TkAction::REDRAW

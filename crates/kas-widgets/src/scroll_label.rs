@@ -26,7 +26,7 @@ impl_scope! {
         core: widget_core!(),
         view_offset: Offset,
         text: Text<T>,
-        required: Vec2,
+        bounding_corner: Vec2,
         selection: SelectionHelper,
         input_handler: TextInput,
     }
@@ -39,7 +39,8 @@ impl_scope! {
         fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             let align = align.unwrap_or(Align::Default, Align::Default);
-            self.required = mgr.text_set_size(&mut self.text, TextClass::LabelScroll, rect.size, align);
+            mgr.text_set_size(&mut self.text, TextClass::LabelScroll, rect.size, align);
+            self.bounding_corner = self.text.bounding_box().into();
             self.set_view_offset_from_edit_pos();
         }
 
@@ -71,7 +72,7 @@ impl_scope! {
                 core: Default::default(),
                 view_offset: Default::default(),
                 text: Text::new(text),
-                required: Vec2::ZERO,
+                bounding_corner: Vec2::ZERO,
                 selection: SelectionHelper::new(0, 0),
                 input_handler: Default::default(),
             }
@@ -229,7 +230,7 @@ impl_scope! {
 
         fn max_scroll_offset(&self) -> Offset {
             let bounds = Vec2::from(self.text.env().bounds);
-            let max_offset = Offset::conv_ceil(self.required - bounds);
+            let max_offset = Offset::conv_ceil(self.bounding_corner - bounds);
             max_offset.max(Offset::ZERO)
         }
 

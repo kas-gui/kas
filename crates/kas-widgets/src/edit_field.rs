@@ -339,7 +339,7 @@ impl_scope! {
         editable: bool,
         multi_line: bool,
         text: Text<String>,
-        required: Vec2,
+        bounding_corner: Vec2,
         selection: SelectionHelper,
         edit_x_coord: Option<f32>,
         old_state: Option<(String, usize, usize)>,
@@ -367,7 +367,8 @@ impl_scope! {
 
             self.core.rect = rect;
             let align = align.unwrap_or(Align::Default, valign);
-            self.required = mgr.text_set_size(&mut self.text, class, rect.size, align);
+            mgr.text_set_size(&mut self.text, class, rect.size, align);
+            self.bounding_corner = self.text.bounding_box().into();
             self.set_view_offset_from_edit_pos();
         }
 
@@ -507,7 +508,7 @@ impl_scope! {
 
         fn max_scroll_offset(&self) -> Offset {
             let bounds = Vec2::from(self.text.env().bounds);
-            let max_offset = Offset::conv_ceil(self.required - bounds);
+            let max_offset = Offset::conv_ceil(self.bounding_corner - bounds);
             max_offset.max(Offset::ZERO)
         }
 
@@ -543,9 +544,8 @@ impl_scope! {
             self.selection.clear();
             self.view_offset = Offset::ZERO;
             if kas::text::fonts::fonts().num_faces() > 0 {
-                if let Some(req) = self.text.prepare() {
-                    self.required = req.into();
-                }
+                self.text.prepare();
+                self.bounding_corner = self.text.bounding_box().into();
             }
             G::update(self);
             TkAction::REDRAW
@@ -565,7 +565,7 @@ impl EditField<()> {
             editable: true,
             multi_line: false,
             text: Text::new(text),
-            required: Vec2::ZERO,
+            bounding_corner: Vec2::ZERO,
             selection: SelectionHelper::new(len, len),
             edit_x_coord: None,
             old_state: None,
@@ -593,7 +593,7 @@ impl EditField<()> {
             editable: self.editable,
             multi_line: self.multi_line,
             text: self.text,
-            required: self.required,
+            bounding_corner: self.bounding_corner,
             selection: self.selection,
             edit_x_coord: self.edit_x_coord,
             old_state: self.old_state,
@@ -728,9 +728,8 @@ impl<G: EditGuard> EditField<G> {
             self.selection.set_pos(pos + c.len_utf8());
         }
         self.edit_x_coord = None;
-        if let Some(req) = self.text.prepare() {
-            self.required = req.into();
-        }
+        self.text.prepare();
+        self.bounding_corner = self.text.bounding_box().into();
         self.set_view_offset_from_edit_pos();
         mgr.redraw(self.id());
         true
@@ -1022,9 +1021,8 @@ impl<G: EditGuard> EditField<G> {
 
         let mut set_offset = self.selection.edit_pos() != pos;
         if !self.text.required_action().is_ready() {
-            if let Some(req) = self.text.prepare() {
-                self.required = req.into();
-            }
+            self.text.prepare();
+            self.bounding_corner = self.text.bounding_box().into();
             set_offset = true;
             mgr.redraw(self.id());
         }
