@@ -119,12 +119,12 @@ impl FormattableText for AccelString {
 
     #[cfg(feature = "gat")]
     #[inline]
-    fn font_tokens(&self, _: f32, _: f32) -> Self::FontTokenIter<'_> {
+    fn font_tokens(&self, _: f32) -> Self::FontTokenIter<'_> {
         std::iter::empty()
     }
     #[cfg(not(feature = "gat"))]
     #[inline]
-    fn font_tokens(&self, _: f32, _: f32) -> OwningVecIter<FontToken> {
+    fn font_tokens(&self, _: f32) -> OwningVecIter<FontToken> {
         OwningVecIter::new(vec![])
     }
 
