@@ -251,7 +251,9 @@ impl Window {
                 self.atlas.rect(pass, sprite.atlas, instance);
             }
         };
-        let _ = text.glyphs(for_glyph);
+        if let Err(e) = text.glyphs(for_glyph) {
+            log::warn!("Text display failed: {e}");
+        }
 
         self.duration += time.elapsed();
     }
@@ -292,7 +294,7 @@ impl Window {
             }
         };
 
-        if effects.len() > 1
+        let result = if effects.len() > 1
             || effects
                 .get(0)
                 .map(|e| *e != Effect::default(()))
@@ -304,9 +306,13 @@ impl Window {
                 let quad = Quad::from_coords(pos + Vec2(x1, y), pos + Vec2(x2, y2));
                 rects.push(quad);
             };
-            let _ = text.glyphs_with_effects(effects, (), for_glyph, for_rect);
+            text.glyphs_with_effects(effects, (), for_glyph, for_rect)
         } else {
-            let _ = text.glyphs(|face, dpem, glyph| for_glyph(face, dpem, glyph, 0, ()));
+            text.glyphs(|face, dpem, glyph| for_glyph(face, dpem, glyph, 0, ()))
+        };
+
+        if let Err(e) = result {
+            log::warn!("Text display failed: {e}");
         }
 
         self.duration += time.elapsed();
@@ -356,7 +362,9 @@ impl Window {
             rects.push((quad, col));
         };
 
-        let _ = text.glyphs_with_effects(effects, Rgba::BLACK, for_glyph, for_rect);
+        if let Err(e) = text.glyphs_with_effects(effects, Rgba::BLACK, for_glyph, for_rect) {
+            log::warn!("Text display failed: {e}");
+        }
 
         self.duration += time.elapsed();
         rects
