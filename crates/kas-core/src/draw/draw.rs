@@ -196,7 +196,7 @@ pub trait Draw {
 
     /// Draw text with a colour
     ///
-    /// It is required to call [`TextDisplay::prepare`] or [`TextApi::prepare`]
+    /// It is required to call [`TextApi::prepare`] or equivalent
     /// prior to this method to select a font, font size and perform layout.
     fn text(&mut self, pos: Vec2, text: &TextDisplay, col: Rgba);
 
@@ -205,7 +205,7 @@ pub trait Draw {
     /// The effects list does not contain colour information, but may contain
     /// underlining/strikethrough information. It may be empty.
     ///
-    /// It is required to call [`TextDisplay::prepare`] or [`TextApi::prepare`]
+    /// It is required to call [`TextApi::prepare`] or equivalent
     /// prior to this method to select a font, font size and perform layout.
     fn text_col_effects(
         &mut self,
@@ -221,7 +221,7 @@ pub trait Draw {
     /// If the `effects` list is empty or the first entry has `start > 0`, a
     /// default entity will be assumed.
     ///
-    /// It is required to call [`TextDisplay::prepare`] or [`TextApi::prepare`]
+    /// It is required to call [`TextApi::prepare`] or equivalent
     /// prior to this method to select a font, font size and perform layout.
     fn text_effects(&mut self, pos: Vec2, text: &TextDisplay, effects: &[Effect<Rgba>]);
 }
