@@ -167,11 +167,11 @@ where
 }
 
 #[cfg(feature = "gat")]
-impl<'a, DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T {
+impl<DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T {
     fn config(&self) -> MaybeBoxed<dyn Any> {
         match self.config() {
             Cow::Borrowed(config) => MaybeBoxed::Borrowed(config),
-            Cow::Owned(config) => MaybeBoxed::Boxed(Box::new(config.to_owned())),
+            Cow::Owned(config) => MaybeBoxed::Boxed(Box::new(config)),
         }
     }
 
