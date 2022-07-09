@@ -26,7 +26,7 @@ impl_scope! {
         core: widget_core!(),
         view_offset: Offset,
         text: Text<T>,
-        required: Vec2,
+        bounding_corner: Vec2,
         selection: SelectionHelper,
         input_handler: TextInput,
     }
@@ -39,7 +39,8 @@ impl_scope! {
         fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             let align = align.unwrap_or(Align::Default, Align::Default);
-            self.required = mgr.text_set_size(&mut self.text, TextClass::LabelScroll, rect.size, align);
+            mgr.text_set_size(&mut self.text, TextClass::LabelScroll, rect.size, align);
+            self.bounding_corner = self.text.bounding_box().into();
             self.set_view_offset_from_edit_pos();
         }
 
@@ -70,8 +71,8 @@ impl_scope! {
             ScrollLabel {
                 core: Default::default(),
                 view_offset: Default::default(),
-                text: Text::new_multi(text),
-                required: Vec2::ZERO,
+                text: Text::new(text),
+                bounding_corner: Vec2::ZERO,
                 selection: SelectionHelper::new(0, 0),
                 input_handler: Default::default(),
             }
@@ -82,7 +83,7 @@ impl_scope! {
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, text: T) -> TkAction {
-            kas::text::util::set_text_and_prepare(&mut self.text, text, self.core.rect.size)
+            kas::text::util::set_text_and_prepare(&mut self.text, text)
         }
 
         fn set_edit_pos_from_coord(&mut self, mgr: &mut EventMgr, coord: Coord) {
@@ -149,8 +150,7 @@ impl_scope! {
         T: EditableText,
     {
         fn set_string(&mut self, string: String) -> TkAction {
-            let avail = self.core.rect.size;
-            kas::text::util::set_string_and_prepare(&mut self.text, string, avail)
+            kas::text::util::set_string_and_prepare(&mut self.text, string)
         }
     }
 
@@ -190,8 +190,8 @@ impl_scope! {
                 Event::Scroll(delta) => {
                     let delta2 = match delta {
                         ScrollDelta::LineDelta(x, y) => {
-                            // We arbitrarily scroll 3 lines:
-                            let dist = 3.0 * self.text.env().height(Default::default());
+                            // We arbitrarily scroll 3 Em:
+                            let dist = 3.0 * self.text.env().dpem;
                             Offset((x * dist).cast_nearest(), (y * dist).cast_nearest())
                         }
                         ScrollDelta::PixelDelta(coord) => coord,
@@ -230,7 +230,7 @@ impl_scope! {
 
         fn max_scroll_offset(&self) -> Offset {
             let bounds = Vec2::from(self.text.env().bounds);
-            let max_offset = Offset::conv_ceil(self.required - bounds);
+            let max_offset = Offset::conv_ceil(self.bounding_corner - bounds);
             max_offset.max(Offset::ZERO)
         }
 

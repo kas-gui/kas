@@ -320,7 +320,7 @@ pub trait Layout {
 ///             AccelLabel {
 ///                 core: Default::default(),
 ///                 class: TextClass::AccelLabel(true),
-///                 label: Text::new_multi(label.into()),
+///                 label: Text::new(label.into()),
 ///             }
 ///         }
 ///

@@ -176,7 +176,7 @@ impl_scope! {
     #[autoimpl(HasBool using self.inner)]
     #[derive(Clone)]
     #[widget{
-        layout = row: [self.inner, self.label];
+        layout = list(self.direction()): [self.inner, self.label];
     }]
     pub struct RadioButton {
         core: widget_core!(),
@@ -287,6 +287,13 @@ impl_scope! {
         #[inline]
         pub fn unset_all(&self, mgr: &mut EventMgr) {
             self.inner.unset_all(mgr)
+        }
+
+        fn direction(&self) -> Direction {
+            match self.label.text().text_is_rtl() {
+                Ok(false) | Err(_) => Direction::Right,
+                Ok(true) => Direction::Left,
+            }
         }
     }
 }

@@ -54,7 +54,7 @@ impl_scope! {
                 core: Default::default(),
                 colour,
                 update_id,
-                loading_text: Text::new_single("Loading..."),
+                loading_text: Text::new("Loading..."),
                 loaded: false,
             }
         }

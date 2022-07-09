@@ -59,7 +59,7 @@ pub struct Parameters {
 pub struct Dimensions {
     pub scale_factor: f32,
     pub dpp: f32,
-    pub pt_size: f32,
+    pub dpem: f32,
     pub mark_line: f32,
     pub min_line_length: i32,
     pub outer_margin: u16,
@@ -97,7 +97,7 @@ impl Dimensions {
         Dimensions {
             scale_factor,
             dpp,
-            pt_size,
+            dpem,
             mark_line: (1.2 * dpp).round().max(1.0),
             min_line_length: (8.0 * dpem).cast_nearest(),
             outer_margin,
@@ -165,7 +165,7 @@ impl<D: 'static> ThemeSize for Window<D> {
     }
 
     fn pixels_from_em(&self, em: f32) -> f32 {
-        self.dims.dpp * self.dims.pt_size * em
+        self.dims.dpem * em
     }
 
     fn inner_margin(&self) -> Size {
@@ -265,10 +265,9 @@ impl<D: 'static> ThemeSize for Window<D> {
 
     fn line_height(&self, class: TextClass) -> i32 {
         let font_id = self.fonts.get(&class).cloned().unwrap_or_default();
-        let dpem = self.dims.dpp * self.dims.pt_size;
         kas::text::fonts::fonts()
             .get_first_face(font_id)
-            .height(dpem)
+            .height(self.dims.dpem)
             .cast_ceil()
     }
 
@@ -291,34 +290,27 @@ impl<D: 'static> ThemeSize for Window<D> {
             }
         }
 
-        let required = text.update_env(|env| {
-            if let Some(font_id) = self.fonts.get(&class).cloned() {
-                env.set_font_id(font_id);
-            }
-            env.set_dpp(self.dims.dpp);
-            env.set_pt_size(self.dims.pt_size);
+        let mut env = text.env();
 
-            let mut bounds = kas::text::Vec2::INFINITY;
-            if let Some(size) = axis.size_other_if_fixed(false) {
-                bounds.1 = size.cast();
-            } else if let Some(size) = axis.size_other_if_fixed(true) {
-                bounds.0 = size.cast();
-            }
-            env.set_bounds(bounds);
-            env.set_align((Align::TL, Align::TL)); // force top-left alignment for sizing
-            env.set_wrap(class.multi_line());
-        });
+        if let Some(font_id) = self.fonts.get(&class).cloned() {
+            env.font_id = font_id;
+        }
+        env.dpem = self.dims.dpem;
+        // TODO(opt): setting horizontal alignment now could avoid re-wrapping
+        // text. Unfortunately we don't know the desired alignment here.
+        env.wrap = class.multi_line();
+        if let Some(size) = axis.size_other_if_fixed(true) {
+            env.bounds.0 = size.cast();
+        }
+
+        text.set_env(env);
 
         if axis.is_horizontal() {
             let min = self.dims.min_line_length;
-            let (min, ideal) = match class {
-                TextClass::Edit(false) => (min, 2 * min),
-                TextClass::Edit(true) => (min, 3 * min),
-                _ => {
-                    let bound = i32::conv_ceil(required.0);
-                    (bound.min(min), bound.min(3 * min))
-                }
-            };
+            let limit = 3 * min;
+            let bound = i32::conv_ceil(text.measure_width(limit.cast()));
+            let (min, ideal) = (bound.min(min), bound.min(3 * min));
+
             // NOTE: using different variable-width stretch policies here can
             // cause problems (e.g. edit boxes greedily consuming too much
             // space). This is a hard layout problem; for now don't do this.
@@ -328,7 +320,7 @@ impl<D: 'static> ThemeSize for Window<D> {
             };
             SizeRules::new(min, ideal, margins, stretch)
         } else {
-            let bound = i32::conv_ceil(required.1);
+            let bound = i32::conv_ceil(text.measure_height());
             let min = if matches!(class, TextClass::Label(true) | TextClass::AccelLabel(true)) {
                 bound
             } else {
@@ -355,19 +347,15 @@ impl<D: 'static> ThemeSize for Window<D> {
         class: TextClass,
         size: Size,
         align: (Align, Align),
-    ) -> Vec2 {
-        // TODO(opt): we don't always need to do this work
-        text.update_env(|env| {
-            if let Some(font_id) = self.fonts.get(&class).cloned() {
-                env.set_font_id(font_id);
-            }
-            env.set_dpp(self.dims.dpp);
-            env.set_pt_size(self.dims.pt_size);
-
-            env.set_bounds(size.cast());
-            env.set_align(align);
-            env.set_wrap(class.multi_line());
-        })
-        .into()
+    ) {
+        let mut env = text.env();
+        if let Some(font_id) = self.fonts.get(&class).cloned() {
+            env.font_id = font_id;
+        }
+        env.dpem = self.dims.dpem;
+        env.wrap = class.multi_line();
+        env.align = align;
+        env.bounds = size.cast();
+        text.update_env(env);
     }
 }

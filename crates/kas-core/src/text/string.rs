@@ -25,7 +25,7 @@ use crate::text::{Effect, EffectFlags};
 /// Markup: `&&` translates to `&`; `&x` for any `x` translates to `x` and
 /// identifies `x` as an "accelerator key"; this may be drawn underlined and
 /// may support keyboard access via e.g. `Alt+X`.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AccelString {
     label: String,
     effects: SmallVec<[Effect<()>; 2]>,
@@ -119,12 +119,12 @@ impl FormattableText for AccelString {
 
     #[cfg(feature = "gat")]
     #[inline]
-    fn font_tokens(&self, _: f32, _: f32) -> Self::FontTokenIter<'_> {
+    fn font_tokens(&self, _: f32) -> Self::FontTokenIter<'_> {
         std::iter::empty()
     }
     #[cfg(not(feature = "gat"))]
     #[inline]
-    fn font_tokens(&self, _: f32, _: f32) -> OwningVecIter<FontToken> {
+    fn font_tokens(&self, _: f32) -> OwningVecIter<FontToken> {
         OwningVecIter::new(vec![])
     }
 

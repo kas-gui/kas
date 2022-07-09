@@ -9,7 +9,7 @@ use std::ops::Deref;
 
 use super::{Feature, FrameStyle, TextClass};
 use crate::dir::Directional;
-use crate::geom::{Rect, Size, Vec2};
+use crate::geom::{Rect, Size};
 use crate::layout::{AlignHints, AxisInfo, FrameRules, Margins, SizeRules};
 use crate::macros::autoimpl;
 use crate::text::{Align, TextApi};
@@ -121,7 +121,11 @@ impl<'a> SizeMgr<'a> {
         self.0.frame(style, axis.is_vertical())
     }
 
-    /// The height of a line of text
+    /// The height of a line of text using the standard font
+    ///
+    /// Note: `self.pixels_from_em(1.0)` returns approximately the same value
+    /// and is faster since it only converts units.
+    /// This method reads font metrics.
     pub fn line_height(&self, class: TextClass) -> i32 {
         self.0.line_height(class)
     }
@@ -190,7 +194,7 @@ pub trait ThemeSize {
     /// Size of a frame around another element
     fn frame(&self, style: FrameStyle, axis_is_vertical: bool) -> FrameRules;
 
-    /// The height of a line of text
+    /// The height of a line of text using the standard font
     fn line_height(&self, class: TextClass) -> i32;
 
     /// Update a text object, setting font properties and getting a size bound
@@ -205,13 +209,11 @@ pub trait ThemeSize {
     fn text_bound(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules;
 
     /// Update a text object, setting font properties and wrap size
-    ///
-    /// Returns required size.
     fn text_set_size(
         &self,
         text: &mut dyn TextApi,
         class: TextClass,
         size: Size,
         align: (Align, Align),
-    ) -> Vec2;
+    );
 }

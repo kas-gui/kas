@@ -22,44 +22,26 @@ pub use string::AccelString;
 /// Utilities integrating `kas-text` functionality
 pub mod util {
     use super::{fonts, format, EditableTextApi, Text, TextApi};
-    use crate::cast::Conv;
-    use crate::{geom::Size, TkAction};
+    use crate::TkAction;
     use log::trace;
 
     /// Set the text and prepare
     ///
     /// Update text and trigger a resize if necessary.
-    ///
-    /// The `avail` parameter is used to determine when a resize is required. If
-    /// this parameter is a little bit wrong then resizes may sometimes happen
-    /// unnecessarily or may not happen when text is slightly too big (e.g.
-    /// spills into the margin area); this behaviour is probably acceptable.
-    /// Passing `Size::ZERO` will always resize (unless text is empty).
-    /// Passing `Size::MAX` should never resize.
-    pub fn set_text_and_prepare<T: format::FormattableText>(
-        text: &mut Text<T>,
-        s: T,
-        avail: Size,
-    ) -> TkAction {
+    pub fn set_text_and_prepare<T: format::FormattableText>(text: &mut Text<T>, s: T) -> TkAction {
         text.set_text(s);
-        prepare_if_needed(text, avail)
+        prepare_if_needed(text)
     }
 
     /// Set the text from a string and prepare
     ///
     /// Update text and trigger a resize if necessary.
-    ///
-    /// The `avail` parameter is used to determine when a resize is required. If
-    /// this parameter is a little bit wrong then resizes may sometimes happen
-    /// unnecessarily or may not happen when text is slightly too big (e.g.
-    /// spills into the margin area); this behaviour is probably acceptable.
     pub fn set_string_and_prepare<T: format::EditableText>(
         text: &mut Text<T>,
         s: String,
-        avail: Size,
     ) -> TkAction {
         text.set_string(s);
-        prepare_if_needed(text, avail)
+        prepare_if_needed(text)
     }
 
     /// Do text preparation, if required/possible
@@ -69,25 +51,17 @@ pub mod util {
     ///
     /// Note: an alternative approach would be to delay text preparation by
     /// adding TkAction::PREPARE and a new method, perhaps in Layout.
-    pub(crate) fn prepare_if_needed<T: format::FormattableText>(
-        text: &mut Text<T>,
-        avail: Size,
-    ) -> TkAction {
+    pub(crate) fn prepare_if_needed<T: format::FormattableText>(text: &mut Text<T>) -> TkAction {
         if fonts::fonts().num_faces() == 0 {
             // Fonts not loaded yet: cannot prepare and can assume it will happen later anyway.
             return TkAction::empty();
         }
-        if let Some(req) = text.prepare() {
-            let avail = crate::geom::Vec2::conv(avail);
-            if !(req.0 <= avail.0 && req.1 <= avail.1) {
-                trace!(
-                    "set_text_and_prepare triggers RESIZE: req={:?}, avail={:?}",
-                    req,
-                    avail
-                );
-                return TkAction::RESIZE;
-            }
+
+        if text.prepare() {
+            trace!("set_text_and_prepare triggers RESIZE");
+            return TkAction::RESIZE;
         }
+
         TkAction::REDRAW
     }
 }

@@ -50,19 +50,22 @@ impl_scope! {
             let pos = rect.pos + excess / 2;
             self.core.rect = Rect { pos, size };
 
-            // Note: font size is calculated as dpem = dpp * pt_size. Instead of
-            // the usual semantics we set dpp=1 (in constructor) and pt_size=dpem.
-            let half_size = Size(size.0, size.1 / 2);
-            self.date.update_env(|env| {
-                env.set_pt_size(size.1 as f32 * 0.12);
-                env.set_bounds(half_size.cast());
-            });
-            self.time.update_env(|env| {
-                env.set_pt_size(size.1 as f32 * 0.15);
-                env.set_bounds(half_size.cast());
-            });
-            self.date_pos = pos + Size(0, size.1 - half_size.1);
-            self.time_pos = pos;
+            let text_height = size.1 / 3;
+            let half_size = Size(size.0, text_height).cast();
+
+            let mut env = self.date.env();
+            env.dpem = size.1 as f32 * 0.12;
+            env.bounds = half_size;
+            self.date.update_env(env);
+
+            let mut env = self.time.env();
+            env.dpem = size.1 as f32 * 0.15;
+            env.bounds = half_size;
+            self.time.update_env(env);
+
+            let mid_pos = pos + Offset(0, size.1 / 2);
+            self.date_pos = mid_pos;
+            self.time_pos = mid_pos - Offset(0, text_height);
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
@@ -128,10 +131,9 @@ impl_scope! {
                     self.now = Local::now();
                     let date = self.now.format("%Y-%m-%d").to_string();
                     let time = self.now.format("%H:%M:%S").to_string();
-                    let avail = Size(self.core.rect.size.0, self.core.rect.size.1 / 2);
                     *mgr |= TkAction::REDRAW
-                        | set_text_and_prepare(&mut self.date, date, avail)
-                        | set_text_and_prepare(&mut self.time, time, avail);
+                        | set_text_and_prepare(&mut self.date, date)
+                        | set_text_and_prepare(&mut self.time, time);
                     let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
                     info!("Requesting update in {}ns", ns);
                     mgr.request_update(self.id(), 0, Duration::new(0, ns), true);
@@ -146,11 +148,10 @@ impl_scope! {
         fn new() -> Self {
             let env = kas::text::Environment {
                 align: (Align::Center, Align::Center),
-                dpp: 1.0,
                 ..Default::default()
             };
-            let date = Text::new(env.clone(), "0000-00-00".into());
-            let time = Text::new(env, "00:00:00".into());
+            let date = Text::new_env(env, "0000-00-00".into());
+            let time = Text::new_env(env, "00:00:00".into());
             Clock {
                 core: Default::default(),
                 date_pos: Coord::ZERO,

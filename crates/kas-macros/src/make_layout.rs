@@ -729,10 +729,16 @@ impl Layout {
                     items.append_all(quote! {{ #item },});
                 }
                 let iter = quote! { { let arr = [#items]; arr.into_iter() } };
-                quote! { layout::Visitor::list(#iter, #dir, &mut self.#core.#stor) }
+                quote! {{
+                    let dir = #dir;
+                    layout::Visitor::list(#iter, dir, &mut self.#core.#stor)
+                }}
             }
             Layout::Slice(stor, dir, expr) => {
-                quote! { layout::Visitor::slice(&mut #expr, #dir, &mut self.#core.#stor) }
+                quote! {{
+                    let dir = #dir;
+                    layout::Visitor::slice(&mut #expr, dir, &mut self.#core.#stor)
+                }}
             }
             Layout::Grid(stor, dim, cells) => {
                 let mut items = Toks::new();

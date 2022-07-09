@@ -99,6 +99,6 @@ fn main() -> kas::shell::Result<()> {
         }
     };
 
-    let theme = kas::theme::ShadedTheme::new().with_font_size(16.0);
+    let theme = kas::theme::SimpleTheme::new().with_font_size(16.0);
     kas::shell::Toolkit::new(theme)?.with(window)?.run()
 }

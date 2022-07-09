@@ -8,7 +8,7 @@
 use super::Pending;
 use crate::draw::DrawShared;
 use crate::event::EventState;
-use crate::geom::{Rect, Size, Vec2};
+use crate::geom::{Rect, Size};
 use crate::layout::{Align, AlignHints};
 use crate::text::TextApi;
 use crate::theme::{Feature, SizeMgr, TextClass, ThemeSize};
@@ -90,8 +90,6 @@ impl<'a> ConfigMgr<'a> {
     }
 
     /// Update a text object, setting font properties and wrap size
-    ///
-    /// Returns required size.
     #[inline]
     pub fn text_set_size(
         &self,
@@ -99,7 +97,7 @@ impl<'a> ConfigMgr<'a> {
         class: TextClass,
         size: Size,
         align: (Align, Align),
-    ) -> Vec2 {
+    ) {
         self.sh.text_set_size(text, class, size, align)
     }
 
