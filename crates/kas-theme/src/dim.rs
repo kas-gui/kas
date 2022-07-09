@@ -303,10 +303,6 @@ impl<D: 'static> ThemeSize for Window<D> {
             env.bounds.0 = size.cast();
         }
 
-        // Force this for vertical size calculation. (Note: fixing vertical alignment is fast.)
-        env.align.1 = Align::TL;
-        env.bounds.1 = f32::INFINITY;
-
         text.set_env(env);
 
         if axis.is_horizontal() {
