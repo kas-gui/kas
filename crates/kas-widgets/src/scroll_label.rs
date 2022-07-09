@@ -40,7 +40,7 @@ impl_scope! {
             self.core.rect = rect;
             let align = align.unwrap_or(Align::Default, Align::Default);
             mgr.text_set_size(&mut self.text, TextClass::LabelScroll, rect.size, align);
-            self.bounding_corner = self.text.bounding_box().into();
+            self.bounding_corner = self.text.bounding_box().unwrap().1.into();
             self.set_view_offset_from_edit_pos();
         }
 
