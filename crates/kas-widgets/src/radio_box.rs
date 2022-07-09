@@ -50,12 +50,7 @@ impl_scope! {
                     Response::Used
                 }
                 event => event.on_activate(mgr, self.id(), |mgr| {
-                    if !self.state {
-                        trace!("RadioBox: set {}", self.id());
-                        self.state = true;
-                        self.last_change = Some(Instant::now());
-                        mgr.redraw(self.id());
-                        self.group.update(mgr, Some(self.id()));
+                    if self.select(mgr) {
                         if let Some(f) = self.on_select.as_ref() {
                             f(mgr);
                         }
@@ -140,6 +135,25 @@ impl_scope! {
             self.state = state;
             self.last_change = None;
             self
+        }
+
+        /// Select this radio box from the group
+        ///
+        /// This radio box will be set true while all others from the group will
+        /// be set false. Returns true if newly selected, false if already selected.
+        ///
+        /// This does not call the event handler set by [`Self::on_select`] or [`Self::new_on`].
+        pub fn select(&mut self, mgr: &mut EventMgr) -> bool {
+            if !self.state {
+                trace!("RadioBox::select {}", self.id());
+                self.state = true;
+                self.last_change = Some(Instant::now());
+                mgr.redraw(self.id());
+                self.group.update(mgr, Some(self.id()));
+                true
+            } else {
+                false
+            }
         }
 
         /// Unset all radio boxes in the group
@@ -279,6 +293,17 @@ impl_scope! {
         pub fn with_state(mut self, state: bool) -> Self {
             self.inner = self.inner.with_state(state);
             self
+        }
+
+        /// Select this radio box from the group
+        ///
+        /// This radio box will be set true while all others from the group will
+        /// be set false. Returns true if newly selected, false if already selected.
+        ///
+        /// This does not call the event handler set by [`Self::on_select`] or [`Self::new_on`].
+        #[inline]
+        pub fn select(&mut self, mgr: &mut EventMgr) -> bool {
+            self.inner.select(mgr)
         }
 
         /// Unset all radio boxes in the group
