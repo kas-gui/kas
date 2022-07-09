@@ -154,7 +154,7 @@ impl_scope! {
     #[autoimpl(HasBool using self.inner)]
     #[derive(Clone, Default)]
     #[widget{
-        layout = row: [self.inner, self.label];
+        layout = list(self.direction()): [self.inner, self.label];
     }]
     pub struct CheckButton {
         core: widget_core!(),
@@ -246,6 +246,13 @@ impl_scope! {
         #[inline]
         pub fn set_editable(&mut self, editable: bool) {
             self.inner.set_editable(editable);
+        }
+
+        fn direction(&self) -> Direction {
+            match self.label.text().text_is_rtl() {
+                Ok(false) | Err(_) => Direction::Right,
+                Ok(true) => Direction::Left,
+            }
         }
     }
 }

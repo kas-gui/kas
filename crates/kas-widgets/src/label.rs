@@ -84,6 +84,12 @@ impl_scope! {
             self
         }
 
+        /// Get read access to the text object
+        #[inline]
+        pub fn text(&self) -> &Text<T> {
+            &self.label
+        }
+
         /// Set text in an existing `Label`
         ///
         /// Note: this must not be called before fonts have been initialised
@@ -257,6 +263,12 @@ impl_scope! {
         pub fn with_wrap(mut self, wrap: bool) -> Self {
             self.0.set_wrap(wrap);
             self
+        }
+
+        /// Get read access to the text object
+        #[inline]
+        pub fn text(&self) -> &Text<AccelString> {
+            self.0.text()
         }
 
         /// Set text in an existing `Label`
