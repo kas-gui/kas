@@ -201,6 +201,12 @@ impl_scope! {
     }
 
     impl Layout for Self {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
+            <Self as kas::layout::AutoLayout>::set_rect(self, mgr, rect, align);
+            let dir = self.direction();
+            crate::check_box::shrink_to_text(&mut self.core.rect, dir, &self.label);
+        }
+
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             self.rect().contains(coord).then(|| self.inner.id())
         }
