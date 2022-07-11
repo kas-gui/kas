@@ -149,8 +149,12 @@ impl ListData for MySharedData {
 #[derive(Clone, Debug)]
 struct ListEntryGuard;
 impl EditGuard for ListEntryGuard {
-    fn edit(entry: &mut EditField<Self>, mgr: &mut EventMgr) {
-        mgr.push_msg(EntryMsg::Update(entry.get_string()));
+    fn activate(_edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+        mgr.push_msg(EntryMsg::Select);
+    }
+
+    fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+        mgr.push_msg(EntryMsg::Update(edit.get_string()));
     }
 }
 
@@ -160,7 +164,7 @@ impl_scope! {
     #[widget{
         layout = column: [
             row: [self.label, self.radio],
-            self.entry,
+            self.edit,
         ];
     }]
     struct ListEntry {
@@ -170,7 +174,7 @@ impl_scope! {
         #[widget]
         radio: RadioButton,
         #[widget]
-        entry: EditBox<ListEntryGuard>,
+        edit: EditBox<ListEntryGuard>,
     }
 }
 
@@ -188,14 +192,14 @@ impl Driver<(usize, bool, String)> for MyDriver {
             label: Label::new(String::default()),
             radio: RadioButton::new("display this entry", self.radio_group.clone())
                 .on_select(|mgr| mgr.push_msg(EntryMsg::Select)),
-            entry: EditBox::new(String::default()).with_guard(ListEntryGuard),
+            edit: EditBox::new(String::default()).with_guard(ListEntryGuard),
         }
     }
     fn set(&self, widget: &mut Self::Widget, data: (usize, bool, String)) -> TkAction {
         let label = format!("Entry number {}", data.0 + 1);
         widget.label.set_string(label)
             | widget.radio.set_bool(data.1)
-            | widget.entry.set_string(data.2)
+            | widget.edit.set_string(data.2)
     }
 }
 

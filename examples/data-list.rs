@@ -47,8 +47,12 @@ enum EntryMsg {
 #[derive(Clone, Debug)]
 struct ListEntryGuard(usize);
 impl EditGuard for ListEntryGuard {
-    fn edit(entry: &mut EditField<Self>, mgr: &mut EventMgr) {
-        mgr.push_msg(EntryMsg::Update(entry.guard.0, entry.get_string()));
+    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+        mgr.push_msg(EntryMsg::Select(edit.guard.0));
+    }
+
+    fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+        mgr.push_msg(EntryMsg::Update(edit.guard.0, edit.get_string()));
     }
 }
 
@@ -58,7 +62,7 @@ impl_scope! {
     #[widget{
         layout = column: [
             row: [self.label, self.radio],
-            self.entry,
+            self.edit,
         ];
     }]
     struct ListEntry {
@@ -68,7 +72,7 @@ impl_scope! {
         #[widget]
         radio: RadioButton,
         #[widget]
-        entry: EditBox<ListEntryGuard>,
+        edit: EditBox<ListEntryGuard>,
     }
 }
 
@@ -82,7 +86,7 @@ impl ListEntry {
             radio: RadioButton::new("display this entry", RADIO.with(|g| g.clone()))
                 .with_state(active)
                 .on_select(move |mgr| mgr.push_msg(EntryMsg::Select(n))),
-            entry: EditBox::new(format!("Entry #{}", n + 1)).with_guard(ListEntryGuard(n)),
+            edit: EditBox::new(format!("Entry #{}", n + 1)).with_guard(ListEntryGuard(n)),
         }
     }
 }
@@ -181,7 +185,9 @@ fn main() -> kas::shell::Result<()> {
                     match msg {
                         EntryMsg::Select(n) => {
                             self.active = n;
-                            let text = self.list[n].entry.get_string();
+                            let entry = &mut self.list[n];
+                            entry.radio.select(mgr);
+                            let text = entry.edit.get_string();
                             *mgr |= self.display.set_string(text);
                         }
                         EntryMsg::Update(n, text) => {

@@ -368,7 +368,7 @@ impl_scope! {
             self.core.rect = rect;
             let align = align.unwrap_or(Align::Default, valign);
             mgr.text_set_size(&mut self.text, class, rect.size, align);
-            self.bounding_corner = self.text.bounding_box().into();
+            self.bounding_corner = self.text.bounding_box().unwrap().1.into();
             self.set_view_offset_from_edit_pos();
         }
 
@@ -545,7 +545,7 @@ impl_scope! {
             self.view_offset = Offset::ZERO;
             if kas::text::fonts::fonts().num_faces() > 0 {
                 self.text.prepare();
-                self.bounding_corner = self.text.bounding_box().into();
+                self.bounding_corner = self.text.bounding_box().unwrap().1.into();
             }
             G::update(self);
             TkAction::REDRAW
@@ -729,7 +729,7 @@ impl<G: EditGuard> EditField<G> {
         }
         self.edit_x_coord = None;
         self.text.prepare();
-        self.bounding_corner = self.text.bounding_box().into();
+        self.bounding_corner = self.text.bounding_box().unwrap().1.into();
         self.set_view_offset_from_edit_pos();
         mgr.redraw(self.id());
         true
@@ -1022,7 +1022,7 @@ impl<G: EditGuard> EditField<G> {
         let mut set_offset = self.selection.edit_pos() != pos;
         if !self.text.required_action().is_ready() {
             self.text.prepare();
-            self.bounding_corner = self.text.bounding_box().into();
+            self.bounding_corner = self.text.bounding_box().unwrap().1.into();
             set_offset = true;
             mgr.redraw(self.id());
         }

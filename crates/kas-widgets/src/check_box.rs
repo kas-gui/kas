@@ -146,6 +146,28 @@ impl_scope! {
     }
 }
 
+// Shrink left/right edge to only make portion with text clickable.
+// This is a little hacky since neither Label widgets nor row
+// layouts shrink self due to unused space.
+// We don't shrink vertically since normally that isn't an issue.
+pub(crate) fn shrink_to_text(rect: &mut Rect, direction: Direction, label: &AccelLabel) {
+    if let Ok(bb) = label.text().bounding_box() {
+        match direction {
+            Direction::Right => {
+                let offset = label.rect().pos.0 - rect.pos.0;
+                let text_right: i32 = ((bb.1).0).cast_ceil();
+                rect.size.0 = offset + text_right;
+            }
+            Direction::Left => {
+                let text_left: i32 = ((bb.0).0).cast_floor();
+                rect.pos.0 += text_left;
+                rect.size.0 -= text_left
+            }
+            _ => (),
+        }
+    }
+}
+
 impl_scope! {
     /// A check button with label
     ///
@@ -165,6 +187,12 @@ impl_scope! {
     }
 
     impl Layout for Self {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
+            <Self as kas::layout::AutoLayout>::set_rect(self, mgr, rect, align);
+            let dir = self.direction();
+            shrink_to_text(&mut self.core.rect, dir, &self.label);
+        }
+
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
             self.rect().contains(coord).then(|| self.inner.id())
         }
