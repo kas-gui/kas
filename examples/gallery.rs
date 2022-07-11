@@ -411,9 +411,9 @@ fn canvas() -> Box<dyn SetDisabled> {
     Box::new(impl_singleton! {
         #[widget{
             layout = column: [
-                "Animated canvas demo",
-                "This example uses kas_resvg::Canvas, which is CPU-rendered.",
-                "Embedded GPU-rendered content is also possible (see separate Mandlebrot example).",
+                Label::new("Animated canvas demo
+This example uses kas_resvg::Canvas, which is CPU-rendered.
+Embedded GPU-rendered content is also possible (see separate Mandlebrot example)."),
                 self.canvas,
             ];
         }]
