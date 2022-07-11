@@ -8,6 +8,8 @@
 //! Intended usage is to import the module name rather than its contents, thus
 //! allowing referal to e.g. `driver::DefaultView`.
 
+mod config;
+
 use crate::{
     CheckBox, EditBox, EditField, EditGuard, Label, NavFrame, ProgressBar, RadioGroup, SliderValue,
     SpinnerValue,
