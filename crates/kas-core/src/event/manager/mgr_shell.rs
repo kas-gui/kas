@@ -29,6 +29,7 @@ impl EventState {
     pub fn new(config: SharedRc<Config>, scale_factor: f32) -> Self {
         EventState {
             config: WindowConfig::new(config, scale_factor),
+            scale_factor,
             disabled: vec![],
             window_has_focus: false,
             modifiers: ModifiersState::empty(),
@@ -57,7 +58,8 @@ impl EventState {
 
     /// Update scale factor
     pub fn set_scale_factor(&mut self, scale_factor: f32) {
-        self.config.set_scale_factor(scale_factor);
+        self.config.update(scale_factor);
+        self.scale_factor = scale_factor;
     }
 
     /// Configure event manager for a widget tree.
@@ -252,6 +254,10 @@ impl<'a> EventMgr<'a> {
 
     /// Update widgets with an [`UpdateId`]
     pub fn update_widgets(&mut self, widget: &mut dyn Widget, id: UpdateId, payload: u64) {
+        if id == self.state.config.config.id() {
+            self.state.config.update(self.scale_factor);
+        }
+
         let start = Instant::now();
         let count = self.send_all(widget, Event::Update { id, payload });
         debug!(

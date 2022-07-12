@@ -93,10 +93,18 @@ impl Default for Config {
     }
 }
 
+impl Config {
+    /// Has the config ever been updated?
+    #[inline]
+    pub fn is_dirty(&self) -> bool {
+        false // current code never updates config
+    }
+}
+
 /// Wrapper around [`Config`] to handle window-specific scaling
 #[derive(Clone, Debug)]
 pub struct WindowConfig {
-    config: SharedRc<Config>,
+    pub(crate) config: SharedRc<Config>,
     scroll_dist: f32,
     scroll_flick_sub: f32,
     pan_dist_thresh: f32,
@@ -113,21 +121,23 @@ impl WindowConfig {
             scroll_flick_sub: f32::NAN,
             pan_dist_thresh: f32::NAN,
         };
-        w.set_scale_factor(scale_factor);
+        w.update(scale_factor);
         w
     }
 
-    /// Set scale factor
+    /// Update
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn set_scale_factor(&mut self, scale_factor: f32) {
+    pub fn update(&mut self, scale_factor: f32) {
         let base = self.config.borrow();
         const LINE_HEIGHT: f32 = 19.0; // TODO: maybe we shouldn't assume this?
         self.scroll_dist = base.scroll_lines * LINE_HEIGHT;
         self.scroll_flick_sub = base.scroll_flick_sub * scale_factor;
         self.pan_dist_thresh = base.pan_dist_thresh * scale_factor;
     }
+}
 
+impl WindowConfig {
     /// Delay before opening/closing menus on mouse hover
     #[inline]
     pub fn menu_delay(&self) -> Duration {
@@ -222,15 +232,6 @@ impl WindowConfig {
     pub fn shortcuts<F: FnOnce(&Shortcuts) -> T, T>(&self, f: F) -> T {
         let base = self.config.borrow();
         f(&base.shortcuts)
-    }
-}
-
-/// Other functions
-impl Config {
-    /// Has the config ever been updated?
-    #[inline]
-    pub fn is_dirty(&self) -> bool {
-        false // current code never updates config
     }
 }
 
