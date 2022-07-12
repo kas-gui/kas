@@ -31,7 +31,7 @@ pub trait SingleData: Debug {
     /// update.
     fn version(&self) -> u64;
 
-    // TODO(gat): add get<'a>(&self) -> Self::ItemRef<'a> and get_mut
+    // TODO(gat): add borrow<'a>(&self) -> Self::ItemRef<'a>, try_borrow?
 
     /// Get data (clone)
     fn get_cloned(&self) -> Self::Item;
@@ -62,6 +62,8 @@ pub trait SingleData: Debug {
 /// Trait for writable single data items
 #[autoimpl(for<T: trait + ?Sized> &mut T, Box<T>)]
 pub trait SingleDataMut: SingleData {
+    // TODO(gat): add borrow_mut<'a>(&self) -> Self::ItemMutRef<'a>, try_borrow_mut?
+
     /// Set data, given a mutable (unique) reference
     ///
     /// It can be assumed that no synchronisation is required when a mutable

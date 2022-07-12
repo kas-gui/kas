@@ -12,10 +12,8 @@ use linear_map::LinearMap;
 use log::{trace, warn};
 use smallvec::SmallVec;
 use std::any::{type_name, Any};
-use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::ops::{Deref, DerefMut};
-use std::rc::Rc;
 use std::time::Instant;
 use std::u16;
 

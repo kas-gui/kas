@@ -11,10 +11,9 @@ pub use shortcuts::Shortcuts;
 use super::ModifiersState;
 use crate::cast::{Cast, CastFloat};
 use crate::geom::Offset;
+use crate::model::SharedRc;
 #[cfg(feature = "config")]
 use serde::{Deserialize, Serialize};
-use std::cell::RefCell;
-use std::rc::Rc;
 use std::time::Duration;
 
 /// Event handling configuration
@@ -97,7 +96,7 @@ impl Default for Config {
 /// Wrapper around [`Config`] to handle window-specific scaling
 #[derive(Clone, Debug)]
 pub struct WindowConfig {
-    config: Rc<RefCell<Config>>,
+    config: SharedRc<Config>,
     scroll_dist: f32,
     scroll_flick_sub: f32,
     pan_dist_thresh: f32,
@@ -107,7 +106,7 @@ impl WindowConfig {
     /// Construct
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn new(config: Rc<RefCell<Config>>, scale_factor: f32) -> Self {
+    pub fn new(config: SharedRc<Config>, scale_factor: f32) -> Self {
         let mut w = WindowConfig {
             config,
             scroll_dist: f32::NAN,

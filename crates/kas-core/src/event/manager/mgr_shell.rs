@@ -12,6 +12,7 @@ use std::time::{Duration, Instant};
 use super::*;
 use crate::cast::traits::*;
 use crate::geom::{Coord, DVec2};
+use crate::model::SharedRc;
 use crate::{ShellWindow, TkAction, Widget, WidgetId};
 
 // TODO: this should be configurable or derived from the system
@@ -25,7 +26,7 @@ const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 impl EventState {
     /// Construct an event manager per-window data struct
     #[inline]
-    pub fn new(config: Rc<RefCell<Config>>, scale_factor: f32) -> Self {
+    pub fn new(config: SharedRc<Config>, scale_factor: f32) -> Self {
         EventState {
             config: WindowConfig::new(config, scale_factor),
             disabled: vec![],

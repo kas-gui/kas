@@ -14,15 +14,30 @@ use crate::event::EventMgr;
 use crate::event::UpdateId;
 use crate::model::*;
 use crate::WidgetId;
-use std::cell::RefCell;
+use std::cell::{BorrowError, Ref, RefCell};
 use std::fmt::Debug;
+use std::ops::Deref;
 use std::rc::Rc;
 
 /// Wrapper for single-thread shared data
 ///
-/// This wrapper adds an [`UpdateId`].
+/// This is vaguely `Rc<RefCell<T>>`, but includes an [`UpdateId`] and a `u64`
+/// version counter.
+///
+/// The wrapped value may be read via [`Self::borrow`], [`Self::try_borrow`] and
+/// [`SingleData::get_cloned`].
+///
+/// The value may be set via [`SingleData::update`] and [`SingleDataMut::set`].
 #[derive(Clone, Debug, Default)]
 pub struct SharedRc<T: Debug>(Rc<(UpdateId, RefCell<(T, u64)>)>);
+
+pub struct SharedRcRef<'a, T>(Ref<'a, (T, u64)>);
+impl<'a, T> Deref for SharedRcRef<'a, T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        &self.0.deref().0
+    }
+}
 
 impl<T: Debug> SharedRc<T> {
     /// Construct with given data
@@ -37,6 +52,31 @@ impl<T: Debug> SharedRc<T> {
     /// Data updates via this [`SharedRc`] are triggered using this [`UpdateId`].
     pub fn id(&self) -> UpdateId {
         (self.0).0
+    }
+
+    /// Immutably borrows the wrapped value, returning an error if the value is currently mutably
+    /// borrowed.
+    ///
+    /// The borrow lasts until the returned `Ref` exits scope. Multiple immutable borrows can be
+    /// taken out at the same time.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is currently mutably borrowed.
+    /// For a non-panicking variant, use [`Self::try_borrow`].
+    pub fn borrow(&self) -> SharedRcRef<T> {
+        SharedRcRef((self.0).1.borrow())
+    }
+
+    /// Immutably borrows the wrapped value, returning an error if the value is currently mutably
+    /// borrowed.
+    ///
+    /// The borrow lasts until the returned `Ref` exits scope. Multiple immutable borrows can be
+    /// taken out at the same time.
+    ///
+    /// This is the non-panicking variant of [`Self::borrow`].
+    pub fn try_borrow(&self) -> Result<SharedRcRef<T>, BorrowError> {
+        (self.0).1.try_borrow().map(SharedRcRef)
     }
 }
 
