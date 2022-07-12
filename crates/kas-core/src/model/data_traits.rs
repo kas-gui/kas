@@ -14,13 +14,18 @@ use crate::WidgetId;
 use std::cell::RefCell;
 use std::fmt::Debug;
 
+/// Bounds on the key type
+pub trait DataKey: Clone + Debug + PartialEq + Eq + 'static {}
+impl<Key: Clone + Debug + PartialEq + Eq + 'static> DataKey for Key {}
+
 /// Trait for shared data
 ///
 /// By design, all methods take only `&self`. See also [`SharedDataMut`].
-#[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
+#[autoimpl(for<T: trait + ?Sized>
+    &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait SharedData: Debug {
     /// Key type
-    type Key: Clone + Debug + PartialEq + Eq + 'static;
+    type Key: DataKey;
 
     /// Item type
     type Item: Clone + Debug + 'static;
@@ -79,6 +84,13 @@ pub trait SharedDataMut: SharedData {
     fn set(&mut self, key: &Self::Key, item: Self::Item);
 }
 
+/// Trait bound for viewable single data
+///
+/// This is automatically implemented for every type implementing `SharedData<()>`.
+// TODO(trait aliases): make this an actual trait alias
+pub trait SingleData: SharedData<Key = ()> {}
+impl<T: SharedData<Key = ()>> SingleData for T {}
+
 /// Trait for viewable data lists
 #[allow(clippy::len_without_is_empty)]
 #[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
@@ -129,9 +141,9 @@ pub trait ListData: SharedData {
 #[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait MatrixData: SharedData {
     /// Column key type
-    type ColKey: Clone + Debug + PartialEq + Eq + 'static;
+    type ColKey: DataKey;
     /// Row key type
-    type RowKey: Clone + Debug + PartialEq + Eq + 'static;
+    type RowKey: DataKey;
 
     /// No data is available
     fn is_empty(&self) -> bool;

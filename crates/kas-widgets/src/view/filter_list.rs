@@ -6,7 +6,7 @@
 //! Filter-list view widget
 
 use kas::model::filter::Filter;
-use kas::model::{ListData, SharedData};
+use kas::model::{ListData, SharedData, SingleData};
 use kas::prelude::*;
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -25,7 +25,7 @@ use std::fmt::Debug;
 /// Warning: this implementation is `O(n)` where `n = data.len()` and not well
 /// optimised, thus is expected to be slow on large data lists.
 #[derive(Clone, Debug)]
-pub struct FilteredList<T: ListData, F: Filter<T::Item> + SharedData> {
+pub struct FilteredList<T: ListData, F: Filter<T::Item> + SingleData> {
     /// Direct access to unfiltered data
     ///
     /// If adjusting this, one should call [`FilteredList::refresh`] after.
@@ -37,7 +37,7 @@ pub struct FilteredList<T: ListData, F: Filter<T::Item> + SharedData> {
     view: RefCell<(u64, Vec<T::Key>)>,
 }
 
-impl<T: ListData, F: Filter<T::Item> + SharedData> FilteredList<T, F> {
+impl<T: ListData, F: Filter<T::Item> + SingleData> FilteredList<T, F> {
     /// Construct from `data` and a `filter`
     #[inline]
     pub fn new(data: T, filter: F) -> Self {
@@ -64,7 +64,7 @@ impl<T: ListData, F: Filter<T::Item> + SharedData> FilteredList<T, F> {
     }
 }
 
-impl<T: ListData, F: Filter<T::Item> + SharedData> SharedData for FilteredList<T, F> {
+impl<T: ListData, F: Filter<T::Item> + SingleData> SharedData for FilteredList<T, F> {
     type Key = T::Key;
     type Item = T::Item;
 
@@ -104,7 +104,7 @@ impl<T: ListData, F: Filter<T::Item> + SharedData> SharedData for FilteredList<T
     }
 }
 
-impl<T: ListData, F: Filter<T::Item> + SharedData> ListData for FilteredList<T, F> {
+impl<T: ListData, F: Filter<T::Item> + SingleData> ListData for FilteredList<T, F> {
     fn is_empty(&self) -> bool {
         self.view.borrow().1.is_empty()
     }

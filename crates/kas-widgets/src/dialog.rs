@@ -10,7 +10,7 @@
 
 use crate::{EditBox, Filler, Label, TextButton};
 use kas::event::{Command, VirtualKeyCode};
-use kas::model::{SharedData, SharedRc};
+use kas::model::{SharedRc, SingleData};
 use kas::prelude::*;
 use kas::text::format::FormattableText;
 use kas::{Icon, Widget};
@@ -144,7 +144,7 @@ impl_scope! {
         };
     }]
     /// An editor over a shared `String`
-    pub struct TextEdit<T: SharedData<Key = (), Item = String> = SharedRc<String>> {
+    pub struct TextEdit<T: SingleData<Item = String> = SharedRc<String>> {
         core: widget_core!(),
         title: Cow<'static, str>,
         data: T,
