@@ -30,25 +30,30 @@ impl ContainsString {
         ContainsString(Rc::new((id, data)))
     }
 }
-impl SingleData for ContainsString {
+impl SharedData for ContainsString {
+    type Key = ();
     type Item = String;
 
     fn version(&self) -> u64 {
         (self.0).1.borrow().1
     }
 
-    fn get_cloned(&self) -> Self::Item {
-        (self.0).1.borrow().0.to_owned()
+    fn contains_key(&self, _: &Self::Key) -> bool {
+        true
     }
-    fn update(&self, mgr: &mut EventMgr, value: Self::Item) {
+
+    fn get_cloned(&self, _: &Self::Key) -> Option<Self::Item> {
+        Some((self.0).1.borrow().0.to_owned())
+    }
+    fn update(&self, mgr: &mut EventMgr, _: &Self::Key, value: Self::Item) {
         let mut cell = (self.0).1.borrow_mut();
         cell.0 = value;
         cell.1 += 1;
         mgr.update_all((self.0).0, 0);
     }
 }
-impl SingleDataMut for ContainsString {
-    fn set(&mut self, value: Self::Item) {
+impl SharedDataMut for ContainsString {
+    fn set(&mut self, _: &Self::Key, value: Self::Item) {
         let mut cell = (self.0).1.borrow_mut();
         cell.0 = value;
         cell.1 += 1;
@@ -86,17 +91,22 @@ impl ContainsCaseInsensitive {
         ContainsCaseInsensitive(Rc::new((id, data)))
     }
 }
-impl SingleData for ContainsCaseInsensitive {
+impl SharedData for ContainsCaseInsensitive {
+    type Key = ();
     type Item = String;
 
     fn version(&self) -> u64 {
         (self.0).1.borrow().2
     }
 
-    fn get_cloned(&self) -> Self::Item {
-        (self.0).1.borrow().0.clone()
+    fn contains_key(&self, _: &Self::Key) -> bool {
+        true
     }
-    fn update(&self, mgr: &mut EventMgr, value: Self::Item) {
+
+    fn get_cloned(&self, _: &Self::Key) -> Option<Self::Item> {
+        Some((self.0).1.borrow().0.clone())
+    }
+    fn update(&self, mgr: &mut EventMgr, _: &Self::Key, value: Self::Item) {
         let mut cell = (self.0).1.borrow_mut();
         cell.0 = value;
         cell.1 = cell.0.to_uppercase();
@@ -104,8 +114,8 @@ impl SingleData for ContainsCaseInsensitive {
         mgr.update_all((self.0).0, 0);
     }
 }
-impl SingleDataMut for ContainsCaseInsensitive {
-    fn set(&mut self, value: Self::Item) {
+impl SharedDataMut for ContainsCaseInsensitive {
+    fn set(&mut self, _: &Self::Key, value: Self::Item) {
         let mut cell = (self.0).1.borrow_mut();
         cell.0 = value;
         cell.1 = cell.0.to_uppercase();

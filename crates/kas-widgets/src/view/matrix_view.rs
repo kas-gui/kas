@@ -13,6 +13,8 @@ use kas::event::components::ScrollComponent;
 use kas::event::{Command, CursorIcon, Scroll};
 use kas::layout::solve_size_rules;
 use kas::model::MatrixData;
+#[allow(unused)]
+use kas::model::SharedData;
 use kas::prelude::*;
 use linear_map::set::LinearSet;
 use log::{debug, trace};
@@ -48,8 +50,8 @@ impl_scope! {
     ///
     /// # Messages
     ///
-    /// When a child pushes a message, the [`MatrixData::handle_message`] method is
-    /// called. After calling [`MatrixData::handle_message`], this widget attempts
+    /// When a child pushes a message, the [`SharedData::handle_message`] method is
+    /// called. After calling [`SharedData::handle_message`], this widget attempts
     /// to read and handle [`SelectMsg`].
     ///
     /// When selection is enabled and an item is selected or deselected, this
@@ -142,7 +144,7 @@ impl_scope! {
         /// Set shared data
         ///
         /// This method updates the shared data, if supported (see
-        /// [`MatrixData::update`]). Other widgets sharing this data are notified
+        /// [`SharedData::update`]). Other widgets sharing this data are notified
         /// of the update, if data is changed.
         pub fn set_value(&self, mgr: &mut EventMgr, key: &T::Key, data: T::Item) {
             self.data.update(mgr, key, data);
@@ -221,7 +223,7 @@ impl_scope! {
                 SelectionMode::Single => self.selection.clear(),
                 _ => (),
             }
-            if !self.data.contains(&key) {
+            if !self.data.contains_key(&key) {
                 return Err(SelectionError::Key);
             }
             match self.selection.insert(key) {
@@ -244,7 +246,7 @@ impl_scope! {
         /// Manually trigger an update to handle changed data
         pub fn update_view(&mut self, mgr: &mut EventMgr) {
             let data = &self.data;
-            self.selection.retain(|key| data.contains(key));
+            self.selection.retain(|key| data.contains_key(key));
             for w in &mut self.widgets {
                 w.key = None;
             }

@@ -13,6 +13,8 @@ use kas::event::components::ScrollComponent;
 use kas::event::{Command, CursorIcon, Scroll};
 use kas::layout::solve_size_rules;
 use kas::model::ListData;
+#[allow(unused)]
+use kas::model::SharedData;
 use kas::prelude::*;
 use linear_map::set::LinearSet;
 use log::{debug, trace};
@@ -42,8 +44,8 @@ impl_scope! {
     ///
     /// # Messages
     ///
-    /// When a child pushes a message, the [`ListData::handle_message`] method is
-    /// called. After calling [`ListData::handle_message`], this widget attempts to
+    /// When a child pushes a message, the [`SharedData::handle_message`] method is
+    /// called. After calling [`SharedData::handle_message`], this widget attempts to
     /// read and handle [`SelectMsg`].
     ///
     /// When selection is enabled and an item is selected or deselected, this
@@ -160,7 +162,7 @@ impl_scope! {
         /// Set shared data
         ///
         /// This method updates the shared data, if supported (see
-        /// [`ListData::update`]). Other widgets sharing this data are notified
+        /// [`SharedData::update`]). Other widgets sharing this data are notified
         /// of the update, if data is changed.
         pub fn set_value(&self, mgr: &mut EventMgr, key: &T::Key, data: T::Item) {
             self.data.update(mgr, key, data);

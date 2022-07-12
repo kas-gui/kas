@@ -1,21 +1,32 @@
 //! Do you know your times tables?
 
-use kas::model::MatrixData;
+use kas::model::{MatrixData, SharedData};
 use kas::prelude::*;
 use kas::widgets::view::{driver::DefaultNav, MatrixView, SelectionMode};
 use kas::widgets::{EditBox, ScrollBars};
 
 #[derive(Debug)]
 struct TableData(u64, usize);
-impl MatrixData for TableData {
-    type ColKey = usize;
-    type RowKey = usize;
+impl SharedData for TableData {
     type Key = (usize, usize);
     type Item = usize;
 
     fn version(&self) -> u64 {
         self.0
     }
+
+    fn contains_key(&self, key: &Self::Key) -> bool {
+        key.0 < self.1 && key.1 < self.1
+    }
+    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
+        self.contains_key(key).then(|| (key.0 + 1) * (key.1 + 1))
+    }
+
+    fn update(&self, _: &mut EventMgr, _: &Self::Key, _: Self::Item) {}
+}
+impl MatrixData for TableData {
+    type ColKey = usize;
+    type RowKey = usize;
 
     fn is_empty(&self) -> bool {
         self.1 == 0
@@ -33,15 +44,6 @@ impl MatrixData for TableData {
         let row = iter.next();
         col.zip(row)
     }
-
-    fn contains(&self, key: &Self::Key) -> bool {
-        key.0 < self.1 && key.1 < self.1
-    }
-    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
-        self.contains(key).then(|| (key.0 + 1) * (key.1 + 1))
-    }
-
-    fn update(&self, _: &mut EventMgr, _: &Self::Key, _: Self::Item) {}
 
     fn col_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::ColKey> {
         (start..(start + limit)).collect()

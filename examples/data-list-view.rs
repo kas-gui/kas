@@ -85,22 +85,12 @@ impl MySharedData {
         (new_text, self.id)
     }
 }
-impl ListData for MySharedData {
+impl SharedData for MySharedData {
     type Key = usize;
     type Item = (usize, bool, String);
 
     fn version(&self) -> u64 {
         self.data.borrow().ver
-    }
-
-    fn len(&self) -> usize {
-        self.data.borrow().len
-    }
-    fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
-        parent.make_child(*key)
-    }
-    fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
-        child.next_key_after(parent)
     }
 
     fn contains_key(&self, key: &Self::Key) -> bool {
@@ -132,6 +122,17 @@ impl ListData for MySharedData {
             mgr.push_msg(Control::Update(data.get(data.active)));
             mgr.update_all(self.id, 0);
         }
+    }
+}
+impl ListData for MySharedData {
+    fn len(&self) -> usize {
+        self.data.borrow().len
+    }
+    fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
+        parent.make_child(*key)
+    }
+    fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
+        child.next_key_after(parent)
     }
 
     fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {

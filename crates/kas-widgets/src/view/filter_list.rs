@@ -6,7 +6,7 @@
 //! Filter-list view widget
 
 use kas::model::filter::Filter;
-use kas::model::{ListData, SingleData};
+use kas::model::{ListData, SharedData};
 use kas::prelude::*;
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -25,7 +25,7 @@ use std::fmt::Debug;
 /// Warning: this implementation is `O(n)` where `n = data.len()` and not well
 /// optimised, thus is expected to be slow on large data lists.
 #[derive(Clone, Debug)]
-pub struct FilteredList<T: ListData, F: Filter<T::Item> + SingleData> {
+pub struct FilteredList<T: ListData, F: Filter<T::Item> + SharedData> {
     /// Direct access to unfiltered data
     ///
     /// If adjusting this, one should call [`FilteredList::refresh`] after.
@@ -37,7 +37,7 @@ pub struct FilteredList<T: ListData, F: Filter<T::Item> + SingleData> {
     view: RefCell<(u64, Vec<T::Key>)>,
 }
 
-impl<T: ListData, F: Filter<T::Item> + SingleData> FilteredList<T, F> {
+impl<T: ListData, F: Filter<T::Item> + SharedData> FilteredList<T, F> {
     /// Construct from `data` and a `filter`
     #[inline]
     pub fn new(data: T, filter: F) -> Self {
@@ -64,7 +64,7 @@ impl<T: ListData, F: Filter<T::Item> + SingleData> FilteredList<T, F> {
     }
 }
 
-impl<T: ListData, F: Filter<T::Item> + SingleData> ListData for FilteredList<T, F> {
+impl<T: ListData, F: Filter<T::Item> + SharedData> SharedData for FilteredList<T, F> {
     type Key = T::Key;
     type Item = T::Item;
 
@@ -74,16 +74,6 @@ impl<T: ListData, F: Filter<T::Item> + SingleData> ListData for FilteredList<T, 
             self.refresh(ver);
         }
         ver
-    }
-
-    fn len(&self) -> usize {
-        self.view.borrow().1.len()
-    }
-    fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
-        self.data.make_id(parent, key)
-    }
-    fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
-        self.data.reconstruct_key(parent, child)
     }
 
     fn contains_key(&self, key: &Self::Key) -> bool {
@@ -111,6 +101,21 @@ impl<T: ListData, F: Filter<T::Item> + SingleData> ListData for FilteredList<T, 
         }
 
         self.data.update(mgr, key, value);
+    }
+}
+
+impl<T: ListData, F: Filter<T::Item> + SharedData> ListData for FilteredList<T, F> {
+    fn is_empty(&self) -> bool {
+        self.view.borrow().1.is_empty()
+    }
+    fn len(&self) -> usize {
+        self.view.borrow().1.len()
+    }
+    fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
+        self.data.make_id(parent, key)
+    }
+    fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
+        self.data.reconstruct_key(parent, child)
     }
 
     fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key> {

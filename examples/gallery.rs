@@ -270,7 +270,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 
 fn filter_list() -> Box<dyn SetDisabled> {
     use kas::dir::Down;
-    use kas::model::{filter::ContainsCaseInsensitive, SingleData};
+    use kas::model::{filter::ContainsCaseInsensitive, SharedData};
     use kas::widgets::view::{driver, SelectionMode, SelectionMsg};
 
     const MONTHS: &[&str] = &[
@@ -313,7 +313,7 @@ fn filter_list() -> Box<dyn SetDisabled> {
             #[widget] r1 = RadioButton::new_msg("single", r.clone(), SelectionMode::Single),
             #[widget] r2 = RadioButton::new_msg("multiple", r, SelectionMode::Multiple),
             #[widget] filter = EditBox::new("")
-                .on_edit(move |s, mgr| filter.update(mgr, s.to_string())),
+                .on_edit(move |s, mgr| filter.update(mgr, &(), s.to_string())),
             #[widget] list: ScrollBars<ListView> =
                 ScrollBars::new(ListView::new(filtered))
         }

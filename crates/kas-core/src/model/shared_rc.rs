@@ -24,9 +24,9 @@ use std::rc::Rc;
 /// version counter.
 ///
 /// The wrapped value may be read via [`Self::borrow`], [`Self::try_borrow`] and
-/// [`SingleData::get_cloned`].
+/// [`SharedData::get_cloned`].
 ///
-/// The value may be set via [`SingleData::update`] and [`SingleDataMut::set`].
+/// The value may be set via [`SharedData::update`] and [`SharedDataMut::set`].
 ///
 /// This wrapper type may be useful for simple shared data, but for more complex
 /// uses a custom wrapper type may be required.
@@ -82,26 +82,32 @@ impl<T: Debug> SharedRc<T> {
     }
 }
 
-impl<T: Clone + Debug + 'static> SingleData for SharedRc<T> {
+impl<T: Clone + Debug + 'static> SharedData for SharedRc<T> {
+    type Key = ();
     type Item = T;
 
     fn version(&self) -> u64 {
         (self.0).1.borrow().1
     }
 
-    fn get_cloned(&self) -> Self::Item {
-        (self.0).1.borrow().0.to_owned()
+    fn contains_key(&self, _: &()) -> bool {
+        true
     }
 
-    fn update(&self, mgr: &mut EventMgr, value: Self::Item) {
+    fn get_cloned(&self, _: &()) -> Option<Self::Item> {
+        Some((self.0).1.borrow().0.clone())
+    }
+
+    fn update(&self, mgr: &mut EventMgr, _: &(), item: Self::Item) {
         let mut cell = (self.0).1.borrow_mut();
-        cell.0 = value;
+        cell.0 = item;
         cell.1 += 1;
         mgr.update_all((self.0).0, 0);
     }
 }
-impl<T: Clone + Debug + 'static> SingleDataMut for SharedRc<T> {
-    fn set(&mut self, value: Self::Item) {
-        (self.0).1.borrow_mut().0 = value;
+
+impl<T: Clone + Debug + 'static> SharedDataMut for SharedRc<T> {
+    fn set(&mut self, _: &(), item: Self::Item) {
+        (self.0).1.borrow_mut().0 = item;
     }
 }
