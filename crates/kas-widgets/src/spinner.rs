@@ -13,7 +13,9 @@ use std::cmp::Ord;
 use std::ops::RangeInclusive;
 
 /// Requirements on type used by [`Spinner`]
-pub trait SpinnerType:
+///
+/// Implementations are provided for standard float and integer types.
+pub trait SpinnerValue:
     Copy + PartialOrd + std::fmt::Debug + std::str::FromStr + ToString + 'static
 {
     /// Clamp `self` to the range `l_bound..=u_bound`
@@ -28,7 +30,7 @@ pub trait SpinnerType:
 
 macro_rules! impl_float {
     ($t:ty) => {
-        impl SpinnerType for $t {
+        impl SpinnerValue for $t {
             fn clamp(self, l_bound: Self, u_bound: Self) -> Self {
                 <$t>::clamp(self, l_bound, u_bound)
             }
@@ -49,7 +51,7 @@ impl_float!(f64);
 
 macro_rules! impl_int {
     ($t:ty) => {
-        impl SpinnerType for $t {
+        impl SpinnerValue for $t {
             fn clamp(self, l_bound: Self, u_bound: Self) -> Self {
                 Ord::clamp(self, l_bound, u_bound)
             }
@@ -78,13 +80,13 @@ enum SpinBtn {
 }
 
 #[derive(Clone, Debug)]
-struct SpinnerGuard<T: SpinnerType> {
+struct SpinnerGuard<T: SpinnerValue> {
     value: T,
     start: T,
     end: T,
 }
 
-impl<T: SpinnerType> SpinnerGuard<T> {
+impl<T: SpinnerValue> SpinnerGuard<T> {
     fn new(range: RangeInclusive<T>) -> Self {
         SpinnerGuard {
             value: *range.start(),
@@ -103,7 +105,7 @@ impl<T: SpinnerType> SpinnerGuard<T> {
     }
 }
 
-impl<T: SpinnerType> EditGuard for SpinnerGuard<T> {
+impl<T: SpinnerValue> EditGuard for SpinnerGuard<T> {
     fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
         if edit.has_error() {
             *mgr |= edit.set_string(edit.guard.value.to_string());
@@ -166,7 +168,7 @@ impl_scope! {
             ],
         ];
     }]
-    pub struct Spinner<T: SpinnerType> {
+    pub struct Spinner<T: SpinnerValue> {
         core: widget_core!(),
         #[widget]
         edit: EditField<SpinnerGuard<T>>,

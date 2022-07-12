@@ -15,7 +15,9 @@ use kas::prelude::*;
 use kas::theme::Feature;
 
 /// Requirements on type used by [`Slider`]
-pub trait SliderType:
+///
+/// Implementations are provided for standard float and integer types.
+pub trait SliderValue:
     Copy + Debug + PartialOrd + Add<Output = Self> + Sub<Output = Self> + 'static
 {
     /// Divide self by another instance of this type, returning an `f64`
@@ -35,7 +37,7 @@ pub trait SliderType:
     fn mul_f64(self, scalar: f64) -> Self;
 }
 
-impl SliderType for f64 {
+impl SliderValue for f64 {
     fn div_as_f64(self, rhs: Self) -> f64 {
         self / rhs
     }
@@ -44,7 +46,7 @@ impl SliderType for f64 {
     }
 }
 
-impl SliderType for f32 {
+impl SliderValue for f32 {
     fn div_as_f64(self, rhs: Self) -> f64 {
         self as f64 / rhs as f64
     }
@@ -55,7 +57,7 @@ impl SliderType for f32 {
 
 macro_rules! impl_slider_ty {
     ($ty:ty) => {
-        impl SliderType for $ty {
+        impl SliderValue for $ty {
             fn div_as_f64(self, rhs: Self) -> f64 {
                 self as f64 / rhs as f64
             }
@@ -74,7 +76,7 @@ macro_rules! impl_slider_ty {
 impl_slider_ty!(i8, i16, i32, i64, i128, isize);
 impl_slider_ty!(u8, u16, u32, u64, u128, usize);
 
-impl SliderType for Duration {
+impl SliderValue for Duration {
     fn div_as_f64(self, rhs: Self) -> f64 {
         self.as_secs_f64() / rhs.as_secs_f64()
     }
@@ -96,7 +98,7 @@ impl_scope! {
         key_nav = true;
         hover_highlight = true;
     }]
-    pub struct Slider<T: SliderType, D: Directional> {
+    pub struct Slider<T: SliderValue, D: Directional> {
         core: widget_core!(),
         direction: D,
         // Terminology assumes vertical orientation:

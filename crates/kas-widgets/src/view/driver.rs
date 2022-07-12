@@ -9,8 +9,8 @@
 //! allowing referal to e.g. `driver::DefaultView`.
 
 use crate::{
-    CheckBox, EditBox, EditField, EditGuard, Label, NavFrame, ProgressBar, RadioGroup, SliderType,
-    SpinnerType,
+    CheckBox, EditBox, EditField, EditGuard, Label, NavFrame, ProgressBar, RadioGroup, SliderValue,
+    SpinnerValue,
 };
 use kas::prelude::*;
 use std::default::Default;
@@ -247,12 +247,12 @@ impl Driver<bool> for RadioButton {
 
 /// [`crate::Slider`] view widget constructor
 #[derive(Clone, Debug)]
-pub struct Slider<T: SliderType, D: Directional> {
+pub struct Slider<T: SliderValue, D: Directional> {
     range: RangeInclusive<T>,
     step: T,
     direction: D,
 }
-impl<T: SliderType, D: Directional + Default> Slider<T, D> {
+impl<T: SliderValue, D: Directional + Default> Slider<T, D> {
     /// Construct, with given `range` and `step` (see [`crate::Slider::new`])
     pub fn make(range: RangeInclusive<T>, step: T) -> Self {
         Slider {
@@ -262,7 +262,7 @@ impl<T: SliderType, D: Directional + Default> Slider<T, D> {
         }
     }
 }
-impl<T: SliderType, D: Directional> Slider<T, D> {
+impl<T: SliderValue, D: Directional> Slider<T, D> {
     /// Construct, with given `range`, `step` and `direction` (see [`Slider::new_with_direction`])
     pub fn new_with_direction(range: RangeInclusive<T>, step: T, direction: D) -> Self {
         Slider {
@@ -272,7 +272,7 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
         }
     }
 }
-impl<T: SliderType, D: Directional> Driver<T> for Slider<T, D> {
+impl<T: SliderValue, D: Directional> Driver<T> for Slider<T, D> {
     type Widget = crate::Slider<T, D>;
     fn make(&self) -> Self::Widget {
         crate::Slider::new_with_direction(self.range.clone(), self.step, self.direction)
@@ -284,17 +284,17 @@ impl<T: SliderType, D: Directional> Driver<T> for Slider<T, D> {
 
 /// [`crate::Spinner`] view widget constructor
 #[derive(Clone, Debug)]
-pub struct Spinner<T: SpinnerType> {
+pub struct Spinner<T: SpinnerValue> {
     range: RangeInclusive<T>,
     step: T,
 }
-impl<T: SpinnerType + Default> Spinner<T> {
+impl<T: SpinnerValue + Default> Spinner<T> {
     /// Construct, with given `range` and `step` (see [`crate::Spinner::new`])
     pub fn make(range: RangeInclusive<T>, step: T) -> Self {
         Spinner { range, step }
     }
 }
-impl<T: SpinnerType> Driver<T> for Spinner<T> {
+impl<T: SpinnerValue> Driver<T> for Spinner<T> {
     type Widget = crate::Spinner<T>;
     fn make(&self) -> Self::Widget {
         crate::Spinner::new(self.range.clone(), self.step)
