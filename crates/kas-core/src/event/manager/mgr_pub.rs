@@ -141,8 +141,7 @@ impl EventState {
     /// Returns true when `dist` is large enough to switch to pan mode.
     #[inline]
     pub fn config_test_pan_thresh(&self, dist: Offset) -> bool {
-        let thresh = self.config.pan_dist_thresh();
-        Vec2::conv(dist).sum_square() >= thresh * thresh
+        Vec2::conv(dist).abs().max_comp() >= self.config.pan_dist_thresh()
     }
 
     /// Set/unset a widget as disabled

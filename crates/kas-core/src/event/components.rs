@@ -80,7 +80,7 @@ impl Glide {
             let delta = Offset::conv_approx(d);
             let rest = d - Vec2::conv(delta);
 
-            if v.max_abs_comp() >= 1.0 {
+            if v.abs().max_comp() >= 1.0 {
                 let mut v = *v * decay_mul.powf(dur);
                 v = v - v.abs().min(Vec2::splat(decay_sub * dur)) * v.sign();
                 *self = Glide::Glide(now, v, rest);
