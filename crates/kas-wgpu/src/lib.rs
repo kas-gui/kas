@@ -189,6 +189,12 @@ where
         &mut self.shared.draw
     }
 
+    /// Access event configuration
+    #[inline]
+    pub fn event_config(&self) -> &SharedRc<kas::event::Config> {
+        &self.shared.config
+    }
+
     /// Access the theme by ref
     #[inline]
     pub fn theme(&self) -> &T {

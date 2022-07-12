@@ -9,7 +9,7 @@
 //! (excepting custom graphics).
 
 use kas::dir::Right;
-use kas::event::VirtualKeyCode as VK;
+use kas::event::{Config, VirtualKeyCode as VK};
 use kas::model::SharedRc;
 use kas::prelude::*;
 use kas::resvg::Svg;
@@ -428,6 +428,44 @@ Embedded GPU-rendered content is also possible (see separate Mandlebrot example)
     })
 }
 
+fn config(config: SharedRc<Config>) -> Box<dyn SetDisabled> {
+    use kas::text::format::Markdown;
+
+    const DESC: &str = "\
+Event configuration editor
+================
+
+Updated items should have immediate effect.
+
+To persist, set the following environment variables:
+```
+KAS_CONFIG=config.yaml
+KAS_CONFIG_MODE=readwrite
+```
+";
+
+    Box::new(impl_singleton! {
+        #[widget{
+            layout = column: [
+                ScrollLabel::new(Markdown::new(DESC).unwrap()),
+                Separator::new(),
+                self.view,
+            ];
+        }]
+        #[derive(Debug)]
+        struct {
+            core: widget_core!(),
+            #[widget] view: SingleView<SharedRc<Config>> = SingleView::new(config),
+        }
+
+        impl SetDisabled for Self {
+            fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool) {
+                mgr.set_disabled(self.view.id(), state);
+            }
+        }
+    })
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
@@ -508,7 +546,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .with_title("Widgets", widgets()) //TODO: use img_gallery as logo
                 .with_title("Text editor", editor())
                 .with_title("List", filter_list())
-                .with_title("Canvas", canvas()),
+                .with_title("Canvas", canvas())
+                .with_title("Config", config(toolkit.event_config().clone())),
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
