@@ -18,6 +18,7 @@ enum Msg {
     ScrollFlickTimeout(u32),
     ScrollFlickMul(f32),
     ScrollFlickSub(f32),
+    ScrollDistEm(f32),
     PanDistThresh(f32),
     MousePan(MousePan),
     MouseTextPan(MousePan),
@@ -35,12 +36,13 @@ impl_scope! {
             0, 2: "Scroll flick timeout:"; 1, 2: self.scroll_flick_timeout; 2, 2: "ms";
             0, 3: "Scroll flick multiply:"; 1, 3: self.scroll_flick_mul;
             0, 4: "Scroll flick subtract:"; 1, 4: self.scroll_flick_sub;
-            0, 5: "Pan distance threshold:"; 1, 5: self.pan_dist_thresh;
-            0, 6: "Mouse pan:"; 1..3, 6: self.mouse_pan;
-            0, 7: "Mouse text pan:"; 1..3, 7: self.mouse_text_pan;
-            1..3, 8: self.mouse_nav_focus;
-            1..3, 9: self.touch_nav_focus;
-            0, 10: "Restore default values:"; 1..3, 10: TextButton::new_msg("Reset", Msg::Reset);
+            0, 5: "Scroll wheel distance:"; 1, 5: self.scroll_dist_em; 2, 5: "em";
+            0, 6: "Pan distance threshold:"; 1, 6: self.pan_dist_thresh;
+            0, 7: "Mouse pan:"; 1..3, 7: self.mouse_pan;
+            0, 8: "Mouse text pan:"; 1..3, 8: self.mouse_text_pan;
+            1..3, 9: self.mouse_nav_focus;
+            1..3, 10: self.touch_nav_focus;
+            0, 11: "Restore default values:"; 1..3, 11: TextButton::new_msg("Reset", Msg::Reset);
         };
     }]
     #[derive(Debug)]
@@ -51,6 +53,7 @@ impl_scope! {
         #[widget] scroll_flick_timeout: Spinner<u32>,
         #[widget] scroll_flick_mul: Spinner<f32>,
         #[widget] scroll_flick_sub: Spinner<f32>,
+        #[widget] scroll_dist_em: Spinner<f32>,
         #[widget] pan_dist_thresh: Spinner<f32>,
         #[widget] mouse_pan: ComboBox<MousePan>,
         #[widget] mouse_text_pan: ComboBox<MousePan>,
@@ -72,17 +75,19 @@ impl driver::Driver<Config, SharedRc<Config>> for driver::DefaultView {
 
         EventConfig {
             core: Default::default(),
-            menu_delay: Spinner::new(0..=10_000, 50)
+            menu_delay: Spinner::new(0..=5_000, 50)
                 .on_change(|mgr, v| mgr.push_msg(Msg::MenuDelay(v))),
-            touch_select_delay: Spinner::new(0..=10_000, 50)
+            touch_select_delay: Spinner::new(0..=5_000, 50)
                 .on_change(|mgr, v| mgr.push_msg(Msg::TouchSelectDelay(v))),
-            scroll_flick_timeout: Spinner::new(0..=1_000, 5)
+            scroll_flick_timeout: Spinner::new(0..=500, 5)
                 .on_change(|mgr, v| mgr.push_msg(Msg::ScrollFlickTimeout(v))),
-            scroll_flick_mul: Spinner::new(0.0..=1.0, 0.0625)
+            scroll_flick_mul: Spinner::new(0.0..=1.0, 0.03125)
                 .on_change(|mgr, v| mgr.push_msg(Msg::ScrollFlickMul(v))),
             scroll_flick_sub: Spinner::new(0.0..=1.0e4, 10.0)
                 .on_change(|mgr, v| mgr.push_msg(Msg::ScrollFlickSub(v))),
-            pan_dist_thresh: Spinner::new(0.125..=10.0, 0.125)
+            scroll_dist_em: Spinner::new(0.125..=125.0, 0.125)
+                .on_change(|mgr, v| mgr.push_msg(Msg::ScrollDistEm(v))),
+            pan_dist_thresh: Spinner::new(0.25..=25.0, 0.25)
                 .on_change(|mgr, v| mgr.push_msg(Msg::PanDistThresh(v))),
             mouse_pan: mouse_pan
                 .clone()
@@ -106,6 +111,7 @@ impl driver::Driver<Config, SharedRc<Config>> for driver::DefaultView {
                 .set_value(data.scroll_flick_timeout_ms)
             | widget.scroll_flick_mul.set_value(data.scroll_flick_mul)
             | widget.scroll_flick_sub.set_value(data.scroll_flick_sub)
+            | widget.scroll_dist_em.set_value(data.scroll_dist_em)
             | widget.pan_dist_thresh.set_value(data.pan_dist_thresh)
             | widget.mouse_pan.set_active(data.mouse_pan as usize)
             | widget
@@ -130,6 +136,7 @@ impl driver::Driver<Config, SharedRc<Config>> for driver::DefaultView {
                 Msg::ScrollFlickTimeout(v) => data.scroll_flick_timeout_ms = v,
                 Msg::ScrollFlickMul(v) => data.scroll_flick_mul = v,
                 Msg::ScrollFlickSub(v) => data.scroll_flick_sub = v,
+                Msg::ScrollDistEm(v) => data.scroll_dist_em = v,
                 Msg::PanDistThresh(v) => data.pan_dist_thresh = v,
                 Msg::MousePan(v) => data.mouse_pan = v,
                 Msg::MouseTextPan(v) => data.mouse_text_pan = v,

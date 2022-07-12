@@ -271,19 +271,19 @@ mod defaults {
         1000
     }
     pub fn scroll_flick_timeout_ms() -> u32 {
-        25
+        50
     }
     pub fn scroll_flick_mul() -> f32 {
-        0.5
+        0.625
     }
     pub fn scroll_flick_sub() -> f32 {
-        100.0
+        200.0
     }
     pub fn scroll_dist_em() -> f32 {
-        3.0
+        4.5
     }
     pub fn pan_dist_thresh() -> f32 {
-        2.1
+        5.0
     }
     pub fn mouse_pan() -> MousePan {
         MousePan::Always
