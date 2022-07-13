@@ -11,6 +11,20 @@ use kas::event::config::{Config, MousePan};
 use kas::model::{SharedData, SharedRc};
 use kas::prelude::*;
 
+#[derive(Debug)]
+enum Msg {
+    MenuDelay(u32),
+    TouchSelectDelay(u32),
+    ScrollFlickTimeout(u32),
+    ScrollFlickMul(f32),
+    ScrollFlickSub(f32),
+    PanDistThresh(f32),
+    MousePan(MousePan),
+    MouseTextPan(MousePan),
+    MouseNavFocus(bool),
+    TouchNavFocus(bool),
+}
+
 impl_scope! {
     /// A widget for viewing event config
     #[widget{
@@ -53,20 +67,29 @@ impl driver::Driver<Config, SharedRc<Config>> for driver::DefaultView {
             ("With Ctrl key", MousePan::WithCtrl),
             ("Always", MousePan::Always),
         ]);
-        let mouse_text_pan = mouse_pan.clone();
 
         EventConfig {
             core: Default::default(),
-            menu_delay: Spinner::new(0..=10_000, 50),
-            touch_select_delay: Spinner::new(0..=10_000, 50),
-            scroll_flick_timeout: Spinner::new(0..=1_000, 5),
-            scroll_flick_mul: Spinner::new(0.0..=1.0, 0.0625),
-            scroll_flick_sub: Spinner::new(0.0..=1.0e4, 10.0),
-            pan_dist_thresh: Spinner::new(0.125..=10.0, 0.125),
-            mouse_pan,
-            mouse_text_pan,
-            mouse_nav_focus: CheckButton::new("Mouse navigation focus"),
-            touch_nav_focus: CheckButton::new("Touchscreen navigation focus"),
+            menu_delay: Spinner::new(0..=10_000, 50)
+                .on_change(|mgr, v| mgr.push_msg(Msg::MenuDelay(v))),
+            touch_select_delay: Spinner::new(0..=10_000, 50)
+                .on_change(|mgr, v| mgr.push_msg(Msg::TouchSelectDelay(v))),
+            scroll_flick_timeout: Spinner::new(0..=1_000, 5)
+                .on_change(|mgr, v| mgr.push_msg(Msg::ScrollFlickTimeout(v))),
+            scroll_flick_mul: Spinner::new(0.0..=1.0, 0.0625)
+                .on_change(|mgr, v| mgr.push_msg(Msg::ScrollFlickMul(v))),
+            scroll_flick_sub: Spinner::new(0.0..=1.0e4, 10.0)
+                .on_change(|mgr, v| mgr.push_msg(Msg::ScrollFlickSub(v))),
+            pan_dist_thresh: Spinner::new(0.125..=10.0, 0.125)
+                .on_change(|mgr, v| mgr.push_msg(Msg::PanDistThresh(v))),
+            mouse_pan: mouse_pan
+                .clone()
+                .on_select(|mgr, v| mgr.push_msg(Msg::MousePan(v))),
+            mouse_text_pan: mouse_pan.on_select(|mgr, v| mgr.push_msg(Msg::MouseTextPan(v))),
+            mouse_nav_focus: CheckButton::new("Mouse navigation focus")
+                .on_toggle(|mgr, v| mgr.push_msg(Msg::MouseNavFocus(v))),
+            touch_nav_focus: CheckButton::new("Touchscreen navigation focus")
+                .on_toggle(|mgr, v| mgr.push_msg(Msg::TouchNavFocus(v))),
         }
     }
 
@@ -88,5 +111,23 @@ impl driver::Driver<Config, SharedRc<Config>> for driver::DefaultView {
                 .set_active(data.mouse_text_pan as usize)
             | widget.mouse_nav_focus.set_bool(data.mouse_nav_focus)
             | widget.touch_nav_focus.set_bool(data.touch_nav_focus)
+    }
+
+    fn handle_message(&self, mgr: &mut EventMgr, data: &SharedRc<Config>, _: &()) {
+        if let Some(msg) = mgr.try_pop_msg() {
+            let mut data = data.update_mut(mgr);
+            match msg {
+                Msg::MenuDelay(v) => data.menu_delay_ms = v,
+                Msg::TouchSelectDelay(v) => data.touch_select_delay_ms = v,
+                Msg::ScrollFlickTimeout(v) => data.scroll_flick_timeout_ms = v,
+                Msg::ScrollFlickMul(v) => data.scroll_flick_mul = v,
+                Msg::ScrollFlickSub(v) => data.scroll_flick_sub = v,
+                Msg::PanDistThresh(v) => data.pan_dist_thresh = v,
+                Msg::MousePan(v) => data.mouse_pan = v,
+                Msg::MouseTextPan(v) => data.mouse_text_pan = v,
+                Msg::MouseNavFocus(v) => data.mouse_nav_focus = v,
+                Msg::TouchNavFocus(v) => data.touch_nav_focus = v,
+            }
+        }
     }
 }

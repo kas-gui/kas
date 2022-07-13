@@ -13,9 +13,9 @@
 use crate::event::EventMgr;
 use crate::event::UpdateId;
 use crate::model::*;
-use std::cell::{BorrowError, Ref, RefCell};
+use std::cell::{BorrowError, Ref, RefCell, RefMut};
 use std::fmt::Debug;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 
 /// Wrapper for single-thread shared data
@@ -33,11 +33,26 @@ use std::rc::Rc;
 #[derive(Clone, Debug, Default)]
 pub struct SharedRc<T: Debug>(Rc<(UpdateId, RefCell<(T, u64)>)>);
 
+/// A borrowed reference
 pub struct SharedRcRef<'a, T>(Ref<'a, (T, u64)>);
 impl<'a, T> Deref for SharedRcRef<'a, T> {
     type Target = T;
     fn deref(&self) -> &T {
         &self.0.deref().0
+    }
+}
+
+/// A mutably borrowed reference
+pub struct SharedRcRefMut<'a, T>(RefMut<'a, (T, u64)>);
+impl<'a, T> Deref for SharedRcRefMut<'a, T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        &self.0.deref().0
+    }
+}
+impl<'a, T> DerefMut for SharedRcRefMut<'a, T> {
+    fn deref_mut(&mut self) -> &mut T {
+        &mut self.0.deref_mut().0
     }
 }
 
@@ -79,6 +94,14 @@ impl<T: Debug> SharedRc<T> {
     /// This is the non-panicking variant of [`Self::borrow`].
     pub fn try_borrow(&self) -> Result<SharedRcRef<T>, BorrowError> {
         (self.0).1.try_borrow().map(SharedRcRef)
+    }
+
+    /// Mutably borrows the wrapped value, notifying other users of an update.
+    pub fn update_mut(&self, mgr: &mut EventMgr) -> SharedRcRefMut<T> {
+        mgr.update_all((self.0).0, 0);
+        let mut cell = (self.0).1.borrow_mut();
+        cell.1 += 1;
+        SharedRcRefMut(cell)
     }
 }
 
