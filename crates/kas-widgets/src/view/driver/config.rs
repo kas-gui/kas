@@ -144,6 +144,7 @@ impl driver::Driver<Config, SharedRc<Config>> for driver::DefaultView {
                 Msg::TouchNavFocus(v) => data.touch_nav_focus = v,
                 Msg::Reset => *data = Config::default(),
             }
+            data.is_dirty = true;
         }
     }
 }

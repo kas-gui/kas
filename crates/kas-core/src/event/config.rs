@@ -72,6 +72,9 @@ pub struct Config {
 
     #[cfg_attr(feature = "config", serde(default = "Shortcuts::platform_defaults"))]
     pub shortcuts: Shortcuts,
+
+    #[cfg_attr(feature = "config", serde(skip))]
+    pub is_dirty: bool,
 }
 
 impl Default for Config {
@@ -89,6 +92,7 @@ impl Default for Config {
             mouse_nav_focus: defaults::mouse_nav_focus(),
             touch_nav_focus: defaults::touch_nav_focus(),
             shortcuts: Shortcuts::platform_defaults(),
+            is_dirty: false,
         }
     }
 }
@@ -97,7 +101,7 @@ impl Config {
     /// Has the config ever been updated?
     #[inline]
     pub fn is_dirty(&self) -> bool {
-        false // current code never updates config
+        self.is_dirty
     }
 }
 
