@@ -52,6 +52,10 @@ bitflags! {
     #[must_use]
     #[derive(Default)]
     pub struct TkAction: u32 {
+        /// No flags
+        ///
+        /// This is a [zero flag](https://docs.rs/bitflags/latest/bitflags/#zero-flags).
+        const EMPTY = 0;
         /// The whole window requires redrawing
         ///
         /// Note that [`event::EventMgr::redraw`] can instead be used for more
