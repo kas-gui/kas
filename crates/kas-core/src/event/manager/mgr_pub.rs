@@ -508,6 +508,11 @@ impl<'a> EventMgr<'a> {
         }
     }
 
+    /// Try observing the last message on the stack without popping
+    pub fn try_observe_msg<M: Debug + 'static>(&self) -> Option<&M> {
+        self.messages.last().and_then(|m| m.downcast_ref::<M>())
+    }
+
     /// Set a scroll action
     ///
     /// When setting [`Scroll::Rect`], use the widgets own coordinate space.

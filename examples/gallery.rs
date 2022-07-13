@@ -160,8 +160,10 @@ fn widgets() -> Box<dyn SetDisabled> {
                 MenuEntry::new("T&wo", Item::Combo(2)),
                 MenuEntry::new("Th&ree", Item::Combo(3)),
             ]),
-            #[widget] spin: Spinner<i32> = Spinner::new(0..=10, 1),
-            #[widget] sd: Slider<i32, Right> = Slider::new(0..=10, 1),
+            #[widget] spin: Spinner<i32> = Spinner::new(0..=10, 1)
+                .on_change(|mgr, value| mgr.push_msg(Item::Spinner(value))),
+            #[widget] sd: Slider<i32, Right> = Slider::new(0..=10, 1)
+                .on_move(|mgr, value| mgr.push_msg(Item::Slider(value))),
             #[widget] sc: ScrollBar<Right> = ScrollBar::new().with_limits(100, 20),
             #[widget] pg: ProgressBar<Right> = ProgressBar::new(),
             #[widget] sv = img_rustacean.with_scaling(|s| {
@@ -174,17 +176,15 @@ fn widgets() -> Box<dyn SetDisabled> {
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
                 if let Some(msg) = mgr.try_pop_msg::<i32>() {
-                    if index == widget_index![self.spin] {
-                        *mgr |= self.sd.set_value(msg);
-                        mgr.push_msg(Item::Spinner(msg));
-                    } else if index == widget_index![self.sd] {
-                        *mgr |= self.spin.set_value(msg);
-                        mgr.push_msg(Item::Slider(msg));
-                    } else if index == widget_index![self.sc] {
+                    if index == widget_index![self.sc] {
                         let ratio = msg as f32 / self.sc.max_value() as f32;
                         *mgr |= self.pg.set_value(ratio);
                         mgr.push_msg(Item::Scroll(msg))
                     }
+                } else if let Some(Item::Spinner(value)) = mgr.try_observe_msg() {
+                    *mgr |= self.sd.set_value(*value);
+                } else if let Some(Item::Slider(value)) = mgr.try_observe_msg() {
+                    *mgr |= self.spin.set_value(*value);
                 }
             }
         }

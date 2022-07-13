@@ -7,6 +7,7 @@
 
 use std::fmt::Debug;
 use std::ops::{Add, RangeInclusive, Sub};
+use std::rc::Rc;
 use std::time::Duration;
 
 use super::DragHandle;
@@ -89,11 +90,8 @@ impl_scope! {
     /// A slider
     ///
     /// Sliders allow user input of a value from a fixed range.
-    ///
-    /// # Messages
-    ///
-    /// On value change, pushes a value of type `T`.
-    #[derive(Clone, Debug)]
+    #[autoimpl(Debug ignore self.on_move)]
+    #[derive(Clone)]
     #[widget{
         key_nav = true;
         hover_highlight = true;
@@ -107,6 +105,7 @@ impl_scope! {
         value: T,
         #[widget]
         handle: DragHandle,
+        on_move: Option<Rc<dyn Fn(&mut EventMgr, T)>>,
     }
 
     impl Self where D: Default {
@@ -121,6 +120,17 @@ impl_scope! {
         #[inline]
         pub fn new(range: RangeInclusive<T>, step: T) -> Self {
             Slider::new_with_direction(range, step, D::default())
+        }
+
+        /// Construct a spinner with event handler `f`
+        ///
+        /// This closure is called when the slider is moved.
+        #[inline]
+        pub fn new_on<F>(range: RangeInclusive<T>, step: T, f: F) -> Self
+        where
+            F: Fn(&mut EventMgr, T) + 'static,
+        {
+            Slider::new(range, step).on_move(f)
         }
     }
 
@@ -144,7 +154,21 @@ impl_scope! {
                 step,
                 value,
                 handle: DragHandle::new(),
+                on_move: None,
             }
+        }
+
+        /// Set event handler `f`
+        ///
+        /// This closure is called when the slider is moved.
+        #[inline]
+        #[must_use]
+        pub fn on_move<F>(mut self, f: F) -> Self
+        where
+            F: Fn(&mut EventMgr, T) + 'static,
+        {
+            self.on_move = Some(Rc::new(f));
+            self
         }
 
         /// Get the slider's direction
@@ -208,7 +232,7 @@ impl_scope! {
             }
         }
 
-        fn set_offset_and_push_msg(&mut self, mgr: &mut EventMgr, offset: Offset) {
+        fn set_offset_and_emit(&mut self, mgr: &mut EventMgr, offset: Offset) {
             let b = *self.range.end() - *self.range.start();
             let max_offset = self.handle.max_offset();
             let mut a = match self.direction.is_vertical() {
@@ -222,7 +246,9 @@ impl_scope! {
             if value != self.value {
                 self.value = value;
                 *mgr |= self.handle.set_offset(self.offset()).1;
-                mgr.push_msg(self.value);
+                if let Some(ref f) = self.on_move {
+                    f(mgr, value);
+                }
             }
         }
     }
@@ -294,12 +320,14 @@ impl_scope! {
                     let action = self.set_value(v);
                     if !action.is_empty() {
                         mgr.send_action(action);
-                        mgr.push_msg(self.value);
+                        if let Some(ref f) = self.on_move {
+                            f(mgr, self.value);
+                        }
                     }
                 }
                 Event::PressStart { source, coord, .. } => {
                     let offset = self.handle.handle_press_on_track(mgr, source, coord);
-                    self.set_offset_and_push_msg(mgr, offset);
+                    self.set_offset_and_emit(mgr, offset);
                 }
                 _ => return Response::Unused,
             }
@@ -310,7 +338,7 @@ impl_scope! {
             if let Some(MsgPressFocus) = mgr.try_pop_msg() {
                 mgr.set_nav_focus(self.id(), false);
             } else if let Some(offset) = mgr.try_pop_msg() {
-                self.set_offset_and_push_msg(mgr, offset);
+                self.set_offset_and_emit(mgr, offset);
             }
         }
     }

@@ -384,6 +384,10 @@ impl Message {
     fn downcast<T: 'static>(self) -> Result<Box<T>, Box<dyn Any>> {
         self.any.downcast::<T>()
     }
+
+    fn downcast_ref<T: 'static>(&self) -> Option<&T> {
+        self.any.downcast_ref::<T>()
+    }
 }
 
 /// Manager of event-handling and toolkit actions

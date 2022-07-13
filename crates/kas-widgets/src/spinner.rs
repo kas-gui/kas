@@ -11,6 +11,7 @@ use kas::prelude::*;
 use kas::theme::{Background, FrameStyle, MarkStyle};
 use std::cmp::Ord;
 use std::ops::RangeInclusive;
+use std::rc::Rc;
 
 /// Requirements on type used by [`Spinner`]
 ///
@@ -79,6 +80,9 @@ enum SpinBtn {
     Up,
 }
 
+#[derive(Debug)]
+struct ValueMsg<T>(T);
+
 #[derive(Clone, Debug)]
 struct SpinnerGuard<T: SpinnerValue> {
     value: T,
@@ -111,7 +115,7 @@ impl<T: SpinnerValue> EditGuard for SpinnerGuard<T> {
             *mgr |= edit.set_string(edit.guard.value.to_string());
             edit.set_error_state(false);
         }
-        mgr.push_msg(edit.guard.value);
+        mgr.push_msg(ValueMsg(edit.guard.value));
     }
 
     fn focus_lost(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
@@ -126,7 +130,7 @@ impl<T: SpinnerValue> EditGuard for SpinnerGuard<T> {
             Ok(value) if edit.guard.range().contains(&value) => {
                 if value != edit.guard.value {
                     edit.guard.value = value;
-                    mgr.push_msg(value);
+                    mgr.push_msg(ValueMsg(value));
                 }
                 false
             }
@@ -151,14 +155,7 @@ impl_scope! {
     /// -   Ensure that range end points are a multiple of `step`
     /// -   With floating-point types, ensure that `step` is exactly
     ///     representable, e.g. an integer or a power of 2.
-    ///
-    /// Sends a message of type `T` when changed, specifically:
-    ///
-    /// -   If the increment/decrement buttons, <kbd>Up</kbd>/<kbd>Down</kbd>
-    ///     keys or mouse scroll wheel is used and the value changes
-    /// -   If the value is adjusted via the edit box and the result is valid
-    /// -   If <kbd>Enter</kbd> is pressed in the edit box
-    #[derive(Clone, Debug)]
+    #[autoimpl(Debug ignore self.on_change)]
     #[widget {
         layout = frame(FrameStyle::EditBox): row: [
             self.edit,
@@ -177,10 +174,12 @@ impl_scope! {
         #[widget]
         b_down: MarkButton<SpinBtn>,
         step: T,
+        on_change: Option<Rc<dyn Fn(&mut EventMgr, T)>>,
     }
 
     impl Self {
-        /// Construct with given `range` and `step`
+        /// Construct a spinner with given `range` and `step`
+        #[inline]
         pub fn new(range: RangeInclusive<T>, step: T) -> Self {
             Spinner {
                 core: Default::default(),
@@ -188,7 +187,37 @@ impl_scope! {
                 b_up: MarkButton::new(MarkStyle::Point(Direction::Up), SpinBtn::Up),
                 b_down: MarkButton::new(MarkStyle::Point(Direction::Down), SpinBtn::Down),
                 step: step,
+                on_change: None,
             }
+        }
+
+        /// Construct a spinner with event handler `f`
+        ///
+        /// This closure is called when the value is changed.
+        #[inline]
+        pub fn new_on<F>(range: RangeInclusive<T>, step: T, f: F) -> Self
+        where
+            F: Fn(&mut EventMgr, T) + 'static,
+        {
+            Spinner::new(range, step).on_change(f)
+        }
+
+        /// Set event handler `f`
+        ///
+        /// This closure is called when the value is changed, specifically:
+        ///
+        /// -   If the increment/decrement buttons, <kbd>Up</kbd>/<kbd>Down</kbd>
+        ///     keys or mouse scroll wheel is used and the value changes
+        /// -   If the value is adjusted via the edit box and the result is valid
+        /// -   If <kbd>Enter</kbd> is pressed in the edit box
+        #[inline]
+        #[must_use]
+        pub fn on_change<F>(mut self, f: F) -> Self
+        where
+            F: Fn(&mut EventMgr, T) + 'static,
+        {
+            self.on_change = Some(Rc::new(f));
+            self
         }
 
         /// Set the initial value
@@ -227,7 +256,9 @@ impl_scope! {
 
             if value != self.edit.guard.value {
                 self.edit.guard.value = value;
-                mgr.push_msg(value);
+                if let Some(ref f) = self.on_change {
+                    f(mgr, value);
+                }
             }
 
             self.edit.set_error_state(false);
@@ -280,6 +311,11 @@ impl_scope! {
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            if let Some(ValueMsg(value)) = mgr.try_pop_msg() {
+                if let Some(ref f) = self.on_change {
+                    f(mgr, value);
+                }
+            }
             if let Some(btn) = mgr.try_pop_msg::<SpinBtn>() {
                 self.handle_btn(mgr, btn);
             }
