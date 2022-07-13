@@ -6,12 +6,12 @@
 //! Drivers for configuration types
 
 use crate::view::driver;
-use crate::{CheckButton, ComboBox, Spinner};
+use crate::{CheckButton, ComboBox, Spinner, TextButton};
 use kas::event::config::{Config, MousePan};
 use kas::model::{SharedData, SharedRc};
 use kas::prelude::*;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 enum Msg {
     MenuDelay(u32),
     TouchSelectDelay(u32),
@@ -23,6 +23,7 @@ enum Msg {
     MouseTextPan(MousePan),
     MouseNavFocus(bool),
     TouchNavFocus(bool),
+    Reset,
 }
 
 impl_scope! {
@@ -39,6 +40,7 @@ impl_scope! {
             0, 7: "Mouse text pan:"; 1..3, 7: self.mouse_text_pan;
             1..3, 8: self.mouse_nav_focus;
             1..3, 9: self.touch_nav_focus;
+            0, 10: "Restore default values:"; 1..3, 10: TextButton::new_msg("Reset", Msg::Reset);
         };
     }]
     #[derive(Debug)]
@@ -127,6 +129,7 @@ impl driver::Driver<Config, SharedRc<Config>> for driver::DefaultView {
                 Msg::MouseTextPan(v) => data.mouse_text_pan = v,
                 Msg::MouseNavFocus(v) => data.mouse_nav_focus = v,
                 Msg::TouchNavFocus(v) => data.touch_nav_focus = v,
+                Msg::Reset => *data = Config::default(),
             }
         }
     }
