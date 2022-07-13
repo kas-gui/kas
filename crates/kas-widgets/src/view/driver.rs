@@ -10,10 +10,8 @@
 
 mod config;
 
-use crate::{
-    CheckBox, EditBox, EditField, EditGuard, Label, NavFrame, ProgressBar, RadioGroup, SliderValue,
-    SpinnerValue,
-};
+use crate::edit::{EditBox, EditField, GuardNotify};
+use crate::{CheckBox, Label, NavFrame, ProgressBar, RadioGroup, SliderValue, SpinnerValue};
 use kas::model::SharedData;
 use kas::prelude::*;
 use std::default::Default;
@@ -183,32 +181,36 @@ where
     }
 }*/
 
-impl<G: EditGuard + Default, Data: SharedData<Item = String>> Driver<String, Data>
-    for Widget<EditField<G>>
-{
-    type Widget = EditField<G>;
+impl<Data: SharedData<Item = String>> Driver<String, Data> for Widget<EditField<GuardNotify>> {
+    type Widget = EditField<GuardNotify>;
     fn make(&self) -> Self::Widget {
-        let guard = G::default();
-        EditField::new("".to_string()).with_guard(guard)
+        EditField::new("".to_string()).with_guard(GuardNotify)
     }
     fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
         data.get_cloned(key)
             .map(|item| widget.set_string(item))
             .unwrap_or(TkAction::EMPTY)
+    }
+    fn handle_message(&self, mgr: &mut EventMgr, data: &Data, key: &Data::Key) {
+        if let Some(item) = mgr.try_pop_msg() {
+            data.update(mgr, key, item);
+        }
     }
 }
-impl<G: EditGuard + Default, Data: SharedData<Item = String>> Driver<String, Data>
-    for Widget<EditBox<G>>
-{
-    type Widget = EditBox<G>;
+impl<Data: SharedData<Item = String>> Driver<String, Data> for Widget<EditBox<GuardNotify>> {
+    type Widget = EditBox<GuardNotify>;
     fn make(&self) -> Self::Widget {
-        let guard = G::default();
-        EditBox::new("".to_string()).with_guard(guard)
+        EditBox::new("".to_string()).with_guard(GuardNotify)
     }
     fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
         data.get_cloned(key)
             .map(|item| widget.set_string(item))
             .unwrap_or(TkAction::EMPTY)
+    }
+    fn handle_message(&self, mgr: &mut EventMgr, data: &Data, key: &Data::Key) {
+        if let Some(item) = mgr.try_pop_msg() {
+            data.update(mgr, key, item);
+        }
     }
 }
 
