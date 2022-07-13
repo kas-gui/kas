@@ -251,7 +251,7 @@ impl ScrollComponent {
                             _ => return (false, Response::Unused),
                         };
                         let delta = match delta {
-                            LineDelta(x, y) => mgr.config().scroll_distance((-x, y), None),
+                            LineDelta(x, y) => mgr.config().scroll_distance((x, y)),
                             PixelDelta(d) => d,
                         };
                         self.offset - delta
@@ -266,7 +266,7 @@ impl ScrollComponent {
             }
             Event::Scroll(delta) => {
                 let delta = match delta {
-                    LineDelta(x, y) => mgr.config().scroll_distance((-x, y), None),
+                    LineDelta(x, y) => mgr.config().scroll_distance((x, y)),
                     PixelDelta(d) => d,
                 };
                 moved = self.scroll_by_delta(mgr, delta);
