@@ -55,7 +55,7 @@ impl_scope! {
     pub struct ListView<
         D: Directional,
         T: ListData,
-        V: Driver<T::Item> = driver::DefaultView,
+        V: Driver<T::Item, T> = driver::DefaultView,
     > {
         core: widget_core!(),
         frame_offset: Offset,
@@ -106,7 +106,7 @@ impl_scope! {
             Self::new_with_dir_driver(D::default(), view, data)
         }
     }
-    impl<T: ListData + 'static, V: Driver<T::Item>> ListView<Direction, T, V> {
+    impl<T: ListData + 'static, V: Driver<T::Item, T>> ListView<Direction, T, V> {
         /// Set the direction of contents
         pub fn set_direction(&mut self, direction: Direction) -> TkAction {
             self.direction = direction;
@@ -345,16 +345,19 @@ impl_scope! {
                 let id = self.data.make_id(self.id_ref(), &key);
                 let w = &mut self.widgets[i % solver.cur_len];
                 if w.key.as_ref() != Some(&key) {
-                    if let Some(item) = self.data.get_cloned(&key) {
-                        w.key = Some(key);
-                        mgr.configure(id, &mut w.widget);
-                        action |= self.view.set(&mut w.widget, item);
+                    // TODO(opt): we only need to configure the widget once
+                    mgr.configure(id, &mut w.widget);
+
+                    let act = self.view.set(&mut w.widget, &self.data, &key);
+                    if !act.is_empty() {
                         solve_size_rules(
                             &mut w.widget,
                             mgr.size_mgr(),
                             Some(self.child_size.0),
                             Some(self.child_size.1),
                         );
+                        w.key = Some(key);
+                        action |= act;
                     } else {
                         w.key = None; // disables drawing and clicking
                     }
@@ -552,9 +555,7 @@ impl_scope! {
                     let id = self.data.make_id(self.id_ref(), &key);
                     let mut widget = self.view.make();
                     mgr.configure(id, &mut widget);
-                    if let Some(item) = self.data.get_cloned(&key) {
-                        *mgr |= self.view.set(&mut widget, item);
-                    }
+                    *mgr |= self.view.set(&mut widget, &self.data, &key);
                     let key = Some(key);
                     self.widgets.push(WidgetData { key, widget });
                 }

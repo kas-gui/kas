@@ -21,7 +21,7 @@ impl_scope! {
     /// or a custom shared data type.
     ///
     /// The driver `V` must implement [`Driver`] over data type
-    /// `<T as SharedData>::Item`. Several implementations are available in the
+    /// `<T as SingleData>::Item`. Several implementations are available in the
     /// [`driver`] module or a custom implementation may be used.
     ///
     /// # Messages
@@ -35,7 +35,7 @@ impl_scope! {
     }]
     pub struct SingleView<
         T: SingleData,
-        V: Driver<T::Item> = driver::DefaultView,
+        V: Driver<T::Item, T> = driver::DefaultView,
     > {
         core: widget_core!(),
         view: V,
@@ -92,7 +92,7 @@ impl_scope! {
         /// Set shared data
         ///
         /// This method updates the shared data, if supported (see
-        /// [`SharedData::update`]). Other widgets sharing this data are notified
+        /// [`SingleData::update`]). Other widgets sharing this data are notified
         /// of the update, if data is changed.
         pub fn set_value(&self, mgr: &mut EventMgr, data: T::Item) {
             self.data.update(mgr, &(), data);
@@ -110,8 +110,7 @@ impl_scope! {
     impl Widget for Self {
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             // We set data now, after child is configured
-            let item = self.data.get_cloned(&()).unwrap();
-            *mgr |= self.view.set(&mut self.child, item);
+            *mgr |= self.view.set(&mut self.child, &self.data, &());
         }
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
@@ -119,8 +118,7 @@ impl_scope! {
                 Event::Update { .. } => {
                     let data_ver = self.data.version();
                     if data_ver > self.data_ver {
-                        let item = self.data.get_cloned(&()).unwrap();
-                        *mgr |= self.view.set(&mut self.child, item);
+                        *mgr |= self.view.set(&mut self.child, &self.data, &());
                         self.data_ver = data_ver;
                     }
                     Response::Used

@@ -183,7 +183,7 @@ impl_scope! {
 struct MyDriver {
     radio_group: RadioGroup,
 }
-impl Driver<(usize, bool, String)> for MyDriver {
+impl Driver<(usize, bool, String), MySharedData> for MyDriver {
     type Widget = ListEntry;
 
     fn make(&self) -> Self::Widget {
@@ -196,11 +196,16 @@ impl Driver<(usize, bool, String)> for MyDriver {
             edit: EditBox::new(String::default()).with_guard(ListEntryGuard),
         }
     }
-    fn set(&self, widget: &mut Self::Widget, data: (usize, bool, String)) -> TkAction {
-        let label = format!("Entry number {}", data.0 + 1);
-        widget.label.set_string(label)
-            | widget.radio.set_bool(data.1)
-            | widget.edit.set_string(data.2)
+
+    fn set(&self, widget: &mut Self::Widget, data: &MySharedData, key: &usize) -> TkAction {
+        if let Some(item) = data.get_cloned(key) {
+            let label = format!("Entry number {}", item.0 + 1);
+            widget.label.set_string(label)
+                | widget.radio.set_bool(item.1)
+                | widget.edit.set_string(item.2)
+        } else {
+            TkAction::empty()
+        }
     }
 }
 

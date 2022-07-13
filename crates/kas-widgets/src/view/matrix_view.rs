@@ -60,7 +60,7 @@ impl_scope! {
     #[widget]
     pub struct MatrixView<
         T: MatrixData,
-        V: Driver<T::Item> = driver::DefaultView,
+        V: Driver<T::Item, T> = driver::DefaultView,
     > {
         core: widget_core!(),
         frame_offset: Offset,
@@ -317,10 +317,11 @@ impl_scope! {
                     let id = self.data.make_id(self.id_ref(), &key);
                     let w = &mut self.widgets[i];
                     if w.key.as_ref() != Some(&key) {
-                        if let Some(item) = self.data.get_cloned(&key) {
+                        mgr.configure(id, &mut w.widget);
+                        let act = self.view.set(&mut w.widget, &self.data, &key);
+                        if !act.is_empty() {
                             w.key = Some(key);
-                            mgr.configure(id, &mut w.widget);
-                            action |= self.view.set(&mut w.widget, item);
+                            action |= act;
                             solve_size_rules(
                                 &mut w.widget,
                                 mgr.size_mgr(),
@@ -542,9 +543,7 @@ impl_scope! {
                         let id = self.data.make_id(self.id_ref(), &key);
                         let mut widget = self.view.make();
                         mgr.configure(id, &mut widget);
-                        if let Some(item) = self.data.get_cloned(&key) {
-                            *mgr |= self.view.set(&mut widget, item);
-                        }
+                        *mgr |= self.view.set(&mut widget, &self.data, &key);
                         let key = Some(key);
                         self.widgets.push(WidgetData { key, widget });
                     }
