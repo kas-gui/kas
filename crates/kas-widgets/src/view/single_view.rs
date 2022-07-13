@@ -26,7 +26,7 @@ impl_scope! {
     ///
     /// # Messages
     ///
-    /// When a child pushes a message, the [`SharedData::handle_message`] method is
+    /// When a child pushes a message, the [`Driver::handle_message`] method is
     /// called.
     #[autoimpl(Debug ignore self.view)]
     #[derive(Clone)]
@@ -92,7 +92,7 @@ impl_scope! {
         /// Set shared data
         ///
         /// This method updates the shared data, if supported (see
-        /// [`SingleData::update`]). Other widgets sharing this data are notified
+        /// [`SharedData::update`]). Other widgets sharing this data are notified
         /// of the update, if data is changed.
         pub fn set_value(&self, mgr: &mut EventMgr, data: T::Item) {
             self.data.update(mgr, &(), data);
@@ -128,7 +128,7 @@ impl_scope! {
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-            self.data.handle_message(mgr, &());
+            self.view.handle_message(mgr, &self.data, &());
         }
     }
 }

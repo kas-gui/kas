@@ -57,19 +57,6 @@ pub trait SharedData: Debug {
     ///
     /// Data types without internal mutability should do nothing.
     fn update(&self, mgr: &mut EventMgr, key: &Self::Key, item: Self::Item);
-
-    /// Handle a message from a widget
-    ///
-    /// This method is called when a view widget returns with a message.
-    /// It may use [`EventMgr::try_pop_msg`] and update self.
-    ///
-    /// The default implementation attempts to extract a value of type
-    /// [`Self::Item`], passing this to [`Self::update`] on success.
-    fn handle_message(&self, mgr: &mut EventMgr, key: &Self::Key) {
-        if let Some(item) = mgr.try_pop_msg() {
-            self.update(mgr, key, item);
-        }
-    }
 }
 
 /// Trait for shared data with access via mutable reference

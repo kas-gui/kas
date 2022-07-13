@@ -106,23 +106,6 @@ impl SharedData for MySharedData {
     }
 
     fn update(&self, _: &mut EventMgr, _: &Self::Key, _: Self::Item) {}
-
-    fn handle_message(&self, mgr: &mut EventMgr, key: &Self::Key) {
-        if let Some(msg) = mgr.try_pop_msg() {
-            let mut data = self.data.borrow_mut();
-            data.ver += 1;
-            match msg {
-                EntryMsg::Select => {
-                    data.active = *key;
-                }
-                EntryMsg::Update(text) => {
-                    data.strings.insert(*key, text.clone());
-                }
-            }
-            mgr.push_msg(Control::Update(data.get(data.active)));
-            mgr.update_all(self.id, 0);
-        }
-    }
 }
 impl ListData for MySharedData {
     fn len(&self) -> usize {
@@ -205,6 +188,23 @@ impl Driver<(bool, String), MySharedData> for MyDriver {
                 | widget.edit.set_string(item.1)
         } else {
             TkAction::empty()
+        }
+    }
+
+    fn handle_message(&self, mgr: &mut EventMgr, data: &MySharedData, key: &usize) {
+        if let Some(msg) = mgr.try_pop_msg() {
+            let mut borrow = data.data.borrow_mut();
+            borrow.ver += 1;
+            match msg {
+                EntryMsg::Select => {
+                    borrow.active = *key;
+                }
+                EntryMsg::Update(text) => {
+                    borrow.strings.insert(*key, text.clone());
+                }
+            }
+            mgr.push_msg(Control::Update(borrow.get(borrow.active)));
+            mgr.update_all(data.id, 0);
         }
     }
 }

@@ -44,8 +44,8 @@ impl_scope! {
     ///
     /// # Messages
     ///
-    /// When a child pushes a message, the [`SharedData::handle_message`] method is
-    /// called. After calling [`SharedData::handle_message`], this widget attempts to
+    /// When a child pushes a message, the [`Driver::handle_message`] method is
+    /// called. After calling [`Driver::handle_message`], this widget attempts to
     /// read and handle [`SelectMsg`].
     ///
     /// When selection is enabled and an item is selected or deselected, this
@@ -752,7 +752,7 @@ impl_scope! {
                 None => return,
             };
 
-            self.data.handle_message(mgr, &key);
+            self.view.handle_message(mgr, &self.data, &key);
 
             if let Some(SelectMsg) = mgr.try_pop_msg() {
                 match self.sel_mode {

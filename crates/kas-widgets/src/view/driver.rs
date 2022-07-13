@@ -23,12 +23,9 @@ use std::ops::RangeInclusive;
 
 /// View widget driver/binder
 ///
-/// The controller binds data items with view widgets.
-///
-/// Note that the key type is not made available since in most cases view
-/// widgets are not dependent on the element key. In rare cases where the key
-/// is needed, it must be added to the data's `Item` type (see `data-list-view`
-/// example).
+/// This is the controller responsible for building "view" widgets over a given
+/// `Data` type, for updating those widgets, and for handling events from those
+/// widgets.
 ///
 /// Several existing implementations are available, most notably:
 ///
@@ -53,6 +50,16 @@ pub trait Driver<Item, Data: SharedData<Item = Item>>: Debug {
     /// The widget may expect `configure` to be called at least once before data
     /// is set and to have `set_rect` called after each time data is set.
     fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction;
+
+    /// Handle a message from a widget
+    ///
+    /// This method is called when a view widget returns with a message.
+    /// It may use [`EventMgr::try_pop_msg`] and update self.
+    ///
+    /// Default implementation: do nothing.
+    fn handle_message(&self, mgr: &mut EventMgr, data: &Data, key: &Data::Key) {
+        let _ = (mgr, data, key);
+    }
 }
 
 /// Default view widget constructor
@@ -116,17 +123,27 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for DefaultView {
             .map(|item| widget.set_bool(item))
             .unwrap_or(TkAction::EMPTY)
     }
+    fn handle_message(&self, mgr: &mut EventMgr, data: &Data, key: &Data::Key) {
+        if let Some(state) = mgr.try_pop_msg() {
+            data.update(mgr, key, state);
+        }
+    }
 }
 
 impl<Data: SharedData<Item = bool>> Driver<bool, Data> for DefaultNav {
     type Widget = CheckBox;
     fn make(&self) -> Self::Widget {
-        CheckBox::new().with_editable(false)
+        CheckBox::new_on(|mgr, state| mgr.push_msg(state)).with_editable(false)
     }
     fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
         data.get_cloned(key)
             .map(|item| widget.set_bool(item))
             .unwrap_or(TkAction::EMPTY)
+    }
+    fn handle_message(&self, mgr: &mut EventMgr, data: &Data, key: &Data::Key) {
+        if let Some(state) = mgr.try_pop_msg() {
+            data.update(mgr, key, state);
+        }
     }
 }
 
@@ -160,6 +177,9 @@ where
     }
     fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
         DefaultView.set(widget, data, key)
+    }
+    fn handle_message(&self, mgr: &mut EventMgr, data: &Data, key: &Data::Key) {
+        DefaultView.handle_message(mgr, data, key);
     }
 }*/
 
@@ -221,12 +241,17 @@ impl CheckButton {
 impl<Data: SharedData<Item = bool>> Driver<bool, Data> for CheckButton {
     type Widget = crate::CheckButton;
     fn make(&self) -> Self::Widget {
-        crate::CheckButton::new(self.label.clone()).on_toggle(|mgr, state| mgr.push_msg(state))
+        crate::CheckButton::new_on(self.label.clone(), |mgr, state| mgr.push_msg(state))
     }
     fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
         data.get_cloned(key)
             .map(|item| widget.set_bool(item))
             .unwrap_or(TkAction::EMPTY)
+    }
+    fn handle_message(&self, mgr: &mut EventMgr, data: &Data, key: &Data::Key) {
+        if let Some(state) = mgr.try_pop_msg() {
+            data.update(mgr, key, state);
+        }
     }
 }
 
@@ -244,12 +269,17 @@ impl RadioBox {
 impl<Data: SharedData<Item = bool>> Driver<bool, Data> for RadioBox {
     type Widget = crate::RadioBox;
     fn make(&self) -> Self::Widget {
-        crate::RadioBox::new(self.group.clone()).on_select(|mgr| mgr.push_msg(true))
+        crate::RadioBox::new_on(self.group.clone(), |mgr| mgr.push_msg(true))
     }
     fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
         data.get_cloned(key)
             .map(|item| widget.set_bool(item))
             .unwrap_or(TkAction::EMPTY)
+    }
+    fn handle_message(&self, mgr: &mut EventMgr, data: &Data, key: &Data::Key) {
+        if let Some(state) = mgr.try_pop_msg() {
+            data.update(mgr, key, state);
+        }
     }
 }
 
@@ -276,6 +306,11 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for RadioButton {
         data.get_cloned(key)
             .map(|item| widget.set_bool(item))
             .unwrap_or(TkAction::EMPTY)
+    }
+    fn handle_message(&self, mgr: &mut EventMgr, data: &Data, key: &Data::Key) {
+        if let Some(state) = mgr.try_pop_msg() {
+            data.update(mgr, key, state);
+        }
     }
 }
 
@@ -319,6 +354,11 @@ where
             .map(|item| widget.set_value(item))
             .unwrap_or(TkAction::EMPTY)
     }
+    fn handle_message(&self, mgr: &mut EventMgr, data: &Data, key: &Data::Key) {
+        if let Some(state) = mgr.try_pop_msg() {
+            data.update(mgr, key, state);
+        }
+    }
 }
 
 /// [`crate::Spinner`] view widget constructor
@@ -345,5 +385,10 @@ where
         data.get_cloned(key)
             .map(|item| widget.set_value(item))
             .unwrap_or(TkAction::EMPTY)
+    }
+    fn handle_message(&self, mgr: &mut EventMgr, data: &Data, key: &Data::Key) {
+        if let Some(state) = mgr.try_pop_msg() {
+            data.update(mgr, key, state);
+        }
     }
 }
