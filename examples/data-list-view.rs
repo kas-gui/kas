@@ -87,7 +87,7 @@ impl MySharedData {
 }
 impl SharedData for MySharedData {
     type Key = usize;
-    type Item = (usize, bool, String);
+    type Item = (bool, String);
 
     fn version(&self) -> u64 {
         self.data.borrow().ver
@@ -102,7 +102,7 @@ impl SharedData for MySharedData {
         let data = self.data.borrow();
         let is_active = data.active == index;
         let text = data.get(index);
-        Some((index, is_active, text))
+        Some((is_active, text))
     }
 
     fn update(&self, _: &mut EventMgr, _: &Self::Key, _: Self::Item) {}
@@ -183,7 +183,7 @@ impl_scope! {
 struct MyDriver {
     radio_group: RadioGroup,
 }
-impl Driver<(usize, bool, String), MySharedData> for MyDriver {
+impl Driver<(bool, String), MySharedData> for MyDriver {
     type Widget = ListEntry;
 
     fn make(&self) -> Self::Widget {
@@ -199,10 +199,10 @@ impl Driver<(usize, bool, String), MySharedData> for MyDriver {
 
     fn set(&self, widget: &mut Self::Widget, data: &MySharedData, key: &usize) -> TkAction {
         if let Some(item) = data.get_cloned(key) {
-            let label = format!("Entry number {}", item.0 + 1);
+            let label = format!("Entry number {}", *key + 1);
             widget.label.set_string(label)
-                | widget.radio.set_bool(item.1)
-                | widget.edit.set_string(item.2)
+                | widget.radio.set_bool(item.0)
+                | widget.edit.set_string(item.1)
         } else {
             TkAction::empty()
         }
