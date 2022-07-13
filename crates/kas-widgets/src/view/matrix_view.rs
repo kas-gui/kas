@@ -50,8 +50,8 @@ impl_scope! {
     ///
     /// # Messages
     ///
-    /// When a child pushes a message, the [`Driver::handle_message`] method is
-    /// called. After calling [`Driver::handle_message`], this widget attempts
+    /// When a child pushes a message, the [`Driver::on_message`] method is
+    /// called. After calling [`Driver::on_message`], this widget attempts
     /// to read and handle [`SelectMsg`].
     ///
     /// When selection is enabled and an item is selected or deselected, this
@@ -761,12 +761,13 @@ impl_scope! {
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
-            let key = match self.widgets[index].key.clone() {
+            let w = &mut self.widgets[index];
+            let key = match w.key.clone() {
                 Some(k) => k,
                 None => return,
             };
 
-            self.view.handle_message(mgr, &self.data, &key);
+            self.view.on_message(mgr, &mut w.widget, &self.data, &key);
 
             if let Some(SelectMsg) = mgr.try_pop_msg() {
                 match self.sel_mode {

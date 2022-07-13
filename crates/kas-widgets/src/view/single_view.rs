@@ -26,7 +26,7 @@ impl_scope! {
     ///
     /// # Messages
     ///
-    /// When a child pushes a message, the [`Driver::handle_message`] method is
+    /// When a child pushes a message, the [`Driver::on_message`] method is
     /// called.
     #[autoimpl(Debug ignore self.view)]
     #[derive(Clone)]
@@ -128,7 +128,7 @@ impl_scope! {
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-            self.view.handle_message(mgr, &self.data, &());
+            self.view.on_message(mgr, &mut self.child, &self.data, &());
         }
     }
 }

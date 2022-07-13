@@ -191,7 +191,13 @@ impl Driver<(bool, String), MySharedData> for MyDriver {
         }
     }
 
-    fn handle_message(&self, mgr: &mut EventMgr, data: &MySharedData, key: &usize) {
+    fn on_message(
+        &self,
+        mgr: &mut EventMgr,
+        _: &mut Self::Widget,
+        data: &MySharedData,
+        key: &usize,
+    ) {
         if let Some(msg) = mgr.try_pop_msg() {
             let mut borrow = data.data.borrow_mut();
             borrow.ver += 1;

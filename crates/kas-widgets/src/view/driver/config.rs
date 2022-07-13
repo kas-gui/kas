@@ -115,7 +115,13 @@ impl driver::Driver<Config, SharedRc<Config>> for driver::DefaultView {
             | widget.touch_nav_focus.set_bool(data.touch_nav_focus)
     }
 
-    fn handle_message(&self, mgr: &mut EventMgr, data: &SharedRc<Config>, _: &()) {
+    fn on_message(
+        &self,
+        mgr: &mut EventMgr,
+        _: &mut Self::Widget,
+        data: &SharedRc<Config>,
+        _: &(),
+    ) {
         if let Some(msg) = mgr.try_pop_msg() {
             let mut data = data.update_mut(mgr);
             match msg {

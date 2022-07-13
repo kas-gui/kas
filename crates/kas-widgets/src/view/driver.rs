@@ -51,12 +51,33 @@ pub trait Driver<Item, Data: SharedData<Item = Item>>: Debug {
 
     /// Handle a message from a widget
     ///
-    /// This method is called when a view widget returns with a message.
-    /// It may use [`EventMgr::try_pop_msg`] and update self.
+    /// This method is called when a view widget returns with a message; it
+    /// may retrieve this message with [`EventMgr::try_pop_msg`].
+    ///
+    /// There are three main ways of implementing this method:
+    ///
+    /// 1.  Do nothing. This is always safe, though may result in unhandled
+    ///     message warnings when the view widget is interactive.
+    /// 2.  On user input actions, view widgets send a message including their
+    ///     content (potentially wrapped with a user-defined enum or struct
+    ///     type). The implementation of this method retrieves this message and
+    ///     updates `data` given this content. In this case, the `widget`
+    ///     parameter is not used.
+    /// 3.  On user input actions, view widgets send a "trigger" message (likely
+    ///     a unit struct). The implementation of this method retrieves this
+    ///     message updates `data` using values read from `widget`.
+    ///
+    /// For examples, see implementations of [`DefaultView`].
     ///
     /// Default implementation: do nothing.
-    fn handle_message(&self, mgr: &mut EventMgr, data: &Data, key: &Data::Key) {
-        let _ = (mgr, data, key);
+    fn on_message(
+        &self,
+        mgr: &mut EventMgr,
+        widget: &mut Self::Widget,
+        data: &Data,
+        key: &Data::Key,
+    ) {
+        let _ = (mgr, widget, data, key);
     }
 }
 
@@ -121,7 +142,7 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for DefaultView {
             .map(|item| widget.set_bool(item))
             .unwrap_or(TkAction::EMPTY)
     }
-    fn handle_message(&self, mgr: &mut EventMgr, data: &Data, key: &Data::Key) {
+    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
             data.update(mgr, key, state);
         }
@@ -138,7 +159,7 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for DefaultNav {
             .map(|item| widget.set_bool(item))
             .unwrap_or(TkAction::EMPTY)
     }
-    fn handle_message(&self, mgr: &mut EventMgr, data: &Data, key: &Data::Key) {
+    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
             data.update(mgr, key, state);
         }
@@ -176,8 +197,8 @@ where
     fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
         DefaultView.set(widget, data, key)
     }
-    fn handle_message(&self, mgr: &mut EventMgr, data: &Data, key: &Data::Key) {
-        DefaultView.handle_message(mgr, data, key);
+    fn on_message(&self, mgr: &mut EventMgr, widget: &mut Self::Widget, data: &Data, key: &Data::Key) {
+        DefaultView.on_message(mgr, widget, data, key);
     }
 }*/
 
@@ -191,7 +212,7 @@ impl<Data: SharedData<Item = String>> Driver<String, Data> for Widget<EditField<
             .map(|item| widget.set_string(item))
             .unwrap_or(TkAction::EMPTY)
     }
-    fn handle_message(&self, mgr: &mut EventMgr, data: &Data, key: &Data::Key) {
+    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(item) = mgr.try_pop_msg() {
             data.update(mgr, key, item);
         }
@@ -207,7 +228,7 @@ impl<Data: SharedData<Item = String>> Driver<String, Data> for Widget<EditBox<Gu
             .map(|item| widget.set_string(item))
             .unwrap_or(TkAction::EMPTY)
     }
-    fn handle_message(&self, mgr: &mut EventMgr, data: &Data, key: &Data::Key) {
+    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(item) = mgr.try_pop_msg() {
             data.update(mgr, key, item);
         }
@@ -250,7 +271,7 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for CheckButton {
             .map(|item| widget.set_bool(item))
             .unwrap_or(TkAction::EMPTY)
     }
-    fn handle_message(&self, mgr: &mut EventMgr, data: &Data, key: &Data::Key) {
+    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
             data.update(mgr, key, state);
         }
@@ -278,7 +299,7 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for RadioBox {
             .map(|item| widget.set_bool(item))
             .unwrap_or(TkAction::EMPTY)
     }
-    fn handle_message(&self, mgr: &mut EventMgr, data: &Data, key: &Data::Key) {
+    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
             data.update(mgr, key, state);
         }
@@ -309,7 +330,7 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for RadioButton {
             .map(|item| widget.set_bool(item))
             .unwrap_or(TkAction::EMPTY)
     }
-    fn handle_message(&self, mgr: &mut EventMgr, data: &Data, key: &Data::Key) {
+    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
             data.update(mgr, key, state);
         }
@@ -356,7 +377,7 @@ where
             .map(|item| widget.set_value(item))
             .unwrap_or(TkAction::EMPTY)
     }
-    fn handle_message(&self, mgr: &mut EventMgr, data: &Data, key: &Data::Key) {
+    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
             data.update(mgr, key, state);
         }
@@ -388,7 +409,7 @@ where
             .map(|item| widget.set_value(item))
             .unwrap_or(TkAction::EMPTY)
     }
-    fn handle_message(&self, mgr: &mut EventMgr, data: &Data, key: &Data::Key) {
+    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
             data.update(mgr, key, state);
         }
