@@ -53,11 +53,17 @@ impl<'a> SizeMgr<'a> {
         SizeMgr(self.0)
     }
 
-    /// Get the scale (DPI) factor
+    /// Get the scale factor
     ///
     /// "Traditional" PC screens have a scale factor of 1; high-DPI screens
-    /// may have a factor of 2 or higher; this may be fractional. It is
-    /// recommended to calculate sizes as follows:
+    /// may have a factor of 2 or higher. This may be fractional and may be
+    /// adjusted to the user's taste.
+    ///
+    /// DPI is usually `96.0 * scale_factor` but this may be inaccurate (due to
+    /// user's preference or inaccurate screen size measurements or some form
+    /// of scaling used on mobile devices).
+    ///
+    /// It is recommended to calculate integer pixel sizes as follows:
     /// ```
     /// use kas_core::cast::*;
     /// # let scale_factor = 1.5f32;
@@ -71,21 +77,19 @@ impl<'a> SizeMgr<'a> {
         self.0.scale_factor()
     }
 
-    /// Convert a size in virtual pixels to physical pixels
-    pub fn pixels_from_virtual(&self, px: f32) -> f32 {
-        px * self.scale_factor()
-    }
-
-    /// Convert a size in font Points to physical pixels
-    pub fn pixels_from_points(&self, pt: f32) -> f32 {
-        self.0.pixels_from_points(pt)
-    }
-
-    /// Convert a size in font Em to physical pixels
+    /// Get the Em size of the standard font in pixels
     ///
-    /// (This depends on the font size.)
-    pub fn pixels_from_em(&self, em: f32) -> f32 {
-        self.0.pixels_from_em(em)
+    /// The Em is a unit of typography, corresponding to the distance between
+    /// ascent and descent bounding lines (thus, the line height).
+    ///
+    /// This method returns the size of 1 Em in physical pixels.
+    pub fn dpem(&self) -> f32 {
+        self.0.dpem()
+    }
+
+    /// The minimum size of a scrollable area
+    pub fn min_scroll_size(&self, axis: impl Directional) -> i32 {
+        self.0.min_scroll_size(axis.is_vertical())
     }
 
     /// The margin around content within a widget
@@ -121,15 +125,6 @@ impl<'a> SizeMgr<'a> {
         self.0.frame(style, axis.is_vertical())
     }
 
-    /// The height of a line of text using the standard font
-    ///
-    /// Note: `self.pixels_from_em(1.0)` returns approximately the same value
-    /// and is faster since it only converts units.
-    /// This method reads font metrics.
-    pub fn line_height(&self, class: TextClass) -> i32 {
-        self.0.line_height(class)
-    }
-
     /// Update a text object, setting font properties and getting a size bound
     ///
     /// This method updates the text's [`Environment`] and uses the result to
@@ -154,16 +149,14 @@ impl<'a> SizeMgr<'a> {
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 #[autoimpl(for<S: trait + ?Sized, R: Deref<Target = S>> R)]
 pub trait ThemeSize {
-    /// Get the scale (DPI) factor
+    /// Get the scale factor
     fn scale_factor(&self) -> f32;
 
-    /// Convert a size in font Points to physical pixels
-    fn pixels_from_points(&self, pt: f32) -> f32;
+    /// Get the Em size of the standard font in pixels
+    fn dpem(&self) -> f32;
 
-    /// Convert a size in font Em to physical pixels
-    ///
-    /// (This depends on the font size.)
-    fn pixels_from_em(&self, em: f32) -> f32;
+    /// The minimum size of a scrollable area
+    fn min_scroll_size(&self, axis_is_vertical: bool) -> i32;
 
     /// The margin around content within a widget
     ///
@@ -193,9 +186,6 @@ pub trait ThemeSize {
 
     /// Size of a frame around another element
     fn frame(&self, style: FrameStyle, axis_is_vertical: bool) -> FrameRules;
-
-    /// The height of a line of text using the standard font
-    fn line_height(&self, class: TextClass) -> i32;
 
     /// Update a text object, setting font properties and getting a size bound
     ///

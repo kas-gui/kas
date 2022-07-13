@@ -160,12 +160,16 @@ impl<D: 'static> ThemeSize for Window<D> {
         self.dims.scale_factor
     }
 
-    fn pixels_from_points(&self, pt: f32) -> f32 {
-        self.dims.dpp * pt
+    fn dpem(&self) -> f32 {
+        self.dims.dpem
     }
 
-    fn pixels_from_em(&self, em: f32) -> f32 {
-        self.dims.dpem * em
+    fn min_scroll_size(&self, axis_is_vertical: bool) -> i32 {
+        if axis_is_vertical {
+            (self.dims.dpem * 3.0).cast_ceil()
+        } else {
+            self.dims.min_line_length
+        }
     }
 
     fn inner_margin(&self) -> Size {
@@ -263,14 +267,6 @@ impl<D: 'static> ThemeSize for Window<D> {
         }
     }
 
-    fn line_height(&self, class: TextClass) -> i32 {
-        let font_id = self.fonts.get(&class).cloned().unwrap_or_default();
-        kas::text::fonts::fonts()
-            .get_first_face(font_id)
-            .height(self.dims.dpem)
-            .cast_ceil()
-    }
-
     fn text_bound(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules {
         let margin = match axis.is_horizontal() {
             true => self.dims.text_margin.0,
@@ -324,7 +320,7 @@ impl<D: 'static> ThemeSize for Window<D> {
             let min = if matches!(class, TextClass::Label(true) | TextClass::AccelLabel(true)) {
                 bound
             } else {
-                let line_height = self.line_height(class);
+                let line_height = self.dims.dpem.cast_ceil();
                 match class {
                     _ if class.single_line() => line_height,
                     TextClass::LabelScroll => bound.min(line_height * 3),
