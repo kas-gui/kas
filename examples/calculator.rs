@@ -66,7 +66,9 @@ fn main() -> kas::shell::Result<()> {
         #[derive(Debug)]
         struct CalcUI {
             core: widget_core!(),
-            #[widget] display: EditBox = EditBox::new("0").with_editable(false).multi_line(true),
+            #[widget] display: EditBox = EditBox::new("0")
+                .with_editable(false)
+                .with_multi_line(true),
             calc: Calculator = Calculator::new(),
         }
         impl Widget for Self {

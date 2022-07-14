@@ -243,7 +243,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
             core: widget_core!(),
             dir: Direction = Direction::Up,
             #[widget] editor: EditBox<Guard> =
-                EditBox::new(doc).multi_line(true).with_guard(Guard),
+                EditBox::new(doc).with_multi_line(true).with_guard(Guard),
             #[widget] label: ScrollLabel<Markdown> =
                 ScrollLabel::new(Markdown::new(doc).unwrap()),
         }

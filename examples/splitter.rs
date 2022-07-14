@@ -19,7 +19,7 @@ enum Message {
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let panes = (0..2).map(|n| EditField::new(format!("Pane {}", n + 1)).multi_line(true));
+    let panes = (0..2).map(|n| EditField::new(format!("Pane {}", n + 1)).with_multi_line(true));
     let panes = RowSplitter::<EditField>::new(panes.collect());
 
     let window = impl_singleton! {
@@ -48,7 +48,7 @@ fn main() -> kas::shell::Result<()> {
                             let n = self.panes.len() + 1;
                             mgr.config_mgr(|mgr| self.panes.push(
                                 mgr,
-                                EditField::new(format!("Pane {}", n)).multi_line(true)
+                                EditField::new(format!("Pane {}", n)).with_multi_line(true)
                             ));
                         }
                     };

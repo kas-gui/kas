@@ -175,6 +175,12 @@ impl_scope! {
     /// A text-edit box
     ///
     /// This is just a wrapper around [`EditField`] adding a frame.
+    ///
+    /// This widget is intended for use with short input strings. Internally it
+    /// uses a [`String`], for which edits have `O(n)` cost.
+    ///
+    /// By default, the editor supports a single-line only;
+    /// [`Self::with_multi_line`] and [`Self::with_class`] can be used to change this.
     #[autoimpl(Deref, DerefMut, HasStr, HasString using self.inner)]
     #[derive(Clone, Default, Debug)]
     #[widget{
@@ -304,12 +310,40 @@ impl<G: EditGuard> EditBox<G> {
         self.inner.set_editable(editable);
     }
 
-    /// Set whether this `EditBox` shows multiple text lines
+    /// Set whether this `EditBox` uses multi-line mode
+    ///
+    /// This setting has two effects: the vertical size allocation is increased
+    /// and wrapping is enabled if true. Default: false.
+    ///
+    /// This method is ineffective if the text class is set by
+    /// [`Self::with_class`] to anything other than [`TextClass::Edit`].
     #[inline]
     #[must_use]
-    pub fn multi_line(mut self, multi_line: bool) -> Self {
-        self.inner = self.inner.multi_line(multi_line);
+    pub fn with_multi_line(mut self, multi_line: bool) -> Self {
+        self.inner = self.inner.with_multi_line(multi_line);
         self
+    }
+
+    /// True if the editor uses multi-line mode
+    ///
+    /// See: [`Self::with_multi_line`]
+    #[inline]
+    pub fn multi_line(&self) -> bool {
+        self.inner.multi_line()
+    }
+
+    /// Set the text class used
+    #[inline]
+    #[must_use]
+    pub fn with_class(mut self, class: TextClass) -> Self {
+        self.inner = self.inner.with_class(class);
+        self
+    }
+
+    /// Get the text class used
+    #[inline]
+    pub fn class(&self) -> TextClass {
+        self.inner.class()
     }
 
     /// Get whether the widget currently has keyboard input focus
@@ -345,10 +379,10 @@ impl_scope! {
     /// This widget is intended for use with short input strings. Internally it
     /// uses a [`String`], for which edits have `O(n)` cost.
     ///
-    /// Optionally, [`EditField::multi_line`] mode can be activated (enabling
-    /// line-wrapping and a larger vertical height). This mode is only recommended
-    /// for short texts for performance reasons.
-    #[derive(Clone, Default, Debug)]
+    /// By default, the editor supports a single-line only;
+    /// [`Self::with_multi_line`] and [`Self::with_class`] can be used to change this.
+    #[impl_default(where G: Default)]
+    #[derive(Clone, Debug)]
     #[widget{
         key_nav = true;
         hover_highlight = true;
@@ -358,7 +392,7 @@ impl_scope! {
         core: widget_core!(),
         view_offset: Offset,
         editable: bool,
-        multi_line: bool,
+        class: TextClass = TextClass::Edit(false),
         text: Text<String>,
         bounding_corner: Vec2,
         selection: SelectionHelper,
@@ -374,30 +408,27 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            let class = TextClass::Edit(self.multi_line);
-            size_mgr.text_bound(&mut self.text, class, axis)
+            size_mgr.text_bound(&mut self.text, self.class, axis)
         }
 
         fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
-            let valign = if self.multi_line {
+            let valign = if self.multi_line() {
                 Align::Default
             } else {
                 Align::Center
             };
-            let class = TextClass::Edit(self.multi_line);
 
             self.core.rect = rect;
             let align = align.unwrap_or(Align::Default, valign);
-            mgr.text_set_size(&mut self.text, class, rect.size, align);
+            mgr.text_set_size(&mut self.text, self.class, rect.size, align);
             self.bounding_corner = self.text.bounding_box().unwrap().1.into();
             self.set_view_offset_from_edit_pos();
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let class = TextClass::Edit(self.multi_line);
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
                 if self.selection.is_empty() {
-                    draw.text(self.rect().pos, &self.text, class);
+                    draw.text(self.rect().pos, &self.text, self.class);
                 } else {
                     // TODO(opt): we could cache the selection rectangles here to make
                     // drawing more efficient (self.text.highlight_lines(range) output).
@@ -406,14 +437,14 @@ impl_scope! {
                         self.rect().pos,
                         &self.text,
                         self.selection.range(),
-                        class,
+                        self.class,
                     );
                 }
                 if self.editable && draw.ev_state().has_char_focus(self.id_ref()).0 {
                     draw.text_cursor(
                         self.rect().pos,
                         &self.text,
-                        class,
+                        self.class,
                         self.selection.edit_pos(),
                     );
                 }
@@ -580,7 +611,7 @@ impl EditField<()> {
             core: Default::default(),
             view_offset: Default::default(),
             editable: true,
-            multi_line: false,
+            class: TextClass::Edit(false),
             text: Text::new(text),
             bounding_corner: Vec2::ZERO,
             selection: SelectionHelper::new(len, len),
@@ -608,7 +639,7 @@ impl EditField<()> {
             core: self.core,
             view_offset: self.view_offset,
             editable: self.editable,
-            multi_line: self.multi_line,
+            class: self.class,
             text: self.text,
             bounding_corner: self.bounding_corner,
             selection: self.selection,
@@ -694,12 +725,42 @@ impl<G: EditGuard> EditField<G> {
         self.editable = editable;
     }
 
-    /// Set whether this `EditField` shows multiple text lines
+    /// Set whether this `EditField` uses multi-line mode
+    ///
+    /// This setting has two effects: the vertical size allocation is increased
+    /// and wrapping is enabled if true. Default: false.
+    ///
+    /// This method is ineffective if the text class is set by
+    /// [`Self::with_class`] to anything other than [`TextClass::Edit`].
     #[inline]
     #[must_use]
-    pub fn multi_line(mut self, multi_line: bool) -> Self {
-        self.multi_line = multi_line;
+    pub fn with_multi_line(mut self, multi_line: bool) -> Self {
+        if let TextClass::Edit(ref mut multi) = self.class {
+            *multi = multi_line;
+        }
         self
+    }
+
+    /// True if the editor uses multi-line mode
+    ///
+    /// See also: [`Self::with_multi_line`]
+    #[inline]
+    pub fn multi_line(&self) -> bool {
+        self.class.multi_line()
+    }
+
+    /// Set the text class used
+    #[inline]
+    #[must_use]
+    pub fn with_class(mut self, class: TextClass) -> Self {
+        self.class = class;
+        self
+    }
+
+    /// Get the text class used
+    #[inline]
+    pub fn class(&self) -> TextClass {
+        self.class
     }
 
     /// Get whether the widget currently has keyboard input focus
@@ -781,8 +842,8 @@ impl<G: EditGuard> EditField<G> {
                 Action::None
             }
             Command::Activate => Action::Activate,
-            Command::Return if shift || !self.multi_line => Action::Activate,
-            Command::Return if self.multi_line => {
+            Command::Return if shift || !self.multi_line() => Action::Activate,
+            Command::Return if self.multi_line() => {
                 Action::Insert('\n'.encode_utf8(&mut buf), LastEdit::Insert)
             }
             // NOTE: we might choose to optionally handle Tab in the future,
@@ -951,7 +1012,7 @@ impl<G: EditGuard> EditField<G> {
             Command::Paste => {
                 if let Some(content) = mgr.get_clipboard() {
                     let mut end = content.len();
-                    if !self.multi_line {
+                    if !self.multi_line() {
                         // We cut the content short on control characters and
                         // ignore them (preventing line-breaks and ignoring any
                         // actions such as recursive-paste).
