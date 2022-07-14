@@ -10,13 +10,13 @@
 
 mod config;
 
-use crate::edit::{EditBox, EditField, GuardNotify};
-use crate::{CheckBox, Label, NavFrame, ProgressBar, RadioGroup, SliderValue, SpinnerValue};
+use crate::edit::{EditGuard, GuardNotify};
+use crate::{CheckBox, Label, NavFrame, RadioGroup, SliderValue, SpinnerValue};
 use kas::model::SharedData;
 use kas::prelude::*;
+use kas::theme::TextClass;
 use std::default::Default;
 use std::fmt::Debug;
-use std::marker::PhantomData;
 use std::ops::RangeInclusive;
 
 /// View widget driver/binder
@@ -166,46 +166,61 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for DefaultNav {
     }
 }
 
-/// Custom view widget constructor
-///
-/// This struct implements [`Driver`], using a the parametrised widget type.
-/// This struct is only usable where no extra data (such as a label) is required.
-#[derive(Clone, Debug)]
-pub struct Widget<W: kas::Widget> {
-    _pd: PhantomData<W>,
-}
-impl<W: kas::Widget> Default for Widget<W> {
-    fn default() -> Self {
-        Widget {
-            _pd: PhantomData::default(),
+impl_scope! {
+    /// [`crate::EditField`] view widget constructor
+    ///
+    /// This is parameterized `G`: [`EditGuard`], which defaults to [`GuardNotify`].
+    /// The guard should send a [`String`] message to enable updates on edit.
+    #[impl_default(where G: Default)]
+    #[derive(Clone, Copy, Debug)]
+    pub struct EditField<G: EditGuard + Clone = GuardNotify> {
+        guard: G,
+        class: TextClass = TextClass::Edit(false),
+    }
+    impl Self where G: Default {
+        /// Construct
+        #[inline]
+        pub fn new() -> Self {
+            Self::default()
+        }
+    }
+    impl Self {
+        /// Construct with given `guard`
+        #[inline]
+        #[must_use]
+        pub fn with_guard(mut self, guard: G) -> Self {
+            self.guard = guard;
+            self
+        }
+
+        /// Set whether the editor uses multi-line mode
+        ///
+        /// This replaces any class set by [`Self::with_class`].
+        ///
+        /// See: [`crate::EditField::with_multi_line`].
+        #[inline]
+        #[must_use]
+        pub fn with_multi_line(self, multi_line: bool) -> Self {
+            self.with_class(TextClass::Edit(multi_line))
+        }
+
+        /// Set the text class used
+        ///
+        /// See: [`crate::EditField::with_class`].
+        #[inline]
+        #[must_use]
+        pub fn with_class(mut self, class: TextClass) -> Self {
+            self.class = class;
+            self
         }
     }
 }
-
-// NOTE: this implementation conflicts, where it did not before adding the Data
-// type parameter to Driver. Possibly it can be re-enabled in the future.
-/*
-impl<Item, Data: SharedData<Item = Item>> Driver<Item, Data>
-    for Widget<<DefaultView as Driver<Item, Data>>::Widget>
-where
-    DefaultView: Driver<Item, Data>,
-{
-    type Widget = <DefaultView as Driver<Item, Data>>::Widget;
+impl<G: EditGuard + Clone, Data: SharedData<Item = String>> Driver<String, Data> for EditField<G> {
+    type Widget = crate::EditField<G>;
     fn make(&self) -> Self::Widget {
-        DefaultView.make()
-    }
-    fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
-        DefaultView.set(widget, data, key)
-    }
-    fn on_message(&self, mgr: &mut EventMgr, widget: &mut Self::Widget, data: &Data, key: &Data::Key) {
-        DefaultView.on_message(mgr, widget, data, key);
-    }
-}*/
-
-impl<Data: SharedData<Item = String>> Driver<String, Data> for Widget<EditField<GuardNotify>> {
-    type Widget = EditField<GuardNotify>;
-    fn make(&self) -> Self::Widget {
-        EditField::new("".to_string()).with_guard(GuardNotify)
+        crate::EditField::new("".to_string())
+            .with_guard(self.guard.clone())
+            .with_class(self.class)
     }
     fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
         data.get_cloned(key)
@@ -218,10 +233,60 @@ impl<Data: SharedData<Item = String>> Driver<String, Data> for Widget<EditField<
         }
     }
 }
-impl<Data: SharedData<Item = String>> Driver<String, Data> for Widget<EditBox<GuardNotify>> {
-    type Widget = EditBox<GuardNotify>;
+
+impl_scope! {
+    /// [`crate::EditBox`] view widget constructor
+    ///
+    /// This is parameterized `G`: [`EditGuard`], which defaults to [`GuardNotify`].
+    /// The guard should send a [`String`] message to enable updates on edit.
+    #[impl_default(where G: Default)]
+    #[derive(Clone, Copy, Debug)]
+    pub struct EditBox<G: EditGuard + Clone = GuardNotify> {
+        guard: G,
+        class: TextClass = TextClass::Edit(false),
+    }
+    impl Self where G: Default {
+        /// Construct
+        #[inline]
+        pub fn new() -> Self {
+            Self::default()
+        }
+    }
+    impl Self {
+        /// Construct with given `guard`
+        #[inline]
+        #[must_use]
+        pub fn with_guard(mut self, guard: G) -> Self {
+            self.guard = guard;
+            self
+        }
+
+        /// Set whether the editor uses multi-line mode
+        ///
+        /// This replaces any class set by [`Self::with_class`].
+        ///
+        /// See: [`crate::EditBox::with_multi_line`].
+        #[inline]
+        #[must_use]
+        pub fn with_multi_line(self, multi_line: bool) -> Self {
+            self.with_class(TextClass::Edit(multi_line))
+        }
+
+        /// Set the text class used
+        ///
+        /// See: [`crate::EditBox::with_class`].
+        #[inline]
+        #[must_use]
+        pub fn with_class(mut self, class: TextClass) -> Self {
+            self.class = class;
+            self
+        }
+    }
+}
+impl<G: EditGuard + Clone, Data: SharedData<Item = String>> Driver<String, Data> for EditBox<G> {
+    type Widget = crate::EditBox<G>;
     fn make(&self) -> Self::Widget {
-        EditBox::new("".to_string()).with_guard(GuardNotify)
+        crate::EditBox::new("".to_string()).with_guard(self.guard.clone())
     }
     fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
         data.get_cloned(key)
@@ -235,12 +300,27 @@ impl<Data: SharedData<Item = String>> Driver<String, Data> for Widget<EditBox<Gu
     }
 }
 
-impl<D: Directional + Default, Data: SharedData<Item = f32>> Driver<f32, Data>
-    for Widget<ProgressBar<D>>
-{
-    type Widget = ProgressBar<D>;
+/// [`crate::ProgressBar`] view widget constructor
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ProgressBar<D: Directional> {
+    direction: D,
+}
+impl<D: Directional + Default> ProgressBar<D> {
+    /// Construct
+    pub fn new() -> Self {
+        ProgressBar::new_with_direction(Default::default())
+    }
+}
+impl<D: Directional> ProgressBar<D> {
+    /// Construct with given `direction`
+    pub fn new_with_direction(direction: D) -> Self {
+        ProgressBar { direction }
+    }
+}
+impl<D: Directional, Data: SharedData<Item = f32>> Driver<f32, Data> for ProgressBar<D> {
+    type Widget = crate::ProgressBar<D>;
     fn make(&self) -> Self::Widget {
-        ProgressBar::new()
+        crate::ProgressBar::new_with_direction(self.direction)
     }
     fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
         data.get_cloned(key)

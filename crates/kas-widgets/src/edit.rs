@@ -106,7 +106,7 @@ pub trait EditGuard: Debug + Sized + 'static {
 
 impl EditGuard for () {}
 
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct GuardNotify;
 impl EditGuard for GuardNotify {
     fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
