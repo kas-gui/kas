@@ -256,7 +256,7 @@ pub struct CheckButton {
 }
 impl CheckButton {
     /// Construct, with given `label`
-    pub fn make<T: Into<AccelString>>(label: T) -> Self {
+    pub fn new<T: Into<AccelString>>(label: T) -> Self {
         let label = label.into();
         CheckButton { label }
     }
@@ -285,7 +285,7 @@ pub struct RadioBox {
 }
 impl RadioBox {
     /// Construct, with given `group`
-    pub fn make(group: RadioGroup) -> Self {
+    pub fn new(group: RadioGroup) -> Self {
         RadioBox { group }
     }
 }
@@ -314,7 +314,7 @@ pub struct RadioButton {
 }
 impl RadioButton {
     /// Construct, with given `label` and `group`
-    pub fn make<T: Into<AccelString>>(label: T, group: RadioGroup) -> Self {
+    pub fn new<T: Into<AccelString>>(label: T, group: RadioGroup) -> Self {
         let label = label.into();
         RadioButton { label, group }
     }
@@ -346,7 +346,7 @@ pub struct Slider<T: SliderValue, D: Directional> {
 }
 impl<T: SliderValue, D: Directional + Default> Slider<T, D> {
     /// Construct, with given `range` and `step` (see [`crate::Slider::new`])
-    pub fn make(range: RangeInclusive<T>, step: T) -> Self {
+    pub fn new(range: RangeInclusive<T>, step: T) -> Self {
         Slider {
             range,
             step,
@@ -392,7 +392,7 @@ pub struct Spinner<T: SpinnerValue> {
 }
 impl<T: SpinnerValue + Default> Spinner<T> {
     /// Construct, with given `range` and `step` (see [`crate::Spinner::new`])
-    pub fn make(range: RangeInclusive<T>, step: T) -> Self {
+    pub fn new(range: RangeInclusive<T>, step: T) -> Self {
         Spinner { range, step }
     }
 }
