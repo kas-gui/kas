@@ -263,7 +263,12 @@ impl_scope! {
         fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             self.dim = layout::GridDimensions {
                 cols: MENU_VIEW_COLS,
-                col_spans: self.list.iter_mut().filter_map(|w| w.sub_items().is_none().then(|| ())).count().cast(),
+                col_spans: self
+                    .list
+                    .iter_mut()
+                    .filter_map(|w| w.sub_items().is_none().then_some(()))
+                    .count()
+                    .cast(),
                 rows: self.list.len().cast(),
                 row_spans: 0,
             };

@@ -393,7 +393,7 @@ impl_scope! {
                 self.widgets
                     .iter()
                     .enumerate()
-                    .filter_map(|(i, w)| (key == w.key).then(|| i))
+                    .filter_map(|(i, w)| (key == w.key).then_some(i))
                     .next()
             } else {
                 None

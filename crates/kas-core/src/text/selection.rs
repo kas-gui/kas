@@ -120,7 +120,7 @@ impl SelectionHelper {
                 .split_word_bound_indices()
                 .find_map(|(index, _)| {
                     let pos = start + index;
-                    (pos >= range.end).then(|| pos)
+                    (pos >= range.end).then_some(pos)
                 })
                 .unwrap_or(string.len());
         } else {
