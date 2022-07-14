@@ -13,10 +13,10 @@ repository = "https://github.com/kas-gui/kas"
 exclude = ["/screenshots"]
 
 [package.metadata.docs.rs]
-features = ["stack_dst", "winit", "markdown", "yaml", "json", "ron"]
+features = ["winit", "markdown", "yaml", "json", "ron"]
 rustdoc-args = ["--cfg", "doc_cfg"]
 # To build locally:
-# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=internal_doc,markdown,yaml,json,ron,stack_dst --no-deps --open
+# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=internal_doc,markdown,yaml,json,ron --no-deps --open
 
 [features]
 # Use Generic Associated Types (this is too unstable to include in nightly!)
@@ -60,7 +60,6 @@ macros_log = ["kas-macros/log"]
 [dependencies]
 log = "0.4"
 smallvec = "1.6.1"
-stack_dst = { version = "0.6", optional = true }
 bitflags = "1.3.1"
 unicode-segmentation = "1.7"
 linear-map = "1.2.0"

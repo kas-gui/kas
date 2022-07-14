@@ -20,7 +20,7 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 # RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=nightly,internal_doc --all --no-deps --open
 
 [features]
-default = ["theme", "wgpu", "winit", "yaml", "image", "svg", "canvas", "clipboard", "markdown", "shaping", "stack_dst"]
+default = ["theme", "wgpu", "winit", "yaml", "image", "svg", "canvas", "clipboard", "markdown", "shaping"]
 
 # Enable theme support:
 theme = ["kas-theme"]
@@ -31,7 +31,7 @@ wgpu = ["kas-wgpu"]
 dynamic = ["kas-dylib"]
 
 # Enables usage of unstable Rust features
-nightly = ["min_spec", "kas-theme/nightly", "kas-wgpu/nightly", "unsize"]
+nightly = ["min_spec", "kas-theme/nightly", "kas-wgpu/nightly"]
 
 # Use Generic Associated Types (this is too unstable to include in nightly!)
 gat = ["kas-core/gat", "kas-theme/gat", "kas-wgpu/gat"]
@@ -84,11 +84,6 @@ svg = ["kas-resvg/svg"]
 # Inject logging into macro-generated code.
 # Requires that all crates using these macros depend on the log crate.
 macros_log = ["kas-core/macros_log"]
-
-stack_dst = ["kas-core/stack_dst", "kas-theme/stack_dst", "kas-wgpu/stack_dst"]
-
-# Use the unstable 'unsize' feature
-unsize = ["kas-theme/unsize", "kas-wgpu/unsize"]
 
 winit = ["kas-core/winit"]
 

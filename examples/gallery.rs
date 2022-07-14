@@ -469,14 +469,11 @@ KAS_CONFIG_MODE=readwrite
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
-    #[cfg(feature = "stack_dst")]
     let theme = kas::theme::MultiTheme::builder()
         .add("flat", kas::theme::FlatTheme::new())
         .add("simple", kas::theme::SimpleTheme::new())
         .add("shaded", kas::theme::ShadedTheme::new())
         .build();
-    #[cfg(not(feature = "stack_dst"))]
-    let theme = kas::theme::FlatTheme::new();
     let mut toolkit = kas::shell::Toolkit::new(theme)?;
 
     // TODO: use as logo of tab
@@ -555,9 +552,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     match msg {
                         Menu::Theme(name) => {
                             println!("Theme: {:?}", name);
-                            #[cfg(not(feature = "stack_dst"))]
-                            println!("Warning: switching themes requires feature 'stack_dst'");
-
                             mgr.adjust_theme(|theme| theme.set_theme(name));
                         }
                         Menu::Colour(name) => {
