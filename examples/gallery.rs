@@ -13,7 +13,8 @@ use kas::event::{Config, VirtualKeyCode as VK};
 use kas::model::SharedRc;
 use kas::prelude::*;
 use kas::resvg::Svg;
-use kas::widgets::{menu::MenuEntry, view::SingleView, *};
+use kas::widgets::view::{driver, SingleView};
+use kas::widgets::{menu::MenuEntry, *};
 
 #[derive(Clone, Debug)]
 enum Item {
@@ -271,7 +272,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 fn filter_list() -> Box<dyn SetDisabled> {
     use kas::dir::Down;
     use kas::model::{filter::ContainsCaseInsensitive, SharedData};
-    use kas::widgets::view::{driver, SelectionMode, SelectionMsg};
+    use kas::widgets::view::{SelectionMode, SelectionMsg};
 
     const MONTHS: &[&str] = &[
         "January",
@@ -293,7 +294,7 @@ fn filter_list() -> Box<dyn SetDisabled> {
 
     let filter = ContainsCaseInsensitive::new("");
     type FilteredList = view::FilteredList<Vec<String>, ContainsCaseInsensitive>;
-    type ListView = view::ListView<Down, FilteredList, driver::DefaultNav>;
+    type ListView = view::ListView<Down, FilteredList, driver::NavView>;
     let filtered = FilteredList::new(data, filter.clone());
 
     let r = RadioGroup::default();
@@ -455,7 +456,8 @@ KAS_CONFIG_MODE=readwrite
         #[derive(Debug)]
         struct {
             core: widget_core!(),
-            #[widget] view: SingleView<SharedRc<Config>> = SingleView::new(config),
+            #[widget] view: SingleView<SharedRc<Config>, driver::EventConfig> =
+                SingleView::new_with_driver(driver::EventConfig, config),
         }
 
         impl SetDisabled for Self {

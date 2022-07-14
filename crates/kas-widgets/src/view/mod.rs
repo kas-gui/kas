@@ -24,13 +24,15 @@
 //! # View widgets and drivers
 //!
 //! Standard widgets may be used to view data items, but to construct these a
-//! *driver* is required. These implement the [`Driver`] trait which constructs
-//! widgets from data items and optionally also the reverse binding.
+//! [`Driver`] type is required: the driver constructs a (parameterized) widget
+//! over the data, and may update the data on events from the widget.
+//! Use [`driver::View`] or [`driver::NavView`] for simple data or see the
+//! [`driver`] module for more.
 //!
 //! The user may implement a [`Driver`] or may use a standard one:
 //!
-//! -   [`driver::DefaultView`] constructs a default view widget over various data types
-//! -   [`driver::DefaultNav`] is a variant of the above, ensuring items support
+//! -   [`driver::View`] constructs a default view widget over various data types
+//! -   [`driver::NavView`] is a variant of the above, ensuring items support
 //!     keyboard navigation (e.g. useful to allow selection of static items)
 //! -   [`driver::CheckButton`] and [`driver::RadioButton`] support the `bool` type
 //! -   [`driver::Slider`] constructs a slider with a fixed range

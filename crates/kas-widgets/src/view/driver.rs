@@ -5,10 +5,18 @@
 
 //! View drivers
 //!
+//! This module provides the [`Driver`] trait along with three classes of
+//! implementations:
+//!
+//! -   [`View`], [`NavView`] provide "default views" over simple content
+//! -   [`EventConfig`] provides an editor over a specific complex data type
+//! -   Other types construct a (parametrized) input control over simple data
+//!
 //! Intended usage is to import the module name rather than its contents, thus
-//! allowing referal to e.g. `driver::DefaultView`.
+//! allowing referal to e.g. `driver::View`.
 
 mod config;
+pub use config::EventConfig;
 
 use crate::edit::{EditGuard, GuardNotify};
 use crate::{CheckBox, Label, NavFrame, RadioGroup, SliderValue, SpinnerValue};
@@ -21,14 +29,11 @@ use std::ops::RangeInclusive;
 
 /// View widget driver/binder
 ///
-/// This is the controller responsible for building "view" widgets over a given
-/// `Data` type, for updating those widgets, and for handling events from those
-/// widgets.
+/// The driver can:
 ///
-/// Several existing implementations are available, most notably:
-///
-/// -   [`DefaultView`] will choose a sensible widget to view the data
-/// -   [`DefaultNav`] will choose a sensible widget to view the data
+/// -   construct (empty) widgets with [`Self::make`]
+/// -   assign data to an existing widget with [`Self::set`]
+/// -   (optional) handle messages from a widget with [`Self::on_message`]
 ///
 /// NOTE: `Item` is a direct type parameter (in addition to an assoc. type
 /// param. of `SharedData`) only to avoid "conflicting implementations" errors.
@@ -67,7 +72,9 @@ pub trait Driver<Item, Data: SharedData<Item = Item>>: Debug {
     ///     a unit struct). The implementation of this method retrieves this
     ///     message updates `data` using values read from `widget`.
     ///
-    /// For examples, see implementations of [`DefaultView`].
+    /// See, for example, the implementation for [`CheckButton`]: the `make`
+    /// method assigns a state-change handler which `on_message` uses to update
+    /// the shared data.
     ///
     /// Default implementation: do nothing.
     fn on_message(
@@ -86,9 +93,9 @@ pub trait Driver<Item, Data: SharedData<Item = Item>>: Debug {
 /// This struct implements [`Driver`], using a default widget for the data type:
 ///
 /// -   [`crate::Label`] for `String`, `&str`, integer and float types
-/// -   [`crate::CheckBox`] (disabled) for the bool type
+/// -   [`crate::CheckBox`] (read-only) for the bool type
 #[derive(Clone, Copy, Debug, Default)]
-pub struct DefaultView;
+pub struct View;
 
 /// Default view widget constructor supporting keyboard navigation
 ///
@@ -97,13 +104,13 @@ pub struct DefaultView;
 ///
 /// -   [`crate::NavFrame`] around a [`crate::Label`] for `String`, `&str`,
 ///     integer and float types
-/// -   [`crate::CheckBox`] (disabled) for the bool type
+/// -   [`crate::CheckBox`] (read-only) for the bool type
 #[derive(Clone, Copy, Debug, Default)]
-pub struct DefaultNav;
+pub struct NavView;
 
 macro_rules! impl_via_to_string {
     ($t:ty) => {
-        impl<Data: SharedData<Item = $t>> Driver<$t, Data> for DefaultView {
+        impl<Data: SharedData<Item = $t>> Driver<$t, Data> for View {
             type Widget = Label<String>;
             fn make(&self) -> Self::Widget {
                 Label::new("".to_string())
@@ -112,7 +119,7 @@ macro_rules! impl_via_to_string {
                 data.get_cloned(key).map(|item| widget.set_string(item.to_string())).unwrap_or(TkAction::EMPTY)
             }
         }
-        impl<Data: SharedData<Item = $t>> Driver<$t, Data> for DefaultNav {
+        impl<Data: SharedData<Item = $t>> Driver<$t, Data> for NavView {
             type Widget = NavFrame<Label<String>>;
             fn make(&self) -> Self::Widget {
                 NavFrame::new(Label::new("".to_string()))
@@ -132,7 +139,7 @@ impl_via_to_string!(i8, i16, i32, i64, i128, isize);
 impl_via_to_string!(u8, u16, u32, u64, u128, usize);
 impl_via_to_string!(f32, f64);
 
-impl<Data: SharedData<Item = bool>> Driver<bool, Data> for DefaultView {
+impl<Data: SharedData<Item = bool>> Driver<bool, Data> for View {
     type Widget = CheckBox;
     fn make(&self) -> Self::Widget {
         CheckBox::new_on(|mgr, state| mgr.push_msg(state)).with_editable(false)
@@ -149,7 +156,7 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for DefaultView {
     }
 }
 
-impl<Data: SharedData<Item = bool>> Driver<bool, Data> for DefaultNav {
+impl<Data: SharedData<Item = bool>> Driver<bool, Data> for NavView {
     type Widget = CheckBox;
     fn make(&self) -> Self::Widget {
         CheckBox::new_on(|mgr, state| mgr.push_msg(state)).with_editable(false)

@@ -55,7 +55,7 @@ impl_scope! {
     pub struct ListView<
         D: Directional,
         T: ListData,
-        V: Driver<T::Item, T> = driver::DefaultView,
+        V: Driver<T::Item, T> = driver::View,
     > {
         core: widget_core!(),
         frame_offset: Offset,

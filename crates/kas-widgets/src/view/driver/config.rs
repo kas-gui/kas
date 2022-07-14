@@ -46,7 +46,7 @@ impl_scope! {
         };
     }]
     #[derive(Debug)]
-    pub struct EventConfig {
+    pub struct EventConfigWidget {
         core: widget_core!(),
         #[widget] menu_delay: Spinner<u32>,
         #[widget] touch_select_delay: Spinner<u32>,
@@ -62,8 +62,12 @@ impl_scope! {
     }
 }
 
-impl driver::Driver<Config, SharedRc<Config>> for driver::DefaultView {
-    type Widget = EventConfig;
+/// Editor for [`kas::event::Config`]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct EventConfig;
+
+impl driver::Driver<Config, SharedRc<Config>> for EventConfig {
+    type Widget = EventConfigWidget;
 
     fn make(&self) -> Self::Widget {
         let mouse_pan = ComboBox::from([
@@ -73,7 +77,7 @@ impl driver::Driver<Config, SharedRc<Config>> for driver::DefaultView {
             ("Always", MousePan::Always),
         ]);
 
-        EventConfig {
+        EventConfigWidget {
             core: Default::default(),
             menu_delay: Spinner::new(0..=5_000, 50)
                 .on_change(|mgr, v| mgr.push_msg(Msg::MenuDelay(v))),
