@@ -62,7 +62,7 @@ jobs:
         toolchain: [stable]
         include:
           - os: ubuntu-latest
-            toolchain: "1.58.0"
+            toolchain: "1.62.0"
           - os: ubuntu-latest
             toolchain: beta
 

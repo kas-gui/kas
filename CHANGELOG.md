@@ -2,15 +2,9 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.10.1] — 2021-09-07
-
-This is a small patch:
-
--   Fix button stretch and alignment, especially in the calculator example (#246)
--   Fix loading the font DB before parsing Markdown (#246)
--   Support `#[widget(align = stretch)]` (#246)
-
 ## [0.11.0] — unreleased
+
+Bump MSRV to 1.62.0.
 
 ### Breaking changes
 
@@ -18,6 +12,14 @@ This is a small patch:
 -   `Ord for WidgetId` now considers a parent to come *before* its children.
     Note: previously ordering was used in `send` logic; this is no longer
     recommended (use e.g. `Widget::find_child_index` instead).
+
+## [0.10.1] — 2021-09-07
+
+This is a small patch:
+
+-   Fix button stretch and alignment, especially in the calculator example (#246)
+-   Fix loading the font DB before parsing Markdown (#246)
+-   Support `#[widget(align = stretch)]` (#246)
 
 ## [0.10.0] — 2021-09-05
 
