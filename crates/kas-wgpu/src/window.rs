@@ -77,8 +77,9 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         };
 
         let mut theme_window = shared.theme.new_window(scale_factor);
+        let dpem = theme_window.size().dpem();
 
-        let mut ev_state = EventState::new(shared.config.clone(), scale_factor);
+        let mut ev_state = EventState::new(shared.config.clone(), scale_factor, dpem);
         let mut tkw = TkWindow::new(shared, None, &mut theme_window);
         ev_state.full_configure(&mut tkw, widget.as_widget_mut());
 
@@ -123,8 +124,9 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         // Now that we have a scale factor, we may need to resize:
         if use_logical_size && scale_factor != 1.0 {
             let scale_factor = scale_factor as f32;
-            ev_state.set_scale_factor(scale_factor);
             shared.theme.update_window(&mut theme_window, scale_factor);
+            let dpem = theme_window.size().dpem();
+            ev_state.set_scale_factor(scale_factor, dpem);
             solve_cache.invalidate_rule_cache();
         }
 
@@ -173,10 +175,11 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
                 // Note: API allows us to set new window size here.
                 shared.scale_factor = scale_factor;
                 let scale_factor = scale_factor as f32;
-                self.ev_state.set_scale_factor(scale_factor);
                 shared
                     .theme
                     .update_window(&mut self.theme_window, scale_factor);
+                let dpem = self.theme_window.size().dpem();
+                self.ev_state.set_scale_factor(scale_factor, dpem);
                 self.solve_cache.invalidate_rule_cache();
                 self.do_resize(shared, *new_inner_size);
             }

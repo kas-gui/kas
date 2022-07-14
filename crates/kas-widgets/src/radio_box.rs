@@ -6,7 +6,7 @@
 //! Toggle widgets
 
 use super::AccelLabel;
-use kas::model::{SharedRc, SingleData};
+use kas::model::{SharedData, SharedRc};
 use kas::prelude::*;
 use kas::theme::Feature;
 use log::trace;
@@ -41,7 +41,7 @@ impl_scope! {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Update { id, .. } if id == self.group.id() => {
-                    if self.state && !self.eq_id(self.group.get_cloned()) {
+                    if self.state && !self.eq_id(self.group.get_cloned(&()).unwrap()) {
                         trace!("RadioBox: unset {}", self.id());
                         self.state = false;
                         self.last_change = Some(Instant::now());
@@ -149,7 +149,7 @@ impl_scope! {
                 self.state = true;
                 self.last_change = Some(Instant::now());
                 mgr.redraw(self.id());
-                self.group.update(mgr, Some(self.id()));
+                self.group.update(mgr, &(), Some(self.id()));
                 true
             } else {
                 false
@@ -161,7 +161,7 @@ impl_scope! {
         /// Note: state will not update until the next draw.
         #[inline]
         pub fn unset_all(&self, mgr: &mut EventMgr) {
-            self.group.update(mgr, None);
+            self.group.update(mgr, &(), None);
         }
     }
 

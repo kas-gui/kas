@@ -11,10 +11,9 @@ pub use shortcuts::Shortcuts;
 use super::ModifiersState;
 use crate::cast::{Cast, CastFloat};
 use crate::geom::Offset;
+use crate::model::SharedRc;
 #[cfg(feature = "config")]
 use serde::{Deserialize, Serialize};
-use std::cell::RefCell;
-use std::rc::Rc;
 use std::time::Duration;
 
 /// Event handling configuration
@@ -43,9 +42,6 @@ pub struct Config {
     #[cfg_attr(feature = "config", serde(default = "defaults::touch_select_delay_ms"))]
     pub touch_select_delay_ms: u32,
 
-    #[cfg_attr(feature = "config", serde(default = "defaults::scroll_lines"))]
-    pub scroll_lines: f32,
-
     #[cfg_attr(
         feature = "config",
         serde(default = "defaults::scroll_flick_timeout_ms")
@@ -57,6 +53,9 @@ pub struct Config {
 
     #[cfg_attr(feature = "config", serde(default = "defaults::scroll_flick_sub"))]
     pub scroll_flick_sub: f32,
+
+    #[cfg_attr(feature = "config", serde(default = "defaults::scroll_dist_em"))]
+    pub scroll_dist_em: f32,
 
     #[cfg_attr(feature = "config", serde(default = "defaults::pan_dist_thresh"))]
     pub pan_dist_thresh: f32,
@@ -73,6 +72,9 @@ pub struct Config {
 
     #[cfg_attr(feature = "config", serde(default = "Shortcuts::platform_defaults"))]
     pub shortcuts: Shortcuts,
+
+    #[cfg_attr(feature = "config", serde(skip))]
+    pub is_dirty: bool,
 }
 
 impl Default for Config {
@@ -80,26 +82,35 @@ impl Default for Config {
         Config {
             menu_delay_ms: defaults::menu_delay_ms(),
             touch_select_delay_ms: defaults::touch_select_delay_ms(),
-            scroll_lines: defaults::scroll_lines(),
             scroll_flick_timeout_ms: defaults::scroll_flick_timeout_ms(),
             scroll_flick_mul: defaults::scroll_flick_mul(),
             scroll_flick_sub: defaults::scroll_flick_sub(),
+            scroll_dist_em: defaults::scroll_dist_em(),
             pan_dist_thresh: defaults::pan_dist_thresh(),
             mouse_pan: defaults::mouse_pan(),
             mouse_text_pan: defaults::mouse_text_pan(),
             mouse_nav_focus: defaults::mouse_nav_focus(),
             touch_nav_focus: defaults::touch_nav_focus(),
             shortcuts: Shortcuts::platform_defaults(),
+            is_dirty: false,
         }
+    }
+}
+
+impl Config {
+    /// Has the config ever been updated?
+    #[inline]
+    pub fn is_dirty(&self) -> bool {
+        self.is_dirty
     }
 }
 
 /// Wrapper around [`Config`] to handle window-specific scaling
 #[derive(Clone, Debug)]
 pub struct WindowConfig {
-    config: Rc<RefCell<Config>>,
-    scroll_dist: f32,
+    pub(crate) config: SharedRc<Config>,
     scroll_flick_sub: f32,
+    scroll_dist: f32,
     pan_dist_thresh: f32,
 }
 
@@ -107,28 +118,29 @@ impl WindowConfig {
     /// Construct
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn new(config: Rc<RefCell<Config>>, scale_factor: f32) -> Self {
+    pub fn new(config: SharedRc<Config>, scale_factor: f32, dpem: f32) -> Self {
         let mut w = WindowConfig {
             config,
-            scroll_dist: f32::NAN,
             scroll_flick_sub: f32::NAN,
+            scroll_dist: f32::NAN,
             pan_dist_thresh: f32::NAN,
         };
-        w.set_scale_factor(scale_factor);
+        w.update(scale_factor, dpem);
         w
     }
 
-    /// Set scale factor
+    /// Update
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub fn set_scale_factor(&mut self, scale_factor: f32) {
+    pub fn update(&mut self, scale_factor: f32, dpem: f32) {
         let base = self.config.borrow();
-        const LINE_HEIGHT: f32 = 19.0; // TODO: maybe we shouldn't assume this?
-        self.scroll_dist = base.scroll_lines * LINE_HEIGHT;
         self.scroll_flick_sub = base.scroll_flick_sub * scale_factor;
+        self.scroll_dist = base.scroll_dist_em * dpem;
         self.pan_dist_thresh = base.pan_dist_thresh * scale_factor;
     }
+}
 
+impl WindowConfig {
     /// Delay before opening/closing menus on mouse hover
     #[inline]
     pub fn menu_delay(&self) -> Duration {
@@ -139,23 +151,6 @@ impl WindowConfig {
     #[inline]
     pub fn touch_select_delay(&self) -> Duration {
         Duration::from_millis(self.config.borrow().touch_select_delay_ms.cast())
-    }
-
-    /// Get distance in pixels to scroll due to mouse wheel
-    ///
-    /// Calculates scroll distance from `(horiz, vert)` lines.
-    ///
-    /// If `line_height` is provided, scroll distance is based on this value,
-    /// otherwise it is based on an arbitrary line height.
-    pub fn scroll_distance(&self, lines: (f32, f32), line_height: Option<f32>) -> Offset {
-        let dist = match line_height {
-            Some(height) => height * self.config.borrow().scroll_lines,
-            None => self.scroll_dist,
-        };
-        Offset(
-            (dist * lines.0).cast_nearest(),
-            (dist * lines.1).cast_nearest(),
-        )
     }
 
     /// Controls activation of glide/momentum scrolling
@@ -181,6 +176,15 @@ impl WindowConfig {
     #[inline]
     pub fn scroll_flick_decay(&self) -> (f32, f32) {
         (self.config.borrow().scroll_flick_mul, self.scroll_flick_sub)
+    }
+
+    /// Get distance in pixels to scroll due to mouse wheel
+    ///
+    /// Calculates scroll distance from `(horiz, vert)` lines.
+    pub fn scroll_distance(&self, lines: (f32, f32)) -> Offset {
+        let x = (self.scroll_dist * -lines.0).cast_nearest();
+        let y = (self.scroll_dist * lines.1).cast_nearest();
+        Offset(x, y)
     }
 
     /// Drag distance threshold before panning (scrolling) starts
@@ -223,15 +227,6 @@ impl WindowConfig {
     pub fn shortcuts<F: FnOnce(&Shortcuts) -> T, T>(&self, f: F) -> T {
         let base = self.config.borrow();
         f(&base.shortcuts)
-    }
-}
-
-/// Other functions
-impl Config {
-    /// Has the config ever been updated?
-    #[inline]
-    pub fn is_dirty(&self) -> bool {
-        false // current code never updates config
     }
 }
 
@@ -279,20 +274,20 @@ mod defaults {
     pub fn touch_select_delay_ms() -> u32 {
         1000
     }
-    pub fn scroll_lines() -> f32 {
-        3.0
-    }
     pub fn scroll_flick_timeout_ms() -> u32 {
-        25
+        50
     }
     pub fn scroll_flick_mul() -> f32 {
-        0.5
+        0.625
     }
     pub fn scroll_flick_sub() -> f32 {
-        100.0
+        200.0
+    }
+    pub fn scroll_dist_em() -> f32 {
+        4.5
     }
     pub fn pan_dist_thresh() -> f32 {
-        2.1
+        5.0
     }
     pub fn mouse_pan() -> MousePan {
         MousePan::Always

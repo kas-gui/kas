@@ -13,7 +13,5 @@ mod data_traits;
 pub mod filter;
 mod shared_rc;
 
-pub use data_traits::{
-    ListData, ListDataMut, MatrixData, MatrixDataMut, SingleData, SingleDataMut,
-};
-pub use shared_rc::SharedRc;
+pub use data_traits::{DataKey, ListData, MatrixData, SharedData, SharedDataMut, SingleData};
+pub use shared_rc::{SharedRc, SharedRcRef};

@@ -676,9 +676,9 @@ impl Layout {
             Layout::Label(stor, text) => {
                 children.push(stor.to_token_stream());
                 stor.to_tokens(ty_toks);
-                ty_toks.append_all(quote! { : ::kas::widgets::StrLabel, });
+                ty_toks.append_all(quote! { : ::kas::label::StrLabel, });
                 stor.to_tokens(def_toks);
-                def_toks.append_all(quote! { : ::kas::widgets::StrLabel::new(#text), });
+                def_toks.append_all(quote! { : ::kas::label::StrLabel::new(#text), });
             }
         }
     }

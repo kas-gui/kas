@@ -196,7 +196,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// The latter accepts the following syntax:
 ///
 /// > _Layout_ :\
-/// > &nbsp;&nbsp; &nbsp;&nbsp; _Single_ | _List_ | _Slice_ | _Grid_ | _Float_ | _Align_ | _Frame_ | _Button_
+/// > &nbsp;&nbsp; &nbsp;&nbsp; _Single_ | _List_ | _Slice_ | _Grid_ | _Float_ | _Align_ | _Frame_ | _Button_ | _LitStr_ | _ExprStartingUpperCaseIdent_
 /// >
 /// > _Single_ :\
 /// > &nbsp;&nbsp; `self` `.` _Member_ | _Expr_
@@ -274,9 +274,18 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// type `Option<Rgb>`). Additionally, a button automatically uses centered
 /// alignment of content.
 ///
+/// An identifier starting with an upper-case letter is interpreted as an
+/// expression constructing a widget, which is inserted into the layout in the
+/// given position.
+///
+/// A string literal implicitly generates a string label widget. This widget
+/// will wrap text when required. An alternative is `Label::new("abc...")`
+/// (when `kas::widgets::Label` is in scope).
+///
 /// Non-trivial layouts require a "storage" field within the generated
-/// `widget_core!()`. This storage field may be named via a "lifetime label"
-/// (e.g. `col 'col_storage: [...]`), otherwise the field name will be generated.
+/// `widget_core!()`. This storage field is usually anonymous (i.e. uses an
+/// automatically generated name), but may be named via a "lifetime label",
+/// for example: `col 'col_storage: [...]`.
 ///
 /// _Member_ is a field name (struct) or number (tuple struct).
 ///

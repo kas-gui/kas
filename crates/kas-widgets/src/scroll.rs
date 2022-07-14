@@ -7,7 +7,6 @@
 
 use kas::event::{components::ScrollComponent, Scroll};
 use kas::prelude::*;
-use kas::theme::TextClass;
 use std::fmt::Debug;
 
 impl_scope! {
@@ -94,8 +93,7 @@ impl_scope! {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             let mut rules = self.inner.size_rules(size_mgr.re(), axis);
             self.min_child_size.set_component(axis, rules.min_size());
-            let line_height = size_mgr.line_height(TextClass::Label(false));
-            rules.reduce_min_to(line_height);
+            rules.reduce_min_to(size_mgr.min_scroll_size(axis));
 
             // We use a frame to contain the content margin within the scrollable area.
             let frame = kas::layout::FrameRules::new(0, 0, 0, (0, 0));

@@ -12,10 +12,8 @@ use linear_map::LinearMap;
 use log::{trace, warn};
 use smallvec::SmallVec;
 use std::any::{type_name, Any};
-use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::ops::{Deref, DerefMut};
-use std::rc::Rc;
 use std::time::Instant;
 use std::u16;
 
@@ -384,6 +382,10 @@ impl Message {
 
     fn downcast<T: 'static>(self) -> Result<Box<T>, Box<dyn Any>> {
         self.any.downcast::<T>()
+    }
+
+    fn downcast_ref<T: 'static>(&self) -> Option<&T> {
+        self.any.downcast_ref::<T>()
     }
 }
 

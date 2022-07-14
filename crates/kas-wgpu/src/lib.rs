@@ -31,14 +31,12 @@ pub mod options;
 mod shared;
 mod window;
 
-use std::cell::RefCell;
-use std::rc::Rc;
-use thiserror::Error;
-
 use kas::draw::DrawShared;
 use kas::event::UpdateId;
+use kas::model::SharedRc;
 use kas::WindowId;
 use kas_theme::Theme;
+use thiserror::Error;
 use winit::error::OsError;
 use winit::event_loop::{EventLoop, EventLoopProxy, EventLoopWindowTarget};
 
@@ -153,7 +151,7 @@ where
                 Default::default()
             }
         };
-        let config = Rc::new(RefCell::new(config));
+        let config = SharedRc::new(config);
         let scale_factor = find_scale_factor(&el);
         Ok(Toolkit {
             el,
@@ -174,7 +172,7 @@ where
         custom: CB,
         theme: T,
         options: Options,
-        config: Rc<RefCell<kas::event::Config>>,
+        config: SharedRc<kas::event::Config>,
     ) -> Result<Self> {
         let el = EventLoop::with_user_event();
         let scale_factor = find_scale_factor(&el);
@@ -189,6 +187,12 @@ where
     #[inline]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
         &mut self.shared.draw
+    }
+
+    /// Access event configuration
+    #[inline]
+    pub fn event_config(&self) -> &SharedRc<kas::event::Config> {
+        &self.shared.config
     }
 
     /// Access the theme by ref

@@ -80,7 +80,7 @@ impl Glide {
             let delta = Offset::conv_approx(d);
             let rest = d - Vec2::conv(delta);
 
-            if v.max_abs_comp() >= 1.0 {
+            if v.abs().max_comp() >= 1.0 {
                 let mut v = *v * decay_mul.powf(dur);
                 v = v - v.abs().min(Vec2::splat(decay_sub * dur)) * v.sign();
                 *self = Glide::Glide(now, v, rest);
@@ -251,7 +251,7 @@ impl ScrollComponent {
                             _ => return (false, Response::Unused),
                         };
                         let delta = match delta {
-                            LineDelta(x, y) => mgr.config().scroll_distance((-x, y), None),
+                            LineDelta(x, y) => mgr.config().scroll_distance((x, y)),
                             PixelDelta(d) => d,
                         };
                         self.offset - delta
@@ -266,7 +266,7 @@ impl ScrollComponent {
             }
             Event::Scroll(delta) => {
                 let delta = match delta {
-                    LineDelta(x, y) => mgr.config().scroll_distance((-x, y), None),
+                    LineDelta(x, y) => mgr.config().scroll_distance((x, y)),
                     PixelDelta(d) => d,
                 };
                 moved = self.scroll_by_delta(mgr, delta);

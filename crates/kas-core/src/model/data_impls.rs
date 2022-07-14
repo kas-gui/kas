@@ -12,23 +12,12 @@ use std::fmt::Debug;
 
 macro_rules! impl_list_data {
     ($ty:ty) => {
-        impl<T: Clone + Debug + 'static> ListData for $ty {
+        impl<T: Clone + Debug + 'static> SharedData for $ty {
             type Key = usize;
             type Item = T;
 
             fn version(&self) -> u64 {
                 1
-            }
-
-            fn len(&self) -> usize {
-                (*self).len()
-            }
-
-            fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
-                parent.make_child(*key)
-            }
-            fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
-                child.next_key_after(parent)
             }
 
             fn contains_key(&self, key: &Self::Key) -> bool {
@@ -42,6 +31,27 @@ macro_rules! impl_list_data {
             fn update(&self, _: &mut EventMgr, _: &Self::Key, _: Self::Item) {
                 // Note: plain [T] does not support update, but SharedRc<[T]> does.
             }
+        }
+        impl<T: Clone + Debug + 'static> SharedDataMut for $ty {
+            fn set(&mut self, key: &Self::Key, item: Self::Item) {
+                self[*key] = item;
+            }
+        }
+        impl<T: Clone + Debug + 'static> ListData for $ty {
+            fn is_empty(&self) -> bool {
+                (*self).is_empty()
+            }
+
+            fn len(&self) -> usize {
+                (*self).len()
+            }
+
+            fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
+                parent.make_child(*key)
+            }
+            fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
+                child.next_key_after(parent)
+            }
 
             fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
                 (0..limit.min((*self).len())).collect()
@@ -50,11 +60,6 @@ macro_rules! impl_list_data {
             fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key> {
                 let len = (*self).len();
                 (start.min(len)..(start + limit).min(len)).collect()
-            }
-        }
-        impl<T: Clone + Debug + 'static> ListDataMut for $ty {
-            fn set(&mut self, key: &Self::Key, item: Self::Item) {
-                self[*key] = item;
             }
         }
     };

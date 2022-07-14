@@ -6,11 +6,11 @@
 //! Adapter widgets (wrappers)
 
 mod adapt_widget;
-mod label;
 mod map;
 mod reserve;
+mod with_label;
 
 pub use adapt_widget::*;
-pub use label::WithLabel;
 pub use map::MapMessage;
 pub use reserve::{Reserve, ReserveP};
+pub use with_label::WithLabel;

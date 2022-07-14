@@ -155,7 +155,7 @@ impl_scope! {
     impl Self {
         /// Construct
         pub fn new(title: impl Into<Cow<'static, str>>, multi_line: bool, data: T) -> Self {
-            let text = data.get_cloned();
+            let text = data.get_cloned(&()).unwrap();
             TextEdit {
                 core: Default::default(),
                 title: title.into(),
@@ -166,7 +166,7 @@ impl_scope! {
 
         fn close(&mut self, mgr: &mut EventMgr, commit: bool) -> Response {
             if commit {
-                self.data.update(mgr, self.edit.get_string());
+                self.data.update(mgr, &(), self.edit.get_string());
             }
             mgr.send_action(TkAction::CLOSE);
             Response::Used

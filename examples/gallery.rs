@@ -9,7 +9,7 @@
 //! (excepting custom graphics).
 
 use kas::dir::Right;
-use kas::event::VirtualKeyCode as VK;
+use kas::event::{Config, VirtualKeyCode as VK};
 use kas::model::SharedRc;
 use kas::prelude::*;
 use kas::resvg::Svg;
@@ -160,8 +160,10 @@ fn widgets() -> Box<dyn SetDisabled> {
                 MenuEntry::new("T&wo", Item::Combo(2)),
                 MenuEntry::new("Th&ree", Item::Combo(3)),
             ]),
-            #[widget] spin: Spinner<i32> = Spinner::new(0..=10, 1),
-            #[widget] sd: Slider<i32, Right> = Slider::new(0..=10, 1),
+            #[widget] spin: Spinner<i32> = Spinner::new(0..=10, 1)
+                .on_change(|mgr, value| mgr.push_msg(Item::Spinner(value))),
+            #[widget] sd: Slider<i32, Right> = Slider::new(0..=10, 1)
+                .on_move(|mgr, value| mgr.push_msg(Item::Slider(value))),
             #[widget] sc: ScrollBar<Right> = ScrollBar::new().with_limits(100, 20),
             #[widget] pg: ProgressBar<Right> = ProgressBar::new(),
             #[widget] sv = img_rustacean.with_scaling(|s| {
@@ -174,17 +176,15 @@ fn widgets() -> Box<dyn SetDisabled> {
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
                 if let Some(msg) = mgr.try_pop_msg::<i32>() {
-                    if index == widget_index![self.spin] {
-                        *mgr |= self.sd.set_value(msg);
-                        mgr.push_msg(Item::Spinner(msg));
-                    } else if index == widget_index![self.sd] {
-                        *mgr |= self.spin.set_value(msg);
-                        mgr.push_msg(Item::Slider(msg));
-                    } else if index == widget_index![self.sc] {
+                    if index == widget_index![self.sc] {
                         let ratio = msg as f32 / self.sc.max_value() as f32;
                         *mgr |= self.pg.set_value(ratio);
                         mgr.push_msg(Item::Scroll(msg))
                     }
+                } else if let Some(Item::Spinner(value)) = mgr.try_observe_msg() {
+                    *mgr |= self.sd.set_value(*value);
+                } else if let Some(Item::Slider(value)) = mgr.try_observe_msg() {
+                    *mgr |= self.spin.set_value(*value);
                 }
             }
         }
@@ -270,7 +270,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 
 fn filter_list() -> Box<dyn SetDisabled> {
     use kas::dir::Down;
-    use kas::model::{filter::ContainsCaseInsensitive, SingleData};
+    use kas::model::{filter::ContainsCaseInsensitive, SharedData};
     use kas::widgets::view::{driver, SelectionMode, SelectionMsg};
 
     const MONTHS: &[&str] = &[
@@ -313,7 +313,7 @@ fn filter_list() -> Box<dyn SetDisabled> {
             #[widget] r1 = RadioButton::new_msg("single", r.clone(), SelectionMode::Single),
             #[widget] r2 = RadioButton::new_msg("multiple", r, SelectionMode::Multiple),
             #[widget] filter = EditBox::new("")
-                .on_edit(move |s, mgr| filter.update(mgr, s.to_string())),
+                .on_edit(move |s, mgr| filter.update(mgr, &(), s.to_string())),
             #[widget] list: ScrollBars<ListView> =
                 ScrollBars::new(ListView::new(filtered))
         }
@@ -411,9 +411,9 @@ fn canvas() -> Box<dyn SetDisabled> {
     Box::new(impl_singleton! {
         #[widget{
             layout = column: [
-                "Animated canvas demo",
-                "This example uses kas_resvg::Canvas, which is CPU-rendered.",
-                "Embedded GPU-rendered content is also possible (see separate Mandlebrot example).",
+                Label::new("Animated canvas demo
+This example uses kas_resvg::Canvas, which is CPU-rendered.
+Embedded GPU-rendered content is also possible (see separate Mandlebrot example)."),
                 self.canvas,
             ];
         }]
@@ -424,6 +424,44 @@ fn canvas() -> Box<dyn SetDisabled> {
         }
         impl SetDisabled for Self {
             fn set_disabled(&mut self, _: &mut EventMgr, _: bool) {}
+        }
+    })
+}
+
+fn config(config: SharedRc<Config>) -> Box<dyn SetDisabled> {
+    use kas::text::format::Markdown;
+
+    const DESC: &str = "\
+Event configuration editor
+================
+
+Updated items should have immediate effect.
+
+To persist, set the following environment variables:
+```
+KAS_CONFIG=config.yaml
+KAS_CONFIG_MODE=readwrite
+```
+";
+
+    Box::new(impl_singleton! {
+        #[widget{
+            layout = column: [
+                ScrollLabel::new(Markdown::new(DESC).unwrap()),
+                Separator::new(),
+                self.view,
+            ];
+        }]
+        #[derive(Debug)]
+        struct {
+            core: widget_core!(),
+            #[widget] view: SingleView<SharedRc<Config>> = SingleView::new(config),
+        }
+
+        impl SetDisabled for Self {
+            fn set_disabled(&mut self, mgr: &mut EventMgr, state: bool) {
+                mgr.set_disabled(self.view.id(), state);
+            }
         }
     })
 }
@@ -508,7 +546,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .with_title("Widgets", widgets()) //TODO: use img_gallery as logo
                 .with_title("Text editor", editor())
                 .with_title("List", filter_list())
-                .with_title("Canvas", canvas()),
+                .with_title("Canvas", canvas())
+                .with_title("Config", config(toolkit.event_config().clone())),
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {

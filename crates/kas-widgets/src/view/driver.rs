@@ -8,10 +8,11 @@
 //! Intended usage is to import the module name rather than its contents, thus
 //! allowing referal to e.g. `driver::DefaultView`.
 
-use crate::{
-    CheckBox, EditBox, EditField, EditGuard, Label, NavFrame, ProgressBar, RadioGroup, SliderType,
-    SpinnerType,
-};
+mod config;
+
+use crate::edit::{EditBox, EditField, GuardNotify};
+use crate::{CheckBox, Label, NavFrame, ProgressBar, RadioGroup, SliderValue, SpinnerValue};
+use kas::model::SharedData;
 use kas::prelude::*;
 use std::default::Default;
 use std::fmt::Debug;
@@ -20,18 +21,19 @@ use std::ops::RangeInclusive;
 
 /// View widget driver/binder
 ///
-/// The controller binds data items with view widgets.
-///
-/// Note that the key type is not made available since in most cases view
-/// widgets are not dependent on the element key. In rare cases where the key
-/// is needed, it must be added to the data's `Item` type (see `data-list-view`
-/// example).
+/// This is the controller responsible for building "view" widgets over a given
+/// `Data` type, for updating those widgets, and for handling events from those
+/// widgets.
 ///
 /// Several existing implementations are available, most notably:
 ///
 /// -   [`DefaultView`] will choose a sensible widget to view the data
 /// -   [`DefaultNav`] will choose a sensible widget to view the data
-pub trait Driver<T>: Debug {
+///
+/// NOTE: `Item` is a direct type parameter (in addition to an assoc. type
+/// param. of `SharedData`) only to avoid "conflicting implementations" errors.
+/// Similar to: rust#20400, rust#92894. Given fixes, we may remove the param.
+pub trait Driver<Item, Data: SharedData<Item = Item>>: Debug {
     /// Type of the widget used to view data
     type Widget: kas::Widget;
 
@@ -40,11 +42,43 @@ pub trait Driver<T>: Debug {
     /// Such instances are used for sizing and cached widgets, but not shown.
     /// The controller may later call [`Driver::set`] on the widget then show it.
     fn make(&self) -> Self::Widget;
+
     /// Set the viewed data
     ///
     /// The widget may expect `configure` to be called at least once before data
     /// is set and to have `set_rect` called after each time data is set.
-    fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction;
+    fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction;
+
+    /// Handle a message from a widget
+    ///
+    /// This method is called when a view widget returns with a message; it
+    /// may retrieve this message with [`EventMgr::try_pop_msg`].
+    ///
+    /// There are three main ways of implementing this method:
+    ///
+    /// 1.  Do nothing. This is always safe, though may result in unhandled
+    ///     message warnings when the view widget is interactive.
+    /// 2.  On user input actions, view widgets send a message including their
+    ///     content (potentially wrapped with a user-defined enum or struct
+    ///     type). The implementation of this method retrieves this message and
+    ///     updates `data` given this content. In this case, the `widget`
+    ///     parameter is not used.
+    /// 3.  On user input actions, view widgets send a "trigger" message (likely
+    ///     a unit struct). The implementation of this method retrieves this
+    ///     message updates `data` using values read from `widget`.
+    ///
+    /// For examples, see implementations of [`DefaultView`].
+    ///
+    /// Default implementation: do nothing.
+    fn on_message(
+        &self,
+        mgr: &mut EventMgr,
+        widget: &mut Self::Widget,
+        data: &Data,
+        key: &Data::Key,
+    ) {
+        let _ = (mgr, widget, data, key);
+    }
 }
 
 /// Default view widget constructor
@@ -69,22 +103,22 @@ pub struct DefaultNav;
 
 macro_rules! impl_via_to_string {
     ($t:ty) => {
-        impl Driver<$t> for DefaultView {
+        impl<Data: SharedData<Item = $t>> Driver<$t, Data> for DefaultView {
             type Widget = Label<String>;
             fn make(&self) -> Self::Widget {
                 Label::new("".to_string())
             }
-            fn set(&self, widget: &mut Self::Widget, data: $t) -> TkAction {
-                widget.set_string(data.to_string())
+            fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
+                data.get_cloned(key).map(|item| widget.set_string(item.to_string())).unwrap_or(TkAction::EMPTY)
             }
         }
-        impl Driver<$t> for DefaultNav {
+        impl<Data: SharedData<Item = $t>> Driver<$t, Data> for DefaultNav {
             type Widget = NavFrame<Label<String>>;
             fn make(&self) -> Self::Widget {
                 NavFrame::new(Label::new("".to_string()))
             }
-            fn set(&self, widget: &mut Self::Widget, data: $t) -> TkAction {
-                widget.set_string(data.to_string())
+            fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
+                data.get_cloned(key).map(|item| widget.set_string(item.to_string())).unwrap_or(TkAction::EMPTY)
             }
         }
     };
@@ -98,23 +132,37 @@ impl_via_to_string!(i8, i16, i32, i64, i128, isize);
 impl_via_to_string!(u8, u16, u32, u64, u128, usize);
 impl_via_to_string!(f32, f64);
 
-impl Driver<bool> for DefaultView {
+impl<Data: SharedData<Item = bool>> Driver<bool, Data> for DefaultView {
     type Widget = CheckBox;
     fn make(&self) -> Self::Widget {
-        CheckBox::new().with_editable(false)
+        CheckBox::new_on(|mgr, state| mgr.push_msg(state)).with_editable(false)
     }
-    fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
-        widget.set_bool(data)
+    fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
+        data.get_cloned(key)
+            .map(|item| widget.set_bool(item))
+            .unwrap_or(TkAction::EMPTY)
+    }
+    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
+        if let Some(state) = mgr.try_pop_msg() {
+            data.update(mgr, key, state);
+        }
     }
 }
 
-impl Driver<bool> for DefaultNav {
+impl<Data: SharedData<Item = bool>> Driver<bool, Data> for DefaultNav {
     type Widget = CheckBox;
     fn make(&self) -> Self::Widget {
-        CheckBox::new().with_editable(false)
+        CheckBox::new_on(|mgr, state| mgr.push_msg(state)).with_editable(false)
     }
-    fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
-        widget.set_bool(data)
+    fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
+        data.get_cloned(key)
+            .map(|item| widget.set_bool(item))
+            .unwrap_or(TkAction::EMPTY)
+    }
+    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
+        if let Some(state) = mgr.try_pop_msg() {
+            data.update(mgr, key, state);
+        }
     }
 }
 
@@ -134,47 +182,70 @@ impl<W: kas::Widget> Default for Widget<W> {
     }
 }
 
-impl<T> Driver<T> for Widget<<DefaultView as Driver<T>>::Widget>
+// NOTE: this implementation conflicts, where it did not before adding the Data
+// type parameter to Driver. Possibly it can be re-enabled in the future.
+/*
+impl<Item, Data: SharedData<Item = Item>> Driver<Item, Data>
+    for Widget<<DefaultView as Driver<Item, Data>>::Widget>
 where
-    DefaultView: Driver<T>,
+    DefaultView: Driver<Item, Data>,
 {
-    type Widget = <DefaultView as Driver<T>>::Widget;
+    type Widget = <DefaultView as Driver<Item, Data>>::Widget;
     fn make(&self) -> Self::Widget {
         DefaultView.make()
     }
-    fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction {
-        DefaultView.set(widget, data)
+    fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
+        DefaultView.set(widget, data, key)
+    }
+    fn on_message(&self, mgr: &mut EventMgr, widget: &mut Self::Widget, data: &Data, key: &Data::Key) {
+        DefaultView.on_message(mgr, widget, data, key);
+    }
+}*/
+
+impl<Data: SharedData<Item = String>> Driver<String, Data> for Widget<EditField<GuardNotify>> {
+    type Widget = EditField<GuardNotify>;
+    fn make(&self) -> Self::Widget {
+        EditField::new("".to_string()).with_guard(GuardNotify)
+    }
+    fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
+        data.get_cloned(key)
+            .map(|item| widget.set_string(item))
+            .unwrap_or(TkAction::EMPTY)
+    }
+    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
+        if let Some(item) = mgr.try_pop_msg() {
+            data.update(mgr, key, item);
+        }
+    }
+}
+impl<Data: SharedData<Item = String>> Driver<String, Data> for Widget<EditBox<GuardNotify>> {
+    type Widget = EditBox<GuardNotify>;
+    fn make(&self) -> Self::Widget {
+        EditBox::new("".to_string()).with_guard(GuardNotify)
+    }
+    fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
+        data.get_cloned(key)
+            .map(|item| widget.set_string(item))
+            .unwrap_or(TkAction::EMPTY)
+    }
+    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
+        if let Some(item) = mgr.try_pop_msg() {
+            data.update(mgr, key, item);
+        }
     }
 }
 
-impl<G: EditGuard + Default> Driver<String> for Widget<EditField<G>> {
-    type Widget = EditField<G>;
-    fn make(&self) -> Self::Widget {
-        let guard = G::default();
-        EditField::new("".to_string()).with_guard(guard)
-    }
-    fn set(&self, widget: &mut Self::Widget, data: String) -> TkAction {
-        widget.set_string(data)
-    }
-}
-impl<G: EditGuard + Default> Driver<String> for Widget<EditBox<G>> {
-    type Widget = EditBox<G>;
-    fn make(&self) -> Self::Widget {
-        let guard = G::default();
-        EditBox::new("".to_string()).with_guard(guard)
-    }
-    fn set(&self, widget: &mut Self::Widget, data: String) -> TkAction {
-        widget.set_string(data)
-    }
-}
-
-impl<D: Directional + Default> Driver<f32> for Widget<ProgressBar<D>> {
+impl<D: Directional + Default, Data: SharedData<Item = f32>> Driver<f32, Data>
+    for Widget<ProgressBar<D>>
+{
     type Widget = ProgressBar<D>;
     fn make(&self) -> Self::Widget {
         ProgressBar::new()
     }
-    fn set(&self, widget: &mut Self::Widget, data: f32) -> TkAction {
-        widget.set_value(data)
+    fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
+        data.get_cloned(key)
+            .map(|item| widget.set_value(item))
+            .unwrap_or(TkAction::EMPTY)
     }
 }
 
@@ -190,13 +261,20 @@ impl CheckButton {
         CheckButton { label }
     }
 }
-impl Driver<bool> for CheckButton {
+impl<Data: SharedData<Item = bool>> Driver<bool, Data> for CheckButton {
     type Widget = crate::CheckButton;
     fn make(&self) -> Self::Widget {
-        crate::CheckButton::new(self.label.clone()).on_toggle(|mgr, state| mgr.push_msg(state))
+        crate::CheckButton::new_on(self.label.clone(), |mgr, state| mgr.push_msg(state))
     }
-    fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
-        widget.set_bool(data)
+    fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
+        data.get_cloned(key)
+            .map(|item| widget.set_bool(item))
+            .unwrap_or(TkAction::EMPTY)
+    }
+    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
+        if let Some(state) = mgr.try_pop_msg() {
+            data.update(mgr, key, state);
+        }
     }
 }
 
@@ -211,13 +289,20 @@ impl RadioBox {
         RadioBox { group }
     }
 }
-impl Driver<bool> for RadioBox {
+impl<Data: SharedData<Item = bool>> Driver<bool, Data> for RadioBox {
     type Widget = crate::RadioBox;
     fn make(&self) -> Self::Widget {
-        crate::RadioBox::new(self.group.clone()).on_select(|mgr| mgr.push_msg(true))
+        crate::RadioBox::new_on(self.group.clone(), |mgr| mgr.push_msg(true))
     }
-    fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
-        widget.set_bool(data)
+    fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
+        data.get_cloned(key)
+            .map(|item| widget.set_bool(item))
+            .unwrap_or(TkAction::EMPTY)
+    }
+    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
+        if let Some(state) = mgr.try_pop_msg() {
+            data.update(mgr, key, state);
+        }
     }
 }
 
@@ -234,25 +319,32 @@ impl RadioButton {
         RadioButton { label, group }
     }
 }
-impl Driver<bool> for RadioButton {
+impl<Data: SharedData<Item = bool>> Driver<bool, Data> for RadioButton {
     type Widget = crate::RadioButton;
     fn make(&self) -> Self::Widget {
         crate::RadioButton::new(self.label.clone(), self.group.clone())
             .on_select(|mgr| mgr.push_msg(true))
     }
-    fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
-        widget.set_bool(data)
+    fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
+        data.get_cloned(key)
+            .map(|item| widget.set_bool(item))
+            .unwrap_or(TkAction::EMPTY)
+    }
+    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
+        if let Some(state) = mgr.try_pop_msg() {
+            data.update(mgr, key, state);
+        }
     }
 }
 
 /// [`crate::Slider`] view widget constructor
 #[derive(Clone, Debug)]
-pub struct Slider<T: SliderType, D: Directional> {
+pub struct Slider<T: SliderValue, D: Directional> {
     range: RangeInclusive<T>,
     step: T,
     direction: D,
 }
-impl<T: SliderType, D: Directional + Default> Slider<T, D> {
+impl<T: SliderValue, D: Directional + Default> Slider<T, D> {
     /// Construct, with given `range` and `step` (see [`crate::Slider::new`])
     pub fn make(range: RangeInclusive<T>, step: T) -> Self {
         Slider {
@@ -262,7 +354,7 @@ impl<T: SliderType, D: Directional + Default> Slider<T, D> {
         }
     }
 }
-impl<T: SliderType, D: Directional> Slider<T, D> {
+impl<T: SliderValue, D: Directional> Slider<T, D> {
     /// Construct, with given `range`, `step` and `direction` (see [`Slider::new_with_direction`])
     pub fn new_with_direction(range: RangeInclusive<T>, step: T, direction: D) -> Self {
         Slider {
@@ -272,34 +364,54 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
         }
     }
 }
-impl<T: SliderType, D: Directional> Driver<T> for Slider<T, D> {
-    type Widget = crate::Slider<T, D>;
+impl<D: Directional, Data: SharedData> Driver<Data::Item, Data> for Slider<Data::Item, D>
+where
+    Data::Item: SliderValue,
+{
+    type Widget = crate::Slider<Data::Item, D>;
     fn make(&self) -> Self::Widget {
         crate::Slider::new_with_direction(self.range.clone(), self.step, self.direction)
     }
-    fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction {
-        widget.set_value(data)
+    fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
+        data.get_cloned(key)
+            .map(|item| widget.set_value(item))
+            .unwrap_or(TkAction::EMPTY)
+    }
+    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
+        if let Some(state) = mgr.try_pop_msg() {
+            data.update(mgr, key, state);
+        }
     }
 }
 
 /// [`crate::Spinner`] view widget constructor
 #[derive(Clone, Debug)]
-pub struct Spinner<T: SpinnerType> {
+pub struct Spinner<T: SpinnerValue> {
     range: RangeInclusive<T>,
     step: T,
 }
-impl<T: SpinnerType + Default> Spinner<T> {
+impl<T: SpinnerValue + Default> Spinner<T> {
     /// Construct, with given `range` and `step` (see [`crate::Spinner::new`])
     pub fn make(range: RangeInclusive<T>, step: T) -> Self {
         Spinner { range, step }
     }
 }
-impl<T: SpinnerType> Driver<T> for Spinner<T> {
-    type Widget = crate::Spinner<T>;
+impl<Data: SharedData> Driver<Data::Item, Data> for Spinner<Data::Item>
+where
+    Data::Item: SpinnerValue,
+{
+    type Widget = crate::Spinner<Data::Item>;
     fn make(&self) -> Self::Widget {
         crate::Spinner::new(self.range.clone(), self.step)
     }
-    fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction {
-        widget.set_value(data)
+    fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
+        data.get_cloned(key)
+            .map(|item| widget.set_value(item))
+            .unwrap_or(TkAction::EMPTY)
+    }
+    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
+        if let Some(state) = mgr.try_pop_msg() {
+            data.update(mgr, key, state);
+        }
     }
 }

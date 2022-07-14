@@ -13,6 +13,8 @@ use kas::event::components::ScrollComponent;
 use kas::event::{Command, CursorIcon, Scroll};
 use kas::layout::solve_size_rules;
 use kas::model::MatrixData;
+#[allow(unused)]
+use kas::model::SharedData;
 use kas::prelude::*;
 use linear_map::set::LinearSet;
 use log::{debug, trace};
@@ -48,8 +50,8 @@ impl_scope! {
     ///
     /// # Messages
     ///
-    /// When a child pushes a message, the [`MatrixData::handle_message`] method is
-    /// called. After calling [`MatrixData::handle_message`], this widget attempts
+    /// When a child pushes a message, the [`Driver::on_message`] method is
+    /// called. After calling [`Driver::on_message`], this widget attempts
     /// to read and handle [`SelectMsg`].
     ///
     /// When selection is enabled and an item is selected or deselected, this
@@ -58,7 +60,7 @@ impl_scope! {
     #[widget]
     pub struct MatrixView<
         T: MatrixData,
-        V: Driver<T::Item> = driver::DefaultView,
+        V: Driver<T::Item, T> = driver::DefaultView,
     > {
         core: widget_core!(),
         frame_offset: Offset,
@@ -142,7 +144,7 @@ impl_scope! {
         /// Set shared data
         ///
         /// This method updates the shared data, if supported (see
-        /// [`MatrixData::update`]). Other widgets sharing this data are notified
+        /// [`SharedData::update`]). Other widgets sharing this data are notified
         /// of the update, if data is changed.
         pub fn set_value(&self, mgr: &mut EventMgr, key: &T::Key, data: T::Item) {
             self.data.update(mgr, key, data);
@@ -221,7 +223,7 @@ impl_scope! {
                 SelectionMode::Single => self.selection.clear(),
                 _ => (),
             }
-            if !self.data.contains(&key) {
+            if !self.data.contains_key(&key) {
                 return Err(SelectionError::Key);
             }
             match self.selection.insert(key) {
@@ -244,7 +246,7 @@ impl_scope! {
         /// Manually trigger an update to handle changed data
         pub fn update_view(&mut self, mgr: &mut EventMgr) {
             let data = &self.data;
-            self.selection.retain(|key| data.contains(key));
+            self.selection.retain(|key| data.contains_key(key));
             for w in &mut self.widgets {
                 w.key = None;
             }
@@ -315,10 +317,11 @@ impl_scope! {
                     let id = self.data.make_id(self.id_ref(), &key);
                     let w = &mut self.widgets[i];
                     if w.key.as_ref() != Some(&key) {
-                        if let Some(item) = self.data.get_cloned(&key) {
+                        mgr.configure(id, &mut w.widget);
+                        let act = self.view.set(&mut w.widget, &self.data, &key);
+                        if !act.is_empty() {
                             w.key = Some(key);
-                            mgr.configure(id, &mut w.widget);
-                            action |= self.view.set(&mut w.widget, item);
+                            action |= act;
                             solve_size_rules(
                                 &mut w.widget,
                                 mgr.size_mgr(),
@@ -540,9 +543,7 @@ impl_scope! {
                         let id = self.data.make_id(self.id_ref(), &key);
                         let mut widget = self.view.make();
                         mgr.configure(id, &mut widget);
-                        if let Some(item) = self.data.get_cloned(&key) {
-                            *mgr |= self.view.set(&mut widget, item);
-                        }
+                        *mgr |= self.view.set(&mut widget, &self.data, &key);
                         let key = Some(key);
                         self.widgets.push(WidgetData { key, widget });
                     }
@@ -760,12 +761,13 @@ impl_scope! {
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
-            let key = match self.widgets[index].key.clone() {
+            let w = &mut self.widgets[index];
+            let key = match w.key.clone() {
                 Some(k) => k,
                 None => return,
             };
 
-            self.data.handle_message(mgr, &key);
+            self.view.on_message(mgr, &mut w.widget, &self.data, &key);
 
             if let Some(SelectMsg) = mgr.try_pop_msg() {
                 match self.sel_mode {

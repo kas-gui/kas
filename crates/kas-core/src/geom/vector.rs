@@ -175,10 +175,10 @@ macro_rules! impl_vec2 {
                 self.0.min(self.1)
             }
 
-            /// Take the maximum of absolute values of components
+            /// Take the maximum component
             #[inline]
-            pub fn max_abs_comp(self) -> $f {
-                self.0.abs().max(self.1.abs())
+            pub fn max_comp(self) -> $f {
+                self.0.max(self.1)
             }
 
             /// Return the minimum, componentwise

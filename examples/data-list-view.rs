@@ -85,22 +85,12 @@ impl MySharedData {
         (new_text, self.id)
     }
 }
-impl ListData for MySharedData {
+impl SharedData for MySharedData {
     type Key = usize;
-    type Item = (usize, bool, String);
+    type Item = (bool, String);
 
     fn version(&self) -> u64 {
         self.data.borrow().ver
-    }
-
-    fn len(&self) -> usize {
-        self.data.borrow().len
-    }
-    fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
-        parent.make_child(*key)
-    }
-    fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
-        child.next_key_after(parent)
     }
 
     fn contains_key(&self, key: &Self::Key) -> bool {
@@ -112,26 +102,20 @@ impl ListData for MySharedData {
         let data = self.data.borrow();
         let is_active = data.active == index;
         let text = data.get(index);
-        Some((index, is_active, text))
+        Some((is_active, text))
     }
 
     fn update(&self, _: &mut EventMgr, _: &Self::Key, _: Self::Item) {}
-
-    fn handle_message(&self, mgr: &mut EventMgr, key: &Self::Key) {
-        if let Some(msg) = mgr.try_pop_msg() {
-            let mut data = self.data.borrow_mut();
-            data.ver += 1;
-            match msg {
-                EntryMsg::Select => {
-                    data.active = *key;
-                }
-                EntryMsg::Update(text) => {
-                    data.strings.insert(*key, text.clone());
-                }
-            }
-            mgr.push_msg(Control::Update(data.get(data.active)));
-            mgr.update_all(self.id, 0);
-        }
+}
+impl ListData for MySharedData {
+    fn len(&self) -> usize {
+        self.data.borrow().len
+    }
+    fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId {
+        parent.make_child(*key)
+    }
+    fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key> {
+        child.next_key_after(parent)
     }
 
     fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
@@ -182,7 +166,7 @@ impl_scope! {
 struct MyDriver {
     radio_group: RadioGroup,
 }
-impl Driver<(usize, bool, String)> for MyDriver {
+impl Driver<(bool, String), MySharedData> for MyDriver {
     type Widget = ListEntry;
 
     fn make(&self) -> Self::Widget {
@@ -195,11 +179,39 @@ impl Driver<(usize, bool, String)> for MyDriver {
             edit: EditBox::new(String::default()).with_guard(ListEntryGuard),
         }
     }
-    fn set(&self, widget: &mut Self::Widget, data: (usize, bool, String)) -> TkAction {
-        let label = format!("Entry number {}", data.0 + 1);
-        widget.label.set_string(label)
-            | widget.radio.set_bool(data.1)
-            | widget.edit.set_string(data.2)
+
+    fn set(&self, widget: &mut Self::Widget, data: &MySharedData, key: &usize) -> TkAction {
+        if let Some(item) = data.get_cloned(key) {
+            let label = format!("Entry number {}", *key + 1);
+            widget.label.set_string(label)
+                | widget.radio.set_bool(item.0)
+                | widget.edit.set_string(item.1)
+        } else {
+            TkAction::empty()
+        }
+    }
+
+    fn on_message(
+        &self,
+        mgr: &mut EventMgr,
+        _: &mut Self::Widget,
+        data: &MySharedData,
+        key: &usize,
+    ) {
+        if let Some(msg) = mgr.try_pop_msg() {
+            let mut borrow = data.data.borrow_mut();
+            borrow.ver += 1;
+            match msg {
+                EntryMsg::Select => {
+                    borrow.active = *key;
+                }
+                EntryMsg::Update(text) => {
+                    borrow.strings.insert(*key, text.clone());
+                }
+            }
+            mgr.push_msg(Control::Update(borrow.get(borrow.active)));
+            mgr.update_all(data.id, 0);
+        }
     }
 }
 

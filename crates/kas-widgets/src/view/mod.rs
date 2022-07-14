@@ -12,12 +12,11 @@
 //!
 //! # Shared data and *model*
 //!
-//! Shared data must implement several traits, namely those in
-//! [`kas::model`] and one of the "view" traits: [`SingleData`],
-//! [`ListData`] or [`MatrixData`]. These traits together form the "model".
+//! Shared data must implement [`SharedData`], optionally [`SharedDataMut`]
+//! and (depending on dimension) optionally [`ListData`] or [`MatrixData`].
 //!
 //! For simpler cases it is not always necessary to implement your own shared
-//! data type, for example `SharedRc<i32>` implements [`SingleData`] and
+//! data type, for example `SharedRc<i32>` implements [`SharedData`] TODO and
 //! `&'static [&'static str]` implements [`ListData`]. The [`SharedRc`] type
 //! provides an `update` method and the [`UpdateId`] and version counter
 //! required to synchronise views; `&[T]` does not (data is constant).
@@ -61,14 +60,14 @@
 //!
 //! The following views are provided:
 //!
-//! -   [`SingleView`] creates a view over a [`SingleData`] object (no scrolling
+//! -   [`SingleView`] creates a view over a [`SharedData`] object (no scrolling
 //!     or selection support)
 //! -   [`ListView`] creates a scrollable list view over a [`ListData`] object
 
 #[allow(unused)]
 use kas::event::UpdateId;
 #[allow(unused)]
-use kas::model::{ListData, MatrixData, SharedRc, SingleData};
+use kas::model::{ListData, MatrixData, SharedData, SharedDataMut, SharedRc};
 use thiserror::Error;
 
 mod filter_list;

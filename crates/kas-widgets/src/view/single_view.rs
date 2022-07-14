@@ -6,6 +6,8 @@
 //! Single view widget
 
 use super::{driver, Driver};
+#[allow(unused)]
+use kas::model::SharedData;
 use kas::model::SingleData;
 use kas::prelude::*;
 
@@ -18,13 +20,13 @@ impl_scope! {
     /// One may use [`kas::model::SharedRc`]
     /// or a custom shared data type.
     ///
-    /// The driver `V` must implement [`Driver`], with data type
+    /// The driver `V` must implement [`Driver`] over data type
     /// `<T as SingleData>::Item`. Several implementations are available in the
     /// [`driver`] module or a custom implementation may be used.
     ///
     /// # Messages
     ///
-    /// When a child pushes a message, the [`SingleData::handle_message`] method is
+    /// When a child pushes a message, the [`Driver::on_message`] method is
     /// called.
     #[autoimpl(Debug ignore self.view)]
     #[derive(Clone)]
@@ -33,7 +35,7 @@ impl_scope! {
     }]
     pub struct SingleView<
         T: SingleData,
-        V: Driver<T::Item> = driver::DefaultView,
+        V: Driver<T::Item, T> = driver::DefaultView,
     > {
         core: widget_core!(),
         view: V,
@@ -84,16 +86,16 @@ impl_scope! {
 
         /// Get a copy of the shared value
         pub fn get_value(&self) -> T::Item {
-            self.data.get_cloned()
+            self.data.get_cloned(&()).unwrap()
         }
 
         /// Set shared data
         ///
         /// This method updates the shared data, if supported (see
-        /// [`SingleData::update`]). Other widgets sharing this data are notified
+        /// [`SharedData::update`]). Other widgets sharing this data are notified
         /// of the update, if data is changed.
         pub fn set_value(&self, mgr: &mut EventMgr, data: T::Item) {
-            self.data.update(mgr, data);
+            self.data.update(mgr, &(), data);
         }
 
         /// Update shared data
@@ -108,7 +110,7 @@ impl_scope! {
     impl Widget for Self {
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             // We set data now, after child is configured
-            *mgr |= self.view.set(&mut self.child, self.data.get_cloned());
+            *mgr |= self.view.set(&mut self.child, &self.data, &());
         }
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
@@ -116,8 +118,7 @@ impl_scope! {
                 Event::Update { .. } => {
                     let data_ver = self.data.version();
                     if data_ver > self.data_ver {
-                        let value = self.data.get_cloned();
-                        *mgr |= self.view.set(&mut self.child, value);
+                        *mgr |= self.view.set(&mut self.child, &self.data, &());
                         self.data_ver = data_ver;
                     }
                     Response::Used
@@ -127,7 +128,7 @@ impl_scope! {
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-            self.data.handle_message(mgr);
+            self.view.on_message(mgr, &mut self.child, &self.data, &());
         }
     }
 }

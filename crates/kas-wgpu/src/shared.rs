@@ -6,9 +6,7 @@
 //! Shared state
 
 use log::info;
-use std::cell::RefCell;
 use std::num::NonZeroU32;
-use std::rc::Rc;
 use std::time::Duration;
 
 use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe, DrawWindow};
@@ -16,6 +14,7 @@ use crate::{warn_about_error, Error, Options, WindowId};
 use kas::cast::Conv;
 use kas::draw;
 use kas::event::UpdateId;
+use kas::model::SharedRc;
 use kas::TkAction;
 use kas_theme::{Theme, ThemeConfig};
 
@@ -29,7 +28,7 @@ pub struct SharedState<C: CustomPipe, T> {
     pub instance: wgpu::Instance,
     pub draw: draw::SharedState<DrawPipe<C>>,
     pub theme: T,
-    pub config: Rc<RefCell<kas::event::Config>>,
+    pub config: SharedRc<kas::event::Config>,
     pub pending: Vec<PendingAction>,
     /// Estimated scale factor (from last window constructed or available screens)
     pub scale_factor: f64,
@@ -47,7 +46,7 @@ where
         custom: CB,
         mut theme: T,
         options: Options,
-        config: Rc<RefCell<kas::event::Config>>,
+        config: SharedRc<kas::event::Config>,
         scale_factor: f64,
     ) -> Result<Self, Error> {
         let instance = wgpu::Instance::new(options.backend());

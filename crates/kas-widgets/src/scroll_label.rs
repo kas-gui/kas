@@ -189,11 +189,7 @@ impl_scope! {
                 }
                 Event::Scroll(delta) => {
                     let delta2 = match delta {
-                        ScrollDelta::LineDelta(x, y) => {
-                            // We arbitrarily scroll 3 Em:
-                            let dist = 3.0 * self.text.env().dpem;
-                            Offset((x * dist).cast_nearest(), (y * dist).cast_nearest())
-                        }
+                        ScrollDelta::LineDelta(x, y) => mgr.config().scroll_distance((x, y)),
                         ScrollDelta::PixelDelta(coord) => coord,
                     };
                     self.pan_delta(mgr, delta2)

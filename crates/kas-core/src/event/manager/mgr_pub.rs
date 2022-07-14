@@ -141,8 +141,7 @@ impl EventState {
     /// Returns true when `dist` is large enough to switch to pan mode.
     #[inline]
     pub fn config_test_pan_thresh(&self, dist: Offset) -> bool {
-        let thresh = self.config.pan_dist_thresh();
-        Vec2::conv(dist).sum_square() >= thresh * thresh
+        Vec2::conv(dist).abs().max_comp() >= self.config.pan_dist_thresh()
     }
 
     /// Set/unset a widget as disabled
@@ -507,6 +506,11 @@ impl<'a> EventMgr<'a> {
         } else {
             None
         }
+    }
+
+    /// Try observing the last message on the stack without popping
+    pub fn try_observe_msg<M: Debug + 'static>(&self) -> Option<&M> {
+        self.messages.last().and_then(|m| m.downcast_ref::<M>())
     }
 
     /// Set a scroll action

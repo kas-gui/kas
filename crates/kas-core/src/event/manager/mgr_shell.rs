@@ -12,6 +12,7 @@ use std::time::{Duration, Instant};
 use super::*;
 use crate::cast::traits::*;
 use crate::geom::{Coord, DVec2};
+use crate::model::SharedRc;
 use crate::{ShellWindow, TkAction, Widget, WidgetId};
 
 // TODO: this should be configurable or derived from the system
@@ -25,9 +26,9 @@ const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 impl EventState {
     /// Construct an event manager per-window data struct
     #[inline]
-    pub fn new(config: Rc<RefCell<Config>>, scale_factor: f32) -> Self {
+    pub fn new(config: SharedRc<Config>, scale_factor: f32, dpem: f32) -> Self {
         EventState {
-            config: WindowConfig::new(config, scale_factor),
+            config: WindowConfig::new(config, scale_factor, dpem),
             disabled: vec![],
             window_has_focus: false,
             modifiers: ModifiersState::empty(),
@@ -55,8 +56,8 @@ impl EventState {
     }
 
     /// Update scale factor
-    pub fn set_scale_factor(&mut self, scale_factor: f32) {
-        self.config.set_scale_factor(scale_factor);
+    pub fn set_scale_factor(&mut self, scale_factor: f32, dpem: f32) {
+        self.config.update(scale_factor, dpem);
     }
 
     /// Configure event manager for a widget tree.
@@ -251,6 +252,11 @@ impl<'a> EventMgr<'a> {
 
     /// Update widgets with an [`UpdateId`]
     pub fn update_widgets(&mut self, widget: &mut dyn Widget, id: UpdateId, payload: u64) {
+        if id == self.state.config.config.id() {
+            let (sf, dpem) = self.size_mgr(|size| (size.scale_factor(), size.dpem()));
+            self.state.config.update(sf, dpem);
+        }
+
         let start = Instant::now();
         let count = self.send_all(widget, Event::Update { id, payload });
         debug!(
