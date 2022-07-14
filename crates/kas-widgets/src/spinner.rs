@@ -186,7 +186,7 @@ impl_scope! {
                 edit: EditField::new("").with_guard(SpinnerGuard::new(range)),
                 b_up: MarkButton::new(MarkStyle::Point(Direction::Up), SpinBtn::Up),
                 b_down: MarkButton::new(MarkStyle::Point(Direction::Down), SpinBtn::Down),
-                step: step,
+                step,
                 on_change: None,
             }
         }
