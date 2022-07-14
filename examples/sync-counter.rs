@@ -5,47 +5,30 @@
 
 //! A counter synchronised between multiple windows
 
-use kas::event::EventMgr;
 use kas::macros::impl_scope;
 use kas::model::SharedRc;
-use kas::widgets::view::SingleView;
-use kas::widgets::TextButton;
-use kas::{Widget, Window};
+use kas::widgets::view::{driver, SingleView};
+use kas::Window;
 
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    #[derive(Clone, Debug)]
-    struct Increment(i32);
-
     impl_scope! {
         #[widget{
-            layout = column: [
-                align(center): self.counter,
-                row: [
-                    TextButton::new_msg("−", Increment(-1)),
-                    TextButton::new_msg("+", Increment(1)),
-                ],
-            ];
+            layout = self.spinner;
         }]
-        #[derive(Clone, Debug, Default)]
+        #[derive(Debug)]
         struct Counter {
             core: widget_core!(),
             // SingleView embeds a shared value, here default-constructed to 0
-            #[widget] counter: SingleView<SharedRc<i32>>,
+            #[widget] spinner: SingleView<SharedRc<i32>, driver::Spinner<i32>>,
         }
         impl Self {
             fn new(data: SharedRc<i32>) -> Self {
+                let driver = driver::Spinner::new(i32::MIN..=i32::MAX, 1);
                 Counter {
                     core: Default::default(),
-                    counter: SingleView::new(data),
-                }
-            }
-        }
-        impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-                if let Some(Increment(x)) = mgr.try_pop_msg() {
-                    self.counter.update_value(mgr, |v| v + x);
+                    spinner: SingleView::new_with_driver(driver, data),
                 }
             }
         }

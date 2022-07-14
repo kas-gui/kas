@@ -371,6 +371,7 @@ where
     type Widget = crate::Slider<Data::Item, D>;
     fn make(&self) -> Self::Widget {
         crate::Slider::new_with_direction(self.range.clone(), self.step, self.direction)
+            .on_move(|mgr, value| mgr.push_msg(value))
     }
     fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
         data.get_cloned(key)
@@ -402,7 +403,7 @@ where
 {
     type Widget = crate::Spinner<Data::Item>;
     fn make(&self) -> Self::Widget {
-        crate::Spinner::new(self.range.clone(), self.step)
+        crate::Spinner::new(self.range.clone(), self.step).on_change(|mgr, val| mgr.push_msg(val))
     }
     fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
         data.get_cloned(key)
