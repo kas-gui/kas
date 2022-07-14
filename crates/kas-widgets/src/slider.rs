@@ -100,7 +100,7 @@ impl_scope! {
         core: widget_core!(),
         direction: D,
         // Terminology assumes vertical orientation:
-        range: RangeInclusive<T>,
+        range: (T, T),
         step: T,
         value: T,
         #[widget]
@@ -150,7 +150,7 @@ impl_scope! {
             Slider {
                 core: Default::default(),
                 direction,
-                range,
+                range: range.into_inner(),
                 step,
                 value,
                 handle: DragHandle::new(),
@@ -194,10 +194,10 @@ impl_scope! {
         #[inline]
         #[allow(clippy::neg_cmp_op_on_partial_ord)]
         fn clamp_value(&self, value: T) -> T {
-            if !(value >= *self.range.start()) {
-                *self.range.start()
-            } else if !(value <= *self.range.end()) {
-                *self.range.end()
+            if !(value >= self.range.0) {
+                self.range.0
+            } else if !(value <= self.range.1) {
+                self.range.1
             } else {
                 value
             }
@@ -218,8 +218,8 @@ impl_scope! {
 
         // translate value to offset in local coordinates
         fn offset(&self) -> Offset {
-            let a = self.value - *self.range.start();
-            let b = *self.range.end() - *self.range.start();
+            let a = self.value - self.range.0;
+            let b = self.range.1 - self.range.0;
             let max_offset = self.handle.max_offset();
             let mut frac = a.div_as_f64(b);
             assert!((0.0..=1.0).contains(&frac));
@@ -233,7 +233,7 @@ impl_scope! {
         }
 
         fn set_offset_and_emit(&mut self, mgr: &mut EventMgr, offset: Offset) {
-            let b = *self.range.end() - *self.range.start();
+            let b = self.range.1 - self.range.0;
             let max_offset = self.handle.max_offset();
             let mut a = match self.direction.is_vertical() {
                 false => b.mul_f64(offset.0 as f64 / max_offset.0 as f64),
@@ -242,7 +242,7 @@ impl_scope! {
             if self.direction.is_reversed() {
                 a = b - a;
             }
-            let value = self.clamp_value(a + *self.range.start());
+            let value = self.clamp_value(a + self.range.0);
             if value != self.value {
                 self.value = value;
                 *mgr |= self.handle.set_offset(self.offset()).1;
@@ -313,8 +313,8 @@ impl_scope! {
                                 true => self.value - x,
                             }
                         }
-                        Command::Home => *self.range.start(),
-                        Command::End => *self.range.end(),
+                        Command::Home => self.range.0,
+                        Command::End => self.range.1,
                         _ => return Response::Unused,
                     };
                     let action = self.set_value(v);

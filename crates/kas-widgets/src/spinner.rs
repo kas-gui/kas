@@ -92,10 +92,11 @@ struct SpinnerGuard<T: SpinnerValue> {
 
 impl<T: SpinnerValue> SpinnerGuard<T> {
     fn new(range: RangeInclusive<T>) -> Self {
+        let (start, end) = range.into_inner();
         SpinnerGuard {
-            value: *range.start(),
-            start: *range.start(),
-            end: *range.end(),
+            value: start,
+            start,
+            end,
         }
     }
 

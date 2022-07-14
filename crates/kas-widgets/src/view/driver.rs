@@ -87,7 +87,7 @@ pub trait Driver<Item, Data: SharedData<Item = Item>>: Debug {
 ///
 /// -   [`crate::Label`] for `String`, `&str`, integer and float types
 /// -   [`crate::CheckBox`] (disabled) for the bool type
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct DefaultView;
 
 /// Default view widget constructor supporting keyboard navigation
@@ -98,7 +98,7 @@ pub struct DefaultView;
 /// -   [`crate::NavFrame`] around a [`crate::Label`] for `String`, `&str`,
 ///     integer and float types
 /// -   [`crate::CheckBox`] (disabled) for the bool type
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct DefaultNav;
 
 macro_rules! impl_via_to_string {
@@ -338,9 +338,9 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for RadioButton {
 }
 
 /// [`crate::Slider`] view widget constructor
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Slider<T: SliderValue, D: Directional> {
-    range: RangeInclusive<T>,
+    range: (T, T),
     step: T,
     direction: D,
 }
@@ -348,7 +348,7 @@ impl<T: SliderValue, D: Directional + Default> Slider<T, D> {
     /// Construct, with given `range` and `step` (see [`crate::Slider::new`])
     pub fn new(range: RangeInclusive<T>, step: T) -> Self {
         Slider {
-            range,
+            range: range.into_inner(),
             step,
             direction: D::default(),
         }
@@ -358,7 +358,7 @@ impl<T: SliderValue, D: Directional> Slider<T, D> {
     /// Construct, with given `range`, `step` and `direction` (see [`Slider::new_with_direction`])
     pub fn new_with_direction(range: RangeInclusive<T>, step: T, direction: D) -> Self {
         Slider {
-            range,
+            range: range.into_inner(),
             step,
             direction,
         }
@@ -370,7 +370,8 @@ where
 {
     type Widget = crate::Slider<Data::Item, D>;
     fn make(&self) -> Self::Widget {
-        crate::Slider::new_with_direction(self.range.clone(), self.step, self.direction)
+        let range = self.range.0..=self.range.1;
+        crate::Slider::new_with_direction(range, self.step, self.direction)
             .on_move(|mgr, value| mgr.push_msg(value))
     }
     fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
@@ -386,15 +387,18 @@ where
 }
 
 /// [`crate::Spinner`] view widget constructor
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Spinner<T: SpinnerValue> {
-    range: RangeInclusive<T>,
+    range: (T, T),
     step: T,
 }
 impl<T: SpinnerValue + Default> Spinner<T> {
     /// Construct, with given `range` and `step` (see [`crate::Spinner::new`])
     pub fn new(range: RangeInclusive<T>, step: T) -> Self {
-        Spinner { range, step }
+        Spinner {
+            range: range.into_inner(),
+            step,
+        }
     }
 }
 impl<Data: SharedData> Driver<Data::Item, Data> for Spinner<Data::Item>
@@ -403,7 +407,8 @@ where
 {
     type Widget = crate::Spinner<Data::Item>;
     fn make(&self) -> Self::Widget {
-        crate::Spinner::new(self.range.clone(), self.step).on_change(|mgr, val| mgr.push_msg(val))
+        let range = self.range.0..=self.range.1;
+        crate::Spinner::new(range, self.step).on_change(|mgr, val| mgr.push_msg(val))
     }
     fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
         data.get_cloned(key)
