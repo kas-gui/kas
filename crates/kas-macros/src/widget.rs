@@ -7,7 +7,7 @@ use crate::args::{Child, WidgetArgs};
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::{Scope, ScopeAttr, ScopeItem, SimplePath};
 use proc_macro2::{Span, TokenStream};
-use proc_macro_error::{emit_error, emit_warning};
+use proc_macro_error::emit_error;
 use quote::{quote, TokenStreamExt};
 use syn::spanned::Spanned;
 use syn::{parse2, parse_quote, Error, Ident, ImplItem, Index, ItemImpl, Member, Result, Type};
@@ -147,12 +147,12 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     emit_error!(impl_, "impl conflicts with use of #[widget(derive=FIELD)]");
                 }
                 if !children.is_empty() {
-                    emit_warning!(
+                    emit_error!(
                         impl_,
                         "custom `WidgetChildren` implementation when using `#[widget]` on fields"
                     );
                 } else if !layout_children.is_empty() {
-                    emit_warning!(
+                    emit_error!(
                         impl_,
                         "custom `WidgetChildren` implementation when using layout-defined children"
                     );
@@ -273,34 +273,32 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     };
 
     if let Some(inner) = opt_derive {
-        if impl_widget_children {
-            scope.generated.push(quote! {
-                impl #impl_generics ::kas::WidgetChildren
-                    for #name #ty_generics #where_clause
-                {
-                    #[inline]
-                    fn num_children(&self) -> usize {
-                        self.#inner.num_children()
-                    }
-                    #[inline]
-                    fn get_child(&self, index: usize) -> Option<&dyn ::kas::Widget> {
-                        self.#inner.get_child(index)
-                    }
-                    #[inline]
-                    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn ::kas::Widget> {
-                        self.#inner.get_child_mut(index)
-                    }
-                    #[inline]
-                    fn find_child_index(&self, id: &::kas::WidgetId) -> Option<usize> {
-                        self.#inner.find_child_index(id)
-                    }
-                    #[inline]
-                    fn make_child_id(&mut self, index: usize) -> ::kas::WidgetId {
-                        self.#inner.make_child_id(index)
-                    }
+        scope.generated.push(quote! {
+            impl #impl_generics ::kas::WidgetChildren
+                for #name #ty_generics #where_clause
+            {
+                #[inline]
+                fn num_children(&self) -> usize {
+                    self.#inner.num_children()
                 }
-            });
-        }
+                #[inline]
+                fn get_child(&self, index: usize) -> Option<&dyn ::kas::Widget> {
+                    self.#inner.get_child(index)
+                }
+                #[inline]
+                fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn ::kas::Widget> {
+                    self.#inner.get_child_mut(index)
+                }
+                #[inline]
+                fn find_child_index(&self, id: &::kas::WidgetId) -> Option<usize> {
+                    self.#inner.find_child_index(id)
+                }
+                #[inline]
+                fn make_child_id(&mut self, index: usize) -> ::kas::WidgetId {
+                    self.#inner.make_child_id(index)
+                }
+            }
+        });
 
         fn_size_rules = Some(quote! {
             #[inline]
