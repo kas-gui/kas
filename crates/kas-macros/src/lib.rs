@@ -12,6 +12,7 @@
 #![allow(clippy::large_enum_variant)]
 #![allow(clippy::needless_late_init)]
 #![allow(clippy::redundant_pattern_matching)]
+#![allow(clippy::collapsible_if)]
 
 extern crate proc_macro;
 

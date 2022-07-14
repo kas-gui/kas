@@ -149,10 +149,9 @@ impl<T: Theme<DS>, DS: DrawSharedImpl> Theme<DS> for Box<T> {
     #[cfg(not(feature = "gat"))]
     type Draw = <T as Theme<DS>>::Draw;
     #[cfg(feature = "gat")]
-    type Draw<'a>
+    type Draw<'a> = <T as Theme<DS>>::Draw<'a>
     where
-        T: 'a,
-    = <T as Theme<DS>>::Draw<'a>;
+        T: 'a;
 
     fn config(&self) -> std::borrow::Cow<Self::Config> {
         self.deref().config()
