@@ -5,66 +5,31 @@
 
 //! View widgets and shared data
 //!
-//! So called "view widgets" allow separation of data and view. The system has
-//! some similarities with the Model-View-Controller (MVC) pattern, but with
-//! different separations of responsibility. Perhaps we should instead call the
-//! pattern Model-View-Driver?
+//! So called "view widgets" allow separation of data and view. This system has
+//! three parts:
 //!
-//! # Shared data and *model*
+//! 1.  **Models** are defined by [`kas::model`], principally
+//!     [`SharedData`](kas::model::SharedData).
+//!     Separate models are available for [`ListData`](kas::model::ListData)
+//!     and [`MatrixData`](kas::model::MatrixData).
+//! 2.  **Views** are widgets constructed over shared data by a controller.
+//!     The **view controller** is a special widget responsible for constructing
+//!     and managing view widgets over data.
 //!
-//! Shared data must implement [`SharedData`], optionally [`SharedDataMut`]
-//! and (depending on dimension) optionally [`ListData`] or [`MatrixData`].
+//!     Three controllers are available:
+//!     [`SingleView`], [`ListView`] and [`MatrixView`].
 //!
-//! For simpler cases it is not always necessary to implement your own shared
-//! data type, for example `SharedRc<i32>` implements [`SharedData`] TODO and
-//! `&'static [&'static str]` implements [`ListData`]. The [`SharedRc`] type
-//! provides an `update` method and the [`UpdateId`] and version counter
-//! required to synchronise views; `&[T]` does not (data is constant).
+//!     In the case of [`ListView`] and [`MatrixView`], the controller provides
+//!     additional features: enabling scrolling of content, "paging" (loading
+//!     only visible content) and (optionally) allowing selection of items.
+//! 3.  **Drivers** are the "glue" enabling a view controller to build view
+//!     widget(s) tailored to a specific data type as well as (optionally)
+//!     updating this data in response to widget events.
 //!
-//! # View widgets and drivers
-//!
-//! Standard widgets may be used to view data items, but to construct these a
-//! [`Driver`] type is required: the driver constructs a (parameterized) widget
-//! over the data, and may update the data on events from the widget.
-//! Use [`driver::View`] or [`driver::NavView`] for simple data or see the
-//! [`driver`] module for more.
-//!
-//! The user may implement a [`Driver`] or may use a standard one:
-//!
-//! -   [`driver::View`] constructs a default view widget over various data types
-//! -   [`driver::NavView`] is a variant of the above, ensuring items support
-//!     keyboard navigation (e.g. useful to allow selection of static items)
-//! -   [`driver::CheckButton`] and [`driver::RadioButton`] support the `bool` type
-//! -   [`driver::Slider`] constructs a slider with a fixed range
-//!
-//! In MVC terminology, the driver is perhaps most similar to the controller,
-//! while the widgets constructed by the driver are the view, but this analogy
-//! is not quite accurate.
-//!
-//! # Views
-//!
-//! Something else is required to construct one or more view widgets over the
-//! data model as well as to perform event handling (at a minimum, forwarding
-//! events to the appropriate view widgets), and that thing is here referred to
-//! as the **view** (MVC terminology, it is part view and part controller, while
-//! not being the whole of either).
-//!
-//! These *views* are widgets and provide additional services:
-//!
-//! -   updating view widgets when the model is changed
-//! -   notifying other users of the data when view widgets update the data
-//! -   ideally allowing `O(v)` performance where `v` is the number of visible
-//!     data items, thus allowing good scaling to large data sets (this depends
-//!     on the performance of the model)
-//! -   supporting scrolling (see [`kas::Scrollable`])
-//! -   supporting item selection
-//! -   controlling scrolling and selection via otherwise unhandled events
-//!
-//! The following views are provided:
-//!
-//! -   [`SingleView`] creates a view over a [`SharedData`] object (no scrolling
-//!     or selection support)
-//! -   [`ListView`] creates a scrollable list view over a [`ListData`] object
+//!     If the driver is not explicitly provided, [`driver::View`] is used,
+//!     which provides a read-only view over several data types.
+//!     Other options are available in the [`driver`] module, or [`Driver`] may
+//!     be implemented directly.
 
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 
@@ -106,8 +71,12 @@ enum PressPhase {
 /// Selection mode used by [`ListView`]
 #[derive(Clone, Copy, Debug)]
 pub enum SelectionMode {
+    /// Disable selection
     None,
+    /// Support single-item selection. Selecting another item automatically
+    /// clears the prior selection (without sending [`SelectionMsg::Deselect`]).
     Single,
+    /// Support multi-item selection.
     Multiple,
 }
 impl Default for SelectionMode {

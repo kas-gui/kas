@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Single view widget
+//! Single view controller
 
 use super::{driver, Driver};
 #[allow(unused)]
@@ -12,22 +12,21 @@ use kas::model::SingleData;
 use kas::prelude::*;
 
 impl_scope! {
-    /// Single view widget
+    /// Single view controller
     ///
-    /// This widget supports a view over a shared data item.
+    /// This widget supports a view over a single shared data item.
     ///
     /// The shared data type `T` must support [`SingleData`].
     /// One may use [`kas::model::SharedRc`]
     /// or a custom shared data type.
     ///
-    /// The driver `V` must implement [`Driver`] over data type
-    /// `<T as SingleData>::Item`. Several implementations are available in the
-    /// [`driver`] module or a custom implementation may be used.
+    /// The driver `V` must implement [`Driver`] over `T`.
+    /// The default driver is [`driver::View`]; others are available in the
+    /// [`driver`] module or [`Driver`] may be implemented directly.
     ///
     /// # Messages
     ///
-    /// When a child pushes a message, the [`Driver::on_message`] method is
-    /// called.
+    /// When a view widget pushes a message, [`Driver::on_message`] is called.
     #[autoimpl(Debug ignore self.view)]
     #[derive(Clone)]
     #[widget{
