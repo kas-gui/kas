@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Filter-list view widget
+//! Filter-list adapter
 
 use kas::model::filter::Filter;
 use kas::model::{ListData, SharedData, SingleData};

@@ -5,6 +5,9 @@
 
 //! Filters over data
 
+mod filter_list;
+pub use filter_list::FilteredList;
+
 use crate::event::{EventMgr, UpdateId};
 use crate::model::*;
 use std::cell::RefCell;

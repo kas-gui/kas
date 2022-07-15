@@ -271,8 +271,9 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 
 fn filter_list() -> Box<dyn SetDisabled> {
     use kas::dir::Down;
-    use kas::model::{filter::ContainsCaseInsensitive, SharedData};
-    use kas::widgets::view::{SelectionMode, SelectionMsg};
+    use kas::model::filter::{ContainsCaseInsensitive, FilteredList};
+    use kas::model::SharedData;
+    use kas::widgets::view::{ListView, SelectionMode, SelectionMsg};
 
     const MONTHS: &[&str] = &[
         "January",
@@ -293,9 +294,9 @@ fn filter_list() -> Box<dyn SetDisabled> {
         .collect();
 
     let filter = ContainsCaseInsensitive::new("");
-    type FilteredList = view::FilteredList<Vec<String>, ContainsCaseInsensitive>;
-    type ListView = view::ListView<Down, FilteredList, driver::NavView>;
-    let filtered = FilteredList::new(data, filter.clone());
+    type MyFilteredList = FilteredList<Vec<String>, ContainsCaseInsensitive>;
+    type MyListView = ListView<Down, MyFilteredList, driver::NavView>;
+    let filtered = MyFilteredList::new(data, filter.clone());
 
     let r = RadioGroup::default();
 
@@ -315,8 +316,8 @@ fn filter_list() -> Box<dyn SetDisabled> {
             #[widget] r2 = RadioButton::new_msg("multiple", r, SelectionMode::Multiple),
             #[widget] filter = EditBox::new("")
                 .on_edit(move |s, mgr| filter.update(mgr, &(), s.to_string())),
-            #[widget] list: ScrollBars<ListView> =
-                ScrollBars::new(ListView::new(filtered))
+            #[widget] list: ScrollBars<MyListView> =
+                ScrollBars::new(MyListView::new(filtered))
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {

@@ -72,7 +72,6 @@ use kas::event::UpdateId;
 use kas::model::{ListData, MatrixData, SharedData, SharedDataMut, SharedRc};
 use thiserror::Error;
 
-mod filter_list;
 mod list_view;
 mod matrix_view;
 mod single_view;
@@ -80,7 +79,6 @@ mod single_view;
 pub mod driver;
 
 pub use driver::Driver;
-pub use filter_list::FilteredList;
 pub use list_view::ListView;
 pub use matrix_view::MatrixView;
 pub use single_view::SingleView;
