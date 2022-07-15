@@ -292,12 +292,7 @@ impl EventState {
 
     #[inline]
     fn get_touch(&mut self, touch_id: u64) -> Option<&mut TouchGrab> {
-        for grab in self.touch_grab.iter_mut() {
-            if grab.id == touch_id {
-                return Some(grab);
-            }
-        }
-        None
+        self.touch_grab.iter_mut().find(|grab| grab.id == touch_id)
     }
 
     // Clears touch grab and pan grab and redraws

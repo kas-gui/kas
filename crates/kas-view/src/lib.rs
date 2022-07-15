@@ -32,6 +32,8 @@
 //!     be implemented directly.
 
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
+#![allow(clippy::collapsible_else_if)]
+#![allow(clippy::len_zero)]
 
 #[allow(unused)]
 use kas::event::UpdateId;
