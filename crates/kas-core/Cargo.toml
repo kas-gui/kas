@@ -43,10 +43,10 @@ harfbuzz = ["kas-text/harfbuzz"]
 config = ["serde", "kas-text/serde", "winit?/serde"]
 
 # Enable support for YAML (de)serialisation
-yaml = ["config", "serde_yaml"]
+yaml = ["config", "dep:serde_yaml"]
 
 # Enable support for JSON (de)serialisation
-json = ["config", "serde_json"]
+json = ["config", "dep:serde_json"]
 
 # Enable support for RON (de)serialisation
 ron = ["config", "dep:ron"]
@@ -54,6 +54,13 @@ ron = ["config", "dep:ron"]
 # Inject logging into macro-generated code.
 # Requires that all crates using these macros depend on the log crate.
 macros_log = ["kas-macros/log"]
+
+# Enable winit support
+winit = ["dep:winit"]
+
+# Enable serde integration
+# This is required by config but may be enabled independently
+serde = ["dep:serde"]
 
 [dependencies]
 log = "0.4"

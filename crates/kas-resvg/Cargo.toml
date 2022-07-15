@@ -23,7 +23,7 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 canvas = []
 
 # Support SVG images
-svg = ["resvg", "usvg"]
+svg = ["dep:resvg", "dep:usvg"]
 
 [dependencies]
 tiny-skia = { version = "0.6.1" }

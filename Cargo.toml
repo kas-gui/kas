@@ -23,18 +23,18 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 default = ["theme", "wgpu", "winit", "yaml", "image", "svg", "canvas", "clipboard", "markdown", "shaping"]
 
 # Enable theme support:
-theme = ["kas-theme"]
+theme = ["dep:kas-theme"]
 #Enable WGPU backend:
-wgpu = ["kas-wgpu"]
+wgpu = ["dep:kas-wgpu"]
 
 # Enable dynamic linking (faster linking via an extra run-time dependency):
-dynamic = ["kas-dylib"]
+dynamic = ["dep:kas-dylib"]
 
 # Enables usage of unstable Rust features
-nightly = ["min_spec", "kas-theme/nightly", "kas-wgpu/nightly"]
+nightly = ["min_spec", "kas-theme?/nightly", "kas-wgpu?/nightly"]
 
 # Use Generic Associated Types (this is too unstable to include in nightly!)
-gat = ["kas-core/gat", "kas-theme/gat", "kas-wgpu/gat"]
+gat = ["kas-core/gat", "kas-theme?/gat", "kas-wgpu?/gat"]
 
 # Use min_specialization (enables accelerator underlining for AccelLabel)
 min_spec = ["kas-widgets/min_spec"]
@@ -45,10 +45,10 @@ spec = ["min_spec", "kas-core/spec"]
 # This API is not intended for use by end-user applications and
 # thus is omitted from built documentation by default.
 # This flag does not change the API, only built documentation.
-internal_doc = ["kas-core/internal_doc", "kas-theme/internal_doc"]
+#internal_doc = ["kas-core/internal_doc", "kas-theme/internal_doc"]
 
 # Enables clipboard read/write
-clipboard = ["kas-wgpu/clipboard"]
+clipboard = ["kas-wgpu?/clipboard"]
 
 # Enable Markdown parsing
 markdown = ["kas-core/markdown"]
@@ -59,7 +59,7 @@ shaping = ["kas-core/shaping"]
 harfbuzz = ["kas-core/harfbuzz"]
 
 # Enable config read/write
-config = ["kas-core/config", "kas-theme/config"]
+config = ["kas-core/config", "kas-theme?/config"]
 
 # Enable support for YAML (de)serialisation
 yaml = ["config", "kas-core/yaml"]

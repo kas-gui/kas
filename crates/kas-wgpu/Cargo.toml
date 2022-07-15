@@ -24,7 +24,7 @@ raster = ["kas-text/raster"]
 gat = ["kas-theme/gat"]
 
 # Enables clipboard read/write
-clipboard = ["window_clipboard"]
+clipboard = ["dep:window_clipboard"]
 
 [dependencies]
 bytemuck = "1.7.0"

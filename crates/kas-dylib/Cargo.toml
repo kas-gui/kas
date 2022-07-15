@@ -14,6 +14,9 @@ repository = "https://github.com/kas-gui/kas"
 [lib]
 crate-type = ["dylib"]
 
+[features]
+resvg = ["dep:kas-resvg"]
+
 [dependencies]
 kas-core = { version = "0.10.0", path = "../kas-core" }
 kas-widgets = { version = "0.10.0", path = "../kas-widgets" }
