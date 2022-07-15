@@ -20,7 +20,7 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 # RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=nightly,internal_doc --all --no-deps --open
 
 [features]
-default = ["theme", "wgpu", "winit", "yaml", "image", "svg", "canvas", "clipboard", "markdown", "shaping"]
+default = ["theme", "wgpu", "winit", "yaml", "image", "resvg", "clipboard", "markdown", "shaping"]
 
 # Enable theme support:
 theme = ["dep:kas-theme"]
@@ -73,11 +73,12 @@ ron = ["config", "kas-core/ron"]
 # Support image loading and decoding
 image = ["kas-widgets/image"]
 
-# Support canvas widget
-canvas = ["kas-resvg/canvas"]
+# Enable resvg module (Canvas + Svg widgets)
+resvg = ["dep:kas-resvg", "kas-resvg?/svg"]
+# Enable resvg module (Canvas only)
+tiny-skia = ["dep:kas-resvg"]
 
 # Support SVG images
-svg = ["kas-resvg/svg"]
 
 # Inject logging into macro-generated code.
 # Requires that all crates using these macros depend on the log crate.
@@ -89,7 +90,7 @@ winit = ["kas-core/winit"]
 kas-core = { version = "0.10.1", path = "crates/kas-core" }
 kas-dylib = { version = "0.10.0", path = "crates/kas-dylib", optional = true }
 kas-widgets = { version = "0.10.0", path = "crates/kas-widgets" }
-kas-resvg = { version = "0.10.0", path = "crates/kas-resvg" }
+kas-resvg = { version = "0.10.0", path = "crates/kas-resvg", optional = true }
 
 [dependencies.kas-theme]
 version = "0.10.0" # used in doc links

@@ -46,7 +46,6 @@ impl_scope! {
     /// The canvas (re)creates the backing pixmap when the size is set and draws
     /// to the new pixmap immediately. If the canvas program is modified then
     /// [`Canvas::redraw`] must be called to update the pixmap.
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "canvas")))]
     #[derive(Clone, Debug,)]
     #[widget]
     pub struct Canvas<P: CanvasProgram> {

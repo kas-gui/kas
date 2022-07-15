@@ -19,9 +19,6 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 # RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=canvas,svg --no-deps --open
 
 [features]
-# Support canvas widget
-canvas = []
-
 # Support SVG images
 svg = ["dep:resvg", "dep:usvg"]
 

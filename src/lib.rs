@@ -35,9 +35,20 @@ pub use kas_core::*;
 
 pub extern crate kas_widgets as widgets;
 
-#[cfg(any(feature = "canvas", feature = "svg"))]
-#[cfg_attr(doc_cfg, doc(cfg(any(feature = "canvas", feature = "svg"))))]
-pub extern crate kas_resvg as resvg;
+/// `Canvas` and `Svg` widgets over [`tiny-skia`](https://crates.io/crates/tiny-skia)
+/// and [`resvg`](https://crates.io/crates/resvg)
+///
+/// This crate provides widgets using
+/// libraries by [Yevhenii Reizner "RazrFalcon"](https://github.com/RazrFalcon/).
+///
+/// This module is gated behind the `resvg` feature. Alternatively, the
+/// `tiny-skia` feature may be used to enable only the `Canvas` widget
+/// plus support (i.e. everything but `Svg`), saving approx 200 KiB.
+#[cfg(any(feature = "resvg", feature = "tiny-skia"))]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "resvg")))]
+pub mod resvg {
+    pub use kas_resvg::*;
+}
 
 /// Themes
 ///
