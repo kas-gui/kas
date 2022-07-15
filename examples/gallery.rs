@@ -13,7 +13,7 @@ use kas::event::{Config, VirtualKeyCode as VK};
 use kas::model::SharedRc;
 use kas::prelude::*;
 use kas::resvg::Svg;
-use kas::widgets::view::{driver, SingleView};
+use kas::view::{driver, SingleView};
 use kas::widgets::{menu::MenuEntry, *};
 
 #[derive(Clone, Debug)]
@@ -273,7 +273,7 @@ fn filter_list() -> Box<dyn SetDisabled> {
     use kas::dir::Down;
     use kas::model::filter::{ContainsCaseInsensitive, FilteredList};
     use kas::model::SharedData;
-    use kas::widgets::view::{ListView, SelectionMode, SelectionMsg};
+    use kas::view::{ListView, SelectionMode, SelectionMsg};
 
     const MONTHS: &[&str] = &[
         "January",

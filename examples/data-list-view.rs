@@ -12,7 +12,7 @@
 
 use kas::model::*;
 use kas::prelude::*;
-use kas::widgets::view::{Driver, ListView};
+use kas::view::{Driver, ListView};
 use kas::widgets::*;
 use std::cell::RefCell;
 use std::collections::HashMap;

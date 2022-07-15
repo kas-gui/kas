@@ -5,11 +5,11 @@
 
 //! Drivers for configuration types
 
-use crate::view::driver;
-use crate::{CheckButton, ComboBox, Spinner, TextButton};
+use crate::driver;
 use kas::event::config::{Config, MousePan};
 use kas::model::{SharedData, SharedRc};
 use kas::prelude::*;
+use kas_widgets::{CheckButton, ComboBox, Spinner, TextButton};
 
 #[derive(Clone, Debug)]
 enum Msg {

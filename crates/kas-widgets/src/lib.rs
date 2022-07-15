@@ -10,7 +10,6 @@
 //! -   [`adapter::AdaptWidget`]: provides `map_msg`, `with_reserve` and `with_label` methods
 //! -   [`dialog`]: pre-made dialog widgets
 //! -   [`menu`]: support for pop-up menus ([`ComboBox`], [`menu::MenuBar`])
-//! -   [`view`]: data models
 //!
 //! ## Container widgets
 //!
@@ -86,7 +85,6 @@ mod stack;
 mod tab_stack;
 
 pub mod adapter;
-pub mod view;
 
 pub use crate::image::Image;
 pub use button::{Button, TextButton};

@@ -18,11 +18,11 @@
 mod config;
 pub use config::EventConfig;
 
-use crate::edit::{EditGuard, GuardNotify};
-use crate::{CheckBox, Label, NavFrame, RadioGroup, SliderValue, SpinnerValue};
 use kas::model::SharedData;
 use kas::prelude::*;
 use kas::theme::TextClass;
+use kas_widgets::edit::{EditGuard, GuardNotify};
+use kas_widgets::{CheckBox, Label, NavFrame, RadioGroup, SliderValue, SpinnerValue};
 use std::default::Default;
 use std::fmt::Debug;
 use std::ops::RangeInclusive;
@@ -92,8 +92,8 @@ pub trait Driver<Item, Data: SharedData<Item = Item>>: Debug {
 ///
 /// This struct implements [`Driver`], using a default widget for the data type:
 ///
-/// -   [`crate::Label`] for `String`, `&str`, integer and float types
-/// -   [`crate::CheckBox`] (read-only) for the bool type
+/// -   [`kas_widgets::Label`] for `String`, `&str`, integer and float types
+/// -   [`kas_widgets::CheckBox`] (read-only) for the bool type
 #[derive(Clone, Copy, Debug, Default)]
 pub struct View;
 
@@ -102,9 +102,9 @@ pub struct View;
 /// This struct implements [`Driver`], using a default widget for the data type
 /// which also supports keyboard navigation:
 ///
-/// -   [`crate::NavFrame`] around a [`crate::Label`] for `String`, `&str`,
+/// -   [`kas_widgets::NavFrame`] around a [`kas_widgets::Label`] for `String`, `&str`,
 ///     integer and float types
-/// -   [`crate::CheckBox`] (read-only) for the bool type
+/// -   [`kas_widgets::CheckBox`] (read-only) for the bool type
 #[derive(Clone, Copy, Debug, Default)]
 pub struct NavView;
 
@@ -174,7 +174,7 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for NavView {
 }
 
 impl_scope! {
-    /// [`crate::EditField`] view widget constructor
+    /// [`kas_widgets::EditField`] view widget constructor
     ///
     /// This is parameterized `G`: [`EditGuard`], which defaults to [`GuardNotify`].
     /// The guard should send a [`String`] message to enable updates on edit.
@@ -204,7 +204,7 @@ impl_scope! {
         ///
         /// This replaces any class set by [`Self::with_class`].
         ///
-        /// See: [`crate::EditField::with_multi_line`].
+        /// See: [`kas_widgets::EditField::with_multi_line`].
         #[inline]
         #[must_use]
         pub fn with_multi_line(self, multi_line: bool) -> Self {
@@ -213,7 +213,7 @@ impl_scope! {
 
         /// Set the text class used
         ///
-        /// See: [`crate::EditField::with_class`].
+        /// See: [`kas_widgets::EditField::with_class`].
         #[inline]
         #[must_use]
         pub fn with_class(mut self, class: TextClass) -> Self {
@@ -223,9 +223,9 @@ impl_scope! {
     }
 }
 impl<G: EditGuard + Clone, Data: SharedData<Item = String>> Driver<String, Data> for EditField<G> {
-    type Widget = crate::EditField<G>;
+    type Widget = kas_widgets::EditField<G>;
     fn make(&self) -> Self::Widget {
-        crate::EditField::new("".to_string())
+        kas_widgets::EditField::new("".to_string())
             .with_guard(self.guard.clone())
             .with_class(self.class)
     }
@@ -242,7 +242,7 @@ impl<G: EditGuard + Clone, Data: SharedData<Item = String>> Driver<String, Data>
 }
 
 impl_scope! {
-    /// [`crate::EditBox`] view widget constructor
+    /// [`kas_widgets::EditBox`] view widget constructor
     ///
     /// This is parameterized `G`: [`EditGuard`], which defaults to [`GuardNotify`].
     /// The guard should send a [`String`] message to enable updates on edit.
@@ -272,7 +272,7 @@ impl_scope! {
         ///
         /// This replaces any class set by [`Self::with_class`].
         ///
-        /// See: [`crate::EditBox::with_multi_line`].
+        /// See: [`kas_widgets::EditBox::with_multi_line`].
         #[inline]
         #[must_use]
         pub fn with_multi_line(self, multi_line: bool) -> Self {
@@ -281,7 +281,7 @@ impl_scope! {
 
         /// Set the text class used
         ///
-        /// See: [`crate::EditBox::with_class`].
+        /// See: [`kas_widgets::EditBox::with_class`].
         #[inline]
         #[must_use]
         pub fn with_class(mut self, class: TextClass) -> Self {
@@ -291,9 +291,9 @@ impl_scope! {
     }
 }
 impl<G: EditGuard + Clone, Data: SharedData<Item = String>> Driver<String, Data> for EditBox<G> {
-    type Widget = crate::EditBox<G>;
+    type Widget = kas_widgets::EditBox<G>;
     fn make(&self) -> Self::Widget {
-        crate::EditBox::new("".to_string()).with_guard(self.guard.clone())
+        kas_widgets::EditBox::new("".to_string()).with_guard(self.guard.clone())
     }
     fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
         data.get_cloned(key)
@@ -307,7 +307,7 @@ impl<G: EditGuard + Clone, Data: SharedData<Item = String>> Driver<String, Data>
     }
 }
 
-/// [`crate::ProgressBar`] view widget constructor
+/// [`kas_widgets::ProgressBar`] view widget constructor
 #[derive(Clone, Copy, Debug, Default)]
 pub struct ProgressBar<D: Directional> {
     direction: D,
@@ -325,9 +325,9 @@ impl<D: Directional> ProgressBar<D> {
     }
 }
 impl<D: Directional, Data: SharedData<Item = f32>> Driver<f32, Data> for ProgressBar<D> {
-    type Widget = crate::ProgressBar<D>;
+    type Widget = kas_widgets::ProgressBar<D>;
     fn make(&self) -> Self::Widget {
-        crate::ProgressBar::new_with_direction(self.direction)
+        kas_widgets::ProgressBar::new_with_direction(self.direction)
     }
     fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
         data.get_cloned(key)
@@ -336,7 +336,7 @@ impl<D: Directional, Data: SharedData<Item = f32>> Driver<f32, Data> for Progres
     }
 }
 
-/// [`crate::CheckButton`] view widget constructor
+/// [`kas_widgets::CheckButton`] view widget constructor
 #[derive(Clone, Debug, Default)]
 pub struct CheckButton {
     label: AccelString,
@@ -349,9 +349,9 @@ impl CheckButton {
     }
 }
 impl<Data: SharedData<Item = bool>> Driver<bool, Data> for CheckButton {
-    type Widget = crate::CheckButton;
+    type Widget = kas_widgets::CheckButton;
     fn make(&self) -> Self::Widget {
-        crate::CheckButton::new_on(self.label.clone(), |mgr, state| mgr.push_msg(state))
+        kas_widgets::CheckButton::new_on(self.label.clone(), |mgr, state| mgr.push_msg(state))
     }
     fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
         data.get_cloned(key)
@@ -365,7 +365,7 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for CheckButton {
     }
 }
 
-/// [`crate::RadioBox`] view widget constructor
+/// [`kas_widgets::RadioBox`] view widget constructor
 #[derive(Clone, Debug, Default)]
 pub struct RadioBox {
     group: RadioGroup,
@@ -377,9 +377,9 @@ impl RadioBox {
     }
 }
 impl<Data: SharedData<Item = bool>> Driver<bool, Data> for RadioBox {
-    type Widget = crate::RadioBox;
+    type Widget = kas_widgets::RadioBox;
     fn make(&self) -> Self::Widget {
-        crate::RadioBox::new_on(self.group.clone(), |mgr| mgr.push_msg(true))
+        kas_widgets::RadioBox::new_on(self.group.clone(), |mgr| mgr.push_msg(true))
     }
     fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
         data.get_cloned(key)
@@ -393,7 +393,7 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for RadioBox {
     }
 }
 
-/// [`crate::RadioButton`] view widget constructor
+/// [`kas_widgets::RadioButton`] view widget constructor
 #[derive(Clone, Debug, Default)]
 pub struct RadioButton {
     label: AccelString,
@@ -407,9 +407,9 @@ impl RadioButton {
     }
 }
 impl<Data: SharedData<Item = bool>> Driver<bool, Data> for RadioButton {
-    type Widget = crate::RadioButton;
+    type Widget = kas_widgets::RadioButton;
     fn make(&self) -> Self::Widget {
-        crate::RadioButton::new(self.label.clone(), self.group.clone())
+        kas_widgets::RadioButton::new(self.label.clone(), self.group.clone())
             .on_select(|mgr| mgr.push_msg(true))
     }
     fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
@@ -424,7 +424,7 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for RadioButton {
     }
 }
 
-/// [`crate::Slider`] view widget constructor
+/// [`kas_widgets::Slider`] view widget constructor
 #[derive(Clone, Copy, Debug)]
 pub struct Slider<T: SliderValue, D: Directional> {
     range: (T, T),
@@ -432,7 +432,7 @@ pub struct Slider<T: SliderValue, D: Directional> {
     direction: D,
 }
 impl<T: SliderValue, D: Directional + Default> Slider<T, D> {
-    /// Construct, with given `range` and `step` (see [`crate::Slider::new`])
+    /// Construct, with given `range` and `step` (see [`kas_widgets::Slider::new`])
     pub fn new(range: RangeInclusive<T>, step: T) -> Self {
         Slider {
             range: range.into_inner(),
@@ -455,10 +455,10 @@ impl<D: Directional, Data: SharedData> Driver<Data::Item, Data> for Slider<Data:
 where
     Data::Item: SliderValue,
 {
-    type Widget = crate::Slider<Data::Item, D>;
+    type Widget = kas_widgets::Slider<Data::Item, D>;
     fn make(&self) -> Self::Widget {
         let range = self.range.0..=self.range.1;
-        crate::Slider::new_with_direction(range, self.step, self.direction)
+        kas_widgets::Slider::new_with_direction(range, self.step, self.direction)
             .on_move(|mgr, value| mgr.push_msg(value))
     }
     fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
@@ -473,14 +473,14 @@ where
     }
 }
 
-/// [`crate::Spinner`] view widget constructor
+/// [`kas_widgets::Spinner`] view widget constructor
 #[derive(Clone, Copy, Debug)]
 pub struct Spinner<T: SpinnerValue> {
     range: (T, T),
     step: T,
 }
 impl<T: SpinnerValue + Default> Spinner<T> {
-    /// Construct, with given `range` and `step` (see [`crate::Spinner::new`])
+    /// Construct, with given `range` and `step` (see [`kas_widgets::Spinner::new`])
     pub fn new(range: RangeInclusive<T>, step: T) -> Self {
         Spinner {
             range: range.into_inner(),
@@ -492,10 +492,10 @@ impl<Data: SharedData> Driver<Data::Item, Data> for Spinner<Data::Item>
 where
     Data::Item: SpinnerValue,
 {
-    type Widget = crate::Spinner<Data::Item>;
+    type Widget = kas_widgets::Spinner<Data::Item>;
     fn make(&self) -> Self::Widget {
         let range = self.range.0..=self.range.1;
-        crate::Spinner::new(range, self.step).on_change(|mgr, val| mgr.push_msg(val))
+        kas_widgets::Spinner::new(range, self.step).on_change(|mgr, val| mgr.push_msg(val))
     }
     fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
         data.get_cloned(key)

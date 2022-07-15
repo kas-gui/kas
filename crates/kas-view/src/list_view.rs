@@ -6,9 +6,6 @@
 //! List view widget
 
 use super::{driver, Driver, PressPhase, SelectionError, SelectionMode, SelectionMsg};
-#[allow(unused)] // doc links
-use crate::ScrollBars;
-use crate::SelectMsg;
 use kas::event::components::ScrollComponent;
 use kas::event::{Command, CursorIcon, Scroll};
 use kas::layout::solve_size_rules;
@@ -16,6 +13,9 @@ use kas::model::ListData;
 #[allow(unused)]
 use kas::model::SharedData;
 use kas::prelude::*;
+#[allow(unused)] // doc links
+use kas_widgets::ScrollBars;
+use kas_widgets::SelectMsg;
 use linear_map::set::LinearSet;
 use log::{debug, trace};
 use std::time::Instant;

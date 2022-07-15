@@ -9,7 +9,8 @@
 //!
 //! -   [`kas_core`] is the core of the library
 //! -   [`kas_theme`] provides high-level (themed) drawing
-//! -   [`kas_widgets`] provides common high-level widgets
+//! -   [`kas_widgets`] provides common widgets
+//! -   [`kas_view`] provides "view" widgets over shared data
 //! -   [`kas_wgpu`] is the shell, providing system integration and graphics
 //!     implementations (this should become less dependant on WGPU in the future)
 //!
@@ -34,6 +35,10 @@ pub mod prelude;
 pub use kas_core::*;
 
 pub extern crate kas_widgets as widgets;
+
+#[cfg(any(feature = "view"))]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "view")))]
+pub extern crate kas_view as view;
 
 /// `Canvas` and `Svg` widgets over [`tiny-skia`](https://crates.io/crates/tiny-skia)
 /// and [`resvg`](https://crates.io/crates/resvg)

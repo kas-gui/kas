@@ -6,8 +6,8 @@
 //! A counter synchronised between multiple windows
 
 use kas::model::SharedRc;
+use kas::view::{driver, SingleView};
 use kas::widgets::dialog::Window;
-use kas::widgets::view::{driver, SingleView};
 
 fn main() -> kas::shell::Result<()> {
     env_logger::init();

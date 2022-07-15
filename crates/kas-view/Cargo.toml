@@ -1,34 +1,28 @@
 [package]
-name = "kas-widgets"
+name = "kas-view"
 version = "0.11.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2021"
 license = "Apache-2.0"
-description = "KAS GUI / widgets"
+description = "KAS GUI / view widgets"
 readme = "README.md"
-documentation = "https://docs.rs/kas-widgets/"
+documentation = "https://docs.rs/kas-view/"
 keywords = ["gui"]
 categories = ["gui"]
 repository = "https://github.com/kas-gui/kas"
 exclude = ["/screenshots"]
 
 [package.metadata.docs.rs]
-features = ["min_spec"]
+features = []
 rustdoc-args = ["--cfg", "doc_cfg"]
 # To build locally:
 # RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --no-deps --open
 
-[features]
-# Use min_specialization (enables accelerator underlining for AccelLabel)
-min_spec = []
-
 [dependencies]
+kas-widgets = { version = "0.11.0", path = "../kas-widgets" }
 log = "0.4"
-smallvec = "1.6.1"
-unicode-segmentation = "1.7"
+linear-map = "1.2.0"
 thiserror = "1.0.23"
-image = { version = "0.24.1", optional = true }
-kas-macros = { version = "0.11.0", path = "../kas-macros" }
 
 # We must rename this package since macros expect kas to be in scope:
 kas = { version = "0.11.0", package = "kas-core", path = "../kas-core" }

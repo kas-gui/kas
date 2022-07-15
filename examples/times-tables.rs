@@ -2,7 +2,7 @@
 
 use kas::model::{MatrixData, SharedData};
 use kas::prelude::*;
-use kas::widgets::view::{driver, MatrixView, SelectionMode};
+use kas::view::{driver, MatrixView, SelectionMode};
 use kas::widgets::{EditBox, ScrollBars};
 
 #[derive(Debug)]

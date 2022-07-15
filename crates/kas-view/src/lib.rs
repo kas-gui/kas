@@ -66,6 +66,8 @@
 //!     or selection support)
 //! -   [`ListView`] creates a scrollable list view over a [`ListData`] object
 
+#![cfg_attr(doc_cfg, feature(doc_cfg))]
+
 #[allow(unused)]
 use kas::event::UpdateId;
 #[allow(unused)]

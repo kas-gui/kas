@@ -20,12 +20,9 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 # RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=nightly,internal_doc --all --no-deps --open
 
 [features]
-default = ["theme", "wgpu", "winit", "yaml", "image", "resvg", "clipboard", "markdown", "shaping"]
+#########  meta / build features  #########
 
-# Enable theme support:
-theme = ["dep:kas-theme"]
-#Enable WGPU backend:
-wgpu = ["dep:kas-wgpu"]
+default = ["theme", "view", "wgpu", "winit", "yaml", "image", "resvg", "clipboard", "markdown", "shaping"]
 
 # Enable dynamic linking (faster linking via an extra run-time dependency):
 dynamic = ["dep:kas-dylib"]
@@ -40,6 +37,16 @@ gat = ["kas-core/gat", "kas-theme?/gat", "kas-wgpu?/gat"]
 min_spec = ["kas-widgets/min_spec"]
 # Use full specialization
 spec = ["min_spec", "kas-core/spec"]
+
+#########  optional dependencies / features  #########
+
+# Enable view widgets
+view = ["dep:kas-view"]
+
+# Enable theme support:
+theme = ["dep:kas-theme"]
+#Enable WGPU backend:
+wgpu = ["dep:kas-wgpu"]
 
 # Enables documentation of APIs for shells and internal usage.
 # This API is not intended for use by end-user applications and
@@ -90,6 +97,7 @@ winit = ["kas-core/winit"]
 kas-core = { version = "0.11.0", path = "crates/kas-core" }
 kas-dylib = { version = "0.11.0", path = "crates/kas-dylib", optional = true }
 kas-widgets = { version = "0.11.0", path = "crates/kas-widgets" }
+kas-view = { version = "0.11.0", path = "crates/kas-view", optional = true }
 kas-resvg = { version = "0.11.0", path = "crates/kas-resvg", optional = true }
 
 [dependencies.kas-theme]
@@ -119,5 +127,6 @@ members = [
     "crates/kas-theme",
     "crates/kas-wgpu",
     "crates/kas-widgets",
+    "crates/kas-view",
     "examples/mandlebrot",
 ]
