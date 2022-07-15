@@ -40,9 +40,7 @@ shaping = ["kas-text/shaping"]
 harfbuzz = ["kas-text/harfbuzz"]
 
 # Enable config read/write
-#TODO(cargo): once weak-dep-features (cargo#8832) is stable, add "winit?/serde"
-# and remove the serde feature requirement under dependencies.winit.
-config = ["serde", "kas-text/serde"]
+config = ["serde", "kas-text/serde", "winit?/serde"]
 
 # Enable support for YAML (de)serialisation
 yaml = ["config", "serde_yaml"]
@@ -88,4 +86,3 @@ version = "0.5.0" # used in doc links
 # Provides translations for several winit types
 version = "0.26"
 optional = true
-features = ["serde"]

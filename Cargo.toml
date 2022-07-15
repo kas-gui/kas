@@ -59,8 +59,6 @@ shaping = ["kas-core/shaping"]
 harfbuzz = ["kas-core/harfbuzz"]
 
 # Enable config read/write
-#TODO(cargo): once weak-dep-features (cargo#8832) is stable, add "winit?/serde"
-# and remove the serde feature requirement under dependencies.winit.
 config = ["kas-core/config", "kas-theme/config"]
 
 # Enable support for YAML (de)serialisation
