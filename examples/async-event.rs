@@ -72,7 +72,7 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawMgr) {
             if !self.loaded {
-                draw.text(self.core.rect.pos, &self.loading_text, TextClass::Label(false));
+                draw.text(self.core.rect, &self.loading_text, TextClass::Label(false));
             } else {
                 let draw = draw.draw_device();
                 let col = *self.colour.lock().unwrap();

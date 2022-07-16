@@ -233,12 +233,12 @@ impl Window {
         &mut self,
         pipe: &mut Pipeline,
         pass: PassId,
-        pos: Vec2,
+        rect: Quad,
         text: &TextDisplay,
         col: Rgba,
     ) {
-        let pos = pos.round();
         let time = std::time::Instant::now();
+        let pos = rect.a.round();
 
         let for_glyph = |face: FaceId, dpem: f32, glyph: Glyph| {
             if let Some(sprite) = pipe.get_glyph(face, dpem, glyph) {
@@ -262,12 +262,11 @@ impl Window {
         &mut self,
         pipe: &mut Pipeline,
         pass: PassId,
-        pos: Vec2,
+        rect: Quad,
         text: &TextDisplay,
         col: Rgba,
         effects: &[Effect<()>],
     ) -> Vec<Quad> {
-        let pos = pos.round();
         // Optimisation: use cheaper TextDisplay::glyphs method
         if effects.len() <= 1
             && effects
@@ -275,11 +274,12 @@ impl Window {
                 .map(|e| e.flags == Default::default())
                 .unwrap_or(true)
         {
-            self.text(pipe, pass, pos, text, col);
+            self.text(pipe, pass, rect, text, col);
             return vec![];
         }
 
         let time = std::time::Instant::now();
+        let pos = rect.a.round();
         let mut rects = vec![];
 
         let mut for_glyph = |face: FaceId, dpem: f32, glyph: Glyph, _: usize, _: ()| {
@@ -323,11 +323,10 @@ impl Window {
         &mut self,
         pipe: &mut Pipeline,
         pass: PassId,
-        pos: Vec2,
+        rect: Quad,
         text: &TextDisplay,
         effects: &[Effect<Rgba>],
     ) -> Vec<(Quad, Rgba)> {
-        let pos = pos.round();
         // Optimisation: use cheaper TextDisplay::glyphs method
         if effects.len() <= 1
             && effects
@@ -336,11 +335,12 @@ impl Window {
                 .unwrap_or(true)
         {
             let col = effects.get(0).map(|e| e.aux).unwrap_or(Rgba::BLACK);
-            self.text(pipe, pass, pos, text, col);
+            self.text(pipe, pass, rect, text, col);
             return vec![];
         }
 
         let time = std::time::Instant::now();
+        let pos = rect.a.round();
         let mut rects = vec![];
 
         let for_glyph = |face: FaceId, dpem: f32, glyph: Glyph, _, col: Rgba| {

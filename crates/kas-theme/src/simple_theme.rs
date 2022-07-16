@@ -355,39 +355,39 @@ where
         self.draw.frame(outer, inner, col);
     }
 
-    fn text(&mut self, id: &WidgetId, pos: Coord, text: &TextDisplay, _: TextClass) {
+    fn text(&mut self, id: &WidgetId, rect: Rect, text: &TextDisplay, _: TextClass) {
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
             self.cols.text
         };
-        self.draw.text(pos.cast(), text, col);
+        self.draw.text(rect.cast(), text, col);
     }
 
-    fn text_effects(&mut self, id: &WidgetId, pos: Coord, text: &dyn TextApi, class: TextClass) {
-        let pos = Vec2::conv(pos);
+    fn text_effects(&mut self, id: &WidgetId, rect: Rect, text: &dyn TextApi, class: TextClass) {
+        let quad = Quad::conv(rect);
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
             self.cols.text
         };
         if class.is_accel() && !self.ev.show_accel_labels() {
-            self.draw.text(pos, text.display(), col);
+            self.draw.text(quad, text.display(), col);
         } else {
             self.draw
-                .text_col_effects(pos, text.display(), col, text.effect_tokens());
+                .text_col_effects(quad, text.display(), col, text.effect_tokens());
         }
     }
 
     fn text_selected_range(
         &mut self,
         id: &WidgetId,
-        pos: Coord,
+        rect: Rect,
         text: &TextDisplay,
         range: Range<usize>,
         _: TextClass,
     ) {
-        let pos = Vec2::conv(pos);
+        let rect = Quad::conv(rect);
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
@@ -403,8 +403,9 @@ where
         {
             let p1 = Vec2::from(*p1);
             let p2 = Vec2::from(*p2);
-            let quad = Quad::from_coords(pos + p1, pos + p2);
-            self.draw.rect(quad, self.cols.text_sel_bg);
+            if let Some(quad) = Quad::from_coords(rect.a + p1, rect.a + p2).intersection(&rect) {
+                self.draw.rect(quad, self.cols.text_sel_bg);
+            }
         }
 
         let effects = [
@@ -424,13 +425,13 @@ where
                 aux: col,
             },
         ];
-        self.draw.text_effects(pos, text, &effects);
+        self.draw.text_effects(rect, text, &effects);
     }
 
     fn text_cursor(
         &mut self,
         id: &WidgetId,
-        pos: Coord,
+        rect: Rect,
         text: &TextDisplay,
         _: TextClass,
         byte: usize,
@@ -440,7 +441,7 @@ where
         }
 
         let width = self.w.dims.mark_line;
-        let pos = Vec2::conv(pos);
+        let pos = Vec2::conv(rect.pos);
 
         let mut col = self.cols.nav_focus;
         for cursor in text.text_glyph_pos(byte).iter_mut().flatten().rev() {

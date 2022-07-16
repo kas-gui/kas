@@ -8,7 +8,7 @@
 use super::color::Rgba;
 use super::{DrawImpl, PassId};
 use crate::cast::Cast;
-use crate::geom::{Quad, Size, Vec2};
+use crate::geom::{Quad, Size};
 use crate::text::{Effect, TextDisplay};
 use std::any::Any;
 use std::num::NonZeroU32;
@@ -173,7 +173,7 @@ pub trait DrawSharedImpl: Any {
         &mut self,
         draw: &mut Self::Draw,
         pass: PassId,
-        pos: Vec2,
+        rect: Quad,
         text: &TextDisplay,
         col: Rgba,
     );
@@ -186,7 +186,7 @@ pub trait DrawSharedImpl: Any {
         &mut self,
         draw: &mut Self::Draw,
         pass: PassId,
-        pos: Vec2,
+        rect: Quad,
         text: &TextDisplay,
         col: Rgba,
         effects: &[Effect<()>],
@@ -201,7 +201,7 @@ pub trait DrawSharedImpl: Any {
         &mut self,
         draw: &mut Self::Draw,
         pass: PassId,
-        pos: Vec2,
+        rect: Quad,
         text: &TextDisplay,
         effects: &[Effect<Rgba>],
     );

@@ -57,7 +57,7 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.text(self.rect().pos, &self.label, Self::CLASS);
+            draw.text(self.rect(), &self.label, Self::CLASS);
         }
     }
 

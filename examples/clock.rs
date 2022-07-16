@@ -27,8 +27,8 @@ impl_scope! {
     #[widget]
     struct Clock {
         core: widget_core!(),
-        date_pos: Coord,
-        time_pos: Coord,
+        date_rect: Quad,
+        time_rect: Quad,
         now: DateTime<Local>,
         date: Text<String>,
         time: Text<String>,
@@ -50,22 +50,21 @@ impl_scope! {
             let pos = rect.pos + excess / 2;
             self.core.rect = Rect { pos, size };
 
-            let text_height = size.1 / 3;
-            let half_size = Size(size.0, text_height).cast();
+            let size: Vec2 = size.cast();
+            let text_height = size.1 / 3.0;
+            let text_size = Vec2(size.0, text_height);
 
             let mut env = self.date.env();
-            env.dpem = size.1 as f32 * 0.12;
-            env.bounds = half_size;
+            env.dpem = text_height * 0.4;
+            env.bounds = text_size.into();
             self.date.update_env(env);
-
-            let mut env = self.time.env();
-            env.dpem = size.1 as f32 * 0.15;
-            env.bounds = half_size;
+            env.dpem = text_height * 0.5;
             self.time.update_env(env);
 
-            let mid_pos = pos + Offset(0, size.1 / 2);
-            self.date_pos = mid_pos;
-            self.time_pos = mid_pos - Offset(0, text_height);
+            let pos: Vec2 = pos.cast();
+            let y_mid = pos.0 + size.1 * 0.5;
+            self.date_rect = Quad::from_pos_and_size(Vec2(pos.0, y_mid - text_height), text_size);
+            self.time_rect = Quad::from_pos_and_size(Vec2(pos.0, y_mid), text_size);
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
@@ -99,8 +98,8 @@ impl_scope! {
                 draw.rounded_line(centre + v * (r - l), centre + v * r, w, col_face);
             }
 
-            draw.text(self.date_pos.cast(), self.date.as_ref(), col_date);
-            draw.text(self.time_pos.cast(), self.time.as_ref(), col_time);
+            draw.text(self.date_rect, self.date.as_ref(), col_date);
+            draw.text(self.time_rect, self.time.as_ref(), col_time);
 
             // We use a new pass to control the draw order (force in front).
             let mut draw = draw.new_pass(rect, Offset::ZERO, PassType::Clip);
@@ -154,8 +153,8 @@ impl_scope! {
             let time = Text::new_env(env, "00:00:00".into());
             Clock {
                 core: Default::default(),
-                date_pos: Coord::ZERO,
-                time_pos: Coord::ZERO,
+                date_rect: Quad::NAN,
+                time_rect: Quad::NAN,
                 now: Local::now(),
                 date,
                 time,

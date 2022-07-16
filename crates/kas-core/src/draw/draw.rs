@@ -9,7 +9,7 @@ use super::{color::Rgba, AnimationState};
 #[allow(unused)]
 use super::{DrawRounded, DrawRoundedImpl};
 use super::{DrawShared, DrawSharedImpl, ImageId, PassId, PassType, SharedState};
-use crate::geom::{Offset, Quad, Rect, Vec2};
+use crate::geom::{Offset, Quad, Rect};
 #[allow(unused)]
 use crate::text::TextApi;
 use crate::text::{Effect, TextDisplay};
@@ -196,7 +196,7 @@ pub trait Draw {
     ///
     /// It is required to call [`TextApi::prepare`] or equivalent
     /// prior to this method to select a font, font size and perform layout.
-    fn text(&mut self, pos: Vec2, text: &TextDisplay, col: Rgba);
+    fn text(&mut self, rect: Quad, text: &TextDisplay, col: Rgba);
 
     /// Draw text with a single color and effects
     ///
@@ -207,7 +207,7 @@ pub trait Draw {
     /// prior to this method to select a font, font size and perform layout.
     fn text_col_effects(
         &mut self,
-        pos: Vec2,
+        rect: Quad,
         text: &TextDisplay,
         col: Rgba,
         effects: &[Effect<()>],
@@ -221,7 +221,7 @@ pub trait Draw {
     ///
     /// It is required to call [`TextApi::prepare`] or equivalent
     /// prior to this method to select a font, font size and perform layout.
-    fn text_effects(&mut self, pos: Vec2, text: &TextDisplay, effects: &[Effect<Rgba>]);
+    fn text_effects(&mut self, rect: Quad, text: &TextDisplay, effects: &[Effect<Rgba>]);
 }
 
 impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
@@ -269,28 +269,28 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
         self.shared.draw.draw_image(self.draw, self.pass, id, rect);
     }
 
-    fn text(&mut self, pos: Vec2, text: &TextDisplay, col: Rgba) {
+    fn text(&mut self, rect: Quad, text: &TextDisplay, col: Rgba) {
         self.shared
             .draw
-            .draw_text(self.draw, self.pass, pos, text, col);
+            .draw_text(self.draw, self.pass, rect, text, col);
     }
 
     fn text_col_effects(
         &mut self,
-        pos: Vec2,
+        rect: Quad,
         text: &TextDisplay,
         col: Rgba,
         effects: &[Effect<()>],
     ) {
         self.shared
             .draw
-            .draw_text_col_effects(self.draw, self.pass, pos, text, col, effects);
+            .draw_text_col_effects(self.draw, self.pass, rect, text, col, effects);
     }
 
-    fn text_effects(&mut self, pos: Vec2, text: &TextDisplay, effects: &[Effect<Rgba>]) {
+    fn text_effects(&mut self, rect: Quad, text: &TextDisplay, effects: &[Effect<Rgba>]) {
         self.shared
             .draw
-            .draw_text_effects(self.draw, self.pass, pos, text, effects);
+            .draw_text_effects(self.draw, self.pass, rect, text, effects);
     }
 }
 

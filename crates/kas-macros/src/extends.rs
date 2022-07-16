@@ -76,34 +76,34 @@ impl Extends {
                 (#base).selection_box(rect);
             }
 
-            fn text(&mut self, id: &WidgetId, pos: Coord, text: &TextDisplay, class: TextClass) {
-                (#base).text(id, pos, text, class);
+            fn text(&mut self, id: &WidgetId, rect: Rect, text: &TextDisplay, class: TextClass) {
+                (#base).text(id, rect, text, class);
             }
 
-            fn text_effects(&mut self, id: &WidgetId, pos: Coord, text: &dyn TextApi, class: TextClass) {
-                (#base).text_effects(id, pos, text, class);
+            fn text_effects(&mut self, id: &WidgetId, rect: Rect, text: &dyn TextApi, class: TextClass) {
+                (#base).text_effects(id, rect, text, class);
             }
 
             fn text_selected_range(
                 &mut self,
                 id: &WidgetId,
-                pos: Coord,
+                rect: Rect,
                 text: &TextDisplay,
                 range: Range<usize>,
                 class: TextClass,
             ) {
-                (#base).text_selected_range(id, pos, text, range, class);
+                (#base).text_selected_range(id, rect, text, range, class);
             }
 
             fn text_cursor(
                 &mut self,
                 id: &WidgetId,
-                pos: Coord,
+                rect: Rect,
                 text: &TextDisplay,
                 class: TextClass,
                 byte: usize,
             ) {
-                (#base).text_cursor(id, pos, text, class, byte);
+                (#base).text_cursor(id, rect, text, class, byte);
             }
 
             fn check_box(&mut self, id: &WidgetId, rect: Rect, checked: bool, last_change: Option<Instant>) {
