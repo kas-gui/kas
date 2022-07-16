@@ -140,15 +140,15 @@ fn widgets() -> Box<dyn SetDisabled> {
             #[widget] bi = Row::new_vec(vec![
                 Button::new_msg(img_light.clone(), Item::Theme("light"))
                     .with_color("#B38DF9".parse().unwrap())
-                    .with_keys(&[VK::L]),
+                    .with_keys(&[VK::P]),
                 Button::new_msg(img_light, Item::Theme("blue"))
                     .with_color("#7CDAFF".parse().unwrap())
-                    .with_keys(&[VK::L]),
+                    .with_keys(&[VK::B]),
                 Button::new_msg(img_dark, Item::Theme("dark"))
                     .with_color("#E77346".parse().unwrap())
                     .with_keys(&[VK::K]),
             ]),
-            #[widget] cb = CheckButton::new("&Check me")
+            #[widget] cb = CheckButton::new("Chec&k me")
                 .with_state(true)
                 .on_toggle(|mgr, check| mgr.push_msg(Item::Check(check))),
             #[widget] rb = RadioButton::new("radio button &1", radio.clone())
@@ -311,9 +311,9 @@ fn filter_list() -> Box<dyn SetDisabled> {
         #[derive(Debug)]
         struct {
             core: widget_core!(),
-            #[widget] r0 = RadioButton::new_msg("none", r.clone(), SelectionMode::None).with_state(true),
-            #[widget] r1 = RadioButton::new_msg("single", r.clone(), SelectionMode::Single),
-            #[widget] r2 = RadioButton::new_msg("multiple", r, SelectionMode::Multiple),
+            #[widget] r0 = RadioButton::new_msg("&n&one", r.clone(), SelectionMode::None).with_state(true),
+            #[widget] r1 = RadioButton::new_msg("s&ingle", r.clone(), SelectionMode::Single),
+            #[widget] r2 = RadioButton::new_msg("&multiple", r, SelectionMode::Multiple),
             #[widget] filter = EditBox::new("")
                 .on_edit(move |s, mgr| filter.update(mgr, &(), s.to_string())),
             #[widget] list: ScrollBars<MyListView> =
@@ -543,11 +543,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             core: widget_core!(),
             #[widget] menubar = menubar,
             #[widget] stack: TabStack<Box<dyn SetDisabled>> = TabStack::new()
-                .with_title("Widgets", widgets()) //TODO: use img_gallery as logo
-                .with_title("Text editor", editor())
-                .with_title("List", filter_list())
-                .with_title("Canvas", canvas())
-                .with_title("Config", config(toolkit.event_config().clone())),
+                .with_title("&Widgets", widgets()) //TODO: use img_gallery as logo
+                .with_title("&Text editor", editor())
+                .with_title("&List", filter_list())
+                .with_title("Can&vas", canvas())
+                .with_title("&Config", config(toolkit.event_config().clone())),
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
