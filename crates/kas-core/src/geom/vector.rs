@@ -24,9 +24,18 @@ pub struct Quad {
 }
 
 impl Quad {
+    /// Zero
+    pub const ZERO: Quad = Quad::from_coords(Vec2::ZERO, Vec2::ZERO);
+
+    /// Negative infinity to positive infinity (everything)
+    pub const INFINITY: Quad = Quad::from_coords(Vec2::NEG_INFINITY, Vec2::INFINITY);
+
+    /// Not a Number (NaN)
+    pub const NAN: Quad = Quad::from_coords(Vec2::NAN, Vec2::NAN);
+
     /// Construct with two coords
     #[inline]
-    pub fn from_coords(a: Vec2, b: Vec2) -> Self {
+    pub const fn from_coords(a: Vec2, b: Vec2) -> Self {
         Quad { a, b }
     }
 
@@ -160,8 +169,14 @@ macro_rules! impl_vec2 {
             /// One
             pub const ONE: $T = $T::splat(1.0);
 
+            /// Negative infinity
+            pub const NEG_INFINITY: $T = $T::splat(<$f>::NEG_INFINITY);
+
             /// Positive infinity
             pub const INFINITY: $T = $T::splat(<$f>::INFINITY);
+
+            /// Not a Number (NaN)
+            pub const NAN: $T = $T::splat(<$f>::NAN);
 
             /// Constructs a new instance with each element initialized to `value`.
             #[inline]
