@@ -43,6 +43,36 @@ pub struct Instance {
 unsafe impl bytemuck::Zeroable for Instance {}
 unsafe impl bytemuck::Pod for Instance {}
 
+impl Instance {
+    /// Construct, clamping to rect
+    // TODO(opt): should this use a buffer? Should TextDisplay::prepare_lines prune glyphs?
+    fn new(rect: Quad, mut a: Vec2, mut b: Vec2, tex_quad: Quad, col: Rgba) -> Option<Self> {
+        if !(a.0 < rect.b.0 && a.1 < rect.b.1 && b.0 > rect.a.0 && b.1 > rect.a.1) {
+            return None;
+        }
+
+        let (mut ta, mut tb) = (tex_quad.a, tex_quad.b);
+        if !a.ge(rect.a) || !b.le(rect.b) {
+            let size_inv = 1.0 / (b - a);
+            let fa0 = 0f32.max((rect.a.0 - a.0) * size_inv.0);
+            let fa1 = 0f32.max((rect.a.1 - a.1) * size_inv.1);
+            let fb0 = 1f32.min((rect.b.0 - a.0) * size_inv.0);
+            let fb1 = 1f32.min((rect.b.1 - a.1) * size_inv.1);
+
+            let ts = tb - ta;
+            tb = ta + ts * Vec2(fb0, fb1);
+            ta += ts * Vec2(fa0, fa1);
+
+            a.0 = a.0.clamp(rect.a.0, rect.b.0);
+            a.1 = a.1.clamp(rect.a.1, rect.b.1);
+            b.0 = b.0.clamp(rect.a.0, rect.b.0);
+            b.1 = b.1.clamp(rect.a.1, rect.b.1);
+        }
+
+        Some(Instance { a, b, ta, tb, col })
+    }
+}
+
 /// A pipeline for rendering text
 pub struct Pipeline {
     config: Config,
@@ -233,22 +263,20 @@ impl Window {
         &mut self,
         pipe: &mut Pipeline,
         pass: PassId,
-        rect: Quad,
+        mut rect: Quad,
         text: &TextDisplay,
         col: Rgba,
     ) {
         let time = std::time::Instant::now();
-        let pos = rect.a.round();
+        rect.a = rect.a.round();
 
         let for_glyph = |face: FaceId, dpem: f32, glyph: Glyph| {
             if let Some(sprite) = pipe.get_glyph(face, dpem, glyph) {
-                let pos = pos + Vec2::from(glyph.position).floor();
-                let a = pos + sprite.offset;
+                let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
                 let b = a + sprite.size;
-                let (ta, tb) = (sprite.tex_quad.a, sprite.tex_quad.b);
-                let instance = Instance { a, b, ta, tb, col };
-                // TODO(opt): avoid calling repeatedly?
-                self.atlas.rect(pass, sprite.atlas, instance);
+                if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
+                    self.atlas.rect(pass, sprite.atlas, instance);
+                }
             }
         };
         if let Err(e) = text.glyphs(for_glyph) {
@@ -262,7 +290,7 @@ impl Window {
         &mut self,
         pipe: &mut Pipeline,
         pass: PassId,
-        rect: Quad,
+        mut rect: Quad,
         text: &TextDisplay,
         col: Rgba,
         effects: &[Effect<()>],
@@ -279,18 +307,16 @@ impl Window {
         }
 
         let time = std::time::Instant::now();
-        let pos = rect.a.round();
+        rect.a = rect.a.round();
         let mut rects = vec![];
 
         let mut for_glyph = |face: FaceId, dpem: f32, glyph: Glyph, _: usize, _: ()| {
             if let Some(sprite) = pipe.get_glyph(face, dpem, glyph) {
-                let pos = pos + Vec2::from(glyph.position).floor();
-                let a = pos + sprite.offset;
+                let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
                 let b = a + sprite.size;
-                let (ta, tb) = (sprite.tex_quad.a, sprite.tex_quad.b);
-                let instance = Instance { a, b, ta, tb, col };
-                // TODO(opt): avoid calling repeatedly?
-                self.atlas.rect(pass, sprite.atlas, instance);
+                if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
+                    self.atlas.rect(pass, sprite.atlas, instance);
+                }
             }
         };
 
@@ -303,8 +329,11 @@ impl Window {
             let for_rect = |x1, x2, y: f32, h: f32, _, _| {
                 let y = y.ceil();
                 let y2 = y + h.ceil();
-                let quad = Quad::from_coords(pos + Vec2(x1, y), pos + Vec2(x2, y2));
-                rects.push(quad);
+                if let Some(quad) = Quad::from_coords(rect.a + Vec2(x1, y), rect.a + Vec2(x2, y2))
+                    .intersection(&rect)
+                {
+                    rects.push(quad);
+                }
             };
             text.glyphs_with_effects(effects, (), for_glyph, for_rect)
         } else {
@@ -323,7 +352,7 @@ impl Window {
         &mut self,
         pipe: &mut Pipeline,
         pass: PassId,
-        rect: Quad,
+        mut rect: Quad,
         text: &TextDisplay,
         effects: &[Effect<Rgba>],
     ) -> Vec<(Quad, Rgba)> {
@@ -340,26 +369,27 @@ impl Window {
         }
 
         let time = std::time::Instant::now();
-        let pos = rect.a.round();
+        rect.a = rect.a.round();
         let mut rects = vec![];
 
         let for_glyph = |face: FaceId, dpem: f32, glyph: Glyph, _, col: Rgba| {
             if let Some(sprite) = pipe.get_glyph(face, dpem, glyph) {
-                let pos = pos + Vec2::from(glyph.position).floor();
-                let a = pos + sprite.offset;
+                let a = rect.a + Vec2::from(glyph.position).floor() + sprite.offset;
                 let b = a + sprite.size;
-                let (ta, tb) = (sprite.tex_quad.a, sprite.tex_quad.b);
-                let instance = Instance { a, b, ta, tb, col };
-                // TODO(opt): avoid calling repeatedly?
-                self.atlas.rect(pass, sprite.atlas, instance);
+                if let Some(instance) = Instance::new(rect, a, b, sprite.tex_quad, col) {
+                    self.atlas.rect(pass, sprite.atlas, instance);
+                }
             }
         };
 
         let for_rect = |x1, x2, y: f32, h: f32, _, col: Rgba| {
             let y = y.ceil();
             let y2 = y + h.ceil();
-            let quad = Quad::from_coords(pos + Vec2(x1, y), pos + Vec2(x2, y2));
-            rects.push((quad, col));
+            if let Some(quad) =
+                Quad::from_coords(rect.a + Vec2(x1, y), rect.a + Vec2(x2, y2)).intersection(&rect)
+            {
+                rects.push((quad, col));
+            }
         };
 
         if let Err(e) = text.glyphs_with_effects(effects, Rgba::BLACK, for_glyph, for_rect) {
