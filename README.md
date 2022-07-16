@@ -4,7 +4,7 @@ KAS GUI
 [![Test Status](https://github.com/kas-gui/kas/workflows/Tests/badge.svg?event=push)](https://github.com/kas-gui/kas/actions)
 [![kas-text](https://img.shields.io/badge/GitHub-kas--text-blueviolet)](https://github.com/kas-gui/kas-text/)
 [![Docs](https://docs.rs/kas/badge.svg)](https://docs.rs/kas)
-![Minimum rustc version](https://img.shields.io/badge/rustc-1.53+-lightgray.svg)
+![Minimum rustc version](https://img.shields.io/badge/rustc-1.62+-lightgray.svg)
 
 KAS is a widget-first GUI toolkit:
 

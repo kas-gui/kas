@@ -28,7 +28,8 @@ fn main() -> kas::shell::Result<()> {
         #[derive(Debug)]
         struct {
             core: widget_core!(),
-            #[widget] edit = EditBox::new("A small\nsample\nof text").multi_line(true),
+            #[widget] edit = EditBox::new("A small\nsample\nof text")
+                .with_multi_line(true),
             #[widget] check: CheckBox,
         }
         impl kas::Window for Self {

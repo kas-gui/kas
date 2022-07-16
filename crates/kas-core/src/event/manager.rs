@@ -11,7 +11,7 @@
 use linear_map::LinearMap;
 use log::{trace, warn};
 use smallvec::SmallVec;
-use std::any::{type_name, Any};
+use std::any::Any;
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::ops::{Deref, DerefMut};
 use std::time::Instant;
@@ -292,12 +292,7 @@ impl EventState {
 
     #[inline]
     fn get_touch(&mut self, touch_id: u64) -> Option<&mut TouchGrab> {
-        for grab in self.touch_grab.iter_mut() {
-            if grab.id == touch_id {
-                return Some(grab);
-            }
-        }
-        None
+        self.touch_grab.iter_mut().find(|grab| grab.id == touch_id)
     }
 
     // Clears touch grab and pan grab and redraws
@@ -367,7 +362,7 @@ struct Message {
 impl Message {
     fn new<M: Any + Debug>(msg: Box<M>) -> Self {
         #[cfg(debug_assertions)]
-        let fmt = format!("{}::{:?}", type_name::<M>(), &msg);
+        let fmt = format!("{}::{:?}", std::any::type_name::<M>(), &msg);
         let any = msg;
         Message {
             #[cfg(debug_assertions)]

@@ -374,10 +374,6 @@ impl<'a> std::ops::BitOrAssign<TkAction> for DrawMgr<'a> {
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 #[autoimpl(for<H: trait + ?Sized> Box<H>)]
-#[cfg_attr(feature = "stack_dst", autoimpl(
-    for<H: trait + ?Sized, S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>>
-    stack_dst::ValueA<H, S>
-))]
 pub trait ThemeDraw {
     /// Access components: [`ThemeSize`], [`Draw`], [`EventState`]
     fn components(&mut self) -> (&dyn ThemeSize, &mut dyn Draw, &mut EventState);

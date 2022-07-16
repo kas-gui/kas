@@ -1,6 +1,6 @@
 [package]
 name = "kas-theme"
-version = "0.10.1"
+version = "0.11.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -18,8 +18,8 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 # RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=internal_doc,nightly,config --open
 
 [features]
-default = ["stack_dst"]
-nightly = ["unsize"]
+default = []
+nightly = []
 
 # Enables documentation of APIs for shells and internal usage.
 # This API is not intended for use by end-user applications and
@@ -28,22 +28,15 @@ nightly = ["unsize"]
 internal_doc = ["kas/internal_doc"]
 
 # Enable config read/write
-config = ["serde", "kas/config"]
+config = ["dep:serde", "kas/config"]
 
 # Use Generic Associated Types (this is too unstable to include in nightly!)
-gat = ["unsize", "kas/gat"]
-
-# Use stack_dst crate for sized unsized types
-stack_dst = ["kas/stack_dst", "stack_dst_"]
-
-# Use the unstable 'unsize' feature
-unsize = ["stack_dst_/unsize"]
+gat = ["kas/gat"]
 
 [dependencies]
 # Rename package purely for convenience:
-kas = { version = "0.10.0", package = "kas-core", path = "../kas-core" }
+kas = { version = "0.11.0", package = "kas-core", path = "../kas-core" }
 linear-map = "1.2.0"
 log = "0.4"
 serde = { version = "1.0.123", features = ["derive"], optional = true }
-stack_dst_ = { version = "0.6", package = "stack_dst", optional = true }
 bitflags = "1.3.1"

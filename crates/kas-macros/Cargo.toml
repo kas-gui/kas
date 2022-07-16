@@ -1,6 +1,6 @@
 [package]
 name = "kas-macros"
-version = "0.10.1"
+version = "0.11.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -23,7 +23,7 @@ log = []
 quote = "1.0"
 proc-macro2 = { version = "1.0" }
 proc-macro-error = "1.0"
-impl-tools-lib = "0.3.0"
+impl-tools-lib = "0.3.0" # version used in doc links
 bitflags = "1.3.1"
 
 [dependencies.syn]

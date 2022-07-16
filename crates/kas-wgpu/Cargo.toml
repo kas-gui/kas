@@ -1,6 +1,6 @@
 [package]
 name = "kas-wgpu"
-version = "0.10.1"
+version = "0.11.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -13,8 +13,8 @@ documentation = "https://docs.rs/kas-wgpu/"
 
 [features]
 # WARNING: if "raster" is disabled, an alternative like "kas-text/fontdue" is required!
-default = ["clipboard", "stack_dst", "shaping", "raster"]
-nightly = ["unsize", "kas-theme/nightly"]
+default = ["clipboard", "shaping", "raster"]
+nightly = ["kas-theme/nightly"]
 
 shaping = ["kas-text/shaping"]
 harfbuzz = ["kas-text/harfbuzz"]
@@ -24,13 +24,7 @@ raster = ["kas-text/raster"]
 gat = ["kas-theme/gat"]
 
 # Enables clipboard read/write
-clipboard = ["window_clipboard"]
-
-# Use stack_dst crate for sized unsized types
-stack_dst = ["kas-theme/stack_dst"]
-
-# Use kas-theme's unsize feature (nightly-only)
-unsize = ["kas-theme/unsize"]
+clipboard = ["dep:window_clipboard"]
 
 [dependencies]
 bytemuck = "1.7.0"
@@ -38,7 +32,6 @@ futures = "0.3"
 log = "0.4"
 smallvec = "1.6.1"
 wgpu = { version = "0.11.0", features = ["spirv"] }
-raw-window-handle = "0.3.4"
 winit = "0.26"
 thiserror = "1.0.23"
 window_clipboard = { version = "0.2.0", optional = true }
@@ -47,7 +40,7 @@ rustc-hash = "1.0"
 
 [dependencies.kas]
 # Rename package purely for convenience:
-version = "0.10.0"
+version = "0.11.0"
 package = "kas-core"
 path = "../kas-core"
 features = ["config", "winit"]
@@ -55,7 +48,7 @@ features = ["config", "winit"]
 [dependencies.kas-theme]
 path = "../kas-theme"
 features = ["config"]
-version = "0.10.0"
+version = "0.11.0"
 default-features = false
 
 [dependencies.kas-text]

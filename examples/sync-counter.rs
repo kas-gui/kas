@@ -5,60 +5,20 @@
 
 //! A counter synchronised between multiple windows
 
-use kas::event::EventMgr;
-use kas::macros::impl_scope;
 use kas::model::SharedRc;
-use kas::widgets::view::SingleView;
-use kas::widgets::TextButton;
-use kas::{Widget, Window};
+use kas::view::{driver, SingleView};
+use kas::widgets::dialog::Window;
 
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    #[derive(Clone, Debug)]
-    struct Increment(i32);
-
-    impl_scope! {
-        #[widget{
-            layout = column: [
-                align(center): self.counter,
-                row: [
-                    TextButton::new_msg("−", Increment(-1)),
-                    TextButton::new_msg("+", Increment(1)),
-                ],
-            ];
-        }]
-        #[derive(Clone, Debug, Default)]
-        struct Counter {
-            core: widget_core!(),
-            // SingleView embeds a shared value, here default-constructed to 0
-            #[widget] counter: SingleView<SharedRc<i32>>,
-        }
-        impl Self {
-            fn new(data: SharedRc<i32>) -> Self {
-                Counter {
-                    core: Default::default(),
-                    counter: SingleView::new(data),
-                }
-            }
-        }
-        impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-                if let Some(Increment(x)) = mgr.try_pop_msg() {
-                    self.counter.update_value(mgr, |v| v + x);
-                }
-            }
-        }
-        impl Window for Self {
-            fn title(&self) -> &str { "Counter" }
-        }
-    };
-
-    let data = SharedRc::new(0);
+    let driver = driver::Spinner::new(i32::MIN..=i32::MAX, 1);
+    let c1 = SingleView::new_with_driver(driver, SharedRc::new(0));
+    let c2 = SingleView::new_with_driver(driver, c1.data().clone());
 
     let theme = kas::theme::ShadedTheme::new().with_font_size(24.0);
     kas::shell::Toolkit::new(theme)?
-        .with(Counter::new(data.clone()))?
-        .with(Counter::new(data))?
+        .with(Window::new("Counter 1", c1))?
+        .with(Window::new("Counter 2", c2))?
         .run()
 }

@@ -2,7 +2,7 @@
 
 use kas::model::{MatrixData, SharedData};
 use kas::prelude::*;
-use kas::widgets::view::{driver::DefaultNav, MatrixView, SelectionMode};
+use kas::view::{driver, MatrixView, SelectionMode};
 use kas::widgets::{EditBox, ScrollBars};
 
 #[derive(Debug)]
@@ -80,7 +80,7 @@ fn main() -> kas::shell::Result<()> {
                     Ok(n) => mgr.push_msg(n),
                     Err(_) => (),
                 }),
-            #[widget] table: ScrollBars<MatrixView<TableData, DefaultNav>> = table,
+            #[widget] table: ScrollBars<MatrixView<TableData, driver::NavView>> = table,
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {

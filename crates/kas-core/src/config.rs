@@ -26,7 +26,7 @@ pub enum Error {
     #[cfg(feature = "ron")]
     #[cfg_attr(doc_cfg, doc(cfg(feature = "ron")))]
     #[error("config (de)serialisation to RON failed")]
-    Ron(#[from] dep_ron::Error),
+    Ron(#[from] ron::Error),
 
     #[error("error reading / writing config file")]
     IoError(#[from] std::io::Error),
@@ -114,7 +114,7 @@ impl Format {
             #[cfg(feature = "ron")]
             Format::Ron => {
                 let r = std::io::BufReader::new(std::fs::File::open(path)?);
-                Ok(dep_ron::de::from_reader(r)?)
+                Ok(ron::de::from_reader(r)?)
             }
             _ => {
                 let _ = path; // squelch unused warning
@@ -142,8 +142,8 @@ impl Format {
             #[cfg(feature = "ron")]
             Format::Ron => {
                 let w = std::io::BufWriter::new(std::fs::File::create(path)?);
-                let pretty = dep_ron::ser::PrettyConfig::default();
-                dep_ron::ser::to_writer_pretty(w, value, pretty)?;
+                let pretty = ron::ser::PrettyConfig::default();
+                ron::ser::to_writer_pretty(w, value, pretty)?;
                 Ok(())
             }
             // NOTE: Toml is not supported since the `toml` crate does not support enums as map keys

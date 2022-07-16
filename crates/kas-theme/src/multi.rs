@@ -6,22 +6,16 @@
 //! Wrapper around mutliple themes, supporting run-time switching
 
 use std::collections::HashMap;
-#[cfg(feature = "unsize")]
-use std::marker::Unsize;
 
-use crate::{Config, StackDst, Theme, ThemeDst, Window};
+use crate::{Config, Theme, ThemeDst, Window};
 use kas::draw::{color, DrawIface, DrawSharedImpl, SharedState};
 use kas::event::EventState;
 use kas::theme::{ThemeControl, ThemeDraw};
 use kas::TkAction;
 
-#[cfg(feature = "unsize")]
-type DynTheme<DS> = StackDst<dyn ThemeDst<DS>>;
-#[cfg(not(feature = "unsize"))]
 type DynTheme<DS> = Box<dyn ThemeDst<DS>>;
 
 /// Wrapper around mutliple themes, supporting run-time switching
-#[cfg_attr(doc_cfg, doc(cfg(feature = "stack_dst")))]
 pub struct MultiTheme<DS> {
     names: HashMap<String, usize>,
     themes: Vec<DynTheme<DS>>,
@@ -31,7 +25,6 @@ pub struct MultiTheme<DS> {
 /// Builder for [`MultiTheme`]
 ///
 /// Construct via [`MultiTheme::builder`].
-#[cfg_attr(doc_cfg, doc(cfg(feature = "stack_dst")))]
 pub struct MultiThemeBuilder<DS> {
     names: HashMap<String, usize>,
     themes: Vec<DynTheme<DS>>,
@@ -49,27 +42,6 @@ impl<DS> MultiTheme<DS> {
 
 impl<DS> MultiThemeBuilder<DS> {
     /// Add a theme
-    ///
-    /// Note: the constraints of this method vary depending on the `unsize`
-    /// feature.
-    #[cfg(feature = "unsize")]
-    #[must_use]
-    pub fn add<S: ToString, U>(mut self, name: S, theme: U) -> Self
-    where
-        U: Unsize<dyn ThemeDst<DS>>,
-        Box<U>: Unsize<dyn ThemeDst<DS>>,
-    {
-        let index = self.themes.len();
-        self.names.insert(name.to_string(), index);
-        self.themes.push(StackDst::new_or_boxed(theme));
-        self
-    }
-
-    /// Add a theme
-    ///
-    /// Note: the constraints of this method vary depending on the `unsize`
-    /// feature.
-    #[cfg(not(feature = "unsize"))]
     #[must_use]
     pub fn add<S: ToString, T>(mut self, name: S, theme: T) -> Self
     where
@@ -107,12 +79,12 @@ impl<DS> MultiThemeBuilder<DS> {
 
 impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
     type Config = Config;
-    type Window = StackDst<dyn Window>;
+    type Window = Box<dyn Window>;
 
     #[cfg(not(feature = "gat"))]
-    type Draw = StackDst<dyn ThemeDraw>;
+    type Draw = Box<dyn ThemeDraw>;
     #[cfg(feature = "gat")]
-    type Draw<'a> = StackDst<dyn ThemeDraw + 'a>;
+    type Draw<'a> = Box<dyn ThemeDraw + 'a>;
 
     fn config(&self) -> std::borrow::Cow<Self::Config> {
         let boxed_config = self.themes[self.active].config();
@@ -153,7 +125,7 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
         draw: DrawIface<DS>,
         ev: &mut EventState,
         window: &mut Self::Window,
-    ) -> StackDst<dyn ThemeDraw> {
+    ) -> Box<dyn ThemeDraw> {
         unsafe fn extend_lifetime_mut<'b, T: ?Sized>(r: &'b mut T) -> &'static mut T {
             std::mem::transmute::<&'b mut T, &'static mut T>(r)
         }
@@ -174,7 +146,7 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
         draw: DrawIface<'a, DS>,
         ev: &'a mut EventState,
         window: &'a mut Self::Window,
-    ) -> StackDst<dyn ThemeDraw + 'a> {
+    ) -> Box<dyn ThemeDraw + 'a> {
         self.themes[self.active].draw(draw, ev, window)
     }
 

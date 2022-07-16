@@ -57,6 +57,3 @@ Dependencies imply many more uses of `unsafe`; this includes:
 -   GPU APIs
 -   `smallvec` is widely used for in-place vectors; note that `tinyvec`'s
     restriction (`Item: Default`) makes it unsuitable for most of these uses
--   `stack_dst` is used to avoid boxing `dyn Trait` objects in a few cases
-    (we could instead use `Box` here; eventually unsized rvalues may support
-    this: rust#48055)

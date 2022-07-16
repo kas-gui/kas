@@ -8,7 +8,7 @@
 use crate::{EditField, EditGuard, MarkButton};
 use kas::event::{Command, ScrollDelta};
 use kas::prelude::*;
-use kas::theme::{Background, FrameStyle, MarkStyle};
+use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use std::cmp::Ord;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
@@ -92,10 +92,11 @@ struct SpinnerGuard<T: SpinnerValue> {
 
 impl<T: SpinnerValue> SpinnerGuard<T> {
     fn new(range: RangeInclusive<T>) -> Self {
+        let (start, end) = range.into_inner();
         SpinnerGuard {
-            value: *range.start(),
-            start: *range.start(),
-            end: *range.end(),
+            value: start,
+            start,
+            end,
         }
     }
 
@@ -183,7 +184,9 @@ impl_scope! {
         pub fn new(range: RangeInclusive<T>, step: T) -> Self {
             Spinner {
                 core: Default::default(),
-                edit: EditField::new("").with_guard(SpinnerGuard::new(range)),
+                edit: EditField::new("")
+                    .with_class(TextClass::EditShort(false))
+                    .with_guard(SpinnerGuard::new(range)),
                 b_up: MarkButton::new(MarkStyle::Point(Direction::Up), SpinBtn::Up),
                 b_down: MarkButton::new(MarkStyle::Point(Direction::Down), SpinBtn::Down),
                 step,
@@ -218,6 +221,22 @@ impl_scope! {
         {
             self.on_change = Some(Rc::new(f));
             self
+        }
+
+        /// Set the text class used
+        ///
+        /// The default is: `TextClass::EditShort(false)`.
+        #[inline]
+        #[must_use]
+        pub fn with_class(mut self, class: TextClass) -> Self {
+            self.edit = self.edit.with_class(class);
+            self
+        }
+
+        /// Get the text class used
+        #[inline]
+        pub fn class(&self) -> TextClass {
+            self.edit.class()
         }
 
         /// Set the initial value

@@ -280,27 +280,6 @@ impl_scope! {
         }
     }
 
-    impl Layout for Self {
-        #[inline]
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            self.0.size_rules(size_mgr, axis)
-        }
-
-        #[inline]
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
-            self.0.set_rect(mgr, rect, align)
-        }
-
-        #[inline]
-        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            self.0.find_id(coord)
-        }
-
-        fn draw(&mut self, mut draw: DrawMgr) {
-            draw.text_effects(self.rect().pos, &self.0.label, self.0.class);
-        }
-    }
-
     impl HasStr for Self {
         fn get_str(&self) -> &str {
             self.0.label.as_str()

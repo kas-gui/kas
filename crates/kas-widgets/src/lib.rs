@@ -10,7 +10,6 @@
 //! -   [`adapter::AdaptWidget`]: provides `map_msg`, `with_reserve` and `with_label` methods
 //! -   [`dialog`]: pre-made dialog widgets
 //! -   [`menu`]: support for pop-up menus ([`ComboBox`], [`menu::MenuBar`])
-//! -   [`view`]: data models
 //!
 //! ## Container widgets
 //!
@@ -46,14 +45,8 @@
 //! -   [`DragHandle`]: a handle (e.g. for a slider, splitter or scroll_bar)
 
 // Use ``never_loop`` until: https://github.com/rust-lang/rust-clippy/issues/7397 is fixed
-#![allow(
-    clippy::or_fun_call,
-    clippy::never_loop,
-    clippy::comparison_chain,
-    clippy::needless_late_init,
-    clippy::collapsible_else_if,
-    clippy::len_zero
-)]
+#![allow(clippy::or_fun_call)]
+#![allow(clippy::comparison_chain)]
 #![allow(clippy::type_complexity)]
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![cfg_attr(feature = "min_spec", feature(min_specialization))]
@@ -86,7 +79,6 @@ mod stack;
 mod tab_stack;
 
 pub mod adapter;
-pub mod view;
 
 pub use crate::image::Image;
 pub use button::{Button, TextButton};

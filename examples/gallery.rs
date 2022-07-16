@@ -13,7 +13,8 @@ use kas::event::{Config, VirtualKeyCode as VK};
 use kas::model::SharedRc;
 use kas::prelude::*;
 use kas::resvg::Svg;
-use kas::widgets::{menu::MenuEntry, view::SingleView, *};
+use kas::view::{driver, SingleView};
+use kas::widgets::{menu::MenuEntry, *};
 
 #[derive(Clone, Debug)]
 enum Item {
@@ -243,7 +244,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
             core: widget_core!(),
             dir: Direction = Direction::Up,
             #[widget] editor: EditBox<Guard> =
-                EditBox::new(doc).multi_line(true).with_guard(Guard),
+                EditBox::new(doc).with_multi_line(true).with_guard(Guard),
             #[widget] label: ScrollLabel<Markdown> =
                 ScrollLabel::new(Markdown::new(doc).unwrap()),
         }
@@ -270,8 +271,9 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 
 fn filter_list() -> Box<dyn SetDisabled> {
     use kas::dir::Down;
-    use kas::model::{filter::ContainsCaseInsensitive, SharedData};
-    use kas::widgets::view::{driver, SelectionMode, SelectionMsg};
+    use kas::model::filter::{ContainsCaseInsensitive, FilteredList};
+    use kas::model::SharedData;
+    use kas::view::{ListView, SelectionMode, SelectionMsg};
 
     const MONTHS: &[&str] = &[
         "January",
@@ -292,9 +294,9 @@ fn filter_list() -> Box<dyn SetDisabled> {
         .collect();
 
     let filter = ContainsCaseInsensitive::new("");
-    type FilteredList = view::FilteredList<Vec<String>, ContainsCaseInsensitive>;
-    type ListView = view::ListView<Down, FilteredList, driver::DefaultNav>;
-    let filtered = FilteredList::new(data, filter.clone());
+    type MyFilteredList = FilteredList<Vec<String>, ContainsCaseInsensitive>;
+    type MyListView = ListView<Down, MyFilteredList, driver::NavView>;
+    let filtered = MyFilteredList::new(data, filter.clone());
 
     let r = RadioGroup::default();
 
@@ -314,8 +316,8 @@ fn filter_list() -> Box<dyn SetDisabled> {
             #[widget] r2 = RadioButton::new_msg("multiple", r, SelectionMode::Multiple),
             #[widget] filter = EditBox::new("")
                 .on_edit(move |s, mgr| filter.update(mgr, &(), s.to_string())),
-            #[widget] list: ScrollBars<ListView> =
-                ScrollBars::new(ListView::new(filtered))
+            #[widget] list: ScrollBars<MyListView> =
+                ScrollBars::new(MyListView::new(filtered))
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
@@ -455,7 +457,8 @@ KAS_CONFIG_MODE=readwrite
         #[derive(Debug)]
         struct {
             core: widget_core!(),
-            #[widget] view: SingleView<SharedRc<Config>> = SingleView::new(config),
+            #[widget] view: SingleView<SharedRc<Config>, driver::EventConfig> =
+                SingleView::new_with_driver(driver::EventConfig, config),
         }
 
         impl SetDisabled for Self {
@@ -469,14 +472,11 @@ KAS_CONFIG_MODE=readwrite
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
-    #[cfg(feature = "stack_dst")]
     let theme = kas::theme::MultiTheme::builder()
         .add("flat", kas::theme::FlatTheme::new())
         .add("simple", kas::theme::SimpleTheme::new())
         .add("shaded", kas::theme::ShadedTheme::new())
         .build();
-    #[cfg(not(feature = "stack_dst"))]
-    let theme = kas::theme::FlatTheme::new();
     let mut toolkit = kas::shell::Toolkit::new(theme)?;
 
     // TODO: use as logo of tab
@@ -555,9 +555,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     match msg {
                         Menu::Theme(name) => {
                             println!("Theme: {:?}", name);
-                            #[cfg(not(feature = "stack_dst"))]
-                            println!("Warning: switching themes requires feature 'stack_dst'");
-
                             mgr.adjust_theme(|theme| theme.set_theme(name));
                         }
                         Menu::Colour(name) => {

@@ -160,7 +160,7 @@ impl_scope! {
                 core: Default::default(),
                 title: title.into(),
                 data,
-                edit: EditBox::new(text).multi_line(multi_line),
+                edit: EditBox::new(text).with_multi_line(multi_line),
             }
         }
 

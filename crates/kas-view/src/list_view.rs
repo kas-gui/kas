@@ -3,12 +3,9 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! List view widget
+//! List view controller
 
 use super::{driver, Driver, PressPhase, SelectionError, SelectionMode, SelectionMsg};
-#[allow(unused)] // doc links
-use crate::ScrollBars;
-use crate::SelectMsg;
 use kas::event::components::ScrollComponent;
 use kas::event::{Command, CursorIcon, Scroll};
 use kas::layout::solve_size_rules;
@@ -16,6 +13,9 @@ use kas::model::ListData;
 #[allow(unused)]
 use kas::model::SharedData;
 use kas::prelude::*;
+#[allow(unused)] // doc links
+use kas_widgets::ScrollBars;
+use kas_widgets::SelectMsg;
 use linear_map::set::LinearSet;
 use log::{debug, trace};
 use std::time::Instant;
@@ -27,26 +27,25 @@ struct WidgetData<K, W> {
 }
 
 impl_scope! {
-    /// List view widget
+    /// List view controller
     ///
     /// This widget supports a view over a list of shared data items.
     ///
     /// The shared data type `T` must support [`ListData`].
-    /// One may use [`kas::model::SharedRc`]
-    /// or a custom shared data type.
+    /// One may use `[T]`, `Vec<T>` or a custom shared data type.
     ///
-    /// The driver `V` must implement [`Driver`], with data type
-    /// `<T as ListData>::Item`. Several implementations are available in the
-    /// [`driver`] module or a custom implementation may be used.
+    /// The driver `V` must implement [`Driver`] over `T`.
+    /// The default driver is [`driver::View`]; others are available in the
+    /// [`driver`] module or [`Driver`] may be implemented directly.
     ///
     /// This widget is [`Scrollable`], supporting keyboard, wheel and drag
     /// scrolling. You may wish to wrap this widget with [`ScrollBars`].
     ///
+    /// Optionally, data items may be selected; see [`Self::set_selection_mode`].
+    ///
     /// # Messages
     ///
-    /// When a child pushes a message, the [`Driver::on_message`] method is
-    /// called. After calling [`Driver::on_message`], this widget attempts to
-    /// read and handle [`SelectMsg`].
+    /// When a view widget pushes a message, [`Driver::on_message`] is called.
     ///
     /// When selection is enabled and an item is selected or deselected, this
     /// widget emits a [`SelectionMsg`].
@@ -55,7 +54,7 @@ impl_scope! {
     pub struct ListView<
         D: Directional,
         T: ListData,
-        V: Driver<T::Item, T> = driver::DefaultView,
+        V: Driver<T::Item, T> = driver::View,
     > {
         core: widget_core!(),
         frame_offset: Offset,
@@ -184,6 +183,17 @@ impl_scope! {
             self.sel_mode
         }
         /// Set the current selection mode
+        ///
+        /// By default, selection is disabled. If enabled, items may be selected
+        /// and deselected via mouse-click/touch or via a view widget emitting
+        /// [`SelectMsg`].
+        ///
+        /// On selection and deselection, a [`SelectionMsg`] message is emitted.
+        /// This is not sent to [`Driver::on_message`].
+        ///
+        /// The driver may trigger selection by emitting [`SelectMsg`] from
+        /// [`Driver::on_message`]. The driver is not notified of selection
+        /// except via [`SelectMsg`] from view widgets. (TODO: reconsider this.)
         pub fn set_selection_mode(&mut self, mode: SelectionMode) -> TkAction {
             self.sel_mode = mode;
             match mode {
@@ -201,6 +211,8 @@ impl_scope! {
             }
         }
         /// Set the selection mode (inline)
+        ///
+        /// See [`Self::set_selection_mode`] documentation.
         #[must_use]
         pub fn with_selection_mode(mut self, mode: SelectionMode) -> Self {
             let _ = self.set_selection_mode(mode);
@@ -422,7 +434,7 @@ impl_scope! {
                 self.widgets
                     .iter()
                     .enumerate()
-                    .filter_map(|(i, w)| (key == w.key).then(|| i))
+                    .filter_map(|(i, w)| (key == w.key).then_some(i))
                     .next()
             } else {
                 None

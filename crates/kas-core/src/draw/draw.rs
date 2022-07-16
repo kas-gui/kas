@@ -161,14 +161,12 @@ pub trait Draw {
     /// Case `class == PassType::Overlay`: the new pass is derived from the
     /// base pass (i.e. the window). Draw operations still happen after those in
     /// `parent_pass`.
-    #[cfg(feature = "stack_dst")]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "stack_dst")))]
     fn new_dyn_pass<'b>(
         &'b mut self,
         rect: Rect,
         offset: Offset,
         class: PassType,
-    ) -> stack_dst::ValueA<dyn Draw + 'b, [usize; 4]>;
+    ) -> Box<dyn Draw + 'b>;
 
     /// Get drawable rect for a draw `pass`
     ///
@@ -247,16 +245,13 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
         (self.draw, self.shared)
     }
 
-    #[cfg(feature = "stack_dst")]
     fn new_dyn_pass<'b>(
         &'b mut self,
         rect: Rect,
         offset: Offset,
         class: PassType,
-    ) -> stack_dst::ValueA<dyn Draw + 'b, [usize; 4]> {
-        let draw = self.new_pass(rect, offset, class);
-        stack_dst::ValueA::new_stable(draw, |d| d as &dyn Draw)
-            .unwrap_or_else(|_| panic!("boxed window too big for StackDst!"))
+    ) -> Box<dyn Draw + 'b> {
+        Box::new(self.new_pass(rect, offset, class))
     }
 
     fn get_clip_rect(&self) -> Rect {

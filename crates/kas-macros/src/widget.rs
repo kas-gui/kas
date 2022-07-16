@@ -7,7 +7,7 @@ use crate::args::{Child, WidgetArgs};
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::{Scope, ScopeAttr, ScopeItem, SimplePath};
 use proc_macro2::{Span, TokenStream};
-use proc_macro_error::{emit_error, emit_warning};
+use proc_macro_error::emit_error;
 use quote::{quote, TokenStreamExt};
 use syn::spanned::Spanned;
 use syn::{parse2, parse_quote, Error, Ident, ImplItem, Index, ItemImpl, Member, Result, Type};
@@ -147,12 +147,12 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     emit_error!(impl_, "impl conflicts with use of #[widget(derive=FIELD)]");
                 }
                 if !children.is_empty() {
-                    emit_warning!(
+                    emit_error!(
                         impl_,
                         "custom `WidgetChildren` implementation when using `#[widget]` on fields"
                     );
                 } else if !layout_children.is_empty() {
-                    emit_warning!(
+                    emit_error!(
                         impl_,
                         "custom `WidgetChildren` implementation when using layout-defined children"
                     );
@@ -169,9 +169,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 || *path == parse_quote! { kas::Widget }
                 || *path == parse_quote! { Widget }
             {
-                if opt_derive.is_some() {
-                    emit_error!(impl_, "impl conflicts with use of #[widget(derive=FIELD)]");
-                }
                 if widget_impl.is_none() {
                     widget_impl = Some(index);
                 }
@@ -230,6 +227,14 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         }
     });
 
+    let mut fn_size_rules = None;
+    let (fn_set_rect, fn_find_id);
+    let mut fn_draw = None;
+
+    let fn_pre_configure;
+    let mut key_nav = args.key_nav;
+    let widget_methods;
+
     let hover_highlight = args.hover_highlight.unwrap_or(false);
     let pre_handle_event = match (hover_highlight, args.cursor_icon.take()) {
         (false, None) => quote! {},
@@ -268,303 +273,317 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     };
 
     if let Some(inner) = opt_derive {
+        scope.generated.push(quote! {
+            impl #impl_generics ::kas::WidgetChildren
+                for #name #ty_generics #where_clause
+            {
+                #[inline]
+                fn num_children(&self) -> usize {
+                    self.#inner.num_children()
+                }
+                #[inline]
+                fn get_child(&self, index: usize) -> Option<&dyn ::kas::Widget> {
+                    self.#inner.get_child(index)
+                }
+                #[inline]
+                fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn ::kas::Widget> {
+                    self.#inner.get_child_mut(index)
+                }
+                #[inline]
+                fn find_child_index(&self, id: &::kas::WidgetId) -> Option<usize> {
+                    self.#inner.find_child_index(id)
+                }
+                #[inline]
+                fn make_child_id(&mut self, index: usize) -> ::kas::WidgetId {
+                    self.#inner.make_child_id(index)
+                }
+            }
+        });
+
+        fn_size_rules = Some(quote! {
+            #[inline]
+            fn size_rules(&mut self,
+                size_mgr: ::kas::theme::SizeMgr,
+                axis: ::kas::layout::AxisInfo,
+            ) -> ::kas::layout::SizeRules {
+                self.#inner.size_rules(size_mgr, axis)
+            }
+        });
+        fn_set_rect = quote! {
+            #[inline]
+            fn set_rect(
+                &mut self,
+                mgr: &mut ::kas::event::ConfigMgr,
+                rect: ::kas::geom::Rect,
+                align: ::kas::layout::AlignHints,
+            ) {
+                self.#inner.set_rect(mgr, rect, align);
+            }
+        };
+        fn_find_id = quote! {
+            #[inline]
+            fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
+                self.#inner.find_id(coord)
+            }
+        };
+        fn_draw = Some(quote! {
+            #[inline]
+            fn draw(&mut self, draw: ::kas::theme::DrawMgr) {
+                self.#inner.draw(draw);
+            }
+        });
+
+        fn_pre_configure = quote! {
+            #[inline]
+            fn pre_configure(&mut self, mgr: &mut ::kas::event::ConfigMgr, id: ::kas::WidgetId) {
+                self.#inner.pre_configure(mgr, id)
+            }
+        };
+        if key_nav.is_none() {
+            key_nav = Some(quote! {
+                #[inline]
+                fn key_nav(&self) -> bool {
+                    self.#inner.key_nav()
+                }
+            });
+        }
+
+        let configure = quote! {
+            #[inline]
+            fn configure(&mut self, mgr: &mut ::kas::event::ConfigMgr) {
+                self.#inner.configure(mgr);
+            }
+        };
+        let translation = quote! {
+            #[inline]
+            fn translation(&self) -> ::kas::geom::Offset {
+                self.#inner.translation()
+            }
+        };
+        let spatial_nav = quote! {
+            #[inline]
+            fn spatial_nav(
+                &mut self,
+                mgr: &mut ::kas::event::ConfigMgr,
+                reverse: bool,
+                from: Option<usize>,
+            ) -> Option<usize> {
+                self.#inner.spatial_nav(mgr, reverse, from)
+            }
+        };
+        let handle_event = quote! {
+            #[inline]
+            fn handle_event(
+                &mut self,
+                mgr: &mut ::kas::event::EventMgr,
+                event: ::kas::event::Event,
+            ) -> ::kas::event::Response {
+                self.#inner.handle_event(mgr, event)
+            }
+        };
+        let handle_unused = quote! {
+            #[inline]
+            fn handle_unused(
+                &mut self,
+                mgr: &mut ::kas::event::EventMgr,
+                index: usize,
+                event: ::kas::event::Event,
+            ) -> ::kas::event::Response {
+                self.#inner.handle_unused(mgr, index, event)
+            }
+        };
+        let handle_message = quote! {
+            #[inline]
+            fn handle_message(
+                &mut self,
+                mgr: &mut ::kas::event::EventMgr,
+                index: usize,
+            ) {
+                self.#inner.handle_message(mgr, index);
+            }
+        };
+        let handle_scroll = quote! {
+            #[inline]
+            fn handle_scroll(
+                &mut self,
+                mgr: &mut ::kas::event::EventMgr,
+                scroll: ::kas::event::Scroll,
+            ) {
+                self.#inner.handle_scroll(mgr, scroll);
+            }
+        };
+        widget_methods = vec![
+            ("configure", configure),
+            ("translation", translation),
+            ("spatial_nav", spatial_nav),
+            ("handle_event", handle_event),
+            ("handle_unused", handle_unused),
+            ("handle_message", handle_message),
+            ("handle_scroll", handle_scroll),
+        ];
+    } else {
+        let core = core_data.unwrap();
+
         if impl_widget_children {
+            let mut count = children.len();
+
+            let mut get_rules = quote! {};
+            let mut get_mut_rules = quote! {};
+            for (i, child) in children.iter().enumerate() {
+                let ident = &child.ident;
+                get_rules.append_all(quote! { #i => Some(&self.#ident), });
+                get_mut_rules.append_all(quote! { #i => Some(&mut self.#ident), });
+            }
+            for (i, path) in layout_children.iter().enumerate() {
+                let index = count + i;
+                get_rules.append_all(quote! { #index => Some(&self.#core.#path), });
+                get_mut_rules.append_all(quote! { #index => Some(&mut self.#core.#path), });
+            }
+            count += layout_children.len();
+
             scope.generated.push(quote! {
                 impl #impl_generics ::kas::WidgetChildren
                     for #name #ty_generics #where_clause
                 {
-                    #[inline]
                     fn num_children(&self) -> usize {
-                        self.#inner.num_children()
+                        #count
                     }
-                    #[inline]
-                    fn get_child(&self, index: usize) -> Option<&dyn ::kas::Widget> {
-                        self.#inner.get_child(index)
+                    fn get_child(&self, _index: usize) -> Option<&dyn ::kas::Widget> {
+                        match _index {
+                            #get_rules
+                            _ => None
+                        }
                     }
-                    #[inline]
-                    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn ::kas::Widget> {
-                        self.#inner.get_child_mut(index)
-                    }
-                    #[inline]
-                    fn find_child_index(&self, id: &::kas::WidgetId) -> Option<usize> {
-                        self.#inner.find_child_index(id)
-                    }
-                    #[inline]
-                    fn make_child_id(&mut self, index: usize) -> ::kas::WidgetId {
-                        self.#inner.make_child_id(index)
+                    fn get_child_mut(&mut self, _index: usize) -> Option<&mut dyn ::kas::Widget> {
+                        match _index {
+                            #get_mut_rules
+                            _ => None
+                        }
                     }
                 }
             });
         }
 
-        if layout_impl.is_none() {
+        let mut set_rect = quote! { self.#core.rect = rect; };
+        let mut find_id = quote! {
+            use ::kas::{WidgetCore, WidgetExt};
+            self.rect().contains(coord).then(|| self.id())
+        };
+        if let Some(layout) = args.layout.take() {
+            let layout = layout.generate(&core)?;
             scope.generated.push(quote! {
-                impl #impl_generics ::kas::Layout
+                impl #impl_generics ::kas::layout::AutoLayout
                         for #name #ty_generics #where_clause
                 {
-                    #[inline]
-                    fn size_rules(&mut self,
+                    fn size_rules(
+                        &mut self,
                         size_mgr: ::kas::theme::SizeMgr,
                         axis: ::kas::layout::AxisInfo,
                     ) -> ::kas::layout::SizeRules {
-                        self.#inner.size_rules(size_mgr, axis)
+                        use ::kas::{WidgetCore, layout};
+                        (#layout).size_rules(size_mgr, axis)
                     }
-                    #[inline]
+
                     fn set_rect(
                         &mut self,
                         mgr: &mut ::kas::event::ConfigMgr,
                         rect: ::kas::geom::Rect,
                         align: ::kas::layout::AlignHints,
                     ) {
-                        self.#inner.set_rect(mgr, rect, align);
+                        use ::kas::{WidgetCore, layout};
+                        self.#core.rect = (#layout).set_rect(mgr, rect, align);
                     }
-                    #[inline]
+
                     fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
-                        self.#inner.find_id(coord)
+                        use ::kas::{layout, Widget, WidgetCore, WidgetExt};
+                        if !self.rect().contains(coord) {
+                            return None;
+                        }
+                        let coord = coord + self.translation();
+                        (#layout).find_id(coord).or_else(|| Some(self.id()))
                     }
-                    #[inline]
-                    fn draw(
-                        &mut self,
-                        draw: ::kas::theme::DrawMgr,
-                    ) {
-                        self.#inner.draw(draw);
+
+                    fn draw(&mut self, draw: ::kas::theme::DrawMgr) {
+                        use ::kas::{WidgetCore, layout};
+                        (#layout).draw(draw);
                     }
                 }
             });
-        }
 
-        if widget_impl.is_none() {
-            let key_nav = args.key_nav.unwrap_or_else(|| {
-                quote! {
-                    #[inline]
-                    fn key_nav(&self) -> bool {
-                        self.#inner.key_nav()
-                    }
-                }
-            });
-            scope.generated.push(quote! {
-                impl #impl_generics ::kas::Widget
-                        for #name #ty_generics #where_clause
-                {
-                    #[inline]
-                    fn pre_configure(
-                        &mut self,
-                        mgr: &mut ::kas::event::ConfigMgr,
-                        id: ::kas::WidgetId,
-                    ) {
-                        self.#inner.pre_configure(mgr, id)
-                    }
-                    #[inline]
-                    fn configure(&mut self, mgr: &mut ::kas::event::ConfigMgr) {
-                        self.#inner.configure(mgr);
-                    }
-                    #key_nav
-
-                    #[inline]
-                    fn translation(&self) -> ::kas::geom::Offset {
-                        self.#inner.translation()
-                    }
-                    #[inline]
-                    fn spatial_nav(
-                        &mut self,
-                        mgr: &mut ::kas::event::ConfigMgr,
-                        reverse: bool,
-                        from: Option<usize>,
-                    ) -> Option<usize> {
-                        self.#inner.spatial_nav(mgr, reverse, from)
-                    }
-
-                    #pre_handle_event
-
-                    #[inline]
-                    fn handle_event(
-                        &mut self,
-                        mgr: &mut ::kas::event::EventMgr,
-                        event: ::kas::event::Event,
-                    ) -> ::kas::event::Response {
-                        self.#inner.handle_event(mgr, event)
-                    }
-                    #[inline]
-                    fn handle_unused(
-                        &mut self,
-                        mgr: &mut ::kas::event::EventMgr,
-                        index: usize,
-                        event: ::kas::event::Event,
-                    ) -> ::kas::event::Response {
-                        self.#inner.handle_unused(mgr, index, event)
-                    }
-                    #[inline]
-                    fn handle_message(
-                        &mut self,
-                        mgr: &mut ::kas::event::EventMgr,
-                        index: usize,
-                    ) {
-                        self.#inner.handle_message(mgr, index);
-                    }
-                    #[inline]
-                    fn handle_scroll(
-                        &mut self,
-                        mgr: &mut ::kas::event::EventMgr,
-                        scroll: ::kas::event::Scroll,
-                    ) {
-                        self.#inner.handle_scroll(mgr, scroll);
-                    }
-                }
-            });
-        }
-
-        return Ok(());
-    }
-
-    let core = core_data.unwrap();
-
-    if impl_widget_children {
-        let mut count = children.len();
-
-        let mut get_rules = quote! {};
-        let mut get_mut_rules = quote! {};
-        for (i, child) in children.iter().enumerate() {
-            let ident = &child.ident;
-            get_rules.append_all(quote! { #i => Some(&self.#ident), });
-            get_mut_rules.append_all(quote! { #i => Some(&mut self.#ident), });
-        }
-        for (i, path) in layout_children.iter().enumerate() {
-            let index = count + i;
-            get_rules.append_all(quote! { #index => Some(&self.#core.#path), });
-            get_mut_rules.append_all(quote! { #index => Some(&mut self.#core.#path), });
-        }
-        count += layout_children.len();
-
-        scope.generated.push(quote! {
-            impl #impl_generics ::kas::WidgetChildren
-                for #name #ty_generics #where_clause
-            {
-                fn num_children(&self) -> usize {
-                    #count
-                }
-                fn get_child(&self, _index: usize) -> Option<&dyn ::kas::Widget> {
-                    match _index {
-                        #get_rules
-                        _ => None
-                    }
-                }
-                fn get_child_mut(&mut self, _index: usize) -> Option<&mut dyn ::kas::Widget> {
-                    match _index {
-                        #get_mut_rules
-                        _ => None
-                    }
-                }
-            }
-        });
-    }
-
-    let mut fn_size_rules = None;
-    let mut set_rect = quote! { self.#core.rect = rect; };
-    let mut find_id = quote! {
-        use ::kas::{WidgetCore, WidgetExt};
-        self.rect().contains(coord).then(|| self.id())
-    };
-    let mut fn_draw = None;
-    if let Some(layout) = args.layout.take() {
-        let layout = layout.generate(&core)?;
-        scope.generated.push(quote! {
-            impl #impl_generics ::kas::layout::AutoLayout
-                    for #name #ty_generics #where_clause
-            {
+            fn_size_rules = Some(quote! {
                 fn size_rules(
                     &mut self,
                     size_mgr: ::kas::theme::SizeMgr,
                     axis: ::kas::layout::AxisInfo,
                 ) -> ::kas::layout::SizeRules {
-                    use ::kas::{WidgetCore, layout};
-                    (#layout).size_rules(size_mgr, axis)
+                    <Self as ::kas::layout::AutoLayout>::size_rules(self, size_mgr, axis)
                 }
-
-                fn set_rect(
-                    &mut self,
-                    mgr: &mut ::kas::event::ConfigMgr,
-                    rect: ::kas::geom::Rect,
-                    align: ::kas::layout::AlignHints,
-                ) {
-                    use ::kas::{WidgetCore, layout};
-                    self.#core.rect = (#layout).set_rect(mgr, rect, align);
-                }
-
-                fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
-                    use ::kas::{layout, Widget, WidgetCore, WidgetExt};
-                    if !self.rect().contains(coord) {
-                        return None;
-                    }
-                    let coord = coord + self.translation();
-                    (#layout).find_id(coord).or_else(|| Some(self.id()))
-                }
-
+            });
+            set_rect = quote! {
+                <Self as ::kas::layout::AutoLayout>::set_rect(self, mgr, rect, align);
+            };
+            find_id = quote! {
+                <Self as ::kas::layout::AutoLayout>::find_id(self, coord)
+            };
+            fn_draw = Some(quote! {
                 fn draw(&mut self, draw: ::kas::theme::DrawMgr) {
-                    use ::kas::{WidgetCore, layout};
-                    (#layout).draw(draw);
+                    <Self as ::kas::layout::AutoLayout>::draw(self, draw);
                 }
-            }
-        });
-
-        fn_size_rules = Some(quote! {
-            fn size_rules(
+            });
+        }
+        fn_set_rect = quote! {
+            fn set_rect(
                 &mut self,
-                size_mgr: ::kas::theme::SizeMgr,
-                axis: ::kas::layout::AxisInfo,
-            ) -> ::kas::layout::SizeRules {
-                <Self as ::kas::layout::AutoLayout>::size_rules(self, size_mgr, axis)
+                mgr: &mut ::kas::event::ConfigMgr,
+                rect: ::kas::geom::Rect,
+                align: ::kas::layout::AlignHints,
+            ) {
+                #set_rect
             }
-        });
-        set_rect = quote! {
-            <Self as ::kas::layout::AutoLayout>::set_rect(self, mgr, rect, align);
         };
-        find_id = quote! {
-            <Self as ::kas::layout::AutoLayout>::find_id(self, coord)
-        };
-        fn_draw = Some(quote! {
-            fn draw(&mut self, draw: ::kas::theme::DrawMgr) {
-                <Self as ::kas::layout::AutoLayout>::draw(self, draw);
+        fn_find_id = quote! {
+            fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
+                #find_id
             }
-        });
-    }
-    let fn_set_rect = quote! {
-        fn set_rect(
-            &mut self,
-            mgr: &mut ::kas::event::ConfigMgr,
-            rect: ::kas::geom::Rect,
-            align: ::kas::layout::AlignHints,
-        ) {
-            #set_rect
-        }
-    };
-    let fn_find_id = quote! {
-        fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
-            #find_id
-        }
-    };
+        };
 
-    fn has_method(item_impl: &ItemImpl, name: &str) -> bool {
+        fn_pre_configure = quote! {
+            fn pre_configure(&mut self, _: &mut ::kas::event::ConfigMgr, id: ::kas::WidgetId) {
+                self.#core.id = id;
+            }
+        };
+        widget_methods = vec![];
+    }
+
+    fn collect_idents(item_impl: &ItemImpl) -> Vec<Ident> {
         item_impl
             .items
             .iter()
-            .any(|item| matches!(item, ImplItem::Method(m) if m.sig.ident == name))
+            .filter_map(|item| match item {
+                ImplItem::Method(m) => Some(m.sig.ident.clone()),
+                _ => None,
+            })
+            .collect()
     }
 
     if let Some(index) = layout_impl {
         let layout_impl = &mut scope.impls[index];
+        let method_idents = collect_idents(layout_impl);
+        let has_method = |name| method_idents.iter().any(|ident| ident == name);
+
         if let Some(method) = fn_size_rules {
-            if !has_method(layout_impl, "size_rules") {
+            if !has_method("size_rules") {
                 layout_impl.items.push(parse2(method)?);
             }
         }
-        if !has_method(layout_impl, "set_rect") {
+        if !has_method("set_rect") {
             layout_impl.items.push(parse2(fn_set_rect)?);
         }
-        if !has_method(layout_impl, "find_id") {
+        if !has_method("find_id") {
             layout_impl.items.push(parse2(fn_find_id)?);
         }
         if let Some(method) = fn_draw {
-            if !has_method(layout_impl, "draw") {
+            if !has_method("draw") {
                 layout_impl.items.push(parse2(method)?);
             }
         }
@@ -579,23 +598,26 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         });
     }
 
-    let fn_pre_configure = quote! {
-        fn pre_configure(&mut self, _: &mut ::kas::event::ConfigMgr, id: ::kas::WidgetId) {
-            self.#core.id = id;
-        }
-    };
-
     if let Some(index) = widget_impl {
         let widget_impl = &mut scope.impls[index];
-        if !has_method(widget_impl, "pre_configure") {
+        let method_idents = collect_idents(widget_impl);
+        let has_method = |name| method_idents.iter().any(|ident| ident == name);
+
+        if opt_derive.is_some() || !has_method("pre_configure") {
             widget_impl.items.push(parse2(fn_pre_configure)?);
         }
-        if let Some(item) = args.key_nav {
-            widget_impl.items.push(parse2(item)?);
+        if let Some(method) = key_nav {
+            widget_impl.items.push(parse2(method)?);
         }
         widget_impl.items.push(parse2(pre_handle_event)?);
+
+        for (name, method) in widget_methods {
+            if !has_method(name) {
+                widget_impl.items.push(parse2(method)?);
+            }
+        }
     } else {
-        let key_nav = args.key_nav;
+        let other_methods = widget_methods.into_iter().map(|pair| pair.1);
         scope.generated.push(quote! {
             impl #impl_generics ::kas::Widget
                     for #name #ty_generics #where_clause
@@ -603,6 +625,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 #fn_pre_configure
                 #key_nav
                 #pre_handle_event
+                #(#other_methods)*
             }
         });
     }

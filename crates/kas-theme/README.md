@@ -11,9 +11,6 @@ This crate has the following feature flags:
 
 -   `font-kit` (enabled by default): uses the `font-kit` crate to locate a
     suitable system font; otherwise a hard-coded font path is used
--   `stack_dst`: enables `ThemeDst`, `WindowDst` and `MultiTheme` types via the
-    `stack_dst` crate. This crate relies on `unsafe` code and its functionality
-    is required only for run-time switching of themes.
 -   `gat`: enables usage of the Generic Associated Types feature (nightly only
     and currently unstable), allowing some usages of `unsafe` to be avoided.
     (The plan is to enable this by default once the feature is mature.)

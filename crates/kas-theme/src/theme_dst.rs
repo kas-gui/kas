@@ -9,7 +9,7 @@ use std::any::Any;
 use std::borrow::Cow;
 use std::ops::{Deref, DerefMut};
 
-use super::{StackDst, Theme, Window};
+use super::{Theme, Window};
 use kas::draw::{color, DrawIface, DrawSharedImpl, SharedState};
 use kas::event::EventState;
 use kas::theme::{ThemeControl, ThemeDraw, ThemeSize};
@@ -18,7 +18,6 @@ use kas::TkAction;
 /// An optionally-owning (boxed) reference
 ///
 /// This is related but not identical to [`Cow`].
-#[cfg_attr(doc_cfg, doc(cfg(feature = "stack_dst")))]
 pub enum MaybeBoxed<'a, B: 'a + ?Sized> {
     Borrowed(&'a B),
     Boxed(Box<B>),
@@ -38,7 +37,6 @@ impl<T: ?Sized> AsRef<T> for MaybeBoxed<'_, T> {
 /// This trait is implemented automatically for all implementations of
 /// [`Theme`]. It is intended only for use where a less parameterised
 /// trait is required.
-#[cfg_attr(doc_cfg, doc(cfg(feature = "stack_dst")))]
 pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
     /// Get current configuration
     fn config(&self) -> MaybeBoxed<dyn Any>;
@@ -53,10 +51,8 @@ pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
 
     /// Construct per-window storage
     ///
-    /// Uses a [`StackDst`] to avoid requiring an associated type.
-    ///
     /// See also [`Theme::new_window`].
-    fn new_window(&self, dpi_factor: f32) -> StackDst<dyn Window>;
+    fn new_window(&self, dpi_factor: f32) -> Box<dyn Window>;
 
     /// Update a window created by [`Theme::new_window`]
     ///
@@ -64,8 +60,6 @@ pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
     fn update_window(&self, window: &mut dyn Window, dpi_factor: f32);
 
     /// Construct a [`ThemeDraw`] object
-    ///
-    /// Uses a [`StackDst`] to avoid requiring an associated type.
     ///
     /// See also [`Theme::draw`].
     ///
@@ -78,11 +72,9 @@ pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
         draw: DrawIface<DS>,
         ev: &mut EventState,
         window: &mut dyn Window,
-    ) -> StackDst<dyn ThemeDraw>;
+    ) -> Box<dyn ThemeDraw>;
 
     /// Construct a [`ThemeDraw`] object
-    ///
-    /// Uses a [`StackDst`] to avoid requiring an associated type.
     ///
     /// See also [`Theme::draw`].
     #[cfg(feature = "gat")]
@@ -91,7 +83,7 @@ pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
         draw: DrawIface<'a, DS>,
         ev: &'a mut EventState,
         window: &'a mut dyn Window,
-    ) -> StackDst<dyn ThemeDraw + 'a>;
+    ) -> Box<dyn ThemeDraw + 'a>;
 
     /// Background colour
     ///
@@ -119,21 +111,8 @@ where
         self.init(shared);
     }
 
-    fn new_window(&self, dpi_factor: f32) -> StackDst<dyn Window> {
-        let window = <T as Theme<DS>>::new_window(self, dpi_factor);
-        #[cfg(feature = "unsize")]
-        {
-            StackDst::new_or_boxed(window)
-        }
-        #[cfg(not(feature = "unsize"))]
-        {
-            match StackDst::new_stable(window, |w| w as &dyn Window) {
-                Ok(s) => s,
-                Err(window) => StackDst::new_stable(Box::new(window), |w| w as &dyn Window)
-                    .ok()
-                    .expect("boxed window too big for StackDst!"),
-            }
-        }
+    fn new_window(&self, dpi_factor: f32) -> Box<dyn Window> {
+        Box::new(<T as Theme<DS>>::new_window(self, dpi_factor))
     }
 
     fn update_window(&self, window: &mut dyn Window, dpi_factor: f32) {
@@ -146,19 +125,9 @@ where
         draw: DrawIface<DS>,
         ev: &mut EventState,
         window: &mut dyn Window,
-    ) -> StackDst<dyn ThemeDraw> {
+    ) -> Box<dyn ThemeDraw> {
         let window = window.as_any_mut().downcast_mut().unwrap();
-        let h = <T as Theme<DS>>::draw(self, draw, ev, window);
-        #[cfg(feature = "unsize")]
-        {
-            StackDst::new_or_boxed(h)
-        }
-        #[cfg(not(feature = "unsize"))]
-        {
-            StackDst::new_stable(h, |h| h as &dyn ThemeDraw)
-                .ok()
-                .expect("handle too big for StackDst!")
-        }
+        Box::new(<T as Theme<DS>>::draw(self, draw, ev, window))
     }
 
     fn clear_color(&self) -> color::Rgba {
@@ -183,9 +152,9 @@ impl<DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T {
         self.init(shared);
     }
 
-    fn new_window(&self, dpi_factor: f32) -> StackDst<dyn Window> {
+    fn new_window(&self, dpi_factor: f32) -> Box<dyn Window> {
         let window = <T as Theme<DS>>::new_window(self, dpi_factor);
-        StackDst::new_or_boxed(window)
+        Box::new(window)
     }
 
     fn update_window(&self, window: &mut dyn Window, dpi_factor: f32) {
@@ -198,10 +167,9 @@ impl<DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T {
         draw: DrawIface<'b, DS>,
         ev: &'b mut EventState,
         window: &'b mut dyn Window,
-    ) -> StackDst<dyn ThemeDraw + 'b> {
+    ) -> Box<dyn ThemeDraw + 'b> {
         let window = window.as_any_mut().downcast_mut().unwrap();
-        let h = <T as Theme<DS>>::draw(self, draw, ev, window);
-        StackDst::new_or_boxed(h)
+        Box::new(<T as Theme<DS>>::draw(self, draw, ev, window))
     }
 
     fn clear_color(&self) -> color::Rgba {
@@ -209,7 +177,7 @@ impl<DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T {
     }
 }
 
-impl Window for StackDst<dyn Window> {
+impl Window for Box<dyn Window> {
     fn size(&self) -> &dyn ThemeSize {
         self.deref().size()
     }

@@ -276,13 +276,15 @@ impl<D: 'static> ThemeSize for Window<D> {
 
         // Note: for horizontal axis of Edit* classes, input text does not affect size rules.
         if axis.is_horizontal() {
+            let min = self.dims.min_line_length;
             if let TextClass::Edit(multi) = class {
-                let min = self.dims.min_line_length;
                 let (min, ideal) = match multi {
                     false => (min, 2 * min),
                     true => (min, 3 * min),
                 };
                 return SizeRules::new(min, ideal, margins, Stretch::Low);
+            } else if let TextClass::EditShort(_) = class {
+                return SizeRules::new(min, min, margins, Stretch::Low);
             }
         }
 
