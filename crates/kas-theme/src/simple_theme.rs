@@ -441,10 +441,12 @@ where
 
         let width = self.w.dims.mark_line;
         let pos = Vec2::conv(rect.pos);
+        let p10max = pos.0 + f32::conv(rect.size.0) - width;
 
         let mut col = self.cols.nav_focus;
         for cursor in text.text_glyph_pos(byte).iter_mut().flatten().rev() {
             let mut p1 = pos + Vec2::from(cursor.pos);
+            p1.0 = p1.0.min(p10max);
             let mut p2 = p1;
             p1.1 -= cursor.ascent;
             p2.1 -= cursor.descent;
