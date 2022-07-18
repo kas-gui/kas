@@ -610,9 +610,4 @@ where
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
         self.draw.rounded_frame(outer, inner, 0.0, self.cols.accent);
     }
-
-    fn image(&mut self, id: ImageId, rect: Rect) {
-        let rect = Quad::conv(rect);
-        self.draw.image(id, rect);
-    }
 }

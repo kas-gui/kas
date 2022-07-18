@@ -361,21 +361,20 @@ where
         } else {
             self.cols.text
         };
-        self.draw.text(rect.cast(), text, col);
+        self.draw.text(rect, text, col);
     }
 
     fn text_effects(&mut self, id: &WidgetId, rect: Rect, text: &dyn TextApi, class: TextClass) {
-        let quad = Quad::conv(rect);
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
             self.cols.text
         };
         if class.is_accel() && !self.ev.show_accel_labels() {
-            self.draw.text(quad, text.display(), col);
+            self.draw.text(rect, text.display(), col);
         } else {
             self.draw
-                .text_col_effects(quad, text.display(), col, text.effect_tokens());
+                .text_col_effects(rect, text.display(), col, text.effect_tokens());
         }
     }
 
@@ -387,7 +386,6 @@ where
         range: Range<usize>,
         _: TextClass,
     ) {
-        let rect = Quad::conv(rect);
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
@@ -401,9 +399,10 @@ where
             .iter()
             .flat_map(|v| v.iter())
         {
+            let q = Quad::conv(rect);
             let p1 = Vec2::from(*p1);
             let p2 = Vec2::from(*p2);
-            if let Some(quad) = Quad::from_coords(rect.a + p1, rect.a + p2).intersection(&rect) {
+            if let Some(quad) = Quad::from_coords(q.a + p1, q.a + p2).intersection(&q) {
                 self.draw.rect(quad, self.cols.text_sel_bg);
             }
         }
@@ -577,7 +576,6 @@ where
     }
 
     fn image(&mut self, id: ImageId, rect: Rect) {
-        let rect = Quad::conv(rect);
-        self.draw.image(id, rect);
+        self.draw.image(id, rect.cast());
     }
 }

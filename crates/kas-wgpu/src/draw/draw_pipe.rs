@@ -338,7 +338,7 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         &mut self,
         draw: &mut Self::Draw,
         pass: PassId,
-        rect: Quad,
+        rect: Rect,
         text: &TextDisplay,
         col: Rgba,
     ) {
@@ -349,7 +349,7 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         &mut self,
         draw: &mut Self::Draw,
         pass: PassId,
-        rect: Quad,
+        rect: Rect,
         text: &TextDisplay,
         col: Rgba,
         effects: &[Effect<()>],
@@ -366,7 +366,7 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         &mut self,
         draw: &mut Self::Draw,
         pass: PassId,
-        rect: Quad,
+        rect: Rect,
         text: &TextDisplay,
         effects: &[Effect<Rgba>],
     ) {

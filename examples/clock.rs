@@ -17,7 +17,7 @@ use std::f32::consts::PI;
 use std::time::Duration;
 
 use kas::draw::{color, Draw, DrawIface, DrawRounded, PassType};
-use kas::geom::{Offset, Quad, Vec2};
+use kas::geom::{Offset, Quad, Rect, Vec2};
 use kas::prelude::*;
 use kas::shell::draw::DrawPipe;
 use kas::text::util::set_text_and_prepare;
@@ -27,8 +27,8 @@ impl_scope! {
     #[widget]
     struct Clock {
         core: widget_core!(),
-        date_rect: Quad,
-        time_rect: Quad,
+        date_rect: Rect,
+        time_rect: Rect,
         now: DateTime<Local>,
         date: Text<String>,
         time: Text<String>,
@@ -50,21 +50,19 @@ impl_scope! {
             let pos = rect.pos + excess / 2;
             self.core.rect = Rect { pos, size };
 
-            let size: Vec2 = size.cast();
-            let text_height = size.1 / 3.0;
-            let text_size = Vec2(size.0, text_height);
+            let text_height = size.1 / 3;
+            let text_size = Size(size.0, text_height);
 
             let mut env = self.date.env();
-            env.dpem = text_height * 0.4;
-            env.bounds = text_size.into();
+            env.dpem = text_height as f32 * 0.4;
+            env.bounds = text_size.cast();
             self.date.update_env(env);
-            env.dpem = text_height * 0.5;
+            env.dpem = text_height as f32 * 0.5;
             self.time.update_env(env);
 
-            let pos: Vec2 = pos.cast();
-            let y_mid = pos.0 + size.1 * 0.5;
-            self.date_rect = Quad::from_pos_and_size(Vec2(pos.0, y_mid - text_height), text_size);
-            self.time_rect = Quad::from_pos_and_size(Vec2(pos.0, y_mid), text_size);
+            let y_mid = pos.0 + size.1 / 2;
+            self.date_rect = Rect::new(Coord(pos.0, y_mid - text_height), text_size);
+            self.time_rect = Rect::new(Coord(pos.0, y_mid), text_size);
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
@@ -153,8 +151,8 @@ impl_scope! {
             let time = Text::new_env(env, "00:00:00".into());
             Clock {
                 core: Default::default(),
-                date_rect: Quad::NAN,
-                time_rect: Quad::NAN,
+                date_rect: Rect::ZERO,
+                time_rect: Rect::ZERO,
                 now: Local::now(),
                 date,
                 time,

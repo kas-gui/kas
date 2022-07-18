@@ -8,7 +8,7 @@
 use super::{atlases, ShaderManager};
 use kas::cast::*;
 use kas::draw::{color::Rgba, PassId};
-use kas::geom::{Quad, Vec2};
+use kas::geom::{Quad, Rect, Vec2};
 use kas::text::fonts::FaceId;
 use kas::text::{Effect, Glyph, TextDisplay};
 use kas_text::raster::{raster, Config, SpriteDescriptor};
@@ -263,12 +263,12 @@ impl Window {
         &mut self,
         pipe: &mut Pipeline,
         pass: PassId,
-        mut rect: Quad,
+        rect: Rect,
         text: &TextDisplay,
         col: Rgba,
     ) {
         let time = std::time::Instant::now();
-        rect.a = rect.a.round();
+        let rect = Quad::conv(rect);
 
         let for_glyph = |face: FaceId, dpem: f32, glyph: Glyph| {
             if let Some(sprite) = pipe.get_glyph(face, dpem, glyph) {
@@ -290,7 +290,7 @@ impl Window {
         &mut self,
         pipe: &mut Pipeline,
         pass: PassId,
-        mut rect: Quad,
+        rect: Rect,
         text: &TextDisplay,
         col: Rgba,
         effects: &[Effect<()>],
@@ -307,7 +307,7 @@ impl Window {
         }
 
         let time = std::time::Instant::now();
-        rect.a = rect.a.round();
+        let rect = Quad::conv(rect);
         let mut rects = vec![];
 
         let mut for_glyph = |face: FaceId, dpem: f32, glyph: Glyph, _: usize, _: ()| {
@@ -352,7 +352,7 @@ impl Window {
         &mut self,
         pipe: &mut Pipeline,
         pass: PassId,
-        mut rect: Quad,
+        rect: Rect,
         text: &TextDisplay,
         effects: &[Effect<Rgba>],
     ) -> Vec<(Quad, Rgba)> {
@@ -369,7 +369,7 @@ impl Window {
         }
 
         let time = std::time::Instant::now();
-        rect.a = rect.a.round();
+        let rect = Quad::conv(rect);
         let mut rects = vec![];
 
         let for_glyph = |face: FaceId, dpem: f32, glyph: Glyph, _, col: Rgba| {
