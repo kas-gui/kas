@@ -113,11 +113,11 @@ impl_scope! {
 
         #[cfg(feature = "min_spec")]
         default fn draw(&mut self, mut draw: DrawMgr) {
-            draw.text_effects(self.rect().pos, &self.label, self.class);
+            draw.text_effects(self.rect(), &self.label, self.class);
         }
         #[cfg(not(feature = "min_spec"))]
         fn draw(&mut self, mut draw: DrawMgr) {
-            draw.text_effects(self.rect().pos, &self.label, self.class);
+            draw.text_effects(self.rect(), &self.label, self.class);
         }
     }
 
@@ -141,13 +141,13 @@ impl_scope! {
 #[cfg(feature = "min_spec")]
 impl<'a> Layout for Label<&'a str> {
     fn draw(&mut self, mut draw: DrawMgr) {
-        draw.text(self.rect().pos, &self.label, self.class);
+        draw.text(self.rect(), &self.label, self.class);
     }
 }
 #[cfg(feature = "min_spec")]
 impl Layout for StringLabel {
     fn draw(&mut self, mut draw: DrawMgr) {
-        draw.text(self.rect().pos, &self.label, self.class);
+        draw.text(self.rect(), &self.label, self.class);
     }
 }
 

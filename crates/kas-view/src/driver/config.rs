@@ -42,7 +42,7 @@ impl_scope! {
             0, 8: "Mouse text pan:"; 1..3, 8: self.mouse_text_pan;
             1..3, 9: self.mouse_nav_focus;
             1..3, 10: self.touch_nav_focus;
-            0, 11: "Restore default values:"; 1..3, 11: TextButton::new_msg("Reset", Msg::Reset);
+            0, 11: "Restore default values:"; 1..3, 11: TextButton::new_msg("&Reset", Msg::Reset);
         };
     }]
     #[derive(Debug)]
@@ -71,10 +71,10 @@ impl driver::Driver<Config, SharedRc<Config>> for EventConfig {
 
     fn make(&self) -> Self::Widget {
         let mouse_pan = ComboBox::from([
-            ("Never", MousePan::Never),
-            ("With Alt key", MousePan::WithAlt),
-            ("With Ctrl key", MousePan::WithCtrl),
-            ("Always", MousePan::Always),
+            ("&Never", MousePan::Never),
+            ("With &Alt key", MousePan::WithAlt),
+            ("With &Ctrl key", MousePan::WithCtrl),
+            ("Alwa&ys", MousePan::Always),
         ]);
 
         EventConfigWidget {
@@ -97,9 +97,9 @@ impl driver::Driver<Config, SharedRc<Config>> for EventConfig {
                 .clone()
                 .on_select(|mgr, v| mgr.push_msg(Msg::MousePan(v))),
             mouse_text_pan: mouse_pan.on_select(|mgr, v| mgr.push_msg(Msg::MouseTextPan(v))),
-            mouse_nav_focus: CheckButton::new("Mouse navigation focus")
+            mouse_nav_focus: CheckButton::new("&Mouse navigation focus")
                 .on_toggle(|mgr, v| mgr.push_msg(Msg::MouseNavFocus(v))),
-            touch_nav_focus: CheckButton::new("Touchscreen navigation focus")
+            touch_nav_focus: CheckButton::new("&Touchscreen navigation focus")
                 .on_toggle(|mgr, v| mgr.push_msg(Msg::TouchNavFocus(v))),
         }
     }

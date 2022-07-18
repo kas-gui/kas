@@ -348,7 +348,7 @@ pub trait Layout {
 ///         }
 ///
 ///         fn draw(&mut self, mut draw: DrawMgr) {
-///             draw.text_effects(self.rect().pos, &self.label, self.class);
+///             draw.text_effects(self.rect(), &self.label, self.class);
 ///         }
 ///     }
 /// }

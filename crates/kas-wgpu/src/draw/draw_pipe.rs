@@ -338,25 +338,25 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         &mut self,
         draw: &mut Self::Draw,
         pass: PassId,
-        pos: Vec2,
+        rect: Quad,
         text: &TextDisplay,
         col: Rgba,
     ) {
-        draw.text.text(&mut self.text, pass, pos, text, col);
+        draw.text.text(&mut self.text, pass, rect, text, col);
     }
 
     fn draw_text_col_effects(
         &mut self,
         draw: &mut Self::Draw,
         pass: PassId,
-        pos: Vec2,
+        rect: Quad,
         text: &TextDisplay,
         col: Rgba,
         effects: &[Effect<()>],
     ) {
         let rects = draw
             .text
-            .text_col_effects(&mut self.text, pass, pos, text, col, effects);
+            .text_col_effects(&mut self.text, pass, rect, text, col, effects);
         for rect in rects {
             draw.shaded_square.rect(pass, rect, col);
         }
@@ -366,13 +366,13 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         &mut self,
         draw: &mut Self::Draw,
         pass: PassId,
-        pos: Vec2,
+        rect: Quad,
         text: &TextDisplay,
         effects: &[Effect<Rgba>],
     ) {
         let rects = draw
             .text
-            .text_effects(&mut self.text, pass, pos, text, effects);
+            .text_effects(&mut self.text, pass, rect, text, effects);
         for (rect, col) in rects {
             draw.shaded_square.rect(pass, rect, col);
         }

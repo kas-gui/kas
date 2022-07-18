@@ -9,7 +9,7 @@ use super::{FrameStyle, MarkStyle, SizeMgr, TextClass, ThemeSize};
 use crate::dir::Direction;
 use crate::draw::{color::Rgb, Draw, DrawShared, ImageId, PassType};
 use crate::event::{ConfigMgr, EventState};
-use crate::geom::{Coord, Offset, Rect};
+use crate::geom::{Offset, Rect};
 use crate::macros::autoimpl;
 use crate::text::{TextApi, TextDisplay};
 use crate::{TkAction, Widget, WidgetExt, WidgetId};
@@ -205,8 +205,8 @@ impl<'a> DrawMgr<'a> {
     ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text(&mut self, pos: Coord, text: impl AsRef<TextDisplay>, class: TextClass) {
-        self.h.text(&self.id, pos, text.as_ref(), class);
+    pub fn text(&mut self, rect: Rect, text: impl AsRef<TextDisplay>, class: TextClass) {
+        self.h.text(&self.id, rect, text.as_ref(), class);
     }
 
     /// Draw text with effects
@@ -217,8 +217,8 @@ impl<'a> DrawMgr<'a> {
     ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    pub fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
-        self.h.text_effects(&self.id, pos, text, class);
+    pub fn text_effects(&mut self, rect: Rect, text: &dyn TextApi, class: TextClass) {
+        self.h.text_effects(&self.id, rect, text, class);
     }
 
     /// Draw some text using the standard font, with a subset selected
@@ -228,7 +228,7 @@ impl<'a> DrawMgr<'a> {
     /// future by a higher-level API.
     pub fn text_selected<R: RangeBounds<usize>>(
         &mut self,
-        pos: Coord,
+        rect: Rect,
         text: impl AsRef<TextDisplay>,
         range: R,
         class: TextClass,
@@ -245,7 +245,7 @@ impl<'a> DrawMgr<'a> {
         };
         let range = Range { start, end };
         self.h
-            .text_selected_range(&self.id, pos, text.as_ref(), range, class);
+            .text_selected_range(&self.id, rect, text.as_ref(), range, class);
     }
 
     /// Draw an edit marker at the given `byte` index on this `text`
@@ -254,13 +254,13 @@ impl<'a> DrawMgr<'a> {
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     pub fn text_cursor(
         &mut self,
-        pos: Coord,
+        rect: Rect,
         text: impl AsRef<TextDisplay>,
         class: TextClass,
         byte: usize,
     ) {
         self.h
-            .text_cursor(&self.id, pos, text.as_ref(), class, byte);
+            .text_cursor(&self.id, rect, text.as_ref(), class, byte);
     }
 
     /// Draw UI element: check box (without label)
@@ -412,7 +412,7 @@ pub trait ThemeDraw {
     ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    fn text(&mut self, id: &WidgetId, pos: Coord, text: &TextDisplay, class: TextClass);
+    fn text(&mut self, id: &WidgetId, rect: Rect, text: &TextDisplay, class: TextClass);
 
     /// Draw text with effects
     ///
@@ -422,13 +422,13 @@ pub trait ThemeDraw {
     ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
-    fn text_effects(&mut self, id: &WidgetId, pos: Coord, text: &dyn TextApi, class: TextClass);
+    fn text_effects(&mut self, id: &WidgetId, rect: Rect, text: &dyn TextApi, class: TextClass);
 
     /// Method used to implement [`DrawMgr::text_selected`]
     fn text_selected_range(
         &mut self,
         id: &WidgetId,
-        pos: Coord,
+        rect: Rect,
         text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
@@ -441,7 +441,7 @@ pub trait ThemeDraw {
     fn text_cursor(
         &mut self,
         id: &WidgetId,
-        pos: Coord,
+        rect: Rect,
         text: &TextDisplay,
         class: TextClass,
         byte: usize,
@@ -519,6 +519,6 @@ mod test {
 
         let text = crate::text::Text::new("sample");
         let class = TextClass::Label(false);
-        draw.text_selected(Coord::ZERO, &text, .., class)
+        draw.text_selected(Rect::ZERO, &text, .., class)
     }
 }

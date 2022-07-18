@@ -24,7 +24,8 @@
 //!
 //! **Crate [`kas_resvg`]:** `Canvas` and `Svg` widgets over crate
 //! [resvg](https://github.com/RazrFalcon/resvg) and associated libraries.
-//! Gated under the feature `resvg` or `tiny-skia` and available as [`kas::resvg`](resvg).
+//! Gated under the feature `resvg` (enabled by default) or `tiny-skia` and
+//! available as [`kas::resvg`](resvg).
 //!
 //! **Crate [`kas_view`]:** "view" widgets over shared data
 //! (gated under feature `view`, enabled by default).
@@ -36,8 +37,8 @@
 //!
 //! **Crate [`kas_wgpu`]:** the shell, providing system integration and graphics
 //! implementations over [WGPU](https://github.com/gfx-rs/wgpu).
-//! This crate is gated under feature `wgpu`, but until an alternative is
-//! available it is essential.
+//! This crate is gated under feature `wgpu` (enabled by default),
+//! but until an alternative is available it is essential.
 //! Its contents are available as [`kas::shell`](kas_wgpu).
 //!
 //! **Crate [`kas_dylib`]:** a support crate for dynamic linking (gated under

@@ -428,13 +428,13 @@ impl_scope! {
         fn draw(&mut self, mut draw: DrawMgr) {
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
                 if self.selection.is_empty() {
-                    draw.text(self.rect().pos, &self.text, self.class);
+                    draw.text(self.rect(), &self.text, self.class);
                 } else {
                     // TODO(opt): we could cache the selection rectangles here to make
                     // drawing more efficient (self.text.highlight_lines(range) output).
                     // The same applies to the edit marker below.
                     draw.text_selected(
-                        self.rect().pos,
+                        self.rect(),
                         &self.text,
                         self.selection.range(),
                         self.class,
@@ -442,7 +442,7 @@ impl_scope! {
                 }
                 if self.editable && draw.ev_state().has_char_focus(self.id_ref()).0 {
                     draw.text_cursor(
-                        self.rect().pos,
+                        self.rect(),
                         &self.text,
                         self.class,
                         self.selection.edit_pos(),
