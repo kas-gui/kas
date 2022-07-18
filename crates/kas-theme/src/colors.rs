@@ -212,6 +212,15 @@ impl From<ColorsLinear> for ColorsSrgb {
 }
 
 impl Default for ColorsLinear {
+    #[cfg(feature = "dark-light")]
+    fn default() -> Self {
+        match dark_light::detect() {
+            dark_light::Mode::Dark => ColorsSrgb::dark().into(),
+            dark_light::Mode::Light => ColorsSrgb::light().into(),
+        }
+    }
+
+    #[cfg(not(feature = "dark-light"))]
     #[inline]
     fn default() -> Self {
         ColorsSrgb::default().into()

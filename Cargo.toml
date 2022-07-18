@@ -22,7 +22,7 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 [features]
 #########  meta / build features  #########
 
-default = ["theme", "view", "wgpu", "winit", "yaml", "image", "resvg", "clipboard", "markdown", "shaping"]
+default = ["theme", "view", "wgpu", "winit", "yaml", "image", "resvg", "clipboard", "markdown", "shaping", "dark-light"]
 
 # Enable dynamic linking (faster linking via an extra run-time dependency):
 dynamic = ["dep:kas-dylib"]
@@ -84,6 +84,9 @@ image = ["kas-widgets/image"]
 resvg = ["dep:kas-resvg", "kas-resvg?/svg"]
 # Enable resvg module (Canvas only)
 tiny-skia = ["dep:kas-resvg"]
+
+# Automatically detect usage of dark theme
+dark-light = ["kas-theme?/dark-light"]
 
 # Support SVG images
 
