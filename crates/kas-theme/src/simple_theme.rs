@@ -394,17 +394,16 @@ where
         let sel_col = self.cols.text_over(self.cols.text_sel_bg);
 
         // Draw background:
-        for (p1, p2) in text
-            .highlight_lines(range.clone())
-            .iter()
-            .flat_map(|v| v.iter())
-        {
+        let result = text.highlight_range(range.clone(), &mut |p1, p2| {
             let q = Quad::conv(rect);
-            let p1 = Vec2::from(*p1);
-            let p2 = Vec2::from(*p2);
+            let p1 = Vec2::from(p1);
+            let p2 = Vec2::from(p2);
             if let Some(quad) = Quad::from_coords(q.a + p1, q.a + p2).intersection(&q) {
                 self.draw.rect(quad, self.cols.text_sel_bg);
             }
+        });
+        if let Err(e) = result {
+            log::error!("text.highlight_range() -> {e}");
         }
 
         let effects = [
