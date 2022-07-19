@@ -194,11 +194,17 @@ pub trait Draw {
 
     /// Draw text with a colour
     ///
+    /// Text is drawn from `rect.pos` and clipped to `rect`. If the text
+    /// scrolls, `rect` should be the size of the whole text, not the window.
+    ///
     /// It is required to call [`TextApi::prepare`] or equivalent
     /// prior to this method to select a font, font size and perform layout.
     fn text(&mut self, rect: Rect, text: &TextDisplay, col: Rgba);
 
     /// Draw text with a single color and effects
+    ///
+    /// Text is drawn from `rect.pos` and clipped to `rect`. If the text
+    /// scrolls, `rect` should be the size of the whole text, not the window.
     ///
     /// The effects list does not contain colour information, but may contain
     /// underlining/strikethrough information. It may be empty.
@@ -208,6 +214,9 @@ pub trait Draw {
     fn text_effects(&mut self, rect: Rect, text: &TextDisplay, col: Rgba, effects: &[Effect<()>]);
 
     /// Draw text with effects (including [`Rgba`] color)
+    ///
+    /// Text is drawn from `rect.pos` and clipped to `rect`. If the text
+    /// scrolls, `rect` should be the size of the whole text, not the window.
     ///
     /// The `effects` list provides both underlining and colour information.
     /// If the `effects` list is empty or the first entry has `start > 0`, a

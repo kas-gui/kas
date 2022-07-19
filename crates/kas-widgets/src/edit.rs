@@ -394,7 +394,7 @@ impl_scope! {
         editable: bool,
         class: TextClass = TextClass::Edit(false),
         text: Text<String>,
-        bounding_corner: Vec2,
+        text_size: Size,
         selection: SelectionHelper,
         edit_x_coord: Option<f32>,
         old_state: Option<(String, usize, usize)>,
@@ -421,20 +421,21 @@ impl_scope! {
             self.core.rect = rect;
             let align = align.unwrap_or(Align::Default, valign);
             mgr.text_set_size(&mut self.text, self.class, rect.size, align);
-            self.bounding_corner = self.text.bounding_box().unwrap().1.into();
+            self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             self.set_view_offset_from_edit_pos();
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
+            let rect = Rect::new(self.rect().pos, self.text_size);
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
                 if self.selection.is_empty() {
-                    draw.text(self.rect(), &self.text, self.class);
+                    draw.text(rect, &self.text, self.class);
                 } else {
                     // TODO(opt): we could cache the selection rectangles here to make
                     // drawing more efficient (self.text.highlight_lines(range) output).
                     // The same applies to the edit marker below.
                     draw.text_selected(
-                        self.rect(),
+                        rect,
                         &self.text,
                         self.selection.range(),
                         self.class,
@@ -442,7 +443,7 @@ impl_scope! {
                 }
                 if self.editable && draw.ev_state().has_char_focus(self.id_ref()).0 {
                     draw.text_cursor(
-                        self.rect(),
+                        rect,
                         &self.text,
                         self.class,
                         self.selection.edit_pos(),
@@ -555,9 +556,9 @@ impl_scope! {
         }
 
         fn max_scroll_offset(&self) -> Offset {
-            let bounds = Vec2::from(self.text.env().bounds);
-            let max_offset = Offset::conv_ceil(self.bounding_corner - bounds);
-            max_offset.max(Offset::ZERO)
+            let text_size = Offset::conv(self.text_size);
+            let self_size = Offset::conv(self.rect().size);
+            (text_size - self_size).max(Offset::ZERO)
         }
 
         fn scroll_offset(&self) -> Offset {
@@ -593,7 +594,7 @@ impl_scope! {
             self.view_offset = Offset::ZERO;
             if kas::text::fonts::fonts().num_faces() > 0 {
                 self.text.prepare();
-                self.bounding_corner = self.text.bounding_box().unwrap().1.into();
+                self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             }
             G::update(self);
             TkAction::REDRAW
@@ -613,7 +614,7 @@ impl EditField<()> {
             editable: true,
             class: TextClass::Edit(false),
             text: Text::new(text),
-            bounding_corner: Vec2::ZERO,
+            text_size: Size::ZERO,
             selection: SelectionHelper::new(len, len),
             edit_x_coord: None,
             old_state: None,
@@ -641,7 +642,7 @@ impl EditField<()> {
             editable: self.editable,
             class: self.class,
             text: self.text,
-            bounding_corner: self.bounding_corner,
+            text_size: self.text_size,
             selection: self.selection,
             edit_x_coord: self.edit_x_coord,
             old_state: self.old_state,
@@ -807,7 +808,7 @@ impl<G: EditGuard> EditField<G> {
         }
         self.edit_x_coord = None;
         self.text.prepare();
-        self.bounding_corner = self.text.bounding_box().unwrap().1.into();
+        self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
         self.set_view_offset_from_edit_pos();
         mgr.redraw(self.id());
         true
@@ -1100,7 +1101,7 @@ impl<G: EditGuard> EditField<G> {
         let mut set_offset = self.selection.edit_pos() != pos;
         if !self.text.required_action().is_ready() {
             self.text.prepare();
-            self.bounding_corner = self.text.bounding_box().unwrap().1.into();
+            self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             set_offset = true;
             mgr.redraw(self.id());
         }
