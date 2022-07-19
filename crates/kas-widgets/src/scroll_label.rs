@@ -90,10 +90,12 @@ impl_scope! {
         fn set_edit_pos_from_coord(&mut self, mgr: &mut EventMgr, coord: Coord) {
             let rel_pos = (coord - self.rect().pos + self.view_offset).cast();
             if let Ok(pos) = self.text.text_index_nearest(rel_pos) {
-                self.selection.set_edit_pos(pos);
+                if pos != self.selection.edit_pos() {
+                    self.selection.set_edit_pos(pos);
+                    self.set_view_offset_from_edit_pos();
+                    mgr.redraw(self.id());
+                }
             }
-            self.set_view_offset_from_edit_pos();
-            mgr.redraw(self.id());
         }
 
         // Pan by given delta. Return `Response::Scrolled` or `Response::Pan(remaining)`.
