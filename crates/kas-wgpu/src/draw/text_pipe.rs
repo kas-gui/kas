@@ -286,7 +286,7 @@ impl Window {
         self.duration += time.elapsed();
     }
 
-    pub fn text_col_effects(
+    pub fn text_effects(
         &mut self,
         pipe: &mut Pipeline,
         pass: PassId,
@@ -348,7 +348,7 @@ impl Window {
         rects
     }
 
-    pub fn text_effects(
+    pub fn text_effects_rgba(
         &mut self,
         pipe: &mut Pipeline,
         pass: PassId,

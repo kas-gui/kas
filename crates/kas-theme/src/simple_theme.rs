@@ -374,7 +374,7 @@ where
             self.draw.text(rect, text.display(), col);
         } else {
             self.draw
-                .text_col_effects(rect, text.display(), col, text.effect_tokens());
+                .text_effects(rect, text.display(), col, text.effect_tokens());
         }
     }
 
@@ -424,7 +424,7 @@ where
                 aux: col,
             },
         ];
-        self.draw.text_effects(rect, text, &effects);
+        self.draw.text_effects_rgba(rect, text, &effects);
     }
 
     fn text_cursor(

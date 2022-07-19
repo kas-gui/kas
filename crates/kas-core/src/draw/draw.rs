@@ -205,15 +205,9 @@ pub trait Draw {
     ///
     /// It is required to call [`TextApi::prepare`] or equivalent
     /// prior to this method to select a font, font size and perform layout.
-    fn text_col_effects(
-        &mut self,
-        rect: Rect,
-        text: &TextDisplay,
-        col: Rgba,
-        effects: &[Effect<()>],
-    );
+    fn text_effects(&mut self, rect: Rect, text: &TextDisplay, col: Rgba, effects: &[Effect<()>]);
 
-    /// Draw text with effects (including colors)
+    /// Draw text with effects (including [`Rgba`] color)
     ///
     /// The `effects` list provides both underlining and colour information.
     /// If the `effects` list is empty or the first entry has `start > 0`, a
@@ -221,7 +215,7 @@ pub trait Draw {
     ///
     /// It is required to call [`TextApi::prepare`] or equivalent
     /// prior to this method to select a font, font size and perform layout.
-    fn text_effects(&mut self, rect: Rect, text: &TextDisplay, effects: &[Effect<Rgba>]);
+    fn text_effects_rgba(&mut self, rect: Rect, text: &TextDisplay, effects: &[Effect<Rgba>]);
 }
 
 impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
@@ -275,22 +269,16 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
             .draw_text(self.draw, self.pass, rect, text, col);
     }
 
-    fn text_col_effects(
-        &mut self,
-        rect: Rect,
-        text: &TextDisplay,
-        col: Rgba,
-        effects: &[Effect<()>],
-    ) {
+    fn text_effects(&mut self, rect: Rect, text: &TextDisplay, col: Rgba, effects: &[Effect<()>]) {
         self.shared
             .draw
-            .draw_text_col_effects(self.draw, self.pass, rect, text, col, effects);
+            .draw_text_effects(self.draw, self.pass, rect, text, col, effects);
     }
 
-    fn text_effects(&mut self, rect: Rect, text: &TextDisplay, effects: &[Effect<Rgba>]) {
+    fn text_effects_rgba(&mut self, rect: Rect, text: &TextDisplay, effects: &[Effect<Rgba>]) {
         self.shared
             .draw
-            .draw_text_effects(self.draw, self.pass, rect, text, effects);
+            .draw_text_effects_rgba(self.draw, self.pass, rect, text, effects);
     }
 }
 
