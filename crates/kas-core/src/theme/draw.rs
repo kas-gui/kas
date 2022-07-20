@@ -203,6 +203,9 @@ impl<'a> DrawMgr<'a> {
 
     /// Draw text
     ///
+    /// Text is drawn from `rect.pos` and clipped to `rect`. If the text
+    /// scrolls, `rect` should be the size of the whole text, not the window.
+    ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     pub fn text(&mut self, rect: Rect, text: impl AsRef<TextDisplay>, class: TextClass) {
@@ -210,6 +213,9 @@ impl<'a> DrawMgr<'a> {
     }
 
     /// Draw text with effects
+    ///
+    /// Text is drawn from `rect.pos` and clipped to `rect`. If the text
+    /// scrolls, `rect` should be the size of the whole text, not the window.
     ///
     /// [`Self::text`] already supports *font* effects: bold,
     /// emphasis, text size. In addition, this method supports underline and
@@ -249,6 +255,9 @@ impl<'a> DrawMgr<'a> {
     }
 
     /// Draw an edit marker at the given `byte` index on this `text`
+    ///
+    /// The text cursor is draw from `rect.pos` and clipped to `rect`. If the text
+    /// scrolls, `rect` should be the size of the whole text, not the window.
     ///
     /// [`SizeMgr::text_bound`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).

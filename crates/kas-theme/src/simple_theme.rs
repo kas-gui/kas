@@ -361,21 +361,20 @@ where
         } else {
             self.cols.text
         };
-        self.draw.text(rect.cast(), text, col);
+        self.draw.text(rect, text, col);
     }
 
     fn text_effects(&mut self, id: &WidgetId, rect: Rect, text: &dyn TextApi, class: TextClass) {
-        let quad = Quad::conv(rect);
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
             self.cols.text
         };
         if class.is_accel() && !self.ev.show_accel_labels() {
-            self.draw.text(quad, text.display(), col);
+            self.draw.text(rect, text.display(), col);
         } else {
             self.draw
-                .text_col_effects(quad, text.display(), col, text.effect_tokens());
+                .text_effects(rect, text.display(), col, text.effect_tokens());
         }
     }
 
@@ -387,7 +386,6 @@ where
         range: Range<usize>,
         _: TextClass,
     ) {
-        let rect = Quad::conv(rect);
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
         } else {
@@ -396,16 +394,16 @@ where
         let sel_col = self.cols.text_over(self.cols.text_sel_bg);
 
         // Draw background:
-        for (p1, p2) in text
-            .highlight_lines(range.clone())
-            .iter()
-            .flat_map(|v| v.iter())
-        {
-            let p1 = Vec2::from(*p1);
-            let p2 = Vec2::from(*p2);
-            if let Some(quad) = Quad::from_coords(rect.a + p1, rect.a + p2).intersection(&rect) {
+        let result = text.highlight_range(range.clone(), &mut |p1, p2| {
+            let q = Quad::conv(rect);
+            let p1 = Vec2::from(p1);
+            let p2 = Vec2::from(p2);
+            if let Some(quad) = Quad::from_coords(q.a + p1, q.a + p2).intersection(&q) {
                 self.draw.rect(quad, self.cols.text_sel_bg);
             }
+        });
+        if let Err(e) = result {
+            log::error!("text.highlight_range() -> {e}");
         }
 
         let effects = [
@@ -425,7 +423,7 @@ where
                 aux: col,
             },
         ];
-        self.draw.text_effects(rect, text, &effects);
+        self.draw.text_effects_rgba(rect, text, &effects);
     }
 
     fn text_cursor(
@@ -442,10 +440,12 @@ where
 
         let width = self.w.dims.mark_line;
         let pos = Vec2::conv(rect.pos);
+        let p10max = pos.0 + f32::conv(rect.size.0) - width;
 
         let mut col = self.cols.nav_focus;
         for cursor in text.text_glyph_pos(byte).iter_mut().flatten().rev() {
             let mut p1 = pos + Vec2::from(cursor.pos);
+            p1.0 = p1.0.min(p10max);
             let mut p2 = p1;
             p1.1 -= cursor.ascent;
             p2.1 -= cursor.descent;
@@ -577,7 +577,6 @@ where
     }
 
     fn image(&mut self, id: ImageId, rect: Rect) {
-        let rect = Quad::conv(rect);
-        self.draw.image(id, rect);
+        self.draw.image(id, rect.cast());
     }
 }

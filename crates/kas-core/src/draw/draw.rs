@@ -194,26 +194,29 @@ pub trait Draw {
 
     /// Draw text with a colour
     ///
+    /// Text is drawn from `rect.pos` and clipped to `rect`. If the text
+    /// scrolls, `rect` should be the size of the whole text, not the window.
+    ///
     /// It is required to call [`TextApi::prepare`] or equivalent
     /// prior to this method to select a font, font size and perform layout.
-    fn text(&mut self, rect: Quad, text: &TextDisplay, col: Rgba);
+    fn text(&mut self, rect: Rect, text: &TextDisplay, col: Rgba);
 
     /// Draw text with a single color and effects
+    ///
+    /// Text is drawn from `rect.pos` and clipped to `rect`. If the text
+    /// scrolls, `rect` should be the size of the whole text, not the window.
     ///
     /// The effects list does not contain colour information, but may contain
     /// underlining/strikethrough information. It may be empty.
     ///
     /// It is required to call [`TextApi::prepare`] or equivalent
     /// prior to this method to select a font, font size and perform layout.
-    fn text_col_effects(
-        &mut self,
-        rect: Quad,
-        text: &TextDisplay,
-        col: Rgba,
-        effects: &[Effect<()>],
-    );
+    fn text_effects(&mut self, rect: Rect, text: &TextDisplay, col: Rgba, effects: &[Effect<()>]);
 
-    /// Draw text with effects (including colors)
+    /// Draw text with effects (including [`Rgba`] color)
+    ///
+    /// Text is drawn from `rect.pos` and clipped to `rect`. If the text
+    /// scrolls, `rect` should be the size of the whole text, not the window.
     ///
     /// The `effects` list provides both underlining and colour information.
     /// If the `effects` list is empty or the first entry has `start > 0`, a
@@ -221,7 +224,7 @@ pub trait Draw {
     ///
     /// It is required to call [`TextApi::prepare`] or equivalent
     /// prior to this method to select a font, font size and perform layout.
-    fn text_effects(&mut self, rect: Quad, text: &TextDisplay, effects: &[Effect<Rgba>]);
+    fn text_effects_rgba(&mut self, rect: Rect, text: &TextDisplay, effects: &[Effect<Rgba>]);
 }
 
 impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
@@ -269,28 +272,22 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
         self.shared.draw.draw_image(self.draw, self.pass, id, rect);
     }
 
-    fn text(&mut self, rect: Quad, text: &TextDisplay, col: Rgba) {
+    fn text(&mut self, rect: Rect, text: &TextDisplay, col: Rgba) {
         self.shared
             .draw
             .draw_text(self.draw, self.pass, rect, text, col);
     }
 
-    fn text_col_effects(
-        &mut self,
-        rect: Quad,
-        text: &TextDisplay,
-        col: Rgba,
-        effects: &[Effect<()>],
-    ) {
+    fn text_effects(&mut self, rect: Rect, text: &TextDisplay, col: Rgba, effects: &[Effect<()>]) {
         self.shared
             .draw
-            .draw_text_col_effects(self.draw, self.pass, rect, text, col, effects);
+            .draw_text_effects(self.draw, self.pass, rect, text, col, effects);
     }
 
-    fn text_effects(&mut self, rect: Quad, text: &TextDisplay, effects: &[Effect<Rgba>]) {
+    fn text_effects_rgba(&mut self, rect: Rect, text: &TextDisplay, effects: &[Effect<Rgba>]) {
         self.shared
             .draw
-            .draw_text_effects(self.draw, self.pass, rect, text, effects);
+            .draw_text_effects_rgba(self.draw, self.pass, rect, text, effects);
     }
 }
 
@@ -300,8 +297,9 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
 /// provided by the shell; extension traits such as [`DrawRoundedImpl`]
 /// optionally provide more functionality.
 ///
-/// Coordinates are specified via a [`Vec2`] and rectangular regions via
-/// [`Quad`] allowing fractional positions.
+/// Coordinates for many primitives are specified using floating-point types
+/// allowing fractional precision, deliberately excepting text which must be
+/// pixel-aligned for best appearance.
 ///
 /// All draw operations may be batched; when drawn primitives overlap, the
 /// results are only loosely defined. Draw operations involving transparency

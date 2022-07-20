@@ -9,7 +9,7 @@ use std::f32;
 use std::ops::Range;
 use std::time::Instant;
 
-use crate::{dim, ColorsLinear, Config, FlatTheme, InputState, Theme};
+use crate::{dim, ColorsLinear, Config, InputState, SimpleTheme, Theme};
 use crate::{DrawShaded, DrawShadedImpl};
 use kas::cast::traits::*;
 use kas::dir::{Direction, Directional};
@@ -24,7 +24,7 @@ use kas::{TkAction, WidgetId};
 /// A theme using simple shading to give apparent depth to elements
 #[derive(Clone, Debug)]
 pub struct ShadedTheme {
-    flat: FlatTheme,
+    base: SimpleTheme,
 }
 
 impl Default for ShadedTheme {
@@ -36,8 +36,8 @@ impl Default for ShadedTheme {
 impl ShadedTheme {
     /// Construct
     pub fn new() -> Self {
-        let flat = FlatTheme::new();
-        ShadedTheme { flat }
+        let base = SimpleTheme::new();
+        ShadedTheme { base }
     }
 
     /// Set font size
@@ -45,7 +45,7 @@ impl ShadedTheme {
     /// Units: Points per Em (standard unit of font size)
     #[must_use]
     pub fn with_font_size(mut self, pt_size: f32) -> Self {
-        self.flat.config.set_font_size(pt_size);
+        self.base.config.set_font_size(pt_size);
         self
     }
 
@@ -54,9 +54,9 @@ impl ShadedTheme {
     /// If no scheme by this name is found the scheme is left unchanged.
     #[must_use]
     pub fn with_colours(mut self, scheme: &str) -> Self {
-        self.flat.config.set_active_scheme(scheme);
-        if let Some(scheme) = self.flat.config.get_color_scheme(scheme) {
-            self.flat.cols = scheme.into();
+        self.base.config.set_active_scheme(scheme);
+        if let Some(scheme) = self.base.config.get_color_scheme(scheme) {
+            self.base.cols = scheme.into();
         }
         self
     }
@@ -104,24 +104,24 @@ where
     type Draw<'a> = DrawHandle<'a, DS>;
 
     fn config(&self) -> std::borrow::Cow<Self::Config> {
-        <FlatTheme as Theme<DS>>::config(&self.flat)
+        <SimpleTheme as Theme<DS>>::config(&self.base)
     }
 
     fn apply_config(&mut self, config: &Self::Config) -> TkAction {
-        <FlatTheme as Theme<DS>>::apply_config(&mut self.flat, config)
+        <SimpleTheme as Theme<DS>>::apply_config(&mut self.base, config)
     }
 
     fn init(&mut self, shared: &mut SharedState<DS>) {
-        <FlatTheme as Theme<DS>>::init(&mut self.flat, shared)
+        <SimpleTheme as Theme<DS>>::init(&mut self.base, shared)
     }
 
     fn new_window(&self, dpi_factor: f32) -> Self::Window {
-        let fonts = self.flat.fonts.as_ref().unwrap().clone();
-        dim::Window::new(&DIMS, &self.flat.config, dpi_factor, fonts)
+        let fonts = self.base.fonts.as_ref().unwrap().clone();
+        dim::Window::new(&DIMS, &self.base.config, dpi_factor, fonts)
     }
 
     fn update_window(&self, w: &mut Self::Window, dpi_factor: f32) {
-        w.update(&DIMS, &self.flat.config, dpi_factor);
+        w.update(&DIMS, &self.base.config, dpi_factor);
     }
 
     #[cfg(not(feature = "gat"))]
@@ -147,7 +147,7 @@ where
             },
             ev: extend_lifetime_mut(ev),
             w: extend_lifetime_mut(w),
-            cols: extend_lifetime(&self.flat.cols),
+            cols: extend_lifetime(&self.base.cols),
         }
     }
     #[cfg(feature = "gat")]
@@ -163,26 +163,26 @@ where
             draw,
             ev,
             w,
-            cols: &self.flat.cols,
+            cols: &self.base.cols,
         }
     }
 
     fn clear_color(&self) -> Rgba {
-        <FlatTheme as Theme<DS>>::clear_color(&self.flat)
+        <SimpleTheme as Theme<DS>>::clear_color(&self.base)
     }
 }
 
 impl ThemeControl for ShadedTheme {
     fn set_font_size(&mut self, pt_size: f32) -> TkAction {
-        self.flat.set_font_size(pt_size)
+        self.base.set_font_size(pt_size)
     }
 
     fn list_schemes(&self) -> Vec<&str> {
-        self.flat.list_schemes()
+        self.base.list_schemes()
     }
 
     fn set_scheme(&mut self, name: &str) -> TkAction {
-        self.flat.set_scheme(name)
+        self.base.set_scheme(name)
     }
 }
 
@@ -286,10 +286,6 @@ where
             cols: self.cols,
         };
         f(&mut handle);
-    }
-
-    fn get_clip_rect(&mut self) -> Rect {
-        self.draw.get_clip_rect()
     }
 
     fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle, bg: Background) {

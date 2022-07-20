@@ -123,6 +123,24 @@ impl SubAssign<Vec2> for Quad {
     }
 }
 
+impl Add<Vec2> for Quad {
+    type Output = Quad;
+    #[inline]
+    fn add(mut self, rhs: Vec2) -> Self::Output {
+        self += rhs;
+        self
+    }
+}
+
+impl Sub<Vec2> for Quad {
+    type Output = Quad;
+    #[inline]
+    fn sub(mut self, rhs: Vec2) -> Self::Output {
+        self -= rhs;
+        self
+    }
+}
+
 impl Conv<Rect> for Quad {
     #[inline]
     fn try_conv(rect: Rect) -> Result<Self> {

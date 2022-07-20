@@ -5,19 +5,17 @@
 
 //! Flat theme
 
-use linear_map::LinearMap;
 use std::f32;
 use std::ops::Range;
-use std::rc::Rc;
 use std::time::Instant;
 
-use crate::{dim, ColorsLinear, Config, InputState, Theme};
+use crate::{dim, ColorsLinear, Config, InputState, SimpleTheme, Theme};
 use kas::cast::traits::*;
 use kas::dir::{Direction, Directional};
 use kas::draw::{color::Rgba, *};
 use kas::event::EventState;
 use kas::geom::*;
-use kas::text::{fonts, TextApi, TextDisplay};
+use kas::text::{TextApi, TextDisplay};
 use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use kas::theme::{ThemeControl, ThemeDraw, ThemeSize};
 use kas::{TkAction, WidgetId};
@@ -34,10 +32,7 @@ const SHADOW_POPUP: f32 = 1.2;
 /// A theme with flat (unshaded) rendering
 #[derive(Clone, Debug)]
 pub struct FlatTheme {
-    pub(crate) config: Config,
-    pub(crate) cols: ColorsLinear,
-    dims: dim::Parameters,
-    pub(crate) fonts: Option<Rc<LinearMap<TextClass, fonts::FontId>>>,
+    base: SimpleTheme,
 }
 
 impl Default for FlatTheme {
@@ -50,13 +45,8 @@ impl FlatTheme {
     /// Construct
     #[inline]
     pub fn new() -> Self {
-        let cols = ColorsLinear::default();
-        FlatTheme {
-            config: Default::default(),
-            cols,
-            dims: DIMS,
-            fonts: None,
-        }
+        let base = SimpleTheme::new();
+        FlatTheme { base }
     }
 
     /// Set font size
@@ -65,7 +55,7 @@ impl FlatTheme {
     #[inline]
     #[must_use]
     pub fn with_font_size(mut self, pt_size: f32) -> Self {
-        self.config.set_font_size(pt_size);
+        self.base.config.set_font_size(pt_size);
         self
     }
 
@@ -74,17 +64,12 @@ impl FlatTheme {
     /// If no scheme by this name is found the scheme is left unchanged.
     #[inline]
     #[must_use]
-    pub fn with_colours(mut self, name: &str) -> Self {
-        if let Some(scheme) = self.config.get_color_scheme(name) {
-            self.config.set_active_scheme(name);
-            let _ = self.set_colors(scheme.into());
+    pub fn with_colours(mut self, scheme: &str) -> Self {
+        self.base.config.set_active_scheme(scheme);
+        if let Some(scheme) = self.base.config.get_color_scheme(scheme) {
+            self.base.cols = scheme.into();
         }
         self
-    }
-
-    pub fn set_colors(&mut self, cols: ColorsLinear) -> TkAction {
-        self.cols = cols;
-        TkAction::REDRAW
     }
 }
 
@@ -126,37 +111,24 @@ where
     type Draw<'a> = DrawHandle<'a, DS>;
 
     fn config(&self) -> std::borrow::Cow<Self::Config> {
-        std::borrow::Cow::Borrowed(&self.config)
+        <SimpleTheme as Theme<DS>>::config(&self.base)
     }
 
     fn apply_config(&mut self, config: &Self::Config) -> TkAction {
-        let mut action = self.config.apply_config(config);
-        if let Some(scheme) = self.config.get_active_scheme() {
-            action |= self.set_colors(scheme.into());
-        }
-        action
+        <SimpleTheme as Theme<DS>>::apply_config(&mut self.base, config)
     }
 
-    fn init(&mut self, _shared: &mut SharedState<DS>) {
-        let fonts = fonts::fonts();
-        if let Err(e) = fonts.select_default() {
-            panic!("Error loading font: {}", e);
-        }
-        self.fonts = Some(Rc::new(
-            self.config
-                .iter_fonts()
-                .filter_map(|(c, s)| fonts.select_font(s).ok().map(|id| (*c, id)))
-                .collect(),
-        ));
+    fn init(&mut self, shared: &mut SharedState<DS>) {
+        <SimpleTheme as Theme<DS>>::init(&mut self.base, shared)
     }
 
     fn new_window(&self, dpi_factor: f32) -> Self::Window {
-        let fonts = self.fonts.as_ref().unwrap().clone();
-        dim::Window::new(&self.dims, &self.config, dpi_factor, fonts)
+        let fonts = self.base.fonts.as_ref().unwrap().clone();
+        dim::Window::new(&DIMS, &self.base.config, dpi_factor, fonts)
     }
 
     fn update_window(&self, w: &mut Self::Window, dpi_factor: f32) {
-        w.update(&self.dims, &self.config, dpi_factor);
+        w.update(&DIMS, &self.base.config, dpi_factor);
     }
 
     #[cfg(not(feature = "gat"))]
@@ -182,7 +154,7 @@ where
             },
             ev: extend_lifetime_mut(ev),
             w: extend_lifetime_mut(w),
-            cols: extend_lifetime(&self.cols),
+            cols: extend_lifetime(&self.base.cols),
         }
     }
     #[cfg(feature = "gat")]
@@ -198,36 +170,26 @@ where
             draw,
             ev,
             w,
-            cols: &self.cols,
+            cols: &self.base.cols,
         }
     }
 
     fn clear_color(&self) -> Rgba {
-        self.cols.background
+        self.base.cols.background
     }
 }
 
 impl ThemeControl for FlatTheme {
     fn set_font_size(&mut self, pt_size: f32) -> TkAction {
-        self.config.set_font_size(pt_size);
-        TkAction::RESIZE | TkAction::THEME_UPDATE
+        self.base.set_font_size(pt_size)
     }
 
     fn list_schemes(&self) -> Vec<&str> {
-        self.config
-            .color_schemes_iter()
-            .map(|(name, _)| name)
-            .collect()
+        self.base.list_schemes()
     }
 
     fn set_scheme(&mut self, name: &str) -> TkAction {
-        if name != self.config.active_scheme() {
-            if let Some(scheme) = self.config.get_color_scheme(name) {
-                self.config.set_active_scheme(name);
-                return self.set_colors(scheme.into());
-            }
-        }
-        TkAction::empty()
+        self.base.set_scheme(name)
     }
 }
 
@@ -397,10 +359,6 @@ where
             cols: self.cols,
         };
         f(&mut handle);
-    }
-
-    fn get_clip_rect(&mut self) -> Rect {
-        self.draw.get_clip_rect()
     }
 
     fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle, bg: Background) {
@@ -609,10 +567,5 @@ where
         }
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
         self.draw.rounded_frame(outer, inner, 0.0, self.cols.accent);
-    }
-
-    fn image(&mut self, id: ImageId, rect: Rect) {
-        let rect = Quad::conv(rect);
-        self.draw.image(id, rect);
     }
 }

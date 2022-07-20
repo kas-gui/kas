@@ -33,6 +33,9 @@ config = ["dep:serde", "kas/config"]
 # Use Generic Associated Types (this is too unstable to include in nightly!)
 gat = ["kas/gat"]
 
+# Automatically detect usage of dark theme
+dark-light = ["dep:dark-light"]
+
 [dependencies]
 # Rename package purely for convenience:
 kas = { version = "0.11.0", package = "kas-core", path = "../kas-core" }
@@ -40,3 +43,4 @@ linear-map = "1.2.0"
 log = "0.4"
 serde = { version = "1.0.123", features = ["derive"], optional = true }
 bitflags = "1.3.1"
+dark-light = { version = "0.2.2", optional = true }
