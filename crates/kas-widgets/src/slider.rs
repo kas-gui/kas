@@ -212,7 +212,8 @@ impl_scope! {
                 TkAction::empty()
             } else {
                 self.value = value;
-                self.handle.set_offset(self.offset()).1
+                let _ = self.handle.set_offset(self.offset());
+                TkAction::REDRAW
             }
         }
 
