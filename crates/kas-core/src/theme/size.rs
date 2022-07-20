@@ -92,6 +92,11 @@ impl<'a> SizeMgr<'a> {
         self.0.min_scroll_size(axis.is_vertical())
     }
 
+    /// Minimum length of a dragable handle for a scroll bar or slider
+    pub fn handle_len(&self) -> i32 {
+        self.0.handle_len()
+    }
+
     /// The margin around content within a widget
     ///
     /// Though inner margins are *usually* empty, they are sometimes drawn to,
@@ -157,6 +162,13 @@ pub trait ThemeSize {
 
     /// The minimum size of a scrollable area
     fn min_scroll_size(&self, axis_is_vertical: bool) -> i32;
+
+    /// The length of a dragable handle for a scroll bar or slider
+    ///
+    /// This is the length in line with the control. The size on the opposite
+    /// axis is assumed to be equal to the feature size as reported by
+    /// [`Self::feature`].
+    fn handle_len(&self) -> i32;
 
     /// The margin around content within a widget
     ///

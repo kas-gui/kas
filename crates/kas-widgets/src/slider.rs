@@ -263,14 +263,8 @@ impl_scope! {
         fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             self.handle.set_rect(mgr, rect, align);
-            let dir = Direction::Right;
-            let handle_size = mgr.size_mgr().feature(Feature::Slider(dir), dir).min_size();
             let mut size = rect.size;
-            if self.direction.is_horizontal() {
-                size.0 = size.0.min(handle_size);
-            } else {
-                size.1 = size.1.min(handle_size);
-            }
+            size.set_component(self.direction, mgr.size_mgr().handle_len());
             let _ = self.handle.set_size_and_offset(size, self.offset());
         }
 

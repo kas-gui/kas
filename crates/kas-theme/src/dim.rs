@@ -42,6 +42,8 @@ pub struct Parameters {
     pub check_box_inner: f32,
     /// Larger size of a mark in Points
     pub mark: f32,
+    /// Size of a slider handle; minimum size of a scroll bar handle
+    pub handle_len: f32,
     /// Scroll bar minimum handle size
     pub scroll_bar_size: Vec2,
     /// Slider minimum handle size
@@ -71,6 +73,7 @@ pub struct Dimensions {
     pub button_frame: i32,
     pub check_box: i32,
     pub mark: i32,
+    pub handle_len: i32,
     pub scroll_bar: Size,
     pub slider: Size,
     pub progress_bar: Size,
@@ -110,6 +113,7 @@ impl Dimensions {
             check_box: i32::conv_nearest(params.check_box_inner * dpp)
                 + 2 * (i32::from(inner_margin) + frame),
             mark: i32::conv_nearest(params.mark * dpp),
+            handle_len: i32::conv_nearest(params.handle_len * dpp),
             scroll_bar: Size::conv_nearest(params.scroll_bar_size * scale_factor),
             slider: Size::conv_nearest(params.slider_size * scale_factor),
             progress_bar: Size::conv_nearest(params.progress_bar * scale_factor),
@@ -170,6 +174,10 @@ impl<D: 'static> ThemeSize for Window<D> {
         } else {
             self.dims.min_line_length
         }
+    }
+
+    fn handle_len(&self) -> i32 {
+        self.dims.handle_len
     }
 
     fn inner_margin(&self) -> Size {
