@@ -235,6 +235,7 @@ impl_scope! {
         fn set_offset_and_emit(&mut self, mgr: &mut EventMgr, offset: Offset) {
             let b = self.range.1 - self.range.0;
             let max_offset = self.handle.max_offset();
+            let offset = offset.clamp(Offset::ZERO, max_offset);
             let mut a = match self.direction.is_vertical() {
                 false => b.mul_f64(offset.0 as f64 / max_offset.0 as f64),
                 true => b.mul_f64(offset.1 as f64 / max_offset.1 as f64),
