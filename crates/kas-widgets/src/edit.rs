@@ -106,7 +106,11 @@ pub trait EditGuard: Debug + Sized + 'static {
 
 impl EditGuard for () {}
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+/// An [`EditGuard`] impl which notifies on activate and focus lost
+///
+/// On activate and focus-lost actions, calls [`EventMgr::push_msg`] with the
+/// edit's contents as a [`String`].
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Hash)]
 pub struct GuardNotify;
 impl EditGuard for GuardNotify {
     fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
