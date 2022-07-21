@@ -338,7 +338,7 @@ pub trait Layout {
 ///
 ///     impl Layout for Self {
 ///         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-///             size_mgr.text_bound(&mut self.label, self.class, axis)
+///             size_mgr.text_rules(&mut self.label, self.class, axis)
 ///         }
 ///
 ///         fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {

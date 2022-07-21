@@ -68,7 +68,9 @@ fn main() -> kas::shell::Result<()> {
             core: widget_core!(),
             #[widget] display: EditBox = EditBox::new("0")
                 .with_editable(false)
-                .with_multi_line(true),
+                .with_multi_line(true)
+                .with_lines(3, 3)
+                .with_width_em(5.0, 10.0),
             calc: Calculator = Calculator::new(),
         }
         impl Widget for Self {

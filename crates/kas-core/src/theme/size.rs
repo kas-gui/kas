@@ -146,21 +146,30 @@ impl<'a> SizeMgr<'a> {
         self.0.line_height(class)
     }
 
+    /// Get [`SizeRules`] for a text element
     ///
-    /// This method updates the text's [`Environment`] and uses the result to
-    /// calculate size requirements.
+    /// The [`TextClass`] is used to select a font and controls whether line
+    /// wrapping is enabled.
     ///
-    /// It is necessary to update the environment *again* once the target `rect`
-    /// is known: use [`ConfigMgr::text_set_size`] to do this.
+    /// Horizontal size without wrapping is simply the size the text.
+    /// Horizontal size with wrapping is bounded to some width dependant on the
+    /// theme, and may have non-zero [`Stretch`] depending on the size.
     ///
-    /// [`Environment`]: crate::text::Environment
-    pub fn text_bound(
+    /// Vertical size is the size of the text with or without wrapping, but with
+    /// the minimum at least the height of one line of text.
+    ///
+    /// Widgets with editable text contents or internal scrolling enabled may
+    /// wish to adjust the result.
+    ///
+    /// Note: this method partially prepares the `text` object. It is still
+    /// required to call [`ConfigMgr::text_set_size`] for correct results.
+    pub fn text_rules(
         &self,
         text: &mut dyn TextApi,
         class: TextClass,
         axis: AxisInfo,
     ) -> SizeRules {
-        self.0.text_bound(text, class, axis)
+        self.0.text_rules(text, class, axis)
     }
 }
 
@@ -206,7 +215,7 @@ pub trait ThemeSize {
     fn line_height(&self, class: TextClass) -> i32;
 
     /// Get [`SizeRules`] for a text element
-    fn text_bound(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules;
+    fn text_rules(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules;
 
     /// Update a text object, setting font properties and wrap size
     fn text_set_size(

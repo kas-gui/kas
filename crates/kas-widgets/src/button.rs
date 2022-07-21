@@ -236,6 +236,14 @@ impl_scope! {
         }
     }
 
+    impl Layout for Self {
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            let mut rules = kas::layout::AutoLayout::size_rules(self, size_mgr, axis);
+            rules.set_stretch(Stretch::Low);
+            rules
+        }
+    }
+
     impl Widget for Self {
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             mgr.add_accel_keys(self.id_ref(), &self.keys1);
