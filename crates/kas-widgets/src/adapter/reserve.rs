@@ -25,8 +25,8 @@ impl_scope! {
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Default)]
-    #[widget{ layout = self.inner; }]
-    pub struct Reserve<W: Widget, R: FnMut(SizeMgr, AxisInfo) -> SizeRules + 'static> {
+    #[widget{ derive = self.inner; }]
+    pub struct Reserve<W: Widget, R: FnMut(SizeMgr, AxisInfo) -> SizeRules> {
         core: widget_core!(),
         #[widget]
         pub inner: W,
