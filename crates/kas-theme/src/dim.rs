@@ -275,6 +275,14 @@ impl<D: 'static> ThemeSize for Window<D> {
         }
     }
 
+    fn line_height(&self, class: TextClass) -> i32 {
+        let font_id = self.fonts.get(&class).cloned().unwrap_or_default();
+        kas::text::fonts::fonts()
+            .get_first_face(font_id)
+            .height(self.dims.dpem)
+            .cast_ceil()
+    }
+
     fn text_bound(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules {
         let margin = match axis.is_horizontal() {
             true => self.dims.text_margin.0,
