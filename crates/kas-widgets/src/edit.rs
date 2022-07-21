@@ -819,10 +819,7 @@ impl<G: EditGuard> EditField<G> {
     }
 
     fn control_key(&mut self, mgr: &mut EventMgr, key: Command) -> Result<EditAction, NotReady> {
-        if !self.editable {
-            return Ok(EditAction::Unused);
-        }
-
+        let editable = self.editable;
         let mut shift = mgr.modifiers().shift();
         let mut buf = [0u8; 4];
         let pos = self.selection.edit_pos();
@@ -848,7 +845,7 @@ impl<G: EditGuard> EditField<G> {
             }
             Command::Activate => Action::Activate,
             Command::Return if shift || !self.multi_line() => Action::Activate,
-            Command::Return if self.multi_line() => {
+            Command::Return if editable && self.multi_line() => {
                 Action::Insert('\n'.encode_utf8(&mut buf), LastEdit::Insert)
             }
             // NOTE: we might choose to optionally handle Tab in the future,
@@ -966,8 +963,10 @@ impl<G: EditGuard> EditField<G> {
                 v.1 += h_dist;
                 Action::Move(self.text.text_index_nearest(v.into())?, Some(v.0))
             }
-            Command::Delete | Command::DelBack if have_sel => Action::Delete(selection.clone()),
-            Command::Delete => {
+            Command::Delete | Command::DelBack if editable && have_sel => {
+                Action::Delete(selection.clone())
+            }
+            Command::Delete if editable => {
                 let mut cursor = GraphemeCursor::new(pos, self.text.str_len(), true);
                 cursor
                     .next_boundary(self.text.text(), 0)
@@ -975,7 +974,7 @@ impl<G: EditGuard> EditField<G> {
                     .map(|next| Action::Delete(pos..next))
                     .unwrap_or(Action::None)
             }
-            Command::DelBack => {
+            Command::DelBack if editable => {
                 // We always delete one code-point, not one grapheme cluster:
                 let prev = self.text.text()[0..pos]
                     .char_indices()
@@ -985,7 +984,7 @@ impl<G: EditGuard> EditField<G> {
                     .unwrap_or(0);
                 Action::Delete(prev..pos)
             }
-            Command::DelWord => {
+            Command::DelWord if editable => {
                 let next = self.text.text()[pos..]
                     .split_word_bound_indices()
                     .nth(1)
@@ -993,7 +992,7 @@ impl<G: EditGuard> EditField<G> {
                     .unwrap_or(self.text.str_len());
                 Action::Delete(pos..next)
             }
-            Command::DelWordBack => {
+            Command::DelWordBack if editable => {
                 let prev = self.text.text()[0..pos]
                     .split_word_bound_indices()
                     .next_back()
@@ -1006,7 +1005,7 @@ impl<G: EditGuard> EditField<G> {
                 shift = true; // hack
                 Action::Move(self.text.str_len(), None)
             }
-            Command::Cut if have_sel => {
+            Command::Cut if editable && have_sel => {
                 mgr.set_clipboard((self.text.text()[selection.clone()]).into());
                 Action::Delete(selection.clone())
             }
@@ -1014,7 +1013,7 @@ impl<G: EditGuard> EditField<G> {
                 mgr.set_clipboard((self.text.text()[selection.clone()]).into());
                 Action::None
             }
-            Command::Paste => {
+            Command::Paste if editable => {
                 if let Some(content) = mgr.get_clipboard() {
                     let mut end = content.len();
                     if !self.multi_line() {
@@ -1035,7 +1034,7 @@ impl<G: EditGuard> EditField<G> {
                     Action::None
                 }
             }
-            Command::Undo | Command::Redo => {
+            Command::Undo | Command::Redo if editable => {
                 // TODO: maintain full edit history (externally?)
                 if let Some((state, pos2, sel_pos)) = self.old_state.as_mut() {
                     self.text.swap_string(state);
