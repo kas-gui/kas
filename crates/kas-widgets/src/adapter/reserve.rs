@@ -7,6 +7,24 @@
 
 use kas::prelude::*;
 
+/// Requirements on parameter to [`Reserve`]
+///
+/// Note: this type is implemented for the expected [`FnMut`],
+/// i.e. methods and closures are supported.
+/// A trait is used to support custom *named* objects since currently closures
+/// can't be named and trait methods cannot return unnamed objects (impl Trait
+/// is only supported on functions and inherent methods).
+pub trait FnSizeRules {
+    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
+}
+
+impl<F: FnMut(SizeMgr, AxisInfo) -> SizeRules> FnSizeRules for F {
+    #[inline]
+    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        self(size_mgr, axis)
+    }
+}
+
 /// Parameterisation of [`Reserve`] using a function pointer
 ///
 /// Since it is impossible to name closures, using [`Reserve`] where a type is
@@ -26,7 +44,7 @@ impl_scope! {
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Default)]
     #[widget{ derive = self.inner; }]
-    pub struct Reserve<W: Widget, R: FnMut(SizeMgr, AxisInfo) -> SizeRules> {
+    pub struct Reserve<W: Widget, R: FnSizeRules> {
         core: widget_core!(),
         #[widget]
         pub inner: W,
@@ -74,7 +92,7 @@ impl_scope! {
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             let inner_rules = self.inner.size_rules(size_mgr.re(), axis);
-            let reserve_rules = (self.reserve)(size_mgr.re(), axis);
+            let reserve_rules = self.reserve.size_rules(size_mgr.re(), axis);
             inner_rules.max(reserve_rules)
         }
     }
