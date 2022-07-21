@@ -13,12 +13,11 @@ use crate::geom::{Rect, Size};
 use crate::layout::{AlignHints, AxisInfo, FrameRules, Margins, SizeRules};
 use crate::macros::autoimpl;
 use crate::text::{Align, TextApi};
-#[allow(unused)]
-use crate::{event::ConfigMgr, theme::DrawMgr};
 
-// for doc use
 #[allow(unused)]
 use crate::text::TextApiExt;
+#[allow(unused)]
+use crate::{event::ConfigMgr, layout::Stretch, theme::DrawMgr};
 
 /// Size and scale interface
 ///

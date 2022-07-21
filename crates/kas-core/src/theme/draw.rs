@@ -206,7 +206,7 @@ impl<'a> DrawMgr<'a> {
     /// Text is drawn from `rect.pos` and clipped to `rect`. If the text
     /// scrolls, `rect` should be the size of the whole text, not the window.
     ///
-    /// [`SizeMgr::text_bound`] should be called prior to this method to
+    /// [`ConfigMgr::text_set_size`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     pub fn text(&mut self, rect: Rect, text: impl AsRef<TextDisplay>, class: TextClass) {
         self.h.text(&self.id, rect, text.as_ref(), class);
@@ -221,7 +221,7 @@ impl<'a> DrawMgr<'a> {
     /// emphasis, text size. In addition, this method supports underline and
     /// strikethrough effects.
     ///
-    /// [`SizeMgr::text_bound`] should be called prior to this method to
+    /// [`ConfigMgr::text_set_size`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     pub fn text_effects(&mut self, rect: Rect, text: &dyn TextApi, class: TextClass) {
         self.h.text_effects(&self.id, rect, text, class);
@@ -259,7 +259,7 @@ impl<'a> DrawMgr<'a> {
     /// The text cursor is draw from `rect.pos` and clipped to `rect`. If the text
     /// scrolls, `rect` should be the size of the whole text, not the window.
     ///
-    /// [`SizeMgr::text_bound`] should be called prior to this method to
+    /// [`ConfigMgr::text_set_size`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     pub fn text_cursor(
         &mut self,
@@ -419,7 +419,7 @@ pub trait ThemeDraw {
 
     /// Draw text
     ///
-    /// [`SizeMgr::text_bound`] should be called prior to this method to
+    /// [`ConfigMgr::text_set_size`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     fn text(&mut self, id: &WidgetId, rect: Rect, text: &TextDisplay, class: TextClass);
 
@@ -429,7 +429,7 @@ pub trait ThemeDraw {
     /// emphasis, text size. In addition, this method supports underline and
     /// strikethrough effects.
     ///
-    /// [`SizeMgr::text_bound`] should be called prior to this method to
+    /// [`ConfigMgr::text_set_size`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     fn text_effects(&mut self, id: &WidgetId, rect: Rect, text: &dyn TextApi, class: TextClass);
 
@@ -445,7 +445,7 @@ pub trait ThemeDraw {
 
     /// Draw an edit marker at the given `byte` index on this `text`
     ///
-    /// [`SizeMgr::text_bound`] should be called prior to this method to
+    /// [`ConfigMgr::text_set_size`] should be called prior to this method to
     /// select a font, font size and wrap options (based on the [`TextClass`]).
     fn text_cursor(
         &mut self,

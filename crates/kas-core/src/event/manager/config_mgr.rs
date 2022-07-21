@@ -89,7 +89,10 @@ impl<'a> ConfigMgr<'a> {
         self.sh.align_feature(feature, rect, hints)
     }
 
-    /// Update a text object, setting font properties and wrap size
+    /// Prepare a text object
+    ///
+    /// This sets the text's font, font size, wrapping and alignment and
+    /// performs text preparation necessary before display.
     #[inline]
     pub fn text_set_size(
         &self,

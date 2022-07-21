@@ -9,7 +9,14 @@
 //! lower level of integration than other parts of the library. The [`util`]
 //! module is an extension providing some integration.
 //!
+//! When using a [`Text`] object in a widget, the text *must* be prepared before
+//! display by calling [`ConfigMgr::text_set_size`] from [`Layout::set_rect`].
+//! Failure to do so may result in text displaying incorrectly or not at all.
+//!
 //! [KAS Text]: https://github.com/kas-gui/kas-text/
+
+#[allow(unused)]
+use kas::{event::ConfigMgr, Layout};
 
 pub use kas_text::*;
 
