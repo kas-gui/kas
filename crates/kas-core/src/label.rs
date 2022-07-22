@@ -41,7 +41,7 @@ impl_scope! {
         }
 
         /// Text class
-        pub const CLASS: TextClass = TextClass::Label(true);
+        pub const CLASS: TextClass = TextClass::Label(false);
     }
 
     impl Layout for Self {
