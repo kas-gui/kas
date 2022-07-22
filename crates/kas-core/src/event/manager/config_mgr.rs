@@ -124,10 +124,12 @@ impl<'a> ConfigMgr<'a> {
         key_focus: bool,
     ) -> bool {
         if let Some(id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
-            if let Some(w) = widget.find_widget_mut(&id) {
+            if id.is_ancestor_of(widget.id_ref()) {
+                // do nothing
+            } else if let Some(w) = widget.find_widget_mut(&id) {
                 widget = w;
             } else {
-                // This is a corner-case. Do nothing.
+                log::warn!("next_nav_focus: have open pop-up which is not a child of widget");
                 return false;
             }
         }
