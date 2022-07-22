@@ -473,7 +473,8 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let rect = Rect::new(self.rect().pos, self.text_size);
+            let mut rect = self.rect();
+            rect.size = rect.size.max(self.text_size);
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
                 if self.selection.is_empty() {
                     draw.text(rect, &self.text, self.class);
