@@ -51,6 +51,7 @@ where
 
     fn init(&mut self, shared: &mut SharedState<DS>) {
         self.inner.init(shared);
+        let _ = self.inner.set_scheme("light");
     }
 
     fn new_window(&self, dpi_factor: f32) -> Self::Window {

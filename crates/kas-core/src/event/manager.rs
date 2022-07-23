@@ -469,7 +469,7 @@ impl<'a> EventMgr<'a> {
                 }
             };
 
-            if self.char_focus {
+            if self.char_focus || cmd.suitable_for_sel_focus() {
                 if let Some(id) = self.sel_focus.clone() {
                     if send(self, id, cmd) {
                         return;
@@ -488,14 +488,6 @@ impl<'a> EventMgr<'a> {
             if let Some(id) = self.popups.last().map(|popup| popup.1.parent.clone()) {
                 if send(self, id, cmd) {
                     return;
-                }
-            }
-
-            if cmd.suitable_for_sel_focus() {
-                if let Some(id) = self.sel_focus.clone() {
-                    if send(self, id, cmd) {
-                        return;
-                    }
                 }
             }
 

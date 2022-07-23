@@ -72,9 +72,10 @@ const DIMS: dim::Parameters = dim::Parameters {
     button_frame: 5.0,
     check_box_inner: 9.0,
     mark: 9.0,
-    scroll_bar_size: Vec2::splat(8.0),
-    slider_size: Vec2(12.0, 25.0),
-    progress_bar: Vec2::splat(12.0),
+    handle_len: 8.0,
+    scroll_bar_size: Vec2(24.0, 8.0),
+    slider_size: Vec2(24.0, 12.0),
+    progress_bar: Vec2(24.0, 8.0),
     shadow_size: Vec2::splat(6.0),
     shadow_rel_offset: Vec2::ZERO,
 };

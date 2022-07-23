@@ -94,16 +94,20 @@ pub trait ListData: SharedData {
 
     /// Make a [`WidgetId`] for a key
     ///
-    /// The `parent` identifier is used as a reference.
+    /// Suggested impl, converting `key` as necessary:
+    ///
+    /// -   `parent.make_child(key)`
+    ///
+    /// See: [`WidgetId::make_child`]
     fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId;
 
     /// Reconstruct a key from a [`WidgetId`]
     ///
-    /// The `parent` identifier is used as a reference.
-    ///
-    /// If the `child` identifier is one returned by [`Self::make_id`] for the
-    /// same `parent`, *or descended from that*, this should return a copy of
+    /// Where `child` is the output of [`Self::make_id`] for the same `parent`
+    /// *or any [`WidgetId`] descended from that*, this should return a copy of
     /// the `key` passed to `make_id`.
+    ///
+    /// See: [`WidgetId::next_key_after`], [`WidgetId::iter_keys_after`]
     fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key>;
 
     // TODO(gat): replace with an iterator
@@ -142,16 +146,21 @@ pub trait MatrixData: SharedData {
 
     /// Make a [`WidgetId`] for a key
     ///
-    /// The `parent` identifier is used as a reference.
+    /// Suggested impls, converting keys as necessary:
+    ///
+    /// -   `parent.make_child(combined_key)`
+    /// -   `parent.make_child(col_key).make_child(row_key)`
+    ///
+    /// See: [`WidgetId::make_child`]
     fn make_id(&self, parent: &WidgetId, key: &Self::Key) -> WidgetId;
 
     /// Reconstruct a key from a [`WidgetId`]
     ///
-    /// The `parent` identifier is used as a reference.
-    ///
-    /// If the `child` identifier is one returned by [`Self::make_id`] for the
-    /// same `parent`, *or descended from that*, this should return a copy of
+    /// Where `child` is the output of [`Self::make_id`] for the same `parent`
+    /// *or any [`WidgetId`] descended from that*, this should return a copy of
     /// the `key` passed to `make_id`.
+    ///
+    /// See: [`WidgetId::next_key_after`], [`WidgetId::iter_keys_after`]
     fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key>;
 
     // TODO(gat): replace with an iterator

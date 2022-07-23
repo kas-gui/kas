@@ -13,12 +13,11 @@ use crate::geom::{Rect, Size};
 use crate::layout::{AlignHints, AxisInfo, FrameRules, Margins, SizeRules};
 use crate::macros::autoimpl;
 use crate::text::{Align, TextApi};
-#[allow(unused)]
-use crate::{event::ConfigMgr, theme::DrawMgr};
 
-// for doc use
 #[allow(unused)]
 use crate::text::TextApiExt;
+#[allow(unused)]
+use crate::{event::ConfigMgr, layout::Stretch, theme::DrawMgr};
 
 /// Size and scale interface
 ///
@@ -57,13 +56,14 @@ impl<'a> SizeMgr<'a> {
     ///
     /// "Traditional" PC screens have a scale factor of 1; high-DPI screens
     /// may have a factor of 2 or higher. This may be fractional and may be
-    /// adjusted to the user's taste.
+    /// adjusted to suit the device type (e.g. a phone or desktop monitor) as
+    /// well as the user's preference.
     ///
-    /// DPI is usually `96.0 * scale_factor` but this may be inaccurate (due to
-    /// user's preference or inaccurate screen size measurements or some form
-    /// of scaling used on mobile devices).
+    /// One could use this value to calculate physical size, but be warned that
+    /// the result may be quite inaccurate on anything other than a desktop
+    /// monitor: `25.4 mm = 1 inch = (96 * scale_factor) pixels`
     ///
-    /// It is recommended to calculate integer pixel sizes as follows:
+    /// To calculate screen pixel sizes from virtual pixel sizes:
     /// ```
     /// use kas_core::cast::*;
     /// # let scale_factor = 1.5f32;
@@ -77,12 +77,14 @@ impl<'a> SizeMgr<'a> {
         self.0.scale_factor()
     }
 
-    /// Get the Em size of the standard font in pixels
+    /// The Em size of the standard font in pixels
     ///
-    /// The Em is a unit of typography, corresponding to the distance between
-    /// ascent and descent bounding lines (thus, the line height).
+    /// The Em is a unit of typography (variously defined as the point-size of
+    /// the font, the height of the font or the width of an upper-case `M`).
+    /// The method [`Self::line_height`] returns a related but distinct value.
     ///
-    /// This method returns the size of 1 Em in physical pixels.
+    /// This method returns the size of 1 Em in physical pixels, derived from
+    /// the font size in use by the theme and the screen's scale factor.
     pub fn dpem(&self) -> f32 {
         self.0.dpem()
     }
@@ -90,6 +92,15 @@ impl<'a> SizeMgr<'a> {
     /// The minimum size of a scrollable area
     pub fn min_scroll_size(&self, axis: impl Directional) -> i32 {
         self.0.min_scroll_size(axis.is_vertical())
+    }
+
+    /// The length of a dragable handle for a scroll bar or slider
+    ///
+    /// This is the length in line with the control. The size on the opposite
+    /// axis is assumed to be equal to the feature size as reported by
+    /// [`Self::feature`].
+    pub fn handle_len(&self) -> i32 {
+        self.0.handle_len()
     }
 
     /// The margin around content within a widget
@@ -125,22 +136,40 @@ impl<'a> SizeMgr<'a> {
         self.0.frame(style, axis.is_vertical())
     }
 
-    /// Update a text object, setting font properties and getting a size bound
+    /// The height of a line of text using the corresponding font
     ///
-    /// This method updates the text's [`Environment`] and uses the result to
-    /// calculate size requirements.
+    /// This method looks up the font face corresponding to the given `class`,
+    /// scales this according to [`Self::dpem`], then measures the line height.
+    /// The result is typically 100% - 150% of the value returned by
+    /// [`Self::dpem`], depending on the font face.
+    pub fn line_height(&self, class: TextClass) -> i32 {
+        self.0.line_height(class)
+    }
+
+    /// Get [`SizeRules`] for a text element
     ///
-    /// It is necessary to update the environment *again* once the target `rect`
-    /// is known: use [`ConfigMgr::text_set_size`] to do this.
+    /// The [`TextClass`] is used to select a font and controls whether line
+    /// wrapping is enabled.
     ///
-    /// [`Environment`]: crate::text::Environment
-    pub fn text_bound(
+    /// Horizontal size without wrapping is simply the size the text.
+    /// Horizontal size with wrapping is bounded to some width dependant on the
+    /// theme, and may have non-zero [`Stretch`] depending on the size.
+    ///
+    /// Vertical size is the size of the text with or without wrapping, but with
+    /// the minimum at least the height of one line of text.
+    ///
+    /// Widgets with editable text contents or internal scrolling enabled may
+    /// wish to adjust the result.
+    ///
+    /// Note: this method partially prepares the `text` object. It is still
+    /// required to call [`ConfigMgr::text_set_size`] for correct results.
+    pub fn text_rules(
         &self,
         text: &mut dyn TextApi,
         class: TextClass,
         axis: AxisInfo,
     ) -> SizeRules {
-        self.0.text_bound(text, class, axis)
+        self.0.text_rules(text, class, axis)
     }
 }
 
@@ -158,21 +187,16 @@ pub trait ThemeSize {
     /// The minimum size of a scrollable area
     fn min_scroll_size(&self, axis_is_vertical: bool) -> i32;
 
+    /// The length of a dragable handle for a scroll bar or slider
+    fn handle_len(&self) -> i32;
+
     /// The margin around content within a widget
-    ///
-    /// Though inner margins are *usually* empty, they are sometimes drawn to,
-    /// for example focus indicators.
     fn inner_margin(&self) -> Size;
 
     /// The margin between UI elements, where desired
-    ///
-    /// Widgets must not draw in outer margins.
     fn outer_margins(&self) -> Margins;
 
     /// The margin around text elements
-    ///
-    /// Similar to [`Self::outer_margins`], but intended for things like text
-    /// labels which do not have a visible hard edge.
     fn text_margins(&self) -> Margins;
 
     /// Size rules for a feature
@@ -187,16 +211,11 @@ pub trait ThemeSize {
     /// Size of a frame around another element
     fn frame(&self, style: FrameStyle, axis_is_vertical: bool) -> FrameRules;
 
-    /// Update a text object, setting font properties and getting a size bound
-    ///
-    /// This method updates the text's [`Environment`] and uses the result to
-    /// calculate size requirements.
-    ///
-    /// It is necessary to update the environment *again* once the target `rect`
-    /// is known: use [`Self::text_set_size`] to do this.
-    ///
-    /// [`Environment`]: crate::text::Environment
-    fn text_bound(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules;
+    /// The height of a line of text using the standard font
+    fn line_height(&self, class: TextClass) -> i32;
+
+    /// Get [`SizeRules`] for a text element
+    fn text_rules(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules;
 
     /// Update a text object, setting font properties and wrap size
     fn text_set_size(

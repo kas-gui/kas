@@ -239,8 +239,7 @@ impl_scope! {
             let rect = mgr.align_feature(Feature::ScrollBar(self.direction()), rect, align);
             self.core.rect = rect;
             self.handle.set_rect(mgr, rect, align);
-            let dir = Direction::Right;
-            self.min_handle_len = mgr.size_mgr().feature(Feature::ScrollBar(dir), dir).min_size();
+            self.min_handle_len = mgr.size_mgr().handle_len();
             let _ = self.update_widgets();
         }
 

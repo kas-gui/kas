@@ -140,7 +140,7 @@ fn widgets() -> Box<dyn SetDisabled> {
             #[widget] bi = Row::new_vec(vec![
                 Button::new_msg(img_light.clone(), Item::Theme("light"))
                     .with_color("#B38DF9".parse().unwrap())
-                    .with_keys(&[VK::P]),
+                    .with_keys(&[VK::H]),
                 Button::new_msg(img_light, Item::Theme("blue"))
                     .with_color("#7CDAFF".parse().unwrap())
                     .with_keys(&[VK::B]),
@@ -148,7 +148,7 @@ fn widgets() -> Box<dyn SetDisabled> {
                     .with_color("#E77346".parse().unwrap())
                     .with_keys(&[VK::K]),
             ]),
-            #[widget] cb = CheckButton::new("Chec&k me")
+            #[widget] cb = CheckButton::new("&Check me")
                 .with_state(true)
                 .on_toggle(|mgr, check| mgr.push_msg(Item::Check(check))),
             #[widget] rb = RadioButton::new("radio button &1", radio.clone())
@@ -244,7 +244,10 @@ Demonstration of *as-you-type* formatting from **Markdown**.
             core: widget_core!(),
             dir: Direction = Direction::Up,
             #[widget] editor: EditBox<Guard> =
-                EditBox::new(doc).with_multi_line(true).with_guard(Guard),
+                EditBox::new(doc)
+                    .with_multi_line(true)
+                    .with_lines(4, 12)
+                    .with_guard(Guard),
             #[widget] label: ScrollLabel<Markdown> =
                 ScrollLabel::new(Markdown::new(doc).unwrap()),
         }
@@ -544,10 +547,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             #[widget] menubar = menubar,
             #[widget] stack: TabStack<Box<dyn SetDisabled>> = TabStack::new()
                 .with_title("&Widgets", widgets()) //TODO: use img_gallery as logo
-                .with_title("&Text editor", editor())
+                .with_title("Te&xt editor", editor())
                 .with_title("&List", filter_list())
                 .with_title("Can&vas", canvas())
-                .with_title("&Config", config(toolkit.event_config().clone())),
+                .with_title("Confi&g", config(toolkit.event_config().clone())),
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {

@@ -33,7 +33,12 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            size_mgr.text_bound(&mut self.text, TextClass::LabelScroll, axis)
+            let class = TextClass::LabelScroll;
+            let mut rules = size_mgr.text_rules(&mut self.text, class, axis);
+            if axis.is_vertical() {
+                rules.reduce_min_to(size_mgr.line_height(class) * 4);
+            }
+            rules
         }
 
         fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {

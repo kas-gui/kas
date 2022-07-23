@@ -41,13 +41,13 @@ impl_scope! {
         }
 
         /// Text class
-        pub const CLASS: TextClass = TextClass::Label(true);
+        pub const CLASS: TextClass = TextClass::Label(false);
     }
 
     impl Layout for Self {
         #[inline]
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            size_mgr.text_bound(&mut self.label, Self::CLASS, axis)
+            size_mgr.text_rules(&mut self.label, Self::CLASS, axis)
         }
 
         fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {

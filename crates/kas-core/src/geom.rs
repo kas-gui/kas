@@ -73,6 +73,14 @@ macro_rules! impl_common {
                 Self(self.0.max(other.0), self.1.max(other.1))
             }
 
+            /// Restrict a value to the specified interval, componentwise
+            #[inline]
+            #[must_use = "method does not modify self but returns a new value"]
+            pub fn clamp(self, min: Self, max: Self) -> Self {
+                debug_assert!(min.le(max));
+                self.min(max).max(min)
+            }
+
             /// Return the transpose (swap x and y values)
             #[inline]
             #[must_use = "method does not modify self but returns a new value"]

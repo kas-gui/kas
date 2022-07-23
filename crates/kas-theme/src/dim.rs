@@ -42,6 +42,8 @@ pub struct Parameters {
     pub check_box_inner: f32,
     /// Larger size of a mark in Points
     pub mark: f32,
+    /// Size of a slider handle; minimum size of a scroll bar handle
+    pub handle_len: f32,
     /// Scroll bar minimum handle size
     pub scroll_bar_size: Vec2,
     /// Slider minimum handle size
@@ -71,6 +73,7 @@ pub struct Dimensions {
     pub button_frame: i32,
     pub check_box: i32,
     pub mark: i32,
+    pub handle_len: i32,
     pub scroll_bar: Size,
     pub slider: Size,
     pub progress_bar: Size,
@@ -110,6 +113,7 @@ impl Dimensions {
             check_box: i32::conv_nearest(params.check_box_inner * dpp)
                 + 2 * (i32::from(inner_margin) + frame),
             mark: i32::conv_nearest(params.mark * dpp),
+            handle_len: i32::conv_nearest(params.handle_len * dpp),
             scroll_bar: Size::conv_nearest(params.scroll_bar_size * scale_factor),
             slider: Size::conv_nearest(params.slider_size * scale_factor),
             progress_bar: Size::conv_nearest(params.progress_bar * scale_factor),
@@ -170,6 +174,10 @@ impl<D: 'static> ThemeSize for Window<D> {
         } else {
             self.dims.min_line_length
         }
+    }
+
+    fn handle_len(&self) -> i32 {
+        self.dims.handle_len
     }
 
     fn inner_margin(&self) -> Size {
@@ -267,36 +275,32 @@ impl<D: 'static> ThemeSize for Window<D> {
         }
     }
 
-    fn text_bound(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules {
+    fn line_height(&self, class: TextClass) -> i32 {
+        let font_id = self.fonts.get(&class).cloned().unwrap_or_default();
+        kas::text::fonts::fonts()
+            .get_first_face(font_id)
+            .height(self.dims.dpem)
+            .cast_ceil()
+    }
+
+    fn text_rules(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules {
         let margin = match axis.is_horizontal() {
             true => self.dims.text_margin.0,
             false => self.dims.text_margin.1,
         };
         let margins = (margin, margin);
 
-        // Note: for horizontal axis of Edit* classes, input text does not affect size rules.
-        if axis.is_horizontal() {
-            let min = self.dims.min_line_length;
-            if let TextClass::Edit(multi) = class {
-                let (min, ideal) = match multi {
-                    false => (min, 2 * min),
-                    true => (min, 3 * min),
-                };
-                return SizeRules::new(min, ideal, margins, Stretch::Low);
-            } else if let TextClass::EditShort(_) = class {
-                return SizeRules::new(min, min, margins, Stretch::Low);
-            }
-        }
-
         let mut env = text.env();
 
+        // TODO(opt): maybe font look-up should only happen during configure?
         if let Some(font_id) = self.fonts.get(&class).cloned() {
             env.font_id = font_id;
         }
         env.dpem = self.dims.dpem;
         // TODO(opt): setting horizontal alignment now could avoid re-wrapping
         // text. Unfortunately we don't know the desired alignment here.
-        env.wrap = class.multi_line();
+        let wrap = class.multi_line();
+        env.wrap = wrap;
         if let Some(size) = axis.size_other_if_fixed(true) {
             env.bounds.0 = size.cast();
         }
@@ -304,38 +308,28 @@ impl<D: 'static> ThemeSize for Window<D> {
         text.set_env(env);
 
         if axis.is_horizontal() {
-            let min = self.dims.min_line_length;
-            let limit = 3 * min;
-            let bound = i32::conv_ceil(text.measure_width(limit.cast()));
-            let (min, ideal) = (bound.min(min), bound.min(3 * min));
+            if wrap {
+                let min = self.dims.min_line_length;
+                let limit = 2 * min;
+                let bound = i32::conv_ceil(text.measure_width(limit.cast()));
 
-            // NOTE: using different variable-width stretch policies here can
-            // cause problems (e.g. edit boxes greedily consuming too much
-            // space). This is a hard layout problem; for now don't do this.
-            let stretch = match class {
-                TextClass::MenuLabel => Stretch::None,
-                _ => Stretch::Low,
-            };
-            SizeRules::new(min, ideal, margins, stretch)
+                // NOTE: using different variable-width stretch policies here can
+                // cause problems (e.g. edit boxes greedily consuming too much
+                // space). This is a hard layout problem; for now don't do this.
+                if bound <= limit {
+                    SizeRules::new(bound.min(min), bound, margins, Stretch::None)
+                } else {
+                    SizeRules::new(min, limit, margins, Stretch::Low)
+                }
+            } else {
+                let bound = i32::conv_ceil(text.measure_width(f32::INFINITY));
+                SizeRules::new(bound, bound, margins, Stretch::None)
+            }
         } else {
             let bound = i32::conv_ceil(text.measure_height());
-            let min = if matches!(class, TextClass::Label(true) | TextClass::AccelLabel(true)) {
-                bound
-            } else {
-                let line_height = self.dims.dpem.cast_ceil();
-                match class {
-                    _ if class.single_line() => line_height,
-                    TextClass::LabelScroll => bound.min(line_height * 3),
-                    TextClass::Edit(true) => line_height * 3,
-                    _ => unreachable!(),
-                }
-            };
-            let ideal = bound.max(min);
-            let stretch = match class {
-                TextClass::LabelScroll | TextClass::Edit(true) => Stretch::Low,
-                _ => Stretch::None,
-            };
-            SizeRules::new(min, ideal, margins, stretch)
+            let line_height = self.dims.dpem.cast_ceil();
+            let min = bound.max(line_height);
+            SizeRules::new(min, min, margins, Stretch::None)
         }
     }
 

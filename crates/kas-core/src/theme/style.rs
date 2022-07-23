@@ -90,11 +90,6 @@ pub enum TextClass {
     ///
     /// This takes one parameter: `multi_line`. Text is wrapped only if true.
     Edit(bool),
-    /// Editable text, short
-    ///
-    /// This is identical to [`Self::Edit`] except that the size allocation is
-    /// reduced. This may be more appropriate for numeric content.
-    EditShort(bool),
 }
 
 impl TextClass {

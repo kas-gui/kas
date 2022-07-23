@@ -212,7 +212,8 @@ impl_scope! {
                 TkAction::empty()
             } else {
                 self.value = value;
-                self.handle.set_offset(self.offset()).1
+                let _ = self.handle.set_offset(self.offset());
+                TkAction::REDRAW
             }
         }
 
@@ -235,6 +236,7 @@ impl_scope! {
         fn set_offset_and_emit(&mut self, mgr: &mut EventMgr, offset: Offset) {
             let b = self.range.1 - self.range.0;
             let max_offset = self.handle.max_offset();
+            let offset = offset.clamp(Offset::ZERO, max_offset);
             let mut a = match self.direction.is_vertical() {
                 false => b.mul_f64(offset.0 as f64 / max_offset.0 as f64),
                 true => b.mul_f64(offset.1 as f64 / max_offset.1 as f64),
@@ -261,14 +263,8 @@ impl_scope! {
         fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             self.handle.set_rect(mgr, rect, align);
-            let dir = Direction::Right;
-            let handle_size = mgr.size_mgr().feature(Feature::Slider(dir), dir).min_size();
             let mut size = rect.size;
-            if self.direction.is_horizontal() {
-                size.0 = size.0.min(handle_size);
-            } else {
-                size.1 = size.1.min(handle_size);
-            }
+            size.set_component(self.direction, mgr.size_mgr().handle_len());
             let _ = self.handle.set_size_and_offset(size, self.offset());
         }
 

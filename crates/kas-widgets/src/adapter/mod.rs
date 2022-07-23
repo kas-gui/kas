@@ -12,5 +12,5 @@ mod with_label;
 
 pub use adapt_widget::*;
 pub use map::MapMessage;
-pub use reserve::{Reserve, ReserveP};
+pub use reserve::{FnSizeRules, Reserve, ReserveP};
 pub use with_label::WithLabel;

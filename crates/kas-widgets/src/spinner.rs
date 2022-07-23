@@ -160,7 +160,7 @@ impl_scope! {
     #[widget {
         layout = frame(FrameStyle::EditBox): row: [
             self.edit,
-            align(stretch): column: [
+            column: [
                 margins(none): self.b_up,
                 margins(none): self.b_down,
             ],
@@ -185,7 +185,7 @@ impl_scope! {
             Spinner {
                 core: Default::default(),
                 edit: EditField::new("")
-                    .with_class(TextClass::EditShort(false))
+                    .with_width_em(3.0, 8.0)
                     .with_guard(SpinnerGuard::new(range)),
                 b_up: MarkButton::new(MarkStyle::Point(Direction::Up), SpinBtn::Up),
                 b_down: MarkButton::new(MarkStyle::Point(Direction::Down), SpinBtn::Down),
@@ -225,7 +225,7 @@ impl_scope! {
 
         /// Set the text class used
         ///
-        /// The default is: `TextClass::EditShort(false)`.
+        /// The default is: `TextClass::Edit(false)`.
         #[inline]
         #[must_use]
         pub fn with_class(mut self, class: TextClass) -> Self {
@@ -237,6 +237,20 @@ impl_scope! {
         #[inline]
         pub fn class(&self) -> TextClass {
             self.edit.class()
+        }
+
+        /// Adjust the width allocation
+        #[inline]
+        pub fn set_width_em(&mut self, min_em: f32, ideal_em: f32) {
+            self.edit.set_width_em(min_em, ideal_em);
+        }
+
+        /// Adjust the width allocation (inline)
+        #[inline]
+        #[must_use]
+        pub fn with_width_em(mut self, min_em: f32, ideal_em: f32) -> Self {
+            self.set_width_em(min_em, ideal_em);
+            self
         }
 
         /// Set the initial value

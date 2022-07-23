@@ -106,7 +106,11 @@ pub trait EditGuard: Debug + Sized + 'static {
 
 impl EditGuard for () {}
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+/// An [`EditGuard`] impl which notifies on activate and focus lost
+///
+/// On activate and focus-lost actions, calls [`EventMgr::push_msg`] with the
+/// edit's contents as a [`String`].
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Hash)]
 pub struct GuardNotify;
 impl EditGuard for GuardNotify {
     fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
@@ -346,6 +350,34 @@ impl<G: EditGuard> EditBox<G> {
         self.inner.class()
     }
 
+    /// Adjust the height allocation
+    #[inline]
+    pub fn set_lines(&mut self, min_lines: i32, ideal_lines: i32) {
+        self.inner.set_lines(min_lines, ideal_lines);
+    }
+
+    /// Adjust the height allocation (inline)
+    #[inline]
+    #[must_use]
+    pub fn with_lines(mut self, min_lines: i32, ideal_lines: i32) -> Self {
+        self.set_lines(min_lines, ideal_lines);
+        self
+    }
+
+    /// Adjust the width allocation
+    #[inline]
+    pub fn set_width_em(&mut self, min_em: f32, ideal_em: f32) {
+        self.inner.set_width_em(min_em, ideal_em);
+    }
+
+    /// Adjust the width allocation (inline)
+    #[inline]
+    #[must_use]
+    pub fn with_width_em(mut self, min_em: f32, ideal_em: f32) -> Self {
+        self.set_width_em(min_em, ideal_em);
+        self
+    }
+
     /// Get whether the widget currently has keyboard input focus
     #[inline]
     pub fn has_key_focus(&self) -> bool {
@@ -393,6 +425,8 @@ impl_scope! {
         view_offset: Offset,
         editable: bool,
         class: TextClass = TextClass::Edit(false),
+        width: (f32, f32) = (8.0, 16.0),
+        lines: (i32, i32) = (1, 1),
         text: Text<String>,
         text_size: Size,
         selection: SelectionHelper,
@@ -408,7 +442,20 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            size_mgr.text_bound(&mut self.text, self.class, axis)
+            let (min, ideal) = if axis.is_horizontal() {
+                let dpem = size_mgr.dpem();
+                ((self.width.0 * dpem).cast_ceil(), (self.width.1 * dpem).cast_ceil())
+            } else {
+                let height = size_mgr.line_height(self.class);
+                (self.lines.0 * height, self.lines.1 * height)
+            };
+            let margins = size_mgr.text_margins().extract(axis);
+            let stretch = if axis.is_horizontal() || self.multi_line() {
+                Stretch::High
+            } else {
+                Stretch::None
+            };
+            SizeRules::new(min, ideal, margins, stretch)
         }
 
         fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
@@ -426,7 +473,8 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let rect = Rect::new(self.rect().pos, self.text_size);
+            let mut rect = self.rect();
+            rect.size = rect.size.max(self.text_size);
             draw.with_clip_region(self.rect(), self.view_offset, |mut draw| {
                 if self.selection.is_empty() {
                     draw.text(rect, &self.text, self.class);
@@ -609,20 +657,11 @@ impl EditField<()> {
         let text = text.to_string();
         let len = text.len();
         EditField {
-            core: Default::default(),
-            view_offset: Default::default(),
             editable: true,
             class: TextClass::Edit(false),
             text: Text::new(text),
-            text_size: Size::ZERO,
             selection: SelectionHelper::new(len, len),
-            edit_x_coord: None,
-            old_state: None,
-            last_edit: LastEdit::None,
-            has_key_focus: false,
-            error_state: false,
-            input_handler: Default::default(),
-            guard: (),
+            ..Default::default()
         }
     }
 
@@ -641,6 +680,8 @@ impl EditField<()> {
             view_offset: self.view_offset,
             editable: self.editable,
             class: self.class,
+            width: self.width,
+            lines: self.lines,
             text: self.text,
             text_size: self.text_size,
             selection: self.selection,
@@ -728,17 +769,18 @@ impl<G: EditGuard> EditField<G> {
 
     /// Set whether this `EditField` uses multi-line mode
     ///
-    /// This setting has two effects: the vertical size allocation is increased
-    /// and wrapping is enabled if true. Default: false.
+    /// This method does two things:
     ///
-    /// This method is ineffective if the text class is set by
-    /// [`Self::with_class`] to anything other than [`TextClass::Edit`].
+    /// -   Changes the text class (see [`Self::with_class`])
+    /// -   Changes the vertical height allocation (see [`Self::with_lines`])
     #[inline]
     #[must_use]
     pub fn with_multi_line(mut self, multi_line: bool) -> Self {
-        if let TextClass::Edit(ref mut multi) = self.class {
-            *multi = multi_line;
-        }
+        self.class = TextClass::Edit(multi_line);
+        self.lines = match multi_line {
+            false => (1, 1),
+            true => (4, 7),
+        };
         self
     }
 
@@ -762,6 +804,34 @@ impl<G: EditGuard> EditField<G> {
     #[inline]
     pub fn class(&self) -> TextClass {
         self.class
+    }
+
+    /// Adjust the height allocation
+    #[inline]
+    pub fn set_lines(&mut self, min_lines: i32, ideal_lines: i32) {
+        self.lines = (min_lines, ideal_lines);
+    }
+
+    /// Adjust the height allocation (inline)
+    #[inline]
+    #[must_use]
+    pub fn with_lines(mut self, min_lines: i32, ideal_lines: i32) -> Self {
+        self.set_lines(min_lines, ideal_lines);
+        self
+    }
+
+    /// Adjust the width allocation
+    #[inline]
+    pub fn set_width_em(&mut self, min_em: f32, ideal_em: f32) {
+        self.width = (min_em, ideal_em);
+    }
+
+    /// Adjust the width allocation (inline)
+    #[inline]
+    #[must_use]
+    pub fn with_width_em(mut self, min_em: f32, ideal_em: f32) -> Self {
+        self.set_width_em(min_em, ideal_em);
+        self
     }
 
     /// Get whether the widget currently has keyboard input focus
@@ -815,10 +885,7 @@ impl<G: EditGuard> EditField<G> {
     }
 
     fn control_key(&mut self, mgr: &mut EventMgr, key: Command) -> Result<EditAction, NotReady> {
-        if !self.editable {
-            return Ok(EditAction::Unused);
-        }
-
+        let editable = self.editable;
         let mut shift = mgr.modifiers().shift();
         let mut buf = [0u8; 4];
         let pos = self.selection.edit_pos();
@@ -844,7 +911,7 @@ impl<G: EditGuard> EditField<G> {
             }
             Command::Activate => Action::Activate,
             Command::Return if shift || !self.multi_line() => Action::Activate,
-            Command::Return if self.multi_line() => {
+            Command::Return if editable && self.multi_line() => {
                 Action::Insert('\n'.encode_utf8(&mut buf), LastEdit::Insert)
             }
             // NOTE: we might choose to optionally handle Tab in the future,
@@ -962,8 +1029,10 @@ impl<G: EditGuard> EditField<G> {
                 v.1 += h_dist;
                 Action::Move(self.text.text_index_nearest(v.into())?, Some(v.0))
             }
-            Command::Delete | Command::DelBack if have_sel => Action::Delete(selection.clone()),
-            Command::Delete => {
+            Command::Delete | Command::DelBack if editable && have_sel => {
+                Action::Delete(selection.clone())
+            }
+            Command::Delete if editable => {
                 let mut cursor = GraphemeCursor::new(pos, self.text.str_len(), true);
                 cursor
                     .next_boundary(self.text.text(), 0)
@@ -971,7 +1040,7 @@ impl<G: EditGuard> EditField<G> {
                     .map(|next| Action::Delete(pos..next))
                     .unwrap_or(Action::None)
             }
-            Command::DelBack => {
+            Command::DelBack if editable => {
                 // We always delete one code-point, not one grapheme cluster:
                 let prev = self.text.text()[0..pos]
                     .char_indices()
@@ -981,7 +1050,7 @@ impl<G: EditGuard> EditField<G> {
                     .unwrap_or(0);
                 Action::Delete(prev..pos)
             }
-            Command::DelWord => {
+            Command::DelWord if editable => {
                 let next = self.text.text()[pos..]
                     .split_word_bound_indices()
                     .nth(1)
@@ -989,7 +1058,7 @@ impl<G: EditGuard> EditField<G> {
                     .unwrap_or(self.text.str_len());
                 Action::Delete(pos..next)
             }
-            Command::DelWordBack => {
+            Command::DelWordBack if editable => {
                 let prev = self.text.text()[0..pos]
                     .split_word_bound_indices()
                     .next_back()
@@ -1002,7 +1071,7 @@ impl<G: EditGuard> EditField<G> {
                 shift = true; // hack
                 Action::Move(self.text.str_len(), None)
             }
-            Command::Cut if have_sel => {
+            Command::Cut if editable && have_sel => {
                 mgr.set_clipboard((self.text.text()[selection.clone()]).into());
                 Action::Delete(selection.clone())
             }
@@ -1010,7 +1079,7 @@ impl<G: EditGuard> EditField<G> {
                 mgr.set_clipboard((self.text.text()[selection.clone()]).into());
                 Action::None
             }
-            Command::Paste => {
+            Command::Paste if editable => {
                 if let Some(content) = mgr.get_clipboard() {
                     let mut end = content.len();
                     if !self.multi_line() {
@@ -1031,7 +1100,7 @@ impl<G: EditGuard> EditField<G> {
                     Action::None
                 }
             }
-            Command::Undo | Command::Redo => {
+            Command::Undo | Command::Redo if editable => {
                 // TODO: maintain full edit history (externally?)
                 if let Some((state, pos2, sel_pos)) = self.old_state.as_mut() {
                     self.text.swap_string(state);

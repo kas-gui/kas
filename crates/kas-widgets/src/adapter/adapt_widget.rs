@@ -5,8 +5,10 @@
 
 //! Widget extension traits
 
-use super::{MapMessage, Reserve, WithLabel};
+use super::{FnSizeRules, MapMessage, Reserve, WithLabel};
+use kas::cast::{Cast, CastFloat};
 use kas::dir::Directional;
+use kas::geom::Vec2;
 use kas::layout::{AxisInfo, SizeRules};
 use kas::text::AccelString;
 use kas::theme::SizeMgr;
@@ -14,6 +16,24 @@ use kas::theme::SizeMgr;
 use kas::Layout;
 use kas::Widget;
 use std::fmt::Debug;
+
+/// Support type for [`AdaptWidget::with_min_size_px`]
+pub struct WithMinSizePx(Vec2);
+impl FnSizeRules for WithMinSizePx {
+    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        let size = self.0.extract(axis) * size_mgr.scale_factor();
+        SizeRules::fixed(size.cast_ceil(), (0, 0))
+    }
+}
+
+/// Support type for [`AdaptWidget::with_min_size_em`]
+pub struct WithMinSizeEm(Vec2);
+impl FnSizeRules for WithMinSizeEm {
+    fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        let size = self.0.extract(axis) * size_mgr.dpem();
+        SizeRules::fixed(size.cast_ceil(), (0, 0))
+    }
+}
 
 /// Provides some convenience methods on widgets
 pub trait AdaptWidget: Widget {
@@ -56,10 +76,34 @@ pub trait AdaptWidget: Widget {
     #[must_use]
     fn with_reserve<R>(self, r: R) -> Reserve<Self, R>
     where
-        R: FnMut(SizeMgr, AxisInfo) -> SizeRules + 'static,
+        R: FnMut(SizeMgr, AxisInfo) -> SizeRules,
         Self: Sized,
     {
         Reserve::new(self, r)
+    }
+
+    /// Construct a wrapper, setting minimum size in pixels
+    ///
+    /// The input size is scaled by the scale factor.
+    #[must_use]
+    fn with_min_size_px(self, w: i32, h: i32) -> Reserve<Self, WithMinSizePx>
+    where
+        Self: Sized,
+    {
+        let size = Vec2(w.cast(), h.cast());
+        Reserve::new(self, WithMinSizePx(size))
+    }
+
+    /// Construct a wrapper, setting minimum size in Em
+    ///
+    /// This depends on the font size, though not the exact font in use.
+    #[must_use]
+    fn with_min_size_em(self, w: f32, h: f32) -> Reserve<Self, WithMinSizeEm>
+    where
+        Self: Sized,
+    {
+        let size = Vec2(w, h);
+        Reserve::new(self, WithMinSizeEm(size))
     }
 
     /// Construct a wrapper widget adding a label

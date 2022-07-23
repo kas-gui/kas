@@ -301,7 +301,7 @@ impl EventState {
     pub fn add_accel_keys(&mut self, id: &WidgetId, keys: &[VirtualKeyCode]) {
         if let Some(layer) = self.accel_layer_for_id(id) {
             for key in keys {
-                layer.1.insert(*key, id.clone());
+                layer.1.entry(*key).or_insert_with(|| id.clone());
             }
         }
     }

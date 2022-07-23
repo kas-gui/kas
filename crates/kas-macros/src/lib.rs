@@ -280,7 +280,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// given position.
 ///
 /// A string literal implicitly generates a string label widget. This widget
-/// will wrap text when required. An alternative is `Label::new("abc...")`
+/// will not wrap text. An alternative is `Label::new("abc...")`
 /// (when `kas::widgets::Label` is in scope).
 ///
 /// Non-trivial layouts require a "storage" field within the generated
