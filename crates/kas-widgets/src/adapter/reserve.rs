@@ -39,6 +39,9 @@ impl_scope! {
     /// In a few cases it is desirable to reserve more space for a widget than
     /// required for the current content, e.g. if a label's text may change. This
     /// widget can be used for this by wrapping the base widget.
+    ///
+    /// Usually, this type will be constructed through one of the methods on
+    /// [`AdaptWidget`](crate::adapter::AdaptWidget).
     #[autoimpl(Debug ignore self.reserve)]
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[autoimpl(class_traits using self.inner where W: trait)]
@@ -62,7 +65,7 @@ impl_scope! {
         /// use kas_widgets::Label;
         /// use kas::prelude::*;
         ///
-        /// let label = Reserve::new(Label::new("0"), |size_mgr, axis| {
+        /// let label = Reserve::new(Label::new("0"), |size_mgr: SizeMgr<'_>, axis| {
         ///     Label::new("00000").size_rules(size_mgr, axis)
         /// });
         ///```
@@ -72,7 +75,7 @@ impl_scope! {
         /// use kas_widgets::Filler;
         /// use kas::prelude::*;
         ///
-        /// let label = Reserve::new(Filler::new(), |size_mgr, axis| {
+        /// let label = Reserve::new(Filler::new(), |size_mgr: SizeMgr<'_>, axis| {
         ///     let size = i32::conv_ceil(size_mgr.scale_factor() * 100.0);
         ///     SizeRules::fixed(size, (0, 0))
         /// });
