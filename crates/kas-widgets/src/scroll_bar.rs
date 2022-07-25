@@ -11,6 +11,10 @@ use kas::prelude::*;
 use kas::theme::Feature;
 use std::fmt::Debug;
 
+/// Message from a [`ScrollBar`]
+#[derive(Copy, Clone, Debug)]
+pub struct ScrollMsg(pub i32);
+
 impl_scope! {
     /// A scroll bar
     ///
@@ -19,7 +23,7 @@ impl_scope! {
     ///
     /// # Messages
     ///
-    /// On value change, pushes a value of type `i32`.
+    /// On value change, pushes a value of type [`ScrollMsg`].
     ///
     /// # Layout
     ///
@@ -272,7 +276,7 @@ impl_scope! {
                     let (offset, action) = self.handle.set_offset(offset);
                     *mgr |= action;
                     if self.set_offset(offset) {
-                        mgr.push_msg(self.value);
+                        mgr.push_msg(ScrollMsg(self.value));
                     }
                     Response::Used
                 }
@@ -298,7 +302,7 @@ impl_scope! {
                     let (offset, action) = self.handle.set_offset(pos);
                     *mgr |= action;
                     if self.set_offset(offset) {
-                        mgr.push_msg(self.value);
+                        mgr.push_msg(ScrollMsg(self.value));
                     }
                 }
                 _ => (),
@@ -536,13 +540,13 @@ impl_scope! {
 
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
             if index == widget_index![self.horiz_bar] {
-                if let Some(msg) = mgr.try_pop_msg() {
-                    let offset = Offset(msg, self.inner.scroll_offset().1);
+                if let Some(ScrollMsg(x)) = mgr.try_pop_msg() {
+                    let offset = Offset(x, self.inner.scroll_offset().1);
                     self.inner.set_scroll_offset(mgr, offset);
                 }
             } else if index == widget_index![self.vert_bar] {
-                if let Some(msg) = mgr.try_pop_msg() {
-                    let offset = Offset(self.inner.scroll_offset().0, msg);
+                if let Some(ScrollMsg(y)) = mgr.try_pop_msg() {
+                    let offset = Offset(self.inner.scroll_offset().0, y);
                     self.inner.set_scroll_offset(mgr, offset);
                 }
             }

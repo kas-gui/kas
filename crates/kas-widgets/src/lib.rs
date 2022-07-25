@@ -96,7 +96,7 @@ pub use nav_frame::{NavFrame, SelectMsg};
 pub use progress::ProgressBar;
 pub use radio_box::{RadioBox, RadioButton, RadioGroup};
 pub use scroll::ScrollRegion;
-pub use scroll_bar::{ScrollBar, ScrollBarRegion, ScrollBars};
+pub use scroll_bar::{ScrollBar, ScrollBarRegion, ScrollBars, ScrollMsg};
 pub use scroll_label::ScrollLabel;
 pub use separator::Separator;
 pub use slider::{Slider, SliderValue};
