@@ -220,6 +220,12 @@ impl EditBox<()> {
         }
     }
 
+    /// Construct an empty `EditBox`
+    #[inline]
+    pub fn empty() -> Self {
+        Self::new(String::new())
+    }
+
     /// Set an [`EditGuard`]
     ///
     /// Technically, this consumes `self` and reconstructs another `EditBox`
@@ -663,6 +669,12 @@ impl EditField<()> {
             selection: SelectionHelper::new(len, len),
             ..Default::default()
         }
+    }
+
+    /// Construct an empty `EditField`
+    #[inline]
+    pub fn empty() -> Self {
+        Self::new(String::new())
     }
 
     /// Set an [`EditGuard`]
