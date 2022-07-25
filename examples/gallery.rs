@@ -318,7 +318,7 @@ fn filter_list() -> Box<dyn SetDisabled> {
             #[widget] r1 = RadioButton::new_msg("s&ingle", r.clone(), SelectionMode::Single),
             #[widget] r2 = RadioButton::new_msg("&multiple", r, SelectionMode::Multiple),
             #[widget] filter = EditBox::new("")
-                .on_edit(move |s, mgr| filter.update(mgr, &(), s.to_string())),
+                .on_edit(move |mgr, s| filter.update(mgr, &(), s.to_string())),
             #[widget] list: ScrollBars<MyListView> =
                 ScrollBars::new(MyListView::new(filtered))
         }

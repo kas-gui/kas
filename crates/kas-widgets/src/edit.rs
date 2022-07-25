@@ -126,42 +126,42 @@ impl EditGuard for GuardNotify {
 /// An [`EditGuard`] impl which calls a closure when activated
 #[autoimpl(Debug ignore self.0)]
 #[derive(Clone)]
-pub struct GuardActivate<F: FnMut(&str, &mut EventMgr)>(pub F);
+pub struct GuardActivate<F: FnMut(&mut EventMgr, &str)>(pub F);
 impl<F> EditGuard for GuardActivate<F>
 where
-    F: FnMut(&str, &mut EventMgr) + 'static,
+    F: FnMut(&mut EventMgr, &str) + 'static,
 {
     fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        (edit.guard.0)(edit.text.text(), mgr);
+        (edit.guard.0)(mgr, edit.text.text());
     }
 }
 
 /// An [`EditGuard`] impl which calls a closure when activated or focus is lost
 #[autoimpl(Debug ignore self.0)]
 #[derive(Clone)]
-pub struct GuardAFL<F: FnMut(&str, &mut EventMgr)>(pub F);
+pub struct GuardAFL<F: FnMut(&mut EventMgr, &str)>(pub F);
 impl<F> EditGuard for GuardAFL<F>
 where
-    F: FnMut(&str, &mut EventMgr) + 'static,
+    F: FnMut(&mut EventMgr, &str) + 'static,
 {
     fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        (edit.guard.0)(edit.text.text(), mgr);
+        (edit.guard.0)(mgr, edit.text.text());
     }
     fn focus_lost(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        (edit.guard.0)(edit.text.text(), mgr);
+        (edit.guard.0)(mgr, edit.text.text());
     }
 }
 
 /// An [`EditGuard`] impl which calls a closure when edited
 #[autoimpl(Debug ignore self.0)]
 #[derive(Clone)]
-pub struct GuardEdit<F: FnMut(&str, &mut EventMgr)>(pub F);
+pub struct GuardEdit<F: FnMut(&mut EventMgr, &str)>(pub F);
 impl<F> EditGuard for GuardEdit<F>
 where
-    F: FnMut(&str, &mut EventMgr) + 'static,
+    F: FnMut(&mut EventMgr, &str) + 'static,
 {
     fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        (edit.guard.0)(edit.text.text(), mgr);
+        (edit.guard.0)(mgr, edit.text.text());
     }
 }
 
@@ -246,7 +246,7 @@ impl EditBox<()> {
     #[must_use]
     pub fn on_activate<F>(self, f: F) -> EditBox<GuardActivate<F>>
     where
-        F: FnMut(&str, &mut EventMgr) + 'static,
+        F: FnMut(&mut EventMgr, &str) + 'static,
     {
         self.with_guard(GuardActivate(f))
     }
@@ -261,7 +261,7 @@ impl EditBox<()> {
     #[must_use]
     pub fn on_afl<F>(self, f: F) -> EditBox<GuardAFL<F>>
     where
-        F: FnMut(&str, &mut EventMgr) + 'static,
+        F: FnMut(&mut EventMgr, &str) + 'static,
     {
         self.with_guard(GuardAFL(f))
     }
@@ -275,7 +275,7 @@ impl EditBox<()> {
     #[must_use]
     pub fn on_edit<F>(self, f: F) -> EditBox<GuardEdit<F>>
     where
-        F: FnMut(&str, &mut EventMgr) + 'static,
+        F: FnMut(&mut EventMgr, &str) + 'static,
     {
         self.with_guard(GuardEdit(f))
     }
@@ -705,7 +705,7 @@ impl EditField<()> {
     /// This method is a parametisation of [`EditField::with_guard`]. Any guard
     /// previously assigned to the `EditField` will be replaced.
     #[must_use]
-    pub fn on_activate<F: FnMut(&str, &mut EventMgr) + 'static>(
+    pub fn on_activate<F: FnMut(&mut EventMgr, &str) + 'static>(
         self,
         f: F,
     ) -> EditField<GuardActivate<F>> {
@@ -720,7 +720,7 @@ impl EditField<()> {
     /// This method is a parametisation of [`EditField::with_guard`]. Any guard
     /// previously assigned to the `EditField` will be replaced.
     #[must_use]
-    pub fn on_afl<F: FnMut(&str, &mut EventMgr) + 'static>(self, f: F) -> EditField<GuardAFL<F>> {
+    pub fn on_afl<F: FnMut(&mut EventMgr, &str) + 'static>(self, f: F) -> EditField<GuardAFL<F>> {
         self.with_guard(GuardAFL(f))
     }
 
@@ -731,7 +731,7 @@ impl EditField<()> {
     /// This method is a parametisation of [`EditField::with_guard`]. Any guard
     /// previously assigned to the `EditField` will be replaced.
     #[must_use]
-    pub fn on_edit<F: FnMut(&str, &mut EventMgr) + 'static>(self, f: F) -> EditField<GuardEdit<F>> {
+    pub fn on_edit<F: FnMut(&mut EventMgr, &str) + 'static>(self, f: F) -> EditField<GuardEdit<F>> {
         self.with_guard(GuardEdit(f))
     }
 

@@ -109,7 +109,7 @@ fn main() -> kas::shell::Result<()> {
         struct {
             core: widget_core!(),
             #[widget] edit: impl HasString = EditBox::new("3")
-                .on_afl(|text, mgr| match text.parse::<usize>() {
+                .on_afl(|mgr, text| match text.parse::<usize>() {
                     Ok(n) => mgr.push_msg(n),
                     Err(_) => (),
                 }),
