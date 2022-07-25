@@ -5,8 +5,8 @@
 
 //! `ScrollBar` control
 
-use super::{DragHandle, ScrollRegion};
-use kas::event::{MsgPressFocus, Scroll};
+use super::{GripMsg, GripPart, ScrollRegion};
+use kas::event::Scroll;
 use kas::prelude::*;
 use kas::theme::Feature;
 use std::fmt::Debug;
@@ -39,7 +39,7 @@ impl_scope! {
         hover: bool,
         force_visible: bool,
         #[widget]
-        handle: DragHandle,
+        handle: GripPart,
     }
 
     impl Self where D: Default {
@@ -68,7 +68,7 @@ impl_scope! {
                 invisible: false,
                 hover: false,
                 force_visible: false,
-                handle: DragHandle::new(),
+                handle: GripPart::new(),
             }
         }
 
@@ -293,14 +293,15 @@ impl_scope! {
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-            if let Some(MsgPressFocus) = mgr.try_pop_msg() {
-                // Useless to us, but we should remove it.
-            } else if let Some(offset) = mgr.try_pop_msg() {
-                let (offset, action) = self.handle.set_offset(offset);
-                *mgr |= action;
-                if self.set_offset(offset) {
-                    mgr.push_msg(self.value);
+            match mgr.try_pop_msg() {
+                Some(GripMsg::PressMove(pos)) => {
+                    let (offset, action) = self.handle.set_offset(pos);
+                    *mgr |= action;
+                    if self.set_offset(offset) {
+                        mgr.push_msg(self.value);
+                    }
                 }
+                _ => (),
             }
         }
     }

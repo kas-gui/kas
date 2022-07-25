@@ -95,11 +95,3 @@ fn size_of_virtual_key_codes() {
     // Currently sized to maximise use of available space on 64-bit platforms
     assert!(std::mem::size_of::<VirtualKeyCodes>() <= 32);
 }
-
-/// A message indicating press focus
-///
-/// Widgets which are mouse/touch interactible yet do not support keyboard nav
-/// focus may return this on [`Event::PressStart`], allowing a parent to take
-/// the navigation focus.
-#[derive(Clone, Debug, Default)]
-pub struct MsgPressFocus;
