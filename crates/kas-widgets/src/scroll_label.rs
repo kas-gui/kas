@@ -50,6 +50,7 @@ impl_scope! {
             mgr.text_set_size(&mut self.text, TextClass::LabelScroll, rect.size, align);
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             self.set_view_offset_from_edit_pos();
+            self.bar.set_value(mgr, self.view_offset.1);
 
             let w = mgr.size_mgr().feature(Feature::ScrollBar(Direction::Down), Right).min_size();
             let w = w.min(rect.size.0);
@@ -102,7 +103,7 @@ impl_scope! {
                 text_size: Size::ZERO,
                 selection: SelectionHelper::new(0, 0),
                 input_handler: Default::default(),
-                bar: ScrollBar::new(),
+                bar: ScrollBar::new().with_invisible(true),
             }
         }
 
@@ -138,6 +139,7 @@ impl_scope! {
                 if pos != self.selection.edit_pos() {
                     self.selection.set_edit_pos(pos);
                     self.set_view_offset_from_edit_pos();
+                    self.bar.set_value(mgr, self.view_offset.1);
                     mgr.redraw(self.id());
                 }
             }
@@ -148,8 +150,7 @@ impl_scope! {
             let new_offset = (self.view_offset - delta).min(self.max_scroll_offset()).max(Offset::ZERO);
             if new_offset != self.view_offset {
                 delta -= self.view_offset - new_offset;
-                self.set_offset(new_offset);
-                mgr.redraw(self.id());
+                self.set_offset(mgr, new_offset);
             }
 
             mgr.set_scroll(if delta == Offset::ZERO {
@@ -164,6 +165,8 @@ impl_scope! {
         /// Update view_offset after edit_pos changes
         ///
         /// A redraw is assumed since edit_pos moved.
+        ///
+        /// Recommended: call `self.bar.set_value(mgr, self.view_offset.1);` after.
         fn set_view_offset_from_edit_pos(&mut self) {
             let edit_pos = self.selection.edit_pos();
             if let Some(marker) = self
@@ -181,17 +184,15 @@ impl_scope! {
                 let max = Offset(max_x.cast_floor(), max_y.cast_floor());
 
                 let max = max.min(self.max_scroll_offset());
-
-                self.set_offset(self.view_offset.max(min).min(max));
+                self.view_offset = self.view_offset.max(min).min(max);
             }
         }
 
         /// Set offset, updating the scroll bar
-        ///
-        /// A redraw is expected.
-        fn set_offset(&mut self, offset: Offset) {
+        fn set_offset(&mut self, mgr: &mut EventState, offset: Offset) {
             self.view_offset = offset;
-            let _ = self.bar.set_value(offset.1);
+            // unnecessary: mgr.redraw(self.id());
+            self.bar.set_value(mgr, offset.1);
         }
     }
 
@@ -296,9 +297,8 @@ impl_scope! {
         fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
             let new_offset = offset.min(self.max_scroll_offset()).max(Offset::ZERO);
             if new_offset != self.view_offset {
-                self.set_offset(new_offset);
+                self.set_offset(mgr, new_offset);
                 // No widget moves so do not need to report TkAction::REGION_MOVED
-                mgr.redraw(self.id());
             }
             new_offset
         }
