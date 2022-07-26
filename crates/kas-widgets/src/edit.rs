@@ -308,18 +308,6 @@ impl<G: EditGuard> EditBox<G> {
         self
     }
 
-    /// Get whether this widget is editable
-    #[inline]
-    pub fn is_editable(&self) -> bool {
-        self.inner.is_editable()
-    }
-
-    /// Set whether this widget is editable
-    #[inline]
-    pub fn set_editable(&mut self, editable: bool) {
-        self.inner.set_editable(editable);
-    }
-
     /// Set whether this `EditBox` uses multi-line mode
     ///
     /// This setting has two effects: the vertical size allocation is increased
@@ -334,32 +322,12 @@ impl<G: EditGuard> EditBox<G> {
         self
     }
 
-    /// True if the editor uses multi-line mode
-    ///
-    /// See: [`Self::with_multi_line`]
-    #[inline]
-    pub fn multi_line(&self) -> bool {
-        self.inner.multi_line()
-    }
-
     /// Set the text class used
     #[inline]
     #[must_use]
     pub fn with_class(mut self, class: TextClass) -> Self {
         self.inner = self.inner.with_class(class);
         self
-    }
-
-    /// Get the text class used
-    #[inline]
-    pub fn class(&self) -> TextClass {
-        self.inner.class()
-    }
-
-    /// Adjust the height allocation
-    #[inline]
-    pub fn set_lines(&mut self, min_lines: i32, ideal_lines: i32) {
-        self.inner.set_lines(min_lines, ideal_lines);
     }
 
     /// Adjust the height allocation (inline)
@@ -370,39 +338,12 @@ impl<G: EditGuard> EditBox<G> {
         self
     }
 
-    /// Adjust the width allocation
-    #[inline]
-    pub fn set_width_em(&mut self, min_em: f32, ideal_em: f32) {
-        self.inner.set_width_em(min_em, ideal_em);
-    }
-
     /// Adjust the width allocation (inline)
     #[inline]
     #[must_use]
     pub fn with_width_em(mut self, min_em: f32, ideal_em: f32) -> Self {
         self.set_width_em(min_em, ideal_em);
         self
-    }
-
-    /// Get whether the widget currently has keyboard input focus
-    #[inline]
-    pub fn has_key_focus(&self) -> bool {
-        self.inner.has_key_focus()
-    }
-
-    /// Get whether the input state is erroneous
-    #[inline]
-    pub fn has_error(&self) -> bool {
-        self.inner.has_error()
-    }
-
-    /// Set the error state
-    ///
-    /// When true, the input field's background is drawn red.
-    // TODO: possibly change type to Option<String> and display the error
-    #[inline]
-    pub fn set_error_state(&mut self, error_state: bool) {
-        self.inner.set_error_state(error_state);
     }
 }
 
