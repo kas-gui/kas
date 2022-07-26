@@ -95,7 +95,10 @@ impl_scope! {
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, text: T) -> TkAction {
-            kas::text::util::set_text_and_prepare(&mut self.label, text)
+            match self.label.set_and_try_prepare(text) {
+                Ok(true) => TkAction::RESIZE,
+                _ => TkAction::REDRAW,
+            }
         }
     }
 
@@ -132,7 +135,11 @@ impl_scope! {
         T: EditableText,
     {
         fn set_string(&mut self, string: String) -> TkAction {
-            kas::text::util::set_string_and_prepare(&mut self.label, string)
+            self.label.set_string(string);
+            match self.label.try_prepare() {
+                Ok(true) => TkAction::RESIZE,
+                _ => TkAction::REDRAW,
+            }
         }
     }
 }
@@ -276,7 +283,10 @@ impl_scope! {
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, text: AccelString) -> TkAction {
-            kas::text::util::set_text_and_prepare(&mut self.0.label, text)
+            match self.0.label.set_and_try_prepare(text) {
+                Ok(true) => TkAction::RESIZE,
+                _ => TkAction::REDRAW,
+            }
         }
     }
 
@@ -295,11 +305,10 @@ impl_scope! {
 
     impl SetAccel for AccelLabel {
         fn set_accel_string(&mut self, string: AccelString) -> TkAction {
-            let mut action = TkAction::empty();
             if self.0.label.text().keys() != string.keys() {
-                action |= TkAction::RECONFIGURE;
+                return TkAction::RECONFIGURE;
             }
-            action | kas::text::util::set_text_and_prepare(&mut self.0.label, string)
+            self.set_text(string)
         }
     }
 }

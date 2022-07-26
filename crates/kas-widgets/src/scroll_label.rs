@@ -46,6 +46,7 @@ impl_scope! {
 
         fn set_rect(&mut self, mgr: &mut ConfigMgr, mut rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
+            // Note: if text height exceeds rect, it will always align to the top.
             let align = hints.unwrap_or(Align::Default, Align::Default);
             mgr.text_set_size(&mut self.text, TextClass::LabelScroll, rect.size, align);
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
@@ -112,14 +113,10 @@ impl_scope! {
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, text: T) -> TkAction {
-            let mut action = kas::text::util::set_text_and_prepare(&mut self.text, text);
-            if action != TkAction::REDRAW {
-                // If there's no action or a resize happens we don't need the rest.
-                return action;
-            }
+            self.text.set_and_try_prepare(text).expect("invalid font_id");
 
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
-            action |= self.bar.set_limits(self.max_scroll_offset().1, self.rect().size.1);
+            let _ = self.bar.set_limits(self.max_scroll_offset().1, self.rect().size.1);
 
             let len = self.text.str_len();
             if self.selection.edit_pos() > len {
@@ -130,7 +127,7 @@ impl_scope! {
             }
             self.set_view_offset_from_edit_pos();
 
-            action
+            TkAction::REDRAW
         }
 
         fn set_edit_pos_from_coord(&mut self, mgr: &mut EventMgr, coord: Coord) {
@@ -207,7 +204,9 @@ impl_scope! {
         T: EditableText,
     {
         fn set_string(&mut self, string: String) -> TkAction {
-            kas::text::util::set_string_and_prepare(&mut self.text, string)
+            self.text.set_string(string);
+            let _ = self.text.try_prepare();
+            TkAction::REDRAW
         }
     }
 

@@ -633,7 +633,6 @@ impl_scope! {
 
     impl HasString for Self {
         fn set_string(&mut self, string: String) -> TkAction {
-            // TODO: make text.set_string report bool for is changed?
             if *self.text.text() == string {
                 return TkAction::empty();
             }
@@ -642,8 +641,9 @@ impl_scope! {
             self.selection.clear();
             self.view_offset = Offset::ZERO;
             if kas::text::fonts::fonts().num_faces() > 0 {
-                self.text.prepare();
-                self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
+                if let Ok(_) = self.text.try_prepare() {
+                    self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
+                }
             }
             G::update(self);
             TkAction::REDRAW
@@ -884,7 +884,7 @@ impl<G: EditGuard> EditField<G> {
             self.selection.set_pos(pos + c.len_utf8());
         }
         self.edit_x_coord = None;
-        self.text.prepare();
+        self.text.prepare().expect("invalid font_id");
         self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
         self.set_view_offset_from_edit_pos();
         mgr.redraw(self.id());
@@ -1176,7 +1176,7 @@ impl<G: EditGuard> EditField<G> {
 
         let mut set_offset = self.selection.edit_pos() != pos;
         if !self.text.required_action().is_ready() {
-            self.text.prepare();
+            self.text.prepare().expect("invalid font_id");
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             set_offset = true;
             mgr.redraw(self.id());

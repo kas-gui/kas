@@ -279,6 +279,7 @@ impl<D: 'static> ThemeSize for Window<D> {
         let font_id = self.fonts.get(&class).cloned().unwrap_or_default();
         kas::text::fonts::fonts()
             .get_first_face(font_id)
+            .expect("invalid font_id")
             .height(self.dims.dpem)
             .cast_ceil()
     }
@@ -311,7 +312,10 @@ impl<D: 'static> ThemeSize for Window<D> {
             if wrap {
                 let min = self.dims.min_line_length;
                 let limit = 2 * min;
-                let bound = i32::conv_ceil(text.measure_width(limit.cast()));
+                let bound: i32 = text
+                    .measure_width(limit.cast())
+                    .expect("invalid font_id")
+                    .cast_ceil();
 
                 // NOTE: using different variable-width stretch policies here can
                 // cause problems (e.g. edit boxes greedily consuming too much
@@ -322,11 +326,14 @@ impl<D: 'static> ThemeSize for Window<D> {
                     SizeRules::new(min, limit, margins, Stretch::Low)
                 }
             } else {
-                let bound = i32::conv_ceil(text.measure_width(f32::INFINITY));
+                let bound: i32 = text
+                    .measure_width(f32::INFINITY)
+                    .expect("invalid font_id")
+                    .cast_ceil();
                 SizeRules::new(bound, bound, margins, Stretch::None)
             }
         } else {
-            let bound = i32::conv_ceil(text.measure_height());
+            let bound: i32 = text.measure_height().expect("invalid font_id").cast_ceil();
             let line_height = self.dims.dpem.cast_ceil();
             let min = bound.max(line_height);
             SizeRules::new(min, min, margins, Stretch::None)
@@ -348,6 +355,6 @@ impl<D: 'static> ThemeSize for Window<D> {
         env.wrap = class.multi_line();
         env.align = align;
         env.bounds = size.cast();
-        text.update_env(env);
+        text.update_env(env).expect("invalid font_id");
     }
 }
