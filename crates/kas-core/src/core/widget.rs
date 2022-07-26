@@ -436,8 +436,8 @@ pub trait Widget: WidgetChildren + Layout {
     /// Get translation of children relative to this widget
     ///
     /// Usually this is zero; only widgets with scrollable or offset content
-    /// need implement this. Such widgets must also implement
-    /// [`Widget::handle_scroll`].
+    /// *and* child widgets need to implement this.
+    /// Such widgets must also implement [`Widget::handle_scroll`].
     ///
     /// Affects event handling via [`Layout::find_id`] and affects the positioning
     /// of pop-up menus. [`Layout::draw`] must be implemented directly using

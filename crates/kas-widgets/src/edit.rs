@@ -508,11 +508,6 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        #[inline]
-        fn translation(&self) -> Offset {
-            self.scroll_offset()
-        }
-
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             fn request_focus<G: EditGuard + 'static>(s: &mut EditField<G>, mgr: &mut EventMgr) {
                 if !s.has_key_focus && mgr.request_char_focus(s.id()) {

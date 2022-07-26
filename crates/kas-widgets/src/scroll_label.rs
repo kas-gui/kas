@@ -163,11 +163,6 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        #[inline]
-        fn translation(&self) -> Offset {
-            self.scroll_offset()
-        }
-
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(cmd) => match cmd {
