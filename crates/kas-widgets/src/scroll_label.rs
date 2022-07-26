@@ -5,13 +5,15 @@
 
 //! Scrollable and selectable label
 
+use super::{ScrollBar, ScrollMsg};
+use kas::dir::{Direction, Down, Right};
 use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{Command, CursorIcon, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
 use kas::text::SelectionHelper;
-use kas::theme::TextClass;
+use kas::theme::{Feature, TextClass};
 
 impl_scope! {
     /// A text label supporting scrolling and selection
@@ -29,6 +31,7 @@ impl_scope! {
         text_size: Size,
         selection: SelectionHelper,
         input_handler: TextInput,
+        #[widget] bar: ScrollBar<Down>,
     }
 
     impl Layout for Self {
@@ -41,12 +44,27 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, mut rect: Rect, hints: AlignHints) {
             self.core.rect = rect;
-            let align = align.unwrap_or(Align::Default, Align::Default);
+            let align = hints.unwrap_or(Align::Default, Align::Default);
             mgr.text_set_size(&mut self.text, TextClass::LabelScroll, rect.size, align);
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             self.set_view_offset_from_edit_pos();
+
+            let w = mgr.size_mgr().feature(Feature::ScrollBar(Direction::Down), Right).min_size();
+            let w = w.min(rect.size.0);
+            rect.pos.0 += rect.size.0 - w;
+            rect.size.0 = w;
+            self.bar.set_rect(mgr, rect, hints);
+            let _ = self.bar.set_limits(self.max_scroll_offset().1, rect.size.1);
+        }
+
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) {
+                return None;
+            }
+
+            self.bar.find_id(coord).or_else(|| Some(self.id()))
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
@@ -67,6 +85,9 @@ impl_scope! {
                     );
                 }
             });
+            draw.with_pass(|mut draw| {
+                draw.recurse(&mut self.bar);
+            });
         }
     }
 
@@ -81,6 +102,7 @@ impl_scope! {
                 text_size: Size::ZERO,
                 selection: SelectionHelper::new(0, 0),
                 input_handler: Default::default(),
+                bar: ScrollBar::new(),
             }
         }
 
@@ -89,7 +111,25 @@ impl_scope! {
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, text: T) -> TkAction {
-            kas::text::util::set_text_and_prepare(&mut self.text, text)
+            let mut action = kas::text::util::set_text_and_prepare(&mut self.text, text);
+            if action != TkAction::REDRAW {
+                // If there's no action or a resize happens we don't need the rest.
+                return action;
+            }
+
+            self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
+            action |= self.bar.set_limits(self.max_scroll_offset().1, self.rect().size.1);
+
+            let len = self.text.str_len();
+            if self.selection.edit_pos() > len {
+                self.selection.set_edit_pos(len);
+            }
+            if self.selection.sel_pos() > len {
+                self.selection.set_sel_pos(len);
+            }
+            self.set_view_offset_from_edit_pos();
+
+            action
         }
 
         fn set_edit_pos_from_coord(&mut self, mgr: &mut EventMgr, coord: Coord) {
@@ -108,7 +148,7 @@ impl_scope! {
             let new_offset = (self.view_offset - delta).min(self.max_scroll_offset()).max(Offset::ZERO);
             if new_offset != self.view_offset {
                 delta -= self.view_offset - new_offset;
-                self.view_offset = new_offset;
+                self.set_offset(new_offset);
                 mgr.redraw(self.id());
             }
 
@@ -142,8 +182,16 @@ impl_scope! {
 
                 let max = max.min(self.max_scroll_offset());
 
-                self.view_offset = self.view_offset.max(min).min(max);
+                self.set_offset(self.view_offset.max(min).min(max));
             }
+        }
+
+        /// Set offset, updating the scroll bar
+        ///
+        /// A redraw is expected.
+        fn set_offset(&mut self, offset: Offset) {
+            self.view_offset = offset;
+            let _ = self.bar.set_value(offset.1);
         }
     }
 
@@ -219,6 +267,14 @@ impl_scope! {
                 },
             }
         }
+
+        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            if let Some(ScrollMsg(y)) = mgr.try_pop_msg() {
+                let y = y.max(0).min(self.max_scroll_offset().1);
+                self.view_offset.1 = y;
+                mgr.redraw(self.id());
+            }
+        }
     }
 
     impl Scrollable for Self {
@@ -240,7 +296,7 @@ impl_scope! {
         fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
             let new_offset = offset.min(self.max_scroll_offset()).max(Offset::ZERO);
             if new_offset != self.view_offset {
-                self.view_offset = new_offset;
+                self.set_offset(new_offset);
                 // No widget moves so do not need to report TkAction::REGION_MOVED
                 mgr.redraw(self.id());
             }
