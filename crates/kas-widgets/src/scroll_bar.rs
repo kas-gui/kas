@@ -208,7 +208,7 @@ impl_scope! {
         }
 
         // true if not equal to old value
-        fn set_offset(&mut self, offset: Offset) -> bool {
+        fn apply_grip_offset(&mut self, offset: Offset) -> bool {
             let len = self.bar_len() - self.handle_len;
             let mut offset = match self.direction.is_vertical() {
                 false => offset.0,
@@ -275,7 +275,7 @@ impl_scope! {
                     let offset = self.handle.handle_press_on_track(mgr, source, coord);
                     let (offset, action) = self.handle.set_offset(offset);
                     *mgr |= action;
-                    if self.set_offset(offset) {
+                    if self.apply_grip_offset(offset) {
                         mgr.push_msg(ScrollMsg(self.value));
                     }
                     Response::Used
@@ -298,10 +298,10 @@ impl_scope! {
 
         fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
             match mgr.try_pop_msg() {
-                Some(GripMsg::PressMove(pos)) => {
-                    let (offset, action) = self.handle.set_offset(pos);
+                Some(GripMsg::PressMove(offset)) => {
+                    let (offset, action) = self.handle.set_offset(offset);
                     *mgr |= action;
-                    if self.set_offset(offset) {
+                    if self.apply_grip_offset(offset) {
                         mgr.push_msg(ScrollMsg(self.value));
                     }
                 }

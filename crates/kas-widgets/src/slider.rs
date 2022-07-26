@@ -233,10 +233,9 @@ impl_scope! {
             }
         }
 
-        fn set_offset_and_emit(&mut self, mgr: &mut EventMgr, offset: Offset) {
+        fn apply_grip_offset(&mut self, mgr: &mut EventMgr, offset: Offset) {
             let b = self.range.1 - self.range.0;
             let max_offset = self.handle.max_offset();
-            let offset = offset.clamp(Offset::ZERO, max_offset);
             let mut a = match self.direction.is_vertical() {
                 false => b.mul_f64(offset.0 as f64 / max_offset.0 as f64),
                 true => b.mul_f64(offset.1 as f64 / max_offset.1 as f64),
@@ -323,7 +322,7 @@ impl_scope! {
                 }
                 Event::PressStart { source, coord, .. } => {
                     let offset = self.handle.handle_press_on_track(mgr, source, coord);
-                    self.set_offset_and_emit(mgr, offset);
+                    self.apply_grip_offset(mgr, offset);
                 }
                 _ => return Response::Unused,
             }
@@ -334,7 +333,7 @@ impl_scope! {
             match mgr.try_pop_msg() {
                 Some(GripMsg::PressStart) => mgr.set_nav_focus(self.id(), false),
                 Some(GripMsg::PressMove(pos)) => {
-                    self.set_offset_and_emit(mgr, pos);
+                    self.apply_grip_offset(mgr, pos);
                 }
                 _ => (),
             }
