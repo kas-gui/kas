@@ -103,6 +103,13 @@ impl<'a> SizeMgr<'a> {
         self.0.handle_len()
     }
 
+    /// The width of a vertical scroll bar
+    ///
+    /// This value is also available through [`Self::feature`].
+    pub fn scroll_bar_width(&self) -> i32 {
+        self.0.scroll_bar_width()
+    }
+
     /// The margin around content within a widget
     ///
     /// Though inner margins are *usually* empty, they are sometimes drawn to,
@@ -189,6 +196,9 @@ pub trait ThemeSize {
 
     /// The length of a dragable handle for a scroll bar or slider
     fn handle_len(&self) -> i32;
+
+    /// The width of a vertical scroll bar
+    fn scroll_bar_width(&self) -> i32;
 
     /// The margin around content within a widget
     fn inner_margin(&self) -> Size;

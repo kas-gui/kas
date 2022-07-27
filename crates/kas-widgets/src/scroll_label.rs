@@ -6,14 +6,13 @@
 //! Scrollable and selectable label
 
 use super::{ScrollBar, ScrollMsg};
-use kas::dir::{Direction, Down, Right};
 use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{Command, CursorIcon, Scroll, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
 use kas::text::SelectionHelper;
-use kas::theme::{Feature, TextClass};
+use kas::theme::TextClass;
 
 impl_scope! {
     /// A text label supporting scrolling and selection
@@ -31,7 +30,7 @@ impl_scope! {
         text_size: Size,
         selection: SelectionHelper,
         input_handler: TextInput,
-        #[widget] bar: ScrollBar<Down>,
+        #[widget] bar: ScrollBar<kas::dir::Down>,
     }
 
     impl Layout for Self {
@@ -53,8 +52,7 @@ impl_scope! {
             self.set_view_offset_from_edit_pos();
             self.bar.set_value(mgr, self.view_offset.1);
 
-            let w = mgr.size_mgr().feature(Feature::ScrollBar(Direction::Down), Right).min_size();
-            let w = w.min(rect.size.0);
+            let w = mgr.size_mgr().scroll_bar_width().min(rect.size.0);
             rect.pos.0 += rect.size.0 - w;
             rect.size.0 = w;
             self.bar.set_rect(mgr, rect, hints);

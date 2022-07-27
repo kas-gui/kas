@@ -42,13 +42,13 @@ pub struct Parameters {
     pub check_box_inner: f32,
     /// Larger size of a mark in Points
     pub mark: f32,
-    /// Size of a slider handle; minimum size of a scroll bar handle
+    /// Length of a slider handle; minimum length of a scroll bar handle
     pub handle_len: f32,
-    /// Scroll bar minimum handle size
+    /// Minimum size for a horizontal scroll bar
     pub scroll_bar_size: Vec2,
-    /// Slider minimum handle size
+    /// Minimum size for a horizontal slider
     pub slider_size: Vec2,
-    /// Progress bar size (horizontal)
+    /// Minimum size for a horizontal progress bar
     pub progress_bar: Vec2,
     /// Shadow size (average)
     pub shadow_size: Vec2,
@@ -178,6 +178,10 @@ impl<D: 'static> ThemeSize for Window<D> {
 
     fn handle_len(&self) -> i32 {
         self.dims.handle_len
+    }
+
+    fn scroll_bar_width(&self) -> i32 {
+        self.dims.scroll_bar.1
     }
 
     fn inner_margin(&self) -> Size {

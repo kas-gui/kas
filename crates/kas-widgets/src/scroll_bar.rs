@@ -455,8 +455,7 @@ impl_scope! {
             let pos = rect.pos;
             let mut child_size = rect.size;
 
-            let dir = Direction::Right;
-            let bar_width = mgr.size_mgr().feature(Feature::ScrollBar(dir), dir.flipped()).min_size();
+            let bar_width = mgr.size_mgr().scroll_bar_width();
             if self.mode == ScrollBarMode::Auto {
                 self.show_bars = self.inner.scroll_axes(child_size);
             }
