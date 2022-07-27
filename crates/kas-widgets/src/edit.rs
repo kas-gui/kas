@@ -578,13 +578,12 @@ impl_scope! {
                 return TkAction::empty();
             }
 
+            let len = string.len();
             self.text.set_string(string);
-            self.selection.clear();
-            self.view_offset = Offset::ZERO;
-            if kas::text::fonts::fonts().num_faces() > 0 {
-                if let Ok(_) = self.text.try_prepare() {
-                    self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
-                }
+            self.selection.set_max_len(len);
+            if let Ok(_) = self.text.try_prepare() {
+                self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
+                self.view_offset = self.view_offset.min(self.max_scroll_offset());
             }
             G::update(self);
             TkAction::REDRAW

@@ -116,13 +116,7 @@ impl_scope! {
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             let _ = self.bar.set_limits(self.max_scroll_offset().1, self.rect().size.1);
 
-            let len = self.text.str_len();
-            if self.selection.edit_pos() > len {
-                self.selection.set_edit_pos(len);
-            }
-            if self.selection.sel_pos() > len {
-                self.selection.set_sel_pos(len);
-            }
+            self.selection.set_max_len(self.text.str_len());
             self.set_view_offset_from_edit_pos();
 
             TkAction::REDRAW
