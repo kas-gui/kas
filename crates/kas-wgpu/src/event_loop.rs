@@ -165,9 +165,11 @@ where
 
                 self.resumes.sort_by_key(|item| item.0);
 
-                *control_flow = if *control_flow == ControlFlow::Exit || self.windows.is_empty() {
+                let is_exit = matches!(control_flow, ControlFlow::ExitWithCode(_));
+                *control_flow = if is_exit || self.windows.is_empty() {
                     self.shared.on_exit();
-                    ControlFlow::Exit
+                    debug_assert!(!is_exit || matches!(control_flow, ControlFlow::ExitWithCode(0)));
+                    ControlFlow::ExitWithCode(0)
                 } else if *control_flow == ControlFlow::Poll {
                     ControlFlow::Poll
                 } else if let Some((instant, _)) = self.resumes.first() {

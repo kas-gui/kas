@@ -184,7 +184,7 @@ impl WindowConfig {
     ///
     /// Calculates scroll distance from `(horiz, vert)` lines.
     pub fn scroll_distance(&self, lines: (f32, f32)) -> Offset {
-        let x = (self.scroll_dist * -lines.0).cast_nearest();
+        let x = (self.scroll_dist * lines.0).cast_nearest();
         let y = (self.scroll_dist * lines.1).cast_nearest();
         Offset(x, y)
     }
