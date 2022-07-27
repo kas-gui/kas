@@ -72,6 +72,16 @@ impl SelectionHelper {
         self.sel_pos = pos;
     }
 
+    /// Apply new limit to the maximum length
+    ///
+    /// Call this method if the string changes under the selection to ensure
+    /// that the selection does not exceed the length of the new string.
+    pub fn set_max_len(&mut self, len: usize) {
+        self.edit_pos = self.edit_pos.min(len);
+        self.sel_pos = self.sel_pos.min(len);
+        self.anchor_pos = self.anchor_pos.min(len);
+    }
+
     /// Construct a range from the edit pos and selection pos
     ///
     /// The range is from the minimum of (edit pos, selection pos) to the

@@ -3,47 +3,67 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! `DragHandle` control
+//! `GripPart` control
 
 use std::fmt::Debug;
 
-use kas::event::{CursorIcon, MsgPressFocus, PressSource};
+use kas::event::{CursorIcon, PressSource};
 use kas::prelude::*;
 
-impl_scope! {
-    /// Draggable Handle
+/// A message from a [`GripPart`]
+#[derive(Clone, Debug)]
+pub enum GripMsg {
+    /// Widget received [`Event::PressStart`]
     ///
-    /// A `DragHandle` is a draggable object with a given size which is restricted
-    /// to a *track* and has an *offset* relative to the start of that track.
+    /// Some parents will call [`EventState::set_nav_focus`] on this event.
+    PressStart,
+    /// Widget received [`Event::PressMove`]
+    ///
+    /// Parameter: the new position of the grip relative to the track.
+    ///
+    /// The grip position is not adjusted; the caller should also call
+    /// [`Self::set_offset`] to do so. This is separate to allow adjustment of
+    /// the posision; e.g. `Slider` pins the position to the nearest detent.
+    PressMove(Offset),
+    /// Widget received [`Event::PressEnd`]
+    PressEnd,
+}
+
+impl_scope! {
+    /// A draggable grip part
+    ///
+    /// [`Slider`](crate::Slider), [`ScrollBar`](crate::ScrollBar) and
+    /// [`Splitter`](crate::Splitter) all require a component which supports
+    /// click+drag behaviour. The appearance differs but event handling is the
+    /// same: this widget is its implementation.
+    ///
+    /// # Layout
     ///
     /// This widget is unusual in several ways:
     ///
     /// 1.  [`Layout::size_rules`] does not request any size; the parent is expected
     ///     to do this.
-    /// 2.  [`Layout::set_rect`] sets the *track* within which this handle may move;
-    ///     the parent should always call [`DragHandle::set_size_and_offset`]
-    ///     afterwards.
+    /// 2.  [`Layout::set_rect`] sets the *track* within which this grip may move;
+    ///     the parent should always call [`GripPart::set_size_and_offset`]
+    ///     afterwards to set the grip position.
     /// 3.  [`Layout::draw`] does nothing. The parent should handle all drawing.
-    /// 4.  Optionally, this widget can handle clicks on the track area via
-    ///     [`DragHandle::handle_press_on_track`].
     ///
-    /// # Messages
+    /// # Event handling
     ///
-    /// On [`Event::PressStart`], pushes [`MsgPressFocus`].
+    /// This widget handles click/touch events on the widget, pushing a
+    /// [`GripMsg`] to allow the parent to implement further handling.
     ///
-    /// On input to change the position, pushes `offset: Offset`. This is a raw
-    /// offset relative to the track calculated from input (usually this is
-    /// between `Offset::ZERO` and [`Self::max_offset`], but it is not clamped).
-    /// The position is not updated by this widget; call [`Self::set_offset`]
-    /// to clamp the offset and update the position.
+    /// Optionally, the parent may call [`GripPart::handle_press_on_track`]
+    /// when a [`Event::PressStart`] occurs on the track area (which identifiers
+    /// as the parent widget).
     #[derive(Clone, Debug, Default)]
     #[widget{
         hover_highlight = true;
         cursor_icon = CursorIcon::Grab;
     }]
-    pub struct DragHandle {
+    pub struct GripPart {
         core: widget_core!(),
-        // The track is the area within which this DragHandle may move
+        // The track is the area within which this GripPart may move
         track: Rect,
         press_coord: Coord,
     }
@@ -51,11 +71,11 @@ impl_scope! {
     /// This implementation is unusual in that:
     ///
     /// 1.  `size_rules` always returns [`SizeRules::EMPTY`]
-    /// 2.  `set_rect` sets the *track* within which this handle may move; the
-    ///     parent should call [`DragHandle::set_size_and_offset`] after
-    ///     `set_rect` (otherwise the handle's offset will not be updated)
+    /// 2.  `set_rect` sets the *track* within which this grip may move; the
+    ///     parent should call [`GripPart::set_size_and_offset`] after
+    ///     `set_rect` (otherwise the grip's position will not be updated)
     /// 3.  `draw` does nothing: the parent is expected to do all drawing
-    impl Layout for DragHandle {
+    impl Layout for GripPart {
         fn size_rules(&mut self, _: SizeMgr, _: AxisInfo) -> SizeRules {
             SizeRules::EMPTY
         }
@@ -67,39 +87,44 @@ impl_scope! {
         fn draw(&mut self, _: DrawMgr) {}
     }
 
-    impl Widget for DragHandle {
+    impl Widget for GripPart {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::PressStart { source, coord, .. } => {
-                    mgr.push_msg(MsgPressFocus);
+                    mgr.push_msg(GripMsg::PressStart);
                     mgr.grab_press_unique(self.id(), source, coord, Some(CursorIcon::Grabbing));
 
-                    // Event delivery implies coord is over the handle.
+                    // Event delivery implies coord is over the grip.
                     self.press_coord = coord - self.offset();
                     Response::Used
                 }
                 Event::PressMove { coord, .. } => {
-                    mgr.push_msg(coord - self.press_coord);
+                    let offset = coord - self.press_coord;
+                    let offset = offset.clamp(Offset::ZERO, self.max_offset());
+                    mgr.push_msg(GripMsg::PressMove(offset));
                     Response::Used
                 }
-                Event::PressEnd { .. } => Response::Used,
+                Event::PressEnd { .. } => {
+                    mgr.push_msg(GripMsg::PressEnd);
+                    Response::Used
+                }
                 _ => Response::Unused,
             }
         }
     }
 }
 
-impl DragHandle {
+impl GripPart {
     /// Construct
     pub fn new() -> Self {
-        DragHandle {
+        GripPart {
             core: Default::default(),
             track: Default::default(),
             press_coord: Coord::ZERO,
         }
     }
 
-    /// Set a new handle size and offset
+    /// Set a new grip size and position
     ///
     /// Returns [`TkAction::REDRAW`] if a redraw is required.
     pub fn set_size_and_offset(&mut self, size: Size, offset: Offset) -> TkAction {
@@ -113,7 +138,7 @@ impl DragHandle {
         self.track
     }
 
-    /// Get the current handle offset
+    /// Get the current grip position
     #[inline]
     pub fn offset(&self) -> Offset {
         self.core.rect.pos - self.track.pos
@@ -121,16 +146,17 @@ impl DragHandle {
 
     /// Get the maximum allowed offset
     ///
-    /// This depends on size of the handle and the track.
+    /// The grip position is clamped between `ZERO` and this offset relative to
+    /// the track. This value depends on size of the grip and the track.
     #[inline]
     pub fn max_offset(&self) -> Offset {
         Offset::conv(self.track.size) - Offset::conv(self.core.rect.size)
     }
 
-    /// Set a new handle offset
+    /// Set a new grip position
     ///
-    /// Returns the new offset (after clamping input) and an action: empty if
-    /// the handle hasn't moved; `REDRAW` if it has (though this widget is
+    /// Returns the new position (after clamping input) and an action: empty if
+    /// the grip hasn't moved; `REDRAW` if it has (though this widget is
     /// not directly responsible for drawing, so this may not be accurate).
     pub fn set_offset(&mut self, offset: Offset) -> (Offset, TkAction) {
         let offset = offset.min(self.max_offset()).max(Offset::ZERO);
@@ -145,12 +171,15 @@ impl DragHandle {
 
     /// Handle an event on the track itself
     ///
-    /// If it is desired to make the handle move when the track area is clicked,
+    /// If it is desired to make the grip move when the track area is clicked,
     /// then the parent widget should call this method when receiving
     /// [`Event::PressStart`].
     ///
-    /// Returns a raw (unclamped) offset calculated from the press, but does
-    /// not move the handle (maybe call [`Self::set_offset`] with the result).
+    /// Returns the new grip position relative to the track.
+    ///
+    /// The grip position is not adjusted; the caller should also call
+    /// [`Self::set_offset`] to do so. This is separate to allow adjustment of
+    /// the posision; e.g. `Slider` pins the position to the nearest detent.
     pub fn handle_press_on_track(
         &mut self,
         mgr: &mut EventMgr,
@@ -159,7 +188,9 @@ impl DragHandle {
     ) -> Offset {
         mgr.grab_press_unique(self.id(), source, coord, Some(CursorIcon::Grabbing));
 
-        self.press_coord = self.track.pos + self.core.rect.size / 2;
-        coord - self.press_coord
+        let offset = coord - self.track.pos - Offset::conv(self.core.rect.size / 2);
+        let offset = offset.clamp(Offset::ZERO, self.max_offset());
+        self.press_coord = coord - offset;
+        offset
     }
 }

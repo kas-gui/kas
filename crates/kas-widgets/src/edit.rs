@@ -5,6 +5,7 @@
 
 //! The [`EditField`] and [`EditBox`] widgets, plus supporting items
 
+use crate::{ScrollBar, ScrollMsg};
 use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{Command, CursorIcon, Scroll, ScrollDelta};
 use kas::geom::Vec2;
@@ -126,42 +127,42 @@ impl EditGuard for GuardNotify {
 /// An [`EditGuard`] impl which calls a closure when activated
 #[autoimpl(Debug ignore self.0)]
 #[derive(Clone)]
-pub struct GuardActivate<F: FnMut(&str, &mut EventMgr)>(pub F);
+pub struct GuardActivate<F: FnMut(&mut EventMgr, &str)>(pub F);
 impl<F> EditGuard for GuardActivate<F>
 where
-    F: FnMut(&str, &mut EventMgr) + 'static,
+    F: FnMut(&mut EventMgr, &str) + 'static,
 {
     fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        (edit.guard.0)(edit.text.text(), mgr);
+        (edit.guard.0)(mgr, edit.text.text());
     }
 }
 
 /// An [`EditGuard`] impl which calls a closure when activated or focus is lost
 #[autoimpl(Debug ignore self.0)]
 #[derive(Clone)]
-pub struct GuardAFL<F: FnMut(&str, &mut EventMgr)>(pub F);
+pub struct GuardAFL<F: FnMut(&mut EventMgr, &str)>(pub F);
 impl<F> EditGuard for GuardAFL<F>
 where
-    F: FnMut(&str, &mut EventMgr) + 'static,
+    F: FnMut(&mut EventMgr, &str) + 'static,
 {
     fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        (edit.guard.0)(edit.text.text(), mgr);
+        (edit.guard.0)(mgr, edit.text.text());
     }
     fn focus_lost(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        (edit.guard.0)(edit.text.text(), mgr);
+        (edit.guard.0)(mgr, edit.text.text());
     }
 }
 
 /// An [`EditGuard`] impl which calls a closure when edited
 #[autoimpl(Debug ignore self.0)]
 #[derive(Clone)]
-pub struct GuardEdit<F: FnMut(&str, &mut EventMgr)>(pub F);
+pub struct GuardEdit<F: FnMut(&mut EventMgr, &str)>(pub F);
 impl<F> EditGuard for GuardEdit<F>
 where
-    F: FnMut(&str, &mut EventMgr) + 'static,
+    F: FnMut(&mut EventMgr, &str) + 'static,
 {
     fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        (edit.guard.0)(edit.text.text(), mgr);
+        (edit.guard.0)(mgr, edit.text.text());
     }
 }
 
@@ -187,17 +188,66 @@ impl_scope! {
     /// [`Self::with_multi_line`] and [`Self::with_class`] can be used to change this.
     #[autoimpl(Deref, DerefMut, HasStr, HasString using self.inner)]
     #[derive(Clone, Default, Debug)]
-    #[widget{
-        layout = frame(FrameStyle::EditBox): self.inner;
-    }]
+    #[widget]
     pub struct EditBox<G: EditGuard = ()> {
         core: widget_core!(),
-        #[widget]
-        inner: EditField<G>,
+        #[widget] inner: EditField<G>,
+        #[widget] bar: ScrollBar<kas::dir::Down>,
+        frame_offset: Offset,
+        frame_size: Size,
+        inner_margin: i32,
     }
 
     impl Layout for Self {
+        fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            let mut rules = self.inner.size_rules(mgr.re(), axis);
+            if axis.is_horizontal() && self.multi_line() {
+                let bar_rules = self.bar.size_rules(mgr.re(), axis);
+                self.inner_margin = rules.margins_i32().1.max(bar_rules.margins_i32().0);
+                rules.append(bar_rules);
+            }
+
+            let frame_rules = mgr.frame(FrameStyle::EditBox, axis);
+            let (rules, offset, size) = frame_rules.surround_with_margin(rules);
+            self.frame_offset.set_component(axis, offset);
+            self.frame_size.set_component(axis, size);
+            rules
+        }
+
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, mut rect: Rect, hints: AlignHints) {
+            self.core.rect = rect;
+            rect.pos += self.frame_offset;
+            rect.size -= self.frame_size;
+            if self.multi_line() {
+                let bar_width = mgr.size_mgr().scroll_bar_width();
+                let x1 = rect.pos.0 + rect.size.0;
+                let x0 = x1 - bar_width;
+                let bar_rect = Rect::new(Coord(x0, rect.pos.1), Size(bar_width, rect.size.1));
+                self.bar.set_rect(mgr, bar_rect, hints);
+                rect.size.0 = (rect.size.0 - bar_width - self.inner_margin).max(0);
+            }
+            self.inner.set_rect(mgr, rect, hints);
+            self.update_scroll_bar(mgr);
+        }
+
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) {
+                return None;
+            }
+
+            if self.max_scroll_offset().1 > 0 {
+                if let Some(id) = self.bar.find_id(coord) {
+                    return Some(id);
+                }
+            }
+
+            Some(self.inner.id())
+        }
+
         fn draw(&mut self, mut draw: DrawMgr) {
+            if self.max_scroll_offset().1 > 0 {
+                draw.recurse(&mut self.bar);
+            }
             let mut draw = draw.re_id(self.inner.id());
             let bg = if self.inner.has_error() {
                 Background::Error
@@ -206,6 +256,49 @@ impl_scope! {
             };
             draw.frame(self.rect(), FrameStyle::EditBox, bg);
             self.inner.draw(draw);
+        }
+    }
+
+    impl Widget for Self {
+        fn handle_message(&mut self, mgr: &mut EventMgr<'_>, _: usize) {
+            if let Some(ScrollMsg(y)) = mgr.try_pop_msg() {
+                self.inner.set_scroll_offset(mgr, Offset(self.inner.view_offset.0, y));
+            }
+        }
+
+        fn handle_scroll(&mut self, mgr: &mut EventMgr<'_>, _: Scroll) {
+            self.update_scroll_bar(mgr);
+        }
+    }
+
+    impl Scrollable for Self {
+        #[inline]
+        fn scroll_axes(&self, size: Size) -> (bool, bool) {
+            self.inner.scroll_axes(size)
+        }
+
+        #[inline]
+        fn max_scroll_offset(&self) -> Offset {
+            self.inner.max_scroll_offset()
+        }
+
+        #[inline]
+        fn scroll_offset(&self) -> Offset {
+            self.inner.scroll_offset()
+        }
+
+        fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
+            let offset = self.inner.set_scroll_offset(mgr, offset);
+            self.update_scroll_bar(mgr);
+            offset
+        }
+    }
+
+    impl Self {
+        fn update_scroll_bar(&mut self, mgr: &mut EventState) {
+            let max_offset = self.inner.max_scroll_offset().1;
+            *mgr |= self.bar.set_limits(max_offset, self.inner.rect().size.1);
+            self.bar.set_value(mgr, self.inner.view_offset.1);
         }
     }
 }
@@ -217,7 +310,17 @@ impl EditBox<()> {
         EditBox {
             core: Default::default(),
             inner: EditField::new(text),
+            bar: ScrollBar::new(),
+            frame_offset: Offset::ZERO,
+            frame_size: Size::ZERO,
+            inner_margin: 0,
         }
+    }
+
+    /// Construct an empty `EditBox`
+    #[inline]
+    pub fn empty() -> Self {
+        Self::new(String::new())
     }
 
     /// Set an [`EditGuard`]
@@ -233,6 +336,10 @@ impl EditBox<()> {
         EditBox {
             core: self.core,
             inner: self.inner.with_guard(guard),
+            bar: self.bar,
+            frame_offset: self.frame_offset,
+            frame_size: self.frame_size,
+            inner_margin: self.inner_margin,
         }
     }
 
@@ -246,7 +353,7 @@ impl EditBox<()> {
     #[must_use]
     pub fn on_activate<F>(self, f: F) -> EditBox<GuardActivate<F>>
     where
-        F: FnMut(&str, &mut EventMgr) + 'static,
+        F: FnMut(&mut EventMgr, &str) + 'static,
     {
         self.with_guard(GuardActivate(f))
     }
@@ -261,7 +368,7 @@ impl EditBox<()> {
     #[must_use]
     pub fn on_afl<F>(self, f: F) -> EditBox<GuardAFL<F>>
     where
-        F: FnMut(&str, &mut EventMgr) + 'static,
+        F: FnMut(&mut EventMgr, &str) + 'static,
     {
         self.with_guard(GuardAFL(f))
     }
@@ -275,7 +382,7 @@ impl EditBox<()> {
     #[must_use]
     pub fn on_edit<F>(self, f: F) -> EditBox<GuardEdit<F>>
     where
-        F: FnMut(&str, &mut EventMgr) + 'static,
+        F: FnMut(&mut EventMgr, &str) + 'static,
     {
         self.with_guard(GuardEdit(f))
     }
@@ -302,18 +409,6 @@ impl<G: EditGuard> EditBox<G> {
         self
     }
 
-    /// Get whether this widget is editable
-    #[inline]
-    pub fn is_editable(&self) -> bool {
-        self.inner.is_editable()
-    }
-
-    /// Set whether this widget is editable
-    #[inline]
-    pub fn set_editable(&mut self, editable: bool) {
-        self.inner.set_editable(editable);
-    }
-
     /// Set whether this `EditBox` uses multi-line mode
     ///
     /// This setting has two effects: the vertical size allocation is increased
@@ -328,32 +423,12 @@ impl<G: EditGuard> EditBox<G> {
         self
     }
 
-    /// True if the editor uses multi-line mode
-    ///
-    /// See: [`Self::with_multi_line`]
-    #[inline]
-    pub fn multi_line(&self) -> bool {
-        self.inner.multi_line()
-    }
-
     /// Set the text class used
     #[inline]
     #[must_use]
     pub fn with_class(mut self, class: TextClass) -> Self {
         self.inner = self.inner.with_class(class);
         self
-    }
-
-    /// Get the text class used
-    #[inline]
-    pub fn class(&self) -> TextClass {
-        self.inner.class()
-    }
-
-    /// Adjust the height allocation
-    #[inline]
-    pub fn set_lines(&mut self, min_lines: i32, ideal_lines: i32) {
-        self.inner.set_lines(min_lines, ideal_lines);
     }
 
     /// Adjust the height allocation (inline)
@@ -364,39 +439,12 @@ impl<G: EditGuard> EditBox<G> {
         self
     }
 
-    /// Adjust the width allocation
-    #[inline]
-    pub fn set_width_em(&mut self, min_em: f32, ideal_em: f32) {
-        self.inner.set_width_em(min_em, ideal_em);
-    }
-
     /// Adjust the width allocation (inline)
     #[inline]
     #[must_use]
     pub fn with_width_em(mut self, min_em: f32, ideal_em: f32) -> Self {
         self.set_width_em(min_em, ideal_em);
         self
-    }
-
-    /// Get whether the widget currently has keyboard input focus
-    #[inline]
-    pub fn has_key_focus(&self) -> bool {
-        self.inner.has_key_focus()
-    }
-
-    /// Get whether the input state is erroneous
-    #[inline]
-    pub fn has_error(&self) -> bool {
-        self.inner.has_error()
-    }
-
-    /// Set the error state
-    ///
-    /// When true, the input field's background is drawn red.
-    // TODO: possibly change type to Option<String> and display the error
-    #[inline]
-    pub fn set_error_state(&mut self, error_state: bool) {
-        self.inner.set_error_state(error_state);
     }
 }
 
@@ -469,7 +517,7 @@ impl_scope! {
             let align = align.unwrap_or(Align::Default, valign);
             mgr.text_set_size(&mut self.text, self.class, rect.size, align);
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
-            self.set_view_offset_from_edit_pos();
+            self.view_offset = self.view_offset.min(self.max_scroll_offset());
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
@@ -502,11 +550,6 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        #[inline]
-        fn translation(&self) -> Offset {
-            self.scroll_offset()
-        }
-
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             fn request_focus<G: EditGuard + 'static>(s: &mut EditField<G>, mgr: &mut EventMgr) {
                 if !s.has_key_focus && mgr.request_char_focus(s.id()) {
@@ -632,20 +675,22 @@ impl_scope! {
 
     impl HasString for Self {
         fn set_string(&mut self, string: String) -> TkAction {
-            // TODO: make text.set_string report bool for is changed?
             if *self.text.text() == string {
                 return TkAction::empty();
             }
+            let mut action = TkAction::REDRAW;
 
+            let len = string.len();
             self.text.set_string(string);
-            self.selection.clear();
-            self.view_offset = Offset::ZERO;
-            if kas::text::fonts::fonts().num_faces() > 0 {
-                self.text.prepare();
+            self.selection.set_max_len(len);
+            if self.text.try_prepare().is_ok() {
                 self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
+                self.view_offset = self.view_offset.min(self.max_scroll_offset());
+                // We use SET_SIZE just to set the outer scroll bar position:
+                action = TkAction::SET_SIZE;
             }
             G::update(self);
-            TkAction::REDRAW
+            action
         }
     }
 }
@@ -663,6 +708,12 @@ impl EditField<()> {
             selection: SelectionHelper::new(len, len),
             ..Default::default()
         }
+    }
+
+    /// Construct an empty `EditField`
+    #[inline]
+    pub fn empty() -> Self {
+        Self::new(String::new())
     }
 
     /// Set an [`EditGuard`]
@@ -705,7 +756,7 @@ impl EditField<()> {
     /// This method is a parametisation of [`EditField::with_guard`]. Any guard
     /// previously assigned to the `EditField` will be replaced.
     #[must_use]
-    pub fn on_activate<F: FnMut(&str, &mut EventMgr) + 'static>(
+    pub fn on_activate<F: FnMut(&mut EventMgr, &str) + 'static>(
         self,
         f: F,
     ) -> EditField<GuardActivate<F>> {
@@ -720,7 +771,7 @@ impl EditField<()> {
     /// This method is a parametisation of [`EditField::with_guard`]. Any guard
     /// previously assigned to the `EditField` will be replaced.
     #[must_use]
-    pub fn on_afl<F: FnMut(&str, &mut EventMgr) + 'static>(self, f: F) -> EditField<GuardAFL<F>> {
+    pub fn on_afl<F: FnMut(&mut EventMgr, &str) + 'static>(self, f: F) -> EditField<GuardAFL<F>> {
         self.with_guard(GuardAFL(f))
     }
 
@@ -731,7 +782,7 @@ impl EditField<()> {
     /// This method is a parametisation of [`EditField::with_guard`]. Any guard
     /// previously assigned to the `EditField` will be replaced.
     #[must_use]
-    pub fn on_edit<F: FnMut(&str, &mut EventMgr) + 'static>(self, f: F) -> EditField<GuardEdit<F>> {
+    pub fn on_edit<F: FnMut(&mut EventMgr, &str) + 'static>(self, f: F) -> EditField<GuardEdit<F>> {
         self.with_guard(GuardEdit(f))
     }
 
@@ -877,9 +928,9 @@ impl<G: EditGuard> EditField<G> {
             self.selection.set_pos(pos + c.len_utf8());
         }
         self.edit_x_coord = None;
-        self.text.prepare();
+        self.text.prepare().expect("invalid font_id");
         self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
-        self.set_view_offset_from_edit_pos();
+        self.set_view_offset_from_edit_pos(mgr);
         mgr.redraw(self.id());
         true
     }
@@ -1167,16 +1218,12 @@ impl<G: EditGuard> EditField<G> {
             }
         };
 
-        let mut set_offset = self.selection.edit_pos() != pos;
         if !self.text.required_action().is_ready() {
-            self.text.prepare();
+            self.text.prepare().expect("invalid font_id");
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
-            set_offset = true;
             mgr.redraw(self.id());
         }
-        if set_offset {
-            self.set_view_offset_from_edit_pos();
-        }
+        self.set_view_offset_from_edit_pos(mgr);
 
         Ok(result)
     }
@@ -1186,7 +1233,7 @@ impl<G: EditGuard> EditField<G> {
         if let Ok(pos) = self.text.text_index_nearest(rel_pos) {
             if pos != self.selection.edit_pos() {
                 self.selection.set_edit_pos(pos);
-                self.set_view_offset_from_edit_pos();
+                self.set_view_offset_from_edit_pos(mgr);
                 self.edit_x_coord = None;
                 mgr.redraw(self.id());
             }
@@ -1215,7 +1262,7 @@ impl<G: EditGuard> EditField<G> {
     /// Update view_offset after edit_pos changes
     ///
     /// A redraw is assumed since edit_pos moved.
-    fn set_view_offset_from_edit_pos(&mut self) {
+    fn set_view_offset_from_edit_pos(&mut self, mgr: &mut EventMgr) {
         let edit_pos = self.selection.edit_pos();
         if let Some(marker) = self
             .text
@@ -1233,7 +1280,11 @@ impl<G: EditGuard> EditField<G> {
 
             let max = max.min(self.max_scroll_offset());
 
-            self.view_offset = self.view_offset.max(min).min(max);
+            let new_offset = self.view_offset.max(min).min(max);
+            if new_offset != self.view_offset {
+                self.view_offset = new_offset;
+                mgr.set_scroll(Scroll::Scrolled);
+            }
         }
     }
 }

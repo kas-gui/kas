@@ -8,9 +8,8 @@
 use std::collections::hash_map::{Entry, HashMap};
 use std::ops::{Index, IndexMut};
 
-use super::DragHandle;
+use super::{GripMsg, GripPart};
 use kas::dir::{Down, Right};
-use kas::event::MsgPressFocus;
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::prelude::*;
 use kas::theme::Feature;
@@ -73,7 +72,7 @@ impl_scope! {
     pub struct Splitter<D: Directional, W: Widget> {
         core: widget_core!(),
         widgets: Vec<W>,
-        handles: Vec<DragHandle>,
+        handles: Vec<GripPart>,
         data: layout::DynRowStorage,
         direction: D,
         size_solved: bool,
@@ -249,9 +248,7 @@ impl_scope! {
 
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
             if (index & 1) == 1 {
-                if let Some(MsgPressFocus) = mgr.try_pop_msg() {
-                    // Useless to us, but we should remove it.
-                } else if let Some(offset) = mgr.try_pop_msg::<Offset>() {
+                if let Some(GripMsg::PressMove(offset)) = mgr.try_pop_msg() {
                     let n = index >> 1;
                     assert!(n < self.handles.len());
                     *mgr |= self.handles[n].set_offset(offset).1;
@@ -292,7 +289,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// Construct a new instance with explicit direction
     pub fn new_with_direction(direction: D, widgets: Vec<W>) -> Self {
         let mut handles = Vec::new();
-        handles.resize_with(widgets.len().saturating_sub(1), DragHandle::new);
+        handles.resize_with(widgets.len().saturating_sub(1), GripPart::new);
         Splitter {
             core: Default::default(),
             widgets,
@@ -315,7 +312,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     pub fn edit<F: FnOnce(&mut Vec<W>)>(&mut self, f: F) -> TkAction {
         f(&mut self.widgets);
         let len = self.widgets.len().saturating_sub(1);
-        self.handles.resize_with(len, DragHandle::new);
+        self.handles.resize_with(len, GripPart::new);
         TkAction::RECONFIGURE
     }
 
@@ -392,7 +389,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         let index = self.widgets.len();
         if index > 0 {
             let len = self.handles.len();
-            self.handles.push(DragHandle::new());
+            self.handles.push(GripPart::new());
             let id = self.make_next_id(true, len);
             mgr.configure(id, &mut self.handles[len]);
         }
@@ -443,7 +440,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
 
         if !self.widgets.is_empty() {
             let index = index.min(self.handles.len());
-            self.handles.insert(index, DragHandle::new());
+            self.handles.insert(index, GripPart::new());
             let id = self.make_next_id(true, index);
             mgr.configure(id, &mut self.handles[index]);
         }

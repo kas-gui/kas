@@ -5,11 +5,15 @@
 
 //! `ScrollBar` control
 
-use super::{DragHandle, ScrollRegion};
-use kas::event::{MsgPressFocus, Scroll};
+use super::{GripMsg, GripPart, ScrollRegion};
+use kas::event::Scroll;
 use kas::prelude::*;
 use kas::theme::Feature;
 use std::fmt::Debug;
+
+/// Message from a [`ScrollBar`]
+#[derive(Copy, Clone, Debug)]
+pub struct ScrollMsg(pub i32);
 
 impl_scope! {
     /// A scroll bar
@@ -19,7 +23,7 @@ impl_scope! {
     ///
     /// # Messages
     ///
-    /// On value change, pushes a value of type `i32`.
+    /// On value change, pushes a value of type [`ScrollMsg`].
     ///
     /// # Layout
     ///
@@ -39,7 +43,7 @@ impl_scope! {
         hover: bool,
         force_visible: bool,
         #[widget]
-        handle: DragHandle,
+        handle: GripPart,
     }
 
     impl Self where D: Default {
@@ -68,7 +72,7 @@ impl_scope! {
                 invisible: false,
                 hover: false,
                 force_visible: false,
-                handle: DragHandle::new(),
+                handle: GripPart::new(),
             }
         }
 
@@ -84,6 +88,15 @@ impl_scope! {
         #[inline]
         pub fn set_invisible(&mut self, invisible: bool) {
             self.invisible = invisible;
+        }
+
+        /// Set invisible property (inline)
+        ///
+        /// An "invisible" scroll bar is only drawn on mouse-hover
+        #[inline]
+        pub fn with_invisible(mut self, invisible: bool) -> Self {
+            self.invisible = invisible;
+            self
         }
 
         /// Set the initial page length
@@ -152,14 +165,20 @@ impl_scope! {
         }
 
         /// Set the value
-        pub fn set_value(&mut self, value: i32) -> TkAction {
+        ///
+        /// Returns true if the value changes.
+        pub fn set_value(&mut self, mgr: &mut EventState, value: i32) -> bool {
             let value = value.clamp(0, self.max_value);
-            if value == self.value {
-                TkAction::empty()
-            } else {
+            let changed = value != self.value;
+            if changed {
                 self.value = value;
-                self.handle.set_offset(self.offset()).1
+                *mgr |= self.handle.set_offset(self.offset()).1;
+
+                self.force_visible = true;
+                let delay = mgr.config().menu_delay();
+                mgr.request_update(self.id(), 0, delay, false);
             }
+            changed
         }
 
         #[inline]
@@ -204,7 +223,10 @@ impl_scope! {
         }
 
         // true if not equal to old value
-        fn set_offset(&mut self, offset: Offset) -> bool {
+        fn apply_grip_offset(&mut self, mgr: &mut EventMgr, offset: Offset) {
+            let (offset, action) = self.handle.set_offset(offset);
+            *mgr |= action;
+
             let len = self.bar_len() - self.handle_len;
             let mut offset = match self.direction.is_vertical() {
                 false => offset.0,
@@ -218,15 +240,12 @@ impl_scope! {
             let rhs = i64::conv(len);
             if rhs == 0 {
                 debug_assert_eq!(self.value, 0);
-                return false;
+                return;
             }
             let value = i32::conv((lhs + (rhs / 2)) / rhs);
-            let value = value.clamp(0, self.max_value);
-            if value != self.value {
-                self.value = value;
-                return true;
+            if self.set_value(mgr, value) {
+                mgr.push_msg(ScrollMsg(value));
             }
-            false
         }
     }
 
@@ -267,13 +286,14 @@ impl_scope! {
     impl Widget for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
+                Event::TimerUpdate(_) => {
+                    self.force_visible = false;
+                    *mgr |= TkAction::REDRAW;
+                    Response::Used
+                }
                 Event::PressStart { source, coord, .. } => {
                     let offset = self.handle.handle_press_on_track(mgr, source, coord);
-                    let (offset, action) = self.handle.set_offset(offset);
-                    *mgr |= action;
-                    if self.set_offset(offset) {
-                        mgr.push_msg(self.value);
-                    }
+                    self.apply_grip_offset(mgr, offset);
                     Response::Used
                 }
                 _ => Response::Unused
@@ -293,14 +313,8 @@ impl_scope! {
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-            if let Some(MsgPressFocus) = mgr.try_pop_msg() {
-                // Useless to us, but we should remove it.
-            } else if let Some(offset) = mgr.try_pop_msg() {
-                let (offset, action) = self.handle.set_offset(offset);
-                *mgr |= action;
-                if self.set_offset(offset) {
-                    mgr.push_msg(self.value);
-                }
+            if let Some(GripMsg::PressMove(offset)) = mgr.try_pop_msg() {
+                self.apply_grip_offset(mgr, offset);
             }
         }
     }
@@ -373,13 +387,6 @@ impl_scope! {
                 }
             });
         }
-
-        fn force_visible_bars(&mut self, mgr: &mut EventMgr, horiz: bool, vert: bool) {
-            self.horiz_bar.force_visible = horiz;
-            self.vert_bar.force_visible = vert;
-            let delay = mgr.config().menu_delay();
-            mgr.request_update(self.id(), 0, delay, false);
-        }
     }
 
     impl HasScrollBars for Self {
@@ -418,8 +425,8 @@ impl_scope! {
         }
         fn set_scroll_offset(&mut self, mgr: &mut EventMgr, offset: Offset) -> Offset {
             let offset = self.inner.set_scroll_offset(mgr, offset);
-            *mgr |= self.horiz_bar.set_value(offset.0) | self.vert_bar.set_value(offset.1);
-            self.force_visible_bars(mgr, true, true);
+            self.horiz_bar.set_value(mgr, offset.0);
+            self.vert_bar.set_value(mgr, offset.1);
             offset
         }
     }
@@ -445,8 +452,7 @@ impl_scope! {
             let pos = rect.pos;
             let mut child_size = rect.size;
 
-            let dir = Direction::Right;
-            let bar_width = mgr.size_mgr().feature(Feature::ScrollBar(dir), dir.flipped()).min_size();
+            let bar_width = mgr.size_mgr().scroll_bar_width();
             if self.mode == ScrollBarMode::Auto {
                 self.show_bars = self.inner.scroll_axes(child_size);
             }
@@ -521,27 +527,15 @@ impl_scope! {
             mgr.register_nav_fallback(self.id());
         }
 
-        fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
-            match event {
-                Event::TimerUpdate(_) => {
-                    self.horiz_bar.force_visible = false;
-                    self.vert_bar.force_visible = false;
-                    *mgr |= TkAction::REDRAW;
-                    Response::Used
-                }
-                _ => Response::Unused,
-            }
-        }
-
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
             if index == widget_index![self.horiz_bar] {
-                if let Some(msg) = mgr.try_pop_msg() {
-                    let offset = Offset(msg, self.inner.scroll_offset().1);
+                if let Some(ScrollMsg(x)) = mgr.try_pop_msg() {
+                    let offset = Offset(x, self.inner.scroll_offset().1);
                     self.inner.set_scroll_offset(mgr, offset);
                 }
             } else if index == widget_index![self.vert_bar] {
-                if let Some(msg) = mgr.try_pop_msg() {
-                    let offset = Offset(self.inner.scroll_offset().0, msg);
+                if let Some(ScrollMsg(y)) = mgr.try_pop_msg() {
+                    let offset = Offset(self.inner.scroll_offset().0, y);
                     self.inner.set_scroll_offset(mgr, offset);
                 }
             }
@@ -550,8 +544,8 @@ impl_scope! {
         fn handle_scroll(&mut self, mgr: &mut EventMgr, _: Scroll) {
             // We assume the inner already updated its positions; this is just to set bars
             let offset = self.inner.scroll_offset();
-            *mgr |= self.horiz_bar.set_value(offset.0) | self.vert_bar.set_value(offset.1);
-            self.force_visible_bars(mgr, true, true);
+            self.horiz_bar.set_value(mgr, offset.0);
+            self.vert_bar.set_value(mgr, offset.1);
         }
     }
 }

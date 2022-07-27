@@ -10,8 +10,8 @@ use std::ops::{Add, RangeInclusive, Sub};
 use std::rc::Rc;
 use std::time::Duration;
 
-use super::DragHandle;
-use kas::event::{Command, MsgPressFocus, Scroll};
+use super::{GripMsg, GripPart};
+use kas::event::{Command, Scroll};
 use kas::prelude::*;
 use kas::theme::Feature;
 
@@ -104,7 +104,7 @@ impl_scope! {
         step: T,
         value: T,
         #[widget]
-        handle: DragHandle,
+        handle: GripPart,
         on_move: Option<Rc<dyn Fn(&mut EventMgr, T)>>,
     }
 
@@ -153,7 +153,7 @@ impl_scope! {
                 range: range.into_inner(),
                 step,
                 value,
-                handle: DragHandle::new(),
+                handle: GripPart::new(),
                 on_move: None,
             }
         }
@@ -233,10 +233,9 @@ impl_scope! {
             }
         }
 
-        fn set_offset_and_emit(&mut self, mgr: &mut EventMgr, offset: Offset) {
+        fn apply_grip_offset(&mut self, mgr: &mut EventMgr, offset: Offset) {
             let b = self.range.1 - self.range.0;
             let max_offset = self.handle.max_offset();
-            let offset = offset.clamp(Offset::ZERO, max_offset);
             let mut a = match self.direction.is_vertical() {
                 false => b.mul_f64(offset.0 as f64 / max_offset.0 as f64),
                 true => b.mul_f64(offset.1 as f64 / max_offset.1 as f64),
@@ -323,7 +322,7 @@ impl_scope! {
                 }
                 Event::PressStart { source, coord, .. } => {
                     let offset = self.handle.handle_press_on_track(mgr, source, coord);
-                    self.set_offset_and_emit(mgr, offset);
+                    self.apply_grip_offset(mgr, offset);
                 }
                 _ => return Response::Unused,
             }
@@ -331,10 +330,12 @@ impl_scope! {
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-            if let Some(MsgPressFocus) = mgr.try_pop_msg() {
-                mgr.set_nav_focus(self.id(), false);
-            } else if let Some(offset) = mgr.try_pop_msg() {
-                self.set_offset_and_emit(mgr, offset);
+            match mgr.try_pop_msg() {
+                Some(GripMsg::PressStart) => mgr.set_nav_focus(self.id(), false),
+                Some(GripMsg::PressMove(pos)) => {
+                    self.apply_grip_offset(mgr, pos);
+                }
+                _ => (),
             }
         }
     }

@@ -18,7 +18,10 @@ pub trait FnSizeRules {
     fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
 }
 
-impl<F: FnMut(SizeMgr, AxisInfo) -> SizeRules> FnSizeRules for F {
+impl<F> FnSizeRules for F
+where
+    for<'a> F: FnMut(SizeMgr<'a>, AxisInfo) -> SizeRules,
+{
     #[inline]
     fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
         self(size_mgr, axis)

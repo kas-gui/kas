@@ -42,7 +42,7 @@
 //! ## Components
 //!
 //! -   [`AccelLabel`]: a label which parses accelerator keys
-//! -   [`DragHandle`]: a handle (e.g. for a slider, splitter or scroll_bar)
+//! -   [`GripPart`]: a handle (e.g. for a slider, splitter or scroll_bar)
 
 // Use ``never_loop`` until: https://github.com/rust-lang/rust-clippy/issues/7397 is fixed
 #![allow(clippy::or_fun_call)]
@@ -55,11 +55,11 @@ mod button;
 mod check_box;
 mod combobox;
 pub mod dialog;
-mod drag;
 pub mod edit;
 mod filler;
 mod frame;
 mod grid;
+mod grip;
 mod image;
 mod label;
 mod list;
@@ -84,11 +84,11 @@ pub use crate::image::Image;
 pub use button::{Button, TextButton};
 pub use check_box::{CheckBox, CheckButton};
 pub use combobox::ComboBox;
-pub use drag::DragHandle;
 pub use edit::{EditBox, EditField, EditGuard};
 pub use filler::Filler;
 pub use frame::{Frame, PopupFrame};
 pub use grid::{BoxGrid, Grid};
+pub use grip::{GripMsg, GripPart};
 pub use label::{AccelLabel, Label, StrLabel, StringLabel};
 pub use list::*;
 pub use mark::{Mark, MarkButton};
@@ -96,7 +96,7 @@ pub use nav_frame::{NavFrame, SelectMsg};
 pub use progress::ProgressBar;
 pub use radio_box::{RadioBox, RadioButton, RadioGroup};
 pub use scroll::ScrollRegion;
-pub use scroll_bar::{ScrollBar, ScrollBarRegion, ScrollBars};
+pub use scroll_bar::{ScrollBar, ScrollBarRegion, ScrollBars, ScrollMsg};
 pub use scroll_label::ScrollLabel;
 pub use separator::Separator;
 pub use slider::{Slider, SliderValue};

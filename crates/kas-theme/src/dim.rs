@@ -42,13 +42,13 @@ pub struct Parameters {
     pub check_box_inner: f32,
     /// Larger size of a mark in Points
     pub mark: f32,
-    /// Size of a slider handle; minimum size of a scroll bar handle
+    /// Length of a slider handle; minimum length of a scroll bar handle
     pub handle_len: f32,
-    /// Scroll bar minimum handle size
+    /// Minimum size for a horizontal scroll bar
     pub scroll_bar_size: Vec2,
-    /// Slider minimum handle size
+    /// Minimum size for a horizontal slider
     pub slider_size: Vec2,
-    /// Progress bar size (horizontal)
+    /// Minimum size for a horizontal progress bar
     pub progress_bar: Vec2,
     /// Shadow size (average)
     pub shadow_size: Vec2,
@@ -180,6 +180,10 @@ impl<D: 'static> ThemeSize for Window<D> {
         self.dims.handle_len
     }
 
+    fn scroll_bar_width(&self) -> i32 {
+        self.dims.scroll_bar.1
+    }
+
     fn inner_margin(&self) -> Size {
         Size::splat(self.dims.inner_margin.into())
     }
@@ -196,6 +200,7 @@ impl<D: 'static> ThemeSize for Window<D> {
         let dir_is_vertical;
         let mut size;
         let mut ideal_mul = 3;
+        let m;
 
         match feature {
             Feature::Separator => {
@@ -214,15 +219,18 @@ impl<D: 'static> ThemeSize for Window<D> {
             Feature::ScrollBar(dir) => {
                 dir_is_vertical = dir.is_vertical();
                 size = self.dims.scroll_bar;
+                m = 0;
             }
             Feature::Slider(dir) => {
                 dir_is_vertical = dir.is_vertical();
                 size = self.dims.slider;
                 ideal_mul = 5;
+                m = self.dims.outer_margin;
             }
             Feature::ProgressBar(dir) => {
                 dir_is_vertical = dir.is_vertical();
                 size = self.dims.progress_bar;
+                m = self.dims.outer_margin;
             }
         }
 
@@ -232,7 +240,6 @@ impl<D: 'static> ThemeSize for Window<D> {
             ideal_mul = 1;
             stretch = Stretch::None;
         }
-        let m = self.dims.outer_margin;
         SizeRules::new(size.0, ideal_mul * size.0, (m, m), stretch)
     }
 
@@ -279,6 +286,7 @@ impl<D: 'static> ThemeSize for Window<D> {
         let font_id = self.fonts.get(&class).cloned().unwrap_or_default();
         kas::text::fonts::fonts()
             .get_first_face(font_id)
+            .expect("invalid font_id")
             .height(self.dims.dpem)
             .cast_ceil()
     }
@@ -311,7 +319,10 @@ impl<D: 'static> ThemeSize for Window<D> {
             if wrap {
                 let min = self.dims.min_line_length;
                 let limit = 2 * min;
-                let bound = i32::conv_ceil(text.measure_width(limit.cast()));
+                let bound: i32 = text
+                    .measure_width(limit.cast())
+                    .expect("invalid font_id")
+                    .cast_ceil();
 
                 // NOTE: using different variable-width stretch policies here can
                 // cause problems (e.g. edit boxes greedily consuming too much
@@ -322,11 +333,14 @@ impl<D: 'static> ThemeSize for Window<D> {
                     SizeRules::new(min, limit, margins, Stretch::Low)
                 }
             } else {
-                let bound = i32::conv_ceil(text.measure_width(f32::INFINITY));
+                let bound: i32 = text
+                    .measure_width(f32::INFINITY)
+                    .expect("invalid font_id")
+                    .cast_ceil();
                 SizeRules::new(bound, bound, margins, Stretch::None)
             }
         } else {
-            let bound = i32::conv_ceil(text.measure_height());
+            let bound: i32 = text.measure_height().expect("invalid font_id").cast_ceil();
             let line_height = self.dims.dpem.cast_ceil();
             let min = bound.max(line_height);
             SizeRules::new(min, min, margins, Stretch::None)
@@ -348,6 +362,6 @@ impl<D: 'static> ThemeSize for Window<D> {
         env.wrap = class.multi_line();
         env.align = align;
         env.bounds = size.cast();
-        text.update_env(env);
+        text.update_env(env).expect("invalid font_id");
     }
 }

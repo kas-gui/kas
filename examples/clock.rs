@@ -20,7 +20,6 @@ use kas::draw::{color, Draw, DrawIface, DrawRounded, PassType};
 use kas::geom::{Offset, Quad, Rect, Vec2};
 use kas::prelude::*;
 use kas::shell::draw::DrawPipe;
-use kas::text::util::set_text_and_prepare;
 
 impl_scope! {
     #[derive(Clone, Debug)]
@@ -56,9 +55,9 @@ impl_scope! {
             let mut env = self.date.env();
             env.dpem = text_height as f32 * 0.4;
             env.bounds = text_size.cast();
-            self.date.update_env(env);
+            self.date.update_env(env).expect("invalid font_id");
             env.dpem = text_height as f32 * 0.5;
-            self.time.update_env(env);
+            self.time.update_env(env).expect("invalid font_id");
 
             let y_mid = pos.0 + size.1 / 2;
             self.date_rect = Rect::new(Coord(pos.0, y_mid - text_height), text_size);
@@ -128,12 +127,12 @@ impl_scope! {
                     self.now = Local::now();
                     let date = self.now.format("%Y-%m-%d").to_string();
                     let time = self.now.format("%H:%M:%S").to_string();
-                    *mgr |= TkAction::REDRAW
-                        | set_text_and_prepare(&mut self.date, date)
-                        | set_text_and_prepare(&mut self.time, time);
+                    self.date.set_and_try_prepare(date).expect("invalid font_id");
+                    self.time.set_and_try_prepare(time).expect("invalid font_id");
                     let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
                     info!("Requesting update in {}ns", ns);
                     mgr.request_update(self.id(), 0, Duration::new(0, ns), true);
+                    *mgr |= TkAction::REDRAW;
                     Response::Used
                 }
                 _ => Response::Unused,

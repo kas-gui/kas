@@ -176,11 +176,11 @@ fn widgets() -> Box<dyn SetDisabled> {
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
-                if let Some(msg) = mgr.try_pop_msg::<i32>() {
+                if let Some(ScrollMsg(value)) = mgr.try_pop_msg() {
                     if index == widget_index![self.sc] {
-                        let ratio = msg as f32 / self.sc.max_value() as f32;
+                        let ratio = value as f32 / self.sc.max_value() as f32;
                         *mgr |= self.pg.set_value(ratio);
-                        mgr.push_msg(Item::Scroll(msg))
+                        mgr.push_msg(Item::Scroll(value))
                     }
                 } else if let Some(Item::Spinner(value)) = mgr.try_observe_msg() {
                     *mgr |= self.sd.set_value(*value);
@@ -318,7 +318,7 @@ fn filter_list() -> Box<dyn SetDisabled> {
             #[widget] r1 = RadioButton::new_msg("s&ingle", r.clone(), SelectionMode::Single),
             #[widget] r2 = RadioButton::new_msg("&multiple", r, SelectionMode::Multiple),
             #[widget] filter = EditBox::new("")
-                .on_edit(move |s, mgr| filter.update(mgr, &(), s.to_string())),
+                .on_edit(move |mgr, s| filter.update(mgr, &(), s.to_string())),
             #[widget] list: ScrollBars<MyListView> =
                 ScrollBars::new(MyListView::new(filtered))
         }

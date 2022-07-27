@@ -25,6 +25,13 @@ impl<'a> std::ops::BitOrAssign<TkAction> for EventMgr<'a> {
     }
 }
 
+impl std::ops::BitOrAssign<TkAction> for EventState {
+    #[inline]
+    fn bitor_assign(&mut self, action: TkAction) {
+        self.send_action(action);
+    }
+}
+
 /// Public API
 impl EventState {
     /// True when the window has focus
