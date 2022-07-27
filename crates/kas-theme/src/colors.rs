@@ -265,7 +265,7 @@ impl ColorsSrgb {
             nav_focus: Rgba8Srgb::from_str("#D03E00").unwrap(),
             edit_bg: Rgba8Srgb::from_str("#303030").unwrap(),
             edit_bg_disabled: Rgba8Srgb::from_str("#606060").unwrap(),
-            edit_bg_error: Rgba8Srgb::from_str("#FFBCBC").unwrap(),
+            edit_bg_error: Rgba8Srgb::from_str("#a06868").unwrap(),
             text: Rgba8Srgb::from_str("#FFFFFF").unwrap(),
             text_invert: Rgba8Srgb::from_str("#000000").unwrap(),
             text_disabled: Rgba8Srgb::from_str("#CBCBCB").unwrap(),

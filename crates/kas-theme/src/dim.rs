@@ -200,6 +200,7 @@ impl<D: 'static> ThemeSize for Window<D> {
         let dir_is_vertical;
         let mut size;
         let mut ideal_mul = 3;
+        let m;
 
         match feature {
             Feature::Separator => {
@@ -218,15 +219,18 @@ impl<D: 'static> ThemeSize for Window<D> {
             Feature::ScrollBar(dir) => {
                 dir_is_vertical = dir.is_vertical();
                 size = self.dims.scroll_bar;
+                m = 0;
             }
             Feature::Slider(dir) => {
                 dir_is_vertical = dir.is_vertical();
                 size = self.dims.slider;
                 ideal_mul = 5;
+                m = self.dims.outer_margin;
             }
             Feature::ProgressBar(dir) => {
                 dir_is_vertical = dir.is_vertical();
                 size = self.dims.progress_bar;
+                m = self.dims.outer_margin;
             }
         }
 
@@ -236,7 +240,6 @@ impl<D: 'static> ThemeSize for Window<D> {
             ideal_mul = 1;
             stretch = Stretch::None;
         }
-        let m = self.dims.outer_margin;
         SizeRules::new(size.0, ideal_mul * size.0, (m, m), stretch)
     }
 
