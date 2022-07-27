@@ -248,14 +248,11 @@ impl_scope! {
 
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
             if (index & 1) == 1 {
-                match mgr.try_pop_msg() {
-                    Some(GripMsg::PressMove(offset)) => {
-                        let n = index >> 1;
-                        assert!(n < self.handles.len());
-                        *mgr |= self.handles[n].set_offset(offset).1;
-                        mgr.config_mgr(|mgr| self.adjust_size(mgr, n));
-                    }
-                    _ => (),
+                if let Some(GripMsg::PressMove(offset)) = mgr.try_pop_msg() {
+                    let n = index >> 1;
+                    assert!(n < self.handles.len());
+                    *mgr |= self.handles[n].set_offset(offset).1;
+                    mgr.config_mgr(|mgr| self.adjust_size(mgr, n));
                 }
             }
         }

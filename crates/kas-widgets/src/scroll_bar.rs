@@ -313,11 +313,8 @@ impl_scope! {
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-            match mgr.try_pop_msg() {
-                Some(GripMsg::PressMove(offset)) => {
-                    self.apply_grip_offset(mgr, offset);
-                }
-                _ => (),
+            if let Some(GripMsg::PressMove(offset)) = mgr.try_pop_msg() {
+                self.apply_grip_offset(mgr, offset);
             }
         }
     }
