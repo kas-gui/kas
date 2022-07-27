@@ -15,8 +15,10 @@ layout(location = 0) out vec4 outColor;
 
 layout(set = 0, binding = 1) uniform FragCommon {
     vec3 lightNorm;
+    // Note: since WGPU v0.12 this type is interpreted as 16 bytes.
+    // For compatibility, we explicitly pad to 16 bytes.
+    float _padding;
 };
-
 
 void main() {
     float n3 = 1.0 - sqrt(norm2.x * norm2.x + norm2.y * norm2.y);

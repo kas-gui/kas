@@ -62,7 +62,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let a = (dir.0.sin(), dir.0.cos());
         // We normalise intensity:
         let f = a.0 / a.1;
-        let light_norm = [dir.1.sin() * f, -dir.1.cos() * f, 1.0];
+        let light_norm = [dir.1.sin() * f, -dir.1.cos() * f, 1.0, 0.0];
 
         let light_norm_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("light_norm_buf"),
