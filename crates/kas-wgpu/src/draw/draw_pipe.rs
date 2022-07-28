@@ -37,7 +37,7 @@ impl<C: CustomPipe> DrawPipe<C> {
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
-                        min_binding_size: None, // TODO
+                        min_binding_size: wgpu::BufferSize::new(16),
                     },
                     count: None,
                 },
@@ -47,7 +47,7 @@ impl<C: CustomPipe> DrawPipe<C> {
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
-                        min_binding_size: None, // TODO
+                        min_binding_size: wgpu::BufferSize::new(16),
                     },
                     count: None,
                 },
