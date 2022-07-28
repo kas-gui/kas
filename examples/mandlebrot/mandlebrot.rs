@@ -33,7 +33,7 @@ const SHADER_FLOAT64: wgpu::Features = wgpu::Features::SHADER_FLOAT64;
 #[cfg(not(feature = "shader64"))]
 const FRAG_SHADER: &str = include_str!("shader32.wgsl");
 #[cfg(feature = "shader64")]
-const FRAG_SHADER: &[u8] = include_bytes!("shader64.frag.spv");
+const FRAG_SHADER: &str = include_str!("shader64.wgsl");
 
 struct Shaders {
     vertex: ShaderModule,
@@ -43,14 +43,9 @@ struct Shaders {
 impl Shaders {
     fn new(device: &wgpu::Device) -> Self {
         let vertex = device.create_shader_module(include_wgsl!("shader.wgsl"));
-        // Note: we don't use wgpu::include_spirv since it forces validation,
-        // which cannot currently deal with double precision floats (dvec2).
         let fragment = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("fragment shader"),
-            #[cfg(not(feature = "shader64"))]
             source: wgpu::ShaderSource::Wgsl(FRAG_SHADER.into()),
-            #[cfg(feature = "shader64")]
-            source: wgpu::util::make_spirv(FRAG_SHADER),
         });
 
         Shaders { vertex, fragment }

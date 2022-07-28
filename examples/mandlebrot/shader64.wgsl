@@ -1,6 +1,6 @@
 struct Locals {
-    alpha: vec2<f32>,
-    delta: vec2<f32>,
+    alpha: vec2<f64>,
+    delta: vec2<f64>,
     iter: i32,
 }
 
@@ -15,8 +15,10 @@ fn main(@location(0) cf: vec2<f32>) -> FragmentOutput {
     let ax = global.alpha.x;
     let ay = global.alpha.y;
     let iter = global.iter;
-    let c: vec2<f32> = vec2(ax * cf.x - ay * cf.y, ax * cf.y + ay * cf.x) + global.delta;
-    var z: vec2<f32> = c;
+    let x = f64(cf.x);
+    let y = f64(cf.y);
+    let c: vec2<f64> = vec2(ax * x - ay * y, ax * y + ay * x) + global.delta;
+    var z: vec2<f64> = c;
     var i: i32 = 0;
 
     loop {
@@ -26,9 +28,13 @@ fn main(@location(0) cf: vec2<f32>) -> FragmentOutput {
         {
             let x = (z.x * z.x - z.y * z.y) + c.x;
             let y = (z.y * z.x + z.x * z.y) + c.y;
-            if (x * x + y * y > 4.0) {
+
+            let xf = f32(x);
+            let yf = f32(y);
+            if (xf * xf + yf * yf > 4.0) {
                 break;
             }
+
             z.x = x;
             z.y = y;
         }
