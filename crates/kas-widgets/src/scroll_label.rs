@@ -49,14 +49,16 @@ impl_scope! {
             let align = hints.unwrap_or(Align::Default, Align::Default);
             mgr.text_set_size(&mut self.text, TextClass::LabelScroll, rect.size, align);
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
-            self.set_view_offset_from_edit_pos();
-            self.bar.set_value(mgr, self.view_offset.1);
+
+            let max_offset = self.max_scroll_offset();
+            self.view_offset = self.view_offset.min(max_offset);
 
             let w = mgr.size_mgr().scroll_bar_width().min(rect.size.0);
             rect.pos.0 += rect.size.0 - w;
             rect.size.0 = w;
             self.bar.set_rect(mgr, rect, hints);
-            let _ = self.bar.set_limits(self.max_scroll_offset().1, rect.size.1);
+            let _ = self.bar.set_limits(max_offset.1, rect.size.1);
+            self.bar.set_value(mgr, self.view_offset.1);
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
@@ -114,10 +116,11 @@ impl_scope! {
             self.text.set_and_try_prepare(text).expect("invalid font_id");
 
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
-            let _ = self.bar.set_limits(self.max_scroll_offset().1, self.rect().size.1);
+            let max_offset = self.max_scroll_offset();
+            let _ = self.bar.set_limits(max_offset.1, self.rect().size.1);
+            self.view_offset = self.view_offset.min(max_offset);
 
             self.selection.set_max_len(self.text.str_len());
-            self.set_view_offset_from_edit_pos();
 
             TkAction::REDRAW
         }
@@ -127,7 +130,7 @@ impl_scope! {
             if let Ok(pos) = self.text.text_index_nearest(rel_pos) {
                 if pos != self.selection.edit_pos() {
                     self.selection.set_edit_pos(pos);
-                    self.set_view_offset_from_edit_pos();
+                    self.set_view_offset_from_edit_pos(mgr, pos);
                     self.bar.set_value(mgr, self.view_offset.1);
                     mgr.redraw(self.id());
                 }
@@ -151,13 +154,10 @@ impl_scope! {
             Response::Used
         }
 
-        /// Update view_offset after edit_pos changes
+        /// Update view_offset from edit_pos
         ///
-        /// A redraw is assumed since edit_pos moved.
-        ///
-        /// Recommended: call `self.bar.set_value(mgr, self.view_offset.1);` after.
-        fn set_view_offset_from_edit_pos(&mut self) {
-            let edit_pos = self.selection.edit_pos();
+        /// This method is mostly identical to its counterpart in `EditField`.
+        fn set_view_offset_from_edit_pos(&mut self, mgr: &mut EventMgr, edit_pos: usize) {
             if let Some(marker) = self
                 .text
                 .text_glyph_pos(edit_pos)
@@ -173,7 +173,12 @@ impl_scope! {
                 let max = Offset(max_x.cast_floor(), max_y.cast_floor());
 
                 let max = max.min(self.max_scroll_offset());
-                self.view_offset = self.view_offset.max(min).min(max);
+
+                let new_offset = self.view_offset.max(min).min(max);
+                if new_offset != self.view_offset {
+                    self.view_offset = new_offset;
+                    mgr.set_scroll(Scroll::Scrolled);
+                }
             }
         }
 
