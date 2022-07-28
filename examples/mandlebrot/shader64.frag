@@ -28,7 +28,11 @@ void main() {
         double x = (z.x * z.x - z.y * z.y) + c.x;
         double y = (z.y * z.x + z.x * z.y) + c.y;
 
-        if((x * x + y * y) > 4.0) break;
+        // Reducing precision here gives a small speed-up with minimal loss:
+        float xf = float(x);
+        float yf = float(y);
+        if((xf * xf + yf * yf) > 4.0) break;
+
         z.x = x;
         z.y = y;
     }

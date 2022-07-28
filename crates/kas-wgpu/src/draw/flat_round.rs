@@ -85,7 +85,7 @@ impl Pipeline {
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Cw,
                 cull_mode: Some(wgpu::Face::Back), // not required
-                clamp_depth: false,
+                unclipped_depth: false,
                 polygon_mode: wgpu::PolygonMode::Fill,
                 conservative: false,
             },
@@ -94,12 +94,13 @@ impl Pipeline {
             fragment: Some(wgpu::FragmentState {
                 module: &shaders.frag_flat_round,
                 entry_point: "main",
-                targets: &[wgpu::ColorTargetState {
+                targets: &[Some(wgpu::ColorTargetState {
                     format: super::RENDER_TEX_FORMAT,
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrites::ALL,
-                }],
+                })],
             }),
+            multiview: None,
         });
 
         Pipeline { render_pipeline }

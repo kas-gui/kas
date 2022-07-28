@@ -91,6 +91,7 @@ impl Pipeline {
     ) -> Self {
         let atlas_pipe = atlases::Pipeline::new(
             device,
+            Some("text pipe"),
             bgl_common,
             512,
             wgpu::TextureFormat::R8Unorm,
@@ -112,11 +113,11 @@ impl Pipeline {
             wgpu::FragmentState {
                 module: &shaders.frag_glyph,
                 entry_point: "main",
-                targets: &[wgpu::ColorTargetState {
+                targets: &[Some(wgpu::ColorTargetState {
                     format: super::RENDER_TEX_FORMAT,
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrites::ALL,
-                }],
+                })],
             },
         );
         Pipeline {

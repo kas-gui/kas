@@ -89,6 +89,7 @@ impl Images {
     ) -> Self {
         let atlas_pipe = atlases::Pipeline::new(
             device,
+            Some("images pipe"),
             bgl_common,
             2048,
             wgpu::TextureFormat::Rgba8UnormSrgb,
@@ -109,11 +110,11 @@ impl Images {
             wgpu::FragmentState {
                 module: &shaders.frag_image,
                 entry_point: "main",
-                targets: &[wgpu::ColorTargetState {
+                targets: &[Some(wgpu::ColorTargetState {
                     format: super::RENDER_TEX_FORMAT,
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrites::ALL,
-                }],
+                })],
             },
         );
         Images {

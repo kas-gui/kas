@@ -42,10 +42,10 @@ struct Shaders {
 
 impl Shaders {
     fn new(device: &wgpu::Device) -> Self {
-        let vertex = device.create_shader_module(&include_spirv!("shader.vert.spv"));
+        let vertex = device.create_shader_module(include_spirv!("shader.vert.spv"));
         // Note: we don't use wgpu::include_spirv since it forces validation,
         // which cannot currently deal with double precision floats (dvec2).
-        let fragment = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
+        let fragment = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("fragment shader"),
             source: wgpu::util::make_spirv(FRAG_SHADER),
         });
@@ -144,7 +144,7 @@ impl CustomPipeBuilder for PipeBuilder {
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Cw,
                 cull_mode: Some(wgpu::Face::Back), // not required
-                clamp_depth: false,
+                unclipped_depth: false,
                 polygon_mode: wgpu::PolygonMode::Fill,
                 conservative: false,
             },
@@ -153,12 +153,13 @@ impl CustomPipeBuilder for PipeBuilder {
             fragment: Some(wgpu::FragmentState {
                 module: &shaders.fragment,
                 entry_point: "main",
-                targets: &[wgpu::ColorTargetState {
+                targets: &[Some(wgpu::ColorTargetState {
                     format: tex_format,
                     blend: None,
                     write_mask: wgpu::ColorWrites::ALL,
-                }],
+                })],
             }),
+            multiview: None,
         });
 
         Pipe { render_pipeline }

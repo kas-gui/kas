@@ -48,12 +48,16 @@ impl Pipeline {
             label: Some("SS render_pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
-                module: &shaders.vert_shaded_square,
-                entry_point: "main",
+                module: &shaders.shaded_square,
+                entry_point: "vert",
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x4, 2 => Float32x2],
+                    attributes: &wgpu::vertex_attr_array![
+                        0 => Float32x2,
+                        1 => Float32x4,
+                        2 => Float32x2,
+                    ],
                 }],
             },
             primitive: wgpu::PrimitiveState {
@@ -61,21 +65,22 @@ impl Pipeline {
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Cw,
                 cull_mode: Some(wgpu::Face::Back), // not required
-                clamp_depth: false,
+                unclipped_depth: false,
                 polygon_mode: wgpu::PolygonMode::Fill,
                 conservative: false,
             },
             depth_stencil: None,
             multisample: Default::default(),
             fragment: Some(wgpu::FragmentState {
-                module: &shaders.frag_shaded_square,
-                entry_point: "main",
-                targets: &[wgpu::ColorTargetState {
+                module: &shaders.shaded_square,
+                entry_point: "frag",
+                targets: &[Some(wgpu::ColorTargetState {
                     format: super::RENDER_TEX_FORMAT,
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrites::ALL,
-                }],
+                })],
             }),
+            multiview: None,
         });
 
         Pipeline { render_pipeline }

@@ -51,7 +51,6 @@ impl_scope! {
     #[derive(Clone, Default)]
     #[widget{ derive = self.inner; }]
     pub struct Reserve<W: Widget, R: FnSizeRules> {
-        core: widget_core!(),
         #[widget]
         pub inner: W,
         reserve: R,
@@ -88,7 +87,6 @@ impl_scope! {
         #[inline]
         pub fn new(inner: W, reserve: R) -> Self {
             Reserve {
-                core: Default::default(),
                 inner,
                 reserve,
             }
