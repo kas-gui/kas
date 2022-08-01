@@ -9,7 +9,6 @@ use super::AccelLabel;
 use kas::model::{SharedData, SharedRc};
 use kas::prelude::*;
 use kas::theme::Feature;
-use log::trace;
 use std::fmt::Debug;
 use std::rc::Rc;
 use std::time::Instant;
@@ -42,7 +41,7 @@ impl_scope! {
             match event {
                 Event::Update { id, .. } if id == self.group.id() => {
                     if self.state && !self.eq_id(self.group.get_cloned(&()).unwrap()) {
-                        trace!("RadioBox: unset {}", self.id());
+                        log::trace!("RadioBox: unset {}", self.id());
                         self.state = false;
                         self.last_change = Some(Instant::now());
                         mgr.redraw(self.id());
@@ -145,7 +144,7 @@ impl_scope! {
         /// This does not call the event handler set by [`Self::on_select`] or [`Self::new_on`].
         pub fn select(&mut self, mgr: &mut EventMgr) -> bool {
             if !self.state {
-                trace!("RadioBox::select {}", self.id());
+                log::trace!("RadioBox::select {}", self.id());
                 self.state = true;
                 self.last_change = Some(Instant::now());
                 mgr.redraw(self.id());

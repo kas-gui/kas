@@ -5,7 +5,6 @@
 
 //! Layout solver
 
-use log::trace;
 use std::fmt;
 
 use super::{AlignHints, AxisInfo, Margins, SizeRules};
@@ -142,8 +141,11 @@ impl SolveCache {
         let ideal = Size(w.ideal_size(), h.ideal_size());
         let margins = Margins::hv(w.margins(), h.margins());
 
-        trace!(target: "kas_perf", "layout::find_constraints: {}ms", start.elapsed().as_millis());
-        trace!(
+        log::trace!(
+            target: "kas_perf", "layout::find_constraints: {}ms",
+            start.elapsed().as_millis(),
+        );
+        log::trace!(
             "layout::solve: min={:?}, ideal={:?}, margins={:?}",
             min,
             ideal,
@@ -219,9 +221,9 @@ impl SolveCache {
         }
         widget.set_rect(mgr, rect, AlignHints::NONE);
 
-        trace!(target: "kas_perf", "layout::apply_rect: {}ms", start.elapsed().as_millis());
+        log::trace!(target: "kas_perf", "layout::apply_rect: {}ms", start.elapsed().as_millis());
         if print_heirarchy {
-            trace!(
+            log::trace!(
                 "layout::apply_rect: size={:?}, hierarchy:{}",
                 rect.size,
                 WidgetHeirarchy(widget, 0),

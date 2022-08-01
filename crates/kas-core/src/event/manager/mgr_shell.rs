@@ -5,7 +5,6 @@
 
 //! Event manager — shell API
 
-use log::*;
 use smallvec::SmallVec;
 use std::time::{Duration, Instant};
 
@@ -70,7 +69,7 @@ impl EventState {
     /// method. Additionally, it updates the [`EventState`] to account for
     /// renamed and removed widgets.
     pub fn full_configure(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Widget) {
-        debug!("EventMgr::configure");
+        log::debug!("EventMgr::configure");
         self.action.remove(TkAction::RECONFIGURE);
 
         // These are recreated during configure:
@@ -90,7 +89,7 @@ impl EventState {
 
     /// Update the widgets under the cursor and touch events
     pub fn region_moved(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Widget) {
-        trace!("EventMgr::region_moved");
+        log::trace!("EventMgr::region_moved");
         // Note: redraw is already implied.
 
         // Update hovered widget
@@ -201,7 +200,7 @@ impl EventState {
         // Warning: infinite loops are possible here if widgets always queue a
         // new pending event when evaluating one of these:
         while let Some(item) = mgr.pending.pop_front() {
-            trace!("Handling Pending::{:?}", item);
+            log::trace!("Handling Pending::{:?}", item);
             let (id, event) = match item {
                 Pending::SetNavFocus(id, key_focus) => (id, Event::NavFocus(key_focus)),
                 Pending::MouseHover(id) => (id, Event::MouseHover),
@@ -259,7 +258,7 @@ impl<'a> EventMgr<'a> {
 
         let start = Instant::now();
         let count = self.send_all(widget, Event::Update { id, payload });
-        debug!(
+        log::debug!(
             "Sent Update ({id:?}) to {count} widgets in {}μs",
             start.elapsed().as_micros()
         );

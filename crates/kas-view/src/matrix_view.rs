@@ -17,7 +17,6 @@ use kas::prelude::*;
 use kas_widgets::ScrollBars;
 use kas_widgets::SelectMsg;
 use linear_map::set::LinearSet;
-use log::{debug, trace};
 use std::time::Instant;
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -264,7 +263,7 @@ impl_scope! {
             }
             mgr.config_mgr(|mgr| self.update_widgets(mgr));
             // Force SET_SIZE so that scroll-bar wrappers get updated
-            trace!("update_view triggers SET_SIZE");
+            log::trace!("update_view triggers SET_SIZE");
             *mgr |= TkAction::SET_SIZE;
         }
 
@@ -349,7 +348,7 @@ impl_scope! {
             }
             *mgr |= action;
             let dur = (Instant::now() - time).as_micros();
-            trace!("MatrixView::update_widgets completed in {}μs", dur);
+            log::trace!("MatrixView::update_widgets completed in {}μs", dur);
             solver
         }
     }
@@ -487,7 +486,7 @@ impl_scope! {
             };
 
             if avail_widgets < req_widgets {
-                debug!("allocating widgets (old len = {}, new = {})", avail_widgets, req_widgets);
+                log::debug!("allocating widgets (old len = {}, new = {})", avail_widgets, req_widgets);
                 self.widgets.reserve(req_widgets - avail_widgets);
                 for _ in avail_widgets..req_widgets {
                     let widget = self.view.make();
@@ -548,7 +547,7 @@ impl_scope! {
                 let cols = self.data.col_iter_vec(self.ideal_len.cols.cast());
                 let rows = self.data.row_iter_vec(self.ideal_len.rows.cast());
                 let len = cols.len() * rows.len();
-                debug!("allocating {} widgets", len);
+                log::debug!("allocating {} widgets", len);
                 self.widgets.reserve(len);
                 for row in rows.iter(){
                     for col in cols.iter() {

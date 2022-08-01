@@ -5,7 +5,6 @@
 
 //! Shared state
 
-use log::info;
 use std::num::NonZeroU32;
 use std::time::Duration;
 
@@ -56,7 +55,7 @@ where
             Some(a) => a,
             None => return Err(Error::NoAdapter),
         };
-        info!("Using graphics adapter: {}", adapter.get_info().name);
+        log::info!("Using graphics adapter: {}", adapter.get_info().name);
 
         let desc = CB::device_descriptor();
         let trace_path = options.wgpu_trace_path.as_deref();

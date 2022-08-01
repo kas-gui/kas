@@ -8,7 +8,6 @@
 use super::Error;
 use kas::draw::DrawSharedImpl;
 use kas_theme::{Theme, ThemeConfig};
-use log::error;
 use std::env::var;
 use std::num::NonZeroU32;
 use std::path::PathBuf;
@@ -144,7 +143,7 @@ impl Options {
                 "READWRITE" => ConfigMode::ReadWrite,
                 "WRITEDEFAULT" => ConfigMode::WriteDefault,
                 other => {
-                    error!(
+                    log::error!(
                         "Bad env var: KAS_CONFIG_MODE={}; use READ, READWRITE or WRITEDEFAULT",
                         other
                     );
@@ -156,7 +155,7 @@ impl Options {
         if let Ok(v) = var("KAS_FPS_LIMIT") {
             match v.parse::<u32>() {
                 Ok(x) => options.fps_limit = NonZeroU32::new(x),
-                Err(e) => error!("Bad env var: KAS_FPS_LIMIT={}: {}", v, e),
+                Err(e) => log::error!("Bad env var: KAS_FPS_LIMIT={}: {}", v, e),
             }
         }
 
@@ -166,7 +165,7 @@ impl Options {
                 "DEFAULT" | "LOWPOWER" => PowerPreference::LowPower,
                 "HIGHPERFORMANCE" => PowerPreference::HighPerformance,
                 other => {
-                    error!(
+                    log::error!(
                         "Bad env var: KAS_POWER_PREFERENCE={}; use DEFAULT, LOWPOWER or HIGHPERFORMANCE",
                         other
                     );
@@ -188,7 +187,7 @@ impl Options {
                 "SECONDARY" => Backends::SECONDARY,
                 "FALLBACK" => Backends::empty(),
                 other => {
-                    error!("Bad env var: KAS_BACKENDS={}; use VULKAN, GL, METAL, DX11, DX12, BROWSER_WEBGPU, PRIMARY, SECONDARY or FALLBACK", other);
+                    log::error!("Bad env var: KAS_BACKENDS={}; use VULKAN, GL, METAL, DX11, DX12, BROWSER_WEBGPU, PRIMARY, SECONDARY or FALLBACK", other);
                     options.backends
                 }
             }

@@ -9,7 +9,6 @@
 #![cfg_attr(not(feature = "winit"), allow(unused))]
 
 use linear_map::LinearMap;
-use log::{trace, warn};
 use smallvec::SmallVec;
 use std::any::Any;
 use std::collections::{BTreeMap, HashMap, VecDeque};
@@ -216,7 +215,7 @@ impl EventState {
         let n = 1;
         let mut coords: [(Coord, Coord); MAX_PAN_GRABS] = Default::default();
         coords[0] = (coord, coord);
-        trace!("EventMgr: start pan grab {} on {}", self.pan_grab.len(), id);
+        log::trace!("EventMgr: start pan grab {} on {}", self.pan_grab.len(), id);
         self.pan_grab.push(PanGrab {
             id,
             mode,
@@ -228,7 +227,7 @@ impl EventState {
     }
 
     fn remove_pan(&mut self, index: usize) {
-        trace!("EventMgr: end pan grab {}", index);
+        log::trace!("EventMgr: end pan grab {}", index);
         self.pan_grab.remove(index);
         if let Some(grab) = &mut self.mouse_grab {
             let p0 = grab.pan_grab.0;
@@ -300,7 +299,7 @@ impl EventState {
         for i in 0..self.touch_grab.len() {
             if self.touch_grab[i].id == touch_id {
                 let grab = self.touch_grab.remove(i);
-                trace!("EventMgr: end touch grab by {}", grab.start_id);
+                log::trace!("EventMgr: end touch grab by {}", grab.start_id);
                 self.send_action(TkAction::REDRAW); // redraw(..)
                 self.remove_pan_grab(grab.pan_grab);
                 return Some(grab);
@@ -310,7 +309,7 @@ impl EventState {
     }
 
     fn clear_char_focus(&mut self) {
-        trace!("EventMgr::clear_char_focus");
+        log::trace!("EventMgr::clear_char_focus");
         if let Some(id) = self.char_focus() {
             // If widget has char focus, this is lost
             self.char_focus = false;
@@ -320,7 +319,7 @@ impl EventState {
 
     // Set selection focus to `wid`; if `char_focus` also set that
     fn set_sel_focus(&mut self, wid: WidgetId, char_focus: bool) {
-        trace!(
+        log::trace!(
             "EventMgr::set_sel_focus: wid={}, char_focus={}",
             wid,
             char_focus
@@ -442,7 +441,7 @@ impl<'a> Drop for EventMgr<'a> {
 impl<'a> EventMgr<'a> {
     fn set_hover(&mut self, w_id: Option<WidgetId>) {
         if self.hover != w_id {
-            trace!("EventMgr: hover = {:?}", w_id);
+            log::trace!("EventMgr: hover = {:?}", w_id);
             if let Some(id) = self.hover.take() {
                 self.pending.push_back(Pending::LostMouseHover(id));
             }
@@ -455,7 +454,7 @@ impl<'a> EventMgr<'a> {
     }
 
     fn start_key_event(&mut self, widget: &mut dyn Widget, vkey: VirtualKeyCode, scancode: u32) {
-        trace!(
+        log::trace!(
             "EventMgr::start_key_event: widget={}, vkey={:?}, scancode={}",
             widget.id(),
             vkey,
@@ -563,7 +562,7 @@ impl<'a> EventMgr<'a> {
     // Clears mouse grab and pan grab, resets cursor and redraws
     fn remove_mouse_grab(&mut self) -> Option<MouseGrab> {
         if let Some(grab) = self.mouse_grab.take() {
-            trace!("EventMgr: end mouse grab by {}", grab.start_id);
+            log::trace!("EventMgr: end mouse grab by {}", grab.start_id);
             self.shell.set_cursor_icon(self.hover_icon);
             self.send_action(TkAction::REDRAW); // redraw(..)
             self.remove_pan_grab(grab.pan_grab);
@@ -594,7 +593,7 @@ impl<'a> EventMgr<'a> {
                     widget.handle_scroll(self, self.scroll);
                 }
             } else {
-                warn!(
+                log::warn!(
                     "Widget {} found index {index} for {id}, but child not found",
                     widget.identify()
                 );
@@ -615,7 +614,7 @@ impl<'a> EventMgr<'a> {
 
             response |= widget.pre_handle_event(self, event)
         } else {
-            warn!("Widget {} cannot find path to {id}", widget.identify());
+            log::warn!("Widget {} cannot find path to {id}", widget.identify());
         }
 
         response
@@ -646,7 +645,7 @@ impl<'a> EventMgr<'a> {
             .last()
             .map(|(wid, p, _)| (*wid, p.parent.clone()))
         {
-            trace!("Send to popup parent: {}: {:?}", parent, event);
+            log::trace!("Send to popup parent: {}: {:?}", parent, event);
             match self.send(widget, parent, event.clone()) {
                 Response::Unused => (),
                 _ => return,

@@ -17,7 +17,6 @@ use kas::prelude::*;
 use kas_widgets::ScrollBars;
 use kas_widgets::SelectMsg;
 use linear_map::set::LinearSet;
-use log::{debug, trace};
 use std::time::Instant;
 
 #[derive(Clone, Debug, Default)]
@@ -282,7 +281,7 @@ impl_scope! {
             }
             mgr.config_mgr(|mgr| self.update_widgets(mgr));
             // Force SET_SIZE so that scroll-bar wrappers get updated
-            trace!("update_view triggers SET_SIZE");
+            log::trace!("update_view triggers SET_SIZE");
             *mgr |= TkAction::SET_SIZE;
         }
 
@@ -378,7 +377,7 @@ impl_scope! {
             }
             *mgr |= action;
             let dur = (Instant::now() - time).as_micros();
-            trace!("ListView::update_widgets completed in {}μs", dur);
+            log::trace!("ListView::update_widgets completed in {}μs", dur);
         }
     }
 
@@ -510,7 +509,7 @@ impl_scope! {
             if data_len <= avail_widgets {
                 req_widgets = data_len
             } else if avail_widgets < req_widgets {
-                debug!("allocating widgets (old len = {}, new = {})", avail_widgets, req_widgets);
+                log::debug!("allocating widgets (old len = {}, new = {})", avail_widgets, req_widgets);
                 self.widgets.reserve(req_widgets - avail_widgets);
                 for _ in avail_widgets..req_widgets {
                     let widget = self.view.make();
@@ -562,7 +561,7 @@ impl_scope! {
             if self.widgets.len() == 0 && !self.data.is_empty() {
                 let items = self.data.iter_vec(self.ideal_visible.cast());
                 let len = items.len();
-                debug!("allocating {} widgets", len);
+                log::debug!("allocating {} widgets", len);
                 self.widgets.reserve(len);
                 for key in items.into_iter() {
                     let id = self.data.make_id(self.id_ref(), &key);

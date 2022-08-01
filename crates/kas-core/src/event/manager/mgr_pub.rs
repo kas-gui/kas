@@ -5,7 +5,6 @@
 
 //! Event manager — public API
 
-use log::{debug, trace};
 use std::time::{Duration, Instant};
 use std::u16;
 
@@ -198,7 +197,7 @@ impl EventState {
             }
 
             row.0 = time;
-            trace!(
+            log::trace!(
                 "EventMgr::request_update: update {id} at now+{}ms",
                 delay.as_millis()
             );
@@ -245,7 +244,7 @@ impl EventState {
     /// respond to navigation keys when no widget has focus.
     pub fn register_nav_fallback(&mut self, id: WidgetId) {
         if self.nav_fallback.is_none() {
-            debug!("EventMgr: nav_fallback = {}", id);
+            log::debug!("EventMgr: nav_fallback = {}", id);
             self.nav_fallback = Some(id);
         }
     }
@@ -380,7 +379,7 @@ impl EventState {
             }
         }
         if redraw {
-            trace!("EventMgr: set_grab_depress on target={:?}", target);
+            log::trace!("EventMgr: set_grab_depress on target={:?}", target);
             self.send_action(TkAction::REDRAW);
         }
         redraw
@@ -417,7 +416,7 @@ impl EventState {
             self.pending.push_back(Pending::LostNavFocus(id));
         }
         self.clear_char_focus();
-        trace!("EventMgr: nav_focus = None");
+        log::trace!("EventMgr: nav_focus = None");
     }
 
     /// Set the keyboard navigation focus directly
@@ -441,7 +440,7 @@ impl EventState {
                 self.clear_char_focus();
             }
             self.nav_focus = Some(id.clone());
-            trace!("EventMgr: nav_focus = Some({})", id);
+            log::trace!("EventMgr: nav_focus = Some({})", id);
             self.pending.push_back(Pending::SetNavFocus(id, key_focus));
         }
     }
@@ -466,7 +465,7 @@ impl<'a> EventMgr<'a> {
     /// Messages may be left on the stack after this returns and scroll state
     /// may be adjusted.
     pub fn send(&mut self, widget: &mut dyn Widget, mut id: WidgetId, event: Event) -> Response {
-        trace!("EventMgr::send to {}: {:?}", id, event);
+        log::trace!("EventMgr::send to {}: {:?}", id, event);
 
         // TODO(opt): we should be able to use binary search here
         let mut disabled = false;
@@ -478,7 +477,7 @@ impl<'a> EventMgr<'a> {
                 }
             }
             if disabled {
-                trace!("EventMgr::send: target is disabled; sending instead to {id}");
+                log::trace!("EventMgr::send: target is disabled; sending instead to {id}");
             }
         }
 
@@ -553,7 +552,7 @@ impl<'a> EventMgr<'a> {
     /// Returns `None` if window creation is not currently available (but note
     /// that `Some` result does not guarantee the operation succeeded).
     pub fn add_popup(&mut self, popup: crate::Popup) -> Option<WindowId> {
-        trace!("Manager::add_popup({:?})", popup);
+        log::trace!("Manager::add_popup({:?})", popup);
         let new_id = &popup.id;
         while let Some((_, popup, _)) = self.popups.last() {
             if popup.parent.is_ancestor_of(new_id) {
@@ -629,7 +628,7 @@ impl<'a> EventMgr<'a> {
     /// the given `id` and `payload`.
     #[inline]
     pub fn update_all(&mut self, id: UpdateId, payload: u64) {
-        debug!("update_all: id={:?}, payload={}", id, payload);
+        log::debug!("update_all: id={:?}, payload={}", id, payload);
         self.shell.update_all(id, payload);
     }
 
@@ -738,7 +737,7 @@ impl<'a> EventMgr<'a> {
                 if mode != GrabMode::Grab {
                     pan_grab = self.set_pan_on(id.clone(), mode, false, coord);
                 }
-                trace!("EventMgr: start mouse grab by {}", start_id);
+                log::trace!("EventMgr: start mouse grab by {}", start_id);
                 self.mouse_grab = Some(MouseGrab {
                     button,
                     repetitions,
@@ -762,7 +761,7 @@ impl<'a> EventMgr<'a> {
                 if mode != GrabMode::Grab {
                     pan_grab = self.set_pan_on(id.clone(), mode, true, coord);
                 }
-                trace!("EventMgr: start touch grab by {}", start_id);
+                log::trace!("EventMgr: start touch grab by {}", start_id);
                 self.touch_grab.push(TouchGrab {
                     id: touch_id,
                     start_id,
