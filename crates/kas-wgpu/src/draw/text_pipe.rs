@@ -138,10 +138,7 @@ impl Pipeline {
         self.atlas_pipe.prepare(device);
 
         if !self.prepare.is_empty() {
-            log::trace!(
-                "Pipeline::prepare: uploading {} sprites",
-                self.prepare.len()
-            );
+            log::trace!("prepare: uploading {} sprites", self.prepare.len());
         }
         for (atlas, origin, size, data) in self.prepare.drain(..) {
             queue.write_texture(
@@ -216,7 +213,7 @@ impl Pipeline {
                 }
                 Err(_) => {
                     log::warn!(
-                        "text_pipe: failed to allocate glyph with size {:?}",
+                        "raster_glyph: failed to allocate glyph with size {:?}",
                         rs.size
                     );
                 }
@@ -224,7 +221,7 @@ impl Pipeline {
         } else {
             // This comes up a lot and is usually harmless
             log::debug!(
-                "Failed to raster glyph {:?} of face {:?}",
+                "raster_glyph: failed to raster glyph {:?} of face {:?}",
                 desc.glyph(),
                 desc.face()
             );
@@ -281,7 +278,7 @@ impl Window {
             }
         };
         if let Err(e) = text.glyphs(for_glyph) {
-            log::warn!("Text display failed: {e}");
+            log::warn!("Window: display failed: {e}");
         }
 
         self.duration += time.elapsed();
@@ -342,7 +339,7 @@ impl Window {
         };
 
         if let Err(e) = result {
-            log::warn!("Text display failed: {e}");
+            log::warn!("Window: display failed: {e}");
         }
 
         self.duration += time.elapsed();
@@ -394,7 +391,7 @@ impl Window {
         };
 
         if let Err(e) = text.glyphs_with_effects(effects, Rgba::BLACK, for_glyph, for_rect) {
-            log::warn!("Text display failed: {e}");
+            log::warn!("Window: display failed: {e}");
         }
 
         self.duration += time.elapsed();

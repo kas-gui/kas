@@ -129,7 +129,10 @@ impl<'a> ConfigMgr<'a> {
             } else if let Some(w) = widget.find_widget_mut(&id) {
                 widget = w;
             } else {
-                log::warn!("next_nav_focus: have open pop-up which is not a child of widget");
+                log::warn!(
+                    target: "kas_core::event::config_mgr",
+                    "next_nav_focus: have open pop-up which is not a child of widget",
+                );
                 return false;
             }
         }
@@ -214,7 +217,10 @@ impl<'a> ConfigMgr<'a> {
             opt_id = nav(self, widget, None, reverse);
         }
 
-        log::trace!("EventMgr: nav_focus = {:?}", opt_id);
+        log::trace!(
+            target: "kas_core::event::config_mgr",
+            "next_nav_focus: nav_focus={opt_id:?}",
+        );
         self.nav_focus = opt_id.clone();
 
         if opt_id == old_nav_focus {

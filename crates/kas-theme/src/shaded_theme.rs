@@ -213,7 +213,7 @@ where
         #[cfg(debug_assertions)]
         {
             if !inner.a.lt(inner.b) {
-                log::warn!("frame too small: {outer:?}");
+                log::warn!("draw_edit_box: frame too small: {outer:?}");
             }
         }
 

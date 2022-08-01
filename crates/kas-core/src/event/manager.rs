@@ -215,7 +215,7 @@ impl EventState {
         let n = 1;
         let mut coords: [(Coord, Coord); MAX_PAN_GRABS] = Default::default();
         coords[0] = (coord, coord);
-        log::trace!("EventMgr: start pan grab {} on {}", self.pan_grab.len(), id);
+        log::trace!("set_pan_on: index={}, id={id}", self.pan_grab.len());
         self.pan_grab.push(PanGrab {
             id,
             mode,
@@ -227,7 +227,7 @@ impl EventState {
     }
 
     fn remove_pan(&mut self, index: usize) {
-        log::trace!("EventMgr: end pan grab {}", index);
+        log::trace!("remove_pan: index={index}");
         self.pan_grab.remove(index);
         if let Some(grab) = &mut self.mouse_grab {
             let p0 = grab.pan_grab.0;
@@ -299,7 +299,10 @@ impl EventState {
         for i in 0..self.touch_grab.len() {
             if self.touch_grab[i].id == touch_id {
                 let grab = self.touch_grab.remove(i);
-                log::trace!("EventMgr: end touch grab by {}", grab.start_id);
+                log::trace!(
+                    "remove_touch: touch_id={touch_id}, start_id={}",
+                    grab.start_id
+                );
                 self.send_action(TkAction::REDRAW); // redraw(..)
                 self.remove_pan_grab(grab.pan_grab);
                 return Some(grab);
@@ -309,7 +312,7 @@ impl EventState {
     }
 
     fn clear_char_focus(&mut self) {
-        log::trace!("EventMgr::clear_char_focus");
+        log::trace!("clear_char_focus");
         if let Some(id) = self.char_focus() {
             // If widget has char focus, this is lost
             self.char_focus = false;
@@ -319,11 +322,7 @@ impl EventState {
 
     // Set selection focus to `wid`; if `char_focus` also set that
     fn set_sel_focus(&mut self, wid: WidgetId, char_focus: bool) {
-        log::trace!(
-            "EventMgr::set_sel_focus: wid={}, char_focus={}",
-            wid,
-            char_focus
-        );
+        log::trace!("set_sel_focus: wid={wid}, char_focus={char_focus}");
         // The widget probably already has nav focus, but anyway:
         self.set_nav_focus(wid.clone(), true);
 
@@ -429,10 +428,7 @@ impl<'a> DerefMut for EventMgr<'a> {
 impl<'a> Drop for EventMgr<'a> {
     fn drop(&mut self) {
         for msg in self.messages.drain(..) {
-            log::warn!(
-                target: "kas_core::event::manager::messages",
-                "EventMgr: unhandled message: {msg:?}",
-            );
+            log::warn!(target: "kas_core::event::manager::messages", "unhandled: {msg:?}");
         }
     }
 }
@@ -441,7 +437,7 @@ impl<'a> Drop for EventMgr<'a> {
 impl<'a> EventMgr<'a> {
     fn set_hover(&mut self, w_id: Option<WidgetId>) {
         if self.hover != w_id {
-            log::trace!("EventMgr: hover = {:?}", w_id);
+            log::trace!("set_hover: w_id={w_id:?}");
             if let Some(id) = self.hover.take() {
                 self.pending.push_back(Pending::LostMouseHover(id));
             }
@@ -455,10 +451,8 @@ impl<'a> EventMgr<'a> {
 
     fn start_key_event(&mut self, widget: &mut dyn Widget, vkey: VirtualKeyCode, scancode: u32) {
         log::trace!(
-            "EventMgr::start_key_event: widget={}, vkey={:?}, scancode={}",
-            widget.id(),
-            vkey,
-            scancode
+            "start_key_event: widget={}, vkey={vkey:?}, scancode={scancode}",
+            widget.id()
         );
 
         use VirtualKeyCode as VK;
@@ -562,7 +556,7 @@ impl<'a> EventMgr<'a> {
     // Clears mouse grab and pan grab, resets cursor and redraws
     fn remove_mouse_grab(&mut self) -> Option<MouseGrab> {
         if let Some(grab) = self.mouse_grab.take() {
-            log::trace!("EventMgr: end mouse grab by {}", grab.start_id);
+            log::trace!("remove_mouse_grab: start_id={}", grab.start_id);
             self.shell.set_cursor_icon(self.hover_icon);
             self.send_action(TkAction::REDRAW); // redraw(..)
             self.remove_pan_grab(grab.pan_grab);
@@ -594,7 +588,7 @@ impl<'a> EventMgr<'a> {
                 }
             } else {
                 log::warn!(
-                    "Widget {} found index {index} for {id}, but child not found",
+                    "send_recurse: {} found index {index} for {id} but not child",
                     widget.identify()
                 );
             }
@@ -614,7 +608,10 @@ impl<'a> EventMgr<'a> {
 
             response |= widget.pre_handle_event(self, event)
         } else {
-            log::warn!("Widget {} cannot find path to {id}", widget.identify());
+            log::warn!(
+                "send_recurse: Widget {} cannot find path to {id}",
+                widget.identify()
+            );
         }
 
         response
@@ -645,7 +642,7 @@ impl<'a> EventMgr<'a> {
             .last()
             .map(|(wid, p, _)| (*wid, p.parent.clone()))
         {
-            log::trace!("Send to popup parent: {}: {:?}", parent, event);
+            log::trace!("send_popup_first: parent={parent}: {event:?}");
             match self.send(widget, parent, event.clone()) {
                 Response::Unused => (),
                 _ => return,

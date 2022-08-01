@@ -209,7 +209,7 @@ where
         while let Some(pending) = self.shared.pending.pop() {
             match pending {
                 PendingAction::AddPopup(parent_id, id, popup) => {
-                    log::debug!("Adding overlay");
+                    log::debug!("Pending: adding overlay");
                     // TODO: support pop-ups as a special window, where available
                     self.windows.get_mut(&parent_id).unwrap().add_popup(
                         &mut self.shared,
@@ -219,7 +219,7 @@ where
                     self.id_map.insert(id, parent_id);
                 }
                 PendingAction::AddWindow(id, widget) => {
-                    log::debug!("Adding window {}", widget.title());
+                    log::debug!("Pending: adding window {}", widget.title());
                     match Window::new(&mut self.shared, elwt, id, widget) {
                         Ok(window) => {
                             let wid = window.window.id();

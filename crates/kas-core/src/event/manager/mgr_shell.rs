@@ -69,7 +69,7 @@ impl EventState {
     /// method. Additionally, it updates the [`EventState`] to account for
     /// renamed and removed widgets.
     pub fn full_configure(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Widget) {
-        log::debug!("EventMgr::configure");
+        log::debug!(target: "kas_core::event::manager", "full_configure");
         self.action.remove(TkAction::RECONFIGURE);
 
         // These are recreated during configure:
@@ -89,7 +89,7 @@ impl EventState {
 
     /// Update the widgets under the cursor and touch events
     pub fn region_moved(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Widget) {
-        log::trace!("EventMgr::region_moved");
+        log::trace!(target: "kas_core::event::manager", "region_moved");
         // Note: redraw is already implied.
 
         // Update hovered widget
@@ -200,7 +200,7 @@ impl EventState {
         // Warning: infinite loops are possible here if widgets always queue a
         // new pending event when evaluating one of these:
         while let Some(item) = mgr.pending.pop_front() {
-            log::trace!("Handling Pending::{:?}", item);
+            log::trace!(target: "kas_core::event::manager", "update: handling Pending::{item:?}");
             let (id, event) = match item {
                 Pending::SetNavFocus(id, key_focus) => (id, Event::NavFocus(key_focus)),
                 Pending::MouseHover(id) => (id, Event::MouseHover),
@@ -259,7 +259,8 @@ impl<'a> EventMgr<'a> {
         let start = Instant::now();
         let count = self.send_all(widget, Event::Update { id, payload });
         log::debug!(
-            "Sent Update ({id:?}) to {count} widgets in {}μs",
+            target: "kas_core::event::manager",
+            "update_widgets: sent Event::Update ({id:?}) to {count} widgets in {}μs",
             start.elapsed().as_micros()
         );
     }

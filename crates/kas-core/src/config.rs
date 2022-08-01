@@ -99,7 +99,7 @@ impl Format {
 
     /// Read from a path
     pub fn read_path<T: DeserializeOwned>(self, path: &Path) -> Result<T, Error> {
-        log::info!("read: path={}, format={:?}", path.display(), self);
+        log::info!("read_path: path={}, format={:?}", path.display(), self);
         match self {
             #[cfg(feature = "json")]
             Format::Json => {
@@ -125,7 +125,7 @@ impl Format {
 
     /// Write to a path
     pub fn write_path<T: Serialize>(self, path: &Path, value: &T) -> Result<(), Error> {
-        log::info!("write: path={}, format={:?}", path.display(), self);
+        log::info!("write_path: path={}, format={:?}", path.display(), self);
         match self {
             #[cfg(feature = "json")]
             Format::Json => {

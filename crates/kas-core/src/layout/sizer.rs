@@ -142,15 +142,10 @@ impl SolveCache {
         let margins = Margins::hv(w.margins(), h.margins());
 
         log::trace!(
-            target: "kas_perf", "layout::find_constraints: {}ms",
-            start.elapsed().as_millis(),
+            target: "kas_perf::layout", "find_constraints: {}μs",
+            start.elapsed().as_micros(),
         );
-        log::trace!(
-            "layout::solve: min={:?}, ideal={:?}, margins={:?}",
-            min,
-            ideal,
-            margins
-        );
+        log::debug!("find_constraints: min={min:?}, ideal={ideal:?}, margins={margins:?}");
         let refresh_rules = false;
         let last_width = ideal.0;
         SolveCache {
@@ -221,11 +216,11 @@ impl SolveCache {
         }
         widget.set_rect(mgr, rect, AlignHints::NONE);
 
-        log::trace!(target: "kas_perf", "layout::apply_rect: {}ms", start.elapsed().as_millis());
+        log::trace!(target: "kas_perf::layout", "apply_rect: {}μs", start.elapsed().as_micros());
         if print_heirarchy {
             log::trace!(
-                "layout::apply_rect: size={:?}, hierarchy:{}",
-                rect.size,
+                target: "kas_core::layout::hierarchy",
+                "apply_rect: rect={rect:?}:{}",
                 WidgetHeirarchy(widget, 0),
             );
         }

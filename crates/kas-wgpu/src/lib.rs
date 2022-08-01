@@ -79,9 +79,9 @@ impl From<wgpu::RequestDeviceError> for Error {
 }
 
 fn warn_about_error(msg: &str, mut error: &dyn std::error::Error) {
-    log::warn!("{}: {}", msg, error);
+    log::warn!("{msg}: {error}");
     while let Some(source) = error.source() {
-        log::warn!("Source: {}", source);
+        log::warn!("Source: {source}");
         error = source;
     }
 }
@@ -147,7 +147,7 @@ where
         let config = match options.read_config() {
             Ok(config) => config,
             Err(error) => {
-                warn_about_error("Failed to save read", &error);
+                warn_about_error("Toolkit::new_custom: failed to read config", &error);
                 Default::default()
             }
         };
