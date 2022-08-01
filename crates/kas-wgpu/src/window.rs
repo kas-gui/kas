@@ -88,6 +88,10 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
         // Opening a zero-size window causes a crash, so force at least 1x1:
         let ideal = solve_cache.ideal(true).max(Size(1, 1));
+        log::debug!(
+            "Window::new: solved size constraints: min={:?}, ideal={ideal:?}",
+            solve_cache.min(true)
+        );
         let ideal = match use_logical_size {
             false => ideal.as_physical(),
             true => ideal.as_logical(),
@@ -117,7 +121,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         shared.scale_factor = scale_factor;
         let size: Size = window.inner_size().cast();
         info!(
-            "Constucted new window with physical size {:?}, scale factor {}",
+            "Window::new: constructed with physical size {:?}, scale factor {}",
             size, scale_factor
         );
 
