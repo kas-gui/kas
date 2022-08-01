@@ -7,28 +7,7 @@
 
 use super::SizeRules;
 use kas_macros::impl_scope;
-use std::any::Any;
-
-/// Master trait over storage types
-pub trait Storage: Any + std::fmt::Debug {
-    /// Get self as type `Any` (mutable)
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-}
-
-impl dyn Storage {
-    /// Forwards to the method defined on the type `Any`.
-    #[inline]
-    pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
-        <dyn Any>::downcast_mut::<T>(self.as_any_mut())
-    }
-}
-
-/// Empty storage type
-impl Storage for () {
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
+use std::fmt::Debug;
 
 /// Requirements of row solver storage type
 ///
@@ -42,7 +21,7 @@ impl Storage for () {
 ///
 /// Note: some implementations allocate when [`Self::set_dim`] is first called.
 /// It is expected that this method is called before other methods.
-pub trait RowStorage: sealed::Sealed + Clone {
+pub trait RowStorage: Clone + Debug + sealed::Sealed {
     /// Set dimension: number of columns or rows
     fn set_dim(&mut self, cols: usize);
 
@@ -82,12 +61,6 @@ impl<const C: usize> Default for FixedRowStorage<C> {
     }
 }
 
-impl<const C: usize> Storage for FixedRowStorage<C> {
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
-
 impl<const C: usize> RowStorage for FixedRowStorage<C> {
     fn set_dim(&mut self, cols: usize) {
         assert_eq!(self.rules.as_ref().len(), cols);
@@ -106,12 +79,6 @@ pub struct DynRowStorage {
     widths: Vec<i32>,
 }
 
-impl Storage for DynRowStorage {
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
-
 impl RowStorage for DynRowStorage {
     fn set_dim(&mut self, cols: usize) {
         self.rules.resize(cols, SizeRules::EMPTY);
@@ -127,7 +94,7 @@ impl RowStorage for DynRowStorage {
 ///
 /// For dynamic-length rows and fixed-length rows with more than 16 items use
 /// `Vec<i32>`. For fixed-length rows up to 16 items, use `[i32; rows]`.
-pub trait RowTemp: AsMut<[i32]> + Default + sealed::Sealed {
+pub trait RowTemp: AsMut<[i32]> + Default + Debug + sealed::Sealed {
     #[doc(hidden)]
     fn set_len(&mut self, len: usize);
 }
@@ -159,7 +126,7 @@ where
 ///
 /// Note: some implementations allocate when [`Self::set_dims`] is first called.
 /// It is expected that this method is called before other methods.
-pub trait GridStorage: sealed::Sealed + Clone {
+pub trait GridStorage: sealed::Sealed + Clone + std::fmt::Debug {
     /// Set dimension: number of columns and rows
     fn set_dims(&mut self, cols: usize, rows: usize);
 
@@ -211,12 +178,6 @@ impl_scope! {
         heights: [i32; R] = [0; R],
     }
 
-    impl Storage for Self {
-        fn as_any_mut(&mut self) -> &mut dyn Any {
-            self
-        }
-    }
-
     impl GridStorage for Self {
         fn set_dims(&mut self, cols: usize, rows: usize) {
             assert_eq!(self.width_rules.as_ref().len(), cols);
@@ -249,12 +210,6 @@ pub struct DynGridStorage {
     height_rules: Vec<SizeRules>,
     widths: Vec<i32>,
     heights: Vec<i32>,
-}
-
-impl Storage for DynGridStorage {
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
 }
 
 impl GridStorage for DynGridStorage {

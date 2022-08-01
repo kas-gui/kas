@@ -27,7 +27,6 @@ mod class_traits;
 mod extends;
 mod impl_singleton;
 mod make_layout;
-mod storage;
 mod widget;
 mod widget_index;
 
@@ -64,7 +63,6 @@ pub fn impl_default(attr: TokenStream, item: TokenStream) -> TokenStream {
 /// | `Default` | `::std::default::Default` | - | - |
 /// | `Deref` | `::std::ops::Deref` | - | deref target |
 /// | `DerefMut` | `::std::ops::DerefMut` | - | deref target |
-/// | `Storage` | `::kas::layout::Storage` | - | - |
 /// | `HasBool` | `::kas::class::HasBool` | - | deref target |
 /// | `HasStr` | `::kas::class::HasStr` | - | deref target |
 /// | `HasString` | `::kas::class::HasString` | - | deref target |
@@ -101,7 +99,6 @@ pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
                     .chain(class_traits::CLASS_IMPLS.iter())
                     .cloned()
                     .chain(once(&ImplClassTraits as &dyn ImplTrait))
-                    .chain(once(&storage::ImplStorage as &dyn ImplTrait))
                     .find(|impl_| impl_.path().matches_ident_or_path(path))
             };
             toks.extend(TokenStream::from(ai.expand(item.into(), find_impl)))
