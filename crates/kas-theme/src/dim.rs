@@ -328,7 +328,7 @@ impl<D: 'static> ThemeSize for Window<D> {
                 // cause problems (e.g. edit boxes greedily consuming too much
                 // space). This is a hard layout problem; for now don't do this.
                 if bound <= limit {
-                    SizeRules::new(bound.min(min), bound, margins, Stretch::None)
+                    SizeRules::new(bound.min(min), bound, margins, Stretch::Filler)
                 } else {
                     SizeRules::new(min, limit, margins, Stretch::Low)
                 }
@@ -337,13 +337,13 @@ impl<D: 'static> ThemeSize for Window<D> {
                     .measure_width(f32::INFINITY)
                     .expect("invalid font_id")
                     .cast_ceil();
-                SizeRules::new(bound, bound, margins, Stretch::None)
+                SizeRules::new(bound, bound, margins, Stretch::Filler)
             }
         } else {
             let bound: i32 = text.measure_height().expect("invalid font_id").cast_ceil();
             let line_height = self.dims.dpem.cast_ceil();
             let min = bound.max(line_height);
-            SizeRules::new(min, min, margins, Stretch::None)
+            SizeRules::new(min, min, margins, Stretch::Filler)
         }
     }
 
