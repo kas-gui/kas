@@ -363,6 +363,8 @@ impl Message {
     fn new<M: Any + Debug>(msg: Box<M>) -> Self {
         #[cfg(debug_assertions)]
         let fmt = format!("{}::{:?}", std::any::type_name::<M>(), &msg);
+        #[cfg(debug_assertions)]
+        log::debug!(target: "kas_core::event::manager::messages", "push_msg: {fmt}");
         let any = msg;
         Message {
             #[cfg(debug_assertions)]
@@ -381,6 +383,16 @@ impl Message {
 
     fn downcast_ref<T: 'static>(&self) -> Option<&T> {
         self.any.downcast_ref::<T>()
+    }
+}
+
+impl std::fmt::Debug for Message {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        #[cfg(debug_assertions)]
+        let r = f.write_str(&self.fmt);
+        #[cfg(not(debug_assertions))]
+        let r = f.write_str("[use debug build to see value]");
+        r
     }
 }
 
@@ -417,11 +429,11 @@ impl<'a> DerefMut for EventMgr<'a> {
 
 impl<'a> Drop for EventMgr<'a> {
     fn drop(&mut self) {
-        for _msg in self.messages.drain(..) {
-            #[cfg(debug_assertions)]
-            log::warn!("EventMgr: unhandled message: {}", _msg.fmt);
-            #[cfg(not(debug_assertions))]
-            log::warn!("EventMgr: unhandled message: [use debug build to see value]");
+        for msg in self.messages.drain(..) {
+            log::warn!(
+                target: "kas_core::event::manager::messages",
+                "EventMgr: unhandled message: {msg:?}",
+            );
         }
     }
 }

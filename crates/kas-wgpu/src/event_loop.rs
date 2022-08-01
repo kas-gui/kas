@@ -103,7 +103,7 @@ where
                             .cloned()
                             .unwrap_or_else(|| panic!("timer wakeup without resume"));
                         assert_eq!(item.0, requested_resume);
-                        debug!("Wakeup: timer (window={:?})", item.1);
+                        log::trace!("Wakeup: timer (window={:?})", item.1);
 
                         let resume = if let Some(w) = self.windows.get_mut(&item.1) {
                             w.update_timer(&mut self.shared)
