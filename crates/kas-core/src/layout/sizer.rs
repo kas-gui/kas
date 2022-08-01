@@ -202,6 +202,7 @@ impl SolveCache {
                 self.min.0 = w.min_size();
                 self.ideal.0 = w.ideal_size();
                 self.margins.horiz = w.margins();
+                width = rect.size.0 - self.margins.sum_horiz();
             }
 
             let h = widget.size_rules(mgr.size_mgr(), AxisInfo::new(true, Some(width)));

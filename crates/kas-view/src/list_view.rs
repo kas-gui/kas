@@ -443,10 +443,21 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
             let inner_margin = size_mgr.inner_margin().extract(axis);
             let frame = kas::layout::FrameRules::new_sym(0, inner_margin, 0);
+
+            let other = axis.other().map(|mut size| {
+                // Use same logic as in set_rect to find per-child size:
+                let other_axis = axis.flipped();
+                size -= self.frame_size.extract(other_axis);
+                if self.direction.is_horizontal() == other_axis.is_horizontal() {
+                    size = (size / self.ideal_visible).min(self.child_size_ideal).max(self.child_size_min);
+                }
+                size
+            });
+            axis = AxisInfo::new(axis.is_vertical(), other);
 
             let mut rules = self.default_widget.size_rules(size_mgr.re(), axis);
             if axis.is_vertical() == self.direction.is_vertical() {
@@ -454,16 +465,6 @@ impl_scope! {
             }
 
             if self.widgets.len() > 0 {
-                let other = axis.other().map(|mut size| {
-                    // Use same logic as in set_rect to find per-child size:
-                    let other_axis = axis.flipped();
-                    size -= self.frame_size.extract(other_axis);
-                    if self.direction.is_horizontal() == other_axis.is_horizontal() {
-                        size = (size / self.ideal_visible).min(self.child_size_ideal).max(self.child_size_min);
-                    }
-                    size
-                });
-                let axis = AxisInfo::new(axis.is_vertical(), other);
                 for w in self.widgets.iter_mut() {
                     rules = rules.max(w.widget.size_rules(size_mgr.re(), axis));
                 }

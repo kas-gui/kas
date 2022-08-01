@@ -199,7 +199,12 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
+            if let Some(mut other) = axis.other() {
+                other -= self.frame_size.extract(axis.flipped());
+                axis = AxisInfo::new(axis.is_vertical(), Some(other));
+            }
+
             let mut rules = self.inner.size_rules(mgr.re(), axis);
             if axis.is_horizontal() && self.multi_line() {
                 let bar_rules = self.bar.size_rules(mgr.re(), axis);

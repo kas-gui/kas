@@ -74,6 +74,9 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            // Unusual behaviour: children's SizeRules are padded with a frame,
+            // but the frame does not adjust the children's rects.
+
             let dim = (self.direction, self.widgets.len());
             let mut solver = RowSolver::new(axis, dim, &mut self.layout_store);
             let frame_rules = mgr.frame(FrameStyle::MenuEntry, axis);

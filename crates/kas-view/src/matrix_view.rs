@@ -414,25 +414,26 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
             let inner_margin = size_mgr.inner_margin().extract(axis);
             let frame = kas::layout::FrameRules::new_sym(0, inner_margin, 0);
+
+            let other = axis.other().map(|mut size| {
+                // Use same logic as in set_rect to find per-child size:
+                let other_axis = axis.flipped();
+                size -= self.frame_size.extract(other_axis);
+                let div = Size(self.ideal_len.cols, self.ideal_len.rows).extract(other_axis);
+                (size / div)
+                    .min(self.child_size_ideal.extract(other_axis))
+                    .max(self.child_size_min.extract(other_axis))
+            });
+            axis = AxisInfo::new(axis.is_vertical(), other);
 
             let mut rules = self.default_widget.size_rules(size_mgr.re(), axis);
             self.child_size_min.set_component(axis, rules.min_size());
 
             if self.widgets.len() > 0 {
-                let other = axis.other().map(|mut size| {
-                    // Use same logic as in set_rect to find per-child size:
-                    let other_axis = axis.flipped();
-                    size -= self.frame_size.extract(other_axis);
-                    let div = Size(self.ideal_len.cols, self.ideal_len.rows).extract(other_axis);
-                    (size / div)
-                        .min(self.child_size_ideal.extract(other_axis))
-                        .max(self.child_size_min.extract(other_axis))
-                });
-                let axis = AxisInfo::new(axis.is_vertical(), other);
                 for w in self.widgets.iter_mut() {
                     rules = rules.max(w.widget.size_rules(size_mgr.re(), axis));
                 }
