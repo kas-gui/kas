@@ -12,7 +12,6 @@
 extern crate chrono;
 
 use chrono::prelude::*;
-use log::info;
 use std::f32::consts::PI;
 use std::time::Duration;
 
@@ -130,7 +129,7 @@ impl_scope! {
                     self.date.set_and_try_prepare(date).expect("invalid font_id");
                     self.time.set_and_try_prepare(time).expect("invalid font_id");
                     let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
-                    info!("Requesting update in {}ns", ns);
+                    log::info!("Requesting update in {}ns", ns);
                     mgr.request_update(self.id(), 0, Duration::new(0, ns), true);
                     *mgr |= TkAction::REDRAW;
                     Response::Used

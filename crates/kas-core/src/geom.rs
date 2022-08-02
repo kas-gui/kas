@@ -144,11 +144,14 @@ macro_rules! impl_common {
                 Self(v.0, v.1)
             }
         }
-
-        impl From<(u32, u32)> for $T {
+        impl Conv<(i32, i32)> for $T {
             #[inline]
-            fn from(v: (u32, u32)) -> Self {
-                Self(v.0.cast(), v.1.cast())
+            fn conv(v: (i32, i32)) -> Self {
+                Self(v.0, v.1)
+            }
+            #[inline]
+            fn try_conv(v: (i32, i32)) -> Result<Self> {
+                Ok(Self::conv(v))
             }
         }
     };

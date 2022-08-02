@@ -278,10 +278,24 @@ impl_scope! {
 
             let frame_rules = mgr.frame(FrameStyle::MenuEntry, axis);
             let is_horiz = axis.is_horizontal();
-            let with_frame_rules = |rules| if is_horiz {
-                frame_rules.surround_as_margin(rules).0
-            } else {
-                frame_rules.surround_no_margin(rules).0
+
+            // Assumption: frame inner margin is at least as large as content margins
+            let child_rules = SizeRules::EMPTY;
+            let (_, _, frame_size_flipped) = mgr
+                .frame(FrameStyle::MenuEntry, axis.flipped())
+                .surround_no_margin(child_rules);
+
+            let child_rules = |mgr: SizeMgr, w: &mut dyn Layout, mut axis: AxisInfo| {
+                if let Some(mut other) = axis.other() {
+                    other -= frame_size_flipped;
+                    axis = AxisInfo::new(axis.is_vertical(), Some(other));
+                }
+                let rules = w.size_rules(mgr, axis);
+                if is_horiz {
+                    frame_rules.surround_as_margin(rules).0
+                } else {
+                    frame_rules.surround_no_margin(rules).0
+                }
             };
 
             for (row, child) in self.list.iter_mut().enumerate() {
@@ -295,36 +309,34 @@ impl_scope! {
                     if let Some(items) = child.sub_items() {
                         if let Some(w) = items.toggle {
                             let info = layout::GridChildInfo::new(0, row);
-                            solver.for_child(store, info, |axis| with_frame_rules(w.size_rules(mgr.re(), axis)));
+                            solver.for_child(store, info, |axis| child_rules(mgr.re(), w, axis));
                         }
                         if let Some(w) = items.icon {
                             let info = layout::GridChildInfo::new(1, row);
-                            solver.for_child(store, info, |axis| with_frame_rules(w.size_rules(mgr.re(), axis)));
+                            solver.for_child(store, info, |axis| child_rules(mgr.re(), w, axis));
                         }
                         if let Some(w) = items.label {
                             let info = layout::GridChildInfo::new(2, row);
-                            solver.for_child(store, info, |axis| with_frame_rules(w.size_rules(mgr.re(), axis)));
+                            solver.for_child(store, info, |axis| child_rules(mgr.re(), w, axis));
                         }
                         if let Some(w) = items.label2 {
                             let info = layout::GridChildInfo::new(3, row);
-                            solver.for_child(store, info, |axis| with_frame_rules(w.size_rules(mgr.re(), axis)));
+                            solver.for_child(store, info, |axis| child_rules(mgr.re(), w, axis));
                         }
                         if let Some(w) = items.submenu {
                             let info = layout::GridChildInfo::new(4, row);
-                            solver.for_child(store, info, |axis| with_frame_rules(w.size_rules(mgr.re(), axis)));
+                            solver.for_child(store, info, |axis| child_rules(mgr.re(), w, axis));
                         }
                     } else {
                         solver.for_child(store, info, |_| row_rules);
                     }
                 } else {
-                    let has_sub_items = child.sub_items().is_some();
-                    solver.for_child(store, info, |axis| {
-                        let mut rules = child.size_rules(mgr.re(), axis);
-                        if has_sub_items {
-                            rules = with_frame_rules(rules);
-                        }
-                        rules
-                    });
+                    // axis is vertical
+                    if child.sub_items().is_some() {
+                        solver.for_child(store, info, |axis| child_rules(mgr.re(), child, axis))
+                    } else {
+                        solver.for_child(store, info, |axis| child.size_rules(mgr.re(), axis))
+                    }
                 }
             }
             solver.finish(store)
@@ -336,12 +348,20 @@ impl_scope! {
             let mut setter = layout::GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, align, store);
 
             // Assumption: frame inner margin is at least as large as content margins
-            let dir = Direction::Right; // assumption: horiz and vert are the same
-            let frame_rules = mgr.size_mgr().frame(FrameStyle::MenuEntry, dir);
-            let (_, frame_offset, frame_size) = frame_rules.surround_no_margin(SizeRules::EMPTY);
+            let child_rules = SizeRules::EMPTY;
+            let (_, frame_x, frame_w) = mgr
+                .size_mgr()
+                .frame(FrameStyle::MenuEntry, Direction::Right)
+                .surround_no_margin(child_rules);
+            let (_, frame_y, frame_h) = mgr
+                .size_mgr()
+                .frame(FrameStyle::MenuEntry, Direction::Down)
+                .surround_no_margin(child_rules);
+            let frame_offset = Offset(frame_x, frame_y);
+            let frame_size = Size(frame_w, frame_h);
             let subtract_frame = |mut rect: Rect| {
-                rect.pos += Offset::splat(frame_offset);
-                rect.size -= Size::splat(frame_size);
+                rect.pos += frame_offset;
+                rect.size -= frame_size;
                 rect
             };
 

@@ -470,11 +470,31 @@ macro_rules! impl_vec2 {
                 $T(arg.0, arg.1)
             }
         }
+        impl Conv<($f, $f)> for $T {
+            #[inline]
+            fn conv(arg: ($f, $f)) -> Self {
+                $T(arg.0, arg.1)
+            }
+            #[inline]
+            fn try_conv(v: ($f, $f)) -> Result<Self> {
+                Ok(Self::conv(v))
+            }
+        }
 
         impl From<$T> for ($f, $f) {
             #[inline]
             fn from(v: $T) -> Self {
                 (v.0, v.1)
+            }
+        }
+        impl Conv<$T> for ($f, $f) {
+            #[inline]
+            fn conv(v: $T) -> Self {
+                (v.0, v.1)
+            }
+            #[inline]
+            fn try_conv(v: $T) -> Result<Self> {
+                Ok(Self::conv(v))
             }
         }
     };
@@ -486,11 +506,31 @@ impl From<kas_text::Vec2> for Vec2 {
         Vec2(size.0, size.1)
     }
 }
+impl Conv<kas_text::Vec2> for Vec2 {
+    #[inline]
+    fn conv(size: kas_text::Vec2) -> Self {
+        Vec2(size.0, size.1)
+    }
+    #[inline]
+    fn try_conv(v: kas_text::Vec2) -> Result<Self> {
+        Ok(Self::conv(v))
+    }
+}
 
 impl From<Vec2> for kas_text::Vec2 {
     #[inline]
     fn from(size: Vec2) -> kas_text::Vec2 {
         kas_text::Vec2(size.0, size.1)
+    }
+}
+impl Conv<Vec2> for kas_text::Vec2 {
+    #[inline]
+    fn conv(size: Vec2) -> kas_text::Vec2 {
+        kas_text::Vec2(size.0, size.1)
+    }
+    #[inline]
+    fn try_conv(v: Vec2) -> Result<Self> {
+        Ok(Self::conv(v))
     }
 }
 

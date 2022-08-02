@@ -5,7 +5,6 @@
 
 //! Event loop and handling
 
-use log::{debug, error};
 use smallvec::SmallVec;
 use std::collections::HashMap;
 use std::time::Instant;
@@ -103,7 +102,7 @@ where
                             .cloned()
                             .unwrap_or_else(|| panic!("timer wakeup without resume"));
                         assert_eq!(item.0, requested_resume);
-                        debug!("Wakeup: timer (window={:?})", item.1);
+                        log::trace!("Wakeup: timer (window={:?})", item.1);
 
                         let resume = if let Some(w) = self.windows.get_mut(&item.1) {
                             w.update_timer(&mut self.shared)
@@ -120,11 +119,11 @@ where
                     }
                     StartCause::WaitCancelled { .. } => {
                         // This event serves no purpose?
-                        // debug!("Wakeup: WaitCancelled (ignoring)");
+                        // log::debug!("Wakeup: WaitCancelled (ignoring)");
                     }
                     StartCause::Poll => (),
                     StartCause::Init => {
-                        debug!("Wakeup: init");
+                        log::debug!("Wakeup: init");
                     }
                 }
             }
@@ -210,7 +209,7 @@ where
         while let Some(pending) = self.shared.pending.pop() {
             match pending {
                 PendingAction::AddPopup(parent_id, id, popup) => {
-                    debug!("Adding overlay");
+                    log::debug!("Pending: adding overlay");
                     // TODO: support pop-ups as a special window, where available
                     self.windows.get_mut(&parent_id).unwrap().add_popup(
                         &mut self.shared,
@@ -220,7 +219,7 @@ where
                     self.id_map.insert(id, parent_id);
                 }
                 PendingAction::AddWindow(id, widget) => {
-                    debug!("Adding window {}", widget.title());
+                    log::debug!("Pending: adding window {}", widget.title());
                     match Window::new(&mut self.shared, elwt, id, widget) {
                         Ok(window) => {
                             let wid = window.window.id();
@@ -228,7 +227,7 @@ where
                             self.windows.insert(wid, window);
                         }
                         Err(e) => {
-                            error!("Unable to create window: {}", e);
+                            log::error!("Unable to create window: {}", e);
                         }
                     };
                 }

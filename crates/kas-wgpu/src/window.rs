@@ -5,9 +5,6 @@
 
 //! `Window` and `WindowList` types
 
-use log::{debug, error, info, trace};
-use std::time::Instant;
-
 use kas::cast::Cast;
 use kas::draw::{AnimationState, DrawIface, DrawShared, PassId};
 use kas::event::{ConfigMgr, CursorIcon, EventState, UpdateId};
@@ -16,6 +13,7 @@ use kas::layout::SolveCache;
 use kas::theme::{DrawMgr, SizeMgr, ThemeControl, ThemeSize};
 use kas::{Layout, TkAction, WidgetCore, WidgetExt, WindowId};
 use kas_theme::{Theme, Window as _};
+use std::time::Instant;
 use winit::dpi::PhysicalSize;
 use winit::error::OsError;
 use winit::event::WindowEvent;
@@ -116,9 +114,10 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let scale_factor = window.scale_factor();
         shared.scale_factor = scale_factor;
         let size: Size = window.inner_size().cast();
-        info!(
-            "Constucted new window with physical size {:?}, scale factor {}",
-            size, scale_factor
+        log::info!(
+            "new: constructed with physical size {:?}, scale factor {}",
+            size,
+            scale_factor
         );
 
         // Now that we have a scale factor, we may need to resize:
@@ -158,7 +157,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         };
         r.apply_size(shared, true);
 
-        trace!("Window::new completed in {}µs", time.elapsed().as_micros());
+        log::trace!(target: "kas_perf::wgpu::window", "new: {}µs", time.elapsed().as_micros());
         Ok(r)
     }
 
@@ -311,7 +310,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
     fn reconfigure(&mut self, shared: &mut SharedState<C, T>) {
         let time = Instant::now();
-        debug!("Window::reconfigure");
+        log::debug!("reconfigure");
 
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         self.ev_state
@@ -319,13 +318,13 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
         self.solve_cache.invalidate_rule_cache();
         self.apply_size(shared, false);
-        trace!("reconfigure completed in {}µs", time.elapsed().as_micros());
+        log::trace!(target: "kas_perf::wgpu::window", "reconfigure: {}µs", time.elapsed().as_micros());
     }
 
     fn apply_size(&mut self, shared: &mut SharedState<C, T>, first: bool) {
         let time = Instant::now();
         let rect = Rect::new(Coord::ZERO, self.sc_size());
-        debug!("Resizing window to rect = {:?}", rect);
+        log::debug!("apply_size: rect={rect:?}");
 
         let solve_cache = &mut self.solve_cache;
         let widget = &mut self.widget;
@@ -348,7 +347,10 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         };
 
         self.window.request_redraw();
-        trace!("apply_size completed in {}µs", time.elapsed().as_micros());
+        log::trace!(
+            target: "kas_perf::wgpu::window",
+            "apply_size: {}µs", time.elapsed().as_micros(),
+        );
     }
 
     fn do_resize(&mut self, shared: &mut SharedState<C, T>, size: PhysicalSize<u32>) {
@@ -369,8 +371,9 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         // requirements; we therefore refresh size restrictions.
         self.apply_size(shared, false);
 
-        trace!(
-            "do_resize completed in {}µs (including apply_size time)",
+        log::trace!(
+            target: "kas_perf::wgpu::window",
+            "do_resize: {}µs (includes apply_size)",
             time.elapsed().as_micros()
         );
     }
@@ -414,7 +417,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         self.draw.animation = AnimationState::None;
         self.ev_state.action -= TkAction::REDRAW; // we just drew
         if !self.ev_state.action.is_empty() {
-            info!("do_draw: abort and enqueue `Self::update` due to non-empty actions");
+            log::info!("do_draw: abort and enqueue `Self::update` due to non-empty actions");
             return true;
         }
 
@@ -422,7 +425,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let frame = match self.surface.get_current_texture() {
             Ok(frame) => frame,
             Err(e) => {
-                error!("Failed to get frame texture: {}", e);
+                log::error!("do_draw: failed to get frame texture: {}", e);
                 // It may be possible to recover by calling surface.configure(...) then retrying
                 // surface.get_current_texture(), but is doing so ever useful?
                 return true;
@@ -439,8 +442,9 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let end = Instant::now();
         // Explanation: 'text' is the time to prepare positioned glyphs, 'frame-
         // swap' is mostly about sync, 'render' is time to feed the GPU.
-        trace!(
-            "do_draw completed in {}µs ({}μs widgets, {}µs text, {}µs render)",
+        log::trace!(
+            target: "kas_perf::wgpu::window",
+            "do_draw: {}µs ({}μs widgets, {}µs text, {}µs render)",
             (end - start).as_micros(),
             (time2 - start).as_micros(),
             self.draw.text.dur_micros(),

@@ -237,7 +237,7 @@ where
         #[cfg(debug_assertions)]
         {
             if !inner.a.lt(inner.b) {
-                log::warn!("frame too small: {outer:?}");
+                log::warn!("button_frame: frame too small: {outer:?}");
             }
         }
 
@@ -404,7 +404,7 @@ where
             }
         });
         if let Err(e) = result {
-            log::error!("text.highlight_range() -> {e}");
+            log::error!("text_selected_range: text.highlight_range() -> {e}");
         }
 
         let effects = [

@@ -5,7 +5,6 @@
 
 //! Event manager — public API
 
-use log::{debug, trace};
 use std::time::{Duration, Instant};
 use std::u16;
 
@@ -198,8 +197,9 @@ impl EventState {
             }
 
             row.0 = time;
-            trace!(
-                "EventMgr::request_update: update {id} at now+{}ms",
+            log::trace!(
+                target: "kas_core::event::manager",
+                "request_update: update {id} at now+{}ms",
                 delay.as_millis()
             );
         } else {
@@ -245,7 +245,7 @@ impl EventState {
     /// respond to navigation keys when no widget has focus.
     pub fn register_nav_fallback(&mut self, id: WidgetId) {
         if self.nav_fallback.is_none() {
-            debug!("EventMgr: nav_fallback = {}", id);
+            log::debug!(target: "kas_core::event::manager","register_nav_fallback: id={id}");
             self.nav_fallback = Some(id);
         }
     }
@@ -380,7 +380,7 @@ impl EventState {
             }
         }
         if redraw {
-            trace!("EventMgr: set_grab_depress on target={:?}", target);
+            log::trace!(target: "kas_core::event::manager", "set_grab_depress: target={target:?}");
             self.send_action(TkAction::REDRAW);
         }
         redraw
@@ -417,7 +417,7 @@ impl EventState {
             self.pending.push_back(Pending::LostNavFocus(id));
         }
         self.clear_char_focus();
-        trace!("EventMgr: nav_focus = None");
+        log::trace!(target: "kas_core::event::manager", "clear_nav_focus");
     }
 
     /// Set the keyboard navigation focus directly
@@ -441,7 +441,7 @@ impl EventState {
                 self.clear_char_focus();
             }
             self.nav_focus = Some(id.clone());
-            trace!("EventMgr: nav_focus = Some({})", id);
+            log::trace!(target: "kas_core::event::manager", "set_nav_focus: {id}");
             self.pending.push_back(Pending::SetNavFocus(id, key_focus));
         }
     }
@@ -466,7 +466,7 @@ impl<'a> EventMgr<'a> {
     /// Messages may be left on the stack after this returns and scroll state
     /// may be adjusted.
     pub fn send(&mut self, widget: &mut dyn Widget, mut id: WidgetId, event: Event) -> Response {
-        trace!("EventMgr::send to {}: {:?}", id, event);
+        log::trace!(target: "kas_core::event::manager", "send: id={id}: {event:?}");
 
         // TODO(opt): we should be able to use binary search here
         let mut disabled = false;
@@ -478,7 +478,7 @@ impl<'a> EventMgr<'a> {
                 }
             }
             if disabled {
-                trace!("EventMgr::send: target is disabled; sending instead to {id}");
+                log::trace!(target: "kas_core::event::manager", "target is disabled; sending to ancestor {id}");
             }
         }
 
@@ -553,7 +553,7 @@ impl<'a> EventMgr<'a> {
     /// Returns `None` if window creation is not currently available (but note
     /// that `Some` result does not guarantee the operation succeeded).
     pub fn add_popup(&mut self, popup: crate::Popup) -> Option<WindowId> {
-        trace!("Manager::add_popup({:?})", popup);
+        log::trace!(target: "kas_core::event::manager", "add_popup: {popup:?}");
         let new_id = &popup.id;
         while let Some((_, popup, _)) = self.popups.last() {
             if popup.parent.is_ancestor_of(new_id) {
@@ -629,7 +629,7 @@ impl<'a> EventMgr<'a> {
     /// the given `id` and `payload`.
     #[inline]
     pub fn update_all(&mut self, id: UpdateId, payload: u64) {
-        debug!("update_all: id={:?}, payload={}", id, payload);
+        log::debug!(target: "kas_core::event::manager", "update_all: id={id:?}, payload={payload}");
         self.shell.update_all(id, payload);
     }
 
@@ -728,17 +728,17 @@ impl<'a> EventMgr<'a> {
         cursor: Option<CursorIcon>,
     ) {
         let start_id = id.clone();
+        log::trace!(target: "kas_core::event::manager", "grab_press: start_id={start_id}, source={source:?}");
         let mut pan_grab = (u16::MAX, 0);
         match source {
             PressSource::Mouse(button, repetitions) => {
                 if self.remove_mouse_grab().is_some() {
                     #[cfg(debug_assertions)]
-                    log::error!("grab_press: existing mouse grab!");
+                    log::error!(target: "kas_core::event::manager", "grab_press: existing mouse grab!");
                 }
                 if mode != GrabMode::Grab {
                     pan_grab = self.set_pan_on(id.clone(), mode, false, coord);
                 }
-                trace!("EventMgr: start mouse grab by {}", start_id);
                 self.mouse_grab = Some(MouseGrab {
                     button,
                     repetitions,
@@ -757,12 +757,11 @@ impl<'a> EventMgr<'a> {
             PressSource::Touch(touch_id) => {
                 if self.remove_touch(touch_id).is_some() {
                     #[cfg(debug_assertions)]
-                    log::error!("grab_press: existing touch grab!");
+                    log::error!(target: "kas_core::event::manager", "grab_press: existing touch grab!");
                 }
                 if mode != GrabMode::Grab {
                     pan_grab = self.set_pan_on(id.clone(), mode, true, coord);
                 }
-                trace!("EventMgr: start touch grab by {}", start_id);
                 self.touch_grab.push(TouchGrab {
                     id: touch_id,
                     start_id,

@@ -17,7 +17,6 @@ use kas::prelude::*;
 use kas_widgets::ScrollBars;
 use kas_widgets::SelectMsg;
 use linear_map::set::LinearSet;
-use log::{debug, trace};
 use std::time::Instant;
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -264,7 +263,6 @@ impl_scope! {
             }
             mgr.config_mgr(|mgr| self.update_widgets(mgr));
             // Force SET_SIZE so that scroll-bar wrappers get updated
-            trace!("update_view triggers SET_SIZE");
             *mgr |= TkAction::SET_SIZE;
         }
 
@@ -349,7 +347,7 @@ impl_scope! {
             }
             *mgr |= action;
             let dur = (Instant::now() - time).as_micros();
-            trace!("MatrixView::update_widgets completed in {}μs", dur);
+            log::trace!(target: "kas_perf::view::matrix_view", "update_widgets: {dur}μs");
             solver
         }
     }
@@ -414,25 +412,26 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
             let inner_margin = size_mgr.inner_margin().extract(axis);
             let frame = kas::layout::FrameRules::new_sym(0, inner_margin, 0);
+
+            let other = axis.other().map(|mut size| {
+                // Use same logic as in set_rect to find per-child size:
+                let other_axis = axis.flipped();
+                size -= self.frame_size.extract(other_axis);
+                let div = Size(self.ideal_len.cols, self.ideal_len.rows).extract(other_axis);
+                (size / div)
+                    .min(self.child_size_ideal.extract(other_axis))
+                    .max(self.child_size_min.extract(other_axis))
+            });
+            axis = AxisInfo::new(axis.is_vertical(), other);
 
             let mut rules = self.default_widget.size_rules(size_mgr.re(), axis);
             self.child_size_min.set_component(axis, rules.min_size());
 
             if self.widgets.len() > 0 {
-                let other = axis.other().map(|mut size| {
-                    // Use same logic as in set_rect to find per-child size:
-                    let other_axis = axis.flipped();
-                    size -= self.frame_size.extract(other_axis);
-                    let div = Size(self.ideal_len.cols, self.ideal_len.rows).extract(other_axis);
-                    (size / div)
-                        .min(self.child_size_ideal.extract(other_axis))
-                        .max(self.child_size_min.extract(other_axis))
-                });
-                let axis = AxisInfo::new(axis.is_vertical(), other);
                 for w in self.widgets.iter_mut() {
                     rules = rules.max(w.widget.size_rules(size_mgr.re(), axis));
                 }
@@ -486,7 +485,7 @@ impl_scope! {
             };
 
             if avail_widgets < req_widgets {
-                debug!("allocating widgets (old len = {}, new = {})", avail_widgets, req_widgets);
+                log::debug!("set_rect: allocating widgets (old len = {}, new = {})", avail_widgets, req_widgets);
                 self.widgets.reserve(req_widgets - avail_widgets);
                 for _ in avail_widgets..req_widgets {
                     let widget = self.view.make();
@@ -547,7 +546,7 @@ impl_scope! {
                 let cols = self.data.col_iter_vec(self.ideal_len.cols.cast());
                 let rows = self.data.row_iter_vec(self.ideal_len.rows.cast());
                 let len = cols.len() * rows.len();
-                debug!("allocating {} widgets", len);
+                log::debug!("configure: allocating {} widgets", len);
                 self.widgets.reserve(len);
                 for row in rows.iter(){
                     for col in cols.iter() {

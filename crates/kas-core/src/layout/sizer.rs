@@ -5,7 +5,6 @@
 
 //! Layout solver
 
-use log::trace;
 use std::fmt;
 
 use super::{AlignHints, AxisInfo, Margins, SizeRules};
@@ -142,13 +141,11 @@ impl SolveCache {
         let ideal = Size(w.ideal_size(), h.ideal_size());
         let margins = Margins::hv(w.margins(), h.margins());
 
-        trace!(target: "kas_perf", "layout::find_constraints: {}ms", start.elapsed().as_millis());
-        trace!(
-            "layout::solve: min={:?}, ideal={:?}, margins={:?}",
-            min,
-            ideal,
-            margins
+        log::trace!(
+            target: "kas_perf::layout", "find_constraints: {}μs",
+            start.elapsed().as_micros(),
         );
+        log::debug!("find_constraints: min={min:?}, ideal={ideal:?}, margins={margins:?}");
         let refresh_rules = false;
         let last_width = ideal.0;
         SolveCache {
@@ -202,6 +199,7 @@ impl SolveCache {
                 self.min.0 = w.min_size();
                 self.ideal.0 = w.ideal_size();
                 self.margins.horiz = w.margins();
+                width = rect.size.0 - self.margins.sum_horiz();
             }
 
             let h = widget.size_rules(mgr.size_mgr(), AxisInfo::new(true, Some(width)));
@@ -218,11 +216,11 @@ impl SolveCache {
         }
         widget.set_rect(mgr, rect, AlignHints::NONE);
 
-        trace!(target: "kas_perf", "layout::apply_rect: {}ms", start.elapsed().as_millis());
+        log::trace!(target: "kas_perf::layout", "apply_rect: {}μs", start.elapsed().as_micros());
         if print_heirarchy {
-            trace!(
-                "layout::apply_rect: size={:?}, hierarchy:{}",
-                rect.size,
+            log::trace!(
+                target: "kas_core::layout::hierarchy",
+                "apply_rect: rect={rect:?}:{}",
                 WidgetHeirarchy(widget, 0),
             );
         }
@@ -234,13 +232,14 @@ impl SolveCache {
 struct WidgetHeirarchy<'a>(&'a dyn Widget, usize);
 impl<'a> fmt::Display for WidgetHeirarchy<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let len = 40 - 2 * self.1;
+        let len = 43 - 2 * self.1;
         let trail = "| ".repeat(self.1);
         // Note: pre-format some items to ensure correct alignment
         let identify = format!("{}", self.0.identify());
         let pos = format!("{:?}", self.0.rect().pos);
+        let plen = 17usize.saturating_sub(identify.len().saturating_sub(len));
         let size = self.0.rect().size;
-        write!(f, "\n{trail}{identify:<len$}{pos:<20}{size:?}")?;
+        write!(f, "\n{trail}{identify:<len$} {pos:<plen$} {size:?}")?;
 
         for i in 0..self.0.num_children() {
             WidgetHeirarchy(self.0.get_child(i).unwrap(), self.1 + 1).fmt(f)?;

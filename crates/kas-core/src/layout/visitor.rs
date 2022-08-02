@@ -11,14 +11,13 @@
 use super::{Align, AlignHints, AxisInfo, MarginSelector, SizeRules};
 use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
-use super::{RulesSetter, RulesSolver, Storage};
+use super::{RulesSetter, RulesSolver};
 use crate::draw::color::Rgb;
 use crate::event::ConfigMgr;
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::theme::{Background, DrawMgr, FrameStyle, SizeMgr};
 use crate::WidgetId;
 use crate::{dir::Directional, dir::Directions, Layout, Widget};
-use std::any::Any;
 use std::iter::ExactSizeIterator;
 
 /// A layout visitor
@@ -203,11 +202,11 @@ impl<'a> Visitor<'a> {
                 child_rules
             }
             LayoutType::Frame(child, storage, style) => {
-                let child_rules = child.size_rules_(mgr.re(), axis);
+                let child_rules = child.size_rules_(mgr.re(), storage.child_axis(axis));
                 storage.size_rules(mgr, axis, child_rules, *style)
             }
             LayoutType::Button(child, storage, _) => {
-                let child_rules = child.size_rules_(mgr.re(), axis);
+                let child_rules = child.size_rules_(mgr.re(), storage.child_axis(axis));
                 storage.size_rules(mgr, axis, child_rules, FrameStyle::Button)
             }
         }
@@ -481,12 +480,16 @@ pub struct FrameStorage {
     // calculate and pass the child's rect, which is probably worse.
     rect: Rect,
 }
-impl Storage for FrameStorage {
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
 impl FrameStorage {
+    /// Calculate child's "other axis" size
+    pub fn child_axis(&self, mut axis: AxisInfo) -> AxisInfo {
+        if let Some(mut other) = axis.other() {
+            other -= self.size.extract(axis.flipped());
+            axis = AxisInfo::new(axis.is_vertical(), Some(other));
+        }
+        axis
+    }
+
     /// Generate [`SizeRules`]
     pub fn size_rules(
         &mut self,

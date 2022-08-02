@@ -8,7 +8,6 @@
 use super::Error;
 use kas::draw::DrawSharedImpl;
 use kas_theme::{Theme, ThemeConfig};
-use log::error;
 use std::env::var;
 use std::num::NonZeroU32;
 use std::path::PathBuf;
@@ -144,10 +143,8 @@ impl Options {
                 "READWRITE" => ConfigMode::ReadWrite,
                 "WRITEDEFAULT" => ConfigMode::WriteDefault,
                 other => {
-                    error!(
-                        "Bad env var: KAS_CONFIG_MODE={}; use READ, READWRITE or WRITEDEFAULT",
-                        other
-                    );
+                    log::error!("from_env: bad var KAS_CONFIG_MODE={other}");
+                    log::error!("from_env: supported config modes: READ, READWRITE, WRITEDEFAULT");
                     options.config_mode
                 }
             };
@@ -156,7 +153,7 @@ impl Options {
         if let Ok(v) = var("KAS_FPS_LIMIT") {
             match v.parse::<u32>() {
                 Ok(x) => options.fps_limit = NonZeroU32::new(x),
-                Err(e) => error!("Bad env var: KAS_FPS_LIMIT={}: {}", v, e),
+                Err(e) => log::error!("from_env: bad var KAS_FPS_LIMIT={v}: {e}"),
             }
         }
 
@@ -166,9 +163,9 @@ impl Options {
                 "DEFAULT" | "LOWPOWER" => PowerPreference::LowPower,
                 "HIGHPERFORMANCE" => PowerPreference::HighPerformance,
                 other => {
-                    error!(
-                        "Bad env var: KAS_POWER_PREFERENCE={}; use DEFAULT, LOWPOWER or HIGHPERFORMANCE",
-                        other
+                    log::error!("from_env: bad var KAS_POWER_PREFERENCE={other}");
+                    log::error!(
+                        "from_env: supported power modes: DEFAULT, LOWPOWER, HIGHPERFORMANCE"
                     );
                     options.power_preference
                 }
@@ -188,7 +185,8 @@ impl Options {
                 "SECONDARY" => Backends::SECONDARY,
                 "FALLBACK" => Backends::empty(),
                 other => {
-                    error!("Bad env var: KAS_BACKENDS={}; use VULKAN, GL, METAL, DX11, DX12, BROWSER_WEBGPU, PRIMARY, SECONDARY or FALLBACK", other);
+                    log::error!("from_env: bad var KAS_BACKENDS={other}");
+                    log::error!("from_env: supported backends: VULKAN, GL, METAL, DX11, DX12, BROWSER_WEBGPU, PRIMARY, SECONDARY, FALLBACK");
                     options.backends
                 }
             }

@@ -74,6 +74,9 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            // Unusual behaviour: children's SizeRules are padded with a frame,
+            // but the frame does not adjust the children's rects.
+
             let dim = (self.direction, self.widgets.len());
             let mut solver = RowSolver::new(axis, dim, &mut self.layout_store);
             let frame_rules = mgr.frame(FrameStyle::MenuEntry, axis);
@@ -235,7 +238,7 @@ impl_scope! {
 
     impl Self {
         fn set_menu_path(&mut self, mgr: &mut EventMgr, target: Option<&WidgetId>, set_focus: bool) {
-            log::trace!("{}::set_menu_path: target={:?}, set_focus={}", self.identify(), target, set_focus);
+            log::trace!("set_menu_path: self={}, target={target:?}, set_focus={set_focus}", self.identify());
             self.delayed_open = None;
             for i in 0..self.widgets.len() {
                 self.widgets[i].set_menu_path(mgr, target, set_focus);
