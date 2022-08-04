@@ -188,11 +188,13 @@ impl_scope! {
     /// [`Self::with_multi_line`] and [`Self::with_class`] can be used to change this.
     #[autoimpl(Deref, DerefMut, HasStr, HasString using self.inner)]
     #[derive(Clone, Default, Debug)]
-    #[widget]
+    #[widget {
+        derive = self.inner;
+    }]
     pub struct EditBox<G: EditGuard = ()> {
-        core: widget_core!(),
         #[widget] inner: EditField<G>,
         #[widget] bar: ScrollBar<kas::dir::Down>,
+        frame_rect: Rect,
         frame_offset: Offset,
         frame_size: Size,
         inner_margin: i32,
@@ -220,7 +222,7 @@ impl_scope! {
         }
 
         fn set_rect(&mut self, mgr: &mut ConfigMgr, mut rect: Rect, hints: AlignHints) {
-            self.core.rect = rect;
+            self.frame_rect = rect;
             rect.pos += self.frame_offset;
             rect.size -= self.frame_size;
             if self.multi_line() {
@@ -236,7 +238,7 @@ impl_scope! {
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            if !self.rect().contains(coord) {
+            if !self.frame_rect.contains(coord) {
                 return None;
             }
 
@@ -259,7 +261,7 @@ impl_scope! {
             } else {
                 Background::Default
             };
-            draw.frame(self.rect(), FrameStyle::EditBox, bg);
+            draw.frame(self.frame_rect, FrameStyle::EditBox, bg);
             self.inner.draw(draw);
         }
     }
@@ -313,9 +315,9 @@ impl EditBox<()> {
     #[inline]
     pub fn new<S: ToString>(text: S) -> Self {
         EditBox {
-            core: Default::default(),
             inner: EditField::new(text),
             bar: ScrollBar::new(),
+            frame_rect: Rect::ZERO,
             frame_offset: Offset::ZERO,
             frame_size: Size::ZERO,
             inner_margin: 0,
@@ -339,9 +341,9 @@ impl EditBox<()> {
     #[must_use]
     pub fn with_guard<G: EditGuard>(self, guard: G) -> EditBox<G> {
         EditBox {
-            core: self.core,
             inner: self.inner.with_guard(guard),
             bar: self.bar,
+            frame_rect: self.frame_rect,
             frame_offset: self.frame_offset,
             frame_size: self.frame_size,
             inner_margin: self.inner_margin,
