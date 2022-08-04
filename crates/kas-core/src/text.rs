@@ -6,8 +6,7 @@
 //! Text functionality
 //!
 //! Most of this module is simply a re-export of the [KAS Text] API, hence the
-//! lower level of integration than other parts of the library. The [`util`]
-//! module is an extension providing some integration.
+//! lower level of integration than other parts of the library.
 //!
 //! When using a [`Text`] object in a widget, the text *must* be prepared before
 //! display by calling [`ConfigMgr::text_set_size`] from [`Layout::set_rect`].

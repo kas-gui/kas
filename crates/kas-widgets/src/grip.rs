@@ -22,7 +22,7 @@ pub enum GripMsg {
     /// Parameter: the new position of the grip relative to the track.
     ///
     /// The grip position is not adjusted; the caller should also call
-    /// [`Self::set_offset`] to do so. This is separate to allow adjustment of
+    /// [`GripPart::set_offset`] to do so. This is separate to allow adjustment of
     /// the posision; e.g. `Slider` pins the position to the nearest detent.
     PressMove(Offset),
     /// Widget received [`Event::PressEnd`]
