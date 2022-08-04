@@ -6,7 +6,7 @@
 use crate::args::{Child, WidgetArgs};
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::{Scope, ScopeAttr, ScopeItem, SimplePath};
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::Span;
 use proc_macro_error::emit_error;
 use quote::{quote, TokenStreamExt};
 use syn::spanned::Spanned;
@@ -28,9 +28,13 @@ impl ScopeAttr for AttrImplWidget {
         SimplePath::new(&["widget"])
     }
 
-    fn apply(&self, args: TokenStream, _: Span, scope: &mut Scope) -> Result<()> {
-        let attr = syn::parse2(args)?;
-        widget(attr, scope)
+    fn apply(&self, attr: syn::Attribute, scope: &mut Scope) -> Result<()> {
+        let args = if attr.tokens.is_empty() {
+            WidgetArgs::default()
+        } else {
+            attr.parse_args()?
+        };
+        widget(args, scope)
     }
 }
 

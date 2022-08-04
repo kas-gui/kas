@@ -191,8 +191,6 @@ impl Parse for WidgetArgs {
         let mut layout = None;
 
         while !content.is_empty() {
-            let mut item_cursor = content.cursor();
-
             let lookahead = content.lookahead1();
             if lookahead.peek(kw::key_nav) && key_nav.is_none() {
                 let span = content.parse::<kw::key_nav>()?.span();
@@ -224,22 +222,7 @@ impl Parse for WidgetArgs {
                 return Err(lookahead.error());
             }
 
-            if let Err(_) = content.parse::<Token![;]>() {
-                let mut span = item_cursor.span();
-                while let Some((_, next)) = item_cursor.token_tree() {
-                    item_cursor = next;
-                    if !item_cursor.eof() {
-                        let next = item_cursor.span();
-                        // NOTE: Span::join always returns None on stable rustc!
-                        if let Some(joined) = span.join(next) {
-                            span = joined;
-                        } else {
-                            span = next;
-                        }
-                    }
-                }
-                return Err(Error::new(span, "expected `;` after content"));
-            }
+            let _ = content.parse::<Token![;]>()?;
         }
 
         if let Some(derive) = kw_derive {
