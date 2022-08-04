@@ -542,7 +542,7 @@ impl<'a> EventMgr<'a> {
             }
             self.add_key_depress(scancode, id.clone());
             self.send_event(widget, id, Event::Command(Command::Activate));
-        } else if vkey == VK::Tab {
+        } else if self.config.nav_focus && vkey == VK::Tab {
             self.clear_char_focus();
             let shift = self.modifiers.shift();
             self.next_nav_focus(widget, shift, true);

@@ -112,6 +112,7 @@ pub struct WindowConfig {
     scroll_flick_sub: f32,
     scroll_dist: f32,
     pan_dist_thresh: f32,
+    pub(crate) nav_focus: bool,
 }
 
 impl WindowConfig {
@@ -124,6 +125,7 @@ impl WindowConfig {
             scroll_flick_sub: f32::NAN,
             scroll_dist: f32::NAN,
             pan_dist_thresh: f32::NAN,
+            nav_focus: true,
         };
         w.update(scale_factor, dpem);
         w
@@ -214,13 +216,13 @@ impl WindowConfig {
     /// Whether mouse clicks set keyboard navigation focus
     #[inline]
     pub fn mouse_nav_focus(&self) -> bool {
-        self.config.borrow().mouse_nav_focus
+        self.nav_focus && self.config.borrow().mouse_nav_focus
     }
 
     /// Whether touchscreen events set keyboard navigation focus
     #[inline]
     pub fn touch_nav_focus(&self) -> bool {
-        self.config.borrow().touch_nav_focus
+        self.nav_focus && self.config.borrow().touch_nav_focus
     }
 
     /// Access shortcut config

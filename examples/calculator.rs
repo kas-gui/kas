@@ -75,6 +75,8 @@ fn main() -> kas::shell::Result<()> {
         }
         impl Widget for Self {
             fn configure(&mut self, mgr: &mut ConfigMgr) {
+                mgr.disable_nav_focus(true);
+
                 // Enable key bindings without Alt held:
                 mgr.enable_alt_bypass(self.id_ref(), true);
             }

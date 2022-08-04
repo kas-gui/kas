@@ -432,18 +432,20 @@ impl EventState {
     /// be true if focussing in response to keyboard input, false if reacting to
     /// mouse or touch input.
     pub fn set_nav_focus(&mut self, id: WidgetId, key_focus: bool) {
-        if id != self.nav_focus {
-            self.send_action(TkAction::REDRAW);
-            if let Some(old_id) = self.nav_focus.take() {
-                self.pending.push_back(Pending::LostNavFocus(old_id));
-            }
-            if id != self.sel_focus {
-                self.clear_char_focus();
-            }
-            self.nav_focus = Some(id.clone());
-            log::trace!(target: "kas_core::event::manager", "set_nav_focus: {id}");
-            self.pending.push_back(Pending::SetNavFocus(id, key_focus));
+        if id == self.nav_focus || !self.config.nav_focus {
+            return;
         }
+
+        self.send_action(TkAction::REDRAW);
+        if let Some(old_id) = self.nav_focus.take() {
+            self.pending.push_back(Pending::LostNavFocus(old_id));
+        }
+        if id != self.sel_focus {
+            self.clear_char_focus();
+        }
+        self.nav_focus = Some(id.clone());
+        log::trace!(target: "kas_core::event::manager", "set_nav_focus: {id}");
+        self.pending.push_back(Pending::SetNavFocus(id, key_focus));
     }
 
     /// Set the cursor icon

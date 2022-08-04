@@ -336,7 +336,7 @@ impl ColorsLinear {
 
     /// Get colour for navigation highlight region, if any
     pub fn nav_region(&self, state: InputState) -> Option<Rgba> {
-        if state.depress() || state.nav_focus() && !state.disabled() {
+        if state.nav_focus() && !state.disabled() {
             Some(self.nav_focus)
         } else {
             None

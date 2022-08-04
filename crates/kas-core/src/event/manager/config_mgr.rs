@@ -44,18 +44,37 @@ impl<'a> ConfigMgr<'a> {
     /// This may change, even without user action, since some platforms
     /// always initialize windows with scale factor 1.
     /// See also notes on [`Widget::configure`].
+    #[inline]
     pub fn size_mgr(&self) -> SizeMgr<'a> {
         SizeMgr::new(self.sh)
     }
 
     /// Access [`DrawShared`]
+    #[inline]
     pub fn draw_shared(&mut self) -> &mut dyn DrawShared {
         self.ds
     }
 
     /// Access [`EventState`]
+    #[inline]
     pub fn ev_state(&mut self) -> &mut EventState {
         self.ev
+    }
+
+    /// Disable or enable navigation focus
+    ///
+    /// When nav focus is disabled, [`EventState::nav_focus`] always returns
+    /// `None`. Any existing focus is immediately cleared. Both
+    /// [`EventState::set_nav_focus`] and [`Self::next_nav_focus`] will fail to
+    /// do anything. Input such as the <kbd>Tab</kbd> key and mouse click
+    /// will not set navigation focus.
+    pub fn disable_nav_focus(&mut self, disabled: bool) {
+        self.ev.config.nav_focus = !disabled;
+        if disabled {
+            if let Some(id) = self.ev.nav_focus.take() {
+                self.pending.push_back(Pending::LostNavFocus(id));
+            }
+        }
     }
 
     /// Configure a widget
@@ -66,7 +85,6 @@ impl<'a> ConfigMgr<'a> {
     ///
     /// Pass the `id` to assign to the widget: this should be constructed from
     /// the parent's id via [`WidgetId::make_child`].
-    #[inline]
     pub fn configure(&mut self, id: WidgetId, widget: &mut dyn Widget) {
         widget.pre_configure(self, id);
 
@@ -123,6 +141,10 @@ impl<'a> ConfigMgr<'a> {
         reverse: bool,
         key_focus: bool,
     ) -> bool {
+        if !self.config.nav_focus {
+            return false;
+        }
+
         if let Some(id) = self.popups.last().map(|(_, p, _)| p.id.clone()) {
             if id.is_ancestor_of(widget.id_ref()) {
                 // do nothing
