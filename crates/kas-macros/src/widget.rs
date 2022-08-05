@@ -7,7 +7,7 @@ use crate::args::{Child, WidgetArgs};
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::{Scope, ScopeAttr, ScopeItem, SimplePath};
 use proc_macro2::Span;
-use proc_macro_error::emit_error;
+use proc_macro_error::{emit_error, emit_warning};
 use quote::{quote, TokenStreamExt};
 use syn::spanned::Spanned;
 use syn::{parse2, parse_quote, Error, Ident, ImplItem, Index, ItemImpl, Member, Result, Type};
@@ -70,21 +70,30 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let mut layout_children = Vec::new();
     for (i, field) in fields.iter_mut().enumerate() {
         if matches!(&field.ty, Type::Macro(mac) if mac.mac == parse_quote!{ widget_core!() }) {
-            if let Some(ref cd) = core_data {
-                emit_error!(
+            if let Some(member) = opt_derive {
+                emit_warning!(
+                    field.ty, "unused field of type widget_core!()";
+                    note = member.span() => "not used due to derive mode";
+                );
+                field.ty = parse_quote! { () };
+                continue;
+            } else if let Some(ref cd) = core_data {
+                emit_warning!(
                     field.ty, "multiple fields of type widget_core!()";
                     note = cd.span() => "previous field of type widget_core!()";
                 );
-            } else {
-                core_data = Some(member(i, field.ident.clone()));
+                field.ty = parse_quote! { () };
+                continue;
             }
+
+            core_data = Some(member(i, field.ident.clone()));
 
             if let Some((stor_ty, stor_def)) = args
                 .layout
                 .as_ref()
                 .and_then(|l| l.storage_fields(&mut layout_children))
             {
-                let name = format!("Kas{}GeneratedCore", name);
+                let name = format!("_{name}CoreTy");
                 let core_type = Ident::new(&name, Span::call_site());
                 scope.generated.push(quote! {
                     #[derive(Debug)]
@@ -207,9 +216,20 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             }
         };
     } else {
+        let span = match scope.item {
+            ScopeItem::Struct {
+                fields: Fields::Named(ref fields),
+                ..
+            } => fields.brace_token.span,
+            ScopeItem::Struct {
+                fields: Fields::Unnamed(ref fields),
+                ..
+            } => fields.paren_token.span,
+            _ => unreachable!(),
+        };
         return Err(Error::new(
-            scope.ident.span(),
-            "when applying #[widget]: no field of type widget_core!()",
+            span,
+            "expected: a field with type `widget_core!()`",
         ));
     }
 
