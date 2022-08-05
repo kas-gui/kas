@@ -117,6 +117,12 @@ pub trait WidgetChildren: WidgetCore {
     }
 }
 
+/// Marker trait indicating that a widget has a fixed number of children
+#[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
+pub trait WidgetChildrenConst: WidgetChildren {
+    const NUM_CHILDREN: usize;
+}
+
 /// Positioning and drawing routines for [`Widget`]s
 ///
 /// This trait is related to [`Widget`], but may be used independently.

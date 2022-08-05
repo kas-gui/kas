@@ -66,6 +66,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     };
 
     let mut core_data: Option<Member> = None;
+    let mut derive_ty: Option<Type> = None;
     let mut children = Vec::with_capacity(fields.len());
     let mut layout_children = Vec::new();
     for (i, field) in fields.iter_mut().enumerate() {
@@ -131,6 +132,8 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             }
 
             continue;
+        } else if Some(member(i, field.ident.clone())) == *opt_derive {
+            derive_ty = Some(field.ty.clone());
         }
 
         let mut other_attrs = Vec::with_capacity(field.attrs.len());
@@ -265,6 +268,19 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let widget_methods;
 
     if let Some(inner) = opt_derive {
+        let inner_ty = derive_ty.unwrap();
+
+        let mut wcc_where: syn::WhereClause =
+            where_clause
+                .map(|wc| (*wc).clone())
+                .unwrap_or_else(|| syn::WhereClause {
+                    where_token: Default::default(),
+                    predicates: Default::default(),
+                });
+        wcc_where
+            .predicates
+            .push(parse_quote! { #inner_ty: ::kas::WidgetChildrenConst });
+
         scope.generated.push(quote! {
             impl #impl_generics ::kas::WidgetChildren
                 for #name #ty_generics #where_clause
@@ -289,6 +305,12 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 fn make_child_id(&mut self, index: usize) -> ::kas::WidgetId {
                     self.#inner.make_child_id(index)
                 }
+            }
+
+            impl #impl_generics ::kas::WidgetChildrenConst
+                for #name #ty_generics #wcc_where
+            {
+                const NUM_CHILDREN: usize = <#inner_ty as ::kas::WidgetChildrenConst>::NUM_CHILDREN;
             }
         });
 
@@ -467,6 +489,12 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                             _ => None
                         }
                     }
+                }
+
+                impl #impl_generics ::kas::WidgetChildrenConst
+                    for #name #ty_generics #where_clause
+                {
+                    const NUM_CHILDREN: usize = #count;
                 }
             });
         }
