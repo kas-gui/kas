@@ -6,7 +6,7 @@
 use crate::args::{Child, WidgetArgs};
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::{Scope, ScopeAttr, ScopeItem, SimplePath};
-use proc_macro2::Span;
+use proc_macro2::{Span, TokenStream as Toks};
 use proc_macro_error::{emit_error, emit_warning};
 use quote::{quote, TokenStreamExt};
 use syn::spanned::Spanned;
@@ -70,15 +70,10 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let mut children = Vec::with_capacity(fields.len());
     let mut layout_children = Vec::new();
     for (i, field) in fields.iter_mut().enumerate() {
+        let ident = member(i, field.ident.clone());
+
         if matches!(&field.ty, Type::Macro(mac) if mac.mac == parse_quote!{ widget_core!() }) {
-            if let Some(member) = opt_derive {
-                emit_warning!(
-                    field.ty, "unused field of type widget_core!()";
-                    note = member.span() => "not used due to derive mode";
-                );
-                field.ty = parse_quote! { () };
-                continue;
-            } else if let Some(ref cd) = core_data {
+            if let Some(ref cd) = core_data {
                 emit_warning!(
                     field.ty, "multiple fields of type widget_core!()";
                     note = cd.span() => "previous field of type widget_core!()";
@@ -87,52 +82,68 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 continue;
             }
 
-            core_data = Some(member(i, field.ident.clone()));
+            if let Some(layout) = args.layout.as_ref() {
+                let (stor_ty, stor_def) = layout.storage_fields(&mut layout_children);
+                if opt_derive.is_some() || !stor_ty.is_empty() {
+                    let name = format!("_{name}CoreTy");
+                    let core_type = Ident::new(&name, Span::call_site());
 
-            if let Some((stor_ty, stor_def)) = args
-                .layout
-                .as_ref()
-                .and_then(|l| l.storage_fields(&mut layout_children))
-            {
-                let name = format!("_{name}CoreTy");
-                let core_type = Ident::new(&name, Span::call_site());
-                scope.generated.push(quote! {
-                    #[derive(Debug)]
-                    struct #core_type {
-                        rect: ::kas::geom::Rect,
-                        id: ::kas::WidgetId,
-                        #stor_ty
-                    }
+                    let (mut id_ty, mut id_def) = (Toks::new(), Toks::new());
+                    if opt_derive.is_none() {
+                        id_ty = quote! { id: ::kas::WidgetId, };
+                        id_def = quote! { id: Default::default(), };
+                    };
 
-                    impl Default for #core_type {
-                        fn default() -> Self {
-                            #core_type {
-                                rect: Default::default(),
-                                id: Default::default(),
-                                #stor_def
+                    scope.generated.push(quote! {
+                        #[derive(Debug)]
+                        struct #core_type {
+                            rect: ::kas::geom::Rect,
+                            #id_ty
+                            #stor_ty
+                        }
+
+                        impl Default for #core_type {
+                            fn default() -> Self {
+                                #core_type {
+                                    rect: Default::default(),
+                                    #id_def
+                                    #stor_def
+                                }
                             }
                         }
-                    }
 
-                    impl Clone for #core_type {
-                        fn clone(&self) -> Self {
-                            #core_type {
-                                rect: self.rect,
-                                .. #core_type::default()
+                        impl Clone for #core_type {
+                            fn clone(&self) -> Self {
+                                #core_type {
+                                    rect: self.rect,
+                                    .. #core_type::default()
+                                }
                             }
                         }
-                    }
-                });
-                field.ty = Type::Path(syn::TypePath {
-                    qself: None,
-                    path: core_type.into(),
-                });
-            } else {
-                field.ty = parse_quote! { ::kas::CoreData };
+                    });
+
+                    core_data = Some(ident);
+                    field.ty = Type::Path(syn::TypePath {
+                        qself: None,
+                        path: core_type.into(),
+                    });
+                    continue;
+                }
             }
 
+            if let Some(member) = opt_derive {
+                emit_warning!(
+                    field.ty, "unused field of type widget_core!()";
+                    note = member.span() => "not used due to derive mode";
+                );
+                field.ty = parse_quote! { () };
+                continue;
+            }
+
+            core_data = Some(ident);
+            field.ty = parse_quote! { ::kas::CoreData };
             continue;
-        } else if Some(member(i, field.ident.clone())) == *opt_derive {
+        } else if Some(&ident) == opt_derive.as_ref() {
             derive_ty = Some(field.ty.clone());
         }
 
@@ -142,7 +153,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 if !attr.tokens.is_empty() {
                     emit_error!(attr.tokens, "unexpected token");
                 }
-                let ident = member(i, field.ident.clone());
+                let ident = ident.clone();
                 if Some(&ident) == opt_derive.as_ref() {
                     emit_error!(attr, "#[widget] must not be used on widget derive target");
                 }
@@ -200,16 +211,29 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
 
     let core_methods;
     if let Some(ref cd) = core_data {
-        core_methods = quote! {
-            #[inline]
-            fn id_ref(&self) -> &::kas::WidgetId {
-                &self.#cd.id
-            }
-            #[inline]
-            fn rect(&self) -> ::kas::geom::Rect {
-                self.#cd.rect
-            }
-        };
+        if let Some(ref inner) = opt_derive {
+            core_methods = quote! {
+                #[inline]
+                fn id_ref(&self) -> &::kas::WidgetId {
+                    self.#inner.id_ref()
+                }
+                #[inline]
+                fn rect(&self) -> ::kas::geom::Rect {
+                    self.#cd.rect
+                }
+            };
+        } else {
+            core_methods = quote! {
+                #[inline]
+                fn id_ref(&self) -> &::kas::WidgetId {
+                    &self.#cd.id
+                }
+                #[inline]
+                fn rect(&self) -> ::kas::geom::Rect {
+                    self.#cd.rect
+                }
+            };
+        }
     } else if let Some(ref inner) = opt_derive {
         core_methods = quote! {
             #[inline]
@@ -268,7 +292,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let widget_methods;
 
     if let Some(inner) = opt_derive {
-        let inner_ty = derive_ty.unwrap();
+        let inner_ty = derive_ty.expect("inner_ty set by derive");
 
         let mut wcc_where: syn::WhereClause =
             where_clause
@@ -281,38 +305,102 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             .predicates
             .push(parse_quote! { #inner_ty: ::kas::WidgetChildrenConst });
 
-        scope.generated.push(quote! {
-            impl #impl_generics ::kas::WidgetChildren
-                for #name #ty_generics #where_clause
-            {
-                #[inline]
-                fn num_children(&self) -> usize {
-                    self.#inner.num_children()
+        if args.layout.is_none() {
+            scope.generated.push(quote! {
+                impl #impl_generics ::kas::WidgetChildren
+                    for #name #ty_generics #where_clause
+                {
+                    #[inline]
+                    fn num_children(&self) -> usize {
+                        self.#inner.num_children()
+                    }
+                    #[inline]
+                    fn get_child(&self, index: usize) -> Option<&dyn ::kas::Widget> {
+                        self.#inner.get_child(index)
+                    }
+                    #[inline]
+                    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn ::kas::Widget> {
+                        self.#inner.get_child_mut(index)
+                    }
+                    #[inline]
+                    fn find_child_index(&self, id: &::kas::WidgetId) -> Option<usize> {
+                        self.#inner.find_child_index(id)
+                    }
+                    #[inline]
+                    fn make_child_id(&mut self, index: usize) -> ::kas::WidgetId {
+                        self.#inner.make_child_id(index)
+                    }
                 }
-                #[inline]
-                fn get_child(&self, index: usize) -> Option<&dyn ::kas::Widget> {
-                    self.#inner.get_child(index)
-                }
-                #[inline]
-                fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn ::kas::Widget> {
-                    self.#inner.get_child_mut(index)
-                }
-                #[inline]
-                fn find_child_index(&self, id: &::kas::WidgetId) -> Option<usize> {
-                    self.#inner.find_child_index(id)
-                }
-                #[inline]
-                fn make_child_id(&mut self, index: usize) -> ::kas::WidgetId {
-                    self.#inner.make_child_id(index)
-                }
-            }
 
-            impl #impl_generics ::kas::WidgetChildrenConst
-                for #name #ty_generics #wcc_where
-            {
-                const NUM_CHILDREN: usize = <#inner_ty as ::kas::WidgetChildrenConst>::NUM_CHILDREN;
+                impl #impl_generics ::kas::WidgetChildrenConst
+                    for #name #ty_generics #wcc_where
+                {
+                    const NUM_CHILDREN: usize =
+                        <#inner_ty as ::kas::WidgetChildrenConst>::NUM_CHILDREN;
+                }
+            });
+        } else {
+            // In this case we require the derived type to have a fixed number of children.
+            // Unfortunately we cannot detect this from the macro, so we just add a bound.
+
+            let core = core_data.expect("has core with derive + layout");
+
+            let mut child_count = children.len();
+            let mut get_rules = quote! {};
+            let mut get_mut_rules = quote! {};
+            for (i, child) in children.iter().enumerate() {
+                let ident = &child.ident;
+                get_rules.append_all(quote! { N + #i => Some(&self.#ident), });
+                get_mut_rules.append_all(quote! { N + #i => Some(&mut self.#ident), });
             }
-        });
+            for (i, path) in layout_children.iter().enumerate() {
+                let index = child_count + i;
+                get_rules.append_all(quote! { N + #index => Some(&self.#core.#path), });
+                get_mut_rules.append_all(quote! { N + #index => Some(&mut self.#core.#path), });
+            }
+            child_count += layout_children.len();
+
+            scope.generated.push(quote! {
+                impl #impl_generics ::kas::WidgetChildren
+                    for #name #ty_generics #wcc_where
+                {
+                    fn num_children(&self) -> usize {
+                        <#inner_ty as ::kas::WidgetChildrenConst>::NUM_CHILDREN + #child_count
+                    }
+
+                    fn get_child(&self, index: usize) -> Option<&dyn ::kas::Widget> {
+                        const N: usize = <#inner_ty as ::kas::WidgetChildrenConst>::NUM_CHILDREN;
+                        if index < N {
+                            return self.#inner.get_child(index);
+                        }
+
+                        match index {
+                            #get_rules
+                            _ => None
+                        }
+                    }
+
+                    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn ::kas::Widget> {
+                        const N: usize = <#inner_ty as ::kas::WidgetChildrenConst>::NUM_CHILDREN;
+                        if index < N {
+                            return self.#inner.get_child_mut(index);
+                        }
+
+                        match index {
+                            #get_mut_rules
+                            _ => None
+                        }
+                    }
+                }
+
+                impl #impl_generics ::kas::WidgetChildrenConst
+                    for #name #ty_generics #wcc_where
+                {
+                    const NUM_CHILDREN: usize =
+                        <#inner_ty as ::kas::WidgetChildrenConst>::NUM_CHILDREN + #child_count;
+                }
+            });
+        }
 
         fn_size_rules = Some(quote! {
             #[inline]
@@ -454,8 +542,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         let core = core_data.unwrap();
 
         if impl_widget_children {
-            let mut count = children.len();
-
+            let mut child_count = children.len();
             let mut get_rules = quote! {};
             let mut get_mut_rules = quote! {};
             for (i, child) in children.iter().enumerate() {
@@ -464,18 +551,18 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 get_mut_rules.append_all(quote! { #i => Some(&mut self.#ident), });
             }
             for (i, path) in layout_children.iter().enumerate() {
-                let index = count + i;
+                let index = child_count + i;
                 get_rules.append_all(quote! { #index => Some(&self.#core.#path), });
                 get_mut_rules.append_all(quote! { #index => Some(&mut self.#core.#path), });
             }
-            count += layout_children.len();
+            child_count += layout_children.len();
 
             scope.generated.push(quote! {
                 impl #impl_generics ::kas::WidgetChildren
                     for #name #ty_generics #where_clause
                 {
                     fn num_children(&self) -> usize {
-                        #count
+                        #child_count
                     }
                     fn get_child(&self, _index: usize) -> Option<&dyn ::kas::Widget> {
                         match _index {
@@ -494,7 +581,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 impl #impl_generics ::kas::WidgetChildrenConst
                     for #name #ty_generics #where_clause
                 {
-                    const NUM_CHILDREN: usize = #count;
+                    const NUM_CHILDREN: usize = #child_count;
                 }
             });
         }

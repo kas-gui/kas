@@ -38,16 +38,12 @@ mod kw {
 #[derive(Debug)]
 pub struct Tree(Layout);
 impl Tree {
-    /// If extra fields are needed for storage, return these: `(fields_ty, fields_init)`
+    /// Return extra fields needed for storage (may be empty)
     /// (e.g. `({ layout_frame: FrameStorage, }, { layout_frame: Default::default()), }`).
-    pub fn storage_fields(&self, children: &mut Vec<Toks>) -> Option<(Toks, Toks)> {
+    pub fn storage_fields(&self, children: &mut Vec<Toks>) -> (Toks, Toks) {
         let (mut ty_toks, mut def_toks) = (Toks::new(), Toks::new());
         self.0.append_fields(&mut ty_toks, &mut def_toks, children);
-        if ty_toks.is_empty() && def_toks.is_empty() {
-            None
-        } else {
-            Some((ty_toks, def_toks))
-        }
+        (ty_toks, def_toks)
     }
 
     pub fn generate(&self, core: &Member) -> Result<Toks> {
