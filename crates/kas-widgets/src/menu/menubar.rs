@@ -100,11 +100,14 @@ impl_scope! {
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
-            // TODO: doesn't check self.rect() first!
+            if !self.rect().contains(coord) {
+                return None;
+            }
             let solver = RowPositionSolver::new(self.direction);
             solver
                 .find_child_mut(&mut self.widgets, coord)
                 .and_then(|child| child.find_id(coord))
+                .or_else(|| Some(self.id()))
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
