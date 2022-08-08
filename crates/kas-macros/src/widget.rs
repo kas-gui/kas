@@ -137,9 +137,12 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         for attr in field.attrs.drain(..) {
             if attr.path == parse_quote! { widget } {
                 if !attr.tokens.is_empty() {
-                    return Err(Error::new(attr.tokens.span(), "unexpected token"));
+                    emit_error!(attr.tokens, "unexpected token");
                 }
                 let ident = member(i, field.ident.clone());
+                if Some(&ident) == opt_derive.as_ref() {
+                    emit_error!(attr, "#[widget] must not be used on widget derive target");
+                }
                 children.push(Child { ident });
             } else {
                 other_attrs.push(attr);
