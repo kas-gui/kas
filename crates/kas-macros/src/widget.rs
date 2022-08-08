@@ -259,45 +259,10 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let mut fn_draw = None;
 
     let fn_pre_configure;
+    let fn_pre_handle_event;
+    let fn_handle_event;
     let mut key_nav = args.key_nav;
     let widget_methods;
-
-    let hover_highlight = args.hover_highlight.unwrap_or(false);
-    let pre_handle_event = match (hover_highlight, args.cursor_icon.take()) {
-        (false, None) => quote! {},
-        (true, None) => quote! {
-            if matches!(event, Event::MouseHover | Event::LostMouseHover) {
-                mgr.redraw(self.id());
-                return Response::Used;
-            }
-        },
-        (false, Some(icon_expr)) => quote! {
-            if matches!(event, Event::MouseHover) {
-                mgr.set_cursor_icon(#icon_expr);
-                return Response::Used;
-            }
-        },
-        (true, Some(icon_expr)) => quote! {
-            if matches!(event, Event::MouseHover | Event::LostMouseHover) {
-                if matches!(event, Event::MouseHover) {
-                    mgr.set_cursor_icon(#icon_expr);
-                }
-                mgr.redraw(self.id());
-                return Response::Used;
-            }
-        },
-    };
-    let pre_handle_event = quote! {
-        fn pre_handle_event(
-            &mut self,
-            mgr: &mut ::kas::event::EventMgr,
-            event: ::kas::event::Event,
-        ) -> ::kas::event::Response {
-            use ::kas::{event::{Event, Response}, WidgetExt};
-            #pre_handle_event
-            self.handle_event(mgr, event)
-        }
-    };
 
     if let Some(inner) = opt_derive {
         scope.generated.push(quote! {
@@ -398,7 +363,23 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 self.#inner.spatial_nav(mgr, reverse, from)
             }
         };
-        let handle_event = quote! {
+
+        if let Some(tok) = args.hover_highlight {
+            emit_error!(tok.kw_span, "incompatible with widget derive");
+        }
+        if let Some(tok) = args.cursor_icon {
+            emit_error!(tok.kw_span, "incompatible with widget derive");
+        }
+        fn_pre_handle_event = quote! {
+            fn pre_handle_event(
+                &mut self,
+                mgr: &mut ::kas::event::EventMgr,
+                event: ::kas::event::Event,
+            ) -> ::kas::event::Response {
+                self.#inner.pre_handle_event(mgr, event)
+            }
+        };
+        fn_handle_event = Some(quote! {
             #[inline]
             fn handle_event(
                 &mut self,
@@ -407,7 +388,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             ) -> ::kas::event::Response {
                 self.#inner.handle_event(mgr, event)
             }
-        };
+        });
         let handle_unused = quote! {
             #[inline]
             fn handle_unused(
@@ -443,7 +424,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             ("configure", configure),
             ("translation", translation),
             ("spatial_nav", spatial_nav),
-            ("handle_event", handle_event),
             ("handle_unused", handle_unused),
             ("handle_message", handle_message),
             ("handle_scroll", handle_scroll),
@@ -579,6 +559,49 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 self.#core.id = id;
             }
         };
+
+        let hover_highlight = args
+            .hover_highlight
+            .map(|tok| tok.lit.value)
+            .unwrap_or(false);
+        let icon_expr = args.cursor_icon.map(|tok| tok.expr);
+        let pre_handle_event = match (hover_highlight, icon_expr) {
+            (false, None) => quote! {},
+            (true, None) => quote! {
+                if matches!(event, Event::MouseHover | Event::LostMouseHover) {
+                    mgr.redraw(self.id());
+                    return Response::Used;
+                }
+            },
+            (false, Some(icon_expr)) => quote! {
+                if matches!(event, Event::MouseHover) {
+                    mgr.set_cursor_icon(#icon_expr);
+                    return Response::Used;
+                }
+            },
+            (true, Some(icon_expr)) => quote! {
+                if matches!(event, Event::MouseHover | Event::LostMouseHover) {
+                    if matches!(event, Event::MouseHover) {
+                        mgr.set_cursor_icon(#icon_expr);
+                    }
+                    mgr.redraw(self.id());
+                    return Response::Used;
+                }
+            },
+        };
+        fn_pre_handle_event = quote! {
+            fn pre_handle_event(
+                &mut self,
+                mgr: &mut ::kas::event::EventMgr,
+                event: ::kas::event::Event,
+            ) -> ::kas::event::Response {
+                use ::kas::{event::{Event, Response}, WidgetExt};
+                #pre_handle_event
+                self.handle_event(mgr, event)
+            }
+        };
+        fn_handle_event = None;
+
         widget_methods = vec![];
     }
 
@@ -636,7 +659,10 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         if let Some(method) = key_nav {
             widget_impl.items.push(parse2(method)?);
         }
-        widget_impl.items.push(parse2(pre_handle_event)?);
+        widget_impl.items.push(parse2(fn_pre_handle_event)?);
+        if let Some(item) = fn_handle_event {
+            widget_impl.items.push(parse2(item)?);
+        }
 
         for (name, method) in widget_methods {
             if !has_method(name) {
@@ -651,7 +677,8 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             {
                 #fn_pre_configure
                 #key_nav
-                #pre_handle_event
+                #fn_pre_handle_event
+                #fn_handle_event
                 #(#other_methods)*
             }
         });

@@ -4,7 +4,7 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 use crate::make_layout;
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use proc_macro_error::{abort, emit_error};
 use quote::quote_spanned;
 use syn::parse::{Error, Parse, ParseStream, Result};
@@ -171,11 +171,25 @@ mod kw {
     custom_keyword!(derive);
 }
 
+#[derive(Debug)]
+pub struct BoolToken {
+    pub kw_span: Span,
+    pub eq: Eq,
+    pub lit: syn::LitBool,
+}
+
+#[derive(Debug)]
+pub struct ExprToken {
+    pub kw_span: Span,
+    pub eq: Eq,
+    pub expr: syn::Expr,
+}
+
 #[derive(Debug, Default)]
 pub struct WidgetArgs {
     pub key_nav: Option<TokenStream>,
-    pub hover_highlight: Option<bool>,
-    pub cursor_icon: Option<Expr>,
+    pub hover_highlight: Option<BoolToken>,
+    pub cursor_icon: Option<ExprToken>,
     pub derive: Option<Member>,
     pub layout: Option<make_layout::Tree>,
 }
@@ -200,14 +214,17 @@ impl Parse for WidgetArgs {
                     fn key_nav(&self) -> bool { #value }
                 });
             } else if lookahead.peek(kw::hover_highlight) && hover_highlight.is_none() {
-                let _ = content.parse::<kw::hover_highlight>()?;
-                let _: Eq = content.parse()?;
-                let value = content.parse::<syn::LitBool>()?;
-                hover_highlight = Some(value.value);
+                hover_highlight = Some(BoolToken {
+                    kw_span: content.parse::<kw::hover_highlight>()?.span(),
+                    eq: content.parse()?,
+                    lit: content.parse()?,
+                });
             } else if lookahead.peek(kw::cursor_icon) && cursor_icon.is_none() {
-                let _ = content.parse::<kw::cursor_icon>()?;
-                let _: Eq = content.parse()?;
-                cursor_icon = Some(content.parse::<syn::Expr>()?);
+                cursor_icon = Some(ExprToken {
+                    kw_span: content.parse::<kw::cursor_icon>()?.span(),
+                    eq: content.parse()?,
+                    expr: content.parse()?,
+                });
             } else if lookahead.peek(kw::derive) && derive.is_none() {
                 kw_derive = Some(content.parse::<kw::derive>()?);
                 let _: Eq = content.parse()?;
