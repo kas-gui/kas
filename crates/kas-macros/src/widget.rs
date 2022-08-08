@@ -153,6 +153,9 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 if !attr.tokens.is_empty() {
                     emit_error!(attr.tokens, "unexpected token");
                 }
+                if Some(&ident) == opt_derive.as_ref() {
+                    emit_error!(attr, "#[widget] must not be used on widget derive target");
+                }
                 let ident = ident.clone();
                 if Some(&ident) == opt_derive.as_ref() {
                     emit_error!(attr, "#[widget] must not be used on widget derive target");
@@ -305,7 +308,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             .predicates
             .push(parse_quote! { #inner_ty: ::kas::WidgetChildrenConst });
 
-        if args.layout.is_none() {
+        if children.len() + layout_children.len() == 0 {
             scope.generated.push(quote! {
                 impl #impl_generics ::kas::WidgetChildren
                     for #name #ty_generics #where_clause
@@ -343,23 +346,27 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             // In this case we require the derived type to have a fixed number of children.
             // Unfortunately we cannot detect this from the macro, so we just add a bound.
 
-            let core = core_data.expect("has core with derive + layout");
-
             let mut child_count = children.len();
             let mut get_rules = quote! {};
             let mut get_mut_rules = quote! {};
             for (i, child) in children.iter().enumerate() {
                 let ident = &child.ident;
-                get_rules.append_all(quote! { N + #i => Some(&self.#ident), });
-                get_mut_rules.append_all(quote! { N + #i => Some(&mut self.#ident), });
+                get_rules.append_all(quote! { #i => Some(&self.#ident), });
+                get_mut_rules.append_all(quote! { #i => Some(&mut self.#ident), });
             }
-            for (i, path) in layout_children.iter().enumerate() {
-                let index = child_count + i;
-                get_rules.append_all(quote! { N + #index => Some(&self.#core.#path), });
-                get_mut_rules.append_all(quote! { N + #index => Some(&mut self.#core.#path), });
+            if let Some(ref core) = core_data {
+                for (i, path) in layout_children.iter().enumerate() {
+                    let index = child_count + i;
+                    get_rules.append_all(quote! { #index => Some(&self.#core.#path), });
+                    get_mut_rules.append_all(quote! { #index => Some(&mut self.#core.#path), });
+                }
+                child_count += layout_children.len();
+            } else {
+                assert!(layout_children.is_empty());
             }
-            child_count += layout_children.len();
 
+            // NOTE: ideally we'd use this, however it fails where #inner_ty is a type parameter:
+            // const N: usize = <#inner_ty as ::kas::WidgetChildrenConst>::NUM_CHILDREN;
             scope.generated.push(quote! {
                 impl #impl_generics ::kas::WidgetChildren
                     for #name #ty_generics #wcc_where
@@ -369,26 +376,26 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     }
 
                     fn get_child(&self, index: usize) -> Option<&dyn ::kas::Widget> {
-                        const N: usize = <#inner_ty as ::kas::WidgetChildrenConst>::NUM_CHILDREN;
-                        if index < N {
+                        let n = self.inner.num_children();
+                        if index < n {
                             return self.#inner.get_child(index);
                         }
 
-                        match index {
+                        match index - n {
                             #get_rules
-                            _ => None
+                            _ => None,
                         }
                     }
 
                     fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn ::kas::Widget> {
-                        const N: usize = <#inner_ty as ::kas::WidgetChildrenConst>::NUM_CHILDREN;
-                        if index < N {
+                        let n = self.inner.num_children();
+                        if index < n {
                             return self.#inner.get_child_mut(index);
                         }
 
-                        match index {
+                        match index - n {
                             #get_mut_rules
-                            _ => None
+                            _ => None,
                         }
                     }
                 }
@@ -567,13 +574,13 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     fn get_child(&self, _index: usize) -> Option<&dyn ::kas::Widget> {
                         match _index {
                             #get_rules
-                            _ => None
+                            _ => None,
                         }
                     }
                     fn get_child_mut(&mut self, _index: usize) -> Option<&mut dyn ::kas::Widget> {
                         match _index {
                             #get_mut_rules
-                            _ => None
+                            _ => None,
                         }
                     }
                 }

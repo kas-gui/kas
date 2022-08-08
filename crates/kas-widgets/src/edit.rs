@@ -192,7 +192,7 @@ impl_scope! {
         derive = self.inner;
     }]
     pub struct EditBox<G: EditGuard = ()> {
-        #[widget] inner: EditField<G>,
+        inner: EditField<G>,
         #[widget] bar: ScrollBar<kas::dir::Down>,
         frame_rect: Rect,
         frame_offset: Offset,
@@ -267,12 +267,17 @@ impl_scope! {
     }
 
     impl Widget for Self {
+        // TODO: we cannot allow handle_event with derive mode. (Not strictly true,
+        // so long as it does forward events.)
+        // We *can* allow handle_message, handle_scroll and maybe handle_unused,
+        // but these are only useful when a non-derived child receives an event. Confusing?
         fn handle_message(&mut self, mgr: &mut EventMgr<'_>, _: usize) {
             if let Some(ScrollMsg(y)) = mgr.try_pop_msg() {
                 self.inner.set_scroll_offset(mgr, Offset(self.inner.view_offset.0, y));
             }
         }
 
+        // TODO: handle_scroll should not be allowed with derive, unless it is called on self after handle_event... but that case is still dodgy (as is the case with all handlers).
         fn handle_scroll(&mut self, mgr: &mut EventMgr<'_>, _: Scroll) {
             self.update_scroll_bar(mgr);
         }
