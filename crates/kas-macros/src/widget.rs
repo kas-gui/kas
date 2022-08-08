@@ -6,8 +6,8 @@
 use crate::args::{Child, WidgetArgs};
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::{Scope, ScopeAttr, ScopeItem, SimplePath};
-use proc_macro2::{Span, TokenStream};
-use proc_macro_error::emit_error;
+use proc_macro2::Span;
+use proc_macro_error::{emit_error, emit_warning};
 use quote::{quote, TokenStreamExt};
 use syn::spanned::Spanned;
 use syn::{parse2, parse_quote, Error, Ident, ImplItem, Index, ItemImpl, Member, Result, Type};
@@ -28,9 +28,13 @@ impl ScopeAttr for AttrImplWidget {
         SimplePath::new(&["widget"])
     }
 
-    fn apply(&self, args: TokenStream, _: Span, scope: &mut Scope) -> Result<()> {
-        let attr = syn::parse2(args)?;
-        widget(attr, scope)
+    fn apply(&self, attr: syn::Attribute, scope: &mut Scope) -> Result<()> {
+        let args = if attr.tokens.is_empty() {
+            WidgetArgs::default()
+        } else {
+            attr.parse_args()?
+        };
+        widget(args, scope)
     }
 }
 
@@ -66,21 +70,30 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let mut layout_children = Vec::new();
     for (i, field) in fields.iter_mut().enumerate() {
         if matches!(&field.ty, Type::Macro(mac) if mac.mac == parse_quote!{ widget_core!() }) {
-            if let Some(ref cd) = core_data {
-                emit_error!(
+            if let Some(member) = opt_derive {
+                emit_warning!(
+                    field.ty, "unused field of type widget_core!()";
+                    note = member.span() => "not used due to derive mode";
+                );
+                field.ty = parse_quote! { () };
+                continue;
+            } else if let Some(ref cd) = core_data {
+                emit_warning!(
                     field.ty, "multiple fields of type widget_core!()";
                     note = cd.span() => "previous field of type widget_core!()";
                 );
-            } else {
-                core_data = Some(member(i, field.ident.clone()));
+                field.ty = parse_quote! { () };
+                continue;
             }
+
+            core_data = Some(member(i, field.ident.clone()));
 
             if let Some((stor_ty, stor_def)) = args
                 .layout
                 .as_ref()
                 .and_then(|l| l.storage_fields(&mut layout_children))
             {
-                let name = format!("Kas{}GeneratedCore", name);
+                let name = format!("_{name}CoreTy");
                 let core_type = Ident::new(&name, Span::call_site());
                 scope.generated.push(quote! {
                     #[derive(Debug)]
@@ -124,9 +137,12 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         for attr in field.attrs.drain(..) {
             if attr.path == parse_quote! { widget } {
                 if !attr.tokens.is_empty() {
-                    return Err(Error::new(attr.tokens.span(), "unexpected token"));
+                    emit_error!(attr.tokens, "unexpected token");
                 }
                 let ident = member(i, field.ident.clone());
+                if Some(&ident) == opt_derive.as_ref() {
+                    emit_error!(attr, "#[widget] must not be used on widget derive target");
+                }
                 children.push(Child { ident });
             } else {
                 other_attrs.push(attr);
@@ -203,9 +219,20 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             }
         };
     } else {
+        let span = match scope.item {
+            ScopeItem::Struct {
+                fields: Fields::Named(ref fields),
+                ..
+            } => fields.brace_token.span,
+            ScopeItem::Struct {
+                fields: Fields::Unnamed(ref fields),
+                ..
+            } => fields.paren_token.span,
+            _ => unreachable!(),
+        };
         return Err(Error::new(
-            scope.ident.span(),
-            "when applying #[widget]: no field of type widget_core!()",
+            span,
+            "expected: a field with type `widget_core!()`",
         ));
     }
 
@@ -232,45 +259,10 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let mut fn_draw = None;
 
     let fn_pre_configure;
+    let fn_pre_handle_event;
+    let fn_handle_event;
     let mut key_nav = args.key_nav;
     let widget_methods;
-
-    let hover_highlight = args.hover_highlight.unwrap_or(false);
-    let pre_handle_event = match (hover_highlight, args.cursor_icon.take()) {
-        (false, None) => quote! {},
-        (true, None) => quote! {
-            if matches!(event, Event::MouseHover | Event::LostMouseHover) {
-                mgr.redraw(self.id());
-                return Response::Used;
-            }
-        },
-        (false, Some(icon_expr)) => quote! {
-            if matches!(event, Event::MouseHover) {
-                mgr.set_cursor_icon(#icon_expr);
-                return Response::Used;
-            }
-        },
-        (true, Some(icon_expr)) => quote! {
-            if matches!(event, Event::MouseHover | Event::LostMouseHover) {
-                if matches!(event, Event::MouseHover) {
-                    mgr.set_cursor_icon(#icon_expr);
-                }
-                mgr.redraw(self.id());
-                return Response::Used;
-            }
-        },
-    };
-    let pre_handle_event = quote! {
-        fn pre_handle_event(
-            &mut self,
-            mgr: &mut ::kas::event::EventMgr,
-            event: ::kas::event::Event,
-        ) -> ::kas::event::Response {
-            use ::kas::{event::{Event, Response}, WidgetExt};
-            #pre_handle_event
-            self.handle_event(mgr, event)
-        }
-    };
 
     if let Some(inner) = opt_derive {
         scope.generated.push(quote! {
@@ -371,7 +363,23 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 self.#inner.spatial_nav(mgr, reverse, from)
             }
         };
-        let handle_event = quote! {
+
+        if let Some(tok) = args.hover_highlight {
+            emit_error!(tok.kw_span, "incompatible with widget derive");
+        }
+        if let Some(tok) = args.cursor_icon {
+            emit_error!(tok.kw_span, "incompatible with widget derive");
+        }
+        fn_pre_handle_event = quote! {
+            fn pre_handle_event(
+                &mut self,
+                mgr: &mut ::kas::event::EventMgr,
+                event: ::kas::event::Event,
+            ) -> ::kas::event::Response {
+                self.#inner.pre_handle_event(mgr, event)
+            }
+        };
+        fn_handle_event = Some(quote! {
             #[inline]
             fn handle_event(
                 &mut self,
@@ -380,7 +388,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             ) -> ::kas::event::Response {
                 self.#inner.handle_event(mgr, event)
             }
-        };
+        });
         let handle_unused = quote! {
             #[inline]
             fn handle_unused(
@@ -416,7 +424,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             ("configure", configure),
             ("translation", translation),
             ("spatial_nav", spatial_nav),
-            ("handle_event", handle_event),
             ("handle_unused", handle_unused),
             ("handle_message", handle_message),
             ("handle_scroll", handle_scroll),
@@ -552,6 +559,49 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 self.#core.id = id;
             }
         };
+
+        let hover_highlight = args
+            .hover_highlight
+            .map(|tok| tok.lit.value)
+            .unwrap_or(false);
+        let icon_expr = args.cursor_icon.map(|tok| tok.expr);
+        let pre_handle_event = match (hover_highlight, icon_expr) {
+            (false, None) => quote! {},
+            (true, None) => quote! {
+                if matches!(event, Event::MouseHover | Event::LostMouseHover) {
+                    mgr.redraw(self.id());
+                    return Response::Used;
+                }
+            },
+            (false, Some(icon_expr)) => quote! {
+                if matches!(event, Event::MouseHover) {
+                    mgr.set_cursor_icon(#icon_expr);
+                    return Response::Used;
+                }
+            },
+            (true, Some(icon_expr)) => quote! {
+                if matches!(event, Event::MouseHover | Event::LostMouseHover) {
+                    if matches!(event, Event::MouseHover) {
+                        mgr.set_cursor_icon(#icon_expr);
+                    }
+                    mgr.redraw(self.id());
+                    return Response::Used;
+                }
+            },
+        };
+        fn_pre_handle_event = quote! {
+            fn pre_handle_event(
+                &mut self,
+                mgr: &mut ::kas::event::EventMgr,
+                event: ::kas::event::Event,
+            ) -> ::kas::event::Response {
+                use ::kas::{event::{Event, Response}, WidgetExt};
+                #pre_handle_event
+                self.handle_event(mgr, event)
+            }
+        };
+        fn_handle_event = None;
+
         widget_methods = vec![];
     }
 
@@ -609,7 +659,10 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         if let Some(method) = key_nav {
             widget_impl.items.push(parse2(method)?);
         }
-        widget_impl.items.push(parse2(pre_handle_event)?);
+        widget_impl.items.push(parse2(fn_pre_handle_event)?);
+        if let Some(item) = fn_handle_event {
+            widget_impl.items.push(parse2(item)?);
+        }
 
         for (name, method) in widget_methods {
             if !has_method(name) {
@@ -624,7 +677,8 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             {
                 #fn_pre_configure
                 #key_nav
-                #pre_handle_event
+                #fn_pre_handle_event
+                #fn_handle_event
                 #(#other_methods)*
             }
         });

@@ -51,7 +51,6 @@ impl_scope! {
     #[derive(Clone, Default)]
     #[widget{ derive = self.inner; }]
     pub struct Reserve<W: Widget, R: FnSizeRules> {
-        #[widget]
         pub inner: W,
         reserve: R,
     }

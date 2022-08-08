@@ -180,15 +180,29 @@ impl From<AxisInfo> for Directions {
 /// ```
 ///
 /// It is not recommended to import this trait since method names conflict with [`Layout`].
-///
-/// Methods have identical meaning to those of [`Layout`] except that:
-///
-/// -   [`Layout::set_rect`] assigns to `self.core.rect` before calling `AutoLayout::set_rect`
-/// -   [`Layout::find_id`] returns `None` when `!self.core.rect.contains(coord)`,
-///     then translates `coord` before calling `AutoLayout::find_id`
 pub trait AutoLayout {
+    /// Get size rules for the given axis
+    ///
+    /// This functions identically to [`Layout::size_rules`].
     fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules;
+
+    /// Set size and position
+    ///
+    /// The implementation does not assign to `self.core.rect`;
+    /// [`Layout::set_rect`] should do so before calling this method.
     fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints);
+
+    /// Translate a coordinate to a [`WidgetId`]
+    ///
+    /// This method does not test `coord` against `self.rect()` nor does it ever
+    /// return `self.id()`; it only ever returns a child's [`WidgetId`] or
+    /// `None`. [`Layout::find_id`] should test against `self.rect()` before
+    /// calling this method, then return `self.id()` if the result of this
+    /// method is `None`.
     fn find_id(&mut self, coord: Coord) -> Option<WidgetId>;
+
+    /// Draw a widget and its children
+    ///
+    /// This functions identically to [`Layout::draw`].
     fn draw(&mut self, draw: DrawMgr);
 }

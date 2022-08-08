@@ -14,7 +14,7 @@ use crate::draw::DrawShared;
 use crate::geom::{Coord, Offset, Vec2};
 use crate::theme::{SizeMgr, ThemeControl};
 #[allow(unused)]
-use crate::Widget; // for doc-links
+use crate::{Layout, Widget}; // for doc-links
 use crate::{TkAction, WidgetId, WindowId};
 
 impl<'a> std::ops::BitOrAssign<TkAction> for EventMgr<'a> {
@@ -432,18 +432,20 @@ impl EventState {
     /// be true if focussing in response to keyboard input, false if reacting to
     /// mouse or touch input.
     pub fn set_nav_focus(&mut self, id: WidgetId, key_focus: bool) {
-        if id != self.nav_focus {
-            self.send_action(TkAction::REDRAW);
-            if let Some(old_id) = self.nav_focus.take() {
-                self.pending.push_back(Pending::LostNavFocus(old_id));
-            }
-            if id != self.sel_focus {
-                self.clear_char_focus();
-            }
-            self.nav_focus = Some(id.clone());
-            log::trace!(target: "kas_core::event::manager", "set_nav_focus: {id}");
-            self.pending.push_back(Pending::SetNavFocus(id, key_focus));
+        if id == self.nav_focus || !self.config.nav_focus {
+            return;
         }
+
+        self.send_action(TkAction::REDRAW);
+        if let Some(old_id) = self.nav_focus.take() {
+            self.pending.push_back(Pending::LostNavFocus(old_id));
+        }
+        if id != self.sel_focus {
+            self.clear_char_focus();
+        }
+        self.nav_focus = Some(id.clone());
+        log::trace!(target: "kas_core::event::manager", "set_nav_focus: {id}");
+        self.pending.push_back(Pending::SetNavFocus(id, key_focus));
     }
 
     /// Set the cursor icon
@@ -463,8 +465,24 @@ impl EventState {
 impl<'a> EventMgr<'a> {
     /// Send an event to a widget
     ///
+    /// Sends `event` to widget `id`, where `widget` is either the target `id`
+    /// or any ancestor.
+    /// Ancestors of `id` up to and including `widget` have the usual
+    /// event-handling interactions: the ability to steal events and handle
+    /// unused events, to handle messages and to react to scroll actions.
+    ///
     /// Messages may be left on the stack after this returns and scroll state
     /// may be adjusted.
+    ///
+    /// When calling this method, be aware that:
+    ///
+    /// -   Some widgets use an inner component to handle events, thus calling
+    ///     with the outer widget's `id` may not have the desired effect.
+    ///     [`Layout::find_id`] and [`Self::next_nav_focus`] are able to find
+    ///     the appropriate event-handling target.
+    ///     (TODO: do we need another method to find this target?)
+    /// -   Some events such as [`Event::PressMove`] contain embedded widget
+    ///     identifiers which may affect handling of the event.
     pub fn send(&mut self, widget: &mut dyn Widget, mut id: WidgetId, event: Event) -> Response {
         log::trace!(target: "kas_core::event::manager", "send: id={id}: {event:?}");
 
