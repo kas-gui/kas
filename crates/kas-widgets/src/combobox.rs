@@ -147,17 +147,17 @@ impl_scope! {
                     }
                     Response::Used
                 }
-                Event::PressEnd { ref end_id, success, .. } if success => {
-                    if let Some(ref id) = end_id {
-                        if self.eq_id(id) {
+                Event::PressEnd { end_id, success, .. } if success => {
+                    if let Some(id) = end_id {
+                        if self.eq_id(&id) {
                             if self.opening {
                                 if self.popup_id.is_none() {
                                     open_popup(self, mgr, false);
                                 }
                                 return Response::Used;
                             }
-                        } else if self.popup_id.is_some() && self.popup.is_ancestor_of(id) {
-                            return mgr.send(self, id.clone(), Event::Command(Command::Activate));
+                        } else if self.popup_id.is_some() && self.popup.is_ancestor_of(&id) {
+                            return mgr.send(self, id, Event::Command(Command::Activate));
                         }
                     }
                     if let Some(id) = self.popup_id {
