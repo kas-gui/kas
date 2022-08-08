@@ -8,13 +8,14 @@
 use std::num::ParseFloatError;
 use std::str::FromStr;
 
-use kas::event::VirtualKeyCode as VK;
+use kas::event::{Command, VirtualKeyCode as VK};
 use kas::prelude::*;
 use kas::widgets::{EditBox, TextButton};
 
 #[derive(Clone, Debug)]
 enum Key {
     Clear,
+    DelBack,
     Divide,
     Multiply,
     Subtract,
@@ -79,7 +80,22 @@ fn main() -> kas::shell::Result<()> {
 
                 // Enable key bindings without Alt held:
                 mgr.enable_alt_bypass(self.id_ref(), true);
+
+                mgr.register_nav_fallback(self.id());
             }
+
+            fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
+                match event {
+                    Event::Command(Command::DelBack) => {
+                        if self.calc.handle(Key::DelBack) {
+                            *mgr |= self.display.set_string(self.calc.display());
+                        }
+                        Response::Used
+                    }
+                    _ => Response::Unused,
+                }
+            }
+
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
                 if let Some(msg) = mgr.try_pop_msg::<Key>() {
                     if self.calc.handle(msg) {
@@ -159,12 +175,16 @@ impl Calculator {
                 self.line_buf.clear();
                 true
             }
+            Key::DelBack => self.line_buf.pop().is_some(),
             Key::Divide => self.do_op(Op::Divide),
             Key::Multiply => self.do_op(Op::Multiply),
             Key::Subtract => self.do_op(Op::Subtract),
             Key::Add => self.do_op(Op::Add),
             Key::Equals => self.do_op(Op::None),
-            Key::Char(c) => self.push_char(c),
+            Key::Char(c) => {
+                self.line_buf.push(c);
+                true
+            }
         }
     }
 
@@ -195,11 +215,6 @@ impl Calculator {
         }
 
         self.op = next_op;
-        true
-    }
-
-    fn push_char(&mut self, c: char) -> bool {
-        self.line_buf.push(c);
         true
     }
 }
