@@ -475,14 +475,14 @@ pub trait Widget: WidgetChildren + Layout {
     /// The default implementation often suffices: it will navigate through
     /// children in order.
     #[inline]
-    fn spatial_nav(
+    fn nav_next(
         &mut self,
         mgr: &mut ConfigMgr,
         reverse: bool,
         from: Option<usize>,
     ) -> Option<usize> {
         let _ = mgr;
-        crate::util::spatial_nav(reverse, from, self.num_children())
+        crate::util::nav_next(reverse, from, self.num_children())
     }
 
     /// Pre-event-handler

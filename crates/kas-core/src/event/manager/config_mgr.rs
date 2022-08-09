@@ -189,7 +189,7 @@ impl<'a> ConfigMgr<'a> {
                 }
 
                 loop {
-                    if let Some(index) = widget.spatial_nav(mgr, rev, child) {
+                    if let Some(index) = widget.nav_next(mgr, rev, child) {
                         if let Some(id) = widget
                             .get_child_mut(index)
                             .and_then(|w| nav(mgr, w, focus, rev))
@@ -212,7 +212,7 @@ impl<'a> ConfigMgr<'a> {
                 }
 
                 loop {
-                    if let Some(index) = widget.spatial_nav(mgr, rev, child) {
+                    if let Some(index) = widget.nav_next(mgr, rev, child) {
                         if let Some(id) = widget
                             .get_child_mut(index)
                             .and_then(|w| nav(mgr, w, focus, rev))

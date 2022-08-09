@@ -575,7 +575,7 @@ impl_scope! {
             mgr.register_nav_fallback(self.id());
         }
 
-        fn spatial_nav(
+        fn nav_next(
             &mut self,
             mgr: &mut ConfigMgr,
             reverse: bool,

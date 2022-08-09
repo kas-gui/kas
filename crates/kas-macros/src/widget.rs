@@ -352,15 +352,15 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 self.#inner.translation()
             }
         };
-        let spatial_nav = quote! {
+        let nav_next = quote! {
             #[inline]
-            fn spatial_nav(
+            fn nav_next(
                 &mut self,
                 mgr: &mut ::kas::event::ConfigMgr,
                 reverse: bool,
                 from: Option<usize>,
             ) -> Option<usize> {
-                self.#inner.spatial_nav(mgr, reverse, from)
+                self.#inner.nav_next(mgr, reverse, from)
             }
         };
 
@@ -423,7 +423,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         widget_methods = vec![
             ("configure", configure),
             ("translation", translation),
-            ("spatial_nav", spatial_nav),
+            ("nav_next", nav_next),
             ("handle_unused", handle_unused),
             ("handle_message", handle_message),
             ("handle_scroll", handle_scroll),
