@@ -84,6 +84,15 @@ impl_scope! {
     }
 
     impl Widget for Self {
+        fn nav_next(&mut self,
+            _: &mut ConfigMgr,
+            reverse: bool,
+            from: Option<usize>,
+        ) -> Option<usize> {
+            let reverse = reverse ^ !self.direction.is_reversed();
+            kas::util::nav_next(reverse, from, self.num_children())
+        }
+
         fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
             if let Some(MsgSelectIndex(index)) = mgr.try_pop_msg() {
                 mgr.config_mgr(|mgr| self.set_active(mgr, index));

@@ -810,12 +810,17 @@ impl Layout {
         match self {
             Layout::Align(layout, _)
             | Layout::Margins(layout, _, _)
-            | Layout::Frame(_, layout, _)
-            | Layout::Button(_, layout, _) => layout.nav_next(output, index),
+            | Layout::Frame(_, layout, _) => layout.nav_next(output, index),
+            Layout::Button(_, layout, _) => {
+                // Internals of a button are not navigable, but we still need to increment index
+                let start = output.len();
+                layout.nav_next(output, index)?;
+                output.truncate(start);
+                Ok(())
+            }
             Layout::AlignSingle(_, _)
             | Layout::Single(_)
-            | Layout::Widget(_, _)
-            | Layout::Label(_, _) => {
+            | Layout::Widget(_, _) => {
                 output.push(*index);
                 *index += 1;
                 Ok(())
@@ -844,6 +849,10 @@ impl Layout {
                 for item in list {
                     item.nav_next(output, index)?;
                 }
+                Ok(())
+            }
+            Layout::Label(_, _) => {
+                *index += 1;
                 Ok(())
             }
         }
