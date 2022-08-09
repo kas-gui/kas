@@ -240,6 +240,10 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > _Label_ :\
 /// > &nbsp;&nbsp; _StrLit_\
 /// > &nbsp;&nbsp; A string literal generates a label widget, e.g. "Hello world". This is an internal type without text wrapping.
+/// >
+/// > _NonNavigable_ :\
+/// > &nbsp;&nbsp; `non_navigable` `:` _Layout_ \
+/// > &nbsp;&nbsp; Does not affect layout. Specifies that the content is excluded from tab-navigation order.
 ///
 /// Additional syntax rules (not layout items):
 ///

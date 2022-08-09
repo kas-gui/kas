@@ -189,7 +189,7 @@ impl_scope! {
     #[autoimpl(HasBool using self.inner)]
     #[derive(Clone)]
     #[widget{
-        layout = list(self.direction()): [self.inner, self.label];
+        layout = list(self.direction()): [self.inner, non_navigable: self.label];
     }]
     pub struct RadioButton {
         core: widget_core!(),

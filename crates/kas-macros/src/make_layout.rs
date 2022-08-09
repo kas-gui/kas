@@ -34,6 +34,7 @@ mod kw {
     custom_keyword!(aligned_row);
     custom_keyword!(float);
     custom_keyword!(margins);
+    custom_keyword!(non_navigable);
 }
 
 #[derive(Debug)]
@@ -111,6 +112,7 @@ enum Layout {
     Slice(StorIdent, Direction, Expr),
     Grid(StorIdent, GridDimensions, Vec<(CellInfo, Layout)>),
     Label(StorIdent, LitStr),
+    NonNavigable(Box<Layout>),
 }
 
 #[derive(Debug)]
@@ -391,6 +393,11 @@ impl Layout {
             let stor = gen.parse_or_next(input)?;
             let _: Token![:] = input.parse()?;
             Ok(parse_grid(stor, input, gen)?)
+        } else if lookahead.peek(kw::non_navigable) {
+            let _: kw::non_navigable = input.parse()?;
+            let _: Token![:] = input.parse()?;
+            let layout = Layout::parse(input, gen)?;
+            Ok(Layout::NonNavigable(Box::new(layout)))
         } else if lookahead.peek(LitStr) {
             let stor = gen.next();
             Ok(Layout::Label(stor, input.parse()?))
@@ -665,7 +672,7 @@ impl ToTokens for GridDimensions {
 impl Layout {
     fn append_fields(&self, ty_toks: &mut Toks, def_toks: &mut Toks, children: &mut Vec<Toks>) {
         match self {
-            Layout::Align(layout, _) => {
+            Layout::Align(layout, _) | Layout::NonNavigable(layout) => {
                 layout.append_fields(ty_toks, def_toks, children);
             }
             Layout::AlignSingle(..) | Layout::Margins(..) | Layout::Single(_) => (),
@@ -821,6 +828,7 @@ impl Layout {
             Layout::Label(stor, _) => {
                 quote! { layout::Visitor::component(&mut self.#core.#stor) }
             }
+            Layout::NonNavigable(layout) => return layout.generate(core),
         })
     }
 
@@ -838,7 +846,7 @@ impl Layout {
             Layout::Align(layout, _)
             | Layout::Margins(layout, _, _)
             | Layout::Frame(_, layout, _) => layout.nav_next(children, output, index),
-            Layout::Button(_, layout, _) => {
+            Layout::Button(_, layout, _) | Layout::NonNavigable(layout) => {
                 // Internals of a button are not navigable, but we still need to increment index
                 let start = output.len();
                 layout.nav_next(children, output, index)?;
