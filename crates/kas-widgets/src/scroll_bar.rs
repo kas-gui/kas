@@ -523,10 +523,6 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn configure(&mut self, mgr: &mut ConfigMgr) {
-            mgr.register_nav_fallback(self.id());
-        }
-
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
             if index == widget_index![self.horiz_bar] {
                 if let Some(ScrollMsg(x)) = mgr.try_pop_msg() {
