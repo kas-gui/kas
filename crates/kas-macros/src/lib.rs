@@ -189,111 +189,80 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///
 /// ## Layout
 ///
-/// Widget layout may be specified either by implementing the `size_rules`,
-/// `draw` (and possibly more) methods, or via the `layout` property.
-/// The latter accepts the following syntax:
+/// Widget layout may be specified either by implementing the `Layout` trait or
+/// via the `layout` property of `#[widget]`. The latter accepts the following
+/// syntax, where _Layout_ is any of the below.
 ///
-/// > _Layout_ :\
-/// > &nbsp;&nbsp; &nbsp;&nbsp; _Single_ | _List_ | _Slice_ | _Grid_ | _Float_ | _Align_ | _Frame_ | _Button_ | _LitStr_ | _ExprStartingUpperCaseIdent_
-/// >
+/// Using the `layout = ...;` property will also generate a corresponding
+/// implementation of `Widget::nav_next`, with a couple of exceptions
+/// (where macro-time analysis is insufficient to implement this method).
+///
 /// > _Single_ :\
-/// > &nbsp;&nbsp; `self` `.` _Member_ | _Expr_
+/// > &nbsp;&nbsp; `self` `.` _Member_\
+/// > &nbsp;&nbsp; A named child: `self.foo` (more precisely, this matches any expression starting `self`, and uses `&mut (#expr)`)
 /// >
 /// > _List_ :\
-/// > &nbsp;&nbsp; _ListPre_ _Storage_? `:` `[` ( _Layout_ `,`? ) * `]`
+/// > &nbsp;&nbsp; ( `column` | `row` | `list` `(` _Direction_ `)` ) _Storage_? `:` `[` ( _Layout_ `,`? ) * `]`\
+/// > &nbsp;&nbsp; A list of children, e.g. `row: ["Foo", self.foo]` or `list(up): ..` or `list(self.direction()): ..`
 /// >
-/// > _ListPre_ :\
-/// > &nbsp;&nbsp; `column` | `row` | `aligned_column` | `aligned_row` | `list` `(` _Direction_ `)`
+/// > _AlignedList_ :\
+/// > &nbsp;&nbsp; ( `aligned_column` | `aligned_row` ) _Storage_? `:` `[` ( _Layout_ `,`? ) * `]`\
+/// > &nbsp;&nbsp; Inner component must be `row` or `column`, e.g.: `aligned_column: [row: ["One", "Two"], row: ["Three", "Four"]]`. This is syntactic sugar for a grid layout.
 /// >
 /// > _Slice_ :\
-/// > &nbsp;&nbsp; `slice` `(` _Direction_ `)` _Storage_? `:` `self` `.` _Member_
-/// >
-/// > _Direction_ :\
-/// > &nbsp;&nbsp; `left` | `right` | `up` | `down`
+/// > &nbsp;&nbsp; `slice` `(` _Direction_ `)` _Storage_? `:` `self` `.` _Member_\
+/// > &nbsp;&nbsp; A field with type `[W]` for some `W: Widget`
 /// >
 /// > _Grid_ :\
-/// > &nbsp;&nbsp; `grid` _Storage_? `:` `{` _GridCell_* `}`
+/// > &nbsp;&nbsp; `grid` _Storage_? `:` `{` _GridCell_* `}`\
+/// > &nbsp;&nbsp; A two-dimensional layout, supporting cell spans, defined via a list of cells (see _GridCell_ below).
+///
+/// > _Float_ :\
+/// > &nbsp;&nbsp; _float_ `:` `[` ( _Layout_ `,`? ) * `]`\
+/// > &nbsp;&nbsp; A stack of overlapping elements, top-most first.
+///
+/// > _Align_ :\
+/// > &nbsp;&nbsp; `align` `(` _AlignType_ ( `,` _AlignType_ )? `)` `:` _Layout_\
+/// > &nbsp;&nbsp; Applies some alignment to a sub-layout, e.g. `align(top): self.foo`. Two-dimensional alignment is possible but must be horizontal first, e.g. `align(left, top): ..`
+/// >
+/// > _Frame_ :\
+/// > &nbsp;&nbsp; `frame` ( `(` _Expr_ `)` )? _Storage_? `:` _Layout_\
+/// > &nbsp;&nbsp; Adds a frame of type _Expr_ around content, defaulting to `FrameStyle::Frame`.
+/// >
+/// > _Button_ :\
+/// > &nbsp;&nbsp; `button` ( `(` _Expr_ `)` ) ? _Storage_? `:` _Layout_\
+/// > &nbsp;&nbsp; Adds a button frame (optionally with color _Expr_) around content.
+/// >
+/// > _Widget_ :\
+/// > &nbsp;&nbsp; _ExprStartingUpperCase_\
+/// > &nbsp;&nbsp; An expression yielding a widget, e.g. `Label::new("Hello world")`. The result must be an object of some type `W: Widget`. Since the expression must start with an upper case letter it is necessary to bring the type into scope first, e.g. `use kas::widgets::Label;`.
+/// >
+/// > _Label_ :\
+/// > &nbsp;&nbsp; _StrLit_\
+/// > &nbsp;&nbsp; A string literal generates a label widget, e.g. "Hello world". This is an internal type without text wrapping.
+///
+/// Additional syntax rules (not layout items):
+///
+/// > _Member_ :\
+/// > &nbsp;&nbsp; _Ident_ | _Index_\
+/// > &nbsp;&nbsp; The name of a struct field or an index into a tuple struct.
+/// >
+/// > _Direction_ :\
+/// > &nbsp;&nbsp; `left` | `right` | `up` | `down` | _Expr_
 /// >
 /// > _GridCell_ :\
-/// > &nbsp;&nbsp; _CellRange_ `,` _CellRange_ `:` _Layout_
+/// > &nbsp;&nbsp; _CellRange_ `,` _CellRange_ `:` _Layout_\
+/// > &nbsp;&nbsp; Cell location in the order `(col, row)`, e.g.: `1, 0: self.foo`. Spans are specified via range syntax, e.g. `0..2, 1: self.bar`.
 /// >
 /// > _CellRange_ :\
 /// > &nbsp;&nbsp; _LitInt_ ( `..` `+`? _LitInt_ )?
-///
-/// > _Float_ :\
-/// > &nbsp;&nbsp; _float_ `:` `[` ( _Layout_ `,`? ) * `]`
-///
-/// > _Align_ :\
-/// > &nbsp;&nbsp; `align` `(` _AlignType_ ( `,` _AlignType_ )? `)` `:` _Layout_
 /// >
 /// > _AlignType_ :\
 /// > &nbsp;&nbsp; `default` | `center` | `stretch` | `top` | `bottom` | `left` | `right`
 /// >
-/// > _Frame_ :\
-/// > &nbsp;&nbsp; `frame` `(` _Style_ `)` _Storage_? `:` _Layout_
-/// >
-/// > _Button_ :\
-/// > &nbsp;&nbsp; `button` `(` _Color_ `)` ? _Storage_? `:` _Layout_
-/// >
 /// > _Storage_ :\
-/// > &nbsp;&nbsp; `'` _Ident_
-///
-/// ### Variants
-///
-/// Both _Single_ and _Slice_ variants match `self.MEMBER` where `MEMBER` is the
-/// name of a field or number of a tuple field. More precisely, both match any
-/// expression starting with `self` and use `&mut (#expr)`.
-/// Additionally, _Single_ matches an expression starting with an identifier
-/// which starts with a capital letter. This is assumed to be a constructor for
-/// a widget, which, when boxed, is placed into a `Box<dyn Widget>` field within
-/// the core and included as a child.
-///
-/// `row` and `column` are abbreviations for `list(right)` and `list(down)`
-/// respectively.
-///
-/// `aligned_column` and `aligned_row` use restricted list syntax (items must
-/// be `row` or `column` respectively; glob syntax not allowed), but build a
-/// grid layout. Essentially, they are syntax sugar for simple table layouts.
-///
-/// _Align_ applies an alignment specifier. `default`, `center` and `stretch`
-/// apply to both axes if only one _AlignType_ keyword is given; in case two
-/// keywords are used, the first applies to the horizontal axis and the second
-/// to the vertical (thus `top, left` is invalid; use `left, top`). `default`
-/// forces content-default alignment when the widget would set alignment.
-///
-/// _Slice_ is a variant of _List_ over a single struct field which supports
-/// `AsMut<W>` for some widget type `W`.
-///
-/// A _Grid_ is an aligned two-dimensional layout supporting item spans.
-/// Contents are declared as a collection of cells. Cell location is specified
-/// like `0, 1` (that is, col=0, row=1) with spans specified like `0..2, 1`
-/// (thus cols={0, 1}, row=1) or `2..+2, 1` (cols={2,3}, row=1).
-///
-/// _Frame_ and _Button_ are two variants of the same thing: a button is a frame
-/// using `FrameStyle::Button`, but may optionally also have a color (a field of
-/// type `Option<Rgb>`). Additionally, a button automatically uses centered
-/// alignment of content.
-///
-/// An identifier starting with an upper-case letter is interpreted as an
-/// expression constructing a widget, which is inserted into the layout in the
-/// given position.
-///
-/// A string literal implicitly generates a string label widget. This widget
-/// will not wrap text. An alternative is `Label::new("abc...")`
-/// (when `kas::widgets::Label` is in scope).
-///
-/// Non-trivial layouts require a "storage" field within the generated
-/// `widget_core!()`. This storage field is usually anonymous (i.e. uses an
-/// automatically generated name), but may be named via a "lifetime label",
-/// for example: `col 'col_storage: [...]`.
-///
-/// _Member_ is a field name (struct) or number (tuple struct).
-///
-/// ### nav_next
-///
-/// Using `layout = ...;` will generate a corresponding implementation of `Widget::nav_next`,
-/// with a couple of exceptions (where macro-time analysis is insufficient to
-/// implement this method).
+/// > &nbsp;&nbsp; `'` _Ident_\
+/// > &nbsp;&nbsp; Used to explicitly name the storage used by a generated widget or layout; for example `row 'x: ["A", "B", "C"]` will add a field `x: R` where `R: RowStorage` within the generated `widget_core!()`. If omitted, the field name will be anonymous (generated).
 ///
 /// ## Examples
 ///
