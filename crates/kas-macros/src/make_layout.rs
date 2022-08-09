@@ -53,6 +53,27 @@ impl Tree {
     pub fn generate(&self, core: &Member) -> Result<Toks> {
         self.0.generate(core)
     }
+
+    pub fn nav_next(&self) -> NavNextResult {
+        match &self.0 {
+            Layout::Slice(_, dir, _) => NavNextResult::Slice(dir.to_token_stream()),
+            layout => {
+                let mut v = Vec::new();
+                let mut index = 0;
+                match layout.nav_next(&mut v, &mut index) {
+                    Ok(()) => NavNextResult::List(v),
+                    Err(msg) => NavNextResult::Err(msg),
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum NavNextResult {
+    Err(&'static str),
+    Slice(Toks),
+    List(Vec<usize>),
 }
 
 #[derive(Debug)]
@@ -775,5 +796,56 @@ impl Layout {
                 quote! { layout::Visitor::component(&mut self.#core.#stor) }
             }
         })
+    }
+
+    /// Create a Vec enumerating all children in navigation order
+    ///
+    /// -   `output`: the result
+    /// -   `index`: the next widget's index
+    fn nav_next(
+        &self,
+        output: &mut Vec<usize>,
+        index: &mut usize,
+    ) -> std::result::Result<(), &'static str> {
+        match self {
+            Layout::Align(layout, _)
+            | Layout::Margins(layout, _, _)
+            | Layout::Frame(_, layout, _)
+            | Layout::Button(_, layout, _) => layout.nav_next(output, index),
+            Layout::AlignSingle(_, _)
+            | Layout::Single(_)
+            | Layout::Widget(_, _)
+            | Layout::Label(_, _) => {
+                output.push(*index);
+                *index += 1;
+                Ok(())
+            }
+            Layout::List(_, dir, list) => {
+                let start = output.len();
+                for item in list {
+                    item.nav_next(output, index)?;
+                }
+                match dir {
+                    _ if output.len() <= start + 1 => Ok(()),
+                    Direction::Right | Direction::Down => Ok(()),
+                    Direction::Left | Direction::Up => Ok(output[start..].reverse()),
+                    Direction::Expr(_) => Err("`list(dir)` with non-static `dir`"),
+                }
+            }
+            Layout::Slice(_, _, _) => Err("`slice` combined with other layout components"),
+            Layout::Grid(_, _, cells) => {
+                // TODO: sort using CellInfo?
+                for (_, item) in cells {
+                    item.nav_next(output, index)?;
+                }
+                Ok(())
+            }
+            Layout::Float(list) => {
+                for item in list {
+                    item.nav_next(output, index)?;
+                }
+                Ok(())
+            }
+        }
     }
 }

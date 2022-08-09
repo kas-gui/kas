@@ -5,7 +5,7 @@
 
 use crate::make_layout;
 use proc_macro2::{Span, TokenStream};
-use proc_macro_error::{abort, emit_error};
+use proc_macro_error::abort;
 use quote::quote_spanned;
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
@@ -191,7 +191,7 @@ pub struct WidgetArgs {
     pub hover_highlight: Option<BoolToken>,
     pub cursor_icon: Option<ExprToken>,
     pub derive: Option<Member>,
-    pub layout: Option<make_layout::Tree>,
+    pub layout: Option<(Span, make_layout::Tree)>,
 }
 
 impl Parse for WidgetArgs {
@@ -201,7 +201,6 @@ impl Parse for WidgetArgs {
         let mut cursor_icon = None;
         let mut kw_derive = None;
         let mut derive = None;
-        let mut kw_layout = None;
         let mut layout = None;
 
         while !content.is_empty() {
@@ -232,9 +231,9 @@ impl Parse for WidgetArgs {
                 let _: Token![.] = content.parse()?;
                 derive = Some(content.parse()?);
             } else if lookahead.peek(kw::layout) && layout.is_none() {
-                kw_layout = Some(content.parse::<kw::layout>()?);
+                let kw = content.parse::<kw::layout>()?;
                 let _: Eq = content.parse()?;
-                layout = Some(content.parse()?);
+                layout = Some((kw.span, content.parse()?));
             } else {
                 return Err(lookahead.error());
             }
@@ -242,12 +241,10 @@ impl Parse for WidgetArgs {
             let _ = content.parse::<Token![;]>()?;
         }
 
-        if let Some(derive) = kw_derive {
-            if let Some(layout) = kw_layout {
-                emit_error!(
-                    layout, "incompatible with derive";
-                    note = derive.span() => "this derive"
-                );
+        if let Some(_derive) = kw_derive {
+            if let Some((span, _)) = layout {
+                return Err(Error::new(span, "incompatible with widget derive"));
+                // note = derive.span() => "this derive"
             }
         }
 

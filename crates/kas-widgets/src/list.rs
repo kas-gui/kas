@@ -125,16 +125,6 @@ impl_scope! {
             self.id_map.clear();
         }
 
-        fn nav_next(
-            &mut self,
-            _: &mut ConfigMgr,
-            reverse: bool,
-            from: Option<usize>,
-        ) -> Option<usize> {
-            let reverse = reverse ^ self.direction.is_reversed();
-            kas::util::nav_next(reverse, from, self.num_children())
-        }
-
         fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
             if let Some(f) = self.on_message {
                 f(mgr, index);

@@ -238,6 +238,8 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > _Storage_ :\
 /// > &nbsp;&nbsp; `'` _Ident_
 ///
+/// ### Variants
+///
 /// Both _Single_ and _Slice_ variants match `self.MEMBER` where `MEMBER` is the
 /// name of a field or number of a tuple field. More precisely, both match any
 /// expression starting with `self` and use `&mut (#expr)`.
@@ -286,6 +288,12 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// for example: `col 'col_storage: [...]`.
 ///
 /// _Member_ is a field name (struct) or number (tuple struct).
+///
+/// ### nav_next
+///
+/// Using `layout = ...;` will generate a corresponding implementation of `Widget::nav_next`,
+/// with a couple of exceptions (where macro-time analysis is insufficient to
+/// implement this method).
 ///
 /// ## Examples
 ///
