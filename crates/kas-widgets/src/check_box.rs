@@ -18,7 +18,7 @@ impl_scope! {
     #[autoimpl(Debug ignore self.on_toggle)]
     #[derive(Clone, Default)]
     #[widget{
-        key_nav = true;
+        navigable = true;
         hover_highlight = true;
     }]
     pub struct CheckBox {

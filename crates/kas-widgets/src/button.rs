@@ -22,7 +22,7 @@ impl_scope! {
     #[derive(Clone)]
     #[widget {
         layout = button(self.color): self.inner;
-        key_nav = true;
+        navigable = true;
         hover_highlight = true;
     }]
     pub struct Button<W: Widget> {
@@ -136,7 +136,7 @@ impl_scope! {
     #[derive(Clone)]
     #[widget {
         layout = button(self.color): self.label;
-        key_nav = true;
+        navigable = true;
         hover_highlight = true;
     }]
     pub struct TextButton {

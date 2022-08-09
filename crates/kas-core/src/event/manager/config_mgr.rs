@@ -125,7 +125,7 @@ impl<'a> ConfigMgr<'a> {
     /// Advance the keyboard navigation focus
     ///
     /// If some widget currently has nav focus, this will give focus to the next
-    /// (or previous) widget under `widget` where [`Widget::key_nav`]
+    /// (or previous) widget under `widget` where [`Widget::navigable`]
     /// returns true; otherwise this will give focus to the first (or last)
     /// such widget.
     ///
@@ -184,7 +184,7 @@ impl<'a> ConfigMgr<'a> {
                     {
                         return Some(id);
                     }
-                } else if !widget.eq_id(focus) && widget.key_nav() {
+                } else if !widget.eq_id(focus) && widget.navigable() {
                     return Some(widget.id());
                 }
 
@@ -221,7 +221,7 @@ impl<'a> ConfigMgr<'a> {
                         }
                         child = Some(index);
                     } else {
-                        return if !widget.eq_id(focus) && widget.key_nav() {
+                        return if !widget.eq_id(focus) && widget.navigable() {
                             Some(widget.id())
                         } else {
                             None

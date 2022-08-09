@@ -93,7 +93,7 @@ impl_scope! {
     #[autoimpl(Debug ignore self.on_move)]
     #[derive(Clone)]
     #[widget{
-        key_nav = true;
+        navigable = true;
         hover_highlight = true;
     }]
     pub struct Slider<T: SliderValue, D: Directional> {

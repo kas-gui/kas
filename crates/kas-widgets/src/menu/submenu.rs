@@ -22,7 +22,7 @@ impl_scope! {
     pub struct SubMenu<D: Directional> {
         core: widget_core!(),
         direction: D,
-        pub(crate) key_nav: bool,
+        pub(crate) navigable: bool,
         #[widget]
         label: AccelLabel,
         #[widget]
@@ -70,7 +70,7 @@ impl_scope! {
             SubMenu {
                 core: Default::default(),
                 direction,
-                key_nav: true,
+                navigable: true,
                 label: AccelLabel::new(label).with_class(TextClass::MenuLabel),
                 mark: Mark::new(MarkStyle::Point(direction.as_direction())),
                 list: PopupFrame::new(MenuView::new(list)),
@@ -147,8 +147,8 @@ impl_scope! {
             mgr.new_accel_layer(self.id(), true);
         }
 
-        fn key_nav(&self) -> bool {
-            self.key_nav
+        fn navigable(&self) -> bool {
+            self.navigable
         }
 
         fn nav_next(&mut self, _: &mut ConfigMgr, _: bool, _: Option<usize>) -> Option<usize> {

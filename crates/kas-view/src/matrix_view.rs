@@ -687,7 +687,7 @@ impl_scope! {
                     }
                 }
                 Event::Command(cmd) => {
-                    if self.data.is_empty() || !self.widgets[0].widget.key_nav() {
+                    if self.data.is_empty() || !self.widgets[0].widget.navigable() {
                         return Response::Unused;
                     }
                     let (d_cols, d_rows) = self.data.len();

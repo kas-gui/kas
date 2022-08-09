@@ -263,7 +263,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let fn_pre_configure;
     let fn_pre_handle_event;
     let fn_handle_event;
-    let mut key_nav = args.key_nav;
+    let mut fn_navigable = args.navigable;
     let mut fn_nav_next = None;
     let mut fn_nav_next_err = None;
     let widget_methods;
@@ -335,11 +335,11 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 self.#inner.pre_configure(mgr, id)
             }
         };
-        if key_nav.is_none() {
-            key_nav = Some(quote! {
+        if fn_navigable.is_none() {
+            fn_navigable = Some(quote! {
                 #[inline]
-                fn key_nav(&self) -> bool {
-                    self.#inner.key_nav()
+                fn navigable(&self) -> bool {
+                    self.#inner.navigable()
                 }
             });
         }
@@ -699,7 +699,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         if opt_derive.is_some() || !has_method("pre_configure") {
             widget_impl.items.push(parse2(fn_pre_configure)?);
         }
-        if let Some(method) = key_nav {
+        if let Some(method) = fn_navigable {
             widget_impl.items.push(parse2(method)?);
         }
         widget_impl.items.push(parse2(fn_pre_handle_event)?);
@@ -731,7 +731,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     for #name #ty_generics #where_clause
             {
                 #fn_pre_configure
-                #key_nav
+                #fn_navigable
                 #fn_pre_handle_event
                 #fn_handle_event
                 #(#other_methods)*

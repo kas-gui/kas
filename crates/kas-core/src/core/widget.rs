@@ -369,7 +369,7 @@ pub trait Layout {
 ///     #[derive(Debug)]
 ///     #[widget {
 ///         layout = button: self.label;
-///         key_nav = true;
+///         navigable = true;
 ///         hover_highlight = true;
 ///     }]
 ///     pub struct TextButton<M: Clone + Debug + 'static> {
@@ -436,11 +436,11 @@ pub trait Widget: WidgetChildren + Layout {
         let _ = mgr;
     }
 
-    /// Is this widget navigable via Tab key?
+    /// Is this widget navigable via <kbd>Tab</kbd> key?
     ///
     /// Defaults to `false`.
     #[inline]
-    fn key_nav(&self) -> bool {
+    fn navigable(&self) -> bool {
         false
     }
 

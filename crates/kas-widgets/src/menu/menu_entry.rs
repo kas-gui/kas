@@ -21,7 +21,7 @@ impl_scope! {
     #[derive(Clone, Debug, Default)]
     #[widget {
         layout = self.label;
-        key_nav = true;
+        navigable = true;
     }]
     pub struct MenuEntry<M: Clone + Debug + 'static> {
         core: widget_core!(),

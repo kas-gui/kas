@@ -427,7 +427,7 @@ impl<'a> EventMgr<'a> {
                         // No mouse grab but have a hover target
                         if self.config.mouse_nav_focus() {
                             if let Some(w) = widget.find_widget(&start_id) {
-                                if w.key_nav() {
+                                if w.navigable() {
                                     self.set_nav_focus(w.id(), false);
                                 }
                             }
@@ -454,7 +454,7 @@ impl<'a> EventMgr<'a> {
                         if let Some(id) = start_id.as_ref() {
                             if self.config.touch_nav_focus() {
                                 if let Some(w) = widget.find_widget(id) {
-                                    if w.key_nav() {
+                                    if w.navigable() {
                                         self.set_nav_focus(w.id(), false);
                                     }
                                 }

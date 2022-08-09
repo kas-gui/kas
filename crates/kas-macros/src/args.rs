@@ -159,7 +159,7 @@ mod kw {
     custom_keyword!(align);
     custom_keyword!(halign);
     custom_keyword!(valign);
-    custom_keyword!(key_nav);
+    custom_keyword!(navigable);
     custom_keyword!(hover_highlight);
     custom_keyword!(cursor_icon);
     custom_keyword!(handle);
@@ -187,7 +187,7 @@ pub struct ExprToken {
 
 #[derive(Debug, Default)]
 pub struct WidgetArgs {
-    pub key_nav: Option<TokenStream>,
+    pub navigable: Option<TokenStream>,
     pub hover_highlight: Option<BoolToken>,
     pub cursor_icon: Option<ExprToken>,
     pub derive: Option<Member>,
@@ -196,7 +196,7 @@ pub struct WidgetArgs {
 
 impl Parse for WidgetArgs {
     fn parse(content: ParseStream) -> Result<Self> {
-        let mut key_nav = None;
+        let mut navigable = None;
         let mut hover_highlight = None;
         let mut cursor_icon = None;
         let mut kw_derive = None;
@@ -205,12 +205,12 @@ impl Parse for WidgetArgs {
 
         while !content.is_empty() {
             let lookahead = content.lookahead1();
-            if lookahead.peek(kw::key_nav) && key_nav.is_none() {
-                let span = content.parse::<kw::key_nav>()?.span();
+            if lookahead.peek(kw::navigable) && navigable.is_none() {
+                let span = content.parse::<kw::navigable>()?.span();
                 let _: Eq = content.parse()?;
                 let value = content.parse::<syn::LitBool>()?;
-                key_nav = Some(quote_spanned! {span=>
-                    fn key_nav(&self) -> bool { #value }
+                navigable = Some(quote_spanned! {span=>
+                    fn navigable(&self) -> bool { #value }
                 });
             } else if lookahead.peek(kw::hover_highlight) && hover_highlight.is_none() {
                 hover_highlight = Some(BoolToken {
@@ -249,7 +249,7 @@ impl Parse for WidgetArgs {
         }
 
         Ok(WidgetArgs {
-            key_nav,
+            navigable,
             hover_highlight,
             cursor_icon,
             derive,

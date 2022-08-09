@@ -142,7 +142,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 ///
 /// This macro may inject methods into existing [`Layout`] / [`Widget`] implementations.
 /// This is used both to provide default implementations which could not be
-/// written on the trait and to implement properties like `key_nav`.
+/// written on the trait and to implement properties like `navigable`.
 /// (In the case of multiple implementations of the same trait, as used for
 /// specialization, only the first implementation of each trait is extended.)
 ///
@@ -159,8 +159,8 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// -   <code>derive = self.<em>field</em></code> where
 ///     <code><em>field</em></code> is the name (or number) of a field:
 ///     enables "derive mode" ([see below](#derive)) over the given field
-/// -   <code>key_nav = <em>bool</em></code> — a quick implementation of
-///     `Widget::key_nav`: whether this widget supports keyboard focus via
+/// -   <code>navigable = <em>bool</em></code> — a quick implementation of
+///     `Widget::navigable`: whether this widget supports keyboard focus via
 ///     the <kbd>Tab</kbd> key (default is `false`)
 /// -   <code>hover_highlight = <em>bool</em></code> — if true, then match
 ///     `Event::MouseHover` and `Event::LostMouseHover`, requesting redraw and
@@ -328,7 +328,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// ```
 ///
 /// This is a special mode where most features of `#[widget]` are not
-/// available. A few may still be used: `key_nav`, `hover_highlight`,
+/// available. A few may still be used: `navigable`, `hover_highlight`,
 /// `cursor_icon`. Additionally, it is currently permitted to implement
 /// [`WidgetChildren`], [`Layout`] and [`Widget`] traits manually (this option
 /// may be removed in the future if not deemed useful).

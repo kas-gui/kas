@@ -50,7 +50,7 @@ pub struct SubItems<'a> {
 /// Implementations will automatically receive nav focus on mouse-hover, thus
 /// should ensure that [`Layout::find_id`] returns the identifier of the widget
 /// which should be focussed, and that this widget has
-/// [`Widget::key_nav`] return true.
+/// [`Widget::navigable`] return true.
 #[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait Menu: Widget {
     /// Access row items for aligned layout

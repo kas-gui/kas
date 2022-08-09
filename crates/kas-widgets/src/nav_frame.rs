@@ -26,7 +26,7 @@ impl_scope! {
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone, Debug, Default)]
     #[widget{
-        key_nav = true;
+        navigable = true;
         layout = frame(kas::theme::FrameStyle::NavFocus): self.inner;
     }]
     pub struct NavFrame<W: Widget> {

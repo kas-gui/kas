@@ -41,7 +41,7 @@ impl_scope! {
         /// Construct a menubar with explicit direction
         pub fn new_with_direction(direction: D, mut menus: Vec<SubMenu<D::Flipped>>) -> Self {
             for menu in menus.iter_mut() {
-                menu.key_nav = false;
+                menu.navigable = false;
             }
             MenuBar {
                 core: Default::default(),

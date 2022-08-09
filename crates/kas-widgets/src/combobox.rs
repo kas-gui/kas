@@ -32,7 +32,7 @@ impl_scope! {
     #[derive(Clone)]
     #[widget {
         layout = button 'frame: row: [self.label, self.mark];
-        key_nav = true;
+        navigable = true;
         hover_highlight = true;
     }]
     pub struct ComboBox<M: Clone + Debug + 'static> {

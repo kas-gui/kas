@@ -537,7 +537,7 @@ impl<'a> EventMgr<'a> {
         if let Some(id) = target {
             if widget
                 .find_widget(&id)
-                .map(|w| w.key_nav())
+                .map(|w| w.navigable())
                 .unwrap_or(false)
             {
                 self.set_nav_focus(id.clone(), true);
