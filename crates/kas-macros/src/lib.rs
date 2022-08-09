@@ -13,6 +13,7 @@
 #![allow(clippy::needless_late_init)]
 #![allow(clippy::redundant_pattern_matching)]
 #![allow(clippy::collapsible_if)]
+#![allow(clippy::unit_arg)]
 
 extern crate proc_macro;
 
