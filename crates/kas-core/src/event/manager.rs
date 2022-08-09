@@ -513,7 +513,9 @@ impl<'a> EventMgr<'a> {
         {
             if let Some(layer) = self.accel_layers.get(&id) {
                 // but only when Alt is held or alt-bypass is enabled:
-                if self.modifiers.alt() || layer.0 {
+                if self.modifiers == ModifiersState::ALT
+                    || layer.0 && self.modifiers == ModifiersState::empty()
+                {
                     if let Some(id) = layer.1.get(&vkey).cloned() {
                         target = Some(id);
                         n = i;
