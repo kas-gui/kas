@@ -482,7 +482,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         };
         if let Some((kw_span, layout)) = args.layout.take() {
             kw_layout = Some(kw_span);
-            fn_nav_next = match layout.nav_next() {
+            fn_nav_next = match layout.nav_next(&children) {
                 NavNextResult::Err(msg) => {
                     fn_nav_next_err = Some(msg);
                     None

@@ -3,6 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
+use crate::args::Child;
 use proc_macro2::{Span, TokenStream as Toks};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
@@ -54,13 +55,13 @@ impl Tree {
         self.0.generate(core)
     }
 
-    pub fn nav_next(&self) -> NavNextResult {
+    pub fn nav_next(&self, children: &[Child]) -> NavNextResult {
         match &self.0 {
             Layout::Slice(_, dir, _) => NavNextResult::Slice(dir.to_token_stream()),
             layout => {
                 let mut v = Vec::new();
-                let mut index = 0;
-                match layout.nav_next(&mut v, &mut index) {
+                let mut index = children.len();
+                match layout.nav_next(children, &mut v, &mut index) {
                     Ok(()) => NavNextResult::List(v),
                     Err(msg) => NavNextResult::Err(msg),
                 }
@@ -99,9 +100,9 @@ impl ToTokens for StorIdent {
 #[derive(Debug)]
 enum Layout {
     Align(Box<Layout>, AlignHints),
-    AlignSingle(Expr, AlignHints),
+    AlignSingle(ExprMember, AlignHints),
     Margins(Box<Layout>, Directions, Toks),
-    Single(Expr),
+    Single(ExprMember),
     Widget(StorIdent, Expr),
     Frame(StorIdent, Box<Layout>, Expr),
     Button(StorIdent, Box<Layout>, Expr),
@@ -110,6 +111,13 @@ enum Layout {
     Slice(StorIdent, Direction, Expr),
     Grid(StorIdent, GridDimensions, Vec<(CellInfo, Layout)>),
     Label(StorIdent, LitStr),
+}
+
+#[derive(Debug)]
+struct ExprMember {
+    self_: Token![self],
+    p: Token![.],
+    member: Member,
 }
 
 #[derive(Debug)]
@@ -560,6 +568,24 @@ fn parse_grid(stor: StorIdent, input: ParseStream, gen: &mut NameGenerator) -> R
     Ok(Layout::Grid(stor, dim, cells))
 }
 
+impl Parse for ExprMember {
+    fn parse(input: ParseStream) -> Result<Self> {
+        Ok(ExprMember {
+            self_: input.parse()?,
+            p: input.parse()?,
+            member: input.parse()?,
+        })
+    }
+}
+
+impl ToTokens for ExprMember {
+    fn to_tokens(&self, toks: &mut Toks) {
+        self.self_.to_tokens(toks);
+        self.p.to_tokens(toks);
+        self.member.to_tokens(toks);
+    }
+}
+
 impl Parse for Direction {
     fn parse(input: ParseStream) -> Result<Self> {
         let lookahead = input.lookahead1();
@@ -804,23 +830,31 @@ impl Layout {
     /// -   `index`: the next widget's index
     fn nav_next(
         &self,
+        children: &[Child],
         output: &mut Vec<usize>,
         index: &mut usize,
     ) -> std::result::Result<(), &'static str> {
         match self {
             Layout::Align(layout, _)
             | Layout::Margins(layout, _, _)
-            | Layout::Frame(_, layout, _) => layout.nav_next(output, index),
+            | Layout::Frame(_, layout, _) => layout.nav_next(children, output, index),
             Layout::Button(_, layout, _) => {
                 // Internals of a button are not navigable, but we still need to increment index
                 let start = output.len();
-                layout.nav_next(output, index)?;
+                layout.nav_next(children, output, index)?;
                 output.truncate(start);
                 Ok(())
             }
-            Layout::AlignSingle(_, _)
-            | Layout::Single(_)
-            | Layout::Widget(_, _) => {
+            Layout::AlignSingle(m, _) | Layout::Single(m) => {
+                for (i, child) in children.iter().enumerate() {
+                    if m.member == child.ident {
+                        output.push(i);
+                        return Ok(());
+                    }
+                }
+                Err("child not found")
+            }
+            Layout::Widget(_, _) => {
                 output.push(*index);
                 *index += 1;
                 Ok(())
@@ -828,7 +862,7 @@ impl Layout {
             Layout::List(_, dir, list) => {
                 let start = output.len();
                 for item in list {
-                    item.nav_next(output, index)?;
+                    item.nav_next(children, output, index)?;
                 }
                 match dir {
                     _ if output.len() <= start + 1 => Ok(()),
@@ -841,13 +875,13 @@ impl Layout {
             Layout::Grid(_, _, cells) => {
                 // TODO: sort using CellInfo?
                 for (_, item) in cells {
-                    item.nav_next(output, index)?;
+                    item.nav_next(children, output, index)?;
                 }
                 Ok(())
             }
             Layout::Float(list) => {
                 for item in list {
-                    item.nav_next(output, index)?;
+                    item.nav_next(children, output, index)?;
                 }
                 Ok(())
             }
