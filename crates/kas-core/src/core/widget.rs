@@ -472,8 +472,10 @@ pub trait Widget: WidgetChildren + Layout {
     /// Both `from` and the return value use the widget index, as used by
     /// [`WidgetChildren::get_child`].
     ///
-    /// The default implementation often suffices: it will navigate through
-    /// children in order.
+    /// Default implementation:
+    ///
+    /// -   Generated from `#[widget]`'s layout property, if used
+    /// -   Otherwise, iterate through children in order of definition
     #[inline]
     fn nav_next(
         &mut self,
