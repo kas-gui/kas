@@ -3,12 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Shared data for view widgets
-//!
-//! TODO: `SharedRc` makes the `sync-counter` example simpler, but most real
-//! uses of shared data require custom impls anyway, so is this worth keeping?
-//! If not, we can probably remove `ListDataMut` and other `*Mut` traits too.
-//! Probably this question requires seeing more examples/applications to answer.
+//! `SharedRc` data type
 
 use crate::event::EventMgr;
 use crate::event::UpdateId;
@@ -77,8 +72,7 @@ impl<T: Debug> SharedRc<T> {
         (self.0).0
     }
 
-    /// Immutably borrows the wrapped value, returning an error if the value is currently mutably
-    /// borrowed.
+    /// Immutably borrows the wrapped value
     ///
     /// The borrow lasts until the returned `Ref` exits scope. Multiple immutable borrows can be
     /// taken out at the same time.
