@@ -366,7 +366,7 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for CheckButton {
 }
 
 /// [`kas_widgets::RadioBox`] view widget constructor
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct RadioBox {
     group: RadioGroup,
 }
@@ -394,7 +394,7 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for RadioBox {
 }
 
 /// [`kas_widgets::RadioButton`] view widget constructor
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct RadioButton {
     label: AccelString,
     group: RadioGroup,

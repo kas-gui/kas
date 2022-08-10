@@ -16,10 +16,16 @@ use std::time::Instant;
 /// A group used by [`RadioButton`] and [`RadioBox`]
 ///
 /// This type can (and likely should) be default constructed.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct RadioGroup(Rc<(UpdateId, RefCell<Option<WidgetId>>)>);
 
 impl RadioGroup {
+    /// Construct a new, unique group
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        Self(Default::default())
+    }
+
     /// Access update identifier
     ///
     /// Data updates via this [`RadioGroup`] are triggered using this [`UpdateId`].
@@ -27,7 +33,11 @@ impl RadioGroup {
         (self.0).0
     }
 
-    fn get(&self) -> Option<WidgetId> {
+    /// Get the active [`RadioBox`], if any
+    ///
+    /// Note: this is never equal to a [`RadioButton`]'s [`WidgetId`], but may
+    /// be a descendant (test with [`WidgetExt::is_ancestor_of`]).
+    pub fn get(&self) -> Option<WidgetId> {
         (self.0).1.borrow().clone()
     }
 

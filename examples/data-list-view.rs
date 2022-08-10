@@ -263,7 +263,7 @@ fn main() -> kas::shell::Result<()> {
     };
 
     let driver = MyDriver {
-        radio_group: Default::default(),
+        radio_group: RadioGroup::new(),
     };
     let data = MySharedData::new(3);
     type MyList = ListView<Direction, MySharedData, MyDriver>;
