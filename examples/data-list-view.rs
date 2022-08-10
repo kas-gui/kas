@@ -178,15 +178,11 @@ impl Driver<(bool, String), MySharedData> for MyDriver {
         }
     }
 
-    fn set(&self, widget: &mut Self::Widget, data: &MySharedData, key: &usize) -> TkAction {
-        if let Some(item) = data.get_cloned(key) {
-            let label = format!("Entry number {}", *key + 1);
-            widget.label.set_string(label)
-                | widget.radio.set_bool(item.0)
-                | widget.edit.set_string(item.1)
-        } else {
-            TkAction::empty()
-        }
+    fn set(&self, widget: &mut Self::Widget, key: &usize, item: (bool, String)) -> TkAction {
+        let label = format!("Entry number {}", *key + 1);
+        widget.label.set_string(label)
+            | widget.radio.set_bool(item.0)
+            | widget.edit.set_string(item.1)
     }
 
     fn on_message(

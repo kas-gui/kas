@@ -328,10 +328,9 @@ impl_scope! {
                     let w = &mut self.widgets[i];
                     if w.key.as_ref() != Some(&key) {
                         mgr.configure(id, &mut w.widget);
-                        let act = self.view.set(&mut w.widget, &self.data, &key);
-                        if !act.is_empty() {
+                        if let Some(item) = self.data.get_cloned(&key) {
+                            action |= self.view.set(&mut w.widget, &key, item);
                             w.key = Some(key);
-                            action |= act;
                             solve_size_rules(
                                 &mut w.widget,
                                 mgr.size_mgr(),
@@ -554,8 +553,12 @@ impl_scope! {
                         let id = self.data.make_id(self.id_ref(), &key);
                         let mut widget = self.view.make();
                         mgr.configure(id, &mut widget);
-                        *mgr |= self.view.set(&mut widget, &self.data, &key);
-                        let key = Some(key);
+                        let key = if let Some(item) = self.data.get_cloned(&key) {
+                            *mgr |= self.view.set(&mut widget, &key, item);
+                            Some(key)
+                        } else {
+                            None
+                        };
                         self.widgets.push(WidgetData { key, widget });
                     }
                 }

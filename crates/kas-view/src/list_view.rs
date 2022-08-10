@@ -358,8 +358,8 @@ impl_scope! {
                     // TODO(opt): we only need to configure the widget once
                     mgr.configure(id, &mut w.widget);
 
-                    let act = self.view.set(&mut w.widget, &self.data, &key);
-                    if !act.is_empty() {
+                    if let Some(item) = self.data.get_cloned(&key) {
+                        action |= self.view.set(&mut w.widget, &key, item);
                         solve_size_rules(
                             &mut w.widget,
                             mgr.size_mgr(),
@@ -367,7 +367,6 @@ impl_scope! {
                             Some(self.child_size.1),
                         );
                         w.key = Some(key);
-                        action |= act;
                     } else {
                         w.key = None; // disables drawing and clicking
                     }
@@ -566,8 +565,12 @@ impl_scope! {
                     let id = self.data.make_id(self.id_ref(), &key);
                     let mut widget = self.view.make();
                     mgr.configure(id, &mut widget);
-                    *mgr |= self.view.set(&mut widget, &self.data, &key);
-                    let key = Some(key);
+                    let key = if let Some(item) = self.data.get_cloned(&key) {
+                        *mgr |= self.view.set(&mut widget, &key, item);
+                        Some(key)
+                    } else {
+                        None
+                    };
                     self.widgets.push(WidgetData { key, widget });
                 }
             }

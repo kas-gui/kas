@@ -109,7 +109,8 @@ impl_scope! {
     impl Widget for Self {
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             // We set data now, after child is configured
-            *mgr |= self.view.set(&mut self.child, &self.data, &());
+            let item = self.data.get_cloned(&()).unwrap();
+            *mgr |= self.view.set(&mut self.child, &(), item);
         }
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
@@ -117,7 +118,8 @@ impl_scope! {
                 Event::Update { .. } => {
                     let data_ver = self.data.version();
                     if data_ver > self.data_ver {
-                        *mgr |= self.view.set(&mut self.child, &self.data, &());
+                        let item = self.data.get_cloned(&()).unwrap();
+                        *mgr |= self.view.set(&mut self.child, &(), item);
                         self.data_ver = data_ver;
                     }
                     Response::Used
