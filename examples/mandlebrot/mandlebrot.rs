@@ -360,7 +360,7 @@ impl_scope! {
             mgr.register_nav_fallback(self.id());
         }
 
-        fn key_nav(&self) -> bool {
+        fn navigable(&self) -> bool {
             true
         }
 

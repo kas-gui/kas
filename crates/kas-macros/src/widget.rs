@@ -4,6 +4,7 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 use crate::args::{Child, WidgetArgs};
+use crate::make_layout::NavNextResult;
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::{Scope, ScopeAttr, ScopeItem, SimplePath};
 use proc_macro2::Span;
@@ -91,7 +92,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             if let Some((stor_ty, stor_def)) = args
                 .layout
                 .as_ref()
-                .and_then(|l| l.storage_fields(&mut layout_children))
+                .and_then(|(_, l)| l.storage_fields(&mut layout_children))
             {
                 let name = format!("_{name}CoreTy");
                 let core_type = Ident::new(&name, Span::call_site());
@@ -257,11 +258,14 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let mut fn_size_rules = None;
     let (fn_set_rect, fn_find_id);
     let mut fn_draw = None;
+    let mut kw_layout = None;
 
     let fn_pre_configure;
     let fn_pre_handle_event;
     let fn_handle_event;
-    let mut key_nav = args.key_nav;
+    let mut fn_navigable = args.navigable;
+    let mut fn_nav_next = None;
+    let mut fn_nav_next_err = None;
     let widget_methods;
 
     if let Some(inner) = opt_derive {
@@ -331,11 +335,11 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 self.#inner.pre_configure(mgr, id)
             }
         };
-        if key_nav.is_none() {
-            key_nav = Some(quote! {
+        if fn_navigable.is_none() {
+            fn_navigable = Some(quote! {
                 #[inline]
-                fn key_nav(&self) -> bool {
-                    self.#inner.key_nav()
+                fn navigable(&self) -> bool {
+                    self.#inner.navigable()
                 }
             });
         }
@@ -352,17 +356,17 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 self.#inner.translation()
             }
         };
-        let spatial_nav = quote! {
+        fn_nav_next = Some(quote! {
             #[inline]
-            fn spatial_nav(
+            fn nav_next(
                 &mut self,
                 mgr: &mut ::kas::event::ConfigMgr,
                 reverse: bool,
                 from: Option<usize>,
             ) -> Option<usize> {
-                self.#inner.spatial_nav(mgr, reverse, from)
+                self.#inner.nav_next(mgr, reverse, from)
             }
-        };
+        });
 
         if let Some(tok) = args.hover_highlight {
             emit_error!(tok.kw_span, "incompatible with widget derive");
@@ -423,13 +427,13 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         widget_methods = vec![
             ("configure", configure),
             ("translation", translation),
-            ("spatial_nav", spatial_nav),
             ("handle_unused", handle_unused),
             ("handle_message", handle_message),
             ("handle_scroll", handle_scroll),
         ];
     } else {
         let core = core_data.unwrap();
+        widget_methods = vec![];
 
         if impl_widget_children {
             let mut count = children.len();
@@ -476,7 +480,48 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             use ::kas::{WidgetCore, WidgetExt};
             self.rect().contains(coord).then(|| self.id())
         };
-        if let Some(layout) = args.layout.take() {
+        if let Some((kw_span, layout)) = args.layout.take() {
+            kw_layout = Some(kw_span);
+            fn_nav_next = match layout.nav_next(&children) {
+                NavNextResult::Err(msg) => {
+                    fn_nav_next_err = Some(msg);
+                    None
+                }
+                NavNextResult::Slice(dir) => Some(quote! {
+                    fn nav_next(
+                        &mut self,
+                        _: &mut ::kas::event::ConfigMgr,
+                        reverse: bool,
+                        from: Option<usize>,
+                    ) -> Option<usize> {
+                        let reverse = reverse ^ (#dir).is_reversed();
+                        kas::util::nav_next(reverse, from, self.num_children())
+                    }
+                }),
+                NavNextResult::List(order) => Some(quote! {
+                    fn nav_next(
+                        &mut self,
+                        _: &mut ::kas::event::ConfigMgr,
+                        reverse: bool,
+                        from: Option<usize>,
+                    ) -> Option<usize> {
+                        let mut iter = [#(#order),*].into_iter();
+                        if !reverse {
+                            if let Some(wi) = from {
+                                let _ = iter.find(|x| *x == wi);
+                            }
+                            iter.next()
+                        } else {
+                            let mut iter = iter.rev();
+                            if let Some(wi) = from {
+                                let _ = iter.find(|x| *x == wi);
+                            }
+                            iter.next()
+                        }
+                    }
+                }),
+            };
+
             let layout = layout.generate(&core)?;
             scope.generated.push(quote! {
                 impl #impl_generics ::kas::layout::AutoLayout
@@ -601,8 +646,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             }
         };
         fn_handle_event = None;
-
-        widget_methods = vec![];
     }
 
     fn collect_idents(item_impl: &ItemImpl) -> Vec<Ident> {
@@ -656,12 +699,24 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
         if opt_derive.is_some() || !has_method("pre_configure") {
             widget_impl.items.push(parse2(fn_pre_configure)?);
         }
-        if let Some(method) = key_nav {
+        if let Some(method) = fn_navigable {
             widget_impl.items.push(parse2(method)?);
         }
         widget_impl.items.push(parse2(fn_pre_handle_event)?);
         if let Some(item) = fn_handle_event {
             widget_impl.items.push(parse2(item)?);
+        }
+
+        if !has_method("nav_next") {
+            if let Some(method) = fn_nav_next {
+                widget_impl.items.push(parse2(method)?);
+            } else if let Some(span) = kw_layout {
+                emit_warning!(
+                    span,
+                    "unable to generate method `Widget::nav_next` for this layout: {}",
+                    fn_nav_next_err.unwrap(),
+                );
+            }
         }
 
         for (name, method) in widget_methods {
@@ -676,7 +731,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     for #name #ty_generics #where_clause
             {
                 #fn_pre_configure
-                #key_nav
+                #fn_navigable
                 #fn_pre_handle_event
                 #fn_handle_event
                 #(#other_methods)*

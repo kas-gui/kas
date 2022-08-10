@@ -236,7 +236,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
         #[widget{
             layout = float: [
                 align(right, top): TextButton::new_msg("↻", MsgDirection),
-                list(self.dir): [self.editor, self.label],
+                list(self.dir): [self.editor, non_navigable: self.label],
             ];
         }]
         #[derive(Debug)]

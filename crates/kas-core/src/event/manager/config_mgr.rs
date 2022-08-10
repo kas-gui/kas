@@ -125,7 +125,7 @@ impl<'a> ConfigMgr<'a> {
     /// Advance the keyboard navigation focus
     ///
     /// If some widget currently has nav focus, this will give focus to the next
-    /// (or previous) widget under `widget` where [`Widget::key_nav`]
+    /// (or previous) widget under `widget` where [`Widget::navigable`]
     /// returns true; otherwise this will give focus to the first (or last)
     /// such widget.
     ///
@@ -184,12 +184,12 @@ impl<'a> ConfigMgr<'a> {
                     {
                         return Some(id);
                     }
-                } else if !widget.eq_id(focus) && widget.key_nav() {
+                } else if !widget.eq_id(focus) && widget.navigable() {
                     return Some(widget.id());
                 }
 
                 loop {
-                    if let Some(index) = widget.spatial_nav(mgr, rev, child) {
+                    if let Some(index) = widget.nav_next(mgr, rev, child) {
                         if let Some(id) = widget
                             .get_child_mut(index)
                             .and_then(|w| nav(mgr, w, focus, rev))
@@ -212,7 +212,7 @@ impl<'a> ConfigMgr<'a> {
                 }
 
                 loop {
-                    if let Some(index) = widget.spatial_nav(mgr, rev, child) {
+                    if let Some(index) = widget.nav_next(mgr, rev, child) {
                         if let Some(id) = widget
                             .get_child_mut(index)
                             .and_then(|w| nav(mgr, w, focus, rev))
@@ -221,7 +221,7 @@ impl<'a> ConfigMgr<'a> {
                         }
                         child = Some(index);
                     } else {
-                        return if !widget.eq_id(focus) && widget.key_nav() {
+                        return if !widget.eq_id(focus) && widget.navigable() {
                             Some(widget.id())
                         } else {
                             None

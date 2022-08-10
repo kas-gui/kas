@@ -18,7 +18,7 @@ impl_scope! {
     #[autoimpl(Debug ignore self.on_toggle)]
     #[derive(Clone, Default)]
     #[widget{
-        key_nav = true;
+        navigable = true;
         hover_highlight = true;
     }]
     pub struct CheckBox {
@@ -176,7 +176,7 @@ impl_scope! {
     #[autoimpl(HasBool using self.inner)]
     #[derive(Clone, Default)]
     #[widget{
-        layout = list(self.direction()): [self.inner, self.label];
+        layout = list(self.direction()): [self.inner, non_navigable: self.label];
     }]
     pub struct CheckButton {
         core: widget_core!(),

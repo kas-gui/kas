@@ -469,7 +469,7 @@ impl_scope! {
     #[impl_default(where G: Default)]
     #[derive(Clone, Debug)]
     #[widget{
-        key_nav = true;
+        navigable = true;
         hover_highlight = true;
         cursor_icon = CursorIcon::Text;
     }]

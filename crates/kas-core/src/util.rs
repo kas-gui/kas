@@ -44,8 +44,8 @@ impl<'a, T: fmt::Debug + ?Sized> fmt::Debug for TryFormat<'a, T> {
     }
 }
 
-/// Generic implementation of [`crate::Widget::spatial_nav`]
-pub fn spatial_nav(reverse: bool, from: Option<usize>, len: usize) -> Option<usize> {
+/// Generic implementation of [`crate::Widget::nav_next`]
+pub fn nav_next(reverse: bool, from: Option<usize>, len: usize) -> Option<usize> {
     let last = len.wrapping_sub(1);
     if last == usize::MAX {
         return None;

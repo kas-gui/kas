@@ -32,7 +32,7 @@ impl_scope! {
     #[derive(Clone)]
     #[widget {
         layout = button 'frame: row: [self.label, self.mark];
-        key_nav = true;
+        navigable = true;
         hover_highlight = true;
     }]
     pub struct ComboBox<M: Clone + Debug + 'static> {
@@ -55,7 +55,7 @@ impl_scope! {
             mgr.new_accel_layer(self.id(), true);
         }
 
-        fn spatial_nav(&mut self, _: &mut ConfigMgr, _: bool, _: Option<usize>) -> Option<usize> {
+        fn nav_next(&mut self, _: &mut ConfigMgr, _: bool, _: Option<usize>) -> Option<usize> {
             // We have no child within our rect
             None
         }

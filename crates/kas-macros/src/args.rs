@@ -5,7 +5,7 @@
 
 use crate::make_layout;
 use proc_macro2::{Span, TokenStream};
-use proc_macro_error::{abort, emit_error};
+use proc_macro_error::abort;
 use quote::quote_spanned;
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::punctuated::Punctuated;
@@ -159,7 +159,7 @@ mod kw {
     custom_keyword!(align);
     custom_keyword!(halign);
     custom_keyword!(valign);
-    custom_keyword!(key_nav);
+    custom_keyword!(navigable);
     custom_keyword!(hover_highlight);
     custom_keyword!(cursor_icon);
     custom_keyword!(handle);
@@ -187,31 +187,30 @@ pub struct ExprToken {
 
 #[derive(Debug, Default)]
 pub struct WidgetArgs {
-    pub key_nav: Option<TokenStream>,
+    pub navigable: Option<TokenStream>,
     pub hover_highlight: Option<BoolToken>,
     pub cursor_icon: Option<ExprToken>,
     pub derive: Option<Member>,
-    pub layout: Option<make_layout::Tree>,
+    pub layout: Option<(Span, make_layout::Tree)>,
 }
 
 impl Parse for WidgetArgs {
     fn parse(content: ParseStream) -> Result<Self> {
-        let mut key_nav = None;
+        let mut navigable = None;
         let mut hover_highlight = None;
         let mut cursor_icon = None;
         let mut kw_derive = None;
         let mut derive = None;
-        let mut kw_layout = None;
         let mut layout = None;
 
         while !content.is_empty() {
             let lookahead = content.lookahead1();
-            if lookahead.peek(kw::key_nav) && key_nav.is_none() {
-                let span = content.parse::<kw::key_nav>()?.span();
+            if lookahead.peek(kw::navigable) && navigable.is_none() {
+                let span = content.parse::<kw::navigable>()?.span();
                 let _: Eq = content.parse()?;
                 let value = content.parse::<syn::LitBool>()?;
-                key_nav = Some(quote_spanned! {span=>
-                    fn key_nav(&self) -> bool { #value }
+                navigable = Some(quote_spanned! {span=>
+                    fn navigable(&self) -> bool { #value }
                 });
             } else if lookahead.peek(kw::hover_highlight) && hover_highlight.is_none() {
                 hover_highlight = Some(BoolToken {
@@ -232,9 +231,9 @@ impl Parse for WidgetArgs {
                 let _: Token![.] = content.parse()?;
                 derive = Some(content.parse()?);
             } else if lookahead.peek(kw::layout) && layout.is_none() {
-                kw_layout = Some(content.parse::<kw::layout>()?);
+                let kw = content.parse::<kw::layout>()?;
                 let _: Eq = content.parse()?;
-                layout = Some(content.parse()?);
+                layout = Some((kw.span, content.parse()?));
             } else {
                 return Err(lookahead.error());
             }
@@ -242,17 +241,15 @@ impl Parse for WidgetArgs {
             let _ = content.parse::<Token![;]>()?;
         }
 
-        if let Some(derive) = kw_derive {
-            if let Some(layout) = kw_layout {
-                emit_error!(
-                    layout, "incompatible with derive";
-                    note = derive.span() => "this derive"
-                );
+        if let Some(_derive) = kw_derive {
+            if let Some((span, _)) = layout {
+                return Err(Error::new(span, "incompatible with widget derive"));
+                // note = derive.span() => "this derive"
             }
         }
 
         Ok(WidgetArgs {
-            key_nav,
+            navigable,
             hover_highlight,
             cursor_icon,
             derive,

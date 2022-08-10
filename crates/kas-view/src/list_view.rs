@@ -575,7 +575,7 @@ impl_scope! {
             mgr.register_nav_fallback(self.id());
         }
 
-        fn spatial_nav(
+        fn nav_next(
             &mut self,
             mgr: &mut ConfigMgr,
             reverse: bool,
@@ -690,7 +690,7 @@ impl_scope! {
                 }
                 Event::Command(cmd) => {
                     let last = self.data.len().wrapping_sub(1);
-                    if last == usize::MAX || !self.widgets[0].widget.key_nav() {
+                    if last == usize::MAX || !self.widgets[0].widget.navigable() {
                         return Response::Unused;
                     }
 

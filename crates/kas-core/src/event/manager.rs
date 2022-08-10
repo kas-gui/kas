@@ -513,7 +513,9 @@ impl<'a> EventMgr<'a> {
         {
             if let Some(layer) = self.accel_layers.get(&id) {
                 // but only when Alt is held or alt-bypass is enabled:
-                if self.modifiers.alt() || layer.0 {
+                if self.modifiers == ModifiersState::ALT
+                    || layer.0 && self.modifiers == ModifiersState::empty()
+                {
                     if let Some(id) = layer.1.get(&vkey).cloned() {
                         target = Some(id);
                         n = i;
@@ -535,7 +537,7 @@ impl<'a> EventMgr<'a> {
         if let Some(id) = target {
             if widget
                 .find_widget(&id)
-                .map(|w| w.key_nav())
+                .map(|w| w.navigable())
                 .unwrap_or(false)
             {
                 self.set_nav_focus(id.clone(), true);

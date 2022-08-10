@@ -129,7 +129,7 @@ impl_scope! {
             self.id_map.clear();
         }
 
-        fn spatial_nav(&mut self,
+        fn nav_next(&mut self,
             _: &mut ConfigMgr,
             _: bool,
             from: Option<usize>,

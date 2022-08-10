@@ -3,6 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
+use crate::args::Child;
 use proc_macro2::{Span, TokenStream as Toks};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
@@ -33,6 +34,7 @@ mod kw {
     custom_keyword!(aligned_row);
     custom_keyword!(float);
     custom_keyword!(margins);
+    custom_keyword!(non_navigable);
 }
 
 #[derive(Debug)]
@@ -53,6 +55,27 @@ impl Tree {
     pub fn generate(&self, core: &Member) -> Result<Toks> {
         self.0.generate(core)
     }
+
+    pub fn nav_next(&self, children: &[Child]) -> NavNextResult {
+        match &self.0 {
+            Layout::Slice(_, dir, _) => NavNextResult::Slice(dir.to_token_stream()),
+            layout => {
+                let mut v = Vec::new();
+                let mut index = children.len();
+                match layout.nav_next(children, &mut v, &mut index) {
+                    Ok(()) => NavNextResult::List(v),
+                    Err(msg) => NavNextResult::Err(msg),
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum NavNextResult {
+    Err(&'static str),
+    Slice(Toks),
+    List(Vec<usize>),
 }
 
 #[derive(Debug)]
@@ -78,9 +101,9 @@ impl ToTokens for StorIdent {
 #[derive(Debug)]
 enum Layout {
     Align(Box<Layout>, AlignHints),
-    AlignSingle(Expr, AlignHints),
+    AlignSingle(ExprMember, AlignHints),
     Margins(Box<Layout>, Directions, Toks),
-    Single(Expr),
+    Single(ExprMember),
     Widget(StorIdent, Expr),
     Frame(StorIdent, Box<Layout>, Expr),
     Button(StorIdent, Box<Layout>, Expr),
@@ -89,6 +112,14 @@ enum Layout {
     Slice(StorIdent, Direction, Expr),
     Grid(StorIdent, GridDimensions, Vec<(CellInfo, Layout)>),
     Label(StorIdent, LitStr),
+    NonNavigable(Box<Layout>),
+}
+
+#[derive(Debug)]
+struct ExprMember {
+    self_: Token![self],
+    p: Token![.],
+    member: Member,
 }
 
 #[derive(Debug)]
@@ -362,6 +393,11 @@ impl Layout {
             let stor = gen.parse_or_next(input)?;
             let _: Token![:] = input.parse()?;
             Ok(parse_grid(stor, input, gen)?)
+        } else if lookahead.peek(kw::non_navigable) {
+            let _: kw::non_navigable = input.parse()?;
+            let _: Token![:] = input.parse()?;
+            let layout = Layout::parse(input, gen)?;
+            Ok(Layout::NonNavigable(Box::new(layout)))
         } else if lookahead.peek(LitStr) {
             let stor = gen.next();
             Ok(Layout::Label(stor, input.parse()?))
@@ -539,6 +575,24 @@ fn parse_grid(stor: StorIdent, input: ParseStream, gen: &mut NameGenerator) -> R
     Ok(Layout::Grid(stor, dim, cells))
 }
 
+impl Parse for ExprMember {
+    fn parse(input: ParseStream) -> Result<Self> {
+        Ok(ExprMember {
+            self_: input.parse()?,
+            p: input.parse()?,
+            member: input.parse()?,
+        })
+    }
+}
+
+impl ToTokens for ExprMember {
+    fn to_tokens(&self, toks: &mut Toks) {
+        self.self_.to_tokens(toks);
+        self.p.to_tokens(toks);
+        self.member.to_tokens(toks);
+    }
+}
+
 impl Parse for Direction {
     fn parse(input: ParseStream) -> Result<Self> {
         let lookahead = input.lookahead1();
@@ -618,7 +672,7 @@ impl ToTokens for GridDimensions {
 impl Layout {
     fn append_fields(&self, ty_toks: &mut Toks, def_toks: &mut Toks, children: &mut Vec<Toks>) {
         match self {
-            Layout::Align(layout, _) => {
+            Layout::Align(layout, _) | Layout::NonNavigable(layout) => {
                 layout.append_fields(ty_toks, def_toks, children);
             }
             Layout::AlignSingle(..) | Layout::Margins(..) | Layout::Single(_) => (),
@@ -774,6 +828,75 @@ impl Layout {
             Layout::Label(stor, _) => {
                 quote! { layout::Visitor::component(&mut self.#core.#stor) }
             }
+            Layout::NonNavigable(layout) => return layout.generate(core),
         })
+    }
+
+    /// Create a Vec enumerating all children in navigation order
+    ///
+    /// -   `output`: the result
+    /// -   `index`: the next widget's index
+    fn nav_next(
+        &self,
+        children: &[Child],
+        output: &mut Vec<usize>,
+        index: &mut usize,
+    ) -> std::result::Result<(), &'static str> {
+        match self {
+            Layout::Align(layout, _)
+            | Layout::Margins(layout, _, _)
+            | Layout::Frame(_, layout, _) => layout.nav_next(children, output, index),
+            Layout::Button(_, layout, _) | Layout::NonNavigable(layout) => {
+                // Internals of a button are not navigable, but we still need to increment index
+                let start = output.len();
+                layout.nav_next(children, output, index)?;
+                output.truncate(start);
+                Ok(())
+            }
+            Layout::AlignSingle(m, _) | Layout::Single(m) => {
+                for (i, child) in children.iter().enumerate() {
+                    if m.member == child.ident {
+                        output.push(i);
+                        return Ok(());
+                    }
+                }
+                Err("child not found")
+            }
+            Layout::Widget(_, _) => {
+                output.push(*index);
+                *index += 1;
+                Ok(())
+            }
+            Layout::List(_, dir, list) => {
+                let start = output.len();
+                for item in list {
+                    item.nav_next(children, output, index)?;
+                }
+                match dir {
+                    _ if output.len() <= start + 1 => Ok(()),
+                    Direction::Right | Direction::Down => Ok(()),
+                    Direction::Left | Direction::Up => Ok(output[start..].reverse()),
+                    Direction::Expr(_) => Err("`list(dir)` with non-static `dir`"),
+                }
+            }
+            Layout::Slice(_, _, _) => Err("`slice` combined with other layout components"),
+            Layout::Grid(_, _, cells) => {
+                // TODO: sort using CellInfo?
+                for (_, item) in cells {
+                    item.nav_next(children, output, index)?;
+                }
+                Ok(())
+            }
+            Layout::Float(list) => {
+                for item in list {
+                    item.nav_next(children, output, index)?;
+                }
+                Ok(())
+            }
+            Layout::Label(_, _) => {
+                *index += 1;
+                Ok(())
+            }
+        }
     }
 }

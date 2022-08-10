@@ -422,7 +422,7 @@ impl EventState {
 
     /// Set the keyboard navigation focus directly
     ///
-    /// Normally, [`Widget::key_nav`] will be true for the specified
+    /// Normally, [`Widget::navigable`] will be true for the specified
     /// widget, but this is not required, e.g. a `ScrollLabel` can receive focus
     /// on text selection with the mouse. (Currently such widgets will receive
     /// events like any other with nav focus, but this may change.)

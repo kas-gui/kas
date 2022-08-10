@@ -18,7 +18,7 @@ impl_scope! {
     #[autoimpl(Deref, DerefMut using self.inner)]
     #[derive(Clone, Default, Debug)]
     #[widget {
-        layout = list(self.dir) 'row: [self.inner, self.label];
+        layout = list(self.dir) 'row: [self.inner, non_navigable: self.label];
     }]
     pub struct WithLabel<W: Widget, D: Directional> {
         core: widget_core!(),
