@@ -6,6 +6,7 @@
 //! Toggle widgets
 
 use super::AccelLabel;
+use kas::event::UpdateId;
 use kas::prelude::*;
 use kas::theme::Feature;
 use std::cell::RefCell;

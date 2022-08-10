@@ -17,7 +17,7 @@ pub use crate::dir::{Direction, Directional};
 #[doc(no_inline)]
 pub use crate::draw::{DrawShared, ImageHandle};
 #[doc(no_inline)]
-pub use crate::event::{components, ConfigMgr, Event, EventMgr, EventState, Response, UpdateId};
+pub use crate::event::{components, ConfigMgr, Event, EventMgr, EventState, Response};
 #[doc(no_inline)]
 pub use crate::geom::{Coord, Offset, Rect, Size};
 #[doc(no_inline)]

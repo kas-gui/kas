@@ -12,6 +12,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use kas::draw::color::Rgba;
+use kas::event::UpdateId;
 use kas::prelude::*;
 use kas::theme::TextClass;
 
@@ -23,6 +24,7 @@ fn main() -> kas::shell::Result<()> {
     // We construct a proxy from the toolkit to enable cross-thread communication.
     let proxy = toolkit.create_proxy();
 
+    // UpdateId is used to identify the source of Event::Update (not essential in this example).
     let update_id = UpdateId::new();
 
     // The sender and receiver need to communicate. We use Arc<Mutex<T>>, but
