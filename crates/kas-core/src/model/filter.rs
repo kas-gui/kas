@@ -55,13 +55,6 @@ impl SharedData for ContainsString {
         mgr.update_all((self.0).0, 0);
     }
 }
-impl SharedDataMut for ContainsString {
-    fn set(&mut self, _: &Self::Key, value: Self::Item) {
-        let mut cell = (self.0).1.borrow_mut();
-        cell.0 = value;
-        cell.1 += 1;
-    }
-}
 
 impl<'a> Filter<&'a str> for ContainsString {
     fn matches(&self, item: &str) -> bool {
@@ -115,14 +108,6 @@ impl SharedData for ContainsCaseInsensitive {
         cell.1 = cell.0.to_uppercase();
         cell.2 += 1;
         mgr.update_all((self.0).0, 0);
-    }
-}
-impl SharedDataMut for ContainsCaseInsensitive {
-    fn set(&mut self, _: &Self::Key, value: Self::Item) {
-        let mut cell = (self.0).1.borrow_mut();
-        cell.0 = value;
-        cell.1 = cell.0.to_uppercase();
-        cell.2 += 1;
     }
 }
 

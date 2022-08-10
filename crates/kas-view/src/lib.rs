@@ -38,7 +38,7 @@
 #[allow(unused)]
 use kas::event::UpdateId;
 #[allow(unused)]
-use kas::model::{ListData, MatrixData, SharedData, SharedDataMut, SharedRc};
+use kas::model::{ListData, MatrixData, SharedData, SharedRc};
 use thiserror::Error;
 
 mod list_view;

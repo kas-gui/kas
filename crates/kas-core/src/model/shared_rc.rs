@@ -26,7 +26,7 @@ use std::rc::Rc;
 /// The wrapped value may be read via [`Self::borrow`], [`Self::try_borrow`] and
 /// [`SharedData::get_cloned`].
 ///
-/// The value may be set via [`SharedData::update`] and [`SharedDataMut::set`].
+/// The value may be set via [`SharedData::update`].
 ///
 /// This wrapper type may be useful for simple shared data, but for more complex
 /// uses a custom wrapper type may be required.
@@ -126,11 +126,5 @@ impl<T: Clone + Debug + 'static> SharedData for SharedRc<T> {
         cell.0 = item;
         cell.1 += 1;
         mgr.update_all((self.0).0, 0);
-    }
-}
-
-impl<T: Clone + Debug + 'static> SharedDataMut for SharedRc<T> {
-    fn set(&mut self, _: &(), item: Self::Item) {
-        (self.0).1.borrow_mut().0 = item;
     }
 }
