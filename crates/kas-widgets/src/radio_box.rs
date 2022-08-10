@@ -23,7 +23,7 @@ impl RadioGroup {
     /// Construct a new, unique group
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        Self(Default::default())
+        Self(Rc::new((UpdateId::new(), Default::default())))
     }
 
     /// Access update identifier
@@ -43,7 +43,7 @@ impl RadioGroup {
 
     fn update(&self, mgr: &mut EventMgr, item: Option<WidgetId>) {
         *(self.0).1.borrow_mut() = item;
-        mgr.update_all((self.0).0, 0);
+        mgr.update_with_id((self.0).0, 0);
     }
 }
 

@@ -30,8 +30,14 @@ use std::rc::Rc;
 ///
 /// This wrapper type may be useful for simple shared data, but for more complex
 /// uses a custom wrapper type may be required.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct SharedRc<T: Debug>(Rc<(UpdateId, RefCell<(T, u64)>)>);
+
+impl<T: Debug + Default> Default for SharedRc<T> {
+    fn default() -> Self {
+        SharedRc(Rc::new((UpdateId::new(), Default::default())))
+    }
+}
 
 /// A borrowed reference
 pub struct SharedRcRef<'a, T>(Ref<'a, (T, u64)>);
@@ -98,7 +104,7 @@ impl<T: Debug> SharedRc<T> {
 
     /// Mutably borrows the wrapped value, notifying other users of an update.
     pub fn update_mut(&self, mgr: &mut EventMgr) -> SharedRcRefMut<T> {
-        mgr.update_all((self.0).0, 0);
+        mgr.update_with_id((self.0).0, 0);
         let mut cell = (self.0).1.borrow_mut();
         cell.1 += 1;
         SharedRcRefMut(cell)
@@ -125,6 +131,6 @@ impl<T: Clone + Debug + 'static> SharedData for SharedRc<T> {
         let mut cell = (self.0).1.borrow_mut();
         cell.0 = item;
         cell.1 += 1;
-        mgr.update_all((self.0).0, 0);
+        mgr.update_with_id((self.0).0, 0);
     }
 }
