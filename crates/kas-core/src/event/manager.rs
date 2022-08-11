@@ -312,8 +312,8 @@ impl EventState {
     }
 
     fn clear_char_focus(&mut self) {
-        log::trace!("clear_char_focus");
         if let Some(id) = self.char_focus() {
+            log::trace!("clear_char_focus");
             // If widget has char focus, this is lost
             self.char_focus = false;
             self.pending.push_back(Pending::LostCharFocus(id));

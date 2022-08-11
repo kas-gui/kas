@@ -265,6 +265,43 @@ impl<'a> ConfigMgr<'a> {
             false
         }
     }
+
+    /// Advance the keyboard navigation focus
+    ///
+    /// This is similar to [`Self::next_nav_focus`], but looks for the next
+    /// widget from `id` which is [`Widget::navigable`].
+    #[inline]
+    pub fn next_nav_focus_from(
+        &mut self,
+        widget: &mut dyn Widget,
+        id: WidgetId,
+        key_focus: bool,
+    ) -> bool {
+        if id == self.nav_focus {
+            return true;
+        } else if !self.config.nav_focus {
+            return false;
+        }
+
+        self.send_action(TkAction::REDRAW);
+        if let Some(old_id) = self.nav_focus.take() {
+            self.pending.push_back(Pending::LostNavFocus(old_id));
+        }
+        self.clear_char_focus();
+        if widget
+            .find_widget(&id)
+            .map(|w| w.navigable())
+            .unwrap_or(false)
+        {
+            log::trace!(target: "kas_core::event::manager", "set_nav_focus: {id}");
+            self.nav_focus = Some(id.clone());
+            self.pending.push_back(Pending::SetNavFocus(id, key_focus));
+            true
+        } else {
+            self.nav_focus = Some(id);
+            self.next_nav_focus(widget, false, key_focus)
+        }
+    }
 }
 
 impl<'a> std::ops::BitOrAssign<TkAction> for ConfigMgr<'a> {
