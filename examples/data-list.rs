@@ -47,8 +47,9 @@ enum EntryMsg {
 #[derive(Clone, Debug)]
 struct ListEntryGuard(usize);
 impl EditGuard for ListEntryGuard {
-    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
         mgr.push_msg(EntryMsg::Select(edit.guard.0));
+        Response::Used
     }
 
     fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {

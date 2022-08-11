@@ -62,11 +62,13 @@ pub trait EditGuard: Debug + Sized + 'static {
     /// Activation guard
     ///
     /// This function is called when the widget is "activated", for example by
-    /// the Enter/Return key for single-line edit boxes.
+    /// the Enter/Return key for single-line edit boxes. Its result is returned
+    /// from `handle_event`.
     ///
-    /// The default implementation does nothing.
-    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+    /// The default implementation returns [`Response::Unused`].
+    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
         let _ = (edit, mgr);
+        Response::Unused
     }
 
     /// Focus-gained guard
@@ -111,33 +113,39 @@ impl EditGuard for () {}
 ///
 /// On activate and focus-lost actions, calls [`EventMgr::push_msg`] with the
 /// edit's contents as a [`String`].
+///
+/// `Self::activate` returns [`Response::Used`].
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Hash)]
 pub struct GuardNotify;
 impl EditGuard for GuardNotify {
-    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        mgr.push_msg(edit.get_string());
+    #[inline]
+    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
+        Self::focus_lost(edit, mgr);
+        Response::Used
     }
 
     #[inline]
     fn focus_lost(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        Self::activate(edit, mgr);
+        mgr.push_msg(edit.get_string());
     }
 }
 
 /// An [`EditGuard`] impl which calls a closure when activated
 #[autoimpl(Debug ignore self.0)]
 #[derive(Clone)]
-pub struct GuardActivate<F: FnMut(&mut EventMgr, &str)>(pub F);
+pub struct GuardActivate<F: FnMut(&mut EventMgr, &str) -> Response>(pub F);
 impl<F> EditGuard for GuardActivate<F>
 where
-    F: FnMut(&mut EventMgr, &str) + 'static,
+    F: FnMut(&mut EventMgr, &str) -> Response + 'static,
 {
-    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        (edit.guard.0)(mgr, edit.text.text());
+    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
+        (edit.guard.0)(mgr, edit.text.text())
     }
 }
 
 /// An [`EditGuard`] impl which calls a closure when activated or focus is lost
+///
+/// `Self::activate` returns [`Response::Used`].
 #[autoimpl(Debug ignore self.0)]
 #[derive(Clone)]
 pub struct GuardAFL<F: FnMut(&mut EventMgr, &str)>(pub F);
@@ -145,8 +153,9 @@ impl<F> EditGuard for GuardAFL<F>
 where
     F: FnMut(&mut EventMgr, &str) + 'static,
 {
-    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
         (edit.guard.0)(mgr, edit.text.text());
+        Response::Used
     }
     fn focus_lost(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
         (edit.guard.0)(mgr, edit.text.text());
@@ -356,7 +365,7 @@ impl EditBox<()> {
     #[must_use]
     pub fn on_activate<F>(self, f: F) -> EditBox<GuardActivate<F>>
     where
-        F: FnMut(&mut EventMgr, &str) + 'static,
+        F: FnMut(&mut EventMgr, &str) -> Response + 'static,
     {
         self.with_guard(GuardActivate(f))
     }
@@ -609,10 +618,7 @@ impl_scope! {
                         match self.control_key(mgr, cmd) {
                             Ok(EditAction::None) => Response::Used,
                             Ok(EditAction::Unused) => Response::Unused,
-                            Ok(EditAction::Activate) => {
-                                G::activate(self, mgr);
-                                Response::Used
-                            }
+                            Ok(EditAction::Activate) => G::activate(self, mgr),
                             Ok(EditAction::Edit) => {
                                 G::edit(self, mgr);
                                 Response::Used
@@ -782,7 +788,7 @@ impl EditField<()> {
     /// This method is a parametisation of [`EditField::with_guard`]. Any guard
     /// previously assigned to the `EditField` will be replaced.
     #[must_use]
-    pub fn on_activate<F: FnMut(&mut EventMgr, &str) + 'static>(
+    pub fn on_activate<F: FnMut(&mut EventMgr, &str) -> Response + 'static>(
         self,
         f: F,
     ) -> EditField<GuardActivate<F>> {

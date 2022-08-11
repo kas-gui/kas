@@ -68,8 +68,9 @@ fn widgets() -> Box<dyn SetDisabled> {
     #[derive(Debug)]
     struct Guard;
     impl EditGuard for Guard {
-        fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+        fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
             mgr.push_msg(Item::Edit(edit.get_string()));
+            Response::Used
         }
 
         fn edit(edit: &mut EditField<Self>, _: &mut EventMgr) {
