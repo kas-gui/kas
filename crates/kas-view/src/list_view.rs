@@ -693,7 +693,7 @@ impl_scope! {
                 }
                 Event::Command(cmd) => {
                     let last = self.data.len().wrapping_sub(1);
-                    if last == usize::MAX || !self.widgets[0].widget.navigable() {
+                    if last == usize::MAX {
                         return Response::Unused;
                     }
 
