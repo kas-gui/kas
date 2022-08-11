@@ -3,12 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Shared data for view widgets
-//!
-//! TODO: `SharedRc` makes the `sync-counter` example simpler, but most real
-//! uses of shared data require custom impls anyway, so is this worth keeping?
-//! If not, we can probably remove `ListDataMut` and other `*Mut` traits too.
-//! Probably this question requires seeing more examples/applications to answer.
+//! `SharedRc` data type
 
 use crate::event::EventMgr;
 use crate::event::UpdateId;
@@ -26,12 +21,18 @@ use std::rc::Rc;
 /// The wrapped value may be read via [`Self::borrow`], [`Self::try_borrow`] and
 /// [`SharedData::get_cloned`].
 ///
-/// The value may be set via [`SharedData::update`] and [`SharedDataMut::set`].
+/// The value may be set via [`SharedData::update`].
 ///
 /// This wrapper type may be useful for simple shared data, but for more complex
 /// uses a custom wrapper type may be required.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct SharedRc<T: Debug>(Rc<(UpdateId, RefCell<(T, u64)>)>);
+
+impl<T: Debug + Default> Default for SharedRc<T> {
+    fn default() -> Self {
+        SharedRc(Rc::new((UpdateId::new(), Default::default())))
+    }
+}
 
 /// A borrowed reference
 pub struct SharedRcRef<'a, T>(Ref<'a, (T, u64)>);
@@ -71,8 +72,7 @@ impl<T: Debug> SharedRc<T> {
         (self.0).0
     }
 
-    /// Immutably borrows the wrapped value, returning an error if the value is currently mutably
-    /// borrowed.
+    /// Immutably borrows the wrapped value
     ///
     /// The borrow lasts until the returned `Ref` exits scope. Multiple immutable borrows can be
     /// taken out at the same time.
@@ -98,7 +98,7 @@ impl<T: Debug> SharedRc<T> {
 
     /// Mutably borrows the wrapped value, notifying other users of an update.
     pub fn update_mut(&self, mgr: &mut EventMgr) -> SharedRcRefMut<T> {
-        mgr.update_all((self.0).0, 0);
+        mgr.update_with_id((self.0).0, 0);
         let mut cell = (self.0).1.borrow_mut();
         cell.1 += 1;
         SharedRcRefMut(cell)
@@ -125,12 +125,6 @@ impl<T: Clone + Debug + 'static> SharedData for SharedRc<T> {
         let mut cell = (self.0).1.borrow_mut();
         cell.0 = item;
         cell.1 += 1;
-        mgr.update_all((self.0).0, 0);
-    }
-}
-
-impl<T: Clone + Debug + 'static> SharedDataMut for SharedRc<T> {
-    fn set(&mut self, _: &(), item: Self::Item) {
-        (self.0).1.borrow_mut().0 = item;
+        mgr.update_with_id((self.0).0, 0);
     }
 }

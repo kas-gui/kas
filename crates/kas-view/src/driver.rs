@@ -52,7 +52,7 @@ pub trait Driver<Item, Data: SharedData<Item = Item>>: Debug {
     ///
     /// The widget may expect `configure` to be called at least once before data
     /// is set and to have `set_rect` called after each time data is set.
-    fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction;
+    fn set(&self, widget: &mut Self::Widget, key: &Data::Key, item: Item) -> TkAction;
 
     /// Handle a message from a widget
     ///
@@ -115,8 +115,8 @@ macro_rules! impl_via_to_string {
             fn make(&self) -> Self::Widget {
                 Label::new("".to_string())
             }
-            fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
-                data.get_cloned(key).map(|item| widget.set_string(item.to_string())).unwrap_or(TkAction::EMPTY)
+            fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: $t) -> TkAction {
+                widget.set_string(item.to_string())
             }
         }
         impl<Data: SharedData<Item = $t>> Driver<$t, Data> for NavView {
@@ -124,8 +124,8 @@ macro_rules! impl_via_to_string {
             fn make(&self) -> Self::Widget {
                 NavFrame::new(Label::new("".to_string()))
             }
-            fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
-                data.get_cloned(key).map(|item| widget.set_string(item.to_string())).unwrap_or(TkAction::EMPTY)
+            fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: $t) -> TkAction {
+                widget.set_string(item.to_string())
             }
         }
     };
@@ -144,10 +144,8 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for View {
     fn make(&self) -> Self::Widget {
         CheckBox::new_on(|mgr, state| mgr.push_msg(state)).with_editable(false)
     }
-    fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
-        data.get_cloned(key)
-            .map(|item| widget.set_bool(item))
-            .unwrap_or(TkAction::EMPTY)
+    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: bool) -> TkAction {
+        widget.set_bool(item)
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
@@ -161,10 +159,8 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for NavView {
     fn make(&self) -> Self::Widget {
         CheckBox::new_on(|mgr, state| mgr.push_msg(state)).with_editable(false)
     }
-    fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
-        data.get_cloned(key)
-            .map(|item| widget.set_bool(item))
-            .unwrap_or(TkAction::EMPTY)
+    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: bool) -> TkAction {
+        widget.set_bool(item)
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
@@ -229,10 +225,8 @@ impl<G: EditGuard + Clone, Data: SharedData<Item = String>> Driver<String, Data>
             .with_guard(self.guard.clone())
             .with_class(self.class)
     }
-    fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
-        data.get_cloned(key)
-            .map(|item| widget.set_string(item))
-            .unwrap_or(TkAction::EMPTY)
+    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: String) -> TkAction {
+        widget.set_string(item)
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(item) = mgr.try_pop_msg() {
@@ -295,10 +289,8 @@ impl<G: EditGuard + Clone, Data: SharedData<Item = String>> Driver<String, Data>
     fn make(&self) -> Self::Widget {
         kas_widgets::EditBox::new("".to_string()).with_guard(self.guard.clone())
     }
-    fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
-        data.get_cloned(key)
-            .map(|item| widget.set_string(item))
-            .unwrap_or(TkAction::EMPTY)
+    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: String) -> TkAction {
+        widget.set_string(item)
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(item) = mgr.try_pop_msg() {
@@ -329,10 +321,8 @@ impl<D: Directional, Data: SharedData<Item = f32>> Driver<f32, Data> for Progres
     fn make(&self) -> Self::Widget {
         kas_widgets::ProgressBar::new_with_direction(self.direction)
     }
-    fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
-        data.get_cloned(key)
-            .map(|item| widget.set_value(item))
-            .unwrap_or(TkAction::EMPTY)
+    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: f32) -> TkAction {
+        widget.set_value(item)
     }
 }
 
@@ -353,10 +343,8 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for CheckButton {
     fn make(&self) -> Self::Widget {
         kas_widgets::CheckButton::new_on(self.label.clone(), |mgr, state| mgr.push_msg(state))
     }
-    fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
-        data.get_cloned(key)
-            .map(|item| widget.set_bool(item))
-            .unwrap_or(TkAction::EMPTY)
+    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: bool) -> TkAction {
+        widget.set_bool(item)
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
@@ -366,7 +354,7 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for CheckButton {
 }
 
 /// [`kas_widgets::RadioBox`] view widget constructor
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct RadioBox {
     group: RadioGroup,
 }
@@ -381,10 +369,8 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for RadioBox {
     fn make(&self) -> Self::Widget {
         kas_widgets::RadioBox::new_on(self.group.clone(), |mgr| mgr.push_msg(true))
     }
-    fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
-        data.get_cloned(key)
-            .map(|item| widget.set_bool(item))
-            .unwrap_or(TkAction::EMPTY)
+    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: bool) -> TkAction {
+        widget.set_bool(item)
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
@@ -394,7 +380,7 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for RadioBox {
 }
 
 /// [`kas_widgets::RadioButton`] view widget constructor
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct RadioButton {
     label: AccelString,
     group: RadioGroup,
@@ -412,10 +398,8 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for RadioButton {
         kas_widgets::RadioButton::new(self.label.clone(), self.group.clone())
             .on_select(|mgr| mgr.push_msg(true))
     }
-    fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
-        data.get_cloned(key)
-            .map(|item| widget.set_bool(item))
-            .unwrap_or(TkAction::EMPTY)
+    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: bool) -> TkAction {
+        widget.set_bool(item)
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
@@ -461,10 +445,8 @@ where
         kas_widgets::Slider::new_with_direction(range, self.step, self.direction)
             .on_move(|mgr, value| mgr.push_msg(value))
     }
-    fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
-        data.get_cloned(key)
-            .map(|item| widget.set_value(item))
-            .unwrap_or(TkAction::EMPTY)
+    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: Data::Item) -> TkAction {
+        widget.set_value(item)
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
@@ -497,10 +479,8 @@ where
         let range = self.range.0..=self.range.1;
         kas_widgets::Spinner::new(range, self.step).on_change(|mgr, val| mgr.push_msg(val))
     }
-    fn set(&self, widget: &mut Self::Widget, data: &Data, key: &Data::Key) -> TkAction {
-        data.get_cloned(key)
-            .map(|item| widget.set_value(item))
-            .unwrap_or(TkAction::EMPTY)
+    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: Data::Item) -> TkAction {
+        widget.set_value(item)
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {

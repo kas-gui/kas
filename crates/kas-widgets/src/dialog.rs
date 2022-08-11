@@ -7,6 +7,11 @@
 //!
 //! KAS dialog boxes are pre-configured windows, usually allowing some
 //! customisation.
+//!
+//! # Design status
+//!
+//! At the current time, only a minimal selection of dialog boxes are provided
+//! and their design is likely to change.
 
 use crate::{EditBox, Filler, Label, TextButton};
 use kas::event::{Command, VirtualKeyCode};
@@ -144,6 +149,8 @@ impl_scope! {
         };
     }]
     /// An editor over a shared `String`
+    ///
+    /// The shared data is updated only when the "Save" button is pressed.
     pub struct TextEdit<T: SingleData<Item = String> = SharedRc<String>> {
         core: widget_core!(),
         title: Cow<'static, str>,

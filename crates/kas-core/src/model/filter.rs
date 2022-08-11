@@ -8,7 +8,7 @@
 mod filter_list;
 pub use filter_list::FilteredList;
 
-use crate::event::{EventMgr, UpdateId};
+use crate::event::EventMgr;
 use crate::model::*;
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -23,14 +23,13 @@ pub trait Filter<T>: 'static {
 
 /// Filter: target contains self (case-sensitive string match)
 #[derive(Debug, Default, Clone)]
-pub struct ContainsString(Rc<(UpdateId, RefCell<(String, u64)>)>);
+pub struct ContainsString(Rc<RefCell<(String, u64)>>);
 
 impl ContainsString {
     /// Construct with given string
     pub fn new<S: ToString>(s: S) -> Self {
-        let id = UpdateId::new();
         let data = RefCell::new((s.to_string(), 1));
-        ContainsString(Rc::new((id, data)))
+        ContainsString(Rc::new(data))
     }
 }
 impl SharedData for ContainsString {
@@ -38,7 +37,7 @@ impl SharedData for ContainsString {
     type Item = String;
 
     fn version(&self) -> u64 {
-        (self.0).1.borrow().1
+        self.0.borrow().1
     }
 
     fn contains_key(&self, _: &Self::Key) -> bool {
@@ -46,26 +45,19 @@ impl SharedData for ContainsString {
     }
 
     fn get_cloned(&self, _: &Self::Key) -> Option<Self::Item> {
-        Some((self.0).1.borrow().0.to_owned())
+        Some(self.0.borrow().0.to_owned())
     }
     fn update(&self, mgr: &mut EventMgr, _: &Self::Key, value: Self::Item) {
-        let mut cell = (self.0).1.borrow_mut();
+        let mut cell = self.0.borrow_mut();
         cell.0 = value;
         cell.1 += 1;
-        mgr.update_all((self.0).0, 0);
-    }
-}
-impl SharedDataMut for ContainsString {
-    fn set(&mut self, _: &Self::Key, value: Self::Item) {
-        let mut cell = (self.0).1.borrow_mut();
-        cell.0 = value;
-        cell.1 += 1;
+        mgr.update_all(0);
     }
 }
 
 impl<'a> Filter<&'a str> for ContainsString {
     fn matches(&self, item: &str) -> bool {
-        item.contains(&(self.0).1.borrow().0)
+        item.contains(&self.0.borrow().0)
     }
 }
 impl Filter<String> for ContainsString {
@@ -82,16 +74,15 @@ impl Filter<String> for ContainsString {
 //
 // [question on StackOverflow]: https://stackoverflow.com/questions/47298336/case-insensitive-string-matching-in-rust
 #[derive(Debug, Default, Clone)]
-pub struct ContainsCaseInsensitive(Rc<(UpdateId, RefCell<(String, String, u64)>)>);
+pub struct ContainsCaseInsensitive(Rc<RefCell<(String, String, u64)>>);
 
 impl ContainsCaseInsensitive {
     /// Construct with given string
     pub fn new<S: ToString>(s: S) -> Self {
-        let id = UpdateId::new();
         let s = s.to_string();
         let u = s.to_uppercase();
         let data = RefCell::new((s, u, 1));
-        ContainsCaseInsensitive(Rc::new((id, data)))
+        ContainsCaseInsensitive(Rc::new(data))
     }
 }
 impl SharedData for ContainsCaseInsensitive {
@@ -99,7 +90,7 @@ impl SharedData for ContainsCaseInsensitive {
     type Item = String;
 
     fn version(&self) -> u64 {
-        (self.0).1.borrow().2
+        self.0.borrow().2
     }
 
     fn contains_key(&self, _: &Self::Key) -> bool {
@@ -107,22 +98,14 @@ impl SharedData for ContainsCaseInsensitive {
     }
 
     fn get_cloned(&self, _: &Self::Key) -> Option<Self::Item> {
-        Some((self.0).1.borrow().0.clone())
+        Some(self.0.borrow().0.clone())
     }
     fn update(&self, mgr: &mut EventMgr, _: &Self::Key, value: Self::Item) {
-        let mut cell = (self.0).1.borrow_mut();
+        let mut cell = self.0.borrow_mut();
         cell.0 = value;
         cell.1 = cell.0.to_uppercase();
         cell.2 += 1;
-        mgr.update_all((self.0).0, 0);
-    }
-}
-impl SharedDataMut for ContainsCaseInsensitive {
-    fn set(&mut self, _: &Self::Key, value: Self::Item) {
-        let mut cell = (self.0).1.borrow_mut();
-        cell.0 = value;
-        cell.1 = cell.0.to_uppercase();
-        cell.2 += 1;
+        mgr.update_all(0);
     }
 }
 
@@ -133,6 +116,6 @@ impl<'a> Filter<&'a str> for ContainsCaseInsensitive {
 }
 impl Filter<String> for ContainsCaseInsensitive {
     fn matches(&self, item: String) -> bool {
-        item.to_uppercase().contains(&(self.0).1.borrow().1)
+        item.to_uppercase().contains(&self.0.borrow().1)
     }
 }

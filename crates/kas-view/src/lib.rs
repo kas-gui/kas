@@ -36,9 +36,7 @@
 #![allow(clippy::len_zero)]
 
 #[allow(unused)]
-use kas::event::UpdateId;
-#[allow(unused)]
-use kas::model::{ListData, MatrixData, SharedData, SharedDataMut, SharedRc};
+use kas::model::{ListData, MatrixData, SharedData};
 use thiserror::Error;
 
 mod list_view;

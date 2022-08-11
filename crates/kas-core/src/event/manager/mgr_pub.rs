@@ -644,9 +644,17 @@ impl<'a> EventMgr<'a> {
     /// Send [`Event::Update`] to all widgets
     ///
     /// All widgets across all windows will receive [`Event::Update`] with
-    /// the given `id` and `payload`.
+    /// [`UpdateId::ZERO`] and the given `payload`.
     #[inline]
-    pub fn update_all(&mut self, id: UpdateId, payload: u64) {
+    pub fn update_all(&mut self, payload: u64) {
+        self.shell.update_all(UpdateId::ZERO, payload);
+    }
+
+    /// Send [`Event::Update`] to all widgets
+    ///
+    /// All widgets across all windows will receive [`Event::Update`] with
+    /// the given `id` and `payload`.
+    pub fn update_with_id(&mut self, id: UpdateId, payload: u64) {
         log::debug!(target: "kas_core::event::manager", "update_all: id={id:?}, payload={payload}");
         self.shell.update_all(id, payload);
     }

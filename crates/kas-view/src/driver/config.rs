@@ -7,7 +7,7 @@
 
 use crate::driver;
 use kas::event::config::{Config, MousePan};
-use kas::model::{SharedData, SharedRc};
+use kas::model::SharedRc;
 use kas::prelude::*;
 use kas_widgets::{CheckButton, ComboBox, Spinner, TextButton};
 
@@ -104,8 +104,7 @@ impl driver::Driver<Config, SharedRc<Config>> for EventConfig {
         }
     }
 
-    fn set(&self, widget: &mut Self::Widget, data: &SharedRc<Config>, key: &()) -> TkAction {
-        let data = data.get_cloned(key).unwrap();
+    fn set(&self, widget: &mut Self::Widget, _: &(), data: Config) -> TkAction {
         widget.menu_delay.set_value(data.menu_delay_ms)
             | widget
                 .touch_select_delay

@@ -5,9 +5,9 @@
 
 //! Traits for shared data objects
 
-use crate::event::EventMgr;
 #[allow(unused)] // doc links
-use crate::event::{Event, UpdateId};
+use crate::event::Event;
+use crate::event::EventMgr;
 use crate::macros::autoimpl;
 use crate::WidgetId;
 #[allow(unused)] // doc links

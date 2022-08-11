@@ -5,7 +5,8 @@
 
 //! Event handling: updates
 
-use std::num::NonZeroU32;
+#![allow(clippy::new_without_default)]
+
 use std::sync::atomic::{AtomicU32, Ordering::Relaxed};
 
 /// An update identifier
@@ -13,9 +14,12 @@ use std::sync::atomic::{AtomicU32, Ordering::Relaxed};
 /// Used to identify the origin of an [`Event::Update`](crate::event::Event::Update).
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[must_use]
-pub struct UpdateId(NonZeroU32);
+pub struct UpdateId(u32);
 
 impl UpdateId {
+    /// Zero: used when a unique identifier isn't required
+    pub const ZERO: UpdateId = UpdateId(0);
+
     /// Issue a new [`UpdateId`]
     ///
     /// A total of 2<sup>32</sup> - 1 update handles are available.
@@ -26,16 +30,13 @@ impl UpdateId {
         loop {
             let c = COUNT.load(Relaxed);
             let h = c.wrapping_add(1);
-            let nz = NonZeroU32::new(h)
-                .unwrap_or_else(|| panic!("UpdateId::new: all available handles have been issued"));
+            assert!(
+                h != 0,
+                "UpdateId::new: all available handles have been issued"
+            );
             if COUNT.compare_exchange(c, h, Relaxed, Relaxed).is_ok() {
-                break UpdateId(nz);
+                break UpdateId(h);
             }
         }
-    }
-}
-impl Default for UpdateId {
-    fn default() -> Self {
-        Self::new()
     }
 }

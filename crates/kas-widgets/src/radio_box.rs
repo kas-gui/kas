@@ -6,9 +6,10 @@
 //! Toggle widgets
 
 use super::AccelLabel;
-use kas::model::{SharedData, SharedRc};
+use kas::event::UpdateId;
 use kas::prelude::*;
 use kas::theme::Feature;
+use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;
 use std::time::Instant;
@@ -16,7 +17,36 @@ use std::time::Instant;
 /// A group used by [`RadioButton`] and [`RadioBox`]
 ///
 /// This type can (and likely should) be default constructed.
-pub type RadioGroup = SharedRc<Option<WidgetId>>;
+#[derive(Clone, Debug)]
+pub struct RadioGroup(Rc<(UpdateId, RefCell<Option<WidgetId>>)>);
+
+impl RadioGroup {
+    /// Construct a new, unique group
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        Self(Rc::new((UpdateId::new(), Default::default())))
+    }
+
+    /// Access update identifier
+    ///
+    /// Data updates via this [`RadioGroup`] are triggered using this [`UpdateId`].
+    pub fn id(&self) -> UpdateId {
+        (self.0).0
+    }
+
+    /// Get the active [`RadioBox`], if any
+    ///
+    /// Note: this is never equal to a [`RadioButton`]'s [`WidgetId`], but may
+    /// be a descendant (test with [`WidgetExt::is_ancestor_of`]).
+    pub fn get(&self) -> Option<WidgetId> {
+        (self.0).1.borrow().clone()
+    }
+
+    fn update(&self, mgr: &mut EventMgr, item: Option<WidgetId>) {
+        *(self.0).1.borrow_mut() = item;
+        mgr.update_with_id((self.0).0, 0);
+    }
+}
 
 impl_scope! {
     /// A bare radio box (no label)
@@ -40,7 +70,7 @@ impl_scope! {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Update { id, .. } if id == self.group.id() => {
-                    if self.state && !self.eq_id(self.group.get_cloned(&()).unwrap()) {
+                    if self.state && !self.eq_id(self.group.get()) {
                         log::trace!("handle_event: unset {}", self.id());
                         self.state = false;
                         self.last_change = Some(Instant::now());
@@ -148,7 +178,7 @@ impl_scope! {
                 self.state = true;
                 self.last_change = Some(Instant::now());
                 mgr.redraw(self.id());
-                self.group.update(mgr, &(), Some(self.id()));
+                self.group.update(mgr, Some(self.id()));
                 true
             } else {
                 false
@@ -160,7 +190,7 @@ impl_scope! {
         /// Note: state will not update until the next draw.
         #[inline]
         pub fn unset_all(&self, mgr: &mut EventMgr) {
-            self.group.update(mgr, &(), None);
+            self.group.update(mgr, None);
         }
     }
 
