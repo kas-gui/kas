@@ -179,10 +179,8 @@ impl<F: FnMut(&str) + 'static> EditGuard for GuardUpdate<F> {
 impl_scope! {
     /// A text-edit box
     ///
-    /// This is just a wrapper around [`EditField`] adding a frame.
-    ///
-    /// This widget is intended for use with short input strings. Internally it
-    /// uses a [`String`], for which edits have `O(n)` cost.
+    /// A single- or multi-line editor for unformatted text.
+    /// See also notes on [`EditField`].
     ///
     /// By default, the editor supports a single-line only;
     /// [`Self::with_multi_line`] and [`Self::with_class`] can be used to change this.
@@ -456,16 +454,39 @@ impl<G: EditGuard> EditBox<G> {
 impl_scope! {
     /// A text-edit field (single- or multi-line)
     ///
-    /// Usually one uses a derived type like [`EditBox`] instead. This field does
-    /// not draw any background or borders, thus (1) there is no visual indication
-    /// that this is an edit field, and (2) there is no indication for disabled or
-    /// error states. The parent widget is responsible for this.
-    ///
-    /// This widget is intended for use with short input strings. Internally it
-    /// uses a [`String`], for which edits have `O(n)` cost.
+    /// This widget implements the mechanics of text layout and event handling.
+    /// It does not draw any background (even to indicate an error state) or
+    /// borders (even to indicate focus), thus usually it is better to use a
+    /// derived type like [`EditBox`] instead.
     ///
     /// By default, the editor supports a single-line only;
     /// [`Self::with_multi_line`] and [`Self::with_class`] can be used to change this.
+    ///
+    /// ### Event handling
+    ///
+    /// This widget attempts to handle all standard text-editor input and scroll
+    /// events.
+    ///
+    /// Key events for moving the edit cursor (e.g. arrow keys) are consumed
+    /// only if the edit cursor is moved while key events for adjusting or using
+    /// the selection (e.g. `Command::Copy` and `Command::Deselect`)
+    /// are consumed only when a selection exists. In contrast, key events for
+    /// inserting or deleting text are always consumed.
+    ///
+    /// [`Command::Return`] inserts a line break in multi-line mode, but in
+    /// single-line mode or if the <kbd>Shift</kbd> key is held it is treated
+    /// the same as [`Command::Activate`].
+    ///
+    /// ### Performance and limitations
+    ///
+    /// Text representation is via a single [`String`]. Edit operations are
+    /// `O(n)` where `n` is the length of text (with text layout algorithms
+    /// having greater cost than copying bytes in the backing [`String`]).
+    /// This isn't necessarily *slow*; when run with optimizations the type can
+    /// handle type-setting around 20kB of UTF-8 in under 10ms (with significant
+    /// scope for optimization, given that currently layout is re-run from
+    /// scratch on each key stroke). Regardless, this approach is not designed
+    /// to scale to handle large documents via a single `EditField` widget.
     #[impl_default(where G: Default)]
     #[derive(Clone, Debug)]
     #[widget{
@@ -910,6 +931,23 @@ impl<G: EditGuard> EditField<G> {
         self.error_state = error_state;
     }
 
+    fn prepare_text(&mut self, mgr: &mut EventMgr) {
+        if !self.text.required_action().is_ready() {
+            let start = std::time::Instant::now();
+
+            self.text.prepare().expect("invalid font_id");
+            self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
+
+            log::trace!(
+                target: "kas_perf::widgets::edit", "prepare_text: {}μs",
+                start.elapsed().as_micros(),
+            );
+        }
+
+        mgr.redraw(self.id());
+        self.set_view_offset_from_edit_pos(mgr);
+    }
+
     // returns true on success, false on unhandled event
     fn received_char(&mut self, mgr: &mut EventMgr, c: char) -> bool {
         if !self.editable {
@@ -933,10 +971,8 @@ impl<G: EditGuard> EditField<G> {
             self.selection.set_pos(pos + c.len_utf8());
         }
         self.edit_x_coord = None;
-        self.text.prepare().expect("invalid font_id");
-        self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
-        self.set_view_offset_from_edit_pos(mgr);
-        mgr.redraw(self.id());
+
+        self.prepare_text(mgr);
         true
     }
 
@@ -945,6 +981,8 @@ impl<G: EditGuard> EditField<G> {
         let mut shift = mgr.modifiers().shift();
         let mut buf = [0u8; 4];
         let pos = self.selection.edit_pos();
+        let len = self.text.str_len();
+        let multi_line = self.multi_line();
         let selection = self.selection.range();
         let have_sel = selection.end > selection.start;
         let string;
@@ -966,30 +1004,30 @@ impl<G: EditGuard> EditField<G> {
                 Action::None
             }
             Command::Activate => Action::Activate,
-            Command::Return if shift || !self.multi_line() => Action::Activate,
-            Command::Return if editable && self.multi_line() => {
+            Command::Return if shift || !multi_line => Action::Activate,
+            Command::Return if editable && multi_line => {
                 Action::Insert('\n'.encode_utf8(&mut buf), LastEdit::Insert)
             }
             // NOTE: we might choose to optionally handle Tab in the future,
             // but without some workaround it prevents keyboard navigation.
             // Command::Tab => Action::Insert('\t'.encode_utf8(&mut buf), LastEdit::Insert),
-            Command::Left => {
-                let mut cursor = GraphemeCursor::new(pos, self.text.str_len(), true);
+            Command::Left if pos > 0 => {
+                let mut cursor = GraphemeCursor::new(pos, len, true);
                 cursor
                     .prev_boundary(self.text.text(), 0)
                     .unwrap()
                     .map(|pos| Action::Move(pos, None))
                     .unwrap_or(Action::None)
             }
-            Command::Right => {
-                let mut cursor = GraphemeCursor::new(pos, self.text.str_len(), true);
+            Command::Right if pos < len => {
+                let mut cursor = GraphemeCursor::new(pos, len, true);
                 cursor
                     .next_boundary(self.text.text(), 0)
                     .unwrap()
                     .map(|pos| Action::Move(pos, None))
                     .unwrap_or(Action::None)
             }
-            Command::WordLeft => {
+            Command::WordLeft if pos > 0 => {
                 let mut iter = self.text.text()[0..pos].split_word_bound_indices();
                 let mut p = iter.next_back().map(|(index, _)| index).unwrap_or(0);
                 while self.text.text()[p..]
@@ -1006,12 +1044,9 @@ impl<G: EditGuard> EditField<G> {
                 }
                 Action::Move(p, None)
             }
-            Command::WordRight => {
+            Command::WordRight if pos < len => {
                 let mut iter = self.text.text()[pos..].split_word_bound_indices().skip(1);
-                let mut p = iter
-                    .next()
-                    .map(|(index, _)| pos + index)
-                    .unwrap_or(self.text.str_len());
+                let mut p = iter.next().map(|(index, _)| pos + index).unwrap_or(len);
                 while self.text.text()[p..]
                     .chars()
                     .next()
@@ -1026,7 +1061,7 @@ impl<G: EditGuard> EditField<G> {
                 }
                 Action::Move(p, None)
             }
-            Command::Up | Command::Down => {
+            Command::Up | Command::Down if multi_line => {
                 let x = match self.edit_x_coord {
                     Some(x) => x,
                     None => self
@@ -1045,7 +1080,7 @@ impl<G: EditGuard> EditField<G> {
                 };
                 const HALF: usize = usize::MAX / 2;
                 let nearest_end = || match line {
-                    0..=HALF => self.text.str_len(),
+                    0..=HALF => len,
                     _ => 0,
                 };
                 self.text
@@ -1053,21 +1088,17 @@ impl<G: EditGuard> EditField<G> {
                     .map(|pos| Action::Move(pos, Some(x)))
                     .unwrap_or(Action::Move(nearest_end(), None))
             }
-            Command::Home => {
+            Command::Home if pos > 0 => {
                 let pos = self.text.find_line(pos)?.map(|r| r.1.start).unwrap_or(0);
                 Action::Move(pos, None)
             }
-            Command::End => {
-                let pos = self
-                    .text
-                    .find_line(pos)?
-                    .map(|r| r.1.end)
-                    .unwrap_or(self.text.str_len());
+            Command::End if pos < len => {
+                let pos = self.text.find_line(pos)?.map(|r| r.1.end).unwrap_or(len);
                 Action::Move(pos, None)
             }
-            Command::DocHome => Action::Move(0, None),
-            Command::DocEnd => Action::Move(self.text.str_len(), None),
-            Command::PageUp | Command::PageDown => {
+            Command::DocHome if pos > 0 => Action::Move(0, None),
+            Command::DocEnd if pos < len => Action::Move(len, None),
+            Command::PageUp | Command::PageDown if multi_line => {
                 let mut v = self
                     .text
                     .text_glyph_pos(pos)?
@@ -1089,7 +1120,7 @@ impl<G: EditGuard> EditField<G> {
                 Action::Delete(selection.clone())
             }
             Command::Delete if editable => {
-                let mut cursor = GraphemeCursor::new(pos, self.text.str_len(), true);
+                let mut cursor = GraphemeCursor::new(pos, len, true);
                 cursor
                     .next_boundary(self.text.text(), 0)
                     .unwrap()
@@ -1111,7 +1142,7 @@ impl<G: EditGuard> EditField<G> {
                     .split_word_bound_indices()
                     .nth(1)
                     .map(|(index, _)| pos + index)
-                    .unwrap_or(self.text.str_len());
+                    .unwrap_or(len);
                 Action::Delete(pos..next)
             }
             Command::DelWordBack if editable => {
@@ -1125,7 +1156,7 @@ impl<G: EditGuard> EditField<G> {
             Command::SelectAll => {
                 self.selection.set_sel_pos(0);
                 shift = true; // hack
-                Action::Move(self.text.str_len(), None)
+                Action::Move(len, None)
             }
             Command::Cut if editable && have_sel => {
                 mgr.set_clipboard((self.text.text()[selection.clone()]).into());
@@ -1138,7 +1169,7 @@ impl<G: EditGuard> EditField<G> {
             Command::Paste if editable => {
                 if let Some(content) = mgr.get_clipboard() {
                     let mut end = content.len();
-                    if !self.multi_line() {
+                    if !multi_line {
                         // We cut the content short on control characters and
                         // ignore them (preventing line-breaks and ignoring any
                         // actions such as recursive-paste).
@@ -1223,13 +1254,7 @@ impl<G: EditGuard> EditField<G> {
             }
         };
 
-        if !self.text.required_action().is_ready() {
-            self.text.prepare().expect("invalid font_id");
-            self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
-            mgr.redraw(self.id());
-        }
-        self.set_view_offset_from_edit_pos(mgr);
-
+        self.prepare_text(mgr);
         Ok(result)
     }
 
