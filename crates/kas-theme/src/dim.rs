@@ -268,17 +268,15 @@ impl<D: 'static> ThemeSize for Window<D> {
 
     fn frame(&self, style: FrameStyle, _is_vert: bool) -> FrameRules {
         let inner = self.dims.inner_margin.into();
+        let outer = self.dims.outer_margin;
         match style {
             FrameStyle::InnerMargin => FrameRules::new_sym(0, 0, 0),
-            FrameStyle::Frame => FrameRules::new_sym(self.dims.frame, 0, 0),
+            FrameStyle::Frame => FrameRules::new_sym(self.dims.frame, 0, outer),
             FrameStyle::Popup => FrameRules::new_sym(self.dims.popup_frame, 0, 0),
             FrameStyle::MenuEntry => FrameRules::new_sym(self.dims.menu_frame, inner, 0),
             FrameStyle::NavFocus => FrameRules::new_sym(self.dims.inner_margin.into(), 0, 0),
-            FrameStyle::Button => {
-                let outer = self.dims.outer_margin;
-                FrameRules::new_sym(self.dims.frame, 0, outer)
-            }
-            FrameStyle::EditBox => FrameRules::new_sym(self.dims.frame, inner, 0),
+            FrameStyle::Button => FrameRules::new_sym(self.dims.frame, 0, outer),
+            FrameStyle::EditBox => FrameRules::new_sym(self.dims.frame, inner, outer),
         }
     }
 

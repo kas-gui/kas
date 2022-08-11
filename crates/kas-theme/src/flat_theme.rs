@@ -76,7 +76,7 @@ impl FlatTheme {
 const DIMS: dim::Parameters = dim::Parameters {
     outer_margin: 7.0,
     inner_margin: 1.2,
-    text_margin: (3.4, 2.0),
+    text_margin: (3.4, 0.8),
     frame_size: 2.4,
     popup_frame_size: 0.0,
     menu_frame: 2.4,
