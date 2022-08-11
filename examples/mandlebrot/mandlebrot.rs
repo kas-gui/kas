@@ -332,7 +332,7 @@ impl_scope! {
         fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             // We use a reasonable minimum size of 300x200 and a large ideal
             // size of 3000x2000: the initial size should fill the screen.
-            LogicalSize(300.0, 200.0)
+            kas::layout::LogicalSize(300.0, 200.0)
                 .to_rules_with_factor(axis, mgr.scale_factor(), 10.0)
                 .with_stretch(Stretch::High)
         }

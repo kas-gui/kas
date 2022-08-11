@@ -11,7 +11,7 @@ use std::cell::Cell;
 use kas::draw::color::Rgba;
 use kas::draw::*;
 use kas::prelude::*;
-use kas::theme::Theme;
+use kas::theme::{Theme, ThemeControl};
 use kas::widgets::*;
 
 use kas::theme::FlatTheme;

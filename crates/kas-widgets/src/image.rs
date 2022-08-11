@@ -5,6 +5,7 @@
 
 //! 2D pixmap widget
 
+use kas::draw::{DrawShared, ImageHandle};
 use kas::layout::PixmapScaling;
 use kas::prelude::*;
 

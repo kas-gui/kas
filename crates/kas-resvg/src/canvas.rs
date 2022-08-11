@@ -6,7 +6,7 @@
 //! Canvas widget
 
 use kas::draw::{ImageFormat, ImageHandle};
-use kas::layout::PixmapScaling;
+use kas::layout::{LogicalSize, PixmapScaling};
 use kas::prelude::*;
 use tiny_skia::{Color, Pixmap};
 

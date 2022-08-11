@@ -13,6 +13,7 @@ use kas::event::{Config, VirtualKeyCode as VK};
 use kas::model::SharedRc;
 use kas::prelude::*;
 use kas::resvg::Svg;
+use kas::theme::ThemeControl;
 use kas::view::{driver, SingleView};
 use kas::widgets::{menu::MenuEntry, *};
 
