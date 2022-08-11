@@ -326,7 +326,7 @@ pub enum Command {
     /// Return / enter key
     ///
     /// This may insert a line-break or may activate something.
-    Return,
+    Enter,
     /// Space bar key
     Space,
     /// Tab key
@@ -488,10 +488,10 @@ impl Command {
             Right => Command::Right,
             Down => Command::Down,
             Back => Command::DelBack,
-            Return => Command::Return,
+            Return => Command::Enter,
             NavigateForward => Command::NavNext,
             NavigateBackward => Command::NavPrev,
-            NumpadEnter => Command::Return,
+            NumpadEnter => Command::Enter,
             Tab => Command::Tab,
             Cut => Command::Cut,
             Copy => Command::Copy,
@@ -505,11 +505,11 @@ impl Command {
     /// This matches:
     ///
     /// -   [`Self::Activate`] — programmatic activation
-    /// -   [`Self::Return`] —  <kbd>Enter</kbd> and <kbd>Return</kbd> keys
+    /// -   [`Self::Enter`] —  <kbd>Enter</kbd> and <kbd>Return</kbd> keys
     /// -   [`Self::Space`] — <kbd>Space</kbd> key
     pub fn is_activate(self) -> bool {
         use Command::*;
-        matches!(self, Activate | Return | Space)
+        matches!(self, Activate | Enter | Space)
     }
 
     /// Convert to selection-focus command

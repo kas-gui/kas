@@ -482,7 +482,7 @@ impl_scope! {
     /// are consumed only when a selection exists. In contrast, key events for
     /// inserting or deleting text are always consumed.
     ///
-    /// [`Command::Return`] inserts a line break in multi-line mode, but in
+    /// [`Command::Enter`] inserts a line break in multi-line mode, but in
     /// single-line mode or if the <kbd>Shift</kbd> key is held it is treated
     /// the same as [`Command::Activate`].
     ///
@@ -1010,8 +1010,8 @@ impl<G: EditGuard> EditField<G> {
                 Action::None
             }
             Command::Activate => Action::Activate,
-            Command::Return if shift || !multi_line => Action::Activate,
-            Command::Return if editable && multi_line => {
+            Command::Enter if shift || !multi_line => Action::Activate,
+            Command::Enter if editable && multi_line => {
                 Action::Insert('\n'.encode_utf8(&mut buf), LastEdit::Insert)
             }
             // NOTE: we might choose to optionally handle Tab in the future,
