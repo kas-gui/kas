@@ -429,7 +429,7 @@ impl_scope! {
         fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
             let inner_margin = size_mgr.inner_margin().extract(axis);
-            let frame = kas::layout::FrameRules::new_sym(0, inner_margin, 0);
+            let frame = kas::layout::FrameRules::new_sym(0, /*inner_margin,*/ 0);
 
             let other = axis.other().map(|mut size| {
                 // Use same logic as in set_rect to find per-child size:

@@ -331,39 +331,31 @@ impl PixmapScaling {
 pub struct FrameRules {
     offset: i32,
     size: i32,
-    inner_margin: i32,
     // (pre, post) margins
     m: (u16, u16),
 }
 
 impl FrameRules {
-    pub const ZERO: Self = FrameRules::new_sym(0, 0, 0);
+    pub const ZERO: Self = FrameRules::new_sym(0, 0);
 
     /// Construct
     ///
     /// -   `first`: size of left or top edge
     /// -   `second`: size of right or bottom edge
-    /// -   `inner_margin`: minimum size of inner margins
     /// -   `outer_margins`: size of (left, right) or (top, bottom) outer margins
     #[inline]
-    pub const fn new(
-        first: i32,
-        second: i32,
-        inner_margin: i32,
-        outer_margins: (u16, u16),
-    ) -> Self {
+    pub const fn new(first: i32, second: i32, outer_margins: (u16, u16)) -> Self {
         FrameRules {
             offset: first,
             size: first + second,
-            inner_margin,
             m: outer_margins,
         }
     }
 
     /// Construct (symmetric on axis)
     #[inline]
-    pub const fn new_sym(size: i32, inner_margin: i32, outer_margin: u16) -> Self {
-        Self::new(size, size, inner_margin, (outer_margin, outer_margin))
+    pub const fn new_sym(size: i32, outer_margin: u16) -> Self {
+        Self::new(size, size, (outer_margin, outer_margin))
     }
 
     /// Generate rules for content surrounded by this frame
@@ -379,8 +371,6 @@ impl FrameRules {
     ///     size will be that allocated for this object minus this `size` value)
     pub fn surround_with_margin(self, content: SizeRules) -> (SizeRules, i32, i32) {
         let (m0, m1) = content.margins_i32();
-        let m0 = m0.max(self.inner_margin);
-        let m1 = m1.max(self.inner_margin);
         let offset = self.offset + m0;
         let size = self.size + m0 + m1;
 
@@ -401,9 +391,9 @@ impl FrameRules {
     /// this is the same as [`FrameRules::surround_with_margin`].
     pub fn surround_as_margin(self, content: SizeRules) -> (SizeRules, i32, i32) {
         let (m0, m1) = content.margins();
-        let offset = self.offset + self.inner_margin;
+        let offset = self.offset;
         let m0 = u16::conv((i32::conv(m0) - offset).max(0));
-        let size = self.size + 2 * self.inner_margin;
+        let size = self.size;
         let m1 = u16::conv((i32::conv(m1) + offset - size).max(0));
         let margins = (self.m.0.max(m0), self.m.1.max(m1));
 
@@ -421,8 +411,7 @@ impl FrameRules {
     /// The content's margin is ignored. In other respects,
     /// this is the same as [`FrameRules::surround_with_margin`].
     pub fn surround_no_margin(self, content: SizeRules) -> (SizeRules, i32, i32) {
-        let offset = self.offset + self.inner_margin;
-        let size = self.size + 2 * self.inner_margin;
+        let size = self.size;
 
         let rules = SizeRules::new(
             content.min_size() + size,
@@ -430,6 +419,6 @@ impl FrameRules {
             self.m,
             content.stretch(),
         );
-        (rules, offset, size)
+        (rules, self.offset, size)
     }
 }
