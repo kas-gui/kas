@@ -39,8 +39,6 @@ impl From<MarkStyle> for Feature {
 /// A "frame" is an element surrounding another element.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum FrameStyle {
-    /// An invisible frame which forces all margins to be interior
-    InnerMargin,
     /// A frame for grouping content
     Frame,
     /// A frame around pop-ups

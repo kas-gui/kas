@@ -101,7 +101,7 @@ impl_scope! {
             rules.reduce_min_to(size_mgr.min_scroll_size(axis));
 
             // We use a frame to contain the content margin within the scrollable area.
-            let frame = kas::layout::FrameRules::new(0, 0, 0, (0, 0));
+            let frame = kas::layout::FrameRules::ZERO;
             let (rules, offset, size) = frame.surround_with_margin(rules);
             self.offset.set_component(axis, offset);
             self.frame_size.set_component(axis, size);

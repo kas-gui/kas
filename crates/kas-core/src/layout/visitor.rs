@@ -500,12 +500,10 @@ impl FrameStorage {
     ) -> SizeRules {
         let frame_rules = mgr.frame(style, axis);
         if axis.is_horizontal() && style == FrameStyle::MenuEntry {
-            style = FrameStyle::InnerMargin;
+            style = FrameStyle::EditBox;
         }
         let (rules, offset, size) = match style {
-            FrameStyle::InnerMargin | FrameStyle::EditBox => {
-                frame_rules.surround_with_margin(child_rules)
-            }
+            FrameStyle::EditBox => frame_rules.surround_with_margin(child_rules),
             FrameStyle::NavFocus => frame_rules.surround_as_margin(child_rules),
             _ => frame_rules.surround_no_margin(child_rules),
         };

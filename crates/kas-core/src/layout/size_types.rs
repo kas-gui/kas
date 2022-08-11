@@ -337,6 +337,8 @@ pub struct FrameRules {
 }
 
 impl FrameRules {
+    pub const ZERO: Self = FrameRules::new_sym(0, 0, 0);
+
     /// Construct
     ///
     /// -   `first`: size of left or top edge
@@ -344,7 +346,12 @@ impl FrameRules {
     /// -   `inner_margin`: minimum size of inner margins
     /// -   `outer_margins`: size of (left, right) or (top, bottom) outer margins
     #[inline]
-    pub fn new(first: i32, second: i32, inner_margin: i32, outer_margins: (u16, u16)) -> Self {
+    pub const fn new(
+        first: i32,
+        second: i32,
+        inner_margin: i32,
+        outer_margins: (u16, u16),
+    ) -> Self {
         FrameRules {
             offset: first,
             size: first + second,
@@ -355,7 +362,7 @@ impl FrameRules {
 
     /// Construct (symmetric on axis)
     #[inline]
-    pub fn new_sym(size: i32, inner_margin: i32, outer_margin: u16) -> Self {
+    pub const fn new_sym(size: i32, inner_margin: i32, outer_margin: u16) -> Self {
         Self::new(size, size, inner_margin, (outer_margin, outer_margin))
     }
 

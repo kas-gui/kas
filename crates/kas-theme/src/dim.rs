@@ -270,7 +270,6 @@ impl<D: 'static> ThemeSize for Window<D> {
         let inner = self.dims.inner_margin.into();
         let outer = self.dims.outer_margin;
         match style {
-            FrameStyle::InnerMargin => FrameRules::new_sym(0, 0, 0),
             FrameStyle::Frame => FrameRules::new_sym(self.dims.frame, 0, outer),
             FrameStyle::Popup => FrameRules::new_sym(self.dims.popup_frame, 0, 0),
             FrameStyle::MenuEntry => FrameRules::new_sym(self.dims.menu_frame, inner, 0),
