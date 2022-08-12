@@ -45,7 +45,7 @@ impl SimpleTheme {
         SimpleTheme {
             config: Default::default(),
             cols,
-            dims: DIMS,
+            dims: Default::default(),
             fonts: None,
         }
     }
@@ -78,25 +78,6 @@ impl SimpleTheme {
         TkAction::REDRAW
     }
 }
-
-const DIMS: dim::Parameters = dim::Parameters {
-    outer_margin: 7.0,
-    inner_margin: 1.2,
-    text_margin: (3.4, 2.0),
-    frame_size: 2.4,
-    popup_frame_size: 0.0,
-    menu_frame: 2.4,
-    button_frame: 2.4,
-    button_inner: 0.0,
-    check_box_inner: 7.0,
-    mark: 8.0,
-    handle_len: 12.0,
-    scroll_bar_size: Vec2(24.0, 8.0),
-    slider_size: Vec2(24.0, 12.0),
-    progress_bar: Vec2(24.0, 8.0),
-    shadow_size: Vec2::ZERO,
-    shadow_rel_offset: Vec2::ZERO,
-};
 
 pub struct DrawHandle<'a, DS: DrawSharedImpl> {
     pub(crate) draw: DrawIface<'a, DS>,
@@ -327,7 +308,7 @@ where
             FrameStyle::NavFocus => {
                 let state = InputState::new_all(self.ev, id);
                 if let Some(col) = self.cols.nav_region(state) {
-                    let inner = outer.shrink(self.w.dims.inner_margin as f32);
+                    let inner = outer.shrink(self.w.dims.m_inner as f32);
                     self.draw.frame(outer, inner, col);
                 }
             }
@@ -350,7 +331,7 @@ where
 
     fn selection_box(&mut self, rect: Rect) {
         let inner = Quad::conv(rect);
-        let outer = inner.grow(self.w.dims.inner_margin.into());
+        let outer = inner.grow(self.w.dims.m_inner.into());
         // TODO: this should use its own colour and a stippled pattern
         let col = self.cols.text_sel_bg;
         self.draw.frame(outer, inner, col);
@@ -478,7 +459,7 @@ where
         let inner = self.button_frame(outer, col_frame, col_bg, state);
 
         if checked {
-            let inner = inner.shrink(self.w.dims.inner_margin as f32);
+            let inner = inner.shrink(self.w.dims.m_inner as f32);
             let col = self.cols.check_mark_state(state);
             self.draw.rect(inner, col);
         }

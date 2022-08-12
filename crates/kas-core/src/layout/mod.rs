@@ -15,8 +15,6 @@
 //!
 //! [`AxisInfo`], [`Margins`] and [`Stretch`] are auxilliary data types.
 //!
-//! [`MarginSelector`] is a utility type facilitating user-selection of margins.
-//!
 //! ## Layout engines
 //!
 //! The [`RulesSolver`] and [`RulesSetter`] traits define interfaces for

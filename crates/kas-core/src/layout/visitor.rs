@@ -8,14 +8,14 @@
 // Methods have to take `&mut self`
 #![allow(clippy::wrong_self_convention)]
 
-use super::{Align, AlignHints, AxisInfo, MarginSelector, SizeRules};
+use super::{Align, AlignHints, AxisInfo, SizeRules};
 use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
 use super::{RulesSetter, RulesSolver};
 use crate::draw::color::Rgb;
 use crate::event::ConfigMgr;
 use crate::geom::{Coord, Offset, Rect, Size};
-use crate::theme::{Background, DrawMgr, FrameStyle, SizeMgr};
+use crate::theme::{Background, DrawMgr, FrameStyle, MarginStyle, SizeMgr};
 use crate::WidgetId;
 use crate::{dir::Directional, dir::Directions, Layout, Widget};
 use std::iter::ExactSizeIterator;
@@ -46,7 +46,7 @@ enum LayoutType<'a> {
     /// Apply alignment hints to some sub-layout
     AlignLayout(Box<Visitor<'a>>, AlignHints),
     /// Replace (some) margins
-    Margins(Box<Visitor<'a>>, Directions, MarginSelector),
+    Margins(Box<Visitor<'a>>, Directions, MarginStyle),
     /// Frame around content
     Frame(Box<Visitor<'a>>, &'a mut FrameStorage, FrameStyle),
     /// Button frame around content
@@ -103,7 +103,7 @@ impl<'a> Visitor<'a> {
     }
 
     /// Replace the margins of a sub-layout
-    pub fn margins(layout: Self, dirs: Directions, margins: MarginSelector) -> Self {
+    pub fn margins(layout: Self, dirs: Directions, margins: MarginStyle) -> Self {
         let layout = LayoutType::Margins(Box::new(layout), dirs, margins);
         Visitor { layout }
     }
@@ -208,7 +208,7 @@ impl<'a> Visitor<'a> {
                 let mut child_rules = child.size_rules_(mgr.re(), axis);
                 if dirs.intersects(Directions::from(axis)) {
                     let mut rule_margins = child_rules.margins();
-                    let margins = margins.select(mgr).extract(axis);
+                    let margins = mgr.margins(*margins).extract(axis);
                     if dirs.intersects(Directions::LEFT | Directions::UP) {
                         rule_margins.0 = margins.0;
                     }

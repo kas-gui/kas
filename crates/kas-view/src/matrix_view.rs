@@ -428,7 +428,7 @@ impl_scope! {
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
-            let inner_margin = size_mgr.inner_margin().extract(axis);
+            let inner_margin = size_mgr.inner_margins().extract(axis);
             let frame = kas::layout::FrameRules::new(0, inner_margin, (0, 0));
 
             let other = axis.other().map(|mut size| {

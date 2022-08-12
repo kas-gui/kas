@@ -73,25 +73,17 @@ impl FlatTheme {
     }
 }
 
-const DIMS: dim::Parameters = dim::Parameters {
-    outer_margin: 7.0,
-    inner_margin: 1.2,
-    text_margin: (3.4, 0.8),
-    frame_size: 2.4,
-    popup_frame_size: 0.0,
-    menu_frame: 2.4,
-    // NOTE: visual thickness is (button_frame * scale_factor).round() * (1 - BG_SHRINK_FACTOR)
-    button_frame: 2.4,
-    button_inner: 0.0,
-    check_box_inner: 7.0,
-    mark: 8.0,
-    handle_len: 16.0,
-    scroll_bar_size: Vec2(24.0, 8.0),
-    slider_size: Vec2(24.0, 16.0),
-    progress_bar: Vec2(24.0, 8.0),
-    shadow_size: Vec2(4.0, 4.0),
-    shadow_rel_offset: Vec2(0.2, 0.3),
-};
+fn dimensions() -> dim::Parameters {
+    dim::Parameters {
+        // NOTE: visual thickness is (button_frame * scale_factor).round() * (1 - BG_SHRINK_FACTOR)
+        button_frame: 2.4,
+        button_inner: 0.0,
+        slider_size: Vec2(24.0, 18.0),
+        shadow_size: Vec2(4.0, 4.0),
+        shadow_rel_offset: Vec2(0.2, 0.3),
+        ..Default::default()
+    }
+}
 
 pub struct DrawHandle<'a, DS: DrawSharedImpl> {
     pub(crate) draw: DrawIface<'a, DS>,
@@ -126,11 +118,11 @@ where
 
     fn new_window(&self, dpi_factor: f32) -> Self::Window {
         let fonts = self.base.fonts.as_ref().unwrap().clone();
-        dim::Window::new(&DIMS, &self.base.config, dpi_factor, fonts)
+        dim::Window::new(&dimensions(), &self.base.config, dpi_factor, fonts)
     }
 
     fn update_window(&self, w: &mut Self::Window, dpi_factor: f32) {
-        w.update(&DIMS, &self.base.config, dpi_factor);
+        w.update(&dimensions(), &self.base.config, dpi_factor);
     }
 
     #[cfg(not(feature = "gat"))]
@@ -299,11 +291,11 @@ where
     ) {
         let anim_fade = 1.0 - self.w.anim.fade_bool(self.draw.draw, checked, last_change);
         if anim_fade < 1.0 {
-            let inner = inner.shrink(self.w.dims.inner_margin as f32);
+            let inner = inner.shrink(self.w.dims.m_inner as f32);
             let v = inner.size() * (anim_fade / 2.0);
             let inner = Quad::from_coords(inner.a + v, inner.b - v);
             let col = self.cols.check_mark_state(state);
-            let f = self.w.dims.frame as f32 * 0.5;
+            let f = self.w.dims.mark_line;
             if inner.size().min_comp() >= 2.0 * f {
                 let inner = inner.shrink(f);
                 let size = inner.size();
@@ -350,7 +342,7 @@ where
 
         if class == PassType::Overlay {
             shadow += offset.cast();
-            let inner = Quad::conv(inner_rect + offset).shrink(self.w.dims.frame as f32);
+            let inner = Quad::conv(inner_rect + offset).shrink(self.w.dims.menu_frame as f32);
             draw.rounded_frame_2col(shadow, inner, Rgba::BLACK, Rgba::TRANSPARENT);
         }
 
@@ -395,7 +387,7 @@ where
             FrameStyle::NavFocus => {
                 let state = InputState::new_all(self.ev, id);
                 if let Some(col) = self.cols.nav_region(state) {
-                    let inner = outer.shrink(self.w.dims.inner_margin as f32);
+                    let inner = outer.shrink(self.w.dims.m_inner as f32);
                     self.draw.rounded_frame(outer, inner, 0.0, col);
                 }
             }
@@ -464,7 +456,7 @@ where
         self.draw.circle(outer, r, col);
 
         if anim_fade < 1.0 {
-            let r = self.w.dims.button_frame + self.w.dims.inner_margin as i32;
+            let r = self.w.dims.button_frame + self.w.dims.m_inner as i32;
             let inner = outer.shrink(r as f32);
             let v = inner.size() * (anim_fade / 2.0);
             let inner = Quad::from_coords(inner.a + v, inner.b - v);

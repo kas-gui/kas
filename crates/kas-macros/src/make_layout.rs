@@ -35,6 +35,8 @@ mod kw {
     custom_keyword!(float);
     custom_keyword!(margins);
     custom_keyword!(non_navigable);
+    custom_keyword!(px);
+    custom_keyword!(em);
 }
 
 #[derive(Debug)]
@@ -290,18 +292,33 @@ impl Layout {
                 let _ = inner.parse::<Token![=]>()?;
             }
 
-            let ident = inner.parse::<Ident>()?;
-            let margins = match ident {
-                id if id == "none" => quote! { None },
-                id if id == "outer" => quote! { Outer },
-                id if id == "inner" => quote! { Inner },
-                id if id == "text" => quote! { Text },
-                _ => {
-                    return Err(Error::new(
-                        ident.span(),
-                        "expected one of: none, outer, inner, text",
-                    ))
+            let lookahead = inner.lookahead1();
+            let margins = if lookahead.peek(syn::LitFloat) {
+                let val = inner.parse::<syn::LitFloat>()?;
+                let digits = val.base10_digits();
+                match val.suffix() {
+                    "px" => quote! { Px(#digits) },
+                    "em" => quote! { Em(#digits) },
+                    _ => return Err(Error::new(val.span(), "expected suffix `px` or `em`")),
                 }
+            } else if lookahead.peek(Ident) {
+                let ident = inner.parse::<Ident>()?;
+                match ident {
+                    id if id == "none" => quote! { None },
+                    id if id == "inner" => quote! { Inner },
+                    id if id == "tiny" => quote! { Tiny },
+                    id if id == "small" => quote! { Small },
+                    id if id == "large" => quote! { Large },
+                    id if id == "text" => quote! { Text },
+                    _ => {
+                        return Err(Error::new(
+                            ident.span(),
+                            "expected one of: `none`, `inner`, `tiny`, `small`, `large`, `text` or a numeric value",
+                        ))
+                    }
+                }
+            } else {
+                return Err(lookahead.error());
             };
 
             let _ = input.parse::<Token![:]>()?;
@@ -755,7 +772,7 @@ impl Layout {
                 quote! { layout::Visitor::margins(
                     #inner,
                     ::kas::dir::Directions::from_bits(#dirs).unwrap(),
-                    layout::MarginSelector::#selector,
+                    ::kas::theme::MarginStyle::#selector,
                 ) }
             }
             Layout::Single(expr) => quote! {

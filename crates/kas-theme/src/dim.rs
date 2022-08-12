@@ -15,60 +15,83 @@ use kas::cast::traits::*;
 use kas::dir::Directional;
 use kas::geom::{Rect, Size, Vec2};
 use kas::layout::{AlignHints, AxisInfo, FrameRules, Margins, SizeRules, Stretch};
+use kas::macros::impl_scope;
 use kas::text::{fonts::FontId, Align, TextApi, TextApiExt};
-use kas::theme::{Feature, FrameStyle, MarkStyle, TextClass, ThemeSize};
+use kas::theme::{Feature, FrameStyle, MarginStyle, MarkStyle, TextClass, ThemeSize};
 
-/// Parameterisation of [`Dimensions`]
-///
-/// All dimensions are multiplied by the DPI factor, then rounded to the
-/// nearest integer. Example: `(2.0 * 1.25).round() = 3.0`.
-#[derive(Clone, Debug)]
-pub struct Parameters {
-    /// Space between elements
-    pub outer_margin: f32,
-    /// Margin inside a frame before contents
-    pub inner_margin: f32,
-    /// Margin between text elements (horiz, vert)
-    pub text_margin: (f32, f32),
-    /// Frame size
-    pub frame_size: f32,
-    /// Popup frame size
-    pub popup_frame_size: f32,
-    /// MenuEntry frame size (horiz, vert)
-    pub menu_frame: f32,
-    /// Button frame size (non-flat outer region)
-    pub button_frame: f32,
-    /// Button inner margin (also drawable)
-    pub button_inner: f32,
-    /// CheckBox inner size in Points
-    pub check_box_inner: f32,
-    /// Larger size of a mark in Points
-    pub mark: f32,
-    /// Length of a slider handle; minimum length of a scroll bar handle
-    pub handle_len: f32,
-    /// Minimum size for a horizontal scroll bar
-    pub scroll_bar_size: Vec2,
-    /// Minimum size for a horizontal slider
-    pub slider_size: Vec2,
-    /// Minimum size for a horizontal progress bar
-    pub progress_bar: Vec2,
-    /// Shadow size (average)
-    pub shadow_size: Vec2,
-    /// Proportional offset of shadow (range: -1..=1)
-    pub shadow_rel_offset: Vec2,
+impl_scope! {
+    /// Parameterisation of [`Dimensions`]
+    ///
+    /// All dimensions are multiplied by the DPI factor, then rounded to the
+    /// nearest integer. Example: `(2.0 * 1.25).round() = 3.0`.
+    ///
+    /// "Reasonable defaults" are provided for all values.
+    #[derive(Clone, Debug)]
+    #[impl_default]
+    pub struct Parameters {
+        /// Inner margin, used to draw highlight/selection boxes
+        ///
+        /// Guide size: 1px at 100%, 2px at 125%, 2px at 150%, 3px at 200%.
+        ///
+        /// This is the smallest of the fixed margin sizes, and only really
+        /// useful to reserve space for drawing selection boxes.
+        pub m_inner: f32 = 1.25,
+        /// A small margin for inner layout
+        ///
+        /// Guide size: 2px at 100%, 3px at 125%, 4px at 150%, 5px at 200%.
+        pub m_tiny: f32 = 2.4,
+        /// Small external margin size
+        ///
+        /// Guide size: 4px at 100%, 5px at 125%, 7px at 150%, 9px at 200%.
+        pub m_small: f32 = 4.35,
+        /// Large margin, used between elements such as buttons
+        ///
+        /// Guide size: 7px at 100%, 9px at 125%, 11px at 150%, 15px at 200%.
+        pub m_large: f32 = 7.4,
+        /// Margin around text elements (horiz, vert)
+        pub m_text: (f32, f32) = (3.3, 0.8),
+        /// Frame size
+        pub frame: f32 = 2.4,
+        /// Popup frame size
+        pub popup_frame: f32 = 0.0,
+        /// MenuEntry frame size (horiz, vert)
+        pub menu_frame: f32 = 2.4,
+        /// Button frame size (non-flat outer region)
+        pub button_frame: f32 = 2.4,
+        /// Button inner margin (also drawable)
+        pub button_inner: f32 = 0.0,
+        /// CheckBox size
+        pub check_box: f32 = 18.0,
+        /// Larger size of a mark
+        pub mark: f32 = 10.0,
+        /// Length of a slider handle; minimum length of a scroll bar handle
+        pub handle_len: f32 = 16.0,
+        /// Minimum size for a horizontal scroll bar
+        pub scroll_bar_size: Vec2 = Vec2(24.0, 8.0),
+        /// Minimum size for a horizontal slider
+        pub slider_size: Vec2 = Vec2(24.0, 12.0),
+        /// Minimum size for a horizontal progress bar
+        pub progress_bar: Vec2 = Vec2(24.0, 8.0),
+        /// Shadow size (average)
+        pub shadow_size: Vec2 = Vec2::ZERO,
+        /// Proportional offset of shadow (range: -1..=1)
+        pub shadow_rel_offset: Vec2 = Vec2::ZERO,
+    }
 }
 
 /// Dimensions available within [`Window`]
 #[derive(Clone, Debug)]
 pub struct Dimensions {
-    pub scale_factor: f32,
-    pub dpp: f32,
+    /// Scale factor
+    pub scale: f32,
     pub dpem: f32,
     pub mark_line: f32,
     pub min_line_length: i32,
-    pub outer_margin: u16,
-    pub inner_margin: u16,
-    pub text_margin: (u16, u16),
+    pub m_inner: u16,
+    pub m_tiny: u16,
+    pub m_small: u16,
+    pub m_large: u16,
+    pub m_text: (u16, u16),
     pub frame: i32,
     pub popup_frame: i32,
     pub menu_frame: i32,
@@ -85,42 +108,37 @@ pub struct Dimensions {
 }
 
 impl Dimensions {
-    pub fn new(params: &Parameters, pt_size: f32, scale_factor: f32) -> Self {
-        let dpp = scale_factor * (96.0 / 72.0);
+    pub fn new(params: &Parameters, pt_size: f32, scale: f32) -> Self {
+        let dpp = scale * (96.0 / 72.0);
         let dpem = dpp * pt_size;
 
-        let outer_margin = (params.outer_margin * scale_factor).cast_nearest();
-        let inner_margin = (params.inner_margin * scale_factor).cast_nearest();
-        let text_m0 = (params.text_margin.0 * scale_factor).cast_nearest();
-        let text_m1 = (params.text_margin.1 * scale_factor).cast_nearest();
-        let frame = (params.frame_size * scale_factor).cast_nearest();
-        let popup_frame = (params.popup_frame_size * scale_factor).cast_nearest();
-        let menu_frame = (params.menu_frame * scale_factor).cast_nearest();
+        let text_m0 = (params.m_text.0 * scale).cast_nearest();
+        let text_m1 = (params.m_text.1 * scale).cast_nearest();
 
-        let shadow_size = params.shadow_size * scale_factor;
+        let shadow_size = params.shadow_size * scale;
         let shadow_offset = shadow_size * params.shadow_rel_offset;
 
         Dimensions {
-            scale_factor,
-            dpp,
+            scale,
             dpem,
-            mark_line: (1.2 * dpp).round().max(1.0),
+            mark_line: (1.6 * scale).round().max(1.0),
             min_line_length: (8.0 * dpem).cast_nearest(),
-            outer_margin,
-            inner_margin,
-            text_margin: (text_m0, text_m1),
-            frame,
-            popup_frame,
-            menu_frame,
-            button_frame: (params.button_frame * scale_factor).cast_nearest(),
-            button_inner: (params.button_inner * scale_factor).cast_nearest(),
-            check_box: i32::conv_nearest(params.check_box_inner * dpp)
-                + 2 * (i32::from(inner_margin) + frame),
-            mark: i32::conv_nearest(params.mark * dpp),
-            handle_len: i32::conv_nearest(params.handle_len * dpp),
-            scroll_bar: Size::conv_nearest(params.scroll_bar_size * scale_factor),
-            slider: Size::conv_nearest(params.slider_size * scale_factor),
-            progress_bar: Size::conv_nearest(params.progress_bar * scale_factor),
+            m_inner: (params.m_inner * scale).cast_nearest(),
+            m_tiny: (params.m_tiny * scale).cast_nearest(),
+            m_small: (params.m_small * scale).cast_nearest(),
+            m_large: (params.m_large * scale).cast_nearest(),
+            m_text: (text_m0, text_m1),
+            frame: (params.frame * scale).cast_nearest(),
+            popup_frame: (params.popup_frame * scale).cast_nearest(),
+            menu_frame: (params.menu_frame * scale).cast_nearest(),
+            button_frame: (params.button_frame * scale).cast_nearest(),
+            button_inner: (params.button_inner * scale).cast_nearest(),
+            check_box: i32::conv_nearest(params.check_box * scale),
+            mark: i32::conv_nearest(params.mark * scale),
+            handle_len: i32::conv_nearest(params.handle_len * scale),
+            scroll_bar: Size::conv_nearest(params.scroll_bar_size * scale),
+            slider: Size::conv_nearest(params.slider_size * scale),
+            progress_bar: Size::conv_nearest(params.progress_bar * scale),
             shadow_a: shadow_offset - shadow_size,
             shadow_b: shadow_offset + shadow_size,
         }
@@ -138,18 +156,18 @@ impl<D> Window<D> {
     pub fn new(
         dims: &Parameters,
         config: &crate::Config,
-        scale_factor: f32,
+        scale: f32,
         fonts: Rc<LinearMap<TextClass, FontId>>,
     ) -> Self {
         Window {
-            dims: Dimensions::new(dims, config.font_size(), scale_factor),
+            dims: Dimensions::new(dims, config.font_size(), scale),
             fonts,
             anim: AnimState::new(config),
         }
     }
 
-    pub fn update(&mut self, dims: &Parameters, config: &crate::Config, scale_factor: f32) {
-        self.dims = Dimensions::new(dims, config.font_size(), scale_factor);
+    pub fn update(&mut self, dims: &Parameters, config: &crate::Config, scale: f32) {
+        self.dims = Dimensions::new(dims, config.font_size(), scale);
     }
 }
 
@@ -165,7 +183,7 @@ impl<D: 'static> crate::Window for Window<D> {
 
 impl<D: 'static> ThemeSize for Window<D> {
     fn scale_factor(&self) -> f32 {
-        self.dims.scale_factor
+        self.dims.scale
     }
 
     fn dpem(&self) -> f32 {
@@ -188,16 +206,17 @@ impl<D: 'static> ThemeSize for Window<D> {
         self.dims.scroll_bar.1
     }
 
-    fn inner_margin(&self) -> Margins {
-        Margins::splat(self.dims.inner_margin)
-    }
-
-    fn outer_margins(&self) -> Margins {
-        Margins::splat(self.dims.outer_margin)
-    }
-
-    fn text_margins(&self) -> Margins {
-        Margins::hv_splat(self.dims.text_margin)
+    fn margins(&self, style: MarginStyle) -> Margins {
+        match style {
+            MarginStyle::None => Margins::ZERO,
+            MarginStyle::Inner => Margins::splat(self.dims.m_inner),
+            MarginStyle::Tiny => Margins::splat(self.dims.m_tiny),
+            MarginStyle::Small => Margins::splat(self.dims.m_small),
+            MarginStyle::Large => Margins::splat(self.dims.m_large),
+            MarginStyle::Text => Margins::hv_splat(self.dims.m_text),
+            MarginStyle::Px(px) => Margins::splat(u16::conv_nearest(px * self.dims.scale)),
+            MarginStyle::Em(em) => Margins::splat(u16::conv_nearest(em * self.dims.dpem)),
+        }
     }
 
     fn feature(&self, feature: Feature, axis_is_vertical: bool) -> SizeRules {
@@ -215,10 +234,10 @@ impl<D: 'static> ThemeSize for Window<D> {
                     true => self.dims.mark / 2 + i32::conv_ceil(self.dims.mark_line),
                     false => self.dims.mark + i32::conv_ceil(self.dims.mark_line),
                 };
-                return SizeRules::fixed_splat(w, self.dims.outer_margin);
+                return SizeRules::fixed_splat(w, self.dims.m_tiny);
             }
             Feature::CheckBox | Feature::RadioBox => {
-                return SizeRules::fixed_splat(self.dims.check_box, self.dims.outer_margin);
+                return SizeRules::fixed_splat(self.dims.check_box, self.dims.m_small);
             }
             Feature::ScrollBar(dir) => {
                 dir_is_vertical = dir.is_vertical();
@@ -229,12 +248,12 @@ impl<D: 'static> ThemeSize for Window<D> {
                 dir_is_vertical = dir.is_vertical();
                 size = self.dims.slider;
                 ideal_mul = 5;
-                m = self.dims.outer_margin;
+                m = self.dims.m_large;
             }
             Feature::ProgressBar(dir) => {
                 dir_is_vertical = dir.is_vertical();
                 size = self.dims.progress_bar;
-                m = self.dims.outer_margin;
+                m = self.dims.m_large;
             }
         }
 
@@ -271,12 +290,12 @@ impl<D: 'static> ThemeSize for Window<D> {
     }
 
     fn frame(&self, style: FrameStyle, _is_vert: bool) -> FrameRules {
-        let outer = self.dims.outer_margin;
+        let outer = self.dims.m_large;
         match style {
             FrameStyle::Frame => FrameRules::new_sym(self.dims.frame, 0, outer),
             FrameStyle::Popup => FrameRules::new_sym(self.dims.popup_frame, 0, 0),
             FrameStyle::MenuEntry => FrameRules::new_sym(self.dims.menu_frame, 0, 0),
-            FrameStyle::NavFocus => FrameRules::new_sym(0, self.dims.inner_margin, 0),
+            FrameStyle::NavFocus => FrameRules::new_sym(0, self.dims.m_inner, 0),
             FrameStyle::Button => {
                 FrameRules::new_sym(self.dims.button_frame, self.dims.button_inner, outer)
             }
@@ -295,8 +314,8 @@ impl<D: 'static> ThemeSize for Window<D> {
 
     fn text_rules(&self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo) -> SizeRules {
         let margin = match axis.is_horizontal() {
-            true => self.dims.text_margin.0,
-            false => self.dims.text_margin.1,
+            true => self.dims.m_text.0,
+            false => self.dims.m_text.1,
         };
         let margins = (margin, margin);
 

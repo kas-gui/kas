@@ -62,24 +62,21 @@ impl ShadedTheme {
     }
 }
 
-const DIMS: dim::Parameters = dim::Parameters {
-    outer_margin: 5.0,
-    inner_margin: 1.2,
-    text_margin: (3.4, 0.8),
-    frame_size: 5.0,
-    popup_frame_size: 0.0,
-    menu_frame: 2.4,
-    button_frame: 2.0,
-    button_inner: 3.0,
-    check_box_inner: 9.0,
-    mark: 9.0,
-    handle_len: 8.0,
-    scroll_bar_size: Vec2(24.0, 8.0),
-    slider_size: Vec2(24.0, 12.0),
-    progress_bar: Vec2(24.0, 8.0),
-    shadow_size: Vec2::splat(6.0),
-    shadow_rel_offset: Vec2::ZERO,
-};
+fn dimensions() -> dim::Parameters {
+    dim::Parameters {
+        m_large: 5.0,
+        m_text: (3.4, 0.8),
+        frame: 5.0,
+        button_frame: 2.0,
+        button_inner: 3.0,
+        check_box: 24.0,
+        mark: 9.0,
+        handle_len: 8.0,
+        shadow_size: Vec2::splat(6.0),
+        shadow_rel_offset: Vec2::ZERO,
+        ..Default::default()
+    }
+}
 
 const NORMS_FRAME: (f32, f32) = (-0.7, 0.7);
 const NORMS_TRACK: (f32, f32) = (0.0, -0.7);
@@ -119,11 +116,11 @@ where
 
     fn new_window(&self, dpi_factor: f32) -> Self::Window {
         let fonts = self.base.fonts.as_ref().unwrap().clone();
-        dim::Window::new(&DIMS, &self.base.config, dpi_factor, fonts)
+        dim::Window::new(&dimensions(), &self.base.config, dpi_factor, fonts)
     }
 
     fn update_window(&self, w: &mut Self::Window, dpi_factor: f32) {
-        w.update(&DIMS, &self.base.config, dpi_factor);
+        w.update(&dimensions(), &self.base.config, dpi_factor);
     }
 
     #[cfg(not(feature = "gat"))]
@@ -321,7 +318,7 @@ where
                 self.draw.rect(inner, col_bg);
 
                 if let Some(col) = self.cols.nav_region(state) {
-                    let outer = outer.shrink(self.w.dims.inner_margin as f32);
+                    let outer = outer.shrink(self.w.dims.m_inner as f32);
                     self.draw.rounded_frame(outer, inner, 0.6, col);
                 }
             }
@@ -370,7 +367,7 @@ where
 
         let inner = self
             .draw_edit_box(rect, bg_col, state.nav_focus())
-            .shrink(self.w.dims.inner_margin as f32);
+            .shrink(self.w.dims.m_inner as f32);
 
         if anim_fade < 1.0 {
             let v = inner.size() * (anim_fade / 2.0);

@@ -9,7 +9,8 @@ use super::{Align, AlignHints, AxisInfo, SizeRules};
 use crate::cast::*;
 use crate::dir::Directional;
 use crate::geom::{Rect, Size, Vec2};
-use kas_macros::{impl_default, impl_scope};
+use crate::theme::MarginStyle;
+use kas_macros::impl_scope;
 
 // for doc use
 #[allow(unused)]
@@ -181,42 +182,6 @@ impl From<Size> for Margins {
     }
 }
 
-/// Margins (selectable)
-///
-/// Default value: [`MarginSelector::Outer`].
-#[impl_default(MarginSelector::Outer)]
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum MarginSelector {
-    /// No margins
-    None,
-    /// Use the theme's default around-widget margins
-    Outer,
-    /// Use the theme's default within-widget margins
-    Inner,
-    /// Use theme's default around-text margins
-    Text,
-    /// Use fixed margins
-    Fixed(Margins),
-    /// Use scaled margins (single value)
-    ScaledSplat(f32),
-}
-
-impl MarginSelector {
-    /// Convert to fixed [`Margins`]
-    pub fn select(&self, mgr: SizeMgr) -> Margins {
-        match self {
-            MarginSelector::None => Margins::ZERO,
-            MarginSelector::Outer => mgr.outer_margins(),
-            MarginSelector::Inner => mgr.inner_margin(),
-            MarginSelector::Text => mgr.text_margins(),
-            MarginSelector::Fixed(fixed) => *fixed,
-            MarginSelector::ScaledSplat(m) => {
-                Margins::splat(u16::conv_nearest(m * mgr.scale_factor()))
-            }
-        }
-    }
-}
-
 /// Priority for stretching widgets beyond ideal size
 ///
 /// Space is allocated based on priority, with extra space (beyond the minimum)
@@ -253,7 +218,7 @@ impl_scope! {
     #[derive(Clone, Debug, PartialEq)]
     pub struct PixmapScaling {
         /// Margins
-        pub margins: MarginSelector,
+        pub margins: MarginStyle,
         /// Display size
         ///
         /// This may be set by the providing type or by the user.
@@ -280,7 +245,7 @@ impl_scope! {
 impl PixmapScaling {
     /// Generates `size_rules` based on size
     pub fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-        let margins = self.margins.select(mgr.re()).extract(axis);
+        let margins = mgr.margins(self.margins).extract(axis);
         let scale_factor = mgr.scale_factor();
         let min = self
             .size
