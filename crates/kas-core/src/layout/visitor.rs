@@ -53,6 +53,24 @@ enum LayoutType<'a> {
     Button(Box<Visitor<'a>>, &'a mut FrameStorage, Option<Rgb>),
 }
 
+/* unused utility method:
+impl<'a> LayoutType<'a> {
+    fn id(&self) -> Option<WidgetId> {
+        use crate::WidgetExt;
+        match self {
+            LayoutType::None => None,
+            LayoutType::Component(_) => None,
+            LayoutType::BoxComponent(_) => None,
+            LayoutType::Single(w) => Some(w.id()),
+            LayoutType::AlignSingle(w, _) => Some(w.id()),
+            LayoutType::AlignLayout(l, _) => l.layout.id(),
+            LayoutType::Margins(l, _, _) => l.layout.id(),
+            LayoutType::Frame(l, _, _) => l.layout.id(),
+            LayoutType::Button(l, _, _) => l.layout.id(),
+        }
+    }
+}*/
+
 impl<'a> Default for Visitor<'a> {
     fn default() -> Self {
         Visitor::none()
