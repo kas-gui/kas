@@ -161,10 +161,7 @@ impl_scope! {
     #[widget {
         layout = frame(FrameStyle::EditBox): row: [
             self.edit,
-            column: [
-                margins(none): self.b_up,
-                margins(none): self.b_down,
-            ],
+            column: [self.b_up, self.b_down],
         ];
     }]
     pub struct Spinner<T: SpinnerValue> {
