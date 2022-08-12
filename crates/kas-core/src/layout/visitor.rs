@@ -496,17 +496,10 @@ impl FrameStorage {
         mgr: SizeMgr,
         axis: AxisInfo,
         child_rules: SizeRules,
-        mut style: FrameStyle,
+        style: FrameStyle,
     ) -> SizeRules {
         let frame_rules = mgr.frame(style, axis);
-        if axis.is_horizontal() && style == FrameStyle::MenuEntry {
-            style = FrameStyle::EditBox;
-        }
-        let (rules, offset, size) = match style {
-            FrameStyle::EditBox => frame_rules.surround_with_margin(child_rules),
-            FrameStyle::NavFocus => frame_rules.surround_as_margin(child_rules),
-            _ => frame_rules.surround_no_margin(child_rules),
-        };
+        let (rules, offset, size) = frame_rules.surround(child_rules);
         self.offset.set_component(axis, offset);
         self.size.set_component(axis, size);
         self.ideal_size.set_component(axis, rules.ideal_size());

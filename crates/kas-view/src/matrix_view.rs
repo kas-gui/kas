@@ -429,7 +429,7 @@ impl_scope! {
         fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
             let inner_margin = size_mgr.inner_margin().extract(axis);
-            let frame = kas::layout::FrameRules::new_sym(0, /*inner_margin,*/ 0);
+            let frame = kas::layout::FrameRules::new(0, inner_margin, (0, 0));
 
             let other = axis.other().map(|mut size| {
                 // Use same logic as in set_rect to find per-child size:
@@ -452,9 +452,9 @@ impl_scope! {
             }
 
             self.child_size_ideal.set_component(axis, rules.ideal_size());
-            let m = rules.margins_i32();
+            let m = rules.margins();
             self.child_inter_margin
-                .set_component(axis, (m.0 + m.1).max(inner_margin));
+                .set_component(axis, m.0.max(m.1).max(inner_margin.0).max(inner_margin.1).cast());
 
             let ideal_len = match axis.is_vertical() {
                 false => self.ideal_len.cols,
@@ -463,7 +463,7 @@ impl_scope! {
             rules.multiply_with_margin(2, ideal_len);
             rules.set_stretch(rules.stretch().max(Stretch::High));
 
-            let (rules, offset, size) = frame.surround_with_margin(rules);
+            let (rules, offset, size) = frame.surround(rules);
             self.frame_offset.set_component(axis, offset);
             self.frame_size.set_component(axis, size);
             rules

@@ -82,6 +82,7 @@ const DIMS: dim::Parameters = dim::Parameters {
     menu_frame: 2.4,
     // NOTE: visual thickness is (button_frame * scale_factor).round() * (1 - BG_SHRINK_FACTOR)
     button_frame: 2.4,
+    button_inner: 0.0,
     check_box_inner: 7.0,
     mark: 8.0,
     handle_len: 16.0,

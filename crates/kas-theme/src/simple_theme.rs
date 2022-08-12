@@ -87,6 +87,7 @@ const DIMS: dim::Parameters = dim::Parameters {
     popup_frame_size: 0.0,
     menu_frame: 2.4,
     button_frame: 2.4,
+    button_inner: 0.0,
     check_box_inner: 7.0,
     mark: 8.0,
     handle_len: 12.0,

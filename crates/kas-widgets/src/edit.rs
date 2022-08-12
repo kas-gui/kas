@@ -220,7 +220,7 @@ impl_scope! {
             }
 
             let frame_rules = mgr.frame(FrameStyle::EditBox, axis);
-            let (rules, offset, size) = frame_rules.surround_with_margin(rules);
+            let (rules, offset, size) = frame_rules.surround(rules);
             self.frame_offset.set_component(axis, offset);
             self.frame_size.set_component(axis, size);
             rules

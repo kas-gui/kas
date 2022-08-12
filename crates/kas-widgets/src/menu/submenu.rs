@@ -283,7 +283,7 @@ impl_scope! {
             let child_rules = SizeRules::EMPTY;
             let (_, _, frame_size_flipped) = mgr
                 .frame(FrameStyle::MenuEntry, axis.flipped())
-                .surround_no_margin(child_rules);
+                .surround(child_rules);
 
             let child_rules = |mgr: SizeMgr, w: &mut dyn Layout, mut axis: AxisInfo| {
                 if let Some(mut other) = axis.other() {
@@ -291,11 +291,7 @@ impl_scope! {
                     axis = AxisInfo::new(axis.is_vertical(), Some(other));
                 }
                 let rules = w.size_rules(mgr, axis);
-                if is_horiz {
-                    frame_rules.surround_as_margin(rules).0
-                } else {
-                    frame_rules.surround_no_margin(rules).0
-                }
+                frame_rules.surround(rules).0
             };
 
             for (row, child) in self.list.iter_mut().enumerate() {
@@ -352,11 +348,11 @@ impl_scope! {
             let (_, frame_x, frame_w) = mgr
                 .size_mgr()
                 .frame(FrameStyle::MenuEntry, Direction::Right)
-                .surround_no_margin(child_rules);
+                .surround(child_rules);
             let (_, frame_y, frame_h) = mgr
                 .size_mgr()
                 .frame(FrameStyle::MenuEntry, Direction::Down)
-                .surround_no_margin(child_rules);
+                .surround(child_rules);
             let frame_offset = Offset(frame_x, frame_y);
             let frame_size = Size(frame_w, frame_h);
             let subtract_frame = |mut rect: Rect| {

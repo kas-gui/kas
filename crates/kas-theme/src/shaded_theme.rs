@@ -69,7 +69,8 @@ const DIMS: dim::Parameters = dim::Parameters {
     frame_size: 5.0,
     popup_frame_size: 0.0,
     menu_frame: 2.4,
-    button_frame: 5.0,
+    button_frame: 2.0,
+    button_inner: 3.0,
     check_box_inner: 9.0,
     mark: 9.0,
     handle_len: 8.0,
@@ -311,7 +312,8 @@ where
             FrameStyle::Button => {
                 let state = InputState::new_all(self.ev, id);
                 let outer = Quad::conv(rect);
-                let inner = outer.shrink(self.w.dims.button_frame as f32);
+                let frame = self.w.dims.button_frame as f32 + self.w.dims.button_inner as f32;
+                let inner = outer.shrink(frame);
                 let col_bg = self.cols.from_bg(bg, state, true);
 
                 self.draw

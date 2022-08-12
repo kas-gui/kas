@@ -38,6 +38,8 @@ pub struct Parameters {
     pub menu_frame: f32,
     /// Button frame size (non-flat outer region)
     pub button_frame: f32,
+    /// Button inner margin (also drawable)
+    pub button_inner: f32,
     /// CheckBox inner size in Points
     pub check_box_inner: f32,
     /// Larger size of a mark in Points
@@ -71,6 +73,7 @@ pub struct Dimensions {
     pub popup_frame: i32,
     pub menu_frame: i32,
     pub button_frame: i32,
+    pub button_inner: u16,
     pub check_box: i32,
     pub mark: i32,
     pub handle_len: i32,
@@ -110,6 +113,7 @@ impl Dimensions {
             popup_frame,
             menu_frame,
             button_frame: (params.button_frame * scale_factor).cast_nearest(),
+            button_inner: (params.button_inner * scale_factor).cast_nearest(),
             check_box: i32::conv_nearest(params.check_box_inner * dpp)
                 + 2 * (i32::from(inner_margin) + frame),
             mark: i32::conv_nearest(params.mark * dpp),
@@ -184,8 +188,8 @@ impl<D: 'static> ThemeSize for Window<D> {
         self.dims.scroll_bar.1
     }
 
-    fn inner_margin(&self) -> Size {
-        Size::splat(self.dims.inner_margin.into())
+    fn inner_margin(&self) -> Margins {
+        Margins::splat(self.dims.inner_margin)
     }
 
     fn outer_margins(&self) -> Margins {
@@ -269,12 +273,14 @@ impl<D: 'static> ThemeSize for Window<D> {
     fn frame(&self, style: FrameStyle, _is_vert: bool) -> FrameRules {
         let outer = self.dims.outer_margin;
         match style {
-            FrameStyle::Frame => FrameRules::new_sym(self.dims.frame, outer),
-            FrameStyle::Popup => FrameRules::new_sym(self.dims.popup_frame, 0),
-            FrameStyle::MenuEntry => FrameRules::new_sym(self.dims.menu_frame, 0),
-            FrameStyle::NavFocus => FrameRules::new_sym(self.dims.inner_margin.into(), 0),
-            FrameStyle::Button => FrameRules::new_sym(self.dims.frame, outer),
-            FrameStyle::EditBox => FrameRules::new_sym(self.dims.frame, outer),
+            FrameStyle::Frame => FrameRules::new_sym(self.dims.frame, 0, outer),
+            FrameStyle::Popup => FrameRules::new_sym(self.dims.popup_frame, 0, 0),
+            FrameStyle::MenuEntry => FrameRules::new_sym(self.dims.menu_frame, 0, 0),
+            FrameStyle::NavFocus => FrameRules::new_sym(0, self.dims.inner_margin, 0),
+            FrameStyle::Button => {
+                FrameRules::new_sym(self.dims.button_frame, self.dims.button_inner, outer)
+            }
+            FrameStyle::EditBox => FrameRules::new_sym(self.dims.frame, 0, outer),
         }
     }
 

@@ -114,7 +114,7 @@ impl<'a> SizeMgr<'a> {
     ///
     /// Though inner margins are *usually* empty, they are sometimes drawn to,
     /// for example focus indicators.
-    pub fn inner_margin(&self) -> Size {
+    pub fn inner_margin(&self) -> Margins {
         self.0.inner_margin()
     }
 
@@ -201,7 +201,7 @@ pub trait ThemeSize {
     fn scroll_bar_width(&self) -> i32;
 
     /// The margin around content within a widget
-    fn inner_margin(&self) -> Size;
+    fn inner_margin(&self) -> Margins;
 
     /// The margin between UI elements, where desired
     fn outer_margins(&self) -> Margins;
