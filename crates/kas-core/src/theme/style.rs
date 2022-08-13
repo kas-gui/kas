@@ -6,6 +6,44 @@
 //! Theme style components
 
 use crate::dir::Direction;
+use crate::macros::impl_default;
+
+/// Margin size
+///
+/// Default value: [`MarginStyle::Large`].
+#[impl_default(MarginStyle::Large)]
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum MarginStyle {
+    /// No margins
+    None,
+    /// Inner margin, used to draw highlight/selection boxes
+    ///
+    /// Guide size: 1px at 100%, 2px at 125%, 2px at 150%, 3px at 200%.
+    ///
+    /// This is the smallest of the fixed margin sizes, and only really
+    /// useful to reserve space for drawing selection boxes.
+    Inner,
+    /// A small margin for inner layout
+    ///
+    /// Guide size: 2px at 100%, 3px at 125%, 4px at 150%, 5px at 200%.
+    Tiny,
+    /// Small external margin size
+    ///
+    /// Guide size: 4px at 100%, 5px at 125%, 7px at 150%, 9px at 200%.
+    Small,
+    /// Large margin, used between elements such as buttons
+    ///
+    /// Guide size: 7px at 100%, 9px at 125%, 11px at 150%, 15px at 200%.
+    Large,
+    /// Text margins
+    ///
+    /// Margins for use around standard text elements (may be asymmetric).
+    Text,
+    /// Specify in pixels (scaled)
+    Px(f32),
+    /// Specify in Em (font size)
+    Em(f32),
+}
 
 /// Style of marks
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
@@ -39,8 +77,6 @@ impl From<MarkStyle> for Feature {
 /// A "frame" is an element surrounding another element.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum FrameStyle {
-    /// An invisible frame which forces all margins to be interior
-    InnerMargin,
     /// A frame for grouping content
     Frame,
     /// A frame around pop-ups

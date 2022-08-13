@@ -7,7 +7,7 @@
 
 use std::ops::Deref;
 
-use super::{Feature, FrameStyle, TextClass};
+use super::{Feature, FrameStyle, MarginStyle, TextClass};
 use crate::dir::Directional;
 use crate::geom::{Rect, Size};
 use crate::layout::{AlignHints, AxisInfo, FrameRules, Margins, SizeRules};
@@ -110,27 +110,34 @@ impl<'a> SizeMgr<'a> {
         self.0.scroll_bar_width()
     }
 
-    /// The margin around content within a widget
-    ///
-    /// Though inner margins are *usually* empty, they are sometimes drawn to,
-    /// for example focus indicators.
-    pub fn inner_margin(&self) -> Size {
-        self.0.inner_margin()
+    /// Get margin size
+    pub fn margins(&self, style: MarginStyle) -> Margins {
+        self.0.margins(style)
     }
 
-    /// The margin between UI elements, where desired
-    ///
-    /// Widgets must not draw in outer margins.
-    pub fn outer_margins(&self) -> Margins {
-        self.0.outer_margins()
+    /// Get margins for [`MarginStyle::Inner`]
+    pub fn inner_margins(&self) -> Margins {
+        self.0.margins(MarginStyle::Inner)
     }
 
-    /// The margin around text elements
-    ///
-    /// Similar to [`Self::outer_margins`], but intended for things like text
-    /// labels which do not have a visible hard edge.
+    /// Get margins for [`MarginStyle::Tiny`]
+    pub fn tiny_margins(&self) -> Margins {
+        self.0.margins(MarginStyle::Tiny)
+    }
+
+    /// Get margins for [`MarginStyle::Small`]
+    pub fn small_margins(&self) -> Margins {
+        self.0.margins(MarginStyle::Small)
+    }
+
+    /// Get margins for [`MarginStyle::Large`]
+    pub fn large_margins(&self) -> Margins {
+        self.0.margins(MarginStyle::Large)
+    }
+
+    /// Get margins for [`MarginStyle::Text`]
     pub fn text_margins(&self) -> Margins {
-        self.0.text_margins()
+        self.0.margins(MarginStyle::Text)
     }
 
     /// Size rules for a feature
@@ -200,14 +207,8 @@ pub trait ThemeSize {
     /// The width of a vertical scroll bar
     fn scroll_bar_width(&self) -> i32;
 
-    /// The margin around content within a widget
-    fn inner_margin(&self) -> Size;
-
-    /// The margin between UI elements, where desired
-    fn outer_margins(&self) -> Margins;
-
-    /// The margin around text elements
-    fn text_margins(&self) -> Margins;
+    /// Get margin size
+    fn margins(&self, style: MarginStyle) -> Margins;
 
     /// Size rules for a feature
     fn feature(&self, feature: Feature, axis_is_vertical: bool) -> SizeRules;

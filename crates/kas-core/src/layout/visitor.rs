@@ -8,14 +8,14 @@
 // Methods have to take `&mut self`
 #![allow(clippy::wrong_self_convention)]
 
-use super::{Align, AlignHints, AxisInfo, MarginSelector, SizeRules};
+use super::{Align, AlignHints, AxisInfo, SizeRules};
 use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
 use super::{RulesSetter, RulesSolver};
 use crate::draw::color::Rgb;
 use crate::event::ConfigMgr;
 use crate::geom::{Coord, Offset, Rect, Size};
-use crate::theme::{Background, DrawMgr, FrameStyle, SizeMgr};
+use crate::theme::{Background, DrawMgr, FrameStyle, MarginStyle, SizeMgr};
 use crate::WidgetId;
 use crate::{dir::Directional, dir::Directions, Layout, Widget};
 use std::iter::ExactSizeIterator;
@@ -46,12 +46,30 @@ enum LayoutType<'a> {
     /// Apply alignment hints to some sub-layout
     AlignLayout(Box<Visitor<'a>>, AlignHints),
     /// Replace (some) margins
-    Margins(Box<Visitor<'a>>, Directions, MarginSelector),
+    Margins(Box<Visitor<'a>>, Directions, MarginStyle),
     /// Frame around content
     Frame(Box<Visitor<'a>>, &'a mut FrameStorage, FrameStyle),
     /// Button frame around content
     Button(Box<Visitor<'a>>, &'a mut FrameStorage, Option<Rgb>),
 }
+
+/* unused utility method:
+impl<'a> LayoutType<'a> {
+    fn id(&self) -> Option<WidgetId> {
+        use crate::WidgetExt;
+        match self {
+            LayoutType::None => None,
+            LayoutType::Component(_) => None,
+            LayoutType::BoxComponent(_) => None,
+            LayoutType::Single(w) => Some(w.id()),
+            LayoutType::AlignSingle(w, _) => Some(w.id()),
+            LayoutType::AlignLayout(l, _) => l.layout.id(),
+            LayoutType::Margins(l, _, _) => l.layout.id(),
+            LayoutType::Frame(l, _, _) => l.layout.id(),
+            LayoutType::Button(l, _, _) => l.layout.id(),
+        }
+    }
+}*/
 
 impl<'a> Default for Visitor<'a> {
     fn default() -> Self {
@@ -85,7 +103,7 @@ impl<'a> Visitor<'a> {
     }
 
     /// Replace the margins of a sub-layout
-    pub fn margins(layout: Self, dirs: Directions, margins: MarginSelector) -> Self {
+    pub fn margins(layout: Self, dirs: Directions, margins: MarginStyle) -> Self {
         let layout = LayoutType::Margins(Box::new(layout), dirs, margins);
         Visitor { layout }
     }
@@ -190,7 +208,7 @@ impl<'a> Visitor<'a> {
                 let mut child_rules = child.size_rules_(mgr.re(), axis);
                 if dirs.intersects(Directions::from(axis)) {
                     let mut rule_margins = child_rules.margins();
-                    let margins = margins.select(mgr).extract(axis);
+                    let margins = mgr.margins(*margins).extract(axis);
                     if dirs.intersects(Directions::LEFT | Directions::UP) {
                         rule_margins.0 = margins.0;
                     }
@@ -496,19 +514,10 @@ impl FrameStorage {
         mgr: SizeMgr,
         axis: AxisInfo,
         child_rules: SizeRules,
-        mut style: FrameStyle,
+        style: FrameStyle,
     ) -> SizeRules {
         let frame_rules = mgr.frame(style, axis);
-        if axis.is_horizontal() && style == FrameStyle::MenuEntry {
-            style = FrameStyle::InnerMargin;
-        }
-        let (rules, offset, size) = match style {
-            FrameStyle::InnerMargin | FrameStyle::EditBox => {
-                frame_rules.surround_with_margin(child_rules)
-            }
-            FrameStyle::NavFocus => frame_rules.surround_as_margin(child_rules),
-            _ => frame_rules.surround_no_margin(child_rules),
-        };
+        let (rules, offset, size) = frame_rules.surround(child_rules);
         self.offset.set_component(axis, offset);
         self.size.set_component(axis, size);
         self.ideal_size.set_component(axis, rules.ideal_size());

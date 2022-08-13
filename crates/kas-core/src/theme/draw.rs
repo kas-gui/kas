@@ -196,7 +196,7 @@ impl<'a> DrawMgr<'a> {
     ///
     /// This appears as a dashed box or similar around this `rect`. Note that
     /// the selection indicator is drawn *outside* of this rect, within a margin
-    /// of size `inner_margin` that is expected to be present around this box.
+    /// of size [`SizeMgr::inner_margins`] that is expected to be present around this box.
     pub fn selection_box(&mut self, rect: Rect) {
         self.h.selection_box(rect);
     }

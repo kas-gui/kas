@@ -9,7 +9,8 @@ use super::{Align, AlignHints, AxisInfo, SizeRules};
 use crate::cast::*;
 use crate::dir::Directional;
 use crate::geom::{Rect, Size, Vec2};
-use kas_macros::{impl_default, impl_scope};
+use crate::theme::MarginStyle;
+use kas_macros::impl_scope;
 
 // for doc use
 #[allow(unused)]
@@ -181,42 +182,6 @@ impl From<Size> for Margins {
     }
 }
 
-/// Margins (selectable)
-///
-/// Default value: [`MarginSelector::Outer`].
-#[impl_default(MarginSelector::Outer)]
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum MarginSelector {
-    /// No margins
-    None,
-    /// Use the theme's default around-widget margins
-    Outer,
-    /// Use the theme's default within-widget margins
-    Inner,
-    /// Use theme's default around-text margins
-    Text,
-    /// Use fixed margins
-    Fixed(Margins),
-    /// Use scaled margins (single value)
-    ScaledSplat(f32),
-}
-
-impl MarginSelector {
-    /// Convert to fixed [`Margins`]
-    pub fn select(&self, mgr: SizeMgr) -> Margins {
-        match self {
-            MarginSelector::None => Margins::ZERO,
-            MarginSelector::Outer => mgr.outer_margins(),
-            MarginSelector::Inner => Margins::from(mgr.inner_margin()),
-            MarginSelector::Text => mgr.text_margins(),
-            MarginSelector::Fixed(fixed) => *fixed,
-            MarginSelector::ScaledSplat(m) => {
-                Margins::splat(u16::conv_nearest(m * mgr.scale_factor()))
-            }
-        }
-    }
-}
-
 /// Priority for stretching widgets beyond ideal size
 ///
 /// Space is allocated based on priority, with extra space (beyond the minimum)
@@ -253,7 +218,7 @@ impl_scope! {
     #[derive(Clone, Debug, PartialEq)]
     pub struct PixmapScaling {
         /// Margins
-        pub margins: MarginSelector,
+        pub margins: MarginStyle,
         /// Display size
         ///
         /// This may be set by the providing type or by the user.
@@ -280,7 +245,7 @@ impl_scope! {
 impl PixmapScaling {
     /// Generates `size_rules` based on size
     pub fn size_rules(&mut self, mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-        let margins = self.margins.select(mgr.re()).extract(axis);
+        let margins = mgr.margins(self.margins).extract(axis);
         let scale_factor = mgr.scale_factor();
         let min = self
             .size
@@ -329,40 +294,40 @@ impl PixmapScaling {
 /// frame rules have a content offset and a minimum internal margin size.
 #[derive(Clone, Copy, Debug)]
 pub struct FrameRules {
-    offset: i32,
+    // (pre, post) pairs
     size: i32,
-    inner_margin: i32,
-    // (pre, post) margins
-    m: (u16, u16),
+    inner: (u16, u16),
+    outer: (u16, u16),
 }
 
 impl FrameRules {
-    /// Construct
+    pub const ZERO: Self = FrameRules::new_sym(0, 0, 0);
+
+    /// Construct new `FrameRules`
     ///
-    /// -   `first`: size of left or top edge
-    /// -   `second`: size of right or bottom edge
-    /// -   `inner_margin`: minimum size of inner margins
-    /// -   `outer_margins`: size of (left, right) or (top, bottom) outer margins
+    /// All parameters use pairs `(first, second)` where `first` is the top/left
+    /// component. Parameters `inner` and `outer` are inner and outer margin
+    /// sizes respectively while `size` is the frame size.
+    ///
+    /// If `size > 0` then internal margins are the maximum of `inner` and
+    /// content margin; generated rules have size
+    /// `content_size + size + inner_margin` and outer margin `outer`.
+    ///
+    /// If `size ≤ 0` then the generated rules are simply content rules but
+    /// with margins the maximum of `inner` and content margins; `outer` and
+    /// `size` are ignored (other than to enable this mode).
     #[inline]
-    pub fn new(first: i32, second: i32, inner_margin: i32, outer_margins: (u16, u16)) -> Self {
-        FrameRules {
-            offset: first,
-            size: first + second,
-            inner_margin,
-            m: outer_margins,
-        }
+    pub const fn new(size: i32, inner: (u16, u16), outer: (u16, u16)) -> Self {
+        FrameRules { size, inner, outer }
     }
 
     /// Construct (symmetric on axis)
     #[inline]
-    pub fn new_sym(size: i32, inner_margin: i32, outer_margin: u16) -> Self {
-        Self::new(size, size, inner_margin, (outer_margin, outer_margin))
+    pub const fn new_sym(size: i32, inner: u16, outer: u16) -> Self {
+        Self::new(size, (inner, inner), (outer, outer))
     }
 
     /// Generate rules for content surrounded by this frame
-    ///
-    /// The content's margins apply inside this frame. External margins come
-    /// from this type.
     ///
     /// Returns the tuple `(rules, offset, size)`:
     ///
@@ -370,59 +335,26 @@ impl FrameRules {
     /// -   the content `offset` within the allocated rect
     /// -   the size consumed by the frame and inner margins (thus the content's
     ///     size will be that allocated for this object minus this `size` value)
-    pub fn surround_with_margin(self, content: SizeRules) -> (SizeRules, i32, i32) {
-        let (m0, m1) = content.margins_i32();
-        let m0 = m0.max(self.inner_margin);
-        let m1 = m1.max(self.inner_margin);
-        let offset = self.offset + m0;
-        let size = self.size + m0 + m1;
+    pub fn surround(self, content: SizeRules) -> (SizeRules, i32, i32) {
+        if self.size > 0 {
+            let (m0, m1) = content.margins();
+            let m0 = m0.max(self.inner.0);
+            let m1 = m1.max(self.inner.1);
 
-        let rules = SizeRules::new(
-            content.min_size() + size,
-            content.ideal_size() + size,
-            self.m,
-            content.stretch(),
-        );
-        (rules, offset, size)
-    }
+            let offset = self.size + i32::conv(m0);
+            let size = offset + self.size + i32::conv(m1);
 
-    /// Variant: frame is content margin
-    ///
-    /// The content's margin is reduced by the size of the frame, with any
-    /// residual margin applying outside the frame (using the max of the
-    /// frame's own margin and the residual). In other respects,
-    /// this is the same as [`FrameRules::surround_with_margin`].
-    pub fn surround_as_margin(self, content: SizeRules) -> (SizeRules, i32, i32) {
-        let (m0, m1) = content.margins();
-        let offset = self.offset + self.inner_margin;
-        let m0 = u16::conv((i32::conv(m0) - offset).max(0));
-        let size = self.size + 2 * self.inner_margin;
-        let m1 = u16::conv((i32::conv(m1) + offset - size).max(0));
-        let margins = (self.m.0.max(m0), self.m.1.max(m1));
-
-        let rules = SizeRules::new(
-            content.min_size() + size,
-            content.ideal_size() + size,
-            margins,
-            content.stretch(),
-        );
-        (rules, offset, size)
-    }
-
-    /// Variant: frame replaces content margin
-    ///
-    /// The content's margin is ignored. In other respects,
-    /// this is the same as [`FrameRules::surround_with_margin`].
-    pub fn surround_no_margin(self, content: SizeRules) -> (SizeRules, i32, i32) {
-        let offset = self.offset + self.inner_margin;
-        let size = self.size + 2 * self.inner_margin;
-
-        let rules = SizeRules::new(
-            content.min_size() + size,
-            content.ideal_size() + size,
-            self.m,
-            content.stretch(),
-        );
-        (rules, offset, size)
+            let rules = SizeRules::new(
+                content.min_size() + size,
+                content.ideal_size() + size,
+                self.outer,
+                content.stretch(),
+            );
+            (rules, offset, size)
+        } else {
+            let mut rules = content;
+            rules.include_margins(self.inner);
+            (rules, 0, 0)
+        }
     }
 }

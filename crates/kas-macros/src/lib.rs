@@ -231,7 +231,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; Adds a frame of type _Expr_ around content, defaulting to `FrameStyle::Frame`.
 /// >
 /// > _Button_ :\
-/// > &nbsp;&nbsp; `button` ( `(` _Expr_ `)` ) ? _Storage_? `:` _Layout_\
+/// > &nbsp;&nbsp; `button` ( `(` _Expr_ `)` )? _Storage_? `:` _Layout_\
 /// > &nbsp;&nbsp; Adds a button frame (optionally with color _Expr_) around content.
 /// >
 /// > _Widget_ :\
@@ -241,6 +241,10 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > _Label_ :\
 /// > &nbsp;&nbsp; _StrLit_\
 /// > &nbsp;&nbsp; A string literal generates a label widget, e.g. "Hello world". This is an internal type without text wrapping.
+/// >
+/// > _Margins:\
+/// > &nbsp;&nbsp; `margins` `(` ( _MarginDirection_ `=` )? _MarginSpec_ `)` `:` _Layout_\
+/// > &nbsp;&nbsp; Replaces margins of a layout item.
 /// >
 /// > _NonNavigable_ :\
 /// > &nbsp;&nbsp; `non_navigable` `:` _Layout_ \
@@ -254,6 +258,14 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// >
 /// > _Direction_ :\
 /// > &nbsp;&nbsp; `left` | `right` | `up` | `down` | _Expr_
+/// >
+/// > _MarginDirection_ :\
+/// > &nbsp;&nbsp; `horiz` | `horizontal` | `vert` | `vertical` | `left` | `right` | `top` | `bottom`\
+/// > &nbsp;&nbsp; Restricts margin replacement to this axis / side.
+/// >
+/// > _MarginSpec_ :\
+/// > &nbsp;&nbsp; ( _LitFloat_ `px` ) | ( _LitFloat_ `em` ) | `none` | `inner` | `tiny` | `small` | `large` | `text`\
+/// > &nbsp;&nbsp; Margin size in pixels (scaled) or Em (font unit) or a set size (see `MarginStyle`).
 /// >
 /// > _GridCell_ :\
 /// > &nbsp;&nbsp; _CellRange_ `,` _CellRange_ `:` _Layout_\

@@ -83,7 +83,7 @@ impl_scope! {
             for (n, child) in self.widgets.iter_mut().enumerate() {
                 solver.for_child(&mut self.layout_store, n, |axis| {
                     let rules = child.size_rules(mgr.re(), axis);
-                    frame_rules.surround_as_margin(rules).0
+                    frame_rules.surround(rules).0
                 });
             }
             solver.finish(&mut self.layout_store)

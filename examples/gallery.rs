@@ -13,7 +13,7 @@ use kas::event::{Config, VirtualKeyCode as VK};
 use kas::model::SharedRc;
 use kas::prelude::*;
 use kas::resvg::Svg;
-use kas::theme::ThemeControl;
+use kas::theme::{MarginStyle, ThemeControl};
 use kas::view::{driver, SingleView};
 use kas::widgets::{menu::MenuEntry, *};
 
@@ -55,8 +55,10 @@ impl<T: SetDisabled> SetDisabled for TabStack<T> {
 fn widgets() -> Box<dyn SetDisabled> {
     // A real app might use async loading of resources here (Svg permits loading
     // from a data slice; DrawShared allows allocation from data slice).
-    let img_light = Svg::new(include_bytes!("../res/contrast-2-line.svg"));
-    let img_dark = Svg::new(include_bytes!("../res/contrast-2-fill.svg"));
+    let img_light = Svg::new(include_bytes!("../res/contrast-2-line.svg"))
+        .with_scaling(|scaling| scaling.margins = MarginStyle::Tiny);
+    let img_dark = Svg::new(include_bytes!("../res/contrast-2-fill.svg"))
+        .with_scaling(|scaling| scaling.margins = MarginStyle::Tiny);
     const SVG_WARNING: &'static [u8] = include_bytes!("../res/error-warning-line.svg");
     let img_rustacean = match Svg::new_path("res/rustacean-flat-happy.svg") {
         Ok(svg) => svg,
