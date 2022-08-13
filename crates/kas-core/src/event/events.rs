@@ -294,12 +294,18 @@ impl Event {
 
 /// Command input ([`Event::Command`])
 ///
-/// The exact command sent depends on the type of focus a widget has.
+/// `Command` events are mostly produced as a result of OS-specific keyboard
+/// bindings; for example,  [`Command::Copy`] is produced by pressing
+/// <kbd>Command+C</kbd> on MacOS or <kbd>Ctrl+C</kbd> on other platforms.
+/// See [`crate::event::config::Shortcuts`] for more on these bindings.
 ///
-/// Handling may depend on the state of the Shift key.
+/// A `Command` event does not necessarily come from keyboard input; for example
+/// some menu widgets send [`Command::Activate`] to trigger an entry as a result
+/// of mouse input.
 ///
-/// The exact mapping between the keyboard and these commands is OS-specific.
-/// In the future it should be customisable (see `shortcuts` module).
+/// *Most* `Command` entries represent an action (such as `Copy` or `FindNext`)
+/// but some represent an important key whose action may be context-dependent
+/// (e.g. `Escape`, `Space`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Command {
@@ -320,8 +326,8 @@ pub enum Command {
     /// Return / enter key
     ///
     /// This may insert a line-break or may activate something.
-    Return,
-    /// Space key
+    Enter,
+    /// Space bar key
     Space,
     /// Tab key
     ///
@@ -482,10 +488,10 @@ impl Command {
             Right => Command::Right,
             Down => Command::Down,
             Back => Command::DelBack,
-            Return => Command::Return,
+            Return => Command::Enter,
             NavigateForward => Command::NavNext,
             NavigateBackward => Command::NavPrev,
-            NumpadEnter => Command::Return,
+            NumpadEnter => Command::Enter,
             Tab => Command::Tab,
             Cut => Command::Cut,
             Copy => Command::Copy,
@@ -499,11 +505,11 @@ impl Command {
     /// This matches:
     ///
     /// -   [`Self::Activate`] — programmatic activation
-    /// -   [`Self::Return`] —  <kbd>Enter</kbd> and <kbd>Return</kbd> keys
+    /// -   [`Self::Enter`] —  <kbd>Enter</kbd> and <kbd>Return</kbd> keys
     /// -   [`Self::Space`] — <kbd>Space</kbd> key
     pub fn is_activate(self) -> bool {
         use Command::*;
-        matches!(self, Activate | Return | Space)
+        matches!(self, Activate | Enter | Space)
     }
 
     /// Convert to selection-focus command

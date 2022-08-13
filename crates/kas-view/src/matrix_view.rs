@@ -313,9 +313,24 @@ impl_scope! {
             let cols = self
                 .data
                 .col_iter_vec_from(solver.first_col, solver.col_len);
+            if cols.len() < solver.col_len {
+                log::warn!(
+                    "{}: data.col_iter_vec_from({}, {}) yielded insufficient items (possibly incorrect data.len())", self.identify(),
+                    solver.first_col,
+                    solver.col_len,
+                );
+            }
+
             let rows = self
                 .data
                 .row_iter_vec_from(solver.first_row, solver.row_len);
+            if rows.len() < solver.row_len {
+                log::warn!(
+                    "{}: data.row_iter_vec_from({}, {}) yielded insufficient items (possibly incorrect data.len())", self.identify(),
+                    solver.first_row,
+                    solver.row_len,
+                );
+            }
 
             let mut action = TkAction::empty();
             for (rn, row) in rows.iter().enumerate() {
@@ -690,7 +705,7 @@ impl_scope! {
                     }
                 }
                 Event::Command(cmd) => {
-                    if self.data.is_empty() || !self.widgets[0].widget.navigable() {
+                    if self.data.is_empty() {
                         return Response::Unused;
                     }
                     let (d_cols, d_rows) = self.data.len();
@@ -731,8 +746,10 @@ impl_scope! {
 
                         let index = solver.data_to_child(ci, ri);
                         #[cfg(debug_assertions)] {
-                            let rk = &self.data.row_iter_vec_from(ri, 1)[0];
-                            let ck = &self.data.col_iter_vec_from(ci, 1)[0];
+                            let rv = self.data.row_iter_vec_from(ri, 1);
+                            let rk = rv.get(0).expect("data row len > data.row_iter_vec len");
+                            let cv = self.data.col_iter_vec_from(ci, 1);
+                            let ck = cv.get(0).expect("data col len > data.col_iter_vec len");
                             let key = T::make_key(ck, rk);
                             assert_eq!(
                                 self.widgets[index].widget.id(),

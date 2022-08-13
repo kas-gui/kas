@@ -7,7 +7,7 @@
 
 use kas::draw::{ImageFormat, ImageHandle};
 use kas::geom::Size;
-use kas::layout::PixmapScaling;
+use kas::layout::{LogicalSize, PixmapScaling};
 use kas::prelude::*;
 use std::io::Result;
 use std::path::Path;

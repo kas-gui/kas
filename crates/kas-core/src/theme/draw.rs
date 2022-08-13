@@ -342,7 +342,7 @@ impl<'a> std::ops::BitOrAssign<TkAction> for DrawMgr<'a> {
 ///
 /// Most themes will not want to implement *everything*, but rather derive
 /// not-explicitly-implemented methods from a base theme. This may be achieved
-/// with the [`kas_macros::extends`] macro:
+/// with the [`kas::macros::extends`](crate::macros::extends) macro:
 /// ```ignore
 /// #[extends(ThemeDraw, base = self.base())]
 /// impl ThemeDraw {

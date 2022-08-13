@@ -15,23 +15,19 @@ pub use crate::class::*;
 #[doc(no_inline)]
 pub use crate::dir::{Direction, Directional};
 #[doc(no_inline)]
-pub use crate::draw::{DrawShared, ImageHandle};
-#[doc(no_inline)]
-pub use crate::event::{components, ConfigMgr, Event, EventMgr, EventState, Response};
+pub use crate::event::{ConfigMgr, Event, EventMgr, EventState, Response};
 #[doc(no_inline)]
 pub use crate::geom::{Coord, Offset, Rect, Size};
 #[doc(no_inline)]
-pub use crate::layout::{Align, AlignHints, AxisInfo, LogicalSize, Margins, SizeRules, Stretch};
+pub use crate::layout::{Align, AlignHints, AxisInfo, SizeRules, Stretch};
 #[doc(no_inline)]
-pub use crate::macros::*;
+pub use crate::macros::{autoimpl, impl_default, impl_scope, impl_singleton, widget, widget_index};
 #[doc(no_inline)]
 pub use crate::text::AccelString;
 #[doc(no_inline)]
 pub use crate::text::{EditableTextApi, Text, TextApi, TextApiExt};
 #[doc(no_inline)]
-pub use crate::theme::{DrawMgr, SizeMgr, ThemeControl};
-#[doc(no_inline)]
-pub use crate::CoreData;
+pub use crate::theme::{DrawMgr, SizeMgr};
 #[doc(no_inline)]
 pub use crate::TkAction;
 #[doc(no_inline)]

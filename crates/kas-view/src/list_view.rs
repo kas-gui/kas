@@ -343,14 +343,20 @@ impl_scope! {
         fn update_widgets(&mut self, mgr: &mut ConfigMgr) {
             let time = Instant::now();
             let solver = self.position_solver(mgr);
-
             let mut action = TkAction::empty();
-            for (i, key) in self
+
+            let keys = self
                 .data
-                .iter_vec_from(solver.first_data, solver.cur_len)
-                .into_iter()
-                .enumerate()
-            {
+                .iter_vec_from(solver.first_data, solver.cur_len);
+            if keys.len() < solver.cur_len {
+                log::warn!(
+                    "{}: data.iter_vec_from({}, {}) yielded insufficient items (possibly incorrect data.len())", self.identify(),
+                    solver.first_data,
+                    solver.cur_len,
+                );
+            }
+
+            for (i, key) in keys.into_iter().enumerate() {
                 let i = solver.first_data + i;
                 let id = self.data.make_id(self.id_ref(), &key);
                 let w = &mut self.widgets[i % solver.cur_len];
@@ -693,7 +699,7 @@ impl_scope! {
                 }
                 Event::Command(cmd) => {
                     let last = self.data.len().wrapping_sub(1);
-                    if last == usize::MAX || !self.widgets[0].widget.navigable() {
+                    if last == usize::MAX {
                         return Response::Unused;
                     }
 

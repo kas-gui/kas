@@ -111,12 +111,13 @@ impl<T: SpinnerValue> SpinnerGuard<T> {
 }
 
 impl<T: SpinnerValue> EditGuard for SpinnerGuard<T> {
-    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+    fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
         if edit.has_error() {
             *mgr |= edit.set_string(edit.guard.value.to_string());
             edit.set_error_state(false);
         }
         mgr.push_msg(ValueMsg(edit.guard.value));
+        Response::Used
     }
 
     fn focus_lost(edit: &mut EditField<Self>, mgr: &mut EventMgr) {

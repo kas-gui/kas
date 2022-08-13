@@ -13,6 +13,7 @@ use kas::event::{Config, VirtualKeyCode as VK};
 use kas::model::SharedRc;
 use kas::prelude::*;
 use kas::resvg::Svg;
+use kas::theme::ThemeControl;
 use kas::view::{driver, SingleView};
 use kas::widgets::{menu::MenuEntry, *};
 
@@ -68,8 +69,9 @@ fn widgets() -> Box<dyn SetDisabled> {
     #[derive(Debug)]
     struct Guard;
     impl EditGuard for Guard {
-        fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
+        fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
             mgr.push_msg(Item::Edit(edit.get_string()));
+            Response::Used
         }
 
         fn edit(edit: &mut EditField<Self>, _: &mut EventMgr) {
