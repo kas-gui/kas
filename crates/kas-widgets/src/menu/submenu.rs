@@ -286,10 +286,7 @@ impl_scope! {
                 .surround(child_rules);
 
             let child_rules = |mgr: SizeMgr, w: &mut dyn Layout, mut axis: AxisInfo| {
-                if let Some(mut other) = axis.other() {
-                    other -= frame_size_flipped;
-                    axis = AxisInfo::new(axis.is_vertical(), Some(other));
-                }
+                axis.sub_other(frame_size_flipped);
                 let rules = w.size_rules(mgr, axis);
                 frame_rules.surround(rules).0
             };

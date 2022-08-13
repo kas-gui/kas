@@ -497,10 +497,7 @@ pub struct FrameStorage {
 impl FrameStorage {
     /// Calculate child's "other axis" size
     pub fn child_axis(&self, mut axis: AxisInfo) -> AxisInfo {
-        if let Some(mut other) = axis.other() {
-            other -= self.size.extract(axis.flipped());
-            axis = AxisInfo::new(axis.is_vertical(), Some(other));
-        }
+        axis.sub_other(self.size.extract(axis.flipped()));
         axis
     }
 

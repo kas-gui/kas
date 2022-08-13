@@ -351,6 +351,8 @@ impl_scope! {
                                 mgr.size_mgr(),
                                 Some(self.child_size.0),
                                 Some(self.child_size.1),
+                                self.align_hints.horiz,
+                                self.align_hints.vert,
                             );
                         } else {
                             w.key = None; // disables drawing and clicking
@@ -440,7 +442,7 @@ impl_scope! {
                     .min(self.child_size_ideal.extract(other_axis))
                     .max(self.child_size_min.extract(other_axis))
             });
-            axis = AxisInfo::new(axis.is_vertical(), other);
+            axis = AxisInfo::new(axis.is_vertical(), other, axis.align());
 
             let mut rules = self.default_widget.size_rules(size_mgr.re(), axis);
             self.child_size_min.set_component(axis, rules.min_size());

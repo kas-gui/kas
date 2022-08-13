@@ -91,10 +91,7 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
-            if let Some(mut other) = axis.other() {
-                other -= self.frame_size.extract(axis.flipped());
-                axis = AxisInfo::new(axis.is_vertical(), Some(other));
-            }
+            axis.sub_other(self.frame_size.extract(axis.flipped()));
 
             let mut rules = self.inner.size_rules(size_mgr.re(), axis);
             self.min_child_size.set_component(axis, rules.min_size());
