@@ -219,7 +219,7 @@ pub fn impl_scope(input: TokenStream) -> TokenStream {
 /// > &nbsp;&nbsp; A two-dimensional layout, supporting cell spans, defined via a list of cells (see _GridCell_ below).
 ///
 /// > _Float_ :\
-/// > &nbsp;&nbsp; _float_ `:` `[` ( _Layout_ `,`? ) * `]`\
+/// > &nbsp;&nbsp; `float` `:` `[` ( _Layout_ `,`? ) * `]`\
 /// > &nbsp;&nbsp; A stack of overlapping elements, top-most first.
 ///
 /// > _Align_ :\

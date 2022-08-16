@@ -695,28 +695,22 @@ impl Layout {
             Layout::AlignSingle(..) | Layout::Margins(..) | Layout::Single(_) => (),
             Layout::Widget(stor, expr) => {
                 children.push(stor.to_token_stream());
-                stor.to_tokens(ty_toks);
-                ty_toks.append_all(quote! { : Box<dyn ::kas::Widget>, });
-                stor.to_tokens(def_toks);
-                def_toks.append_all(quote! { : Box::new(#expr), });
+                ty_toks.append_all(quote! { #stor: Box<dyn ::kas::Widget>, });
+                def_toks.append_all(quote! { #stor: Box::new(#expr), });
             }
             Layout::Frame(stor, layout, _) | Layout::Button(stor, layout, _) => {
-                stor.to_tokens(ty_toks);
-                ty_toks.append_all(quote! { : ::kas::layout::FrameStorage, });
-                stor.to_tokens(def_toks);
-                def_toks.append_all(quote! { : Default::default(), });
+                ty_toks.append_all(quote! { #stor: ::kas::layout::FrameStorage, });
+                def_toks.append_all(quote! { #stor: Default::default(), });
                 layout.append_fields(ty_toks, def_toks, children);
             }
             Layout::List(stor, _, vec) => {
-                stor.to_tokens(ty_toks);
-                stor.to_tokens(def_toks);
-                def_toks.append_all(quote! { : Default::default(), });
+                def_toks.append_all(quote! { #stor: Default::default(), });
 
                 let len = vec.len();
                 ty_toks.append_all(if len > 16 {
-                    quote! { : ::kas::layout::DynRowStorage, }
+                    quote! { #stor: ::kas::layout::DynRowStorage, }
                 } else {
-                    quote! { : ::kas::layout::FixedRowStorage<#len>, }
+                    quote! { #stor: ::kas::layout::FixedRowStorage<#len>, }
                 });
                 for item in vec {
                     item.append_fields(ty_toks, def_toks, children);
@@ -728,17 +722,14 @@ impl Layout {
                 }
             }
             Layout::Slice(stor, _, _) => {
-                stor.to_tokens(ty_toks);
-                ty_toks.append_all(quote! { : ::kas::layout::DynRowStorage, });
-                stor.to_tokens(def_toks);
-                def_toks.append_all(quote! { : Default::default(), });
+                ty_toks.append_all(quote! { #stor: ::kas::layout::DynRowStorage, });
+                def_toks.append_all(quote! { #stor: Default::default(), });
             }
             Layout::Grid(stor, dim, cells) => {
                 let (cols, rows) = (dim.cols as usize, dim.rows as usize);
-                stor.to_tokens(ty_toks);
-                ty_toks.append_all(quote! { : ::kas::layout::FixedGridStorage<#cols, #rows>, });
-                stor.to_tokens(def_toks);
-                def_toks.append_all(quote! { : Default::default(), });
+                ty_toks
+                    .append_all(quote! { #stor: ::kas::layout::FixedGridStorage<#cols, #rows>, });
+                def_toks.append_all(quote! { #stor: Default::default(), });
 
                 for (_info, layout) in cells {
                     layout.append_fields(ty_toks, def_toks, children);
@@ -746,10 +737,8 @@ impl Layout {
             }
             Layout::Label(stor, text) => {
                 children.push(stor.to_token_stream());
-                stor.to_tokens(ty_toks);
-                ty_toks.append_all(quote! { : ::kas::label::StrLabel, });
-                stor.to_tokens(def_toks);
-                def_toks.append_all(quote! { : ::kas::label::StrLabel::new(#text), });
+                ty_toks.append_all(quote! { #stor: ::kas::label::StrLabel, });
+                def_toks.append_all(quote! { #stor: ::kas::label::StrLabel::new(#text), });
             }
         }
     }
