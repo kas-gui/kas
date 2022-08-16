@@ -10,7 +10,7 @@ use std::ops::Deref;
 use super::{Feature, FrameStyle, MarginStyle, TextClass};
 use crate::dir::Directional;
 use crate::geom::{Rect, Size};
-use crate::layout::{AlignHints, AlignPair, AxisInfo, FrameRules, Margins, SizeRules};
+use crate::layout::{AlignPair, AxisInfo, FrameRules, Margins, SizeRules};
 use crate::macros::autoimpl;
 use crate::text::TextApi;
 
@@ -221,7 +221,7 @@ pub trait ThemeSize {
     ///
     /// In case the input `rect` is larger than desired on either axis, it is
     /// reduced in size and offset within the original `rect` as is preferred.
-    fn align_feature(&self, feature: Feature, rect: Rect, hints: AlignHints) -> Rect;
+    fn align_feature(&self, feature: Feature, rect: Rect, align: AlignPair) -> Rect;
 
     /// Size of a frame around another element
     fn frame(&self, style: FrameStyle, axis_is_vertical: bool) -> FrameRules;

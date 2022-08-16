@@ -32,6 +32,7 @@ impl_scope! {
     #[widget]
     pub struct ScrollBar<D: Directional> {
         core: widget_core!(),
+        align: AlignPair,
         direction: D,
         // Terminology assumes vertical orientation:
         min_handle_len: i32,
@@ -63,6 +64,7 @@ impl_scope! {
         pub fn new_with_direction(direction: D) -> Self {
             ScrollBar {
                 core: Default::default(),
+                align: Default::default(),
                 direction,
                 min_handle_len: 0,
                 handle_len: 0,
@@ -251,11 +253,15 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            self.align.set_component(axis, match axis.is_vertical() == self.direction.is_vertical() {
+                false => axis.align_or_center(),
+                true => axis.align_or_stretch(),
+            });
             size_mgr.feature(Feature::ScrollBar(self.direction()), axis)
         }
 
         fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
-            let rect = mgr.align_feature(Feature::ScrollBar(self.direction()), rect, align);
+            let rect = mgr.align_feature(Feature::ScrollBar(self.direction()), rect, self.align);
             self.core.rect = rect;
             self.handle.set_rect(mgr, rect, align);
             self.min_handle_len = mgr.size_mgr().handle_len();

@@ -23,6 +23,7 @@ impl_scope! {
     }]
     pub struct CheckBox {
         core: widget_core!(),
+        align: AlignPair,
         state: bool,
         editable: bool,
         last_change: Option<Instant>,
@@ -31,11 +32,12 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            self.align.set_component(axis, axis.align_or_center());
             size_mgr.feature(Feature::CheckBox, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
-            let rect = mgr.align_feature(Feature::CheckBox, rect, align);
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, _: AlignHints) {
+            let rect = mgr.align_feature(Feature::CheckBox, rect, self.align);
             self.core.rect = rect;
         }
 
@@ -50,6 +52,7 @@ impl_scope! {
         pub fn new() -> Self {
             CheckBox {
                 core: Default::default(),
+                align: Default::default(),
                 state: false,
                 editable: true,
                 last_change: None,
@@ -68,6 +71,7 @@ impl_scope! {
         {
             CheckBox {
                 core: self.core,
+                align: self.align,
                 state: self.state,
                 editable: self.editable,
                 last_change: self.last_change,

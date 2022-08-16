@@ -9,7 +9,7 @@ use super::Pending;
 use crate::draw::DrawShared;
 use crate::event::EventState;
 use crate::geom::{Rect, Size};
-use crate::layout::{AlignHints, AlignPair};
+use crate::layout::AlignPair;
 use crate::text::TextApi;
 use crate::theme::{Feature, SizeMgr, TextClass, ThemeSize};
 use crate::{TkAction, Widget, WidgetExt, WidgetId};
@@ -103,8 +103,8 @@ impl<'a> ConfigMgr<'a> {
     /// In case the input `rect` is larger than desired on either axis, it is
     /// reduced in size and offset within the original `rect` as is preferred.
     #[inline]
-    pub fn align_feature(&self, feature: Feature, rect: Rect, hints: AlignHints) -> Rect {
-        self.sh.align_feature(feature, rect, hints)
+    pub fn align_feature(&self, feature: Feature, rect: Rect, align: AlignPair) -> Rect {
+        self.sh.align_feature(feature, rect, align)
     }
 
     /// Prepare a text object
