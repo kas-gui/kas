@@ -505,6 +505,7 @@ impl_scope! {
         view_offset: Offset,
         editable: bool,
         class: TextClass = TextClass::Edit(false),
+        align: AlignPair,
         width: (f32, f32) = (8.0, 16.0),
         lines: (i32, i32) = (1, 1),
         text: Text<String>,
@@ -530,24 +531,18 @@ impl_scope! {
                 (self.lines.0 * height, self.lines.1 * height)
             };
             let margins = size_mgr.text_margins().extract(axis);
-            let stretch = if axis.is_horizontal() || self.multi_line() {
-                Stretch::High
+            let (stretch, align) = if axis.is_horizontal() || self.multi_line() {
+                (Stretch::High, axis.align_or_default())
             } else {
-                Stretch::None
+                (Stretch::None, axis.align_or_center())
             };
+            self.align.set_component(axis, align);
             SizeRules::new(min, ideal, margins, stretch)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
-            let valign = if self.multi_line() {
-                Align::Default
-            } else {
-                Align::Center
-            };
-
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, _: AlignHints) {
             self.core.rect = rect;
-            let align = align.unwrap_or(Align::Default, valign);
-            mgr.text_set_size(&mut self.text, self.class, rect.size, Some(align.into()));
+            mgr.text_set_size(&mut self.text, self.class, rect.size, Some(self.align));
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             self.view_offset = self.view_offset.min(self.max_scroll_offset());
         }
@@ -760,6 +755,7 @@ impl EditField<()> {
             view_offset: self.view_offset,
             editable: self.editable,
             class: self.class,
+            align: self.align,
             width: self.width,
             lines: self.lines,
             text: self.text,
