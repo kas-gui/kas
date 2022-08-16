@@ -63,15 +63,16 @@ impl<S: RowStorage> RulesSolver for RowSolver<S> {
     fn for_child<CR: FnOnce(AxisInfo) -> SizeRules>(
         &mut self,
         storage: &mut Self::Storage,
-        child_info: Self::ChildInfo,
+        index: Self::ChildInfo,
         child_rules: CR,
     ) {
         if self.axis.has_fixed && self.axis_is_vertical {
-            self.axis.other_axis = storage.widths()[child_info];
+            self.axis.other_axis = storage.widths()[index];
         }
         let child_rules = child_rules(self.axis);
+
         if !self.axis_is_vertical {
-            storage.rules()[child_info] = child_rules;
+            storage.rules()[index] = child_rules;
             if let Some(rules) = self.rules {
                 if self.axis_is_reversed {
                     self.rules = Some(child_rules.appended(rules));

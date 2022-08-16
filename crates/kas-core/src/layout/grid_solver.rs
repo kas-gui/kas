@@ -137,41 +137,41 @@ where
     fn for_child<CR: FnOnce(AxisInfo) -> SizeRules>(
         &mut self,
         storage: &mut Self::Storage,
-        child_info: Self::ChildInfo,
+        info: Self::ChildInfo,
         child_rules: CR,
     ) {
         if self.axis.has_fixed {
             if self.axis.is_horizontal() {
-                self.axis.other_axis = ((child_info.row + 1)..child_info.row_end)
-                    .fold(storage.heights()[usize::conv(child_info.row)], |h, i| {
+                self.axis.other_axis = ((info.row + 1)..info.row_end)
+                    .fold(storage.heights()[usize::conv(info.row)], |h, i| {
                         h + storage.heights()[usize::conv(i)]
                     });
             } else {
-                self.axis.other_axis = ((child_info.col + 1)..child_info.col_end)
-                    .fold(storage.widths()[usize::conv(child_info.col)], |w, i| {
+                self.axis.other_axis = ((info.col + 1)..info.col_end)
+                    .fold(storage.widths()[usize::conv(info.col)], |w, i| {
                         w + storage.widths()[usize::conv(i)]
                     });
             }
         }
         let child_rules = child_rules(self.axis);
         if self.axis.is_horizontal() {
-            if child_info.col_end > child_info.col + 1 {
+            if info.col_end > info.col + 1 {
                 let span = &mut self.col_spans.as_mut()[self.next_col_span];
                 span.0.max_with(child_rules);
-                span.1 = child_info.col;
-                span.2 = child_info.col_end;
+                span.1 = info.col;
+                span.2 = info.col_end;
                 self.next_col_span += 1;
             } else {
-                storage.width_rules()[usize::conv(child_info.col)].max_with(child_rules);
+                storage.width_rules()[usize::conv(info.col)].max_with(child_rules);
             }
-        } else if child_info.row_end > child_info.row + 1 {
+        } else if info.row_end > info.row + 1 {
             let span = &mut self.row_spans.as_mut()[self.next_row_span];
             span.0.max_with(child_rules);
-            span.1 = child_info.row;
-            span.2 = child_info.row_end;
+            span.1 = info.row;
+            span.2 = info.row_end;
             self.next_row_span += 1;
         } else {
-            storage.height_rules()[usize::conv(child_info.row)].max_with(child_rules);
+            storage.height_rules()[usize::conv(info.row)].max_with(child_rules);
         };
     }
 
@@ -364,7 +364,7 @@ impl<CT: RowTemp, RT: RowTemp, S: GridStorage> RulesSetter for GridSetter<CT, RT
         Rect { pos, size }
     }
 
-    fn maximal_rect_of(&mut self, _storage: &mut Self::Storage, _index: Self::ChildInfo) -> Rect {
+    fn maximal_rect_of(&mut self, _: &mut Self::Storage, _: Self::ChildInfo) -> Rect {
         unimplemented!()
     }
 }
