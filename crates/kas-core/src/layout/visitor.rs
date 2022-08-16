@@ -8,7 +8,7 @@
 // Methods have to take `&mut self`
 #![allow(clippy::wrong_self_convention)]
 
-use super::{Align, AlignHints, AxisInfo, SizeRules};
+use super::{AlignHints, AxisInfo, SizeRules};
 use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
 use super::{RulesSetter, RulesSolver};
@@ -237,7 +237,7 @@ impl<'a> Visitor<'a> {
     pub fn set_rect(mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) -> Rect {
         self.set_rect_(mgr, rect, align)
     }
-    fn set_rect_(&mut self, mgr: &mut ConfigMgr, mut rect: Rect, align: AlignHints) -> Rect {
+    fn set_rect_(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) -> Rect {
         match &mut self.layout {
             LayoutType::None => (),
             LayoutType::Component(component) => component.set_rect(mgr, rect, align),
@@ -261,9 +261,6 @@ impl<'a> Visitor<'a> {
                 child.set_rect_(mgr, child_rect, align);
             }
             LayoutType::Button(child, storage, _) => {
-                rect = align
-                    .complete(Align::Stretch, Align::Stretch)
-                    .aligned_rect(storage.ideal_size, rect);
                 storage.rect = rect;
                 let child_rect = Rect {
                     pos: rect.pos + storage.offset,
@@ -492,7 +489,6 @@ pub struct FrameStorage {
     pub size: Size,
     /// Offset of frame contents from parent position
     pub offset: Offset,
-    ideal_size: Size,
     // NOTE: potentially rect is redundant (e.g. with widget's rect) but if we
     // want an alternative as a generic solution then all draw methods must
     // calculate and pass the child's rect, which is probably worse.
@@ -520,7 +516,6 @@ impl FrameStorage {
         let (rules, offset, size) = frame_rules.surround(child_rules);
         self.offset.set_component(axis, offset);
         self.size.set_component(axis, size);
-        self.ideal_size.set_component(axis, rules.ideal_size());
         rules
     }
 }
