@@ -268,6 +268,8 @@ impl Conv<Coord> for kas_text::Vec2 {
 /// and implementations of subtraction will check this, but only in debug mode
 /// (similar to overflow checks on integers).
 ///
+/// Subtraction is defined to be saturating subtraction.
+///
 /// This may be converted to [`Offset`] with `from` / `into`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -292,14 +294,6 @@ impl Size {
     pub fn splat(n: i32) -> Self {
         debug_assert!(n >= 0, "Size::splat({}): negative value", n);
         Self(n, n)
-    }
-
-    /// Subtraction, clamping the result to 0 or greater
-    #[inline]
-    #[must_use = "method does not modify self but returns a new value"]
-    pub fn clamped_sub(self, rhs: Self) -> Self {
-        // This impl should aid vectorisation. We avoid Sub impl because of its check.
-        Size(self.0 - rhs.0, self.1 - rhs.1).max(Size::ZERO)
     }
 
     /// Scale to fit within the target size, keeping aspect ratio
@@ -338,31 +332,23 @@ impl std::ops::AddAssign for Size {
 
 /// Subtract a `Size` from a `Size`
 ///
-/// In debug mode this asserts that the result is non-negative.
+/// This is saturating subtraction: `Size::ZERO - Size::splat(6) == Size::ZERO`.
 impl std::ops::Sub for Size {
     type Output = Self;
 
     #[inline]
     fn sub(self, rhs: Self) -> Self {
-        debug_assert!(
-            self.0 >= rhs.0 && self.1 >= rhs.1,
-            "Size::sub: expected lhs >= rhs"
-        );
-        Self(self.0 - rhs.0, self.1 - rhs.1)
+        // This impl should aid vectorisation.
+        Size(self.0 - rhs.0, self.1 - rhs.1).max(Size::ZERO)
     }
 }
 /// Subtract a `Size` from a `Size`
 ///
-/// In debug mode this asserts that the result is non-negative.
+/// This is saturating subtraction.
 impl std::ops::SubAssign for Size {
     #[inline]
     fn sub_assign(&mut self, rhs: Self) {
-        debug_assert!(
-            self.0 >= rhs.0 && self.1 >= rhs.1,
-            "Size::sub: expected lhs >= rhs"
-        );
-        self.0 -= rhs.0;
-        self.1 -= rhs.1;
+        *self = *self - rhs;
     }
 }
 
@@ -600,7 +586,7 @@ impl Rect {
     #[must_use = "method does not modify self but returns a new value"]
     pub fn shrink(&self, n: i32) -> Rect {
         let pos = self.pos + Offset::splat(n);
-        let size = self.size.clamped_sub(Size::splat(n + n));
+        let size = self.size - Size::splat(n + n);
         Rect { pos, size }
     }
 
