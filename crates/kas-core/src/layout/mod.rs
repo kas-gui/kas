@@ -87,6 +87,13 @@ impl AxisInfo {
         }
     }
 
+    /// Construct a copy using the given alignment hints
+    #[inline]
+    pub fn with_align_hints(mut self, hints: AlignHints) -> Self {
+        self.align = hints.extract(self);
+        self
+    }
+
     /// True if the current axis is vertical
     #[inline]
     pub fn is_vertical(self) -> bool {
@@ -103,6 +110,55 @@ impl AxisInfo {
     #[inline]
     pub fn align(self) -> Option<Align> {
         self.align
+    }
+
+    /// Set align parameter
+    #[inline]
+    pub fn set_align(&mut self, align: Option<Align>) {
+        self.align = align;
+    }
+
+    /// Set default alignment
+    ///
+    /// If the optional alignment parameter is `None`, replace with `align`.
+    #[inline]
+    pub fn set_default_align(&mut self, align: Align) {
+        if self.align.is_none() {
+            self.align = Some(align);
+        }
+    }
+
+    /// Set default alignment
+    ///
+    /// If the optional alignment parameter is `None`, replace with either
+    /// `horiz` or `vert` depending on this axis' orientation.
+    #[inline]
+    pub fn set_default_align_hv(&mut self, horiz: Align, vert: Align) {
+        if self.align.is_none() {
+            if self.is_horizontal() {
+                self.align = Some(horiz);
+            } else {
+                self.align = Some(vert);
+            }
+        }
+    }
+
+    /// Get align parameter, defaulting to [`Align::Default`]
+    #[inline]
+    pub fn align_or_default(self) -> Align {
+        self.align.unwrap_or(Align::Default)
+    }
+
+    /// Get align parameter, defaulting to [`Align::Center`]
+    #[inline]
+    pub fn align_or_center(self) -> Align {
+        self.align.unwrap_or(Align::Center)
+    }
+
+    /// Get align parameter, defaulting to [`Align::Stretch`]
+    #[inline]
+    pub fn align_or_stretch(self) -> Align {
+        self.align.unwrap_or(Align::Stretch)
     }
 
     /// Size of other axis, if fixed

@@ -7,6 +7,7 @@
 
 #[allow(unused)]
 use super::Stretch; // for doc-links
+use crate::dir::Directional;
 use crate::geom::{Rect, Size};
 
 pub use crate::text::Align;
@@ -29,7 +30,7 @@ pub use crate::text::Align;
 ///     .aligned_rect(pref_size, rect);
 /// // self.core.rect = rect;
 /// ```
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct AlignHints {
     pub horiz: Option<Align>,
     pub vert: Option<Align>,
@@ -48,6 +49,24 @@ impl AlignHints {
     /// Construct with optional horiz. and vert. alignment
     pub const fn new(horiz: Option<Align>, vert: Option<Align>) -> Self {
         Self { horiz, vert }
+    }
+
+    /// Take horizontal/vertical component
+    #[inline]
+    pub fn extract(self, dir: impl Directional) -> Option<Align> {
+        match dir.is_vertical() {
+            false => self.horiz,
+            true => self.vert,
+        }
+    }
+
+    /// Set one component of self, based on a direction
+    #[inline]
+    pub fn set_component<D: Directional>(&mut self, dir: D, align: Option<Align>) {
+        match dir.is_vertical() {
+            false => self.horiz = align,
+            true => self.vert = align,
+        }
     }
 
     /// Combine two hints (first takes priority)
