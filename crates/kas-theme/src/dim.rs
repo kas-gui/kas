@@ -330,6 +330,12 @@ impl<D: 'static> ThemeSize for Window<D> {
         // text. Unfortunately we don't know the desired alignment here.
         let wrap = class.multi_line();
         env.wrap = wrap;
+        let align = axis.align_or_default();
+        if axis.is_horizontal() {
+            env.align.0 = align;
+        } else {
+            env.align.1 = align;
+        }
         if let Some(size) = axis.size_other_if_fixed(true) {
             env.bounds.0 = size.cast();
         }
@@ -362,6 +368,9 @@ impl<D: 'static> ThemeSize for Window<D> {
             }
         } else {
             let bound: i32 = text.measure_height().expect("invalid font_id").cast_ceil();
+            // Reset env since measure_height adjusts vertical alignment:
+            text.set_env(env);
+
             let line_height = self.dims.dpem.cast_ceil();
             let min = bound.max(line_height);
             SizeRules::new(min, min, margins, Stretch::Filler)
