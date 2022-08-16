@@ -19,7 +19,7 @@ pub use crate::event::{ConfigMgr, Event, EventMgr, EventState, Response};
 #[doc(no_inline)]
 pub use crate::geom::{Coord, Offset, Rect, Size};
 #[doc(no_inline)]
-pub use crate::layout::{Align, AlignHints, AxisInfo, SizeRules, Stretch};
+pub use crate::layout::{Align, AlignHints, AlignPair, AxisInfo, SizeRules, Stretch};
 #[doc(no_inline)]
 pub use crate::macros::{autoimpl, impl_default, impl_scope, impl_singleton, widget, widget_index};
 #[doc(no_inline)]

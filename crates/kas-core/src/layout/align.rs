@@ -84,38 +84,67 @@ impl AlignHints {
     }
 
     /// Complete via default alignments
-    pub fn complete(&self, horiz: Align, vert: Align) -> CompleteAlignment {
-        CompleteAlignment {
-            halign: self.horiz.unwrap_or(horiz),
-            valign: self.vert.unwrap_or(vert),
-        }
+    pub fn complete(&self, horiz: Align, vert: Align) -> AlignPair {
+        AlignPair::new(self.horiz.unwrap_or(horiz), self.vert.unwrap_or(vert))
     }
 }
 
 /// Provides alignment information on both axes along with ideal size
 ///
 /// Note that the `ideal` size detail is only used for non-stretch alignment.
-#[derive(Copy, Clone, Debug)]
-pub struct CompleteAlignment {
-    halign: Align,
-    valign: Align,
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct AlignPair {
+    pub horiz: Align,
+    pub vert: Align,
 }
 
-impl CompleteAlignment {
+impl AlignPair {
+    /// Default on both axes
+    pub const DEFAULT: AlignPair = AlignPair::new(Align::Default, Align::Default);
+
+    /// Center on both axes
+    pub const CENTER: AlignPair = AlignPair::new(Align::Center, Align::Center);
+
+    /// Stretch on both axes
+    pub const STRETCH: AlignPair = AlignPair::new(Align::Stretch, Align::Stretch);
+
+    /// Construct with horiz. and vert. alignment
+    pub const fn new(horiz: Align, vert: Align) -> Self {
+        Self { horiz, vert }
+    }
+
+    /// Extract one component, based on a direction
+    #[inline]
+    pub fn extract<D: Directional>(self, dir: D) -> Align {
+        match dir.is_vertical() {
+            false => self.horiz,
+            true => self.vert,
+        }
+    }
+
+    /// Set one component of self, based on a direction
+    #[inline]
+    pub fn set_component<D: Directional>(&mut self, dir: D, align: Align) {
+        match dir.is_vertical() {
+            false => self.horiz = align,
+            true => self.vert = align,
+        }
+    }
+
     /// Construct a rect of size `ideal` within `rect` using the given alignment
     pub fn aligned_rect(&self, ideal: Size, rect: Rect) -> Rect {
         let mut pos = rect.pos;
         let mut size = rect.size;
-        if ideal.0 < size.0 && self.halign != Align::Stretch {
-            pos.0 += match self.halign {
+        if ideal.0 < size.0 && self.horiz != Align::Stretch {
+            pos.0 += match self.horiz {
                 Align::Center => (size.0 - ideal.0) / 2,
                 Align::BR => size.0 - ideal.0,
                 Align::Default | Align::TL | Align::Stretch => 0,
             };
             size.0 = ideal.0;
         }
-        if ideal.1 < size.1 && self.valign != Align::Stretch {
-            pos.1 += match self.valign {
+        if ideal.1 < size.1 && self.vert != Align::Stretch {
+            pos.1 += match self.vert {
                 Align::Center => (size.1 - ideal.1) / 2,
                 Align::BR => size.1 - ideal.1,
                 Align::Default | Align::TL | Align::Stretch => 0,
@@ -123,5 +152,19 @@ impl CompleteAlignment {
             size.1 = ideal.1;
         }
         Rect { pos, size }
+    }
+}
+
+impl From<(Align, Align)> for AlignPair {
+    #[inline]
+    fn from(p: (Align, Align)) -> Self {
+        AlignPair::new(p.0, p.1)
+    }
+}
+
+impl From<AlignPair> for (Align, Align) {
+    #[inline]
+    fn from(p: AlignPair) -> Self {
+        (p.horiz, p.vert)
     }
 }
