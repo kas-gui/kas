@@ -5,7 +5,7 @@
 
 //! Types used by size rules
 
-use super::{Align, AlignHints, AxisInfo, SizeRules};
+use super::{AlignPair, AxisInfo, SizeRules};
 use crate::cast::*;
 use crate::dir::Directional;
 use crate::geom::{Rect, Size, Vec2};
@@ -239,6 +239,8 @@ impl_scope! {
         ///
         /// If is `None`, max size is limited to ideal size.
         pub stretch: Stretch,
+        /// Alignment (set by `Self::size_rules`)
+        align: AlignPair,
     }
 }
 
@@ -255,13 +257,14 @@ impl PixmapScaling {
             .size
             .to_physical(scale_factor * self.ideal_factor)
             .extract(axis);
+        self.align.set_component(axis, axis.align_or_center());
         SizeRules::new(min, ideal, margins, self.stretch)
     }
 
     /// Constrains and aligns within `rect`
     ///
     /// The resulting size is then aligned using the `align` hints, defaulting to centered.
-    pub fn align_rect(&mut self, rect: Rect, align: AlignHints, scale_factor: f32) -> Rect {
+    pub fn align_rect(&mut self, rect: Rect, scale_factor: f32) -> Rect {
         let mut size = rect.size;
 
         if self.stretch == Stretch::None {
@@ -281,9 +284,7 @@ impl PixmapScaling {
             }
         }
 
-        align
-            .complete(Align::Center, Align::Center)
-            .aligned_rect(size, rect)
+        self.align.aligned_rect(size, rect)
     }
 }
 
