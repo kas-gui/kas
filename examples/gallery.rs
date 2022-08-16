@@ -199,7 +199,7 @@ fn widgets() -> Box<dyn SetDisabled> {
             }
         }
     };
-    Box::new(ScrollBarRegion::new(widgets).with_invisible_bars(true, true))
+    Box::new(ScrollBarRegion::new(widgets))
 }
 
 fn editor() -> Box<dyn SetDisabled> {
@@ -453,7 +453,7 @@ KAS_CONFIG_MODE=readwrite
 ```
 ";
 
-    Box::new(impl_singleton! {
+    Box::new(ScrollBarRegion::new(impl_singleton! {
         #[widget{
             layout = column: [
                 ScrollLabel::new(Markdown::new(DESC).unwrap()),
@@ -473,7 +473,7 @@ KAS_CONFIG_MODE=readwrite
                 mgr.set_disabled(self.view.id(), state);
             }
         }
-    })
+    }))
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
