@@ -47,7 +47,7 @@ impl_scope! {
             self.core.rect = rect;
             // Note: if text height exceeds rect, it will always align to the top.
             let align = hints.unwrap_or(Align::Default, Align::Default);
-            mgr.text_set_size(&mut self.text, TextClass::LabelScroll, rect.size, align);
+            mgr.text_set_size(&mut self.text, TextClass::LabelScroll, rect.size, Some(align.into()));
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
 
             let max_offset = self.max_scroll_offset();

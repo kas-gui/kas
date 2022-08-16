@@ -14,7 +14,7 @@ use crate::anim::AnimState;
 use kas::cast::traits::*;
 use kas::dir::Directional;
 use kas::geom::{Rect, Size, Vec2};
-use kas::layout::{AlignHints, AxisInfo, FrameRules, Margins, SizeRules, Stretch};
+use kas::layout::{AlignHints, AlignPair, AxisInfo, FrameRules, Margins, SizeRules, Stretch};
 use kas::macros::impl_scope;
 use kas::text::{fonts::FontId, Align, TextApi, TextApiExt};
 use kas::theme::{Feature, FrameStyle, MarginStyle, MarkStyle, TextClass, ThemeSize};
@@ -382,7 +382,7 @@ impl<D: 'static> ThemeSize for Window<D> {
         text: &mut dyn TextApi,
         class: TextClass,
         size: Size,
-        align: (Align, Align),
+        align: Option<AlignPair>,
     ) {
         let mut env = text.env();
         if let Some(font_id) = self.fonts.get(&class).cloned() {
@@ -390,7 +390,9 @@ impl<D: 'static> ThemeSize for Window<D> {
         }
         env.dpem = self.dims.dpem;
         env.wrap = class.multi_line();
-        env.align = align;
+        if let Some(align) = align {
+            env.align = align.into();
+        }
         env.bounds = size.cast();
         text.update_env(env).expect("invalid font_id");
     }

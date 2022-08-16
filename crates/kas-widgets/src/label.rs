@@ -111,7 +111,7 @@ impl_scope! {
         fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
             self.core.rect = rect;
             let align = align.unwrap_or(Align::Default, Align::Center);
-            mgr.text_set_size(&mut self.label, self.class, rect.size, align);
+            mgr.text_set_size(&mut self.label, self.class, rect.size, Some(align.into()));
         }
 
         #[cfg(feature = "min_spec")]

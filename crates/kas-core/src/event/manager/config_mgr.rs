@@ -9,7 +9,7 @@ use super::Pending;
 use crate::draw::DrawShared;
 use crate::event::EventState;
 use crate::geom::{Rect, Size};
-use crate::layout::{Align, AlignHints};
+use crate::layout::{AlignHints, AlignPair};
 use crate::text::TextApi;
 use crate::theme::{Feature, SizeMgr, TextClass, ThemeSize};
 use crate::{TkAction, Widget, WidgetExt, WidgetId};
@@ -109,15 +109,18 @@ impl<'a> ConfigMgr<'a> {
 
     /// Prepare a text object
     ///
-    /// This sets the text's font, font size, wrapping and alignment and
-    /// performs text preparation necessary before display.
+    /// This sets the text's font, font size, wrapping and optionally alignment,
+    /// then performs the text preparation necessary before display.
+    ///
+    /// Note: setting alignment here is not necessary when the default alignment
+    /// is desired or when [`SizeMgr::text_rules`] is used.
     #[inline]
     pub fn text_set_size(
         &self,
         text: &mut dyn TextApi,
         class: TextClass,
         size: Size,
-        align: (Align, Align),
+        align: Option<AlignPair>,
     ) {
         self.sh.text_set_size(text, class, size, align)
     }

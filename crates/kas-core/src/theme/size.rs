@@ -10,9 +10,9 @@ use std::ops::Deref;
 use super::{Feature, FrameStyle, MarginStyle, TextClass};
 use crate::dir::Directional;
 use crate::geom::{Rect, Size};
-use crate::layout::{AlignHints, AxisInfo, FrameRules, Margins, SizeRules};
+use crate::layout::{AlignHints, AlignPair, AxisInfo, FrameRules, Margins, SizeRules};
 use crate::macros::autoimpl;
-use crate::text::{Align, TextApi};
+use crate::text::TextApi;
 
 #[allow(unused)]
 use crate::text::TextApiExt;
@@ -178,8 +178,9 @@ impl<'a> SizeMgr<'a> {
     /// Widgets with editable text contents or internal scrolling enabled may
     /// wish to adjust the result.
     ///
-    /// Note: this method partially prepares the `text` object. It is still
-    /// required to call [`ConfigMgr::text_set_size`] for correct results.
+    /// Note: this method partially prepares the `text` object. It is not
+    /// required to call this method but it is required to call
+    /// [`ConfigMgr::text_set_size`] before text display for correct results.
     pub fn text_rules(
         &self,
         text: &mut dyn TextApi,
@@ -237,6 +238,6 @@ pub trait ThemeSize {
         text: &mut dyn TextApi,
         class: TextClass,
         size: Size,
-        align: (Align, Align),
+        align: Option<AlignPair>,
     );
 }
