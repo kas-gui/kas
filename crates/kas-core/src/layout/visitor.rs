@@ -8,7 +8,7 @@
 // Methods have to take `&mut self`
 #![allow(clippy::wrong_self_convention)]
 
-use super::{AlignHints, AxisInfo, SizeRules};
+use super::{Align, AlignHints, AxisInfo, SizeRules};
 use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
 use super::{RulesSetter, RulesSolver};
@@ -202,8 +202,12 @@ impl<'a> Visitor<'a> {
             LayoutType::Component(component) => component.size_rules(mgr, axis),
             LayoutType::BoxComponent(component) => component.size_rules(mgr, axis),
             LayoutType::Single(child) => child.size_rules(mgr, axis),
-            LayoutType::AlignSingle(child, _) => child.size_rules(mgr, axis),
-            LayoutType::AlignLayout(layout, _) => layout.size_rules_(mgr, axis),
+            LayoutType::AlignSingle(child, hints) => {
+                child.size_rules(mgr, axis.with_align_hints(*hints))
+            }
+            LayoutType::AlignLayout(layout, hints) => {
+                layout.size_rules_(mgr, axis.with_align_hints(*hints))
+            }
             LayoutType::Margins(child, dirs, margins) => {
                 let mut child_rules = child.size_rules_(mgr.re(), axis);
                 if dirs.intersects(Directions::from(axis)) {
@@ -224,7 +228,7 @@ impl<'a> Visitor<'a> {
                 storage.size_rules(mgr, axis, child_rules, *style)
             }
             LayoutType::Button(child, storage, _) => {
-                let child_rules = child.size_rules_(mgr.re(), storage.child_axis(axis));
+                let child_rules = child.size_rules_(mgr.re(), storage.child_axis_centered(axis));
                 storage.size_rules(mgr, axis, child_rules, FrameStyle::Button)
             }
         }
@@ -498,6 +502,13 @@ impl FrameStorage {
     /// Calculate child's "other axis" size
     pub fn child_axis(&self, mut axis: AxisInfo) -> AxisInfo {
         axis.sub_other(self.size.extract(axis.flipped()));
+        axis
+    }
+
+    /// Calculate child's "other axis" size, forcing center-alignment of content
+    pub fn child_axis_centered(&self, mut axis: AxisInfo) -> AxisInfo {
+        axis.sub_other(self.size.extract(axis.flipped()));
+        axis.set_align(Some(Align::Center));
         axis
     }
 
