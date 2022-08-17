@@ -260,10 +260,10 @@ impl_scope! {
             size_mgr.feature(Feature::ScrollBar(self.direction()), axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
             let rect = mgr.align_feature(Feature::ScrollBar(self.direction()), rect, self.align);
             self.core.rect = rect;
-            self.handle.set_rect(mgr, rect, align);
+            self.handle.set_rect(mgr, rect);
             self.min_handle_len = mgr.size_mgr().handle_len();
             let _ = self.update_widgets();
         }
@@ -453,7 +453,7 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
             self.core.rect = rect;
             let pos = rect.pos;
             let mut child_size = rect.size;
@@ -470,21 +470,21 @@ impl_scope! {
             }
 
             let child_rect = Rect::new(pos, child_size);
-            self.inner.set_rect(mgr, child_rect, align);
+            self.inner.set_rect(mgr, child_rect);
             let max_scroll_offset = self.inner.max_scroll_offset();
 
             if self.show_bars.0 {
                 let pos = Coord(pos.0, rect.pos2().1 - bar_width);
                 let size = Size::new(child_size.0, bar_width);
                 self.horiz_bar
-                    .set_rect(mgr, Rect { pos, size }, AlignHints::NONE);
+                    .set_rect(mgr, Rect { pos, size });
                 let _ = self.horiz_bar.set_limits(max_scroll_offset.0, rect.size.0);
             }
             if self.show_bars.1 {
                 let pos = Coord(rect.pos2().0 - bar_width, pos.1);
                 let size = Size::new(bar_width, self.core.rect.size.1);
                 self.vert_bar
-                    .set_rect(mgr, Rect { pos, size }, AlignHints::NONE);
+                    .set_rect(mgr, Rect { pos, size });
                 let _ = self.vert_bar.set_limits(max_scroll_offset.1, rect.size.1);
             }
         }

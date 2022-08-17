@@ -265,10 +265,10 @@ impl_scope! {
             size_mgr.feature(Feature::Slider(self.direction()), axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
             let rect = mgr.align_feature(Feature::Slider(self.direction()), rect, self.align);
             self.core.rect = rect;
-            self.handle.set_rect(mgr, rect, align);
+            self.handle.set_rect(mgr, rect);
             let mut size = rect.size;
             size.set_component(self.direction, mgr.size_mgr().handle_len());
             let _ = self.handle.set_size_and_offset(size, self.offset());

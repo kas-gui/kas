@@ -8,7 +8,7 @@
 use crate::dir::Directional;
 use crate::event::{ConfigMgr, EventMgr};
 use crate::geom::{Coord, Rect, Size};
-use crate::layout::{self, AlignHints, AxisInfo, SizeRules};
+use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::{Layout, TkAction, Widget, WidgetExt, WidgetId, Window, WindowId};
 use kas_macros::{autoimpl, impl_scope};
@@ -35,9 +35,9 @@ impl_scope! {
         }
 
         #[inline]
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
             self.core.rect = rect;
-            self.w.set_rect(mgr, rect, align);
+            self.w.set_rect(mgr, rect);
         }
 
         fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {

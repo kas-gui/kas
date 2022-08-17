@@ -238,39 +238,25 @@ impl<'a> Visitor<'a> {
     ///
     /// Return the aligned rect.
     #[inline]
-    pub fn set_rect(mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) -> Rect {
-        self.set_rect_(mgr, rect, align)
+    pub fn set_rect(mut self, mgr: &mut ConfigMgr, rect: Rect) -> Rect {
+        self.set_rect_(mgr, rect)
     }
-    fn set_rect_(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) -> Rect {
+    fn set_rect_(&mut self, mgr: &mut ConfigMgr, rect: Rect) -> Rect {
         match &mut self.layout {
             LayoutType::None => (),
-            LayoutType::Component(component) => component.set_rect(mgr, rect, align),
-            LayoutType::BoxComponent(layout) => layout.set_rect(mgr, rect, align),
-            LayoutType::Single(child) => child.set_rect(mgr, rect, align),
-            LayoutType::AlignSingle(child, hints) => {
-                let align = hints.combine(align);
-                child.set_rect(mgr, rect, align);
-            }
-            LayoutType::AlignLayout(layout, hints) => {
-                let align = hints.combine(align);
-                return layout.set_rect_(mgr, rect, align);
-            }
-            LayoutType::Margins(child, _, _) => return child.set_rect_(mgr, rect, align),
-            LayoutType::Frame(child, storage, _) => {
+            LayoutType::Component(component) => component.set_rect(mgr, rect),
+            LayoutType::BoxComponent(layout) => layout.set_rect(mgr, rect),
+            LayoutType::Single(child) => child.set_rect(mgr, rect),
+            LayoutType::AlignSingle(child, _) => child.set_rect(mgr, rect),
+            LayoutType::AlignLayout(layout, _) => return layout.set_rect_(mgr, rect),
+            LayoutType::Margins(child, _, _) => return child.set_rect_(mgr, rect),
+            LayoutType::Frame(child, storage, _) | LayoutType::Button(child, storage, _) => {
                 storage.rect = rect;
                 let child_rect = Rect {
                     pos: rect.pos + storage.offset,
                     size: rect.size - storage.size,
                 };
-                child.set_rect_(mgr, child_rect, align);
-            }
-            LayoutType::Button(child, storage, _) => {
-                storage.rect = rect;
-                let child_rect = Rect {
-                    pos: rect.pos + storage.offset,
-                    size: rect.size - storage.size,
-                };
-                child.set_rect_(mgr, child_rect, AlignHints::CENTER);
+                child.set_rect_(mgr, child_rect);
             }
         }
         rect
@@ -347,12 +333,12 @@ where
         solver.finish(self.data)
     }
 
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
         let dim = (self.direction, self.children.len());
-        let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, align, self.data);
+        let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, self.data);
 
         for (n, child) in (&mut self.children).enumerate() {
-            child.set_rect(mgr, setter.child_rect(self.data, n), align);
+            child.set_rect(mgr, setter.child_rect(self.data, n));
         }
     }
 
@@ -388,9 +374,9 @@ where
         rules
     }
 
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
         for child in &mut self.children {
-            child.set_rect(mgr, rect, align);
+            child.set_rect(mgr, rect);
         }
     }
 
@@ -426,12 +412,12 @@ impl<'a, W: Widget, D: Directional> Layout for Slice<'a, W, D> {
         solver.finish(self.data)
     }
 
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
         let dim = (self.direction, self.children.len());
-        let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, align, self.data);
+        let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, self.data);
 
         for (n, child) in self.children.iter_mut().enumerate() {
-            child.set_rect(mgr, setter.child_rect(self.data, n), align);
+            child.set_rect(mgr, setter.child_rect(self.data, n));
         }
     }
 
@@ -467,10 +453,10 @@ where
         solver.finish(self.data)
     }
 
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
-        let mut setter = GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, align, self.data);
+    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        let mut setter = GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, self.data);
         for (info, child) in &mut self.children {
-            child.set_rect(mgr, setter.child_rect(self.data, info), align);
+            child.set_rect(mgr, setter.child_rect(self.data, info));
         }
     }
 

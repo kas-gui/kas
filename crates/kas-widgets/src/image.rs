@@ -154,7 +154,7 @@ impl_scope! {
             self.scaling.size_rules(size_mgr, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, _: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
             let scale_factor = mgr.size_mgr().scale_factor();
             self.core.rect = self.scaling.align_rect(rect, scale_factor);
         }

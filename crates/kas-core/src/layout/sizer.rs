@@ -7,7 +7,7 @@
 
 use std::fmt;
 
-use super::{Align, AlignHints, AxisInfo, Margins, SizeRules};
+use super::{Align, AxisInfo, Margins, SizeRules};
 use crate::cast::Conv;
 use crate::event::ConfigMgr;
 use crate::geom::{Rect, Size};
@@ -221,7 +221,7 @@ impl SolveCache {
             rect.size.0 = width;
             rect.size.1 -= self.margins.sum_vert();
         }
-        widget.set_rect(mgr, rect, AlignHints::NONE);
+        widget.set_rect(mgr, rect);
 
         log::trace!(target: "kas_perf::layout", "apply_rect: {}μs", start.elapsed().as_micros());
         if print_heirarchy {

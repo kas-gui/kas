@@ -8,7 +8,7 @@
 use super::{driver, Driver, PressPhase, SelectionError, SelectionMode, SelectionMsg};
 use kas::event::components::ScrollComponent;
 use kas::event::{Command, CursorIcon, Scroll};
-use kas::layout::solve_size_rules;
+use kas::layout::{solve_size_rules, AlignHints};
 use kas::model::ListData;
 #[allow(unused)]
 use kas::model::SharedData;
@@ -379,7 +379,7 @@ impl_scope! {
                         w.key = None; // disables drawing and clicking
                     }
                 }
-                w.widget.set_rect(mgr, solver.rect(i), self.align_hints);
+                w.widget.set_rect(mgr, solver.rect(i));
             }
             *mgr |= action;
             let dur = (Instant::now() - time).as_micros();
@@ -487,10 +487,11 @@ impl_scope! {
             let (rules, offset, size) = frame.surround(rules);
             self.frame_offset.set_component(axis, offset);
             self.frame_size.set_component(axis, size);
+            self.align_hints.set_component(axis, axis.align());
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
             self.core.rect = rect;
 
             let mut child_size = rect.size - self.frame_size;
@@ -509,7 +510,6 @@ impl_scope! {
             };
 
             self.child_size = child_size;
-            self.align_hints = align;
 
             let data_len = self.data.len();
             let avail_widgets = self.widgets.len();

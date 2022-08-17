@@ -97,7 +97,7 @@ impl_scope! {
             size_mgr.feature(Feature::RadioBox, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, _: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
             let rect = mgr.align_feature(Feature::RadioBox, rect, self.align);
             self.core.rect = rect;
         }
@@ -234,8 +234,8 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
-            <Self as kas::layout::AutoLayout>::set_rect(self, mgr, rect, align);
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+            <Self as kas::layout::AutoLayout>::set_rect(self, mgr, rect);
             let dir = self.direction();
             crate::check_box::shrink_to_text(&mut self.core.rect, dir, &self.label);
         }

@@ -7,7 +7,7 @@
 
 use std::marker::PhantomData;
 
-use super::{AlignHints, AxisInfo, SizeRules};
+use super::{AxisInfo, SizeRules};
 use super::{GridStorage, RowTemp, RulesSetter, RulesSolver};
 use crate::cast::{Cast, Conv};
 use crate::geom::{Coord, Offset, Rect, Size};
@@ -270,9 +270,8 @@ impl<CT: RowTemp, RT: RowTemp, S: GridStorage> GridSetter<CT, RT, S> {
     ///
     /// -   `rect`: the [`Rect`] within which to position children
     /// -   `dim`: grid dimensions
-    /// -   `align`: alignment hints
     /// -   `storage`: access to the solver's storage
-    pub fn new(rect: Rect, dim: GridDimensions, _: AlignHints, storage: &mut S) -> Self {
+    pub fn new(rect: Rect, dim: GridDimensions, storage: &mut S) -> Self {
         let (cols, rows) = (dim.cols.cast(), dim.rows.cast());
         let mut w_offsets = CT::default();
         w_offsets.set_len(cols);

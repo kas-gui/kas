@@ -8,7 +8,7 @@
 use std::marker::PhantomData;
 use std::ops::Range;
 
-use super::{AlignHints, AxisInfo, SizeRules};
+use super::{AxisInfo, SizeRules};
 use super::{RowStorage, RowTemp, RulesSetter, RulesSolver};
 use crate::dir::{Direction, Directional};
 use crate::geom::{Coord, Rect};
@@ -117,9 +117,8 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
     ///
     /// -   `rect`: the [`Rect`] within which to position children
     /// - `(direction, len)`: direction and number of items
-    /// -   `align`: alignment hints
     /// -   `storage`: access to the solver's storage
-    pub fn new(rect: Rect, (direction, len): (D, usize), _: AlignHints, storage: &mut S) -> Self {
+    pub fn new(rect: Rect, (direction, len): (D, usize), storage: &mut S) -> Self {
         let mut offsets = T::default();
         offsets.set_len(len);
         storage.set_dim(len);

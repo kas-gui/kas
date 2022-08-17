@@ -38,7 +38,6 @@ impl_scope! {
     #[widget]
     pub struct Stack<W: Widget> {
         core: widget_core!(),
-        align_hints: AlignHints,
         widgets: Vec<W>,
         sized_range: Range<usize>, // range of pages for which size rules are solved
         active: usize,
@@ -100,11 +99,10 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
             self.core.rect = rect;
-            self.align_hints = align;
             if let Some(child) = self.widgets.get_mut(self.active) {
-                child.set_rect(mgr, rect, align);
+                child.set_rect(mgr, rect);
             }
         }
 
@@ -172,7 +170,6 @@ impl<W: Widget> Stack<W> {
     pub fn new_vec(widgets: Vec<W>) -> Self {
         Stack {
             core: Default::default(),
-            align_hints: Default::default(),
             widgets,
             sized_range: 0..0,
             active: 0,
@@ -247,7 +244,7 @@ impl<W: Widget> Stack<W> {
 
         if self.sized_range.contains(&index) {
             if old_index != index {
-                self.widgets[index].set_rect(mgr, self.core.rect, self.align_hints);
+                self.widgets[index].set_rect(mgr, self.core.rect);
                 *mgr |= TkAction::REGION_MOVED;
             }
         } else {
@@ -319,7 +316,7 @@ impl<W: Widget> Stack<W> {
             if self.active > 0 && self.active == self.widgets.len() {
                 self.active -= 1;
                 if self.sized_range.contains(&self.active) {
-                    self.widgets[self.active].set_rect(mgr, self.core.rect, self.align_hints);
+                    self.widgets[self.active].set_rect(mgr, self.core.rect);
                 } else {
                     *mgr |= TkAction::RESIZE;
                 }
@@ -375,7 +372,7 @@ impl<W: Widget> Stack<W> {
         if self.active == index {
             self.active = self.active.saturating_sub(1);
             if self.sized_range.contains(&self.active) {
-                self.widgets[self.active].set_rect(mgr, self.core.rect, self.align_hints);
+                self.widgets[self.active].set_rect(mgr, self.core.rect);
             } else {
                 *mgr |= TkAction::RESIZE;
             }

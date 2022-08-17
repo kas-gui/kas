@@ -258,7 +258,7 @@ pub trait AutoLayout {
     ///
     /// The implementation does not assign to `self.core.rect`;
     /// [`Layout::set_rect`] should do so before calling this method.
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints);
+    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect);
 
     /// Translate a coordinate to a [`WidgetId`]
     ///

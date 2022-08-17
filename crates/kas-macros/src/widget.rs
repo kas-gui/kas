@@ -311,9 +311,8 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 &mut self,
                 mgr: &mut ::kas::event::ConfigMgr,
                 rect: ::kas::geom::Rect,
-                align: ::kas::layout::AlignHints,
             ) {
-                self.#inner.set_rect(mgr, rect, align);
+                self.#inner.set_rect(mgr, rect);
             }
         };
         fn_find_id = quote! {
@@ -540,10 +539,9 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                         &mut self,
                         mgr: &mut ::kas::event::ConfigMgr,
                         rect: ::kas::geom::Rect,
-                        align: ::kas::layout::AlignHints,
                     ) {
                         use ::kas::{WidgetCore, layout};
-                        self.#core.rect = (#layout).set_rect(mgr, rect, align);
+                        self.#core.rect = (#layout).set_rect(mgr, rect);
                     }
 
                     fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {
@@ -572,7 +570,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 }
             });
             set_rect = quote! {
-                <Self as ::kas::layout::AutoLayout>::set_rect(self, mgr, rect, align);
+                <Self as ::kas::layout::AutoLayout>::set_rect(self, mgr, rect);
             };
             find_id = quote! {
                 <Self as ::kas::layout::AutoLayout>::find_id(self, coord)
@@ -588,7 +586,6 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 &mut self,
                 mgr: &mut ::kas::event::ConfigMgr,
                 rect: ::kas::geom::Rect,
-                align: ::kas::layout::AlignHints,
             ) {
                 #set_rect
             }

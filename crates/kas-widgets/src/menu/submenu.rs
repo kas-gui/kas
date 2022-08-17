@@ -335,10 +335,10 @@ impl_scope! {
             solver.finish(store)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
             self.core.rect = rect;
             let store = &mut self.store;
-            let mut setter = layout::GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, align, store);
+            let mut setter = layout::GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, store);
 
             // Assumption: frame inner margin is at least as large as content margins
             let child_rules = SizeRules::EMPTY;
@@ -362,28 +362,28 @@ impl_scope! {
                 let row = u32::conv(row);
                 let child_rect = setter.child_rect(store, menu_view_row_info(row));
                 // Note: we are required to call child.set_rect even if sub_items are used
-                child.set_rect(mgr, child_rect, align);
+                child.set_rect(mgr, child_rect);
 
                 if let Some(items) = child.sub_items() {
                     if let Some(w) = items.toggle {
                         let info = layout::GridChildInfo::new(0, row);
-                        w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)), align);
+                        w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)));
                     }
                     if let Some(w) = items.icon {
                         let info = layout::GridChildInfo::new(1, row);
-                        w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)), align);
+                        w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)));
                     }
                     if let Some(w) =  items.label {
                         let info = layout::GridChildInfo::new(2, row);
-                        w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)), align);
+                        w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)));
                     }
                     if let Some(w) = items.label2 {
                         let info = layout::GridChildInfo::new(3, row);
-                        w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)), align);
+                        w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)));
                     }
                     if let Some(w) = items.submenu {
                         let info = layout::GridChildInfo::new(4, row);
-                        w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)), align);
+                        w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)));
                     }
                 }
             }

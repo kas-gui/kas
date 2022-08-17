@@ -66,10 +66,10 @@ impl_scope! {
             SizeRules::fixed_scaled(100.0, 10.0, mgr.scale_factor())
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
             self.core.rect = rect;
-            let align = align.unwrap_or(Align::Center, Align::Center);
-            mgr.text_set_size(&mut self.loading_text, TextClass::Label(false), rect.size, Some(align.into()));
+            let align = Some(AlignPair::new(Align::Center, Align::Center));
+            mgr.text_set_size(&mut self.loading_text, TextClass::Label(false), rect.size, align);
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {

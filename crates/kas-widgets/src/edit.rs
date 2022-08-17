@@ -223,7 +223,7 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, mut rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, mut rect: Rect) {
             self.core.rect = rect;
             rect.pos += self.frame_offset;
             rect.size -= self.frame_size;
@@ -232,10 +232,10 @@ impl_scope! {
                 let x1 = rect.pos.0 + rect.size.0;
                 let x0 = x1 - bar_width;
                 let bar_rect = Rect::new(Coord(x0, rect.pos.1), Size(bar_width, rect.size.1));
-                self.bar.set_rect(mgr, bar_rect, hints);
+                self.bar.set_rect(mgr, bar_rect);
                 rect.size.0 = (rect.size.0 - bar_width - self.inner_margin).max(0);
             }
-            self.inner.set_rect(mgr, rect, hints);
+            self.inner.set_rect(mgr, rect);
             self.update_scroll_bar(mgr);
         }
 
@@ -540,7 +540,7 @@ impl_scope! {
             SizeRules::new(min, ideal, margins, stretch)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, _: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
             self.core.rect = rect;
             mgr.text_set_size(&mut self.text, self.class, rect.size, Some(self.align));
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
