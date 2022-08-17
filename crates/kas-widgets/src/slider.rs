@@ -98,6 +98,7 @@ impl_scope! {
     }]
     pub struct Slider<T: SliderValue, D: Directional> {
         core: widget_core!(),
+        align: AlignPair,
         direction: D,
         // Terminology assumes vertical orientation:
         range: (T, T),
@@ -149,6 +150,7 @@ impl_scope! {
             let value = *range.start();
             Slider {
                 core: Default::default(),
+                align: Default::default(),
                 direction,
                 range: range.into_inner(),
                 step,
@@ -256,10 +258,15 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            self.align.set_component(axis, match axis.is_vertical() == self.direction.is_vertical() {
+                false => axis.align_or_center(),
+                true => axis.align_or_stretch(),
+            });
             size_mgr.feature(Feature::Slider(self.direction()), axis)
         }
 
         fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
+            let rect = mgr.align_feature(Feature::Slider(self.direction()), rect, self.align);
             self.core.rect = rect;
             self.handle.set_rect(mgr, rect, align);
             let mut size = rect.size;
