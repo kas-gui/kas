@@ -481,6 +481,8 @@ impl_scope! {
                 self.child_inter_margin = m.0.max(m.1).max(inner_margin.0).max(inner_margin.1).cast();
                 rules.multiply_with_margin(2, self.ideal_visible);
                 rules.set_stretch(rules.stretch().max(Stretch::High));
+            } else {
+                rules.set_stretch(rules.stretch().max(Stretch::Low));
             }
             let (rules, offset, size) = frame.surround(rules);
             self.frame_offset.set_component(axis, offset);

@@ -7,7 +7,7 @@
 
 use std::marker::PhantomData;
 
-use super::{Align, AlignHints, AxisInfo, SizeRules};
+use super::{AlignHints, AxisInfo, SizeRules};
 use super::{GridStorage, RowTemp, RulesSetter, RulesSolver};
 use crate::cast::{Cast, Conv};
 use crate::geom::{Coord, Offset, Rect, Size};
@@ -272,7 +272,7 @@ impl<CT: RowTemp, RT: RowTemp, S: GridStorage> GridSetter<CT, RT, S> {
     /// -   `dim`: grid dimensions
     /// -   `align`: alignment hints
     /// -   `storage`: access to the solver's storage
-    pub fn new(rect: Rect, dim: GridDimensions, align: AlignHints, storage: &mut S) -> Self {
+    pub fn new(rect: Rect, dim: GridDimensions, _: AlignHints, storage: &mut S) -> Self {
         let (cols, rows) = (dim.cols.cast(), dim.rows.cast());
         let mut w_offsets = CT::default();
         w_offsets.set_len(cols);
@@ -282,24 +282,11 @@ impl<CT: RowTemp, RT: RowTemp, S: GridStorage> GridSetter<CT, RT, S> {
         storage.set_dims(cols, rows);
 
         if cols > 0 {
-            let align = align.horiz.unwrap_or(Align::Default);
             let (widths, rules) = storage.widths_and_rules();
-            let total = SizeRules::sum(rules);
-            let max_size = total.max_size();
-            let mut target = rect.size.0;
+            let target = rect.size.0;
+            SizeRules::solve_seq(widths, rules, target);
 
             w_offsets.as_mut()[0] = 0;
-            if target > max_size {
-                let extra = target - max_size;
-                target = max_size;
-                w_offsets.as_mut()[0] = match align {
-                    Align::Default | Align::TL | Align::Stretch => 0,
-                    Align::Center => extra / 2,
-                    Align::BR => extra,
-                };
-            }
-
-            SizeRules::solve_seq_total(widths, rules, total, target);
             for i in 1..w_offsets.as_mut().len() {
                 let i1 = i - 1;
                 let m1 = storage.width_rules()[i1].margins_i32().1;
@@ -309,24 +296,11 @@ impl<CT: RowTemp, RT: RowTemp, S: GridStorage> GridSetter<CT, RT, S> {
         }
 
         if rows > 0 {
-            let align = align.vert.unwrap_or(Align::Default);
             let (heights, rules) = storage.heights_and_rules();
-            let total = SizeRules::sum(rules);
-            let max_size = total.max_size();
-            let mut target = rect.size.1;
+            let target = rect.size.1;
+            SizeRules::solve_seq(heights, rules, target);
 
             h_offsets.as_mut()[0] = 0;
-            if target > max_size {
-                let extra = target - max_size;
-                target = max_size;
-                h_offsets.as_mut()[0] = match align {
-                    Align::Default | Align::TL | Align::Stretch => 0,
-                    Align::Center => extra / 2,
-                    Align::BR => extra,
-                };
-            }
-
-            SizeRules::solve_seq_total(heights, rules, total, target);
             for i in 1..h_offsets.as_mut().len() {
                 let i1 = i - 1;
                 let m1 = storage.height_rules()[i1].margins_i32().1;

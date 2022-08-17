@@ -184,15 +184,20 @@ impl From<Size> for Margins {
 
 /// Priority for stretching widgets beyond ideal size
 ///
-/// Space is allocated based on priority, with extra space (beyond the minimum)
-/// shared between widgets in the highest priority class.
+/// When more space is available than required to meet widgets' "ideal size",
+/// that extra space is allocated based on the `Stretch` priority: the widget(s)
+/// with the highest priority level represented are allocated extra space (the
+/// excess is evenly divided between these widgets).
+///
+/// Note that `Stretch` only affects how much space is *made available*, not
+/// how that space is used. By default, widgets expand to fill all space made
+/// available to them; any other behaviour requires alignment.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum Stretch {
     /// Prefer no stretching
     ///
-    /// This does not prevent stretching. In particular, if the widget is in a
-    /// column or row with a larger widget, that larger width/height will be
-    /// provided.
+    /// This is the default value and indicates that stretching is undesirable,
+    /// but does not prevent it.
     None,
     /// Fill unwanted space
     ///

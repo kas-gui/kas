@@ -8,7 +8,7 @@
 use std::marker::PhantomData;
 use std::ops::Range;
 
-use super::{Align, AlignHints, AxisInfo, SizeRules};
+use super::{AlignHints, AxisInfo, SizeRules};
 use super::{RowStorage, RowTemp, RulesSetter, RulesSolver};
 use crate::dir::{Direction, Directional};
 use crate::geom::{Coord, Rect};
@@ -119,39 +119,16 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
     /// - `(direction, len)`: direction and number of items
     /// -   `align`: alignment hints
     /// -   `storage`: access to the solver's storage
-    pub fn new(
-        mut rect: Rect,
-        (direction, len): (D, usize),
-        align: AlignHints,
-        storage: &mut S,
-    ) -> Self {
+    pub fn new(rect: Rect, (direction, len): (D, usize), _: AlignHints, storage: &mut S) -> Self {
         let mut offsets = T::default();
         offsets.set_len(len);
         storage.set_dim(len);
 
         if len > 0 {
             let is_horiz = direction.is_horizontal();
-            let mut width = if is_horiz { rect.size.0 } else { rect.size.1 };
+            let width = if is_horiz { rect.size.0 } else { rect.size.1 };
             let (widths, rules) = storage.widths_and_rules();
-            let total = SizeRules::sum(rules);
-            let max_size = total.max_size();
-            let align = if is_horiz { align.horiz } else { align.vert };
-            let align = align.unwrap_or(Align::Default);
-            if width > max_size {
-                let extra = width - max_size;
-                width = max_size;
-                let offset = match align {
-                    Align::Default | Align::TL | Align::Stretch => 0,
-                    Align::Center => extra / 2,
-                    Align::BR => extra,
-                };
-                if is_horiz {
-                    rect.pos.0 += offset;
-                } else {
-                    rect.pos.1 += offset;
-                }
-            }
-            SizeRules::solve_seq_total(widths, rules, total, width);
+            SizeRules::solve_seq(widths, rules, width);
         }
 
         let _s = Default::default();
