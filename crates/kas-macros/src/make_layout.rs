@@ -14,6 +14,7 @@ mod kw {
     use syn::custom_keyword;
 
     custom_keyword!(align);
+    custom_keyword!(pack);
     custom_keyword!(column);
     custom_keyword!(row);
     custom_keyword!(right);
@@ -104,6 +105,7 @@ impl ToTokens for StorIdent {
 enum Layout {
     Align(Box<Layout>, AlignHints),
     AlignSingle(ExprMember, AlignHints),
+    Pack(StorIdent, Box<Layout>, AlignHints),
     Margins(Box<Layout>, Directions, Toks),
     Single(ExprMember),
     Widget(StorIdent, Expr),
@@ -272,6 +274,14 @@ impl Layout {
                 let layout = Layout::parse(input, gen)?;
                 Ok(Layout::Align(Box::new(layout), align))
             }
+        } else if lookahead.peek(kw::pack) {
+            let _: kw::pack = input.parse()?;
+            let align = parse_align(input)?;
+            let stor = gen.parse_or_next(input)?;
+            let _: Token![:] = input.parse()?;
+
+            let layout = Layout::parse(input, gen)?;
+            Ok(Layout::Pack(stor, Box::new(layout), align))
         } else if lookahead.peek(kw::margins) {
             let _ = input.parse::<kw::margins>()?;
             let inner;
@@ -693,6 +703,11 @@ impl Layout {
                 layout.append_fields(ty_toks, def_toks, children);
             }
             Layout::AlignSingle(..) | Layout::Margins(..) | Layout::Single(_) => (),
+            Layout::Pack(stor, layout, _) => {
+                ty_toks.append_all(quote! { #stor: ::kas::layout::PackStorage, });
+                def_toks.append_all(quote! { #stor: Default::default(), });
+                layout.append_fields(ty_toks, def_toks, children);
+            }
             Layout::Widget(stor, expr) => {
                 children.push(stor.to_token_stream());
                 ty_toks.append_all(quote! { #stor: Box<dyn ::kas::Widget>, });
@@ -755,6 +770,10 @@ impl Layout {
             }
             Layout::AlignSingle(expr, align) => {
                 quote! { layout::Visitor::align_single(&mut (#expr), #align) }
+            }
+            Layout::Pack(stor, layout, align) => {
+                let inner = layout.generate(core)?;
+                quote! { layout::Visitor::pack(&mut self.#core.#stor, #inner, #align) }
             }
             Layout::Margins(layout, dirs, selector) => {
                 let inner = layout.generate(core)?;
@@ -850,6 +869,7 @@ impl Layout {
     ) -> std::result::Result<(), &'static str> {
         match self {
             Layout::Align(layout, _)
+            | Layout::Pack(_, layout, _)
             | Layout::Margins(layout, _, _)
             | Layout::Frame(_, layout, _) => layout.nav_next(children, output, index),
             Layout::Button(_, layout, _) | Layout::NonNavigable(layout) => {

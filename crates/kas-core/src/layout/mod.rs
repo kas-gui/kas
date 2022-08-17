@@ -60,7 +60,7 @@ pub use size_rules::SizeRules;
 pub use size_types::*;
 pub use sizer::{solve_size_rules, RulesSetter, RulesSolver, SolveCache};
 pub use storage::*;
-pub use visitor::{FrameStorage, Visitor};
+pub use visitor::{FrameStorage, PackStorage, Visitor};
 
 /// Information on which axis is being resized
 ///
@@ -90,7 +90,7 @@ impl AxisInfo {
     /// Construct a copy using the given alignment hints
     #[inline]
     pub fn with_align_hints(mut self, hints: AlignHints) -> Self {
-        self.align = hints.extract(self);
+        self.align = hints.extract(self).or(self.align);
         self
     }
 

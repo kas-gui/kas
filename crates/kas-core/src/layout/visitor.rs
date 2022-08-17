@@ -8,7 +8,7 @@
 // Methods have to take `&mut self`
 #![allow(clippy::wrong_self_convention)]
 
-use super::{Align, AlignHints, AxisInfo, SizeRules};
+use super::{Align, AlignHints, AlignPair, AxisInfo, SizeRules};
 use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
 use super::{RulesSetter, RulesSolver};
@@ -45,7 +45,9 @@ enum LayoutType<'a> {
     /// A single child widget with alignment
     AlignSingle(&'a mut dyn Widget, AlignHints),
     /// Apply alignment hints to some sub-layout
-    AlignLayout(Box<Visitor<'a>>, AlignHints),
+    Align(Box<Visitor<'a>>, AlignHints),
+    /// Apply alignment and pack some sub-layout
+    Pack(Box<Visitor<'a>>, &'a mut PackStorage, AlignHints),
     /// Replace (some) margins
     Margins(Box<Visitor<'a>>, Directions, MarginStyle),
     /// Frame around content
@@ -64,7 +66,7 @@ impl<'a> LayoutType<'a> {
             LayoutType::BoxComponent(_) => None,
             LayoutType::Single(w) => Some(w.id()),
             LayoutType::AlignSingle(w, _) => Some(w.id()),
-            LayoutType::AlignLayout(l, _) => l.layout.id(),
+            LayoutType::Align(l, _) => l.layout.id(),
             LayoutType::Margins(l, _, _) => l.layout.id(),
             LayoutType::Frame(l, _, _) => l.layout.id(),
             LayoutType::Button(l, _, _) => l.layout.id(),
@@ -97,9 +99,15 @@ impl<'a> Visitor<'a> {
         Visitor { layout }
     }
 
-    /// Align a sub-layout
+    /// Construct a sub-layout with alignment hints
     pub fn align(layout: Self, hints: AlignHints) -> Self {
-        let layout = LayoutType::AlignLayout(Box::new(layout), hints);
+        let layout = LayoutType::Align(Box::new(layout), hints);
+        Visitor { layout }
+    }
+
+    /// Construct a sub-layout which is squashed and aligned
+    pub fn pack(stor: &'a mut PackStorage, layout: Self, hints: AlignHints) -> Self {
+        let layout = LayoutType::Pack(Box::new(layout), stor, hints);
         Visitor { layout }
     }
 
@@ -206,8 +214,13 @@ impl<'a> Visitor<'a> {
             LayoutType::AlignSingle(child, hints) => {
                 child.size_rules(mgr, axis.with_align_hints(*hints))
             }
-            LayoutType::AlignLayout(layout, hints) => {
+            LayoutType::Align(layout, hints) => {
                 layout.size_rules_(mgr, axis.with_align_hints(*hints))
+            }
+            LayoutType::Pack(layout, stor, hints) => {
+                let rules = layout.size_rules_(mgr, stor.apply_align(axis, *hints));
+                stor.size.set_component(axis, rules.ideal_size());
+                rules
             }
             LayoutType::Margins(child, dirs, margins) => {
                 let mut child_rules = child.size_rules_(mgr.re(), axis);
@@ -246,8 +259,9 @@ impl<'a> Visitor<'a> {
             LayoutType::Component(component) => component.set_rect(mgr, rect),
             LayoutType::BoxComponent(layout) => layout.set_rect(mgr, rect),
             LayoutType::Single(child) => child.set_rect(mgr, rect),
+            LayoutType::Align(layout, _) => layout.set_rect_(mgr, rect),
             LayoutType::AlignSingle(child, _) => child.set_rect(mgr, rect),
-            LayoutType::AlignLayout(layout, _) => layout.set_rect_(mgr, rect),
+            LayoutType::Pack(layout, stor, _) => layout.set_rect_(mgr, stor.aligned_rect(rect)),
             LayoutType::Margins(child, _, _) => child.set_rect_(mgr, rect),
             LayoutType::Frame(child, storage, _) | LayoutType::Button(child, storage, _) => {
                 storage.rect = rect;
@@ -274,7 +288,8 @@ impl<'a> Visitor<'a> {
             LayoutType::Component(component) => component.find_id(coord),
             LayoutType::BoxComponent(layout) => layout.find_id(coord),
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => child.find_id(coord),
-            LayoutType::AlignLayout(layout, _) => layout.find_id_(coord),
+            LayoutType::Align(layout, _) => layout.find_id_(coord),
+            LayoutType::Pack(layout, _, _) => layout.find_id_(coord),
             LayoutType::Margins(layout, _, _) => layout.find_id_(coord),
             LayoutType::Frame(child, _, _) => child.find_id_(coord),
             // Buttons steal clicks, hence Button never returns ID of content
@@ -293,7 +308,8 @@ impl<'a> Visitor<'a> {
             LayoutType::Component(component) => component.draw(draw),
             LayoutType::BoxComponent(layout) => layout.draw(draw),
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => draw.recurse(*child),
-            LayoutType::AlignLayout(layout, _) => layout.draw_(draw),
+            LayoutType::Align(layout, _) => layout.draw_(draw),
+            LayoutType::Pack(layout, _, _) => layout.draw_(draw),
             LayoutType::Margins(layout, _, _) => layout.draw_(draw),
             LayoutType::Frame(child, storage, style) => {
                 draw.frame(storage.rect, *style, Background::Default);
@@ -467,6 +483,26 @@ where
         for (_, child) in &mut self.children {
             child.draw(draw.re_clone());
         }
+    }
+}
+
+/// Layout storage for alignment
+#[derive(Clone, Default, Debug)]
+pub struct PackStorage {
+    align: AlignPair,
+    size: Size,
+}
+impl PackStorage {
+    /// Set alignment
+    fn apply_align(&mut self, axis: AxisInfo, hints: AlignHints) -> AxisInfo {
+        let axis = axis.with_align_hints(hints);
+        self.align.set_component(axis, axis.align_or_default());
+        axis
+    }
+
+    /// Align rect
+    fn aligned_rect(&self, rect: Rect) -> Rect {
+        self.align.aligned_rect(self.size, rect)
     }
 }
 
