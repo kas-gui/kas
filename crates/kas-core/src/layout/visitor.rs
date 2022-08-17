@@ -25,8 +25,9 @@ use std::iter::ExactSizeIterator;
 /// This constitutes a "visitor" which iterates over each child widget. Layout
 /// algorithm details are implemented over this visitor.
 ///
-/// TODO: consider removal. This is currently used to implement the
-/// `layout = ..` property of `#[widget]`, but may not be the best approach.
+/// This is an internal API and may be subject to unexpected breaking changes.
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub struct Visitor<'a> {
     layout: LayoutType<'a>,
 }

@@ -147,8 +147,6 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
     /// previous `RowSetter`. The user should optionally call `solve_range` on
     /// any ranges needing updating and finally call `update_offsets` before
     /// using this `RowSetter` to calculate child positions.
-    ///
-    /// It is also assumed that alignment is [`Align::Stretch`].
     pub fn new_unsolved(rect: Rect, (direction, len): (D, usize), storage: &mut S) -> Self {
         let mut offsets = T::default();
         offsets.set_len(len);
