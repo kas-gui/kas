@@ -541,7 +541,8 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                         rect: ::kas::geom::Rect,
                     ) {
                         use ::kas::{WidgetCore, layout};
-                        self.#core.rect = (#layout).set_rect(mgr, rect);
+                        self.#core.rect = rect;
+                        (#layout).set_rect(mgr, rect);
                     }
 
                     fn find_id(&mut self, coord: ::kas::geom::Coord) -> Option<::kas::WidgetId> {

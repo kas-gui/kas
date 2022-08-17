@@ -236,21 +236,19 @@ impl<'a> Visitor<'a> {
     }
 
     /// Apply a given `rect` to self
-    ///
-    /// Return the aligned rect.
     #[inline]
-    pub fn set_rect(mut self, mgr: &mut ConfigMgr, rect: Rect) -> Rect {
-        self.set_rect_(mgr, rect)
+    pub fn set_rect(mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        self.set_rect_(mgr, rect);
     }
-    fn set_rect_(&mut self, mgr: &mut ConfigMgr, rect: Rect) -> Rect {
+    fn set_rect_(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
         match &mut self.layout {
             LayoutType::None => (),
             LayoutType::Component(component) => component.set_rect(mgr, rect),
             LayoutType::BoxComponent(layout) => layout.set_rect(mgr, rect),
             LayoutType::Single(child) => child.set_rect(mgr, rect),
             LayoutType::AlignSingle(child, _) => child.set_rect(mgr, rect),
-            LayoutType::AlignLayout(layout, _) => return layout.set_rect_(mgr, rect),
-            LayoutType::Margins(child, _, _) => return child.set_rect_(mgr, rect),
+            LayoutType::AlignLayout(layout, _) => layout.set_rect_(mgr, rect),
+            LayoutType::Margins(child, _, _) => child.set_rect_(mgr, rect),
             LayoutType::Frame(child, storage, _) | LayoutType::Button(child, storage, _) => {
                 storage.rect = rect;
                 let child_rect = Rect {
@@ -260,7 +258,6 @@ impl<'a> Visitor<'a> {
                 child.set_rect_(mgr, child_rect);
             }
         }
-        rect
     }
 
     /// Find a widget by coordinate
