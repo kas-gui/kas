@@ -256,17 +256,12 @@ pub trait AutoLayout {
 
     /// Set size and position
     ///
-    /// The implementation does not assign to `self.core.rect`;
-    /// [`Layout::set_rect`] should do so before calling this method.
+    /// This functions identically to [`Layout::set_rect`].
     fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect);
 
     /// Translate a coordinate to a [`WidgetId`]
     ///
-    /// This method does not test `coord` against `self.rect()` nor does it ever
-    /// return `self.id()`; it only ever returns a child's [`WidgetId`] or
-    /// `None`. [`Layout::find_id`] should test against `self.rect()` before
-    /// calling this method, then return `self.id()` if the result of this
-    /// method is `None`.
+    /// This functions identically to [`Layout::find_id`].
     fn find_id(&mut self, coord: Coord) -> Option<WidgetId>;
 
     /// Draw a widget and its children
