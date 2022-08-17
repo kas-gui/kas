@@ -207,10 +207,7 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
-            if let Some(mut other) = axis.other() {
-                other -= self.frame_size.extract(axis.flipped());
-                axis = AxisInfo::new(axis.is_vertical(), Some(other));
-            }
+            axis.sub_other(self.frame_size.extract(axis.flipped()));
 
             let mut rules = self.inner.size_rules(mgr.re(), axis);
             if axis.is_horizontal() && self.multi_line() {
@@ -226,7 +223,7 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, mut rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, mut rect: Rect) {
             self.core.rect = rect;
             rect.pos += self.frame_offset;
             rect.size -= self.frame_size;
@@ -235,10 +232,10 @@ impl_scope! {
                 let x1 = rect.pos.0 + rect.size.0;
                 let x0 = x1 - bar_width;
                 let bar_rect = Rect::new(Coord(x0, rect.pos.1), Size(bar_width, rect.size.1));
-                self.bar.set_rect(mgr, bar_rect, hints);
+                self.bar.set_rect(mgr, bar_rect);
                 rect.size.0 = (rect.size.0 - bar_width - self.inner_margin).max(0);
             }
-            self.inner.set_rect(mgr, rect, hints);
+            self.inner.set_rect(mgr, rect);
             self.update_scroll_bar(mgr);
         }
 
@@ -508,6 +505,7 @@ impl_scope! {
         view_offset: Offset,
         editable: bool,
         class: TextClass = TextClass::Edit(false),
+        align: AlignPair,
         width: (f32, f32) = (8.0, 16.0),
         lines: (i32, i32) = (1, 1),
         text: Text<String>,
@@ -533,24 +531,18 @@ impl_scope! {
                 (self.lines.0 * height, self.lines.1 * height)
             };
             let margins = size_mgr.text_margins().extract(axis);
-            let stretch = if axis.is_horizontal() || self.multi_line() {
-                Stretch::High
+            let (stretch, align) = if axis.is_horizontal() || self.multi_line() {
+                (Stretch::High, axis.align_or_default())
             } else {
-                Stretch::None
+                (Stretch::None, axis.align_or_center())
             };
+            self.align.set_component(axis, align);
             SizeRules::new(min, ideal, margins, stretch)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
-            let valign = if self.multi_line() {
-                Align::Default
-            } else {
-                Align::Center
-            };
-
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
             self.core.rect = rect;
-            let align = align.unwrap_or(Align::Default, valign);
-            mgr.text_set_size(&mut self.text, self.class, rect.size, align);
+            mgr.text_set_size(&mut self.text, self.class, rect.size, Some(self.align));
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             self.view_offset = self.view_offset.min(self.max_scroll_offset());
         }
@@ -763,6 +755,7 @@ impl EditField<()> {
             view_offset: self.view_offset,
             editable: self.editable,
             class: self.class,
+            align: self.align,
             width: self.width,
             lines: self.lines,
             text: self.text,

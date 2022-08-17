@@ -7,7 +7,7 @@
 
 use std::marker::PhantomData;
 
-use super::{Align, AlignHints, AxisInfo, SizeRules};
+use super::{AxisInfo, SizeRules};
 use super::{GridStorage, RowTemp, RulesSetter, RulesSolver};
 use crate::cast::{Cast, Conv};
 use crate::geom::{Coord, Offset, Rect, Size};
@@ -137,41 +137,41 @@ where
     fn for_child<CR: FnOnce(AxisInfo) -> SizeRules>(
         &mut self,
         storage: &mut Self::Storage,
-        child_info: Self::ChildInfo,
+        info: Self::ChildInfo,
         child_rules: CR,
     ) {
         if self.axis.has_fixed {
             if self.axis.is_horizontal() {
-                self.axis.other_axis = ((child_info.row + 1)..child_info.row_end)
-                    .fold(storage.heights()[usize::conv(child_info.row)], |h, i| {
+                self.axis.other_axis = ((info.row + 1)..info.row_end)
+                    .fold(storage.heights()[usize::conv(info.row)], |h, i| {
                         h + storage.heights()[usize::conv(i)]
                     });
             } else {
-                self.axis.other_axis = ((child_info.col + 1)..child_info.col_end)
-                    .fold(storage.widths()[usize::conv(child_info.col)], |w, i| {
+                self.axis.other_axis = ((info.col + 1)..info.col_end)
+                    .fold(storage.widths()[usize::conv(info.col)], |w, i| {
                         w + storage.widths()[usize::conv(i)]
                     });
             }
         }
         let child_rules = child_rules(self.axis);
         if self.axis.is_horizontal() {
-            if child_info.col_end > child_info.col + 1 {
+            if info.col_end > info.col + 1 {
                 let span = &mut self.col_spans.as_mut()[self.next_col_span];
                 span.0.max_with(child_rules);
-                span.1 = child_info.col;
-                span.2 = child_info.col_end;
+                span.1 = info.col;
+                span.2 = info.col_end;
                 self.next_col_span += 1;
             } else {
-                storage.width_rules()[usize::conv(child_info.col)].max_with(child_rules);
+                storage.width_rules()[usize::conv(info.col)].max_with(child_rules);
             }
-        } else if child_info.row_end > child_info.row + 1 {
+        } else if info.row_end > info.row + 1 {
             let span = &mut self.row_spans.as_mut()[self.next_row_span];
             span.0.max_with(child_rules);
-            span.1 = child_info.row;
-            span.2 = child_info.row_end;
+            span.1 = info.row;
+            span.2 = info.row_end;
             self.next_row_span += 1;
         } else {
-            storage.height_rules()[usize::conv(child_info.row)].max_with(child_rules);
+            storage.height_rules()[usize::conv(info.row)].max_with(child_rules);
         };
     }
 
@@ -270,9 +270,8 @@ impl<CT: RowTemp, RT: RowTemp, S: GridStorage> GridSetter<CT, RT, S> {
     ///
     /// -   `rect`: the [`Rect`] within which to position children
     /// -   `dim`: grid dimensions
-    /// -   `align`: alignment hints
     /// -   `storage`: access to the solver's storage
-    pub fn new(rect: Rect, dim: GridDimensions, align: AlignHints, storage: &mut S) -> Self {
+    pub fn new(rect: Rect, dim: GridDimensions, storage: &mut S) -> Self {
         let (cols, rows) = (dim.cols.cast(), dim.rows.cast());
         let mut w_offsets = CT::default();
         w_offsets.set_len(cols);
@@ -282,24 +281,11 @@ impl<CT: RowTemp, RT: RowTemp, S: GridStorage> GridSetter<CT, RT, S> {
         storage.set_dims(cols, rows);
 
         if cols > 0 {
-            let align = align.horiz.unwrap_or(Align::Default);
             let (widths, rules) = storage.widths_and_rules();
-            let total = SizeRules::sum(rules);
-            let max_size = total.max_size();
-            let mut target = rect.size.0;
+            let target = rect.size.0;
+            SizeRules::solve_seq(widths, rules, target);
 
             w_offsets.as_mut()[0] = 0;
-            if target > max_size {
-                let extra = target - max_size;
-                target = max_size;
-                w_offsets.as_mut()[0] = match align {
-                    Align::Default | Align::TL | Align::Stretch => 0,
-                    Align::Center => extra / 2,
-                    Align::BR => extra,
-                };
-            }
-
-            SizeRules::solve_seq_total(widths, rules, total, target);
             for i in 1..w_offsets.as_mut().len() {
                 let i1 = i - 1;
                 let m1 = storage.width_rules()[i1].margins_i32().1;
@@ -309,24 +295,11 @@ impl<CT: RowTemp, RT: RowTemp, S: GridStorage> GridSetter<CT, RT, S> {
         }
 
         if rows > 0 {
-            let align = align.vert.unwrap_or(Align::Default);
             let (heights, rules) = storage.heights_and_rules();
-            let total = SizeRules::sum(rules);
-            let max_size = total.max_size();
-            let mut target = rect.size.1;
+            let target = rect.size.1;
+            SizeRules::solve_seq(heights, rules, target);
 
             h_offsets.as_mut()[0] = 0;
-            if target > max_size {
-                let extra = target - max_size;
-                target = max_size;
-                h_offsets.as_mut()[0] = match align {
-                    Align::Default | Align::TL | Align::Stretch => 0,
-                    Align::Center => extra / 2,
-                    Align::BR => extra,
-                };
-            }
-
-            SizeRules::solve_seq_total(heights, rules, total, target);
             for i in 1..h_offsets.as_mut().len() {
                 let i1 = i - 1;
                 let m1 = storage.height_rules()[i1].margins_i32().1;
@@ -364,7 +337,7 @@ impl<CT: RowTemp, RT: RowTemp, S: GridStorage> RulesSetter for GridSetter<CT, RT
         Rect { pos, size }
     }
 
-    fn maximal_rect_of(&mut self, _storage: &mut Self::Storage, _index: Self::ChildInfo) -> Rect {
+    fn maximal_rect_of(&mut self, _: &mut Self::Storage, _: Self::ChildInfo) -> Rect {
         unimplemented!()
     }
 }

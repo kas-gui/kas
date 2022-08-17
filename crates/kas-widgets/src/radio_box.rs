@@ -60,6 +60,7 @@ impl_scope! {
     }]
     pub struct RadioBox {
         core: widget_core!(),
+        align: AlignPair,
         state: bool,
         last_change: Option<Instant>,
         group: RadioGroup,
@@ -92,11 +93,12 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            self.align.set_component(axis, axis.align_or_center());
             size_mgr.feature(Feature::RadioBox, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
-            let rect = mgr.align_feature(Feature::RadioBox, rect, align);
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+            let rect = mgr.align_feature(Feature::RadioBox, rect, self.align);
             self.core.rect = rect;
         }
 
@@ -114,6 +116,7 @@ impl_scope! {
         pub fn new(group: RadioGroup) -> Self {
             RadioBox {
                 core: Default::default(),
+                align: Default::default(),
                 state: false,
                 last_change: None,
                 group,
@@ -134,6 +137,7 @@ impl_scope! {
         {
             RadioBox {
                 core: self.core,
+                align: self.align,
                 state: self.state,
                 last_change: self.last_change,
                 group: self.group,
@@ -230,8 +234,8 @@ impl_scope! {
     }
 
     impl Layout for Self {
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
-            <Self as kas::layout::AutoLayout>::set_rect(self, mgr, rect, align);
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+            <Self as kas::layout::AutoLayout>::set_rect(self, mgr, rect);
             let dir = self.direction();
             crate::check_box::shrink_to_text(&mut self.core.rect, dir, &self.label);
         }

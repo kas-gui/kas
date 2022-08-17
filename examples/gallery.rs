@@ -122,7 +122,7 @@ fn widgets() -> Box<dyn SetDisabled> {
                 row: ["ScrollLabel", self.sl],
                 row: ["EditBox", self.eb],
                 row: ["TextButton", self.tb],
-                row: ["Button<Image>", self.bi],
+                row: ["Button<Image>", pack(center): self.bi],
                 row: ["CheckButton", self.cb],
                 row: ["RadioButton", self.rb],
                 row: ["RadioButton", self.rb2],
@@ -199,7 +199,7 @@ fn widgets() -> Box<dyn SetDisabled> {
             }
         }
     };
-    Box::new(ScrollBarRegion::new(widgets).with_invisible_bars(true, true))
+    Box::new(ScrollBarRegion::new(widgets))
 }
 
 fn editor() -> Box<dyn SetDisabled> {
@@ -239,7 +239,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
     Box::new(impl_singleton! {
         #[widget{
             layout = float: [
-                align(right, top): TextButton::new_msg("↻", MsgDirection),
+                pack(right, top): TextButton::new_msg("↻", MsgDirection),
                 list(self.dir): [self.editor, non_navigable: self.label],
             ];
         }]
@@ -453,7 +453,7 @@ KAS_CONFIG_MODE=readwrite
 ```
 ";
 
-    Box::new(impl_singleton! {
+    Box::new(ScrollBarRegion::new(impl_singleton! {
         #[widget{
             layout = column: [
                 ScrollLabel::new(Markdown::new(DESC).unwrap()),
@@ -473,7 +473,7 @@ KAS_CONFIG_MODE=readwrite
                 mgr.set_disabled(self.view.id(), state);
             }
         }
-    })
+    }))
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

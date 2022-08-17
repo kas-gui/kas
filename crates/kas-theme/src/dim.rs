@@ -14,9 +14,9 @@ use crate::anim::AnimState;
 use kas::cast::traits::*;
 use kas::dir::Directional;
 use kas::geom::{Rect, Size, Vec2};
-use kas::layout::{AlignHints, AxisInfo, FrameRules, Margins, SizeRules, Stretch};
+use kas::layout::{AlignPair, AxisInfo, FrameRules, Margins, SizeRules, Stretch};
 use kas::macros::impl_scope;
-use kas::text::{fonts::FontId, Align, TextApi, TextApiExt};
+use kas::text::{fonts::FontId, TextApi, TextApiExt};
 use kas::theme::{Feature, FrameStyle, MarginStyle, MarkStyle, TextClass, ThemeSize};
 
 impl_scope! {
@@ -266,7 +266,7 @@ impl<D: 'static> ThemeSize for Window<D> {
         SizeRules::new(size.0, ideal_mul * size.0, (m, m), stretch)
     }
 
-    fn align_feature(&self, feature: Feature, rect: Rect, hints: AlignHints) -> Rect {
+    fn align_feature(&self, feature: Feature, rect: Rect, align: AlignPair) -> Rect {
         let mut ideal_size = rect.size;
         match feature {
             Feature::Separator => (), // has no direction so we cannot align
@@ -284,9 +284,7 @@ impl<D: 'static> ThemeSize for Window<D> {
                 ideal_size.set_component(dir.flipped(), self.dims.progress_bar.1);
             }
         }
-        hints
-            .complete(Align::Center, Align::Center)
-            .aligned_rect(ideal_size, rect)
+        align.aligned_rect(ideal_size, rect)
     }
 
     fn frame(&self, style: FrameStyle, _is_vert: bool) -> FrameRules {
@@ -330,6 +328,12 @@ impl<D: 'static> ThemeSize for Window<D> {
         // text. Unfortunately we don't know the desired alignment here.
         let wrap = class.multi_line();
         env.wrap = wrap;
+        let align = axis.align_or_default();
+        if axis.is_horizontal() {
+            env.align.0 = align;
+        } else {
+            env.align.1 = align;
+        }
         if let Some(size) = axis.size_other_if_fixed(true) {
             env.bounds.0 = size.cast();
         }
@@ -362,6 +366,9 @@ impl<D: 'static> ThemeSize for Window<D> {
             }
         } else {
             let bound: i32 = text.measure_height().expect("invalid font_id").cast_ceil();
+            // Reset env since measure_height adjusts vertical alignment:
+            text.set_env(env);
+
             let line_height = self.dims.dpem.cast_ceil();
             let min = bound.max(line_height);
             SizeRules::new(min, min, margins, Stretch::Filler)
@@ -373,7 +380,7 @@ impl<D: 'static> ThemeSize for Window<D> {
         text: &mut dyn TextApi,
         class: TextClass,
         size: Size,
-        align: (Align, Align),
+        align: Option<AlignPair>,
     ) {
         let mut env = text.env();
         if let Some(font_id) = self.fonts.get(&class).cloned() {
@@ -381,7 +388,9 @@ impl<D: 'static> ThemeSize for Window<D> {
         }
         env.dpem = self.dims.dpem;
         env.wrap = class.multi_line();
-        env.align = align;
+        if let Some(align) = align {
+            env.align = align.into();
+        }
         env.bounds = size.cast();
         text.update_env(env).expect("invalid font_id");
     }

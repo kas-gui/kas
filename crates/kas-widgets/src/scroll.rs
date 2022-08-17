@@ -91,10 +91,7 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
-            if let Some(mut other) = axis.other() {
-                other -= self.frame_size.extract(axis.flipped());
-                axis = AxisInfo::new(axis.is_vertical(), Some(other));
-            }
+            axis.sub_other(self.frame_size.extract(axis.flipped()));
 
             let mut rules = self.inner.size_rules(size_mgr.re(), axis);
             self.min_child_size.set_component(axis, rules.min_size());
@@ -108,11 +105,11 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, _: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
             self.core.rect = rect;
             let child_size = (rect.size - self.frame_size).max(self.min_child_size);
             let child_rect = Rect::new(rect.pos + self.offset, child_size);
-            self.inner.set_rect(mgr, child_rect, AlignHints::NONE);
+            self.inner.set_rect(mgr, child_rect);
             let _ = self
                 .scroll
                 .set_sizes(rect.size, child_size + self.frame_size);

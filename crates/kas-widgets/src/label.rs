@@ -104,14 +104,14 @@ impl_scope! {
 
     impl Layout for Self {
         #[inline]
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
+            axis.set_default_align_hv(Align::Default, Align::Center);
             size_mgr.text_rules(&mut self.label, self.class, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
             self.core.rect = rect;
-            let align = align.unwrap_or(Align::Default, Align::Center);
-            mgr.text_set_size(&mut self.label, self.class, rect.size, align);
+            mgr.text_set_size(&mut self.label, self.class, rect.size, None);
         }
 
         #[cfg(feature = "min_spec")]

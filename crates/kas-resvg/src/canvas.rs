@@ -63,13 +63,13 @@ impl_scope! {
         /// Use [`Self::with_size`] or [`Self::with_scaling`] to set the initial size.
         #[inline]
         pub fn new(program: P) -> Self {
+            let mut scaling = PixmapScaling::default();
+            scaling.size = LogicalSize(128.0, 128.0);
+            scaling.stretch = Stretch::High;
+
             Canvas {
                 core: Default::default(),
-                scaling: PixmapScaling {
-                    size: LogicalSize(128.0, 128.0),
-                    stretch: Stretch::High,
-                    ..Default::default()
-                },
+                scaling,
                 pixmap: None,
                 image: None,
                 program,
@@ -128,9 +128,9 @@ impl_scope! {
             self.scaling.size_rules(size_mgr, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
             let scale_factor = mgr.size_mgr().scale_factor();
-            self.core.rect = self.scaling.align_rect(rect, align, scale_factor);
+            self.core.rect = self.scaling.align_rect(rect, scale_factor);
             let size: (u32, u32) = self.core.rect.size.cast();
 
             let pm_size = self.pixmap.as_ref().map(|pm| (pm.width(), pm.height()));

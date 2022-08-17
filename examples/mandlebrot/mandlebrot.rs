@@ -338,7 +338,7 @@ impl_scope! {
         }
 
         #[inline]
-        fn set_rect(&mut self, _: &mut ConfigMgr, rect: Rect, _: AlignHints) {
+        fn set_rect(&mut self, _: &mut ConfigMgr, rect: Rect) {
             self.core.rect = rect;
             let size = DVec2::conv(rect.size);
             let rel_width = DVec2(size.0 / size.1, 1.0);

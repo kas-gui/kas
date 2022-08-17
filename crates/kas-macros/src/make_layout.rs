@@ -14,6 +14,7 @@ mod kw {
     use syn::custom_keyword;
 
     custom_keyword!(align);
+    custom_keyword!(pack);
     custom_keyword!(column);
     custom_keyword!(row);
     custom_keyword!(right);
@@ -104,6 +105,7 @@ impl ToTokens for StorIdent {
 enum Layout {
     Align(Box<Layout>, AlignHints),
     AlignSingle(ExprMember, AlignHints),
+    Pack(StorIdent, Box<Layout>, AlignHints),
     Margins(Box<Layout>, Directions, Toks),
     Single(ExprMember),
     Widget(StorIdent, Expr),
@@ -272,6 +274,14 @@ impl Layout {
                 let layout = Layout::parse(input, gen)?;
                 Ok(Layout::Align(Box::new(layout), align))
             }
+        } else if lookahead.peek(kw::pack) {
+            let _: kw::pack = input.parse()?;
+            let align = parse_align(input)?;
+            let stor = gen.parse_or_next(input)?;
+            let _: Token![:] = input.parse()?;
+
+            let layout = Layout::parse(input, gen)?;
+            Ok(Layout::Pack(stor, Box::new(layout), align))
         } else if lookahead.peek(kw::margins) {
             let _ = input.parse::<kw::margins>()?;
             let inner;
@@ -693,30 +703,29 @@ impl Layout {
                 layout.append_fields(ty_toks, def_toks, children);
             }
             Layout::AlignSingle(..) | Layout::Margins(..) | Layout::Single(_) => (),
+            Layout::Pack(stor, layout, _) => {
+                ty_toks.append_all(quote! { #stor: ::kas::layout::PackStorage, });
+                def_toks.append_all(quote! { #stor: Default::default(), });
+                layout.append_fields(ty_toks, def_toks, children);
+            }
             Layout::Widget(stor, expr) => {
                 children.push(stor.to_token_stream());
-                stor.to_tokens(ty_toks);
-                ty_toks.append_all(quote! { : Box<dyn ::kas::Widget>, });
-                stor.to_tokens(def_toks);
-                def_toks.append_all(quote! { : Box::new(#expr), });
+                ty_toks.append_all(quote! { #stor: Box<dyn ::kas::Widget>, });
+                def_toks.append_all(quote! { #stor: Box::new(#expr), });
             }
             Layout::Frame(stor, layout, _) | Layout::Button(stor, layout, _) => {
-                stor.to_tokens(ty_toks);
-                ty_toks.append_all(quote! { : ::kas::layout::FrameStorage, });
-                stor.to_tokens(def_toks);
-                def_toks.append_all(quote! { : Default::default(), });
+                ty_toks.append_all(quote! { #stor: ::kas::layout::FrameStorage, });
+                def_toks.append_all(quote! { #stor: Default::default(), });
                 layout.append_fields(ty_toks, def_toks, children);
             }
             Layout::List(stor, _, vec) => {
-                stor.to_tokens(ty_toks);
-                stor.to_tokens(def_toks);
-                def_toks.append_all(quote! { : Default::default(), });
+                def_toks.append_all(quote! { #stor: Default::default(), });
 
                 let len = vec.len();
                 ty_toks.append_all(if len > 16 {
-                    quote! { : ::kas::layout::DynRowStorage, }
+                    quote! { #stor: ::kas::layout::DynRowStorage, }
                 } else {
-                    quote! { : ::kas::layout::FixedRowStorage<#len>, }
+                    quote! { #stor: ::kas::layout::FixedRowStorage<#len>, }
                 });
                 for item in vec {
                     item.append_fields(ty_toks, def_toks, children);
@@ -728,17 +737,14 @@ impl Layout {
                 }
             }
             Layout::Slice(stor, _, _) => {
-                stor.to_tokens(ty_toks);
-                ty_toks.append_all(quote! { : ::kas::layout::DynRowStorage, });
-                stor.to_tokens(def_toks);
-                def_toks.append_all(quote! { : Default::default(), });
+                ty_toks.append_all(quote! { #stor: ::kas::layout::DynRowStorage, });
+                def_toks.append_all(quote! { #stor: Default::default(), });
             }
             Layout::Grid(stor, dim, cells) => {
                 let (cols, rows) = (dim.cols as usize, dim.rows as usize);
-                stor.to_tokens(ty_toks);
-                ty_toks.append_all(quote! { : ::kas::layout::FixedGridStorage<#cols, #rows>, });
-                stor.to_tokens(def_toks);
-                def_toks.append_all(quote! { : Default::default(), });
+                ty_toks
+                    .append_all(quote! { #stor: ::kas::layout::FixedGridStorage<#cols, #rows>, });
+                def_toks.append_all(quote! { #stor: Default::default(), });
 
                 for (_info, layout) in cells {
                     layout.append_fields(ty_toks, def_toks, children);
@@ -746,10 +752,8 @@ impl Layout {
             }
             Layout::Label(stor, text) => {
                 children.push(stor.to_token_stream());
-                stor.to_tokens(ty_toks);
-                ty_toks.append_all(quote! { : ::kas::label::StrLabel, });
-                stor.to_tokens(def_toks);
-                def_toks.append_all(quote! { : ::kas::label::StrLabel::new(#text), });
+                ty_toks.append_all(quote! { #stor: ::kas::label::StrLabel, });
+                def_toks.append_all(quote! { #stor: ::kas::label::StrLabel::new(#text), });
             }
         }
     }
@@ -766,6 +770,10 @@ impl Layout {
             }
             Layout::AlignSingle(expr, align) => {
                 quote! { layout::Visitor::align_single(&mut (#expr), #align) }
+            }
+            Layout::Pack(stor, layout, align) => {
+                let inner = layout.generate(core)?;
+                quote! { layout::Visitor::pack(&mut self.#core.#stor, #inner, #align) }
             }
             Layout::Margins(layout, dirs, selector) => {
                 let inner = layout.generate(core)?;
@@ -861,6 +869,7 @@ impl Layout {
     ) -> std::result::Result<(), &'static str> {
         match self {
             Layout::Align(layout, _)
+            | Layout::Pack(_, layout, _)
             | Layout::Margins(layout, _, _)
             | Layout::Frame(_, layout, _) => layout.nav_next(children, output, index),
             Layout::Button(_, layout, _) | Layout::NonNavigable(layout) => {

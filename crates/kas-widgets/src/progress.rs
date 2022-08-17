@@ -18,6 +18,7 @@ impl_scope! {
     #[widget]
     pub struct ProgressBar<D: Directional> {
         core: widget_core!(),
+        align: AlignPair,
         direction: D,
         value: f32,
     }
@@ -40,6 +41,7 @@ impl_scope! {
         pub fn new_with_direction(direction: D) -> Self {
             ProgressBar {
                 core: Default::default(),
+                align: Default::default(),
                 direction,
                 value: 0.0,
             }
@@ -82,11 +84,15 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            self.align.set_component(axis, match axis.is_vertical() == self.direction.is_vertical() {
+                false => axis.align_or_center(),
+                true => axis.align_or_stretch(),
+            });
             size_mgr.feature(Feature::ProgressBar(self.direction()), axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
-            let rect = mgr.align_feature(Feature::ProgressBar(self.direction()), rect, align);
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+            let rect = mgr.align_feature(Feature::ProgressBar(self.direction()), rect, self.align);
             self.core.rect = rect;
         }
 

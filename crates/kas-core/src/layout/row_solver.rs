@@ -8,7 +8,7 @@
 use std::marker::PhantomData;
 use std::ops::Range;
 
-use super::{Align, AlignHints, AxisInfo, SizeRules};
+use super::{AxisInfo, SizeRules};
 use super::{RowStorage, RowTemp, RulesSetter, RulesSolver};
 use crate::dir::{Direction, Directional};
 use crate::geom::{Coord, Rect};
@@ -63,15 +63,16 @@ impl<S: RowStorage> RulesSolver for RowSolver<S> {
     fn for_child<CR: FnOnce(AxisInfo) -> SizeRules>(
         &mut self,
         storage: &mut Self::Storage,
-        child_info: Self::ChildInfo,
+        index: Self::ChildInfo,
         child_rules: CR,
     ) {
         if self.axis.has_fixed && self.axis_is_vertical {
-            self.axis.other_axis = storage.widths()[child_info];
+            self.axis.other_axis = storage.widths()[index];
         }
         let child_rules = child_rules(self.axis);
+
         if !self.axis_is_vertical {
-            storage.rules()[child_info] = child_rules;
+            storage.rules()[index] = child_rules;
             if let Some(rules) = self.rules {
                 if self.axis_is_reversed {
                     self.rules = Some(child_rules.appended(rules));
@@ -116,41 +117,17 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
     ///
     /// -   `rect`: the [`Rect`] within which to position children
     /// - `(direction, len)`: direction and number of items
-    /// -   `align`: alignment hints
     /// -   `storage`: access to the solver's storage
-    pub fn new(
-        mut rect: Rect,
-        (direction, len): (D, usize),
-        align: AlignHints,
-        storage: &mut S,
-    ) -> Self {
+    pub fn new(rect: Rect, (direction, len): (D, usize), storage: &mut S) -> Self {
         let mut offsets = T::default();
         offsets.set_len(len);
         storage.set_dim(len);
 
         if len > 0 {
             let is_horiz = direction.is_horizontal();
-            let mut width = if is_horiz { rect.size.0 } else { rect.size.1 };
+            let width = if is_horiz { rect.size.0 } else { rect.size.1 };
             let (widths, rules) = storage.widths_and_rules();
-            let total = SizeRules::sum(rules);
-            let max_size = total.max_size();
-            let align = if is_horiz { align.horiz } else { align.vert };
-            let align = align.unwrap_or(Align::Default);
-            if width > max_size {
-                let extra = width - max_size;
-                width = max_size;
-                let offset = match align {
-                    Align::Default | Align::TL | Align::Stretch => 0,
-                    Align::Center => extra / 2,
-                    Align::BR => extra,
-                };
-                if is_horiz {
-                    rect.pos.0 += offset;
-                } else {
-                    rect.pos.1 += offset;
-                }
-            }
-            SizeRules::solve_seq_total(widths, rules, total, width);
+            SizeRules::solve_seq(widths, rules, width);
         }
 
         let _s = Default::default();
@@ -170,8 +147,6 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
     /// previous `RowSetter`. The user should optionally call `solve_range` on
     /// any ranges needing updating and finally call `update_offsets` before
     /// using this `RowSetter` to calculate child positions.
-    ///
-    /// It is also assumed that alignment is [`Align::Stretch`].
     pub fn new_unsolved(rect: Rect, (direction, len): (D, usize), storage: &mut S) -> Self {
         let mut offsets = T::default();
         offsets.set_len(len);

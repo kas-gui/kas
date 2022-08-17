@@ -52,7 +52,7 @@ use crate::WidgetId;
 #[allow(unused)]
 use crate::Layout;
 
-pub use align::{Align, AlignHints, CompleteAlignment};
+pub use align::{Align, AlignHints, AlignPair};
 pub use grid_solver::{DefaultWithLen, GridChildInfo, GridDimensions, GridSetter, GridSolver};
 pub use row_solver::{RowPositionSolver, RowSetter, RowSolver};
 pub use single_solver::{SingleSetter, SingleSolver};
@@ -60,7 +60,7 @@ pub use size_rules::SizeRules;
 pub use size_types::*;
 pub use sizer::{solve_size_rules, RulesSetter, RulesSolver, SolveCache};
 pub use storage::*;
-pub use visitor::{FrameStorage, Visitor};
+pub use visitor::{FrameStorage, PackStorage, Visitor};
 
 /// Information on which axis is being resized
 ///
@@ -70,6 +70,7 @@ pub struct AxisInfo {
     vertical: bool,
     has_fixed: bool,
     other_axis: i32,
+    align: Option<Align>,
 }
 
 impl AxisInfo {
@@ -77,17 +78,25 @@ impl AxisInfo {
     ///
     /// This method is *usually* not required by user code.
     #[inline]
-    pub fn new(vertical: bool, fixed: Option<i32>) -> Self {
+    pub fn new(vertical: bool, fixed: Option<i32>, align: Option<Align>) -> Self {
         AxisInfo {
             vertical,
             has_fixed: fixed.is_some(),
             other_axis: fixed.unwrap_or(0),
+            align,
         }
+    }
+
+    /// Construct a copy using the given alignment hints
+    #[inline]
+    pub fn with_align_hints(mut self, hints: AlignHints) -> Self {
+        self.align = hints.extract(self).or(self.align);
+        self
     }
 
     /// True if the current axis is vertical
     #[inline]
-    pub fn is_vertical(&self) -> bool {
+    pub fn is_vertical(self) -> bool {
         self.vertical
     }
 
@@ -95,6 +104,61 @@ impl AxisInfo {
     #[inline]
     pub fn is_horizontal(self) -> bool {
         !self.vertical
+    }
+
+    /// Get align parameter
+    #[inline]
+    pub fn align(self) -> Option<Align> {
+        self.align
+    }
+
+    /// Set align parameter
+    #[inline]
+    pub fn set_align(&mut self, align: Option<Align>) {
+        self.align = align;
+    }
+
+    /// Set default alignment
+    ///
+    /// If the optional alignment parameter is `None`, replace with `align`.
+    #[inline]
+    pub fn set_default_align(&mut self, align: Align) {
+        if self.align.is_none() {
+            self.align = Some(align);
+        }
+    }
+
+    /// Set default alignment
+    ///
+    /// If the optional alignment parameter is `None`, replace with either
+    /// `horiz` or `vert` depending on this axis' orientation.
+    #[inline]
+    pub fn set_default_align_hv(&mut self, horiz: Align, vert: Align) {
+        if self.align.is_none() {
+            if self.is_horizontal() {
+                self.align = Some(horiz);
+            } else {
+                self.align = Some(vert);
+            }
+        }
+    }
+
+    /// Get align parameter, defaulting to [`Align::Default`]
+    #[inline]
+    pub fn align_or_default(self) -> Align {
+        self.align.unwrap_or(Align::Default)
+    }
+
+    /// Get align parameter, defaulting to [`Align::Center`]
+    #[inline]
+    pub fn align_or_center(self) -> Align {
+        self.align.unwrap_or(Align::Center)
+    }
+
+    /// Get align parameter, defaulting to [`Align::Stretch`]
+    #[inline]
+    pub fn align_or_stretch(self) -> Align {
+        self.align.unwrap_or(Align::Stretch)
     }
 
     /// Size of other axis, if fixed
@@ -115,6 +179,12 @@ impl AxisInfo {
         } else {
             None
         }
+    }
+
+    /// Subtract `x` from size of other axis (if applicable)
+    #[inline]
+    pub fn sub_other(&mut self, x: i32) {
+        self.other_axis -= x;
     }
 }
 
@@ -188,7 +258,7 @@ pub trait AutoLayout {
     ///
     /// The implementation does not assign to `self.core.rect`;
     /// [`Layout::set_rect`] should do so before calling this method.
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints);
+    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect);
 
     /// Translate a coordinate to a [`WidgetId`]
     ///
@@ -203,4 +273,10 @@ pub trait AutoLayout {
     ///
     /// This functions identically to [`Layout::draw`].
     fn draw(&mut self, draw: DrawMgr);
+}
+
+#[cfg(test)]
+#[test]
+fn size() {
+    assert_eq!(std::mem::size_of::<AxisInfo>(), 8);
 }

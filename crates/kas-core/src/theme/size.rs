@@ -10,9 +10,9 @@ use std::ops::Deref;
 use super::{Feature, FrameStyle, MarginStyle, TextClass};
 use crate::dir::Directional;
 use crate::geom::{Rect, Size};
-use crate::layout::{AlignHints, AxisInfo, FrameRules, Margins, SizeRules};
+use crate::layout::{AlignPair, AxisInfo, FrameRules, Margins, SizeRules};
 use crate::macros::autoimpl;
-use crate::text::{Align, TextApi};
+use crate::text::TextApi;
 
 #[allow(unused)]
 use crate::text::TextApiExt;
@@ -165,6 +165,9 @@ impl<'a> SizeMgr<'a> {
     /// The [`TextClass`] is used to select a font and controls whether line
     /// wrapping is enabled.
     ///
+    /// Alignment is set from [`AxisInfo::align_or_default`]. If other alignment
+    /// is desired, modify `axis` before calling this method.
+    ///
     /// Horizontal size without wrapping is simply the size the text.
     /// Horizontal size with wrapping is bounded to some width dependant on the
     /// theme, and may have non-zero [`Stretch`] depending on the size.
@@ -175,8 +178,9 @@ impl<'a> SizeMgr<'a> {
     /// Widgets with editable text contents or internal scrolling enabled may
     /// wish to adjust the result.
     ///
-    /// Note: this method partially prepares the `text` object. It is still
-    /// required to call [`ConfigMgr::text_set_size`] for correct results.
+    /// Note: this method partially prepares the `text` object. It is not
+    /// required to call this method but it is required to call
+    /// [`ConfigMgr::text_set_size`] before text display for correct results.
     pub fn text_rules(
         &self,
         text: &mut dyn TextApi,
@@ -217,7 +221,7 @@ pub trait ThemeSize {
     ///
     /// In case the input `rect` is larger than desired on either axis, it is
     /// reduced in size and offset within the original `rect` as is preferred.
-    fn align_feature(&self, feature: Feature, rect: Rect, hints: AlignHints) -> Rect;
+    fn align_feature(&self, feature: Feature, rect: Rect, align: AlignPair) -> Rect;
 
     /// Size of a frame around another element
     fn frame(&self, style: FrameStyle, axis_is_vertical: bool) -> FrameRules;
@@ -234,6 +238,6 @@ pub trait ThemeSize {
         text: &mut dyn TextApi,
         class: TextClass,
         size: Size,
-        align: (Align, Align),
+        align: Option<AlignPair>,
     );
 }

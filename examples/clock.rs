@@ -40,7 +40,7 @@ impl_scope! {
         }
 
         #[inline]
-        fn set_rect(&mut self, _: &mut ConfigMgr, rect: Rect, _align: AlignHints) {
+        fn set_rect(&mut self, _: &mut ConfigMgr, rect: Rect) {
             // Force to square
             let size = rect.size.0.min(rect.size.1);
             let size = Size::splat(size);

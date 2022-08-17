@@ -43,11 +43,9 @@ impl_scope! {
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, mut rect: Rect, hints: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, mut rect: Rect) {
             self.core.rect = rect;
-            // Note: if text height exceeds rect, it will always align to the top.
-            let align = hints.unwrap_or(Align::Default, Align::Default);
-            mgr.text_set_size(&mut self.text, TextClass::LabelScroll, rect.size, align);
+            mgr.text_set_size(&mut self.text, TextClass::LabelScroll, rect.size, None);
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
 
             let max_offset = self.max_scroll_offset();
@@ -56,7 +54,7 @@ impl_scope! {
             let w = mgr.size_mgr().scroll_bar_width().min(rect.size.0);
             rect.pos.0 += rect.size.0 - w;
             rect.size.0 = w;
-            self.bar.set_rect(mgr, rect, hints);
+            self.bar.set_rect(mgr, rect);
             let _ = self.bar.set_limits(max_offset.1, rect.size.1);
             self.bar.set_value(mgr, self.view_offset.1);
         }

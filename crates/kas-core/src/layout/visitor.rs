@@ -8,7 +8,7 @@
 // Methods have to take `&mut self`
 #![allow(clippy::wrong_self_convention)]
 
-use super::{Align, AlignHints, AxisInfo, SizeRules};
+use super::{Align, AlignHints, AlignPair, AxisInfo, SizeRules};
 use super::{DynRowStorage, RowPositionSolver, RowSetter, RowSolver, RowStorage};
 use super::{GridChildInfo, GridDimensions, GridSetter, GridSolver, GridStorage};
 use super::{RulesSetter, RulesSolver};
@@ -25,8 +25,9 @@ use std::iter::ExactSizeIterator;
 /// This constitutes a "visitor" which iterates over each child widget. Layout
 /// algorithm details are implemented over this visitor.
 ///
-/// TODO: consider removal. This is currently used to implement the
-/// `layout = ..` property of `#[widget]`, but may not be the best approach.
+/// This is an internal API and may be subject to unexpected breaking changes.
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub struct Visitor<'a> {
     layout: LayoutType<'a>,
 }
@@ -44,7 +45,9 @@ enum LayoutType<'a> {
     /// A single child widget with alignment
     AlignSingle(&'a mut dyn Widget, AlignHints),
     /// Apply alignment hints to some sub-layout
-    AlignLayout(Box<Visitor<'a>>, AlignHints),
+    Align(Box<Visitor<'a>>, AlignHints),
+    /// Apply alignment and pack some sub-layout
+    Pack(Box<Visitor<'a>>, &'a mut PackStorage, AlignHints),
     /// Replace (some) margins
     Margins(Box<Visitor<'a>>, Directions, MarginStyle),
     /// Frame around content
@@ -63,7 +66,7 @@ impl<'a> LayoutType<'a> {
             LayoutType::BoxComponent(_) => None,
             LayoutType::Single(w) => Some(w.id()),
             LayoutType::AlignSingle(w, _) => Some(w.id()),
-            LayoutType::AlignLayout(l, _) => l.layout.id(),
+            LayoutType::Align(l, _) => l.layout.id(),
             LayoutType::Margins(l, _, _) => l.layout.id(),
             LayoutType::Frame(l, _, _) => l.layout.id(),
             LayoutType::Button(l, _, _) => l.layout.id(),
@@ -96,9 +99,15 @@ impl<'a> Visitor<'a> {
         Visitor { layout }
     }
 
-    /// Align a sub-layout
+    /// Construct a sub-layout with alignment hints
     pub fn align(layout: Self, hints: AlignHints) -> Self {
-        let layout = LayoutType::AlignLayout(Box::new(layout), hints);
+        let layout = LayoutType::Align(Box::new(layout), hints);
+        Visitor { layout }
+    }
+
+    /// Construct a sub-layout which is squashed and aligned
+    pub fn pack(stor: &'a mut PackStorage, layout: Self, hints: AlignHints) -> Self {
+        let layout = LayoutType::Pack(Box::new(layout), stor, hints);
         Visitor { layout }
     }
 
@@ -202,8 +211,17 @@ impl<'a> Visitor<'a> {
             LayoutType::Component(component) => component.size_rules(mgr, axis),
             LayoutType::BoxComponent(component) => component.size_rules(mgr, axis),
             LayoutType::Single(child) => child.size_rules(mgr, axis),
-            LayoutType::AlignSingle(child, _) => child.size_rules(mgr, axis),
-            LayoutType::AlignLayout(layout, _) => layout.size_rules_(mgr, axis),
+            LayoutType::AlignSingle(child, hints) => {
+                child.size_rules(mgr, axis.with_align_hints(*hints))
+            }
+            LayoutType::Align(layout, hints) => {
+                layout.size_rules_(mgr, axis.with_align_hints(*hints))
+            }
+            LayoutType::Pack(layout, stor, hints) => {
+                let rules = layout.size_rules_(mgr, stor.apply_align(axis, *hints));
+                stor.size.set_component(axis, rules.ideal_size());
+                rules
+            }
             LayoutType::Margins(child, dirs, margins) => {
                 let mut child_rules = child.size_rules_(mgr.re(), axis);
                 if dirs.intersects(Directions::from(axis)) {
@@ -224,55 +242,36 @@ impl<'a> Visitor<'a> {
                 storage.size_rules(mgr, axis, child_rules, *style)
             }
             LayoutType::Button(child, storage, _) => {
-                let child_rules = child.size_rules_(mgr.re(), storage.child_axis(axis));
+                let child_rules = child.size_rules_(mgr.re(), storage.child_axis_centered(axis));
                 storage.size_rules(mgr, axis, child_rules, FrameStyle::Button)
             }
         }
     }
 
     /// Apply a given `rect` to self
-    ///
-    /// Return the aligned rect.
     #[inline]
-    pub fn set_rect(mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) -> Rect {
-        self.set_rect_(mgr, rect, align)
+    pub fn set_rect(mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        self.set_rect_(mgr, rect);
     }
-    fn set_rect_(&mut self, mgr: &mut ConfigMgr, mut rect: Rect, align: AlignHints) -> Rect {
+    fn set_rect_(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
         match &mut self.layout {
             LayoutType::None => (),
-            LayoutType::Component(component) => component.set_rect(mgr, rect, align),
-            LayoutType::BoxComponent(layout) => layout.set_rect(mgr, rect, align),
-            LayoutType::Single(child) => child.set_rect(mgr, rect, align),
-            LayoutType::AlignSingle(child, hints) => {
-                let align = hints.combine(align);
-                child.set_rect(mgr, rect, align);
-            }
-            LayoutType::AlignLayout(layout, hints) => {
-                let align = hints.combine(align);
-                return layout.set_rect_(mgr, rect, align);
-            }
-            LayoutType::Margins(child, _, _) => return child.set_rect_(mgr, rect, align),
-            LayoutType::Frame(child, storage, _) => {
+            LayoutType::Component(component) => component.set_rect(mgr, rect),
+            LayoutType::BoxComponent(layout) => layout.set_rect(mgr, rect),
+            LayoutType::Single(child) => child.set_rect(mgr, rect),
+            LayoutType::Align(layout, _) => layout.set_rect_(mgr, rect),
+            LayoutType::AlignSingle(child, _) => child.set_rect(mgr, rect),
+            LayoutType::Pack(layout, stor, _) => layout.set_rect_(mgr, stor.aligned_rect(rect)),
+            LayoutType::Margins(child, _, _) => child.set_rect_(mgr, rect),
+            LayoutType::Frame(child, storage, _) | LayoutType::Button(child, storage, _) => {
                 storage.rect = rect;
                 let child_rect = Rect {
                     pos: rect.pos + storage.offset,
                     size: rect.size - storage.size,
                 };
-                child.set_rect_(mgr, child_rect, align);
-            }
-            LayoutType::Button(child, storage, _) => {
-                rect = align
-                    .complete(Align::Stretch, Align::Stretch)
-                    .aligned_rect(storage.ideal_size, rect);
-                storage.rect = rect;
-                let child_rect = Rect {
-                    pos: rect.pos + storage.offset,
-                    size: rect.size - storage.size,
-                };
-                child.set_rect_(mgr, child_rect, AlignHints::CENTER);
+                child.set_rect_(mgr, child_rect);
             }
         }
-        rect
     }
 
     /// Find a widget by coordinate
@@ -289,7 +288,8 @@ impl<'a> Visitor<'a> {
             LayoutType::Component(component) => component.find_id(coord),
             LayoutType::BoxComponent(layout) => layout.find_id(coord),
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => child.find_id(coord),
-            LayoutType::AlignLayout(layout, _) => layout.find_id_(coord),
+            LayoutType::Align(layout, _) => layout.find_id_(coord),
+            LayoutType::Pack(layout, _, _) => layout.find_id_(coord),
             LayoutType::Margins(layout, _, _) => layout.find_id_(coord),
             LayoutType::Frame(child, _, _) => child.find_id_(coord),
             // Buttons steal clicks, hence Button never returns ID of content
@@ -308,7 +308,8 @@ impl<'a> Visitor<'a> {
             LayoutType::Component(component) => component.draw(draw),
             LayoutType::BoxComponent(layout) => layout.draw(draw),
             LayoutType::Single(child) | LayoutType::AlignSingle(child, _) => draw.recurse(*child),
-            LayoutType::AlignLayout(layout, _) => layout.draw_(draw),
+            LayoutType::Align(layout, _) => layout.draw_(draw),
+            LayoutType::Pack(layout, _, _) => layout.draw_(draw),
             LayoutType::Margins(layout, _, _) => layout.draw_(draw),
             LayoutType::Frame(child, storage, style) => {
                 draw.frame(storage.rect, *style, Background::Default);
@@ -346,12 +347,12 @@ where
         solver.finish(self.data)
     }
 
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
         let dim = (self.direction, self.children.len());
-        let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, align, self.data);
+        let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, self.data);
 
         for (n, child) in (&mut self.children).enumerate() {
-            child.set_rect(mgr, setter.child_rect(self.data, n), align);
+            child.set_rect(mgr, setter.child_rect(self.data, n));
         }
     }
 
@@ -387,9 +388,9 @@ where
         rules
     }
 
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
         for child in &mut self.children {
-            child.set_rect(mgr, rect, align);
+            child.set_rect(mgr, rect);
         }
     }
 
@@ -425,12 +426,12 @@ impl<'a, W: Widget, D: Directional> Layout for Slice<'a, W, D> {
         solver.finish(self.data)
     }
 
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
         let dim = (self.direction, self.children.len());
-        let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, align, self.data);
+        let mut setter = RowSetter::<D, Vec<i32>, _>::new(rect, dim, self.data);
 
         for (n, child) in self.children.iter_mut().enumerate() {
-            child.set_rect(mgr, setter.child_rect(self.data, n), align);
+            child.set_rect(mgr, setter.child_rect(self.data, n));
         }
     }
 
@@ -466,10 +467,10 @@ where
         solver.finish(self.data)
     }
 
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
-        let mut setter = GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, align, self.data);
+    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        let mut setter = GridSetter::<Vec<_>, Vec<_>, _>::new(rect, self.dim, self.data);
         for (info, child) in &mut self.children {
-            child.set_rect(mgr, setter.child_rect(self.data, info), align);
+            child.set_rect(mgr, setter.child_rect(self.data, info));
         }
     }
 
@@ -485,6 +486,26 @@ where
     }
 }
 
+/// Layout storage for alignment
+#[derive(Clone, Default, Debug)]
+pub struct PackStorage {
+    align: AlignPair,
+    size: Size,
+}
+impl PackStorage {
+    /// Set alignment
+    fn apply_align(&mut self, axis: AxisInfo, hints: AlignHints) -> AxisInfo {
+        let axis = axis.with_align_hints(hints);
+        self.align.set_component(axis, axis.align_or_default());
+        axis
+    }
+
+    /// Align rect
+    fn aligned_rect(&self, rect: Rect) -> Rect {
+        self.align.aligned_rect(self.size, rect)
+    }
+}
+
 /// Layout storage for frame layout
 #[derive(Clone, Default, Debug)]
 pub struct FrameStorage {
@@ -492,7 +513,6 @@ pub struct FrameStorage {
     pub size: Size,
     /// Offset of frame contents from parent position
     pub offset: Offset,
-    ideal_size: Size,
     // NOTE: potentially rect is redundant (e.g. with widget's rect) but if we
     // want an alternative as a generic solution then all draw methods must
     // calculate and pass the child's rect, which is probably worse.
@@ -501,10 +521,14 @@ pub struct FrameStorage {
 impl FrameStorage {
     /// Calculate child's "other axis" size
     pub fn child_axis(&self, mut axis: AxisInfo) -> AxisInfo {
-        if let Some(mut other) = axis.other() {
-            other -= self.size.extract(axis.flipped());
-            axis = AxisInfo::new(axis.is_vertical(), Some(other));
-        }
+        axis.sub_other(self.size.extract(axis.flipped()));
+        axis
+    }
+
+    /// Calculate child's "other axis" size, forcing center-alignment of content
+    pub fn child_axis_centered(&self, mut axis: AxisInfo) -> AxisInfo {
+        axis.sub_other(self.size.extract(axis.flipped()));
+        axis.set_align(Some(Align::Center));
         axis
     }
 
@@ -520,7 +544,6 @@ impl FrameStorage {
         let (rules, offset, size) = frame_rules.surround(child_rules);
         self.offset.set_component(axis, offset);
         self.size.set_component(axis, size);
-        self.ideal_size.set_component(axis, rules.ideal_size());
         rules
     }
 }

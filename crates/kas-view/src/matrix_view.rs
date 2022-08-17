@@ -8,7 +8,7 @@
 use super::{driver, Driver, PressPhase, SelectionError, SelectionMode, SelectionMsg};
 use kas::event::components::ScrollComponent;
 use kas::event::{Command, CursorIcon, Scroll};
-use kas::layout::solve_size_rules;
+use kas::layout::{solve_size_rules, AlignHints};
 use kas::model::MatrixData;
 #[allow(unused)]
 use kas::model::SharedData;
@@ -351,12 +351,14 @@ impl_scope! {
                                 mgr.size_mgr(),
                                 Some(self.child_size.0),
                                 Some(self.child_size.1),
+                                self.align_hints.horiz,
+                                self.align_hints.vert,
                             );
                         } else {
                             w.key = None; // disables drawing and clicking
                         }
                     }
-                    w.widget.set_rect(mgr, solver.rect(ci, ri), self.align_hints);
+                    w.widget.set_rect(mgr, solver.rect(ci, ri));
                 }
             }
             *mgr |= action;
@@ -440,7 +442,7 @@ impl_scope! {
                     .min(self.child_size_ideal.extract(other_axis))
                     .max(self.child_size_min.extract(other_axis))
             });
-            axis = AxisInfo::new(axis.is_vertical(), other);
+            axis = AxisInfo::new(axis.is_vertical(), other, axis.align());
 
             let mut rules = self.default_widget.size_rules(size_mgr.re(), axis);
             self.child_size_min.set_component(axis, rules.min_size());
@@ -466,17 +468,17 @@ impl_scope! {
             let (rules, offset, size) = frame.surround(rules);
             self.frame_offset.set_component(axis, offset);
             self.frame_size.set_component(axis, size);
+            self.align_hints.set_component(axis, axis.align());
             rules
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
             self.core.rect = rect;
 
             let avail = rect.size - self.frame_size;
             let child_size = Size(avail.0 / self.ideal_len.cols, avail.1 / self.ideal_len.rows)
                 .min(self.child_size_ideal).max(self.child_size_min);
             self.child_size = child_size;
-            self.align_hints = align;
 
             let (d_cols, d_rows) = self.data.len();
             let data_len = Size(d_cols.cast(), d_rows.cast());

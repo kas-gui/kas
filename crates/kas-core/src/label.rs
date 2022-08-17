@@ -11,7 +11,7 @@
 use crate::class::HasStr;
 use crate::event::ConfigMgr;
 use crate::geom::Rect;
-use crate::layout::{Align, AlignHints, AxisInfo, SizeRules};
+use crate::layout::{Align, AxisInfo, SizeRules};
 use crate::text::{Text, TextApi};
 use crate::theme::{DrawMgr, SizeMgr, TextClass};
 use crate::{Layout, WidgetCore};
@@ -46,14 +46,14 @@ impl_scope! {
 
     impl Layout for Self {
         #[inline]
-        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+        fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
+            axis.set_default_align_hv(Align::Default, Align::Center);
             size_mgr.text_rules(&mut self.label, Self::CLASS, axis)
         }
 
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
             self.core.rect = rect;
-            let align = align.unwrap_or(Align::Default, Align::Center);
-            mgr.text_set_size(&mut self.label, Self::CLASS, rect.size, align);
+            mgr.text_set_size(&mut self.label, Self::CLASS, rect.size, None);
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {

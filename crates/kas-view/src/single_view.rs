@@ -106,6 +106,14 @@ impl_scope! {
         }
     }
 
+    impl Layout for Self {
+        fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+            let mut rules = self.child.size_rules(size_mgr, axis);
+            rules.set_stretch(rules.stretch().max(Stretch::Low));
+            rules
+        }
+    }
+
     impl Widget for Self {
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             // We set data now, after child is configured

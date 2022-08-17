@@ -490,7 +490,7 @@ where
                     true => Size(self.w.dims.mark / 2, self.w.dims.mark),
                     false => Size(self.w.dims.mark, self.w.dims.mark / 2),
                 };
-                let offset = Offset::conv(rect.size.clamped_sub(size) / 2);
+                let offset = Offset::conv((rect.size - size) / 2);
                 let q = Quad::conv(Rect::new(rect.pos + offset, size));
 
                 let (p1, p2, p3);

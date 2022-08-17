@@ -9,7 +9,7 @@ use std::fmt;
 
 use crate::event::{ConfigMgr, Event, EventMgr, Response, Scroll};
 use crate::geom::{Coord, Offset, Rect};
-use crate::layout::{AlignHints, AxisInfo, SizeRules};
+use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::util::IdentifyWidget;
 use crate::WidgetId;
@@ -18,7 +18,7 @@ use kas_macros::autoimpl;
 #[allow(unused)]
 use crate::event::EventState;
 #[allow(unused)]
-use crate::layout::{self, AutoLayout};
+use crate::layout::{self, AlignPair, AutoLayout};
 #[allow(unused)]
 use crate::TkAction;
 #[allow(unused)]
@@ -187,13 +187,12 @@ pub trait Layout {
     /// outside of its assigned `rect` and to not function as normal.
     ///
     /// The assigned `rect` may be larger than the widget's size requirements,
-    /// regardless of the [`Stretch`] policy used. The [`AlignHints`] should be
-    /// used to align content such as text within this space, and also content
-    /// such as a button (which could, but does not need to, stretch).
-    ///
-    /// The [`AlignHints`] are usually passed down to children, though there are
-    /// some exceptions: a `Button` always centers content; a `ScrollRegion`
-    /// isolates the inside from outside influence over layout.
+    /// regardless of the [`Stretch`] policy used. If the widget should never
+    /// stretch, it must align itself.
+    /// Example: the `CheckBox` widget uses an [`AlignPair`] (set from
+    /// `size_rules`'s [`AxisInfo`]) and uses [`ConfigMgr::align_feature`].
+    /// Another example: `Label` uses a `Text` object which handles alignment
+    /// internally.
     ///
     /// Default implementation:
     ///
@@ -205,7 +204,7 @@ pub trait Layout {
     /// is used, also calls `<Self as AutoLayout>::set_rect`.
     ///
     /// [`Stretch`]: crate::layout::Stretch
-    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints);
+    fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect);
 
     /// Translate a coordinate to a [`WidgetId`]
     ///
@@ -348,14 +347,14 @@ pub trait Layout {
 ///     }
 ///
 ///     impl Layout for Self {
-///         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
+///         fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
+///             axis.set_default_align_hv(Align::Default, Align::Center);
 ///             size_mgr.text_rules(&mut self.label, self.class, axis)
 ///         }
 ///
-///         fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect, align: AlignHints) {
+///         fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
 ///             self.core.rect = rect;
-///             let align = align.unwrap_or(Align::Default, Align::Center);
-///             mgr.text_set_size(&mut self.label, self.class, rect.size, align);
+///             mgr.text_set_size(&mut self.label, self.class, rect.size, None);
 ///         }
 ///
 ///         fn draw(&mut self, mut draw: DrawMgr) {

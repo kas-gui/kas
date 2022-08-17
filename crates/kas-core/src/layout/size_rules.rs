@@ -31,20 +31,17 @@ use crate::theme::SizeMgr;
 /// ### Sizes
 ///
 /// The widget size model is simple: a rectangular box, plus a margin on each
-/// side. Widget sizes are calculated from available space and the `SizeRules`;
-/// these rules currently include:
+/// side. The `SizeRules` type represents expectations along a single axis:
 ///
-/// - the minimum size required for correct operation
-/// - the preferred / ideal size
-/// - a [`Stretch`] priority
+/// -   The minimum acceptable size (almost always met)
+/// -   The ideal size (often the same size; this distinction is most useful for
+///     scrollable regions which are *ideally* large enough not to require
+///     scrolling, but can be much smaller)
+/// -   A [`Stretch`] priority, used to prioritize allocation of excess space
 ///
-/// Available space is distributed between widgets depending on whether the
-/// space is below the minimum, between the minimum and preferred, or above
-/// the preferred size, with widgets with the highest [`Stretch`] priority being
-/// prioritised extra space. Usually rows/columns will be stretched to use all
-/// available space, the exception being when none have a priority higher than
-/// [`Stretch::None`]. When expanding a row/column, the highest stretch
-/// priority of all contents will be used.
+/// Note that `Stretch::None` does not *prevent* stretching, but simply states
+/// that it is undesired (lowest priority). Actually preventing stretching
+/// requires alignment.
 ///
 /// ### Margins
 ///
@@ -190,18 +187,6 @@ impl SizeRules {
     #[inline]
     pub fn ideal_size(self) -> i32 {
         self.b
-    }
-
-    /// Get the max size
-    ///
-    /// With most stretch policies, this returns `i32::MAX`, but with
-    /// [`Stretch::None`], this is [`SizeRules::ideal_size`].
-    #[inline]
-    pub fn max_size(self) -> i32 {
-        match self.stretch {
-            Stretch::None => self.b,
-            _ => i32::MAX,
-        }
     }
 
     /// Get the `(pre, post)` margin sizes
@@ -479,7 +464,7 @@ impl SizeRules {
                     // stretch factor and how far these are over their ideal.
                     // If highest stretch is None, do not expand beyond ideal.
                     sum = 0;
-                    let highest_stretch = total.stretch.max(Stretch::Filler);
+                    let highest_stretch = total.stretch;
                     let mut targets = Targets::new();
                     let mut over = 0;
                     for i in 0..N {
