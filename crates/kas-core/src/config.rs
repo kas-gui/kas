@@ -25,8 +25,13 @@ pub enum Error {
 
     #[cfg(feature = "ron")]
     #[cfg_attr(doc_cfg, doc(cfg(feature = "ron")))]
-    #[error("config (de)serialisation to RON failed")]
+    #[error("config serialisation to RON failed")]
     Ron(#[from] ron::Error),
+
+    #[cfg(feature = "ron")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "ron")))]
+    #[error("config deserialisation from RON failed")]
+    RonSpanned(#[from] ron::error::SpannedError),
 
     #[error("error reading / writing config file")]
     IoError(#[from] std::io::Error),
