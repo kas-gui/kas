@@ -26,9 +26,7 @@ proc-macro-error = "1.0"
 bitflags = "1.3.1"
 
 [dependencies.impl-tools-lib]
-version = "0.3.0" # version used in doc links
-git = "https://github.com/kas-gui/impl-tools.git"
-rev = "fc33ba95d15a56ff376eabcd3c2a852097171914"
+version = "0.4.0" # version used in doc links
 
 [dependencies.syn]
 version = "1.0.14"

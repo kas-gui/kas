@@ -85,8 +85,6 @@ git = "https://github.com/kas-gui/kas-text.git"
 rev = "e6278e05761c306b9a3527331445d76745a1a1ca"
 
 [dependencies.easy-cast]
-git = "https://github.com/kas-gui/easy-cast.git"
-rev = "6bf6084bb78f6bd1e781158016916ef103db0b19"
 version = "0.5.0" # used in doc links
 
 [dependencies.winit]
