@@ -366,8 +366,6 @@ impl<D: 'static> ThemeSize for Window<D> {
             }
         } else {
             let bound: i32 = text.measure_height().expect("invalid font_id").cast_ceil();
-            // Reset env since measure_height adjusts vertical alignment:
-            text.set_env(env);
 
             let line_height = self.dims.dpem.cast_ceil();
             let min = bound.max(line_height);
