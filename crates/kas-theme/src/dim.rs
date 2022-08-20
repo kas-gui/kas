@@ -352,11 +352,7 @@ impl<D: 'static> ThemeSize for Window<D> {
                 // NOTE: using different variable-width stretch policies here can
                 // cause problems (e.g. edit boxes greedily consuming too much
                 // space). This is a hard layout problem; for now don't do this.
-                if bound <= limit {
-                    SizeRules::new(bound.min(min), bound, margins, Stretch::Filler)
-                } else {
-                    SizeRules::new(min, limit, margins, Stretch::Low)
-                }
+                SizeRules::new(bound.min(min), bound.min(limit), margins, Stretch::Filler)
             } else {
                 let bound: i32 = text
                     .measure_width(f32::INFINITY)
