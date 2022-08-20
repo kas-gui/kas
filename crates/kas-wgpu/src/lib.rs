@@ -38,7 +38,7 @@ use kas::WindowId;
 use kas_theme::Theme;
 use thiserror::Error;
 use winit::error::OsError;
-use winit::event_loop::{EventLoop, EventLoopProxy, EventLoopWindowTarget};
+use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy, EventLoopWindowTarget};
 
 use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe};
 use crate::shared::SharedState;
@@ -141,7 +141,7 @@ where
         mut theme: T,
         options: Options,
     ) -> Result<Self> {
-        let el = EventLoop::with_user_event();
+        let el = EventLoopBuilder::with_user_event().build();
 
         options.init_theme_config(&mut theme)?;
         let config = match options.read_config() {
@@ -174,7 +174,7 @@ where
         options: Options,
         config: SharedRc<kas::event::Config>,
     ) -> Result<Self> {
-        let el = EventLoop::with_user_event();
+        let el = EventLoopBuilder::with_user_event().build();
         let scale_factor = find_scale_factor(&el);
         Ok(Toolkit {
             el,

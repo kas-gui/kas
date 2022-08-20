@@ -61,33 +61,6 @@ where
         use Event::*;
 
         match event {
-            WindowEvent { window_id, event } => {
-                if let Some(window) = self.windows.get_mut(&window_id) {
-                    window.handle_event(&mut self.shared, event);
-                }
-            }
-
-            DeviceEvent { .. } => return, // windows handle local input; we do not handle global input
-            UserEvent(action) => match action {
-                ProxyAction::Close(id) => {
-                    if let Some(id) = self.id_map.get(&id) {
-                        if let Some(window) = self.windows.get_mut(id) {
-                            window.send_action(TkAction::CLOSE);
-                        }
-                    }
-                }
-                ProxyAction::CloseAll => {
-                    for window in self.windows.values_mut() {
-                        window.send_action(TkAction::CLOSE);
-                    }
-                }
-                ProxyAction::Update(handle, payload) => {
-                    self.shared
-                        .pending
-                        .push(PendingAction::Update(handle, payload));
-                }
-            },
-
             NewEvents(cause) => {
                 // MainEventsCleared will reset control_flow (but not when it is Poll)
                 *control_flow = ControlFlow::Wait;
@@ -122,13 +95,97 @@ where
                         // log::debug!("Wakeup: WaitCancelled (ignoring)");
                     }
                     StartCause::Poll => (),
-                    StartCause::Init => {
-                        log::debug!("Wakeup: init");
-                    }
+                    StartCause::Init => (),
                 }
             }
 
+            WindowEvent { window_id, event } => {
+                if let Some(window) = self.windows.get_mut(&window_id) {
+                    window.handle_event(&mut self.shared, event);
+                }
+            }
+            DeviceEvent { .. } => {
+                // windows handle local input; we do not handle global input
+            }
+            UserEvent(action) => match action {
+                ProxyAction::Close(id) => {
+                    if let Some(id) = self.id_map.get(&id) {
+                        if let Some(window) = self.windows.get_mut(id) {
+                            window.send_action(TkAction::CLOSE);
+                        }
+                    }
+                }
+                ProxyAction::CloseAll => {
+                    for window in self.windows.values_mut() {
+                        window.send_action(TkAction::CLOSE);
+                    }
+                }
+                ProxyAction::Update(handle, payload) => {
+                    self.shared
+                        .pending
+                        .push(PendingAction::Update(handle, payload));
+                }
+            },
+
+            // TODO: windows should be constructed in Resumed and destroyed
+            // (everything but the widget) in Suspended:
+            Suspended => (),
+            Resumed => (),
+
             MainEventsCleared => {
+                while let Some(pending) = self.shared.pending.pop() {
+                    match pending {
+                        PendingAction::AddPopup(parent_id, id, popup) => {
+                            log::debug!("Pending: adding overlay");
+                            // TODO: support pop-ups as a special window, where available
+                            self.windows.get_mut(&parent_id).unwrap().add_popup(
+                                &mut self.shared,
+                                id,
+                                popup,
+                            );
+                            self.id_map.insert(id, parent_id);
+                        }
+                        PendingAction::AddWindow(id, widget) => {
+                            log::debug!("Pending: adding window {}", widget.title());
+                            match Window::new(&mut self.shared, elwt, id, widget) {
+                                Ok(window) => {
+                                    let wid = window.window.id();
+                                    self.id_map.insert(id, wid);
+                                    self.windows.insert(wid, window);
+                                }
+                                Err(e) => {
+                                    log::error!("Unable to create window: {}", e);
+                                }
+                            };
+                        }
+                        PendingAction::CloseWindow(id) => {
+                            if let Some(wwid) = self.id_map.get(&id) {
+                                if let Some(window) = self.windows.get_mut(wwid) {
+                                    window.send_close(&mut self.shared, id);
+                                }
+                                self.id_map.remove(&id);
+                            }
+                        }
+                        PendingAction::TkAction(action) => {
+                            if action.contains(TkAction::CLOSE | TkAction::EXIT) {
+                                for (_, window) in self.windows.drain() {
+                                    let _ = window.handle_closure(&mut self.shared);
+                                }
+                                *control_flow = ControlFlow::Poll;
+                            } else {
+                                for (_, window) in self.windows.iter_mut() {
+                                    window.handle_action(&mut self.shared, action);
+                                }
+                            }
+                        }
+                        PendingAction::Update(handle, payload) => {
+                            for window in self.windows.values_mut() {
+                                window.update_widgets(&mut self.shared, handle, payload);
+                            }
+                        }
+                    }
+                }
+
                 let mut close_all = false;
                 let mut to_close = SmallVec::<[ww::WindowId; 4]>::new();
                 self.resumes.clear();
@@ -165,9 +222,11 @@ where
 
                 self.resumes.sort_by_key(|item| item.0);
 
-                *control_flow = if *control_flow == ControlFlow::Exit || self.windows.is_empty() {
+                let is_exit = matches!(control_flow, ControlFlow::ExitWithCode(_));
+                *control_flow = if is_exit || self.windows.is_empty() {
                     self.shared.on_exit();
-                    ControlFlow::Exit
+                    debug_assert!(!is_exit || matches!(control_flow, ControlFlow::ExitWithCode(0)));
+                    ControlFlow::ExitWithCode(0)
                 } else if *control_flow == ControlFlow::Poll {
                     ControlFlow::Poll
                 } else if let Some((instant, _)) = self.resumes.first() {
@@ -184,7 +243,6 @@ where
                     }
                 }
             }
-
             RedrawEventsCleared => {
                 if matches!(control_flow, ControlFlow::Wait | ControlFlow::WaitUntil(_)) {
                     self.resumes.clear();
@@ -202,61 +260,7 @@ where
                 }
             }
 
-            LoopDestroyed | Suspended | Resumed => return,
-        };
-
-        // Create and init() any new windows.
-        while let Some(pending) = self.shared.pending.pop() {
-            match pending {
-                PendingAction::AddPopup(parent_id, id, popup) => {
-                    log::debug!("Pending: adding overlay");
-                    // TODO: support pop-ups as a special window, where available
-                    self.windows.get_mut(&parent_id).unwrap().add_popup(
-                        &mut self.shared,
-                        id,
-                        popup,
-                    );
-                    self.id_map.insert(id, parent_id);
-                }
-                PendingAction::AddWindow(id, widget) => {
-                    log::debug!("Pending: adding window {}", widget.title());
-                    match Window::new(&mut self.shared, elwt, id, widget) {
-                        Ok(window) => {
-                            let wid = window.window.id();
-                            self.id_map.insert(id, wid);
-                            self.windows.insert(wid, window);
-                        }
-                        Err(e) => {
-                            log::error!("Unable to create window: {}", e);
-                        }
-                    };
-                }
-                PendingAction::CloseWindow(id) => {
-                    if let Some(wwid) = self.id_map.get(&id) {
-                        if let Some(window) = self.windows.get_mut(wwid) {
-                            window.send_close(&mut self.shared, id);
-                        }
-                        self.id_map.remove(&id);
-                    }
-                }
-                PendingAction::TkAction(action) => {
-                    if action.contains(TkAction::CLOSE | TkAction::EXIT) {
-                        for (_, window) in self.windows.drain() {
-                            let _ = window.handle_closure(&mut self.shared);
-                        }
-                        *control_flow = ControlFlow::Poll;
-                    } else {
-                        for (_, window) in self.windows.iter_mut() {
-                            window.handle_action(&mut self.shared, action);
-                        }
-                    }
-                }
-                PendingAction::Update(handle, payload) => {
-                    for window in self.windows.values_mut() {
-                        window.update_widgets(&mut self.shared, handle, payload);
-                    }
-                }
-            }
+            LoopDestroyed => (),
         }
     }
 }

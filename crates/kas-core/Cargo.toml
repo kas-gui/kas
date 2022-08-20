@@ -71,8 +71,8 @@ linear-map = "1.2.0"
 thiserror = "1.0.23"
 serde = { version = "1.0.123", features = ["derive"], optional = true }
 serde_json = { version = "1.0.61", optional = true }
-serde_yaml = { version = "0.8.16", optional = true }
-ron = { version = "0.7.1", package = "ron", optional = true }
+serde_yaml = { version = "0.9.9", optional = true }
+ron = { version = "0.8.0", package = "ron", optional = true }
 num_enum = "0.5.6"
 
 [dependencies.kas-macros]
@@ -81,15 +81,11 @@ path = "../kas-macros"
 
 [dependencies.kas-text]
 version = "0.5.0"
-git = "https://github.com/kas-gui/kas-text.git"
-rev = "e6278e05761c306b9a3527331445d76745a1a1ca"
 
 [dependencies.easy-cast]
-git = "https://github.com/kas-gui/easy-cast.git"
-rev = "6bf6084bb78f6bd1e781158016916ef103db0b19"
 version = "0.5.0" # used in doc links
 
 [dependencies.winit]
 # Provides translations for several winit types
-version = "0.26"
+version = "0.27"
 optional = true
