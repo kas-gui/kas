@@ -6,44 +6,25 @@
 //! KAS GUI Toolkit
 //!
 //! This, the main KAS crate, is a wrapper over other crates designed to make
-//! content easily available while remaining configurable.
-//! Since generated documentation for re-exported items is poor, the crates used
-//! are listed below:
+//! content easily available while remaining configurable. The following crates
+//! (some optional, dependant on a feature flag) are re-exported by this crate:
 //!
-//! **Crate [`easy-cast`](https://crates.io/crates/easy-cast):** `Conv`, `Cast` traits and related functionality
-//! (always included), available as [`kas::cast`](cast).
-//!
-//! **Crate [`kas_core`]:** this is the core crate (always included).
-//! Its contents are re-exported directly from the root of this crate.
-//!
-//! **Crate `kas_macros`:** procedural macros (always included), available
-//! as [`kas::macros`](kas_core::macros).
-//!
-//! **Crate [`kas_widgets`]:** common widget implementations (always included).
-//! These are available as [`kas::widgets`](kas_widgets).
-//!
-//! **Crate [`kas_resvg`]:** `Canvas` and `Svg` widgets over crate
-//! [resvg](https://github.com/RazrFalcon/resvg) and associated libraries.
-//! Gated under the feature `resvg` (enabled by default) or `tiny-skia` and
-//! available as [`kas::resvg`](resvg).
-//!
-//! **Crate [`kas_view`]:** "view" widgets over shared data
-//! (gated under feature `view`, enabled by default).
-//! These are available as [`kas::view`](kas_view).
-//!
-//! **Crate [`kas_theme`]:** switchable theme support and high-level drawing
-//! (gated under feature `theme`, enabled by default, and hard to do without).
-//! This is available as [`kas::theme`](kas_theme).
-//!
-//! **Crate [`kas_wgpu`]:** the shell, providing system integration and graphics
-//! implementations over [WGPU](https://github.com/gfx-rs/wgpu).
-//! This crate is gated under feature `wgpu` (enabled by default),
-//! but until an alternative is available it is essential.
-//! Its contents are available as [`kas::shell`](kas_wgpu).
-//!
-//! **Crate [`kas_dylib`]:** a support crate for dynamic linking (gated under
-//! the feature `dynamic`). Its contents should not be used directly; simply
-//! enabling the `dynamic` feature is enough to use dynamic linking.
+//! - [`kas_core`] is re-export at the top-level
+//! - [`easy-cast`](https://crates.io/crates/easy-cast) is re-export as [`kas::cast`](cast)
+//! - `kas_macros` is an extended version of [`impl-tools`](https://crates.io/crates/impl-tools),
+//!     re-export as [`kas::macros`](macros)
+//! - [`kas_widgets`] is re-export as [`kas::widgets`](widgets)
+//! - [`kas_resvg`] is re-export as [`kas::resvg`](resvg) (`resvg` or `tiny-skia` feature)
+//! - [`kas_view`] is re-export as [`kas::view`](view) (`view` feature)
+//! - [`kas_theme`] (`theme` feature) is re-export under
+//!     [`kas::theme`](kas_theme); note that this module contains content from
+//!     both [`kas_theme`] and [`kas_core::theme`]
+//! - [`kas_wgpu`] is re-export as [`kas::shell`](shell); in the current version
+//!     this is dependant on [WGPU](https://github.com/gfx-rs/wgpu), but in the
+//!     future this should become a shim over multiple back-ends
+//! - [`kas_dylib`] (`dynamic` feature) is used dynamic linking; this crate is
+//!     not used directly — simply enabling the `dynamic` feature is enough to
+//!     use dynamic linking.
 //!
 //! Also refer to:
 //!
