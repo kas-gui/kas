@@ -63,18 +63,22 @@
 /// This prelude may be more useful when implementing widgets than when simply
 /// using widgets in a GUI.
 pub mod prelude {
-    #[doc(no_inline)]
+    // Note: using #[doc(no_inline)] here causes doc issues in this crate:
+    // - kas::WidgetId appears to have no methods
+    // - doc_cfg annotations appear to be attached to the wrong items
+
     pub use kas_core::prelude::*;
-    #[doc(no_inline)]
     pub use kas_widgets::adapter::AdaptWidget;
 }
 
 pub use kas_core::*;
 
+#[doc(inline)]
 pub extern crate kas_widgets as widgets;
 
 #[cfg(any(feature = "view"))]
 #[cfg_attr(doc_cfg, doc(cfg(feature = "view")))]
+#[doc(inline)]
 pub extern crate kas_view as view;
 
 /// `Canvas` and `Svg` widgets over [`tiny-skia`](https://crates.io/crates/tiny-skia)
@@ -105,6 +109,7 @@ pub mod theme {
 
 #[cfg(feature = "wgpu")]
 #[cfg_attr(doc_cfg, doc(cfg(feature = "wgpu")))]
+#[doc(inline)]
 pub extern crate kas_wgpu as shell;
 
 #[cfg(feature = "dynamic")]
