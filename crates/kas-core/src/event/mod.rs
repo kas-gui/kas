@@ -5,40 +5,40 @@
 
 //! Event handling
 //!
-//! See documentation of [`Event`] values.
+//! ## Event handling model
 //!
-//! ## Event delivery
+//! 1.  Determine the target [`WidgetId`]. This is dependant on the type of
+//!     event and may (non-exhaustively) derive
+//!     from keyboard navigation (see [`EventState::set_nav_focus`], [`EventMgr::next_nav_focus`]),
+//!     from key bindings,
+//!     from mouse/touch coordinates (see [`crate::Layout::find_id`])
+//!     or from a mouse/touch grab ([`EventMgr::grab_press`]).
+//! 2.  Construct an [`Event`].
+//! 3.  Use [`EventMgr::send`] to traverse the widget tree from its root to the
+//!     target.
 //!
-//! Events can be addressed only to a [`WidgetId`], so the first step (for
-//! mouse and touch events) is to use [`crate::Layout::find_id`] to translate a
-//! coordinate to a [`WidgetId`].
+//!     In case a widget [`EventState::is_disabled`], then traversal of the
+//!     widget tree may stop early, depending on [`Event::pass_when_disabled`].
+//!     Otherwise, call [`Widget::steal_event`] on each ancestor, stopping early
+//!     if any returns [`Response::Used`]. In both cases the return traversal of
+//!     step 4 still happens, but only from the widget stopped at here.
 //!
-//! Events are then sent via [`EventMgr::send`] which traverses the widget tree
-//! starting from the root (the window), following the path described by the
-//! [`WidgetId`]:
+//!     In the normal case, [`Widget::handle_event`] is called on the target.
+//! 4.  Traverse back towards the widget tree's root.
 //!
-//! -   In case any widget encountered is disabled, [`Unused`] is returned
-//! -   If the target is found, [`Widget::handle_event`] is called. This method may
-//!     handle the event and may push a message to the stack via
-//!     [`EventMgr::push_msg`].
-//! -   If no target is found, a warning is logged and [`Unused`] returned
+//!     If no handler has yet returned [`Response::Used`], then call
+//!     [`Widget::handle_unused`] on each ancestor visited.
 //!
-//! Then, for each parent back to the root,
+//!     If the message stack is non-empty (due to a handler calling [`EventMgr::push_msg`]),
+//!     call [`Widget::handle_message`] on each ancestor visited.
 //!
-//! -   If [`Unused`] was returned, [`Widget::handle_unused`] is called
-//! -   Otherwise, if the message stack is non-empty, [`Widget::handle_message`]
-//!     is called
-//!
-//! This traversal of the widget tree is fast: (`O(len)`) where `len` is the
-//! length of the path described by [`WidgetId`]. It is "clean": uninvolved
-//! widgets are not sent any event, while actionable messages are sent to an
-//! appropriate parent. It allows "recycling" of unused events.
-//!
-//! ### Keyboard focus
-//!
-//! Keyboard focus controls where otherwise undirected keyboard input is sent.
-//! This may be set via [`EventState::set_nav_focus`] but is typically controlled
-//! via the <kbd>Tab</kbd> key, via [`EventMgr::next_nav_focus`].
+//!     If a non-empty scroll action is set (due to a handler calling [`EventMgr::set_scroll`]),
+//!     call [`Widget::handle_scroll`] on each ancestor visited.
+//! 5.  If the message stack is non-empty on reaching the root widget then log a
+//!     warning (including the formatted message in debug builds).
+//!     It is expected that for any message a widget might push to the stack,
+//!     *some* ancestor will check for and handle this message (not doing so is
+//!     safe but probably means that some control is not operational).
 //!
 //! ### Pop-ups
 //!

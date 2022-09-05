@@ -45,10 +45,7 @@ use crate::shared::SharedState;
 use window::Window;
 
 pub use options::Options;
-
-pub use kas;
-pub use kas_theme as theme;
-pub use wgpu;
+pub extern crate wgpu;
 
 /// Possible failures from constructing a [`Toolkit`]
 ///

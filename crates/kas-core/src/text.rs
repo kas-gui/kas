@@ -8,9 +8,10 @@
 //! Most of this module is simply a re-export of the [KAS Text] API, hence the
 //! lower level of integration than other parts of the library.
 //!
-//! When using a [`Text`] object in a widget, the text *must* be prepared before
-//! display by calling [`ConfigMgr::text_set_size`] from [`Layout::set_rect`].
-//! Failure to do so may result in text displaying incorrectly or not at all.
+//! [`Text`] objects *must* be prepared before usage, otherwise they may appear
+//! empty. Call [`ConfigMgr::text_set_size`] from [`Layout::set_rect`] to set
+//! text position and prepare. If text is adjusted, one may use e.g.
+//! [`TextApi::prepare`] to update.
 //!
 //! [KAS Text]: https://github.com/kas-gui/kas-text/
 

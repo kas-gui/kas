@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Common implementation of [`kas::theme::ThemeSize`]
+//! A shared implementation of [`ThemeSize`]
 
 use linear_map::LinearMap;
 use std::any::Any;

@@ -62,7 +62,7 @@ impl_scope! {
     }
 }
 
-/// Editor for [`kas::event::Config`]
+/// Editor for [`kas::event::Config`](Config)
 #[derive(Clone, Copy, Debug, Default)]
 pub struct EventConfig;
 

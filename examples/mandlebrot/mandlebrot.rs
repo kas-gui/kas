@@ -7,18 +7,17 @@
 //!
 //! Demonstrates use of a custom draw pipe.
 
-use std::mem::size_of;
-use wgpu::util::DeviceExt;
-use wgpu::{include_spirv, Buffer, ShaderModule};
-
 use kas::draw::{Draw, DrawIface, PassId};
 use kas::event::{self, Command};
 use kas::geom::{DVec2, Vec2, Vec3};
 use kas::prelude::*;
 use kas::shell::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawPipe};
-use kas::shell::Options;
+use kas::shell::{wgpu, Options};
 use kas::widgets::adapter::ReserveP;
 use kas::widgets::{Label, Slider};
+use std::mem::size_of;
+use wgpu::util::DeviceExt;
+use wgpu::{include_spirv, Buffer, ShaderModule};
 
 #[cfg(not(feature = "shader64"))]
 type ShaderVec2 = Vec2;

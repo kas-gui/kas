@@ -8,9 +8,6 @@
 use kas::widgets::dialog::MessageBox;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Build widgets.
-    // Message is a Window with an "Ok" button and notification status.
-    // Each Window::new method creates objects then solves constraints.
     let window = MessageBox::new("Message", "Hello world");
 
     let theme = kas::theme::FlatTheme::new();

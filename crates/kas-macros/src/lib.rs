@@ -5,7 +5,7 @@
 
 //! KAS macros
 //!
-//! This crate extends [impl-tools](https://crates.io/crates/impl-tools).
+//! This crate extends [`impl-tools`](https://docs.rs/impl-tools/).
 
 #![recursion_limit = "128"]
 #![allow(clippy::let_and_return)]
@@ -449,6 +449,8 @@ pub fn widget_index(input: TokenStream) -> TokenStream {
 ///     // `self.base()`, which mut return an object implementing ThemeDraw
 /// }
 /// ```
+///
+/// Note: this is a very limited macro which *only* supports `ThemeDraw`.
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn extends(attr: TokenStream, item: TokenStream) -> TokenStream {

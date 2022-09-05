@@ -28,6 +28,8 @@ mod simple_theme;
 mod theme_dst;
 mod traits;
 
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub mod dim;
 
 pub use colors::{Colors, ColorsLinear, ColorsSrgb, InputState};
