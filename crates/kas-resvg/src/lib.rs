@@ -13,7 +13,7 @@
 
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 
-pub use tiny_skia;
+pub extern crate tiny_skia;
 
 mod canvas;
 pub use canvas::{Canvas, CanvasProgram};
