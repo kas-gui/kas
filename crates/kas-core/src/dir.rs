@@ -58,7 +58,7 @@ pub trait Directional: Copy + Sized + std::fmt::Debug + 'static {
 
 macro_rules! fixed {
     ($d:ident, $df:ident, $dr:ident) => {
-        /// Fixed instantiation of [`Directional`]
+        /// Zero-sized instantiation of [`Directional`]
         #[derive(Copy, Clone, Default, Debug)]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         pub struct $d;
@@ -149,5 +149,20 @@ bitflags! {
         const RIGHT = 0b0010;
         const UP = 0b0100;
         const DOWN = 0b1000;
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::mem::size_of;
+
+    #[test]
+    fn size() {
+        assert_eq!(size_of::<Left>(), 0);
+        assert_eq!(size_of::<Right>(), 0);
+        assert_eq!(size_of::<Up>(), 0);
+        assert_eq!(size_of::<Down>(), 0);
+        assert_eq!(size_of::<Direction>(), 1);
     }
 }
