@@ -8,11 +8,10 @@ description = "KAS GUI / Mandlebrot example"
 publish = false
 
 [dependencies]
-kas = { version = "0.11.0", path = "../.." }
+kas = { version = "0.11.0", features = ["wgpu"], path = "../.." }
 chrono = "0.4"
 env_logger = "0.9"
 log = "0.4"
-wgpu = "0.13.0"
 bytemuck = "1.7.0"
 
 [features]
