@@ -7,9 +7,10 @@
 //!
 //! ## Sub-modules
 //!
-//! -   [`adapter::AdaptWidget`]: provides `map_msg`, `with_reserve` and `with_label` methods
-//! -   [`dialog`]: pre-made dialog widgets
-//! -   [`menu`]: support for pop-up menus ([`ComboBox`], [`menu::MenuBar`])
+//! -   [`adapter`] provides the [`AdaptWidget`](adapter::AdaptWidget) trait with `map_msg`, `with_reserve` and `with_label` methods
+//! -   [`dialog`] provides [`MessageBox`](dialog::MessageBox), a simple [`Window`](dialog::Window), ...
+//! -   [`edit`] provides [`EditBox`], [`EditField`] widgets, [`EditGuard`] trait and some impls
+//! -   [`menu`] provides a [`MenuBar`](menu::MenuBar), [`SubMenu`](menu::SubMenu), ...
 //!
 //! ## Container widgets
 //!
@@ -24,7 +25,6 @@
 //! -   [`TextButton`], [`Button`], [`MarkButton`]: button widgets
 //! -   [`CheckBox`], [`CheckButton`]: checkable boxes
 //! -   [`RadioBox`], [`RadioButton`]: linked checkable boxes
-//! -   [`EditBox`], [`EditField`]: text editing with/without a frame
 //! -   [`ScrollBar`]: a scroll bar
 //! -   [`Slider`]: a slider
 //! -   [`Spinner`]: numeric entry

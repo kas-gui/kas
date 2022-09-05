@@ -5,11 +5,10 @@
 
 //! Geometry data types
 //!
-//! [`Coord`], [`Size`] and [`Offset`] are all integer (`i32`) types used for
-//! widget UI layout, representing positions, sizes and scroll deltas
-//! respectively.
+//! [`Coord`], [`Size`] and [`Offset`] are all 2D integer (`i32`) types,
+//! representing positions, sizes and scroll deltas respectively.
 //!
-//! [`Vec2`] is a floating-point (`f32`) type used mainly for screen-space
+//! [`Vec2`] is a 2D floating-point (`f32`) type used mainly for screen-space
 //! position during rendering.
 //!
 //! Conversions types mostly use [`Cast`] and [`Conv`]. [`From`] may be used to

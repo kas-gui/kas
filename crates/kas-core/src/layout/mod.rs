@@ -3,7 +3,9 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Layout solver
+//! Layout utilities
+//!
+//! For documentation of layout resolution, see the [`Layout`] trait.
 //!
 //! Size units are physical (real) pixels. This applies to most of KAS.
 //!
@@ -15,7 +17,7 @@
 //!
 //! [`AxisInfo`], [`Margins`] and [`Stretch`] are auxilliary data types.
 //!
-//! ## Layout engines
+//! ## Solvers
 //!
 //! The [`RulesSolver`] and [`RulesSetter`] traits define interfaces for
 //! layout engines:

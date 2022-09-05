@@ -10,21 +10,16 @@
 //! (some optional, dependant on a feature flag) are re-exported by this crate:
 //!
 //! - [`kas_core`] is re-export at the top-level
-//! - [`easy-cast`](https://crates.io/crates/easy-cast) is re-export as [`kas::cast`](cast)
-//! - `kas_macros` is an extended version of [`impl-tools`](https://crates.io/crates/impl-tools),
+//! - [`easy-cast`](https://docs.rs/easy-cast/0.5) is re-export as [`kas::cast`](cast)
+//! - `kas_macros` is an extended version of [`impl-tools`](https://docs.rs/impl-tools/),
 //!     re-export as [`kas::macros`](macros)
-//! - [`kas_widgets`] is re-export as [`kas::widgets`](widgets)
+//! - [`kas_widgets`](https://docs.rs/kas-widgets/0.11) is re-export as [`kas::widgets`](widgets)
 //! - [`kas_resvg`] is re-export as [`kas::resvg`](resvg) (`resvg` or `tiny-skia` feature)
-//! - [`kas_view`] is re-export as [`kas::view`](view) (`view` feature)
-//! - [`kas_theme`] (`theme` feature) is re-export under
-//!     [`kas::theme`](kas_theme); note that this module contains content from
-//!     both [`kas_theme`] and [`kas_core::theme`]
-//! - [`kas_wgpu`] is re-export as [`kas::shell`](shell); in the current version
+//! - [`kas_view`](https://docs.rs/kas-view/0.11) is re-export as [`kas::view`](view) (`view` feature)
+//! - [`kas_theme`] (`theme` feature) is re-export under [`kas::theme`](theme)
+//! - [`kas_wgpu`](https://docs.rs/kas-wgpu/0.11) is re-export as [`kas::shell`](shell); in the current version
 //!     this is dependant on [WGPU](https://github.com/gfx-rs/wgpu), but in the
 //!     future this should become a shim over multiple back-ends
-//! - [`kas_dylib`] (`dynamic` feature) is used dynamic linking; this crate is
-//!     not used directly — simply enabling the `dynamic` feature is enough to
-//!     use dynamic linking.
 //!
 //! Also refer to:
 //!
@@ -79,7 +74,7 @@ pub mod resvg {
 
 /// Themes
 ///
-/// This module merges [`kas_core::theme`](https://docs.rs/kas-theme/0.11/kas_theme) and [`kas_theme`].
+/// This module is the merger of [`kas_core::theme`] and [`kas_theme`].
 pub mod theme {
     pub use kas_core::theme::*;
 

@@ -16,7 +16,7 @@ exclude = ["/screenshots"]
 features = ["winit", "markdown", "yaml", "json", "ron"]
 rustdoc-args = ["--cfg", "doc_cfg"]
 # To build locally:
-# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=internal_doc,markdown,yaml,json,ron --no-deps --open
+# RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=internal_doc,winit,markdown,yaml,json,ron --no-deps --open
 
 [features]
 # Use Generic Associated Types (this is too unstable to include in nightly!)
