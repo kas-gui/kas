@@ -2,16 +2,145 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.11.0] — unreleased
+## [0.11.0] — 2022-09-05
 
-Bump MSRV to 1.62.0.
+With a year since the previous release, KAS v0.11 sees *a lot* of changes. In
+the interest of brevity, the list below is incomplete.
 
-### Breaking changes
+### Widget trait revision
 
--   `WidgetId` has been completely re-written, and now represents a path
--   `Ord for WidgetId` now considers a parent to come *before* its children.
-    Note: previously ordering was used in `send` logic; this is no longer
-    recommended (use e.g. `Widget::find_child_index` instead).
+One of the major nuisances with KAS v0.10 and earlier was the that `dyn Widget`
+was not a valid type since the associated `Handler::Msg` type must be specified.
+KAS v0.11 removes this associated type (#309), replacing it with a variadic
+message stack, thus making `dyn Widget` a valid (unsized) type.
+
+-   Add `fn WidgetCore::identify`, returning a printable type
+    (example result: `TextButton#01`) (#266)
+-   New trait `WidgetExt: Widget` (#286)
+-   Add `Widget::handle_message`; rename `Handler::handle` → `handle_event` (#309)
+-   Merge `Handler` and `WidgetConfig` traits into `Widget` (#312)
+-   Replace `#[widget_core] core: CoreData` field with `core: widget_core!()` (#314)
+-   Remove bound `Widget: Any` (and thus `'static`) (#316)
+-   `Window` trait simplified; new `RootWidget` struct handles pop-ups (#318)
+-   Add `Widget::steal_event` (#319) and `Widget::pre_handle_event` (#324)
+-   Trait `Scrollable: Widget` is now a core trait; new trait `HasScrollBars` (#324)
+
+#### Macros
+
+This cycle saw the development of the `#[autoimpl]` and `impl_scope!` macros
+which were split out into a new [`impl-tools` crate](https://crates.io/crates/impl-tools) in #300.
+
+-   `#[derive(Widget)]` becomes `widget!` (#258) becomes `#[widget]` (#300)
+-   Auto-detect which traits have manual impls (#258) and merge generated
+    methods into manual impls (#312, #335)
+-   `impl Self` syntax (#258, #300)
+-   New `#[autoimpl]` macro as a more capable version of `#[derive]` (#258, #272, #293, #294)
+-   Revise `make_widget!` into `impl_singleton!` (#272, #317)
+-   New `widget_index!` macro (#291)
+
+#### Layout and margins
+
+Widgets may now have complex internal layout, defined by a domain-specific
+macro language (#259, #282, #304, #306, #314, #316, #322, #345, #348, #350).
+
+-   Better text, `EditBox` margins (#283)
+-   Menu entries use interior margins (#283)
+-   Fix initial window size on Wayland (#298)
+-   New struct `PixmapScaling` used by `Image` and `Svg` (#303, #321)
+-   Add `float` layout (#322)
+-   Revise `FrameRules`; add `MarginStyle` (#348)
+-   Add alignment hints to `AxisInfo`, removing from `set_rect` (#350)
+
+### Configuration, WidgetId
+
+Partial (localised) widget configuration is now possible (#276, #299).
+
+The `WidgetId` type is now a path (#264, #265).
+As a result, `WidgetId` is no longer `Copy` but persistent identifiers for
+view widgets over a specific content are possible (#282).
+Further, it is possible to determine whether one widget is the ancestor of
+another purely by comparing `WidgetId`s.
+
+-   **Breaking:** `Ord for WidgetId` now considers a parent to come *before* its children
+-   Add `WidgetChildren::make_child_id` (#313, #330)
+
+### Event handling
+
+The widget trait revision (#309) introduced a variadic message stack
+(`EventMgr::push_msg` and `EventMgr::try_pop_msg` methods), and allowed the
+implementation of a generic `EventMgr::send` routing method replacing the
+`SendEvent` trait, as well as removal of `VoidMsg`.
+
+Momentum (flick) scrolling is now supported (#268).
+
+-   Rename `Manager` → `EventMgr`, `ManagerState` → `EventState` (#266)
+-   Disabled status is now a property of `EventState`, not of the widget (#292, #323)
+-   `Response` enum loses most variants; new `Scroll` enum (#264, #309)
+-   Add `Event::activate_on_press`, replacing `EventMgr::handle_generic (#311)
+-   Replace `kas::event::Event::Activate` with `kas::event::Command::Activate` (#323)
+-   Replace `Manager::handle_generic` with `Widget::pre_handle_event` (#324)
+-   Add `Event::MouseHover`, `Event::LostMouseHover`, `Event::LostNavFocus` (#324)
+-   New `ConfigMgr` type (introduced as `SetRectMgr` in #266, renamed in #330)
+-   Add `EventMgr::next_nav_focus_from` (#347)
+
+### Themes and drawing
+
+Support animations, driven by the theme *or* the widget (#269, #270, #271, #321).
+
+-   New `SizeMgr`, `DrawMgr` types wrapping theme size/draw interface (#266)
+-   Rename `DrawHandle` → `ThemeDraw`, `SizeHandle` → `ThemeSize` (#327)
+-   Merge most methods of `SizeMgr` into new `feature`, `align_feature` methods
+    over a `kas::theme::Feature` enum (#327)
+-   Add `SimpleTheme` as base theme (#332)
+-   `SizeMgr`: add methods `dpem`, `min_scroll_size`; remove `pixels_from_*` (#334)
+-   Clip text to widget rect (#336, #337)
+-   Auto-detect dark theme via `dark-light` crate (#337)
+-   Rename `SizeMgr::text_bound` with `text_rules` and revise (#338)
+
+Visual tweaks include a "tick" mark for `CheckBox` (#298) and removal of "glow shadows" (#327).
+
+### Data models
+
+Data changes are now notified via broadcast (#323), using a version number to
+check whether a view is current (#266, #289).
+
+`Driver` trait impls are now also responsible for handling messages from view
+widgets via the new `Driver::on_message` method (#334).
+
+-   New filters `ContainsString`, `ContainsCaseInsensitive` (#248)
+-   Add `SharedRc` methods `borrow`, `try_borrow`, `update_mut` (#334)
+-   Add `SharedData` trait as common base of all data model traits (#334)
+-   Rename `DefaultView` → `View`, `DefaultNav` → `NavView` (#335)
+-   New `kas_view` crate for view widgets (#335)
+
+### Widgets
+
+-   New widgets `Mark` (#305, #316) and `MarkButton` (#319)
+-   New widget `dialog::TextEdit` (#318)
+-   New widget `Spinner` (#319, #334)
+-   New widget `TabStack` (#321)
+-   Invisible scroll bars (#324)
+-   Renames: `CheckBox`, `CheckButton`, `RadioBox`, `RadioButton`, `RadioGroup` (#330)
+-   `CheckButton` and `RadioButton` infer layout direction from text direction (#332)
+-   New `kas::widgets::edit` public module (#334)
+-   Rename `DragHandle` → `GripPart` (#339)
+
+### Features & misc
+
+-   The minimum supported Rust version (MSRV) is now 1.62.0 (#256, #335).
+-   Use (some) Clippy lints (#256)
+-   `#[must_use]` annotations were added to methods returning a modification of self (#264, #266)
+-   Use `easy-cast` traits for conversions on `kas::geom` types (#284)
+-   Handle window focus gain/loss (#292)
+-   Make `&EventState` available to (theme) `DrawHandle` (#292)
+-   Do not panic when attempting to draw un-prepared text (#312)
+-   Merge example `filter-list` into `gallery` (#323)
+-   Remove `stack_dst` dependency, which was `unsafe` and used only as a
+    premature optimisation (#335)
+-   Update to WGPU 0.13 (#340) and winit to 0.27 (#351)
+-   Bump `easy-cast` dep (re-export as `kas::cast`) to 0.5.0, adding `cast_approx` functionality
+    ([easy-cast#21](https://github.com/kas-gui/easy-cast/pull/21))
+
 
 ## [0.10.1] — 2021-09-07
 
