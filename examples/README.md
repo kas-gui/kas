@@ -11,20 +11,20 @@ examples may be the most accessible. Also see
 
 Demonstrates updating the UI in response to events from a background thread.
 
-![Async-event](https://github.com/kas-gui/data-dump/blob/master/screenshots/async-event.png)
+![Async-event](https://github.com/kas-gui/data-dump/blob/master/kas_0_9/image/async-event.png)
 
 ### Calculator
 
 A simple calculator show-casing the grid layout and keyboard support.
 
-![Calculator](https://github.com/kas-gui/data-dump/blob/master/screenshots/calculator.png)
+![Calculator](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/calculator.png)
 
 ### Clock
 
 A simple clock. An example of a custom widget using mid-level draw routines and
 timer updates.
 
-![Clock](https://github.com/kas-gui/data-dump/blob/master/screenshots/clock.png)
+![Clock](https://github.com/kas-gui/data-dump/blob/master/kas_0_9/image/clock.png)
 
 ### Counter
 
@@ -32,20 +32,13 @@ timer updates.
 
 **Variant:** `sync-counter` opens two windows with a synchronised counter.
 
-![Counter](https://github.com/kas-gui/data-dump/blob/master/screenshots/counter.png)
+![Counter](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/counter.png)
 
 ### Cursors
 
 Curious what each mouse cursor available on your desktop (via winit) looks like?
 
-![[Cursors](https://github.com/kas-gui/data-dump/blob/master/screenshots/cursors.png)
-
-### Custom theme
-
-An example demonstrating a custom theme implementation.
-Pretty useless, but hey, funky background colours!
-
-![Custom theme](https://github.com/kas-gui/data-dump/blob/master/screenshots/theme.png)
+![Cursors](https://github.com/kas-gui/data-dump/blob/master/kas_0_9/image/cursors.png)
 
 ### Data list
 
@@ -60,46 +53,44 @@ same UI, but different internals:
     performance is thus independent of the number of entries (though length is
     still limited by the maximum possible scroll offset; see issue #222)
 
-![Data list](https://github.com/kas-gui/data-dump/blob/master/screenshots/data-list.png)
+![Data list](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/data-list.png)
 
 ### Gallery
 
-A testbed demoing most widgets along with theme and colour switching.
+A testbed demoing most widgets, animations, data models, canvas and configuration.
 
-Note: the video demo below is quite dated.
-
-![Gallery](https://github.com/kas-gui/data-dump/blob/master/screenshots/gallery.png)
-![Gallery](https://github.com/kas-gui/data-dump/blob/master/video/gallery.png)
+![Gallery](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/gallery.png)
+![Gallery](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/video/gallery.apng)
 
 ### Hello
 
 A message box.
 
-![Hello](https://github.com/kas-gui/data-dump/blob/master/screenshots/hello.png)
+![Hello](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/hello.png)
 
 ### Layout
 
 Demonstration of complex layout and multi-paragraph text.
 
-![Layout](https://github.com/kas-gui/data-dump/blob/master/screenshots/layout.png)
+![Layout](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/layout.png)
 
 ### Mandlebrot
 
 GPU-accelerated fractals via a custom embedded WGPU graphics pipeline.
 
-![Mandlebrot](https://github.com/kas-gui/data-dump/blob/master/screenshots/mandlebrot.png)
+![Mandlebrot](https://github.com/kas-gui/data-dump/blob/master/kas_0_9/image/mandlebrot.png)
 
 ### Splitter
 
 Demonstrates resizable panes.
 
-![Splitter](https://github.com/kas-gui/data-dump/blob/master/screenshots/splitter.gif)
+![Splitter](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/splitter.png)
 
 ### Stopwatch
 
 Ready? Set! Go!
 
-![Stopwatch](https://github.com/kas-gui/data-dump/blob/master/screenshots/stopwatch.png)
+![Stopwatch](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/stopwatch.png)
 
 ### Sync-counter
 
@@ -109,6 +100,8 @@ A variant of [Counter](#Counter), demonstrating multiple windows and the
 ### Times-tables
 
 A simple demonstration of the `MatrixView` widget.
+
+![Times-tables](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/image/times-tables.png)
 
 
 Copyright and Licence
