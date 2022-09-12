@@ -4,7 +4,7 @@ Mandlebrot example
 This example demonstrates an embedded WGPU graphics pipeline and two-finger
 scroll/zoom/rotation via `Event::Pan`.
 
-![Mandlebrot](https://github.com/kas-gui/data-dump/blob/master/screenshots/mandlebrot.png)
+![Mandlebrot](https://github.com/kas-gui/data-dump/blob/master/kas_0_9/image/mandlebrot.png)
 
 
 Copyright and Licence

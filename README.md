@@ -2,29 +2,26 @@ KAS GUI
 =======
 
 [![Test Status](https://github.com/kas-gui/kas/workflows/Tests/badge.svg?event=push)](https://github.com/kas-gui/kas/actions)
+[![Crates.io](https://img.shields.io/crates/v/kas.svg)](https://crates.io/crates/kas)
 [![kas-text](https://img.shields.io/badge/GitHub-kas--text-blueviolet)](https://github.com/kas-gui/kas-text/)
 [![Docs](https://docs.rs/kas/badge.svg)](https://docs.rs/kas)
 ![Minimum rustc version](https://img.shields.io/badge/rustc-1.62+-lightgray.svg)
 
-KAS is a widget-first GUI toolkit:
+KAS is a pure-Rust GUI toolkit with stateful widgets:
 
--   widgets retain state
--   flexibile drawing, layout, event handling, animation
--   clean, type-safe widget interaction
--   full keyboard control of UI
--   fast, efficient, responsive
+-   Widgets retain state (retained mode), also supporting shared data (models)
+-   Powerful, simple event model: events go down the widget tree, messages come back up
+-   Layout DSL and complex layout solver
+-   Widget library uses only user-facing parts of the core API
+-   Abstraction for widget, theme and backend graphics code
+-   Widget *and* theme driven animations
+-   Embedded accelerated graphics (see [Mandlebrot example](examples/mandlebrot))
+-   Accessible (full keyboard control, no screen reader yet)
+-   Stepless DPI scaling
+-   Very fast and low CPU usage
 
-### Features
-
--   Good automatic layout (margins, text wrapping width-for-height logic)
--   Partially declarative UI descriptions possible through macros
--   Advanced text features: shaping, bidirectional support, font fallbacks
--   Embedded GPU shaders (see [Mandlebrot example](examples/mandlebrot))
--   Supports theming and end-user configuration
--   View widgets for seemless scrolling and sharing of large data
--   Stepless DPI scaling:
-
-![Scalable](https://github.com/kas-gui/data-dump/blob/master/screenshots/scalable.png)
+![Animated](https://github.com/kas-gui/data-dump/blob/master/kas_0_11/video/animations.apng)
+![Scalable](https://github.com/kas-gui/data-dump/blob/master/kas_0_10/image/scalable.png)
 
 ### Limitations
 
@@ -72,11 +69,11 @@ trade-offs of a widget-first design:
 
 -   (for) widgets have embedded state; data-first designs may require explicitly
     connecting widgets to state, for those that need it
+-   (for) enables more complex layout solvers
 -   (against) dynamic layout is harder
--   (for) updates are fast since only affected widgets need be touched; using
-    10,000+ widgets in a UI is not a problem
--   (against) rebuilding the UI is much slower
--   (for) pre-built "view widgets" with built-in support for scrolling
+-   (for) updates are fast since only affected widgets need be touched
+-   (against) (re)building the UI is slower
+-   (for) pre-built "view widgets" providing scrolling and selection support
     over large external databases (only retrieving visible entries)
 -   (against) "view widgets" are an emulation of data-first design over a
     widget-first model, and less flexible
@@ -85,20 +82,8 @@ trade-offs of a widget-first design:
 Crates and features
 -------------------
 
-### Crates
-
--   `kas` is a meta-package; most of the time this is the only one you need to
-    use directly
--   `kas-macros`: a helper crate for proc macros
--   `kas-core` provides most interfaces and logic concerning widgets (event
-    handling, layout, draw API, geometry types)
--   [KAS-text]: provides text layout and font management
--   `kas-widgets`: the standard widget library
--   `kas-theme`: theming support for KAS (API, two themes, config support)
--   `kas-wgpu`: provides windowing via [winit] and rendering via [WGPU]
--   `kas-dylib`: support for dynamic linking
--   <https://docs.rs/easy-cast>: spin-off crate for checked casts
--   <https://docs.rs/impl-tools>: spin-off macro support crate
+`kas` is a meta-package over the core (`kas-core`), widget library
+(`kas-widgets`), etc. [See here](https://kas-gui.github.io/tutorials/#kas).
 
 At this point in time, `kas-wgpu` is the only windowing/rendering implementation
 and `kas-theme` the only theme (high-level drawing) implementation, thus `kas`
@@ -107,21 +92,8 @@ uses these crates by default, though they are optional.
 ### Feature flags
 
 The `kas` crate enables most important features by default, excepting those
-requiring nightly `rustc`. Other crates enable fewer features by defualt.
-
-The following non-default features of `kas` are highlighted:
-
--   `dynamic`: enable dynamic linking for `kas` (see
-    [Faster builds](https://github.com/kas-gui/kas/wiki/Getting-started#faster-builds))
--   `internal_doc`: turns on some extra documentation intended for internal
-    usage but not for end users. (This only affects generated documentation.)
--   `nightly`: enables the less problematic unstable features
--   `min_spec` (enabled by `nightly`): use `min_specialization` for some visual
-    improvements: scrolled regions are drawn under scroll bars,
-    underlines on check-box accelerator keys show with the <kbd>Alt</kbd> key.
--   `spec`: use `specialization` to enable `TryFormat`
-
-For full documentation of feature flags, see the [`Cargo.toml`](Cargo.toml).
+requiring nightly `rustc`. Other crates enable fewer features by default.
+See [Cargo.toml](https://github.com/kas-gui/kas/blob/master/Cargo.toml#L22).
 
 [KAS-text]: https://github.com/kas-gui/kas-text/
 [winit]: https://github.com/rust-windowing/winit/
