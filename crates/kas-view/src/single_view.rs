@@ -6,9 +6,9 @@
 //! Single view controller
 
 use super::{driver, Driver};
-#[allow(unused)]
-use kas::model::SharedData;
 use kas::model::SingleData;
+#[allow(unused)]
+use kas::model::{SharedData, SharedRc};
 use kas::prelude::*;
 
 impl_scope! {
@@ -17,8 +17,7 @@ impl_scope! {
     /// This widget supports a view over a single shared data item.
     ///
     /// The shared data type `T` must support [`SingleData`].
-    /// One may use [`kas::model::SharedRc`]
-    /// or a custom shared data type.
+    /// One may use [`SharedRc`] or a custom shared data type.
     ///
     /// The driver `V` must implement [`Driver`] over `T`.
     /// The default driver is [`driver::View`]; others are available in the
