@@ -70,6 +70,8 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
     let mut children = Vec::with_capacity(fields.len());
     let mut layout_children = Vec::new();
     for (i, field) in fields.iter_mut().enumerate() {
+        let ident = member(i, field.ident.clone());
+
         if matches!(&field.ty, Type::Macro(mac) if mac.mac == parse_quote!{ widget_core!() }) {
             if let Some(member) = opt_derive {
                 emit_warning!(
@@ -87,7 +89,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                 continue;
             }
 
-            core_data = Some(member(i, field.ident.clone()));
+            core_data = Some(ident.clone());
 
             if let Some((stor_ty, stor_def)) = args
                 .layout
@@ -134,22 +136,37 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             continue;
         }
 
+        let mut is_widget = false;
         let mut other_attrs = Vec::with_capacity(field.attrs.len());
         for attr in field.attrs.drain(..) {
             if attr.path == parse_quote! { widget } {
                 if !attr.tokens.is_empty() {
                     emit_error!(attr.tokens, "unexpected token");
                 }
-                let ident = member(i, field.ident.clone());
                 if Some(&ident) == opt_derive.as_ref() {
                     emit_error!(attr, "#[widget] must not be used on widget derive target");
                 }
+                is_widget = true;
+                let ident = ident.clone();
                 children.push(Child { ident });
             } else {
                 other_attrs.push(attr);
             }
         }
         field.attrs = other_attrs;
+
+        if !is_widget {
+            if let Some(span) = args
+                .layout
+                .as_ref()
+                .and_then(|layout| layout.1.span_in_layout(&ident))
+            {
+                emit_error!(
+                    span, "fields used in layout must be widgets";
+                    note = field.span() => "this field is missing a #[widget] attribute?"
+                );
+            }
+        }
     }
 
     crate::widget_index::visit_impls(&children, &mut scope.impls);

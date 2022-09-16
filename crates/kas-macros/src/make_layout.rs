@@ -7,6 +7,7 @@ use crate::args::Child;
 use proc_macro2::{Span, TokenStream as Toks};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
+use syn::spanned::Spanned;
 use syn::{braced, bracketed, parenthesized, Expr, Ident, Lifetime, LitInt, LitStr, Member, Token};
 
 #[allow(non_camel_case_types)]
@@ -71,6 +72,11 @@ impl Tree {
                 }
             }
         }
+    }
+
+    /// If field `ident` is included in the layout, return Span of usage
+    pub fn span_in_layout(&self, ident: &Member) -> Option<Span> {
+        self.0.span_in_layout(ident)
     }
 }
 
@@ -769,7 +775,7 @@ impl Layout {
                 quote! { layout::Visitor::align(#inner, #align) }
             }
             Layout::AlignSingle(expr, align) => {
-                quote! { layout::Visitor::align_single(&mut (#expr), #align) }
+                quote! { layout::Visitor::align_single(&mut #expr, #align) }
             }
             Layout::Pack(stor, layout, align) => {
                 let inner = layout.generate(core)?;
@@ -784,7 +790,7 @@ impl Layout {
                 ) }
             }
             Layout::Single(expr) => quote! {
-                layout::Visitor::single(&mut (#expr))
+                layout::Visitor::single(&mut #expr)
             },
             Layout::Widget(stor, _) => quote! {
                 layout::Visitor::single(&mut self.#core.#stor)
@@ -923,6 +929,27 @@ impl Layout {
                 *index += 1;
                 Ok(())
             }
+        }
+    }
+
+    fn span_in_layout(&self, ident: &Member) -> Option<Span> {
+        match self {
+            Layout::Align(layout, _)
+            | Layout::Pack(_, layout, _)
+            | Layout::Margins(layout, _, _)
+            | Layout::Frame(_, layout, _)
+            | Layout::Button(_, layout, _)
+            | Layout::NonNavigable(layout) => layout.span_in_layout(ident),
+            Layout::AlignSingle(expr, _) | Layout::Single(expr) => {
+                (expr.member == *ident).then(|| expr.span())
+            }
+            Layout::Widget(..) => None,
+            Layout::List(_, _, list) | Layout::Float(list) => {
+                list.iter().find_map(|layout| layout.span_in_layout(ident))
+            }
+            Layout::Slice(..) => None,
+            Layout::Grid(_, _, list) => list.iter().find_map(|cell| cell.1.span_in_layout(ident)),
+            Layout::Label(..) => None,
         }
     }
 }
