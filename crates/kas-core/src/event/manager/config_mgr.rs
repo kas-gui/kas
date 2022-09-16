@@ -235,7 +235,7 @@ impl<'a> ConfigMgr<'a> {
         }
 
         // Whether to restart from the beginning on failure
-        let restart = self.nav_focus.is_some();
+        let restart = old_nav_focus.is_some();
 
         let mut opt_id = nav(self, widget, old_nav_focus.as_ref(), reverse);
         if restart && opt_id.is_none() {
