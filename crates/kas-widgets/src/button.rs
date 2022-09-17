@@ -17,7 +17,7 @@ impl_scope! {
     /// A push-button with a generic label
     ///
     /// Default alignment of content is centered.
-    #[autoimpl(Debug ignore self.on_push)]
+    #[autoimpl(Debug ignore self.on_press)]
     #[autoimpl(class_traits using self.inner where W: trait)]
     #[derive(Clone)]
     #[widget {
@@ -31,7 +31,7 @@ impl_scope! {
         color: Option<Rgb>,
         #[widget]
         pub inner: W,
-        on_push: Option<Rc<dyn Fn(&mut EventMgr)>>,
+        on_press: Option<Rc<dyn Fn(&mut EventMgr)>>,
     }
 
     impl<W: Widget> Button<W> {
@@ -43,7 +43,7 @@ impl_scope! {
                 keys1: Default::default(),
                 color: None,
                 inner,
-                on_push: None,
+                on_press: None,
             }
         }
 
@@ -52,7 +52,7 @@ impl_scope! {
         /// This closure is called when the button is activated.
         #[inline]
         #[must_use]
-        pub fn on_push<F>(self, f: F) -> Button<W>
+        pub fn on_press<F>(self, f: F) -> Button<W>
         where
             F: Fn(&mut EventMgr) + 'static,
         {
@@ -61,7 +61,7 @@ impl_scope! {
                 keys1: self.keys1,
                 color: self.color,
                 inner: self.inner,
-                on_push: Some(Rc::new(f)),
+                on_press: Some(Rc::new(f)),
             }
         }
     }
@@ -75,7 +75,7 @@ impl_scope! {
         where
             F: Fn(&mut EventMgr) + 'static,
         {
-            Button::new(inner).on_push(f)
+            Button::new(inner).on_press(f)
         }
 
         /// Construct a button with a given `inner` and payload `msg`
@@ -116,7 +116,7 @@ impl_scope! {
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             event.on_activate(mgr, self.id(), |mgr| {
-                if let Some(f) = self.on_push.as_ref() {
+                if let Some(f) = self.on_press.as_ref() {
                     f(mgr);
                 }
                 Response::Used
@@ -132,7 +132,7 @@ impl_scope! {
     /// [`AccelString`] label and using a custom text class (and thus theme colour).
     ///
     /// Default alignment of content is centered.
-    #[autoimpl(Debug ignore self.on_push)]
+    #[autoimpl(Debug ignore self.on_press)]
     #[derive(Clone)]
     #[widget {
         layout = button(self.color): self.label;
@@ -145,7 +145,7 @@ impl_scope! {
         #[widget]
         label: AccelLabel,
         color: Option<Rgb>,
-        on_push: Option<Rc<dyn Fn(&mut EventMgr)>>,
+        on_press: Option<Rc<dyn Fn(&mut EventMgr)>>,
     }
 
     impl Self {
@@ -157,7 +157,7 @@ impl_scope! {
                 keys1: Default::default(),
                 label: AccelLabel::new(label).with_class(TextClass::Button),
                 color: None,
-                on_push: None,
+                on_press: None,
             }
         }
 
@@ -166,7 +166,7 @@ impl_scope! {
         /// This closure is called when the button is activated.
         #[inline]
         #[must_use]
-        pub fn on_push<F>(self, f: F) -> TextButton
+        pub fn on_press<F>(self, f: F) -> TextButton
         where
             F: Fn(&mut EventMgr) + 'static,
         {
@@ -175,7 +175,7 @@ impl_scope! {
                 keys1: self.keys1,
                 color: self.color,
                 label: self.label,
-                on_push: Some(Rc::new(f)),
+                on_press: Some(Rc::new(f)),
             }
         }
 
@@ -187,7 +187,7 @@ impl_scope! {
         where
             F: Fn(&mut EventMgr) + 'static,
         {
-            TextButton::new(label).on_push(f)
+            TextButton::new(label).on_press(f)
         }
 
         /// Construct a button with a given `label` and payload `msg`
@@ -244,7 +244,7 @@ impl_scope! {
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             event.on_activate(mgr, self.id(), |mgr| {
-                if let Some(f) = self.on_push.as_ref() {
+                if let Some(f) = self.on_press.as_ref() {
                     f(mgr);
                 }
                 Response::Used
