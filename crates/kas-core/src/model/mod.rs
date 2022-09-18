@@ -35,6 +35,6 @@ pub mod filter;
 mod shared_arc;
 mod shared_rc;
 
-pub use data_traits::{DataKey, ListData, MatrixData, SharedData, SharedDataMut, SingleData};
-pub use shared_arc::SharedArc;
-pub use shared_rc::{SharedRc, SharedRcRef};
+pub use data_traits::*;
+pub use shared_arc::*;
+pub use shared_rc::*;

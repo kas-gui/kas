@@ -11,7 +11,7 @@ pub use shortcuts::Shortcuts;
 use super::ModifiersState;
 use crate::cast::{Cast, CastFloat};
 use crate::geom::Offset;
-use crate::model::SharedRc;
+use crate::model::{SharedData, SharedRc};
 #[cfg(feature = "config")]
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -135,7 +135,7 @@ impl WindowConfig {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub fn update(&mut self, scale_factor: f32, dpem: f32) {
-        let base = self.config.borrow();
+        let base = self.config.borrow(&()).unwrap();
         self.scroll_flick_sub = base.scroll_flick_sub * scale_factor;
         self.scroll_dist = base.scroll_dist_em * dpem;
         self.pan_dist_thresh = base.pan_dist_thresh * scale_factor;
@@ -146,13 +146,13 @@ impl WindowConfig {
     /// Delay before opening/closing menus on mouse hover
     #[inline]
     pub fn menu_delay(&self) -> Duration {
-        Duration::from_millis(self.config.borrow().menu_delay_ms.cast())
+        Duration::from_millis(self.config.borrow(&()).unwrap().menu_delay_ms.cast())
     }
 
     /// Delay before switching from panning to (text) selection mode
     #[inline]
     pub fn touch_select_delay(&self) -> Duration {
-        Duration::from_millis(self.config.borrow().touch_select_delay_ms.cast())
+        Duration::from_millis(self.config.borrow(&()).unwrap().touch_select_delay_ms.cast())
     }
 
     /// Controls activation of glide/momentum scrolling
@@ -162,7 +162,7 @@ impl WindowConfig {
     /// events within this time window are used to calculate the initial speed.
     #[inline]
     pub fn scroll_flick_timeout(&self) -> Duration {
-        Duration::from_millis(self.config.borrow().scroll_flick_timeout_ms.cast())
+        Duration::from_millis(self.config.borrow(&()).unwrap().scroll_flick_timeout_ms.cast())
     }
 
     /// Scroll flick velocity decay: `(mul, sub)`
@@ -177,7 +177,7 @@ impl WindowConfig {
     /// Units are pixels/second (output is adjusted for the window's scale factor).
     #[inline]
     pub fn scroll_flick_decay(&self) -> (f32, f32) {
-        (self.config.borrow().scroll_flick_mul, self.scroll_flick_sub)
+        (self.config.borrow(&()).unwrap().scroll_flick_mul, self.scroll_flick_sub)
     }
 
     /// Get distance in pixels to scroll due to mouse wheel
@@ -204,30 +204,30 @@ impl WindowConfig {
     /// When to pan general widgets (unhandled events) with the mouse
     #[inline]
     pub fn mouse_pan(&self) -> MousePan {
-        self.config.borrow().mouse_pan
+        self.config.borrow(&()).unwrap().mouse_pan
     }
 
     /// When to pan text fields with the mouse
     #[inline]
     pub fn mouse_text_pan(&self) -> MousePan {
-        self.config.borrow().mouse_text_pan
+        self.config.borrow(&()).unwrap().mouse_text_pan
     }
 
     /// Whether mouse clicks set keyboard navigation focus
     #[inline]
     pub fn mouse_nav_focus(&self) -> bool {
-        self.nav_focus && self.config.borrow().mouse_nav_focus
+        self.nav_focus && self.config.borrow(&()).unwrap().mouse_nav_focus
     }
 
     /// Whether touchscreen events set keyboard navigation focus
     #[inline]
     pub fn touch_nav_focus(&self) -> bool {
-        self.nav_focus && self.config.borrow().touch_nav_focus
+        self.nav_focus && self.config.borrow(&()).unwrap().touch_nav_focus
     }
 
     /// Access shortcut config
     pub fn shortcuts<F: FnOnce(&Shortcuts) -> T, T>(&self, f: F) -> T {
-        let base = self.config.borrow();
+        let base = self.config.borrow(&()).unwrap();
         f(&base.shortcuts)
     }
 }

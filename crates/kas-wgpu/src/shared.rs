@@ -13,7 +13,7 @@ use crate::{warn_about_error, Error, Options, WindowId};
 use kas::cast::Conv;
 use kas::draw;
 use kas::event::UpdateId;
-use kas::model::SharedRc;
+use kas::model::{SharedData, SharedRc};
 use kas::TkAction;
 use kas_theme::{Theme, ThemeConfig};
 
@@ -149,7 +149,7 @@ where
     pub fn on_exit(&self) {
         match self
             .options
-            .write_config(&self.config.borrow(), &self.theme)
+            .write_config(&self.config.borrow(&()).unwrap(), &self.theme)
         {
             Ok(()) => (),
             Err(error) => warn_about_error("Failed to save config", &error),

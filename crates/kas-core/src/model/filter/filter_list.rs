@@ -6,7 +6,7 @@
 //! Filter-list adapter
 
 use kas::model::filter::Filter;
-use kas::model::{ListData, SharedData, SingleData};
+use kas::model::{ListData, MyBorrow, SharedData, SingleData};
 use kas::prelude::*;
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -55,8 +55,8 @@ impl<T: ListData, F: Filter<T::Item> + SingleData> FilteredList<T, F> {
         view.0 = ver;
         view.1.clear();
         for key in self.data.iter_vec(usize::MAX) {
-            if let Some(item) = self.data.get_cloned(&key) {
-                if self.filter.matches(item) {
+            if let Some(item) = self.data.borrow(&key) {
+                if self.filter.matches(item.as_ref()) {
                     view.1.push(key);
                 }
             }
@@ -67,6 +67,7 @@ impl<T: ListData, F: Filter<T::Item> + SingleData> FilteredList<T, F> {
 impl<T: ListData, F: Filter<T::Item> + SingleData> SharedData for FilteredList<T, F> {
     type Key = T::Key;
     type Item = T::Item;
+    type ItemRef<'b> = T::ItemRef<'b> where T: 'b;
 
     fn version(&self) -> u64 {
         let ver = self.data.version() + self.filter.version();
@@ -79,21 +80,20 @@ impl<T: ListData, F: Filter<T::Item> + SingleData> SharedData for FilteredList<T
     fn contains_key(&self, key: &Self::Key) -> bool {
         self.get_cloned(key).is_some()
     }
-
-    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
+    fn borrow(&self, key: &Self::Key) -> Option<Self::ItemRef<'_>> {
         // Check the item against our filter (probably O(1)) instead of using
         // our filtered list (O(n) where n=self.len()).
         self.data
-            .get_cloned(key)
-            .filter(|item| self.filter.matches(item.clone()))
+            .borrow(key)
+            .filter(|item| self.filter.matches(item.as_ref()))
     }
 
     fn update(&self, mgr: &mut EventMgr, key: &Self::Key, value: Self::Item) {
         // Filtering does not affect result, but does affect the view
         if self
             .data
-            .get_cloned(key)
-            .map(|item| !self.filter.matches(item))
+            .borrow(key)
+            .map(|item| !self.filter.matches(item.as_ref()))
             .unwrap_or(true)
         {
             // Not previously visible: no update occurs

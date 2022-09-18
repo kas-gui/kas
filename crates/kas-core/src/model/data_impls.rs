@@ -15,6 +15,7 @@ macro_rules! impl_list_data {
         impl<T: Clone + Debug + 'static> SharedData for $ty {
             type Key = usize;
             type Item = T;
+            type ItemRef<'b> = &'b T;
 
             fn version(&self) -> u64 {
                 1
@@ -23,7 +24,9 @@ macro_rules! impl_list_data {
             fn contains_key(&self, key: &Self::Key) -> bool {
                 *key < self.len()
             }
-
+            fn borrow(&self, key: &Self::Key) -> Option<Self::ItemRef<'_>> {
+                self.get(*key)
+            }
             fn get_cloned(&self, key: &usize) -> Option<Self::Item> {
                 self.get(*key).cloned()
             }

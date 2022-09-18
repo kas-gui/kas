@@ -10,15 +10,14 @@ pub use filter_list::FilteredList;
 
 use crate::event::EventMgr;
 use crate::model::*;
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use std::fmt::Debug;
 use std::rc::Rc;
 
 /// Types usable as a filter
 pub trait Filter<T>: 'static {
     /// Returns true if the given item matches this filter
-    // TODO: once Accessor::get returns a reference, this should take item: &T where T: ?Sized
-    fn matches(&self, item: T) -> bool;
+    fn matches(&self, item: &T) -> bool;
 }
 
 /// Filter: target contains self (case-sensitive string match)
@@ -35,6 +34,7 @@ impl ContainsString {
 impl SharedData for ContainsString {
     type Key = ();
     type Item = String;
+    type ItemRef<'b> = Ref<'b, String>;
 
     fn version(&self) -> u64 {
         self.0.borrow().1
@@ -43,10 +43,10 @@ impl SharedData for ContainsString {
     fn contains_key(&self, _: &Self::Key) -> bool {
         true
     }
-
-    fn get_cloned(&self, _: &Self::Key) -> Option<Self::Item> {
-        Some(self.0.borrow().0.to_owned())
+    fn borrow(&self, _: &Self::Key) -> Option<Self::ItemRef<'_>> {
+        Some(Ref::map(self.0.borrow(), |tuple| &tuple.0))
     }
+
     fn update(&self, mgr: &mut EventMgr, _: &Self::Key, value: Self::Item) {
         let mut cell = self.0.borrow_mut();
         cell.0 = value;
@@ -56,13 +56,13 @@ impl SharedData for ContainsString {
 }
 
 impl<'a> Filter<&'a str> for ContainsString {
-    fn matches(&self, item: &str) -> bool {
+    fn matches(&self, item: &&str) -> bool {
         item.contains(&self.0.borrow().0)
     }
 }
 impl Filter<String> for ContainsString {
-    fn matches(&self, item: String) -> bool {
-        Filter::<&str>::matches(self, &item)
+    fn matches(&self, item: &String) -> bool {
+        Filter::<&str>::matches(self, &item.as_str())
     }
 }
 
@@ -88,6 +88,7 @@ impl ContainsCaseInsensitive {
 impl SharedData for ContainsCaseInsensitive {
     type Key = ();
     type Item = String;
+    type ItemRef<'b> = Ref<'b, String>;
 
     fn version(&self) -> u64 {
         self.0.borrow().2
@@ -96,10 +97,10 @@ impl SharedData for ContainsCaseInsensitive {
     fn contains_key(&self, _: &Self::Key) -> bool {
         true
     }
-
-    fn get_cloned(&self, _: &Self::Key) -> Option<Self::Item> {
-        Some(self.0.borrow().0.clone())
+    fn borrow(&self, _: &Self::Key) -> Option<Self::ItemRef<'_>> {
+        Some(Ref::map(self.0.borrow(), |tuple| &tuple.0))
     }
+
     fn update(&self, mgr: &mut EventMgr, _: &Self::Key, value: Self::Item) {
         let mut cell = self.0.borrow_mut();
         cell.0 = value;
@@ -110,12 +111,12 @@ impl SharedData for ContainsCaseInsensitive {
 }
 
 impl<'a> Filter<&'a str> for ContainsCaseInsensitive {
-    fn matches(&self, item: &str) -> bool {
-        Filter::<String>::matches(self, item.to_string())
+    fn matches(&self, item: &&str) -> bool {
+        item.to_string().to_uppercase().contains(&self.0.borrow().1)
     }
 }
 impl Filter<String> for ContainsCaseInsensitive {
-    fn matches(&self, item: String) -> bool {
-        item.to_uppercase().contains(&self.0.borrow().1)
+    fn matches(&self, item: &String) -> bool {
+        Filter::<&str>::matches(self, &item.as_str())
     }
 }

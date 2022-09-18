@@ -35,9 +35,8 @@ impl<T: Debug + Default> Default for SharedArc<T> {
 
 /// A borrowed reference
 pub struct SharedArcRef<'a, T>(MutexGuard<'a, (T, u64)>);
-impl<'a, T> Deref for SharedArcRef<'a, T> {
-    type Target = T;
-    fn deref(&self) -> &T {
+impl<'a, T: Clone> MyBorrow<T> for SharedArcRef<'a, T> {
+    fn as_ref(&self) -> &T {
         &self.0.deref().0
     }
 }
@@ -71,13 +70,6 @@ impl<T: Debug> SharedArc<T> {
         (self.0).0
     }
 
-    /// Immutably borrows the wrapped value
-    ///
-    /// Internally this uses [`Mutex::lock`]; see its documentation regarding possible errors.
-    pub fn borrow(&self) -> SharedArcRef<T> {
-        SharedArcRef((self.0).1.lock().unwrap())
-    }
-
     /// Mutably borrows the wrapped value, notifying other users of an update
     ///
     /// Internally this uses [`Mutex::lock`]; see its documentation regarding possible errors.
@@ -96,6 +88,7 @@ impl<T: Debug> SharedArc<T> {
 impl<T: Clone + Debug + 'static> SharedData for SharedArc<T> {
     type Key = ();
     type Item = T;
+    type ItemRef<'b> = SharedArcRef<'b, T>;
 
     fn version(&self) -> u64 {
         (self.0).1.lock().unwrap().1
@@ -104,9 +97,8 @@ impl<T: Clone + Debug + 'static> SharedData for SharedArc<T> {
     fn contains_key(&self, _: &()) -> bool {
         true
     }
-
-    fn get_cloned(&self, _: &()) -> Option<Self::Item> {
-        Some((self.0).1.lock().unwrap().0.clone())
+    fn borrow(&self, _: &Self::Key) -> Option<Self::ItemRef<'_>> {
+        Some(SharedArcRef((self.0).1.lock().unwrap()))
     }
 
     fn update(&self, mgr: &mut EventMgr, _: &(), item: Self::Item) {

@@ -86,6 +86,7 @@ impl MySharedData {
 impl SharedData for MySharedData {
     type Key = usize;
     type Item = (bool, String);
+    type ItemRef<'b> = Self::Item;
 
     fn version(&self) -> u64 {
         self.data.borrow().ver
@@ -94,8 +95,7 @@ impl SharedData for MySharedData {
     fn contains_key(&self, key: &Self::Key) -> bool {
         *key < self.len()
     }
-
-    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
+    fn borrow(&self, key: &Self::Key) -> Option<Self::ItemRef<'_>> {
         let index = *key;
         let data = self.data.borrow();
         let is_active = data.active == index;

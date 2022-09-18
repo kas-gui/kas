@@ -10,6 +10,7 @@ struct TableData(u64, usize);
 impl SharedData for TableData {
     type Key = (usize, usize);
     type Item = usize;
+    type ItemRef<'b> = usize;
 
     fn version(&self) -> u64 {
         self.0
@@ -18,7 +19,7 @@ impl SharedData for TableData {
     fn contains_key(&self, key: &Self::Key) -> bool {
         key.0 < self.1 && key.1 < self.1
     }
-    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
+    fn borrow(&self, key: &Self::Key) -> Option<Self::ItemRef<'_>> {
         self.contains_key(key).then(|| (key.0 + 1) * (key.1 + 1))
     }
 

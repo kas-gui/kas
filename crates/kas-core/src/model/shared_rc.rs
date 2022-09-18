@@ -8,7 +8,7 @@
 use crate::event::EventMgr;
 use crate::event::UpdateId;
 use crate::model::*;
-use std::cell::{BorrowError, Ref, RefCell, RefMut};
+use std::cell::{Ref, RefCell, RefMut};
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
@@ -31,15 +31,6 @@ pub struct SharedRc<T: Debug>(Rc<(UpdateId, RefCell<(T, u64)>)>);
 impl<T: Debug + Default> Default for SharedRc<T> {
     fn default() -> Self {
         SharedRc(Rc::new((UpdateId::new(), Default::default())))
-    }
-}
-
-/// A borrowed reference
-pub struct SharedRcRef<'a, T>(Ref<'a, (T, u64)>);
-impl<'a, T> Deref for SharedRcRef<'a, T> {
-    type Target = T;
-    fn deref(&self) -> &T {
-        &self.0.deref().0
     }
 }
 
@@ -72,30 +63,6 @@ impl<T: Debug> SharedRc<T> {
         (self.0).0
     }
 
-    /// Immutably borrows the wrapped value
-    ///
-    /// The borrow lasts until the returned `Ref` exits scope. Multiple immutable borrows can be
-    /// taken out at the same time.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the value is currently mutably borrowed.
-    /// For a non-panicking variant, use [`Self::try_borrow`].
-    pub fn borrow(&self) -> SharedRcRef<T> {
-        SharedRcRef((self.0).1.borrow())
-    }
-
-    /// Immutably borrows the wrapped value, returning an error if the value is currently mutably
-    /// borrowed.
-    ///
-    /// The borrow lasts until the returned `Ref` exits scope. Multiple immutable borrows can be
-    /// taken out at the same time.
-    ///
-    /// This is the non-panicking variant of [`Self::borrow`].
-    pub fn try_borrow(&self) -> Result<SharedRcRef<T>, BorrowError> {
-        (self.0).1.try_borrow().map(SharedRcRef)
-    }
-
     /// Mutably borrows the wrapped value, notifying other users of an update.
     pub fn update_mut(&self, mgr: &mut EventMgr) -> SharedRcRefMut<T> {
         mgr.update_with_id((self.0).0, 0);
@@ -108,6 +75,7 @@ impl<T: Debug> SharedRc<T> {
 impl<T: Clone + Debug + 'static> SharedData for SharedRc<T> {
     type Key = ();
     type Item = T;
+    type ItemRef<'b> = Ref<'b, T>;
 
     fn version(&self) -> u64 {
         (self.0).1.borrow().1
@@ -116,9 +84,8 @@ impl<T: Clone + Debug + 'static> SharedData for SharedRc<T> {
     fn contains_key(&self, _: &()) -> bool {
         true
     }
-
-    fn get_cloned(&self, _: &()) -> Option<Self::Item> {
-        Some((self.0).1.borrow().0.clone())
+    fn borrow(&self, _: &Self::Key) -> Option<Self::ItemRef<'_>> {
+        Some(Ref::map((self.0).1.borrow(), |tuple| &tuple.0))
     }
 
     fn update(&self, mgr: &mut EventMgr, _: &(), item: Self::Item) {

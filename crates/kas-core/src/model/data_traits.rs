@@ -18,6 +18,32 @@ use std::fmt::Debug;
 pub trait DataKey: Clone + Debug + PartialEq + Eq + 'static {}
 impl<Key: Clone + Debug + PartialEq + Eq + 'static> DataKey for Key {}
 
+/// Borrow and Clone trait
+pub trait MyBorrow<Target: Clone> {
+    fn as_ref(&self) -> &Target;
+    fn cloned(&self) -> Target {
+        self.as_ref().clone()
+    }
+}
+
+impl<T: Clone> MyBorrow<T> for T {
+    fn as_ref(&self) -> &T {
+        self
+    }
+}
+
+impl<'b, T: Clone> MyBorrow<T> for &'b T {
+    fn as_ref(&self) -> &T {
+        self
+    }
+}
+
+impl<'b, T: Clone> MyBorrow<T> for std::cell::Ref<'b, T> {
+    fn as_ref(&self) -> &T {
+        self
+    }
+}
+
 /// Trait for shared data
 ///
 /// By design, all methods take only `&self`. See also [`SharedDataMut`].
@@ -29,6 +55,11 @@ pub trait SharedData: Debug {
 
     /// Item type
     type Item: Clone + Debug + 'static;
+
+    /// A borrow of the item type
+    type ItemRef<'b>: MyBorrow<Self::Item>
+    where
+        Self: 'b;
 
     /// Get the data version
     ///
@@ -44,10 +75,12 @@ pub trait SharedData: Debug {
     /// Check whether a key has data
     fn contains_key(&self, key: &Self::Key) -> bool;
 
-    // TODO(gat): add borrow<'a>(&self, key: &Self::Key) -> Self::ItemRef<'a>, try_borrow?
+    fn borrow(&self, key: &Self::Key) -> Option<Self::ItemRef<'_>>;
 
     /// Get data by key (clone)
-    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item>;
+    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
+        self.borrow(key).map(|r| r.cloned())
+    }
 
     /// Update data, if supported
     ///
