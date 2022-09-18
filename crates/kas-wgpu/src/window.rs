@@ -390,23 +390,11 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
                 pass: PassId::new(0),
             };
 
-            #[cfg(not(feature = "gat"))]
-            unsafe {
-                // Safety: lifetimes do not escape the returned draw value.
-                let mut draw = shared
-                    .theme
-                    .draw(draw, &mut self.ev_state, &mut self.theme_window);
-                let draw_mgr = DrawMgr::new(&mut draw, self.widget.id());
-                self.widget.draw(draw_mgr);
-            }
-            #[cfg(feature = "gat")]
-            {
-                let mut draw = shared
-                    .theme
-                    .draw(draw, &mut self.ev_state, &mut self.theme_window);
-                let draw_mgr = DrawMgr::new(&mut draw, self.widget.id());
-                self.widget.draw(draw_mgr);
-            }
+            let mut draw = shared
+                .theme
+                .draw(draw, &mut self.ev_state, &mut self.theme_window);
+            let draw_mgr = DrawMgr::new(&mut draw, self.widget.id());
+            self.widget.draw(draw_mgr);
         }
 
         self.queued_frame_time = match self.draw.animation {

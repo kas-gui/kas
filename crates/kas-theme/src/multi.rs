@@ -81,9 +81,6 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
     type Config = Config;
     type Window = Box<dyn Window>;
 
-    #[cfg(not(feature = "gat"))]
-    type Draw = Box<dyn ThemeDraw>;
-    #[cfg(feature = "gat")]
     type Draw<'a> = Box<dyn ThemeDraw + 'a>;
 
     fn config(&self) -> std::borrow::Cow<Self::Config> {
@@ -119,28 +116,6 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
         self.themes[self.active].update_window(window, dpi_factor);
     }
 
-    #[cfg(not(feature = "gat"))]
-    unsafe fn draw(
-        &self,
-        draw: DrawIface<DS>,
-        ev: &mut EventState,
-        window: &mut Self::Window,
-    ) -> Box<dyn ThemeDraw> {
-        unsafe fn extend_lifetime_mut<'b, T: ?Sized>(r: &'b mut T) -> &'static mut T {
-            std::mem::transmute::<&'b mut T, &'static mut T>(r)
-        }
-        self.themes[self.active].draw(
-            DrawIface {
-                draw: extend_lifetime_mut(draw.draw),
-                shared: extend_lifetime_mut(draw.shared),
-                pass: draw.pass,
-            },
-            extend_lifetime_mut(ev),
-            extend_lifetime_mut(window),
-        )
-    }
-
-    #[cfg(feature = "gat")]
     fn draw<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,

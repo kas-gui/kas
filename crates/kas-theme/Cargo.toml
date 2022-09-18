@@ -30,9 +30,6 @@ internal_doc = ["kas/internal_doc"]
 # Enable config read/write
 config = ["dep:serde", "kas/config"]
 
-# Use Generic Associated Types (this is too unstable to include in nightly!)
-gat = ["kas/gat"]
-
 # Automatically detect usage of dark theme
 dark-light = ["dep:dark-light"]
 

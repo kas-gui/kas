@@ -36,9 +36,6 @@ This crate has the following feature flags:
 -   `shaping` (enabled by default): use [kas-text]'s default backend (Rustybuzz)
     for text shaping (alternatively, specify `kas-text/harfbuzz` or do not use
     shaping)
--   `gat`: enables usage of the Generic Associated Types feature (nightly only
-    and currently unstable), allowing some usages of `unsafe` to be avoided.
-    (The plan is to enable this by default once the feature is mature.)
 
 Note: at least one of `ab_glyph`, `fontdue` is required. If both are enabled,
 the choice of raster engine is controlled at run-time via theme configuration:

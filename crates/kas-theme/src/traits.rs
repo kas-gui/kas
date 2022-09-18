@@ -52,9 +52,6 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
     type Window: Window;
 
     /// The associated [`ThemeDraw`] implementation.
-    #[cfg(not(feature = "gat"))]
-    type Draw: ThemeDraw;
-    #[cfg(feature = "gat")]
     type Draw<'a>: ThemeDraw
     where
         DS: 'a,
@@ -103,20 +100,6 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
     ///
     /// The `window` is guaranteed to be one created by a call to
     /// [`Theme::new_window`] on `self`.
-    ///
-    /// # Safety
-    ///
-    /// (This section only applies when not using the `gat` feature.)
-    ///
-    /// All references passed into the method must outlive the returned object.
-    #[cfg(not(feature = "gat"))]
-    unsafe fn draw(
-        &self,
-        draw: DrawIface<DS>,
-        ev: &mut EventState,
-        window: &mut Self::Window,
-    ) -> Self::Draw;
-    #[cfg(feature = "gat")]
     fn draw<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
@@ -146,9 +129,6 @@ impl<T: Theme<DS>, DS: DrawSharedImpl> Theme<DS> for Box<T> {
     type Window = <T as Theme<DS>>::Window;
     type Config = <T as Theme<DS>>::Config;
 
-    #[cfg(not(feature = "gat"))]
-    type Draw = <T as Theme<DS>>::Draw;
-    #[cfg(feature = "gat")]
     type Draw<'a> = <T as Theme<DS>>::Draw<'a>
     where
         T: 'a;
@@ -171,16 +151,6 @@ impl<T: Theme<DS>, DS: DrawSharedImpl> Theme<DS> for Box<T> {
         self.deref().update_window(window, dpi_factor);
     }
 
-    #[cfg(not(feature = "gat"))]
-    unsafe fn draw(
-        &self,
-        draw: DrawIface<DS>,
-        ev: &mut EventState,
-        window: &mut Self::Window,
-    ) -> Self::Draw {
-        self.deref().draw(draw, ev, window)
-    }
-    #[cfg(feature = "gat")]
     fn draw<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
