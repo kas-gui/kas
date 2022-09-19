@@ -22,8 +22,6 @@ impl SharedData for TableData {
     fn borrow(&self, key: &Self::Key) -> Option<Self::ItemRef<'_>> {
         self.contains_key(key).then(|| (key.0 + 1) * (key.1 + 1))
     }
-
-    fn update(&self, _: &mut EventMgr, _: &Self::Key, _: Self::Item) {}
 }
 impl MatrixData for TableData {
     type ColKey = usize;

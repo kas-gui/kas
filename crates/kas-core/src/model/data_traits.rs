@@ -21,7 +21,8 @@ impl<Key: Clone + Debug + PartialEq + Eq + 'static> DataKey for Key {}
 
 /// Trait for shared data
 ///
-/// By design, all methods take only `&self`. See also [`SharedDataMut`].
+/// By design, all methods take only `&self` and only allow immutable access to
+/// data. See also [`SharedDataMut`].
 #[autoimpl(for<T: trait + ?Sized>
     &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait SharedData: Debug {
@@ -87,7 +88,15 @@ pub trait SharedData: Debug {
     fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
         self.borrow(key).map(|r| r.borrow().to_owned())
     }
+}
 
+/// Trait for shared mutable data
+///
+/// By design, all methods take only `&self`: since data is shared, an internal
+/// locking or synchronization mechanism is required (e.g. `RefCell` or `Mutex`).
+#[autoimpl(for<T: trait + ?Sized>
+    &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
+pub trait SharedDataMut: SharedData {
     /// Update data, if supported
     ///
     /// Shared data with internal mutability (e.g. via [`RefCell`]) should
@@ -98,24 +107,19 @@ pub trait SharedData: Debug {
     fn update(&self, mgr: &mut EventMgr, key: &Self::Key, item: Self::Item);
 }
 
-/// Trait for shared data with access via mutable reference
-#[autoimpl(for<T: trait + ?Sized> &mut T, Box<T>)]
-pub trait SharedDataMut: SharedData {
-    // TODO(gat): add borrow_mut<'a>(&self) -> Self::ItemMutRef<'a>, try_borrow_mut?
-
-    /// Set data for an existing key
-    ///
-    /// It can be assumed that no synchronisation is required when a mutable
-    /// reference can be obtained. The `version` number need not be affected.
-    fn set(&mut self, key: &Self::Key, item: Self::Item);
-}
-
 /// Trait bound for viewable single data
 ///
 /// This is automatically implemented for every type implementing `SharedData<()>`.
 // TODO(trait aliases): make this an actual trait alias
 pub trait SingleData: SharedData<Key = ()> {}
 impl<T: SharedData<Key = ()>> SingleData for T {}
+
+/// Trait bound for mutable single data
+///
+/// This is automatically implemented for every type implementing `SharedDataMut<()>`.
+// TODO(trait aliases): make this an actual trait alias
+pub trait SingleDataMut: SharedDataMut<Key = ()> {}
+impl<T: SharedDataMut<Key = ()>> SingleDataMut for T {}
 
 /// Trait for viewable data lists
 #[allow(clippy::len_without_is_empty)]

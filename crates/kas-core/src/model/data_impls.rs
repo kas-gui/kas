@@ -6,7 +6,6 @@
 //! Impls for data traits
 
 use super::*;
-use crate::event::EventMgr;
 use crate::WidgetId;
 use std::fmt::Debug;
 
@@ -29,15 +28,6 @@ macro_rules! impl_list_data {
             }
             fn get_cloned(&self, key: &usize) -> Option<Self::Item> {
                 self.get(*key).cloned()
-            }
-
-            fn update(&self, _: &mut EventMgr, _: &Self::Key, _: Self::Item) {
-                // Note: plain [T] does not support update, but SharedRc<[T]> does.
-            }
-        }
-        impl<T: Clone + Debug + 'static> SharedDataMut for $ty {
-            fn set(&mut self, key: &Self::Key, item: Self::Item) {
-                self[*key] = item;
             }
         }
         impl<T: Clone + Debug + 'static> ListData for $ty {

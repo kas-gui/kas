@@ -18,7 +18,7 @@
 mod config;
 pub use config::EventConfig;
 
-use kas::model::SharedData;
+use kas::model::{SharedData, SharedDataMut};
 use kas::prelude::*;
 use kas::theme::TextClass;
 use kas_widgets::edit::{EditGuard, GuardNotify};
@@ -147,11 +147,6 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for View {
     fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: bool) -> TkAction {
         widget.set_bool(item)
     }
-    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
-        if let Some(state) = mgr.try_pop_msg() {
-            data.update(mgr, key, state);
-        }
-    }
 }
 
 impl<Data: SharedData<Item = bool>> Driver<bool, Data> for NavView {
@@ -161,11 +156,6 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for NavView {
     }
     fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: bool) -> TkAction {
         widget.set_bool(item)
-    }
-    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
-        if let Some(state) = mgr.try_pop_msg() {
-            data.update(mgr, key, state);
-        }
     }
 }
 
@@ -218,7 +208,9 @@ impl_scope! {
         }
     }
 }
-impl<G: EditGuard + Clone, Data: SharedData<Item = String>> Driver<String, Data> for EditField<G> {
+impl<G: EditGuard + Clone, Data: SharedDataMut<Item = String>> Driver<String, Data>
+    for EditField<G>
+{
     type Widget = kas_widgets::EditField<G>;
     fn make(&self) -> Self::Widget {
         kas_widgets::EditField::new("".to_string())
@@ -284,7 +276,7 @@ impl_scope! {
         }
     }
 }
-impl<G: EditGuard + Clone, Data: SharedData<Item = String>> Driver<String, Data> for EditBox<G> {
+impl<G: EditGuard + Clone, Data: SharedDataMut<Item = String>> Driver<String, Data> for EditBox<G> {
     type Widget = kas_widgets::EditBox<G>;
     fn make(&self) -> Self::Widget {
         kas_widgets::EditBox::new("".to_string()).with_guard(self.guard.clone())
@@ -338,7 +330,7 @@ impl CheckButton {
         CheckButton { label }
     }
 }
-impl<Data: SharedData<Item = bool>> Driver<bool, Data> for CheckButton {
+impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for CheckButton {
     type Widget = kas_widgets::CheckButton;
     fn make(&self) -> Self::Widget {
         kas_widgets::CheckButton::new_on(self.label.clone(), |mgr, state| mgr.push_msg(state))
@@ -364,7 +356,7 @@ impl RadioBox {
         RadioBox { group }
     }
 }
-impl<Data: SharedData<Item = bool>> Driver<bool, Data> for RadioBox {
+impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for RadioBox {
     type Widget = kas_widgets::RadioBox;
     fn make(&self) -> Self::Widget {
         kas_widgets::RadioBox::new_on(self.group.clone(), |mgr| mgr.push_msg(true))
@@ -392,7 +384,7 @@ impl RadioButton {
         RadioButton { label, group }
     }
 }
-impl<Data: SharedData<Item = bool>> Driver<bool, Data> for RadioButton {
+impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for RadioButton {
     type Widget = kas_widgets::RadioButton;
     fn make(&self) -> Self::Widget {
         kas_widgets::RadioButton::new(self.label.clone(), self.group.clone())
@@ -435,7 +427,7 @@ impl<T: SliderValue, D: Directional> Slider<T, D> {
         }
     }
 }
-impl<D: Directional, Data: SharedData> Driver<Data::Item, Data> for Slider<Data::Item, D>
+impl<D: Directional, Data: SharedDataMut> Driver<Data::Item, Data> for Slider<Data::Item, D>
 where
     Data::Item: SliderValue,
 {
@@ -470,7 +462,7 @@ impl<T: SpinnerValue + Default> Spinner<T> {
         }
     }
 }
-impl<Data: SharedData> Driver<Data::Item, Data> for Spinner<Data::Item>
+impl<Data: SharedDataMut> Driver<Data::Item, Data> for Spinner<Data::Item>
 where
     Data::Item: SpinnerValue,
 {

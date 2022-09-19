@@ -100,7 +100,8 @@ impl<T: Clone + Debug + 'static> SharedData for SharedArc<T> {
     fn borrow(&self, _: &Self::Key) -> Option<Self::ItemRef<'_>> {
         Some(SharedArcRef((self.0).1.lock().unwrap()))
     }
-
+}
+impl<T: Clone + Debug + 'static> SharedDataMut for SharedArc<T> {
     fn update(&self, mgr: &mut EventMgr, _: &(), item: Self::Item) {
         let mut inner = (self.0).1.lock().unwrap();
         inner.0 = item;

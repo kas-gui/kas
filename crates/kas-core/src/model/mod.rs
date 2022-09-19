@@ -9,7 +9,7 @@
 //! enabling synchronized views over shared data.
 //!
 //! All shared data must implement [`SharedData`] (optionally also
-//! [`SharedDataMut`] allowing direct access via mutable reference).
+//! [`SharedDataMut`] for data supporting synchronized updates).
 //! For 0-dimensional data this alone is enough; `()` is used as a key.
 //! For 1- or 2-dimensional data implement [`ListData`] or [`MatrixData`].
 //!

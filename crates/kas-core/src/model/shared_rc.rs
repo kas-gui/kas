@@ -101,7 +101,8 @@ impl<T: Clone + Debug + 'static> SharedData for SharedRc<T> {
     fn borrow(&self, _: &Self::Key) -> Option<Self::ItemRef<'_>> {
         Some(SharedRcRef(Ref::map((self.0).1.borrow(), |tuple| &tuple.0)))
     }
-
+}
+impl<T: Clone + Debug + 'static> SharedDataMut for SharedRc<T> {
     fn update(&self, mgr: &mut EventMgr, _: &(), item: Self::Item) {
         let mut cell = (self.0).1.borrow_mut();
         cell.0 = item;

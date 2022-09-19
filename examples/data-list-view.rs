@@ -102,8 +102,6 @@ impl SharedData for MySharedData {
         let text = data.get(index);
         Some((is_active, text))
     }
-
-    fn update(&self, _: &mut EventMgr, _: &Self::Key, _: Self::Item) {}
 }
 impl ListData for MySharedData {
     fn len(&self) -> usize {

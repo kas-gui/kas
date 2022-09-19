@@ -61,7 +61,8 @@ impl SharedData for ContainsString {
     fn borrow(&self, _: &Self::Key) -> Option<Self::ItemRef<'_>> {
         Some(Ref(CellRef::map(self.0.borrow(), |tuple| &tuple.0)))
     }
-
+}
+impl SharedDataMut for ContainsString {
     fn update(&self, mgr: &mut EventMgr, _: &Self::Key, value: Self::Item) {
         let mut cell = self.0.borrow_mut();
         cell.0 = value;
@@ -115,7 +116,8 @@ impl SharedData for ContainsCaseInsensitive {
     fn borrow(&self, _: &Self::Key) -> Option<Self::ItemRef<'_>> {
         Some(Ref(CellRef::map(self.0.borrow(), |tuple| &tuple.0)))
     }
-
+}
+impl SharedDataMut for ContainsCaseInsensitive {
     fn update(&self, mgr: &mut EventMgr, _: &Self::Key, value: Self::Item) {
         let mut cell = self.0.borrow_mut();
         cell.0 = value;

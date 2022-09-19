@@ -8,7 +8,7 @@
 use super::{driver, Driver};
 use kas::model::SingleData;
 #[allow(unused)]
-use kas::model::{SharedData, SharedRc};
+use kas::model::{SharedData, SharedDataMut, SharedRc};
 use kas::prelude::*;
 
 impl_scope! {
@@ -92,7 +92,7 @@ impl_scope! {
         /// This method updates the shared data, if supported (see
         /// [`SharedData::update`]). Other widgets sharing this data are notified
         /// of the update, if data is changed.
-        pub fn set_value(&self, mgr: &mut EventMgr, data: T::Item) {
+        pub fn set_value(&self, mgr: &mut EventMgr, data: T::Item) where T: SharedDataMut {
             self.data.update(mgr, &(), data);
         }
 
@@ -100,7 +100,7 @@ impl_scope! {
         ///
         /// This is purely a convenience method over [`SingleView::set_value`].
         /// It notifies other widgets of updates to the shared data.
-        pub fn update_value<F: Fn(T::Item) -> T::Item>(&self, mgr: &mut EventMgr, f: F) {
+        pub fn update_value<F: Fn(T::Item) -> T::Item>(&self, mgr: &mut EventMgr, f: F) where T: SharedDataMut {
             self.set_value(mgr, f(self.get_value()));
         }
     }

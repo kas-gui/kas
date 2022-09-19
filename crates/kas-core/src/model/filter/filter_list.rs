@@ -6,7 +6,7 @@
 //! Filter-list adapter
 
 use kas::model::filter::Filter;
-use kas::model::{ListData, SharedData, SingleData};
+use kas::model::{ListData, SharedData, SharedDataMut, SingleData};
 use kas::prelude::*;
 use std::borrow::Borrow;
 use std::cell::RefCell;
@@ -88,7 +88,11 @@ impl<T: ListData, F: Filter<T::Item> + SingleData> SharedData for FilteredList<T
             .borrow(key)
             .filter(|item| self.filter.matches(item.borrow()))
     }
+}
 
+impl<T: ListData + SharedDataMut, F: Filter<T::Item> + SingleData> SharedDataMut
+    for FilteredList<T, F>
+{
     fn update(&self, mgr: &mut EventMgr, key: &Self::Key, value: Self::Item) {
         // Filtering does not affect result, but does affect the view
         if self

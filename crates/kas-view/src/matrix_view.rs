@@ -9,9 +9,9 @@ use super::{driver, Driver, PressPhase, SelectionError, SelectionMode, Selection
 use kas::event::components::ScrollComponent;
 use kas::event::{Command, CursorIcon, Scroll};
 use kas::layout::{solve_size_rules, AlignHints};
-use kas::model::MatrixData;
 #[allow(unused)]
 use kas::model::SharedData;
+use kas::model::{MatrixData, SharedDataMut};
 use kas::prelude::*;
 #[allow(unused)] // doc links
 use kas_widgets::ScrollBars;
@@ -144,7 +144,7 @@ impl_scope! {
         /// This method updates the shared data, if supported (see
         /// [`SharedData::update`]). Other widgets sharing this data are notified
         /// of the update, if data is changed.
-        pub fn set_value(&self, mgr: &mut EventMgr, key: &T::Key, data: T::Item) {
+        pub fn set_value(&self, mgr: &mut EventMgr, key: &T::Key, data: T::Item) where T: SharedDataMut {
             self.data.update(mgr, key, data);
         }
 
@@ -153,7 +153,7 @@ impl_scope! {
         /// This is purely a convenience method over [`MatrixView::set_value`].
         /// It does nothing if no value is found at `key`.
         /// It notifies other widgets of updates to the shared data.
-        pub fn update_value<F: Fn(T::Item) -> T::Item>(&self, mgr: &mut EventMgr, key: &T::Key, f: F) {
+        pub fn update_value<F: Fn(T::Item) -> T::Item>(&self, mgr: &mut EventMgr, key: &T::Key, f: F) where T: SharedDataMut {
             if let Some(item) = self.get_value(key) {
                 self.set_value(mgr, key, f(item));
             }
