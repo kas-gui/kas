@@ -69,6 +69,16 @@ pub trait SharedData: Debug {
     /// panic on lock failure, not return `None`.
     fn borrow(&self, key: &Self::Key) -> Option<Self::ItemRef<'_>>;
 
+    /// Access a borrow of an item
+    ///
+    /// This is a convenience method over [`Self::borrow`].
+    fn with_ref<V>(&self, key: &Self::Key, f: impl FnOnce(&Self::Item) -> V) -> Option<V>
+    where
+        Self: Sized,
+    {
+        self.borrow(key).map(|borrow| f(borrow.borrow()))
+    }
+
     /// Get data by key (clone)
     ///
     /// Returns `None` if `key` has no associated item.
