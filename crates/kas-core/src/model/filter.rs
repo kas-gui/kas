@@ -10,7 +10,7 @@ pub use filter_list::FilteredList;
 
 use crate::event::EventMgr;
 use crate::model::*;
-use std::cell::{Ref as CellRef, RefCell};
+use std::cell::{Ref as CellRef, RefCell, RefMut as CellRefMut};
 use std::fmt::Debug;
 use std::rc::Rc;
 
@@ -32,6 +32,60 @@ impl<'b> std::ops::Deref for Ref<'b> {
     type Target = String;
     fn deref(&self) -> &String {
         &self.0
+    }
+}
+
+/// Type of a data borrow
+// TODO(libstd): replace usage with std::cell::RefMut when that supports BorrowMut
+pub struct RefMut<'b>(CellRefMut<'b, String>);
+impl<'b> std::borrow::Borrow<String> for RefMut<'b> {
+    fn borrow(&self) -> &String {
+        &self.0
+    }
+}
+impl<'b> std::borrow::BorrowMut<String> for RefMut<'b> {
+    fn borrow_mut(&mut self) -> &mut String {
+        &mut self.0
+    }
+}
+impl<'b> std::ops::Deref for RefMut<'b> {
+    type Target = String;
+    fn deref(&self) -> &String {
+        &self.0
+    }
+}
+impl<'b> std::ops::DerefMut for RefMut<'b> {
+    fn deref_mut(&mut self) -> &mut String {
+        &mut self.0
+    }
+}
+
+/// Type of a data borrow by [`ContainsCaseInsensitive`]
+pub struct CaseInsensitiveRefMut<'b>(CellRefMut<'b, (String, String, u64)>);
+impl<'b> std::borrow::Borrow<String> for CaseInsensitiveRefMut<'b> {
+    fn borrow(&self) -> &String {
+        &(self.0).0
+    }
+}
+impl<'b> std::borrow::BorrowMut<String> for CaseInsensitiveRefMut<'b> {
+    fn borrow_mut(&mut self) -> &mut String {
+        &mut (self.0).0
+    }
+}
+impl<'b> std::ops::Deref for CaseInsensitiveRefMut<'b> {
+    type Target = String;
+    fn deref(&self) -> &String {
+        &(self.0).0
+    }
+}
+impl<'b> std::ops::DerefMut for CaseInsensitiveRefMut<'b> {
+    fn deref_mut(&mut self) -> &mut String {
+        &mut (self.0).0
+    }
+}
+impl<'b> Drop for CaseInsensitiveRefMut<'b> {
+    fn drop(&mut self) {
+        (self.0).1 = (self.0).0.to_uppercase();
     }
 }
 
@@ -63,11 +117,13 @@ impl SharedData for ContainsString {
     }
 }
 impl SharedDataMut for ContainsString {
-    fn update(&self, mgr: &mut EventMgr, _: &Self::Key, value: Self::Item) {
+    type ItemRefMut<'b> = RefMut<'b>;
+
+    fn borrow_mut(&self, mgr: &mut EventMgr, _: &Self::Key) -> Option<Self::ItemRefMut<'_>> {
         let mut cell = self.0.borrow_mut();
-        cell.0 = value;
         cell.1 += 1;
         mgr.update_all(0);
+        Some(RefMut(CellRefMut::map(cell, |tuple| &mut tuple.0)))
     }
 }
 
@@ -118,12 +174,13 @@ impl SharedData for ContainsCaseInsensitive {
     }
 }
 impl SharedDataMut for ContainsCaseInsensitive {
-    fn update(&self, mgr: &mut EventMgr, _: &Self::Key, value: Self::Item) {
+    type ItemRefMut<'b> = CaseInsensitiveRefMut<'b>;
+
+    fn borrow_mut(&self, mgr: &mut EventMgr, _: &Self::Key) -> Option<Self::ItemRefMut<'_>> {
         let mut cell = self.0.borrow_mut();
-        cell.0 = value;
-        cell.1 = cell.0.to_uppercase();
         cell.2 += 1;
         mgr.update_all(0);
+        Some(CaseInsensitiveRefMut(cell))
     }
 }
 

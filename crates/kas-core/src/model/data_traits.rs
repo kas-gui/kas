@@ -10,7 +10,7 @@ use crate::event::Event;
 use crate::event::EventMgr;
 use crate::macros::autoimpl;
 use crate::WidgetId;
-use std::borrow::Borrow;
+use std::borrow::{Borrow, BorrowMut};
 #[allow(unused)] // doc links
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -97,14 +97,57 @@ pub trait SharedData: Debug {
 #[autoimpl(for<T: trait + ?Sized>
     &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait SharedDataMut: SharedData {
-    /// Update data, if supported
+    /// A mutable borrow of the item type
     ///
-    /// Shared data with internal mutability (e.g. via [`RefCell`]) should
-    /// update itself here, increase its version number and call
-    /// [`EventMgr::update_all`].
+    /// This type must support [`BorrowMut`] over [`Self::Item`]. This is, for
+    /// example, supported by `&mut Self::Item`.
     ///
-    /// Data types without internal mutability should do nothing.
-    fn update(&self, mgr: &mut EventMgr, key: &Self::Key, item: Self::Item);
+    /// It is also recommended (but not required) that the type support
+    /// [`std::ops::DerefMut`]: this allows easier usage of [`Self::borrow_mut`].
+    type ItemRefMut<'b>: BorrowMut<Self::Item>
+    where
+        Self: 'b;
+
+    // TODO: push mutable borrows to a different trait?
+    /// Mutably borrow an item by `key` and notify of an update
+    ///
+    /// Returns `None` if the data is by design not mutable or if `key` has no
+    /// associated item. Otherwise, this notifies
+    /// users of a data update (by calling [`EventMgr::update_all`] *and*
+    /// incrementing the number returned by [`Self::version`]).
+    ///
+    /// Depending on the implementation, this may involve some form of lock
+    /// such as `RefCell::borrow_mut` or `Mutex::lock`. The implementation
+    /// should panic on lock failure, not return `None`.
+    ///
+    /// Note: implementations of the return type *might* rely on [`Drop`] for
+    /// synchronization. Failing to drop the return value may thus cause errors.
+    fn borrow_mut(&self, mgr: &mut EventMgr, key: &Self::Key) -> Option<Self::ItemRefMut<'_>>;
+
+    /// Access a mutable borrow of an item
+    ///
+    /// This is a convenience method over [`Self::borrow_mut`].
+    fn with_ref_mut<V>(
+        &self,
+        mgr: &mut EventMgr,
+        key: &Self::Key,
+        f: impl FnOnce(&mut Self::Item) -> V,
+    ) -> Option<V>
+    where
+        Self: Sized,
+    {
+        self.borrow_mut(mgr, key)
+            .map(|mut borrow| f(borrow.borrow_mut()))
+    }
+
+    /// Set an item
+    ///
+    /// This is a convenience method over [`Self::borrow_mut`].
+    fn set(&self, mgr: &mut EventMgr, key: &Self::Key, item: Self::Item) {
+        if let Some(mut borrow) = self.borrow_mut(mgr, key) {
+            *borrow.borrow_mut() = item;
+        }
+    }
 }
 
 /// Trait bound for viewable single data

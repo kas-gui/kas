@@ -40,9 +40,28 @@ impl<'a, T> std::borrow::Borrow<T> for SharedArcRef<'a, T> {
         &self.0.deref().0
     }
 }
+impl<'a, T> Deref for SharedArcRef<'a, T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        &self.0.deref().0
+    }
+}
 
 /// A mutably borrowed reference
+//
+// Note: this is identical to SharedArcRef other than the trait impls. We cannot
+// allow SharedData::borrow to return a type supporting mutable access!
 pub struct SharedArcRefMut<'a, T>(MutexGuard<'a, (T, u64)>);
+impl<'a, T> std::borrow::Borrow<T> for SharedArcRefMut<'a, T> {
+    fn borrow(&self) -> &T {
+        &self.0.deref().0
+    }
+}
+impl<'a, T> std::borrow::BorrowMut<T> for SharedArcRefMut<'a, T> {
+    fn borrow_mut(&mut self) -> &mut T {
+        &mut self.0.deref_mut().0
+    }
+}
 impl<'a, T> Deref for SharedArcRefMut<'a, T> {
     type Target = T;
     fn deref(&self) -> &T {
@@ -69,20 +88,6 @@ impl<T: Debug> SharedArc<T> {
     pub fn id(&self) -> UpdateId {
         (self.0).0
     }
-
-    /// Mutably borrows the wrapped value, notifying other users of an update
-    ///
-    /// Internally this uses [`Mutex::lock`]; see its documentation regarding possible errors.
-    ///
-    /// The only real difference between [`SharedArc::borrow`] and [`SharedArc::update_mut`] is
-    /// that this method notifies other uses of an update and returns a type supporting
-    /// [`DerefMut`].
-    pub fn update_mut(&self, mgr: &mut EventMgr) -> SharedArcRefMut<T> {
-        mgr.update_with_id((self.0).0, 0);
-        let mut inner = (self.0).1.lock().unwrap();
-        inner.1 += 1;
-        SharedArcRefMut(inner)
-    }
 }
 
 impl<T: Clone + Debug + 'static> SharedData for SharedArc<T> {
@@ -102,10 +107,14 @@ impl<T: Clone + Debug + 'static> SharedData for SharedArc<T> {
     }
 }
 impl<T: Clone + Debug + 'static> SharedDataMut for SharedArc<T> {
-    fn update(&self, mgr: &mut EventMgr, _: &(), item: Self::Item) {
-        let mut inner = (self.0).1.lock().unwrap();
-        inner.0 = item;
-        inner.1 += 1;
+    type ItemRefMut<'b> = SharedArcRefMut<'b, T>
+    where
+        Self: 'b;
+
+    fn borrow_mut(&self, mgr: &mut EventMgr, _: &Self::Key) -> Option<Self::ItemRefMut<'_>> {
         mgr.update_with_id((self.0).0, 0);
+        let mut inner = (self.0).1.lock().unwrap();
+        inner.1 += 1;
+        Some(SharedArcRefMut(inner))
     }
 }

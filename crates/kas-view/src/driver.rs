@@ -222,7 +222,7 @@ impl<G: EditGuard + Clone, Data: SharedDataMut<Item = String>> Driver<String, Da
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(item) = mgr.try_pop_msg() {
-            data.update(mgr, key, item);
+            data.set(mgr, key, item);
         }
     }
 }
@@ -286,7 +286,7 @@ impl<G: EditGuard + Clone, Data: SharedDataMut<Item = String>> Driver<String, Da
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(item) = mgr.try_pop_msg() {
-            data.update(mgr, key, item);
+            data.set(mgr, key, item);
         }
     }
 }
@@ -340,7 +340,7 @@ impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for CheckButton {
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
-            data.update(mgr, key, state);
+            data.set(mgr, key, state);
         }
     }
 }
@@ -366,7 +366,7 @@ impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for RadioBox {
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
-            data.update(mgr, key, state);
+            data.set(mgr, key, state);
         }
     }
 }
@@ -395,7 +395,7 @@ impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for RadioButton {
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
-            data.update(mgr, key, state);
+            data.set(mgr, key, state);
         }
     }
 }
@@ -442,7 +442,7 @@ where
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
-            data.update(mgr, key, state);
+            data.set(mgr, key, state);
         }
     }
 }
@@ -476,7 +476,7 @@ where
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
-            data.update(mgr, key, state);
+            data.set(mgr, key, state);
         }
     }
 }

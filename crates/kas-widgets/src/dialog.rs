@@ -173,7 +173,7 @@ impl_scope! {
 
         fn close(&mut self, mgr: &mut EventMgr, commit: bool) -> Response {
             if commit {
-                self.data.update(mgr, &(), self.edit.get_string());
+                self.data.set(mgr, &(), self.edit.get_string());
             }
             mgr.send_action(TkAction::CLOSE);
             Response::Used

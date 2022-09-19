@@ -142,21 +142,19 @@ impl_scope! {
         /// Set shared data
         ///
         /// This method updates the shared data, if supported (see
-        /// [`SharedData::update`]). Other widgets sharing this data are notified
-        /// of the update, if data is changed.
+        /// [`SharedDataMut::borrow_mut`]). Other widgets sharing this data
+        /// are notified of the update, if data is changed.
         pub fn set_value(&self, mgr: &mut EventMgr, key: &T::Key, data: T::Item) where T: SharedDataMut {
-            self.data.update(mgr, key, data);
+            self.data.set(mgr, key, data);
         }
 
         /// Update shared data
         ///
-        /// This is purely a convenience method over [`MatrixView::set_value`].
-        /// It does nothing if no value is found at `key`.
-        /// It notifies other widgets of updates to the shared data.
-        pub fn update_value<F: Fn(T::Item) -> T::Item>(&self, mgr: &mut EventMgr, key: &T::Key, f: F) where T: SharedDataMut {
-            if let Some(item) = self.get_value(key) {
-                self.set_value(mgr, key, f(item));
-            }
+        /// This method updates the shared data, if supported (see
+        /// [`SharedDataMut::with_ref_mut`]). Other widgets sharing this data
+        /// are notified of the update, if data is changed.
+        pub fn update_value<U>(&self, mgr: &mut EventMgr, key: &T::Key, f: impl FnOnce(&mut T::Item) -> U) -> Option<U> where T: SharedDataMut {
+            self.data.with_ref_mut(mgr, key, f)
         }
 
         /// Get the current selection mode

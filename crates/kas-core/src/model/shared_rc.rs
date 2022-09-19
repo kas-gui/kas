@@ -49,16 +49,26 @@ impl<'a, T> Deref for SharedRcRef<'a, T> {
 }
 
 /// A mutably borrowed reference
-pub struct SharedRcRefMut<'a, T>(RefMut<'a, (T, u64)>);
+pub struct SharedRcRefMut<'a, T>(RefMut<'a, T>);
+impl<'a, T> std::borrow::Borrow<T> for SharedRcRefMut<'a, T> {
+    fn borrow(&self) -> &T {
+        &self.0
+    }
+}
+impl<'a, T> std::borrow::BorrowMut<T> for SharedRcRefMut<'a, T> {
+    fn borrow_mut(&mut self) -> &mut T {
+        &mut self.0
+    }
+}
 impl<'a, T> Deref for SharedRcRefMut<'a, T> {
     type Target = T;
     fn deref(&self) -> &T {
-        &self.0.deref().0
+        &self.0
     }
 }
 impl<'a, T> DerefMut for SharedRcRefMut<'a, T> {
     fn deref_mut(&mut self) -> &mut T {
-        &mut self.0.deref_mut().0
+        &mut self.0
     }
 }
 
@@ -75,14 +85,6 @@ impl<T: Debug> SharedRc<T> {
     /// Data updates via this [`SharedRc`] are triggered using this [`UpdateId`].
     pub fn id(&self) -> UpdateId {
         (self.0).0
-    }
-
-    /// Mutably borrows the wrapped value, notifying other users of an update.
-    pub fn update_mut(&self, mgr: &mut EventMgr) -> SharedRcRefMut<T> {
-        mgr.update_with_id((self.0).0, 0);
-        let mut cell = (self.0).1.borrow_mut();
-        cell.1 += 1;
-        SharedRcRefMut(cell)
     }
 }
 
@@ -103,10 +105,14 @@ impl<T: Clone + Debug + 'static> SharedData for SharedRc<T> {
     }
 }
 impl<T: Clone + Debug + 'static> SharedDataMut for SharedRc<T> {
-    fn update(&self, mgr: &mut EventMgr, _: &(), item: Self::Item) {
-        let mut cell = (self.0).1.borrow_mut();
-        cell.0 = item;
-        cell.1 += 1;
+    type ItemRefMut<'b> = SharedRcRefMut<'b, T>
+    where
+        Self: 'b;
+
+    fn borrow_mut(&self, mgr: &mut EventMgr, _: &Self::Key) -> Option<Self::ItemRefMut<'_>> {
         mgr.update_with_id((self.0).0, 0);
+        let mut cell = (self.0).1.borrow_mut();
+        cell.1 += 1;
+        Some(SharedRcRefMut(RefMut::map(cell, |tuple| &mut tuple.0)))
     }
 }

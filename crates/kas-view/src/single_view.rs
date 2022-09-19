@@ -90,18 +90,19 @@ impl_scope! {
         /// Set shared data
         ///
         /// This method updates the shared data, if supported (see
-        /// [`SharedData::update`]). Other widgets sharing this data are notified
-        /// of the update, if data is changed.
+        /// [`SharedDataMut::borrow_mut`]). Other widgets sharing this data
+        /// are notified of the update, if data is changed.
         pub fn set_value(&self, mgr: &mut EventMgr, data: T::Item) where T: SharedDataMut {
-            self.data.update(mgr, &(), data);
+            self.data.set(mgr, &(), data);
         }
 
         /// Update shared data
         ///
-        /// This is purely a convenience method over [`SingleView::set_value`].
-        /// It notifies other widgets of updates to the shared data.
-        pub fn update_value<F: Fn(T::Item) -> T::Item>(&self, mgr: &mut EventMgr, f: F) where T: SharedDataMut {
-            self.set_value(mgr, f(self.get_value()));
+        /// This method updates the shared data, if supported (see
+        /// [`SharedDataMut::with_ref_mut`]). Other widgets sharing this data
+        /// are notified of the update, if data is changed.
+        pub fn update_value<U>(&self, mgr: &mut EventMgr, f: impl FnOnce(&mut T::Item) -> U) -> Option<U> where T: SharedDataMut {
+            self.data.with_ref_mut(mgr, &(), f)
         }
     }
 

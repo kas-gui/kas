@@ -93,7 +93,9 @@ impl<T: ListData, F: Filter<T::Item> + SingleData> SharedData for FilteredList<T
 impl<T: ListData + SharedDataMut, F: Filter<T::Item> + SingleData> SharedDataMut
     for FilteredList<T, F>
 {
-    fn update(&self, mgr: &mut EventMgr, key: &Self::Key, value: Self::Item) {
+    type ItemRefMut<'b> = T::ItemRefMut<'b> where T: 'b;
+
+    fn borrow_mut(&self, mgr: &mut EventMgr, key: &Self::Key) -> Option<Self::ItemRefMut<'_>> {
         // Filtering does not affect result, but does affect the view
         if self
             .data
@@ -102,10 +104,10 @@ impl<T: ListData + SharedDataMut, F: Filter<T::Item> + SingleData> SharedDataMut
             .unwrap_or(true)
         {
             // Not previously visible: no update occurs
-            return;
+            return None;
         }
 
-        self.data.update(mgr, key, value);
+        self.data.borrow_mut(mgr, key)
     }
 }
 
