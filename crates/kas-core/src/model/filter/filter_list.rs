@@ -6,8 +6,9 @@
 //! Filter-list adapter
 
 use kas::model::filter::Filter;
-use kas::model::{ListData, MyBorrow, SharedData, SingleData};
+use kas::model::{ListData, SharedData, SingleData};
 use kas::prelude::*;
+use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::fmt::Debug;
 
@@ -56,7 +57,7 @@ impl<T: ListData, F: Filter<T::Item> + SingleData> FilteredList<T, F> {
         view.1.clear();
         for key in self.data.iter_vec(usize::MAX) {
             if let Some(item) = self.data.borrow(&key) {
-                if self.filter.matches(item.as_ref()) {
+                if self.filter.matches(item.borrow()) {
                     view.1.push(key);
                 }
             }
@@ -85,7 +86,7 @@ impl<T: ListData, F: Filter<T::Item> + SingleData> SharedData for FilteredList<T
         // our filtered list (O(n) where n=self.len()).
         self.data
             .borrow(key)
-            .filter(|item| self.filter.matches(item.as_ref()))
+            .filter(|item| self.filter.matches(item.borrow()))
     }
 
     fn update(&self, mgr: &mut EventMgr, key: &Self::Key, value: Self::Item) {
@@ -93,7 +94,7 @@ impl<T: ListData, F: Filter<T::Item> + SingleData> SharedData for FilteredList<T
         if self
             .data
             .borrow(key)
-            .map(|item| !self.filter.matches(item.as_ref()))
+            .map(|item| !self.filter.matches(item.borrow()))
             .unwrap_or(true)
         {
             // Not previously visible: no update occurs

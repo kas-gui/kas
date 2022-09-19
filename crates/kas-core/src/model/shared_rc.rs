@@ -34,6 +34,20 @@ impl<T: Debug + Default> Default for SharedRc<T> {
     }
 }
 
+/// A borrowed reference
+pub struct SharedRcRef<'a, T>(Ref<'a, T>);
+impl<'a, T> std::borrow::Borrow<T> for SharedRcRef<'a, T> {
+    fn borrow(&self) -> &T {
+        &self.0
+    }
+}
+impl<'a, T> Deref for SharedRcRef<'a, T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        &self.0
+    }
+}
+
 /// A mutably borrowed reference
 pub struct SharedRcRefMut<'a, T>(RefMut<'a, (T, u64)>);
 impl<'a, T> Deref for SharedRcRefMut<'a, T> {
@@ -75,7 +89,7 @@ impl<T: Debug> SharedRc<T> {
 impl<T: Clone + Debug + 'static> SharedData for SharedRc<T> {
     type Key = ();
     type Item = T;
-    type ItemRef<'b> = Ref<'b, T>;
+    type ItemRef<'b> = SharedRcRef<'b, T>;
 
     fn version(&self) -> u64 {
         (self.0).1.borrow().1
@@ -85,7 +99,7 @@ impl<T: Clone + Debug + 'static> SharedData for SharedRc<T> {
         true
     }
     fn borrow(&self, _: &Self::Key) -> Option<Self::ItemRef<'_>> {
-        Some(Ref::map((self.0).1.borrow(), |tuple| &tuple.0))
+        Some(SharedRcRef(Ref::map((self.0).1.borrow(), |tuple| &tuple.0)))
     }
 
     fn update(&self, mgr: &mut EventMgr, _: &(), item: Self::Item) {

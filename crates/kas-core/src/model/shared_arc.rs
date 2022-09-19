@@ -35,8 +35,8 @@ impl<T: Debug + Default> Default for SharedArc<T> {
 
 /// A borrowed reference
 pub struct SharedArcRef<'a, T>(MutexGuard<'a, (T, u64)>);
-impl<'a, T: Clone> MyBorrow<T> for SharedArcRef<'a, T> {
-    fn as_ref(&self) -> &T {
+impl<'a, T> std::borrow::Borrow<T> for SharedArcRef<'a, T> {
+    fn borrow(&self) -> &T {
         &self.0.deref().0
     }
 }

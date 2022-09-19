@@ -10,6 +10,7 @@ use crate::event::Event;
 use crate::event::EventMgr;
 use crate::macros::autoimpl;
 use crate::WidgetId;
+use std::borrow::Borrow;
 #[allow(unused)] // doc links
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -17,32 +18,6 @@ use std::fmt::Debug;
 /// Bounds on the key type
 pub trait DataKey: Clone + Debug + PartialEq + Eq + 'static {}
 impl<Key: Clone + Debug + PartialEq + Eq + 'static> DataKey for Key {}
-
-/// Borrow and Clone trait
-pub trait MyBorrow<Target: Clone> {
-    fn as_ref(&self) -> &Target;
-    fn cloned(&self) -> Target {
-        self.as_ref().clone()
-    }
-}
-
-impl<T: Clone> MyBorrow<T> for T {
-    fn as_ref(&self) -> &T {
-        self
-    }
-}
-
-impl<'b, T: Clone> MyBorrow<T> for &'b T {
-    fn as_ref(&self) -> &T {
-        self
-    }
-}
-
-impl<'b, T: Clone> MyBorrow<T> for std::cell::Ref<'b, T> {
-    fn as_ref(&self) -> &T {
-        self
-    }
-}
 
 /// Trait for shared data
 ///
@@ -57,7 +32,17 @@ pub trait SharedData: Debug {
     type Item: Clone + Debug + 'static;
 
     /// A borrow of the item type
-    type ItemRef<'b>: MyBorrow<Self::Item>
+    ///
+    /// This type must support [`Borrow`] over [`Self::Item`]. This is, for
+    /// example, supported by `Self::Item` and `&Self::Item`.
+    ///
+    /// It is also recommended (but not required) that the type support
+    /// [`std::ops::Deref`]: this allows easier usage of [`Self::borrow`].
+    ///
+    /// TODO(spec): once Rust supports some form of specialization, `AsRef` will
+    /// presumably get blanket impls over `T` and `&T`, and will then be more
+    /// appropriate to use than `Borrow`.
+    type ItemRef<'b>: Borrow<Self::Item>
     where
         Self: 'b;
 
@@ -75,11 +60,22 @@ pub trait SharedData: Debug {
     /// Check whether a key has data
     fn contains_key(&self, key: &Self::Key) -> bool;
 
+    /// Borrow an item by `key`
+    ///
+    /// Returns `None` if `key` has no associated item.
+    ///
+    /// Depending on the implementation, this may involve some form of lock
+    /// such as `RefCell::borrow` or `Mutex::lock`. The implementation should
+    /// panic on lock failure, not return `None`.
     fn borrow(&self, key: &Self::Key) -> Option<Self::ItemRef<'_>>;
 
     /// Get data by key (clone)
+    ///
+    /// Returns `None` if `key` has no associated item.
+    ///
+    /// This has a default implementation over [`Self::borrow`].
     fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
-        self.borrow(key).map(|r| r.cloned())
+        self.borrow(key).map(|r| r.borrow().to_owned())
     }
 
     /// Update data, if supported

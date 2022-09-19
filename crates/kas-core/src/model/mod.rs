@@ -23,7 +23,6 @@
 //! It is intended that once Rust has stable (lifetime) Generic Associated Types
 //! the traits provided here be revised as follows:
 //!
-//! -   Add `SharedData::borrow`, functioning as [`SharedRc::borrow`]
 //! -   Add `SharedDataMut::borrow_mut`
 //! -   Revise [`SharedData::update`]: probably return a type supporting
 //!     `DerefMut<Target = SharedData::Item>` while still updating the reference

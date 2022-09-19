@@ -10,7 +10,7 @@ pub use filter_list::FilteredList;
 
 use crate::event::EventMgr;
 use crate::model::*;
-use std::cell::{Ref, RefCell};
+use std::cell::{Ref as CellRef, RefCell};
 use std::fmt::Debug;
 use std::rc::Rc;
 
@@ -18,6 +18,21 @@ use std::rc::Rc;
 pub trait Filter<T>: 'static {
     /// Returns true if the given item matches this filter
     fn matches(&self, item: &T) -> bool;
+}
+
+/// Type of a data borrow
+// TODO(libstd): replace usage with std::cell::Ref when that supports Borrow
+pub struct Ref<'b>(CellRef<'b, String>);
+impl<'b> std::borrow::Borrow<String> for Ref<'b> {
+    fn borrow(&self) -> &String {
+        &self.0
+    }
+}
+impl<'b> std::ops::Deref for Ref<'b> {
+    type Target = String;
+    fn deref(&self) -> &String {
+        &self.0
+    }
 }
 
 /// Filter: target contains self (case-sensitive string match)
@@ -34,7 +49,7 @@ impl ContainsString {
 impl SharedData for ContainsString {
     type Key = ();
     type Item = String;
-    type ItemRef<'b> = Ref<'b, String>;
+    type ItemRef<'b> = Ref<'b>;
 
     fn version(&self) -> u64 {
         self.0.borrow().1
@@ -44,7 +59,7 @@ impl SharedData for ContainsString {
         true
     }
     fn borrow(&self, _: &Self::Key) -> Option<Self::ItemRef<'_>> {
-        Some(Ref::map(self.0.borrow(), |tuple| &tuple.0))
+        Some(Ref(CellRef::map(self.0.borrow(), |tuple| &tuple.0)))
     }
 
     fn update(&self, mgr: &mut EventMgr, _: &Self::Key, value: Self::Item) {
@@ -88,7 +103,7 @@ impl ContainsCaseInsensitive {
 impl SharedData for ContainsCaseInsensitive {
     type Key = ();
     type Item = String;
-    type ItemRef<'b> = Ref<'b, String>;
+    type ItemRef<'b> = Ref<'b>;
 
     fn version(&self) -> u64 {
         self.0.borrow().2
@@ -98,7 +113,7 @@ impl SharedData for ContainsCaseInsensitive {
         true
     }
     fn borrow(&self, _: &Self::Key) -> Option<Self::ItemRef<'_>> {
-        Some(Ref::map(self.0.borrow(), |tuple| &tuple.0))
+        Some(Ref(CellRef::map(self.0.borrow(), |tuple| &tuple.0)))
     }
 
     fn update(&self, mgr: &mut EventMgr, _: &Self::Key, value: Self::Item) {
