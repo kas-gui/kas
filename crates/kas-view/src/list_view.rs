@@ -345,16 +345,11 @@ impl_scope! {
 
             let keys = self
                 .data
-                .iter_vec_from(solver.first_data, solver.cur_len);
-            if keys.len() < solver.cur_len {
-                log::warn!(
-                    "{}: data.iter_vec_from({}, {}) yielded insufficient items (possibly incorrect data.len())", self.identify(),
-                    solver.first_data,
-                    solver.cur_len,
-                );
-            }
+                .iter_from(solver.first_data, solver.cur_len);
 
-            for (i, key) in keys.into_iter().enumerate() {
+            let mut count = 0;
+            for (i, key) in keys.enumerate() {
+                count += 1;
                 let i = solver.first_data + i;
                 let id = self.data.make_id(self.id_ref(), &key);
                 let w = &mut self.widgets[i % solver.cur_len];
@@ -379,6 +374,15 @@ impl_scope! {
                 }
                 w.widget.set_rect(mgr, solver.rect(i));
             }
+
+            if count < solver.cur_len {
+                log::warn!(
+                    "{}: data.iter_from({}, {}) yielded insufficient items (possibly incorrect data.len())", self.identify(),
+                    solver.first_data,
+                    solver.cur_len,
+                );
+            }
+
             *mgr |= action;
             let dur = (Instant::now() - time).as_micros();
             log::trace!(target: "kas_perf::view::list_view", "update_widgets: {dur}μs");
@@ -565,11 +569,11 @@ impl_scope! {
             // widgets (this allows resource loading which may affect size.)
             self.data_ver = self.data.version();
             if self.widgets.len() == 0 && !self.data.is_empty() {
-                let items = self.data.iter_vec(self.ideal_visible.cast());
-                let len = items.len();
-                log::debug!("configure: allocating {} widgets", len);
-                self.widgets.reserve(len);
-                for key in items.into_iter() {
+                let iter = self.data.iter_limit(self.ideal_visible.cast());
+                let lbound = iter.size_hint().0;
+                log::debug!("configure: allocating {} widgets", lbound);
+                self.widgets.reserve(lbound);
+                for key in iter {
                     let id = self.data.make_id(self.id_ref(), &key);
                     let mut widget = self.view.make();
                     mgr.configure(id, &mut widget);

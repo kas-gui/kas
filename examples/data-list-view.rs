@@ -104,6 +104,8 @@ impl SharedData for MySharedData {
     }
 }
 impl ListData for MySharedData {
+    type KeyIter<'b> = std::ops::Range<usize>;
+
     fn len(&self) -> usize {
         self.data.borrow().len
     }
@@ -114,13 +116,9 @@ impl ListData for MySharedData {
         child.next_key_after(parent)
     }
 
-    fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
-        (0..limit.min(self.len())).collect()
-    }
-
-    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key> {
+    fn iter_from(&self, start: usize, limit: usize) -> Self::KeyIter<'_> {
         let len = self.len();
-        (start.min(len)..(start + limit).min(len)).collect()
+        start.min(len)..(start + limit).min(len)
     }
 }
 

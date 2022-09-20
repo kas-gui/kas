@@ -6,7 +6,7 @@
 //! Filters over data
 
 mod filter_list;
-pub use filter_list::FilteredList;
+pub use filter_list::*;
 
 use crate::event::EventMgr;
 use crate::model::*;

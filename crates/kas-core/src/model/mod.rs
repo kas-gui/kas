@@ -17,13 +17,6 @@
 //! `[T]`, `Vec<T>`. The [`SharedRc`] type is a wrapper enabling sharing of
 //! 0-dimensional data via the `Rc<RefCell<T>>` pattern (with additions for
 //! synchronization).
-//!
-//! # Temporary design
-//!
-//! It is intended that once Rust has stable (lifetime) Generic Associated Types
-//! the traits provided here be revised as follows:
-//!
-//! -   Revise [`ListData::iter_vec`] etc: return an iterator instead of a [`Vec`]
 mod data_impls;
 mod data_traits;
 pub mod filter;

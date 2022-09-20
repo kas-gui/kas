@@ -9,7 +9,7 @@ use kas::model::filter::Filter;
 use kas::model::{ListData, SharedData, SharedDataMut, SingleData};
 use kas::prelude::*;
 use std::borrow::Borrow;
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use std::fmt::Debug;
 
 /// Filter accessor over another accessor
@@ -55,7 +55,7 @@ impl<T: ListData, F: Filter<T::Item> + SingleData> FilteredList<T, F> {
         let mut view = self.view.borrow_mut();
         view.0 = ver;
         view.1.clear();
-        for key in self.data.iter_vec(usize::MAX) {
+        for key in self.data.iter_limit(usize::MAX) {
             if let Some(item) = self.data.borrow(&key) {
                 if self.filter.matches(item.borrow()) {
                     view.1.push(key);
@@ -112,6 +112,9 @@ impl<T: ListData + SharedDataMut, F: Filter<T::Item> + SingleData> SharedDataMut
 }
 
 impl<T: ListData, F: Filter<T::Item> + SingleData> ListData for FilteredList<T, F> {
+    type KeyIter<'b> = KeyIter<'b, T::Key>
+    where Self: 'b;
+
     fn is_empty(&self) -> bool {
         self.view.borrow().1.is_empty()
     }
@@ -125,8 +128,35 @@ impl<T: ListData, F: Filter<T::Item> + SingleData> ListData for FilteredList<T, 
         self.data.reconstruct_key(parent, child)
     }
 
-    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key> {
+    fn iter_from(&self, start: usize, limit: usize) -> Self::KeyIter<'_> {
         let end = self.len().min(start + limit);
-        self.view.borrow().1[start..end].to_vec()
+        let borrow = Ref::map(self.view.borrow(), |tuple| &tuple.1[start..end]);
+        let index = 0;
+        KeyIter { borrow, index }
     }
 }
+
+/// Key iterator used by [`FilteredList`]
+pub struct KeyIter<'b, K: Clone> {
+    borrow: Ref<'b, [K]>,
+    index: usize,
+}
+
+impl<'b, K: Clone> Iterator for KeyIter<'b, K> {
+    type Item = K;
+
+    fn next(&mut self) -> Option<K> {
+        let key = self.borrow.get(self.index).cloned();
+        if key.is_some() {
+            self.index += 1;
+        }
+        key
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.borrow().len() - self.index;
+        (len, Some(len))
+    }
+}
+impl<'b, K: Clone> ExactSizeIterator for KeyIter<'b, K> {}
+impl<'b, K: Clone> std::iter::FusedIterator for KeyIter<'b, K> {}

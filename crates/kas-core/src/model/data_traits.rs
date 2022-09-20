@@ -169,6 +169,10 @@ impl<T: SharedDataMut<Key = ()>> SingleDataMut for T {}
 #[allow(clippy::len_without_is_empty)]
 #[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait ListData: SharedData {
+    type KeyIter<'b>: Iterator<Item = Self::Key>
+    where
+        Self: 'b;
+
     /// No data is available
     fn is_empty(&self) -> bool {
         self.len() == 0
@@ -197,20 +201,20 @@ pub trait ListData: SharedData {
     /// See: [`WidgetId::next_key_after`], [`WidgetId::iter_keys_after`]
     fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key>;
 
-    // TODO(gat): replace with an iterator
-    /// Iterate over keys as a vec
+    /// Iterate over keys
     ///
     /// The result will be in deterministic implementation-defined order, with
     /// a length of `max(limit, data_len)` where `data_len` is the number of
     /// items available.
-    fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
-        self.iter_vec_from(0, limit)
+    #[inline]
+    fn iter_limit(&self, limit: usize) -> Self::KeyIter<'_> {
+        self.iter_from(0, limit)
     }
 
-    /// Iterate over keys as a vec
+    /// Iterate over keys from an arbitrary start-point
     ///
-    /// The result is the same as `self.iter_vec(start + limit).skip(start)`.
-    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key>;
+    /// The result is the same as `self.iter_limit(start + limit).skip(start)`.
+    fn iter_from(&self, start: usize, limit: usize) -> Self::KeyIter<'_>;
 }
 
 /// Trait for viewable data matrices
