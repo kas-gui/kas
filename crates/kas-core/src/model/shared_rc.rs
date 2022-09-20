@@ -16,15 +16,8 @@ use std::rc::Rc;
 /// Wrapper for single-thread shared data
 ///
 /// This is vaguely `Rc<RefCell<T>>`, but includes an [`UpdateId`] and a `u64`
-/// version counter.
-///
-/// The wrapped value may be read via [`Self::borrow`], [`Self::try_borrow`] and
-/// [`SharedData::get_cloned`].
-///
-/// The value may be set via [`SharedData::update`].
-///
-/// This wrapper type may be useful for simple shared data, but for more complex
-/// uses a custom wrapper type may be required.
+/// version counter. Its main utility is that it implements the [`SharedData`]
+/// and [`SharedDataMut`] traits (with associated type `Key = ()`).
 #[derive(Clone, Debug)]
 pub struct SharedRc<T: Debug>(Rc<(UpdateId, RefCell<(T, u64)>)>);
 
@@ -82,9 +75,60 @@ impl<T: Debug> SharedRc<T> {
 
     /// Access update identifier
     ///
-    /// Data updates via this [`SharedRc`] are triggered using this [`UpdateId`].
+    /// This is the "update identifier" payload of the [`Event::Update`] sent to
+    /// widgets when this data is modified.
     pub fn id(&self) -> UpdateId {
         (self.0).0
+    }
+
+    /// Get the data version
+    ///
+    /// The version is increased on change and may be used to detect when views
+    /// over the data need to be refreshed. The initial version number must be
+    /// at least 1 (allowing 0 to represent an uninitialized state).
+    ///
+    /// Whenever the data is updated, [`Event::Update`] must be sent via
+    /// [`EventMgr::update_all`] to notify other users of this data of the
+    /// update.
+    pub fn version(&self) -> u64 {
+        (self.0).1.borrow().1
+    }
+
+    /// Borrow an item
+    ///
+    /// May panic (see [`RefCell::borrow`]).
+    pub fn borrow(&self) -> SharedRcRef<'_, T> {
+        SharedRcRef(Ref::map((self.0).1.borrow(), |tuple| &tuple.0))
+    }
+
+    /// Mutably borrow an item
+    ///
+    /// This notifies users of a data update by calling [`EventMgr::update_all`]
+    /// and incrementing the number returned by [`Self::version`].
+    ///
+    /// May panic (see [`RefCell::borrow_mut`]).
+    pub fn borrow_mut(&self, mgr: &mut EventMgr) -> SharedRcRefMut<'_, T> {
+        mgr.update_with_id((self.0).0, 0);
+        let mut cell = (self.0).1.borrow_mut();
+        cell.1 += 1;
+        SharedRcRefMut(RefMut::map(cell, |tuple| &mut tuple.0))
+    }
+
+    /// Set an item
+    ///
+    /// This notifies users of a data update by calling [`EventMgr::update_all`]
+    /// and incrementing the number returned by [`Self::version`].
+    #[inline]
+    pub fn set(&self, mgr: &mut EventMgr, item: T) {
+        *self.borrow_mut(mgr) = item;
+    }
+}
+
+impl<T: Clone + Debug> SharedRc<T> {
+    /// Get a clone of the stored item
+    #[inline]
+    pub fn get_cloned(&self) -> T {
+        self.borrow().deref().clone()
     }
 }
 
@@ -93,15 +137,18 @@ impl<T: Clone + Debug + 'static> SharedData for SharedRc<T> {
     type Item = T;
     type ItemRef<'b> = SharedRcRef<'b, T>;
 
+    #[inline]
     fn version(&self) -> u64 {
-        (self.0).1.borrow().1
+        self.version()
     }
 
+    #[inline]
     fn contains_key(&self, _: &()) -> bool {
         true
     }
+    #[inline]
     fn borrow(&self, _: &Self::Key) -> Option<Self::ItemRef<'_>> {
-        Some(SharedRcRef(Ref::map((self.0).1.borrow(), |tuple| &tuple.0)))
+        Some(self.borrow())
     }
 }
 impl<T: Clone + Debug + 'static> SharedDataMut for SharedRc<T> {
@@ -109,10 +156,8 @@ impl<T: Clone + Debug + 'static> SharedDataMut for SharedRc<T> {
     where
         Self: 'b;
 
+    #[inline]
     fn borrow_mut(&self, mgr: &mut EventMgr, _: &Self::Key) -> Option<Self::ItemRefMut<'_>> {
-        mgr.update_with_id((self.0).0, 0);
-        let mut cell = (self.0).1.borrow_mut();
-        cell.1 += 1;
-        Some(SharedRcRefMut(RefMut::map(cell, |tuple| &mut tuple.0)))
+        Some(self.borrow_mut(mgr))
     }
 }

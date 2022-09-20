@@ -7,7 +7,7 @@
 
 use crate::driver;
 use kas::event::config::{Config, MousePan};
-use kas::model::{SharedDataMut, SharedRc};
+use kas::model::SharedRc;
 use kas::prelude::*;
 use kas_widgets::{CheckButton, ComboBox, Spinner, TextButton};
 
@@ -132,7 +132,7 @@ impl driver::Driver<Config, SharedRc<Config>> for EventConfig {
         _: &(),
     ) {
         if let Some(msg) = mgr.try_pop_msg() {
-            let mut data = data.borrow_mut(mgr, &()).unwrap();
+            let mut data = data.borrow_mut(mgr);
             match msg {
                 Msg::MenuDelay(v) => data.menu_delay_ms = v,
                 Msg::TouchSelectDelay(v) => data.touch_select_delay_ms = v,

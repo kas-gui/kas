@@ -15,15 +15,8 @@ use std::sync::{Arc, Mutex, MutexGuard};
 /// Wrapper for multi-threaded shared data
 ///
 /// This is vaguely `Arc<Mutex<T>>`, but includes an [`UpdateId`] and a `u64`
-/// version counter.
-///
-/// The wrapped value may be read via [`Self::borrow`] and
-/// [`SharedData::get_cloned`].
-///
-/// The value may be set via [`SharedData::update`].
-///
-/// This wrapper type may be useful for simple shared data, but for more complex
-/// uses a custom wrapper type may be required.
+/// version counter. Its main utility is that it implements the [`SharedData`]
+/// and [`SharedDataMut`] traits (with associated type `Key = ()`).
 #[derive(Clone, Debug)]
 pub struct SharedArc<T: Debug>(Arc<(UpdateId, Mutex<(T, u64)>)>);
 
@@ -88,6 +81,56 @@ impl<T: Debug> SharedArc<T> {
     pub fn id(&self) -> UpdateId {
         (self.0).0
     }
+
+    /// Get the data version
+    ///
+    /// The version is increased on change and may be used to detect when views
+    /// over the data need to be refreshed. The initial version number must be
+    /// at least 1 (allowing 0 to represent an uninitialized state).
+    ///
+    /// Whenever the data is updated, [`Event::Update`] must be sent via
+    /// [`EventMgr::update_all`] to notify other users of this data of the
+    /// update.
+    pub fn version(&self) -> u64 {
+        (self.0).1.lock().unwrap().1
+    }
+
+    /// Borrow an item
+    ///
+    /// May panic (see [`Mutex::lock`]).
+    pub fn borrow(&self) -> SharedArcRef<'_, T> {
+        SharedArcRef((self.0).1.lock().unwrap())
+    }
+
+    /// Mutably borrow an item
+    ///
+    /// This notifies users of a data update by calling [`EventMgr::update_all`]
+    /// and incrementing the number returned by [`Self::version`].
+    ///
+    /// May panic (see [`Mutex::lock`]).
+    pub fn borrow_mut(&self, mgr: &mut EventMgr) -> SharedArcRefMut<'_, T> {
+        mgr.update_with_id((self.0).0, 0);
+        let mut inner = (self.0).1.lock().unwrap();
+        inner.1 += 1;
+        SharedArcRefMut(inner)
+    }
+
+    /// Set an item
+    ///
+    /// This notifies users of a data update by calling [`EventMgr::update_all`]
+    /// and incrementing the number returned by [`Self::version`].
+    #[inline]
+    pub fn set(&self, mgr: &mut EventMgr, item: T) {
+        *self.borrow_mut(mgr) = item;
+    }
+}
+
+impl<T: Clone + Debug> SharedArc<T> {
+    /// Get a clone of the stored item
+    #[inline]
+    pub fn get_cloned(&self) -> T {
+        self.borrow().deref().clone()
+    }
 }
 
 impl<T: Clone + Debug + 'static> SharedData for SharedArc<T> {
@@ -95,15 +138,18 @@ impl<T: Clone + Debug + 'static> SharedData for SharedArc<T> {
     type Item = T;
     type ItemRef<'b> = SharedArcRef<'b, T>;
 
+    #[inline]
     fn version(&self) -> u64 {
-        (self.0).1.lock().unwrap().1
+        self.version()
     }
 
+    #[inline]
     fn contains_key(&self, _: &()) -> bool {
         true
     }
+    #[inline]
     fn borrow(&self, _: &Self::Key) -> Option<Self::ItemRef<'_>> {
-        Some(SharedArcRef((self.0).1.lock().unwrap()))
+        Some(self.borrow())
     }
 }
 impl<T: Clone + Debug + 'static> SharedDataMut for SharedArc<T> {
@@ -111,10 +157,8 @@ impl<T: Clone + Debug + 'static> SharedDataMut for SharedArc<T> {
     where
         Self: 'b;
 
+    #[inline]
     fn borrow_mut(&self, mgr: &mut EventMgr, _: &Self::Key) -> Option<Self::ItemRefMut<'_>> {
-        mgr.update_with_id((self.0).0, 0);
-        let mut inner = (self.0).1.lock().unwrap();
-        inner.1 += 1;
-        Some(SharedArcRefMut(inner))
+        Some(self.borrow_mut(mgr))
     }
 }

@@ -85,6 +85,7 @@ pub trait SharedData: Debug {
     /// Returns `None` if `key` has no associated item.
     ///
     /// This has a default implementation over [`Self::borrow`].
+    #[inline]
     fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
         self.borrow(key).map(|r| r.borrow().to_owned())
     }
@@ -108,7 +109,6 @@ pub trait SharedDataMut: SharedData {
     where
         Self: 'b;
 
-    // TODO: push mutable borrows to a different trait?
     /// Mutably borrow an item by `key` and notify of an update
     ///
     /// Returns `None` if the data is by design not mutable or if `key` has no
@@ -143,6 +143,7 @@ pub trait SharedDataMut: SharedData {
     /// Set an item
     ///
     /// This is a convenience method over [`Self::borrow_mut`].
+    #[inline]
     fn set(&self, mgr: &mut EventMgr, key: &Self::Key, item: Self::Item) {
         if let Some(mut borrow) = self.borrow_mut(mgr, key) {
             *borrow.borrow_mut() = item;
