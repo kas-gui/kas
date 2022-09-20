@@ -308,9 +308,10 @@ impl_scope! {
             let time = Instant::now();
             let solver = self.position_solver(mgr);
 
-            let cols = self
+            let cols: Vec<_> = self
                 .data
-                .col_iter_vec_from(solver.first_col, solver.col_len);
+                .col_iter_from(solver.first_col, solver.col_len)
+                .collect();
             if cols.len() < solver.col_len {
                 log::warn!(
                     "{}: data.col_iter_vec_from({}, {}) yielded insufficient items (possibly incorrect data.len())", self.identify(),
@@ -319,24 +320,19 @@ impl_scope! {
                 );
             }
 
-            let rows = self
+            let row_iter = self
                 .data
-                .row_iter_vec_from(solver.first_row, solver.row_len);
-            if rows.len() < solver.row_len {
-                log::warn!(
-                    "{}: data.row_iter_vec_from({}, {}) yielded insufficient items (possibly incorrect data.len())", self.identify(),
-                    solver.first_row,
-                    solver.row_len,
-                );
-            }
+                .row_iter_from(solver.first_row, solver.row_len);
 
             let mut action = TkAction::empty();
-            for (rn, row) in rows.iter().enumerate() {
+            let mut row_count = 0;
+            for (rn, row) in row_iter.enumerate() {
+                row_count += 1;
                 let ri = solver.first_row + rn;
                 for (cn, col) in cols.iter().enumerate() {
                     let ci = solver.first_col + cn;
                     let i = solver.data_to_child(ci, ri);
-                    let key = T::make_key(col, row);
+                    let key = T::make_key(col, &row);
                     let id = self.data.make_id(self.id_ref(), &key);
                     let w = &mut self.widgets[i];
                     if w.key.as_ref() != Some(&key) {
@@ -359,6 +355,15 @@ impl_scope! {
                     w.widget.set_rect(mgr, solver.rect(ci, ri));
                 }
             }
+
+            if row_count < solver.row_len {
+                log::warn!(
+                    "{}: data.row_iter_vec_from({}, {}) yielded insufficient items (possibly incorrect data.len())", self.identify(),
+                    solver.first_row,
+                    solver.row_len,
+                );
+            }
+
             *mgr |= action;
             let dur = (Instant::now() - time).as_micros();
             log::trace!(target: "kas_perf::view::matrix_view", "update_widgets: {dur}μs");
@@ -557,14 +562,14 @@ impl_scope! {
             // widgets (this allows resource loading which may affect size.)
             self.data_ver = self.data.version();
             if self.widgets.len() == 0 && !self.data.is_empty() {
-                let cols = self.data.col_iter_vec(self.ideal_len.cols.cast());
-                let rows = self.data.row_iter_vec(self.ideal_len.rows.cast());
-                let len = cols.len() * rows.len();
-                log::debug!("configure: allocating {} widgets", len);
-                self.widgets.reserve(len);
-                for row in rows.iter(){
+                let cols: Vec<_> = self.data.col_iter_limit(self.ideal_len.cols.cast()).collect();
+                let rows = self.data.row_iter_limit(self.ideal_len.rows.cast());
+                let lbound = cols.len() * rows.size_hint().0;
+                log::debug!("configure: allocating {} widgets", lbound);
+                self.widgets.reserve(lbound);
+                for row in rows {
                     for col in cols.iter() {
-                        let key = T::make_key(col, row);
+                        let key = T::make_key(col, &row);
                         let id = self.data.make_id(self.id_ref(), &key);
                         let mut widget = self.view.make();
                         mgr.configure(id, &mut widget);
@@ -746,11 +751,15 @@ impl_scope! {
 
                         let index = solver.data_to_child(ci, ri);
                         #[cfg(debug_assertions)] {
-                            let rv = self.data.row_iter_vec_from(ri, 1);
-                            let rk = rv.get(0).expect("data row len > data.row_iter_vec len");
-                            let cv = self.data.col_iter_vec_from(ci, 1);
-                            let ck = cv.get(0).expect("data col len > data.col_iter_vec len");
-                            let key = T::make_key(ck, rk);
+                            let rk = self.data
+                                .row_iter_from(ri, 1)
+                                .next()
+                                .expect("data row len > data.row_iter_vec len");
+                            let ck = self.data
+                                .col_iter_from(ci, 1)
+                                .next()
+                                .expect("data col len > data.col_iter_vec len");
+                            let key = T::make_key(&ck, &rk);
                             assert_eq!(
                                 self.widgets[index].widget.id(),
                                 self.data.make_id(self.id_ref(), &key),

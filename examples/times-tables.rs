@@ -27,6 +27,9 @@ impl MatrixData for TableData {
     type ColKey = usize;
     type RowKey = usize;
 
+    type ColKeyIter<'b> = std::ops::Range<usize>;
+    type RowKeyIter<'b> = std::ops::Range<usize>;
+
     fn is_empty(&self) -> bool {
         self.1 == 0
     }
@@ -44,11 +47,11 @@ impl MatrixData for TableData {
         col.zip(row)
     }
 
-    fn col_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::ColKey> {
-        (start..(start + limit)).collect()
+    fn col_iter_from(&self, start: usize, limit: usize) -> std::ops::Range<usize> {
+        start..(start + limit)
     }
-    fn row_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::RowKey> {
-        (start..(start + limit)).collect()
+    fn row_iter_from(&self, start: usize, limit: usize) -> std::ops::Range<usize> {
+        start..(start + limit)
     }
 
     fn make_key(col: &Self::ColKey, row: &Self::RowKey) -> Self::Key {

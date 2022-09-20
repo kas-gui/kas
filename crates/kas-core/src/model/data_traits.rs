@@ -227,6 +227,13 @@ pub trait MatrixData: SharedData {
     /// Row key type
     type RowKey: DataKey;
 
+    type ColKeyIter<'b>: Iterator<Item = Self::ColKey>
+    where
+        Self: 'b;
+    type RowKeyIter<'b>: Iterator<Item = Self::RowKey>
+    where
+        Self: 'b;
+
     /// No data is available
     fn is_empty(&self) -> bool;
 
@@ -254,32 +261,35 @@ pub trait MatrixData: SharedData {
     /// See: [`WidgetId::next_key_after`], [`WidgetId::iter_keys_after`]
     fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key>;
 
-    // TODO(gat): replace with an iterator
-    /// Iterate over column keys as a vec
+    /// Iterate over column keys
     ///
     /// The result will be in deterministic implementation-defined order, with
     /// a length of `max(limit, data_len)` where `data_len` is the number of
     /// items available.
-    fn col_iter_vec(&self, limit: usize) -> Vec<Self::ColKey> {
-        self.col_iter_vec_from(0, limit)
+    #[inline]
+    fn col_iter_limit(&self, limit: usize) -> Self::ColKeyIter<'_> {
+        self.col_iter_from(0, limit)
     }
-    /// Iterate over column keys as a vec
-    ///
-    /// The result is the same as `self.iter_vec(start + limit).skip(start)`.
-    fn col_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::ColKey>;
 
-    /// Iterate over row keys as a vec
+    /// Iterate over column keys from an arbitrary start-point
+    ///
+    /// The result is the same as `self.iter_limit(start + limit).skip(start)`.
+    fn col_iter_from(&self, start: usize, limit: usize) -> Self::ColKeyIter<'_>;
+
+    /// Iterate over row keys
     ///
     /// The result will be in deterministic implementation-defined order, with
     /// a length of `max(limit, data_len)` where `data_len` is the number of
     /// items available.
-    fn row_iter_vec(&self, limit: usize) -> Vec<Self::RowKey> {
-        self.row_iter_vec_from(0, limit)
+    #[inline]
+    fn row_iter_limit(&self, limit: usize) -> Self::RowKeyIter<'_> {
+        self.row_iter_from(0, limit)
     }
-    /// Iterate over row keys as a vec
+
+    /// Iterate over row keys from an arbitrary start-point
     ///
-    /// The result is the same as `self.iter_vec(start + limit).skip(start)`.
-    fn row_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::RowKey>;
+    /// The result is the same as `self.iter_limit(start + limit).skip(start)`.
+    fn row_iter_from(&self, start: usize, limit: usize) -> Self::RowKeyIter<'_>;
 
     /// Make a key from parts
     fn make_key(col: &Self::ColKey, row: &Self::RowKey) -> Self::Key;
