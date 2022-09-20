@@ -12,7 +12,7 @@
 
 use kas::model::*;
 use kas::prelude::*;
-use kas::view::{Driver, ListView};
+use kas::view::{Driver, ListView, MaybeOwned};
 use kas::widgets::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -175,8 +175,14 @@ impl Driver<(bool, String), MySharedData> for MyDriver {
         }
     }
 
-    fn set(&self, widget: &mut Self::Widget, key: &usize, item: (bool, String)) -> TkAction {
+    fn set_mo(
+        &self,
+        widget: &mut Self::Widget,
+        key: &usize,
+        item: MaybeOwned<(bool, String)>,
+    ) -> TkAction {
         let label = format!("Entry number {}", *key + 1);
+        let item = item.into_owned();
         widget.label.set_string(label)
             | widget.radio.set_bool(item.0)
             | widget.edit.set_string(item.1)

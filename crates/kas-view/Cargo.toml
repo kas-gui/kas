@@ -23,6 +23,7 @@ kas-widgets = { version = "0.11.0", path = "../kas-widgets" }
 log = "0.4"
 linear-map = "1.2.0"
 thiserror = "1.0.23"
+maybe-owned = "0.3.4"
 
 # We must rename this package since macros expect kas to be in scope:
 kas = { version = "0.11.0", package = "kas-core", path = "../kas-core" }

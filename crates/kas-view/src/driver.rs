@@ -18,6 +18,7 @@
 mod config;
 pub use config::EventConfig;
 
+use crate::MaybeOwned;
 use kas::model::{SharedData, SharedDataMut};
 use kas::prelude::*;
 use kas::theme::TextClass;
@@ -52,7 +53,31 @@ pub trait Driver<Item, Data: SharedData<Item = Item>>: Debug {
     ///
     /// The widget may expect `configure` to be called at least once before data
     /// is set and to have `set_rect` called after each time data is set.
-    fn set(&self, widget: &mut Self::Widget, key: &Data::Key, item: Item) -> TkAction;
+    ///
+    /// This method is a convenience wrapper around [`Self::set_mo`].
+    fn set<'b>(
+        &self,
+        widget: &mut Self::Widget,
+        key: &Data::Key,
+        item: impl Into<MaybeOwned<'b, Item>>,
+    ) -> TkAction
+    where
+        Self: Sized,
+        Item: 'b,
+    {
+        self.set_mo(widget, key, item.into())
+    }
+
+    /// Set the viewed data ([`MaybeOwned`])
+    ///
+    /// The widget may expect `configure` to be called at least once before data
+    /// is set and to have `set_rect` called after each time data is set.
+    fn set_mo(
+        &self,
+        widget: &mut Self::Widget,
+        key: &Data::Key,
+        item: MaybeOwned<Item>,
+    ) -> TkAction;
 
     /// Handle a message from a widget
     ///
@@ -115,7 +140,7 @@ macro_rules! impl_via_to_string {
             fn make(&self) -> Self::Widget {
                 Label::new("".to_string())
             }
-            fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: $t) -> TkAction {
+            fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<$t>) -> TkAction {
                 widget.set_string(item.to_string())
             }
         }
@@ -124,7 +149,7 @@ macro_rules! impl_via_to_string {
             fn make(&self) -> Self::Widget {
                 NavFrame::new(Label::new("".to_string()))
             }
-            fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: $t) -> TkAction {
+            fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<$t>) -> TkAction {
                 widget.set_string(item.to_string())
             }
         }
@@ -144,8 +169,8 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for View {
     fn make(&self) -> Self::Widget {
         CheckBox::new_on(|mgr, state| mgr.push_msg(state)).with_editable(false)
     }
-    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: bool) -> TkAction {
-        widget.set_bool(item)
+    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> TkAction {
+        widget.set_bool(item.into_owned())
     }
 }
 
@@ -154,8 +179,8 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for NavView {
     fn make(&self) -> Self::Widget {
         CheckBox::new_on(|mgr, state| mgr.push_msg(state)).with_editable(false)
     }
-    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: bool) -> TkAction {
-        widget.set_bool(item)
+    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> TkAction {
+        widget.set_bool(item.into_owned())
     }
 }
 
@@ -217,8 +242,13 @@ impl<G: EditGuard + Clone, Data: SharedDataMut<Item = String>> Driver<String, Da
             .with_guard(self.guard.clone())
             .with_class(self.class)
     }
-    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: String) -> TkAction {
-        widget.set_string(item)
+    fn set_mo(
+        &self,
+        widget: &mut Self::Widget,
+        _: &Data::Key,
+        item: MaybeOwned<String>,
+    ) -> TkAction {
+        widget.set_string(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(item) = mgr.try_pop_msg() {
@@ -281,8 +311,13 @@ impl<G: EditGuard + Clone, Data: SharedDataMut<Item = String>> Driver<String, Da
     fn make(&self) -> Self::Widget {
         kas_widgets::EditBox::new("".to_string()).with_guard(self.guard.clone())
     }
-    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: String) -> TkAction {
-        widget.set_string(item)
+    fn set_mo(
+        &self,
+        widget: &mut Self::Widget,
+        _: &Data::Key,
+        item: MaybeOwned<String>,
+    ) -> TkAction {
+        widget.set_string(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(item) = mgr.try_pop_msg() {
@@ -313,8 +348,8 @@ impl<D: Directional, Data: SharedData<Item = f32>> Driver<f32, Data> for Progres
     fn make(&self) -> Self::Widget {
         kas_widgets::ProgressBar::new_with_direction(self.direction)
     }
-    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: f32) -> TkAction {
-        widget.set_value(item)
+    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<f32>) -> TkAction {
+        widget.set_value(item.into_owned())
     }
 }
 
@@ -335,8 +370,8 @@ impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for CheckButton {
     fn make(&self) -> Self::Widget {
         kas_widgets::CheckButton::new_on(self.label.clone(), |mgr, state| mgr.push_msg(state))
     }
-    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: bool) -> TkAction {
-        widget.set_bool(item)
+    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> TkAction {
+        widget.set_bool(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
@@ -361,8 +396,8 @@ impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for RadioBox {
     fn make(&self) -> Self::Widget {
         kas_widgets::RadioBox::new_on(self.group.clone(), |mgr| mgr.push_msg(true))
     }
-    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: bool) -> TkAction {
-        widget.set_bool(item)
+    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> TkAction {
+        widget.set_bool(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
@@ -390,8 +425,8 @@ impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for RadioButton {
         kas_widgets::RadioButton::new(self.label.clone(), self.group.clone())
             .on_select(|mgr| mgr.push_msg(true))
     }
-    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: bool) -> TkAction {
-        widget.set_bool(item)
+    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> TkAction {
+        widget.set_bool(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
@@ -437,8 +472,13 @@ where
         kas_widgets::Slider::new_with_direction(range, self.step, self.direction)
             .on_move(|mgr, value| mgr.push_msg(value))
     }
-    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: Data::Item) -> TkAction {
-        widget.set_value(item)
+    fn set_mo(
+        &self,
+        widget: &mut Self::Widget,
+        _: &Data::Key,
+        item: MaybeOwned<Data::Item>,
+    ) -> TkAction {
+        widget.set_value(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
@@ -471,8 +511,13 @@ where
         let range = self.range.0..=self.range.1;
         kas_widgets::Spinner::new(range, self.step).on_change(|mgr, val| mgr.push_msg(val))
     }
-    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: Data::Item) -> TkAction {
-        widget.set_value(item)
+    fn set_mo(
+        &self,
+        widget: &mut Self::Widget,
+        _: &Data::Key,
+        item: MaybeOwned<Data::Item>,
+    ) -> TkAction {
+        widget.set_value(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
