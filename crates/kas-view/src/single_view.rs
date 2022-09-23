@@ -10,6 +10,7 @@ use kas::model::SingleData;
 #[allow(unused)]
 use kas::model::{SharedData, SharedDataMut, SharedRc};
 use kas::prelude::*;
+use std::borrow::Borrow;
 
 impl_scope! {
     /// Single view controller
@@ -82,6 +83,11 @@ impl_scope! {
             &mut self.data
         }
 
+        /// Borrow a reference to the shared value
+        pub fn borrow_value(&self) -> Option<impl Borrow<T::Item> + '_> {
+            self.data.borrow(&())
+        }
+
         /// Get a copy of the shared value
         pub fn get_value(&self) -> T::Item {
             self.data.get_cloned(&()).unwrap()
@@ -117,8 +123,8 @@ impl_scope! {
     impl Widget for Self {
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             // We set data now, after child is configured
-            let item = self.data.get_cloned(&()).unwrap();
-            *mgr |= self.view.set(&mut self.child, &(), item);
+            let item = self.data.borrow(&()).unwrap();
+            *mgr |= self.view.set(&mut self.child, &(), item.borrow());
         }
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
@@ -126,8 +132,8 @@ impl_scope! {
                 Event::Update { .. } => {
                     let data_ver = self.data.version();
                     if data_ver > self.data_ver {
-                        let item = self.data.get_cloned(&()).unwrap();
-                        *mgr |= self.view.set(&mut self.child, &(), item);
+                        let item = self.data.borrow(&()).unwrap();
+                        *mgr |= self.view.set(&mut self.child, &(), item.borrow());
                         self.data_ver = data_ver;
                     }
                     Response::Used

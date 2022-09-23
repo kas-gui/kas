@@ -79,7 +79,7 @@ impl<T: ListData, F: Filter<T::Item> + SingleData> SharedData for FilteredList<T
     }
 
     fn contains_key(&self, key: &Self::Key) -> bool {
-        self.get_cloned(key).is_some()
+        SharedData::borrow(self, key).is_some()
     }
     fn borrow(&self, key: &Self::Key) -> Option<Self::ItemRef<'_>> {
         // Check the item against our filter (probably O(1)) instead of using

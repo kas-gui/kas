@@ -17,6 +17,7 @@ use kas::prelude::*;
 use kas_widgets::ScrollBars;
 use kas_widgets::SelectMsg;
 use linear_map::set::LinearSet;
+use std::borrow::Borrow;
 use std::time::Instant;
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -132,6 +133,11 @@ impl_scope! {
         /// It may be necessary to use [`MatrixView::update_view`] to update the view of this data.
         pub fn data_mut(&mut self) -> &mut T {
             &mut self.data
+        }
+
+        /// Borrow a reference to the shared value at `key`
+        pub fn borrow_value(&self, key: &T::Key) -> Option<impl Borrow<T::Item> + '_> {
+            self.data.borrow(key)
         }
 
         /// Get a copy of the shared value at `key`
@@ -337,8 +343,8 @@ impl_scope! {
                     let w = &mut self.widgets[i];
                     if w.key.as_ref() != Some(&key) {
                         mgr.configure(id, &mut w.widget);
-                        if let Some(item) = self.data.get_cloned(&key) {
-                            action |= self.view.set(&mut w.widget, &key, item);
+                        if let Some(item) = self.data.borrow(&key) {
+                            action |= self.view.set(&mut w.widget, &key, item.borrow());
                             w.key = Some(key);
                             solve_size_rules(
                                 &mut w.widget,
@@ -573,8 +579,8 @@ impl_scope! {
                         let id = self.data.make_id(self.id_ref(), &key);
                         let mut widget = self.view.make();
                         mgr.configure(id, &mut widget);
-                        let key = if let Some(item) = self.data.get_cloned(&key) {
-                            *mgr |= self.view.set(&mut widget, &key, item);
+                        let key = if let Some(item) = self.data.borrow(&key) {
+                            *mgr |= self.view.set(&mut widget, &key, item.borrow());
                             Some(key)
                         } else {
                             None
