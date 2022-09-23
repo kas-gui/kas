@@ -27,7 +27,7 @@ impl_scope! {
     /// # Messages
     ///
     /// When a view widget pushes a message, [`Driver::on_message`] is called.
-    #[autoimpl(Debug ignore self.view)]
+    #[autoimpl(Debug ignore self.driver)]
     #[derive(Clone)]
     #[widget{
         layout = self.child;
@@ -37,7 +37,7 @@ impl_scope! {
         V: Driver<T::Item, T> = driver::View,
     > {
         core: widget_core!(),
-        view: V,
+        driver: V,
         data: T,
         data_ver: u64,
         #[widget]
@@ -60,13 +60,13 @@ impl_scope! {
         }
     }
     impl Self {
-        /// Construct a new instance with explicit view
-        pub fn new_with_driver(view: V, data: T) -> Self {
-            let child = view.make();
+        /// Construct a new instance with explicit driver
+        pub fn new_with_driver(driver: V, data: T) -> Self {
+            let child = driver.make();
             let data_ver = data.version();
             SingleView {
                 core: Default::default(),
-                view,
+                driver,
                 data,
                 data_ver,
                 child,
@@ -124,7 +124,7 @@ impl_scope! {
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             // We set data now, after child is configured
             let item = self.data.borrow(&()).unwrap();
-            *mgr |= self.view.set(&mut self.child, &(), item.borrow());
+            *mgr |= self.driver.set(&mut self.child, &(), item.borrow());
         }
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
@@ -133,7 +133,7 @@ impl_scope! {
                     let data_ver = self.data.version();
                     if data_ver > self.data_ver {
                         let item = self.data.borrow(&()).unwrap();
-                        *mgr |= self.view.set(&mut self.child, &(), item.borrow());
+                        *mgr |= self.driver.set(&mut self.child, &(), item.borrow());
                         self.data_ver = data_ver;
                     }
                     Response::Used
@@ -143,7 +143,7 @@ impl_scope! {
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-            self.view.on_message(mgr, &mut self.child, &self.data, &());
+            self.driver.on_message(mgr, &mut self.child, &self.data, &());
         }
     }
 }

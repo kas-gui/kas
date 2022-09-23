@@ -59,7 +59,7 @@ impl_scope! {
         core: widget_core!(),
         frame_offset: Offset,
         frame_size: Size,
-        view: V,
+        driver: V,
         /// Empty widget used for sizing; this must be stored between horiz and vert size rule
         /// calculations for correct line wrapping/layout.
         default_widget: V::Widget,
@@ -100,9 +100,9 @@ impl_scope! {
         }
     }
     impl Self where D: Default {
-        /// Construct a new instance with explicit view
-        pub fn new_with_driver(view: V, data: T) -> Self {
-            Self::new_with_dir_driver(D::default(), view, data)
+        /// Construct a new instance with explicit driver
+        pub fn new_with_driver(driver: V, data: T) -> Self {
+            Self::new_with_dir_driver(D::default(), driver, data)
         }
     }
     impl<T: ListData + 'static, V: Driver<T::Item, T>> ListView<Direction, T, V> {
@@ -113,14 +113,14 @@ impl_scope! {
         }
     }
     impl Self {
-        /// Construct a new instance with explicit direction and view
-        pub fn new_with_dir_driver(direction: D, view: V, data: T) -> Self {
-            let default_widget = view.make();
+        /// Construct a new instance with explicit direction and driver
+        pub fn new_with_dir_driver(direction: D, driver: V, data: T) -> Self {
+            let default_widget = driver.make();
             ListView {
                 core: Default::default(),
                 frame_offset: Default::default(),
                 frame_size: Default::default(),
-                view,
+                driver,
                 default_widget,
                 data,
                 data_ver: 0,
@@ -364,7 +364,7 @@ impl_scope! {
                     mgr.configure(id, &mut w.widget);
 
                     if let Some(item) = self.data.borrow(&key) {
-                        action |= self.view.set(&mut w.widget, &key, item.borrow());
+                        action |= self.driver.set(&mut w.widget, &key, item.borrow());
                         solve_size_rules(
                             &mut w.widget,
                             mgr.size_mgr(),
@@ -528,7 +528,7 @@ impl_scope! {
                 log::debug!("set_rect: allocating widgets (old len = {}, new = {})", avail_widgets, req_widgets);
                 self.widgets.reserve(req_widgets - avail_widgets);
                 for _ in avail_widgets..req_widgets {
-                    let widget = self.view.make();
+                    let widget = self.driver.make();
                     self.widgets.push(WidgetData { key: None, widget });
                 }
             }
@@ -581,10 +581,10 @@ impl_scope! {
                 self.widgets.reserve(lbound);
                 for key in iter {
                     let id = self.data.make_id(self.id_ref(), &key);
-                    let mut widget = self.view.make();
+                    let mut widget = self.driver.make();
                     mgr.configure(id, &mut widget);
                     let key = if let Some(item) = self.data.borrow(&key) {
-                        *mgr |= self.view.set(&mut widget, &key, item.borrow());
+                        *mgr |= self.driver.set(&mut widget, &key, item.borrow());
                         Some(key)
                     } else {
                         None
@@ -785,7 +785,7 @@ impl_scope! {
                 None => return,
             };
 
-            self.view.on_message(mgr, &mut w.widget, &self.data, &key);
+            self.driver.on_message(mgr, &mut w.widget, &self.data, &key);
 
             if let Some(SelectMsg) = mgr.try_pop_msg() {
                 match self.sel_mode {
