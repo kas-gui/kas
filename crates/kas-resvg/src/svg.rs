@@ -6,7 +6,6 @@
 //! SVG widget
 
 use kas::draw::{ImageFormat, ImageHandle};
-use kas::geom::Size;
 use kas::layout::{LogicalSize, PixmapScaling};
 use kas::prelude::*;
 use std::io::Result;
@@ -26,7 +25,6 @@ impl_scope! {
         core: widget_core!(),
         tree: Option<usvg::Tree>,
         scaling: PixmapScaling,
-        ideal_size: Size,
         pixmap: Option<Pixmap>,
         image: Option<ImageHandle>,
     }

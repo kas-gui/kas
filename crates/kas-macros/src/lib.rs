@@ -33,7 +33,7 @@ mod widget_index;
 
 /// Implement `Default`
 ///
-/// See [`impl_tools::impl_default`](https://docs.rs/impl-tools/0.4/impl_tools/attr.impl_default.html)
+/// See [`impl_tools::impl_default`](https://docs.rs/impl-tools/0.5/impl_tools/attr.impl_default.html)
 /// for full documentation.
 #[proc_macro_attribute]
 #[proc_macro_error]
@@ -52,27 +52,33 @@ pub fn impl_default(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 /// A variant of the standard `derive` macro
 ///
-/// See [`impl_tools::autoimpl`](https://docs.rs/impl-tools/0.4/impl_tools/attr.autoimpl.html)
+/// See [`impl_tools::autoimpl`](https://docs.rs/impl-tools/0.5/impl_tools/attr.autoimpl.html)
 /// for full documentation.
 ///
 /// The following traits are supported:
 ///
-/// | Name | Path | *ignore* | *using* |
-/// |----- |----- |--- |--- |
-/// | `Clone` | `::std::clone::Clone` | initialized with `Default::default()` | - |
-/// | `Debug` | `::std::fmt::Debug` | field is not printed | - |
-/// | `Default` | `::std::default::Default` | - | - |
-/// | `Deref` | `::std::ops::Deref` | - | deref target |
-/// | `DerefMut` | `::std::ops::DerefMut` | - | deref target |
-/// | `HasBool` | `::kas::class::HasBool` | - | deref target |
-/// | `HasStr` | `::kas::class::HasStr` | - | deref target |
-/// | `HasString` | `::kas::class::HasString` | - | deref target |
-/// | `SetAccel` | `::kas::class::SetAccel` | - | deref target |
-/// | `class_traits` | each `kas::class` trait | - | deref target |
-///
-/// *Ignore:* trait supports ignoring fields (e.g. `#[autoimpl(Debug ignore self.foo)]`).
-///
-/// *Using:* trait requires a named field to "use" (e.g. `#[autoimpl(Deref using self.foo)]`).
+/// | Path | *ignore* | *using* | *notes* |
+/// |----- |--- |--- |--- |
+/// | [`::core::borrow::Borrow<T>`] | - | borrow target | `T` is type of target field |
+/// | [`::core::borrow::BorrowMut<T>`] | - | borrow target | `T` is type of target field |
+/// | [`::core::clone::Clone`] | yes | - | ignored fields use `Default::default()` |
+/// | [`::core::cmp::Eq`] | * | - | *allowed with `PartialEq` |
+/// | [`::core::cmp::Ord`] | yes | - | |
+/// | [`::core::cmp::PartialEq`] | yes | - | |
+/// | [`::core::cmp::PartialOrd`] | yes | - | |
+/// | [`::core::convert::AsRef<T>`] | - | ref target | `T` is type of target field |
+/// | [`::core::convert::AsMut<T>`] | - | ref target | `T` is type of target field |
+/// | [`::core::default::Default`] | - | - | [`macro@impl_default`] is a more flexible alternative |
+/// | [`::core::fmt::Debug`] | yes | - | |
+/// | [`::core::hash::Hash`] | yes | - | |
+/// | [`::core::marker::Copy`] | * | - | *allowed with `Clone` |
+/// | [`::core::ops::Deref`] | - | deref target | `type Target` is type of target field |
+/// | [`::core::ops::DerefMut`] | - | deref target | `type Target` is type of target field |
+/// | `::kas::class::HasBool` | - | deref target | |
+/// | `::kas::class::HasStr` | - | deref target | |
+/// | `::kas::class::HasString` | - | deref target | |
+/// | `::kas::class::SetAccel` | - | deref target | |
+/// | `class_traits` | - | deref target | implements each `kas::class` trait |
 ///
 /// ### Examples
 ///
@@ -117,7 +123,7 @@ const IMPL_SCOPE_RULES: [&'static dyn ScopeAttr; 2] = [&AttrImplDefault, &widget
 
 /// Implementation scope
 ///
-/// See [`impl_tools::impl_scope`](https://docs.rs/impl-tools/0.4/impl_tools/macro.impl_scope.html)
+/// See [`impl_tools::impl_scope`](https://docs.rs/impl-tools/0.5/impl_tools/macro.impl_scope.html)
 /// for full documentation.
 #[proc_macro_error]
 #[proc_macro]
