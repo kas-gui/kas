@@ -100,7 +100,7 @@ pub trait SharedData: Debug {
 pub trait SharedDataMut: SharedData {
     /// A mutable borrow of the item type
     ///
-    /// This type must support [`BorrowMut`] over [`Self::Item`]. This is, for
+    /// This type must support [`BorrowMut`] over [`SharedData::Item`]. This is, for
     /// example, supported by `&mut Self::Item`.
     ///
     /// It is also recommended (but not required) that the type support
@@ -114,7 +114,7 @@ pub trait SharedDataMut: SharedData {
     /// Returns `None` if the data is by design not mutable or if `key` has no
     /// associated item. Otherwise, this notifies
     /// users of a data update (by calling [`EventMgr::update_all`] *and*
-    /// incrementing the number returned by [`Self::version`]).
+    /// incrementing the number returned by [`SharedData::version`]).
     ///
     /// Depending on the implementation, this may involve some form of lock
     /// such as `RefCell::borrow_mut` or `Mutex::lock`. The implementation

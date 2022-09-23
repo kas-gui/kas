@@ -5,8 +5,9 @@
 
 //! `SharedArc` data type
 
-use crate::event::EventMgr;
-use crate::event::UpdateId;
+#[allow(unused)]
+use crate::event::Event;
+use crate::event::{EventMgr, UpdateId};
 use crate::model::*;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
