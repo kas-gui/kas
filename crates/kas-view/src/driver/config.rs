@@ -6,6 +6,7 @@
 //! Drivers for configuration types
 
 use crate::driver;
+use crate::MaybeOwned;
 use kas::event::config::{Config, MousePan};
 use kas::model::SharedRc;
 use kas::prelude::*;
@@ -104,7 +105,7 @@ impl driver::Driver<Config, SharedRc<Config>> for EventConfig {
         }
     }
 
-    fn set(&self, widget: &mut Self::Widget, _: &(), data: Config) -> TkAction {
+    fn set_mo(&self, widget: &mut Self::Widget, _: &(), data: MaybeOwned<Config>) -> TkAction {
         widget.menu_delay.set_value(data.menu_delay_ms)
             | widget
                 .touch_select_delay
@@ -132,7 +133,7 @@ impl driver::Driver<Config, SharedRc<Config>> for EventConfig {
         _: &(),
     ) {
         if let Some(msg) = mgr.try_pop_msg() {
-            let mut data = data.update_mut(mgr);
+            let mut data = data.borrow_mut(mgr);
             match msg {
                 Msg::MenuDelay(v) => data.menu_delay_ms = v,
                 Msg::TouchSelectDelay(v) => data.touch_select_delay_ms = v,

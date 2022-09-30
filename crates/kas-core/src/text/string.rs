@@ -14,8 +14,6 @@ use smallvec::{smallvec, SmallVec};
 use crate::cast::Conv;
 use crate::event::{VirtualKeyCode as VK, VirtualKeyCodes};
 use crate::text::format::{FontToken, FormattableText};
-#[cfg(not(feature = "gat"))]
-use crate::text::OwningVecIter;
 use crate::text::{Effect, EffectFlags};
 
 /// An accelerator key string
@@ -109,7 +107,6 @@ impl AccelString {
 }
 
 impl FormattableText for AccelString {
-    #[cfg(feature = "gat")]
     type FontTokenIter<'a> = std::iter::Empty<FontToken>;
 
     #[inline]
@@ -117,15 +114,9 @@ impl FormattableText for AccelString {
         &self.label
     }
 
-    #[cfg(feature = "gat")]
     #[inline]
     fn font_tokens(&self, _: f32) -> Self::FontTokenIter<'_> {
         std::iter::empty()
-    }
-    #[cfg(not(feature = "gat"))]
-    #[inline]
-    fn font_tokens(&self, _: f32) -> OwningVecIter<FontToken> {
-        OwningVecIter::new(vec![])
     }
 
     fn effect_tokens(&self) -> &[Effect<()>] {

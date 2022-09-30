@@ -97,9 +97,6 @@ where
     type Config = Config;
     type Window = dim::Window<DS::Draw>;
 
-    #[cfg(not(feature = "gat"))]
-    type Draw = DrawHandle<'static, DS>;
-    #[cfg(feature = "gat")]
     type Draw<'a> = DrawHandle<'a, DS>;
 
     fn config(&self) -> std::borrow::Cow<Self::Config> {
@@ -123,33 +120,6 @@ where
         w.update(&dimensions(), &self.base.config, dpi_factor);
     }
 
-    #[cfg(not(feature = "gat"))]
-    unsafe fn draw(
-        &self,
-        draw: DrawIface<DS>,
-        ev: &mut EventState,
-        w: &mut Self::Window,
-    ) -> Self::Draw {
-        w.anim.update();
-
-        unsafe fn extend_lifetime<'b, T: ?Sized>(r: &'b T) -> &'static T {
-            std::mem::transmute::<&'b T, &'static T>(r)
-        }
-        unsafe fn extend_lifetime_mut<'b, T: ?Sized>(r: &'b mut T) -> &'static mut T {
-            std::mem::transmute::<&'b mut T, &'static mut T>(r)
-        }
-        DrawHandle {
-            draw: DrawIface {
-                draw: extend_lifetime_mut(draw.draw),
-                shared: extend_lifetime_mut(draw.shared),
-                pass: draw.pass,
-            },
-            ev: extend_lifetime_mut(ev),
-            w: extend_lifetime_mut(w),
-            cols: extend_lifetime(&self.base.cols),
-        }
-    }
-    #[cfg(feature = "gat")]
     fn draw<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,

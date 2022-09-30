@@ -10,6 +10,7 @@ use crate::event::Event;
 use crate::event::EventMgr;
 use crate::macros::autoimpl;
 use crate::WidgetId;
+use std::borrow::{Borrow, BorrowMut};
 #[allow(unused)] // doc links
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -20,7 +21,8 @@ impl<Key: Clone + Debug + PartialEq + Eq + 'static> DataKey for Key {}
 
 /// Trait for shared data
 ///
-/// By design, all methods take only `&self`. See also [`SharedDataMut`].
+/// By design, all methods take only `&self` and only allow immutable access to
+/// data. See also [`SharedDataMut`].
 #[autoimpl(for<T: trait + ?Sized>
     &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait SharedData: Debug {
@@ -29,6 +31,21 @@ pub trait SharedData: Debug {
 
     /// Item type
     type Item: Clone + Debug + 'static;
+
+    /// A borrow of the item type
+    ///
+    /// This type must support [`Borrow`] over [`Self::Item`]. This is, for
+    /// example, supported by `Self::Item` and `&Self::Item`.
+    ///
+    /// It is also recommended (but not required) that the type support
+    /// [`std::ops::Deref`]: this allows easier usage of [`Self::borrow`].
+    ///
+    /// TODO(spec): once Rust supports some form of specialization, `AsRef` will
+    /// presumably get blanket impls over `T` and `&T`, and will then be more
+    /// appropriate to use than `Borrow`.
+    type ItemRef<'b>: Borrow<Self::Item>
+    where
+        Self: 'b;
 
     /// Get the data version
     ///
@@ -44,31 +61,94 @@ pub trait SharedData: Debug {
     /// Check whether a key has data
     fn contains_key(&self, key: &Self::Key) -> bool;
 
-    // TODO(gat): add borrow<'a>(&self, key: &Self::Key) -> Self::ItemRef<'a>, try_borrow?
+    /// Borrow an item by `key`
+    ///
+    /// Returns `None` if `key` has no associated item.
+    ///
+    /// Depending on the implementation, this may involve some form of lock
+    /// such as `RefCell::borrow` or `Mutex::lock`. The implementation should
+    /// panic on lock failure, not return `None`.
+    fn borrow(&self, key: &Self::Key) -> Option<Self::ItemRef<'_>>;
+
+    /// Access a borrow of an item
+    ///
+    /// This is a convenience method over [`Self::borrow`].
+    fn with_ref<V>(&self, key: &Self::Key, f: impl FnOnce(&Self::Item) -> V) -> Option<V>
+    where
+        Self: Sized,
+    {
+        self.borrow(key).map(|borrow| f(borrow.borrow()))
+    }
 
     /// Get data by key (clone)
-    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item>;
-
-    /// Update data, if supported
     ///
-    /// Shared data with internal mutability (e.g. via [`RefCell`]) should
-    /// update itself here, increase its version number and call
-    /// [`EventMgr::update_all`].
+    /// Returns `None` if `key` has no associated item.
     ///
-    /// Data types without internal mutability should do nothing.
-    fn update(&self, mgr: &mut EventMgr, key: &Self::Key, item: Self::Item);
+    /// This has a default implementation over [`Self::borrow`].
+    #[inline]
+    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
+        self.borrow(key).map(|r| r.borrow().to_owned())
+    }
 }
 
-/// Trait for shared data with access via mutable reference
-#[autoimpl(for<T: trait + ?Sized> &mut T, Box<T>)]
+/// Trait for shared mutable data
+///
+/// By design, all methods take only `&self`: since data is shared, an internal
+/// locking or synchronization mechanism is required (e.g. `RefCell` or `Mutex`).
+#[autoimpl(for<T: trait + ?Sized>
+    &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait SharedDataMut: SharedData {
-    // TODO(gat): add borrow_mut<'a>(&self) -> Self::ItemMutRef<'a>, try_borrow_mut?
-
-    /// Set data for an existing key
+    /// A mutable borrow of the item type
     ///
-    /// It can be assumed that no synchronisation is required when a mutable
-    /// reference can be obtained. The `version` number need not be affected.
-    fn set(&mut self, key: &Self::Key, item: Self::Item);
+    /// This type must support [`BorrowMut`] over [`SharedData::Item`]. This is, for
+    /// example, supported by `&mut Self::Item`.
+    ///
+    /// It is also recommended (but not required) that the type support
+    /// [`std::ops::DerefMut`]: this allows easier usage of [`Self::borrow_mut`].
+    type ItemRefMut<'b>: BorrowMut<Self::Item>
+    where
+        Self: 'b;
+
+    /// Mutably borrow an item by `key` and notify of an update
+    ///
+    /// Returns `None` if the data is by design not mutable or if `key` has no
+    /// associated item. Otherwise, this notifies
+    /// users of a data update (by calling [`EventMgr::update_all`] *and*
+    /// incrementing the number returned by [`SharedData::version`]).
+    ///
+    /// Depending on the implementation, this may involve some form of lock
+    /// such as `RefCell::borrow_mut` or `Mutex::lock`. The implementation
+    /// should panic on lock failure, not return `None`.
+    ///
+    /// Note: implementations of the return type *might* rely on [`Drop`] for
+    /// synchronization. Failing to drop the return value may thus cause errors.
+    fn borrow_mut(&self, mgr: &mut EventMgr, key: &Self::Key) -> Option<Self::ItemRefMut<'_>>;
+
+    /// Access a mutable borrow of an item
+    ///
+    /// This is a convenience method over [`Self::borrow_mut`].
+    fn with_ref_mut<V>(
+        &self,
+        mgr: &mut EventMgr,
+        key: &Self::Key,
+        f: impl FnOnce(&mut Self::Item) -> V,
+    ) -> Option<V>
+    where
+        Self: Sized,
+    {
+        self.borrow_mut(mgr, key)
+            .map(|mut borrow| f(borrow.borrow_mut()))
+    }
+
+    /// Set an item
+    ///
+    /// This is a convenience method over [`Self::borrow_mut`].
+    #[inline]
+    fn set(&self, mgr: &mut EventMgr, key: &Self::Key, item: Self::Item) {
+        if let Some(mut borrow) = self.borrow_mut(mgr, key) {
+            *borrow.borrow_mut() = item;
+        }
+    }
 }
 
 /// Trait bound for viewable single data
@@ -78,10 +158,21 @@ pub trait SharedDataMut: SharedData {
 pub trait SingleData: SharedData<Key = ()> {}
 impl<T: SharedData<Key = ()>> SingleData for T {}
 
+/// Trait bound for mutable single data
+///
+/// This is automatically implemented for every type implementing `SharedDataMut<()>`.
+// TODO(trait aliases): make this an actual trait alias
+pub trait SingleDataMut: SharedDataMut<Key = ()> {}
+impl<T: SharedDataMut<Key = ()>> SingleDataMut for T {}
+
 /// Trait for viewable data lists
 #[allow(clippy::len_without_is_empty)]
 #[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait ListData: SharedData {
+    type KeyIter<'b>: Iterator<Item = Self::Key>
+    where
+        Self: 'b;
+
     /// No data is available
     fn is_empty(&self) -> bool {
         self.len() == 0
@@ -110,20 +201,20 @@ pub trait ListData: SharedData {
     /// See: [`WidgetId::next_key_after`], [`WidgetId::iter_keys_after`]
     fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key>;
 
-    // TODO(gat): replace with an iterator
-    /// Iterate over keys as a vec
+    /// Iterate over keys
     ///
     /// The result will be in deterministic implementation-defined order, with
     /// a length of `max(limit, data_len)` where `data_len` is the number of
     /// items available.
-    fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
-        self.iter_vec_from(0, limit)
+    #[inline]
+    fn iter_limit(&self, limit: usize) -> Self::KeyIter<'_> {
+        self.iter_from(0, limit)
     }
 
-    /// Iterate over keys as a vec
+    /// Iterate over keys from an arbitrary start-point
     ///
-    /// The result is the same as `self.iter_vec(start + limit).skip(start)`.
-    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key>;
+    /// The result is the same as `self.iter_limit(start + limit).skip(start)`.
+    fn iter_from(&self, start: usize, limit: usize) -> Self::KeyIter<'_>;
 }
 
 /// Trait for viewable data matrices
@@ -135,6 +226,13 @@ pub trait MatrixData: SharedData {
     type ColKey: DataKey;
     /// Row key type
     type RowKey: DataKey;
+
+    type ColKeyIter<'b>: Iterator<Item = Self::ColKey>
+    where
+        Self: 'b;
+    type RowKeyIter<'b>: Iterator<Item = Self::RowKey>
+    where
+        Self: 'b;
 
     /// No data is available
     fn is_empty(&self) -> bool;
@@ -163,32 +261,35 @@ pub trait MatrixData: SharedData {
     /// See: [`WidgetId::next_key_after`], [`WidgetId::iter_keys_after`]
     fn reconstruct_key(&self, parent: &WidgetId, child: &WidgetId) -> Option<Self::Key>;
 
-    // TODO(gat): replace with an iterator
-    /// Iterate over column keys as a vec
+    /// Iterate over column keys
     ///
     /// The result will be in deterministic implementation-defined order, with
     /// a length of `max(limit, data_len)` where `data_len` is the number of
     /// items available.
-    fn col_iter_vec(&self, limit: usize) -> Vec<Self::ColKey> {
-        self.col_iter_vec_from(0, limit)
+    #[inline]
+    fn col_iter_limit(&self, limit: usize) -> Self::ColKeyIter<'_> {
+        self.col_iter_from(0, limit)
     }
-    /// Iterate over column keys as a vec
-    ///
-    /// The result is the same as `self.iter_vec(start + limit).skip(start)`.
-    fn col_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::ColKey>;
 
-    /// Iterate over row keys as a vec
+    /// Iterate over column keys from an arbitrary start-point
+    ///
+    /// The result is the same as `self.iter_limit(start + limit).skip(start)`.
+    fn col_iter_from(&self, start: usize, limit: usize) -> Self::ColKeyIter<'_>;
+
+    /// Iterate over row keys
     ///
     /// The result will be in deterministic implementation-defined order, with
     /// a length of `max(limit, data_len)` where `data_len` is the number of
     /// items available.
-    fn row_iter_vec(&self, limit: usize) -> Vec<Self::RowKey> {
-        self.row_iter_vec_from(0, limit)
+    #[inline]
+    fn row_iter_limit(&self, limit: usize) -> Self::RowKeyIter<'_> {
+        self.row_iter_from(0, limit)
     }
-    /// Iterate over row keys as a vec
+
+    /// Iterate over row keys from an arbitrary start-point
     ///
-    /// The result is the same as `self.iter_vec(start + limit).skip(start)`.
-    fn row_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::RowKey>;
+    /// The result is the same as `self.iter_limit(start + limit).skip(start)`.
+    fn row_iter_from(&self, start: usize, limit: usize) -> Self::RowKeyIter<'_>;
 
     /// Make a key from parts
     fn make_key(col: &Self::ColKey, row: &Self::RowKey) -> Self::Key;

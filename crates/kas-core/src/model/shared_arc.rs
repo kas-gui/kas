@@ -5,8 +5,9 @@
 
 //! `SharedArc` data type
 
-use crate::event::EventMgr;
-use crate::event::UpdateId;
+#[allow(unused)]
+use crate::event::Event;
+use crate::event::{EventMgr, UpdateId};
 use crate::model::*;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
@@ -15,15 +16,8 @@ use std::sync::{Arc, Mutex, MutexGuard};
 /// Wrapper for multi-threaded shared data
 ///
 /// This is vaguely `Arc<Mutex<T>>`, but includes an [`UpdateId`] and a `u64`
-/// version counter.
-///
-/// The wrapped value may be read via [`Self::borrow`] and
-/// [`SharedData::get_cloned`].
-///
-/// The value may be set via [`SharedData::update`].
-///
-/// This wrapper type may be useful for simple shared data, but for more complex
-/// uses a custom wrapper type may be required.
+/// version counter. Its main utility is that it implements the [`SharedData`]
+/// and [`SharedDataMut`] traits (with associated type `Key = ()`).
 #[derive(Clone, Debug)]
 pub struct SharedArc<T: Debug>(Arc<(UpdateId, Mutex<(T, u64)>)>);
 
@@ -35,6 +29,11 @@ impl<T: Debug + Default> Default for SharedArc<T> {
 
 /// A borrowed reference
 pub struct SharedArcRef<'a, T>(MutexGuard<'a, (T, u64)>);
+impl<'a, T> std::borrow::Borrow<T> for SharedArcRef<'a, T> {
+    fn borrow(&self) -> &T {
+        &self.0.deref().0
+    }
+}
 impl<'a, T> Deref for SharedArcRef<'a, T> {
     type Target = T;
     fn deref(&self) -> &T {
@@ -43,7 +42,20 @@ impl<'a, T> Deref for SharedArcRef<'a, T> {
 }
 
 /// A mutably borrowed reference
+//
+// Note: this is identical to SharedArcRef other than the trait impls. We cannot
+// allow SharedData::borrow to return a type supporting mutable access!
 pub struct SharedArcRefMut<'a, T>(MutexGuard<'a, (T, u64)>);
+impl<'a, T> std::borrow::Borrow<T> for SharedArcRefMut<'a, T> {
+    fn borrow(&self) -> &T {
+        &self.0.deref().0
+    }
+}
+impl<'a, T> std::borrow::BorrowMut<T> for SharedArcRefMut<'a, T> {
+    fn borrow_mut(&mut self) -> &mut T {
+        &mut self.0.deref_mut().0
+    }
+}
 impl<'a, T> Deref for SharedArcRefMut<'a, T> {
     type Target = T;
     fn deref(&self) -> &T {
@@ -71,48 +83,83 @@ impl<T: Debug> SharedArc<T> {
         (self.0).0
     }
 
-    /// Immutably borrows the wrapped value
+    /// Get the data version
     ///
-    /// Internally this uses [`Mutex::lock`]; see its documentation regarding possible errors.
-    pub fn borrow(&self) -> SharedArcRef<T> {
+    /// The version is increased on change and may be used to detect when views
+    /// over the data need to be refreshed. The initial version number must be
+    /// at least 1 (allowing 0 to represent an uninitialized state).
+    ///
+    /// Whenever the data is updated, [`Event::Update`] must be sent via
+    /// [`EventMgr::update_all`] to notify other users of this data of the
+    /// update.
+    pub fn version(&self) -> u64 {
+        (self.0).1.lock().unwrap().1
+    }
+
+    /// Borrow an item
+    ///
+    /// May panic (see [`Mutex::lock`]).
+    pub fn borrow(&self) -> SharedArcRef<'_, T> {
         SharedArcRef((self.0).1.lock().unwrap())
     }
 
-    /// Mutably borrows the wrapped value, notifying other users of an update
+    /// Mutably borrow an item
     ///
-    /// Internally this uses [`Mutex::lock`]; see its documentation regarding possible errors.
+    /// This notifies users of a data update by calling [`EventMgr::update_all`]
+    /// and incrementing the number returned by [`Self::version`].
     ///
-    /// The only real difference between [`SharedArc::borrow`] and [`SharedArc::update_mut`] is
-    /// that this method notifies other uses of an update and returns a type supporting
-    /// [`DerefMut`].
-    pub fn update_mut(&self, mgr: &mut EventMgr) -> SharedArcRefMut<T> {
+    /// May panic (see [`Mutex::lock`]).
+    pub fn borrow_mut(&self, mgr: &mut EventMgr) -> SharedArcRefMut<'_, T> {
         mgr.update_with_id((self.0).0, 0);
         let mut inner = (self.0).1.lock().unwrap();
         inner.1 += 1;
         SharedArcRefMut(inner)
+    }
+
+    /// Set an item
+    ///
+    /// This notifies users of a data update by calling [`EventMgr::update_all`]
+    /// and incrementing the number returned by [`Self::version`].
+    #[inline]
+    pub fn set(&self, mgr: &mut EventMgr, item: T) {
+        *self.borrow_mut(mgr) = item;
+    }
+}
+
+impl<T: Clone + Debug> SharedArc<T> {
+    /// Get a clone of the stored item
+    #[inline]
+    pub fn get_cloned(&self) -> T {
+        self.borrow().deref().clone()
     }
 }
 
 impl<T: Clone + Debug + 'static> SharedData for SharedArc<T> {
     type Key = ();
     type Item = T;
+    type ItemRef<'b> = SharedArcRef<'b, T>;
 
+    #[inline]
     fn version(&self) -> u64 {
-        (self.0).1.lock().unwrap().1
+        self.version()
     }
 
+    #[inline]
     fn contains_key(&self, _: &()) -> bool {
         true
     }
-
-    fn get_cloned(&self, _: &()) -> Option<Self::Item> {
-        Some((self.0).1.lock().unwrap().0.clone())
+    #[inline]
+    fn borrow(&self, _: &Self::Key) -> Option<Self::ItemRef<'_>> {
+        Some(self.borrow())
     }
+}
+impl<T: Clone + Debug + 'static> SharedDataMut for SharedArc<T> {
+    type ItemRefMut<'b> = SharedArcRefMut<'b, T>
+    where
+        Self: 'b;
 
-    fn update(&self, mgr: &mut EventMgr, _: &(), item: Self::Item) {
-        let mut inner = (self.0).1.lock().unwrap();
-        inner.0 = item;
-        inner.1 += 1;
-        mgr.update_with_id((self.0).0, 0);
+    #[inline]
+    fn borrow_mut(&self, mgr: &mut EventMgr, _: &Self::Key) -> Option<Self::ItemRefMut<'_>> {
+        Some(self.borrow_mut(mgr))
     }
 }

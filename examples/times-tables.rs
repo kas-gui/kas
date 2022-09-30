@@ -10,6 +10,7 @@ struct TableData(u64, usize);
 impl SharedData for TableData {
     type Key = (usize, usize);
     type Item = usize;
+    type ItemRef<'b> = usize;
 
     fn version(&self) -> u64 {
         self.0
@@ -18,15 +19,16 @@ impl SharedData for TableData {
     fn contains_key(&self, key: &Self::Key) -> bool {
         key.0 < self.1 && key.1 < self.1
     }
-    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
+    fn borrow(&self, key: &Self::Key) -> Option<Self::ItemRef<'_>> {
         self.contains_key(key).then(|| (key.0 + 1) * (key.1 + 1))
     }
-
-    fn update(&self, _: &mut EventMgr, _: &Self::Key, _: Self::Item) {}
 }
 impl MatrixData for TableData {
     type ColKey = usize;
     type RowKey = usize;
+
+    type ColKeyIter<'b> = std::ops::Range<usize>;
+    type RowKeyIter<'b> = std::ops::Range<usize>;
 
     fn is_empty(&self) -> bool {
         self.1 == 0
@@ -45,11 +47,11 @@ impl MatrixData for TableData {
         col.zip(row)
     }
 
-    fn col_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::ColKey> {
-        (start..(start + limit)).collect()
+    fn col_iter_from(&self, start: usize, limit: usize) -> std::ops::Range<usize> {
+        start..(start + limit)
     }
-    fn row_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::RowKey> {
-        (start..(start + limit)).collect()
+    fn row_iter_from(&self, start: usize, limit: usize) -> std::ops::Range<usize> {
+        start..(start + limit)
     }
 
     fn make_key(col: &Self::ColKey, row: &Self::RowKey) -> Self::Key {

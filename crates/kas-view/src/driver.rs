@@ -18,7 +18,8 @@
 mod config;
 pub use config::EventConfig;
 
-use kas::model::SharedData;
+use crate::MaybeOwned;
+use kas::model::{SharedData, SharedDataMut};
 use kas::prelude::*;
 use kas::theme::TextClass;
 use kas_widgets::edit::{EditGuard, GuardNotify};
@@ -38,6 +39,7 @@ use std::ops::RangeInclusive;
 /// NOTE: `Item` is a direct type parameter (in addition to an assoc. type
 /// param. of `SharedData`) only to avoid "conflicting implementations" errors.
 /// Similar to: rust#20400, rust#92894. Given fixes, we may remove the param.
+#[autoimpl(for<T: trait + ?Sized> &T, &mut T, Box<T>, std::rc::Rc<T>, std::sync::Arc<T>)]
 pub trait Driver<Item, Data: SharedData<Item = Item>>: Debug {
     /// Type of the widget used to view data
     type Widget: kas::Widget;
@@ -52,7 +54,31 @@ pub trait Driver<Item, Data: SharedData<Item = Item>>: Debug {
     ///
     /// The widget may expect `configure` to be called at least once before data
     /// is set and to have `set_rect` called after each time data is set.
-    fn set(&self, widget: &mut Self::Widget, key: &Data::Key, item: Item) -> TkAction;
+    ///
+    /// This method is a convenience wrapper around [`Self::set_mo`].
+    fn set<'b>(
+        &self,
+        widget: &mut Self::Widget,
+        key: &Data::Key,
+        item: impl Into<MaybeOwned<'b, Item>>,
+    ) -> TkAction
+    where
+        Self: Sized,
+        Item: 'b,
+    {
+        self.set_mo(widget, key, item.into())
+    }
+
+    /// Set the viewed data ([`MaybeOwned`])
+    ///
+    /// The widget may expect `configure` to be called at least once before data
+    /// is set and to have `set_rect` called after each time data is set.
+    fn set_mo(
+        &self,
+        widget: &mut Self::Widget,
+        key: &Data::Key,
+        item: MaybeOwned<Item>,
+    ) -> TkAction;
 
     /// Handle a message from a widget
     ///
@@ -115,7 +141,7 @@ macro_rules! impl_via_to_string {
             fn make(&self) -> Self::Widget {
                 Label::new("".to_string())
             }
-            fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: $t) -> TkAction {
+            fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<$t>) -> TkAction {
                 widget.set_string(item.to_string())
             }
         }
@@ -124,7 +150,7 @@ macro_rules! impl_via_to_string {
             fn make(&self) -> Self::Widget {
                 NavFrame::new(Label::new("".to_string()))
             }
-            fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: $t) -> TkAction {
+            fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<$t>) -> TkAction {
                 widget.set_string(item.to_string())
             }
         }
@@ -144,13 +170,8 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for View {
     fn make(&self) -> Self::Widget {
         CheckBox::new_on(|mgr, state| mgr.push_msg(state)).with_editable(false)
     }
-    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: bool) -> TkAction {
-        widget.set_bool(item)
-    }
-    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
-        if let Some(state) = mgr.try_pop_msg() {
-            data.update(mgr, key, state);
-        }
+    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> TkAction {
+        widget.set_bool(item.into_owned())
     }
 }
 
@@ -159,13 +180,8 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for NavView {
     fn make(&self) -> Self::Widget {
         CheckBox::new_on(|mgr, state| mgr.push_msg(state)).with_editable(false)
     }
-    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: bool) -> TkAction {
-        widget.set_bool(item)
-    }
-    fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
-        if let Some(state) = mgr.try_pop_msg() {
-            data.update(mgr, key, state);
-        }
+    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> TkAction {
+        widget.set_bool(item.into_owned())
     }
 }
 
@@ -218,19 +234,26 @@ impl_scope! {
         }
     }
 }
-impl<G: EditGuard + Clone, Data: SharedData<Item = String>> Driver<String, Data> for EditField<G> {
+impl<G: EditGuard + Clone, Data: SharedDataMut<Item = String>> Driver<String, Data>
+    for EditField<G>
+{
     type Widget = kas_widgets::EditField<G>;
     fn make(&self) -> Self::Widget {
         kas_widgets::EditField::new("".to_string())
             .with_guard(self.guard.clone())
             .with_class(self.class)
     }
-    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: String) -> TkAction {
-        widget.set_string(item)
+    fn set_mo(
+        &self,
+        widget: &mut Self::Widget,
+        _: &Data::Key,
+        item: MaybeOwned<String>,
+    ) -> TkAction {
+        widget.set_string(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(item) = mgr.try_pop_msg() {
-            data.update(mgr, key, item);
+            data.set(mgr, key, item);
         }
     }
 }
@@ -284,17 +307,22 @@ impl_scope! {
         }
     }
 }
-impl<G: EditGuard + Clone, Data: SharedData<Item = String>> Driver<String, Data> for EditBox<G> {
+impl<G: EditGuard + Clone, Data: SharedDataMut<Item = String>> Driver<String, Data> for EditBox<G> {
     type Widget = kas_widgets::EditBox<G>;
     fn make(&self) -> Self::Widget {
         kas_widgets::EditBox::new("".to_string()).with_guard(self.guard.clone())
     }
-    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: String) -> TkAction {
-        widget.set_string(item)
+    fn set_mo(
+        &self,
+        widget: &mut Self::Widget,
+        _: &Data::Key,
+        item: MaybeOwned<String>,
+    ) -> TkAction {
+        widget.set_string(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(item) = mgr.try_pop_msg() {
-            data.update(mgr, key, item);
+            data.set(mgr, key, item);
         }
     }
 }
@@ -321,8 +349,8 @@ impl<D: Directional, Data: SharedData<Item = f32>> Driver<f32, Data> for Progres
     fn make(&self) -> Self::Widget {
         kas_widgets::ProgressBar::new_with_direction(self.direction)
     }
-    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: f32) -> TkAction {
-        widget.set_value(item)
+    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<f32>) -> TkAction {
+        widget.set_value(item.into_owned())
     }
 }
 
@@ -338,17 +366,17 @@ impl CheckButton {
         CheckButton { label }
     }
 }
-impl<Data: SharedData<Item = bool>> Driver<bool, Data> for CheckButton {
+impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for CheckButton {
     type Widget = kas_widgets::CheckButton;
     fn make(&self) -> Self::Widget {
         kas_widgets::CheckButton::new_on(self.label.clone(), |mgr, state| mgr.push_msg(state))
     }
-    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: bool) -> TkAction {
-        widget.set_bool(item)
+    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> TkAction {
+        widget.set_bool(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
-            data.update(mgr, key, state);
+            data.set(mgr, key, state);
         }
     }
 }
@@ -364,17 +392,17 @@ impl RadioBox {
         RadioBox { group }
     }
 }
-impl<Data: SharedData<Item = bool>> Driver<bool, Data> for RadioBox {
+impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for RadioBox {
     type Widget = kas_widgets::RadioBox;
     fn make(&self) -> Self::Widget {
         kas_widgets::RadioBox::new_on(self.group.clone(), |mgr| mgr.push_msg(true))
     }
-    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: bool) -> TkAction {
-        widget.set_bool(item)
+    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> TkAction {
+        widget.set_bool(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
-            data.update(mgr, key, state);
+            data.set(mgr, key, state);
         }
     }
 }
@@ -392,18 +420,18 @@ impl RadioButton {
         RadioButton { label, group }
     }
 }
-impl<Data: SharedData<Item = bool>> Driver<bool, Data> for RadioButton {
+impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for RadioButton {
     type Widget = kas_widgets::RadioButton;
     fn make(&self) -> Self::Widget {
         kas_widgets::RadioButton::new(self.label.clone(), self.group.clone())
             .on_select(|mgr| mgr.push_msg(true))
     }
-    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: bool) -> TkAction {
-        widget.set_bool(item)
+    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> TkAction {
+        widget.set_bool(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
-            data.update(mgr, key, state);
+            data.set(mgr, key, state);
         }
     }
 }
@@ -435,7 +463,7 @@ impl<T: SliderValue, D: Directional> Slider<T, D> {
         }
     }
 }
-impl<D: Directional, Data: SharedData> Driver<Data::Item, Data> for Slider<Data::Item, D>
+impl<D: Directional, Data: SharedDataMut> Driver<Data::Item, Data> for Slider<Data::Item, D>
 where
     Data::Item: SliderValue,
 {
@@ -445,12 +473,17 @@ where
         kas_widgets::Slider::new_with_direction(range, self.step, self.direction)
             .on_move(|mgr, value| mgr.push_msg(value))
     }
-    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: Data::Item) -> TkAction {
-        widget.set_value(item)
+    fn set_mo(
+        &self,
+        widget: &mut Self::Widget,
+        _: &Data::Key,
+        item: MaybeOwned<Data::Item>,
+    ) -> TkAction {
+        widget.set_value(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
-            data.update(mgr, key, state);
+            data.set(mgr, key, state);
         }
     }
 }
@@ -470,7 +503,7 @@ impl<T: SpinnerValue + Default> Spinner<T> {
         }
     }
 }
-impl<Data: SharedData> Driver<Data::Item, Data> for Spinner<Data::Item>
+impl<Data: SharedDataMut> Driver<Data::Item, Data> for Spinner<Data::Item>
 where
     Data::Item: SpinnerValue,
 {
@@ -479,12 +512,17 @@ where
         let range = self.range.0..=self.range.1;
         kas_widgets::Spinner::new(range, self.step).on_change(|mgr, val| mgr.push_msg(val))
     }
-    fn set(&self, widget: &mut Self::Widget, _: &Data::Key, item: Data::Item) -> TkAction {
-        widget.set_value(item)
+    fn set_mo(
+        &self,
+        widget: &mut Self::Widget,
+        _: &Data::Key,
+        item: MaybeOwned<Data::Item>,
+    ) -> TkAction {
+        widget.set_value(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
         if let Some(state) = mgr.try_pop_msg() {
-            data.update(mgr, key, state);
+            data.set(mgr, key, state);
         }
     }
 }

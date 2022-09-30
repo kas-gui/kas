@@ -40,9 +40,6 @@ dynamic = ["dep:kas-dylib"]
 # Enables usage of unstable Rust features
 nightly = ["min_spec", "kas-theme?/nightly", "kas-wgpu?/nightly"]
 
-# Use Generic Associated Types (this is too unstable to include in nightly!)
-gat = ["kas-core/gat", "kas-theme?/gat", "kas-wgpu?/gat"]
-
 # Use min_specialization (enables accelerator underlining for AccelLabel)
 min_spec = ["kas-widgets/min_spec"]
 # Use full specialization
@@ -143,3 +140,6 @@ members = [
     "crates/kas-view",
     "examples/mandlebrot",
 ]
+
+[patch.crates-io]
+kas-text = { git = "https://github.com/kas-gui/kas-text.git", rev = "69ccab3c81d2e87a4ea43a65453b6ef6205ba39d" }

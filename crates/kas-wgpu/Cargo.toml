@@ -20,9 +20,6 @@ shaping = ["kas-text/shaping"]
 harfbuzz = ["kas-text/harfbuzz"]
 raster = ["kas-text/raster"]
 
-# Use Generic Associated Types (this is too unstable to include in nightly!)
-gat = ["kas-theme/gat"]
-
 # Enables clipboard read/write
 clipboard = ["dep:window_clipboard"]
 

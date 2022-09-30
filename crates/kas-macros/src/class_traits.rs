@@ -5,8 +5,8 @@
 
 use impl_tools_lib::autoimpl::{Error, ImplArgs, ImplTrait, Result};
 use impl_tools_lib::{generics::clause_to_toks, SimplePath};
-use proc_macro2::TokenStream;
-use quote::{quote, ToTokens, TokenStreamExt};
+use proc_macro2::TokenStream as Toks;
+use quote::{quote, TokenStreamExt};
 use syn::ItemStruct;
 
 pub const CLASS_IMPLS: &[&dyn ImplTrait] =
@@ -26,17 +26,15 @@ impl ImplTrait for ImplClassTraits {
         true
     }
 
-    fn struct_impl(&self, item: &ItemStruct, args: &ImplArgs) -> Result<TokenStream> {
+    fn struct_impl(&self, item: &ItemStruct, args: &ImplArgs) -> Result<Toks> {
         let type_ident = &item.ident;
         let (impl_generics, ty_generics, item_wc) = item.generics.split_for_impl();
 
-        let mut toks = TokenStream::new();
+        let mut toks = Toks::new();
 
         for trait_ in CLASS_IMPLS {
-            let path = trait_.path().to_token_stream();
+            let (path, items) = trait_.struct_items(item, args)?;
             let wc = clause_to_toks(&args.clause, item_wc, &path);
-
-            let items = trait_.struct_items(item, args)?;
 
             toks.append_all(quote! {
                 impl #impl_generics #path for #type_ident #ty_generics #wc {
@@ -48,7 +46,7 @@ impl ImplTrait for ImplClassTraits {
         Ok(toks)
     }
 
-    fn struct_items(&self, _: &ItemStruct, _: &ImplArgs) -> Result<TokenStream> {
+    fn struct_items(&self, _: &ItemStruct, _: &ImplArgs) -> Result<(Toks, Toks)> {
         Err(Error::CallSite("unimplemented"))
     }
 }
@@ -67,9 +65,9 @@ impl ImplTrait for ImplHasBool {
         true
     }
 
-    fn struct_items(&self, _: &ItemStruct, args: &ImplArgs) -> Result<TokenStream> {
+    fn struct_items(&self, _: &ItemStruct, args: &ImplArgs) -> Result<(Toks, Toks)> {
         if let Some(using) = args.using_member() {
-            Ok(quote! {
+            let methods = quote! {
                 #[inline]
                 fn get_bool(&self) -> bool {
                     self.#using.get_bool()
@@ -79,7 +77,8 @@ impl ImplTrait for ImplHasBool {
                 fn set_bool(&mut self, state: bool) -> ::kas::TkAction {
                     self.#using.set_bool(state)
                 }
-            })
+            };
+            Ok((quote! { ::kas::class::HasBool }, methods))
         } else {
             Err(Error::RequireUsing)
         }
@@ -100,9 +99,9 @@ impl ImplTrait for ImplHasStr {
         true
     }
 
-    fn struct_items(&self, _: &ItemStruct, args: &ImplArgs) -> Result<TokenStream> {
+    fn struct_items(&self, _: &ItemStruct, args: &ImplArgs) -> Result<(Toks, Toks)> {
         if let Some(using) = args.using_member() {
-            Ok(quote! {
+            let methods = quote! {
                 #[inline]
                 fn get_str(&self) -> &str {
                     self.#using.get_str()
@@ -112,7 +111,8 @@ impl ImplTrait for ImplHasStr {
                 fn get_string(&self) -> String {
                     self.#using.get_string()
                 }
-            })
+            };
+            Ok((quote! { ::kas::class::HasStr }, methods))
         } else {
             Err(Error::RequireUsing)
         }
@@ -133,9 +133,9 @@ impl ImplTrait for ImplHasString {
         true
     }
 
-    fn struct_items(&self, _: &ItemStruct, args: &ImplArgs) -> Result<TokenStream> {
+    fn struct_items(&self, _: &ItemStruct, args: &ImplArgs) -> Result<(Toks, Toks)> {
         if let Some(using) = args.using_member() {
-            Ok(quote! {
+            let methods = quote! {
                 #[inline]
                 fn set_str(&mut self, text: &str) -> ::kas::TkAction {
                     self.#using.set_str(text)
@@ -145,7 +145,8 @@ impl ImplTrait for ImplHasString {
                 fn set_string(&mut self, text: String) -> ::kas::TkAction {
                     self.#using.set_string(text)
                 }
-            })
+            };
+            Ok((quote! { ::kas::class::HasString }, methods))
         } else {
             Err(Error::RequireUsing)
         }
@@ -166,14 +167,15 @@ impl ImplTrait for ImplSetAccel {
         true
     }
 
-    fn struct_items(&self, _: &ItemStruct, args: &ImplArgs) -> Result<TokenStream> {
+    fn struct_items(&self, _: &ItemStruct, args: &ImplArgs) -> Result<(Toks, Toks)> {
         if let Some(using) = args.using_member() {
-            Ok(quote! {
+            let methods = quote! {
                 #[inline]
                 fn set_accel_string(&mut self, accel: AccelString) -> ::kas::TkAction {
                     self.#using.set_accel_string(accel)
                 }
-            })
+            };
+            Ok((quote! { ::kas::class::SetAccel }, methods))
         } else {
             Err(Error::RequireUsing)
         }

@@ -15,7 +15,6 @@
 //! minimal shell with a custom fixed theme.
 
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
-#![cfg_attr(feature = "gat", feature(generic_associated_types))]
 
 mod anim;
 mod colors;

@@ -12,7 +12,7 @@
 
 use kas::model::*;
 use kas::prelude::*;
-use kas::view::{Driver, ListView};
+use kas::view::{Driver, ListView, MaybeOwned};
 use kas::widgets::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -86,6 +86,7 @@ impl MySharedData {
 impl SharedData for MySharedData {
     type Key = usize;
     type Item = (bool, String);
+    type ItemRef<'b> = Self::Item;
 
     fn version(&self) -> u64 {
         self.data.borrow().ver
@@ -94,18 +95,17 @@ impl SharedData for MySharedData {
     fn contains_key(&self, key: &Self::Key) -> bool {
         *key < self.len()
     }
-
-    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
+    fn borrow(&self, key: &Self::Key) -> Option<Self::ItemRef<'_>> {
         let index = *key;
         let data = self.data.borrow();
         let is_active = data.active == index;
         let text = data.get(index);
         Some((is_active, text))
     }
-
-    fn update(&self, _: &mut EventMgr, _: &Self::Key, _: Self::Item) {}
 }
 impl ListData for MySharedData {
+    type KeyIter<'b> = std::ops::Range<usize>;
+
     fn len(&self) -> usize {
         self.data.borrow().len
     }
@@ -116,13 +116,9 @@ impl ListData for MySharedData {
         child.next_key_after(parent)
     }
 
-    fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
-        (0..limit.min(self.len())).collect()
-    }
-
-    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key> {
+    fn iter_from(&self, start: usize, limit: usize) -> Self::KeyIter<'_> {
         let len = self.len();
-        (start.min(len)..(start + limit).min(len)).collect()
+        start.min(len)..(start + limit).min(len)
     }
 }
 
@@ -179,8 +175,14 @@ impl Driver<(bool, String), MySharedData> for MyDriver {
         }
     }
 
-    fn set(&self, widget: &mut Self::Widget, key: &usize, item: (bool, String)) -> TkAction {
+    fn set_mo(
+        &self,
+        widget: &mut Self::Widget,
+        key: &usize,
+        item: MaybeOwned<(bool, String)>,
+    ) -> TkAction {
         let label = format!("Entry number {}", *key + 1);
+        let item = item.into_owned();
         widget.label.set_string(label)
             | widget.radio.set_bool(item.0)
             | widget.edit.set_string(item.1)

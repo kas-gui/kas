@@ -22,7 +22,6 @@
 //! [winit]: https://github.com/rust-windowing/winit
 //! [clipboard]: https://crates.io/crates/clipboard
 
-#![cfg_attr(feature = "gat", feature(generic_associated_types))]
 #![allow(clippy::drop_non_drop)]
 
 pub mod draw;

@@ -8,8 +8,9 @@
 use super::{driver, Driver};
 use kas::model::SingleData;
 #[allow(unused)]
-use kas::model::{SharedData, SharedRc};
+use kas::model::{SharedData, SharedDataMut, SharedRc};
 use kas::prelude::*;
+use std::borrow::Borrow;
 
 impl_scope! {
     /// Single view controller
@@ -26,7 +27,7 @@ impl_scope! {
     /// # Messages
     ///
     /// When a view widget pushes a message, [`Driver::on_message`] is called.
-    #[autoimpl(Debug ignore self.view)]
+    #[autoimpl(Debug ignore self.driver)]
     #[derive(Clone)]
     #[widget{
         layout = self.child;
@@ -36,7 +37,7 @@ impl_scope! {
         V: Driver<T::Item, T> = driver::View,
     > {
         core: widget_core!(),
-        view: V,
+        driver: V,
         data: T,
         data_ver: u64,
         #[widget]
@@ -59,13 +60,13 @@ impl_scope! {
         }
     }
     impl Self {
-        /// Construct a new instance with explicit view
-        pub fn new_with_driver(view: V, data: T) -> Self {
-            let child = view.make();
+        /// Construct a new instance with explicit driver
+        pub fn new_with_driver(driver: V, data: T) -> Self {
+            let child = driver.make();
             let data_ver = data.version();
             SingleView {
                 core: Default::default(),
-                view,
+                driver,
                 data,
                 data_ver,
                 child,
@@ -82,6 +83,11 @@ impl_scope! {
             &mut self.data
         }
 
+        /// Borrow a reference to the shared value
+        pub fn borrow_value(&self) -> Option<impl Borrow<T::Item> + '_> {
+            self.data.borrow(&())
+        }
+
         /// Get a copy of the shared value
         pub fn get_value(&self) -> T::Item {
             self.data.get_cloned(&()).unwrap()
@@ -90,18 +96,19 @@ impl_scope! {
         /// Set shared data
         ///
         /// This method updates the shared data, if supported (see
-        /// [`SharedData::update`]). Other widgets sharing this data are notified
-        /// of the update, if data is changed.
-        pub fn set_value(&self, mgr: &mut EventMgr, data: T::Item) {
-            self.data.update(mgr, &(), data);
+        /// [`SharedDataMut::borrow_mut`]). Other widgets sharing this data
+        /// are notified of the update, if data is changed.
+        pub fn set_value(&self, mgr: &mut EventMgr, data: T::Item) where T: SharedDataMut {
+            self.data.set(mgr, &(), data);
         }
 
         /// Update shared data
         ///
-        /// This is purely a convenience method over [`SingleView::set_value`].
-        /// It notifies other widgets of updates to the shared data.
-        pub fn update_value<F: Fn(T::Item) -> T::Item>(&self, mgr: &mut EventMgr, f: F) {
-            self.set_value(mgr, f(self.get_value()));
+        /// This method updates the shared data, if supported (see
+        /// [`SharedDataMut::with_ref_mut`]). Other widgets sharing this data
+        /// are notified of the update, if data is changed.
+        pub fn update_value<U>(&self, mgr: &mut EventMgr, f: impl FnOnce(&mut T::Item) -> U) -> Option<U> where T: SharedDataMut {
+            self.data.with_ref_mut(mgr, &(), f)
         }
     }
 
@@ -116,8 +123,8 @@ impl_scope! {
     impl Widget for Self {
         fn configure(&mut self, mgr: &mut ConfigMgr) {
             // We set data now, after child is configured
-            let item = self.data.get_cloned(&()).unwrap();
-            *mgr |= self.view.set(&mut self.child, &(), item);
+            let item = self.data.borrow(&()).unwrap();
+            *mgr |= self.driver.set(&mut self.child, &(), item.borrow());
         }
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
@@ -125,8 +132,8 @@ impl_scope! {
                 Event::Update { .. } => {
                     let data_ver = self.data.version();
                     if data_ver > self.data_ver {
-                        let item = self.data.get_cloned(&()).unwrap();
-                        *mgr |= self.view.set(&mut self.child, &(), item);
+                        let item = self.data.borrow(&()).unwrap();
+                        *mgr |= self.driver.set(&mut self.child, &(), item.borrow());
                         self.data_ver = data_ver;
                     }
                     Response::Used
@@ -136,7 +143,7 @@ impl_scope! {
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-            self.view.on_message(mgr, &mut self.child, &self.data, &());
+            self.driver.on_message(mgr, &mut self.child, &self.data, &());
         }
     }
 }

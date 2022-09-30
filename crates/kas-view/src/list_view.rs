@@ -9,14 +9,15 @@ use super::{driver, Driver, PressPhase, SelectionError, SelectionMode, Selection
 use kas::event::components::ScrollComponent;
 use kas::event::{Command, CursorIcon, Scroll};
 use kas::layout::{solve_size_rules, AlignHints};
-use kas::model::ListData;
 #[allow(unused)]
 use kas::model::SharedData;
+use kas::model::{ListData, SharedDataMut};
 use kas::prelude::*;
 #[allow(unused)] // doc links
 use kas_widgets::ScrollBars;
 use kas_widgets::SelectMsg;
 use linear_map::set::LinearSet;
+use std::borrow::Borrow;
 use std::time::Instant;
 
 #[derive(Clone, Debug, Default)]
@@ -58,7 +59,7 @@ impl_scope! {
         core: widget_core!(),
         frame_offset: Offset,
         frame_size: Size,
-        view: V,
+        driver: V,
         /// Empty widget used for sizing; this must be stored between horiz and vert size rule
         /// calculations for correct line wrapping/layout.
         default_widget: V::Widget,
@@ -99,9 +100,9 @@ impl_scope! {
         }
     }
     impl Self where D: Default {
-        /// Construct a new instance with explicit view
-        pub fn new_with_driver(view: V, data: T) -> Self {
-            Self::new_with_dir_driver(D::default(), view, data)
+        /// Construct a new instance with explicit driver
+        pub fn new_with_driver(driver: V, data: T) -> Self {
+            Self::new_with_dir_driver(D::default(), driver, data)
         }
     }
     impl<T: ListData + 'static, V: Driver<T::Item, T>> ListView<Direction, T, V> {
@@ -112,14 +113,14 @@ impl_scope! {
         }
     }
     impl Self {
-        /// Construct a new instance with explicit direction and view
-        pub fn new_with_dir_driver(direction: D, view: V, data: T) -> Self {
-            let default_widget = view.make();
+        /// Construct a new instance with explicit direction and driver
+        pub fn new_with_dir_driver(direction: D, driver: V, data: T) -> Self {
+            let default_widget = driver.make();
             ListView {
                 core: Default::default(),
                 frame_offset: Default::default(),
                 frame_size: Default::default(),
-                view,
+                driver,
                 default_widget,
                 data,
                 data_ver: 0,
@@ -152,6 +153,11 @@ impl_scope! {
             &mut self.data
         }
 
+        /// Borrow a reference to the shared value at `key`
+        pub fn borrow_value(&self, key: &T::Key) -> Option<impl Borrow<T::Item> + '_> {
+            self.data.borrow(key)
+        }
+
         /// Get a copy of the shared value at `key`
         pub fn get_value(&self, key: &T::Key) -> Option<T::Item> {
             self.data.get_cloned(key)
@@ -160,21 +166,19 @@ impl_scope! {
         /// Set shared data
         ///
         /// This method updates the shared data, if supported (see
-        /// [`SharedData::update`]). Other widgets sharing this data are notified
-        /// of the update, if data is changed.
-        pub fn set_value(&self, mgr: &mut EventMgr, key: &T::Key, data: T::Item) {
-            self.data.update(mgr, key, data);
+        /// [`SharedDataMut::borrow_mut`]). Other widgets sharing this data
+        /// are notified of the update, if data is changed.
+        pub fn set_value(&self, mgr: &mut EventMgr, key: &T::Key, data: T::Item) where T: SharedDataMut {
+            self.data.set(mgr, key, data);
         }
 
         /// Update shared data
         ///
-        /// This is purely a convenience method over [`ListView::set_value`].
-        /// It does nothing if no value is found at `key`.
-        /// It notifies other widgets of updates to the shared data.
-        pub fn update_value<F: Fn(T::Item) -> T::Item>(&self, mgr: &mut EventMgr, key: &T::Key, f: F) {
-            if let Some(item) = self.get_value(key) {
-                self.set_value(mgr, key, f(item));
-            }
+        /// This method updates the shared data, if supported (see
+        /// [`SharedDataMut::with_ref_mut`]). Other widgets sharing this data
+        /// are notified of the update, if data is changed.
+        pub fn update_value<U>(&self, mgr: &mut EventMgr, key: &T::Key, f: impl FnOnce(&mut T::Item) -> U) -> Option<U> where T: SharedDataMut {
+            self.data.with_ref_mut(mgr, key, f)
         }
 
         /// Get the current selection mode
@@ -347,16 +351,11 @@ impl_scope! {
 
             let keys = self
                 .data
-                .iter_vec_from(solver.first_data, solver.cur_len);
-            if keys.len() < solver.cur_len {
-                log::warn!(
-                    "{}: data.iter_vec_from({}, {}) yielded insufficient items (possibly incorrect data.len())", self.identify(),
-                    solver.first_data,
-                    solver.cur_len,
-                );
-            }
+                .iter_from(solver.first_data, solver.cur_len);
 
-            for (i, key) in keys.into_iter().enumerate() {
+            let mut count = 0;
+            for (i, key) in keys.enumerate() {
+                count += 1;
                 let i = solver.first_data + i;
                 let id = self.data.make_id(self.id_ref(), &key);
                 let w = &mut self.widgets[i % solver.cur_len];
@@ -364,8 +363,8 @@ impl_scope! {
                     // TODO(opt): we only need to configure the widget once
                     mgr.configure(id, &mut w.widget);
 
-                    if let Some(item) = self.data.get_cloned(&key) {
-                        action |= self.view.set(&mut w.widget, &key, item);
+                    if let Some(item) = self.data.borrow(&key) {
+                        action |= self.driver.set(&mut w.widget, &key, item.borrow());
                         solve_size_rules(
                             &mut w.widget,
                             mgr.size_mgr(),
@@ -381,6 +380,15 @@ impl_scope! {
                 }
                 w.widget.set_rect(mgr, solver.rect(i));
             }
+
+            if count < solver.cur_len {
+                log::warn!(
+                    "{}: data.iter_from({}, {}) yielded insufficient items (possibly incorrect data.len())", self.identify(),
+                    solver.first_data,
+                    solver.cur_len,
+                );
+            }
+
             *mgr |= action;
             let dur = (Instant::now() - time).as_micros();
             log::trace!(target: "kas_perf::view::list_view", "update_widgets: {dur}μs");
@@ -520,7 +528,7 @@ impl_scope! {
                 log::debug!("set_rect: allocating widgets (old len = {}, new = {})", avail_widgets, req_widgets);
                 self.widgets.reserve(req_widgets - avail_widgets);
                 for _ in avail_widgets..req_widgets {
-                    let widget = self.view.make();
+                    let widget = self.driver.make();
                     self.widgets.push(WidgetData { key: None, widget });
                 }
             }
@@ -567,16 +575,16 @@ impl_scope! {
             // widgets (this allows resource loading which may affect size.)
             self.data_ver = self.data.version();
             if self.widgets.len() == 0 && !self.data.is_empty() {
-                let items = self.data.iter_vec(self.ideal_visible.cast());
-                let len = items.len();
-                log::debug!("configure: allocating {} widgets", len);
-                self.widgets.reserve(len);
-                for key in items.into_iter() {
+                let iter = self.data.iter_limit(self.ideal_visible.cast());
+                let lbound = iter.size_hint().0;
+                log::debug!("configure: allocating {} widgets", lbound);
+                self.widgets.reserve(lbound);
+                for key in iter {
                     let id = self.data.make_id(self.id_ref(), &key);
-                    let mut widget = self.view.make();
+                    let mut widget = self.driver.make();
                     mgr.configure(id, &mut widget);
-                    let key = if let Some(item) = self.data.get_cloned(&key) {
-                        *mgr |= self.view.set(&mut widget, &key, item);
+                    let key = if let Some(item) = self.data.borrow(&key) {
+                        *mgr |= self.driver.set(&mut widget, &key, item.borrow());
                         Some(key)
                     } else {
                         None
@@ -777,7 +785,7 @@ impl_scope! {
                 None => return,
             };
 
-            self.view.on_message(mgr, &mut w.widget, &self.data, &key);
+            self.driver.on_message(mgr, &mut w.widget, &self.data, &key);
 
             if let Some(SelectMsg) = mgr.try_pop_msg() {
                 match self.sel_mode {

@@ -6,7 +6,6 @@
 //! Impls for data traits
 
 use super::*;
-use crate::event::EventMgr;
 use crate::WidgetId;
 use std::fmt::Debug;
 
@@ -15,6 +14,7 @@ macro_rules! impl_list_data {
         impl<T: Clone + Debug + 'static> SharedData for $ty {
             type Key = usize;
             type Item = T;
+            type ItemRef<'b> = &'b T;
 
             fn version(&self) -> u64 {
                 1
@@ -23,21 +23,16 @@ macro_rules! impl_list_data {
             fn contains_key(&self, key: &Self::Key) -> bool {
                 *key < self.len()
             }
-
+            fn borrow(&self, key: &Self::Key) -> Option<Self::ItemRef<'_>> {
+                self.get(*key)
+            }
             fn get_cloned(&self, key: &usize) -> Option<Self::Item> {
                 self.get(*key).cloned()
             }
-
-            fn update(&self, _: &mut EventMgr, _: &Self::Key, _: Self::Item) {
-                // Note: plain [T] does not support update, but SharedRc<[T]> does.
-            }
-        }
-        impl<T: Clone + Debug + 'static> SharedDataMut for $ty {
-            fn set(&mut self, key: &Self::Key, item: Self::Item) {
-                self[*key] = item;
-            }
         }
         impl<T: Clone + Debug + 'static> ListData for $ty {
+            type KeyIter<'b> = std::ops::Range<usize>;
+
             fn is_empty(&self) -> bool {
                 (*self).is_empty()
             }
@@ -53,13 +48,9 @@ macro_rules! impl_list_data {
                 child.next_key_after(parent)
             }
 
-            fn iter_vec(&self, limit: usize) -> Vec<Self::Key> {
-                (0..limit.min((*self).len())).collect()
-            }
-
-            fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::Key> {
+            fn iter_from(&self, start: usize, limit: usize) -> Self::KeyIter<'_> {
                 let len = (*self).len();
-                (start.min(len)..(start + limit).min(len)).collect()
+                start.min(len)..(start + limit).min(len)
             }
         }
     };

@@ -8,10 +8,7 @@
 //! So called "view widgets" allow separation of data and view. This system has
 //! three parts:
 //!
-//! 1.  **Models** are defined by [`kas::model`], principally
-//!     [`SharedData`](kas::model::SharedData).
-//!     Separate models are available for [`ListData`](kas::model::ListData)
-//!     and [`MatrixData`](kas::model::MatrixData).
+//! 1.  **Data model** traits are defined by [`kas::model`].
 //! 2.  **Views** are widgets constructed over shared data by a controller.
 //!     The **view controller** is a special widget responsible for constructing
 //!     and managing view widgets over data.
@@ -35,8 +32,6 @@
 #![allow(clippy::collapsible_else_if)]
 #![allow(clippy::len_zero)]
 
-#[allow(unused)]
-use kas::model::{ListData, MatrixData, SharedData};
 use thiserror::Error;
 
 mod list_view;
@@ -48,6 +43,7 @@ pub mod driver;
 pub use driver::Driver;
 pub use list_view::ListView;
 pub use matrix_view::MatrixView;
+pub use maybe_owned::MaybeOwned;
 pub use single_view::SingleView;
 
 /// Used to notify selection and deselection of [`ListView`] and [`MatrixView`] children

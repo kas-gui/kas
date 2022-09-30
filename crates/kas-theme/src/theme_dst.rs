@@ -59,25 +59,6 @@ pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
     /// See also [`Theme::update_window`].
     fn update_window(&self, window: &mut dyn Window, dpi_factor: f32);
 
-    /// Construct a [`ThemeDraw`] object
-    ///
-    /// See also [`Theme::draw`].
-    ///
-    /// # Safety
-    ///
-    /// All references passed into the method must outlive the returned object.
-    #[cfg(not(feature = "gat"))]
-    unsafe fn draw(
-        &self,
-        draw: DrawIface<DS>,
-        ev: &mut EventState,
-        window: &mut dyn Window,
-    ) -> Box<dyn ThemeDraw>;
-
-    /// Construct a [`ThemeDraw`] object
-    ///
-    /// See also [`Theme::draw`].
-    #[cfg(feature = "gat")]
     fn draw<'a>(
         &'a self,
         draw: DrawIface<'a, DS>,
@@ -91,51 +72,6 @@ pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
     fn clear_color(&self) -> color::Rgba;
 }
 
-#[cfg(not(feature = "gat"))]
-impl<DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T
-where
-    <T as Theme<DS>>::Draw: 'static,
-{
-    fn config(&self) -> MaybeBoxed<dyn Any> {
-        match self.config() {
-            Cow::Borrowed(config) => MaybeBoxed::Borrowed(config),
-            Cow::Owned(config) => MaybeBoxed::Boxed(Box::new(config)),
-        }
-    }
-
-    fn apply_config(&mut self, config: &dyn Any) -> TkAction {
-        self.apply_config(config.downcast_ref().unwrap())
-    }
-
-    fn init(&mut self, shared: &mut SharedState<DS>) {
-        self.init(shared);
-    }
-
-    fn new_window(&self, dpi_factor: f32) -> Box<dyn Window> {
-        Box::new(<T as Theme<DS>>::new_window(self, dpi_factor))
-    }
-
-    fn update_window(&self, window: &mut dyn Window, dpi_factor: f32) {
-        let window = window.as_any_mut().downcast_mut().unwrap();
-        self.update_window(window, dpi_factor);
-    }
-
-    unsafe fn draw(
-        &self,
-        draw: DrawIface<DS>,
-        ev: &mut EventState,
-        window: &mut dyn Window,
-    ) -> Box<dyn ThemeDraw> {
-        let window = window.as_any_mut().downcast_mut().unwrap();
-        Box::new(<T as Theme<DS>>::draw(self, draw, ev, window))
-    }
-
-    fn clear_color(&self) -> color::Rgba {
-        self.clear_color()
-    }
-}
-
-#[cfg(feature = "gat")]
 impl<DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T {
     fn config(&self) -> MaybeBoxed<dyn Any> {
         match self.config() {
