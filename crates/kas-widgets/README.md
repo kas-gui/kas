@@ -1,9 +1,11 @@
 KAS Widgets
 ======
 
-This is KAS's widget library.
+This is [KAS]'s widget library.
 
 For documentation of feature flags, see [Cargo.toml](Cargo.toml).
+
+[KAS]: https://crates.io/crates/kas
 
 
 Copyright and Licence

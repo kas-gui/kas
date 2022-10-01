@@ -1,9 +1,11 @@
 KAS view
 ======
 
-TODO
+*View widgets* for [KAS], supporting views over data models.
 
 For documentation of feature flags, see [Cargo.toml](Cargo.toml).
+
+[KAS]: https://crates.io/crates/kas
 
 
 Copyright and Licence

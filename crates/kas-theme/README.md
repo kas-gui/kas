@@ -1,7 +1,9 @@
 KAS Theme
 ======
 
-Theme support for KAS.
+Theme support for [KAS].
+
+[KAS]: https://crates.io/crates/kas
 
 
 Optional features
