@@ -1,9 +1,10 @@
 KAS resvg
 ======
 
-This crate provides `Svg` and `Canvas` widgets using the [tiny-skia] and
+This crate provides `Svg` and `Canvas` widgets for [KAS] using the [tiny-skia] and
 [resvg] libraries by [Yevhenii Reizner "RazrFalcon"](https://github.com/RazrFalcon/).
 
+[KAS]: https://crates.io/crates/kas
 [tiny-skia]: https://crates.io/crates/tiny-skia
 [resvg]: https://crates.io/crates/resvg
 

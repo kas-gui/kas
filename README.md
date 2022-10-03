@@ -5,7 +5,7 @@ KAS GUI
 [![Crates.io](https://img.shields.io/crates/v/kas.svg)](https://crates.io/crates/kas)
 [![kas-text](https://img.shields.io/badge/GitHub-kas--text-blueviolet)](https://github.com/kas-gui/kas-text/)
 [![Docs](https://docs.rs/kas/badge.svg)](https://docs.rs/kas)
-![Minimum rustc version](https://img.shields.io/badge/rustc-1.62+-lightgray.svg)
+![Minimum rustc version](https://img.shields.io/badge/rustc-1.65+-lightgray.svg)
 
 KAS is a pure-Rust GUI toolkit with stateful widgets:
 

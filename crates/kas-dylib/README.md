@@ -1,7 +1,8 @@
 KAS dylib
 ======
 
-Recommended usage is to depend on `kas` with the `dynamic` feature.
+Support crate for dynamic linking.
+Recommended usage is to depend on [`kas`](https://crates.io/crates/kas) with the `dynamic` feature.
 
 
 Copyright and Licence

@@ -1,11 +1,12 @@
 KAS Macros
 ========
 
-This is a sub-library of KAS containing its procedural macros, and exists
-solely because procedural macros must current be in a dedicated crate.
+This is a sub-library of [KAS] for its procedural macros.
 
 Users are advised not to depend on this library directly, but instead rely on
-the main KAS lib, which re-exports these macros in its API.
+the main [KAS] lib, which re-exports these macros in its API.
+
+[KAS]: https://crates.io/crates/kas
 
 
 Stable vs nightly

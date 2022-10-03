@@ -1,8 +1,9 @@
 KAS WGPU
 ======
 
-KAS shell interface over [winit] and [wgpu].
+[KAS] shell interface over [winit] and [wgpu].
 
+[KAS]: https://crates.io/crates/kas
 [winit]: https://github.com/rust-windowing/winit/
 [wgpu]: https://github.com/gfx-rs/wgpu-rs
 

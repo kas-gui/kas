@@ -2,6 +2,7 @@ KAS Core
 ======
 
 This is the core KAS crate.
+See also the [kas crate ](https://crates.io/crates/kas).
 
 For documentation of feature flags, see [Cargo.toml](Cargo.toml).
 
