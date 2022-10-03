@@ -114,13 +114,10 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
                 visit_mut::visit_type_mut(&mut renames, &mut ig.ty);
                 ig.ty
             }
-            ChildType::ImplTrait((impl_token, mut bound)) => {
+            ChildType::ImplTrait((impl_token, bound)) => {
                 let span = quote! { #impl_token #bound }.span();
                 let ty = Ident::new(&ty_name, span);
 
-                if is_widget {
-                    bound.bounds.push(parse_quote! { ::kas::Widget });
-                }
                 args.generics.params.push(parse_quote! { #ty: #bound });
 
                 Type::Path(TypePath {
