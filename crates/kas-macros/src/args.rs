@@ -265,7 +265,6 @@ pub enum StructStyle {
 #[derive(Debug, PartialEq, Eq)]
 pub enum ChildType {
     Fixed(Type),
-    ImplTrait((Token![impl], syn::TypeTraitObject)),
 }
 
 #[derive(Debug)]
@@ -349,11 +348,7 @@ impl Parse for ImplSingleton {
 
 impl SingletonField {
     fn parse_ty(input: ParseStream) -> Result<ChildType> {
-        if input.peek(Token![impl]) {
-            Ok(ChildType::ImplTrait((input.parse()?, input.parse()?)))
-        } else {
-            Ok(ChildType::Fixed(input.parse()?))
-        }
+        Ok(ChildType::Fixed(input.parse()?))
     }
 
     fn check_is_fixed(ty: &ChildType, input_span: Span) -> Result<()> {
@@ -374,7 +369,6 @@ impl SingletonField {
 
                 checker.0
             }
-            _ => false,
         };
 
         if is_fixed {
@@ -454,10 +448,6 @@ impl quote::ToTokens for ChildType {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
             ChildType::Fixed(ty) => ty.to_tokens(tokens),
-            ChildType::ImplTrait((impl_token, bound)) => {
-                impl_token.to_tokens(tokens);
-                bound.to_tokens(tokens);
-            }
         }
     }
 }

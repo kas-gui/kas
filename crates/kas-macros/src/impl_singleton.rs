@@ -81,6 +81,17 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
             .any(|attr| (attr.path == parse_quote! { widget }));
 
         let ty: Type = match field.ty {
+            ChildType::Fixed(Type::ImplTrait(syn::TypeImplTrait { impl_token, bounds })) => {
+                let span = quote! { #impl_token #bounds }.span();
+                let ty = Ident::new(&ty_name, span);
+
+                args.generics.params.push(parse_quote! { #ty: #bounds });
+
+                Type::Path(TypePath {
+                    qself: None,
+                    path: ty.into(),
+                })
+            }
             ChildType::Fixed(Type::Infer(infer_token)) => {
                 // This is a special case: add ::kas::Widget bound
 
@@ -145,17 +156,6 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
 
                 args.generics.params.extend(replacer.params);
                 ty
-            }
-            ChildType::ImplTrait((impl_token, bound)) => {
-                let span = quote! { #impl_token #bound }.span();
-                let ty = Ident::new(&ty_name, span);
-
-                args.generics.params.push(parse_quote! { #ty: #bound });
-
-                Type::Path(TypePath {
-                    qself: None,
-                    path: ty.into(),
-                })
             }
         };
 
