@@ -8,12 +8,13 @@ use impl_tools_lib::{
     fields::{Field, Fields, FieldsNamed, FieldsUnnamed},
     Scope, ScopeItem,
 };
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::TokenStream;
 use quote::{quote, TokenStreamExt};
 use std::collections::HashMap;
 use std::fmt::Write;
 use syn::parse_quote;
 use syn::punctuated::Punctuated;
+use syn::spanned::Spanned;
 use syn::token::Comma;
 use syn::{visit_mut, ConstParam, GenericParam, Lifetime, LifetimeDef, TypeParam};
 use syn::{Ident, Member, Result, Type, TypePath, Visibility};
@@ -34,19 +35,46 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
         let (field, opt_comma) = pair.into_tuple();
 
         let mut ident = field.ident.clone();
+        let ty = &field.ty;
+        let field_span = match field.assignment {
+            None => quote! { #ty }.span(),
+            Some((ref eq, ref expr)) => quote! { #ty #eq #expr }.span(),
+        };
         let mem = match args.style {
             StructStyle::Regular(_) => {
-                let id = ident.unwrap_or_else(|| {
-                    make_ident(format_args!("_field{index}"), Span::call_site())
-                });
+                let id =
+                    ident.unwrap_or_else(|| make_ident(format_args!("_field{index}"), field_span));
                 ident = Some(id.clone());
                 Member::Named(id)
             }
             StructStyle::Tuple(_, _) => Member::Unnamed(syn::Index {
                 index: index as u32,
-                span: Span::call_site(),
+                span: field_span,
             }),
             _ => unreachable!(),
+        };
+        let ty_name = match ident {
+            None => format!("_Field{index}"),
+            Some(ref id) => {
+                let ident = id.to_string();
+                let mut buf = "_Field".to_string();
+                buf.reserve(ident.len());
+                let mut next_upper = true;
+                for c in ident.chars() {
+                    if c == '_' {
+                        next_upper = true;
+                        continue;
+                    }
+
+                    if next_upper {
+                        buf.extend(c.to_uppercase());
+                        next_upper = false;
+                    } else {
+                        buf.push(c);
+                    }
+                }
+                buf
+            }
         };
 
         let is_widget = field
@@ -56,11 +84,11 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
 
         let ty: Type = match field.ty {
             ChildType::Fixed(ty) => ty,
-            ChildType::InternGeneric(mut gen_args, mut ty) => {
+            ChildType::InternGeneric(mut ig) => {
                 struct RenameUnique(HashMap<Ident, Ident>);
                 let mut renames = RenameUnique(HashMap::new());
 
-                for param in &mut gen_args {
+                for param in &mut ig.params {
                     let ident = match param {
                         GenericParam::Type(TypeParam { ident, .. }) => ident,
                         GenericParam::Lifetime(LifetimeDef {
@@ -70,11 +98,11 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
                         GenericParam::Const(ConstParam { ident, .. }) => ident,
                     };
                     let from = ident.clone();
-                    let to = make_ident(format_args!("_Field{index}{from}"), from.span());
+                    let to = make_ident(format_args!("{ty_name}{from}"), from.span());
                     *ident = to.clone();
                     renames.0.insert(from, to);
                 }
-                args.generics.params.extend(gen_args);
+                args.generics.params.extend(ig.params);
 
                 impl visit_mut::VisitMut for RenameUnique {
                     fn visit_ident_mut(&mut self, ident: &mut Ident) {
@@ -83,24 +111,32 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
                         }
                     }
                 }
-                visit_mut::visit_type_mut(&mut renames, &mut ty);
-                ty
+                visit_mut::visit_type_mut(&mut renames, &mut ig.ty);
+                ig.ty
             }
-            ChildType::Generic(gen_bound) => {
-                let ty = make_ident(format_args!("_Field{index}"), Span::call_site());
+            ChildType::ImplTrait((impl_token, mut bound)) => {
+                let span = quote! { #impl_token #bound }.span();
+                let ty = Ident::new(&ty_name, span);
 
-                if let Some(mut bound) = gen_bound {
-                    if is_widget {
-                        bound.bounds.push(parse_quote! { ::kas::Widget });
-                    }
-                    args.generics.params.push(parse_quote! { #ty: #bound });
-                } else {
-                    args.generics.params.push(if is_widget {
-                        parse_quote! { #ty: ::kas::Widget }
-                    } else {
-                        parse_quote! { #ty }
-                    });
+                if is_widget {
+                    bound.bounds.push(parse_quote! { ::kas::Widget });
                 }
+                args.generics.params.push(parse_quote! { #ty: #bound });
+
+                Type::Path(TypePath {
+                    qself: None,
+                    path: ty.into(),
+                })
+            }
+            ChildType::Generic(infer_token) => {
+                let span = infer_token.map(|tok| tok.span()).unwrap_or(field_span);
+                let ty = Ident::new(&ty_name, span);
+
+                args.generics.params.push(if is_widget {
+                    parse_quote! { #ty: ::kas::Widget }
+                } else {
+                    parse_quote! { #ty }
+                });
 
                 Type::Path(TypePath {
                     qself: None,
@@ -109,7 +145,7 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
             }
         };
 
-        if let Some(ref value) = field.value {
+        if let Some((_, ref value)) = field.assignment {
             field_val_toks.append_all(quote! { #mem: #value, });
         } else {
             field_val_toks.append_all(quote! { #mem: Default::default(), });
