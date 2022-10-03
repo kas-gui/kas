@@ -276,7 +276,6 @@ pub enum ChildType {
     Fixed(Type),
     InternGeneric(InternGeneric),
     ImplTrait((Token![impl], syn::TypeTraitObject)),
-    Generic(Option<syn::TypeInfer>),
 }
 
 #[derive(Debug)]
@@ -422,6 +421,37 @@ impl SingletonField {
         }
     }
 
+    fn check_is_fixed(ty: &ChildType, input_span: Span) -> Result<()> {
+        let is_fixed = match ty {
+            ChildType::Fixed(Type::ImplTrait(_) | Type::Infer(_)) => false,
+            ChildType::Fixed(ty) => {
+                struct IsFixed(bool);
+                let mut checker = IsFixed(true);
+
+                impl<'ast> syn::visit::Visit<'ast> for IsFixed {
+                    fn visit_type(&mut self, node: &'ast Type) {
+                        if matches!(node, Type::ImplTrait(_) | Type::Infer(_)) {
+                            self.0 = false;
+                        }
+                    }
+                }
+                syn::visit::visit_type(&mut checker, &ty);
+
+                checker.0
+            }
+            _ => false,
+        };
+
+        if is_fixed {
+            Ok(())
+        } else {
+            Err(Error::new(
+                input_span,
+                "require either a fixed type or a value assignment",
+            ))
+        }
+    }
+
     fn parse_named(input: ParseStream) -> Result<Self> {
         let attrs = input.call(Attribute::parse_outer)?;
         let vis = input.parse()?;
@@ -440,17 +470,14 @@ impl SingletonField {
             colon_token = Some(input.parse()?);
             Self::parse_ty(input)?
         } else {
-            ChildType::Generic(None)
+            ChildType::Fixed(parse_quote! { _ })
         };
 
         let mut assignment = None;
         if let Ok(eq) = input.parse::<Eq>() {
             assignment = Some((eq, input.parse()?));
-        } else if !matches!(&ty, ChildType::Fixed(_)) {
-            return Err(Error::new(
-                input.span(),
-                "require either a fixed type or a value assignment",
-            ));
+        } else {
+            Self::check_is_fixed(&ty, input.span())?;
         }
 
         Ok(SingletonField {
@@ -467,19 +494,13 @@ impl SingletonField {
         let attrs = input.call(Attribute::parse_outer)?;
         let vis = input.parse()?;
 
-        let mut ty = Self::parse_ty(input)?;
-        if let ChildType::Fixed(Type::Infer(infer)) = ty {
-            ty = ChildType::Generic(Some(infer));
-        }
+        let ty = Self::parse_ty(input)?;
 
         let mut assignment = None;
         if let Ok(eq) = input.parse::<Eq>() {
             assignment = Some((eq, input.parse()?));
-        } else if !matches!(&ty, ChildType::Fixed(_)) {
-            return Err(Error::new(
-                input.span(),
-                "require either a fixed type or a value assignment",
-            ));
+        } else {
+            Self::check_is_fixed(&ty, input.span())?;
         }
 
         Ok(SingletonField {
@@ -509,8 +530,6 @@ impl quote::ToTokens for ChildType {
                 impl_token.to_tokens(tokens);
                 bound.to_tokens(tokens);
             }
-            ChildType::Generic(Some(infer)) => infer.to_tokens(tokens),
-            ChildType::Generic(None) => (),
         }
     }
 }

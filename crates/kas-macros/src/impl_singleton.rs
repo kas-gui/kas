@@ -8,7 +8,7 @@ use impl_tools_lib::{
     fields::{Field, Fields, FieldsNamed, FieldsUnnamed},
     Scope, ScopeItem,
 };
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::{quote, TokenStreamExt};
 use std::collections::HashMap;
 use std::fmt::Write;
@@ -83,7 +83,71 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
             .any(|attr| (attr.path == parse_quote! { widget }));
 
         let ty: Type = match field.ty {
-            ChildType::Fixed(ty) => ty,
+            ChildType::Fixed(Type::Infer(infer_token)) => {
+                // This is a special case: add ::kas::Widget bound
+
+                let ty = Ident::new(&ty_name, infer_token.span());
+                args.generics.params.push(if is_widget {
+                    parse_quote! { #ty: ::kas::Widget }
+                } else {
+                    parse_quote! { #ty }
+                });
+
+                Type::Path(TypePath {
+                    qself: None,
+                    path: ty.into(),
+                })
+            }
+            ChildType::Fixed(mut ty) => {
+                struct ReplaceInfers<'a, F: FnMut(std::fmt::Arguments, Span) -> Ident> {
+                    index: usize,
+                    params: Vec<GenericParam>,
+                    make_ident: &'a mut F,
+                    ty_name: &'a str,
+                }
+                let mut replacer = ReplaceInfers {
+                    index: 0,
+                    params: vec![],
+                    make_ident: &mut make_ident,
+                    ty_name: &ty_name,
+                };
+
+                impl<'a, F: FnMut(std::fmt::Arguments, Span) -> Ident> visit_mut::VisitMut
+                    for ReplaceInfers<'a, F>
+                {
+                    fn visit_type_mut(&mut self, node: &mut Type) {
+                        let (span, bounds) = match node {
+                            Type::ImplTrait(syn::TypeImplTrait { impl_token, bounds }) => {
+                                (impl_token.span, std::mem::take(bounds))
+                            }
+                            Type::Infer(infer) => (infer.span(), Punctuated::new()),
+                            _ => return,
+                        };
+
+                        let ident =
+                            (self.make_ident)(format_args!("{}{}", self.ty_name, self.index), span);
+                        self.index += 1;
+
+                        self.params.push(GenericParam::Type(TypeParam {
+                            attrs: vec![],
+                            ident: ident.clone(),
+                            colon_token: Some(Default::default()),
+                            bounds,
+                            eq_token: None,
+                            default: None,
+                        }));
+
+                        *node = Type::Path(TypePath {
+                            qself: None,
+                            path: ident.into(),
+                        });
+                    }
+                }
+                visit_mut::visit_type_mut(&mut replacer, &mut ty);
+
+                args.generics.params.extend(replacer.params);
+                ty
+            }
             ChildType::InternGeneric(mut ig) => {
                 struct RenameUnique(HashMap<Ident, Ident>);
                 let mut renames = RenameUnique(HashMap::new());
@@ -119,21 +183,6 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
                 let ty = Ident::new(&ty_name, span);
 
                 args.generics.params.push(parse_quote! { #ty: #bound });
-
-                Type::Path(TypePath {
-                    qself: None,
-                    path: ty.into(),
-                })
-            }
-            ChildType::Generic(infer_token) => {
-                let span = infer_token.map(|tok| tok.span()).unwrap_or(field_span);
-                let ty = Ident::new(&ty_name, span);
-
-                args.generics.params.push(if is_widget {
-                    parse_quote! { #ty: ::kas::Widget }
-                } else {
-                    parse_quote! { #ty }
-                });
 
                 Type::Path(TypePath {
                     qself: None,
@@ -182,7 +231,7 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
     let mut scope = Scope {
         attrs: args.attrs,
         vis: Visibility::Inherited,
-        ident: parse_quote! { AnonWidget },
+        ident: parse_quote! { _Singleton },
         generics: args.generics,
         item: ScopeItem::Struct {
             token: args.token,
@@ -203,7 +252,7 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
     let toks = quote! { {
         #scope
 
-        AnonWidget {
+        _Singleton {
             #field_val_toks
         }
     } };

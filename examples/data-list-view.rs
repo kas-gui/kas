@@ -229,7 +229,7 @@ fn main() -> kas::shell::Result<()> {
         #[derive(Debug)]
         struct {
             core: widget_core!(),
-            #[widget] edit: impl Widget + HasString = EditBox::new("3")
+            #[widget] edit: EditBox<impl EditGuard> = EditBox::new("3")
                 .on_afl(|mgr, text| match text.parse::<usize>() {
                     Ok(n) => mgr.push_msg(n),
                     Err(_) => (),
