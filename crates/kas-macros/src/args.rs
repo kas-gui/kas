@@ -12,7 +12,7 @@ use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::{Brace, Colon, Comma, Eq, Paren, Semi};
 use syn::{braced, bracketed, parenthesized, parse_quote};
-use syn::{Attribute, Expr, GenericParam, Generics, Ident, ItemImpl, Member, Path, Token, Type};
+use syn::{Attribute, Expr, Generics, Ident, ItemImpl, Member, Path, Token, Type};
 
 #[derive(Debug)]
 pub struct Child {
@@ -263,18 +263,8 @@ pub enum StructStyle {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct InternGeneric {
-    pub for_token: Token![for],
-    pub lt_token: Token![<],
-    pub params: Punctuated<GenericParam, Comma>,
-    pub gt_token: Token![>],
-    pub ty: Type,
-}
-
-#[derive(Debug, PartialEq, Eq)]
 pub enum ChildType {
     Fixed(Type),
-    InternGeneric(InternGeneric),
     ImplTrait((Token![impl], syn::TypeTraitObject)),
 }
 
@@ -359,62 +349,7 @@ impl Parse for ImplSingleton {
 
 impl SingletonField {
     fn parse_ty(input: ParseStream) -> Result<ChildType> {
-        if input.peek(Token![for]) {
-            // internal generic
-            let for_token: Token![for] = input.parse()?;
-
-            // copied from syn::Generic's Parse impl
-            let lt_token: Token![<] = input.parse()?;
-
-            let mut params = Punctuated::new();
-            let mut allow_lifetime_param = true;
-            let mut allow_type_param = true;
-            loop {
-                if input.peek(Token![>]) {
-                    break;
-                }
-
-                let attrs = input.call(Attribute::parse_outer)?;
-                let lookahead = input.lookahead1();
-                if allow_lifetime_param && lookahead.peek(syn::Lifetime) {
-                    params.push_value(GenericParam::Lifetime(syn::LifetimeDef {
-                        attrs,
-                        ..input.parse()?
-                    }));
-                } else if allow_type_param && lookahead.peek(Ident) {
-                    allow_lifetime_param = false;
-                    params.push_value(GenericParam::Type(syn::TypeParam {
-                        attrs,
-                        ..input.parse()?
-                    }));
-                } else if lookahead.peek(Token![const]) {
-                    allow_lifetime_param = false;
-                    allow_type_param = false;
-                    params.push_value(GenericParam::Const(syn::ConstParam {
-                        attrs,
-                        ..input.parse()?
-                    }));
-                } else {
-                    return Err(lookahead.error());
-                }
-
-                if input.peek(Token![>]) {
-                    break;
-                }
-                let punct = input.parse()?;
-                params.push_punct(punct);
-            }
-
-            let gt_token: Token![>] = input.parse()?;
-
-            Ok(ChildType::InternGeneric(InternGeneric {
-                for_token,
-                lt_token,
-                params,
-                gt_token,
-                ty: input.parse()?,
-            }))
-        } else if input.peek(Token![impl]) {
+        if input.peek(Token![impl]) {
             Ok(ChildType::ImplTrait((input.parse()?, input.parse()?)))
         } else {
             Ok(ChildType::Fixed(input.parse()?))
@@ -519,13 +454,6 @@ impl quote::ToTokens for ChildType {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
             ChildType::Fixed(ty) => ty.to_tokens(tokens),
-            ChildType::InternGeneric(ig) => {
-                ig.for_token.to_tokens(tokens);
-                ig.lt_token.to_tokens(tokens);
-                ig.params.to_tokens(tokens);
-                ig.gt_token.to_tokens(tokens);
-                ig.ty.to_tokens(tokens);
-            }
             ChildType::ImplTrait((impl_token, bound)) => {
                 impl_token.to_tokens(tokens);
                 bound.to_tokens(tokens);

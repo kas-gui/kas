@@ -10,14 +10,12 @@ use impl_tools_lib::{
 };
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, TokenStreamExt};
-use std::collections::HashMap;
 use std::fmt::Write;
 use syn::parse_quote;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
-use syn::{visit_mut, ConstParam, GenericParam, Lifetime, LifetimeDef, TypeParam};
-use syn::{Ident, Member, Result, Type, TypePath, Visibility};
+use syn::{visit_mut, GenericParam, Ident, Member, Result, Type, TypeParam, TypePath, Visibility};
 
 pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
     // Used to make fresh identifiers for generic types
@@ -147,36 +145,6 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
 
                 args.generics.params.extend(replacer.params);
                 ty
-            }
-            ChildType::InternGeneric(mut ig) => {
-                struct RenameUnique(HashMap<Ident, Ident>);
-                let mut renames = RenameUnique(HashMap::new());
-
-                for param in &mut ig.params {
-                    let ident = match param {
-                        GenericParam::Type(TypeParam { ident, .. }) => ident,
-                        GenericParam::Lifetime(LifetimeDef {
-                            lifetime: Lifetime { ident, .. },
-                            ..
-                        }) => ident,
-                        GenericParam::Const(ConstParam { ident, .. }) => ident,
-                    };
-                    let from = ident.clone();
-                    let to = make_ident(format_args!("{ty_name}{from}"), from.span());
-                    *ident = to.clone();
-                    renames.0.insert(from, to);
-                }
-                args.generics.params.extend(ig.params);
-
-                impl visit_mut::VisitMut for RenameUnique {
-                    fn visit_ident_mut(&mut self, ident: &mut Ident) {
-                        if let Some(repl) = self.0.get(ident) {
-                            *ident = repl.clone();
-                        }
-                    }
-                }
-                visit_mut::visit_type_mut(&mut renames, &mut ig.ty);
-                ig.ty
             }
             ChildType::ImplTrait((impl_token, bound)) => {
                 let span = quote! { #impl_token #bound }.span();
