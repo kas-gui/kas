@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::args::{ChildType, ImplSingleton, StructStyle};
+use crate::args::{ImplSingleton, StructStyle};
 use impl_tools_lib::{
     fields::{Field, Fields, FieldsNamed, FieldsUnnamed},
     Scope, ScopeItem,
@@ -81,7 +81,7 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
             .any(|attr| (attr.path == parse_quote! { widget }));
 
         let ty: Type = match field.ty {
-            ChildType::Fixed(Type::ImplTrait(syn::TypeImplTrait { impl_token, bounds })) => {
+            Type::ImplTrait(syn::TypeImplTrait { impl_token, bounds }) => {
                 let span = quote! { #impl_token #bounds }.span();
                 let ty = Ident::new(&ty_name, span);
 
@@ -92,7 +92,7 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
                     path: ty.into(),
                 })
             }
-            ChildType::Fixed(Type::Infer(infer_token)) => {
+            Type::Infer(infer_token) => {
                 // This is a special case: add ::kas::Widget bound
 
                 let ty = Ident::new(&ty_name, infer_token.span());
@@ -107,7 +107,7 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
                     path: ty.into(),
                 })
             }
-            ChildType::Fixed(mut ty) => {
+            mut ty => {
                 struct ReplaceInfers<'a, F: FnMut(std::fmt::Arguments, Span) -> Ident> {
                     index: usize,
                     params: Vec<GenericParam>,

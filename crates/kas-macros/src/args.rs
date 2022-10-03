@@ -262,18 +262,13 @@ pub enum StructStyle {
     Regular(Brace),
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum ChildType {
-    Fixed(Type),
-}
-
 #[derive(Debug)]
 pub struct SingletonField {
     pub attrs: Vec<Attribute>,
     pub vis: syn::Visibility,
     pub ident: Option<Ident>,
     pub colon_token: Option<Colon>,
-    pub ty: ChildType,
+    pub ty: Type,
     pub assignment: Option<(Eq, Expr)>,
 }
 
@@ -347,14 +342,10 @@ impl Parse for ImplSingleton {
 }
 
 impl SingletonField {
-    fn parse_ty(input: ParseStream) -> Result<ChildType> {
-        Ok(ChildType::Fixed(input.parse()?))
-    }
-
-    fn check_is_fixed(ty: &ChildType, input_span: Span) -> Result<()> {
+    fn check_is_fixed(ty: &Type, input_span: Span) -> Result<()> {
         let is_fixed = match ty {
-            ChildType::Fixed(Type::ImplTrait(_) | Type::Infer(_)) => false,
-            ChildType::Fixed(ty) => {
+            Type::ImplTrait(_) | Type::Infer(_) => false,
+            ty => {
                 struct IsFixed(bool);
                 let mut checker = IsFixed(true);
 
@@ -397,9 +388,9 @@ impl SingletonField {
         // Note: Colon matches `::` but that results in confusing error messages
         let ty = if input.peek(Colon) && !input.peek2(Colon) {
             colon_token = Some(input.parse()?);
-            Self::parse_ty(input)?
+            input.parse()?
         } else {
-            ChildType::Fixed(parse_quote! { _ })
+            parse_quote! { _ }
         };
 
         let mut assignment = None;
@@ -423,7 +414,7 @@ impl SingletonField {
         let attrs = input.call(Attribute::parse_outer)?;
         let vis = input.parse()?;
 
-        let ty = Self::parse_ty(input)?;
+        let ty = input.parse()?;
 
         let mut assignment = None;
         if let Ok(eq) = input.parse::<Eq>() {
@@ -440,14 +431,5 @@ impl SingletonField {
             ty,
             assignment,
         })
-    }
-}
-
-// used only to get span
-impl quote::ToTokens for ChildType {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        match self {
-            ChildType::Fixed(ty) => ty.to_tokens(tokens),
-        }
     }
 }
