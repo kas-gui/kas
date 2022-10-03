@@ -75,11 +75,6 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
             }
         };
 
-        let is_widget = field
-            .attrs
-            .iter()
-            .any(|attr| (attr.path == parse_quote! { widget }));
-
         let ty: Type = match field.ty {
             Type::ImplTrait(syn::TypeImplTrait { impl_token, bounds }) => {
                 let span = quote! { #impl_token #bounds }.span();
@@ -94,6 +89,10 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
             }
             Type::Infer(infer_token) => {
                 // This is a special case: add ::kas::Widget bound
+                let is_widget = field
+                    .attrs
+                    .iter()
+                    .any(|attr| (attr.path == parse_quote! { widget }));
 
                 let ty = Ident::new(&ty_name, infer_token.span());
                 args.generics.params.push(if is_widget {
