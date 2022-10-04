@@ -275,7 +275,7 @@ impl_scope! {
             if self.invisible && self.max_value == 0 {
                 return None;
             }
-            self.handle.find_id(coord).or(Some(self.id()))
+            self.handle.find_id(coord).or_else(|| Some(self.id()))
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
@@ -496,7 +496,7 @@ impl_scope! {
             self.vert_bar.find_id(coord)
                 .or_else(|| self.horiz_bar.find_id(coord))
                 .or_else(|| self.inner.find_id(coord))
-                .or(Some(self.id()))
+                .or_else(|| Some(self.id()))
         }
 
         #[cfg(feature = "min_spec")]

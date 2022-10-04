@@ -7,14 +7,6 @@
 //!
 //! This crate extends [`impl-tools`](https://docs.rs/impl-tools/).
 
-#![recursion_limit = "128"]
-#![allow(clippy::let_and_return)]
-#![allow(clippy::large_enum_variant)]
-#![allow(clippy::needless_late_init)]
-#![allow(clippy::redundant_pattern_matching)]
-#![allow(clippy::collapsible_if)]
-#![allow(clippy::unit_arg)]
-
 extern crate proc_macro;
 
 use impl_tools_lib::autoimpl;
@@ -380,9 +372,8 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 /// use std::fmt;
 /// use kas_macros::impl_singleton;
 /// fn main() {
-///     let world = "world";
 ///     let says_hello_world = impl_singleton! {
-///         struct(impl fmt::Display = world);
+///         struct(impl fmt::Display = "world");
 ///         impl fmt::Display for Self {
 ///             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 ///                 write!(f, "hello {}", self.0)
@@ -400,22 +391,17 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 /// Struct fields may have a fixed type or may be generic. Syntax is as follows:
 ///
 /// -   **regular struct:** `ident: ty = value`
-/// -   **regular struct:** `ident: ty` — uses `Default` to construct value
-/// -   **regular struct:** `ident = value` — type is generic without bounds
+/// -   **regular struct:** `ident: ty` (uses `Default` to construct value)
+/// -   **regular struct:** `ident = value` (type is generic without bounds)
 /// -   **tuple struct:** `ty = value`
-/// -   **tuple struct:** `ty`
-/// -   **tuple struct:** `_ = value`
+/// -   **tuple struct:** `ty` (uses `Default` to construct value)
 ///
-/// The `ident` may be `_` (anonymous field).
+/// The field name, `ident`, may be `_` (anonymous field).
 ///
-/// The `ty` expression may be replaced with one of the following:
-///
-/// -   `impl Trait` (or `impl A + B + C`) — type is generic with given bounds
-/// -   `for<'a, T> std::borrow::Cow<'a, T>` — a generic with locally declared
-///     type parameters (note: parameter names are made unique)
-///
-/// As a special rule, any field using the `#[widget]` attribute and without a
-/// fixed type has the `::kas::Widget` trait bound applied.
+/// The field type, `ty`, may be or may contain inferred types (`_`) and/or
+/// `impl Trait` type expressions. These are substituted with generics on the
+/// type. In the special case that the field has attribute `#[widget]` and type
+/// `_`, the generic for this type has bound `::kas::Widget` applied.
 ///
 /// Refer to [examples](https://github.com/search?q=impl_singleton+repo%3Akas-gui%2Fkas+path%3Aexamples&type=Code) for usage.
 #[proc_macro_error]

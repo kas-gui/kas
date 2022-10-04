@@ -12,10 +12,7 @@ use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::{Brace, Colon, Comma, Eq, Paren, Semi};
 use syn::{braced, bracketed, parenthesized, parse_quote};
-use syn::{
-    AttrStyle, Attribute, ConstParam, Expr, GenericParam, Generics, Ident, ItemImpl, Lifetime,
-    LifetimeDef, Member, Path, Token, Type, TypeParam, TypePath, TypeTraitObject, Visibility,
-};
+use syn::{Attribute, Expr, Generics, Ident, ItemImpl, Member, Path, Token, Type};
 
 #[derive(Debug)]
 pub struct Child {
@@ -31,7 +28,7 @@ fn parse_impl(in_ident: Option<&Ident>, input: ParseStream) -> Result<ItemImpl> 
     let has_generics = input.peek(Token![<])
         && (input.peek2(Token![>])
             || input.peek2(Token![#])
-            || (input.peek2(Ident) || input.peek2(Lifetime))
+            || (input.peek2(Ident) || input.peek2(syn::Lifetime))
                 && (input.peek3(Token![:])
                     || input.peek3(Token![,])
                     || input.peek3(Token![>])
@@ -58,7 +55,7 @@ fn parse_impl(in_ident: Option<&Ident>, input: ParseStream) -> Result<ItemImpl> 
             while let Type::Group(ty) = first_ty {
                 first_ty = *ty.elem;
             }
-            if let Type::Path(TypePath { qself: None, path }) = first_ty {
+            if let Type::Path(syn::TypePath { qself: None, path }) = first_ty {
                 trait_ = Some((None, path, for_token));
             } else {
                 unreachable!();
@@ -76,7 +73,7 @@ fn parse_impl(in_ident: Option<&Ident>, input: ParseStream) -> Result<ItemImpl> 
 
     if self_ty != parse_quote! { Self } {
         if let Some(ident) = in_ident {
-            if !matches!(self_ty, Type::Path(TypePath {
+            if !matches!(self_ty, Type::Path(syn::TypePath {
                 qself: None,
                 path: Path {
                     leading_colon: None,
@@ -122,7 +119,7 @@ fn parse_impl(in_ident: Option<&Ident>, input: ParseStream) -> Result<ItemImpl> 
 fn parse_attrs_inner(input: ParseStream, attrs: &mut Vec<Attribute>) -> Result<()> {
     while input.peek(Token![#]) && input.peek2(Token![!]) {
         let pound_token = input.parse()?;
-        let style = AttrStyle::Inner(input.parse()?);
+        let style = syn::AttrStyle::Inner(input.parse()?);
         let content;
         let bracket_token = bracketed!(content in input);
         let path = content.call(Path::parse_mod_style)?;
@@ -265,23 +262,14 @@ pub enum StructStyle {
     Regular(Brace),
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum ChildType {
-    Fixed(Type), // fixed type
-    // A given type using generics internally
-    InternGeneric(Punctuated<GenericParam, Comma>, Type),
-    // Generic, optionally with an additional trait bound.
-    Generic(Option<TypeTraitObject>),
-}
-
 #[derive(Debug)]
 pub struct SingletonField {
     pub attrs: Vec<Attribute>,
-    pub vis: Visibility,
+    pub vis: syn::Visibility,
     pub ident: Option<Ident>,
     pub colon_token: Option<Colon>,
-    pub ty: ChildType,
-    pub value: Option<Expr>,
+    pub ty: Type,
+    pub assignment: Option<(Eq, Expr)>,
 }
 
 #[derive(Debug)]
@@ -354,64 +342,33 @@ impl Parse for ImplSingleton {
 }
 
 impl SingletonField {
-    fn parse_ty(input: ParseStream) -> Result<ChildType> {
-        if input.peek(Token![for]) {
-            // internal generic
-            let _: Token![for] = input.parse()?;
+    fn check_is_fixed(ty: &Type, input_span: Span) -> Result<()> {
+        let is_fixed = match ty {
+            Type::ImplTrait(_) | Type::Infer(_) => false,
+            ty => {
+                struct IsFixed(bool);
+                let mut checker = IsFixed(true);
 
-            // copied from syn::Generic's Parse impl
-            let _: Token![<] = input.parse()?;
-
-            let mut params = Punctuated::new();
-            let mut allow_lifetime_param = true;
-            let mut allow_type_param = true;
-            loop {
-                if input.peek(Token![>]) {
-                    break;
+                impl<'ast> syn::visit::Visit<'ast> for IsFixed {
+                    fn visit_type(&mut self, node: &'ast Type) {
+                        if matches!(node, Type::ImplTrait(_) | Type::Infer(_)) {
+                            self.0 = false;
+                        }
+                    }
                 }
+                syn::visit::visit_type(&mut checker, ty);
 
-                let attrs = input.call(Attribute::parse_outer)?;
-                let lookahead = input.lookahead1();
-                if allow_lifetime_param && lookahead.peek(Lifetime) {
-                    params.push_value(GenericParam::Lifetime(LifetimeDef {
-                        attrs,
-                        ..input.parse()?
-                    }));
-                } else if allow_type_param && lookahead.peek(Ident) {
-                    allow_lifetime_param = false;
-                    params.push_value(GenericParam::Type(TypeParam {
-                        attrs,
-                        ..input.parse()?
-                    }));
-                } else if lookahead.peek(Token![const]) {
-                    allow_lifetime_param = false;
-                    allow_type_param = false;
-                    params.push_value(GenericParam::Const(ConstParam {
-                        attrs,
-                        ..input.parse()?
-                    }));
-                } else {
-                    return Err(lookahead.error());
-                }
-
-                if input.peek(Token![>]) {
-                    break;
-                }
-                let punct = input.parse()?;
-                params.push_punct(punct);
+                checker.0
             }
+        };
 
-            let _: Token![>] = input.parse()?;
-
-            let ty = input.parse()?;
-            Ok(ChildType::InternGeneric(params, ty))
-        } else if input.peek(Token![impl]) {
-            // generic with trait bound
-            let _: Token![impl] = input.parse()?;
-            let bound: TypeTraitObject = input.parse()?;
-            Ok(ChildType::Generic(Some(bound)))
+        if is_fixed {
+            Ok(())
         } else {
-            Ok(ChildType::Fixed(input.parse()?))
+            Err(Error::new(
+                input_span,
+                "require either a fixed type or a value assignment",
+            ))
         }
     }
 
@@ -431,19 +388,16 @@ impl SingletonField {
         // Note: Colon matches `::` but that results in confusing error messages
         let ty = if input.peek(Colon) && !input.peek2(Colon) {
             colon_token = Some(input.parse()?);
-            Self::parse_ty(input)?
+            input.parse()?
         } else {
-            ChildType::Generic(None)
+            parse_quote! { _ }
         };
 
-        let mut value = None;
-        if let Ok(_) = input.parse::<Eq>() {
-            value = Some(input.parse()?);
-        } else if !matches!(&ty, ChildType::Fixed(_)) {
-            return Err(Error::new(
-                input.span(),
-                "require either a fixed type or a value assignment",
-            ));
+        let mut assignment = None;
+        if let Ok(eq) = input.parse::<Eq>() {
+            assignment = Some((eq, input.parse()?));
+        } else {
+            Self::check_is_fixed(&ty, input.span())?;
         }
 
         Ok(SingletonField {
@@ -452,7 +406,7 @@ impl SingletonField {
             ident,
             colon_token,
             ty,
-            value,
+            assignment,
         })
     }
 
@@ -460,19 +414,13 @@ impl SingletonField {
         let attrs = input.call(Attribute::parse_outer)?;
         let vis = input.parse()?;
 
-        let mut ty = Self::parse_ty(input)?;
-        if ty == ChildType::Fixed(parse_quote! { _ }) {
-            ty = ChildType::Generic(None);
-        }
+        let ty = input.parse()?;
 
-        let mut value = None;
-        if let Ok(_) = input.parse::<Eq>() {
-            value = Some(input.parse()?);
-        } else if !matches!(&ty, ChildType::Fixed(_)) {
-            return Err(Error::new(
-                input.span(),
-                "require either a fixed type or a value assignment",
-            ));
+        let mut assignment = None;
+        if let Ok(eq) = input.parse::<Eq>() {
+            assignment = Some((eq, input.parse()?));
+        } else {
+            Self::check_is_fixed(&ty, input.span())?;
         }
 
         Ok(SingletonField {
@@ -481,7 +429,7 @@ impl SingletonField {
             ident: None,
             colon_token: None,
             ty,
-            value,
+            assignment,
         })
     }
 }

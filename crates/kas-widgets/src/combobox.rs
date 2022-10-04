@@ -236,7 +236,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     #[inline]
     pub fn new_vec(entries: Vec<MenuEntry<M>>) -> Self {
         let label = entries.get(0).map(|entry| entry.get_string());
-        let label = StringLabel::new(label.unwrap_or("".to_string())).with_class(TextClass::Button);
+        let label = StringLabel::new(label.unwrap_or_default()).with_class(TextClass::Button);
         ComboBox {
             label,
             popup: ComboPopup {

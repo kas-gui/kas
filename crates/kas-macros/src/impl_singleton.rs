@@ -3,20 +3,19 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::args::{ChildType, ImplSingleton, StructStyle};
+use crate::args::{ImplSingleton, StructStyle};
 use impl_tools_lib::{
     fields::{Field, Fields, FieldsNamed, FieldsUnnamed},
     Scope, ScopeItem,
 };
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, TokenStreamExt};
-use std::collections::HashMap;
 use std::fmt::Write;
 use syn::parse_quote;
 use syn::punctuated::Punctuated;
+use syn::spanned::Spanned;
 use syn::token::Comma;
-use syn::{visit_mut, ConstParam, GenericParam, Lifetime, LifetimeDef, TypeParam};
-use syn::{Ident, Member, Result, Type, TypePath, Visibility};
+use syn::{visit_mut, GenericParam, Ident, Member, Result, Type, TypeParam, TypePath, Visibility};
 
 pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
     // Used to make fresh identifiers for generic types
@@ -34,82 +33,132 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
         let (field, opt_comma) = pair.into_tuple();
 
         let mut ident = field.ident.clone();
+        let ty = &field.ty;
+        let field_span = match field.assignment {
+            None => quote! { #ty }.span(),
+            Some((ref eq, ref expr)) => quote! { #ty #eq #expr }.span(),
+        };
         let mem = match args.style {
             StructStyle::Regular(_) => {
-                let id = ident.unwrap_or_else(|| {
-                    make_ident(format_args!("_field{index}"), Span::call_site())
-                });
+                let id =
+                    ident.unwrap_or_else(|| make_ident(format_args!("_field{index}"), field_span));
                 ident = Some(id.clone());
                 Member::Named(id)
             }
             StructStyle::Tuple(_, _) => Member::Unnamed(syn::Index {
                 index: index as u32,
-                span: Span::call_site(),
+                span: field_span,
             }),
             _ => unreachable!(),
         };
+        let ty_name = match ident {
+            None => format!("_Field{index}"),
+            Some(ref id) => {
+                let ident = id.to_string();
+                let mut buf = "_Field".to_string();
+                buf.reserve(ident.len());
+                let mut next_upper = true;
+                for c in ident.chars() {
+                    if c == '_' {
+                        next_upper = true;
+                        continue;
+                    }
 
-        let is_widget = field
-            .attrs
-            .iter()
-            .any(|attr| (attr.path == parse_quote! { widget }));
+                    if next_upper {
+                        buf.extend(c.to_uppercase());
+                        next_upper = false;
+                    } else {
+                        buf.push(c);
+                    }
+                }
+                buf
+            }
+        };
 
         let ty: Type = match field.ty {
-            ChildType::Fixed(ty) => ty,
-            ChildType::InternGeneric(mut gen_args, mut ty) => {
-                struct RenameUnique(HashMap<Ident, Ident>);
-                let mut renames = RenameUnique(HashMap::new());
+            Type::ImplTrait(syn::TypeImplTrait { impl_token, bounds }) => {
+                let span = quote! { #impl_token #bounds }.span();
+                let ty = Ident::new(&ty_name, span);
 
-                for param in &mut gen_args {
-                    let ident = match param {
-                        GenericParam::Type(TypeParam { ident, .. }) => ident,
-                        GenericParam::Lifetime(LifetimeDef {
-                            lifetime: Lifetime { ident, .. },
-                            ..
-                        }) => ident,
-                        GenericParam::Const(ConstParam { ident, .. }) => ident,
-                    };
-                    let from = ident.clone();
-                    let to = make_ident(format_args!("_Field{index}{from}"), from.span());
-                    *ident = to.clone();
-                    renames.0.insert(from, to);
-                }
-                args.generics.params.extend(gen_args);
-
-                impl visit_mut::VisitMut for RenameUnique {
-                    fn visit_ident_mut(&mut self, ident: &mut Ident) {
-                        if let Some(repl) = self.0.get(ident) {
-                            *ident = repl.clone();
-                        }
-                    }
-                }
-                visit_mut::visit_type_mut(&mut renames, &mut ty);
-                ty
-            }
-            ChildType::Generic(gen_bound) => {
-                let ty = make_ident(format_args!("_Field{index}"), Span::call_site());
-
-                if let Some(mut bound) = gen_bound {
-                    if is_widget {
-                        bound.bounds.push(parse_quote! { ::kas::Widget });
-                    }
-                    args.generics.params.push(parse_quote! { #ty: #bound });
-                } else {
-                    args.generics.params.push(if is_widget {
-                        parse_quote! { #ty: ::kas::Widget }
-                    } else {
-                        parse_quote! { #ty }
-                    });
-                }
+                args.generics.params.push(parse_quote! { #ty: #bounds });
 
                 Type::Path(TypePath {
                     qself: None,
                     path: ty.into(),
                 })
             }
+            Type::Infer(infer_token) => {
+                // This is a special case: add ::kas::Widget bound
+                let is_widget = field
+                    .attrs
+                    .iter()
+                    .any(|attr| (attr.path == parse_quote! { widget }));
+
+                let ty = Ident::new(&ty_name, infer_token.span());
+                args.generics.params.push(if is_widget {
+                    parse_quote! { #ty: ::kas::Widget }
+                } else {
+                    parse_quote! { #ty }
+                });
+
+                Type::Path(TypePath {
+                    qself: None,
+                    path: ty.into(),
+                })
+            }
+            mut ty => {
+                struct ReplaceInfers<'a, F: FnMut(std::fmt::Arguments, Span) -> Ident> {
+                    index: usize,
+                    params: Vec<GenericParam>,
+                    make_ident: &'a mut F,
+                    ty_name: &'a str,
+                }
+                let mut replacer = ReplaceInfers {
+                    index: 0,
+                    params: vec![],
+                    make_ident: &mut make_ident,
+                    ty_name: &ty_name,
+                };
+
+                impl<'a, F: FnMut(std::fmt::Arguments, Span) -> Ident> visit_mut::VisitMut
+                    for ReplaceInfers<'a, F>
+                {
+                    fn visit_type_mut(&mut self, node: &mut Type) {
+                        let (span, bounds) = match node {
+                            Type::ImplTrait(syn::TypeImplTrait { impl_token, bounds }) => {
+                                (impl_token.span, std::mem::take(bounds))
+                            }
+                            Type::Infer(infer) => (infer.span(), Punctuated::new()),
+                            _ => return,
+                        };
+
+                        let ident =
+                            (self.make_ident)(format_args!("{}{}", self.ty_name, self.index), span);
+                        self.index += 1;
+
+                        self.params.push(GenericParam::Type(TypeParam {
+                            attrs: vec![],
+                            ident: ident.clone(),
+                            colon_token: Some(Default::default()),
+                            bounds,
+                            eq_token: None,
+                            default: None,
+                        }));
+
+                        *node = Type::Path(TypePath {
+                            qself: None,
+                            path: ident.into(),
+                        });
+                    }
+                }
+                visit_mut::visit_type_mut(&mut replacer, &mut ty);
+
+                args.generics.params.extend(replacer.params);
+                ty
+            }
         };
 
-        if let Some(ref value) = field.value {
+        if let Some((_, ref value)) = field.assignment {
             field_val_toks.append_all(quote! { #mem: #value, });
         } else {
             field_val_toks.append_all(quote! { #mem: Default::default(), });
@@ -149,7 +198,7 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
     let mut scope = Scope {
         attrs: args.attrs,
         vis: Visibility::Inherited,
-        ident: parse_quote! { AnonWidget },
+        ident: parse_quote! { _Singleton },
         generics: args.generics,
         item: ScopeItem::Struct {
             token: args.token,
@@ -170,7 +219,7 @@ pub(crate) fn impl_singleton(mut args: ImplSingleton) -> Result<TokenStream> {
     let toks = quote! { {
         #scope
 
-        AnonWidget {
+        _Singleton {
             #field_val_toks
         }
     } };

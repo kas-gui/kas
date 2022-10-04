@@ -22,8 +22,6 @@
 //! [winit]: https://github.com/rust-windowing/winit
 //! [clipboard]: https://crates.io/crates/clipboard
 
-#![allow(clippy::drop_non_drop)]
-
 pub mod draw;
 mod event_loop;
 pub mod options;

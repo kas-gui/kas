@@ -500,7 +500,7 @@ fn parse_align(input: ParseStream) -> Result<AlignHints> {
             Ok(AlignHints(first, second))
         }
         Some(first) => {
-            let second = if let Ok(_) = inner.parse::<Token![,]>() {
+            let second = if inner.parse::<Token![,]>().is_ok() {
                 Align::parse(&inner, false)?.unwrap()
             } else if matches!(first, Align::TL | Align::BR) {
                 Align::None

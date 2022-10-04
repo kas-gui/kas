@@ -1078,14 +1078,14 @@ impl<G: EditGuard> EditField<G> {
                     _ => unreachable!(),
                 };
                 const HALF: usize = usize::MAX / 2;
-                let nearest_end = || match line {
+                let nearest_end = match line {
                     0..=HALF => len,
                     _ => 0,
                 };
                 self.text
                     .line_index_nearest(line, x)?
                     .map(|pos| Action::Move(pos, Some(x)))
-                    .unwrap_or(Action::Move(nearest_end(), None))
+                    .unwrap_or(Action::Move(nearest_end, None))
             }
             Command::Home if pos > 0 => {
                 let pos = self.text.find_line(pos)?.map(|r| r.1.start).unwrap_or(0);

@@ -456,7 +456,7 @@ impl_scope! {
             let mut rules = self.default_widget.size_rules(size_mgr.re(), axis);
             self.child_size_min.set_component(axis, rules.min_size());
 
-            if self.widgets.len() > 0 {
+            if !self.widgets.is_empty() {
                 for w in self.widgets.iter_mut() {
                     rules = rules.max(w.widget.size_rules(size_mgr.re(), axis));
                 }
@@ -567,7 +567,7 @@ impl_scope! {
             // use by size_rules (this allows better sizing). Configure the new
             // widgets (this allows resource loading which may affect size.)
             self.data_ver = self.data.version();
-            if self.widgets.len() == 0 && !self.data.is_empty() {
+            if self.widgets.is_empty() && !self.data.is_empty() {
                 let cols: Vec<_> = self.data.col_iter_limit(self.ideal_len.cols.cast()).collect();
                 let rows = self.data.row_iter_limit(self.ideal_len.rows.cast());
                 let lbound = cols.len() * rows.size_hint().0;

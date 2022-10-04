@@ -20,7 +20,7 @@ impl SharedData for TableData {
         key.0 < self.1 && key.1 < self.1
     }
     fn borrow(&self, key: &Self::Key) -> Option<Self::ItemRef<'_>> {
-        self.contains_key(key).then(|| (key.0 + 1) * (key.1 + 1))
+        self.contains_key(key).then_some((key.0 + 1) * (key.1 + 1))
     }
 }
 impl MatrixData for TableData {
@@ -77,7 +77,7 @@ fn main() -> kas::shell::Result<()> {
         #[derive(Debug)]
         struct {
             core: widget_core!(),
-            #[widget] max: impl HasString = EditBox::new("12")
+            #[widget] max: impl Widget + HasString = EditBox::new("12")
                 .on_afl(|mgr, text| match text.parse::<usize>() {
                     Ok(n) => mgr.push_msg(n),
                     Err(_) => (),
