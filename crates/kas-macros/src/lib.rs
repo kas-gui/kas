@@ -7,14 +7,6 @@
 //!
 //! This crate extends [`impl-tools`](https://docs.rs/impl-tools/).
 
-#![recursion_limit = "128"]
-#![allow(clippy::let_and_return)]
-#![allow(clippy::large_enum_variant)]
-#![allow(clippy::needless_late_init)]
-#![allow(clippy::redundant_pattern_matching)]
-#![allow(clippy::collapsible_if)]
-#![allow(clippy::unit_arg)]
-
 extern crate proc_macro;
 
 use impl_tools_lib::autoimpl;

@@ -44,10 +44,6 @@
 //! -   [`AccelLabel`]: a label which parses accelerator keys
 //! -   [`GripPart`]: a handle (e.g. for a slider, splitter or scroll_bar)
 
-// Use ``never_loop`` until: https://github.com/rust-lang/rust-clippy/issues/7397 is fixed
-#![allow(clippy::or_fun_call)]
-#![allow(clippy::comparison_chain)]
-#![allow(clippy::type_complexity)]
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![cfg_attr(feature = "min_spec", feature(min_specialization))]
 

@@ -15,8 +15,6 @@
 //! **Crate [`easy-cast`](https://crates.io/crates/easy-cast):** `Conv`, `Cast` traits and related functionality
 //! (always included), available as [`kas::cast`](https://docs.rs/easy-cast/0.5/easy_cast).
 
-// Use ``never_loop`` until: https://github.com/rust-lang/rust-clippy/issues/7397 is fixed
-#![allow(clippy::identity_op, clippy::never_loop, clippy::enum_variant_names)]
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![cfg_attr(feature = "spec", feature(specialization))]
 
