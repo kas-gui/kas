@@ -202,7 +202,6 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
     pub fn update(&mut self, shared: &mut SharedState<C, T>) -> (TkAction, Option<Instant>) {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let action = self.ev_state.update(&mut tkw, self.widget.as_widget_mut());
-        drop(tkw);
 
         if action.contains(TkAction::CLOSE | TkAction::EXIT) {
             return (action, None);

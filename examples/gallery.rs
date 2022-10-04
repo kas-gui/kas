@@ -59,7 +59,7 @@ fn widgets() -> Box<dyn SetDisabled> {
         .with_scaling(|scaling| scaling.margins = MarginStyle::Tiny);
     let img_dark = Svg::new(include_bytes!("../res/contrast-2-fill.svg"))
         .with_scaling(|scaling| scaling.margins = MarginStyle::Tiny);
-    const SVG_WARNING: &'static [u8] = include_bytes!("../res/error-warning-line.svg");
+    const SVG_WARNING: &[u8] = include_bytes!("../res/error-warning-line.svg");
     let img_rustacean = match Svg::new_path("res/rustacean-flat-happy.svg") {
         Ok(svg) => svg,
         Err(e) => {

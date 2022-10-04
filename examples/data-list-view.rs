@@ -203,7 +203,7 @@ impl Driver<(bool, String), MySharedData> for MyDriver {
                     borrow.active = *key;
                 }
                 EntryMsg::Update(text) => {
-                    borrow.strings.insert(*key, text.clone());
+                    borrow.strings.insert(*key, text);
                 }
             }
             mgr.push_msg(Control::Update(borrow.get(borrow.active)));

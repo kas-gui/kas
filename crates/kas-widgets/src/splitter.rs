@@ -210,12 +210,12 @@ impl_scope! {
 
             let solver = layout::RowPositionSolver::new(self.direction);
             if let Some(child) = solver.find_child_mut(&mut self.widgets, coord) {
-                return child.find_id(coord).or(Some(self.id()));
+                return child.find_id(coord).or_else(|| Some(self.id()));
             }
 
             let solver = layout::RowPositionSolver::new(self.direction);
             if let Some(child) = solver.find_child_mut(&mut self.handles, coord) {
-                return child.find_id(coord).or(Some(self.id()));
+                return child.find_id(coord).or_else(|| Some(self.id()));
             }
 
             Some(self.id())

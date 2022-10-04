@@ -278,7 +278,7 @@ impl_scope! {
             if !self.rect().contains(coord) {
                 return None;
             }
-            self.handle.find_id(coord).or(Some(self.id()))
+            self.handle.find_id(coord).or_else(|| Some(self.id()))
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {

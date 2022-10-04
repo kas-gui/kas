@@ -356,7 +356,7 @@ impl SingletonField {
                         }
                     }
                 }
-                syn::visit::visit_type(&mut checker, &ty);
+                syn::visit::visit_type(&mut checker, ty);
 
                 checker.0
             }

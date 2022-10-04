@@ -477,7 +477,7 @@ impl_scope! {
                 self.child_size_min = rules.min_size();
             }
 
-            if self.widgets.len() > 0 {
+            if !self.widgets.is_empty() {
                 for w in self.widgets.iter_mut() {
                     rules = rules.max(w.widget.size_rules(size_mgr.re(), axis));
                 }
@@ -574,7 +574,7 @@ impl_scope! {
             // use by size_rules (this allows better sizing). Configure the new
             // widgets (this allows resource loading which may affect size.)
             self.data_ver = self.data.version();
-            if self.widgets.len() == 0 && !self.data.is_empty() {
+            if self.widgets.is_empty() && !self.data.is_empty() {
                 let iter = self.data.iter_limit(self.ideal_visible.cast());
                 let lbound = iter.size_hint().0;
                 log::debug!("configure: allocating {} widgets", lbound);
