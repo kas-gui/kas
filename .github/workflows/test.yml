@@ -50,7 +50,7 @@ jobs:
       - name: Test examples/mandlebrot
         run: cargo test --manifest-path examples/mandlebrot/Cargo.toml --all-features
       - name: Clippy
-        run: cargo clippy --all --features nightly
+        run: cargo clippy --all --features nightly -- -W clippy::all -A clippy::collapsible-if -A clippy::collapsible_else_if -A clippy::single_match -A clippy::comparison_chain -A clippy::unit_arg
 
   test:
     name: Test
@@ -100,4 +100,4 @@ jobs:
         run: cargo test --manifest-path examples/mandlebrot/Cargo.toml
       - name: Clippy (stable)
         if: matrix.os == 'macos-latest'
-        run: cargo clippy --all -- -D warnings -A unknown_lints
+        run: cargo clippy --all -- -D warnings -W clippy::all -A clippy::collapsible-if -A clippy::collapsible_else_if -A clippy::single_match -A clippy::comparison_chain -A clippy::unit_arg
