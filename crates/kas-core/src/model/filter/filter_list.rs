@@ -154,7 +154,7 @@ impl<'b, K: Clone> Iterator for KeyIter<'b, K> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.borrow().len() - self.index;
+        let len = self.borrow.len() - self.index;
         (len, Some(len))
     }
 }
