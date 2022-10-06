@@ -95,7 +95,7 @@ impl ListEntry {
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let controls = impl_singleton! {
+    let controls = singleton! {
         #[widget{
             layout = row: [
                 "Number of rows:",
@@ -146,7 +146,7 @@ fn main() -> kas::shell::Result<()> {
     ];
     let list = List::new_dir_vec(Direction::Down, entries);
 
-    let window = impl_singleton! {
+    let window = singleton! {
         #[widget{
             layout = column: [
                 "Demonstration of dynamic widget creation / deletion",

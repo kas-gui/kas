@@ -5,7 +5,6 @@
 
 //! Demonstration of widget and text layouts
 
-use kas::macros::impl_singleton;
 use kas::widgets::{CheckBox, EditBox, ScrollLabel};
 
 const LIPSUM: &str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi nunc mi, consequat eget urna ut, auctor luctus mi. Sed molestie mi est. Sed non ligula ante. Curabitur ac molestie ante, nec sodales eros. In non arcu at turpis euismod bibendum ut tincidunt eros. Suspendisse blandit maximus nisi, viverra hendrerit elit efficitur et. Morbi ut facilisis eros. Vivamus dignissim, sapien sed mattis consectetur, libero leo imperdiet turpis, ac pulvinar libero purus eu lorem. Etiam quis sollicitudin urna. Integer vitae erat vel neque gravida blandit ac non quam.";
@@ -14,7 +13,7 @@ const CRASIT: &str = "Cras sit amet justo ipsum. Aliquam in nunc posuere leo ege
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let window = impl_singleton! {
+    let window = kas::macros::singleton! {
         #[widget{
             layout = grid: {
                 1, 0: "Layout demo";

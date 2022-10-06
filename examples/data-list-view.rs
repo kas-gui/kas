@@ -215,7 +215,7 @@ impl Driver<(bool, String), MySharedData> for MyDriver {
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let controls = impl_singleton! {
+    let controls = singleton! {
         #[widget{
             layout = row: [
                 "Number of rows:",
@@ -266,7 +266,7 @@ fn main() -> kas::shell::Result<()> {
     type MyList = ListView<Direction, MySharedData, MyDriver>;
     let list = ListView::new_with_dir_driver(Direction::Down, driver, data);
 
-    let window = impl_singleton! {
+    let window = singleton! {
         #[widget{
             layout = column: [
                 "Demonstration of dynamic widget creation / deletion",

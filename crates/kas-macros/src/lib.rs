@@ -391,9 +391,9 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 /// Example:
 /// ```
 /// use std::fmt;
-/// use kas_macros::impl_singleton;
+/// use kas_macros::singleton;
 /// fn main() {
-///     let says_hello_world = impl_singleton! {
+///     let says_hello_world = singleton! {
 ///         struct(impl fmt::Display = "world");
 ///         impl fmt::Display for Self {
 ///             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -424,10 +424,10 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 /// type. In the special case that the field has attribute `#[widget]` and type
 /// `_`, the generic for this type has bound `::kas::Widget` applied.
 ///
-/// Refer to [examples](https://github.com/search?q=impl_singleton+repo%3Akas-gui%2Fkas+path%3Aexamples&type=Code) for usage.
+/// Refer to [examples](https://github.com/search?q=singleton+repo%3Akas-gui%2Fkas+path%3Aexamples&type=Code) for usage.
 #[proc_macro_error]
 #[proc_macro]
-pub fn impl_singleton(input: TokenStream) -> TokenStream {
+pub fn singleton(input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(input as args::ImplSingleton);
     impl_singleton::impl_singleton(args)
         .unwrap_or_else(|err| err.to_compile_error())
