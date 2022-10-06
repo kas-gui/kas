@@ -15,7 +15,6 @@ use proc_macro_error::{emit_call_site_error, proc_macro_error};
 use syn::spanned::Spanned;
 use syn::{parse_macro_input, parse_quote_spanned};
 
-mod args;
 mod class_traits;
 mod extends;
 mod make_layout;
