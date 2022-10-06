@@ -3,7 +3,6 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::args::Child;
 use proc_macro2::Span;
 use proc_macro_error::emit_error;
 use syn::parse::{Parse, ParseStream};
@@ -53,7 +52,7 @@ impl Parse for WidgetInput {
 }
 
 struct Visitor<'a> {
-    children: &'a [Child],
+    children: &'a [Member],
 }
 impl<'a> VisitMut for Visitor<'a> {
     fn visit_macro_mut(&mut self, node: &mut syn::Macro) {
@@ -73,7 +72,7 @@ impl<'a> VisitMut for Visitor<'a> {
             };
 
             for (i, child) in self.children.iter().enumerate() {
-                if args.ident == child.ident {
+                if args.ident == *child {
                     node.tokens = parse_quote! { #i };
                     return;
                 }
@@ -88,7 +87,7 @@ impl<'a> VisitMut for Visitor<'a> {
     }
 }
 
-pub fn visit_impls(children: &[Child], impls: &mut [syn::ItemImpl]) {
+pub fn visit_impls(children: &[Member], impls: &mut [syn::ItemImpl]) {
     let mut obj = Visitor { children };
 
     for impl_ in impls {

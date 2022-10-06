@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::args::{Child, WidgetArgs};
+use crate::args::WidgetArgs;
 use crate::make_layout::NavNextResult;
 use impl_tools_lib::fields::{Fields, FieldsNamed, FieldsUnnamed};
 use impl_tools_lib::{Scope, ScopeAttr, ScopeItem, SimplePath};
@@ -147,8 +147,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
                     emit_error!(attr, "#[widget] must not be used on widget derive target");
                 }
                 is_widget = true;
-                let ident = ident.clone();
-                children.push(Child { ident });
+                children.push(ident.clone());
             } else {
                 other_attrs.push(attr);
             }
@@ -457,7 +456,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             let mut get_rules = quote! {};
             let mut get_mut_rules = quote! {};
             for (i, child) in children.iter().enumerate() {
-                let ident = &child.ident;
+                let ident = child;
                 get_rules.append_all(quote! { #i => Some(&self.#ident), });
                 get_mut_rules.append_all(quote! { #i => Some(&mut self.#ident), });
             }

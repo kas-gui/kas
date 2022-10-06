@@ -3,7 +3,6 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use crate::args::Child;
 use proc_macro2::{Span, TokenStream as Toks};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
@@ -60,7 +59,7 @@ impl Tree {
         self.0.generate(core)
     }
 
-    pub fn nav_next(&self, children: &[Child]) -> NavNextResult {
+    pub fn nav_next(&self, children: &[Member]) -> NavNextResult {
         match &self.0 {
             Layout::Slice(_, dir, _) => NavNextResult::Slice(dir.to_token_stream()),
             layout => {
@@ -869,7 +868,7 @@ impl Layout {
     /// -   `index`: the next widget's index
     fn nav_next(
         &self,
-        children: &[Child],
+        children: &[Member],
         output: &mut Vec<usize>,
         index: &mut usize,
     ) -> std::result::Result<(), &'static str> {
@@ -887,7 +886,7 @@ impl Layout {
             }
             Layout::AlignSingle(m, _) | Layout::Single(m) => {
                 for (i, child) in children.iter().enumerate() {
-                    if m.member == child.ident {
+                    if m.member == *child {
                         output.push(i);
                         return Ok(());
                     }

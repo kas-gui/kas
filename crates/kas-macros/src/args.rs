@@ -10,11 +10,6 @@ use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::{token::Eq, Member, Token};
 
-#[derive(Debug)]
-pub struct Child {
-    pub ident: Member,
-}
-
 #[allow(non_camel_case_types)]
 mod kw {
     use syn::custom_keyword;
