@@ -113,10 +113,31 @@ pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 const IMPL_SCOPE_RULES: [&'static dyn ScopeAttr; 2] = [&AttrImplDefault, &widget::AttrImplWidget];
 
-/// Implementation scope
+/// Scope supporting `impl Self` and advanced attribute macros
+///
+/// This macro facilitates definition of a type (struct, enum or union) plus
+/// implementations via `impl Self { .. }` syntax: `Self` is expanded to the
+/// type's name, including generics and bounds (as defined on the type).
+///
+/// Caveat: `rustfmt` can not yet format contents (see
+/// [rustfmt#5254](https://github.com/rust-lang/rustfmt/issues/5254),
+/// [rustfmt#5538](https://github.com/rust-lang/rustfmt/pull/5538)).
 ///
 /// See [`impl_tools::impl_scope`](https://docs.rs/impl-tools/0.5/impl_tools/macro.impl_scope.html)
 /// for full documentation.
+///
+/// ## Special attribute macros
+///
+/// Additionally, `impl_scope!` supports special attribute macros evaluated
+/// within its scope:
+///
+/// -   [`#[impl_default]`](macro@impl_default): implement [`Default`] using
+///     field initializers (which are not legal syntax outside of `impl_scope!`)
+/// -   [`#[widget]`](macro@widget): implement `kas::Widget` trait family
+///
+/// Note: matching these macros within `impl_scope!` does not use path
+/// resolution. Using `#[impl_tools::impl_default]` would resolve the variant
+/// of this macro which *doesn't support* field initializers.
 #[proc_macro_error]
 #[proc_macro]
 pub fn impl_scope(input: TokenStream) -> TokenStream {
