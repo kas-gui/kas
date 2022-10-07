@@ -393,7 +393,7 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 /// use std::fmt;
 /// fn main() {
 ///     let world = "world";
-///     let says_hello_world = impl_tools::singleton! {
+///     let says_hello_world = kas_macros::singleton! {
 ///         struct(&'static str = world);
 ///         impl fmt::Display for Self {
 ///             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
