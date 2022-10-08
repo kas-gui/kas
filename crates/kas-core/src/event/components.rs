@@ -9,8 +9,7 @@ use super::ScrollDelta::{LineDelta, PixelDelta};
 use super::{Command, CursorIcon, Event, EventMgr, PressSource, Response, Scroll};
 use crate::cast::traits::*;
 use crate::geom::{Coord, Offset, Rect, Size, Vec2};
-#[allow(unused)]
-use crate::text::SelectionHelper;
+#[allow(unused)] use crate::text::SelectionHelper;
 use crate::{TkAction, WidgetId};
 use kas_macros::impl_default;
 use std::time::{Duration, Instant};

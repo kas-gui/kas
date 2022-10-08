@@ -1,5 +1,6 @@
 # This may be useful to run occasionally, but has issues:
 #format_code_in_doc_comments = true
 
+inline_attribute_width = 60
 use_field_init_shorthand = true
 use_try_shorthand = true

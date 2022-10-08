@@ -13,8 +13,7 @@ pub use draw::{Background, DrawMgr, ThemeDraw};
 pub use size::{SizeMgr, ThemeSize};
 pub use style::*;
 
-#[allow(unused)]
-use crate::event::EventMgr;
+#[allow(unused)] use crate::event::EventMgr;
 use crate::TkAction;
 use std::ops::{Deref, DerefMut};
 

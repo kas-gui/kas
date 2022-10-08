@@ -14,8 +14,7 @@ use crate::layout::{AlignPair, AxisInfo, FrameRules, Margins, SizeRules};
 use crate::macros::autoimpl;
 use crate::text::TextApi;
 
-#[allow(unused)]
-use crate::text::TextApiExt;
+#[allow(unused)] use crate::text::TextApiExt;
 #[allow(unused)]
 use crate::{event::ConfigMgr, layout::Stretch, theme::DrawMgr};
 

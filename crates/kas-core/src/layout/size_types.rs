@@ -13,8 +13,7 @@ use crate::theme::MarginStyle;
 use kas_macros::impl_scope;
 
 // for doc use
-#[allow(unused)]
-use crate::theme::SizeMgr;
+#[allow(unused)] use crate::theme::SizeMgr;
 
 /// Logical (pre-scaling) pixel size
 ///

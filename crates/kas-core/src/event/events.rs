@@ -12,8 +12,7 @@ use serde::{Deserialize, Serialize};
 use super::{EventMgr, EventState, GrabMode, Response}; // for doc-links
 use super::{MouseButton, UpdateId, VirtualKeyCode};
 use crate::geom::{Coord, DVec2, Offset};
-#[allow(unused)]
-use crate::Widget;
+#[allow(unused)] use crate::Widget;
 use crate::{dir::Direction, WidgetId, WindowId};
 
 /// Events addressed to a widget

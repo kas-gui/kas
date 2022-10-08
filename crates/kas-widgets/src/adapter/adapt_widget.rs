@@ -12,8 +12,7 @@ use kas::geom::Vec2;
 use kas::layout::{AxisInfo, SizeRules};
 use kas::text::AccelString;
 use kas::theme::SizeMgr;
-#[allow(unused)]
-use kas::Layout;
+#[allow(unused)] use kas::Layout;
 use kas::Widget;
 use std::fmt::Debug;
 

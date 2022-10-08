@@ -5,8 +5,7 @@
 
 //! `SharedRc` data type
 
-#[allow(unused)]
-use crate::event::Event;
+#[allow(unused)] use crate::event::Event;
 use crate::event::{EventMgr, UpdateId};
 use crate::model::*;
 use std::cell::{Ref, RefCell, RefMut};

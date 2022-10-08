@@ -9,8 +9,7 @@ use super::{driver, Driver, PressPhase, SelectionError, SelectionMode, Selection
 use kas::event::components::ScrollComponent;
 use kas::event::{Command, CursorIcon, Scroll};
 use kas::layout::{solve_size_rules, AlignHints};
-#[allow(unused)]
-use kas::model::SharedData;
+#[allow(unused)] use kas::model::SharedData;
 use kas::model::{ListData, SharedDataMut};
 use kas::prelude::*;
 #[allow(unused)] // doc links

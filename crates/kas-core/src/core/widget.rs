@@ -15,14 +15,11 @@ use crate::util::IdentifyWidget;
 use crate::WidgetId;
 use kas_macros::autoimpl;
 
-#[allow(unused)]
-use crate::event::EventState;
+#[allow(unused)] use crate::event::EventState;
 #[allow(unused)]
 use crate::layout::{self, AlignPair, AutoLayout};
-#[allow(unused)]
-use crate::TkAction;
-#[allow(unused)]
-use kas_macros as macros;
+#[allow(unused)] use crate::TkAction;
+#[allow(unused)] use kas_macros as macros;
 
 /// Base functionality for [`Widget`]s
 ///

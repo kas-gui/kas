@@ -15,8 +15,7 @@ use crate::theme::{Feature, SizeMgr, TextClass, ThemeSize};
 use crate::{TkAction, Widget, WidgetExt, WidgetId};
 use std::ops::{Deref, DerefMut};
 
-#[allow(unused)]
-use crate::{event::Event, Layout};
+#[allow(unused)] use crate::{event::Event, Layout};
 
 /// Manager used to configure widgets and layout
 ///

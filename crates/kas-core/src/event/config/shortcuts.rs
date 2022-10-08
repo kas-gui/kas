@@ -12,8 +12,7 @@ use serde::de::{self, Deserialize, Deserializer, MapAccess, Unexpected, Visitor}
 #[cfg(feature = "config")]
 use serde::ser::{Serialize, SerializeMap, Serializer};
 use std::collections::HashMap;
-#[cfg(feature = "config")]
-use std::fmt;
+#[cfg(feature = "config")] use std::fmt;
 
 /// Shortcut manager
 #[allow(clippy::derive_partial_eq_without_eq)]
