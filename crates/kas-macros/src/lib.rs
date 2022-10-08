@@ -9,16 +9,14 @@
 
 extern crate proc_macro;
 
-use impl_tools_lib::autoimpl;
-use impl_tools_lib::{AttrImplDefault, ImplDefault, Scope, ScopeAttr};
+use impl_tools_lib::{self as lib, autoimpl};
 use proc_macro::TokenStream;
 use proc_macro_error::{emit_call_site_error, proc_macro_error};
-use syn::parse_macro_input;
+use syn::spanned::Spanned;
+use syn::{parse_macro_input, parse_quote_spanned};
 
-mod args;
 mod class_traits;
 mod extends;
-mod impl_singleton;
 mod make_layout;
 mod widget;
 mod widget_index;
@@ -31,7 +29,7 @@ mod widget_index;
 #[proc_macro_error]
 pub fn impl_default(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut toks = item.clone();
-    match syn::parse::<ImplDefault>(attr) {
+    match syn::parse::<lib::ImplDefault>(attr) {
         Ok(attr) => toks.extend(TokenStream::from(attr.expand(item.into()))),
         Err(err) => {
             emit_call_site_error!(err);
@@ -111,22 +109,45 @@ pub fn autoimpl(attr: TokenStream, item: TokenStream) -> TokenStream {
     toks
 }
 
-const IMPL_SCOPE_RULES: [&'static dyn ScopeAttr; 2] = [&AttrImplDefault, &widget::AttrImplWidget];
+const IMPL_SCOPE_RULES: [&dyn lib::ScopeAttr; 2] = [&lib::AttrImplDefault, &widget::AttrImplWidget];
 
-/// Implementation scope
+fn find_attr(path: &syn::Path) -> Option<&'static dyn lib::ScopeAttr> {
+    IMPL_SCOPE_RULES
+        .iter()
+        .cloned()
+        .find(|rule| rule.path().matches(path))
+}
+
+/// Scope supporting `impl Self` and advanced attribute macros
+///
+/// This macro facilitates definition of a type (struct, enum or union) plus
+/// implementations via `impl Self { .. }` syntax: `Self` is expanded to the
+/// type's name, including generics and bounds (as defined on the type).
+///
+/// Caveat: `rustfmt` can not yet format contents (see
+/// [rustfmt#5254](https://github.com/rust-lang/rustfmt/issues/5254),
+/// [rustfmt#5538](https://github.com/rust-lang/rustfmt/pull/5538)).
 ///
 /// See [`impl_tools::impl_scope`](https://docs.rs/impl-tools/0.5/impl_tools/macro.impl_scope.html)
 /// for full documentation.
+///
+/// ## Special attribute macros
+///
+/// Additionally, `impl_scope!` supports special attribute macros evaluated
+/// within its scope:
+///
+/// -   [`#[impl_default]`](macro@impl_default): implement [`Default`] using
+///     field initializers (which are not legal syntax outside of `impl_scope!`)
+/// -   [`#[widget]`](macro@widget): implement `kas::Widget` trait family
+///
+/// Note: matching these macros within `impl_scope!` does not use path
+/// resolution. Using `#[impl_tools::impl_default]` would resolve the variant
+/// of this macro which *doesn't support* field initializers.
 #[proc_macro_error]
 #[proc_macro]
 pub fn impl_scope(input: TokenStream) -> TokenStream {
-    let mut scope = parse_macro_input!(input as Scope);
-    scope.apply_attrs(|path| {
-        IMPL_SCOPE_RULES
-            .iter()
-            .cloned()
-            .find(|rule| rule.path().matches(path))
-    });
+    let mut scope = parse_macro_input!(input as lib::Scope);
+    scope.apply_attrs(find_attr);
     scope.expand().into()
 }
 
@@ -362,7 +383,7 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
     item
 }
 
-/// Create a widget singleton
+/// Construct a single-instance struct
 ///
 /// Rust doesn't currently support [`impl Trait { ... }` expressions](https://github.com/canndrew/rfcs/blob/impl-trait-expressions/text/0000-impl-trait-expressions.md)
 /// or implicit typing of struct fields. This macro is a **hack** allowing that.
@@ -370,10 +391,10 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 /// Example:
 /// ```
 /// use std::fmt;
-/// use kas_macros::impl_singleton;
 /// fn main() {
-///     let says_hello_world = impl_singleton! {
-///         struct(impl fmt::Display = "world");
+///     let world = "world";
+///     let says_hello_world = kas_macros::singleton! {
+///         struct(&'static str = world);
 ///         impl fmt::Display for Self {
 ///             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 ///                 write!(f, "hello {}", self.0)
@@ -403,14 +424,21 @@ pub fn widget(_: TokenStream, item: TokenStream) -> TokenStream {
 /// type. In the special case that the field has attribute `#[widget]` and type
 /// `_`, the generic for this type has bound `::kas::Widget` applied.
 ///
-/// Refer to [examples](https://github.com/search?q=impl_singleton+repo%3Akas-gui%2Fkas+path%3Aexamples&type=Code) for usage.
+/// Refer to [examples](https://github.com/search?q=singleton+repo%3Akas-gui%2Fkas+path%3Aexamples&type=Code) for usage.
 #[proc_macro_error]
 #[proc_macro]
-pub fn impl_singleton(input: TokenStream) -> TokenStream {
-    let args = parse_macro_input!(input as args::ImplSingleton);
-    impl_singleton::impl_singleton(args)
-        .unwrap_or_else(|err| err.to_compile_error())
-        .into()
+pub fn singleton(input: TokenStream) -> TokenStream {
+    let mut input = parse_macro_input!(input as lib::Singleton);
+    for field in input.fields.iter_mut() {
+        if let syn::Type::Infer(token) = &field.ty {
+            field.ty = parse_quote_spanned! {token.span()=>
+                impl ::kas::Widget
+            };
+        }
+    }
+    let mut scope = input.into_scope();
+    scope.apply_attrs(find_attr);
+    scope.expand().into()
 }
 
 /// Index of a child widget

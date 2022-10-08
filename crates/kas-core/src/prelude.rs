@@ -21,7 +21,7 @@ pub use crate::geom::{Coord, Offset, Rect, Size};
 #[doc(no_inline)]
 pub use crate::layout::{Align, AlignPair, AxisInfo, SizeRules, Stretch};
 #[doc(no_inline)]
-pub use crate::macros::{autoimpl, impl_default, impl_scope, impl_singleton, widget, widget_index};
+pub use crate::macros::{autoimpl, impl_default, impl_scope, singleton, widget, widget_index};
 #[doc(no_inline)]
 pub use crate::text::AccelString;
 #[doc(no_inline)]

@@ -85,7 +85,7 @@ fn widgets() -> Box<dyn SetDisabled> {
     #[derive(Clone, Debug)]
     struct MsgEdit;
 
-    let popup_edit_box = impl_singleton! {
+    let popup_edit_box = singleton! {
         #[widget{
             layout = row: [
                 self.label,
@@ -116,7 +116,7 @@ fn widgets() -> Box<dyn SetDisabled> {
 
     let radio = RadioGroup::new();
 
-    let widgets = impl_singleton! {
+    let widgets = singleton! {
         #[widget{
             layout = aligned_column: [
                 row: ["ScrollLabel", self.sl],
@@ -236,7 +236,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
 ```
 ";
 
-    Box::new(impl_singleton! {
+    Box::new(singleton! {
         #[widget{
             layout = float: [
                 pack(right, top): TextButton::new_msg("↻", MsgDirection),
@@ -307,7 +307,7 @@ fn filter_list() -> Box<dyn SetDisabled> {
 
     let r = RadioGroup::new();
 
-    Box::new(impl_singleton! {
+    Box::new(singleton! {
         #[widget{
             layout = column: [
                 row: ["Selection:", self.r0, self.r1, self.r2],
@@ -417,7 +417,7 @@ fn canvas() -> Box<dyn SetDisabled> {
         }
     }
 
-    Box::new(impl_singleton! {
+    Box::new(singleton! {
         #[widget{
             layout = column: [
                 Label::new("Animated canvas demo
@@ -453,7 +453,7 @@ KAS_CONFIG_MODE=readwrite
 ```
 ";
 
-    Box::new(ScrollBarRegion::new(impl_singleton! {
+    Box::new(ScrollBarRegion::new(singleton! {
         #[widget{
             layout = column: [
                 ScrollLabel::new(Markdown::new(DESC).unwrap()),
@@ -538,7 +538,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .build();
 
-    let window = impl_singleton! {
+    let window = singleton! {
         #[widget{
             layout = column: [
                 self.menubar,

@@ -6,7 +6,6 @@
 //! Counter example (simple button)
 
 use kas::event::EventMgr;
-use kas::macros::impl_singleton;
 use kas::widgets::{EditField, RowSplitter, TextButton};
 use kas::{Widget, Window};
 
@@ -22,7 +21,7 @@ fn main() -> kas::shell::Result<()> {
     let panes = (0..2).map(|n| EditField::new(format!("Pane {}", n + 1)).with_multi_line(true));
     let panes = RowSplitter::<EditField>::new(panes.collect());
 
-    let window = impl_singleton! {
+    let window = kas::macros::singleton! {
         #[widget{
             layout = column: [
                 row: [

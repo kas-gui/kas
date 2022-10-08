@@ -67,7 +67,7 @@ fn main() -> kas::shell::Result<()> {
         .with_selection_mode(SelectionMode::Single);
     let table = ScrollBars::new(table);
 
-    let window = impl_singleton! {
+    let window = singleton! {
         #[widget{
             layout = column: [
                 row: ["From 1 to", self.max],

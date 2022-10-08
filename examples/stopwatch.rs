@@ -9,7 +9,6 @@ use std::time::{Duration, Instant};
 
 use kas::class::HasString;
 use kas::event::{ConfigMgr, Event, EventMgr, Response};
-use kas::macros::impl_singleton;
 use kas::widgets::{Frame, Label, TextButton};
 use kas::{Widget, WidgetCore, WidgetExt, Window};
 
@@ -21,7 +20,7 @@ struct MsgStart;
 // Unlike most examples, we encapsulate the GUI configuration into a function.
 // There's no reason for this, but it demonstrates usage of Toolkit::add_boxed
 fn make_window() -> Box<dyn kas::Window> {
-    Box::new(impl_singleton! {
+    Box::new(kas::macros::singleton! {
         #[widget{
             layout = row: [
                 self.display,
