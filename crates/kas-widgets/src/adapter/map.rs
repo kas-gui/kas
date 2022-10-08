@@ -19,7 +19,12 @@ impl_scope! {
     #[widget{
         layout = self.inner;
     }]
-    pub struct MapMessage<W: Widget, M: Debug + 'static, N: Debug + 'static, F: FnMut(M) -> N + 'static> {
+    pub struct MapMessage<
+        W: Widget,
+        M: Debug + 'static,
+        N: Debug + 'static,
+        F: FnMut(M) -> N + 'static,
+    > {
         core: widget_core!(),
         #[widget]
         inner: W,
@@ -52,14 +57,22 @@ impl_scope! {
         }
     }
 
-    impl Menu for Self where W: Menu {
+    impl Menu for Self
+    where
+        W: Menu,
+    {
         fn sub_items(&mut self) -> Option<menu::SubItems> {
             self.inner.sub_items()
         }
         fn menu_is_open(&self) -> bool {
             self.inner.menu_is_open()
         }
-        fn set_menu_path(&mut self, mgr: &mut EventMgr, target: Option<&WidgetId>, set_focus: bool) {
+        fn set_menu_path(
+            &mut self,
+            mgr: &mut EventMgr,
+            target: Option<&WidgetId>,
+            set_focus: bool,
+        ) {
             self.inner.set_menu_path(mgr, target, set_focus);
         }
     }

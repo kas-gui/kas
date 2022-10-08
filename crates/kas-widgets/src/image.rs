@@ -91,7 +91,7 @@ impl_scope! {
         pub fn load_path<P: AsRef<std::path::Path>>(
             &mut self,
             path: P,
-            draw: &mut dyn DrawShared
+            draw: &mut dyn DrawShared,
         ) -> Result<TkAction> {
             let image = image::io::Reader::open(path)?
                 .with_guessed_format()?

@@ -437,11 +437,15 @@ impl_scope! {
     }]
     struct MandlebrotWindow {
         core: widget_core!(),
-        #[widget] label: Label<String>,
-        #[widget] iters: ReserveP<Label<String>>,
-        #[widget] slider: Slider<i32, kas::dir::Up>,
+        #[widget]
+        label: Label<String>,
+        #[widget]
+        iters: ReserveP<Label<String>>,
+        #[widget]
+        slider: Slider<i32, kas::dir::Up>,
         // extra col span allows use of Label's margin
-        #[widget] mbrot: Mandlebrot,
+        #[widget]
+        mbrot: Mandlebrot,
     }
 
     impl MandlebrotWindow {
@@ -473,7 +477,9 @@ impl_scope! {
         }
     }
     impl Window for Self {
-        fn title(&self) -> &str { "Mandlebrot" }
+        fn title(&self) -> &str {
+            "Mandlebrot"
+        }
     }
 }
 

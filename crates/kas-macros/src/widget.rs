@@ -687,9 +687,7 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             set_rect = quote! {
                 <Self as ::kas::layout::AutoLayout>::set_rect(self, mgr, rect);
             };
-            find_id = quote! {
-                <Self as ::kas::layout::AutoLayout>::find_id(self, coord)
-            };
+            find_id = quote! { <Self as ::kas::layout::AutoLayout>::find_id(self, coord) };
             fn_draw = Some(quote! {
                 fn draw(&mut self, draw: ::kas::theme::DrawMgr) {
                     <Self as ::kas::layout::AutoLayout>::draw(self, draw);

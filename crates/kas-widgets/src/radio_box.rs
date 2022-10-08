@@ -86,7 +86,7 @@ impl_scope! {
                         }
                     }
                     Response::Used
-                })
+                }),
             }
         }
     }

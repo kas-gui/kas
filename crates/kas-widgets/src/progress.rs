@@ -23,7 +23,10 @@ impl_scope! {
         value: f32,
     }
 
-    impl Self where D: Default {
+    impl Self
+    where
+        D: Default,
+    {
         /// Construct a progress bar
         ///
         /// The initial value is `0.0`; use `ProgressBar::with_value` to override.
@@ -84,10 +87,13 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            self.align.set_component(axis, match axis.is_vertical() == self.direction.is_vertical() {
-                false => axis.align_or_center(),
-                true => axis.align_or_stretch(),
-            });
+            self.align.set_component(
+                axis,
+                match axis.is_vertical() == self.direction.is_vertical() {
+                    false => axis.align_or_center(),
+                    true => axis.align_or_stretch(),
+                },
+            );
             size_mgr.feature(Feature::ProgressBar(self.direction()), axis)
         }
 

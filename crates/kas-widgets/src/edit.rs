@@ -198,8 +198,10 @@ impl_scope! {
     #[widget]
     pub struct EditBox<G: EditGuard = ()> {
         core: widget_core!(),
-        #[widget] inner: EditField<G>,
-        #[widget] bar: ScrollBar<kas::dir::Down>,
+        #[widget]
+        inner: EditField<G>,
+        #[widget]
+        bar: ScrollBar<kas::dir::Down>,
         frame_offset: Offset,
         frame_size: Size,
         inner_margin: i32,
@@ -271,7 +273,8 @@ impl_scope! {
     impl Widget for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr<'_>, _: usize) {
             if let Some(ScrollMsg(y)) = mgr.try_pop_msg() {
-                self.inner.set_scroll_offset(mgr, Offset(self.inner.view_offset.0, y));
+                self.inner
+                    .set_scroll_offset(mgr, Offset(self.inner.view_offset.0, y));
             }
         }
 

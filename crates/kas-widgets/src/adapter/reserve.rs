@@ -85,10 +85,7 @@ impl_scope! {
         /// and the result of the `reserve` closure.
         #[inline]
         pub fn new(inner: W, reserve: R) -> Self {
-            Reserve {
-                inner,
-                reserve,
-            }
+            Reserve { inner, reserve }
         }
     }
 

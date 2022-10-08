@@ -318,13 +318,11 @@ impl_scope! {
 
         fn steal_event(&mut self, mgr: &mut EventMgr, _: &WidgetId, event: &Event) -> Response {
             let btn = match event {
-                Event::Command(cmd) => {
-                    match cmd {
-                        Command::Down => SpinBtn::Down,
-                        Command::Up => SpinBtn::Up,
-                        _ => return Response::Unused,
-                    }
-                }
+                Event::Command(cmd) => match cmd {
+                    Command::Down => SpinBtn::Down,
+                    Command::Up => SpinBtn::Up,
+                    _ => return Response::Unused,
+                },
                 Event::Scroll(ScrollDelta::LineDelta(_, y)) => {
                     if *y > 0.0 {
                         SpinBtn::Up

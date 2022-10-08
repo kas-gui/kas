@@ -46,7 +46,7 @@ impl_scope! {
     /// The canvas (re)creates the backing pixmap when the size is set and draws
     /// to the new pixmap immediately. If the canvas program is modified then
     /// [`Canvas::redraw`] must be called to update the pixmap.
-    #[derive(Clone, Debug,)]
+    #[derive(Clone, Debug)]
     #[widget]
     pub struct Canvas<P: CanvasProgram> {
         core: widget_core!(),
@@ -118,7 +118,8 @@ impl_scope! {
             if let Some((pm, h)) = self.pixmap.as_mut().zip(self.image.as_ref()) {
                 pm.fill(Color::TRANSPARENT);
                 self.program.draw(pm);
-                mgr.draw_shared().image_upload(h, pm.data(), ImageFormat::Rgba8);
+                mgr.draw_shared()
+                    .image_upload(h, pm.data(), ImageFormat::Rgba8);
             }
         }
     }
@@ -144,7 +145,8 @@ impl_scope! {
                     program.draw(pm);
                     let (w, h) = (pm.width(), pm.height());
                     let handle = mgr.draw_shared().image_alloc((w, h)).unwrap();
-                    mgr.draw_shared().image_upload(&handle, pm.data(), ImageFormat::Rgba8);
+                    mgr.draw_shared()
+                        .image_upload(&handle, pm.data(), ImageFormat::Rgba8);
                     handle
                 });
             }

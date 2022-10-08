@@ -49,17 +49,28 @@ impl_scope! {
     #[derive(Debug)]
     pub struct EventConfigWidget {
         core: widget_core!(),
-        #[widget] menu_delay: Spinner<u32>,
-        #[widget] touch_select_delay: Spinner<u32>,
-        #[widget] scroll_flick_timeout: Spinner<u32>,
-        #[widget] scroll_flick_mul: Spinner<f32>,
-        #[widget] scroll_flick_sub: Spinner<f32>,
-        #[widget] scroll_dist_em: Spinner<f32>,
-        #[widget] pan_dist_thresh: Spinner<f32>,
-        #[widget] mouse_pan: ComboBox<MousePan>,
-        #[widget] mouse_text_pan: ComboBox<MousePan>,
-        #[widget] mouse_nav_focus: CheckButton,
-        #[widget] touch_nav_focus: CheckButton,
+        #[widget]
+        menu_delay: Spinner<u32>,
+        #[widget]
+        touch_select_delay: Spinner<u32>,
+        #[widget]
+        scroll_flick_timeout: Spinner<u32>,
+        #[widget]
+        scroll_flick_mul: Spinner<f32>,
+        #[widget]
+        scroll_flick_sub: Spinner<f32>,
+        #[widget]
+        scroll_dist_em: Spinner<f32>,
+        #[widget]
+        pan_dist_thresh: Spinner<f32>,
+        #[widget]
+        mouse_pan: ComboBox<MousePan>,
+        #[widget]
+        mouse_text_pan: ComboBox<MousePan>,
+        #[widget]
+        mouse_nav_focus: CheckButton,
+        #[widget]
+        touch_nav_focus: CheckButton,
     }
 }
 

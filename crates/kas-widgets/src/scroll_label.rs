@@ -30,7 +30,8 @@ impl_scope! {
         text_size: Size,
         selection: SelectionHelper,
         input_handler: TextInput,
-        #[widget] bar: ScrollBar<kas::dir::Down>,
+        #[widget]
+        bar: ScrollBar<kas::dir::Down>,
     }
 
     impl Layout for Self {
@@ -77,12 +78,7 @@ impl_scope! {
                     // TODO(opt): we could cache the selection rectangles here to make
                     // drawing more efficient (self.text.highlight_lines(range) output).
                     // The same applies to the edit marker below.
-                    draw.text_selected(
-                        rect,
-                        &self.text,
-                        self.selection.range(),
-                        class,
-                    );
+                    draw.text_selected(rect, &self.text, self.selection.range(), class);
                 }
             });
             draw.with_pass(|mut draw| {
@@ -111,7 +107,9 @@ impl_scope! {
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
         pub fn set_text(&mut self, text: T) -> TkAction {
-            self.text.set_and_try_prepare(text).expect("invalid font_id");
+            self.text
+                .set_and_try_prepare(text)
+                .expect("invalid font_id");
 
             self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
             let max_offset = self.max_scroll_offset();
@@ -137,18 +135,19 @@ impl_scope! {
 
         // Pan by given delta. Return `Response::Scrolled` or `Response::Pan(remaining)`.
         fn pan_delta(&mut self, mgr: &mut EventMgr, mut delta: Offset) -> Response {
-            let new_offset = (self.view_offset - delta).min(self.max_scroll_offset()).max(Offset::ZERO);
+            let new_offset = (self.view_offset - delta)
+                .min(self.max_scroll_offset())
+                .max(Offset::ZERO);
             if new_offset != self.view_offset {
                 delta -= self.view_offset - new_offset;
                 self.set_offset(mgr, new_offset);
             }
 
             mgr.set_scroll(if delta == Offset::ZERO {
-                    Scroll::Scrolled
-                } else {
-                    Scroll::Offset(delta)
-                }
-            );
+                Scroll::Scrolled
+            } else {
+                Scroll::Offset(delta)
+            });
             Response::Used
         }
 

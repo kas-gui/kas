@@ -94,7 +94,8 @@ impl_scope! {
         }
 
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
-            id.next_key_after(self.id_ref()).and_then(|k| self.id_map.get(&k).cloned())
+            id.next_key_after(self.id_ref())
+                .and_then(|k| self.id_map.get(&k).cloned())
         }
 
         fn make_child_id(&mut self, index: usize) -> WidgetId {
@@ -132,7 +133,10 @@ impl_scope! {
         }
     }
 
-    impl Self where D: Default {
+    impl Self
+    where
+        D: Default,
+    {
         /// Construct a new instance
         ///
         /// This constructor is available where the direction is determined by the

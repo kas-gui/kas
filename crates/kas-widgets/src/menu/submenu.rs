@@ -32,7 +32,10 @@ impl_scope! {
         popup_id: Option<WindowId>,
     }
 
-    impl Self where D: Default {
+    impl Self
+    where
+        D: Default,
+    {
         /// Construct a sub-menu
         #[inline]
         pub fn new<S: Into<AccelString>>(label: S, list: Vec<BoxedMenu>) -> Self {
@@ -65,7 +68,9 @@ impl_scope! {
         /// The sub-menu is opened in the `direction` given (contents are always vertical).
         #[inline]
         pub fn new_with_direction<S: Into<AccelString>>(
-            direction: D, label: S, list: Vec<BoxedMenu>
+            direction: D,
+            label: S,
+            list: Vec<BoxedMenu>,
         ) -> Self {
             SubMenu {
                 core: Default::default(),
@@ -196,7 +201,12 @@ impl_scope! {
             self.popup_id.is_some()
         }
 
-        fn set_menu_path(&mut self, mgr: &mut EventMgr, target: Option<&WidgetId>, set_focus: bool) {
+        fn set_menu_path(
+            &mut self,
+            mgr: &mut EventMgr,
+            target: Option<&WidgetId>,
+            set_focus: bool,
+        ) {
             match target {
                 Some(id) if self.is_ancestor_of(id) => {
                     if self.popup_id.is_none() {
@@ -373,7 +383,7 @@ impl_scope! {
                         let info = layout::GridChildInfo::new(1, row);
                         w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)));
                     }
-                    if let Some(w) =  items.label {
+                    if let Some(w) = items.label {
                         let info = layout::GridChildInfo::new(2, row);
                         w.set_rect(mgr, subtract_frame(setter.child_rect(store, info)));
                     }

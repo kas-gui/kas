@@ -140,7 +140,9 @@ impl_scope! {
         }
 
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
-            self.scroll.scroll_by_event(mgr, event, self.id(), self.core.rect).1
+            self.scroll
+                .scroll_by_event(mgr, event, self.id(), self.core.rect)
+                .1
         }
 
         fn handle_scroll(&mut self, mgr: &mut EventMgr, scroll: Scroll) {
