@@ -309,8 +309,8 @@ pub trait Layout {
 /// and [`kas_widgets` code](https://github.com/kas-gui/kas/tree/master/crates/kas-widgets).
 /// ```
 /// # extern crate kas_core as kas;
-/// use kas::prelude::*;
 /// use kas::event;
+/// use kas::prelude::*;
 /// use kas::theme::TextClass;
 /// use std::fmt::Debug;
 ///

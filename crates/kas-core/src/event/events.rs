@@ -58,7 +58,7 @@ pub enum Event {
     /// # use kas_core::cast::{Cast, CastFloat};
     /// # use kas_core::geom::{Coord, DVec2};
     /// # let (alpha, delta) = (DVec2::ZERO, DVec2::ZERO);
-    ///  let mut p = Coord::ZERO; // or whatever
+    /// let mut p = Coord::ZERO; // or whatever
     /// p = (alpha.complex_mul(p.cast()) + delta).cast_nearest();
     /// ```
     ///
