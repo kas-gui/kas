@@ -3,5 +3,6 @@
 
 inline_attribute_width = 60
 overflow_delimited_expr = true
+single_line_if_else_max_width = 60
 use_field_init_shorthand = true
 use_try_shorthand = true

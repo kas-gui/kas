@@ -197,11 +197,7 @@ where
                 b = b * SHADOW_HOVER;
             }
             let shadow_outer = Quad::from_coords(a + inner.a, b + inner.b);
-            let col1 = if self.cols.is_dark {
-                col_frame
-            } else {
-                Rgba::BLACK
-            };
+            let col1 = if self.cols.is_dark { col_frame } else { Rgba::BLACK };
             let mut col2 = col1;
             col2.a = 0.0;
             self.draw
