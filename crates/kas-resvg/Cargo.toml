@@ -23,9 +23,9 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 svg = ["dep:resvg", "dep:usvg"]
 
 [dependencies]
-tiny-skia = { version = "0.6.1" }
-resvg = { version = "0.23.0", optional = true }
-usvg = { version = "0.23.0", optional = true }
+tiny-skia = { version = "0.8.2" }
+resvg = { version = "0.24.0", optional = true }
+usvg = { version = "0.24.0", optional = true }
 
 # We must rename this package since macros expect kas to be in scope:
 kas = { version = "0.11.0", package = "kas-core", path = "../kas-core" }
