@@ -18,7 +18,5 @@ pub extern crate tiny_skia;
 mod canvas;
 pub use canvas::{Canvas, CanvasProgram};
 
-#[cfg(feature = "svg")]
-mod svg;
-#[cfg(feature = "svg")]
-pub use svg::Svg;
+#[cfg(feature = "svg")] mod svg;
+#[cfg(feature = "svg")] pub use svg::Svg;

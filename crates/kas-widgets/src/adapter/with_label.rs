@@ -29,7 +29,10 @@ impl_scope! {
         label: AccelLabel,
     }
 
-    impl Self where D: Default {
+    impl Self
+    where
+        D: Default,
+    {
         /// Construct from `inner` widget and `label`
         #[inline]
         pub fn new<T: Into<AccelString>>(inner: W, label: T) -> Self {

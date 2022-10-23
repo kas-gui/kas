@@ -47,7 +47,10 @@ impl_scope! {
         handle: GripPart,
     }
 
-    impl Self where D: Default {
+    impl Self
+    where
+        D: Default,
+    {
         /// Construct a scroll bar
         ///
         /// Default values are assumed for all parameters.
@@ -253,10 +256,13 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            self.align.set_component(axis, match axis.is_vertical() == self.direction.is_vertical() {
-                false => axis.align_or_center(),
-                true => axis.align_or_stretch(),
-            });
+            self.align.set_component(
+                axis,
+                match axis.is_vertical() == self.direction.is_vertical() {
+                    false => axis.align_or_center(),
+                    true => axis.align_or_stretch(),
+                },
+            );
             size_mgr.feature(Feature::ScrollBar(self.direction()), axis)
         }
 
@@ -279,9 +285,9 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            if !self.invisible ||
-                (self.max_value != 0 && (self.hover || self.force_visible)) ||
-                draw.ev_state().is_depressed(self.handle.id_ref())
+            if !self.invisible
+                || (self.max_value != 0 && (self.hover || self.force_visible))
+                || draw.ev_state().is_depressed(self.handle.id_ref())
             {
                 let dir = self.direction.as_direction();
                 draw.scroll_bar(self.rect(), &self.handle, dir);
@@ -302,7 +308,7 @@ impl_scope! {
                     self.apply_grip_offset(mgr, offset);
                     Response::Used
                 }
-                _ => Response::Unused
+                _ => Response::Unused,
             }
         }
 
@@ -476,15 +482,13 @@ impl_scope! {
             if self.show_bars.0 {
                 let pos = Coord(pos.0, rect.pos2().1 - bar_width);
                 let size = Size::new(child_size.0, bar_width);
-                self.horiz_bar
-                    .set_rect(mgr, Rect { pos, size });
+                self.horiz_bar.set_rect(mgr, Rect { pos, size });
                 let _ = self.horiz_bar.set_limits(max_scroll_offset.0, rect.size.0);
             }
             if self.show_bars.1 {
                 let pos = Coord(rect.pos2().0 - bar_width, pos.1);
                 let size = Size::new(bar_width, self.core.rect.size.1);
-                self.vert_bar
-                    .set_rect(mgr, Rect { pos, size });
+                self.vert_bar.set_rect(mgr, Rect { pos, size });
                 let _ = self.vert_bar.set_limits(max_scroll_offset.1, rect.size.1);
             }
         }
@@ -493,7 +497,8 @@ impl_scope! {
             if !self.rect().contains(coord) {
                 return None;
             }
-            self.vert_bar.find_id(coord)
+            self.vert_bar
+                .find_id(coord)
                 .or_else(|| self.horiz_bar.find_id(coord))
                 .or_else(|| self.inner.find_id(coord))
                 .or_else(|| Some(self.id()))

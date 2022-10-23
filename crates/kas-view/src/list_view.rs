@@ -9,8 +9,7 @@ use super::{driver, Driver, PressPhase, SelectionError, SelectionMode, Selection
 use kas::event::components::ScrollComponent;
 use kas::event::{Command, CursorIcon, Scroll};
 use kas::layout::{solve_size_rules, AlignHints};
-#[allow(unused)]
-use kas::model::SharedData;
+#[allow(unused)] use kas::model::SharedData;
 use kas::model::{ListData, SharedDataMut};
 use kas::prelude::*;
 #[allow(unused)] // doc links
@@ -51,11 +50,7 @@ impl_scope! {
     /// widget emits a [`SelectionMsg`].
     #[derive(Clone, Debug)]
     #[widget]
-    pub struct ListView<
-        D: Directional,
-        T: ListData,
-        V: Driver<T::Item, T> = driver::View,
-    > {
+    pub struct ListView<D: Directional, T: ListData, V: Driver<T::Item, T> = driver::View> {
         core: widget_core!(),
         frame_offset: Offset,
         frame_size: Size,
@@ -83,7 +78,11 @@ impl_scope! {
         press_target: Option<T::Key>,
     }
 
-    impl Self where D: Default, V: Default {
+    impl Self
+    where
+        D: Default,
+        V: Default,
+    {
         /// Construct a new instance
         ///
         /// This constructor is available where the direction is determined by the
@@ -93,13 +92,19 @@ impl_scope! {
             Self::new_with_dir_driver(D::default(), <V as Default>::default(), data)
         }
     }
-    impl Self where V: Default {
+    impl Self
+    where
+        V: Default,
+    {
         /// Construct a new instance with explicit direction
         pub fn new_with_direction(direction: D, data: T) -> Self {
             Self::new_with_dir_driver(direction, <V as Default>::default(), data)
         }
     }
-    impl Self where D: Default {
+    impl Self
+    where
+        D: Default,
+    {
         /// Construct a new instance with explicit driver
         pub fn new_with_driver(driver: V, data: T) -> Self {
             Self::new_with_dir_driver(D::default(), driver, data)
@@ -168,7 +173,10 @@ impl_scope! {
         /// This method updates the shared data, if supported (see
         /// [`SharedDataMut::borrow_mut`]). Other widgets sharing this data
         /// are notified of the update, if data is changed.
-        pub fn set_value(&self, mgr: &mut EventMgr, key: &T::Key, data: T::Item) where T: SharedDataMut {
+        pub fn set_value(&self, mgr: &mut EventMgr, key: &T::Key, data: T::Item)
+        where
+            T: SharedDataMut,
+        {
             self.data.set(mgr, key, data);
         }
 
@@ -177,7 +185,15 @@ impl_scope! {
         /// This method updates the shared data, if supported (see
         /// [`SharedDataMut::with_ref_mut`]). Other widgets sharing this data
         /// are notified of the update, if data is changed.
-        pub fn update_value<U>(&self, mgr: &mut EventMgr, key: &T::Key, f: impl FnOnce(&mut T::Item) -> U) -> Option<U> where T: SharedDataMut {
+        pub fn update_value<U>(
+            &self,
+            mgr: &mut EventMgr,
+            key: &T::Key,
+            f: impl FnOnce(&mut T::Item) -> U,
+        ) -> Option<U>
+        where
+            T: SharedDataMut,
+        {
             self.data.with_ref_mut(mgr, key, f)
         }
 
@@ -349,9 +365,7 @@ impl_scope! {
             let solver = self.position_solver(mgr);
             let mut action = TkAction::empty();
 
-            let keys = self
-                .data
-                .iter_from(solver.first_data, solver.cur_len);
+            let keys = self.data.iter_from(solver.first_data, solver.cur_len);
 
             let mut count = 0;
             for (i, key) in keys.enumerate() {
@@ -466,7 +480,9 @@ impl_scope! {
                 let other_axis = axis.flipped();
                 size -= self.frame_size.extract(other_axis);
                 if self.direction.is_horizontal() == other_axis.is_horizontal() {
-                    size = (size / self.ideal_visible).min(self.child_size_ideal).max(self.child_size_min);
+                    size = (size / self.ideal_visible)
+                        .min(self.child_size_ideal)
+                        .max(self.child_size_min);
                 }
                 size
             });
@@ -486,7 +502,8 @@ impl_scope! {
             if axis.is_vertical() == self.direction.is_vertical() {
                 self.child_size_ideal = rules.ideal_size();
                 let m = rules.margins();
-                self.child_inter_margin = m.0.max(m.1).max(inner_margin.0).max(inner_margin.1).cast();
+                self.child_inter_margin =
+                    m.0.max(m.1).max(inner_margin.0).max(inner_margin.1).cast();
                 rules.multiply_with_margin(2, self.ideal_visible);
                 rules.set_stretch(rules.stretch().max(Stretch::High));
             } else {
@@ -525,7 +542,11 @@ impl_scope! {
             if data_len <= avail_widgets {
                 req_widgets = data_len
             } else if avail_widgets < req_widgets {
-                log::debug!("set_rect: allocating widgets (old len = {}, new = {})", avail_widgets, req_widgets);
+                log::debug!(
+                    "set_rect: allocating widgets (old len = {}, new = {})",
+                    avail_widgets,
+                    req_widgets
+                );
                 self.widgets.reserve(req_widgets - avail_widgets);
                 for _ in avail_widgets..req_widgets {
                     let widget = self.driver.make();
@@ -738,7 +759,8 @@ impl_scope! {
                     };
                     return if let Some(i_data) = data {
                         // Set nav focus to i_data and update scroll position
-                        let (rect, action) = self.scroll.focus_rect(solver.rect(i_data), self.core.rect);
+                        let (rect, action) =
+                            self.scroll.focus_rect(solver.rect(i_data), self.core.rect);
                         if !action.is_empty() {
                             *mgr |= action;
                             mgr.config_mgr(|mgr| self.update_widgets(mgr));
@@ -754,7 +776,9 @@ impl_scope! {
                 _ => (), // fall through to scroll handler
             }
 
-            let (moved, r) = self.scroll.scroll_by_event(mgr, event, self.id(), self.core.rect);
+            let (moved, r) = self
+                .scroll
+                .scroll_by_event(mgr, event, self.id(), self.core.rect);
             if moved {
                 mgr.config_mgr(|mgr| self.update_widgets(mgr));
             }

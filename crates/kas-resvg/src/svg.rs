@@ -50,9 +50,7 @@ impl_scope! {
         pub fn load(&mut self, data: &[u8], resources_dir: Option<&Path>) {
             let fonts_db = kas::text::fonts::fonts().read_db();
             let fontdb = fonts_db.db();
-            let font_family = fonts_db
-                .font_family_from_alias("SERIF")
-                .unwrap_or_default();
+            let font_family = fonts_db.font_family_from_alias("SERIF").unwrap_or_default();
 
             // Defaults are taken from usvg::Options::default(). Notes:
             // - adjusting for screen scale factor is purely a property of
@@ -76,7 +74,9 @@ impl_scope! {
             };
 
             self.tree = Some(usvg::Tree::from_data(data, &opts).unwrap());
-            self.scaling.size = self.tree.as_ref()
+            self.scaling.size = self
+                .tree
+                .as_ref()
                 .map(|tree| LogicalSize::conv(tree.svg_node().size.to_screen_size().dimensions()))
                 .unwrap_or(LogicalSize(128.0, 128.0));
         }
@@ -147,7 +147,8 @@ impl_scope! {
                         resvg::render(tree, usvg::FitTo::Size(w, h), transform, pm.as_mut());
 
                         let handle = mgr.draw_shared().image_alloc((w, h)).unwrap();
-                        mgr.draw_shared().image_upload(&handle, pm.data(), ImageFormat::Rgba8);
+                        mgr.draw_shared()
+                            .image_upload(&handle, pm.data(), ImageFormat::Rgba8);
                         handle
                     });
                 }

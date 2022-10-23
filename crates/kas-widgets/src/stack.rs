@@ -61,7 +61,8 @@ impl_scope! {
         }
 
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
-            id.next_key_after(self.id_ref()).and_then(|k| self.id_map.get(&k).cloned())
+            id.next_key_after(self.id_ref())
+                .and_then(|k| self.id_map.get(&k).cloned())
         }
 
         fn make_child_id(&mut self, index: usize) -> WidgetId {
@@ -89,7 +90,10 @@ impl_scope! {
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
             let mut rules = SizeRules::EMPTY;
-            let end = self.active.saturating_add(self.size_limit).min(self.widgets.len());
+            let end = self
+                .active
+                .saturating_add(self.size_limit)
+                .min(self.widgets.len());
             let start = end.saturating_sub(self.size_limit);
             self.sized_range = start..end;
             debug_assert!(self.sized_range.contains(&self.active));
@@ -127,11 +131,7 @@ impl_scope! {
             self.id_map.clear();
         }
 
-        fn nav_next(&mut self,
-            _: &mut ConfigMgr,
-            _: bool,
-            from: Option<usize>,
-        ) -> Option<usize> {
+        fn nav_next(&mut self, _: &mut ConfigMgr, _: bool, from: Option<usize>) -> Option<usize> {
             match from {
                 None => Some(self.active),
                 Some(active) if active != self.active => Some(self.active),

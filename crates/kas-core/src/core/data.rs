@@ -5,15 +5,13 @@
 
 //! Widget data types
 
-#[allow(unused)]
-use super::Layout;
+#[allow(unused)] use super::Layout;
 use super::{Widget, WidgetId};
 use crate::dir::Direction;
 use crate::event::EventMgr;
 use crate::geom::Rect;
 
-#[cfg(feature = "winit")]
-pub use winit::window::Icon;
+#[cfg(feature = "winit")] pub use winit::window::Icon;
 
 /// An icon used for the window titlebar, taskbar, etc.
 #[cfg(not(feature = "winit"))]

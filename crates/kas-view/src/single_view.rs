@@ -32,10 +32,7 @@ impl_scope! {
     #[widget{
         layout = self.child;
     }]
-    pub struct SingleView<
-        T: SingleData,
-        V: Driver<T::Item, T> = driver::View,
-    > {
+    pub struct SingleView<T: SingleData, V: Driver<T::Item, T> = driver::View> {
         core: widget_core!(),
         driver: V,
         data: T,
@@ -53,7 +50,10 @@ impl_scope! {
             Self::new(T::default())
         }
     }
-    impl Self where V: Default {
+    impl Self
+    where
+        V: Default,
+    {
         /// Construct a new instance
         pub fn new(data: T) -> Self {
             Self::new_with_driver(<V as Default>::default(), data)
@@ -98,7 +98,10 @@ impl_scope! {
         /// This method updates the shared data, if supported (see
         /// [`SharedDataMut::borrow_mut`]). Other widgets sharing this data
         /// are notified of the update, if data is changed.
-        pub fn set_value(&self, mgr: &mut EventMgr, data: T::Item) where T: SharedDataMut {
+        pub fn set_value(&self, mgr: &mut EventMgr, data: T::Item)
+        where
+            T: SharedDataMut,
+        {
             self.data.set(mgr, &(), data);
         }
 
@@ -107,7 +110,14 @@ impl_scope! {
         /// This method updates the shared data, if supported (see
         /// [`SharedDataMut::with_ref_mut`]). Other widgets sharing this data
         /// are notified of the update, if data is changed.
-        pub fn update_value<U>(&self, mgr: &mut EventMgr, f: impl FnOnce(&mut T::Item) -> U) -> Option<U> where T: SharedDataMut {
+        pub fn update_value<U>(
+            &self,
+            mgr: &mut EventMgr,
+            f: impl FnOnce(&mut T::Item) -> U,
+        ) -> Option<U>
+        where
+            T: SharedDataMut,
+        {
             self.data.with_ref_mut(mgr, &(), f)
         }
     }
@@ -143,7 +153,8 @@ impl_scope! {
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-            self.driver.on_message(mgr, &mut self.child, &self.data, &());
+            self.driver
+                .on_message(mgr, &mut self.child, &self.data, &());
         }
     }
 }

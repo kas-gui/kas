@@ -13,8 +13,7 @@ use crate::cast::Conv;
 use crate::draw::DrawShared;
 use crate::geom::{Coord, Offset, Vec2};
 use crate::theme::{SizeMgr, ThemeControl};
-#[allow(unused)]
-use crate::{Layout, Widget}; // for doc-links
+#[allow(unused)] use crate::{Layout, Widget}; // for doc-links
 use crate::{TkAction, WidgetId, WindowId};
 
 impl<'a> std::ops::BitOrAssign<TkAction> for EventMgr<'a> {

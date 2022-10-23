@@ -12,8 +12,7 @@ use serde::{Deserialize, Serialize};
 use super::{EventMgr, EventState, GrabMode, Response}; // for doc-links
 use super::{MouseButton, UpdateId, VirtualKeyCode};
 use crate::geom::{Coord, DVec2, Offset};
-#[allow(unused)]
-use crate::Widget;
+#[allow(unused)] use crate::Widget;
 use crate::{dir::Direction, WidgetId, WindowId};
 
 /// Events addressed to a widget
@@ -58,7 +57,7 @@ pub enum Event {
     /// # use kas_core::cast::{Cast, CastFloat};
     /// # use kas_core::geom::{Coord, DVec2};
     /// # let (alpha, delta) = (DVec2::ZERO, DVec2::ZERO);
-    ///  let mut p = Coord::ZERO; // or whatever
+    /// let mut p = Coord::ZERO; // or whatever
     /// p = (alpha.complex_mul(p.cast()) + delta).cast_nearest();
     /// ```
     ///

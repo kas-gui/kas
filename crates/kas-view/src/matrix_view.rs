@@ -9,8 +9,7 @@ use super::{driver, Driver, PressPhase, SelectionError, SelectionMode, Selection
 use kas::event::components::ScrollComponent;
 use kas::event::{Command, CursorIcon, Scroll};
 use kas::layout::{solve_size_rules, AlignHints};
-#[allow(unused)]
-use kas::model::SharedData;
+#[allow(unused)] use kas::model::SharedData;
 use kas::model::{MatrixData, SharedDataMut};
 use kas::prelude::*;
 #[allow(unused)] // doc links
@@ -57,10 +56,7 @@ impl_scope! {
     /// widget emits a [`SelectionMsg`].
     #[derive(Clone, Debug)]
     #[widget]
-    pub struct MatrixView<
-        T: MatrixData,
-        V: Driver<T::Item, T> = driver::View,
-    > {
+    pub struct MatrixView<T: MatrixData, V: Driver<T::Item, T> = driver::View> {
         core: widget_core!(),
         frame_offset: Offset,
         frame_size: Size,
@@ -88,7 +84,10 @@ impl_scope! {
         press_target: Option<T::Key>,
     }
 
-    impl Self where V: Default {
+    impl Self
+    where
+        V: Default,
+    {
         /// Construct a new instance
         pub fn new(data: T) -> Self {
             Self::new_with_driver(<V as Default>::default(), data)
@@ -150,7 +149,10 @@ impl_scope! {
         /// This method updates the shared data, if supported (see
         /// [`SharedDataMut::borrow_mut`]). Other widgets sharing this data
         /// are notified of the update, if data is changed.
-        pub fn set_value(&self, mgr: &mut EventMgr, key: &T::Key, data: T::Item) where T: SharedDataMut {
+        pub fn set_value(&self, mgr: &mut EventMgr, key: &T::Key, data: T::Item)
+        where
+            T: SharedDataMut,
+        {
             self.data.set(mgr, key, data);
         }
 
@@ -159,7 +161,15 @@ impl_scope! {
         /// This method updates the shared data, if supported (see
         /// [`SharedDataMut::with_ref_mut`]). Other widgets sharing this data
         /// are notified of the update, if data is changed.
-        pub fn update_value<U>(&self, mgr: &mut EventMgr, key: &T::Key, f: impl FnOnce(&mut T::Item) -> U) -> Option<U> where T: SharedDataMut {
+        pub fn update_value<U>(
+            &self,
+            mgr: &mut EventMgr,
+            key: &T::Key,
+            f: impl FnOnce(&mut T::Item) -> U,
+        ) -> Option<U>
+        where
+            T: SharedDataMut,
+        {
             self.data.with_ref_mut(mgr, key, f)
         }
 
@@ -326,9 +336,7 @@ impl_scope! {
                 );
             }
 
-            let row_iter = self
-                .data
-                .row_iter_from(solver.first_row, solver.row_len);
+            let row_iter = self.data.row_iter_from(solver.first_row, solver.row_len);
 
             let mut action = TkAction::empty();
             let mut row_count = 0;
@@ -382,7 +390,8 @@ impl_scope! {
             let avail = size - self.frame_size;
             let m = self.child_inter_margin;
             let child_size = Size(avail.0 / self.ideal_len.cols, avail.1 / self.ideal_len.rows)
-                .min(self.child_size_ideal).max(self.child_size_min);
+                .min(self.child_size_ideal)
+                .max(self.child_size_min);
             let (d_cols, d_rows) = self.data.len();
             let data_len = Size(d_cols.cast(), d_rows.cast());
             let content_size = ((child_size + m).cwise_mul(data_len) - m).max(Size::ZERO);
@@ -462,10 +471,13 @@ impl_scope! {
                 }
             }
 
-            self.child_size_ideal.set_component(axis, rules.ideal_size());
+            self.child_size_ideal
+                .set_component(axis, rules.ideal_size());
             let m = rules.margins();
-            self.child_inter_margin
-                .set_component(axis, m.0.max(m.1).max(inner_margin.0).max(inner_margin.1).cast());
+            self.child_inter_margin.set_component(
+                axis,
+                m.0.max(m.1).max(inner_margin.0).max(inner_margin.1).cast(),
+            );
 
             let ideal_len = match axis.is_vertical() {
                 false => self.ideal_len.cols,
@@ -486,7 +498,8 @@ impl_scope! {
 
             let avail = rect.size - self.frame_size;
             let child_size = Size(avail.0 / self.ideal_len.cols, avail.1 / self.ideal_len.rows)
-                .min(self.child_size_ideal).max(self.child_size_min);
+                .min(self.child_size_ideal)
+                .max(self.child_size_min);
             self.child_size = child_size;
 
             let (d_cols, d_rows) = self.data.len();
@@ -499,9 +512,8 @@ impl_scope! {
             } else {
                 // Case: reallocate children when scrolling
                 let skip = child_size + self.child_inter_margin;
-                vis_len = data_len.min(
-                    (rect.size + skip - Size::splat(1)).cwise_div(skip) + Size::splat(1)
-                );
+                vis_len = data_len
+                    .min((rect.size + skip - Size::splat(1)).cwise_div(skip) + Size::splat(1));
                 req_widgets = usize::conv(vis_len.0) * usize::conv(vis_len.1);
             }
             self.alloc_len = Dim {
@@ -510,7 +522,11 @@ impl_scope! {
             };
 
             if avail_widgets < req_widgets {
-                log::debug!("set_rect: allocating widgets (old len = {}, new = {})", avail_widgets, req_widgets);
+                log::debug!(
+                    "set_rect: allocating widgets (old len = {}, new = {})",
+                    avail_widgets,
+                    req_widgets
+                );
                 self.widgets.reserve(req_widgets - avail_widgets);
                 for _ in avail_widgets..req_widgets {
                     let widget = self.driver.make();
@@ -568,7 +584,10 @@ impl_scope! {
             // widgets (this allows resource loading which may affect size.)
             self.data_ver = self.data.version();
             if self.widgets.is_empty() && !self.data.is_empty() {
-                let cols: Vec<_> = self.data.col_iter_limit(self.ideal_len.cols.cast()).collect();
+                let cols: Vec<_> = self
+                    .data
+                    .col_iter_limit(self.ideal_len.cols.cast())
+                    .collect();
                 let rows = self.data.row_iter_limit(self.ideal_len.rows.cast());
                 let lbound = cols.len() * rows.size_hint().0;
                 log::debug!("configure: allocating {} widgets", lbound);
@@ -608,7 +627,7 @@ impl_scope! {
             let (ci, ri) = if let Some(index) = from {
                 let (ci, ri) = solver.child_to_data(index);
                 if !reverse {
-                    if ci + 1 < d_cols{
+                    if ci + 1 < d_cols {
                         (ci + 1, ri)
                     } else if ri + 1 < d_rows {
                         (0, ri + 1)
@@ -738,9 +757,7 @@ impl_scope! {
                         C::Up if ri > 0 => Some((ci, ri - 1)),
                         C::Right | C::WordRight if ci < last_col => Some((ci + 1, ri)),
                         C::Down if ri < last_row => Some((ci, ri + 1)),
-                        C::PageUp if ri > 0 => {
-                            Some((ci, ri.saturating_sub(solver.row_len / 2)))
-                        }
+                        C::PageUp if ri > 0 => Some((ci, ri.saturating_sub(solver.row_len / 2))),
                         C::PageDown if ri < last_row => {
                             Some((ci, (ri + solver.row_len / 2).min(last_row)))
                         }
@@ -749,19 +766,23 @@ impl_scope! {
                     };
                     return if let Some((ci, ri)) = data {
                         // Set nav focus and update scroll position
-                        let (rect, action) = self.scroll.focus_rect(solver.rect(ci, ri), self.core.rect);
+                        let (rect, action) =
+                            self.scroll.focus_rect(solver.rect(ci, ri), self.core.rect);
                         if !action.is_empty() {
                             *mgr |= action;
                             solver = mgr.config_mgr(|mgr| self.update_widgets(mgr));
                         }
 
                         let index = solver.data_to_child(ci, ri);
-                        #[cfg(debug_assertions)] {
-                            let rk = self.data
+                        #[cfg(debug_assertions)]
+                        {
+                            let rk = self
+                                .data
                                 .row_iter_from(ri, 1)
                                 .next()
                                 .expect("data row len > data.row_iter_vec len");
-                            let ck = self.data
+                            let ck = self
+                                .data
                                 .col_iter_from(ci, 1)
                                 .next()
                                 .expect("data col len > data.col_iter_vec len");
@@ -782,7 +803,9 @@ impl_scope! {
                 _ => (), // fall through to scroll handler
             }
 
-            let (moved, r) = self.scroll.scroll_by_event(mgr, event, self.id(), self.core.rect);
+            let (moved, r) = self
+                .scroll
+                .scroll_by_event(mgr, event, self.id(), self.core.rect);
             if moved {
                 mgr.config_mgr(|mgr| self.update_widgets(mgr));
             }

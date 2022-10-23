@@ -186,11 +186,7 @@ where
         }
 
         let outer_col = self.cols.background;
-        let inner_col = if nav_focus {
-            self.cols.accent_soft
-        } else {
-            outer_col
-        };
+        let inner_col = if nav_focus { self.cols.accent_soft } else { outer_col };
         self.draw
             .shaded_square_frame(outer, inner, NORMS_SUNK, outer_col, inner_col);
 

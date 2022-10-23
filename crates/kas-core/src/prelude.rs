@@ -8,10 +8,8 @@
 //! It is recommended to use `kas::prelude` instead, which is an extension of
 //! this crate's prelude.
 
-#[doc(no_inline)]
-pub use crate::cast::traits::*;
-#[doc(no_inline)]
-pub use crate::class::*;
+#[doc(no_inline)] pub use crate::cast::traits::*;
+#[doc(no_inline)] pub use crate::class::*;
 #[doc(no_inline)]
 pub use crate::dir::{Direction, Directional};
 #[doc(no_inline)]
@@ -22,16 +20,12 @@ pub use crate::geom::{Coord, Offset, Rect, Size};
 pub use crate::layout::{Align, AlignPair, AxisInfo, SizeRules, Stretch};
 #[doc(no_inline)]
 pub use crate::macros::{autoimpl, impl_default, impl_scope, singleton, widget, widget_index};
-#[doc(no_inline)]
-pub use crate::text::AccelString;
+#[doc(no_inline)] pub use crate::text::AccelString;
 #[doc(no_inline)]
 pub use crate::text::{EditableTextApi, Text, TextApi, TextApiExt};
-#[doc(no_inline)]
-pub use crate::theme::{DrawMgr, SizeMgr};
-#[doc(no_inline)]
-pub use crate::TkAction;
-#[doc(no_inline)]
-pub use crate::WidgetId;
+#[doc(no_inline)] pub use crate::theme::{DrawMgr, SizeMgr};
+#[doc(no_inline)] pub use crate::TkAction;
+#[doc(no_inline)] pub use crate::WidgetId;
 #[doc(no_inline)]
 pub use crate::{HasScrollBars, ScrollBarMode, Scrollable};
 #[doc(no_inline)]

@@ -54,8 +54,7 @@
 //! [`Unused`]: Response::Unused
 
 pub mod config;
-#[cfg(not(feature = "winit"))]
-mod enums;
+#[cfg(not(feature = "winit"))] mod enums;
 mod events;
 mod manager;
 mod response;
@@ -68,13 +67,10 @@ use std::fmt::Debug;
 
 #[cfg(feature = "winit")]
 pub use winit::event::{ModifiersState, MouseButton, VirtualKeyCode};
-#[cfg(feature = "winit")]
-pub use winit::window::CursorIcon;
+#[cfg(feature = "winit")] pub use winit::window::CursorIcon;
 
-#[allow(unused)]
-use crate::Widget;
-#[doc(no_inline)]
-pub use config::Config;
+#[allow(unused)] use crate::Widget;
+#[doc(no_inline)] pub use config::Config;
 #[cfg(not(feature = "winit"))]
 pub use enums::{CursorIcon, ModifiersState, MouseButton, VirtualKeyCode};
 pub use events::*;

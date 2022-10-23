@@ -164,7 +164,7 @@ impl_scope! {
         where
             F: Fn(&mut EventMgr, bool) + 'static,
         {
-             MenuToggle {
+            MenuToggle {
                 core: self.core,
                 checkbox: self.checkbox.on_toggle(f),
                 label: self.label,

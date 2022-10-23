@@ -69,7 +69,12 @@ impl_scope! {
         fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
             self.core.rect = rect;
             let align = Some(AlignPair::new(Align::Center, Align::Center));
-            mgr.text_set_size(&mut self.loading_text, TextClass::Label(false), rect.size, align);
+            mgr.text_set_size(
+                &mut self.loading_text,
+                TextClass::Label(false),
+                rect.size,
+                align,
+            );
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
@@ -95,7 +100,9 @@ impl_scope! {
         }
     }
     impl Window for Self {
-        fn title(&self) -> &str { "Async event demo" }
+        fn title(&self) -> &str {
+            "Async event demo"
+        }
     }
 }
 

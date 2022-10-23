@@ -6,12 +6,10 @@
 //! Drawing APIs — draw interface
 
 use super::{color::Rgba, AnimationState};
-#[allow(unused)]
-use super::{DrawRounded, DrawRoundedImpl};
+#[allow(unused)] use super::{DrawRounded, DrawRoundedImpl};
 use super::{DrawShared, DrawSharedImpl, ImageId, PassId, PassType, SharedState};
 use crate::geom::{Offset, Quad, Rect};
-#[allow(unused)]
-use crate::text::TextApi;
+#[allow(unused)] use crate::text::TextApi;
 use crate::text::{Effect, TextDisplay};
 use std::any::Any;
 use std::time::Instant;

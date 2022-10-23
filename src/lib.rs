@@ -49,8 +49,7 @@ pub mod prelude {
 
 pub use kas_core::*;
 
-#[doc(inline)]
-pub extern crate kas_widgets as widgets;
+#[doc(inline)] pub extern crate kas_widgets as widgets;
 
 #[cfg(any(feature = "view"))]
 #[cfg_attr(doc_cfg, doc(cfg(feature = "view")))]

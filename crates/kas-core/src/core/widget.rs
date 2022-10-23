@@ -15,14 +15,11 @@ use crate::util::IdentifyWidget;
 use crate::WidgetId;
 use kas_macros::autoimpl;
 
-#[allow(unused)]
-use crate::event::EventState;
+#[allow(unused)] use crate::event::EventState;
 #[allow(unused)]
 use crate::layout::{self, AlignPair, AutoLayout};
-#[allow(unused)]
-use crate::TkAction;
-#[allow(unused)]
-use kas_macros as macros;
+#[allow(unused)] use crate::TkAction;
+#[allow(unused)] use kas_macros as macros;
 
 /// Base functionality for [`Widget`]s
 ///
@@ -309,8 +306,8 @@ pub trait Layout {
 /// and [`kas_widgets` code](https://github.com/kas-gui/kas/tree/master/crates/kas-widgets).
 /// ```
 /// # extern crate kas_core as kas;
-/// use kas::prelude::*;
 /// use kas::event;
+/// use kas::prelude::*;
 /// use kas::theme::TextClass;
 /// use std::fmt::Debug;
 ///

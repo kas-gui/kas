@@ -99,16 +99,12 @@ pub enum Direction {
 
 impl fmt::Display for Direction {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(
-            f,
-            "{}",
-            match self {
-                Direction::Right => "Right",
-                Direction::Down => "Down",
-                Direction::Left => "Left",
-                Direction::Up => "Up",
-            }
-        )
+        write!(f, "{}", match self {
+            Direction::Right => "Right",
+            Direction::Down => "Down",
+            Direction::Left => "Left",
+            Direction::Up => "Up",
+        })
     }
 }
 

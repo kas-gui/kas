@@ -130,7 +130,8 @@ impl_scope! {
         }
 
         fn find_child_index(&self, id: &WidgetId) -> Option<usize> {
-            id.next_key_after(self.id_ref()).and_then(|k| self.id_map.get(&k).cloned())
+            id.next_key_after(self.id_ref())
+                .and_then(|k| self.id_map.get(&k).cloned())
         }
 
         fn make_child_id(&mut self, child_index: usize) -> WidgetId {

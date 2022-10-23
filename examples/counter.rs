@@ -46,7 +46,9 @@ impl_scope! {
         }
     }
     impl Window for Self {
-        fn title(&self) -> &str { "Counter" }
+        fn title(&self) -> &str {
+            "Counter"
+        }
     }
 }
 

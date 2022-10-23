@@ -14,10 +14,8 @@ use crate::dir::Directional;
 use crate::geom::Size;
 
 // for doc use
-#[allow(unused)]
-use super::FrameRules;
-#[allow(unused)]
-use crate::theme::SizeMgr;
+#[allow(unused)] use super::FrameRules;
+#[allow(unused)] use crate::theme::SizeMgr;
 
 /// Widget sizing information
 ///

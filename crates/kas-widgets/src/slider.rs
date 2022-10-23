@@ -109,7 +109,10 @@ impl_scope! {
         on_move: Option<Rc<dyn Fn(&mut EventMgr, T)>>,
     }
 
-    impl Self where D: Default {
+    impl Self
+    where
+        D: Default,
+    {
         /// Construct a slider
         ///
         /// Values vary within the given `range`. When keyboard navigation
@@ -258,10 +261,13 @@ impl_scope! {
 
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            self.align.set_component(axis, match axis.is_vertical() == self.direction.is_vertical() {
-                false => axis.align_or_center(),
-                true => axis.align_or_stretch(),
-            });
+            self.align.set_component(
+                axis,
+                match axis.is_vertical() == self.direction.is_vertical() {
+                    false => axis.align_or_center(),
+                    true => axis.align_or_stretch(),
+                },
+            );
             size_mgr.feature(Feature::Slider(self.direction()), axis)
         }
 

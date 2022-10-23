@@ -15,8 +15,7 @@
 //!
 //! [KAS Text]: https://github.com/kas-gui/kas-text/
 
-#[allow(unused)]
-use kas::{event::ConfigMgr, Layout};
+#[allow(unused)] use kas::{event::ConfigMgr, Layout};
 
 pub use kas_text::*;
 

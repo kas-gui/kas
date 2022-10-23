@@ -5,8 +5,7 @@
 
 //! Alignment types
 
-#[allow(unused)]
-use super::Stretch; // for doc-links
+#[allow(unused)] use super::Stretch; // for doc-links
 use crate::dir::Directional;
 use crate::geom::{Rect, Size};
 

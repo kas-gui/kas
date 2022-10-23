@@ -37,14 +37,12 @@
 
 pub mod color;
 
-#[allow(clippy::module_inception)]
-mod draw;
+#[allow(clippy::module_inception)] mod draw;
 mod draw_rounded;
 mod draw_shared;
 
 use crate::cast::Cast;
-#[allow(unused)]
-use crate::theme::DrawMgr;
+#[allow(unused)] use crate::theme::DrawMgr;
 
 pub use draw::{Draw, DrawIface, DrawImpl};
 pub use draw_rounded::{DrawRounded, DrawRoundedImpl};

@@ -20,8 +20,7 @@
 
 extern crate self as kas;
 
-#[macro_use]
-extern crate bitflags;
+#[macro_use] extern crate bitflags;
 
 pub extern crate easy_cast as cast;
 pub extern crate kas_macros as macros;

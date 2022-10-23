@@ -51,8 +51,7 @@ use crate::geom::{Coord, Rect};
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::WidgetId;
 
-#[allow(unused)]
-use crate::Layout;
+#[allow(unused)] use crate::Layout;
 
 pub use align::{Align, AlignHints, AlignPair};
 pub use grid_solver::{DefaultWithLen, GridChildInfo, GridDimensions, GridSetter, GridSolver};

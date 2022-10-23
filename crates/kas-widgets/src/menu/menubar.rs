@@ -26,7 +26,10 @@ impl_scope! {
         delayed_open: Option<WidgetId>,
     }
 
-    impl Self where D: Default {
+    impl Self
+    where
+        D: Default,
+    {
         /// Construct a menubar
         ///
         /// Note: it appears that `MenuBar::new(..)` causes a type inference error,
@@ -133,7 +136,11 @@ impl_scope! {
                     start_id,
                     coord,
                 } => {
-                    if start_id.as_ref().map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
+                    if start_id
+                        .as_ref()
+                        .map(|id| self.is_ancestor_of(id))
+                        .unwrap_or(false)
+                    {
                         if source.is_primary() {
                             let any_menu_open = self.widgets.iter().any(|w| w.menu_is_open());
                             let press_in_the_bar = self.rect().contains(coord);
@@ -193,7 +200,12 @@ impl_scope! {
                     }
                     Response::Used
                 }
-                Event::PressEnd { coord, end_id, success, .. } if success => {
+                Event::PressEnd {
+                    coord,
+                    end_id,
+                    success,
+                    ..
+                } if success => {
                     let id = match end_id {
                         Some(x) => x,
                         None => return Response::Used,
@@ -241,8 +253,16 @@ impl_scope! {
     }
 
     impl Self {
-        fn set_menu_path(&mut self, mgr: &mut EventMgr, target: Option<&WidgetId>, set_focus: bool) {
-            log::trace!("set_menu_path: self={}, target={target:?}, set_focus={set_focus}", self.identify());
+        fn set_menu_path(
+            &mut self,
+            mgr: &mut EventMgr,
+            target: Option<&WidgetId>,
+            set_focus: bool,
+        ) {
+            log::trace!(
+                "set_menu_path: self={}, target={target:?}, set_focus={set_focus}",
+                self.identify()
+            );
             self.delayed_open = None;
             for i in 0..self.widgets.len() {
                 self.widgets[i].set_menu_path(mgr, target, set_focus);

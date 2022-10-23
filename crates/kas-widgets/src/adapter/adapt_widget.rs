@@ -12,8 +12,7 @@ use kas::geom::Vec2;
 use kas::layout::{AxisInfo, SizeRules};
 use kas::text::AccelString;
 use kas::theme::SizeMgr;
-#[allow(unused)]
-use kas::Layout;
+#[allow(unused)] use kas::Layout;
 use kas::Widget;
 use std::fmt::Debug;
 
@@ -54,23 +53,22 @@ pub trait AdaptWidget: Widget {
     /// widget, for example:
     ///```
     /// # use kas_widgets::adapter::AdaptWidget;
-    /// use kas_widgets::Label;
     /// use kas::prelude::*;
+    /// use kas_widgets::Label;
     ///
-    /// let label = Label::new("0").with_reserve(|size_mgr, axis| {
-    ///     Label::new("00000").size_rules(size_mgr, axis)
-    /// });
-    ///```
+    /// let label = Label::new("0")
+    ///     .with_reserve(|size_mgr, axis| Label::new("00000").size_rules(size_mgr, axis));
+    /// ```
     /// Alternatively one may use virtual pixels:
     ///```
     /// # use kas_widgets::adapter::AdaptWidget;
-    /// use kas_widgets::Filler;
     /// use kas::prelude::*;
+    /// use kas_widgets::Filler;
     ///
     /// let label = Filler::new().with_reserve(|mgr, axis| {
     ///     kas::layout::LogicalSize(5.0, 5.0).to_rules(axis, mgr.scale_factor())
     /// });
-    ///```
+    /// ```
     /// The resulting `SizeRules` will be the max of those for the inner widget
     /// and the result of the `reserve` closure.
     #[must_use]
