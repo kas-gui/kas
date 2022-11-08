@@ -11,22 +11,17 @@ jobs:
     name: Nightly, format and Doc
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@nightly
         with:
-          profile: minimal
-          toolchain: nightly
-          override: true
           components: rustfmt, clippy
       - name: Install dependencies
         run: sudo apt-get install -y libxkbcommon-dev libxcb-shape0-dev libxcb-xfixes0-dev
 
       - name: Rustfmt check
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+        run: |
+          cargo fmt --all -- --check
       - name: Build docs
         run: cargo doc --all-features --all --no-deps
       - name: Test kas-macros
@@ -75,13 +70,11 @@ jobs:
             toolchain: beta
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: ${{ matrix.toolchain }}
-          override: true
           components: clippy
       - name: Install dependencies
         if: matrix.os == 'ubuntu-latest'
