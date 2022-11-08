@@ -279,7 +279,7 @@ impl BitsIter {
     fn new(bits: u64) -> Self {
         assert!((bits & USE_BITS) != 0);
         let len = block_len(bits);
-        BitsIter(len as u8, bits & MASK_BITS)
+        BitsIter(len, bits & MASK_BITS)
     }
 }
 impl Iterator for BitsIter {

@@ -139,6 +139,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             width: size.0.cast(),
             height: size.1.cast(),
             present_mode: wgpu::PresentMode::Mailbox,
+            alpha_mode: wgpu::CompositeAlphaMode::Auto,
         };
         surface.configure(&shared.draw.draw.device, &sc_desc);
 

@@ -77,7 +77,7 @@ impl_scope! {
             self.scaling.size = self
                 .tree
                 .as_ref()
-                .map(|tree| LogicalSize::conv(tree.svg_node().size.to_screen_size().dimensions()))
+                .map(|tree| LogicalSize::conv(tree.size.to_screen_size().dimensions()))
                 .unwrap_or(LogicalSize(128.0, 128.0));
         }
 
