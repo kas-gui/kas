@@ -50,7 +50,15 @@ jobs:
       - name: Test examples/mandlebrot
         run: cargo test --manifest-path examples/mandlebrot/Cargo.toml --all-features
       - name: Clippy
-        run: cargo clippy --all --features nightly -- -W clippy::all -A clippy::collapsible-if -A clippy::collapsible_else_if -A clippy::single_match -A clippy::comparison_chain -A clippy::unit_arg
+        run: |
+          # TODO: allow manual_clamp in source code, when lint is stable
+          cargo clippy --all --features nightly -- -W clippy::all \
+          -A clippy::collapsible-if \
+          -A clippy::collapsible_else_if \
+          -A clippy::single_match \
+          -A clippy::comparison_chain \
+          -A clippy::manual_clamp \
+          -A clippy::unit_arg
 
   test:
     name: Test

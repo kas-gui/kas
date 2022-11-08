@@ -194,7 +194,7 @@ impl_scope! {
             }
         }
 
-        #[allow(clippy::manual_clamp)]
+        // TODO when stable: #[allow(clippy::manual_clamp)]
         fn update_widgets(&mut self) -> TkAction {
             let len = self.bar_len();
             let total = i64::from(self.max_value) + i64::from(self.handle_value);
