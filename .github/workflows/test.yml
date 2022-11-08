@@ -59,11 +59,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [macos-latest, windows-latest]
-        # TODO: use stable, MSRV
-        toolchain: [beta]
+        toolchain: [stable]
         include:
-          #- os: ubuntu-latest
-            #toolchain: "1.65.0"
+          - os: ubuntu-latest
+            toolchain: "1.65.0"
           - os: ubuntu-latest
             toolchain: beta
 
