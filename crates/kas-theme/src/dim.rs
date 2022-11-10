@@ -15,11 +15,10 @@ use kas::cast::traits::*;
 use kas::dir::Directional;
 use kas::geom::{Rect, Size, Vec2};
 use kas::layout::{AlignPair, AxisInfo, FrameRules, Margins, SizeRules, Stretch};
-use kas::macros::impl_scope;
 use kas::text::{fonts::FontId, TextApi, TextApiExt};
 use kas::theme::{Feature, FrameStyle, MarginStyle, MarkStyle, TextClass, ThemeSize};
 
-impl_scope! {
+kas::impl_scope! {
     /// Parameterisation of [`Dimensions`]
     ///
     /// All dimensions are multiplied by the DPI factor, then rounded to the

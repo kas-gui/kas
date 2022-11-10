@@ -13,7 +13,7 @@ const CRASIT: &str = "Cras sit amet justo ipsum. Aliquam in nunc posuere leo ege
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let window = kas::macros::singleton! {
+    let window = kas::singleton! {
         #[widget{
             layout = grid: {
                 1, 0: "Layout demo";

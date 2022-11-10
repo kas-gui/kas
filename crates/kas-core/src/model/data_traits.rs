@@ -8,8 +8,7 @@
 #[allow(unused)] // doc links
 use crate::event::Event;
 use crate::event::EventMgr;
-use crate::macros::autoimpl;
-use crate::WidgetId;
+use crate::{autoimpl, WidgetId};
 use std::borrow::{Borrow, BorrowMut};
 #[allow(unused)] // doc links
 use std::cell::RefCell;

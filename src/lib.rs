@@ -12,7 +12,7 @@
 //! - [`kas_core`] is re-export at the top-level
 //! - [`easy-cast`](https://docs.rs/easy-cast/0.5) is re-export as [`kas::cast`](cast)
 //! - `kas_macros` is an extended version of [`impl-tools`](https://docs.rs/impl-tools/),
-//!     re-export as [`kas::macros`](macros)
+//!     re-export at the top-level
 //! - [`kas_widgets`](https://docs.rs/kas-widgets/0.11) is re-export as [`kas::widgets`](widgets)
 //! - [`kas_resvg`] is re-export as [`kas::resvg`](resvg) (`resvg` or `tiny-skia` feature)
 //! - [`kas_view`](https://docs.rs/kas-view/0.11) is re-export as [`kas::view`](view) (`view` feature)

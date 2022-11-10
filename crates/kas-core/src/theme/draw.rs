@@ -10,9 +10,8 @@ use crate::dir::Direction;
 use crate::draw::{color::Rgb, Draw, DrawShared, ImageId, PassType};
 use crate::event::{ConfigMgr, EventState};
 use crate::geom::{Offset, Rect};
-use crate::macros::autoimpl;
 use crate::text::{TextApi, TextDisplay};
-use crate::{TkAction, Widget, WidgetExt, WidgetId};
+use crate::{autoimpl, TkAction, Widget, WidgetExt, WidgetId};
 use std::convert::AsRef;
 use std::ops::{Bound, Range, RangeBounds};
 use std::time::Instant;
@@ -342,7 +341,7 @@ impl<'a> std::ops::BitOrAssign<TkAction> for DrawMgr<'a> {
 ///
 /// Most themes will not want to implement *everything*, but rather derive
 /// not-explicitly-implemented methods from a base theme. This may be achieved
-/// with the [`kas::macros::extends`](crate::macros::extends) macro:
+/// with the [`kas::extends`](crate::extends) macro:
 /// ```ignore
 /// #[extends(ThemeDraw, base = self.base())]
 /// impl ThemeDraw {
