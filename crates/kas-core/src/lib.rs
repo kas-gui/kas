@@ -7,7 +7,7 @@
 //!
 //! This core library provides:
 //!
-//! -   the [`Widget`] trait family, with [`macros`] to implement them
+//! -   the [`Widget`] trait family, along with the [`widget`] macro to implement them
 //! -   high-level themable and mid-level [`draw`] APIs
 //! -   [`event`] handling code
 //! -   [`geom`]-etry types and widget [`layout`] solvers
@@ -23,7 +23,6 @@ extern crate self as kas;
 #[macro_use] extern crate bitflags;
 
 pub extern crate easy_cast as cast;
-pub extern crate kas_macros as macros;
 
 // internal modules:
 mod core;
@@ -52,4 +51,5 @@ pub mod util;
 // export most important members directly for convenience and less redundancy:
 pub use crate::core::*;
 pub use crate::toolkit::*;
+pub use kas_macros::*;
 pub use root::RootWidget;

@@ -222,7 +222,7 @@ pub trait Layout {
     /// but failure to do so should not cause a fatal error.
     ///
     /// The default implementation suffices for widgets without children as well
-    /// as widgets using the `layout` property of [`#[widget]`](crate::macros::widget).
+    /// as widgets using the `layout` property of [`#[widget]`](crate::widget).
     /// Custom implementations may be required if:
     ///
     /// -   A custom [`Layout`] implementation is used

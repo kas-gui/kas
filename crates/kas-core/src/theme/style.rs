@@ -6,12 +6,11 @@
 //! Theme style components
 
 use crate::dir::Direction;
-use crate::macros::impl_default;
 
 /// Margin size
 ///
 /// Default value: [`MarginStyle::Large`].
-#[impl_default(MarginStyle::Large)]
+#[crate::impl_default(MarginStyle::Large)]
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum MarginStyle {
     /// No margins

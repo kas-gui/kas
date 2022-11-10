@@ -20,7 +20,7 @@ struct MsgStart;
 // Unlike most examples, we encapsulate the GUI configuration into a function.
 // There's no reason for this, but it demonstrates usage of Toolkit::add_boxed
 fn make_window() -> Box<dyn kas::Window> {
-    Box::new(kas::macros::singleton! {
+    Box::new(kas::singleton! {
         #[widget{
             layout = row: [
                 self.display,

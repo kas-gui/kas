@@ -5,8 +5,8 @@
 
 //! Common pipeline parts
 
+use kas::autoimpl;
 use kas::cast::Conv;
-use kas::macros::autoimpl;
 use std::mem::size_of;
 use std::num::NonZeroU64;
 use std::ops::Range;

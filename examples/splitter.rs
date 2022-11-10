@@ -21,7 +21,7 @@ fn main() -> kas::shell::Result<()> {
     let panes = (0..2).map(|n| EditField::new(format!("Pane {}", n + 1)).with_multi_line(true));
     let panes = RowSplitter::<EditField>::new(panes.collect());
 
-    let window = kas::macros::singleton! {
+    let window = kas::singleton! {
         #[widget{
             layout = column: [
                 row: [

@@ -210,7 +210,7 @@ where
     }
 }
 
-#[kas::macros::extends(ThemeDraw, base=self.as_flat())]
+#[kas::extends(ThemeDraw, base=self.as_flat())]
 impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS>
 where
     DS::Draw: DrawRoundedImpl + DrawShadedImpl,

@@ -8,10 +8,10 @@
 use std::ops::Deref;
 
 use super::{Feature, FrameStyle, MarginStyle, TextClass};
+use crate::autoimpl;
 use crate::dir::Directional;
 use crate::geom::{Rect, Size};
 use crate::layout::{AlignPair, AxisInfo, FrameRules, Margins, SizeRules};
-use crate::macros::autoimpl;
 use crate::text::TextApi;
 
 #[allow(unused)] use crate::text::TextApiExt;

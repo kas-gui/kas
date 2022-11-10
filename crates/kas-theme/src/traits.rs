@@ -7,9 +7,8 @@
 
 use kas::draw::{color, DrawIface, DrawSharedImpl, SharedState};
 use kas::event::EventState;
-use kas::macros::autoimpl;
 use kas::theme::{ThemeControl, ThemeDraw, ThemeSize};
-use kas::TkAction;
+use kas::{autoimpl, TkAction};
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
 
