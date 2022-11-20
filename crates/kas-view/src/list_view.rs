@@ -26,7 +26,7 @@ struct WidgetData<K, W> {
 }
 
 impl_scope! {
-    /// List view controller
+    /// View controller for 1D indexable data (list)
     ///
     /// This widget supports a view over a list of shared data items.
     ///

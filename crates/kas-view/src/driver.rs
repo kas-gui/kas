@@ -5,12 +5,17 @@
 
 //! View drivers
 //!
-//! This module provides the [`Driver`] trait along with three classes of
-//! implementations:
+//! The [`Driver`] trait is used as a binding between data models and
+//! controllers. Implementations define the view (using widgets) and
+//! message handling (mapping widget messages to actions).
 //!
-//! -   [`View`], [`NavView`] provide "default views" over simple content
+//! Several implementations are provided to cover simpler cases:
+//!
+//! -   [`View`] is the default, providing a simple read-only view over content
+//! -   [`NavView`] is like [`View`], but using keyboard navigable widgets
+//! -   [`EditBox`], [`CheckBox`] etc. provide an interactive view over common
+//!     data types using the like-named widgets
 //! -   [`EventConfig`] provides an editor over a specific complex data type
-//! -   Other types construct a (parametrized) input control over simple data
 //!
 //! Intended usage is to import the module name rather than its contents, thus
 //! allowing referal to e.g. `driver::View`.
@@ -96,7 +101,7 @@ pub trait Driver<Item, Data: SharedData<Item = Item>>: Debug {
     ///     parameter is not used.
     /// 3.  On user input actions, view widgets send a "trigger" message (likely
     ///     a unit struct). The implementation of this method retrieves this
-    ///     message updates `data` using values read from `widget`.
+    ///     message and updates `data` using values read from `widget`.
     ///
     /// See, for example, the implementation for [`CheckButton`]: the `make`
     /// method assigns a state-change handler which `on_message` uses to update

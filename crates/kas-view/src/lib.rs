@@ -5,28 +5,29 @@
 
 //! View widgets and shared data
 //!
-//! So called "view widgets" allow separation of data and view. This system has
-//! three parts:
+//! View widgets allow data-oriented design. This is vaguely similar to the
+//! Model-View-Controller pattern or Elm's Model-View-Update design, but with
+//! no direct link between Model and Controller:
 //!
-//! 1.  **Data model** traits are defined by [`kas::model`].
-//! 2.  **Views** are widgets constructed over shared data by a controller.
-//!     The **view controller** is a special widget responsible for constructing
-//!     and managing view widgets over data.
+//! 1.  [`kas::model`] traits describe data **models**:
+//!     [`SingleData`](kas::model::SingleData),
+//!     [`ListData`](kas::model::ListData),
+//!     [`MatrixData`](kas::model::MatrixData)
+//! 2.  [**Drivers**](`driver`) describe how to build a widget view over data
+//!     and (optionally) how to handle **messages** from view widgets
+//! 3.  **Controllers** are special widgets which manage views over data
 //!
-//!     Three controllers are available:
-//!     [`SingleView`], [`ListView`] and [`MatrixView`].
+//! Three controllers are provided by this crate:
 //!
-//!     In the case of [`ListView`] and [`MatrixView`], the controller provides
-//!     additional features: enabling scrolling of content, "paging" (loading
-//!     only visible content) and (optionally) allowing selection of items.
-//! 3.  **Drivers** are the "glue" enabling a view controller to build view
-//!     widget(s) tailored to a specific data type as well as (optionally)
-//!     updating this data in response to widget events.
+//! -   [`SingleView`] constructs a single view over a simple data model
+//! -   [`ListView`] constructs a row or column of views over indexable data
+//! -   [`MatrixView`] constructs a table/sheet of views over two-dimensional
+//!     indexable data
 //!
-//!     If the driver is not explicitly provided, [`driver::View`] is used,
-//!     which provides a read-only view over several data types.
-//!     Other options are available in the [`driver`] module, or [`Driver`] may
-//!     be implemented directly.
+//! Both [`ListView`] and [`MatrixView`] support virtual scrolling: the number
+//! of view widget instances is limited (approximately) to the number required
+//! to cover the visible area, and these are re-used to enable fast scrolling
+//! through large data sets.
 
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 

@@ -13,7 +13,7 @@ use kas::prelude::*;
 use std::borrow::Borrow;
 
 impl_scope! {
-    /// Single view controller
+    /// View controller for 0D data (singe item)
     ///
     /// This widget supports a view over a single shared data item.
     ///

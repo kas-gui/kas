@@ -32,7 +32,7 @@ struct WidgetData<K, W> {
 }
 
 impl_scope! {
-    /// Matrix view controller
+    /// View controller for 2D indexable data (matrix)
     ///
     /// This widget supports a view over a matrix of shared data items.
     ///
