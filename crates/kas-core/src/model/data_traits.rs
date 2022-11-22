@@ -153,6 +153,9 @@ pub trait SharedDataMut: SharedData {
 /// Trait bound for viewable single data
 ///
 /// This is automatically implemented for every type implementing `SharedData<()>`.
+///
+/// Provided implementations: [`SharedRc`](super::SharedRc),
+/// [`SharedArc`](super::SharedArc).
 // TODO(trait aliases): make this an actual trait alias
 pub trait SingleData: SharedData<Key = ()> {}
 impl<T: SharedData<Key = ()>> SingleData for T {}
@@ -160,11 +163,16 @@ impl<T: SharedData<Key = ()>> SingleData for T {}
 /// Trait bound for mutable single data
 ///
 /// This is automatically implemented for every type implementing `SharedDataMut<()>`.
+///
+/// Provided implementations: [`SharedRc`](super::SharedRc),
+/// [`SharedArc`](super::SharedArc).
 // TODO(trait aliases): make this an actual trait alias
 pub trait SingleDataMut: SharedDataMut<Key = ()> {}
 impl<T: SharedDataMut<Key = ()>> SingleDataMut for T {}
 
 /// Trait for viewable data lists
+///
+/// Provided implementations: `[T]`, `Vec<T>`.
 #[allow(clippy::len_without_is_empty)]
 #[autoimpl(for<T: trait + ?Sized> &T, &mut T, std::rc::Rc<T>, std::sync::Arc<T>, Box<T>)]
 pub trait ListData: SharedData {

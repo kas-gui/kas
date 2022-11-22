@@ -26,7 +26,7 @@ struct WidgetData<K, W> {
 }
 
 impl_scope! {
-    /// List view controller
+    /// View controller for 1D indexable data (list)
     ///
     /// This widget supports a view over a list of shared data items.
     ///
@@ -374,7 +374,9 @@ impl_scope! {
                 let id = self.data.make_id(self.id_ref(), &key);
                 let w = &mut self.widgets[i % solver.cur_len];
                 if w.key.as_ref() != Some(&key) {
-                    // TODO(opt): we only need to configure the widget once
+                    // Reset widgets to ensure input state such as cursor
+                    // position does not bleed over to next data entry
+                    w.widget = self.driver.make();
                     mgr.configure(id, &mut w.widget);
 
                     if let Some(item) = self.data.borrow(&key) {

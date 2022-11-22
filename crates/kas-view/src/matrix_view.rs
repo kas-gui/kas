@@ -32,7 +32,7 @@ struct WidgetData<K, W> {
 }
 
 impl_scope! {
-    /// Matrix view controller
+    /// View controller for 2D indexable data (matrix)
     ///
     /// This widget supports a view over a matrix of shared data items.
     ///
@@ -350,7 +350,11 @@ impl_scope! {
                     let id = self.data.make_id(self.id_ref(), &key);
                     let w = &mut self.widgets[i];
                     if w.key.as_ref() != Some(&key) {
+                        // Reset widgets to ensure input state such as cursor
+                        // position does not bleed over to next data entry
+                        w.widget = self.driver.make();
                         mgr.configure(id, &mut w.widget);
+
                         if let Some(item) = self.data.borrow(&key) {
                             action |= self.driver.set(&mut w.widget, &key, item.borrow());
                             w.key = Some(key);
