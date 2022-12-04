@@ -15,10 +15,9 @@ use chrono::prelude::*;
 use std::f32::consts::PI;
 use std::time::Duration;
 
-use kas::draw::{color, Draw, DrawIface, DrawRounded, PassType};
+use kas::draw::{color, Draw, DrawRounded, PassType};
 use kas::geom::{Offset, Quad, Rect, Vec2};
 use kas::prelude::*;
-use kas::shell::draw::DrawPipe;
 
 impl_scope! {
     #[derive(Clone, Debug)]
@@ -72,10 +71,7 @@ impl_scope! {
 
             // We use the low-level draw device to draw our clock. This means it is
             // not themeable, but gives us much more flexible draw routines.
-            let draw = draw.draw_device();
-            // Rust does not (yet!) support downcast to trait-object, thus we must use the shell's
-            // DrawPipe (which is otherwise an implementation detail). This supports DrawRounded.
-            let mut draw = DrawIface::<DrawPipe<()>>::downcast_from(draw).unwrap();
+            let mut draw = draw.draw_iface::<kas::shell::draw::DrawPipe<()>>().unwrap();
 
             let rect = self.core.rect;
             let quad = Quad::conv(rect);

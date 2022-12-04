@@ -7,7 +7,8 @@
 
 use super::{FrameStyle, MarkStyle, SizeMgr, TextClass, ThemeSize};
 use crate::dir::Direction;
-use crate::draw::{color::Rgb, Draw, DrawShared, ImageId, PassType};
+use crate::draw::color::Rgb;
+use crate::draw::{Draw, DrawIface, DrawShared, DrawSharedImpl, ImageId, PassType};
 use crate::event::{ConfigMgr, EventState};
 use crate::geom::{Offset, Rect};
 use crate::text::{TextApi, TextDisplay};
@@ -120,6 +121,13 @@ impl<'a> DrawMgr<'a> {
     /// to downcast with [`crate::draw::DrawIface::downcast_from`].
     pub fn draw_device(&mut self) -> &mut dyn Draw {
         self.h.components().1
+    }
+
+    /// Access the low-level draw device (implementation type)
+    ///
+    /// The implementing type must be specified. See [`DrawIface::downcast_from`].
+    pub fn draw_iface<DS: DrawSharedImpl>(&mut self) -> Option<DrawIface<DS>> {
+        DrawIface::downcast_from(self.draw_device())
     }
 
     /// Draw to a new pass
