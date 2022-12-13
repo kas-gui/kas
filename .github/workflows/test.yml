@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ master, '[0-9]+.[0-9]+' ]
 
+permissions:
+  contents: read
+
 jobs:
   nightly:
     name: Nightly, format and Doc
