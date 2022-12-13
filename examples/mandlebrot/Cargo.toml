@@ -1,6 +1,6 @@
 [package]
 name = "kas-mandlebrot"
-version = "0.11.0"
+version = "0.12.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -8,9 +8,9 @@ description = "KAS GUI / Mandlebrot example"
 publish = false
 
 [dependencies]
-kas = { version = "0.11.0", features = ["wgpu"], path = "../.." }
+kas = { version = "0.12.0", features = ["wgpu"], path = "../.." }
 chrono = "0.4"
-env_logger = "0.9"
+env_logger = "0.10"
 log = "0.4"
 bytemuck = "1.7.0"
 

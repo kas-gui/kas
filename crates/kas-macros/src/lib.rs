@@ -23,7 +23,7 @@ mod widget_index;
 
 /// Implement `Default`
 ///
-/// See [`impl_tools::impl_default`](https://docs.rs/impl-tools/0.5/impl_tools/attr.impl_default.html)
+/// See [`impl_tools::impl_default`](https://docs.rs/impl-tools/0.6/impl_tools/attr.impl_default.html)
 /// for full documentation.
 #[proc_macro_attribute]
 #[proc_macro_error]
@@ -42,7 +42,7 @@ pub fn impl_default(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 /// A variant of the standard `derive` macro
 ///
-/// See [`impl_tools::autoimpl`](https://docs.rs/impl-tools/0.5/impl_tools/attr.autoimpl.html)
+/// See [`impl_tools::autoimpl`](https://docs.rs/impl-tools/0.6/impl_tools/attr.autoimpl.html)
 /// for full documentation.
 ///
 /// The following traits are supported:
@@ -128,7 +128,7 @@ fn find_attr(path: &syn::Path) -> Option<&'static dyn lib::ScopeAttr> {
 /// [rustfmt#5254](https://github.com/rust-lang/rustfmt/issues/5254),
 /// [rustfmt#5538](https://github.com/rust-lang/rustfmt/pull/5538)).
 ///
-/// See [`impl_tools::impl_scope`](https://docs.rs/impl-tools/0.5/impl_tools/macro.impl_scope.html)
+/// See [`impl_tools::impl_scope`](https://docs.rs/impl-tools/0.6/impl_tools/macro.impl_scope.html)
 /// for full documentation.
 ///
 /// ## Special attribute macros

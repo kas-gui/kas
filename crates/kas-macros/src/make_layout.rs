@@ -200,10 +200,7 @@ fn parse_cell_info(input: ParseStream) -> Result<CellInfo> {
             let lit = input.parse::<LitInt>()?;
             let end = lit.base10_parse()?;
             if start >= end {
-                return Err(Error::new(
-                    lit.span(),
-                    format!("expected value > {}", start),
-                ));
+                return Err(Error::new(lit.span(), format!("expected value > {start}")));
             }
             Ok(end)
         } else {

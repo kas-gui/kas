@@ -47,7 +47,7 @@ fn main() -> kas::shell::Result<()> {
                             let n = self.panes.len() + 1;
                             mgr.config_mgr(|mgr| self.panes.push(
                                 mgr,
-                                EditField::new(format!("Pane {}", n)).with_multi_line(true)
+                                EditField::new(format!("Pane {n}")).with_multi_line(true)
                             ));
                         }
                     };

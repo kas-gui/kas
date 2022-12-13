@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ master, '[0-9]+.[0-9]+' ]
 
+permissions:
+  contents: read
+
 jobs:
   nightly:
     name: Nightly, format and Doc
@@ -48,6 +51,7 @@ jobs:
         run: |
           # TODO: allow manual_clamp in source code, when lint is stable
           cargo clippy --all --features nightly -- -W clippy::all \
+          -A clippy::bool-assert-comparison \
           -A clippy::collapsible-if \
           -A clippy::collapsible_else_if \
           -A clippy::single_match \

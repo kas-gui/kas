@@ -2,6 +2,37 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] — 2022-12-13
+
+Stabilise support for Generic Associated Types (GATs). This requires Rust 1.65.0,
+removes the `gat` feature flag, revises the `SharedData{,Mut}`, `ListData` and
+`MatrixData` traits. #357
+
+### Breaking changes
+
+-   Forbid usage of non-`#[widget]` fields in a widget's `layout` (#356)
+-   Rename `{Text,}Button::on_push` to `on_press` (#356)
+-   Adjust `Driver::set` method; add `Driver::set_mo` (#357)
+-   `impl_singleton!` macro: remove implied `Widget` bound on fields using
+    `impl Trait` syntax, allow usage of `_` and `impl Trait` within types (#359)
+-   Rename `impl_singleton!` to `singleton!`, moving impl to `impl-tools-lib` (#360)
+-   Re-export macros from `kas{,_core}` root instead of `macros` module (#364)
+-   Bump dependencies: `tiny-skia` v0.8.2, `resvg` and `usvg` v0.28.0 (#362, #366)
+-   Bump depencency: `wgpu` v0.14 (#362)
+
+### Other changes
+
+-   Fix tab navigation to loop when first result is `None` (#356)
+-   Fix input state for view widgets with changed data binding by fully
+    resetting the widget (#365)
+-   Add `SingleDataMut` trait (#357)
+-   Add `DrawMgr::draw_iface` (#366)
+-   Bump dependency: `impl-tools-lib` v0.7.0 (#357, #360, #366)
+-   Bump dependencies: `env_logger` v0.10 (#366), `kas-text` v0.6.0 (#366)
+-   New dependency: `maybe-owned` v0.3.4
+-   Move Clippy lint configuration to CI runner (#359)
+-   Adjust code formatting (#361)
+
 ## [0.11.0] — 2022-09-05
 
 With a year since the previous release, KAS v0.11 sees *a lot* of changes. In

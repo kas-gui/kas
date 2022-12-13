@@ -1,6 +1,6 @@
 [package]
 name = "kas"
-version = "0.11.0"
+version = "0.12.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -104,20 +104,20 @@ macros_log = ["kas-core/macros_log"]
 winit = ["kas-core/winit"]
 
 [dependencies]
-kas-core = { version = "0.11.0", path = "crates/kas-core" }
-kas-dylib = { version = "0.11.0", path = "crates/kas-dylib", optional = true }
-kas-widgets = { version = "0.11.0", path = "crates/kas-widgets" }
-kas-view = { version = "0.11.0", path = "crates/kas-view", optional = true }
-kas-resvg = { version = "0.11.0", path = "crates/kas-resvg", optional = true }
+kas-core = { version = "0.12.0", path = "crates/kas-core" }
+kas-dylib = { version = "0.12.0", path = "crates/kas-dylib", optional = true }
+kas-widgets = { version = "0.12.0", path = "crates/kas-widgets" }
+kas-view = { version = "0.12.0", path = "crates/kas-view", optional = true }
+kas-resvg = { version = "0.12.0", path = "crates/kas-resvg", optional = true }
 
 [dependencies.kas-theme]
-version = "0.11.0" # used in doc links
+version = "0.12.0" # used in doc links
 path = "crates/kas-theme"
 optional = true
 default-features = false
 
 [dependencies.kas-wgpu]
-version = "0.11.0"
+version = "0.12.0"
 path = "crates/kas-wgpu"
 optional = true
 default-features = false
@@ -125,7 +125,7 @@ features = ["raster"]
 
 [dev-dependencies]
 chrono = "0.4"
-env_logger = "0.9"
+env_logger = "0.10"
 log = "0.4"
 
 [workspace]
@@ -140,6 +140,3 @@ members = [
     "crates/kas-view",
     "examples/mandlebrot",
 ]
-
-[patch.crates-io]
-kas-text = { git = "https://github.com/kas-gui/kas-text.git", rev = "b62e42fc2d6aa1446a955a769d91d13ba0b45b1e" }

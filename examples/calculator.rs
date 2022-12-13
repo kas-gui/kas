@@ -143,7 +143,7 @@ impl Calculator {
     fn state_str(&self) -> String {
         match &self.state {
             Ok(x) => x.to_string(),
-            Err(e) => format!("{}", e),
+            Err(e) => format!("{e}"),
         }
     }
 

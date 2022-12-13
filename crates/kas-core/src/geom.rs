@@ -282,7 +282,7 @@ impl Size {
     /// In debug mode, this asserts that components are non-negative.
     #[inline]
     pub fn new(w: i32, h: i32) -> Self {
-        debug_assert!(w >= 0 && h >= 0, "Size::new({}, {}): negative value", w, h);
+        debug_assert!(w >= 0 && h >= 0, "Size::new({w}, {h}): negative value");
         Self(w, h)
     }
 
@@ -291,7 +291,7 @@ impl Size {
     /// In debug mode, this asserts that components are non-negative.
     #[inline]
     pub fn splat(n: i32) -> Self {
-        debug_assert!(n >= 0, "Size::splat({}): negative value", n);
+        debug_assert!(n >= 0, "Size::splat({n}): negative value");
         Self(n, n)
     }
 
@@ -382,7 +382,7 @@ impl std::ops::Div<i32> for Size {
 impl Conv<Offset> for Coord {
     #[inline]
     fn try_conv(v: Offset) -> Result<Self> {
-        debug_assert!(v.0 >= 0 && v.1 >= 0, "Coord::conv({:?}): negative value", v);
+        debug_assert!(v.0 >= 0 && v.1 >= 0, "Coord::conv({v:?}): negative value");
         Ok(Self(v.0, v.1))
     }
 }
@@ -393,7 +393,7 @@ impl Conv<Offset> for Coord {
 impl Conv<Offset> for Size {
     #[inline]
     fn try_conv(v: Offset) -> Result<Self> {
-        debug_assert!(v.0 >= 0 && v.1 >= 0, "Size::conv({:?}): negative value", v);
+        debug_assert!(v.0 >= 0 && v.1 >= 0, "Size::conv({v:?}): negative value");
         Ok(Self(v.0, v.1))
     }
 }

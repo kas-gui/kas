@@ -48,11 +48,10 @@ impl Glide {
     fn opt_start(&mut self, timeout: Duration) -> bool {
         if let Glide::Drag(_, samples) = self {
             let now = Instant::now();
-            let start = now - timeout;
             let mut delta = Offset::ZERO;
             let mut t0 = now;
             for (time, d) in samples {
-                if *time >= start {
+                if *time + timeout >= now {
                     t0 = t0.min(*time);
                     delta += *d;
                 }

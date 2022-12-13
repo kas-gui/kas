@@ -33,7 +33,7 @@ fn main() {
     let shaderc = match env::var("SHADERC") {
         Ok(s) => Some(s),
         Err(env::VarError::NotPresent) => None,
-        Err(e) => panic!("failed to read env var SHADERC: {}", e),
+        Err(e) => panic!("failed to read env var SHADERC: {e}"),
     };
 
     let mut pat = env::var("CARGO_MANIFEST_DIR").unwrap();
@@ -68,7 +68,7 @@ fn walk(pat: &str, shaderc: &Option<String>, runners: &mut Vec<Child>) {
             if let Some(bin) = shaderc.as_ref() {
                 let mut cmd = Command::new(bin);
                 cmd.arg(&path).arg("-o").arg(&path_spv);
-                eprintln!("Launching: {:?}", cmd);
+                eprintln!("Launching: {cmd:?}");
                 runners.push(cmd.spawn().expect("shader compiler failed to start"));
             } else {
                 eprintln!(
