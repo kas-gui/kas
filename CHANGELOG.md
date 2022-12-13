@@ -17,7 +17,8 @@ removes the `gat` feature flag, revises the `SharedData{,Mut}`, `ListData` and
     `impl Trait` syntax, allow usage of `_` and `impl Trait` within types (#359)
 -   Rename `impl_singleton!` to `singleton!`, moving impl to `impl-tools-lib` (#360)
 -   Re-export macros from `kas{,_core}` root instead of `macros` module (#364)
--   Bump dependencies: `tiny-skia` v0.8.2, `resvg` and `usvg` v0.25.0, `wgpu` v0.14 (#362)
+-   Bump dependencies: `tiny-skia` v0.8.2, `resvg` and `usvg` v0.28.0 (#362, #366)
+-   Bump depencency: `wgpu` v0.14 (#362)
 
 ### Other changes
 
@@ -25,7 +26,9 @@ removes the `gat` feature flag, revises the `SharedData{,Mut}`, `ListData` and
 -   Fix input state for view widgets with changed data binding by fully
     resetting the widget (#365)
 -   Add `SingleDataMut` trait (#357)
--   Bump dependency: `impl-tools-lib` v0.5.2 (#357, #360)
+-   Add `DrawMgr::draw_iface` (#366)
+-   Bump dependency: `impl-tools-lib` v0.7.0 (#357, #360, #366)
+-   Bump dependencies: `env_logger` v0.10 (#366), `kas-text` v0.6.0 (#366)
 -   New dependency: `maybe-owned` v0.3.4
 -   Move Clippy lint configuration to CI runner (#359)
 -   Adjust code formatting (#361)
