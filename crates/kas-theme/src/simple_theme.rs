@@ -110,7 +110,7 @@ where
     fn init(&mut self, _shared: &mut SharedState<DS>) {
         let fonts = fonts::fonts();
         if let Err(e) = fonts.select_default() {
-            panic!("Error loading font: {}", e);
+            panic!("Error loading font: {e}");
         }
         self.fonts = Some(Rc::new(
             self.config

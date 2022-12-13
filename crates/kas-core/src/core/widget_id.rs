@@ -616,7 +616,7 @@ impl Default for WidgetId {
 impl fmt::Debug for WidgetId {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "WidgetId({})", self)
+        write!(f, "WidgetId({self})")
     }
 }
 
@@ -663,7 +663,7 @@ mod test {
         let c2 = WidgetId::ROOT.make_child(1).make_child(15);
         let c3 = WidgetId::ROOT.make_child(0).make_child(14);
         let c4 = WidgetId::ROOT.make_child(0).make_child(15);
-        println!("c1: {}", c1);
+        println!("c1: {c1}");
         assert!(c1 != c2);
         assert!(c1 != c3);
         assert!(c2 != c3);
@@ -750,7 +750,7 @@ mod test {
     #[test]
     fn test_parent() {
         fn test(seq: &[usize]) {
-            println!("seq: {:?}", seq);
+            println!("seq: {seq:?}");
             let mut id = WidgetId::ROOT;
             let len = seq.len();
             for key in &seq[..len - 1] {
@@ -783,7 +783,7 @@ mod test {
             }
             let v = id.as_u64();
             if v != x {
-                panic!("test({:?}, {:x}): found {:x}", seq, x, v);
+                panic!("test({seq:?}, {x:x}): found {v:x}");
             }
 
             // Every id is its own ancestor:
@@ -804,7 +804,7 @@ mod test {
             for x in seq {
                 id = id.make_child(*x);
             }
-            format!("{}", id)
+            format!("{id}")
         }
 
         assert_eq!(from_seq(&[]), "#");

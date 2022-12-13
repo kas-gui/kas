@@ -469,7 +469,7 @@ impl_scope! {
         fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
             if let Some(iter) = mgr.try_pop_msg() {
                 self.mbrot.iter = iter;
-                *mgr |= self.iters.set_string(format!("{}", iter));
+                *mgr |= self.iters.set_string(format!("{iter}"));
             } else if let Some(ViewUpdate) = mgr.try_pop_msg() {
                 mgr.redraw(self.mbrot.id());
                 *mgr |= self.label.set_string(self.mbrot.loc());

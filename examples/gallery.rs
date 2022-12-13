@@ -63,7 +63,7 @@ fn widgets() -> Box<dyn SetDisabled> {
     let img_rustacean = match Svg::new_path("res/rustacean-flat-happy.svg") {
         Ok(svg) => svg,
         Err(e) => {
-            println!("Failed to load res/rustacean-flat-happy.svg: {}", e);
+            println!("Failed to load res/rustacean-flat-happy.svg: {e}");
             Svg::new(SVG_WARNING)
         }
     };
@@ -214,7 +214,7 @@ fn editor() -> Box<dyn SetDisabled> {
         fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
             let result = Markdown::new(edit.get_str());
             edit.set_error_state(result.is_err());
-            mgr.push_msg(result.unwrap_or_else(|err| Markdown::new(&format!("{}", err)).unwrap()));
+            mgr.push_msg(result.unwrap_or_else(|err| Markdown::new(&format!("{err}")).unwrap()));
         }
     }
 
@@ -331,7 +331,7 @@ fn filter_list() -> Box<dyn SetDisabled> {
                 if let Some(mode) = mgr.try_pop_msg() {
                     *mgr |= self.list.set_selection_mode(mode);
                 } else if let Some(msg) = mgr.try_pop_msg::<SelectionMsg<usize>>() {
-                    println!("Selection message: {:?}", msg);
+                    println!("Selection message: {msg:?}");
                 }
             }
         }
@@ -561,11 +561,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 if let Some(msg) = mgr.try_pop_msg::<Menu>() {
                     match msg {
                         Menu::Theme(name) => {
-                            println!("Theme: {:?}", name);
+                            println!("Theme: {name:?}");
                             mgr.adjust_theme(|theme| theme.set_theme(name));
                         }
                         Menu::Colour(name) => {
-                            println!("Colour scheme: {:?}", name);
+                            println!("Colour scheme: {name:?}");
                             mgr.adjust_theme(|theme| theme.set_scheme(&name));
                         }
                         Menu::Disabled(state) => {
