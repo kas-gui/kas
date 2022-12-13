@@ -77,7 +77,7 @@ version = "0.11.0"
 path = "../kas-macros"
 
 [dependencies.kas-text]
-version = "0.5.0"
+version = "0.6.0"
 
 [dependencies.easy-cast]
 version = "0.5.0" # used in doc links
