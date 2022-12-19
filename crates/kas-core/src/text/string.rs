@@ -18,11 +18,14 @@ use crate::text::{Effect, EffectFlags};
 
 /// An accelerator key string
 ///
-/// This is a label which supports highlighting of accelerator keys.
+/// This is a label which supports highlighting of accelerator keys (elsewhere
+/// called "access keys" or "mnemonics"). This type represents both the
+/// displayed text (via [`FormattableText`] implementation)
+/// and the shortcut (via [`AccelString::keys`]).
 ///
 /// Markup: `&&` translates to `&`; `&x` for any `x` translates to `x` and
 /// identifies `x` as an "accelerator key"; this may be drawn underlined and
-/// may support keyboard access via e.g. `Alt+X`.
+/// may support keyboard access via e.g. `Alt+X`
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AccelString {
     label: String,
@@ -91,6 +94,9 @@ impl AccelString {
     }
 
     /// Get the key bindings
+    ///
+    /// Usually this list has length zero or one, but nothing prevents the use
+    /// multiple mnemonic key bindings.
     pub fn keys(&self) -> &[VK] {
         &self.keys
     }
