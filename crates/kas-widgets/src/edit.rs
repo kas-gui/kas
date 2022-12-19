@@ -252,6 +252,8 @@ impl_scope! {
                 }
             }
 
+            // If coord is over self but not over self.bar, we assign
+            // the event to self.inner without further question.
             Some(self.inner.id())
         }
 
