@@ -45,7 +45,7 @@ impl EventState {
     /// This is a fast check.
     #[inline]
     pub fn show_accel_labels(&self) -> bool {
-        self.modifiers.alt() && !self.char_focus
+        self.modifiers.alt()
     }
 
     /// Get whether this widget has `(char_focus, sel_focus)`
