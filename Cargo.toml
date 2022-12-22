@@ -1,6 +1,6 @@
 [package]
 name = "kas"
-version = "0.12.0"
+version = "0.12.1"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -104,9 +104,9 @@ macros_log = ["kas-core/macros_log"]
 winit = ["kas-core/winit"]
 
 [dependencies]
-kas-core = { version = "0.12.0", path = "crates/kas-core" }
+kas-core = { version = "0.12.1", path = "crates/kas-core" }
 kas-dylib = { version = "0.12.0", path = "crates/kas-dylib", optional = true }
-kas-widgets = { version = "0.12.0", path = "crates/kas-widgets" }
+kas-widgets = { version = "0.12.1", path = "crates/kas-widgets" }
 kas-view = { version = "0.12.0", path = "crates/kas-view", optional = true }
 kas-resvg = { version = "0.12.0", path = "crates/kas-resvg", optional = true }
 
@@ -117,7 +117,7 @@ optional = true
 default-features = false
 
 [dependencies.kas-wgpu]
-version = "0.12.0"
+version = "0.12.1"
 path = "crates/kas-wgpu"
 optional = true
 default-features = false
