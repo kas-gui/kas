@@ -161,7 +161,7 @@ impl RootWidget {
                 (cp + cs + m.0, after)
             }
         };
-        // TODO when stable: #[allow(clippy::manual_clamp)]
+        #[allow(clippy::manual_clamp)]
         let place_out = |rp, rs, cp: i32, cs, ideal: i32| -> (i32, i32) {
             let pos = cp.min(rp + rs - ideal).max(rp);
             let size = ideal.max(cs).min(rs);
