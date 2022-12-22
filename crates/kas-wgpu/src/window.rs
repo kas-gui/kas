@@ -138,7 +138,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             format: crate::draw::RENDER_TEX_FORMAT,
             width: size.0.cast(),
             height: size.1.cast(),
-            present_mode: wgpu::PresentMode::Mailbox,
+            present_mode: wgpu::PresentMode::Fifo,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
         };
         surface.configure(&shared.draw.draw.device, &sc_desc);
