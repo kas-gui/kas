@@ -2,6 +2,15 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.1] — 2022-12-22
+
+### Fixes
+
+-   Use `PresentMode::Fifo`, improving compatibility with older Intel graphics,
+    at the cost of some hangs with multiple windows on X11 (#369)
+-   Fix mouse highlighting for `Spinner` widget (#369)
+-   Show mnemonic (`AccelLabel`) hints with Alt key when edit field has focus (#369)
+
 ## [0.12.0] — 2022-12-13
 
 Stabilise support for Generic Associated Types (GATs). This requires Rust 1.65.0,

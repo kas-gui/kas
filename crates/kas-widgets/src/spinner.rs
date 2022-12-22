@@ -298,14 +298,29 @@ impl_scope! {
     }
 
     impl Layout for Self {
+        fn find_id(&mut self, coord: Coord) -> Option<WidgetId> {
+            if !self.rect().contains(coord) {
+                return None;
+            }
+
+            // If coord is over self but not over b_up or b_down, we assign
+            // the event to self.edit without further question.
+            self.b_up.find_id(coord)
+                .or_else(|| self.b_down.find_id(coord))
+                .or_else(|| Some(self.edit.id()))
+        }
+
         fn draw(&mut self, mut draw: DrawMgr) {
             let bg = if self.edit.has_error() {
                 Background::Error
             } else {
                 Background::Default
             };
-            draw.frame(self.rect(), FrameStyle::EditBox, bg);
-            draw.recurse(&mut self.edit);
+            {
+                let mut draw = draw.re_id(self.edit.id());
+                draw.frame(self.rect(), FrameStyle::EditBox, bg);
+                self.edit.draw(draw);
+            }
             draw.recurse(&mut self.b_up);
             draw.recurse(&mut self.b_down);
         }

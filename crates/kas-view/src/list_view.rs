@@ -471,7 +471,7 @@ impl_scope! {
         }
     }
 
-    // TODO when stable: #[allow(clippy::manual_clamp)]
+    #[allow(clippy::manual_clamp)]
     impl Layout for Self {
         fn size_rules(&mut self, size_mgr: SizeMgr, mut axis: AxisInfo) -> SizeRules {
             // We use an invisible frame for highlighting selections, drawing into the margin
