@@ -6,8 +6,8 @@
 //! Window widgets
 
 use crate::dir::Directional;
-use crate::event::{ConfigMgr, EventMgr};
-use crate::geom::{Coord, Rect, Size};
+use crate::event::{ConfigMgr, EventMgr, Scroll};
+use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::{Layout, TkAction, Widget, WidgetExt, WidgetId, Window, WindowId};
@@ -25,7 +25,7 @@ impl_scope! {
         core: widget_core!(),
         #[widget]
         w: Box<dyn Window>,
-        popups: SmallVec<[(WindowId, kas::Popup); 16]>,
+        popups: SmallVec<[(WindowId, kas::Popup, Offset); 16]>,
     }
 
     impl Layout for RootWidget {
@@ -44,11 +44,11 @@ impl_scope! {
             if !self.core.rect.contains(coord) {
                 return None;
             }
-            for popup in self.popups.iter_mut().rev() {
+            for (_, popup, translation) in self.popups.iter_mut().rev() {
                 if let Some(id) = self
                     .w
-                    .find_widget_mut(&popup.1.id)
-                    .and_then(|w| w.find_id(coord))
+                    .find_widget_mut(&popup.id)
+                    .and_then(|w| w.find_id(coord + *translation))
                 {
                     return Some(id);
                 }
@@ -58,13 +58,21 @@ impl_scope! {
 
         fn draw(&mut self, mut draw: DrawMgr) {
             draw.recurse(&mut self.w);
-            for (_, popup) in &self.popups {
+            for (_, popup, translation) in &self.popups {
                 if let Some(widget) = self.w.find_widget_mut(&popup.id) {
-                    draw.with_overlay(widget.rect(), |mut draw| {
+                    let clip_rect = widget.rect() - *translation;
+                    draw.with_overlay(clip_rect, *translation, |mut draw| {
                         draw.recurse(widget);
                     });
                 }
             }
+        }
+    }
+
+    impl Widget for RootWidget {
+        fn handle_scroll(&mut self, mgr: &mut EventMgr, _: Scroll) {
+            // Something was scrolled; update pop-up translations
+            mgr.config_mgr(|mgr| self.resize_popups(mgr));
         }
     }
 }
@@ -84,7 +92,7 @@ impl RootWidget {
     /// Each [`crate::Popup`] is assigned a [`WindowId`]; both are passed.
     pub fn add_popup(&mut self, mgr: &mut EventMgr, id: WindowId, popup: kas::Popup) {
         let index = self.popups.len();
-        self.popups.push((id, popup));
+        self.popups.push((id, popup, Offset::ZERO));
         mgr.config_mgr(|mgr| self.resize_popup(mgr, index));
         mgr.send_action(TkAction::REDRAW);
     }
@@ -113,18 +121,33 @@ impl RootWidget {
     }
 }
 
-// This is like WidgetChildren::find, but returns a translated Rect.
-fn find_rect(widget: &dyn Widget, id: WidgetId) -> Option<Rect> {
-    match widget.find_child_index(&id) {
-        Some(i) => {
+// Search for a widget by `id`. On success, return that widget's [`Rect`] and
+// the translation of its children.
+fn find_rect(mut widget: &dyn Widget, id: WidgetId) -> Option<(Rect, Offset)> {
+    let mut translation = Offset::ZERO;
+    loop {
+        if let Some(i) = widget.find_child_index(&id) {
             if let Some(w) = widget.get_child(i) {
-                find_rect(w, id).map(|rect| rect - widget.translation())
-            } else {
-                None
+                translation += widget.translation();
+                widget = w;
+                continue;
             }
         }
-        None if widget.eq_id(&id) => Some(widget.rect()),
-        _ => None,
+
+        return if widget.eq_id(&id) {
+            if widget.translation() != Offset::ZERO {
+                // Unvalidated: does this cause issues with the parent's event handlers?
+                log::warn!(
+                    "Parent of pop-up {} has non-zero translation",
+                    widget.identify()
+                );
+            }
+
+            let rect = widget.rect();
+            Some((rect, translation))
+        } else {
+            None
+        };
     }
 }
 
@@ -133,9 +156,11 @@ impl RootWidget {
         // Notation: p=point/coord, s=size, m=margin
         // r=window/root rect, c=anchor rect
         let r = self.core.rect;
-        let popup = &mut self.popups[index].1;
+        let (_, ref mut popup, ref mut translation) = self.popups[index];
 
-        let c = find_rect(&self.w, popup.parent.clone()).unwrap();
+        let (c, t) = find_rect(&self.w, popup.parent.clone()).unwrap();
+        *translation = t;
+        let r = r + t; // work in translated coordinate space
         let widget = self.w.find_widget_mut(&popup.id).unwrap();
         let mut cache = layout::SolveCache::find_constraints(widget, mgr.size_mgr());
         let ideal = cache.ideal(false);

@@ -167,11 +167,11 @@ impl<'a> DrawMgr<'a> {
     /// The theme is permitted to enlarge the `rect` for the purpose of drawing
     /// a frame or shadow around this overlay, thus the
     /// [`Self::get_clip_rect`] may be larger than expected.
-    pub fn with_overlay<F: FnOnce(DrawMgr)>(&mut self, rect: Rect, f: F) {
+    pub fn with_overlay<F: FnOnce(DrawMgr)>(&mut self, rect: Rect, offset: Offset, f: F) {
         let id = self.id.clone();
         self.h.new_pass(
             rect,
-            Offset::ZERO,
+            offset,
             PassType::Overlay,
             Box::new(|h| f(DrawMgr { h, id })),
         );
