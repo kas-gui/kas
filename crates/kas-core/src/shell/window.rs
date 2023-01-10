@@ -231,12 +231,10 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         /*if action.contains(Action::Popup) {
             let widget = &mut self.widget;
             self.ev_state.with(&mut tkw, |mgr| widget.resize_popups(mgr));
-            self.ev_state.region_moved(&mut tkw, &mut *self.widget);
+            self.ev_state.region_moved(&mut *self.widget);
         } else*/
         if action.contains(Action::REGION_MOVED) {
-            let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-            self.ev_state
-                .region_moved(&mut tkw, self.widget.as_widget_mut());
+            self.ev_state.region_moved(&mut self.widget.as_widget_mut());
         }
         if !action.is_empty() {
             self.queued_frame_time = Some(self.next_avail_frame_time);

@@ -85,17 +85,17 @@ impl EventState {
         });
 
         let hover = widget.find_id(self.last_mouse_coord);
-        self.with(shell, |mgr| mgr.set_hover(hover));
+        self.set_hover(hover);
     }
 
     /// Update the widgets under the cursor and touch events
-    pub(crate) fn region_moved(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Widget) {
+    pub(crate) fn region_moved(&mut self, widget: &mut dyn Widget) {
         log::trace!(target: "kas_core::event::manager", "region_moved");
         // Note: redraw is already implied.
 
         // Update hovered widget
         let hover = widget.find_id(self.last_mouse_coord);
-        self.with(shell, |mgr| mgr.set_hover(hover));
+        self.set_hover(hover);
 
         for grab in self.touch_grab.iter_mut() {
             grab.cur_id = widget.find_id(grab.coord);

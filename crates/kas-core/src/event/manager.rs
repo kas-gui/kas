@@ -345,6 +345,20 @@ impl EventState {
         self.char_focus = char_focus;
         self.sel_focus = Some(wid);
     }
+
+    fn set_hover(&mut self, w_id: Option<WidgetId>) {
+        if self.hover != w_id {
+            log::trace!("set_hover: w_id={w_id:?}");
+            if let Some(id) = self.hover.take() {
+                self.pending.push_back(Pending::LostMouseHover(id));
+            }
+            self.hover = w_id.clone();
+
+            if let Some(id) = w_id {
+                self.pending.push_back(Pending::MouseHover(id));
+            }
+        }
+    }
 }
 
 /// A type-erased message
@@ -438,20 +452,6 @@ impl<'a> Drop for EventMgr<'a> {
 
 /// Internal methods
 impl<'a> EventMgr<'a> {
-    fn set_hover(&mut self, w_id: Option<WidgetId>) {
-        if self.hover != w_id {
-            log::trace!("set_hover: w_id={w_id:?}");
-            if let Some(id) = self.hover.take() {
-                self.pending.push_back(Pending::LostMouseHover(id));
-            }
-            self.hover = w_id.clone();
-
-            if let Some(id) = w_id {
-                self.pending.push_back(Pending::MouseHover(id));
-            }
-        }
-    }
-
     fn start_key_event(&mut self, widget: &mut dyn Widget, vkey: VirtualKeyCode, scancode: u32) {
         log::trace!(
             "start_key_event: widget={}, vkey={vkey:?}, scancode={scancode}",
