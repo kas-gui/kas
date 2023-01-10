@@ -347,45 +347,53 @@ impl EventState {
     }
 }
 
-// NOTE: we *want* to store Box<dyn Any + Debug> entries, but Rust doesn't
-// support multi-trait objects. An alternative would be to store Box<dyn Message>
-// where `trait Message: Any + Debug {}`, but Rust does not support
-// trait-object upcast, so we cannot downcast the result.
-//
-// Workaround: pre-format when the message is *pushed*.
-struct Message {
+/// A type-erased message
+///
+/// This is vaguely a wrapper over `Box<dyn (Any + Debug)>`, except that Rust
+/// doesn't (yet) support multi-trait objects.
+pub struct ErasedMessage {
+    // TODO: use trait_upcasting feature when stable: Box<dyn AnyDebug>
+    // where trait AnyDebug: Any + Debug {}. This replaces the fmt field.
     any: Box<dyn Any>,
     #[cfg(debug_assertions)]
     fmt: String,
 }
-impl Message {
-    fn new<M: Any + Debug>(msg: Box<M>) -> Self {
+
+impl ErasedMessage {
+    /// Construct
+    pub fn new<M: Any + Debug>(msg: M) -> Self {
         #[cfg(debug_assertions)]
         let fmt = format!("{}::{:?}", std::any::type_name::<M>(), &msg);
         #[cfg(debug_assertions)]
-        log::debug!(target: "kas_core::event::manager::messages", "push_msg: {fmt}");
-        let any = msg;
-        Message {
+        log::debug!(target: "kas_core::event::ErasedMessage", "push_msg: {fmt}");
+        let any = Box::new(msg);
+        ErasedMessage {
             #[cfg(debug_assertions)]
             fmt,
             any,
         }
     }
 
-    fn is<T: 'static>(&self) -> bool {
+    /// Returns `true` if the inner type is the same as `T`.
+    pub fn is<T: 'static>(&self) -> bool {
         self.any.is::<T>()
     }
 
-    fn downcast<T: 'static>(self) -> Result<Box<T>, Box<dyn Any>> {
+    /// Attempt to downcast self to a concrete type.
+    pub fn downcast<T: 'static>(self) -> Result<Box<T>, Box<dyn Any>> {
         self.any.downcast::<T>()
     }
 
-    fn downcast_ref<T: 'static>(&self) -> Option<&T> {
+    /// Returns some reference to the inner value if it is of type `T`, or `None` if it isn’t.
+    pub fn downcast_ref<T: 'static>(&self) -> Option<&T> {
         self.any.downcast_ref::<T>()
     }
 }
 
-impl std::fmt::Debug for Message {
+/// Support debug formatting
+///
+/// Debug builds only. On release builds, a placeholder message is printed.
+impl std::fmt::Debug for ErasedMessage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         #[cfg(debug_assertions)]
         let r = f.write_str(&self.fmt);
@@ -403,7 +411,7 @@ impl std::fmt::Debug for Message {
 pub struct EventMgr<'a> {
     state: &'a mut EventState,
     shell: &'a mut dyn ShellWindow,
-    messages: Vec<Message>,
+    messages: Vec<ErasedMessage>,
     scroll: Scroll,
     action: Action,
 }
@@ -423,7 +431,7 @@ impl<'a> DerefMut for EventMgr<'a> {
 impl<'a> Drop for EventMgr<'a> {
     fn drop(&mut self) {
         for msg in self.messages.drain(..) {
-            log::warn!(target: "kas_core::event::manager::messages", "unhandled: {msg:?}");
+            log::warn!(target: "kas_core::event::ErasedMessage", "unhandled: {msg:?}");
         }
     }
 }

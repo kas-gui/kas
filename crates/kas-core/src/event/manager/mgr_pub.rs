@@ -503,12 +503,12 @@ impl<'a> EventMgr<'a> {
 
     /// Push a message to the stack
     pub fn push_msg<M: Debug + 'static>(&mut self, msg: M) {
-        self.push_boxed_msg(Box::new(msg));
+        self.push_erased_msg(ErasedMessage::new(msg));
     }
 
-    /// Push a pre-boxed message to the stack
-    pub fn push_boxed_msg<M: Debug + 'static>(&mut self, msg: Box<M>) {
-        self.messages.push(Message::new(msg));
+    /// Push a type-erased message to the stack
+    pub fn push_erased_msg(&mut self, msg: ErasedMessage) {
+        self.messages.push(msg);
     }
 
     /// True if the message stack is non-empty
