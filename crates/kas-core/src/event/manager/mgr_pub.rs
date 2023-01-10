@@ -518,13 +518,13 @@ impl<'a> EventMgr<'a> {
 
     /// Try popping the last message from the stack with the given type
     pub fn try_pop_msg<M: Debug + 'static>(&mut self) -> Option<M> {
-        self.try_pop_boxed_msg().map(|m| *m)
-    }
-
-    /// Try popping the last message from the stack with the given type
-    pub fn try_pop_boxed_msg<M: Debug + 'static>(&mut self) -> Option<Box<M>> {
         if self.messages.last().map(|m| m.is::<M>()).unwrap_or(false) {
-            self.messages.pop().unwrap().downcast::<M>().ok()
+            self.messages
+                .pop()
+                .unwrap()
+                .downcast::<M>()
+                .ok()
+                .map(|m| *m)
         } else {
             None
         }
