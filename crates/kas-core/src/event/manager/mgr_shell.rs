@@ -262,7 +262,7 @@ impl<'a> EventMgr<'a> {
         }
 
         let start = Instant::now();
-        let count = self.send_all(widget, Event::Update { id, payload });
+        let count = self.send_update(widget, id, payload);
         log::debug!(
             target: "kas_core::event::manager",
             "update_widgets: sent Event::Update ({id:?}) to {count} widgets in {}μs",

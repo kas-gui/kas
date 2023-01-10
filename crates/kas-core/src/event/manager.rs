@@ -623,15 +623,26 @@ impl<'a> EventMgr<'a> {
     }
 
     // Traverse widget tree by recursive call, broadcasting
-    fn send_all(&mut self, widget: &mut dyn Widget, event: Event) -> usize {
-        let child_event = event.clone() + widget.translation();
-        widget.pre_handle_event(self, event);
-        let mut count = 1;
-        for index in 0..widget.num_children() {
-            if let Some(w) = widget.get_child_mut(index) {
-                count += self.send_all(w, child_event.clone());
+    #[inline]
+    fn send_update(&mut self, widget: &mut dyn Widget, id: UpdateId, payload: u64) -> usize {
+        fn inner(
+            mgr: &mut EventMgr,
+            widget: &mut dyn Widget,
+            count: &mut usize,
+            id: UpdateId,
+            payload: u64,
+        ) {
+            widget.handle_event(mgr, Event::Update { id, payload });
+            *count += 1;
+            for index in 0..widget.num_children() {
+                if let Some(w) = widget.get_child_mut(index) {
+                    inner(mgr, w, count, id, payload);
+                }
             }
         }
+
+        let mut count = 0;
+        inner(self, widget, &mut count, id, payload);
         count
     }
 
