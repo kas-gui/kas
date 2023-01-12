@@ -132,7 +132,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let mut draw = shared.draw.draw.new_window();
         shared.draw.draw.resize(&mut draw, size);
 
-        let surface = unsafe { shared.instance.create_surface(&window) };
+        let surface = unsafe { shared.draw.draw.instance.create_surface(&window) };
         let sc_desc = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: crate::draw::RENDER_TEX_FORMAT,
@@ -423,7 +423,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let view = frame.texture.create_view(&Default::default());
 
         let clear_color = to_wgpu_color(shared.theme.clear_color());
-        shared.render(&mut self.draw, &view, clear_color);
+        shared.draw.draw.render(&mut self.draw, &view, clear_color);
 
         frame.present();
 

@@ -10,6 +10,7 @@ use wgpu::util::DeviceExt;
 
 use super::*;
 use crate::DrawShadedImpl;
+use crate::{Error, Options};
 use kas::cast::traits::*;
 use kas::draw::color::Rgba;
 use kas::draw::*;
@@ -20,9 +21,23 @@ impl<C: CustomPipe> DrawPipe<C> {
     /// Construct
     pub fn new<CB: CustomPipeBuilder<Pipe = C>>(
         mut custom: CB,
-        (device, queue): (wgpu::Device, wgpu::Queue),
+        options: &Options,
         raster_config: &kas::theme::RasterConfig,
-    ) -> Self {
+    ) -> Result<Self, Error> {
+        let instance = wgpu::Instance::new(options.backend());
+        let adapter_options = options.adapter_options();
+        let req = instance.request_adapter(&adapter_options);
+        let adapter = match futures::executor::block_on(req) {
+            Some(a) => a,
+            None => return Err(Error::NoAdapter),
+        };
+        log::info!("Using graphics adapter: {}", adapter.get_info().name);
+
+        let desc = CB::device_descriptor();
+        let trace_path = options.wgpu_trace_path.as_deref();
+        let req = adapter.request_device(&desc, trace_path);
+        let (device, queue) = futures::executor::block_on(req)?;
+
         let shaders = ShaderManager::new(&device);
 
         // Create staging belt and a local pool
@@ -78,7 +93,8 @@ impl<C: CustomPipe> DrawPipe<C> {
         let custom = custom.build(&device, &bgl_common, RENDER_TEX_FORMAT);
         let text = text_pipe::Pipeline::new(&device, &shaders, &bgl_common, raster_config);
 
-        DrawPipe {
+        Ok(DrawPipe {
+            instance,
             device,
             queue,
             staging_belt,
@@ -92,7 +108,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             round_2col,
             custom,
             text,
-        }
+        })
     }
 
     /// Construct per-window state
