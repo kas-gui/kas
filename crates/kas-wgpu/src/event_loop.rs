@@ -238,7 +238,7 @@ where
 
             RedrawRequested(id) => {
                 if let Some(window) = self.windows.get_mut(&id) {
-                    if window.do_draw(&mut self.shared) {
+                    if window.do_draw(&mut self.shared).is_err() {
                         *control_flow = ControlFlow::Poll;
                     }
                 }
