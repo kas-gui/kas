@@ -6,7 +6,7 @@
 //! `Window` and `WindowList` types
 
 use kas::cast::Cast;
-use kas::draw::{AnimationState, DrawIface, DrawShared, PassId};
+use kas::draw::{AnimationState, DrawShared};
 use kas::event::{ConfigMgr, CursorIcon, EventState, UpdateId};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
@@ -14,15 +14,17 @@ use kas::theme::{DrawMgr, SizeMgr, ThemeControl, ThemeSize};
 use kas::theme::{Theme, Window as _};
 use kas::{Layout, TkAction, WidgetCore, WidgetExt, WindowId};
 use std::time::Instant;
-use winit::dpi::PhysicalSize;
 use winit::error::OsError;
 use winit::event::WindowEvent;
 use winit::event_loop::EventLoopWindowTarget;
 use winit::window::WindowBuilder;
 
-use crate::draw::{CustomPipe, DrawPipe, DrawWindow};
+use crate::draw::{CustomPipe, DrawPipe};
 use crate::shared::{PendingAction, SharedState};
 use crate::ProxyAction;
+
+mod surface;
+use surface::Surface;
 
 /// Per-window data
 pub(crate) struct Window<C: CustomPipe, T: Theme<DrawPipe<C>>> {
@@ -32,12 +34,10 @@ pub(crate) struct Window<C: CustomPipe, T: Theme<DrawPipe<C>>> {
     solve_cache: SolveCache,
     /// The winit window
     pub(crate) window: winit::window::Window,
-    surface: wgpu::Surface,
-    sc_desc: wgpu::SurfaceConfiguration,
-    draw: DrawWindow<C::Window>,
     theme_window: T::Window,
     next_avail_frame_time: Instant,
     queued_frame_time: Option<Instant>,
+    surface: Surface<C>,
 }
 
 // Public functions, for use by the toolkit
@@ -129,19 +129,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             solve_cache.invalidate_rule_cache();
         }
 
-        let mut draw = shared.draw.draw.new_window();
-        shared.draw.draw.resize(&mut draw, size);
-
-        let surface = unsafe { shared.draw.draw.instance.create_surface(&window) };
-        let sc_desc = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: crate::draw::RENDER_TEX_FORMAT,
-            width: size.0.cast(),
-            height: size.1.cast(),
-            present_mode: wgpu::PresentMode::Fifo,
-            alpha_mode: wgpu::CompositeAlphaMode::Auto,
-        };
-        surface.configure(&shared.draw.draw.device, &sc_desc);
+        let surface = Surface::new(&mut shared.draw, size, &window);
 
         let mut r = Window {
             widget,
@@ -149,12 +137,10 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             ev_state,
             solve_cache,
             window,
-            surface,
-            sc_desc,
-            draw,
             theme_window,
             next_avail_frame_time: time,
             queued_frame_time: Some(time),
+            surface,
         };
         r.apply_size(shared, true);
 
@@ -167,7 +153,10 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         // Note: resize must be handled here to re-configure self.surface.
         match event {
             WindowEvent::Destroyed => (),
-            WindowEvent::Resized(size) => self.do_resize(shared, size),
+            WindowEvent::Resized(size) => {
+                self.surface.do_resize(&mut shared.draw, size.cast());
+                self.apply_size(shared, false);
+            }
             WindowEvent::ScaleFactorChanged {
                 scale_factor,
                 new_inner_size,
@@ -181,7 +170,9 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
                 let dpem = self.theme_window.size().dpem();
                 self.ev_state.set_scale_factor(scale_factor, dpem);
                 self.solve_cache.invalidate_rule_cache();
-                self.do_resize(shared, *new_inner_size);
+                self.surface
+                    .do_resize(&mut shared.draw, (*new_inner_size).cast());
+                self.apply_size(shared, false);
             }
             event => {
                 let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
@@ -303,11 +294,6 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
 // Internal functions
 impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
-    /// Swap-chain size
-    fn sc_size(&self) -> Size {
-        Size::new(self.sc_desc.width.cast(), self.sc_desc.height.cast())
-    }
-
     fn reconfigure(&mut self, shared: &mut SharedState<C, T>) {
         let time = Instant::now();
         log::debug!("reconfigure");
@@ -323,7 +309,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
     fn apply_size(&mut self, shared: &mut SharedState<C, T>, first: bool) {
         let time = Instant::now();
-        let rect = Rect::new(Coord::ZERO, self.sc_size());
+        let rect = Rect::new(Coord::ZERO, self.surface.size());
         log::debug!("apply_size: rect={rect:?}");
 
         let solve_cache = &mut self.solve_cache;
@@ -353,31 +339,6 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         );
     }
 
-    fn do_resize(&mut self, shared: &mut SharedState<C, T>, size: PhysicalSize<u32>) {
-        let time = Instant::now();
-        let size = size.cast();
-        if size == self.sc_size() {
-            return;
-        }
-
-        shared.draw.draw.resize(&mut self.draw, size);
-
-        self.sc_desc.width = size.0.cast();
-        self.sc_desc.height = size.1.cast();
-        self.surface
-            .configure(&shared.draw.draw.device, &self.sc_desc);
-
-        // Note that on resize, width adjustments may affect height
-        // requirements; we therefore refresh size restrictions.
-        self.apply_size(shared, false);
-
-        log::trace!(
-            target: "kas_perf::wgpu::window",
-            "do_resize: {}µs (includes apply_size)",
-            time.elapsed().as_micros()
-        );
-    }
-
     /// Draw
     ///
     /// Returns an error when drawing is aborted and further event handling may
@@ -387,11 +348,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         self.next_avail_frame_time = start + shared.frame_dur;
 
         {
-            let draw = DrawIface {
-                draw: &mut self.draw,
-                shared: &mut shared.draw,
-                pass: PassId::new(0),
-            };
+            let draw = self.surface.draw_iface(&mut shared.draw);
 
             let mut draw = shared
                 .theme
@@ -399,46 +356,29 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             let draw_mgr = DrawMgr::new(&mut draw, self.widget.id());
             self.widget.draw(draw_mgr);
         }
+        let time2 = Instant::now();
 
-        self.queued_frame_time = match self.draw.animation {
+        self.queued_frame_time = match self.surface.take_animation_state() {
             AnimationState::None => None,
             AnimationState::Animate => Some(self.next_avail_frame_time),
             AnimationState::Timed(time) => Some(time.max(self.next_avail_frame_time)),
         };
-        self.draw.animation = AnimationState::None;
         self.ev_state.action -= TkAction::REDRAW; // we just drew
         if !self.ev_state.action.is_empty() {
             log::info!("do_draw: abort and enqueue `Self::update` due to non-empty actions");
             return Err(());
         }
 
-        let time2 = Instant::now();
-        let frame = match self.surface.get_current_texture() {
-            Ok(frame) => frame,
-            Err(e) => {
-                log::error!("do_draw: failed to get frame texture: {}", e);
-                // It may be possible to recover by calling surface.configure(...) then retrying
-                // surface.get_current_texture(), but is doing so ever useful?
-                return Err(());
-            }
-        };
-        // TODO: check frame.suboptimal ?
-        let view = frame.texture.create_view(&Default::default());
-
-        let clear_color = to_wgpu_color(shared.theme.clear_color());
-        shared.draw.draw.render(&mut self.draw, &view, clear_color);
-
-        frame.present();
+        let clear_color = shared.theme.clear_color();
+        let text_dur_micros = self.surface.present(&mut shared.draw, clear_color)?;
 
         let end = Instant::now();
-        // Explanation: 'text' is the time to prepare positioned glyphs, 'frame-
-        // swap' is mostly about sync, 'render' is time to feed the GPU.
         log::trace!(
             target: "kas_perf::wgpu::window",
             "do_draw: {}µs ({}μs widgets, {}µs text, {}µs render)",
             (end - start).as_micros(),
             (time2 - start).as_micros(),
-            self.draw.text.dur_micros(),
+            text_dur_micros,
             (end - time2).as_micros()
         );
         Ok(())
@@ -451,15 +391,6 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             (None, Some(t)) => Some(t),
             (None, None) => None,
         }
-    }
-}
-
-fn to_wgpu_color(c: kas::draw::color::Rgba) -> wgpu::Color {
-    wgpu::Color {
-        r: c.r as f64,
-        g: c.g as f64,
-        b: c.b as f64,
-        a: c.a as f64,
     }
 }
 

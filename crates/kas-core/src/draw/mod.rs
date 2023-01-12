@@ -54,6 +54,7 @@ use std::time::Instant;
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[crate::impl_default(AnimationState::None)]
 pub enum AnimationState {
     /// No frames are queued
     None,
