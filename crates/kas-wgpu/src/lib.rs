@@ -275,8 +275,8 @@ where
     }
 
     /// Create a proxy which can be used to update the UI from another thread
-    pub fn create_proxy(&self) -> ToolkitProxy {
-        ToolkitProxy {
+    pub fn create_proxy(&self) -> Proxy {
+        Proxy {
             proxy: self.el.create_proxy(),
         }
     }
@@ -303,16 +303,16 @@ fn find_scale_factor<T>(el: &EventLoopWindowTarget<T>) -> f64 {
 /// A proxy allowing control of a [`Shell`] from another thread.
 ///
 /// Created by [`Shell::create_proxy`].
-pub struct ToolkitProxy {
+pub struct Proxy {
     proxy: EventLoopProxy<ProxyAction>,
 }
 
-/// Error type returned by [`ToolkitProxy`] functions.
+/// Error type returned by [`Proxy`] functions.
 ///
 /// This error occurs only if the [`Shell`] already terminated.
 pub struct ClosedError;
 
-impl ToolkitProxy {
+impl Proxy {
     /// Close a specific window.
     pub fn close(&self, id: WindowId) -> std::result::Result<(), ClosedError> {
         self.proxy

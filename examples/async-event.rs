@@ -106,7 +106,7 @@ impl_scope! {
     }
 }
 
-fn generate_colors(proxy: kas::shell::ToolkitProxy, update_id: UpdateId, colour: Arc<Mutex<Rgba>>) {
+fn generate_colors(proxy: kas::shell::Proxy, update_id: UpdateId, colour: Arc<Mutex<Rgba>>) {
     // Loading takes time:
     thread::sleep(Duration::from_secs(1));
 
