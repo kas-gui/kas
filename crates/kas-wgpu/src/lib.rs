@@ -35,13 +35,13 @@ mod window;
 use kas::draw::DrawShared;
 use kas::event::UpdateId;
 use kas::model::SharedRc;
-use kas::theme::{Theme, ThemeConfig};
+use kas::theme::{RasterConfig, Theme, ThemeConfig};
 use kas::WindowId;
 use thiserror::Error;
 use winit::error::OsError;
 use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy, EventLoopWindowTarget};
 
-use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe};
+use crate::draw::{CustomPipeBuilder, DrawPipe};
 use crate::shared::SharedState;
 use window::{Window, WindowSurface};
 
@@ -50,7 +50,7 @@ pub use options::Options;
 pub use shaded_theme::ShadedTheme;
 pub extern crate wgpu;
 
-/// Possible failures from constructing a [`Toolkit`]
+/// Possible failures from constructing a [`Shell`]
 ///
 /// Some variants are undocumented. Users should not match these variants since
 /// they are not considered part of the public API.
@@ -89,24 +89,61 @@ fn warn_about_error(msg: &str, mut error: &dyn std::error::Error) {
 /// A `Result` type representing `T` or [`enum@Error`]
 pub type Result<T> = std::result::Result<T, Error>;
 
-/// A toolkit over Winit and WGPU
+/// API for the graphical implementation of a shell
 ///
-/// Constructing the toolkit with [`Toolkit::new`] or [`Toolkit::new_custom`]
+/// See also [`Shell`].
+pub trait GraphicalShell {
+    /// Shared draw state
+    type Shared: kas::draw::DrawSharedImpl;
+
+    /// Window surface
+    type Surface: WindowSurface<Shared = Self::Shared> + 'static;
+
+    /// Construct shared state
+    fn build(self, options: &Options, raster_config: &RasterConfig) -> Result<Self::Shared>;
+}
+
+/// Builder for a KAS shell using WGPU
+pub struct WgpuShellBuilder<CB: CustomPipeBuilder>(CB);
+
+impl<CB: CustomPipeBuilder> GraphicalShell for WgpuShellBuilder<CB> {
+    type Shared = DrawPipe<CB::Pipe>;
+    type Surface = window::Surface<CB::Pipe>;
+
+    fn build(self, options: &Options, raster_config: &RasterConfig) -> Result<Self::Shared> {
+        DrawPipe::new(self.0, options, raster_config)
+    }
+}
+
+impl Default for WgpuShellBuilder<()> {
+    fn default() -> Self {
+        WgpuShellBuilder(())
+    }
+}
+
+impl<CB: CustomPipeBuilder> From<CB> for WgpuShellBuilder<CB> {
+    fn from(cb: CB) -> Self {
+        WgpuShellBuilder(cb)
+    }
+}
+
+/// A KAS shell over Winit and WGPU
+pub type Toolkit<C, T> = Shell<WgpuShellBuilder<C>, T>;
+
+/// The KAS shell (abstract)
+///
+/// Constructing with [`Shell::new`] or [`Shell::new_custom`]
 /// reads configuration (depending on passed options or environment variables)
 /// and initialises the font database. Note that this database is a global
 /// singleton and some widgets and other library code may expect fonts to have
 /// been initialised first.
-///
-/// All KAS shells are expected to provide a similar `Toolkit` type and API.
-/// There is no trait abstraction over this API simply because there is very
-/// little reason to do so (and some reason not to: KISS).
-pub struct Toolkit<C: CustomPipe, T: Theme<DrawPipe<C>>> {
+pub struct Shell<G: GraphicalShell, T: Theme<G::Shared>> {
     el: EventLoop<ProxyAction>,
-    windows: Vec<Window<window::Surface<C>, T>>,
-    shared: SharedState<window::Surface<C>, T>,
+    windows: Vec<Window<G::Surface, T>>,
+    shared: SharedState<G::Surface, T>,
 }
 
-impl<T: Theme<DrawPipe<()>> + 'static> Toolkit<(), T>
+impl<G: GraphicalShell + Default, T: Theme<G::Shared> + 'static> Shell<G, T>
 where
     T::Window: kas::theme::Window,
 {
@@ -117,18 +154,15 @@ where
     /// [`Options::read_config`].
     #[inline]
     pub fn new(theme: T) -> Result<Self> {
-        Self::new_custom((), theme, Options::from_env())
+        Self::new_custom(G::default(), theme, Options::from_env())
     }
 }
 
-impl<C: CustomPipe, T: Theme<DrawPipe<C>> + 'static> Toolkit<C, T>
+impl<G: GraphicalShell, T: Theme<G::Shared> + 'static> Shell<G, T>
 where
     T::Window: kas::theme::Window,
 {
     /// Construct an instance with custom options
-    ///
-    /// The `custom` parameter accepts a custom draw pipe (see [`CustomPipeBuilder`]).
-    /// Pass `()` if you don't have one.
     ///
     /// The [`Options`] parameter allows direct specification of shell options;
     /// usually, these are provided by [`Options::from_env`].
@@ -136,8 +170,8 @@ where
     /// KAS config is provided by [`Options::read_config`] and `theme` is
     /// configured through [`Options::init_theme_config`].
     #[inline]
-    pub fn new_custom<CB: CustomPipeBuilder<Pipe = C>>(
-        custom: CB,
+    pub fn new_custom(
+        graphical_shell: impl Into<G>,
         mut theme: T,
         options: Options,
     ) -> Result<Self> {
@@ -145,36 +179,38 @@ where
         let config = match options.read_config() {
             Ok(config) => config,
             Err(error) => {
-                warn_about_error("Toolkit::new_custom: failed to read config", &error);
+                warn_about_error("Shell::new_custom: failed to read config", &error);
                 Default::default()
             }
         };
         let config = SharedRc::new(config);
 
-        Self::new_custom_config(custom, theme, options, config)
+        Self::new_custom_config(graphical_shell, theme, options, config)
     }
 
     /// Construct an instance with custom options and config
     ///
-    /// This is like [`Toolkit::new_custom`], but allows KAS config to be
+    /// This is like [`Shell::new_custom`], but allows KAS config to be
     /// specified directly, instead of loading via [`Options::read_config`].
     ///
     /// Unlike other the constructors, this method does not configure the theme.
     /// The user should call [`Options::init_theme_config`] before this method.
     #[inline]
-    pub fn new_custom_config<CB: CustomPipeBuilder<Pipe = C>>(
-        custom: CB,
+    pub fn new_custom_config(
+        graphical_shell: impl Into<G>,
         theme: T,
         options: Options,
         config: SharedRc<kas::event::Config>,
     ) -> Result<Self> {
         let el = EventLoopBuilder::with_user_event().build();
         let scale_factor = find_scale_factor(&el);
-        let pipe = DrawPipe::new(custom, &options, theme.config().raster())?;
-        Ok(Toolkit {
+        let draw_shared = graphical_shell
+            .into()
+            .build(&options, theme.config().raster())?;
+        Ok(Shell {
             el,
             windows: vec![],
-            shared: SharedState::new(pipe, theme, options, config, scale_factor)?,
+            shared: SharedState::new(draw_shared, theme, options, config, scale_factor)?,
         })
     }
 
@@ -204,7 +240,7 @@ where
 
     /// Assume ownership of and display a window
     ///
-    /// This is a convenience wrapper around [`Toolkit::add_boxed`].
+    /// This is a convenience wrapper around [`Shell::add_boxed`].
     ///
     /// Note: typically, one should have `W: Clone`, enabling multiple usage.
     #[inline]
@@ -214,7 +250,7 @@ where
 
     /// Assume ownership of and display a window, inline
     ///
-    /// This is a convenience wrapper around [`Toolkit::add_boxed`].
+    /// This is a convenience wrapper around [`Shell::add_boxed`].
     ///
     /// Note: typically, one should have `W: Clone`, enabling multiple usage.
     #[inline]
@@ -264,16 +300,16 @@ fn find_scale_factor<T>(el: &EventLoopWindowTarget<T>) -> f64 {
     1.0
 }
 
-/// A proxy allowing control of a [`Toolkit`] from another thread.
+/// A proxy allowing control of a [`Shell`] from another thread.
 ///
-/// Created by [`Toolkit::create_proxy`].
+/// Created by [`Shell::create_proxy`].
 pub struct ToolkitProxy {
     proxy: EventLoopProxy<ProxyAction>,
 }
 
 /// Error type returned by [`ToolkitProxy`] functions.
 ///
-/// This error occurs only if the [`Toolkit`] already terminated.
+/// This error occurs only if the [`Shell`] already terminated.
 pub struct ClosedError;
 
 impl ToolkitProxy {

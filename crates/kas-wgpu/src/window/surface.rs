@@ -14,7 +14,7 @@ use raw_window_handle as raw;
 use std::time::Instant;
 
 /// Per-window data
-pub(crate) struct Surface<C: CustomPipe> {
+pub struct Surface<C: CustomPipe> {
     surface: wgpu::Surface,
     sc_desc: wgpu::SurfaceConfiguration,
     draw: DrawWindow<C::Window>,
