@@ -35,7 +35,7 @@ mod window;
 use kas::draw::DrawShared;
 use kas::event::UpdateId;
 use kas::model::SharedRc;
-use kas::theme::Theme;
+use kas::theme::{Theme, ThemeConfig};
 use kas::WindowId;
 use thiserror::Error;
 use winit::error::OsError;
@@ -43,7 +43,7 @@ use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy, EventLoopWi
 
 use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe};
 use crate::shared::SharedState;
-use window::Window;
+use window::{Window, WindowSurface};
 
 pub use draw_shaded::{DrawShaded, DrawShadedImpl};
 pub use options::Options;
@@ -102,8 +102,8 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// little reason to do so (and some reason not to: KISS).
 pub struct Toolkit<C: CustomPipe, T: Theme<DrawPipe<C>>> {
     el: EventLoop<ProxyAction>,
-    windows: Vec<Window<C, T>>,
-    shared: SharedState<C, T>,
+    windows: Vec<Window<window::Surface<C>, T>>,
+    shared: SharedState<window::Surface<C>, T>,
 }
 
 impl<T: Theme<DrawPipe<()>> + 'static> Toolkit<(), T>
@@ -141,8 +141,6 @@ where
         mut theme: T,
         options: Options,
     ) -> Result<Self> {
-        let el = EventLoopBuilder::with_user_event().build();
-
         options.init_theme_config(&mut theme)?;
         let config = match options.read_config() {
             Ok(config) => config,
@@ -152,12 +150,8 @@ where
             }
         };
         let config = SharedRc::new(config);
-        let scale_factor = find_scale_factor(&el);
-        Ok(Toolkit {
-            el,
-            windows: vec![],
-            shared: SharedState::new(custom, theme, options, config, scale_factor)?,
-        })
+
+        Self::new_custom_config(custom, theme, options, config)
     }
 
     /// Construct an instance with custom options and config
@@ -176,10 +170,11 @@ where
     ) -> Result<Self> {
         let el = EventLoopBuilder::with_user_event().build();
         let scale_factor = find_scale_factor(&el);
+        let pipe = DrawPipe::new(custom, &options, theme.config().raster())?;
         Ok(Toolkit {
             el,
             windows: vec![],
-            shared: SharedState::new(custom, theme, options, config, scale_factor)?,
+            shared: SharedState::new(pipe, theme, options, config, scale_factor)?,
         })
     }
 

@@ -16,30 +16,29 @@ use winit::window as ww;
 use kas::theme::Theme;
 use kas::TkAction;
 
-use crate::draw::{CustomPipe, DrawPipe};
 use crate::shared::{PendingAction, SharedState};
-use crate::{ProxyAction, Window, WindowId};
+use crate::{ProxyAction, Window, WindowId, WindowSurface};
 
 /// Event-loop data structure (i.e. all run-time state)
-pub(crate) struct Loop<C: CustomPipe, T: Theme<DrawPipe<C>>>
+pub(crate) struct Loop<S: WindowSurface, T: Theme<S::Shared>>
 where
     T::Window: kas::theme::Window,
 {
     /// Window states
-    windows: HashMap<ww::WindowId, Window<C, T>>,
+    windows: HashMap<ww::WindowId, Window<S, T>>,
     /// Translates our WindowId to winit's
     id_map: HashMap<WindowId, ww::WindowId>,
     /// Shared data passed from Toolkit
-    shared: SharedState<C, T>,
+    shared: SharedState<S, T>,
     /// Timer resumes: (time, window index)
     resumes: Vec<(Instant, ww::WindowId)>,
 }
 
-impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Loop<C, T>
+impl<S: WindowSurface, T: Theme<S::Shared>> Loop<S, T>
 where
     T::Window: kas::theme::Window,
 {
-    pub(crate) fn new(mut windows: Vec<Window<C, T>>, shared: SharedState<C, T>) -> Self {
+    pub(crate) fn new(mut windows: Vec<Window<S, T>>, shared: SharedState<S, T>) -> Self {
         let id_map = windows
             .iter()
             .map(|w| (w.window_id, w.window.id()))

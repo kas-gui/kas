@@ -8,23 +8,22 @@
 use std::num::NonZeroU32;
 use std::time::Duration;
 
-use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe};
-use crate::{warn_about_error, Error, Options, WindowId};
+use crate::{warn_about_error, Error, Options, WindowId, WindowSurface};
 use kas::cast::Conv;
 use kas::draw;
 use kas::event::UpdateId;
 use kas::model::SharedRc;
-use kas::theme::{Theme, ThemeConfig};
+use kas::theme::Theme;
 use kas::TkAction;
 
 #[cfg(feature = "clipboard")]
 use window_clipboard::Clipboard;
 
 /// State shared between windows
-pub struct SharedState<C: CustomPipe, T> {
+pub struct SharedState<S: WindowSurface, T> {
     #[cfg(feature = "clipboard")]
     clipboard: Option<Clipboard>,
-    pub draw: draw::SharedState<DrawPipe<C>>,
+    pub draw: draw::SharedState<S::Shared>,
     pub theme: T,
     pub config: SharedRc<kas::event::Config>,
     pub pending: Vec<PendingAction>,
@@ -35,21 +34,19 @@ pub struct SharedState<C: CustomPipe, T> {
     options: Options,
 }
 
-impl<C: CustomPipe, T: Theme<DrawPipe<C>>> SharedState<C, T>
+impl<S: WindowSurface, T: Theme<S::Shared>> SharedState<S, T>
 where
     T::Window: kas::theme::Window,
 {
     /// Construct
-    pub fn new<CB: CustomPipeBuilder<Pipe = C>>(
-        custom: CB,
+    pub fn new(
+        draw_shared: S::Shared,
         mut theme: T,
         options: Options,
         config: SharedRc<kas::event::Config>,
         scale_factor: f64,
     ) -> Result<Self, Error> {
-        let pipe = DrawPipe::new(custom, &options, theme.config().raster())?;
-        let mut draw = draw::SharedState::new(pipe);
-
+        let mut draw = kas::draw::SharedState::new(draw_shared);
         theme.init(&mut draw);
 
         let mut frame_dur = Duration::new(0, 0);
