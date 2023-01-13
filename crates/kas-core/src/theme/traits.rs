@@ -5,10 +5,10 @@
 
 //! Theme traits
 
-use kas::draw::{color, DrawIface, DrawSharedImpl, SharedState};
-use kas::event::EventState;
-use kas::theme::{ThemeControl, ThemeDraw, ThemeSize};
-use kas::{autoimpl, TkAction};
+use super::{RasterConfig, ThemeControl, ThemeDraw, ThemeSize};
+use crate::draw::{color, DrawIface, DrawSharedImpl, SharedState};
+use crate::event::EventState;
+use crate::{autoimpl, TkAction};
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
 
@@ -19,7 +19,7 @@ pub trait ThemeConfig: Clone + std::fmt::Debug + 'static {
     fn apply_startup(&self);
 
     /// Get raster config
-    fn raster(&self) -> &crate::RasterConfig;
+    fn raster(&self) -> &RasterConfig;
 }
 
 /// Requirements on theme config (with `config` feature)
@@ -34,7 +34,7 @@ pub trait ThemeConfig:
     fn apply_startup(&self);
 
     /// Get raster config
-    fn raster(&self) -> &crate::RasterConfig;
+    fn raster(&self) -> &RasterConfig;
 }
 
 /// A *theme* provides widget sizing and drawing implementations.
@@ -67,7 +67,7 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
     /// The toolkit must call this method before [`Theme::new_window`]
     /// to allow initialisation specific to the `DrawIface`.
     ///
-    /// At a minimum, a theme must load a font to [`kas::text::fonts`].
+    /// At a minimum, a theme must load a font to [`crate::text::fonts`].
     /// The first font loaded (by any theme) becomes the default font.
     fn init(&mut self, shared: &mut SharedState<DS>);
 

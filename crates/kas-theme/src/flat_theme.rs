@@ -9,14 +9,16 @@ use std::f32;
 use std::ops::Range;
 use std::time::Instant;
 
-use crate::{dim, ColorsLinear, Config, InputState, SimpleTheme, Theme};
+use super::SimpleTheme;
 use kas::cast::traits::*;
 use kas::dir::{Direction, Directional};
 use kas::draw::{color::Rgba, *};
 use kas::event::EventState;
 use kas::geom::*;
 use kas::text::{TextApi, TextDisplay};
+use kas::theme::dimensions as dim;
 use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
+use kas::theme::{ColorsLinear, Config, InputState, Theme};
 use kas::theme::{ThemeControl, ThemeDraw, ThemeSize};
 use kas::{TkAction, WidgetId};
 

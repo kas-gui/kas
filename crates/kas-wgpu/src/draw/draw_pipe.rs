@@ -21,7 +21,7 @@ impl<C: CustomPipe> DrawPipe<C> {
     pub fn new<CB: CustomPipeBuilder<Pipe = C>>(
         mut custom: CB,
         (device, queue): (wgpu::Device, wgpu::Queue),
-        raster_config: &kas_theme::RasterConfig,
+        raster_config: &kas::theme::RasterConfig,
     ) -> Self {
         let shaders = ShaderManager::new(&device);
 

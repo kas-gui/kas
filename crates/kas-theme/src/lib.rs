@@ -16,27 +16,12 @@
 
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 
-mod anim;
-mod colors;
-mod config;
 mod draw_shaded;
 mod flat_theme;
-mod multi;
 mod shaded_theme;
 mod simple_theme;
-mod theme_dst;
-mod traits;
 
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-pub mod dim;
-
-pub use colors::{Colors, ColorsLinear, ColorsSrgb, InputState};
-pub use config::{Config, RasterConfig};
 pub use draw_shaded::{DrawShaded, DrawShadedImpl};
 pub use flat_theme::FlatTheme;
-pub use multi::{MultiTheme, MultiThemeBuilder};
 pub use shaded_theme::ShadedTheme;
 pub use simple_theme::SimpleTheme;
-pub use theme_dst::{MaybeBoxed, ThemeDst};
-pub use traits::{Theme, ThemeConfig, Window};

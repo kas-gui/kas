@@ -5,10 +5,10 @@
 
 //! Colour schemes
 
-use kas::draw::color::{Rgba, Rgba8Srgb};
-use kas::event::EventState;
-use kas::theme::Background;
-use kas::WidgetId;
+use crate::draw::color::{Rgba, Rgba8Srgb};
+use crate::event::EventState;
+use crate::theme::Background;
+use crate::WidgetId;
 use std::str::FromStr;
 
 const MULT_DEPRESS: f32 = 0.75;

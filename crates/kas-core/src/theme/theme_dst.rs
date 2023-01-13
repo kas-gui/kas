@@ -10,10 +10,10 @@ use std::borrow::Cow;
 use std::ops::{Deref, DerefMut};
 
 use super::{Theme, Window};
-use kas::draw::{color, DrawIface, DrawSharedImpl, SharedState};
-use kas::event::EventState;
-use kas::theme::{ThemeControl, ThemeDraw, ThemeSize};
-use kas::TkAction;
+use crate::draw::{color, DrawIface, DrawSharedImpl, SharedState};
+use crate::event::EventState;
+use crate::theme::{ThemeControl, ThemeDraw, ThemeSize};
+use crate::TkAction;
 
 /// An optionally-owning (boxed) reference
 ///

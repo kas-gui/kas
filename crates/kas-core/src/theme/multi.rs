@@ -7,15 +7,15 @@
 
 use std::collections::HashMap;
 
-use crate::{Config, Theme, ThemeDst, Window};
-use kas::draw::{color, DrawIface, DrawSharedImpl, SharedState};
-use kas::event::EventState;
-use kas::theme::{ThemeControl, ThemeDraw};
-use kas::TkAction;
+use super::{Config, Theme, ThemeDst, Window};
+use crate::draw::{color, DrawIface, DrawSharedImpl, SharedState};
+use crate::event::EventState;
+use crate::theme::{ThemeControl, ThemeDraw};
+use crate::TkAction;
 
 type DynTheme<DS> = Box<dyn ThemeDst<DS>>;
 
-/// Wrapper around mutliple themes, supporting run-time switching
+/// Wrapper around multiple themes, supporting run-time switching
 pub struct MultiTheme<DS> {
     names: HashMap<String, usize>,
     themes: Vec<DynTheme<DS>>,

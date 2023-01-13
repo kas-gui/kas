@@ -10,15 +10,15 @@ use std::any::Any;
 use std::f32;
 use std::rc::Rc;
 
-use crate::anim::AnimState;
-use kas::cast::traits::*;
-use kas::dir::Directional;
-use kas::geom::{Rect, Size, Vec2};
-use kas::layout::{AlignPair, AxisInfo, FrameRules, Margins, SizeRules, Stretch};
-use kas::text::{fonts::FontId, TextApi, TextApiExt};
-use kas::theme::{Feature, FrameStyle, MarginStyle, MarkStyle, TextClass, ThemeSize};
+use super::anim::AnimState;
+use super::{Config, Feature, FrameStyle, MarginStyle, MarkStyle, TextClass, ThemeSize};
+use crate::cast::traits::*;
+use crate::dir::Directional;
+use crate::geom::{Rect, Size, Vec2};
+use crate::layout::{AlignPair, AxisInfo, FrameRules, Margins, SizeRules, Stretch};
+use crate::text::{fonts::FontId, TextApi, TextApiExt};
 
-kas::impl_scope! {
+crate::impl_scope! {
     /// Parameterisation of [`Dimensions`]
     ///
     /// All dimensions are multiplied by the DPI factor, then rounded to the
@@ -154,7 +154,7 @@ pub struct Window<D> {
 impl<D> Window<D> {
     pub fn new(
         dims: &Parameters,
-        config: &crate::Config,
+        config: &Config,
         scale: f32,
         fonts: Rc<LinearMap<TextClass, FontId>>,
     ) -> Self {
@@ -165,12 +165,12 @@ impl<D> Window<D> {
         }
     }
 
-    pub fn update(&mut self, dims: &Parameters, config: &crate::Config, scale: f32) {
+    pub fn update(&mut self, dims: &Parameters, config: &Config, scale: f32) {
         self.dims = Dimensions::new(dims, config.font_size(), scale);
     }
 }
 
-impl<D: 'static> crate::Window for Window<D> {
+impl<D: 'static> super::Window for Window<D> {
     fn size(&self) -> &dyn ThemeSize {
         self
     }
@@ -302,7 +302,7 @@ impl<D: 'static> ThemeSize for Window<D> {
 
     fn line_height(&self, class: TextClass) -> i32 {
         let font_id = self.fonts.get(&class).cloned().unwrap_or_default();
-        kas::text::fonts::fonts()
+        crate::text::fonts::fonts()
             .get_first_face(font_id)
             .expect("invalid font_id")
             .height(self.dims.dpem)

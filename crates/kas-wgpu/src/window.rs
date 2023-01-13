@@ -11,8 +11,8 @@ use kas::event::{ConfigMgr, CursorIcon, EventState, UpdateId};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
 use kas::theme::{DrawMgr, SizeMgr, ThemeControl, ThemeSize};
+use kas::theme::{Theme, Window as _};
 use kas::{Layout, TkAction, WidgetCore, WidgetExt, WindowId};
-use kas_theme::{Theme, Window as _};
 use std::time::Instant;
 use winit::dpi::PhysicalSize;
 use winit::error::OsError;
@@ -462,7 +462,7 @@ fn to_wgpu_color(c: kas::draw::color::Rgba) -> wgpu::Color {
 
 struct TkWindow<'a, C: CustomPipe, T: Theme<DrawPipe<C>>>
 where
-    T::Window: kas_theme::Window,
+    T::Window: kas::theme::Window,
 {
     shared: &'a mut SharedState<C, T>,
     window: Option<&'a winit::window::Window>,
@@ -471,7 +471,7 @@ where
 
 impl<'a, C: CustomPipe, T: Theme<DrawPipe<C>>> TkWindow<'a, C, T>
 where
-    T::Window: kas_theme::Window,
+    T::Window: kas::theme::Window,
 {
     fn new(
         shared: &'a mut SharedState<C, T>,
@@ -490,7 +490,7 @@ impl<'a, C, T> kas::ShellWindow for TkWindow<'a, C, T>
 where
     C: CustomPipe,
     T: Theme<DrawPipe<C>>,
-    T::Window: kas_theme::Window,
+    T::Window: kas::theme::Window,
 {
     fn add_popup(&mut self, popup: kas::Popup) -> Option<WindowId> {
         self.window.map(|w| w.id()).map(|parent_id| {
@@ -540,7 +540,7 @@ where
     }
 
     fn size_and_draw_shared(&mut self, f: &mut dyn FnMut(&mut dyn ThemeSize, &mut dyn DrawShared)) {
-        use kas_theme::Window;
+        use kas::theme::Window;
         let mut size = self.theme_window.size();
         f(&mut size, &mut self.shared.draw);
     }
