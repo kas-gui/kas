@@ -330,19 +330,18 @@ pub trait DrawImpl: Any {
 
     /// Add a draw pass
     ///
-    /// Adds a new draw pass. Passes affect draw order (operations in new passes
-    /// happen after their parent pass), may clip drawing to a "clip rect"
-    /// (see [`DrawImpl::get_clip_rect`]) and may offset (translate) draw
-    /// operations.
+    /// Adds a new draw pass. Passes have the following effects:
     ///
-    /// Case `class == PassType::Clip`: the new pass is derived from
-    /// `parent_pass`; `rect` and `offset` are specified relative to this parent
-    /// and the intersecton of `rect` and the parent's "clip rect" is used.
-    /// be clipped to `rect` (expressed in the parent's coordinate system).
+    /// -   Draw operations of a pass occur *after* those of the parent pass
+    /// -   Drawing is clipped to `rect` (in the base's coordinate space) and
+    ///     translated by `offset` (relative to the base's offset)
     ///
-    /// Case `class == PassType::Overlay`: the new pass is derived from the
-    /// base pass (i.e. the window). Draw operations still happen after those in
-    /// `parent_pass`.
+    /// The *parent pass* is the one used as the `self` argument of this method.
+    /// The *base pass* is dependent on `class`:
+    ///
+    /// -   `PassType::Clip`: the base is the parent
+    /// -   `PassType::Overlay`: the base is the initial pass (i.e. whole window
+    ///     with no offset)
     fn new_pass(
         &mut self,
         parent_pass: PassId,
