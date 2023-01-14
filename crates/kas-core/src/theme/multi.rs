@@ -7,7 +7,7 @@
 
 use std::collections::HashMap;
 
-use super::{Config, Theme, ThemeDst, Window};
+use super::{ColorsLinear, Config, Theme, ThemeDst, Window};
 use crate::draw::{color, DrawIface, DrawSharedImpl, SharedState};
 use crate::event::EventState;
 use crate::theme::{ThemeControl, ThemeDraw};
@@ -123,6 +123,15 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
         window: &'a mut Self::Window,
     ) -> Box<dyn ThemeDraw + 'a> {
         self.themes[self.active].draw(draw, ev, window)
+    }
+
+    fn draw_upcast<'a>(
+        _draw: DrawIface<'a, DS>,
+        _ev: &'a mut EventState,
+        _w: &'a mut Self::Window,
+        _cols: &'a ColorsLinear,
+    ) -> Self::Draw<'a> {
+        unimplemented!()
     }
 
     fn clear_color(&self) -> color::Rgba {

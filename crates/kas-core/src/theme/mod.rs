@@ -3,15 +3,22 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Theme interface
+//! Themes
 //!
-//! Includes the [`Theme`] trait.
+//! Widgets expect the theme to provide an implementation of [`SizeMgr`] and of
+//! [`DrawMgr`].
+//!
+//! Constructing a shell requires a [`Theme`]. Two implementations are provided
+//! here: [`SimpleTheme`] and [`FlatTheme`].
+//! An adapter, [`MultiTheme`], is also provided.
 
 mod anim;
 mod colors;
 mod config;
 mod draw;
+mod flat_theme;
 mod multi;
+mod simple_theme;
 mod size;
 mod style;
 mod theme_dst;
@@ -24,7 +31,9 @@ pub mod dimensions;
 pub use colors::{Colors, ColorsLinear, ColorsSrgb, InputState};
 pub use config::{Config, RasterConfig};
 pub use draw::{Background, DrawMgr, ThemeDraw};
+pub use flat_theme::FlatTheme;
 pub use multi::{MultiTheme, MultiThemeBuilder};
+pub use simple_theme::SimpleTheme;
 pub use size::{SizeMgr, ThemeSize};
 pub use style::*;
 pub use theme_dst::{MaybeBoxed, ThemeDst};

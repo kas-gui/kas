@@ -32,6 +32,9 @@ const SHADOW_HOVER: f32 = 1.1;
 const SHADOW_POPUP: f32 = 1.2;
 
 /// A theme with flat (unshaded) rendering
+///
+/// This is a fully functional theme using only the basic drawing primitives
+/// available by default.
 #[derive(Clone, Debug)]
 pub struct FlatTheme {
     base: SimpleTheme,
@@ -57,7 +60,7 @@ impl FlatTheme {
     #[inline]
     #[must_use]
     pub fn with_font_size(mut self, pt_size: f32) -> Self {
-        self.base.config.set_font_size(pt_size);
+        self.base = self.base.with_font_size(pt_size);
         self
     }
 
@@ -67,10 +70,7 @@ impl FlatTheme {
     #[inline]
     #[must_use]
     pub fn with_colours(mut self, scheme: &str) -> Self {
-        self.base.config.set_active_scheme(scheme);
-        if let Some(scheme) = self.base.config.get_color_scheme(scheme) {
-            self.base.cols = scheme.into();
-        }
+        self.base = self.base.with_colours(scheme);
         self
     }
 }
@@ -138,6 +138,15 @@ where
             w,
             cols: &self.base.cols,
         }
+    }
+
+    fn draw_upcast<'a>(
+        draw: DrawIface<'a, DS>,
+        ev: &'a mut EventState,
+        w: &'a mut Self::Window,
+        cols: &'a ColorsLinear,
+    ) -> Self::Draw<'a> {
+        DrawHandle { draw, ev, w, cols }
     }
 
     fn clear_color(&self) -> Rgba {

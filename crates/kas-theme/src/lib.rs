@@ -17,11 +17,7 @@
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
 
 mod draw_shaded;
-mod flat_theme;
 mod shaded_theme;
-mod simple_theme;
 
 pub use draw_shaded::{DrawShaded, DrawShadedImpl};
-pub use flat_theme::FlatTheme;
 pub use shaded_theme::ShadedTheme;
-pub use simple_theme::SimpleTheme;

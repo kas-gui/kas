@@ -5,7 +5,7 @@
 
 //! Theme traits
 
-use super::{RasterConfig, ThemeDraw, ThemeSize};
+use super::{ColorsLinear, RasterConfig, ThemeDraw, ThemeSize};
 use crate::draw::{color, DrawIface, DrawSharedImpl, SharedState};
 use crate::event::EventState;
 use crate::{autoimpl, TkAction};
@@ -135,6 +135,17 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
         draw: DrawIface<'a, DS>,
         ev: &'a mut EventState,
         window: &'a mut Self::Window,
+    ) -> Self::Draw<'a>;
+
+    /// Construct a draw object from parts
+    ///
+    /// This method allows a "derived" theme to construct a draw object for the
+    /// inherited theme.
+    fn draw_upcast<'a>(
+        draw: DrawIface<'a, DS>,
+        ev: &'a mut EventState,
+        w: &'a mut Self::Window,
+        cols: &'a ColorsLinear,
     ) -> Self::Draw<'a>;
 
     /// Background colour
