@@ -93,7 +93,7 @@ resvg = ["dep:kas-resvg", "kas-resvg?/svg"]
 tiny-skia = ["dep:kas-resvg"]
 
 # Automatically detect usage of dark theme
-dark-light = ["kas-theme?/dark-light"]
+dark-light = ["kas-core/dark-light"]
 
 # Support SVG images
 
