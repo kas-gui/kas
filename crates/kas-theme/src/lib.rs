@@ -15,9 +15,3 @@
 //! minimal shell with a custom fixed theme.
 
 #![cfg_attr(doc_cfg, feature(doc_cfg))]
-
-mod draw_shaded;
-mod shaded_theme;
-
-pub use draw_shaded::{DrawShaded, DrawShadedImpl};
-pub use shaded_theme::ShadedTheme;

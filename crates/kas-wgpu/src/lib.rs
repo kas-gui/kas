@@ -9,8 +9,8 @@
 //! GPU-accelerated rendering and [winit] for windowing, thus it should be
 //! portable to most desktop and potentially also mobile platforms.
 //!
-//! This crate supports themes via the [`kas::theme`], including shaded drawing
-//! ([`kas_theme::DrawShaded`]).
+//! This crate supports themes via the [`kas::theme`], and provides one
+//! additional theme, [`ShadedTheme`].
 //!
 //! Custom GPU-accelerated drawing is supported via [`draw::CustomPipe`]
 //! (see the [Mandlebrot example](https://github.com/kas-gui/kas/blob/master/kas-wgpu/examples/mandlebrot.rs)).
@@ -23,8 +23,10 @@
 //! [clipboard]: https://crates.io/crates/clipboard
 
 pub mod draw;
+mod draw_shaded;
 mod event_loop;
 pub mod options;
+mod shaded_theme;
 mod shared;
 mod window;
 
@@ -41,7 +43,9 @@ use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe};
 use crate::shared::SharedState;
 use window::Window;
 
+pub use draw_shaded::{DrawShaded, DrawShadedImpl};
 pub use options::Options;
+pub use shaded_theme::ShadedTheme;
 pub extern crate wgpu;
 
 /// Possible failures from constructing a [`Toolkit`]

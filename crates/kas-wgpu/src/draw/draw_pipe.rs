@@ -9,12 +9,12 @@ use std::f32::consts::FRAC_PI_2;
 use wgpu::util::DeviceExt;
 
 use super::*;
+use crate::DrawShadedImpl;
 use kas::cast::traits::*;
 use kas::draw::color::Rgba;
 use kas::draw::*;
 use kas::geom::{Quad, Rect, Size, Vec2};
 use kas::text::{Effect, TextDisplay};
-use kas_theme::DrawShadedImpl;
 
 impl<C: CustomPipe> DrawPipe<C> {
     /// Construct

@@ -38,7 +38,7 @@ minimal = ["theme", "wgpu"]
 dynamic = ["dep:kas-dylib"]
 
 # Enables usage of unstable Rust features
-nightly = ["min_spec", "kas-theme?/nightly", "kas-wgpu?/nightly"]
+nightly = ["min_spec"]
 
 # Use min_specialization (enables accelerator underlining for AccelLabel)
 min_spec = ["kas-widgets/min_spec"]
