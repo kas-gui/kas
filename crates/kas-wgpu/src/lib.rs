@@ -22,6 +22,8 @@
 //! [winit]: https://github.com/rust-windowing/winit
 //! [clipboard]: https://crates.io/crates/clipboard
 
+#![cfg_attr(doc_cfg, feature(doc_cfg))]
+
 pub mod draw;
 mod draw_shaded;
 mod event_loop;

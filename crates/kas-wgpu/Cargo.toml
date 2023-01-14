@@ -15,6 +15,12 @@ documentation = "https://docs.rs/kas-wgpu/"
 # WARNING: if "raster" is disabled, an alternative like "kas-text/fontdue" is required!
 default = ["clipboard", "shaping", "raster"]
 
+# Enables documentation of APIs for shells and internal usage.
+# This API is not intended for use by end-user applications and
+# thus is omitted from built documentation by default.
+# This flag does not change the API, only built documentation.
+internal_doc = []
+
 shaping = ["kas-text/shaping"]
 harfbuzz = ["kas-text/harfbuzz"]
 raster = ["kas-text/raster"]

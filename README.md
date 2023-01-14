@@ -32,7 +32,7 @@ KAS is a pure-Rust GUI toolkit with stateful widgets:
     [Troubleshooting](https://github.com/kas-gui/kas/wiki/Troubleshooting)
 -   API docs: [kas](https://docs.rs/kas), [kas-core](https://docs.rs/kas-core),
     [kas-widgets](https://docs.rs/kas-widgets),
-    [kas-theme](https://docs.rs/kas-theme), [kas-wgpu](https://docs.rs/kas-wgpu)
+    [kas-wgpu](https://docs.rs/kas-wgpu)
 -   Prose: [Tutorials](https://kas-gui.github.io/tutorials/),
     [Blog](https://kas-gui.github.io/blog/)
 
@@ -78,8 +78,7 @@ Crates and features
 (`kas-widgets`), etc. [See here](https://kas-gui.github.io/tutorials/#kas).
 
 At this point in time, `kas-wgpu` is the only windowing/rendering implementation
-and `kas-theme` the only theme (high-level drawing) implementation, thus `kas`
-uses these crates by default, though they are optional.
+thus `kas` uses this crate by default, though it is optional.
 
 ### Feature flags
 

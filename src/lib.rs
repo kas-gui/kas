@@ -16,7 +16,6 @@
 //! - [`kas_widgets`](https://docs.rs/kas-widgets/0.11) is re-export as [`kas::widgets`](widgets)
 //! - [`kas_resvg`] is re-export as [`kas::resvg`](resvg) (`resvg` or `tiny-skia` feature)
 //! - [`kas_view`](https://docs.rs/kas-view/0.11) is re-export as [`kas::view`](view) (`view` feature)
-//! - [`kas_theme`] (`theme` feature) is re-export under [`kas::theme`](theme)
 //! - [`kas_wgpu`](https://docs.rs/kas-wgpu/0.11) is re-export as [`kas::shell`](shell); in the current version
 //!     this is dependant on [WGPU](https://github.com/gfx-rs/wgpu), but in the
 //!     future this should become a shim over multiple back-ends
@@ -69,17 +68,6 @@ pub extern crate kas_view as view;
 #[cfg_attr(doc_cfg, doc(cfg(feature = "resvg")))]
 pub mod resvg {
     pub use kas_resvg::*;
-}
-
-/// Themes
-///
-/// This module is the merger of [`kas_core::theme`] and [`kas_theme`].
-pub mod theme {
-    pub use kas_core::theme::*;
-
-    #[cfg(feature = "theme")]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "theme")))]
-    pub use kas_theme::*;
 }
 
 #[cfg(feature = "wgpu")]

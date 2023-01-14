@@ -35,7 +35,7 @@ pub trait ThemeControl {
 
     /// Switch the theme
     ///
-    /// Most themes do not react to this method; `kas_theme::MultiTheme` uses
+    /// Most themes do not react to this method; [`super::MultiTheme`] uses
     /// it to switch themes.
     fn set_theme(&mut self, _theme: &str) -> TkAction {
         TkAction::empty()

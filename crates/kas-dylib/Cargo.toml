@@ -21,5 +21,4 @@ resvg = ["dep:kas-resvg"]
 kas-core = { version = "0.12.0", path = "../kas-core" }
 kas-widgets = { version = "0.12.0", path = "../kas-widgets" }
 kas-resvg = { version = "0.12.0", path = "../kas-resvg", optional = true }
-kas-theme = { version = "0.12.0", path = "../kas-theme" }
 kas-wgpu = { version = "0.12.0", path = "../kas-wgpu" }

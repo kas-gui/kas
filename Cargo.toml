@@ -32,7 +32,7 @@ default = ["minimal", "view", "yaml", "image", "resvg", "clipboard", "markdown",
 #
 # Note: only some examples build in this configuration; others need view,
 # markdown, resvg. Recommended also: clipboard, yaml (or some config format).
-minimal = ["theme", "wgpu"]
+minimal = ["wgpu"]
 
 # Enable dynamic linking (faster linking via an extra run-time dependency):
 dynamic = ["dep:kas-dylib"]
@@ -50,8 +50,6 @@ spec = ["min_spec", "kas-core/spec"]
 # Enable view widgets
 view = ["dep:kas-view"]
 
-# Enable theme support:
-theme = ["dep:kas-theme"]
 #Enable WGPU backend:
 wgpu = ["dep:kas-wgpu"]
 
@@ -59,7 +57,7 @@ wgpu = ["dep:kas-wgpu"]
 # This API is not intended for use by end-user applications and
 # thus is omitted from built documentation by default.
 # This flag does not change the API, only built documentation.
-internal_doc = ["kas-core/internal_doc", "kas-theme?/internal_doc"]
+internal_doc = ["kas-core/internal_doc", "kas-wgpu?/internal_doc"]
 
 # Enables clipboard read/write
 clipboard = ["kas-wgpu?/clipboard"]
@@ -73,7 +71,7 @@ shaping = ["kas-core/shaping"]
 harfbuzz = ["kas-core/harfbuzz"]
 
 # Enable config read/write
-config = ["kas-core/config", "kas-theme?/config"]
+config = ["kas-core/config"]
 
 # Enable support for YAML (de)serialisation
 yaml = ["config", "kas-core/yaml"]
@@ -110,12 +108,6 @@ kas-widgets = { version = "0.12.1", path = "crates/kas-widgets" }
 kas-view = { version = "0.12.0", path = "crates/kas-view", optional = true }
 kas-resvg = { version = "0.12.0", path = "crates/kas-resvg", optional = true }
 
-[dependencies.kas-theme]
-version = "0.12.0" # used in doc links
-path = "crates/kas-theme"
-optional = true
-default-features = false
-
 [dependencies.kas-wgpu]
 version = "0.12.1"
 path = "crates/kas-wgpu"
@@ -134,7 +126,6 @@ members = [
     "crates/kas-dylib",
     "crates/kas-macros",
     "crates/kas-resvg",
-    "crates/kas-theme",
     "crates/kas-wgpu",
     "crates/kas-widgets",
     "crates/kas-view",
