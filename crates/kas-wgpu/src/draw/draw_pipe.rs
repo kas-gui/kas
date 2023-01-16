@@ -366,12 +366,10 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         effects: &[Effect<()>],
     ) {
         let time = std::time::Instant::now();
-        let rects = draw
-            .text
-            .text_effects(&mut self.text, pass, rect, text, col, effects);
-        for rect in rects {
-            draw.shaded_square.rect(pass, rect, col);
-        }
+        draw.text
+            .text_effects(&mut self.text, pass, rect, text, col, effects, |quad| {
+                draw.shaded_square.rect(pass, quad, col);
+            });
         draw.common.report_dur_text(time.elapsed());
     }
 
@@ -384,12 +382,10 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         effects: &[Effect<Rgba>],
     ) {
         let time = std::time::Instant::now();
-        let rects = draw
-            .text
-            .text_effects_rgba(&mut self.text, pass, rect, text, effects);
-        for (rect, col) in rects {
-            draw.shaded_square.rect(pass, rect, col);
-        }
+        draw.text
+            .text_effects_rgba(&mut self.text, pass, rect, text, effects, |quad, col| {
+                draw.shaded_square.rect(pass, quad, col);
+            });
         draw.common.report_dur_text(time.elapsed());
     }
 }
