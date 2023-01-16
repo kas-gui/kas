@@ -236,7 +236,6 @@ impl Pipeline {
 #[derive(Debug, Default)]
 pub struct Window {
     atlas: atlases::Window<Instance>,
-    duration: std::time::Duration,
 }
 
 impl Window {
@@ -250,13 +249,6 @@ impl Window {
         self.atlas.write_buffers(device, staging_belt, encoder);
     }
 
-    /// Get microseconds used for text during since last call
-    pub fn dur_micros(&mut self) -> u128 {
-        let micros = self.duration.as_micros();
-        self.duration = Default::default();
-        micros
-    }
-
     pub fn text(
         &mut self,
         pipe: &mut Pipeline,
@@ -265,7 +257,6 @@ impl Window {
         text: &TextDisplay,
         col: Rgba,
     ) {
-        let time = std::time::Instant::now();
         let rect = Quad::conv(rect);
 
         let for_glyph = |face: FaceId, dpem: f32, glyph: Glyph| {
@@ -280,8 +271,6 @@ impl Window {
         if let Err(e) = text.glyphs(for_glyph) {
             log::warn!("Window: display failed: {e}");
         }
-
-        self.duration += time.elapsed();
     }
 
     pub fn text_effects(
@@ -304,7 +293,6 @@ impl Window {
             return vec![];
         }
 
-        let time = std::time::Instant::now();
         let rect = Quad::conv(rect);
         let mut rects = vec![];
 
@@ -342,7 +330,6 @@ impl Window {
             log::warn!("Window: display failed: {e}");
         }
 
-        self.duration += time.elapsed();
         rects
     }
 
@@ -366,7 +353,6 @@ impl Window {
             return vec![];
         }
 
-        let time = std::time::Instant::now();
         let rect = Quad::conv(rect);
         let mut rects = vec![];
 
@@ -394,7 +380,6 @@ impl Window {
             log::warn!("Window: display failed: {e}");
         }
 
-        self.duration += time.elapsed();
         rects
     }
 }

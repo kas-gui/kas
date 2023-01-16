@@ -84,7 +84,7 @@ impl<C: CustomPipe> super::WindowSurface for Surface<C> {
         &mut self.draw.common
     }
 
-    fn present(&mut self, shared: &mut Self::Shared, clear_color: Rgba) -> Result<u128, ()> {
+    fn present(&mut self, shared: &mut Self::Shared, clear_color: Rgba) -> Result<(), ()> {
         let frame = match self.surface.get_current_texture() {
             Ok(frame) => frame,
             Err(e) => {
@@ -102,7 +102,7 @@ impl<C: CustomPipe> super::WindowSurface for Surface<C> {
 
         frame.present();
 
-        Ok(self.draw.text.dur_micros())
+        Ok(())
     }
 }
 

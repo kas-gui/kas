@@ -58,9 +58,8 @@ pub trait WindowSurface {
 
     /// Present frame
     ///
-    /// On success, returns the microseconds used for text drawing.
     /// On failure drawing is aborted (restart from event handling).
-    fn present(&mut self, shared: &mut Self::Shared, clear_color: Rgba) -> Result<u128, ()>;
+    fn present(&mut self, shared: &mut Self::Shared, clear_color: Rgba) -> Result<(), ()>;
 }
 
 /// Per-window data
@@ -410,15 +409,16 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         }
 
         let clear_color = shared.theme.clear_color();
-        let text_dur_micros = self.surface.present(&mut shared.draw.draw, clear_color)?;
+        self.surface.present(&mut shared.draw.draw, clear_color)?;
 
+        let text_dur_micros = take(&mut self.surface.common_mut().dur_text);
         let end = Instant::now();
         log::trace!(
             target: "kas_perf::wgpu::window",
             "do_draw: {}µs ({}μs widgets, {}µs text, {}µs render)",
             (end - start).as_micros(),
             (time2 - start).as_micros(),
-            text_dur_micros,
+            text_dur_micros.as_micros(),
             (end - time2).as_micros()
         );
         Ok(())

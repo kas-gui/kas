@@ -48,7 +48,7 @@ pub use draw::{Draw, DrawIface, DrawImpl};
 pub use draw_rounded::{DrawRounded, DrawRoundedImpl};
 pub use draw_shared::{AllocError, ImageFormat, ImageHandle, ImageId};
 pub use draw_shared::{DrawShared, DrawSharedImpl, SharedState};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 /// Animation status
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -84,6 +84,16 @@ impl AnimationState {
 pub struct WindowCommon {
     // TODO: make pub(crate)
     pub anim: AnimationState,
+    pub dur_text: std::time::Duration,
+}
+
+impl WindowCommon {
+    /// Report performance counter: text assembly duration
+    ///
+    /// This may be reported multiple times per frame; the sum is output.
+    pub fn report_dur_text(&mut self, dur: Duration) {
+        self.dur_text += dur;
+    }
 }
 
 /// Draw pass identifier

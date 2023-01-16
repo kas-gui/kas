@@ -351,7 +351,9 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         text: &TextDisplay,
         col: Rgba,
     ) {
+        let time = std::time::Instant::now();
         draw.text.text(&mut self.text, pass, rect, text, col);
+        draw.common.report_dur_text(time.elapsed());
     }
 
     fn draw_text_effects(
@@ -363,12 +365,14 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         col: Rgba,
         effects: &[Effect<()>],
     ) {
+        let time = std::time::Instant::now();
         let rects = draw
             .text
             .text_effects(&mut self.text, pass, rect, text, col, effects);
         for rect in rects {
             draw.shaded_square.rect(pass, rect, col);
         }
+        draw.common.report_dur_text(time.elapsed());
     }
 
     fn draw_text_effects_rgba(
@@ -379,12 +383,14 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         text: &TextDisplay,
         effects: &[Effect<Rgba>],
     ) {
+        let time = std::time::Instant::now();
         let rects = draw
             .text
             .text_effects_rgba(&mut self.text, pass, rect, text, effects);
         for (rect, col) in rects {
             draw.shaded_square.rect(pass, rect, col);
         }
+        draw.common.report_dur_text(time.elapsed());
     }
 }
 
