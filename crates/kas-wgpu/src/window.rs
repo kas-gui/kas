@@ -42,7 +42,9 @@ pub trait WindowSurface {
     fn size(&self) -> Size;
 
     /// Resize surface
-    fn do_resize(&mut self, shared: &mut Self::Shared, size: Size);
+    ///
+    /// Returns `true` when the new `size` did not match the old surface size.
+    fn do_resize(&mut self, shared: &mut Self::Shared, size: Size) -> bool;
 
     /// Construct a DrawIface object
     fn draw_iface<'iface>(
@@ -188,8 +190,9 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         match event {
             WindowEvent::Destroyed => (),
             WindowEvent::Resized(size) => {
-                self.surface.do_resize(&mut shared.draw.draw, size.cast());
-                self.apply_size(shared, false);
+                if self.surface.do_resize(&mut shared.draw.draw, size.cast()) {
+                    self.apply_size(shared, false);
+                }
             }
             WindowEvent::ScaleFactorChanged {
                 scale_factor,
@@ -204,9 +207,10 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
                 let dpem = self.theme_window.size().dpem();
                 self.ev_state.set_scale_factor(scale_factor, dpem);
                 self.solve_cache.invalidate_rule_cache();
-                self.surface
-                    .do_resize(&mut shared.draw.draw, (*new_inner_size).cast());
-                self.apply_size(shared, false);
+                let size = (*new_inner_size).cast();
+                if self.surface.do_resize(&mut shared.draw.draw, size) {
+                    self.apply_size(shared, false);
+                }
             }
             event => {
                 let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);

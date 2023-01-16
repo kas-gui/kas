@@ -53,11 +53,11 @@ impl<C: CustomPipe> super::WindowSurface for Surface<C> {
         Size::new(self.sc_desc.width.cast(), self.sc_desc.height.cast())
     }
 
-    fn do_resize(&mut self, shared: &mut Self::Shared, size: Size) {
-        let time = Instant::now();
+    fn do_resize(&mut self, shared: &mut Self::Shared, size: Size) -> bool {
         if size == self.size() {
-            return;
+            return false;
         }
+        let time = Instant::now();
 
         shared.resize(&mut self.draw, size);
 
@@ -70,6 +70,7 @@ impl<C: CustomPipe> super::WindowSurface for Surface<C> {
             "do_resize: {}µs",
             time.elapsed().as_micros()
         );
+        true
     }
 
     fn draw_iface<'iface>(
