@@ -70,6 +70,10 @@ pub struct Config {
     #[cfg_attr(feature = "config", serde(default = "defaults::touch_nav_focus"))]
     pub touch_nav_focus: bool,
 
+    // TODO: this is not "event" configuration; reorganise!
+    #[cfg_attr(feature = "config", serde(default = "defaults::frame_dur_nanos"))]
+    frame_dur_nanos: u32,
+
     #[cfg_attr(feature = "config", serde(default = "Shortcuts::platform_defaults"))]
     pub shortcuts: Shortcuts,
 
@@ -91,6 +95,7 @@ impl Default for Config {
             mouse_text_pan: defaults::mouse_text_pan(),
             mouse_nav_focus: defaults::mouse_nav_focus(),
             touch_nav_focus: defaults::touch_nav_focus(),
+            frame_dur_nanos: defaults::frame_dur_nanos(),
             shortcuts: Shortcuts::platform_defaults(),
             is_dirty: false,
         }
@@ -113,6 +118,7 @@ pub struct WindowConfig {
     scroll_dist: f32,
     pan_dist_thresh: f32,
     pub(crate) nav_focus: bool,
+    frame_dur: Duration,
 }
 
 impl WindowConfig {
@@ -120,12 +126,14 @@ impl WindowConfig {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub fn new(config: SharedRc<Config>, scale_factor: f32, dpem: f32) -> Self {
+        let frame_dur = Duration::from_nanos(config.borrow().frame_dur_nanos.cast());
         let mut w = WindowConfig {
             config,
             scroll_flick_sub: f32::NAN,
             scroll_dist: f32::NAN,
             pan_dist_thresh: f32::NAN,
             nav_focus: true,
+            frame_dur,
         };
         w.update(scale_factor, dpem);
         w
@@ -230,6 +238,14 @@ impl WindowConfig {
         let base = self.config.borrow();
         f(&base.shortcuts)
     }
+
+    /// Minimum frame time
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[inline]
+    pub fn frame_dur(&self) -> Duration {
+        self.frame_dur
+    }
 }
 
 /// When mouse-panning is enabled (click+drag to scroll)
@@ -309,5 +325,9 @@ mod defaults {
     }
     pub fn touch_nav_focus() -> bool {
         true
+    }
+
+    pub fn frame_dur_nanos() -> u32 {
+        12_500_000 // 1e9 / 80
     }
 }

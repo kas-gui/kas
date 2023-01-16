@@ -6,10 +6,8 @@
 //! Shared state
 
 use std::num::NonZeroU32;
-use std::time::Duration;
 
 use crate::{warn_about_error, Error, Options, WindowId, WindowSurface};
-use kas::cast::Conv;
 use kas::draw;
 use kas::event::UpdateId;
 use kas::model::SharedRc;
@@ -29,7 +27,6 @@ pub struct SharedState<S: WindowSurface, T> {
     pub pending: Vec<PendingAction>,
     /// Estimated scale factor (from last window constructed or available screens)
     pub scale_factor: f64,
-    pub frame_dur: Duration,
     window_id: u32,
     options: Options,
 }
@@ -49,11 +46,6 @@ where
         let mut draw = kas::draw::SharedState::new(draw_shared);
         theme.init(&mut draw);
 
-        let mut frame_dur = Duration::new(0, 0);
-        if let Some(limit) = options.fps_limit {
-            frame_dur = Duration::from_secs_f64(1.0 / f64::conv(limit.get()));
-        }
-
         Ok(SharedState {
             #[cfg(feature = "clipboard")]
             clipboard: None,
@@ -62,7 +54,6 @@ where
             config,
             pending: vec![],
             scale_factor,
-            frame_dur,
             window_id: 0,
             options,
         })

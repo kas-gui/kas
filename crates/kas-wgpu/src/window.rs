@@ -383,7 +383,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
     /// be needed before a redraw.
     pub(crate) fn do_draw(&mut self, shared: &mut SharedState<S, T>) -> Result<(), ()> {
         let start = Instant::now();
-        self.next_avail_frame_time = start + shared.frame_dur;
+        self.next_avail_frame_time = start + self.ev_state.config().frame_dur();
 
         {
             let draw = self.surface.draw_iface(&mut shared.draw);
