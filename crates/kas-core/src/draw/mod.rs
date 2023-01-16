@@ -55,7 +55,7 @@ use std::time::{Duration, Instant};
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[crate::impl_default(AnimationState::None)]
-pub enum AnimationState {
+pub(crate) enum AnimationState {
     /// No frames are queued
     None,
     /// Animation in progress: draw at the next frame time
@@ -66,7 +66,7 @@ pub enum AnimationState {
 
 impl AnimationState {
     /// Merge two states (take earliest)
-    pub fn merge_in(&mut self, rhs: AnimationState) {
+    fn merge_in(&mut self, rhs: AnimationState) {
         use AnimationState::*;
         *self = match (*self, rhs) {
             (Animate, _) | (_, Animate) => Animate,
@@ -82,9 +82,8 @@ impl AnimationState {
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 #[derive(Debug, Default)]
 pub struct WindowCommon {
-    // TODO: make pub(crate)
-    pub anim: AnimationState,
-    pub dur_text: std::time::Duration,
+    pub(crate) anim: AnimationState,
+    pub(crate) dur_text: std::time::Duration,
 }
 
 impl WindowCommon {
