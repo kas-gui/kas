@@ -5,12 +5,42 @@
 
 //! Theme traits
 
-use kas::draw::{color, DrawIface, DrawSharedImpl, SharedState};
-use kas::event::EventState;
-use kas::theme::{ThemeControl, ThemeDraw, ThemeSize};
-use kas::{autoimpl, TkAction};
+use super::{ColorsLinear, RasterConfig, ThemeDraw, ThemeSize};
+use crate::draw::{color, DrawIface, DrawSharedImpl, SharedState};
+use crate::event::EventState;
+use crate::{autoimpl, TkAction};
 use std::any::Any;
-use std::ops::{Deref, DerefMut};
+
+#[allow(unused)] use crate::event::EventMgr;
+
+/// Interface through which a theme can be adjusted at run-time
+///
+/// All methods return a [`TkAction`] to enable correct action when a theme
+/// is updated via [`EventMgr::adjust_theme`]. When adjusting a theme before
+/// the UI is started, this return value can be safely ignored.
+#[crate::autoimpl(for<T: trait + ?Sized> &mut T, Box<T>)]
+pub trait ThemeControl {
+    /// Set font size
+    ///
+    /// Units: Points per Em (standard unit of font size)
+    fn set_font_size(&mut self, pt_size: f32) -> TkAction;
+
+    /// Change the colour scheme
+    ///
+    /// If no scheme by this name is found the scheme is left unchanged.
+    fn set_scheme(&mut self, scheme: &str) -> TkAction;
+
+    /// List available colour schemes
+    fn list_schemes(&self) -> Vec<&str>;
+
+    /// Switch the theme
+    ///
+    /// Most themes do not react to this method; [`super::MultiTheme`] uses
+    /// it to switch themes.
+    fn set_theme(&mut self, _theme: &str) -> TkAction {
+        TkAction::empty()
+    }
+}
 
 /// Requirements on theme config (without `config` feature)
 #[cfg(not(feature = "config"))]
@@ -19,7 +49,7 @@ pub trait ThemeConfig: Clone + std::fmt::Debug + 'static {
     fn apply_startup(&self);
 
     /// Get raster config
-    fn raster(&self) -> &crate::RasterConfig;
+    fn raster(&self) -> &RasterConfig;
 }
 
 /// Requirements on theme config (with `config` feature)
@@ -34,7 +64,7 @@ pub trait ThemeConfig:
     fn apply_startup(&self);
 
     /// Get raster config
-    fn raster(&self) -> &crate::RasterConfig;
+    fn raster(&self) -> &RasterConfig;
 }
 
 /// A *theme* provides widget sizing and drawing implementations.
@@ -43,6 +73,7 @@ pub trait ThemeConfig:
 ///
 /// Objects of this type are copied within each window's data structure. For
 /// large resources (e.g. fonts and icons) consider using external storage.
+#[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
     /// The associated config type
     type Config: ThemeConfig;
@@ -67,7 +98,7 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
     /// The toolkit must call this method before [`Theme::new_window`]
     /// to allow initialisation specific to the `DrawIface`.
     ///
-    /// At a minimum, a theme must load a font to [`kas::text::fonts`].
+    /// At a minimum, a theme must load a font to [`crate::text::fonts`].
     /// The first font loaded (by any theme) becomes the default font.
     fn init(&mut self, shared: &mut SharedState<DS>);
 
@@ -106,6 +137,17 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
         window: &'a mut Self::Window,
     ) -> Self::Draw<'a>;
 
+    /// Construct a draw object from parts
+    ///
+    /// This method allows a "derived" theme to construct a draw object for the
+    /// inherited theme.
+    fn draw_upcast<'a>(
+        draw: DrawIface<'a, DS>,
+        ev: &'a mut EventState,
+        w: &'a mut Self::Window,
+        cols: &'a ColorsLinear,
+    ) -> Self::Draw<'a>;
+
     /// Background colour
     fn clear_color(&self) -> color::Rgba;
 }
@@ -116,50 +158,10 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
 ///
 /// The main reason for this separation is to allow proper handling of
 /// multi-window applications across screens with differing DPIs.
-#[autoimpl(for<T: trait> Box<T>)]
+#[autoimpl(for<T: trait + ?Sized> Box<T>)]
 pub trait Window: 'static {
     /// Construct a [`ThemeSize`] object
     fn size(&self) -> &dyn ThemeSize;
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
-}
-
-impl<T: Theme<DS>, DS: DrawSharedImpl> Theme<DS> for Box<T> {
-    type Window = <T as Theme<DS>>::Window;
-    type Config = <T as Theme<DS>>::Config;
-
-    type Draw<'a> = <T as Theme<DS>>::Draw<'a>
-    where
-        T: 'a;
-
-    fn config(&self) -> std::borrow::Cow<Self::Config> {
-        self.deref().config()
-    }
-    fn apply_config(&mut self, config: &Self::Config) -> TkAction {
-        self.deref_mut().apply_config(config)
-    }
-
-    fn init(&mut self, shared: &mut SharedState<DS>) {
-        self.deref_mut().init(shared);
-    }
-
-    fn new_window(&self, dpi_factor: f32) -> Self::Window {
-        self.deref().new_window(dpi_factor)
-    }
-    fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
-        self.deref().update_window(window, dpi_factor);
-    }
-
-    fn draw<'a>(
-        &'a self,
-        draw: DrawIface<'a, DS>,
-        ev: &'a mut EventState,
-        window: &'a mut Self::Window,
-    ) -> Self::Draw<'a> {
-        self.deref().draw(draw, ev, window)
-    }
-
-    fn clear_color(&self) -> color::Rgba {
-        self.deref().clear_color()
-    }
 }

@@ -7,13 +7,12 @@
 
 use std::any::Any;
 use std::borrow::Cow;
-use std::ops::{Deref, DerefMut};
 
 use super::{Theme, Window};
-use kas::draw::{color, DrawIface, DrawSharedImpl, SharedState};
-use kas::event::EventState;
-use kas::theme::{ThemeControl, ThemeDraw, ThemeSize};
-use kas::TkAction;
+use crate::draw::{color, DrawIface, DrawSharedImpl, SharedState};
+use crate::event::EventState;
+use crate::theme::{ThemeControl, ThemeDraw};
+use crate::TkAction;
 
 /// An optionally-owning (boxed) reference
 ///
@@ -110,15 +109,5 @@ impl<DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T {
 
     fn clear_color(&self) -> color::Rgba {
         self.clear_color()
-    }
-}
-
-impl Window for Box<dyn Window> {
-    fn size(&self) -> &dyn ThemeSize {
-        self.deref().size()
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self.deref_mut().as_any_mut()
     }
 }

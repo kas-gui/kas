@@ -7,7 +7,7 @@
 
 use super::Error;
 use kas::draw::DrawSharedImpl;
-use kas_theme::{Theme, ThemeConfig};
+use kas::theme::{Theme, ThemeConfig};
 use std::env::var;
 use std::num::NonZeroU32;
 use std::path::PathBuf;

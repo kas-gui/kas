@@ -9,7 +9,6 @@ use std::f32;
 use std::ops::Range;
 use std::time::Instant;
 
-use crate::{dim, ColorsLinear, Config, InputState, SimpleTheme, Theme};
 use crate::{DrawShaded, DrawShadedImpl};
 use kas::cast::traits::*;
 use kas::dir::{Direction, Directional};
@@ -17,7 +16,9 @@ use kas::draw::{color::Rgba, *};
 use kas::event::EventState;
 use kas::geom::*;
 use kas::text::{TextApi, TextDisplay};
+use kas::theme::dimensions as dim;
 use kas::theme::{Background, ThemeControl, ThemeDraw, ThemeSize};
+use kas::theme::{ColorsLinear, Config, FlatTheme, InputState, SimpleTheme, Theme};
 use kas::theme::{FrameStyle, MarkStyle, TextClass};
 use kas::{TkAction, WidgetId};
 
@@ -45,7 +46,7 @@ impl ShadedTheme {
     /// Units: Points per Em (standard unit of font size)
     #[must_use]
     pub fn with_font_size(mut self, pt_size: f32) -> Self {
-        self.base.config.set_font_size(pt_size);
+        self.base = self.base.with_font_size(pt_size);
         self
     }
 
@@ -54,10 +55,7 @@ impl ShadedTheme {
     /// If no scheme by this name is found the scheme is left unchanged.
     #[must_use]
     pub fn with_colours(mut self, scheme: &str) -> Self {
-        self.base.config.set_active_scheme(scheme);
-        if let Some(scheme) = self.base.config.get_color_scheme(scheme) {
-            self.base.cols = scheme.into();
-        }
+        self.base = self.base.with_colours(scheme);
         self
     }
 }
@@ -136,6 +134,15 @@ where
         }
     }
 
+    fn draw_upcast<'a>(
+        draw: DrawIface<'a, DS>,
+        ev: &'a mut EventState,
+        w: &'a mut Self::Window,
+        cols: &'a ColorsLinear,
+    ) -> Self::Draw<'a> {
+        DrawHandle { draw, ev, w, cols }
+    }
+
     fn clear_color(&self) -> Rgba {
         <SimpleTheme as Theme<DS>>::clear_color(&self.base)
     }
@@ -160,17 +167,12 @@ where
     DS::Draw: DrawRoundedImpl + DrawShadedImpl,
 {
     // Type-cast to flat_theme's DrawHandle. Should be equivalent to transmute.
-    fn as_flat<'b, 'c>(&'b mut self) -> super::flat_theme::DrawHandle<'c, DS>
+    fn as_flat<'b, 'c>(&'b mut self) -> <FlatTheme as Theme<DS>>::Draw<'c>
     where
         'a: 'c,
         'b: 'c,
     {
-        super::flat_theme::DrawHandle {
-            draw: self.draw.re(),
-            ev: self.ev,
-            w: self.w,
-            cols: self.cols,
-        }
+        FlatTheme::draw_upcast(self.draw.re(), self.ev, self.w, self.cols)
     }
 
     /// Draw an edit box with optional navigation highlight.

@@ -5,10 +5,9 @@
 
 //! Theme configuration
 
-use crate::{ColorsSrgb, ThemeConfig};
-use kas::text::fonts::{fonts, AddMode, FontSelector};
-use kas::theme::TextClass;
-use kas::TkAction;
+use super::{ColorsSrgb, TextClass, ThemeConfig};
+use crate::text::fonts::{fonts, AddMode, FontSelector};
+use crate::TkAction;
 use std::collections::BTreeMap;
 use std::time::Duration;
 

@@ -9,8 +9,8 @@
 //! GPU-accelerated rendering and [winit] for windowing, thus it should be
 //! portable to most desktop and potentially also mobile platforms.
 //!
-//! This crate supports themes via the [`kas_theme`] crate, including shaded
-//! drawing.
+//! This crate supports themes via the [`kas::theme`], and provides one
+//! additional theme, [`ShadedTheme`].
 //!
 //! Custom GPU-accelerated drawing is supported via [`draw::CustomPipe`]
 //! (see the [Mandlebrot example](https://github.com/kas-gui/kas/blob/master/kas-wgpu/examples/mandlebrot.rs)).
@@ -22,17 +22,21 @@
 //! [winit]: https://github.com/rust-windowing/winit
 //! [clipboard]: https://crates.io/crates/clipboard
 
+#![cfg_attr(doc_cfg, feature(doc_cfg))]
+
 pub mod draw;
+mod draw_shaded;
 mod event_loop;
 pub mod options;
+mod shaded_theme;
 mod shared;
 mod window;
 
 use kas::draw::DrawShared;
 use kas::event::UpdateId;
 use kas::model::SharedRc;
+use kas::theme::Theme;
 use kas::WindowId;
-use kas_theme::Theme;
 use thiserror::Error;
 use winit::error::OsError;
 use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy, EventLoopWindowTarget};
@@ -41,7 +45,9 @@ use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe};
 use crate::shared::SharedState;
 use window::Window;
 
+pub use draw_shaded::{DrawShaded, DrawShadedImpl};
 pub use options::Options;
+pub use shaded_theme::ShadedTheme;
 pub extern crate wgpu;
 
 /// Possible failures from constructing a [`Toolkit`]
@@ -102,7 +108,7 @@ pub struct Toolkit<C: CustomPipe, T: Theme<DrawPipe<C>>> {
 
 impl<T: Theme<DrawPipe<()>> + 'static> Toolkit<(), T>
 where
-    T::Window: kas_theme::Window,
+    T::Window: kas::theme::Window,
 {
     /// Construct a new instance with default options.
     ///
@@ -117,7 +123,7 @@ where
 
 impl<C: CustomPipe, T: Theme<DrawPipe<C>> + 'static> Toolkit<C, T>
 where
-    T::Window: kas_theme::Window,
+    T::Window: kas::theme::Window,
 {
     /// Construct an instance with custom options
     ///

@@ -14,7 +14,12 @@ documentation = "https://docs.rs/kas-wgpu/"
 [features]
 # WARNING: if "raster" is disabled, an alternative like "kas-text/fontdue" is required!
 default = ["clipboard", "shaping", "raster"]
-nightly = ["kas-theme/nightly"]
+
+# Enables documentation of APIs for shells and internal usage.
+# This API is not intended for use by end-user applications and
+# thus is omitted from built documentation by default.
+# This flag does not change the API, only built documentation.
+internal_doc = []
 
 shaping = ["kas-text/shaping"]
 harfbuzz = ["kas-text/harfbuzz"]
@@ -41,12 +46,6 @@ version = "0.12.0"
 package = "kas-core"
 path = "../kas-core"
 features = ["config", "winit"]
-
-[dependencies.kas-theme]
-path = "../kas-theme"
-features = ["config"]
-version = "0.12.0"
-default-features = false
 
 [dependencies.kas-text]
 version = "0.6.0"

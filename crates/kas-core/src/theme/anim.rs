@@ -5,8 +5,8 @@
 
 //! Animation helpers
 
-use kas::draw::DrawImpl;
-use kas::WidgetId;
+use crate::draw::DrawImpl;
+use crate::WidgetId;
 use std::marker::PhantomData;
 use std::time::{Duration, Instant};
 

@@ -14,8 +14,8 @@ use kas::cast::Conv;
 use kas::draw;
 use kas::event::UpdateId;
 use kas::model::SharedRc;
+use kas::theme::{Theme, ThemeConfig};
 use kas::TkAction;
-use kas_theme::{Theme, ThemeConfig};
 
 #[cfg(feature = "clipboard")]
 use window_clipboard::Clipboard;
@@ -38,7 +38,7 @@ pub struct SharedState<C: CustomPipe, T> {
 
 impl<C: CustomPipe, T: Theme<DrawPipe<C>>> SharedState<C, T>
 where
-    T::Window: kas_theme::Window,
+    T::Window: kas::theme::Window,
 {
     /// Construct
     pub fn new<CB: CustomPipeBuilder<Pipe = C>>(

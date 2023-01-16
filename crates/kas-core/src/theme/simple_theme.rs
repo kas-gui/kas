@@ -11,24 +11,28 @@ use std::ops::Range;
 use std::rc::Rc;
 use std::time::Instant;
 
-use crate::{dim, ColorsLinear, Config, InputState, Theme};
 use kas::cast::traits::*;
 use kas::dir::{Direction, Directional};
 use kas::draw::{color::Rgba, *};
 use kas::event::EventState;
 use kas::geom::*;
 use kas::text::{fonts, Effect, TextApi, TextDisplay};
+use kas::theme::dimensions as dim;
 use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
+use kas::theme::{ColorsLinear, Config, InputState, Theme};
 use kas::theme::{ThemeControl, ThemeDraw, ThemeSize};
 use kas::{TkAction, WidgetId};
 
 /// A simple theme
+///
+/// This theme is functional, but not pretty. It is intended as a template for
+/// other themes.
 #[derive(Clone, Debug)]
 pub struct SimpleTheme {
-    pub(crate) config: Config,
-    pub(crate) cols: ColorsLinear,
+    pub config: Config,
+    pub cols: ColorsLinear,
     dims: dim::Parameters,
-    pub(crate) fonts: Option<Rc<LinearMap<TextClass, fonts::FontId>>>,
+    pub fonts: Option<Rc<LinearMap<TextClass, fonts::FontId>>>,
 }
 
 impl Default for SimpleTheme {
@@ -143,6 +147,15 @@ where
             w,
             cols: &self.cols,
         }
+    }
+
+    fn draw_upcast<'a>(
+        draw: DrawIface<'a, DS>,
+        ev: &'a mut EventState,
+        w: &'a mut Self::Window,
+        cols: &'a ColorsLinear,
+    ) -> Self::Draw<'a> {
+        DrawHandle { draw, ev, w, cols }
     }
 
     fn clear_color(&self) -> Rgba {

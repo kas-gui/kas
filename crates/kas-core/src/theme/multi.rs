@@ -7,15 +7,15 @@
 
 use std::collections::HashMap;
 
-use crate::{Config, Theme, ThemeDst, Window};
-use kas::draw::{color, DrawIface, DrawSharedImpl, SharedState};
-use kas::event::EventState;
-use kas::theme::{ThemeControl, ThemeDraw};
-use kas::TkAction;
+use super::{ColorsLinear, Config, Theme, ThemeDst, Window};
+use crate::draw::{color, DrawIface, DrawSharedImpl, SharedState};
+use crate::event::EventState;
+use crate::theme::{ThemeControl, ThemeDraw};
+use crate::TkAction;
 
 type DynTheme<DS> = Box<dyn ThemeDst<DS>>;
 
-/// Wrapper around mutliple themes, supporting run-time switching
+/// Wrapper around multiple themes, supporting run-time switching
 pub struct MultiTheme<DS> {
     names: HashMap<String, usize>,
     themes: Vec<DynTheme<DS>>,
@@ -123,6 +123,15 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
         window: &'a mut Self::Window,
     ) -> Box<dyn ThemeDraw + 'a> {
         self.themes[self.active].draw(draw, ev, window)
+    }
+
+    fn draw_upcast<'a>(
+        _draw: DrawIface<'a, DS>,
+        _ev: &'a mut EventState,
+        _w: &'a mut Self::Window,
+        _cols: &'a ColorsLinear,
+    ) -> Self::Draw<'a> {
+        unimplemented!()
     }
 
     fn clear_color(&self) -> color::Rgba {

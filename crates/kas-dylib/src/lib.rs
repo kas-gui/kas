@@ -13,6 +13,5 @@
 
 use kas_core;
 #[cfg(feature = "kas-resvg")] use kas_resvg;
-use kas_theme;
 use kas_wgpu;
 use kas_widgets;

@@ -482,7 +482,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let theme = kas::theme::MultiTheme::builder()
         .add("flat", kas::theme::FlatTheme::new())
         .add("simple", kas::theme::SimpleTheme::new())
-        .add("shaded", kas::theme::ShadedTheme::new())
+        .add("shaded", kas_wgpu::ShadedTheme::new())
         .build();
     let mut toolkit = kas::shell::Toolkit::new(theme)?;
 

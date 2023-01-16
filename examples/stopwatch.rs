@@ -81,7 +81,7 @@ fn make_window() -> Box<dyn kas::Window> {
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let theme = kas::theme::ShadedTheme::new()
+    let theme = kas_wgpu::ShadedTheme::new()
         .with_colours("dark")
         .with_font_size(18.0);
     kas::shell::Toolkit::new(theme)?

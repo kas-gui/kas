@@ -9,19 +9,19 @@ use std::f32::consts::FRAC_PI_2;
 use wgpu::util::DeviceExt;
 
 use super::*;
+use crate::DrawShadedImpl;
 use kas::cast::traits::*;
 use kas::draw::color::Rgba;
 use kas::draw::*;
 use kas::geom::{Quad, Rect, Size, Vec2};
 use kas::text::{Effect, TextDisplay};
-use kas_theme::DrawShadedImpl;
 
 impl<C: CustomPipe> DrawPipe<C> {
     /// Construct
     pub fn new<CB: CustomPipeBuilder<Pipe = C>>(
         mut custom: CB,
         (device, queue): (wgpu::Device, wgpu::Queue),
-        raster_config: &kas_theme::RasterConfig,
+        raster_config: &kas::theme::RasterConfig,
     ) -> Self {
         let shaders = ShaderManager::new(&device);
 
