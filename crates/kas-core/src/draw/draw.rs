@@ -58,6 +58,19 @@ pub struct DrawIface<'a, DS: DrawSharedImpl> {
 }
 
 impl<'a, DS: DrawSharedImpl> DrawIface<'a, DS> {
+    /// Construct a new instance
+    ///
+    /// For usage by the (graphical) shell.
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    pub fn new(draw: &'a mut DS::Draw, shared: &'a mut SharedState<DS>) -> Self {
+        DrawIface {
+            draw,
+            shared,
+            pass: PassId::new(0),
+        }
+    }
+
     /// Attempt to downcast a `&mut dyn Draw` to a concrete [`DrawIface`] object
     ///
     /// Note: Rust does not (yet) support trait-object-downcast: it not possible

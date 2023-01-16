@@ -8,7 +8,7 @@
 use crate::draw::{CustomPipe, DrawPipe, DrawWindow};
 use kas::cast::Cast;
 use kas::draw::color::Rgba;
-use kas::draw::{AnimationState, DrawIface, PassId};
+use kas::draw::{AnimationState, DrawIface};
 use kas::geom::Size;
 use raw_window_handle as raw;
 use std::time::Instant;
@@ -76,11 +76,7 @@ impl<C: CustomPipe> super::WindowSurface for Surface<C> {
         &'iface mut self,
         shared: &'iface mut kas::draw::SharedState<Self::Shared>,
     ) -> DrawIface<'iface, Self::Shared> {
-        DrawIface {
-            draw: &mut self.draw,
-            shared,
-            pass: PassId::new(0),
-        }
+        DrawIface::new(&mut self.draw, shared)
     }
 
     fn take_animation_state(&mut self) -> AnimationState {
