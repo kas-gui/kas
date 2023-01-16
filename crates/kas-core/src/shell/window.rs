@@ -5,6 +5,7 @@
 
 //! `Window` and `WindowList` types
 
+use super::{PendingAction, ProxyAction, SharedState};
 use kas::cast::Cast;
 use kas::draw::color::Rgba;
 use kas::draw::{AnimationState, DrawIface, DrawShared, WindowCommon};
@@ -22,12 +23,7 @@ use winit::event::WindowEvent;
 use winit::event_loop::EventLoopWindowTarget;
 use winit::window::WindowBuilder;
 
-use crate::shared::{PendingAction, SharedState};
-use crate::ProxyAction;
-
-mod surface;
-pub(crate) use surface::Surface;
-
+/// Window graphical surface requirements
 pub trait WindowSurface {
     /// Shared draw state
     type Shared: kas::draw::DrawSharedImpl;
@@ -63,13 +59,13 @@ pub trait WindowSurface {
 }
 
 /// Per-window data
-pub(crate) struct Window<S: WindowSurface, T: Theme<S::Shared>> {
-    pub(crate) widget: kas::RootWidget,
-    pub(crate) window_id: WindowId,
+pub struct Window<S: WindowSurface, T: Theme<S::Shared>> {
+    pub(super) widget: kas::RootWidget,
+    pub(super) window_id: WindowId,
     ev_state: EventState,
     solve_cache: SolveCache,
     /// The winit window
-    pub(crate) window: winit::window::Window,
+    pub(super) window: winit::window::Window,
     theme_window: T::Window,
     next_avail_frame_time: Instant,
     queued_frame_time: Option<Instant>,
@@ -79,7 +75,7 @@ pub(crate) struct Window<S: WindowSurface, T: Theme<S::Shared>> {
 // Public functions, for use by the toolkit
 impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
     /// Construct a window
-    pub fn new(
+    pub(super) fn new(
         shared: &mut SharedState<S, T>,
         elwt: &EventLoopWindowTarget<ProxyAction>,
         window_id: WindowId,
@@ -381,7 +377,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
     ///
     /// Returns an error when drawing is aborted and further event handling may
     /// be needed before a redraw.
-    pub(crate) fn do_draw(&mut self, shared: &mut SharedState<S, T>) -> Result<(), ()> {
+    pub(super) fn do_draw(&mut self, shared: &mut SharedState<S, T>) -> Result<(), ()> {
         let start = Instant::now();
         self.next_avail_frame_time = start + self.ev_state.config().frame_dur();
 
@@ -424,7 +420,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         Ok(())
     }
 
-    pub(crate) fn next_resume(&self) -> Option<Instant> {
+    pub(super) fn next_resume(&self) -> Option<Instant> {
         match (self.ev_state.next_resume(), self.queued_frame_time) {
             (Some(t1), Some(t2)) => Some(t1.min(t2)),
             (Some(t), None) => Some(t),

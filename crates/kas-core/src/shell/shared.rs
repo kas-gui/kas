@@ -7,7 +7,7 @@
 
 use std::num::NonZeroU32;
 
-use crate::{WindowId, WindowSurface};
+use super::{PendingAction, WindowId, WindowSurface};
 use kas::config::Options;
 use kas::draw;
 use kas::event::UpdateId;
@@ -15,7 +15,6 @@ use kas::model::SharedRc;
 use kas::shell::Error;
 use kas::theme::Theme;
 use kas::util::warn_about_error;
-use kas::TkAction;
 
 #[cfg(feature = "clipboard")]
 use window_clipboard::Clipboard;
@@ -24,12 +23,12 @@ use window_clipboard::Clipboard;
 pub struct SharedState<S: WindowSurface, T> {
     #[cfg(feature = "clipboard")]
     clipboard: Option<Clipboard>,
-    pub draw: draw::SharedState<S::Shared>,
-    pub theme: T,
-    pub config: SharedRc<kas::event::Config>,
-    pub pending: Vec<PendingAction>,
+    pub(super) draw: draw::SharedState<S::Shared>,
+    pub(super) theme: T,
+    pub(super) config: SharedRc<kas::event::Config>,
+    pub(super) pending: Vec<PendingAction>,
     /// Estimated scale factor (from last window constructed or available screens)
-    pub scale_factor: f64,
+    pub(super) scale_factor: f64,
     window_id: u32,
     options: Options,
 }
@@ -121,12 +120,4 @@ where
             Err(error) => warn_about_error("Failed to save config", &error),
         }
     }
-}
-
-pub enum PendingAction {
-    AddPopup(winit::window::WindowId, WindowId, kas::Popup),
-    AddWindow(WindowId, Box<dyn kas::Window>),
-    CloseWindow(WindowId),
-    Update(kas::event::UpdateId, u64),
-    TkAction(TkAction),
 }

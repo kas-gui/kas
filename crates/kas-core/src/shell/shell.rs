@@ -5,31 +5,22 @@
 
 //! KAS shell
 
-use crate::shared::SharedState;
-use crate::window::{Window, WindowSurface};
-use crate::Result;
-use kas::config::Options;
-use kas::draw::DrawShared;
-use kas::event::UpdateId;
-use kas::model::SharedRc;
-use kas::theme::{RasterConfig, Theme, ThemeConfig};
-use kas::WindowId;
+use super::{ProxyAction, Result, SharedState, Window, WindowSurface};
+use crate::config::Options;
+use crate::draw::{DrawShared, DrawSharedImpl};
+use crate::event::{self, UpdateId};
+use crate::model::SharedRc;
+use crate::theme::{self, RasterConfig, Theme, ThemeConfig};
+use crate::util::warn_about_error;
+use crate::WindowId;
 use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy, EventLoopWindowTarget};
-
-fn warn_about_error(msg: &str, mut error: &dyn std::error::Error) {
-    log::warn!("{msg}: {error}");
-    while let Some(source) = error.source() {
-        log::warn!("Source: {source}");
-        error = source;
-    }
-}
 
 /// API for the graphical implementation of a shell
 ///
 /// See also [`Shell`].
 pub trait GraphicalShell {
     /// Shared draw state
-    type Shared: kas::draw::DrawSharedImpl;
+    type Shared: DrawSharedImpl;
 
     /// Window surface
     type Surface: WindowSurface<Shared = Self::Shared> + 'static;
@@ -53,7 +44,7 @@ pub struct Shell<G: GraphicalShell, T: Theme<G::Shared>> {
 
 impl<G: GraphicalShell + Default, T: Theme<G::Shared> + 'static> Shell<G, T>
 where
-    T::Window: kas::theme::Window,
+    T::Window: theme::Window,
 {
     /// Construct a new instance with default options.
     ///
@@ -68,7 +59,7 @@ where
 
 impl<G: GraphicalShell, T: Theme<G::Shared> + 'static> Shell<G, T>
 where
-    T::Window: kas::theme::Window,
+    T::Window: theme::Window,
 {
     /// Construct an instance with custom options
     ///
@@ -108,7 +99,7 @@ where
         graphical_shell: impl Into<G>,
         theme: T,
         options: Options,
-        config: SharedRc<kas::event::Config>,
+        config: SharedRc<event::Config>,
     ) -> Result<Self> {
         let el = EventLoopBuilder::with_user_event().build();
         let scale_factor = find_scale_factor(&el);
@@ -128,7 +119,7 @@ where
 
     /// Access event configuration
     #[inline]
-    pub fn event_config(&self) -> &SharedRc<kas::event::Config> {
+    pub fn event_config(&self) -> &SharedRc<event::Config> {
         &self.shared.config
     }
 
@@ -150,7 +141,7 @@ where
     ///
     /// Note: typically, one should have `W: Clone`, enabling multiple usage.
     #[inline]
-    pub fn add<W: kas::Window + 'static>(&mut self, window: W) -> Result<WindowId> {
+    pub fn add<W: crate::Window + 'static>(&mut self, window: W) -> Result<WindowId> {
         self.add_boxed(Box::new(window))
     }
 
@@ -160,13 +151,13 @@ where
     ///
     /// Note: typically, one should have `W: Clone`, enabling multiple usage.
     #[inline]
-    pub fn with<W: kas::Window + 'static>(mut self, window: W) -> Result<Self> {
+    pub fn with<W: crate::Window + 'static>(mut self, window: W) -> Result<Self> {
         self.add_boxed(Box::new(window))?;
         Ok(self)
     }
 
     /// Add a boxed window directly
-    pub fn add_boxed(&mut self, widget: Box<dyn kas::Window>) -> Result<WindowId> {
+    pub fn add_boxed(&mut self, widget: Box<dyn crate::Window>) -> Result<WindowId> {
         let id = self.shared.next_window_id();
         let win = Window::new(&mut self.shared, &self.el, id, widget)?;
         self.windows.push(win);
@@ -175,7 +166,7 @@ where
 
     /// Add a boxed window directly, inline
     #[inline]
-    pub fn with_boxed(mut self, widget: Box<dyn kas::Window>) -> Result<Self> {
+    pub fn with_boxed(mut self, widget: Box<dyn crate::Window>) -> Result<Self> {
         self.add_boxed(widget)?;
         Ok(self)
     }
@@ -190,7 +181,7 @@ where
     /// Run the main loop.
     #[inline]
     pub fn run(self) -> ! {
-        let mut el = crate::event_loop::Loop::new(self.windows, self.shared);
+        let mut el = super::EventLoop::new(self.windows, self.shared);
         self.el
             .run(move |event, elwt, control_flow| el.handle(event, elwt, control_flow))
     }
@@ -239,11 +230,4 @@ impl Proxy {
             .send_event(ProxyAction::Update(id, payload))
             .map_err(|_| ClosedError)
     }
-}
-
-#[derive(Debug)]
-pub(crate) enum ProxyAction {
-    CloseAll,
-    Close(WindowId),
-    Update(UpdateId, u64),
 }

@@ -8,6 +8,21 @@
 use thiserror::Error;
 use winit::error::OsError;
 
+mod event_loop;
+mod shared;
+mod shell;
+mod window;
+
+use crate::event::UpdateId;
+use crate::{TkAction, WindowId};
+use event_loop::Loop as EventLoop;
+use shared::SharedState;
+use window::Window;
+
+pub use shell::{ClosedError, GraphicalShell, Proxy, Shell};
+pub use window::WindowSurface;
+pub extern crate raw_window_handle;
+
 /// Possible failures from constructing a [`Shell`]
 ///
 /// Some variants are undocumented. Users should not match these variants since
@@ -31,3 +46,18 @@ pub enum Error {
 
 /// A `Result` type representing `T` or [`enum@Error`]
 pub type Result<T> = std::result::Result<T, Error>;
+
+enum PendingAction {
+    AddPopup(winit::window::WindowId, WindowId, kas::Popup),
+    AddWindow(WindowId, Box<dyn kas::Window>),
+    CloseWindow(WindowId),
+    Update(kas::event::UpdateId, u64),
+    TkAction(TkAction),
+}
+
+#[derive(Debug)]
+enum ProxyAction {
+    CloseAll,
+    Close(WindowId),
+    Update(UpdateId, u64),
+}

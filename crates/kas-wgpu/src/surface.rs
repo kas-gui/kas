@@ -10,7 +10,7 @@ use kas::cast::Cast;
 use kas::draw::color::Rgba;
 use kas::draw::{DrawIface, WindowCommon};
 use kas::geom::Size;
-use raw_window_handle as raw;
+use kas::shell::raw_window_handle as raw;
 use std::time::Instant;
 
 /// Per-window data

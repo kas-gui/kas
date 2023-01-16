@@ -26,23 +26,16 @@
 
 pub mod draw;
 mod draw_shaded;
-mod event_loop;
 pub mod options;
 mod shaded_theme;
-mod shared;
-mod shell;
-mod window;
+mod surface;
 
 use crate::draw::{CustomPipeBuilder, DrawPipe};
 use kas::theme::RasterConfig;
-use kas::WindowId;
-use shell::ProxyAction;
-use window::{Window, WindowSurface};
 
 pub use draw_shaded::{DrawShaded, DrawShadedImpl};
 pub use options::Options;
 pub use shaded_theme::ShadedTheme;
-pub use shell::{ClosedError, GraphicalShell, Proxy, Shell};
 pub extern crate wgpu;
 pub use kas::shell::*;
 
@@ -51,7 +44,7 @@ pub struct WgpuShellBuilder<CB: CustomPipeBuilder>(CB, Options);
 
 impl<CB: CustomPipeBuilder> GraphicalShell for WgpuShellBuilder<CB> {
     type Shared = DrawPipe<CB::Pipe>;
-    type Surface = window::Surface<CB::Pipe>;
+    type Surface = surface::Surface<CB::Pipe>;
 
     fn build(self, raster_config: &RasterConfig) -> Result<Self::Shared> {
         DrawPipe::new(self.0, &self.1, raster_config)

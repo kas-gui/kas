@@ -60,7 +60,7 @@ wgpu = ["dep:kas-wgpu"]
 internal_doc = ["kas-core/internal_doc", "kas-wgpu?/internal_doc"]
 
 # Enables clipboard read/write
-clipboard = ["kas-wgpu?/clipboard"]
+clipboard = ["kas-core/clipboard"]
 
 # Enable Markdown parsing
 markdown = ["kas-core/markdown"]

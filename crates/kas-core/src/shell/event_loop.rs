@@ -13,14 +13,13 @@ use winit::event::{Event, StartCause};
 use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
 use winit::window as ww;
 
+use super::{PendingAction, SharedState};
+use super::{ProxyAction, Window, WindowId, WindowSurface};
 use kas::theme::Theme;
 use kas::TkAction;
 
-use crate::shared::{PendingAction, SharedState};
-use crate::{ProxyAction, Window, WindowId, WindowSurface};
-
 /// Event-loop data structure (i.e. all run-time state)
-pub(crate) struct Loop<S: WindowSurface, T: Theme<S::Shared>>
+pub(super) struct Loop<S: WindowSurface, T: Theme<S::Shared>>
 where
     T::Window: kas::theme::Window,
 {
@@ -38,7 +37,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Loop<S, T>
 where
     T::Window: kas::theme::Window,
 {
-    pub(crate) fn new(mut windows: Vec<Window<S, T>>, shared: SharedState<S, T>) -> Self {
+    pub(super) fn new(mut windows: Vec<Window<S, T>>, shared: SharedState<S, T>) -> Self {
         let id_map = windows
             .iter()
             .map(|w| (w.window_id, w.window.id()))
@@ -51,7 +50,7 @@ where
         }
     }
 
-    pub(crate) fn handle(
+    pub(super) fn handle(
         &mut self,
         event: Event<ProxyAction>,
         elwt: &EventLoopWindowTarget<ProxyAction>,
