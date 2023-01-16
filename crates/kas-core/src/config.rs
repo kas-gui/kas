@@ -4,10 +4,10 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Configuration read/write utilities
-#![cfg_attr(doc_cfg, doc(cfg(feature = "config")))]
 
 use crate::draw::DrawSharedImpl;
 use crate::theme::{Theme, ThemeConfig};
+#[cfg(feature = "serde")]
 use serde::{de::DeserializeOwned, Serialize};
 use std::env::var;
 use std::path::Path;
@@ -124,6 +124,7 @@ impl Format {
     }
 
     /// Read from a path
+    #[cfg(feature = "serde")]
     pub fn read_path<T: DeserializeOwned>(self, path: &Path) -> Result<T, Error> {
         log::info!("read_path: path={}, format={:?}", path.display(), self);
         match self {
@@ -150,6 +151,7 @@ impl Format {
     }
 
     /// Write to a path
+    #[cfg(feature = "serde")]
     pub fn write_path<T: Serialize>(self, path: &Path, value: &T) -> Result<(), Error> {
         log::info!("write_path: path={}, format={:?}", path.display(), self);
         match self {
@@ -181,6 +183,7 @@ impl Format {
     }
 
     /// Guess format and load from a path
+    #[cfg(feature = "serde")]
     #[inline]
     pub fn guess_and_read_path<T: DeserializeOwned>(path: &Path) -> Result<T, Error> {
         let format = Self::guess_from_path(path);
@@ -188,6 +191,7 @@ impl Format {
     }
 
     /// Guess format and write to a path
+    #[cfg(feature = "serde")]
     #[inline]
     pub fn guess_and_write_path<T: Serialize>(path: &Path, value: &T) -> Result<(), Error> {
         let format = Self::guess_from_path(path);
@@ -275,12 +279,15 @@ impl Options {
         options
     }
 
-    /// Load/save theme config on start
+    /// Load/save and apply theme config on start
+    ///
+    /// Requires feature "serde" to load/save config.
     pub fn init_theme_config<DS: DrawSharedImpl, T: Theme<DS>>(
         &self,
         theme: &mut T,
     ) -> Result<(), Error> {
         match self.config_mode {
+            #[cfg(feature = "serde")]
             ConfigMode::Read | ConfigMode::ReadWrite if self.theme_config_path.is_file() => {
                 let config: T::Config =
                     kas::config::Format::guess_and_read_path(&self.theme_config_path)?;
@@ -288,6 +295,7 @@ impl Options {
                 // Ignore TkAction: UI isn't built yet
                 let _ = theme.apply_config(&config);
             }
+            #[cfg(feature = "serde")]
             ConfigMode::WriteDefault if !self.theme_config_path.as_os_str().is_empty() => {
                 let config = theme.config();
                 config.apply_startup();
@@ -298,38 +306,47 @@ impl Options {
             }
             _ => theme.config().apply_startup(),
         }
+
         Ok(())
     }
 
     /// Load/save KAS config on start
+    ///
+    /// Requires feature "serde" to load/save config.
     pub fn read_config(&self) -> Result<kas::event::Config, Error> {
+        #[cfg(feature = "serde")]
         if !self.config_path.as_os_str().is_empty() {
-            match self.config_mode {
+            return match self.config_mode {
+                #[cfg(feature = "serde")]
                 ConfigMode::Read | ConfigMode::ReadWrite => {
                     Ok(kas::config::Format::guess_and_read_path(&self.config_path)?)
                 }
+                #[cfg(feature = "serde")]
                 ConfigMode::WriteDefault => {
                     let config: kas::event::Config = Default::default();
                     kas::config::Format::guess_and_write_path(&self.config_path, &config)?;
                     Ok(config)
                 }
-            }
-        } else {
-            Ok(Default::default())
+            };
         }
+
+        Ok(Default::default())
     }
 
     /// Save all config (on exit or after changes)
+    ///
+    /// Requires feature "serde" to save config.
     pub fn write_config<DS: DrawSharedImpl, T: Theme<DS>>(
         &self,
-        config: &kas::event::Config,
-        theme: &T,
+        _config: &kas::event::Config,
+        _theme: &T,
     ) -> Result<(), Error> {
+        #[cfg(feature = "serde")]
         if self.config_mode == ConfigMode::ReadWrite {
-            if !self.config_path.as_os_str().is_empty() && config.is_dirty() {
-                kas::config::Format::guess_and_write_path(&self.config_path, &config)?;
+            if !self.config_path.as_os_str().is_empty() && _config.is_dirty() {
+                kas::config::Format::guess_and_write_path(&self.config_path, &_config)?;
             }
-            let theme_config = theme.config();
+            let theme_config = _theme.config();
             if !self.theme_config_path.as_os_str().is_empty() && theme_config.is_dirty() {
                 kas::config::Format::guess_and_write_path(
                     &self.theme_config_path,
@@ -337,6 +354,7 @@ impl Options {
                 )?;
             }
         }
+
         Ok(())
     }
 }

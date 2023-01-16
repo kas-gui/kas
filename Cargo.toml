@@ -70,17 +70,17 @@ shaping = ["kas-core/shaping"]
 # Alternative: use Harfbuzz library for shaping
 harfbuzz = ["kas-core/harfbuzz"]
 
-# Enable config read/write
-config = ["kas-core/config"]
+# Enable serde support (mainly config read/write)
+serde = ["kas-core/serde"]
 
 # Enable support for YAML (de)serialisation
-yaml = ["config", "kas-core/yaml"]
+yaml = ["serde", "kas-core/yaml"]
 
 # Enable support for JSON (de)serialisation
-json = ["config", "kas-core/json"]
+json = ["serde", "kas-core/json"]
 
 # Enable support for RON (de)serialisation
-ron = ["config", "kas-core/ron"]
+ron = ["serde", "kas-core/ron"]
 
 # Support image loading and decoding
 image = ["kas-widgets/image"]

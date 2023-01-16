@@ -7,12 +7,12 @@
 
 use crate::event::{Command, ModifiersState, VirtualKeyCode};
 use linear_map::LinearMap;
-#[cfg(feature = "config")]
+#[cfg(feature = "serde")]
 use serde::de::{self, Deserialize, Deserializer, MapAccess, Unexpected, Visitor};
-#[cfg(feature = "config")]
+#[cfg(feature = "serde")]
 use serde::ser::{Serialize, SerializeMap, Serializer};
 use std::collections::HashMap;
-#[cfg(feature = "config")] use std::fmt;
+#[cfg(feature = "serde")] use std::fmt;
 
 /// Shortcut manager
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -217,7 +217,7 @@ impl Shortcuts {
     }
 }
 
-#[cfg(feature = "config")]
+#[cfg(feature = "serde")]
 fn state_to_string(state: ModifiersState) -> &'static str {
     const SHIFT: ModifiersState = ModifiersState::SHIFT;
     const CTRL: ModifiersState = ModifiersState::CTRL;
@@ -259,7 +259,7 @@ fn state_to_string(state: ModifiersState) -> &'static str {
     }
 }
 
-#[cfg(feature = "config")]
+#[cfg(feature = "serde")]
 impl Serialize for Shortcuts {
     fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
     where
@@ -285,9 +285,9 @@ impl Serialize for Shortcuts {
 //     State(String),
 // }
 
-#[cfg(feature = "config")]
+#[cfg(feature = "serde")]
 struct ModifierStateVisitor(ModifiersState);
-#[cfg(feature = "config")]
+#[cfg(feature = "serde")]
 impl<'de> Visitor<'de> for ModifierStateVisitor {
     type Value = ModifierStateVisitor;
 
@@ -336,7 +336,7 @@ impl<'de> Visitor<'de> for ModifierStateVisitor {
     }
 }
 
-#[cfg(feature = "config")]
+#[cfg(feature = "serde")]
 impl<'de> Deserialize<'de> for ModifierStateVisitor {
     fn deserialize<D>(d: D) -> Result<Self, D::Error>
     where
@@ -346,9 +346,9 @@ impl<'de> Deserialize<'de> for ModifierStateVisitor {
     }
 }
 
-#[cfg(feature = "config")]
+#[cfg(feature = "serde")]
 struct ShortcutsVisitor;
-#[cfg(feature = "config")]
+#[cfg(feature = "serde")]
 impl<'de> Visitor<'de> for ShortcutsVisitor {
     type Value = Shortcuts;
 
@@ -369,7 +369,7 @@ impl<'de> Visitor<'de> for ShortcutsVisitor {
     }
 }
 
-#[cfg(feature = "config")]
+#[cfg(feature = "serde")]
 impl<'de> Deserialize<'de> for Shortcuts {
     fn deserialize<D>(d: D) -> Result<Self, D::Error>
     where

@@ -31,8 +31,6 @@ mod toolkit;
 
 // public implementations:
 pub mod class;
-#[cfg(feature = "config")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "config")))]
 pub mod config;
 pub mod dir;
 pub mod draw;

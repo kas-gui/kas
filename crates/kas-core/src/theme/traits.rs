@@ -43,7 +43,7 @@ pub trait ThemeControl {
 }
 
 /// Requirements on theme config (without `config` feature)
-#[cfg(not(feature = "config"))]
+#[cfg(not(feature = "serde"))]
 pub trait ThemeConfig: Clone + std::fmt::Debug + 'static {
     /// Apply startup effects
     fn apply_startup(&self);
@@ -53,7 +53,7 @@ pub trait ThemeConfig: Clone + std::fmt::Debug + 'static {
 }
 
 /// Requirements on theme config (with `config` feature)
-#[cfg(feature = "config")]
+#[cfg(feature = "serde")]
 pub trait ThemeConfig:
     Clone + std::fmt::Debug + 'static + for<'a> serde::Deserialize<'a> + serde::Serialize
 {
