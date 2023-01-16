@@ -7,7 +7,7 @@
 
 use super::{color::Rgba, AnimationState};
 #[allow(unused)] use super::{DrawRounded, DrawRoundedImpl};
-use super::{DrawShared, DrawSharedImpl, ImageId, PassId, PassType, SharedState};
+use super::{DrawShared, DrawSharedImpl, ImageId, PassId, PassType, SharedState, WindowCommon};
 use crate::geom::{Offset, Quad, Rect};
 #[allow(unused)] use crate::text::TextApi;
 use crate::text::{Effect, TextDisplay};
@@ -322,14 +322,14 @@ impl<'a, DS: DrawSharedImpl> Draw for DrawIface<'a, DS> {
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait DrawImpl: Any {
-    /// Get animation status
-    fn animation_mut(&mut self) -> &mut AnimationState;
+    /// Access common data
+    fn common_mut(&mut self) -> &mut WindowCommon;
 
     /// Request redraw at the next frame time
     ///
     /// Animations should call this each frame until complete.
     fn animate(&mut self) {
-        self.animation_mut().merge_in(AnimationState::Animate);
+        self.common_mut().anim.merge_in(AnimationState::Animate);
     }
 
     /// Request a redraw at a specific time
@@ -338,7 +338,7 @@ pub trait DrawImpl: Any {
     /// method only ensures that the *next* draw happens *no later* than `time`,
     /// thus the method should be called again in each following frame.
     fn animate_at(&mut self, time: Instant) {
-        self.animation_mut().merge_in(AnimationState::Timed(time));
+        self.common_mut().anim.merge_in(AnimationState::Timed(time));
     }
 
     /// Add a draw pass

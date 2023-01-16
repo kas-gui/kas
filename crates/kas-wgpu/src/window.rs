@@ -7,7 +7,7 @@
 
 use kas::cast::Cast;
 use kas::draw::color::Rgba;
-use kas::draw::{AnimationState, DrawIface, DrawShared};
+use kas::draw::{AnimationState, DrawIface, DrawShared, WindowCommon};
 use kas::event::{ConfigMgr, CursorIcon, EventState, UpdateId};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
@@ -15,6 +15,7 @@ use kas::theme::{DrawMgr, SizeMgr, ThemeControl, ThemeSize};
 use kas::theme::{Theme, Window as _};
 use kas::{Layout, TkAction, WidgetCore, WidgetExt, WindowId};
 use raw_window_handle as raw;
+use std::mem::take;
 use std::time::Instant;
 use winit::error::OsError;
 use winit::event::WindowEvent;
@@ -52,8 +53,8 @@ pub trait WindowSurface {
         shared: &'iface mut kas::draw::SharedState<Self::Shared>,
     ) -> DrawIface<'iface, Self::Shared>;
 
-    /// Reset animation state, returning prior value
-    fn take_animation_state(&mut self) -> AnimationState;
+    /// Access common data
+    fn common_mut(&mut self) -> &mut WindowCommon;
 
     /// Present frame
     ///
@@ -396,7 +397,8 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         }
         let time2 = Instant::now();
 
-        self.queued_frame_time = match self.surface.take_animation_state() {
+        let anim = take(&mut self.surface.common_mut().anim);
+        self.queued_frame_time = match anim {
             AnimationState::None => None,
             AnimationState::Animate => Some(self.next_avail_frame_time),
             AnimationState::Timed(time) => Some(time.max(self.next_avail_frame_time)),

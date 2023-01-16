@@ -77,6 +77,15 @@ impl AnimationState {
     }
 }
 
+/// Per-window "draw" data common to all backends
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+#[derive(Debug, Default)]
+pub struct WindowCommon {
+    // TODO: make pub(crate)
+    pub anim: AnimationState,
+}
+
 /// Draw pass identifier
 ///
 /// This is a numerical identifier for the draw pass (see [`DrawIface::new_pass`]).
