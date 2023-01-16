@@ -7,7 +7,8 @@
 
 use crate::shared::SharedState;
 use crate::window::{Window, WindowSurface};
-use crate::{Options, Result};
+use crate::Result;
+use kas::config::Options;
 use kas::draw::DrawShared;
 use kas::event::UpdateId;
 use kas::model::SharedRc;
@@ -34,7 +35,7 @@ pub trait GraphicalShell {
     type Surface: WindowSurface<Shared = Self::Shared> + 'static;
 
     /// Construct shared state
-    fn build(self, options: &Options, raster_config: &RasterConfig) -> Result<Self::Shared>;
+    fn build(self, raster_config: &RasterConfig) -> Result<Self::Shared>;
 }
 
 /// The KAS shell (abstract)
@@ -111,9 +112,7 @@ where
     ) -> Result<Self> {
         let el = EventLoopBuilder::with_user_event().build();
         let scale_factor = find_scale_factor(&el);
-        let draw_shared = graphical_shell
-            .into()
-            .build(&options, theme.config().raster())?;
+        let draw_shared = graphical_shell.into().build(theme.config().raster())?;
         Ok(Shell {
             el,
             windows: vec![],

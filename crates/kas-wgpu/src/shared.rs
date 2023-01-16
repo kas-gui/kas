@@ -7,7 +7,8 @@
 
 use std::num::NonZeroU32;
 
-use crate::{Options, WindowId, WindowSurface};
+use crate::{WindowId, WindowSurface};
+use kas::config::Options;
 use kas::draw;
 use kas::event::UpdateId;
 use kas::model::SharedRc;

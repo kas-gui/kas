@@ -47,26 +47,26 @@ pub extern crate wgpu;
 pub use kas::shell::*;
 
 /// Builder for a KAS shell using WGPU
-pub struct WgpuShellBuilder<CB: CustomPipeBuilder>(CB);
+pub struct WgpuShellBuilder<CB: CustomPipeBuilder>(CB, Options);
 
 impl<CB: CustomPipeBuilder> GraphicalShell for WgpuShellBuilder<CB> {
     type Shared = DrawPipe<CB::Pipe>;
     type Surface = window::Surface<CB::Pipe>;
 
-    fn build(self, options: &Options, raster_config: &RasterConfig) -> Result<Self::Shared> {
-        DrawPipe::new(self.0, options, raster_config)
+    fn build(self, raster_config: &RasterConfig) -> Result<Self::Shared> {
+        DrawPipe::new(self.0, &self.1, raster_config)
     }
 }
 
 impl Default for WgpuShellBuilder<()> {
     fn default() -> Self {
-        WgpuShellBuilder(())
+        WgpuShellBuilder((), Options::from_env())
     }
 }
 
 impl<CB: CustomPipeBuilder> From<CB> for WgpuShellBuilder<CB> {
     fn from(cb: CB) -> Self {
-        WgpuShellBuilder(cb)
+        WgpuShellBuilder(cb, Options::from_env())
     }
 }
 
