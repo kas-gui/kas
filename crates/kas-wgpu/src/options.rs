@@ -5,8 +5,8 @@
 
 //! Options
 
-use super::Error;
 use kas::draw::DrawSharedImpl;
+use kas::shell::Error;
 use kas::theme::{Theme, ThemeConfig};
 use std::env::var;
 use std::path::PathBuf;

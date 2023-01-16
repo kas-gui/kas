@@ -36,9 +36,8 @@ use kas::draw::DrawShared;
 use kas::event::UpdateId;
 use kas::model::SharedRc;
 use kas::theme::{RasterConfig, Theme, ThemeConfig};
+use kas::util::warn_about_error;
 use kas::WindowId;
-use thiserror::Error;
-use winit::error::OsError;
 use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy, EventLoopWindowTarget};
 
 use crate::draw::{CustomPipeBuilder, DrawPipe};
@@ -49,45 +48,7 @@ pub use draw_shaded::{DrawShaded, DrawShadedImpl};
 pub use options::Options;
 pub use shaded_theme::ShadedTheme;
 pub extern crate wgpu;
-
-/// Possible failures from constructing a [`Shell`]
-///
-/// Some variants are undocumented. Users should not match these variants since
-/// they are not considered part of the public API.
-#[non_exhaustive]
-#[derive(Error, Debug)]
-pub enum Error {
-    /// No suitable graphics adapter found
-    ///
-    /// This can be a driver/configuration issue or hardware limitation. Note
-    /// that for now, `wgpu` only supports DX11, DX12, Vulkan and Metal.
-    #[error("no graphics adapter found")]
-    NoAdapter,
-    /// Config load/save error
-    #[error("config load/save error")]
-    Config(#[from] kas::config::Error),
-    #[doc(hidden)]
-    /// OS error during window creation
-    #[error("operating system error")]
-    Window(#[from] OsError),
-}
-
-impl From<wgpu::RequestDeviceError> for Error {
-    fn from(_: wgpu::RequestDeviceError) -> Self {
-        Error::NoAdapter
-    }
-}
-
-fn warn_about_error(msg: &str, mut error: &dyn std::error::Error) {
-    log::warn!("{msg}: {error}");
-    while let Some(source) = error.source() {
-        log::warn!("Source: {source}");
-        error = source;
-    }
-}
-
-/// A `Result` type representing `T` or [`enum@Error`]
-pub type Result<T> = std::result::Result<T, Error>;
+pub use kas::shell::*;
 
 /// API for the graphical implementation of a shell
 ///

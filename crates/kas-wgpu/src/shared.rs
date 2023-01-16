@@ -7,11 +7,13 @@
 
 use std::num::NonZeroU32;
 
-use crate::{warn_about_error, Error, Options, WindowId, WindowSurface};
+use crate::{Options, WindowId, WindowSurface};
 use kas::draw;
 use kas::event::UpdateId;
 use kas::model::SharedRc;
+use kas::shell::Error;
 use kas::theme::Theme;
+use kas::util::warn_about_error;
 use kas::TkAction;
 
 #[cfg(feature = "clipboard")]

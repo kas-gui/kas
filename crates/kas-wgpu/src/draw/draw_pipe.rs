@@ -10,12 +10,22 @@ use wgpu::util::DeviceExt;
 
 use super::*;
 use crate::DrawShadedImpl;
-use crate::{Error, Options};
+use crate::Options;
 use kas::cast::traits::*;
 use kas::draw::color::Rgba;
 use kas::draw::*;
 use kas::geom::{Quad, Rect, Size, Vec2};
+use kas::shell::Error;
 use kas::text::{Effect, TextDisplay};
+
+/// Possible failures from constructing a [`Shell`]
+///
+/// Some variants are undocumented. Users should not match these variants since
+/// they are not considered part of the public API.
+#[non_exhaustive]
+#[derive(thiserror::Error, Debug)]
+#[error("no graphics adapter found")]
+pub struct NoAdapter;
 
 impl<C: CustomPipe> DrawPipe<C> {
     /// Construct
@@ -29,14 +39,15 @@ impl<C: CustomPipe> DrawPipe<C> {
         let req = instance.request_adapter(&adapter_options);
         let adapter = match futures::executor::block_on(req) {
             Some(a) => a,
-            None => return Err(Error::NoAdapter),
+            None => return Err(Error::Graphics(Box::new(NoAdapter))),
         };
         log::info!("Using graphics adapter: {}", adapter.get_info().name);
 
         let desc = CB::device_descriptor();
         let trace_path = options.wgpu_trace_path.as_deref();
         let req = adapter.request_device(&desc, trace_path);
-        let (device, queue) = futures::executor::block_on(req)?;
+        let (device, queue) =
+            futures::executor::block_on(req).map_err(|e| Error::Graphics(Box::new(e)))?;
 
         let shaders = ShaderManager::new(&device);
 

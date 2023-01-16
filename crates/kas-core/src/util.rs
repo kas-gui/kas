@@ -80,3 +80,14 @@ pub fn load_icon_from_path<P: AsRef<std::path::Path>>(
     let (w, h) = im.dimensions();
     Ok(Icon::from_rgba(im.into_vec(), w, h)?)
 }
+
+/// Log a warning regarding an error message
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+pub fn warn_about_error(msg: &str, mut error: &dyn std::error::Error) {
+    log::warn!("{msg}: {error}");
+    while let Some(source) = error.source() {
+        log::warn!("Source: {source}");
+        error = source;
+    }
+}
