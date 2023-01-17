@@ -12,7 +12,8 @@ use super::*;
 use crate::cast::traits::*;
 use crate::geom::{Coord, DVec2};
 use crate::model::SharedRc;
-use crate::{ShellWindow, TkAction, Widget, WidgetId};
+use crate::shell::ShellWindow;
+use crate::{TkAction, Widget, WidgetId};
 
 // TODO: this should be configurable or derived from the system
 const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
@@ -25,7 +26,7 @@ const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 impl EventState {
     /// Construct an event manager per-window data struct
     #[inline]
-    pub fn new(config: SharedRc<Config>, scale_factor: f32, dpem: f32) -> Self {
+    pub(crate) fn new(config: SharedRc<Config>, scale_factor: f32, dpem: f32) -> Self {
         EventState {
             config: WindowConfig::new(config, scale_factor, dpem),
             disabled: vec![],
@@ -55,7 +56,7 @@ impl EventState {
     }
 
     /// Update scale factor
-    pub fn set_scale_factor(&mut self, scale_factor: f32, dpem: f32) {
+    pub(crate) fn set_scale_factor(&mut self, scale_factor: f32, dpem: f32) {
         self.config.update(scale_factor, dpem);
     }
 
@@ -68,7 +69,7 @@ impl EventState {
     /// [`WidgetId`] identifiers and call widgets' [`Widget::configure`]
     /// method. Additionally, it updates the [`EventState`] to account for
     /// renamed and removed widgets.
-    pub fn full_configure(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Widget) {
+    pub(crate) fn full_configure(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Widget) {
         log::debug!(target: "kas_core::event::manager", "full_configure");
         self.action.remove(TkAction::RECONFIGURE);
 
@@ -88,7 +89,7 @@ impl EventState {
     }
 
     /// Update the widgets under the cursor and touch events
-    pub fn region_moved(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Widget) {
+    pub(crate) fn region_moved(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Widget) {
         log::trace!(target: "kas_core::event::manager", "region_moved");
         // Note: redraw is already implied.
 
@@ -102,7 +103,7 @@ impl EventState {
     }
 
     /// Get the next resume time
-    pub fn next_resume(&self) -> Option<Instant> {
+    pub(crate) fn next_resume(&self) -> Option<Instant> {
         self.time_updates.last().map(|time| time.0)
     }
 
@@ -110,7 +111,7 @@ impl EventState {
     ///
     /// Invokes the given closure on this [`EventMgr`].
     #[inline]
-    pub fn with<F>(&mut self, shell: &mut dyn ShellWindow, f: F)
+    pub(crate) fn with<F>(&mut self, shell: &mut dyn ShellWindow, f: F)
     where
         F: FnOnce(&mut EventMgr),
     {
@@ -129,7 +130,11 @@ impl EventState {
 
     /// Update, after receiving all events
     #[inline]
-    pub fn update(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Widget) -> TkAction {
+    pub(crate) fn update(
+        &mut self,
+        shell: &mut dyn ShellWindow,
+        widget: &mut dyn Widget,
+    ) -> TkAction {
         let old_hover_icon = self.hover_icon;
 
         let mut mgr = EventMgr {
@@ -233,7 +238,7 @@ impl EventState {
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 impl<'a> EventMgr<'a> {
     /// Update widgets due to timer
-    pub fn update_timer(&mut self, widget: &mut dyn Widget) {
+    pub(crate) fn update_timer(&mut self, widget: &mut dyn Widget) {
         let now = Instant::now();
 
         // assumption: time_updates are sorted in reverse order
@@ -250,7 +255,7 @@ impl<'a> EventMgr<'a> {
     }
 
     /// Update widgets with an [`UpdateId`]
-    pub fn update_widgets(&mut self, widget: &mut dyn Widget, id: UpdateId, payload: u64) {
+    pub(crate) fn update_widgets(&mut self, widget: &mut dyn Widget, id: UpdateId, payload: u64) {
         if id == self.state.config.config.id() {
             let (sf, dpem) = self.size_mgr(|size| (size.scale_factor(), size.dpem()));
             self.state.config.update(sf, dpem);
@@ -272,7 +277,11 @@ impl<'a> EventMgr<'a> {
     /// `Resized(size)`, `RedrawRequested`, `HiDpiFactorChanged(factor)`.
     #[cfg(feature = "winit")]
     #[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
-    pub fn handle_winit(&mut self, widget: &mut dyn Widget, event: winit::event::WindowEvent) {
+    pub(crate) fn handle_winit(
+        &mut self,
+        widget: &mut dyn Widget,
+        event: winit::event::WindowEvent,
+    ) {
         use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent::*};
 
         match event {

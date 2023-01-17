@@ -20,6 +20,7 @@ use shared::SharedState;
 use window::Window;
 
 pub use shell::{ClosedError, GraphicalShell, Proxy, Shell};
+pub(crate) use window::ShellWindow;
 pub use window::WindowSurface;
 pub extern crate raw_window_handle;
 

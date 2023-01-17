@@ -20,7 +20,8 @@ use super::config::WindowConfig;
 use super::*;
 use crate::cast::Cast;
 use crate::geom::{Coord, Offset};
-use crate::{ShellWindow, TkAction, Widget, WidgetExt, WidgetId, WindowId};
+use crate::shell::ShellWindow;
+use crate::{TkAction, Widget, WidgetExt, WidgetId, WindowId};
 
 mod config_mgr;
 mod mgr_pub;

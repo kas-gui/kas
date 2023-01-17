@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! `Window` and `WindowList` types
+//! Window types
 
 use super::{PendingAction, ProxyAction, SharedState};
 use kas::cast::Cast;
@@ -430,6 +430,70 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
     }
 }
 
+/// Window management interface
+///
+/// Note: previously, this was implemented by a dependent crate. Now, it is not,
+/// which might suggest this trait is no longer needed, however `EventMgr` still
+/// needs type erasure over `S: WindowSurface` and `T: Theme`.
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+pub(crate) trait ShellWindow {
+    /// Add a pop-up
+    ///
+    /// A pop-up may be presented as an overlay layer in the current window or
+    /// via a new borderless window.
+    ///
+    /// Pop-ups support position hints: they are placed *next to* the specified
+    /// `rect`, preferably in the given `direction`.
+    ///
+    /// Returns `None` if window creation is not currently available (but note
+    /// that `Some` result does not guarantee the operation succeeded).
+    fn add_popup(&mut self, popup: crate::Popup) -> Option<WindowId>;
+
+    /// Add a window
+    ///
+    /// Toolkits typically allow windows to be added directly, before start of
+    /// the event loop (e.g. `kas_wgpu::Toolkit::add`).
+    ///
+    /// This method is an alternative allowing a window to be added from an
+    /// event handler, albeit without error handling.
+    fn add_window(&mut self, widget: Box<dyn crate::Window>) -> WindowId;
+
+    /// Close a window
+    fn close_window(&mut self, id: WindowId);
+
+    /// Updates all subscribed widgets
+    ///
+    /// All widgets subscribed to the given [`UpdateId`], across all
+    /// windows, will receive an update.
+    fn update_all(&mut self, id: UpdateId, payload: u64);
+
+    /// Attempt to get clipboard contents
+    ///
+    /// In case of failure, paste actions will simply fail. The implementation
+    /// may wish to log an appropriate warning message.
+    fn get_clipboard(&mut self) -> Option<String>;
+
+    /// Attempt to set clipboard contents
+    fn set_clipboard(&mut self, content: String);
+
+    /// Adjust the theme
+    ///
+    /// Note: theme adjustments apply to all windows, as does the [`TkAction`]
+    /// returned from the closure.
+    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeControl) -> TkAction);
+
+    /// Access [`ThemeSize`] and [`DrawShared`] objects
+    ///
+    /// Implementations should call the given function argument once; not doing
+    /// so is memory-safe but will cause panics in `EventMgr` methods.
+    /// User-code *must not* depend on `f` being called for memory safety.
+    fn size_and_draw_shared(&mut self, f: &mut dyn FnMut(&mut dyn ThemeSize, &mut dyn DrawShared));
+
+    /// Set the mouse cursor
+    fn set_cursor_icon(&mut self, icon: CursorIcon);
+}
+
 struct TkWindow<'a, S: WindowSurface, T: Theme<S::Shared>>
 where
     T::Window: kas::theme::Window,
@@ -456,7 +520,7 @@ where
     }
 }
 
-impl<'a, S, T> kas::ShellWindow for TkWindow<'a, S, T>
+impl<'a, S, T> ShellWindow for TkWindow<'a, S, T>
 where
     S: WindowSurface,
     T: Theme<S::Shared>,
