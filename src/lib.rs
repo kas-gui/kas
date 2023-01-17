@@ -70,8 +70,12 @@ pub mod resvg {
     pub use kas_resvg::*;
 }
 
-/// Shell
 pub mod shell {
+    //! Shell: window runtime environment
+    //!
+    //! A [`Shell`] is used to manage a GUI. Most GUIs will use the
+    //! [`DefaultShell`] type-def (requires a backend be enabled, e.g. "wgpu").
+
     pub use kas_core::shell::*;
 
     /// The default (configuration-specific) shell

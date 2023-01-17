@@ -5,9 +5,10 @@
 
 //! Widget data types
 
-#[allow(unused)] use super::Layout;
 use super::WidgetId;
+#[allow(unused)] use super::{Layout, Widget};
 use crate::dir::Direction;
+#[allow(unused)] use crate::event::EventMgr;
 use crate::geom::Rect;
 
 #[cfg(feature = "winit")] pub use winit::window::Icon;

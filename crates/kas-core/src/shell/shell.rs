@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! KAS shell
+//! [`Shell`] and supporting elements
 
 use super::{ProxyAction, Result, SharedState, Window, WindowSurface};
 use crate::config::Options;
@@ -18,6 +18,8 @@ use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy, EventLoopWi
 /// API for the graphical implementation of a shell
 ///
 /// See also [`Shell`].
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait GraphicalShell {
     /// Shared draw state
     type Shared: DrawSharedImpl;
@@ -29,7 +31,9 @@ pub trait GraphicalShell {
     fn build(self, raster_config: &RasterConfig) -> Result<Self::Shared>;
 }
 
-/// The KAS shell (abstract)
+/// The KAS shell
+///
+/// The "shell" is the layer over widgets, windows, events and graphics.
 ///
 /// Constructing with [`Shell::new`] or [`Shell::new_custom`]
 /// reads configuration (depending on passed options or environment variables)

@@ -397,14 +397,8 @@ impl std::fmt::Debug for Message {
 
 /// Manager of event-handling and toolkit actions
 ///
-/// An `EventMgr` is in fact a handle around [`EventState`] and [`ShellWindow`]
-/// in order to provide a convenient user-interface during event processing.
-///
-/// `EventMgr` supports [`Deref`] and [`DerefMut`] with target [`EventState`].
-///
-/// It exposes two interfaces: one aimed at users implementing widgets and UIs
-/// and one aimed at shells. The latter is hidden
-/// from documentation unless the `internal_doc` feature is enabled.
+/// `EventMgr` and [`EventState`] (available via [`Deref`]) support various
+/// event management and event-handling state querying operations.
 #[must_use]
 pub struct EventMgr<'a> {
     state: &'a mut EventState,

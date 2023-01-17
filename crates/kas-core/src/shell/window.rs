@@ -24,6 +24,8 @@ use winit::event_loop::EventLoopWindowTarget;
 use winit::window::WindowBuilder;
 
 /// Window graphical surface requirements
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait WindowSurface {
     /// Shared draw state
     type Shared: kas::draw::DrawSharedImpl;
