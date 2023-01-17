@@ -16,7 +16,7 @@ use winit::window as ww;
 use super::{PendingAction, SharedState};
 use super::{ProxyAction, Window, WindowId, WindowSurface};
 use kas::theme::Theme;
-use kas::TkAction;
+use kas::Action;
 
 /// Event-loop data structure (i.e. all run-time state)
 pub(super) struct Loop<S: WindowSurface, T: Theme<S::Shared>>
@@ -109,13 +109,13 @@ where
                 ProxyAction::Close(id) => {
                     if let Some(id) = self.id_map.get(&id) {
                         if let Some(window) = self.windows.get_mut(id) {
-                            window.send_action(TkAction::CLOSE);
+                            window.send_action(Action::CLOSE);
                         }
                     }
                 }
                 ProxyAction::CloseAll => {
                     for window in self.windows.values_mut() {
-                        window.send_action(TkAction::CLOSE);
+                        window.send_action(Action::CLOSE);
                     }
                 }
                 ProxyAction::Update(handle, payload) => {
@@ -164,8 +164,8 @@ where
                                 self.id_map.remove(&id);
                             }
                         }
-                        PendingAction::TkAction(action) => {
-                            if action.contains(TkAction::CLOSE | TkAction::EXIT) {
+                        PendingAction::Action(action) => {
+                            if action.contains(Action::CLOSE | Action::EXIT) {
                                 for (_, window) in self.windows.drain() {
                                     let _ = window.handle_closure(&mut self.shared);
                                 }
@@ -189,9 +189,9 @@ where
                 self.resumes.clear();
                 for (window_id, window) in self.windows.iter_mut() {
                     let (action, resume) = window.update(&mut self.shared);
-                    if action.contains(TkAction::EXIT) {
+                    if action.contains(Action::EXIT) {
                         close_all = true;
-                    } else if action.contains(TkAction::CLOSE) {
+                    } else if action.contains(Action::CLOSE) {
                         to_close.push(*window_id);
                     }
                     if let Some(instant) = resume {
@@ -204,7 +204,7 @@ where
                         self.id_map.remove(&window.window_id);
                         if window
                             .handle_closure(&mut self.shared)
-                            .contains(TkAction::EXIT)
+                            .contains(Action::EXIT)
                         {
                             close_all = true;
                         }

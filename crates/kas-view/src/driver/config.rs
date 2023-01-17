@@ -116,7 +116,7 @@ impl driver::Driver<Config, SharedRc<Config>> for EventConfig {
         }
     }
 
-    fn set_mo(&self, widget: &mut Self::Widget, _: &(), data: MaybeOwned<Config>) -> TkAction {
+    fn set_mo(&self, widget: &mut Self::Widget, _: &(), data: MaybeOwned<Config>) -> Action {
         widget.menu_delay.set_value(data.menu_delay_ms)
             | widget
                 .touch_select_delay

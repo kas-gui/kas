@@ -102,10 +102,10 @@ impl_scope! {
         /// Default size is 128 × 128; default stretch is [`Stretch::High`].
         /// Other fields use [`PixmapScaling`]'s default values.
         #[inline]
-        pub fn set_scaling(&mut self, f: impl FnOnce(&mut PixmapScaling)) -> TkAction {
+        pub fn set_scaling(&mut self, f: impl FnOnce(&mut PixmapScaling)) -> Action {
             f(&mut self.scaling);
             // NOTE: if only `aspect` is changed, REDRAW is enough
-            TkAction::RESIZE
+            Action::RESIZE
         }
 
         /// Redraw immediately

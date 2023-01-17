@@ -20,7 +20,7 @@ use kas::theme::dimensions as dim;
 use kas::theme::{Background, ThemeControl, ThemeDraw, ThemeSize};
 use kas::theme::{ColorsLinear, Config, FlatTheme, InputState, SimpleTheme, Theme};
 use kas::theme::{FrameStyle, MarkStyle, TextClass};
-use kas::{TkAction, WidgetId};
+use kas::{Action, WidgetId};
 
 /// A theme using simple shading to give apparent depth to elements
 #[derive(Clone, Debug)]
@@ -101,7 +101,7 @@ where
         <SimpleTheme as Theme<DS>>::config(&self.base)
     }
 
-    fn apply_config(&mut self, config: &Self::Config) -> TkAction {
+    fn apply_config(&mut self, config: &Self::Config) -> Action {
         <SimpleTheme as Theme<DS>>::apply_config(&mut self.base, config)
     }
 
@@ -149,7 +149,7 @@ where
 }
 
 impl ThemeControl for ShadedTheme {
-    fn set_font_size(&mut self, pt_size: f32) -> TkAction {
+    fn set_font_size(&mut self, pt_size: f32) -> Action {
         self.base.set_font_size(pt_size)
     }
 
@@ -157,7 +157,7 @@ impl ThemeControl for ShadedTheme {
         self.base.list_schemes()
     }
 
-    fn set_scheme(&mut self, name: &str) -> TkAction {
+    fn set_scheme(&mut self, name: &str) -> Action {
         self.base.set_scheme(name)
     }
 }

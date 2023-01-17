@@ -189,20 +189,20 @@ impl_scope! {
         /// The driver may trigger selection by emitting [`SelectMsg`] from
         /// [`Driver::on_message`]. The driver is not notified of selection
         /// except via [`SelectMsg`] from view widgets. (TODO: reconsider this.)
-        pub fn set_selection_mode(&mut self, mode: SelectionMode) -> TkAction {
+        pub fn set_selection_mode(&mut self, mode: SelectionMode) -> Action {
             self.sel_mode = mode;
             match mode {
                 SelectionMode::None if !self.selection.is_empty() => {
                     self.selection.clear();
-                    TkAction::REDRAW
+                    Action::REDRAW
                 }
                 SelectionMode::Single if self.selection.len() > 1 => {
                     if let Some(first) = self.selection.iter().next().cloned() {
                         self.selection.retain(|item| *item == first);
                     }
-                    TkAction::REDRAW
+                    Action::REDRAW
                 }
-                _ => TkAction::empty(),
+                _ => Action::empty(),
             }
         }
         /// Set the selection mode (inline)
@@ -228,21 +228,21 @@ impl_scope! {
         }
 
         /// Clear all selected items
-        pub fn clear_selected(&mut self) -> TkAction {
+        pub fn clear_selected(&mut self) -> Action {
             if self.selection.is_empty() {
-                TkAction::empty()
+                Action::empty()
             } else {
                 self.selection.clear();
-                TkAction::REDRAW
+                Action::REDRAW
             }
         }
 
         /// Directly select an item
         ///
-        /// Returns `TkAction::REDRAW` if newly selected, `TkAction::empty()` if
+        /// Returns `Action::REDRAW` if newly selected, `Action::empty()` if
         /// already selected. Fails if selection mode does not permit selection
         /// or if the key is invalid.
-        pub fn select(&mut self, key: T::Key) -> Result<TkAction, SelectionError> {
+        pub fn select(&mut self, key: T::Key) -> Result<Action, SelectionError> {
             match self.sel_mode {
                 SelectionMode::None => return Err(SelectionError::Disabled),
                 SelectionMode::Single => self.selection.clear(),
@@ -252,19 +252,19 @@ impl_scope! {
                 return Err(SelectionError::Key);
             }
             match self.selection.insert(key) {
-                true => Ok(TkAction::REDRAW),
-                false => Ok(TkAction::empty()),
+                true => Ok(Action::REDRAW),
+                false => Ok(Action::empty()),
             }
         }
 
         /// Directly deselect an item
         ///
-        /// Returns `TkAction::REDRAW` if deselected, `TkAction::empty()` if not
+        /// Returns `Action::REDRAW` if deselected, `Action::empty()` if not
         /// previously selected or if the key is invalid.
-        pub fn deselect(&mut self, key: &T::Key) -> TkAction {
+        pub fn deselect(&mut self, key: &T::Key) -> Action {
             match self.selection.remove(key) {
-                true => TkAction::REDRAW,
-                false => TkAction::empty(),
+                true => Action::REDRAW,
+                false => Action::empty(),
             }
         }
 
@@ -277,7 +277,7 @@ impl_scope! {
             }
             mgr.config_mgr(|mgr| self.update_widgets(mgr));
             // Force SET_SIZE so that scroll-bar wrappers get updated
-            *mgr |= TkAction::SET_SIZE;
+            *mgr |= Action::SET_SIZE;
         }
 
         /// Set the preferred number of items visible (inline)
@@ -338,7 +338,7 @@ impl_scope! {
 
             let row_iter = self.data.row_iter_from(solver.first_row, solver.row_len);
 
-            let mut action = TkAction::empty();
+            let mut action = Action::empty();
             let mut row_count = 0;
             for (rn, row) in row_iter.enumerate() {
                 row_count += 1;

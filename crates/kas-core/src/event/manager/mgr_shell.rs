@@ -13,7 +13,7 @@ use crate::cast::traits::*;
 use crate::geom::{Coord, DVec2};
 use crate::model::SharedRc;
 use crate::shell::ShellWindow;
-use crate::{TkAction, Widget, WidgetId};
+use crate::{Action, Widget, WidgetId};
 
 // TODO: this should be configurable or derived from the system
 const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
@@ -51,7 +51,7 @@ impl EventState {
             popup_removed: Default::default(),
             time_updates: vec![],
             pending: Default::default(),
-            action: TkAction::empty(),
+            action: Action::empty(),
         }
     }
 
@@ -71,7 +71,7 @@ impl EventState {
     /// renamed and removed widgets.
     pub(crate) fn full_configure(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Widget) {
         log::debug!(target: "kas_core::event::manager", "full_configure");
-        self.action.remove(TkAction::RECONFIGURE);
+        self.action.remove(Action::RECONFIGURE);
 
         // These are recreated during configure:
         self.accel_layers.clear();
@@ -120,7 +120,7 @@ impl EventState {
             shell,
             messages: vec![],
             scroll: Scroll::None,
-            action: TkAction::empty(),
+            action: Action::empty(),
         };
         f(&mut mgr);
         let action = mgr.action;
@@ -134,7 +134,7 @@ impl EventState {
         &mut self,
         shell: &mut dyn ShellWindow,
         widget: &mut dyn Widget,
-    ) -> TkAction {
+    ) -> Action {
         let old_hover_icon = self.hover_icon;
 
         let mut mgr = EventMgr {
@@ -142,7 +142,7 @@ impl EventState {
             shell,
             messages: vec![],
             scroll: Scroll::None,
-            action: TkAction::empty(),
+            action: Action::empty(),
         };
 
         while let Some((parent, wid)) = mgr.popup_removed.pop() {
@@ -228,7 +228,7 @@ impl EventState {
         }
 
         let action = action | self.action;
-        self.action = TkAction::empty();
+        self.action = Action::empty();
         action
     }
 }
@@ -285,7 +285,7 @@ impl<'a> EventMgr<'a> {
         use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent::*};
 
         match event {
-            CloseRequested => self.send_action(TkAction::CLOSE),
+            CloseRequested => self.send_action(Action::CLOSE),
             /* Not yet supported: see #98
             DroppedFile(path) => ,
             HoveredFile(path) => ,
@@ -306,7 +306,7 @@ impl<'a> EventMgr<'a> {
                 self.window_has_focus = state;
                 if state {
                     // Required to restart theme animations
-                    self.send_action(TkAction::REDRAW);
+                    self.send_action(Action::REDRAW);
                 } else {
                     // Window focus lost: close all popups
                     while let Some(id) = self.popups.last().map(|(id, _, _)| *id) {
@@ -330,7 +330,7 @@ impl<'a> EventMgr<'a> {
             ModifiersChanged(state) => {
                 if state.alt() != self.modifiers.alt() {
                     // This controls drawing of accelerator key indicators
-                    self.send_action(TkAction::REDRAW);
+                    self.send_action(Action::REDRAW);
                 }
                 self.modifiers = state;
             }
@@ -496,7 +496,7 @@ impl<'a> EventMgr<'a> {
                         }
 
                         if redraw {
-                            self.send_action(TkAction::REDRAW);
+                            self.send_action(Action::REDRAW);
                         } else if let Some(pan_grab) = pan_grab {
                             if usize::conv(pan_grab.1) < MAX_PAN_GRABS {
                                 if let Some(pan) = self.pan_grab.get_mut(usize::conv(pan_grab.0)) {

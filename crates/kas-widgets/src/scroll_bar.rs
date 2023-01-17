@@ -137,8 +137,8 @@ impl_scope! {
         /// The choice of units is not important (e.g. can be pixels or lines),
         /// so long as both parameters use the same units.
         ///
-        /// Returns [`TkAction::REDRAW`] if a redraw is required.
-        pub fn set_limits(&mut self, max_value: i32, handle_value: i32) -> TkAction {
+        /// Returns [`Action::REDRAW`] if a redraw is required.
+        pub fn set_limits(&mut self, max_value: i32, handle_value: i32) -> Action {
             // We should gracefully handle zero, though appearance may be wrong.
             self.handle_value = handle_value.max(1);
 
@@ -195,7 +195,7 @@ impl_scope! {
         }
 
         #[allow(clippy::manual_clamp)]
-        fn update_widgets(&mut self) -> TkAction {
+        fn update_widgets(&mut self) -> Action {
             let len = self.bar_len();
             let total = i64::from(self.max_value) + i64::from(self.handle_value);
             let handle_len = i64::from(self.handle_value) * i64::conv(len) / total;
@@ -301,7 +301,7 @@ impl_scope! {
             match event {
                 Event::TimerUpdate(_) => {
                     self.force_visible = false;
-                    *mgr |= TkAction::REDRAW;
+                    *mgr |= Action::REDRAW;
                     Response::Used
                 }
                 Event::PressStart { source, coord, .. } => {
@@ -406,20 +406,20 @@ impl_scope! {
         fn get_mode(&self) -> ScrollBarMode {
             self.mode
         }
-        fn set_mode(&mut self, mode: ScrollBarMode) -> TkAction {
+        fn set_mode(&mut self, mode: ScrollBarMode) -> Action {
             self.mode = mode;
             let invisible = mode == ScrollBarMode::Invisible;
             self.horiz_bar.set_invisible(invisible);
             self.vert_bar.set_invisible(invisible);
-            TkAction::RESIZE
+            Action::RESIZE
         }
 
         fn get_visible_bars(&self) -> (bool, bool) {
             self.show_bars
         }
-        fn set_visible_bars(&mut self, bars: (bool, bool)) -> TkAction {
+        fn set_visible_bars(&mut self, bars: (bool, bool)) -> Action {
             self.show_bars = bars;
-            TkAction::RESIZE
+            Action::RESIZE
         }
     }
 
@@ -598,14 +598,14 @@ impl_scope! {
         fn get_mode(&self) -> ScrollBarMode {
             self.0.get_mode()
         }
-        fn set_mode(&mut self, mode: ScrollBarMode) -> TkAction {
+        fn set_mode(&mut self, mode: ScrollBarMode) -> Action {
             self.0.set_mode(mode)
         }
 
         fn get_visible_bars(&self) -> (bool, bool) {
             self.0.get_visible_bars()
         }
-        fn set_visible_bars(&mut self, bars: (bool, bool)) -> TkAction {
+        fn set_visible_bars(&mut self, bars: (bool, bool)) -> Action {
             self.0.set_visible_bars(bars)
         }
     }

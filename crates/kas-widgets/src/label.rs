@@ -94,10 +94,10 @@ impl_scope! {
         ///
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
-        pub fn set_text(&mut self, text: T) -> TkAction {
+        pub fn set_text(&mut self, text: T) -> Action {
             match self.label.set_and_try_prepare(text) {
-                Ok(true) => TkAction::RESIZE,
-                _ => TkAction::REDRAW,
+                Ok(true) => Action::RESIZE,
+                _ => Action::REDRAW,
             }
         }
     }
@@ -134,11 +134,11 @@ impl_scope! {
     where
         T: EditableText,
     {
-        fn set_string(&mut self, string: String) -> TkAction {
+        fn set_string(&mut self, string: String) -> Action {
             self.label.set_string(string);
             match self.label.try_prepare() {
-                Ok(true) => TkAction::RESIZE,
-                _ => TkAction::REDRAW,
+                Ok(true) => Action::RESIZE,
+                _ => Action::REDRAW,
             }
         }
     }
@@ -282,10 +282,10 @@ impl_scope! {
         ///
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
-        pub fn set_text(&mut self, text: AccelString) -> TkAction {
+        pub fn set_text(&mut self, text: AccelString) -> Action {
             match self.0.label.set_and_try_prepare(text) {
-                Ok(true) => TkAction::RESIZE,
-                _ => TkAction::REDRAW,
+                Ok(true) => Action::RESIZE,
+                _ => Action::REDRAW,
             }
         }
     }
@@ -304,9 +304,9 @@ impl_scope! {
     }
 
     impl SetAccel for AccelLabel {
-        fn set_accel_string(&mut self, string: AccelString) -> TkAction {
+        fn set_accel_string(&mut self, string: AccelString) -> Action {
             if self.0.label.text().keys() != string.keys() {
-                return TkAction::RECONFIGURE;
+                return Action::RECONFIGURE;
             }
             self.set_text(string)
         }

@@ -307,13 +307,13 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// This may be used to edit children before window construction. It may
     /// also be used from a running UI, but in this case a full reconfigure
     /// of the window's widgets is required (triggered by the the return
-    /// value, [`TkAction::RECONFIGURE`]).
+    /// value, [`Action::RECONFIGURE`]).
     #[inline]
-    pub fn edit<F: FnOnce(&mut Vec<W>)>(&mut self, f: F) -> TkAction {
+    pub fn edit<F: FnOnce(&mut Vec<W>)>(&mut self, f: F) -> Action {
         f(&mut self.widgets);
         let len = self.widgets.len().saturating_sub(1);
         self.handles.resize_with(len, GripPart::new);
-        TkAction::RECONFIGURE
+        Action::RECONFIGURE
     }
 
     fn adjust_size(&mut self, mgr: &mut ConfigMgr, n: usize) {
@@ -380,7 +380,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
 
     /// Append a child widget
     ///
-    /// The new child is configured immediately. [`TkAction::RESIZE`] is
+    /// The new child is configured immediately. [`Action::RESIZE`] is
     /// triggered.
     ///
     /// Returns the new element's index.
@@ -396,17 +396,17 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         let id = self.make_next_id(false, index);
         mgr.configure(id, &mut self.widgets[index]);
         self.size_solved = false;
-        *mgr |= TkAction::RESIZE;
+        *mgr |= Action::RESIZE;
         index
     }
 
     /// Remove the last child widget (if any) and return
     ///
-    /// Triggers [`TkAction::RESIZE`].
+    /// Triggers [`Action::RESIZE`].
     pub fn pop(&mut self, mgr: &mut ConfigMgr) -> Option<W> {
         let result = self.widgets.pop();
         if let Some(w) = result.as_ref() {
-            *mgr |= TkAction::RESIZE;
+            *mgr |= Action::RESIZE;
 
             if w.id_ref().is_valid() {
                 if let Some(key) = w.id_ref().next_key_after(self.id_ref()) {
@@ -429,7 +429,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     ///
     /// Panics if `index > len`.
     ///
-    /// The new child is configured immediately. Triggers [`TkAction::RESIZE`].
+    /// The new child is configured immediately. Triggers [`Action::RESIZE`].
     pub fn insert(&mut self, mgr: &mut ConfigMgr, index: usize, widget: W) {
         for v in self.id_map.values_mut() {
             if *v >= index {
@@ -449,14 +449,14 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         mgr.configure(id, &mut self.widgets[index]);
 
         self.size_solved = false;
-        *mgr |= TkAction::RESIZE;
+        *mgr |= Action::RESIZE;
     }
 
     /// Removes the child widget at position `index`
     ///
     /// Panics if `index` is out of bounds.
     ///
-    /// Triggers [`TkAction::RESIZE`].
+    /// Triggers [`Action::RESIZE`].
     pub fn remove(&mut self, mgr: &mut ConfigMgr, index: usize) -> W {
         if !self.handles.is_empty() {
             let index = index.min(self.handles.len());
@@ -473,7 +473,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
             }
         }
 
-        *mgr |= TkAction::RESIZE;
+        *mgr |= Action::RESIZE;
 
         for v in self.id_map.values_mut() {
             if *v > index {
@@ -487,7 +487,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     ///
     /// Panics if `index` is out of bounds.
     ///
-    /// The new child is configured immediately. Triggers [`TkAction::RESIZE`].
+    /// The new child is configured immediately. Triggers [`Action::RESIZE`].
     pub fn replace(&mut self, mgr: &mut ConfigMgr, index: usize, mut w: W) -> W {
         std::mem::swap(&mut w, &mut self.widgets[index]);
 
@@ -501,7 +501,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         mgr.configure(id, &mut self.widgets[index]);
 
         self.size_solved = false;
-        *mgr |= TkAction::RESIZE;
+        *mgr |= Action::RESIZE;
 
         w
     }

@@ -21,7 +21,7 @@ use kas::theme::dimensions as dim;
 use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use kas::theme::{ColorsLinear, Config, InputState, Theme};
 use kas::theme::{ThemeControl, ThemeDraw, ThemeSize};
-use kas::{TkAction, WidgetId};
+use kas::{Action, WidgetId};
 
 /// A simple theme
 ///
@@ -77,9 +77,9 @@ impl SimpleTheme {
         self
     }
 
-    pub fn set_colors(&mut self, cols: ColorsLinear) -> TkAction {
+    pub fn set_colors(&mut self, cols: ColorsLinear) -> Action {
         self.cols = cols;
-        TkAction::REDRAW
+        Action::REDRAW
     }
 }
 
@@ -103,7 +103,7 @@ where
         std::borrow::Cow::Borrowed(&self.config)
     }
 
-    fn apply_config(&mut self, config: &Self::Config) -> TkAction {
+    fn apply_config(&mut self, config: &Self::Config) -> Action {
         let mut action = self.config.apply_config(config);
         if let Some(scheme) = self.config.get_active_scheme() {
             action |= self.set_colors(scheme.into());
@@ -164,9 +164,9 @@ where
 }
 
 impl ThemeControl for SimpleTheme {
-    fn set_font_size(&mut self, pt_size: f32) -> TkAction {
+    fn set_font_size(&mut self, pt_size: f32) -> Action {
         self.config.set_font_size(pt_size);
-        TkAction::RESIZE | TkAction::THEME_UPDATE
+        Action::RESIZE | Action::THEME_UPDATE
     }
 
     fn list_schemes(&self) -> Vec<&str> {
@@ -176,14 +176,14 @@ impl ThemeControl for SimpleTheme {
             .collect()
     }
 
-    fn set_scheme(&mut self, name: &str) -> TkAction {
+    fn set_scheme(&mut self, name: &str) -> Action {
         if name != self.config.active_scheme() {
             if let Some(scheme) = self.config.get_color_scheme(name) {
                 self.config.set_active_scheme(name);
                 return self.set_colors(scheme.into());
             }
         }
-        TkAction::empty()
+        Action::empty()
     }
 }
 

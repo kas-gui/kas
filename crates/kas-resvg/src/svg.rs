@@ -114,10 +114,10 @@ impl_scope! {
         /// [`PixmapScaling::size`] is set from the SVG on loading (it may also be set here).
         /// Other scaling parameters take their default values from [`PixmapScaling`].
         #[inline]
-        pub fn set_scaling(&mut self, f: impl FnOnce(&mut PixmapScaling)) -> TkAction {
+        pub fn set_scaling(&mut self, f: impl FnOnce(&mut PixmapScaling)) -> Action {
             f(&mut self.scaling);
             // NOTE: if only `aspect` is changed, REDRAW is enough
-            TkAction::RESIZE
+            Action::RESIZE
         }
     }
 

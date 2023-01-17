@@ -111,7 +111,7 @@ impl_scope! {
     impl Widget for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
             if let Some(MessageBoxOk) = mgr.try_pop_msg() {
-                mgr.send_action(TkAction::CLOSE);
+                mgr.send_action(Action::CLOSE);
             }
         }
 
@@ -175,7 +175,7 @@ impl_scope! {
             if commit {
                 self.data.set(mgr, &(), self.edit.get_string());
             }
-            mgr.send_action(TkAction::CLOSE);
+            mgr.send_action(Action::CLOSE);
             Response::Used
         }
     }

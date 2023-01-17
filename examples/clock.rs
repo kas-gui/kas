@@ -131,7 +131,7 @@ impl_scope! {
                     let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
                     log::info!("Requesting update in {}ns", ns);
                     mgr.request_update(self.id(), 0, Duration::new(0, ns), true);
-                    *mgr |= TkAction::REDRAW;
+                    *mgr |= Action::REDRAW;
                     Response::Used
                 }
                 _ => Response::Unused,

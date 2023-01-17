@@ -13,19 +13,19 @@ use crate::cast::Conv;
 use crate::draw::DrawShared;
 use crate::geom::{Coord, Offset, Vec2};
 use crate::theme::{SizeMgr, ThemeControl};
+use crate::{Action, WidgetId, WindowId};
 #[allow(unused)] use crate::{Layout, Widget}; // for doc-links
-use crate::{TkAction, WidgetId, WindowId};
 
-impl<'a> std::ops::BitOrAssign<TkAction> for EventMgr<'a> {
+impl<'a> std::ops::BitOrAssign<Action> for EventMgr<'a> {
     #[inline]
-    fn bitor_assign(&mut self, action: TkAction) {
+    fn bitor_assign(&mut self, action: Action) {
         self.send_action(action);
     }
 }
 
-impl std::ops::BitOrAssign<TkAction> for EventState {
+impl std::ops::BitOrAssign<Action> for EventState {
     #[inline]
-    fn bitor_assign(&mut self, action: TkAction) {
+    fn bitor_assign(&mut self, action: Action) {
         self.send_action(action);
     }
 }
@@ -165,7 +165,7 @@ impl EventState {
             }
         }
         if state {
-            self.send_action(TkAction::REDRAW);
+            self.send_action(Action::REDRAW);
             self.disabled.push(w_id);
         }
     }
@@ -211,15 +211,15 @@ impl EventState {
     /// Notify that a widget must be redrawn
     ///
     /// Note: currently, only full-window redraws are supported, thus this is
-    /// equivalent to: `mgr.send_action(TkAction::REDRAW);`
+    /// equivalent to: `mgr.send_action(Action::REDRAW);`
     #[inline]
     pub fn redraw(&mut self, _id: WidgetId) {
         // Theoretically, notifying by WidgetId allows selective redrawing
         // (damage events). This is not yet implemented.
-        self.send_action(TkAction::REDRAW);
+        self.send_action(Action::REDRAW);
     }
 
-    /// Notify that a [`TkAction`] action should happen
+    /// Notify that a [`Action`] action should happen
     ///
     /// This causes the given action to happen after event handling.
     ///
@@ -229,7 +229,7 @@ impl EventState {
     /// required. Should a widget's size requirements change, these will only
     /// affect the UI after a reconfigure action.
     #[inline]
-    pub fn send_action(&mut self, action: TkAction) {
+    pub fn send_action(&mut self, action: Action) {
         self.action |= action;
     }
 
@@ -380,7 +380,7 @@ impl EventState {
         }
         if redraw {
             log::trace!(target: "kas_core::event::manager", "set_grab_depress: target={target:?}");
-            self.send_action(TkAction::REDRAW);
+            self.send_action(Action::REDRAW);
         }
         redraw
     }
@@ -412,7 +412,7 @@ impl EventState {
     /// Clear keyboard navigation focus
     pub fn clear_nav_focus(&mut self) {
         if let Some(id) = self.nav_focus.take() {
-            self.send_action(TkAction::REDRAW);
+            self.send_action(Action::REDRAW);
             self.pending.push_back(Pending::LostNavFocus(id));
         }
         self.clear_char_focus();
@@ -435,7 +435,7 @@ impl EventState {
             return;
         }
 
-        self.send_action(TkAction::REDRAW);
+        self.send_action(Action::REDRAW);
         if let Some(old_id) = self.nav_focus.take() {
             self.pending.push_back(Pending::LostNavFocus(old_id));
         }
@@ -673,7 +673,7 @@ impl<'a> EventMgr<'a> {
 
     /// Adjust the theme
     #[inline]
-    pub fn adjust_theme<F: FnMut(&mut dyn ThemeControl) -> TkAction>(&mut self, mut f: F) {
+    pub fn adjust_theme<F: FnMut(&mut dyn ThemeControl) -> Action>(&mut self, mut f: F) {
         self.shell.adjust_theme(&mut f);
     }
 
@@ -798,7 +798,7 @@ impl<'a> EventMgr<'a> {
             }
         }
 
-        self.send_action(TkAction::REDRAW);
+        self.send_action(Action::REDRAW);
     }
 
     /// A variant of [`Self::grab_press`], where a unique grab is desired
@@ -864,7 +864,7 @@ impl<'a> EventMgr<'a> {
             return false;
         }
 
-        self.send_action(TkAction::REDRAW);
+        self.send_action(Action::REDRAW);
         if let Some(old_id) = self.nav_focus.take() {
             self.pending.push_back(Pending::LostNavFocus(old_id));
         }

@@ -267,15 +267,15 @@ impl_scope! {
 
         /// Set the value
         ///
-        /// Returns [`TkAction::REDRAW`] if a redraw is required.
-        pub fn set_value(&mut self, value: T) -> TkAction {
+        /// Returns [`Action::REDRAW`] if a redraw is required.
+        pub fn set_value(&mut self, value: T) -> Action {
             self.edit.set_error_state(false);
             let old_value = self.edit.guard.value;
             self.edit.guard.set_value(value);
             if self.edit.guard.value != old_value {
                 self.edit.set_string(self.edit.guard.value.to_string())
             } else {
-                TkAction::empty()
+                Action::empty()
             }
         }
 

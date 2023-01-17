@@ -202,11 +202,11 @@ impl<W: Widget> Grid<W> {
     /// This may be used to edit children before window construction. It may
     /// also be used from a running UI, but in this case a full reconfigure
     /// of the window's widgets is required (triggered by the the return
-    /// value, [`TkAction::RECONFIGURE`]).
-    pub fn edit<F: FnOnce(GridBuilder<W>)>(&mut self, f: F) -> TkAction {
+    /// value, [`Action::RECONFIGURE`]).
+    pub fn edit<F: FnOnce(GridBuilder<W>)>(&mut self, f: F) -> Action {
         f(GridBuilder(&mut self.widgets));
         self.calc_dim();
-        TkAction::RECONFIGURE
+        Action::RECONFIGURE
     }
 
     /// True if there are no child widgets

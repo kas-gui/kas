@@ -76,10 +76,10 @@ impl_scope! {
         /// Set the position of tabs relative to content
         ///
         /// Default value: [`Direction::Up`]
-        pub fn set_direction(&mut self, direction: Direction) -> TkAction {
+        pub fn set_direction(&mut self, direction: Direction) -> Action {
             self.direction = direction;
             // Note: most of the time SET_SIZE would be enough, but margins can be different
-            TkAction::RESIZE
+            Action::RESIZE
         }
     }
 
@@ -141,8 +141,8 @@ impl<W: Widget> TabStack<W> {
     /// -   `index >= num_pages`: no page displayed
     /// -   `index == active` and `SizeRules` were solved: nothing happens
     /// -   `SizeRules` were solved: set layout ([`Layout::set_rect`]) and
-    ///     update mouse-cursor target ([`TkAction::REGION_MOVED`])
-    /// -   Otherwise: resize the whole window ([`TkAction::RESIZE`])
+    ///     update mouse-cursor target ([`Action::REGION_MOVED`])
+    /// -   Otherwise: resize the whole window ([`Action::RESIZE`])
     pub fn set_active(&mut self, mgr: &mut ConfigMgr, index: usize) {
         self.stack.set_active(mgr, index);
     }
@@ -209,7 +209,7 @@ impl<W: Widget> TabStack<W> {
     /// Append a page
     ///
     /// The new page is configured immediately. If it becomes the active page
-    /// and then [`TkAction::RESIZE`] will be triggered.
+    /// and then [`Action::RESIZE`] will be triggered.
     ///
     /// Returns the new page's index.
     pub fn push(&mut self, mgr: &mut ConfigMgr, tab: Tab, widget: W) -> usize {
@@ -257,7 +257,7 @@ impl<W: Widget> TabStack<W> {
     /// Panics if `index` is out of bounds.
     ///
     /// The new child is configured immediately. If it replaces the active page,
-    /// then [`TkAction::RESIZE`] is triggered.
+    /// then [`Action::RESIZE`] is triggered.
     pub fn replace(&mut self, mgr: &mut ConfigMgr, index: usize, w: W) -> W {
         self.stack.replace(mgr, index, w)
     }
@@ -265,7 +265,7 @@ impl<W: Widget> TabStack<W> {
     /// Append child widgets from an iterator
     ///
     /// New children are configured immediately. If a new page becomes active,
-    /// then [`TkAction::RESIZE`] is triggered.
+    /// then [`Action::RESIZE`] is triggered.
     pub fn extend<T: IntoIterator<Item = (Tab, W)>>(&mut self, mgr: &mut ConfigMgr, iter: T) {
         let iter = iter.into_iter();
         // let min_len = iter.size_hint().0;

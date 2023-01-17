@@ -106,7 +106,7 @@ impl_scope! {
         ///
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
-        pub fn set_text(&mut self, text: T) -> TkAction {
+        pub fn set_text(&mut self, text: T) -> Action {
             self.text
                 .set_and_try_prepare(text)
                 .expect("invalid font_id");
@@ -118,7 +118,7 @@ impl_scope! {
 
             self.selection.set_max_len(self.text.str_len());
 
-            TkAction::REDRAW
+            Action::REDRAW
         }
 
         fn set_edit_pos_from_coord(&mut self, mgr: &mut EventMgr, coord: Coord) {
@@ -197,10 +197,10 @@ impl_scope! {
     where
         T: EditableText,
     {
-        fn set_string(&mut self, string: String) -> TkAction {
+        fn set_string(&mut self, string: String) -> Action {
             self.text.set_string(string);
             let _ = self.text.try_prepare();
-            TkAction::REDRAW
+            Action::REDRAW
         }
     }
 
@@ -291,7 +291,7 @@ impl_scope! {
             let new_offset = offset.min(self.max_scroll_offset()).max(Offset::ZERO);
             if new_offset != self.view_offset {
                 self.set_offset(mgr, new_offset);
-                // No widget moves so do not need to report TkAction::REGION_MOVED
+                // No widget moves so do not need to report Action::REGION_MOVED
             }
             new_offset
         }

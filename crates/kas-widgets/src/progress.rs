@@ -72,14 +72,14 @@ impl_scope! {
 
         /// Set the value
         ///
-        /// Returns [`TkAction::REDRAW`] if a redraw is required.
-        pub fn set_value(&mut self, value: f32) -> TkAction {
+        /// Returns [`Action::REDRAW`] if a redraw is required.
+        pub fn set_value(&mut self, value: f32) -> Action {
             let value = value.clamp(0.0, 1.0);
             if value == self.value {
-                TkAction::empty()
+                Action::empty()
             } else {
                 self.value = value;
-                TkAction::REDRAW
+                Action::REDRAW
             }
         }
     }

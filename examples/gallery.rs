@@ -262,7 +262,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
                         Direction::Up => Direction::Right,
                         _ => Direction::Up,
                     };
-                    *mgr |= TkAction::RESIZE;
+                    *mgr |= Action::RESIZE;
                 } else if let Some(md) = mgr.try_pop_msg::<Markdown>() {
                     *mgr |= self.label.set_text(md);
                 }
@@ -573,7 +573,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             self.stack.set_disabled(mgr, state);
                         }
                         Menu::Quit => {
-                            *mgr |= TkAction::EXIT;
+                            *mgr |= Action::EXIT;
                         }
                     }
                 } else if let Some(item) = mgr.try_pop_msg::<Item>() {

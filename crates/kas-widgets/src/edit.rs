@@ -689,7 +689,7 @@ impl_scope! {
             let new_offset = offset.min(self.max_scroll_offset()).max(Offset::ZERO);
             if new_offset != self.view_offset {
                 self.view_offset = new_offset;
-                // No widget moves so do not need to report TkAction::REGION_MOVED
+                // No widget moves so do not need to report Action::REGION_MOVED
                 mgr.redraw(self.id());
             }
             new_offset
@@ -703,11 +703,11 @@ impl_scope! {
     }
 
     impl HasString for Self {
-        fn set_string(&mut self, string: String) -> TkAction {
+        fn set_string(&mut self, string: String) -> Action {
             if *self.text.text() == string {
-                return TkAction::empty();
+                return Action::empty();
             }
-            let mut action = TkAction::REDRAW;
+            let mut action = Action::REDRAW;
 
             let len = string.len();
             self.text.set_string(string);
@@ -716,7 +716,7 @@ impl_scope! {
                 self.text_size = Vec2::from(self.text.bounding_box().unwrap().1).cast_ceil();
                 self.view_offset = self.view_offset.min(self.max_scroll_offset());
                 // We use SET_SIZE just to set the outer scroll bar position:
-                action = TkAction::SET_SIZE;
+                action = Action::SET_SIZE;
             }
             G::update(self);
             action

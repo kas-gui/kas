@@ -10,7 +10,7 @@ use super::{Command, CursorIcon, Event, EventMgr, PressSource, Response, Scroll}
 use crate::cast::traits::*;
 use crate::geom::{Coord, Offset, Rect, Size, Vec2};
 #[allow(unused)] use crate::text::SelectionHelper;
-use crate::{TkAction, WidgetId};
+use crate::{Action, WidgetId};
 use kas_macros::impl_default;
 use std::time::{Duration, Instant};
 
@@ -137,10 +137,10 @@ impl ScrollComponent {
     /// -   `window_size`: size of scroll region on the outside
     /// -   `content_size`: size of scroll region on the inside (usually larger)
     ///
-    /// Like [`Self::set_offset`] this generates a [`TkAction`] due to potential
+    /// Like [`Self::set_offset`] this generates a [`Action`] due to potential
     /// change in offset. In practice the caller will likely be performing all
     /// required updates regardless and the return value can be safely ignored.
-    pub fn set_sizes(&mut self, window_size: Size, content_size: Size) -> TkAction {
+    pub fn set_sizes(&mut self, window_size: Size, content_size: Size) -> Action {
         self.max_offset = Offset::conv(content_size) - Offset::conv(window_size);
         self.set_offset(self.offset)
     }
@@ -148,15 +148,15 @@ impl ScrollComponent {
     /// Set the scroll offset
     ///
     /// The offset is clamped to the available scroll range.
-    /// Returns [`TkAction::empty()`] if the offset is identical to the old offset,
-    /// or [`TkAction::REGION_MOVED`] if the offset changes.
-    pub fn set_offset(&mut self, offset: Offset) -> TkAction {
+    /// Returns [`Action::empty()`] if the offset is identical to the old offset,
+    /// or [`Action::REGION_MOVED`] if the offset changes.
+    pub fn set_offset(&mut self, offset: Offset) -> Action {
         let offset = offset.min(self.max_offset).max(Offset::ZERO);
         if offset == self.offset {
-            TkAction::empty()
+            Action::empty()
         } else {
             self.offset = offset;
-            TkAction::REGION_MOVED
+            Action::REGION_MOVED
         }
     }
 
@@ -168,8 +168,8 @@ impl ScrollComponent {
     /// -   `window_rect`: the rect of the scroll window
     /// -   returned `Rect`: the focus rect, adjusted for scroll offset; this
     ///     may be set via [`EventMgr::set_scroll`]
-    /// -   returned `TkAction`: action to pass to the event manager
-    pub fn focus_rect(&mut self, rect: Rect, window_rect: Rect) -> (Rect, TkAction) {
+    /// -   returned `Action`: action to pass to the event manager
+    pub fn focus_rect(&mut self, rect: Rect, window_rect: Rect) -> (Rect, Action) {
         let v = rect.pos - window_rect.pos;
         let off = Offset::conv(rect.size) - Offset::conv(window_rect.size);
         let offset = self.offset.max(v + off).min(v);

@@ -36,8 +36,8 @@ bitflags! {
     /// internally by [`event::EventMgr`] to determine which updates are needed to
     /// the UI.
     ///
-    /// Two `TkAction` values may be combined via bit-or (`a | b`). Bit-or
-    /// assignments are supported by both `TkAction` and [`event::EventMgr`].
+    /// Two `Action` values may be combined via bit-or (`a | b`). Bit-or
+    /// assignments are supported by both `Action` and [`event::EventMgr`].
     ///
     /// Users receiving a value of this type from a widget update method should
     /// usually handle with `*mgr |= action;`. Before the event loop starts
@@ -45,7 +45,7 @@ bitflags! {
     /// values can be ignored.
     #[must_use]
     #[derive(Default)]
-    pub struct TkAction: u32 {
+    pub struct Action: u32 {
         /// No flags
         ///
         /// This is a [zero flag](https://docs.rs/bitflags/latest/bitflags/#zero-flags).

@@ -12,7 +12,7 @@ use crate::geom::{Rect, Size};
 use crate::layout::AlignPair;
 use crate::text::TextApi;
 use crate::theme::{Feature, SizeMgr, TextClass, ThemeSize};
-use crate::{TkAction, Widget, WidgetExt, WidgetId};
+use crate::{Action, Widget, WidgetExt, WidgetId};
 use std::ops::{Deref, DerefMut};
 
 #[allow(unused)] use crate::{event::Event, Layout};
@@ -163,7 +163,7 @@ impl<'a> ConfigMgr<'a> {
 
         // We redraw in all cases. Since this is not part of widget event
         // processing, we can push directly to self.action.
-        self.send_action(TkAction::REDRAW);
+        self.send_action(Action::REDRAW);
         let old_nav_focus = self.nav_focus.take();
 
         fn nav(
@@ -285,7 +285,7 @@ impl<'a> ConfigMgr<'a> {
             return false;
         }
 
-        self.send_action(TkAction::REDRAW);
+        self.send_action(Action::REDRAW);
         if let Some(old_id) = self.nav_focus.take() {
             self.pending.push_back(Pending::LostNavFocus(old_id));
         }
@@ -306,9 +306,9 @@ impl<'a> ConfigMgr<'a> {
     }
 }
 
-impl<'a> std::ops::BitOrAssign<TkAction> for ConfigMgr<'a> {
+impl<'a> std::ops::BitOrAssign<Action> for ConfigMgr<'a> {
     #[inline]
-    fn bitor_assign(&mut self, action: TkAction) {
+    fn bitor_assign(&mut self, action: Action) {
         self.ev.send_action(action);
     }
 }

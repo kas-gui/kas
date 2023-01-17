@@ -9,7 +9,7 @@
 //! e.g. to read the text of a `Label` or set the state of a `CheckBox`.
 
 use crate::text::AccelString;
-use crate::TkAction;
+use crate::Action;
 
 /// Read / write a boolean value
 ///
@@ -19,7 +19,7 @@ pub trait HasBool {
     fn get_bool(&self) -> bool;
 
     /// Set the widget's state
-    fn set_bool(&mut self, state: bool) -> TkAction;
+    fn set_bool(&mut self, state: bool) -> Action;
 }
 
 /// Read an unformatted `&str`
@@ -44,12 +44,12 @@ pub trait HasString: HasStr {
     ///
     /// This is a convenience method around `set_string(text.to_string())`.
     #[inline]
-    fn set_str(&mut self, text: &str) -> TkAction {
+    fn set_str(&mut self, text: &str) -> Action {
         self.set_string(text.to_string())
     }
 
     /// Set text from a string
-    fn set_string(&mut self, text: String) -> TkAction;
+    fn set_string(&mut self, text: String) -> Action;
 }
 
 /*TODO: HasHtml with get and set?
@@ -59,7 +59,7 @@ pub trait HasFormatted {
     fn get_formatted(&self) -> FormattedString;
 
     /// Set from a formatted string
-    fn set_formatted<S: Into<FormattedString>>(&mut self, text: S) -> TkAction
+    fn set_formatted<S: Into<FormattedString>>(&mut self, text: S) -> Action
     where
         Self: Sized,
     {
@@ -67,7 +67,7 @@ pub trait HasFormatted {
     }
 
     /// Set from a formatted string
-    fn set_formatted_string(&mut self, text: FormattedString) -> TkAction;
+    fn set_formatted_string(&mut self, text: FormattedString) -> Action;
 }
 */
 
@@ -80,7 +80,7 @@ pub trait SetAccel {
     ///
     /// This method supports [`AccelString`], `String` and `&str` as input.
     /// The latter are parsed for accel keys identified by `&` prefix.
-    fn set_accel<T: Into<AccelString>>(&mut self, accel: T) -> TkAction
+    fn set_accel<T: Into<AccelString>>(&mut self, accel: T) -> Action
     where
         Self: Sized,
     {
@@ -88,5 +88,5 @@ pub trait SetAccel {
     }
 
     /// Set accel string
-    fn set_accel_string(&mut self, accel: AccelString) -> TkAction;
+    fn set_accel_string(&mut self, accel: AccelString) -> Action;
 }

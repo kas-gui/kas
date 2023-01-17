@@ -14,7 +14,7 @@ use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
 use kas::theme::{DrawMgr, SizeMgr, ThemeControl, ThemeSize};
 use kas::theme::{Theme, Window as _};
-use kas::{Layout, TkAction, WidgetCore, WidgetExt, WindowId};
+use kas::{Action, Layout, WidgetCore, WidgetExt, WindowId};
 use raw_window_handle as raw;
 use std::mem::take;
 use std::time::Instant;
@@ -215,21 +215,21 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
                     mgr.handle_winit(widget, event);
                 });
 
-                if self.ev_state.action.contains(TkAction::RECONFIGURE) {
+                if self.ev_state.action.contains(Action::RECONFIGURE) {
                     // Reconfigure must happen before further event handling
                     self.reconfigure(shared);
-                    self.ev_state.action.remove(TkAction::RECONFIGURE);
+                    self.ev_state.action.remove(Action::RECONFIGURE);
                 }
             }
         }
     }
 
     /// Update, after receiving all events
-    pub fn update(&mut self, shared: &mut SharedState<S, T>) -> (TkAction, Option<Instant>) {
+    pub fn update(&mut self, shared: &mut SharedState<S, T>) -> (Action, Option<Instant>) {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let action = self.ev_state.update(&mut tkw, self.widget.as_widget_mut());
 
-        if action.contains(TkAction::CLOSE | TkAction::EXIT) {
+        if action.contains(Action::CLOSE | Action::EXIT) {
             return (action, None);
         }
         self.handle_action(shared, action);
@@ -249,28 +249,28 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
     }
 
     /// Handle an action (excludes handling of CLOSE and EXIT)
-    pub fn handle_action(&mut self, shared: &mut SharedState<S, T>, action: TkAction) {
-        if action.contains(TkAction::RECONFIGURE) {
+    pub fn handle_action(&mut self, shared: &mut SharedState<S, T>, action: Action) {
+        if action.contains(Action::RECONFIGURE) {
             self.reconfigure(shared);
         }
-        if action.contains(TkAction::THEME_UPDATE) {
+        if action.contains(Action::THEME_UPDATE) {
             let scale_factor = self.window.scale_factor() as f32;
             shared
                 .theme
                 .update_window(&mut self.theme_window, scale_factor);
         }
-        if action.contains(TkAction::RESIZE) {
+        if action.contains(Action::RESIZE) {
             self.solve_cache.invalidate_rule_cache();
             self.apply_size(shared, false);
-        } else if action.contains(TkAction::SET_SIZE) {
+        } else if action.contains(Action::SET_SIZE) {
             self.apply_size(shared, false);
         }
-        /*if action.contains(TkAction::Popup) {
+        /*if action.contains(Action::Popup) {
             let widget = &mut self.widget;
             self.ev_state.with(&mut tkw, |mgr| widget.resize_popups(mgr));
             self.ev_state.region_moved(&mut tkw, &mut *self.widget);
         } else*/
-        if action.contains(TkAction::REGION_MOVED) {
+        if action.contains(Action::REGION_MOVED) {
             let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
             self.ev_state
                 .region_moved(&mut tkw, self.widget.as_widget_mut());
@@ -280,7 +280,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         }
     }
 
-    pub fn handle_closure(mut self, shared: &mut SharedState<S, T>) -> TkAction {
+    pub fn handle_closure(mut self, shared: &mut SharedState<S, T>) -> Action {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let widget = &mut self.widget;
         self.ev_state.with(&mut tkw, |mgr| {
@@ -310,13 +310,13 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
             .with(&mut tkw, |mgr| widget.add_popup(mgr, id, popup));
     }
 
-    pub fn send_action(&mut self, action: TkAction) {
+    pub fn send_action(&mut self, action: Action) {
         self.ev_state.send_action(action);
     }
 
     pub fn send_close(&mut self, shared: &mut SharedState<S, T>, id: WindowId) {
         if id == self.window_id {
-            self.ev_state.send_action(TkAction::CLOSE);
+            self.ev_state.send_action(Action::CLOSE);
         } else {
             let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
             let widget = &mut self.widget;
@@ -398,7 +398,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
             AnimationState::Animate => Some(self.next_avail_frame_time),
             AnimationState::Timed(time) => Some(time.max(self.next_avail_frame_time)),
         };
-        self.ev_state.action -= TkAction::REDRAW; // we just drew
+        self.ev_state.action -= Action::REDRAW; // we just drew
         if !self.ev_state.action.is_empty() {
             log::info!("do_draw: abort and enqueue `Self::update` due to non-empty actions");
             return Err(());
@@ -479,9 +479,9 @@ pub(crate) trait ShellWindow {
 
     /// Adjust the theme
     ///
-    /// Note: theme adjustments apply to all windows, as does the [`TkAction`]
+    /// Note: theme adjustments apply to all windows, as does the [`Action`]
     /// returned from the closure.
-    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeControl) -> TkAction);
+    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeControl) -> Action);
 
     /// Access [`ThemeSize`] and [`DrawShared`] objects
     ///
@@ -568,9 +568,9 @@ where
         self.shared.set_clipboard(content);
     }
 
-    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeControl) -> TkAction) {
+    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeControl) -> Action) {
         let action = f(&mut self.shared.theme);
-        self.shared.pending.push(PendingAction::TkAction(action));
+        self.shared.pending.push(PendingAction::Action(action));
     }
 
     fn size_and_draw_shared(&mut self, f: &mut dyn FnMut(&mut dyn ThemeSize, &mut dyn DrawShared)) {

@@ -7,7 +7,7 @@
 
 use super::{ColorsSrgb, TextClass, ThemeConfig};
 use crate::text::fonts::{fonts, AddMode, FontSelector};
-use crate::TkAction;
+use crate::Action;
 use std::collections::BTreeMap;
 use std::time::Duration;
 
@@ -199,13 +199,13 @@ impl Config {
 impl Config {
     /// Currently this is just "set". Later, maybe some type of merge.
     #[allow(clippy::float_cmp)]
-    pub fn apply_config(&mut self, other: &Config) -> TkAction {
+    pub fn apply_config(&mut self, other: &Config) -> Action {
         let action = if self.font_size != other.font_size {
-            TkAction::RESIZE | TkAction::THEME_UPDATE
+            Action::RESIZE | Action::THEME_UPDATE
         } else if self != other {
-            TkAction::REDRAW
+            Action::REDRAW
         } else {
-            TkAction::empty()
+            Action::empty()
         };
 
         *self = other.clone();

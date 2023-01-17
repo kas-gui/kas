@@ -292,7 +292,7 @@ impl Options {
                 let config: T::Config =
                     kas::config::Format::guess_and_read_path(&self.theme_config_path)?;
                 config.apply_startup();
-                // Ignore TkAction: UI isn't built yet
+                // Ignore Action: UI isn't built yet
                 let _ = theme.apply_config(&config);
             }
             #[cfg(feature = "serde")]

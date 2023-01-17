@@ -290,7 +290,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     }
 
     /// Set the active choice
-    pub fn set_active(&mut self, index: usize) -> TkAction {
+    pub fn set_active(&mut self, index: usize) -> Action {
         if self.active != index && index < self.popup.inner.len() {
             self.active = index;
             let string = if index < self.len() {
@@ -300,7 +300,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
             };
             self.label.set_string(string)
         } else {
-            TkAction::empty()
+            Action::empty()
         }
     }
 

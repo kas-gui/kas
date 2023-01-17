@@ -14,7 +14,7 @@ mod shell;
 mod window;
 
 use crate::event::UpdateId;
-use crate::{TkAction, WindowId};
+use crate::{Action, WindowId};
 use event_loop::Loop as EventLoop;
 use shared::SharedState;
 use window::Window;
@@ -53,7 +53,7 @@ enum PendingAction {
     AddWindow(WindowId, Box<dyn kas::Window>),
     CloseWindow(WindowId),
     Update(kas::event::UpdateId, u64),
-    TkAction(TkAction),
+    Action(Action),
 }
 
 #[derive(Debug)]
