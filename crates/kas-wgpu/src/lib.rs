@@ -31,13 +31,13 @@ mod shaded_theme;
 mod surface;
 
 use crate::draw::{CustomPipeBuilder, DrawPipe};
+use kas::shell::{self, GraphicalShell, Result};
 use kas::theme::RasterConfig;
 
 pub use draw_shaded::{DrawShaded, DrawShadedImpl};
 pub use options::Options;
 pub use shaded_theme::ShadedTheme;
 pub extern crate wgpu;
-pub use kas::shell::*;
 
 /// Builder for a KAS shell using WGPU
 pub struct WgpuShellBuilder<CB: CustomPipeBuilder>(CB, Options);
@@ -64,4 +64,4 @@ impl<CB: CustomPipeBuilder> From<CB> for WgpuShellBuilder<CB> {
 }
 
 /// A KAS shell over Winit and WGPU
-pub type Toolkit<C, T> = Shell<WgpuShellBuilder<C>, T>;
+pub type Shell<C, T> = shell::Shell<WgpuShellBuilder<C>, T>;

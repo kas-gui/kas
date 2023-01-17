@@ -84,5 +84,5 @@ fn main() -> kas::shell::Result<()> {
 
     let window = Window::new("Cursor gallery", column);
     let theme = kas::theme::FlatTheme::new();
-    kas::shell::Toolkit::new(theme)?.with(window)?.run()
+    kas::shell::DefaultShell::new(theme)?.with(window)?.run()
 }

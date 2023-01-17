@@ -169,5 +169,7 @@ fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
     let theme = kas::theme::FlatTheme::new();
-    kas::shell::Toolkit::new(theme)?.with(Clock::new())?.run()
+    kas::shell::DefaultShell::new(theme)?
+        .with(Clock::new())?
+        .run()
 }

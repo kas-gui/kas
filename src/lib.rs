@@ -70,10 +70,14 @@ pub mod resvg {
     pub use kas_resvg::*;
 }
 
-#[cfg(feature = "wgpu")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "wgpu")))]
-#[doc(inline)]
-pub extern crate kas_wgpu as shell;
+/// Shell
+pub mod shell {
+    pub use kas_core::shell::*;
+
+    /// The default (configuration-specific) shell
+    #[cfg(feature = "wgpu")]
+    pub type DefaultShell<T> = kas_wgpu::Shell<(), T>;
+}
 
 #[cfg(feature = "dynamic")]
 #[allow(unused_imports)]

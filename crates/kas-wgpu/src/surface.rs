@@ -10,7 +10,7 @@ use kas::cast::Cast;
 use kas::draw::color::Rgba;
 use kas::draw::{DrawIface, WindowCommon};
 use kas::geom::Size;
-use kas::shell::raw_window_handle as raw;
+use kas::shell::{raw_window_handle as raw, WindowSurface};
 use std::time::Instant;
 
 /// Per-window data
@@ -20,7 +20,7 @@ pub struct Surface<C: CustomPipe> {
     draw: DrawWindow<C::Window>,
 }
 
-impl<C: CustomPipe> super::WindowSurface for Surface<C> {
+impl<C: CustomPipe> WindowSurface for Surface<C> {
     type Shared = DrawPipe<C>;
 
     fn new<W: raw::HasRawWindowHandle + raw::HasRawDisplayHandle>(

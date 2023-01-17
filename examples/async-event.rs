@@ -19,10 +19,10 @@ use kas::theme::TextClass;
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
     let theme = kas::theme::FlatTheme::new();
-    let toolkit = kas::shell::Toolkit::new(theme)?;
+    let shell = kas::shell::DefaultShell::new(theme)?;
 
-    // We construct a proxy from the toolkit to enable cross-thread communication.
-    let proxy = toolkit.create_proxy();
+    // We construct a proxy from the shell to enable cross-thread communication.
+    let proxy = shell.create_proxy();
 
     // UpdateId is used to identify the source of Event::Update (not essential in this example).
     let update_id = UpdateId::new();
@@ -37,7 +37,7 @@ fn main() -> kas::shell::Result<()> {
 
     let widget = ColourSquare::new(colour, update_id);
 
-    toolkit.with(widget)?.run()
+    shell.with(widget)?.run()
 }
 
 impl_scope! {

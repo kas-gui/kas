@@ -484,7 +484,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add("simple", kas::theme::SimpleTheme::new())
         .add("shaded", kas_wgpu::ShadedTheme::new())
         .build();
-    let mut toolkit = kas::shell::Toolkit::new(theme)?;
+    let mut shell = kas::shell::DefaultShell::new(theme)?;
 
     // TODO: use as logo of tab
     // let img_gallery = Svg::new(include_bytes!("../res/gallery-line.svg"));
@@ -508,9 +508,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .menu("&Style", |menu| {
             menu.submenu("&Colours", |mut menu| {
-                // Enumerate colour schemes. Access through the toolkit since
+                // Enumerate colour schemes. Access through the shell since
                 // this handles config loading.
-                for name in toolkit.theme().list_schemes().iter() {
+                for name in shell.theme().list_schemes().iter() {
                     let mut title = String::with_capacity(name.len() + 1);
                     match name {
                         &"" => title.push_str("&Default"),
@@ -555,7 +555,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .with_title("Te&xt editor", editor())
                 .with_title("&List", filter_list())
                 .with_title("Can&vas", canvas())
-                .with_title("Confi&g", config(toolkit.event_config().clone())),
+                .with_title("Confi&g", config(shell.event_config().clone())),
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
@@ -592,6 +592,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    toolkit.add(window)?;
-    toolkit.run()
+    shell.add(window)?;
+    shell.run()
 }
