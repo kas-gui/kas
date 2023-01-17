@@ -3,31 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Toolkit interface
-//!
-//! This module provides the primary interface between the KAS toolkit and a
-//! KAS shell, though it is not the only interface. A KAS shell connects to the
-//! operating system (or further abstraction layers) by implementing
-//! [`ShellWindow`], the family of draw traits in [`crate::draw`], and
-//! constructing and using an event manager ([`crate::event::EventState`]).
-//! The shell also provides the entrypoint, a type named `Toolkit`.
-
-use std::num::NonZeroU32;
-
-/// Identifier for a window or pop-up
-///
-/// Identifiers should always be unique.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct WindowId(NonZeroU32);
-
-impl WindowId {
-    /// Construct a [`WindowId`]
-    ///
-    /// Only for use by the shell!
-    pub(crate) fn new(n: NonZeroU32) -> WindowId {
-        WindowId(n)
-    }
-}
+//! Action enum
 
 bitflags! {
     /// Action required after processing

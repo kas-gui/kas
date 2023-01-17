@@ -25,9 +25,9 @@ extern crate self as kas;
 pub extern crate easy_cast as cast;
 
 // internal modules:
+mod action;
 mod core;
 mod root;
-mod toolkit;
 
 // public implementations:
 pub mod class;
@@ -50,7 +50,7 @@ pub mod theme;
 pub mod util;
 
 // export most important members directly for convenience and less redundancy:
+pub use crate::action::Action;
 pub use crate::core::*;
-pub use crate::toolkit::*;
 pub use kas_macros::*;
 pub use root::RootWidget;
