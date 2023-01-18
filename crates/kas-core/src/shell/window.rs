@@ -5,60 +5,21 @@
 
 //! Window types
 
-use super::{PendingAction, ProxyAction, SharedState};
+use super::{PendingAction, ProxyAction, SharedState, ShellWindow, WindowSurface};
 use kas::cast::Cast;
-use kas::draw::color::Rgba;
-use kas::draw::{AnimationState, DrawIface, DrawShared, WindowCommon};
+use kas::draw::{AnimationState, DrawShared};
 use kas::event::{ConfigMgr, CursorIcon, EventState, UpdateId};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
 use kas::theme::{DrawMgr, SizeMgr, ThemeControl, ThemeSize};
 use kas::theme::{Theme, Window as _};
 use kas::{Action, Layout, WidgetCore, WidgetExt, WindowId};
-use raw_window_handle as raw;
 use std::mem::take;
 use std::time::Instant;
 use winit::error::OsError;
 use winit::event::WindowEvent;
 use winit::event_loop::EventLoopWindowTarget;
 use winit::window::WindowBuilder;
-
-/// Window graphical surface requirements
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-pub trait WindowSurface {
-    /// Shared draw state
-    type Shared: kas::draw::DrawSharedImpl;
-
-    /// Construct an instance from a window handle
-    fn new<W: raw::HasRawWindowHandle + raw::HasRawDisplayHandle>(
-        shared: &mut Self::Shared,
-        size: Size,
-        window: W,
-    ) -> Self;
-
-    /// Get current surface size
-    fn size(&self) -> Size;
-
-    /// Resize surface
-    ///
-    /// Returns `true` when the new `size` did not match the old surface size.
-    fn do_resize(&mut self, shared: &mut Self::Shared, size: Size) -> bool;
-
-    /// Construct a DrawIface object
-    fn draw_iface<'iface>(
-        &'iface mut self,
-        shared: &'iface mut kas::draw::SharedState<Self::Shared>,
-    ) -> DrawIface<'iface, Self::Shared>;
-
-    /// Access common data
-    fn common_mut(&mut self) -> &mut WindowCommon;
-
-    /// Present frame
-    ///
-    /// On failure drawing is aborted (restart from event handling).
-    fn present(&mut self, shared: &mut Self::Shared, clear_color: Rgba) -> Result<(), ()>;
-}
 
 /// Per-window data
 pub struct Window<S: WindowSurface, T: Theme<S::Shared>> {
@@ -183,7 +144,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
     }
 
     /// Handle an event
-    pub fn handle_event(&mut self, shared: &mut SharedState<S, T>, event: WindowEvent) {
+    pub(super) fn handle_event(&mut self, shared: &mut SharedState<S, T>, event: WindowEvent) {
         // Note: resize must be handled here to re-configure self.surface.
         match event {
             WindowEvent::Destroyed => (),
@@ -227,7 +188,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
     }
 
     /// Update, after receiving all events
-    pub fn update(&mut self, shared: &mut SharedState<S, T>) -> (Action, Option<Instant>) {
+    pub(super) fn update(&mut self, shared: &mut SharedState<S, T>) -> (Action, Option<Instant>) {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let action = self.ev_state.update(&mut tkw, self.widget.as_widget_mut());
 
@@ -251,7 +212,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
     }
 
     /// Handle an action (excludes handling of CLOSE and EXIT)
-    pub fn handle_action(&mut self, shared: &mut SharedState<S, T>, action: Action) {
+    pub(super) fn handle_action(&mut self, shared: &mut SharedState<S, T>, action: Action) {
         if action.contains(Action::RECONFIGURE) {
             self.reconfigure(shared);
         }
@@ -282,7 +243,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         }
     }
 
-    pub fn handle_closure(mut self, shared: &mut SharedState<S, T>) -> Action {
+    pub(super) fn handle_closure(mut self, shared: &mut SharedState<S, T>) -> Action {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let widget = &mut self.widget;
         self.ev_state.with(&mut tkw, |mgr| {
@@ -291,32 +252,42 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         self.ev_state.update(&mut tkw, self.widget.as_widget_mut())
     }
 
-    pub fn update_timer(&mut self, shared: &mut SharedState<S, T>) -> Option<Instant> {
+    pub(super) fn update_timer(&mut self, shared: &mut SharedState<S, T>) -> Option<Instant> {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let widget = self.widget.as_widget_mut();
         self.ev_state.with(&mut tkw, |mgr| mgr.update_timer(widget));
         self.next_resume()
     }
 
-    pub fn update_widgets(&mut self, shared: &mut SharedState<S, T>, id: UpdateId, payload: u64) {
+    pub(super) fn update_widgets(
+        &mut self,
+        shared: &mut SharedState<S, T>,
+        id: UpdateId,
+        payload: u64,
+    ) {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let widget = self.widget.as_widget_mut();
         self.ev_state
             .with(&mut tkw, |mgr| mgr.update_widgets(widget, id, payload));
     }
 
-    pub fn add_popup(&mut self, shared: &mut SharedState<S, T>, id: WindowId, popup: kas::Popup) {
+    pub(super) fn add_popup(
+        &mut self,
+        shared: &mut SharedState<S, T>,
+        id: WindowId,
+        popup: kas::Popup,
+    ) {
         let widget = &mut self.widget;
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         self.ev_state
             .with(&mut tkw, |mgr| widget.add_popup(mgr, id, popup));
     }
 
-    pub fn send_action(&mut self, action: Action) {
+    pub(super) fn send_action(&mut self, action: Action) {
         self.ev_state.send_action(action);
     }
 
-    pub fn send_close(&mut self, shared: &mut SharedState<S, T>, id: WindowId) {
+    pub(super) fn send_close(&mut self, shared: &mut SharedState<S, T>, id: WindowId) {
         if id == self.window_id {
             self.ev_state.send_action(Action::CLOSE);
         } else {
@@ -430,70 +401,6 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
             (None, None) => None,
         }
     }
-}
-
-/// Window management interface
-///
-/// Note: previously, this was implemented by a dependent crate. Now, it is not,
-/// which might suggest this trait is no longer needed, however `EventMgr` still
-/// needs type erasure over `S: WindowSurface` and `T: Theme`.
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-pub(crate) trait ShellWindow {
-    /// Add a pop-up
-    ///
-    /// A pop-up may be presented as an overlay layer in the current window or
-    /// via a new borderless window.
-    ///
-    /// Pop-ups support position hints: they are placed *next to* the specified
-    /// `rect`, preferably in the given `direction`.
-    ///
-    /// Returns `None` if window creation is not currently available (but note
-    /// that `Some` result does not guarantee the operation succeeded).
-    fn add_popup(&mut self, popup: crate::Popup) -> Option<WindowId>;
-
-    /// Add a window
-    ///
-    /// Toolkits typically allow windows to be added directly, before start of
-    /// the event loop (e.g. `kas_wgpu::Toolkit::add`).
-    ///
-    /// This method is an alternative allowing a window to be added from an
-    /// event handler, albeit without error handling.
-    fn add_window(&mut self, widget: Box<dyn crate::Window>) -> WindowId;
-
-    /// Close a window
-    fn close_window(&mut self, id: WindowId);
-
-    /// Updates all subscribed widgets
-    ///
-    /// All widgets subscribed to the given [`UpdateId`], across all
-    /// windows, will receive an update.
-    fn update_all(&mut self, id: UpdateId, payload: u64);
-
-    /// Attempt to get clipboard contents
-    ///
-    /// In case of failure, paste actions will simply fail. The implementation
-    /// may wish to log an appropriate warning message.
-    fn get_clipboard(&mut self) -> Option<String>;
-
-    /// Attempt to set clipboard contents
-    fn set_clipboard(&mut self, content: String);
-
-    /// Adjust the theme
-    ///
-    /// Note: theme adjustments apply to all windows, as does the [`Action`]
-    /// returned from the closure.
-    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeControl) -> Action);
-
-    /// Access [`ThemeSize`] and [`DrawShared`] objects
-    ///
-    /// Implementations should call the given function argument once; not doing
-    /// so is memory-safe but will cause panics in `EventMgr` methods.
-    /// User-code *must not* depend on `f` being called for memory safety.
-    fn size_and_draw_shared(&mut self, f: &mut dyn FnMut(&mut dyn ThemeSize, &mut dyn DrawShared));
-
-    /// Set the mouse cursor
-    fn set_cursor_icon(&mut self, icon: CursorIcon);
 }
 
 struct TkWindow<'a, S: WindowSurface, T: Theme<S::Shared>>

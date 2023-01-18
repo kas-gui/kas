@@ -5,34 +5,15 @@
 
 //! [`Shell`] and supporting elements
 
-use super::{ProxyAction, Result, SharedState, Window, WindowSurface};
+use super::{GraphicalShell, ProxyAction, Result, SharedState, Window};
 use crate::config::Options;
 use crate::draw::{DrawImpl, DrawShared, DrawSharedImpl};
 use crate::event::{self, UpdateId};
 use crate::model::SharedRc;
-use crate::theme::{self, RasterConfig, Theme, ThemeConfig};
+use crate::theme::{self, Theme, ThemeConfig};
 use crate::util::warn_about_error;
 use crate::WindowId;
 use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy, EventLoopWindowTarget};
-
-/// API for the graphical implementation of a shell
-///
-/// See also [`Shell`].
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-pub trait GraphicalShell {
-    /// Shared draw state
-    type Shared: DrawSharedImpl;
-
-    /// Per-window draw state
-    type Window: DrawImpl;
-
-    /// Window surface
-    type Surface: WindowSurface<Shared = Self::Shared> + 'static;
-
-    /// Construct shared state
-    fn build(self, raster_config: &RasterConfig) -> Result<Self::Shared>;
-}
 
 /// The KAS shell
 ///

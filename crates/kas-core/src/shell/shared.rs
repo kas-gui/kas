@@ -7,14 +7,14 @@
 
 use std::num::NonZeroU32;
 
-use super::{PendingAction, WindowId, WindowSurface};
+use super::{PendingAction, WindowSurface};
 use kas::config::Options;
-use kas::draw;
 use kas::event::UpdateId;
 use kas::model::SharedRc;
 use kas::shell::Error;
 use kas::theme::Theme;
 use kas::util::warn_about_error;
+use kas::{draw, WindowId};
 
 #[cfg(feature = "clipboard")]
 use window_clipboard::Clipboard;

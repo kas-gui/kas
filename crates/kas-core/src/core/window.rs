@@ -19,6 +19,7 @@ impl WindowId {
     /// Construct a [`WindowId`]
     ///
     /// Only for use by the shell!
+    #[allow(unused)]
     pub(crate) fn new(n: NonZeroU32) -> WindowId {
         WindowId(n)
     }

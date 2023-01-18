@@ -14,9 +14,9 @@ use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
 use winit::window as ww;
 
 use super::{PendingAction, SharedState};
-use super::{ProxyAction, Window, WindowId, WindowSurface};
+use super::{ProxyAction, Window, WindowSurface};
 use kas::theme::Theme;
-use kas::Action;
+use kas::{Action, WindowId};
 
 /// Event-loop data structure (i.e. all run-time state)
 pub(super) struct Loop<S: WindowSurface, T: Theme<S::Shared>>

@@ -42,8 +42,6 @@ pub mod label;
 pub mod layout;
 pub mod model;
 pub mod prelude;
-#[cfg(feature = "winit")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
 pub mod shell;
 pub mod text;
 pub mod theme;

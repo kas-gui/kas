@@ -5,60 +5,37 @@
 
 //! Shell
 
-use thiserror::Error;
-use winit::error::OsError;
+mod common;
+#[cfg(feature = "winit")] mod event_loop;
+#[cfg(feature = "winit")] mod shared;
+#[cfg(feature = "winit")] mod shell;
+#[cfg(feature = "winit")] mod window;
 
-mod event_loop;
-mod shared;
-mod shell;
-mod window;
+#[cfg(feature = "winit")] use event_loop::Loop as EventLoop;
+#[cfg(feature = "winit")] use shared::SharedState;
+#[cfg(feature = "winit")] use window::Window;
 
-use crate::event::UpdateId;
-use crate::{Action, WindowId};
-use event_loop::Loop as EventLoop;
-use shared::SharedState;
-use window::Window;
-
-pub use shell::{ClosedError, GraphicalShell, Proxy, Shell, ShellAssoc};
-pub(crate) use window::ShellWindow;
-pub use window::WindowSurface;
+pub(crate) use common::ShellWindow;
+#[cfg(feature = "winit")] pub use common::WindowSurface;
+pub use common::{Error, GraphicalShell, Result};
+#[cfg(feature = "winit")]
+pub use shell::{ClosedError, Proxy, Shell, ShellAssoc};
+#[cfg(feature = "winit")]
 pub extern crate raw_window_handle;
 
-/// Possible failures from constructing a [`Shell`]
-///
-/// Some variants are undocumented. Users should not match these variants since
-/// they are not considered part of the public API.
-#[non_exhaustive]
-#[derive(Error, Debug)]
-pub enum Error {
-    /// Failure from the graphics sub-system
-    #[error("error from graphics sub-system")]
-    Graphics(Box<dyn std::error::Error + 'static>),
-
-    /// Config load/save error
-    #[error("config load/save error")]
-    Config(#[from] kas::config::Error),
-    #[doc(hidden)]
-
-    /// OS error during window creation
-    #[error("operating system error")]
-    Window(#[from] OsError),
-}
-
-/// A `Result` type representing `T` or [`enum@Error`]
-pub type Result<T> = std::result::Result<T, Error>;
-
+#[cfg(feature = "winit")]
 enum PendingAction {
-    AddPopup(winit::window::WindowId, WindowId, kas::Popup),
-    AddWindow(WindowId, Box<dyn kas::Window>),
-    CloseWindow(WindowId),
+    AddPopup(winit::window::WindowId, kas::WindowId, kas::Popup),
+    AddWindow(kas::WindowId, Box<dyn kas::Window>),
+    CloseWindow(kas::WindowId),
     Update(kas::event::UpdateId, u64),
-    Action(Action),
+    Action(kas::Action),
 }
 
+#[cfg(feature = "winit")]
 #[derive(Debug)]
 enum ProxyAction {
     CloseAll,
-    Close(WindowId),
-    Update(UpdateId, u64),
+    Close(kas::WindowId),
+    Update(kas::event::UpdateId, u64),
 }
