@@ -19,7 +19,7 @@ use event_loop::Loop as EventLoop;
 use shared::SharedState;
 use window::Window;
 
-pub use shell::{ClosedError, GraphicalShell, Proxy, Shell};
+pub use shell::{ClosedError, GraphicalShell, Proxy, Shell, ShellAssoc};
 pub(crate) use window::ShellWindow;
 pub use window::WindowSurface;
 pub extern crate raw_window_handle;

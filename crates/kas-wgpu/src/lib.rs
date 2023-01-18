@@ -44,6 +44,7 @@ pub struct WgpuShellBuilder<CB: CustomPipeBuilder>(CB, Options);
 
 impl<CB: CustomPipeBuilder> GraphicalShell for WgpuShellBuilder<CB> {
     type Shared = DrawPipe<CB::Pipe>;
+    type Window = draw::DrawWindow<<CB::Pipe as draw::CustomPipe>::Window>;
     type Surface = surface::Surface<CB::Pipe>;
 
     fn build(self, raster_config: &RasterConfig) -> Result<Self::Shared> {

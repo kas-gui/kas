@@ -7,7 +7,7 @@
 
 use super::{ProxyAction, Result, SharedState, Window, WindowSurface};
 use crate::config::Options;
-use crate::draw::{DrawShared, DrawSharedImpl};
+use crate::draw::{DrawImpl, DrawShared, DrawSharedImpl};
 use crate::event::{self, UpdateId};
 use crate::model::SharedRc;
 use crate::theme::{self, RasterConfig, Theme, ThemeConfig};
@@ -23,6 +23,9 @@ use winit::event_loop::{EventLoop, EventLoopBuilder, EventLoopProxy, EventLoopWi
 pub trait GraphicalShell {
     /// Shared draw state
     type Shared: DrawSharedImpl;
+
+    /// Per-window draw state
+    type Window: DrawImpl;
 
     /// Window surface
     type Surface: WindowSurface<Shared = Self::Shared> + 'static;
@@ -44,6 +47,26 @@ pub struct Shell<G: GraphicalShell, T: Theme<G::Shared>> {
     el: EventLoop<ProxyAction>,
     windows: Vec<Window<G::Surface, T>>,
     shared: SharedState<G::Surface, T>,
+}
+
+/// Shell associated types
+///
+/// Note: these could be inherent associated types of [`Shell`] when Rust#8995 is stable.
+pub trait ShellAssoc {
+    /// Shared draw state type
+    type DrawShared: DrawSharedImpl;
+
+    /// Per-window draw state
+    type Draw: DrawImpl;
+}
+
+impl<G: GraphicalShell, T: Theme<G::Shared> + 'static> ShellAssoc for Shell<G, T>
+where
+    T::Window: theme::Window,
+{
+    type DrawShared = G::Shared;
+
+    type Draw = G::Window;
 }
 
 impl<G: GraphicalShell + Default, T: Theme<G::Shared> + 'static> Shell<G, T>
