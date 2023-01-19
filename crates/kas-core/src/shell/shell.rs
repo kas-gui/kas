@@ -281,8 +281,7 @@ impl Proxy {
 
     /// Wake async methods
     fn wake_async(&self) {
-        if let Err(_) = self.0.send_event(ProxyAction::WakeAsync) {
-            // ignore: if the loop closed the future has been dropped
-        }
+        // ignore error: if the loop closed the future has been dropped
+        let _ = self.0.send_event(ProxyAction::WakeAsync);
     }
 }
