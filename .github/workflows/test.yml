@@ -50,7 +50,9 @@ jobs:
           cargo clippy --all --features nightly -- -W clippy::all \
           -A clippy::collapsible-if \
           -A clippy::collapsible_else_if \
+          -A clippy::module-inception \
           -A clippy::single_match \
+          -A clippy::too-many-arguments \
           -A clippy::comparison_chain \
           -A clippy::unit_arg
 
@@ -101,6 +103,8 @@ jobs:
           cargo clippy --all -- -D warnings -W clippy::all \
           -A clippy::collapsible-if \
           -A clippy::collapsible_else_if \
+          -A clippy::module-inception \
           -A clippy::single_match \
+          -A clippy::too-many-arguments \
           -A clippy::comparison_chain \
           -A clippy::unit_arg
