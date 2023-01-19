@@ -3,48 +3,43 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! `Window` and `WindowList` types
+//! Window types
 
+use super::{PendingAction, ProxyAction, SharedState, ShellWindow, WindowSurface};
 use kas::cast::Cast;
-use kas::draw::{AnimationState, DrawIface, DrawShared, PassId};
+use kas::draw::{AnimationState, DrawShared};
 use kas::event::{ConfigMgr, CursorIcon, EventState, UpdateId};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
 use kas::theme::{DrawMgr, SizeMgr, ThemeControl, ThemeSize};
 use kas::theme::{Theme, Window as _};
-use kas::{Layout, TkAction, WidgetCore, WidgetExt, WindowId};
+use kas::{Action, Layout, WidgetCore, WidgetExt, WindowId};
+use std::mem::take;
 use std::time::Instant;
-use winit::dpi::PhysicalSize;
 use winit::error::OsError;
 use winit::event::WindowEvent;
 use winit::event_loop::EventLoopWindowTarget;
 use winit::window::WindowBuilder;
 
-use crate::draw::{CustomPipe, DrawPipe, DrawWindow};
-use crate::shared::{PendingAction, SharedState};
-use crate::ProxyAction;
-
 /// Per-window data
-pub(crate) struct Window<C: CustomPipe, T: Theme<DrawPipe<C>>> {
-    pub(crate) widget: kas::RootWidget,
-    pub(crate) window_id: WindowId,
+pub struct Window<S: WindowSurface, T: Theme<S::Shared>> {
+    pub(super) widget: kas::RootWidget,
+    pub(super) window_id: WindowId,
     ev_state: EventState,
     solve_cache: SolveCache,
     /// The winit window
-    pub(crate) window: winit::window::Window,
-    surface: wgpu::Surface,
-    sc_desc: wgpu::SurfaceConfiguration,
-    draw: DrawWindow<C::Window>,
+    pub(super) window: winit::window::Window,
     theme_window: T::Window,
     next_avail_frame_time: Instant,
     queued_frame_time: Option<Instant>,
+    surface: S,
 }
 
 // Public functions, for use by the toolkit
-impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
+impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
     /// Construct a window
-    pub fn new(
-        shared: &mut SharedState<C, T>,
+    pub(super) fn new(
+        shared: &mut SharedState<S, T>,
         elwt: &EventLoopWindowTarget<ProxyAction>,
         window_id: WindowId,
         widget: Box<dyn kas::Window>,
@@ -129,19 +124,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             solve_cache.invalidate_rule_cache();
         }
 
-        let mut draw = shared.draw.draw.new_window();
-        shared.draw.draw.resize(&mut draw, size);
-
-        let surface = unsafe { shared.instance.create_surface(&window) };
-        let sc_desc = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: crate::draw::RENDER_TEX_FORMAT,
-            width: size.0.cast(),
-            height: size.1.cast(),
-            present_mode: wgpu::PresentMode::Fifo,
-            alpha_mode: wgpu::CompositeAlphaMode::Auto,
-        };
-        surface.configure(&shared.draw.draw.device, &sc_desc);
+        let surface = S::new(&mut shared.draw.draw, size, &window);
 
         let mut r = Window {
             widget,
@@ -149,12 +132,10 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             ev_state,
             solve_cache,
             window,
-            surface,
-            sc_desc,
-            draw,
             theme_window,
             next_avail_frame_time: time,
             queued_frame_time: Some(time),
+            surface,
         };
         r.apply_size(shared, true);
 
@@ -163,11 +144,15 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
     }
 
     /// Handle an event
-    pub fn handle_event(&mut self, shared: &mut SharedState<C, T>, event: WindowEvent) {
+    pub(super) fn handle_event(&mut self, shared: &mut SharedState<S, T>, event: WindowEvent) {
         // Note: resize must be handled here to re-configure self.surface.
         match event {
             WindowEvent::Destroyed => (),
-            WindowEvent::Resized(size) => self.do_resize(shared, size),
+            WindowEvent::Resized(size) => {
+                if self.surface.do_resize(&mut shared.draw.draw, size.cast()) {
+                    self.apply_size(shared, false);
+                }
+            }
             WindowEvent::ScaleFactorChanged {
                 scale_factor,
                 new_inner_size,
@@ -181,7 +166,10 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
                 let dpem = self.theme_window.size().dpem();
                 self.ev_state.set_scale_factor(scale_factor, dpem);
                 self.solve_cache.invalidate_rule_cache();
-                self.do_resize(shared, *new_inner_size);
+                let size = (*new_inner_size).cast();
+                if self.surface.do_resize(&mut shared.draw.draw, size) {
+                    self.apply_size(shared, false);
+                }
             }
             event => {
                 let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
@@ -190,21 +178,21 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
                     mgr.handle_winit(widget, event);
                 });
 
-                if self.ev_state.action.contains(TkAction::RECONFIGURE) {
+                if self.ev_state.action.contains(Action::RECONFIGURE) {
                     // Reconfigure must happen before further event handling
                     self.reconfigure(shared);
-                    self.ev_state.action.remove(TkAction::RECONFIGURE);
+                    self.ev_state.action.remove(Action::RECONFIGURE);
                 }
             }
         }
     }
 
     /// Update, after receiving all events
-    pub fn update(&mut self, shared: &mut SharedState<C, T>) -> (TkAction, Option<Instant>) {
+    pub(super) fn update(&mut self, shared: &mut SharedState<S, T>) -> (Action, Option<Instant>) {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let action = self.ev_state.update(&mut tkw, self.widget.as_widget_mut());
 
-        if action.contains(TkAction::CLOSE | TkAction::EXIT) {
+        if action.contains(Action::CLOSE | Action::EXIT) {
             return (action, None);
         }
         self.handle_action(shared, action);
@@ -224,28 +212,28 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
     }
 
     /// Handle an action (excludes handling of CLOSE and EXIT)
-    pub fn handle_action(&mut self, shared: &mut SharedState<C, T>, action: TkAction) {
-        if action.contains(TkAction::RECONFIGURE) {
+    pub(super) fn handle_action(&mut self, shared: &mut SharedState<S, T>, action: Action) {
+        if action.contains(Action::RECONFIGURE) {
             self.reconfigure(shared);
         }
-        if action.contains(TkAction::THEME_UPDATE) {
+        if action.contains(Action::THEME_UPDATE) {
             let scale_factor = self.window.scale_factor() as f32;
             shared
                 .theme
                 .update_window(&mut self.theme_window, scale_factor);
         }
-        if action.contains(TkAction::RESIZE) {
+        if action.contains(Action::RESIZE) {
             self.solve_cache.invalidate_rule_cache();
             self.apply_size(shared, false);
-        } else if action.contains(TkAction::SET_SIZE) {
+        } else if action.contains(Action::SET_SIZE) {
             self.apply_size(shared, false);
         }
-        /*if action.contains(TkAction::Popup) {
+        /*if action.contains(Action::Popup) {
             let widget = &mut self.widget;
             self.ev_state.with(&mut tkw, |mgr| widget.resize_popups(mgr));
             self.ev_state.region_moved(&mut tkw, &mut *self.widget);
         } else*/
-        if action.contains(TkAction::REGION_MOVED) {
+        if action.contains(Action::REGION_MOVED) {
             let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
             self.ev_state
                 .region_moved(&mut tkw, self.widget.as_widget_mut());
@@ -255,7 +243,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         }
     }
 
-    pub fn handle_closure(mut self, shared: &mut SharedState<C, T>) -> TkAction {
+    pub(super) fn handle_closure(mut self, shared: &mut SharedState<S, T>) -> Action {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let widget = &mut self.widget;
         self.ev_state.with(&mut tkw, |mgr| {
@@ -264,34 +252,44 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         self.ev_state.update(&mut tkw, self.widget.as_widget_mut())
     }
 
-    pub fn update_timer(&mut self, shared: &mut SharedState<C, T>) -> Option<Instant> {
+    pub(super) fn update_timer(&mut self, shared: &mut SharedState<S, T>) -> Option<Instant> {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let widget = self.widget.as_widget_mut();
         self.ev_state.with(&mut tkw, |mgr| mgr.update_timer(widget));
         self.next_resume()
     }
 
-    pub fn update_widgets(&mut self, shared: &mut SharedState<C, T>, id: UpdateId, payload: u64) {
+    pub(super) fn update_widgets(
+        &mut self,
+        shared: &mut SharedState<S, T>,
+        id: UpdateId,
+        payload: u64,
+    ) {
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let widget = self.widget.as_widget_mut();
         self.ev_state
             .with(&mut tkw, |mgr| mgr.update_widgets(widget, id, payload));
     }
 
-    pub fn add_popup(&mut self, shared: &mut SharedState<C, T>, id: WindowId, popup: kas::Popup) {
+    pub(super) fn add_popup(
+        &mut self,
+        shared: &mut SharedState<S, T>,
+        id: WindowId,
+        popup: kas::Popup,
+    ) {
         let widget = &mut self.widget;
         let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         self.ev_state
             .with(&mut tkw, |mgr| widget.add_popup(mgr, id, popup));
     }
 
-    pub fn send_action(&mut self, action: TkAction) {
+    pub(super) fn send_action(&mut self, action: Action) {
         self.ev_state.send_action(action);
     }
 
-    pub fn send_close(&mut self, shared: &mut SharedState<C, T>, id: WindowId) {
+    pub(super) fn send_close(&mut self, shared: &mut SharedState<S, T>, id: WindowId) {
         if id == self.window_id {
-            self.ev_state.send_action(TkAction::CLOSE);
+            self.ev_state.send_action(Action::CLOSE);
         } else {
             let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
             let widget = &mut self.widget;
@@ -302,13 +300,8 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 }
 
 // Internal functions
-impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
-    /// Swap-chain size
-    fn sc_size(&self) -> Size {
-        Size::new(self.sc_desc.width.cast(), self.sc_desc.height.cast())
-    }
-
-    fn reconfigure(&mut self, shared: &mut SharedState<C, T>) {
+impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
+    fn reconfigure(&mut self, shared: &mut SharedState<S, T>) {
         let time = Instant::now();
         log::debug!("reconfigure");
 
@@ -321,9 +314,9 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         log::trace!(target: "kas_perf::wgpu::window", "reconfigure: {}µs", time.elapsed().as_micros());
     }
 
-    fn apply_size(&mut self, shared: &mut SharedState<C, T>, first: bool) {
+    fn apply_size(&mut self, shared: &mut SharedState<S, T>, first: bool) {
         let time = Instant::now();
-        let rect = Rect::new(Coord::ZERO, self.sc_size());
+        let rect = Rect::new(Coord::ZERO, self.surface.size());
         log::debug!("apply_size: rect={rect:?}");
 
         let solve_cache = &mut self.solve_cache;
@@ -353,42 +346,16 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         );
     }
 
-    fn do_resize(&mut self, shared: &mut SharedState<C, T>, size: PhysicalSize<u32>) {
-        let time = Instant::now();
-        let size = size.cast();
-        if size == self.sc_size() {
-            return;
-        }
-
-        shared.draw.draw.resize(&mut self.draw, size);
-
-        self.sc_desc.width = size.0.cast();
-        self.sc_desc.height = size.1.cast();
-        self.surface
-            .configure(&shared.draw.draw.device, &self.sc_desc);
-
-        // Note that on resize, width adjustments may affect height
-        // requirements; we therefore refresh size restrictions.
-        self.apply_size(shared, false);
-
-        log::trace!(
-            target: "kas_perf::wgpu::window",
-            "do_resize: {}µs (includes apply_size)",
-            time.elapsed().as_micros()
-        );
-    }
-
-    // Draw. Return true when further event processing is needed immediately.
-    pub(crate) fn do_draw(&mut self, shared: &mut SharedState<C, T>) -> bool {
+    /// Draw
+    ///
+    /// Returns an error when drawing is aborted and further event handling may
+    /// be needed before a redraw.
+    pub(super) fn do_draw(&mut self, shared: &mut SharedState<S, T>) -> Result<(), ()> {
         let start = Instant::now();
-        self.next_avail_frame_time = start + shared.frame_dur;
+        self.next_avail_frame_time = start + self.ev_state.config().frame_dur();
 
         {
-            let draw = DrawIface {
-                draw: &mut self.draw,
-                shared: &mut shared.draw,
-                pass: PassId::new(0),
-            };
+            let draw = self.surface.draw_iface(&mut shared.draw);
 
             let mut draw = shared
                 .theme
@@ -396,52 +363,37 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             let draw_mgr = DrawMgr::new(&mut draw, self.widget.id());
             self.widget.draw(draw_mgr);
         }
+        let time2 = Instant::now();
 
-        self.queued_frame_time = match self.draw.animation {
+        let anim = take(&mut self.surface.common_mut().anim);
+        self.queued_frame_time = match anim {
             AnimationState::None => None,
             AnimationState::Animate => Some(self.next_avail_frame_time),
             AnimationState::Timed(time) => Some(time.max(self.next_avail_frame_time)),
         };
-        self.draw.animation = AnimationState::None;
-        self.ev_state.action -= TkAction::REDRAW; // we just drew
+        self.ev_state.action -= Action::REDRAW; // we just drew
         if !self.ev_state.action.is_empty() {
             log::info!("do_draw: abort and enqueue `Self::update` due to non-empty actions");
-            return true;
+            return Err(());
         }
 
-        let time2 = Instant::now();
-        let frame = match self.surface.get_current_texture() {
-            Ok(frame) => frame,
-            Err(e) => {
-                log::error!("do_draw: failed to get frame texture: {}", e);
-                // It may be possible to recover by calling surface.configure(...) then retrying
-                // surface.get_current_texture(), but is doing so ever useful?
-                return true;
-            }
-        };
-        // TODO: check frame.suboptimal ?
-        let view = frame.texture.create_view(&Default::default());
+        let clear_color = shared.theme.clear_color();
+        self.surface.present(&mut shared.draw.draw, clear_color);
 
-        let clear_color = to_wgpu_color(shared.theme.clear_color());
-        shared.render(&mut self.draw, &view, clear_color);
-
-        frame.present();
-
+        let text_dur_micros = take(&mut self.surface.common_mut().dur_text);
         let end = Instant::now();
-        // Explanation: 'text' is the time to prepare positioned glyphs, 'frame-
-        // swap' is mostly about sync, 'render' is time to feed the GPU.
         log::trace!(
             target: "kas_perf::wgpu::window",
             "do_draw: {}µs ({}μs widgets, {}µs text, {}µs render)",
             (end - start).as_micros(),
             (time2 - start).as_micros(),
-            self.draw.text.dur_micros(),
+            text_dur_micros.as_micros(),
             (end - time2).as_micros()
         );
-        false
+        Ok(())
     }
 
-    pub(crate) fn next_resume(&self) -> Option<Instant> {
+    pub(super) fn next_resume(&self) -> Option<Instant> {
         match (self.ev_state.next_resume(), self.queued_frame_time) {
             (Some(t1), Some(t2)) => Some(t1.min(t2)),
             (Some(t), None) => Some(t),
@@ -451,30 +403,21 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
     }
 }
 
-fn to_wgpu_color(c: kas::draw::color::Rgba) -> wgpu::Color {
-    wgpu::Color {
-        r: c.r as f64,
-        g: c.g as f64,
-        b: c.b as f64,
-        a: c.a as f64,
-    }
-}
-
-struct TkWindow<'a, C: CustomPipe, T: Theme<DrawPipe<C>>>
+struct TkWindow<'a, S: WindowSurface, T: Theme<S::Shared>>
 where
     T::Window: kas::theme::Window,
 {
-    shared: &'a mut SharedState<C, T>,
+    shared: &'a mut SharedState<S, T>,
     window: Option<&'a winit::window::Window>,
     theme_window: &'a mut T::Window,
 }
 
-impl<'a, C: CustomPipe, T: Theme<DrawPipe<C>>> TkWindow<'a, C, T>
+impl<'a, S: WindowSurface, T: Theme<S::Shared>> TkWindow<'a, S, T>
 where
     T::Window: kas::theme::Window,
 {
     fn new(
-        shared: &'a mut SharedState<C, T>,
+        shared: &'a mut SharedState<S, T>,
         window: Option<&'a winit::window::Window>,
         theme_window: &'a mut T::Window,
     ) -> Self {
@@ -486,10 +429,10 @@ where
     }
 }
 
-impl<'a, C, T> kas::ShellWindow for TkWindow<'a, C, T>
+impl<'a, S, T> ShellWindow for TkWindow<'a, S, T>
 where
-    C: CustomPipe,
-    T: Theme<DrawPipe<C>>,
+    S: WindowSurface,
+    T: Theme<S::Shared>,
     T::Window: kas::theme::Window,
 {
     fn add_popup(&mut self, popup: kas::Popup) -> Option<WindowId> {
@@ -534,9 +477,9 @@ where
         self.shared.set_clipboard(content);
     }
 
-    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeControl) -> TkAction) {
+    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeControl) -> Action) {
         let action = f(&mut self.shared.theme);
-        self.shared.pending.push(PendingAction::TkAction(action));
+        self.shared.pending.push(PendingAction::Action(action));
     }
 
     fn size_and_draw_shared(&mut self, f: &mut dyn FnMut(&mut dyn ThemeSize, &mut dyn DrawShared)) {

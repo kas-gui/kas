@@ -19,7 +19,7 @@ mod shaded_square;
 mod shaders;
 mod text_pipe;
 
-use kas::draw::AnimationState;
+use kas::draw::WindowCommon;
 use kas::geom::{Offset, Rect};
 use shaders::ShaderManager;
 use wgpu::TextureFormat;
@@ -36,6 +36,7 @@ type Scale = [f32; 4];
 
 /// Shared pipeline data
 pub struct DrawPipe<C> {
+    pub(crate) instance: wgpu::Instance,
     pub(crate) device: wgpu::Device,
     queue: wgpu::Queue,
     staging_belt: wgpu::util::StagingBelt,
@@ -53,7 +54,7 @@ pub struct DrawPipe<C> {
 
 /// Per-window pipeline data
 pub struct DrawWindow<CW: CustomWindow> {
-    pub(crate) animation: AnimationState,
+    pub(crate) common: WindowCommon,
     scale: Scale,
     clip_regions: Vec<(Rect, Offset)>,
     images: images::Window,

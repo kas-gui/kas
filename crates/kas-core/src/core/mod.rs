@@ -9,8 +9,10 @@ mod data;
 mod scroll_traits;
 mod widget;
 mod widget_id;
+mod window;
 
 pub use data::*;
 pub use scroll_traits::*;
 pub use widget::*;
 pub use widget_id::*;
+pub use window::*;

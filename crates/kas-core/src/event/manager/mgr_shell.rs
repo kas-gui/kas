@@ -12,7 +12,8 @@ use super::*;
 use crate::cast::traits::*;
 use crate::geom::{Coord, DVec2};
 use crate::model::SharedRc;
-use crate::{ShellWindow, TkAction, Widget, WidgetId};
+use crate::shell::ShellWindow;
+use crate::{Action, Widget, WidgetId};
 
 // TODO: this should be configurable or derived from the system
 const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
@@ -25,7 +26,7 @@ const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 impl EventState {
     /// Construct an event manager per-window data struct
     #[inline]
-    pub fn new(config: SharedRc<Config>, scale_factor: f32, dpem: f32) -> Self {
+    pub(crate) fn new(config: SharedRc<Config>, scale_factor: f32, dpem: f32) -> Self {
         EventState {
             config: WindowConfig::new(config, scale_factor, dpem),
             disabled: vec![],
@@ -50,12 +51,12 @@ impl EventState {
             popup_removed: Default::default(),
             time_updates: vec![],
             pending: Default::default(),
-            action: TkAction::empty(),
+            action: Action::empty(),
         }
     }
 
     /// Update scale factor
-    pub fn set_scale_factor(&mut self, scale_factor: f32, dpem: f32) {
+    pub(crate) fn set_scale_factor(&mut self, scale_factor: f32, dpem: f32) {
         self.config.update(scale_factor, dpem);
     }
 
@@ -68,9 +69,9 @@ impl EventState {
     /// [`WidgetId`] identifiers and call widgets' [`Widget::configure`]
     /// method. Additionally, it updates the [`EventState`] to account for
     /// renamed and removed widgets.
-    pub fn full_configure(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Widget) {
+    pub(crate) fn full_configure(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Widget) {
         log::debug!(target: "kas_core::event::manager", "full_configure");
-        self.action.remove(TkAction::RECONFIGURE);
+        self.action.remove(Action::RECONFIGURE);
 
         // These are recreated during configure:
         self.accel_layers.clear();
@@ -88,7 +89,7 @@ impl EventState {
     }
 
     /// Update the widgets under the cursor and touch events
-    pub fn region_moved(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Widget) {
+    pub(crate) fn region_moved(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Widget) {
         log::trace!(target: "kas_core::event::manager", "region_moved");
         // Note: redraw is already implied.
 
@@ -102,7 +103,7 @@ impl EventState {
     }
 
     /// Get the next resume time
-    pub fn next_resume(&self) -> Option<Instant> {
+    pub(crate) fn next_resume(&self) -> Option<Instant> {
         self.time_updates.last().map(|time| time.0)
     }
 
@@ -110,7 +111,7 @@ impl EventState {
     ///
     /// Invokes the given closure on this [`EventMgr`].
     #[inline]
-    pub fn with<F>(&mut self, shell: &mut dyn ShellWindow, f: F)
+    pub(crate) fn with<F>(&mut self, shell: &mut dyn ShellWindow, f: F)
     where
         F: FnOnce(&mut EventMgr),
     {
@@ -119,7 +120,7 @@ impl EventState {
             shell,
             messages: vec![],
             scroll: Scroll::None,
-            action: TkAction::empty(),
+            action: Action::empty(),
         };
         f(&mut mgr);
         let action = mgr.action;
@@ -129,7 +130,11 @@ impl EventState {
 
     /// Update, after receiving all events
     #[inline]
-    pub fn update(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Widget) -> TkAction {
+    pub(crate) fn update(
+        &mut self,
+        shell: &mut dyn ShellWindow,
+        widget: &mut dyn Widget,
+    ) -> Action {
         let old_hover_icon = self.hover_icon;
 
         let mut mgr = EventMgr {
@@ -137,7 +142,7 @@ impl EventState {
             shell,
             messages: vec![],
             scroll: Scroll::None,
-            action: TkAction::empty(),
+            action: Action::empty(),
         };
 
         while let Some((parent, wid)) = mgr.popup_removed.pop() {
@@ -223,7 +228,7 @@ impl EventState {
         }
 
         let action = action | self.action;
-        self.action = TkAction::empty();
+        self.action = Action::empty();
         action
     }
 }
@@ -233,7 +238,7 @@ impl EventState {
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 impl<'a> EventMgr<'a> {
     /// Update widgets due to timer
-    pub fn update_timer(&mut self, widget: &mut dyn Widget) {
+    pub(crate) fn update_timer(&mut self, widget: &mut dyn Widget) {
         let now = Instant::now();
 
         // assumption: time_updates are sorted in reverse order
@@ -250,7 +255,7 @@ impl<'a> EventMgr<'a> {
     }
 
     /// Update widgets with an [`UpdateId`]
-    pub fn update_widgets(&mut self, widget: &mut dyn Widget, id: UpdateId, payload: u64) {
+    pub(crate) fn update_widgets(&mut self, widget: &mut dyn Widget, id: UpdateId, payload: u64) {
         if id == self.state.config.config.id() {
             let (sf, dpem) = self.size_mgr(|size| (size.scale_factor(), size.dpem()));
             self.state.config.update(sf, dpem);
@@ -272,11 +277,15 @@ impl<'a> EventMgr<'a> {
     /// `Resized(size)`, `RedrawRequested`, `HiDpiFactorChanged(factor)`.
     #[cfg(feature = "winit")]
     #[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
-    pub fn handle_winit(&mut self, widget: &mut dyn Widget, event: winit::event::WindowEvent) {
+    pub(crate) fn handle_winit(
+        &mut self,
+        widget: &mut dyn Widget,
+        event: winit::event::WindowEvent,
+    ) {
         use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent::*};
 
         match event {
-            CloseRequested => self.send_action(TkAction::CLOSE),
+            CloseRequested => self.send_action(Action::CLOSE),
             /* Not yet supported: see #98
             DroppedFile(path) => ,
             HoveredFile(path) => ,
@@ -297,7 +306,7 @@ impl<'a> EventMgr<'a> {
                 self.window_has_focus = state;
                 if state {
                     // Required to restart theme animations
-                    self.send_action(TkAction::REDRAW);
+                    self.send_action(Action::REDRAW);
                 } else {
                     // Window focus lost: close all popups
                     while let Some(id) = self.popups.last().map(|(id, _, _)| *id) {
@@ -321,7 +330,7 @@ impl<'a> EventMgr<'a> {
             ModifiersChanged(state) => {
                 if state.alt() != self.modifiers.alt() {
                     // This controls drawing of accelerator key indicators
-                    self.send_action(TkAction::REDRAW);
+                    self.send_action(Action::REDRAW);
                 }
                 self.modifiers = state;
             }
@@ -487,7 +496,7 @@ impl<'a> EventMgr<'a> {
                         }
 
                         if redraw {
-                            self.send_action(TkAction::REDRAW);
+                            self.send_action(Action::REDRAW);
                         } else if let Some(pan_grab) = pan_grab {
                             if usize::conv(pan_grab.1) < MAX_PAN_GRABS {
                                 if let Some(pan) = self.pan_grab.get_mut(usize::conv(pan_grab.0)) {

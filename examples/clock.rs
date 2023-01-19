@@ -18,6 +18,10 @@ use std::time::Duration;
 use kas::draw::{color, Draw, DrawRounded, PassType};
 use kas::geom::{Offset, Quad, Rect, Vec2};
 use kas::prelude::*;
+use kas::shell::ShellAssoc;
+
+type Theme = kas::theme::FlatTheme;
+type Shell = kas::shell::DefaultShell<Theme>;
 
 impl_scope! {
     #[derive(Clone, Debug)]
@@ -71,7 +75,7 @@ impl_scope! {
 
             // We use the low-level draw device to draw our clock. This means it is
             // not themeable, but gives us much more flexible draw routines.
-            let mut draw = draw.draw_iface::<kas::shell::draw::DrawPipe<()>>().unwrap();
+            let mut draw = draw.draw_iface::<<Shell as ShellAssoc>::DrawShared>().unwrap();
 
             let rect = self.core.rect;
             let quad = Quad::conv(rect);
@@ -131,7 +135,7 @@ impl_scope! {
                     let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
                     log::info!("Requesting update in {}ns", ns);
                     mgr.request_update(self.id(), 0, Duration::new(0, ns), true);
-                    *mgr |= TkAction::REDRAW;
+                    *mgr |= Action::REDRAW;
                     Response::Used
                 }
                 _ => Response::Unused,
@@ -168,6 +172,5 @@ impl_scope! {
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let theme = kas::theme::FlatTheme::new();
-    kas::shell::Toolkit::new(theme)?.with(Clock::new())?.run()
+    Shell::new(Theme::new())?.with(Clock::new())?.run()
 }

@@ -11,7 +11,7 @@ use super::{ColorsLinear, Config, Theme, ThemeDst, Window};
 use crate::draw::{color, DrawIface, DrawSharedImpl, SharedState};
 use crate::event::EventState;
 use crate::theme::{ThemeControl, ThemeDraw};
-use crate::TkAction;
+use crate::Action;
 
 type DynTheme<DS> = Box<dyn ThemeDst<DS>>;
 
@@ -94,8 +94,8 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
         std::borrow::Cow::Owned(config)
     }
 
-    fn apply_config(&mut self, config: &Self::Config) -> TkAction {
-        let mut action = TkAction::empty();
+    fn apply_config(&mut self, config: &Self::Config) -> Action {
+        let mut action = Action::empty();
         for theme in &mut self.themes {
             action |= theme.apply_config(config);
         }
@@ -140,20 +140,20 @@ impl<DS: DrawSharedImpl> Theme<DS> for MultiTheme<DS> {
 }
 
 impl<DS> ThemeControl for MultiTheme<DS> {
-    fn set_font_size(&mut self, size: f32) -> TkAction {
+    fn set_font_size(&mut self, size: f32) -> Action {
         // Slightly inefficient, but sufficient: update both
         // (Otherwise we would have to call set_scheme in set_theme too.)
-        let mut action = TkAction::empty();
+        let mut action = Action::empty();
         for theme in &mut self.themes {
             action = action.max(theme.set_font_size(size));
         }
         action
     }
 
-    fn set_scheme(&mut self, scheme: &str) -> TkAction {
+    fn set_scheme(&mut self, scheme: &str) -> Action {
         // Slightly inefficient, but sufficient: update all
         // (Otherwise we would have to call set_scheme in set_theme too.)
-        let mut action = TkAction::empty();
+        let mut action = Action::empty();
         for theme in &mut self.themes {
             action = action.max(theme.set_scheme(scheme));
         }
@@ -166,13 +166,13 @@ impl<DS> ThemeControl for MultiTheme<DS> {
         self.themes[self.active].list_schemes()
     }
 
-    fn set_theme(&mut self, theme: &str) -> TkAction {
+    fn set_theme(&mut self, theme: &str) -> Action {
         if let Some(index) = self.names.get(theme).cloned() {
             if index != self.active {
                 self.active = index;
-                return TkAction::RESIZE | TkAction::THEME_UPDATE;
+                return Action::RESIZE | Action::THEME_UPDATE;
             }
         }
-        TkAction::empty()
+        Action::empty()
     }
 }

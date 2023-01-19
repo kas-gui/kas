@@ -12,7 +12,7 @@ use super::{Theme, Window};
 use crate::draw::{color, DrawIface, DrawSharedImpl, SharedState};
 use crate::event::EventState;
 use crate::theme::{ThemeControl, ThemeDraw};
-use crate::TkAction;
+use crate::Action;
 
 /// An optionally-owning (boxed) reference
 ///
@@ -41,7 +41,7 @@ pub trait ThemeDst<DS: DrawSharedImpl>: ThemeControl {
     fn config(&self) -> MaybeBoxed<dyn Any>;
 
     /// Apply/set the passed config
-    fn apply_config(&mut self, config: &dyn Any) -> TkAction;
+    fn apply_config(&mut self, config: &dyn Any) -> Action;
 
     /// Theme initialisation
     ///
@@ -79,7 +79,7 @@ impl<DS: DrawSharedImpl, T: Theme<DS>> ThemeDst<DS> for T {
         }
     }
 
-    fn apply_config(&mut self, config: &dyn Any) -> TkAction {
+    fn apply_config(&mut self, config: &dyn Any) -> Action {
         self.apply_config(config.downcast_ref().unwrap())
     }
 

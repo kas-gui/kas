@@ -64,20 +64,16 @@ enum PressPhase {
 }
 
 /// Selection mode used by [`ListView`]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub enum SelectionMode {
     /// Disable selection
+    #[default]
     None,
     /// Support single-item selection. Selecting another item automatically
     /// clears the prior selection (without sending [`SelectionMsg::Deselect`]).
     Single,
     /// Support multi-item selection.
     Multiple,
-}
-impl Default for SelectionMode {
-    fn default() -> Self {
-        SelectionMode::None
-    }
 }
 
 /// Selection errors

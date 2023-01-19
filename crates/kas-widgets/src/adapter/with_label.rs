@@ -98,7 +98,7 @@ impl_scope! {
         ///
         /// Note: this must not be called before fonts have been initialised
         /// (usually done by the theme when the main loop starts).
-        pub fn set_text<T: Into<AccelString>>(&mut self, text: T) -> TkAction {
+        pub fn set_text<T: Into<AccelString>>(&mut self, text: T) -> Action {
             self.label.set_text(text.into())
         }
 
@@ -122,7 +122,7 @@ impl_scope! {
 
     impl SetAccel for Self {
         #[inline]
-        fn set_accel_string(&mut self, string: AccelString) -> TkAction {
+        fn set_accel_string(&mut self, string: AccelString) -> Action {
             self.label.set_accel_string(string)
         }
     }

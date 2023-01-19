@@ -11,10 +11,10 @@ use kas::draw::{Draw, DrawIface, PassId};
 use kas::event::{self, Command};
 use kas::geom::{DVec2, Vec2, Vec3};
 use kas::prelude::*;
-use kas::shell::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawPipe};
-use kas::shell::{wgpu, Options};
 use kas::widgets::adapter::ReserveP;
 use kas::widgets::{Label, Slider};
+use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawPipe};
+use kas_wgpu::wgpu;
 use std::mem::size_of;
 use wgpu::util::DeviceExt;
 use wgpu::{include_spirv, Buffer, ShaderModule};
@@ -488,7 +488,8 @@ fn main() -> kas::shell::Result<()> {
 
     let theme = kas::theme::FlatTheme::new().with_colours("dark");
 
-    kas::shell::Toolkit::new_custom(PipeBuilder, theme, Options::from_env())?
+    let options = kas::config::Options::from_env();
+    kas_wgpu::Shell::new_custom(PipeBuilder, theme, options)?
         .with(MandlebrotWindow::new())?
         .run()
 }

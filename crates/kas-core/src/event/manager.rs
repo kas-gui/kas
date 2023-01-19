@@ -20,7 +20,8 @@ use super::config::WindowConfig;
 use super::*;
 use crate::cast::Cast;
 use crate::geom::{Coord, Offset};
-use crate::{ShellWindow, TkAction, Widget, WidgetExt, WidgetId, WindowId};
+use crate::shell::ShellWindow;
+use crate::{Action, Widget, WidgetExt, WidgetId, WindowId};
 
 mod config_mgr;
 mod mgr_pub;
@@ -174,7 +175,7 @@ pub struct EventState {
     pending: VecDeque<Pending>,
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    pub action: TkAction,
+    pub action: Action,
 }
 
 /// internals
@@ -275,7 +276,7 @@ impl EventState {
         }
 
         self.key_depress.insert(scancode, id);
-        self.send_action(TkAction::REDRAW);
+        self.send_action(Action::REDRAW);
     }
 
     fn end_key_event(&mut self, scancode: u32) {
@@ -303,7 +304,7 @@ impl EventState {
                     "remove_touch: touch_id={touch_id}, start_id={}",
                     grab.start_id
                 );
-                self.send_action(TkAction::REDRAW); // redraw(..)
+                self.send_action(Action::REDRAW); // redraw(..)
                 self.remove_pan_grab(grab.pan_grab);
                 return Some(grab);
             }
@@ -396,21 +397,15 @@ impl std::fmt::Debug for Message {
 
 /// Manager of event-handling and toolkit actions
 ///
-/// An `EventMgr` is in fact a handle around [`EventState`] and [`ShellWindow`]
-/// in order to provide a convenient user-interface during event processing.
-///
-/// `EventMgr` supports [`Deref`] and [`DerefMut`] with target [`EventState`].
-///
-/// It exposes two interfaces: one aimed at users implementing widgets and UIs
-/// and one aimed at shells. The latter is hidden
-/// from documentation unless the `internal_doc` feature is enabled.
+/// `EventMgr` and [`EventState`] (available via [`Deref`]) support various
+/// event management and event-handling state querying operations.
 #[must_use]
 pub struct EventMgr<'a> {
     state: &'a mut EventState,
     shell: &'a mut dyn ShellWindow,
     messages: Vec<Message>,
     scroll: Scroll,
-    action: TkAction,
+    action: Action,
 }
 
 impl<'a> Deref for EventMgr<'a> {
@@ -560,7 +555,7 @@ impl<'a> EventMgr<'a> {
         if let Some(grab) = self.mouse_grab.take() {
             log::trace!("remove_mouse_grab: start_id={}", grab.start_id);
             self.shell.set_cursor_icon(self.hover_icon);
-            self.send_action(TkAction::REDRAW); // redraw(..)
+            self.send_action(Action::REDRAW); // redraw(..)
             self.remove_pan_grab(grab.pan_grab);
             Some(grab)
         } else {

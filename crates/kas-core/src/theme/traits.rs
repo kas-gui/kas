@@ -8,14 +8,14 @@
 use super::{ColorsLinear, RasterConfig, ThemeDraw, ThemeSize};
 use crate::draw::{color, DrawIface, DrawSharedImpl, SharedState};
 use crate::event::EventState;
-use crate::{autoimpl, TkAction};
+use crate::{autoimpl, Action};
 use std::any::Any;
 
 #[allow(unused)] use crate::event::EventMgr;
 
 /// Interface through which a theme can be adjusted at run-time
 ///
-/// All methods return a [`TkAction`] to enable correct action when a theme
+/// All methods return a [`Action`] to enable correct action when a theme
 /// is updated via [`EventMgr::adjust_theme`]. When adjusting a theme before
 /// the UI is started, this return value can be safely ignored.
 #[crate::autoimpl(for<T: trait + ?Sized> &mut T, Box<T>)]
@@ -23,12 +23,12 @@ pub trait ThemeControl {
     /// Set font size
     ///
     /// Units: Points per Em (standard unit of font size)
-    fn set_font_size(&mut self, pt_size: f32) -> TkAction;
+    fn set_font_size(&mut self, pt_size: f32) -> Action;
 
     /// Change the colour scheme
     ///
     /// If no scheme by this name is found the scheme is left unchanged.
-    fn set_scheme(&mut self, scheme: &str) -> TkAction;
+    fn set_scheme(&mut self, scheme: &str) -> Action;
 
     /// List available colour schemes
     fn list_schemes(&self) -> Vec<&str>;
@@ -37,13 +37,13 @@ pub trait ThemeControl {
     ///
     /// Most themes do not react to this method; [`super::MultiTheme`] uses
     /// it to switch themes.
-    fn set_theme(&mut self, _theme: &str) -> TkAction {
-        TkAction::empty()
+    fn set_theme(&mut self, _theme: &str) -> Action {
+        Action::empty()
     }
 }
 
 /// Requirements on theme config (without `config` feature)
-#[cfg(not(feature = "config"))]
+#[cfg(not(feature = "serde"))]
 pub trait ThemeConfig: Clone + std::fmt::Debug + 'static {
     /// Apply startup effects
     fn apply_startup(&self);
@@ -53,7 +53,7 @@ pub trait ThemeConfig: Clone + std::fmt::Debug + 'static {
 }
 
 /// Requirements on theme config (with `config` feature)
-#[cfg(feature = "config")]
+#[cfg(feature = "serde")]
 pub trait ThemeConfig:
     Clone + std::fmt::Debug + 'static + for<'a> serde::Deserialize<'a> + serde::Serialize
 {
@@ -91,7 +91,7 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
     fn config(&self) -> std::borrow::Cow<Self::Config>;
 
     /// Apply/set the passed config
-    fn apply_config(&mut self, config: &Self::Config) -> TkAction;
+    fn apply_config(&mut self, config: &Self::Config) -> Action;
 
     /// Theme initialisation
     ///

@@ -56,7 +56,7 @@ fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
     let theme = kas::theme::SimpleTheme::new().with_font_size(24.0);
-    kas::shell::Toolkit::new(theme)?
+    kas::shell::DefaultShell::new(theme)?
         .with(Counter::new(0))?
         .run()
 }

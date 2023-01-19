@@ -48,13 +48,14 @@ pub use draw::{Draw, DrawIface, DrawImpl};
 pub use draw_rounded::{DrawRounded, DrawRoundedImpl};
 pub use draw_shared::{AllocError, ImageFormat, ImageHandle, ImageId};
 pub use draw_shared::{DrawShared, DrawSharedImpl, SharedState};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 /// Animation status
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub enum AnimationState {
+#[crate::impl_default(AnimationState::None)]
+pub(crate) enum AnimationState {
     /// No frames are queued
     None,
     /// Animation in progress: draw at the next frame time
@@ -65,7 +66,7 @@ pub enum AnimationState {
 
 impl AnimationState {
     /// Merge two states (take earliest)
-    pub fn merge_in(&mut self, rhs: AnimationState) {
+    fn merge_in(&mut self, rhs: AnimationState) {
         use AnimationState::*;
         *self = match (*self, rhs) {
             (Animate, _) | (_, Animate) => Animate,
@@ -73,6 +74,24 @@ impl AnimationState {
             (Timed(t), _) | (_, Timed(t)) => Timed(t),
             (None, None) => None,
         }
+    }
+}
+
+/// Per-window "draw" data common to all backends
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+#[derive(Debug, Default)]
+pub struct WindowCommon {
+    pub(crate) anim: AnimationState,
+    pub(crate) dur_text: std::time::Duration,
+}
+
+impl WindowCommon {
+    /// Report performance counter: text assembly duration
+    ///
+    /// This may be reported multiple times per frame; the sum is output.
+    pub fn report_dur_text(&mut self, dur: Duration) {
+        self.dur_text += dur;
     }
 }
 

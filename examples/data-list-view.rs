@@ -180,7 +180,7 @@ impl Driver<(bool, String), MySharedData> for MyDriver {
         widget: &mut Self::Widget,
         key: &usize,
         item: MaybeOwned<(bool, String)>,
-    ) -> TkAction {
+    ) -> Action {
         let label = format!("Entry number {}", *key + 1);
         let item = item.into_owned();
         widget.label.set_string(label)
@@ -312,5 +312,5 @@ fn main() -> kas::shell::Result<()> {
     };
 
     let theme = kas::theme::FlatTheme::new();
-    kas::shell::Toolkit::new(theme)?.with(window)?.run()
+    kas::shell::DefaultShell::new(theme)?.with(window)?.run()
 }

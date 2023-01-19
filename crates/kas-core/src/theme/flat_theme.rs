@@ -20,7 +20,7 @@ use kas::theme::dimensions as dim;
 use kas::theme::{Background, FrameStyle, MarkStyle, TextClass};
 use kas::theme::{ColorsLinear, Config, InputState, Theme};
 use kas::theme::{ThemeControl, ThemeDraw, ThemeSize};
-use kas::{TkAction, WidgetId};
+use kas::{Action, WidgetId};
 
 // Used to ensure a rectangular background is inside a circular corner.
 // Also the maximum inner radius of circular borders to overlap with this rect.
@@ -107,7 +107,7 @@ where
         <SimpleTheme as Theme<DS>>::config(&self.base)
     }
 
-    fn apply_config(&mut self, config: &Self::Config) -> TkAction {
+    fn apply_config(&mut self, config: &Self::Config) -> Action {
         <SimpleTheme as Theme<DS>>::apply_config(&mut self.base, config)
     }
 
@@ -155,7 +155,7 @@ where
 }
 
 impl ThemeControl for FlatTheme {
-    fn set_font_size(&mut self, pt_size: f32) -> TkAction {
+    fn set_font_size(&mut self, pt_size: f32) -> Action {
         self.base.set_font_size(pt_size)
     }
 
@@ -163,7 +163,7 @@ impl ThemeControl for FlatTheme {
         self.base.list_schemes()
     }
 
-    fn set_scheme(&mut self, name: &str) -> TkAction {
+    fn set_scheme(&mut self, name: &str) -> Action {
         self.base.set_scheme(name)
     }
 }

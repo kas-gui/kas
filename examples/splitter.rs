@@ -60,5 +60,5 @@ fn main() -> kas::shell::Result<()> {
     };
 
     let theme = kas_wgpu::ShadedTheme::new();
-    kas::shell::Toolkit::new(theme)?.with(window)?.run()
+    kas::shell::DefaultShell::new(theme)?.with(window)?.run()
 }

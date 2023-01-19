@@ -5,10 +5,10 @@
 
 //! Widget data types
 
-#[allow(unused)] use super::Layout;
-use super::{Widget, WidgetId};
+use super::WidgetId;
+#[allow(unused)] use super::{Layout, Widget};
 use crate::dir::Direction;
-use crate::event::EventMgr;
+#[allow(unused)] use crate::event::EventMgr;
 use crate::geom::Rect;
 
 #[cfg(feature = "winit")] pub use winit::window::Icon;
@@ -78,44 +78,4 @@ pub struct Popup {
     pub id: WidgetId,
     pub parent: WidgetId,
     pub direction: Direction,
-}
-
-/// Functionality required by a window
-pub trait Window: Widget {
-    /// Get the window title
-    fn title(&self) -> &str;
-
-    /// Get the window icon, if any
-    ///
-    /// Default: `None`
-    #[inline]
-    fn icon(&self) -> Option<Icon> {
-        None
-    }
-
-    /// Whether to limit the maximum size of a window
-    ///
-    /// All widgets' size rules allow calculation of two sizes: the minimum
-    /// size and the ideal size. Windows are initially sized to the ideal size.
-    /// This option controls whether the window size is restricted by the
-    /// calculated minimum size and by the ideal size.
-    ///
-    /// Return value is `(restrict_min, restrict_max)`. Suggested is to use
-    /// `(true, true)` for simple dialog boxes and `(true, false)` for complex
-    /// windows.
-    ///
-    /// Default: `(true, false)`
-    #[inline]
-    fn restrict_dimensions(&self) -> (bool, bool) {
-        (true, false)
-    }
-
-    /// Handle closure of self
-    ///
-    /// This allows for actions on destruction.
-    ///
-    /// Default: do nothing.
-    fn handle_closure(&mut self, mgr: &mut EventMgr) {
-        let _ = mgr;
-    }
 }

@@ -236,7 +236,6 @@ impl Pipeline {
 #[derive(Debug, Default)]
 pub struct Window {
     atlas: atlases::Window<Instance>,
-    duration: std::time::Duration,
 }
 
 impl Window {
@@ -250,13 +249,6 @@ impl Window {
         self.atlas.write_buffers(device, staging_belt, encoder);
     }
 
-    /// Get microseconds used for text during since last call
-    pub fn dur_micros(&mut self) -> u128 {
-        let micros = self.duration.as_micros();
-        self.duration = Default::default();
-        micros
-    }
-
     pub fn text(
         &mut self,
         pipe: &mut Pipeline,
@@ -265,7 +257,6 @@ impl Window {
         text: &TextDisplay,
         col: Rgba,
     ) {
-        let time = std::time::Instant::now();
         let rect = Quad::conv(rect);
 
         let for_glyph = |face: FaceId, dpem: f32, glyph: Glyph| {
@@ -280,8 +271,6 @@ impl Window {
         if let Err(e) = text.glyphs(for_glyph) {
             log::warn!("Window: display failed: {e}");
         }
-
-        self.duration += time.elapsed();
     }
 
     pub fn text_effects(
@@ -292,7 +281,8 @@ impl Window {
         text: &TextDisplay,
         col: Rgba,
         effects: &[Effect<()>],
-    ) -> Vec<Quad> {
+        mut draw_quad: impl FnMut(Quad),
+    ) {
         // Optimisation: use cheaper TextDisplay::glyphs method
         if effects.len() <= 1
             && effects
@@ -301,12 +291,10 @@ impl Window {
                 .unwrap_or(true)
         {
             self.text(pipe, pass, rect, text, col);
-            return vec![];
+            return;
         }
 
-        let time = std::time::Instant::now();
         let rect = Quad::conv(rect);
-        let mut rects = vec![];
 
         let mut for_glyph = |face: FaceId, dpem: f32, glyph: Glyph, _: usize, _: ()| {
             if let Some(sprite) = pipe.get_glyph(face, dpem, glyph) {
@@ -330,7 +318,7 @@ impl Window {
                 if let Some(quad) = Quad::from_coords(rect.a + Vec2(x1, y), rect.a + Vec2(x2, y2))
                     .intersection(&rect)
                 {
-                    rects.push(quad);
+                    draw_quad(quad);
                 }
             };
             text.glyphs_with_effects(effects, (), for_glyph, for_rect)
@@ -341,9 +329,6 @@ impl Window {
         if let Err(e) = result {
             log::warn!("Window: display failed: {e}");
         }
-
-        self.duration += time.elapsed();
-        rects
     }
 
     pub fn text_effects_rgba(
@@ -353,7 +338,8 @@ impl Window {
         rect: Rect,
         text: &TextDisplay,
         effects: &[Effect<Rgba>],
-    ) -> Vec<(Quad, Rgba)> {
+        mut draw_quad: impl FnMut(Quad, Rgba),
+    ) {
         // Optimisation: use cheaper TextDisplay::glyphs method
         if effects.len() <= 1
             && effects
@@ -363,12 +349,10 @@ impl Window {
         {
             let col = effects.get(0).map(|e| e.aux).unwrap_or(Rgba::BLACK);
             self.text(pipe, pass, rect, text, col);
-            return vec![];
+            return;
         }
 
-        let time = std::time::Instant::now();
         let rect = Quad::conv(rect);
-        let mut rects = vec![];
 
         let for_glyph = |face: FaceId, dpem: f32, glyph: Glyph, _, col: Rgba| {
             if let Some(sprite) = pipe.get_glyph(face, dpem, glyph) {
@@ -386,15 +370,12 @@ impl Window {
             if let Some(quad) =
                 Quad::from_coords(rect.a + Vec2(x1, y), rect.a + Vec2(x2, y2)).intersection(&rect)
             {
-                rects.push((quad, col));
+                draw_quad(quad, col);
             }
         };
 
         if let Err(e) = text.glyphs_with_effects(effects, Rgba::BLACK, for_glyph, for_rect) {
             log::warn!("Window: display failed: {e}");
         }
-
-        self.duration += time.elapsed();
-        rects
     }
 }

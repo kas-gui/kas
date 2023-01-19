@@ -12,26 +12,21 @@ use crate::draw::{Draw, DrawIface, DrawShared, DrawSharedImpl, ImageId, PassType
 use crate::event::{ConfigMgr, EventState};
 use crate::geom::{Offset, Rect};
 use crate::text::{TextApi, TextDisplay};
-use crate::{autoimpl, TkAction, Widget, WidgetExt, WidgetId};
+use crate::{autoimpl, Action, Widget, WidgetExt, WidgetId};
 use std::convert::AsRef;
 use std::ops::{Bound, Range, RangeBounds};
 use std::time::Instant;
 
 /// Optional background colour
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub enum Background {
     /// Use theme/feature's default
+    #[default]
     Default,
     /// Error state
     Error,
     /// A given color
     Rgb(Rgb),
-}
-
-impl Default for Background {
-    fn default() -> Self {
-        Background::Default
-    }
 }
 
 /// Draw interface
@@ -336,9 +331,9 @@ impl<'a> DrawMgr<'a> {
     }
 }
 
-impl<'a> std::ops::BitOrAssign<TkAction> for DrawMgr<'a> {
+impl<'a> std::ops::BitOrAssign<Action> for DrawMgr<'a> {
     #[inline]
-    fn bitor_assign(&mut self, action: TkAction) {
+    fn bitor_assign(&mut self, action: Action) {
         self.h.components().2.send_action(action);
     }
 }

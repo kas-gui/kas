@@ -10,7 +10,7 @@ use crate::event::{ConfigMgr, EventMgr, Scroll};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
-use crate::{Layout, TkAction, Widget, WidgetExt, WidgetId, Window, WindowId};
+use crate::{Action, Layout, Widget, WidgetExt, WidgetId, Window, WindowId};
 use kas_macros::{autoimpl, impl_scope};
 use smallvec::SmallVec;
 
@@ -94,7 +94,7 @@ impl RootWidget {
         let index = self.popups.len();
         self.popups.push((id, popup, Offset::ZERO));
         mgr.config_mgr(|mgr| self.resize_popup(mgr, index));
-        mgr.send_action(TkAction::REDRAW);
+        mgr.send_action(Action::REDRAW);
     }
 
     /// Trigger closure of a pop-up
@@ -104,7 +104,7 @@ impl RootWidget {
         for i in 0..self.popups.len() {
             if id == self.popups[i].0 {
                 self.popups.remove(i);
-                mgr.send_action(TkAction::REGION_MOVED);
+                mgr.send_action(Action::REGION_MOVED);
                 return;
             }
         }

@@ -203,14 +203,14 @@ impl_scope! {
             self.state
         }
 
-        fn set_bool(&mut self, state: bool) -> TkAction {
+        fn set_bool(&mut self, state: bool) -> Action {
             if state == self.state {
-                return TkAction::empty();
+                return Action::empty();
             }
 
             self.state = state;
             self.last_change = None;
-            TkAction::REDRAW
+            Action::REDRAW
         }
     }
 }

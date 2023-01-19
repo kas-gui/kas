@@ -12,13 +12,13 @@ use super::ModifiersState;
 use crate::cast::{Cast, CastFloat};
 use crate::geom::Offset;
 use crate::model::SharedRc;
-#[cfg(feature = "config")]
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 /// Event handling configuration
 ///
-/// This is serializable (using `feature = "config"`) with the following fields:
+/// This is serializable (using `feature = "serde"`) with the following fields:
 ///
 /// > `menu_delay_ms`: `u32` (milliseconds) \
 /// > `touch_select_delay_ms`: `u32` (milliseconds) \
@@ -34,46 +34,50 @@ use std::time::Duration;
 ///
 /// For descriptions of configuration effects, see [`WindowConfig`] methods.
 #[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "config", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Config {
-    #[cfg_attr(feature = "config", serde(default = "defaults::menu_delay_ms"))]
+    #[cfg_attr(feature = "serde", serde(default = "defaults::menu_delay_ms"))]
     pub menu_delay_ms: u32,
 
-    #[cfg_attr(feature = "config", serde(default = "defaults::touch_select_delay_ms"))]
+    #[cfg_attr(feature = "serde", serde(default = "defaults::touch_select_delay_ms"))]
     pub touch_select_delay_ms: u32,
 
     #[cfg_attr(
-        feature = "config",
+        feature = "serde",
         serde(default = "defaults::scroll_flick_timeout_ms")
     )]
     pub scroll_flick_timeout_ms: u32,
 
-    #[cfg_attr(feature = "config", serde(default = "defaults::scroll_flick_mul"))]
+    #[cfg_attr(feature = "serde", serde(default = "defaults::scroll_flick_mul"))]
     pub scroll_flick_mul: f32,
 
-    #[cfg_attr(feature = "config", serde(default = "defaults::scroll_flick_sub"))]
+    #[cfg_attr(feature = "serde", serde(default = "defaults::scroll_flick_sub"))]
     pub scroll_flick_sub: f32,
 
-    #[cfg_attr(feature = "config", serde(default = "defaults::scroll_dist_em"))]
+    #[cfg_attr(feature = "serde", serde(default = "defaults::scroll_dist_em"))]
     pub scroll_dist_em: f32,
 
-    #[cfg_attr(feature = "config", serde(default = "defaults::pan_dist_thresh"))]
+    #[cfg_attr(feature = "serde", serde(default = "defaults::pan_dist_thresh"))]
     pub pan_dist_thresh: f32,
 
-    #[cfg_attr(feature = "config", serde(default = "defaults::mouse_pan"))]
+    #[cfg_attr(feature = "serde", serde(default = "defaults::mouse_pan"))]
     pub mouse_pan: MousePan,
-    #[cfg_attr(feature = "config", serde(default = "defaults::mouse_text_pan"))]
+    #[cfg_attr(feature = "serde", serde(default = "defaults::mouse_text_pan"))]
     pub mouse_text_pan: MousePan,
 
-    #[cfg_attr(feature = "config", serde(default = "defaults::mouse_nav_focus"))]
+    #[cfg_attr(feature = "serde", serde(default = "defaults::mouse_nav_focus"))]
     pub mouse_nav_focus: bool,
-    #[cfg_attr(feature = "config", serde(default = "defaults::touch_nav_focus"))]
+    #[cfg_attr(feature = "serde", serde(default = "defaults::touch_nav_focus"))]
     pub touch_nav_focus: bool,
 
-    #[cfg_attr(feature = "config", serde(default = "Shortcuts::platform_defaults"))]
+    // TODO: this is not "event" configuration; reorganise!
+    #[cfg_attr(feature = "serde", serde(default = "defaults::frame_dur_nanos"))]
+    frame_dur_nanos: u32,
+
+    #[cfg_attr(feature = "serde", serde(default = "Shortcuts::platform_defaults"))]
     pub shortcuts: Shortcuts,
 
-    #[cfg_attr(feature = "config", serde(skip))]
+    #[cfg_attr(feature = "serde", serde(skip))]
     pub is_dirty: bool,
 }
 
@@ -91,6 +95,7 @@ impl Default for Config {
             mouse_text_pan: defaults::mouse_text_pan(),
             mouse_nav_focus: defaults::mouse_nav_focus(),
             touch_nav_focus: defaults::touch_nav_focus(),
+            frame_dur_nanos: defaults::frame_dur_nanos(),
             shortcuts: Shortcuts::platform_defaults(),
             is_dirty: false,
         }
@@ -113,6 +118,7 @@ pub struct WindowConfig {
     scroll_dist: f32,
     pan_dist_thresh: f32,
     pub(crate) nav_focus: bool,
+    frame_dur: Duration,
 }
 
 impl WindowConfig {
@@ -120,12 +126,14 @@ impl WindowConfig {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub fn new(config: SharedRc<Config>, scale_factor: f32, dpem: f32) -> Self {
+        let frame_dur = Duration::from_nanos(config.borrow().frame_dur_nanos.cast());
         let mut w = WindowConfig {
             config,
             scroll_flick_sub: f32::NAN,
             scroll_dist: f32::NAN,
             pan_dist_thresh: f32::NAN,
             nav_focus: true,
+            frame_dur,
         };
         w.update(scale_factor, dpem);
         w
@@ -230,6 +238,14 @@ impl WindowConfig {
         let base = self.config.borrow();
         f(&base.shortcuts)
     }
+
+    /// Minimum frame time
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    #[inline]
+    pub fn frame_dur(&self) -> Duration {
+        self.frame_dur
+    }
 }
 
 /// When mouse-panning is enabled (click+drag to scroll)
@@ -241,7 +257,7 @@ impl WindowConfig {
 /// panning is only possible when events are otherwise unused, thus `Always` is
 /// acceptable (equivalent to touch scrolling).
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
-#[cfg_attr(feature = "config", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(num_enum::IntoPrimitive, num_enum::TryFromPrimitive)]
 #[repr(u8)]
 pub enum MousePan {
@@ -309,5 +325,9 @@ mod defaults {
     }
     pub fn touch_nav_focus() -> bool {
         true
+    }
+
+    pub fn frame_dur_nanos() -> u32 {
+        12_500_000 // 1e9 / 80
     }
 }

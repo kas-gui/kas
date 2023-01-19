@@ -72,12 +72,12 @@ impl_scope! {
 
         /// Assign a pre-allocated image
         ///
-        /// Returns `TkAction::RESIZE` on success. On error, `self` is unchanged.
-        pub fn set(&mut self, handle: ImageHandle, draw: &mut dyn DrawShared) -> Option<TkAction> {
+        /// Returns `Action::RESIZE` on success. On error, `self` is unchanged.
+        pub fn set(&mut self, handle: ImageHandle, draw: &mut dyn DrawShared) -> Option<Action> {
             if let Some(size) = draw.image_size(&handle) {
                 self.scaling.size = size.cast();
                 self.handle = Some(handle);
-                Some(TkAction::RESIZE)
+                Some(Action::RESIZE)
             } else {
                 None
             }
@@ -85,14 +85,14 @@ impl_scope! {
 
         /// Load from a path
         ///
-        /// Returns `TkAction::RESIZE` on success. On error, `self` is unchanged.
+        /// Returns `Action::RESIZE` on success. On error, `self` is unchanged.
         #[cfg(feature = "image")]
         #[cfg_attr(doc_cfg, doc(cfg(feature = "image")))]
         pub fn load_path<P: AsRef<std::path::Path>>(
             &mut self,
             path: P,
             draw: &mut dyn DrawShared,
-        ) -> Result<TkAction> {
+        ) -> Result<Action> {
             let image = image::io::Reader::open(path)?
                 .with_guessed_format()?
                 .decode()?;
@@ -113,16 +113,16 @@ impl_scope! {
             self.scaling.size = size.cast();
             self.handle = Some(handle);
 
-            Ok(TkAction::RESIZE)
+            Ok(Action::RESIZE)
         }
 
         /// Remove image (set empty)
-        pub fn clear(&mut self, draw: &mut dyn DrawShared) -> TkAction {
+        pub fn clear(&mut self, draw: &mut dyn DrawShared) -> Action {
             if let Some(handle) = self.handle.take() {
                 draw.image_free(handle);
-                TkAction::RESIZE
+                Action::RESIZE
             } else {
-                TkAction::empty()
+                Action::empty()
             }
         }
 
@@ -142,10 +142,10 @@ impl_scope! {
         /// By default, this is [`PixmapScaling::default`] except with
         /// `fix_aspect: true`.
         #[inline]
-        pub fn set_scaling(&mut self, f: impl FnOnce(&mut PixmapScaling)) -> TkAction {
+        pub fn set_scaling(&mut self, f: impl FnOnce(&mut PixmapScaling)) -> Action {
             f(&mut self.scaling);
             // NOTE: if only `aspect` is changed, REDRAW is enough
-            TkAction::RESIZE
+            Action::RESIZE
         }
     }
 

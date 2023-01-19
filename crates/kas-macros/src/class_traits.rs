@@ -74,7 +74,7 @@ impl ImplTrait for ImplHasBool {
                 }
 
                 #[inline]
-                fn set_bool(&mut self, state: bool) -> ::kas::TkAction {
+                fn set_bool(&mut self, state: bool) -> ::kas::Action {
                     self.#using.set_bool(state)
                 }
             };
@@ -137,12 +137,12 @@ impl ImplTrait for ImplHasString {
         if let Some(using) = args.using_member() {
             let methods = quote! {
                 #[inline]
-                fn set_str(&mut self, text: &str) -> ::kas::TkAction {
+                fn set_str(&mut self, text: &str) -> ::kas::Action {
                     self.#using.set_str(text)
                 }
 
                 #[inline]
-                fn set_string(&mut self, text: String) -> ::kas::TkAction {
+                fn set_string(&mut self, text: String) -> ::kas::Action {
                     self.#using.set_string(text)
                 }
             };
@@ -171,7 +171,7 @@ impl ImplTrait for ImplSetAccel {
         if let Some(using) = args.using_member() {
             let methods = quote! {
                 #[inline]
-                fn set_accel_string(&mut self, accel: AccelString) -> ::kas::TkAction {
+                fn set_accel_string(&mut self, accel: AccelString) -> ::kas::Action {
                     self.#using.set_accel_string(accel)
                 }
             };

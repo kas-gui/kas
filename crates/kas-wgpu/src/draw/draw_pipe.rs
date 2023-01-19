@@ -10,19 +10,45 @@ use wgpu::util::DeviceExt;
 
 use super::*;
 use crate::DrawShadedImpl;
+use crate::Options;
 use kas::cast::traits::*;
 use kas::draw::color::Rgba;
 use kas::draw::*;
 use kas::geom::{Quad, Rect, Size, Vec2};
+use kas::shell::Error;
 use kas::text::{Effect, TextDisplay};
+
+/// Possible failures from constructing a [`Shell`]
+///
+/// Some variants are undocumented. Users should not match these variants since
+/// they are not considered part of the public API.
+#[non_exhaustive]
+#[derive(thiserror::Error, Debug)]
+#[error("no graphics adapter found")]
+pub struct NoAdapter;
 
 impl<C: CustomPipe> DrawPipe<C> {
     /// Construct
     pub fn new<CB: CustomPipeBuilder<Pipe = C>>(
         mut custom: CB,
-        (device, queue): (wgpu::Device, wgpu::Queue),
+        options: &Options,
         raster_config: &kas::theme::RasterConfig,
-    ) -> Self {
+    ) -> Result<Self, Error> {
+        let instance = wgpu::Instance::new(options.backend());
+        let adapter_options = options.adapter_options();
+        let req = instance.request_adapter(&adapter_options);
+        let adapter = match futures::executor::block_on(req) {
+            Some(a) => a,
+            None => return Err(Error::Graphics(Box::new(NoAdapter))),
+        };
+        log::info!("Using graphics adapter: {}", adapter.get_info().name);
+
+        let desc = CB::device_descriptor();
+        let trace_path = options.wgpu_trace_path.as_deref();
+        let req = adapter.request_device(&desc, trace_path);
+        let (device, queue) =
+            futures::executor::block_on(req).map_err(|e| Error::Graphics(Box::new(e)))?;
+
         let shaders = ShaderManager::new(&device);
 
         // Create staging belt and a local pool
@@ -78,7 +104,8 @@ impl<C: CustomPipe> DrawPipe<C> {
         let custom = custom.build(&device, &bgl_common, RENDER_TEX_FORMAT);
         let text = text_pipe::Pipeline::new(&device, &shaders, &bgl_common, raster_config);
 
-        DrawPipe {
+        Ok(DrawPipe {
+            instance,
             device,
             queue,
             staging_belt,
@@ -92,7 +119,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             round_2col,
             custom,
             text,
-        }
+        })
     }
 
     /// Construct per-window state
@@ -100,7 +127,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let custom = self.custom.new_window(&self.device);
 
         DrawWindow {
-            animation: AnimationState::None,
+            common: WindowCommon::default(),
             scale: Default::default(),
             clip_regions: vec![Default::default()],
             images: Default::default(),
@@ -335,7 +362,9 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         text: &TextDisplay,
         col: Rgba,
     ) {
+        let time = std::time::Instant::now();
         draw.text.text(&mut self.text, pass, rect, text, col);
+        draw.common.report_dur_text(time.elapsed());
     }
 
     fn draw_text_effects(
@@ -347,12 +376,12 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         col: Rgba,
         effects: &[Effect<()>],
     ) {
-        let rects = draw
-            .text
-            .text_effects(&mut self.text, pass, rect, text, col, effects);
-        for rect in rects {
-            draw.shaded_square.rect(pass, rect, col);
-        }
+        let time = std::time::Instant::now();
+        draw.text
+            .text_effects(&mut self.text, pass, rect, text, col, effects, |quad| {
+                draw.shaded_square.rect(pass, quad, col);
+            });
+        draw.common.report_dur_text(time.elapsed());
     }
 
     fn draw_text_effects_rgba(
@@ -363,18 +392,18 @@ impl<C: CustomPipe> DrawSharedImpl for DrawPipe<C> {
         text: &TextDisplay,
         effects: &[Effect<Rgba>],
     ) {
-        let rects = draw
-            .text
-            .text_effects_rgba(&mut self.text, pass, rect, text, effects);
-        for (rect, col) in rects {
-            draw.shaded_square.rect(pass, rect, col);
-        }
+        let time = std::time::Instant::now();
+        draw.text
+            .text_effects_rgba(&mut self.text, pass, rect, text, effects, |quad, col| {
+                draw.shaded_square.rect(pass, quad, col);
+            });
+        draw.common.report_dur_text(time.elapsed());
     }
 }
 
 impl<CW: CustomWindow> DrawImpl for DrawWindow<CW> {
-    fn animation_mut(&mut self) -> &mut AnimationState {
-        &mut self.animation
+    fn common_mut(&mut self) -> &mut WindowCommon {
+        &mut self.common
     }
 
     fn new_pass(

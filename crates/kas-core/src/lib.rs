@@ -25,14 +25,12 @@ extern crate self as kas;
 pub extern crate easy_cast as cast;
 
 // internal modules:
+mod action;
 mod core;
 mod root;
-mod toolkit;
 
 // public implementations:
 pub mod class;
-#[cfg(feature = "config")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "config")))]
 pub mod config;
 pub mod dir;
 pub mod draw;
@@ -44,12 +42,13 @@ pub mod label;
 pub mod layout;
 pub mod model;
 pub mod prelude;
+pub mod shell;
 pub mod text;
 pub mod theme;
 pub mod util;
 
 // export most important members directly for convenience and less redundancy:
+pub use crate::action::Action;
 pub use crate::core::*;
-pub use crate::toolkit::*;
 pub use kas_macros::*;
 pub use root::RootWidget;

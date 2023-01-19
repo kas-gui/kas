@@ -66,7 +66,7 @@ pub trait Driver<Item, Data: SharedData<Item = Item>>: Debug {
         widget: &mut Self::Widget,
         key: &Data::Key,
         item: impl Into<MaybeOwned<'b, Item>>,
-    ) -> TkAction
+    ) -> Action
     where
         Self: Sized,
         Item: 'b,
@@ -78,12 +78,7 @@ pub trait Driver<Item, Data: SharedData<Item = Item>>: Debug {
     ///
     /// The widget may expect `configure` to be called at least once before data
     /// is set and to have `set_rect` called after each time data is set.
-    fn set_mo(
-        &self,
-        widget: &mut Self::Widget,
-        key: &Data::Key,
-        item: MaybeOwned<Item>,
-    ) -> TkAction;
+    fn set_mo(&self, widget: &mut Self::Widget, key: &Data::Key, item: MaybeOwned<Item>) -> Action;
 
     /// Handle a message from a widget
     ///
@@ -146,7 +141,7 @@ macro_rules! impl_via_to_string {
             fn make(&self) -> Self::Widget {
                 Label::new("".to_string())
             }
-            fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<$t>) -> TkAction {
+            fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<$t>) -> Action {
                 widget.set_string(item.to_string())
             }
         }
@@ -155,7 +150,7 @@ macro_rules! impl_via_to_string {
             fn make(&self) -> Self::Widget {
                 NavFrame::new(Label::new("".to_string()))
             }
-            fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<$t>) -> TkAction {
+            fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<$t>) -> Action {
                 widget.set_string(item.to_string())
             }
         }
@@ -175,7 +170,7 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for View {
     fn make(&self) -> Self::Widget {
         CheckBox::new_on(|mgr, state| mgr.push_msg(state)).with_editable(false)
     }
-    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> TkAction {
+    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> Action {
         widget.set_bool(item.into_owned())
     }
 }
@@ -185,7 +180,7 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for NavView {
     fn make(&self) -> Self::Widget {
         CheckBox::new_on(|mgr, state| mgr.push_msg(state)).with_editable(false)
     }
-    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> TkAction {
+    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> Action {
         widget.set_bool(item.into_owned())
     }
 }
@@ -248,12 +243,7 @@ impl<G: EditGuard + Clone, Data: SharedDataMut<Item = String>> Driver<String, Da
             .with_guard(self.guard.clone())
             .with_class(self.class)
     }
-    fn set_mo(
-        &self,
-        widget: &mut Self::Widget,
-        _: &Data::Key,
-        item: MaybeOwned<String>,
-    ) -> TkAction {
+    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<String>) -> Action {
         widget.set_string(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
@@ -317,12 +307,7 @@ impl<G: EditGuard + Clone, Data: SharedDataMut<Item = String>> Driver<String, Da
     fn make(&self) -> Self::Widget {
         kas_widgets::EditBox::new("".to_string()).with_guard(self.guard.clone())
     }
-    fn set_mo(
-        &self,
-        widget: &mut Self::Widget,
-        _: &Data::Key,
-        item: MaybeOwned<String>,
-    ) -> TkAction {
+    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<String>) -> Action {
         widget.set_string(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
@@ -354,7 +339,7 @@ impl<D: Directional, Data: SharedData<Item = f32>> Driver<f32, Data> for Progres
     fn make(&self) -> Self::Widget {
         kas_widgets::ProgressBar::new_with_direction(self.direction)
     }
-    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<f32>) -> TkAction {
+    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<f32>) -> Action {
         widget.set_value(item.into_owned())
     }
 }
@@ -376,7 +361,7 @@ impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for CheckButton {
     fn make(&self) -> Self::Widget {
         kas_widgets::CheckButton::new_on(self.label.clone(), |mgr, state| mgr.push_msg(state))
     }
-    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> TkAction {
+    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> Action {
         widget.set_bool(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
@@ -402,7 +387,7 @@ impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for RadioBox {
     fn make(&self) -> Self::Widget {
         kas_widgets::RadioBox::new_on(self.group.clone(), |mgr| mgr.push_msg(true))
     }
-    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> TkAction {
+    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> Action {
         widget.set_bool(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
@@ -431,7 +416,7 @@ impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for RadioButton {
         kas_widgets::RadioButton::new(self.label.clone(), self.group.clone())
             .on_select(|mgr| mgr.push_msg(true))
     }
-    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> TkAction {
+    fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> Action {
         widget.set_bool(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
@@ -483,7 +468,7 @@ where
         widget: &mut Self::Widget,
         _: &Data::Key,
         item: MaybeOwned<Data::Item>,
-    ) -> TkAction {
+    ) -> Action {
         widget.set_value(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
@@ -522,7 +507,7 @@ where
         widget: &mut Self::Widget,
         _: &Data::Key,
         item: MaybeOwned<Data::Item>,
-    ) -> TkAction {
+    ) -> Action {
         widget.set_value(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {

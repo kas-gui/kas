@@ -8,7 +8,7 @@
 use super::Widget;
 use crate::event::EventMgr;
 use crate::geom::{Offset, Size};
-use crate::TkAction;
+use crate::Action;
 
 /// Additional functionality on scrollable widgets
 ///
@@ -69,7 +69,7 @@ pub trait HasScrollBars {
     fn get_mode(&self) -> ScrollBarMode;
 
     /// Set mode
-    fn set_mode(&mut self, mode: ScrollBarMode) -> TkAction;
+    fn set_mode(&mut self, mode: ScrollBarMode) -> Action;
 
     /// Get currently visible bars
     ///
@@ -80,8 +80,8 @@ pub trait HasScrollBars {
     ///
     /// Note: if mode is `Auto` this has no effect.
     ///
-    /// This requires a [`TkAction::RESIZE`].
-    fn set_visible_bars(&mut self, bars: (bool, bool)) -> TkAction;
+    /// This requires a [`Action::RESIZE`].
+    fn set_visible_bars(&mut self, bars: (bool, bool)) -> Action;
 
     /// Set auto mode (inline)
     #[inline]

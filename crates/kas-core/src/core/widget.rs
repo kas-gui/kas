@@ -18,7 +18,7 @@ use kas_macros::autoimpl;
 #[allow(unused)] use crate::event::EventState;
 #[allow(unused)]
 use crate::layout::{self, AlignPair, AutoLayout};
-#[allow(unused)] use crate::TkAction;
+#[allow(unused)] use crate::Action;
 #[allow(unused)] use kas_macros as macros;
 
 /// Base functionality for [`Widget`]s
@@ -66,7 +66,7 @@ pub trait WidgetCore: fmt::Debug {
 /// this trait should be implemented directly.
 ///
 /// Note that parents are responsible for ensuring that newly added children
-/// get configured, either by sending [`TkAction::RECONFIGURE`] by calling
+/// get configured, either by sending [`Action::RECONFIGURE`] by calling
 /// [`ConfigMgr::configure`].
 #[autoimpl(for<T: trait + ?Sized> &'_ mut T, Box<T>)]
 pub trait WidgetChildren: WidgetCore {

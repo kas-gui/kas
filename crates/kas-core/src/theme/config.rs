@@ -7,49 +7,49 @@
 
 use super::{ColorsSrgb, TextClass, ThemeConfig};
 use crate::text::fonts::{fonts, AddMode, FontSelector};
-use crate::TkAction;
+use crate::Action;
 use std::collections::BTreeMap;
 use std::time::Duration;
 
 /// Event handling configuration
 #[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "config", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Config {
-    #[cfg_attr(feature = "config", serde(skip))]
+    #[cfg_attr(feature = "serde", serde(skip))]
     dirty: bool,
 
     /// Standard font size, in units of points-per-Em
-    #[cfg_attr(feature = "config", serde(default = "defaults::font_size"))]
+    #[cfg_attr(feature = "serde", serde(default = "defaults::font_size"))]
     font_size: f32,
 
     /// The colour scheme to use
-    #[cfg_attr(feature = "config", serde(default))]
+    #[cfg_attr(feature = "serde", serde(default))]
     active_scheme: String,
 
     /// All colour schemes
     /// TODO: possibly we should not save default schemes and merge when
     /// loading (perhaps via a `PartialConfig` type).
-    #[cfg_attr(feature = "config", serde(default = "defaults::color_schemes"))]
+    #[cfg_attr(feature = "serde", serde(default = "defaults::color_schemes"))]
     color_schemes: BTreeMap<String, ColorsSrgb>,
 
     /// Font aliases, used when searching for a font family matching the key.
-    #[cfg_attr(feature = "config", serde(default))]
+    #[cfg_attr(feature = "serde", serde(default))]
     font_aliases: BTreeMap<String, FontAliases>,
 
     /// Standard fonts
-    #[cfg_attr(feature = "config", serde(default))]
+    #[cfg_attr(feature = "serde", serde(default))]
     fonts: BTreeMap<TextClass, FontSelector<'static>>,
 
     /// Text cursor blink rate: delay between switching states
-    #[cfg_attr(feature = "config", serde(default = "defaults::cursor_blink_rate_ms"))]
+    #[cfg_attr(feature = "serde", serde(default = "defaults::cursor_blink_rate_ms"))]
     cursor_blink_rate_ms: u32,
 
     /// Transition duration used in animations
-    #[cfg_attr(feature = "config", serde(default = "defaults::transition_fade_ms"))]
+    #[cfg_attr(feature = "serde", serde(default = "defaults::transition_fade_ms"))]
     transition_fade_ms: u32,
 
     /// Text glyph rastering settings
-    #[cfg_attr(feature = "config", serde(default))]
+    #[cfg_attr(feature = "serde", serde(default))]
     raster: RasterConfig,
 }
 
@@ -74,17 +74,17 @@ impl Default for Config {
 /// These are not used by the theme, but passed through to the rendering
 /// backend.
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "config", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct RasterConfig {
     //// Raster mode/engine (backend dependent)
-    #[cfg_attr(feature = "config", serde(default))]
+    #[cfg_attr(feature = "serde", serde(default))]
     pub mode: u8,
     /// Scale multiplier for fixed-precision
     ///
     /// This should be an integer `n >= 1`, e.g. `n = 4` provides four sub-pixel
     /// steps of precision. It is also required that `n * h < (1 << 24)` where
     /// `h` is the text height in pixels.
-    #[cfg_attr(feature = "config", serde(default = "defaults::scale_steps"))]
+    #[cfg_attr(feature = "serde", serde(default = "defaults::scale_steps"))]
     pub scale_steps: u8,
     /// Subpixel positioning threshold
     ///
@@ -97,7 +97,7 @@ pub struct RasterConfig {
     /// the mode.
     ///
     /// See also sub-pixel positioning steps.
-    #[cfg_attr(feature = "config", serde(default = "defaults::subpixel_threshold"))]
+    #[cfg_attr(feature = "serde", serde(default = "defaults::subpixel_threshold"))]
     pub subpixel_threshold: u8,
     /// Subpixel steps
     ///
@@ -108,7 +108,7 @@ pub struct RasterConfig {
     /// maximum number of rastered glyphs is multiplied by the square of this
     /// value, though this maxmimum may not be reached in practice. Since this
     /// feature is usually only used for small fonts this likely acceptable.
-    #[cfg_attr(feature = "config", serde(default = "defaults::subpixel_steps"))]
+    #[cfg_attr(feature = "serde", serde(default = "defaults::subpixel_steps"))]
     pub subpixel_steps: u8,
 }
 
@@ -199,13 +199,13 @@ impl Config {
 impl Config {
     /// Currently this is just "set". Later, maybe some type of merge.
     #[allow(clippy::float_cmp)]
-    pub fn apply_config(&mut self, other: &Config) -> TkAction {
+    pub fn apply_config(&mut self, other: &Config) -> Action {
         let action = if self.font_size != other.font_size {
-            TkAction::RESIZE | TkAction::THEME_UPDATE
+            Action::RESIZE | Action::THEME_UPDATE
         } else if self != other {
-            TkAction::REDRAW
+            Action::REDRAW
         } else {
-            TkAction::empty()
+            Action::empty()
         };
 
         *self = other.clone();
@@ -214,7 +214,7 @@ impl Config {
 }
 
 impl ThemeConfig for Config {
-    #[cfg(feature = "config")]
+    #[cfg(feature = "serde")]
     #[inline]
     fn is_dirty(&self) -> bool {
         self.dirty
@@ -244,9 +244,9 @@ impl ThemeConfig for Config {
 
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "config", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FontAliases {
-    #[cfg_attr(feature = "config", serde(default = "defaults::add_mode"))]
+    #[cfg_attr(feature = "serde", serde(default = "defaults::add_mode"))]
     mode: AddMode,
     list: Vec<String>,
 }
@@ -254,7 +254,7 @@ pub struct FontAliases {
 mod defaults {
     use super::*;
 
-    #[cfg(feature = "config")]
+    #[cfg(feature = "serde")]
     pub fn add_mode() -> AddMode {
         AddMode::Prepend
     }

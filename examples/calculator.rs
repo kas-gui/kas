@@ -110,7 +110,7 @@ fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
     let theme = kas_wgpu::ShadedTheme::new().with_font_size(16.0);
-    kas::shell::Toolkit::new(theme)?
+    kas::shell::DefaultShell::new(theme)?
         .with(CalcUI::default())?
         .run()
 }

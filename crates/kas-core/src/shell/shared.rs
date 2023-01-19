@@ -6,82 +6,56 @@
 //! Shared state
 
 use std::num::NonZeroU32;
-use std::time::Duration;
 
-use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe, DrawWindow};
-use crate::{warn_about_error, Error, Options, WindowId};
-use kas::cast::Conv;
-use kas::draw;
+use super::{PendingAction, WindowSurface};
+use kas::config::Options;
 use kas::event::UpdateId;
 use kas::model::SharedRc;
-use kas::theme::{Theme, ThemeConfig};
-use kas::TkAction;
+use kas::shell::Error;
+use kas::theme::Theme;
+use kas::util::warn_about_error;
+use kas::{draw, WindowId};
 
 #[cfg(feature = "clipboard")]
 use window_clipboard::Clipboard;
 
 /// State shared between windows
-pub struct SharedState<C: CustomPipe, T> {
+pub struct SharedState<S: WindowSurface, T> {
     #[cfg(feature = "clipboard")]
     clipboard: Option<Clipboard>,
-    pub instance: wgpu::Instance,
-    pub draw: draw::SharedState<DrawPipe<C>>,
-    pub theme: T,
-    pub config: SharedRc<kas::event::Config>,
-    pub pending: Vec<PendingAction>,
+    pub(super) draw: draw::SharedState<S::Shared>,
+    pub(super) theme: T,
+    pub(super) config: SharedRc<kas::event::Config>,
+    pub(super) pending: Vec<PendingAction>,
     /// Estimated scale factor (from last window constructed or available screens)
-    pub scale_factor: f64,
-    pub frame_dur: Duration,
+    pub(super) scale_factor: f64,
     window_id: u32,
     options: Options,
 }
 
-impl<C: CustomPipe, T: Theme<DrawPipe<C>>> SharedState<C, T>
+impl<S: WindowSurface, T: Theme<S::Shared>> SharedState<S, T>
 where
     T::Window: kas::theme::Window,
 {
     /// Construct
-    pub fn new<CB: CustomPipeBuilder<Pipe = C>>(
-        custom: CB,
+    pub fn new(
+        draw_shared: S::Shared,
         mut theme: T,
         options: Options,
         config: SharedRc<kas::event::Config>,
         scale_factor: f64,
     ) -> Result<Self, Error> {
-        let instance = wgpu::Instance::new(options.backend());
-        let adapter_options = options.adapter_options();
-        let req = instance.request_adapter(&adapter_options);
-        let adapter = match futures::executor::block_on(req) {
-            Some(a) => a,
-            None => return Err(Error::NoAdapter),
-        };
-        log::info!("Using graphics adapter: {}", adapter.get_info().name);
-
-        let desc = CB::device_descriptor();
-        let trace_path = options.wgpu_trace_path.as_deref();
-        let req = adapter.request_device(&desc, trace_path);
-        let device_and_queue = futures::executor::block_on(req)?;
-
-        let pipe = DrawPipe::new(custom, device_and_queue, theme.config().raster());
-        let mut draw = draw::SharedState::new(pipe);
-
+        let mut draw = kas::draw::SharedState::new(draw_shared);
         theme.init(&mut draw);
-
-        let mut frame_dur = Duration::new(0, 0);
-        if let Some(limit) = options.fps_limit {
-            frame_dur = Duration::from_secs_f64(1.0 / f64::conv(limit.get()));
-        }
 
         Ok(SharedState {
             #[cfg(feature = "clipboard")]
             clipboard: None,
-            instance,
             draw,
             theme,
             config,
             pending: vec![],
             scale_factor,
-            frame_dur,
             window_id: 0,
             options,
         })
@@ -104,15 +78,6 @@ where
     pub fn next_window_id(&mut self) -> WindowId {
         self.window_id += 1;
         WindowId::new(NonZeroU32::new(self.window_id).unwrap())
-    }
-
-    pub fn render(
-        &mut self,
-        window: &mut DrawWindow<C::Window>,
-        frame_view: &wgpu::TextureView,
-        clear_color: wgpu::Color,
-    ) {
-        self.draw.draw.render(window, frame_view, clear_color);
     }
 
     #[inline]
@@ -155,12 +120,4 @@ where
             Err(error) => warn_about_error("Failed to save config", &error),
         }
     }
-}
-
-pub enum PendingAction {
-    AddPopup(winit::window::WindowId, WindowId, kas::Popup),
-    AddWindow(WindowId, Box<dyn kas::Window>),
-    CloseWindow(WindowId),
-    Update(kas::event::UpdateId, u64),
-    TkAction(TkAction),
 }

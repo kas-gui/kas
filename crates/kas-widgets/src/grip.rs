@@ -126,8 +126,8 @@ impl GripPart {
 
     /// Set a new grip size and position
     ///
-    /// Returns [`TkAction::REDRAW`] if a redraw is required.
-    pub fn set_size_and_offset(&mut self, size: Size, offset: Offset) -> TkAction {
+    /// Returns [`Action::REDRAW`] if a redraw is required.
+    pub fn set_size_and_offset(&mut self, size: Size, offset: Offset) -> Action {
         self.core.rect.size = size;
         self.set_offset(offset).1
     }
@@ -158,14 +158,14 @@ impl GripPart {
     /// Returns the new position (after clamping input) and an action: empty if
     /// the grip hasn't moved; `REDRAW` if it has (though this widget is
     /// not directly responsible for drawing, so this may not be accurate).
-    pub fn set_offset(&mut self, offset: Offset) -> (Offset, TkAction) {
+    pub fn set_offset(&mut self, offset: Offset) -> (Offset, Action) {
         let offset = offset.min(self.max_offset()).max(Offset::ZERO);
         let handle_pos = self.track.pos + offset;
         if handle_pos != self.core.rect.pos {
             self.core.rect.pos = handle_pos;
-            (offset, TkAction::REDRAW)
+            (offset, Action::REDRAW)
         } else {
-            (offset, TkAction::empty())
+            (offset, Action::empty())
         }
     }
 
