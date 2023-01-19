@@ -6,6 +6,7 @@
 //! Event manager — shell API
 
 use smallvec::SmallVec;
+use std::task::Poll;
 use std::time::{Duration, Instant};
 
 use super::*;
@@ -50,6 +51,7 @@ impl EventState {
             popups: Default::default(),
             popup_removed: Default::default(),
             time_updates: vec![],
+            fut_messages: vec![],
             pending: Default::default(),
             action: Action::empty(),
         }
@@ -199,6 +201,28 @@ impl EventState {
             if alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO {
                 let event = Event::Pan { alpha, delta };
                 mgr.send_event(widget, id, event);
+            }
+        }
+
+        {
+            // Poll futures. Any wake causes poll of all futures.
+            // We "replay" messages from the viewpoint of the sending widget.
+            let mut msgs: Vec<(WidgetId, ErasedMessage)> = vec![];
+
+            let mut cx = std::task::Context::from_waker(mgr.shell.waker());
+            mgr.state
+                .fut_messages
+                .retain_mut(|(id, fut)| match fut.as_mut().poll(&mut cx) {
+                    Poll::Pending => true,
+                    Poll::Ready(None) => false,
+                    Poll::Ready(Some(msg)) => {
+                        msgs.push((std::mem::take(id), msg));
+                        false
+                    }
+                });
+
+            for (id, msg) in msgs.drain(..) {
+                mgr.replay(widget, id, msg);
             }
         }
 

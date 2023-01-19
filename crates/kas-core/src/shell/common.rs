@@ -155,4 +155,7 @@ pub(crate) trait ShellWindow {
 
     /// Set the mouse cursor
     fn set_cursor_icon(&mut self, icon: CursorIcon);
+
+    /// Access a Waker
+    fn waker(&self) -> &std::task::Waker;
 }

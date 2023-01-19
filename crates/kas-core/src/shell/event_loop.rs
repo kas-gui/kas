@@ -123,6 +123,11 @@ where
                         .pending
                         .push(PendingAction::Update(handle, payload));
                 }
+                ProxyAction::WakeAsync => {
+                    // We don't need to do anything: MainEventsCleared will
+                    // automatically be called after, which automatically calls
+                    // window.update(..), which calls EventState::Update.
+                }
             },
 
             // TODO: windows should be constructed in Resumed and destroyed

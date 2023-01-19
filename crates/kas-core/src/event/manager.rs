@@ -12,7 +12,9 @@ use linear_map::LinearMap;
 use smallvec::SmallVec;
 use std::any::Any;
 use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::future::Future;
 use std::ops::{Deref, DerefMut};
+use std::pin::Pin;
 use std::time::Instant;
 use std::u16;
 
@@ -145,7 +147,6 @@ type AccelLayer = (bool, HashMap<VirtualKeyCode, WidgetId>);
 // Note that the most frequent usage of fields is to check highlighting states
 // for each widget during drawing. Most fields contain only a few values, hence
 // `SmallVec` is used to keep contents in local memory.
-#[derive(Debug)]
 pub struct EventState {
     config: WindowConfig,
     disabled: Vec<WidgetId>,
@@ -171,6 +172,11 @@ pub struct EventState {
     popups: SmallVec<[(WindowId, crate::Popup, Option<WidgetId>); 16]>,
     popup_removed: SmallVec<[(WidgetId, WindowId); 16]>,
     time_updates: Vec<(Instant, WidgetId, u64)>,
+    // Set of futures of messages together with id of sending widget
+    fut_messages: Vec<(
+        WidgetId,
+        Pin<Box<dyn Future<Output = Option<ErasedMessage>>>>,
+    )>,
     // FIFO queue of events pending handling
     pending: VecDeque<Pending>,
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -620,6 +626,34 @@ impl<'a> EventMgr<'a> {
         }
 
         response
+    }
+
+    // Traverse widget tree by recursive call to a specific target
+    fn replay_recurse(&mut self, widget: &mut dyn Widget, id: WidgetId, msg: ErasedMessage) {
+        if let Some(index) = widget.find_child_index(&id) {
+            if let Some(w) = widget.get_child_mut(index) {
+                self.replay_recurse(w, id, msg);
+                if self.scroll != Scroll::None {
+                    widget.handle_scroll(self, self.scroll);
+                }
+            } else {
+                log::warn!(
+                    "replay_recurse: {} found index {index} for {id} but not child",
+                    widget.identify()
+                );
+            }
+
+            if self.has_msg() {
+                widget.handle_message(self, index);
+            }
+        } else if id == widget.id_ref() {
+            self.messages.push(msg);
+        } else {
+            log::warn!(
+                "replay_recurse: Widget {} cannot find path to {id}",
+                widget.identify()
+            );
+        }
     }
 
     // Traverse widget tree by recursive call, broadcasting

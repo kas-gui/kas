@@ -492,4 +492,9 @@ where
             window.set_cursor_icon(icon);
         }
     }
+
+    #[inline]
+    fn waker(&self) -> &std::task::Waker {
+        &self.shared.waker
+    }
 }

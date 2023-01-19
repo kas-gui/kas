@@ -6,6 +6,7 @@
 //! Shared state
 
 use std::num::NonZeroU32;
+use std::task::Waker;
 
 use super::{PendingAction, WindowSurface};
 use kas::config::Options;
@@ -29,6 +30,7 @@ pub struct SharedState<S: WindowSurface, T> {
     pub(super) pending: Vec<PendingAction>,
     /// Estimated scale factor (from last window constructed or available screens)
     pub(super) scale_factor: f64,
+    pub(super) waker: Waker,
     window_id: u32,
     options: Options,
 }
@@ -44,6 +46,7 @@ where
         options: Options,
         config: SharedRc<kas::event::Config>,
         scale_factor: f64,
+        waker: Waker,
     ) -> Result<Self, Error> {
         let mut draw = kas::draw::SharedState::new(draw_shared);
         theme.init(&mut draw);
@@ -56,6 +59,7 @@ where
             config,
             pending: vec![],
             scale_factor,
+            waker,
             window_id: 0,
             options,
         })

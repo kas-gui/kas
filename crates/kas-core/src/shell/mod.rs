@@ -38,4 +38,5 @@ enum ProxyAction {
     CloseAll,
     Close(kas::WindowId),
     Update(kas::event::UpdateId, u64),
+    WakeAsync,
 }

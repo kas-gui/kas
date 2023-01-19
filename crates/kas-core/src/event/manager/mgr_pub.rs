@@ -5,6 +5,7 @@
 
 //! Event manager — public API
 
+use std::future::IntoFuture;
 use std::time::{Duration, Instant};
 use std::u16;
 
@@ -501,6 +502,14 @@ impl<'a> EventMgr<'a> {
         self.send_recurse(widget, id, disabled, event)
     }
 
+    /// Replay a message as if it was pushed by `id`
+    pub(super) fn replay(&mut self, widget: &mut dyn Widget, id: WidgetId, msg: ErasedMessage) {
+        log::trace!(target: "kas_core::event::manager", "replay: id={id}: {msg:?}");
+
+        self.scroll = Scroll::None;
+        self.replay_recurse(widget, id, msg);
+    }
+
     /// Push a message to the stack
     pub fn push_msg<M: Debug + 'static>(&mut self, msg: M) {
         self.push_erased_msg(ErasedMessage::new(msg));
@@ -509,6 +518,50 @@ impl<'a> EventMgr<'a> {
     /// Push a type-erased message to the stack
     pub fn push_erased_msg(&mut self, msg: ErasedMessage) {
         self.messages.push(msg);
+    }
+
+    /// Push a message to the stack via a [`Future`]
+    ///
+    /// Expects a future which, on completion, returns a message.
+    /// This message is then pushed to the message stack, simultaneously sending
+    /// [`Event::AsyncMessage`] to widget `id`.
+    // TODO: Can we identify the calling widget `id` via the context (EventMgr)?
+    pub fn push_msg_async<Fut, Out>(&mut self, id: WidgetId, fut: Fut)
+    where
+        Fut: IntoFuture<Output = Option<Out>> + 'static,
+        Out: Debug + 'static,
+    {
+        self.push_erased_msg_async(id, async { fut.await.map(ErasedMessage::new) });
+    }
+
+    /// Push a type-erased message to the stack via a [`Future`]
+    ///
+    /// Expects a future which, on completion, returns a message.
+    /// This message is then pushed to the message stack, simultaneously sending
+    /// [`Event::AsyncMessage`] to widget `id`.
+    pub fn push_erased_msg_async<Fut>(&mut self, id: WidgetId, fut: Fut)
+    // TODO: Should we use Future<Output = ErasedMessage> or Output = Option<ErasedMessage>
+    // or Output = Vec<ErasedMessage> or Stream/AsyncIterator with Output = ErasedMessage?
+    where
+        Fut: IntoFuture<Output = Option<ErasedMessage>> + 'static,
+    {
+        let fut = Box::pin(fut.into_future());
+        self.fut_messages.push((id, fut));
+
+        // TODO: consider polling immediately. Code is easy, but, without an
+        // assertion that this is called from the context of widget `id` we
+        // risk unexpected behaviour!
+        /*
+        use std::task::{Context, Poll};
+
+        let mut cx = Context::from_waker(self.shell.waker());
+
+        match fut.as_mut().poll(&mut cx) {
+            Poll::Pending => self.fut_messages.push((id, fut)),
+            Poll::Ready(None) => (),
+            Poll::Ready(Some(msg)) => self.push_erased_msg(msg),
+        }
+        */
     }
 
     /// True if the message stack is non-empty
