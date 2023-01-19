@@ -250,7 +250,7 @@ impl_scope! {
             }
             let value = i32::conv((lhs + (rhs / 2)) / rhs);
             if self.set_value(mgr, value) {
-                mgr.push_msg(ScrollMsg(value));
+                mgr.push(ScrollMsg(value));
             }
         }
     }

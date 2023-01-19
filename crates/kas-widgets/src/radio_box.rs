@@ -314,7 +314,7 @@ impl_scope! {
         /// same `group` will be considered part of a single group.
         ///
         /// When the radio button is selected, a clone
-        /// of `msg` is returned to the parent widget via [`EventMgr::push_msg`].
+        /// of `msg` is returned to the parent widget via [`EventMgr::push`].
         ///
         /// No handler is called on deselection.
         #[inline]
@@ -323,7 +323,7 @@ impl_scope! {
             S: Into<AccelString>,
             M: Clone + Debug + 'static,
         {
-            Self::new_on(label, group, move |mgr| mgr.push_msg(msg.clone()))
+            Self::new_on(label, group, move |mgr| mgr.push(msg.clone()))
         }
 
         /// Set the initial state of the radio button.

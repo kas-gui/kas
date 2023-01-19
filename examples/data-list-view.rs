@@ -128,12 +128,12 @@ impl ListData for MySharedData {
 struct ListEntryGuard;
 impl EditGuard for ListEntryGuard {
     fn activate(_edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
-        mgr.push_msg(EntryMsg::Select);
+        mgr.push(EntryMsg::Select);
         Response::Used
     }
 
     fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        mgr.push_msg(EntryMsg::Update(edit.get_string()));
+        mgr.push(EntryMsg::Update(edit.get_string()));
     }
 }
 
@@ -170,7 +170,7 @@ impl Driver<(bool, String), MySharedData> for MyDriver {
             core: Default::default(),
             label: Label::new(String::default()),
             radio: RadioButton::new("display this entry", self.radio_group.clone())
-                .on_select(|mgr| mgr.push_msg(EntryMsg::Select)),
+                .on_select(|mgr| mgr.push(EntryMsg::Select)),
             edit: EditBox::new(String::default()).with_guard(ListEntryGuard),
         }
     }
@@ -206,7 +206,7 @@ impl Driver<(bool, String), MySharedData> for MyDriver {
                     borrow.strings.insert(*key, text);
                 }
             }
-            mgr.push_msg(Control::Update(borrow.get(borrow.active)));
+            mgr.push(Control::Update(borrow.get(borrow.active)));
             mgr.update_all(0);
         }
     }
@@ -231,7 +231,7 @@ fn main() -> kas::shell::Result<()> {
             core: widget_core!(),
             #[widget] edit: EditBox<impl EditGuard> = EditBox::new("3")
                 .on_afl(|mgr, text| match text.parse::<usize>() {
-                    Ok(n) => mgr.push_msg(n),
+                    Ok(n) => mgr.push(n),
                     Err(_) => (),
                 }),
             n: usize = 3,
@@ -242,7 +242,7 @@ fn main() -> kas::shell::Result<()> {
                     if let Some(n) = mgr.try_pop_msg::<usize>() {
                         if n != self.n {
                             self.n = n;
-                            mgr.push_msg(Control::Set(n))
+                            mgr.push(Control::Set(n))
                         }
                     }
                 } else if let Some(msg) = mgr.try_pop_msg::<Button>() {
@@ -253,7 +253,7 @@ fn main() -> kas::shell::Result<()> {
                     };
                     *mgr |= self.edit.set_string(n.to_string());
                     self.n = n;
-                    mgr.push_msg(Control::Set(n));
+                    mgr.push(Control::Set(n));
                 }
             }
         }

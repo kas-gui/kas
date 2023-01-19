@@ -91,7 +91,7 @@ impl_scope! {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::PressStart { source, coord, .. } => {
-                    mgr.push_msg(GripMsg::PressStart);
+                    mgr.push(GripMsg::PressStart);
                     mgr.grab_press_unique(self.id(), source, coord, Some(CursorIcon::Grabbing));
 
                     // Event delivery implies coord is over the grip.
@@ -101,11 +101,11 @@ impl_scope! {
                 Event::PressMove { coord, .. } => {
                     let offset = coord - self.press_coord;
                     let offset = offset.clamp(Offset::ZERO, self.max_offset());
-                    mgr.push_msg(GripMsg::PressMove(offset));
+                    mgr.push(GripMsg::PressMove(offset));
                     Response::Used
                 }
                 Event::PressEnd { .. } => {
-                    mgr.push_msg(GripMsg::PressEnd);
+                    mgr.push(GripMsg::PressEnd);
                     Response::Used
                 }
                 _ => Response::Unused,

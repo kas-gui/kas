@@ -511,12 +511,12 @@ impl<'a> EventMgr<'a> {
     }
 
     /// Push a message to the stack
-    pub fn push_msg<M: Debug + 'static>(&mut self, msg: M) {
-        self.push_erased_msg(ErasedMessage::new(msg));
+    pub fn push<M: Debug + 'static>(&mut self, msg: M) {
+        self.push_erased(ErasedMessage::new(msg));
     }
 
     /// Push a type-erased message to the stack
-    pub fn push_erased_msg(&mut self, msg: ErasedMessage) {
+    pub fn push_erased(&mut self, msg: ErasedMessage) {
         self.messages.push(msg);
     }
 
@@ -526,12 +526,12 @@ impl<'a> EventMgr<'a> {
     /// This message is then pushed to the message stack, simultaneously sending
     /// [`Event::AsyncMessage`] to widget `id`.
     // TODO: Can we identify the calling widget `id` via the context (EventMgr)?
-    pub fn push_msg_async<Fut, Out>(&mut self, id: WidgetId, fut: Fut)
+    pub fn push_async<Fut, Out>(&mut self, id: WidgetId, fut: Fut)
     where
         Fut: IntoFuture<Output = Option<Out>> + 'static,
         Out: Debug + 'static,
     {
-        self.push_erased_msg_async(id, async { fut.await.map(ErasedMessage::new) });
+        self.push_async_erased(id, async { fut.await.map(ErasedMessage::new) });
     }
 
     /// Push a type-erased message to the stack via a [`Future`]
@@ -539,9 +539,9 @@ impl<'a> EventMgr<'a> {
     /// Expects a future which, on completion, returns a message.
     /// This message is then pushed to the message stack, simultaneously sending
     /// [`Event::AsyncMessage`] to widget `id`.
-    pub fn push_erased_msg_async<Fut>(&mut self, id: WidgetId, fut: Fut)
     // TODO: Should we use Future<Output = ErasedMessage> or Output = Option<ErasedMessage>
     // or Output = Vec<ErasedMessage> or Stream/AsyncIterator with Output = ErasedMessage?
+    pub fn push_async_erased<Fut>(&mut self, id: WidgetId, fut: Fut)
     where
         Fut: IntoFuture<Output = Option<ErasedMessage>> + 'static,
     {

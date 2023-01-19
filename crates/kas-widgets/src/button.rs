@@ -85,7 +85,7 @@ impl_scope! {
         /// [`Widget::handle_message`].
         #[inline]
         pub fn new_msg<M: Clone + Debug + 'static>(inner: W, msg: M) -> Self {
-            Self::new_on(inner, move |mgr| mgr.push_msg(msg.clone()))
+            Self::new_on(inner, move |mgr| mgr.push(msg.clone()))
         }
 
         /// Add accelerator keys (chain style)
@@ -197,7 +197,7 @@ impl_scope! {
         /// [`Widget::handle_message`].
         #[inline]
         pub fn new_msg<S: Into<AccelString>, M: Clone + Debug + 'static>(label: S, msg: M) -> Self {
-            Self::new_on(label, move |mgr| mgr.push_msg(msg.clone()))
+            Self::new_on(label, move |mgr| mgr.push(msg.clone()))
         }
 
         /// Add accelerator keys (chain style)

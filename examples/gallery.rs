@@ -72,7 +72,7 @@ fn widgets() -> Box<dyn SetDisabled> {
     struct Guard;
     impl EditGuard for Guard {
         fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
-            mgr.push_msg(Item::Edit(edit.get_string()));
+            mgr.push(Item::Edit(edit.get_string()));
             Response::Used
         }
 
@@ -154,21 +154,21 @@ fn widgets() -> Box<dyn SetDisabled> {
             ]),
             #[widget] cb = CheckButton::new("&Check me")
                 .with_state(true)
-                .on_toggle(|mgr, check| mgr.push_msg(Item::Check(check))),
+                .on_toggle(|mgr, check| mgr.push(Item::Check(check))),
             #[widget] rb = RadioButton::new("radio button &1", radio.clone())
-                .on_select(|mgr| mgr.push_msg(Item::Radio(1))),
+                .on_select(|mgr| mgr.push(Item::Radio(1))),
             #[widget] rb2 = RadioButton::new("radio button &2", radio)
                 .with_state(true)
-                .on_select(|mgr| mgr.push_msg(Item::Radio(2))),
+                .on_select(|mgr| mgr.push(Item::Radio(2))),
             #[widget] cbb = ComboBox::new_vec(vec![
                 MenuEntry::new("&One", Item::Combo(1)),
                 MenuEntry::new("T&wo", Item::Combo(2)),
                 MenuEntry::new("Th&ree", Item::Combo(3)),
             ]),
             #[widget] spin: Spinner<i32> = Spinner::new(0..=10, 1)
-                .on_change(|mgr, value| mgr.push_msg(Item::Spinner(value))),
+                .on_change(|mgr, value| mgr.push(Item::Spinner(value))),
             #[widget] sd: Slider<i32, Right> = Slider::new(0..=10, 1)
-                .on_move(|mgr, value| mgr.push_msg(Item::Slider(value))),
+                .on_move(|mgr, value| mgr.push(Item::Slider(value))),
             #[widget] sc: ScrollBar<Right> = ScrollBar::new().with_limits(100, 20),
             #[widget] pg: ProgressBar<Right> = ProgressBar::new(),
             #[widget] sv = img_rustacean.with_scaling(|s| {
@@ -184,7 +184,7 @@ fn widgets() -> Box<dyn SetDisabled> {
                     if index == widget_index![self.sc] {
                         let ratio = value as f32 / self.sc.max_value() as f32;
                         *mgr |= self.pg.set_value(ratio);
-                        mgr.push_msg(Item::Scroll(value))
+                        mgr.push(Item::Scroll(value))
                     }
                 } else if let Some(Item::Spinner(value)) = mgr.try_observe_msg() {
                     *mgr |= self.sd.set_value(*value);
@@ -214,7 +214,7 @@ fn editor() -> Box<dyn SetDisabled> {
         fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
             let result = Markdown::new(edit.get_str());
             edit.set_error_state(result.is_err());
-            mgr.push_msg(result.unwrap_or_else(|err| Markdown::new(&format!("{err}")).unwrap()));
+            mgr.push(result.unwrap_or_else(|err| Markdown::new(&format!("{err}")).unwrap()));
         }
     }
 
@@ -532,9 +532,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             })
             .separator()
-            .toggle("&Disabled", |mgr, state| {
-                mgr.push_msg(Menu::Disabled(state))
-            });
+            .toggle("&Disabled", |mgr, state| mgr.push(Menu::Disabled(state)));
         })
         .build();
 

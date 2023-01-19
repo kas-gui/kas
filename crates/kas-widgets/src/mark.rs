@@ -91,7 +91,7 @@ impl_scope! {
     impl Widget for Self {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             event.on_activate(mgr, self.id(), |mgr| {
-                mgr.push_msg(self.msg.clone());
+                mgr.push(self.msg.clone());
                 Response::Used
             })
         }

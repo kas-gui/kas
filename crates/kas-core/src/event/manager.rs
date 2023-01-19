@@ -385,7 +385,7 @@ impl ErasedMessage {
         #[cfg(debug_assertions)]
         let fmt = format!("{}::{:?}", std::any::type_name::<M>(), &msg);
         #[cfg(debug_assertions)]
-        log::debug!(target: "kas_core::event::ErasedMessage", "push_msg: {fmt}");
+        log::debug!(target: "kas_core::event::ErasedMessage", "push: {fmt}");
         let any = Box::new(msg);
         ErasedMessage {
             #[cfg(debug_assertions)]

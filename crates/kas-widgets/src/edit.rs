@@ -36,7 +36,7 @@ enum EditAction {
 ///
 /// When an [`EditField`] receives input, it updates its contents as expected,
 /// then invokes a method of `EditGuard`. This method may update the
-/// [`EditField`] and may return a message via [`EventMgr::push_msg`].
+/// [`EditField`] and may return a message via [`EventMgr::push`].
 ///
 /// All methods on this trait are passed a reference to the [`EditField`] as
 /// parameter. The `EditGuard`'s state may be accessed via the
@@ -47,7 +47,7 @@ enum EditAction {
 /// Pre-built implementations:
 ///
 /// -   `()`: does nothing
-/// -   `GuardNotify`: clones text to a `String` and pushes as a message ([`EventMgr::push_msg`])
+/// -   `GuardNotify`: clones text to a `String` and pushes as a message ([`EventMgr::push`])
 ///     on `activate` and `focus_lost` events
 /// -   `GuardActivate: calls a closure on `activate`
 /// -   `GuardAFL`: calls a closure on `activate` and `focus_lost`
@@ -106,7 +106,7 @@ impl EditGuard for () {}
 
 /// An [`EditGuard`] impl which notifies on activate and focus lost
 ///
-/// On activate and focus-lost actions, calls [`EventMgr::push_msg`] with the
+/// On activate and focus-lost actions, calls [`EventMgr::push`] with the
 /// edit's contents as a [`String`].
 ///
 /// `Self::activate` returns [`Response::Used`].
@@ -121,7 +121,7 @@ impl EditGuard for GuardNotify {
 
     #[inline]
     fn focus_lost(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        mgr.push_msg(edit.get_string());
+        mgr.push(edit.get_string());
     }
 }
 

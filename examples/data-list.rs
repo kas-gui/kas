@@ -48,12 +48,12 @@ enum EntryMsg {
 struct ListEntryGuard(usize);
 impl EditGuard for ListEntryGuard {
     fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
-        mgr.push_msg(EntryMsg::Select(edit.guard.0));
+        mgr.push(EntryMsg::Select(edit.guard.0));
         Response::Used
     }
 
     fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        mgr.push_msg(EntryMsg::Update(edit.guard.0, edit.get_string()));
+        mgr.push(EntryMsg::Update(edit.guard.0, edit.get_string()));
     }
 }
 
@@ -86,7 +86,7 @@ impl ListEntry {
             label: Label::new(format!("Entry number {}", n + 1)),
             radio: RadioButton::new("display this entry", RADIO.with(|g| g.clone()))
                 .with_state(active)
-                .on_select(move |mgr| mgr.push_msg(EntryMsg::Select(n))),
+                .on_select(move |mgr| mgr.push(EntryMsg::Select(n))),
             edit: EditBox::new(format!("Entry #{}", n + 1)).with_guard(ListEntryGuard(n)),
         }
     }
@@ -111,7 +111,7 @@ fn main() -> kas::shell::Result<()> {
             core: widget_core!(),
             #[widget] edit: EditBox<impl EditGuard> = EditBox::new("3")
                 .on_afl(|mgr, text| match text.parse::<usize>() {
-                    Ok(n) => mgr.push_msg(n),
+                    Ok(n) => mgr.push(n),
                     Err(_) => (),
                 }),
             n: usize = 3,
@@ -122,7 +122,7 @@ fn main() -> kas::shell::Result<()> {
                     if let Some(n) = mgr.try_pop_msg::<usize>() {
                         if n != self.n {
                             self.n = n;
-                            mgr.push_msg(Control::Set(n));
+                            mgr.push(Control::Set(n));
                         }
                     }
                 } else if let Some(msg) = mgr.try_pop_msg::<Button>() {
@@ -133,7 +133,7 @@ fn main() -> kas::shell::Result<()> {
                     };
                     *mgr |= self.edit.set_string(n.to_string());
                     self.n = n;
-                    mgr.push_msg(Control::Set(n));
+                    mgr.push(Control::Set(n));
                 }
             }
         }

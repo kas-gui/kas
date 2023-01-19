@@ -91,28 +91,27 @@ impl driver::Driver<Config, SharedRc<Config>> for EventConfig {
 
         EventConfigWidget {
             core: Default::default(),
-            menu_delay: Spinner::new(0..=5_000, 50)
-                .on_change(|mgr, v| mgr.push_msg(Msg::MenuDelay(v))),
+            menu_delay: Spinner::new(0..=5_000, 50).on_change(|mgr, v| mgr.push(Msg::MenuDelay(v))),
             touch_select_delay: Spinner::new(0..=5_000, 50)
-                .on_change(|mgr, v| mgr.push_msg(Msg::TouchSelectDelay(v))),
+                .on_change(|mgr, v| mgr.push(Msg::TouchSelectDelay(v))),
             scroll_flick_timeout: Spinner::new(0..=500, 5)
-                .on_change(|mgr, v| mgr.push_msg(Msg::ScrollFlickTimeout(v))),
+                .on_change(|mgr, v| mgr.push(Msg::ScrollFlickTimeout(v))),
             scroll_flick_mul: Spinner::new(0.0..=1.0, 0.03125)
-                .on_change(|mgr, v| mgr.push_msg(Msg::ScrollFlickMul(v))),
+                .on_change(|mgr, v| mgr.push(Msg::ScrollFlickMul(v))),
             scroll_flick_sub: Spinner::new(0.0..=1.0e4, 10.0)
-                .on_change(|mgr, v| mgr.push_msg(Msg::ScrollFlickSub(v))),
+                .on_change(|mgr, v| mgr.push(Msg::ScrollFlickSub(v))),
             scroll_dist_em: Spinner::new(0.125..=125.0, 0.125)
-                .on_change(|mgr, v| mgr.push_msg(Msg::ScrollDistEm(v))),
+                .on_change(|mgr, v| mgr.push(Msg::ScrollDistEm(v))),
             pan_dist_thresh: Spinner::new(0.25..=25.0, 0.25)
-                .on_change(|mgr, v| mgr.push_msg(Msg::PanDistThresh(v))),
+                .on_change(|mgr, v| mgr.push(Msg::PanDistThresh(v))),
             mouse_pan: mouse_pan
                 .clone()
-                .on_select(|mgr, v| mgr.push_msg(Msg::MousePan(v))),
-            mouse_text_pan: mouse_pan.on_select(|mgr, v| mgr.push_msg(Msg::MouseTextPan(v))),
+                .on_select(|mgr, v| mgr.push(Msg::MousePan(v))),
+            mouse_text_pan: mouse_pan.on_select(|mgr, v| mgr.push(Msg::MouseTextPan(v))),
             mouse_nav_focus: CheckButton::new("&Mouse navigation focus")
-                .on_toggle(|mgr, v| mgr.push_msg(Msg::MouseNavFocus(v))),
+                .on_toggle(|mgr, v| mgr.push(Msg::MouseNavFocus(v))),
             touch_nav_focus: CheckButton::new("&Touchscreen navigation focus")
-                .on_toggle(|mgr, v| mgr.push_msg(Msg::TouchNavFocus(v))),
+                .on_toggle(|mgr, v| mgr.push(Msg::TouchNavFocus(v))),
         }
     }
 

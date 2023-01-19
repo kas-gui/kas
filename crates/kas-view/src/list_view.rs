@@ -715,15 +715,15 @@ impl_scope! {
                                     mgr.redraw(self.id());
                                     self.selection.clear();
                                     self.selection.insert(key.clone());
-                                    mgr.push_msg(SelectionMsg::Select(key.clone()));
+                                    mgr.push(SelectionMsg::Select(key.clone()));
                                 }
                                 SelectionMode::Multiple => {
                                     mgr.redraw(self.id());
                                     if self.selection.remove(key) {
-                                        mgr.push_msg(SelectionMsg::Deselect(key.clone()));
+                                        mgr.push(SelectionMsg::Deselect(key.clone()));
                                     } else {
                                         self.selection.insert(key.clone());
-                                        mgr.push_msg(SelectionMsg::Select(key.clone()));
+                                        mgr.push(SelectionMsg::Select(key.clone()));
                                     }
                                 }
                             }
@@ -821,15 +821,15 @@ impl_scope! {
                         mgr.redraw(self.id());
                         self.selection.clear();
                         self.selection.insert(key.clone());
-                        mgr.push_msg(SelectionMsg::Select(key));
+                        mgr.push(SelectionMsg::Select(key));
                     }
                     SelectionMode::Multiple => {
                         mgr.redraw(self.id());
                         if self.selection.remove(&key) {
-                            mgr.push_msg(SelectionMsg::Deselect(key));
+                            mgr.push(SelectionMsg::Deselect(key));
                         } else {
                             self.selection.insert(key.clone());
-                            mgr.push_msg(SelectionMsg::Select(key));
+                            mgr.push(SelectionMsg::Select(key));
                         }
                     }
                 }

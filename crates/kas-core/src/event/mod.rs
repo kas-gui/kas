@@ -29,7 +29,7 @@
 //!     If no handler has yet returned [`Response::Used`], then call
 //!     [`Widget::handle_unused`] on each ancestor visited.
 //!
-//!     If the message stack is non-empty (due to a handler calling [`EventMgr::push_msg`]),
+//!     If the message stack is non-empty (due to a handler calling [`EventMgr::push`]),
 //!     call [`Widget::handle_message`] on each ancestor visited.
 //!
 //!     If a non-empty scroll action is set (due to a handler calling [`EventMgr::set_scroll`]),

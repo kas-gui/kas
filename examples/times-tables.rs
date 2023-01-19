@@ -79,7 +79,7 @@ fn main() -> kas::shell::Result<()> {
             core: widget_core!(),
             #[widget] max: impl Widget + HasString = EditBox::new("12")
                 .on_afl(|mgr, text| match text.parse::<usize>() {
-                    Ok(n) => mgr.push_msg(n),
+                    Ok(n) => mgr.push(n),
                     Err(_) => (),
                 }),
             #[widget] table: ScrollBars<MatrixView<TableData, driver::NavView>> = table,

@@ -392,7 +392,7 @@ pub trait Layout {
 ///
 ///         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
 ///             event.on_activate(mgr, self.id(), |mgr| {
-///                 mgr.push_msg(self.message.clone());
+///                 mgr.push(self.message.clone());
 ///                 Response::Used
 ///             })
 ///         }
@@ -500,7 +500,7 @@ pub trait Widget: WidgetChildren + Layout {
     /// -   If this method returns [`Response::Unused`], then
     ///     [`Widget::handle_unused`] is called on each parent until the event
     ///     is used (or the root widget is reached)
-    /// -   If a message is left on the stack by [`EventMgr::push_msg`], then
+    /// -   If a message is left on the stack by [`EventMgr::push`], then
     ///     [`Widget::handle_message`] is called on each parent until the stack is
     ///     empty (failing to empty the stack results in a warning in the log).
     /// -   If any scroll state is set by [`EventMgr::set_scroll`], then

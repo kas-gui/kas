@@ -67,7 +67,7 @@ impl_scope! {
                 stack: Stack::new(),
                 tabs: Row::new().on_message(|mgr, index| {
                     if let Some(MsgSelect) = mgr.try_pop_msg() {
-                        mgr.push_msg(MsgSelectIndex(index));
+                        mgr.push(MsgSelectIndex(index));
                     }
                 }),
             }
@@ -203,7 +203,7 @@ impl<W: Widget> TabStack<W> {
     ///
     /// Does not configure or size child.
     pub fn with_title(self, title: impl Into<AccelString>, widget: W) -> Self {
-        self.with_tab(Tab::new_on(title, |mgr| mgr.push_msg(MsgSelect)), widget)
+        self.with_tab(Tab::new_on(title, |mgr| mgr.push(MsgSelect)), widget)
     }
 
     /// Append a page

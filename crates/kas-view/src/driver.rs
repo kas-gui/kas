@@ -168,7 +168,7 @@ impl_via_to_string!(f32, f64);
 impl<Data: SharedData<Item = bool>> Driver<bool, Data> for View {
     type Widget = CheckBox;
     fn make(&self) -> Self::Widget {
-        CheckBox::new_on(|mgr, state| mgr.push_msg(state)).with_editable(false)
+        CheckBox::new_on(|mgr, state| mgr.push(state)).with_editable(false)
     }
     fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> Action {
         widget.set_bool(item.into_owned())
@@ -178,7 +178,7 @@ impl<Data: SharedData<Item = bool>> Driver<bool, Data> for View {
 impl<Data: SharedData<Item = bool>> Driver<bool, Data> for NavView {
     type Widget = CheckBox;
     fn make(&self) -> Self::Widget {
-        CheckBox::new_on(|mgr, state| mgr.push_msg(state)).with_editable(false)
+        CheckBox::new_on(|mgr, state| mgr.push(state)).with_editable(false)
     }
     fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> Action {
         widget.set_bool(item.into_owned())
@@ -359,7 +359,7 @@ impl CheckButton {
 impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for CheckButton {
     type Widget = kas_widgets::CheckButton;
     fn make(&self) -> Self::Widget {
-        kas_widgets::CheckButton::new_on(self.label.clone(), |mgr, state| mgr.push_msg(state))
+        kas_widgets::CheckButton::new_on(self.label.clone(), |mgr, state| mgr.push(state))
     }
     fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> Action {
         widget.set_bool(item.into_owned())
@@ -385,7 +385,7 @@ impl RadioBox {
 impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for RadioBox {
     type Widget = kas_widgets::RadioBox;
     fn make(&self) -> Self::Widget {
-        kas_widgets::RadioBox::new_on(self.group.clone(), |mgr| mgr.push_msg(true))
+        kas_widgets::RadioBox::new_on(self.group.clone(), |mgr| mgr.push(true))
     }
     fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> Action {
         widget.set_bool(item.into_owned())
@@ -414,7 +414,7 @@ impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for RadioButton {
     type Widget = kas_widgets::RadioButton;
     fn make(&self) -> Self::Widget {
         kas_widgets::RadioButton::new(self.label.clone(), self.group.clone())
-            .on_select(|mgr| mgr.push_msg(true))
+            .on_select(|mgr| mgr.push(true))
     }
     fn set_mo(&self, widget: &mut Self::Widget, _: &Data::Key, item: MaybeOwned<bool>) -> Action {
         widget.set_bool(item.into_owned())
@@ -461,7 +461,7 @@ where
     fn make(&self) -> Self::Widget {
         let range = self.range.0..=self.range.1;
         kas_widgets::Slider::new_with_direction(range, self.step, self.direction)
-            .on_move(|mgr, value| mgr.push_msg(value))
+            .on_move(|mgr, value| mgr.push(value))
     }
     fn set_mo(
         &self,
@@ -500,7 +500,7 @@ where
     type Widget = kas_widgets::Spinner<Data::Item>;
     fn make(&self) -> Self::Widget {
         let range = self.range.0..=self.range.1;
-        kas_widgets::Spinner::new(range, self.step).on_change(|mgr, val| mgr.push_msg(val))
+        kas_widgets::Spinner::new(range, self.step).on_change(|mgr, val| mgr.push(val))
     }
     fn set_mo(
         &self,

@@ -116,7 +116,7 @@ impl<T: SpinnerValue> EditGuard for SpinnerGuard<T> {
             *mgr |= edit.set_string(edit.guard.value.to_string());
             edit.set_error_state(false);
         }
-        mgr.push_msg(ValueMsg(edit.guard.value));
+        mgr.push(ValueMsg(edit.guard.value));
         Response::Used
     }
 
@@ -132,7 +132,7 @@ impl<T: SpinnerValue> EditGuard for SpinnerGuard<T> {
             Ok(value) if edit.guard.range().contains(&value) => {
                 if value != edit.guard.value {
                     edit.guard.value = value;
-                    mgr.push_msg(ValueMsg(value));
+                    mgr.push(ValueMsg(value));
                 }
                 false
             }
