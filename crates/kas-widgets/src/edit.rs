@@ -16,18 +16,13 @@ use std::fmt::Debug;
 use std::ops::Range;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 enum LastEdit {
+    #[default]
     None,
     Insert,
     Delete,
     Paste,
-}
-
-impl Default for LastEdit {
-    fn default() -> Self {
-        LastEdit::None
-    }
 }
 
 enum EditAction {

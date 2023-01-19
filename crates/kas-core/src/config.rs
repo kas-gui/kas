@@ -63,9 +63,10 @@ pub enum Error {
 
 /// Configuration serialisation formats
 #[non_exhaustive]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Error)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Error)]
 pub enum Format {
     /// Not specified: guess from the path
+    #[default]
     #[error("no format")]
     None,
 
@@ -88,12 +89,6 @@ pub enum Format {
     /// Error: unable to guess format
     #[error("(unknown format)")]
     Unknown,
-}
-
-impl Default for Format {
-    fn default() -> Self {
-        Format::None
-    }
 }
 
 impl Format {

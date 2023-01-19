@@ -18,17 +18,12 @@ const PAYLOAD_SELECT: u64 = 1 << 60;
 const PAYLOAD_GLIDE: u64 = (1 << 60) + 1;
 const GLIDE_POLL_MS: u64 = 3;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 enum Glide {
+    #[default]
     None,
     Drag(u8, [(Instant, Offset); 4]),
     Glide(Instant, Vec2, Vec2),
-}
-
-impl Default for Glide {
-    fn default() -> Self {
-        Glide::None
-    }
 }
 
 impl Glide {

@@ -191,12 +191,13 @@ impl From<Size> for Margins {
 /// Note that `Stretch` only affects how much space is *made available*, not
 /// how that space is used. By default, widgets expand to fill all space made
 /// available to them; any other behaviour requires alignment.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum Stretch {
     /// Prefer no stretching
     ///
     /// This is the default value and indicates that stretching is undesirable,
     /// but does not prevent it.
+    #[default]
     None,
     /// Fill unwanted space
     ///
@@ -208,12 +209,6 @@ pub enum Stretch {
     High,
     /// Greedily consume as much space as possible
     Maximize,
-}
-
-impl Default for Stretch {
-    fn default() -> Self {
-        Stretch::None
-    }
 }
 
 impl_scope! {

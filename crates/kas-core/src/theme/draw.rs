@@ -18,20 +18,15 @@ use std::ops::{Bound, Range, RangeBounds};
 use std::time::Instant;
 
 /// Optional background colour
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub enum Background {
     /// Use theme/feature's default
+    #[default]
     Default,
     /// Error state
     Error,
     /// A given color
     Rgb(Rgb),
-}
-
-impl Default for Background {
-    fn default() -> Self {
-        Background::Default
-    }
 }
 
 /// Draw interface
