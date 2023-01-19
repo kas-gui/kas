@@ -92,13 +92,7 @@ pub trait WindowSurface {
     fn common_mut(&mut self) -> &mut WindowCommon;
 
     /// Present frame
-    ///
-    /// On failure drawing is aborted (restart from event handling).
-    fn present(
-        &mut self,
-        shared: &mut Self::Shared,
-        clear_color: Rgba,
-    ) -> std::result::Result<(), ()>;
+    fn present(&mut self, shared: &mut Self::Shared, clear_color: Rgba);
 }
 
 /// Window management interface

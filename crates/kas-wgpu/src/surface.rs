@@ -84,25 +84,29 @@ impl<C: CustomPipe> WindowSurface for Surface<C> {
         &mut self.draw.common
     }
 
-    fn present(&mut self, shared: &mut Self::Shared, clear_color: Rgba) -> Result<(), ()> {
+    fn present(&mut self, shared: &mut Self::Shared, clear_color: Rgba) {
         let frame = match self.surface.get_current_texture() {
             Ok(frame) => frame,
             Err(e) => {
-                log::error!("do_draw: failed to get frame texture: {}", e);
-                // It may be possible to recover by calling surface.configure(...) then retrying
-                // surface.get_current_texture(), but is doing so ever useful?
-                return Err(());
+                // This error has not been observed. Can it be fixed by
+                // re-configuring the surface? Does it ever occur anyway?
+                log::error!("WindowSurface::present: failed to get frame texture: {}", e);
+                return;
             }
         };
-        // TODO: check frame.suboptimal ?
+
+        #[cfg(debug_assertions)]
+        if frame.suboptimal {
+            // Does this ever occur? Should we care?
+            log::warn!("WindowSurface::present: sub-optimal frame should be re-created");
+        }
+
         let view = frame.texture.create_view(&Default::default());
 
         let clear_color = to_wgpu_color(clear_color);
         shared.render(&mut self.draw, &view, clear_color);
 
         frame.present();
-
-        Ok(())
     }
 }
 

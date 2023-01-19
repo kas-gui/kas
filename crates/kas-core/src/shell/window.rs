@@ -378,7 +378,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         }
 
         let clear_color = shared.theme.clear_color();
-        self.surface.present(&mut shared.draw.draw, clear_color)?;
+        self.surface.present(&mut shared.draw.draw, clear_color);
 
         let text_dur_micros = take(&mut self.surface.common_mut().dur_text);
         let end = Instant::now();
