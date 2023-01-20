@@ -10,7 +10,6 @@
 
 use linear_map::LinearMap;
 use smallvec::SmallVec;
-use std::any::Any;
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::future::Future;
 use std::ops::{Deref, DerefMut};
@@ -23,7 +22,7 @@ use super::*;
 use crate::cast::Cast;
 use crate::geom::{Coord, Offset};
 use crate::shell::ShellWindow;
-use crate::{Action, Widget, WidgetExt, WidgetId, WindowId};
+use crate::{Action, Erased, Widget, WidgetExt, WidgetId, WindowId};
 
 mod config_mgr;
 mod mgr_pub;
@@ -173,10 +172,7 @@ pub struct EventState {
     popup_removed: SmallVec<[(WidgetId, WindowId); 16]>,
     time_updates: Vec<(Instant, WidgetId, u64)>,
     // Set of futures of messages together with id of sending widget
-    fut_messages: Vec<(
-        WidgetId,
-        Pin<Box<dyn Future<Output = Option<ErasedMessage>>>>,
-    )>,
+    fut_messages: Vec<(WidgetId, Pin<Box<dyn Future<Output = Option<Erased>>>>)>,
     // FIFO queue of events pending handling
     pending: VecDeque<Pending>,
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -367,62 +363,6 @@ impl EventState {
     }
 }
 
-/// A type-erased message
-///
-/// This is vaguely a wrapper over `Box<dyn (Any + Debug)>`, except that Rust
-/// doesn't (yet) support multi-trait objects.
-pub struct ErasedMessage {
-    // TODO: use trait_upcasting feature when stable: Box<dyn AnyDebug>
-    // where trait AnyDebug: Any + Debug {}. This replaces the fmt field.
-    any: Box<dyn Any>,
-    #[cfg(debug_assertions)]
-    fmt: String,
-}
-
-impl ErasedMessage {
-    /// Construct
-    pub fn new<M: Any + Debug>(msg: M) -> Self {
-        #[cfg(debug_assertions)]
-        let fmt = format!("{}::{:?}", std::any::type_name::<M>(), &msg);
-        #[cfg(debug_assertions)]
-        log::debug!(target: "kas_core::event::ErasedMessage", "push: {fmt}");
-        let any = Box::new(msg);
-        ErasedMessage {
-            #[cfg(debug_assertions)]
-            fmt,
-            any,
-        }
-    }
-
-    /// Returns `true` if the inner type is the same as `T`.
-    pub fn is<T: 'static>(&self) -> bool {
-        self.any.is::<T>()
-    }
-
-    /// Attempt to downcast self to a concrete type.
-    pub fn downcast<T: 'static>(self) -> Result<Box<T>, Box<dyn Any>> {
-        self.any.downcast::<T>()
-    }
-
-    /// Returns some reference to the inner value if it is of type `T`, or `None` if it isn’t.
-    pub fn downcast_ref<T: 'static>(&self) -> Option<&T> {
-        self.any.downcast_ref::<T>()
-    }
-}
-
-/// Support debug formatting
-///
-/// Debug builds only. On release builds, a placeholder message is printed.
-impl std::fmt::Debug for ErasedMessage {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        #[cfg(debug_assertions)]
-        let r = f.write_str(&self.fmt);
-        #[cfg(not(debug_assertions))]
-        let r = f.write_str("[use debug build to see value]");
-        r
-    }
-}
-
 /// Manager of event-handling and toolkit actions
 ///
 /// `EventMgr` and [`EventState`] (available via [`Deref`]) support various
@@ -431,7 +371,7 @@ impl std::fmt::Debug for ErasedMessage {
 pub struct EventMgr<'a> {
     state: &'a mut EventState,
     shell: &'a mut dyn ShellWindow,
-    messages: Vec<ErasedMessage>,
+    messages: Vec<Erased>,
     scroll: Scroll,
     action: Action,
 }
@@ -451,7 +391,7 @@ impl<'a> DerefMut for EventMgr<'a> {
 impl<'a> Drop for EventMgr<'a> {
     fn drop(&mut self) {
         for msg in self.messages.drain(..) {
-            log::warn!(target: "kas_core::event::ErasedMessage", "unhandled: {msg:?}");
+            log::warn!(target: "kas_core::event", "unhandled: {msg:?}");
         }
     }
 }
@@ -629,7 +569,7 @@ impl<'a> EventMgr<'a> {
     }
 
     // Traverse widget tree by recursive call to a specific target
-    fn replay_recurse(&mut self, widget: &mut dyn Widget, id: WidgetId, msg: ErasedMessage) {
+    fn replay_recurse(&mut self, widget: &mut dyn Widget, id: WidgetId, msg: Erased) {
         if let Some(index) = widget.find_child_index(&id) {
             if let Some(w) = widget.get_child_mut(index) {
                 self.replay_recurse(w, id, msg);

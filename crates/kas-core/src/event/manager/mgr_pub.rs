@@ -14,7 +14,7 @@ use crate::cast::Conv;
 use crate::draw::DrawShared;
 use crate::geom::{Coord, Offset, Vec2};
 use crate::theme::{SizeMgr, ThemeControl};
-use crate::{Action, WidgetId, WindowId};
+use crate::{Action, Erased, WidgetId, WindowId};
 #[allow(unused)] use crate::{Layout, Widget}; // for doc-links
 
 impl<'a> std::ops::BitOrAssign<Action> for EventMgr<'a> {
@@ -503,7 +503,7 @@ impl<'a> EventMgr<'a> {
     }
 
     /// Replay a message as if it was pushed by `id`
-    pub(super) fn replay(&mut self, widget: &mut dyn Widget, id: WidgetId, msg: ErasedMessage) {
+    pub(super) fn replay(&mut self, widget: &mut dyn Widget, id: WidgetId, msg: Erased) {
         log::trace!(target: "kas_core::event::manager", "replay: id={id}: {msg:?}");
 
         self.scroll = Scroll::None;
@@ -512,11 +512,11 @@ impl<'a> EventMgr<'a> {
 
     /// Push a message to the stack
     pub fn push<M: Debug + 'static>(&mut self, msg: M) {
-        self.push_erased(ErasedMessage::new(msg));
+        self.push_erased(Erased::new(msg));
     }
 
     /// Push a type-erased message to the stack
-    pub fn push_erased(&mut self, msg: ErasedMessage) {
+    pub fn push_erased(&mut self, msg: Erased) {
         self.messages.push(msg);
     }
 
@@ -531,7 +531,7 @@ impl<'a> EventMgr<'a> {
         Fut: IntoFuture<Output = Option<M>> + 'static,
         M: Debug + 'static,
     {
-        self.push_async_erased(id, async { fut.await.map(ErasedMessage::new) });
+        self.push_async_erased(id, async { fut.await.map(Erased::new) });
     }
 
     /// Push a type-erased message to the stack via a [`Future`]
@@ -539,11 +539,11 @@ impl<'a> EventMgr<'a> {
     /// Expects a future which, on completion, returns a message.
     /// This message is then pushed to the message stack as if it were pushed
     /// with [`Self::push`] from widget `id`.
-    // TODO: Should we use Future<Output = ErasedMessage> or Output = Option<ErasedMessage>
-    // or Output = Vec<ErasedMessage> or Stream/AsyncIterator with Output = ErasedMessage?
+    // TODO: Should we use Future<Output = Erased> or Output = Option<Erased>
+    // or Output = Vec<Erased> or Stream/AsyncIterator with Output = Erased?
     pub fn push_async_erased<Fut>(&mut self, id: WidgetId, fut: Fut)
     where
-        Fut: IntoFuture<Output = Option<ErasedMessage>> + 'static,
+        Fut: IntoFuture<Output = Option<Erased>> + 'static,
     {
         let fut = Box::pin(fut.into_future());
         self.fut_messages.push((id, fut));

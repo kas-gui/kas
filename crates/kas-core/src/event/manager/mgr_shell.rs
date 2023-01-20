@@ -14,7 +14,7 @@ use crate::cast::traits::*;
 use crate::geom::{Coord, DVec2};
 use crate::model::SharedRc;
 use crate::shell::ShellWindow;
-use crate::{Action, Widget, WidgetId};
+use crate::{Action, Erased, Widget, WidgetId};
 
 // TODO: this should be configurable or derived from the system
 const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
@@ -207,7 +207,7 @@ impl EventState {
         {
             // Poll futures. Any wake causes poll of all futures.
             // We "replay" messages from the viewpoint of the sending widget.
-            let mut msgs: Vec<(WidgetId, ErasedMessage)> = vec![];
+            let mut msgs: Vec<(WidgetId, Erased)> = vec![];
 
             let mut cx = std::task::Context::from_waker(mgr.shell.waker());
             mgr.state
