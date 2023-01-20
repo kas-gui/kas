@@ -526,10 +526,10 @@ impl<'a> EventMgr<'a> {
     /// This message is then pushed to the message stack, simultaneously sending
     /// [`Event::AsyncMessage`] to widget `id`.
     // TODO: Can we identify the calling widget `id` via the context (EventMgr)?
-    pub fn push_async<Fut, Out>(&mut self, id: WidgetId, fut: Fut)
+    pub fn push_async<Fut, M>(&mut self, id: WidgetId, fut: Fut)
     where
-        Fut: IntoFuture<Output = Option<Out>> + 'static,
-        Out: Debug + 'static,
+        Fut: IntoFuture<Output = Option<M>> + 'static,
+        M: Debug + 'static,
     {
         self.push_async_erased(id, async { fut.await.map(ErasedMessage::new) });
     }
@@ -562,6 +562,25 @@ impl<'a> EventMgr<'a> {
             Poll::Ready(Some(msg)) => self.push_erased_msg(msg),
         }
         */
+    }
+
+    /// Spawn a task, run on a thread pool
+    ///
+    /// This method is similar to [`Self::push_async`], except that the future
+    /// is run on a worker thread (appropriate when significant CPU work is
+    /// required).
+    ///
+    /// Uses [`async-global-executor`].
+    /// See crate documentation for configuration.
+    #[cfg(feature = "spawn")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "spawn")))]
+    pub fn push_spawn<Fut, M>(&mut self, id: WidgetId, fut: Fut)
+    where
+        Fut: IntoFuture<Output = Option<M>> + 'static,
+        Fut::IntoFuture: Send,
+        M: Debug + Send + 'static,
+    {
+        self.push_async(id, async_global_executor::spawn(fut.into_future()));
     }
 
     /// True if the message stack is non-empty

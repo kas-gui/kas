@@ -23,7 +23,7 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 #########  meta / build features  #########
 
 # All recommended features for optimal experience
-default = ["minimal", "view", "yaml", "image", "resvg", "clipboard", "markdown", "shaping", "dark-light"]
+default = ["minimal", "view", "yaml", "image", "resvg", "clipboard", "markdown", "shaping", "dark-light", "spawn"]
 
 # Include only "required" features.
 #
@@ -92,6 +92,9 @@ tiny-skia = ["dep:kas-resvg"]
 
 # Automatically detect usage of dark theme
 dark-light = ["kas-core/dark-light"]
+
+# Support spawning async tasks
+spawn = ["kas-core/spawn"]
 
 # Support SVG images
 
