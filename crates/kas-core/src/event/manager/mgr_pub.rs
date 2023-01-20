@@ -523,8 +523,8 @@ impl<'a> EventMgr<'a> {
     /// Push a message to the stack via a [`Future`]
     ///
     /// Expects a future which, on completion, returns a message.
-    /// This message is then pushed to the message stack, simultaneously sending
-    /// [`Event::AsyncMessage`] to widget `id`.
+    /// This message is then pushed to the message stack as if it were pushed
+    /// with [`Self::push`] from widget `id`.
     // TODO: Can we identify the calling widget `id` via the context (EventMgr)?
     pub fn push_async<Fut, M>(&mut self, id: WidgetId, fut: Fut)
     where
@@ -537,8 +537,8 @@ impl<'a> EventMgr<'a> {
     /// Push a type-erased message to the stack via a [`Future`]
     ///
     /// Expects a future which, on completion, returns a message.
-    /// This message is then pushed to the message stack, simultaneously sending
-    /// [`Event::AsyncMessage`] to widget `id`.
+    /// This message is then pushed to the message stack as if it were pushed
+    /// with [`Self::push`] from widget `id`.
     // TODO: Should we use Future<Output = ErasedMessage> or Output = Option<ErasedMessage>
     // or Output = Vec<ErasedMessage> or Stream/AsyncIterator with Output = ErasedMessage?
     pub fn push_async_erased<Fut>(&mut self, id: WidgetId, fut: Fut)
