@@ -495,18 +495,24 @@ pub trait Widget: WidgetChildren + Layout {
     ///
     /// An [`Event`] is some form of user input, timer or notification.
     ///
-    /// This is the primary event handler for a widget. Secondary handlers are:
+    /// This is the primary event handler. It is called via tree traversal,
+    /// usually from the root, down to a target [`WidgetId`], then back up.
+    /// Other event handling methods may be involved:
     ///
-    /// -   If this method returns [`Response::Unused`], then
-    ///     [`Widget::handle_unused`] is called on each parent until the event
-    ///     is used (or the root widget is reached)
-    /// -   If a message is left on the stack by [`EventMgr::push`], then
-    ///     [`Widget::handle_message`] is called on each parent until the stack is
-    ///     empty (failing to empty the stack results in a warning in the log).
-    /// -   If any scroll state is set by [`EventMgr::set_scroll`], then
-    ///     [`Widget::handle_scroll`] is called for each parent
+    /// -   During downward traversal, [`Widget::steal_event`] is called on
+    ///     each node visited (including the root but not the target). If this
+    ///     method returns [`Response::Used`] then traversal does not proceed
+    ///     any further down the tree.
+    /// -   During upward traversal, if the scroll state is non-empty (see
+    ///     [`EventMgr::set_scroll`]), then [`Widget::handle_scroll`] is called.
+    /// -   During upward traversal, if the event was not used
+    ///     ([`Response::Unused`] return value), [`Widget::handle_unused`] is
+    ///     called.
+    /// -   During upward traversal, if the message stack is non-empty (see
+    ///     [`EventMgr::push`]), then [`Widget::handle_message`] is called.
     ///
-    /// Default implementation: do nothing; return [`Response::Unused`].
+    /// Default implementation of `handle_event`: do nothing; return
+    /// [`Response::Unused`].
     ///
     /// # Calling `handle_event`
     ///
@@ -522,8 +528,8 @@ pub trait Widget: WidgetChildren + Layout {
 
     /// Potentially steal an event before it reaches a child
     ///
-    /// This is called on each widget while sending an event, including when the
-    /// target is self.
+    /// This is called on each widget visited (excluding the target) while
+    /// sending an event.
     /// If this returns [`Response::Used`], the event is not sent further.
     ///
     /// Default implementation: return [`Response::Unused`].

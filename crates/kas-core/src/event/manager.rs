@@ -519,6 +519,10 @@ impl<'a> EventMgr<'a> {
 
     // Traverse widget tree by recursive call to a specific target
     //
+    // If `disabled`, widget `id` does not receive the `event`. Widget `id` is
+    // the first disabled widget (may be an ancestor of the original target);
+    // ancestors of `id` are not disabled.
+    //
     // Note: cannot use internal stack of mutable references due to borrow checker
     fn send_recurse(
         &mut self,
@@ -528,7 +532,16 @@ impl<'a> EventMgr<'a> {
         event: Event,
     ) -> Response {
         let mut response = Response::Unused;
-        if widget.steal_event(self, &id, &event) == Response::Used {
+        if id == widget.id_ref() {
+            if event == Event::NavFocus(true) {
+                self.set_scroll(Scroll::Rect(widget.rect()));
+                response = Response::Used;
+            }
+
+            if !disabled {
+                response |= widget.pre_handle_event(self, event)
+            }
+        } else if widget.steal_event(self, &id, &event) == Response::Used {
             response = Response::Used;
         } else if let Some(index) = widget.find_child_index(&id) {
             let translation = widget.translation();
@@ -549,15 +562,6 @@ impl<'a> EventMgr<'a> {
             } else if self.has_msg() {
                 widget.handle_message(self, index);
             }
-        } else if disabled {
-            // event is unused
-        } else if id == widget.id_ref() {
-            if event == Event::NavFocus(true) {
-                self.set_scroll(Scroll::Rect(widget.rect()));
-                response = Response::Used;
-            }
-
-            response |= widget.pre_handle_event(self, event)
         } else {
             log::warn!(
                 "send_recurse: Widget {} cannot find path to {id}",

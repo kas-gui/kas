@@ -522,11 +522,18 @@ impl<'a> EventMgr<'a> {
     }
 
     /// Push a message to the stack
+    ///
+    /// The message is first type-erased by wrapping with [`Erased`],
+    /// then pushed to the stack.
+    ///
+    /// See also [`EventMgr::try_observe_msg`], `EventMgr::try_pop_msg`].
     pub fn push<M: Debug + 'static>(&mut self, msg: M) {
         self.push_erased(Erased::new(msg));
     }
 
     /// Push a type-erased message to the stack
+    ///
+    /// See also [`EventMgr::try_observe_msg`], `EventMgr::try_pop_msg`].
     pub fn push_erased(&mut self, msg: Erased) {
         self.messages.push(msg);
     }
@@ -549,7 +556,7 @@ impl<'a> EventMgr<'a> {
     ///
     /// Expects a future which, on completion, returns a message.
     /// This message is then pushed to the message stack as if it were pushed
-    /// with [`Self::push`] from widget `id`.
+    /// with [`Self::push_erased`] from widget `id`.
     // TODO: Should we use Future<Output = Erased> or Output = Option<Erased>
     // or Output = Vec<Erased> or Stream/AsyncIterator with Output = Erased?
     pub fn push_async_erased<Fut>(&mut self, id: WidgetId, fut: Fut)
@@ -600,6 +607,8 @@ impl<'a> EventMgr<'a> {
     }
 
     /// Try popping the last message from the stack with the given type
+    ///
+    /// This method may be called from [`Widget::handle_message`].
     pub fn try_pop_msg<M: Debug + 'static>(&mut self) -> Option<M> {
         if self.messages.last().map(|m| m.is::<M>()).unwrap_or(false) {
             self.messages
@@ -614,6 +623,8 @@ impl<'a> EventMgr<'a> {
     }
 
     /// Try observing the last message on the stack without popping
+    ///
+    /// This method may be called from [`Widget::handle_message`].
     pub fn try_observe_msg<M: Debug + 'static>(&self) -> Option<&M> {
         self.messages.last().and_then(|m| m.downcast_ref::<M>())
     }
