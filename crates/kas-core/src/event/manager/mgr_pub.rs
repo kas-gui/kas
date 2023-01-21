@@ -73,6 +73,17 @@ impl EventState {
         self.mouse_grab.is_none() && *w_id == self.hover
     }
 
+    /// Get whether widget `id` or any of its descendants are under the mouse cursor
+    #[inline]
+    pub fn is_hovered_recursive(&self, id: &WidgetId) -> bool {
+        self.mouse_grab.is_none()
+            && self
+                .hover
+                .as_ref()
+                .map(|h| id.is_ancestor_of(h))
+                .unwrap_or(false)
+    }
+
     /// Check whether the given widget is visually depressed
     pub fn is_depressed(&self, w_id: &WidgetId) -> bool {
         for (_, id) in &self.key_depress {

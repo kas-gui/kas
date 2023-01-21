@@ -88,7 +88,7 @@ impl<'a> DrawMgr<'a> {
     }
 
     /// Access event-management state
-    pub fn ev_state(&mut self) -> &EventState {
+    pub fn ev_state(&mut self) -> &mut EventState {
         self.h.components().2
     }
 

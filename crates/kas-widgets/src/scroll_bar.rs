@@ -29,7 +29,7 @@ impl_scope! {
     ///
     /// It is safe to not call `size_rules` before `set_rect` for this type.
     #[derive(Clone, Debug, Default)]
-    #[widget]
+    #[widget(hover_highlight = true;)]
     pub struct ScrollBar<D: Directional> {
         core: widget_core!(),
         align: AlignPair,
@@ -41,7 +41,6 @@ impl_scope! {
         max_value: i32,
         value: i32,
         invisible: bool,
-        hover: bool,
         force_visible: bool,
         #[widget]
         handle: GripPart,
@@ -75,7 +74,6 @@ impl_scope! {
                 max_value: 0,
                 value: 0,
                 invisible: false,
-                hover: false,
                 force_visible: false,
                 handle: GripPart::new(),
             }
@@ -178,12 +176,15 @@ impl_scope! {
             if changed {
                 self.value = value;
                 *mgr |= self.handle.set_offset(self.offset()).1;
-
-                self.force_visible = true;
-                let delay = mgr.config().menu_delay();
-                mgr.request_update(self.id(), 0, delay, false);
             }
+            self.force_visible(mgr);
             changed
+        }
+
+        fn force_visible(&mut self, mgr: &mut EventState) {
+            self.force_visible = true;
+            let delay = mgr.config().touch_select_delay();
+            mgr.request_update(self.id(), 0, delay, false);
         }
 
         #[inline]
@@ -286,8 +287,12 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
+            if draw.ev_state().is_hovered_recursive(self.id_ref()) {
+                self.force_visible(draw.ev_state());
+            }
+
             if !self.invisible
-                || (self.max_value != 0 && (self.hover || self.force_visible))
+                || (self.max_value != 0 && self.force_visible)
                 || draw.ev_state().is_depressed(self.handle.id_ref())
             {
                 let dir = self.direction.as_direction();
@@ -311,18 +316,6 @@ impl_scope! {
                 }
                 _ => Response::Unused,
             }
-        }
-
-        fn steal_event(&mut self, mgr: &mut EventMgr, _: &WidgetId, event: &Event) -> Response {
-            match event {
-                Event::MouseHover | Event::LostMouseHover => {
-                    self.hover = matches!(event, Event::MouseHover);
-                    mgr.redraw(self.id());
-                    // Do not return Used: allow self.handle to handle this event
-                }
-                _ => (),
-            }
-            Response::Unused
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
