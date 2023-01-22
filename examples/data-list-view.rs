@@ -19,8 +19,8 @@ use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
 enum Control {
-    Set(usize),
-    Dir,
+    SetLen(usize),
+    Reverse,
     Update(String),
 }
 
@@ -223,7 +223,7 @@ fn main() -> kas::shell::Result<()> {
                 TextButton::new_msg("Set", Button::Set),
                 TextButton::new_msg("−", Button::Decr),
                 TextButton::new_msg("+", Button::Incr),
-                TextButton::new_msg("↓↑", Control::Dir),
+                TextButton::new_msg("↓↑", Control::Reverse),
             ];
         }]
         #[derive(Debug)]
@@ -242,7 +242,7 @@ fn main() -> kas::shell::Result<()> {
                     if let Some(n) = mgr.try_pop::<usize>() {
                         if n != self.n {
                             self.n = n;
-                            mgr.push(Control::Set(n))
+                            mgr.push(Control::SetLen(n))
                         }
                     }
                 } else if let Some(msg) = mgr.try_pop::<Button>() {
@@ -253,7 +253,7 @@ fn main() -> kas::shell::Result<()> {
                     };
                     *mgr |= self.edit.set_string(n.to_string());
                     self.n = n;
-                    mgr.push(Control::Set(n));
+                    mgr.push(Control::SetLen(n));
                 }
             }
         }
@@ -289,13 +289,13 @@ fn main() -> kas::shell::Result<()> {
             fn handle_message(&mut self, mgr: &mut EventMgr) {
                 if let Some(control) = mgr.try_pop::<Control>() {
                     match control {
-                        Control::Set(len) => {
+                        Control::SetLen(len) => {
                             if let Some(text) = self.list.data_mut().set_len(len) {
                                 *mgr |= self.display.set_string(text);
                             }
                             mgr.update_all(0);
                         }
-                        Control::Dir => {
+                        Control::Reverse => {
                             let dir = self.list.direction().reversed();
                             *mgr |= self.list.set_direction(dir);
                         }

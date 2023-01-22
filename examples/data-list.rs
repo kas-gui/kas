@@ -25,8 +25,10 @@ thread_local! {
 
 #[derive(Clone, Debug)]
 enum Control {
-    Set(usize),
-    Dir,
+    SetLen(usize),
+    Reverse,
+    Select(usize),
+    Update(usize, String),
 }
 
 #[derive(Clone, Debug)]
@@ -36,24 +38,18 @@ enum Button {
     Incr,
 }
 
-#[derive(Clone, Debug)]
-enum EntryMsg {
-    Select(usize),
-    Update(usize, String),
-}
-
 // TODO: it would be nicer to use EditBox::new(..).on_edit(..), but that produces
 // an object with unnamable type, which is a problem.
 #[derive(Clone, Debug)]
 struct ListEntryGuard(usize);
 impl EditGuard for ListEntryGuard {
     fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
-        mgr.push(EntryMsg::Select(edit.guard.0));
+        mgr.push(Control::Select(edit.guard.0));
         Response::Used
     }
 
     fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        mgr.push(EntryMsg::Update(edit.guard.0, edit.get_string()));
+        mgr.push(Control::Update(edit.guard.0, edit.get_string()));
     }
 }
 
@@ -80,13 +76,13 @@ impl_scope! {
 impl ListEntry {
     fn new(n: usize, active: bool) -> Self {
         // Note: we embed `n` into messages here. A possible alternative: use
-        // List::on_message to pop the message and push `(usize, EntryMsg)`.
+        // List::on_message to pop the message and push `(usize, Control)`.
         ListEntry {
             core: Default::default(),
             label: Label::new(format!("Entry number {}", n + 1)),
             radio: RadioButton::new("display this entry", RADIO.with(|g| g.clone()))
                 .with_state(active)
-                .on_select(move |mgr| mgr.push(EntryMsg::Select(n))),
+                .on_select(move |mgr| mgr.push(Control::Select(n))),
             edit: EditBox::new(format!("Entry #{}", n + 1)).with_guard(ListEntryGuard(n)),
         }
     }
@@ -103,7 +99,7 @@ fn main() -> kas::shell::Result<()> {
                 TextButton::new_msg("Set", Button::Set),
                 TextButton::new_msg("−", Button::Decr),
                 TextButton::new_msg("+", Button::Incr),
-                TextButton::new_msg("↓↑", Control::Dir),
+                TextButton::new_msg("↓↑", Control::Reverse),
             ];
         }]
         #[derive(Debug)]
@@ -122,7 +118,7 @@ fn main() -> kas::shell::Result<()> {
                     if let Some(n) = mgr.try_pop::<usize>() {
                         if n != self.n {
                             self.n = n;
-                            mgr.push(Control::Set(n));
+                            mgr.push(Control::SetLen(n));
                         }
                     }
                 } else if let Some(msg) = mgr.try_pop::<Button>() {
@@ -133,7 +129,7 @@ fn main() -> kas::shell::Result<()> {
                     };
                     *mgr |= self.edit.set_string(n.to_string());
                     self.n = n;
-                    mgr.push(Control::Set(n));
+                    mgr.push(Control::SetLen(n));
                 }
             }
         }
@@ -170,28 +166,25 @@ fn main() -> kas::shell::Result<()> {
             fn handle_message(&mut self, mgr: &mut EventMgr) {
                 if let Some(control) = mgr.try_pop() {
                     match control {
-                        Control::Set(len) => {
+                        Control::SetLen(len) => {
                             let active = self.active;
                             mgr.config_mgr(|mgr| {
                                 self.list.inner_mut()
                                     .resize_with(mgr, len, |n| ListEntry::new(n, n == active))
                             });
                         }
-                        Control::Dir => {
+                        Control::Reverse => {
                             let dir = self.list.direction().reversed();
                             *mgr |= self.list.set_direction(dir);
                         }
-                    }
-                } else if let Some(msg) = mgr.try_pop() {
-                    match msg {
-                        EntryMsg::Select(n) => {
+                        Control::Select(n) => {
                             self.active = n;
                             let entry = &mut self.list[n];
                             entry.radio.select(mgr);
                             let text = entry.edit.get_string();
                             *mgr |= self.display.set_string(text);
                         }
-                        EntryMsg::Update(n, text) => {
+                        Control::Update(n, text) => {
                             if n == self.active {
                                 *mgr |= self.display.set_string(text);
                             }
