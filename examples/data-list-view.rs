@@ -195,7 +195,7 @@ impl Driver<(bool, String), MySharedData> for MyDriver {
         data: &MySharedData,
         key: &usize,
     ) {
-        if let Some(msg) = mgr.try_pop_msg() {
+        if let Some(msg) = mgr.try_pop() {
             let mut borrow = data.data.borrow_mut();
             borrow.ver += 1;
             match msg {
@@ -239,13 +239,13 @@ fn main() -> kas::shell::Result<()> {
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr) {
                 if mgr.last_child() == Some(widget_index![self.edit]) {
-                    if let Some(n) = mgr.try_pop_msg::<usize>() {
+                    if let Some(n) = mgr.try_pop::<usize>() {
                         if n != self.n {
                             self.n = n;
                             mgr.push(Control::Set(n))
                         }
                     }
-                } else if let Some(msg) = mgr.try_pop_msg::<Button>() {
+                } else if let Some(msg) = mgr.try_pop::<Button>() {
                     let n = match msg {
                         Button::Decr => self.n.saturating_sub(1),
                         Button::Incr => self.n.saturating_add(1),
@@ -287,7 +287,7 @@ fn main() -> kas::shell::Result<()> {
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr) {
-                if let Some(control) = mgr.try_pop_msg::<Control>() {
+                if let Some(control) = mgr.try_pop::<Control>() {
                     match control {
                         Control::Set(len) => {
                             if let Some(text) = self.list.data_mut().set_len(len) {

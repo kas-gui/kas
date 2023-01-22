@@ -100,7 +100,7 @@ fn widgets() -> Box<dyn SetDisabled> {
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr) {
-                if let Some(MsgEdit) = mgr.try_pop_msg() {
+                if let Some(MsgEdit) = mgr.try_pop() {
                     let text = self.label.data().clone();
                     let window = dialog::TextEdit::new("Edit text", true, text);
                     mgr.add_window(Box::new(window));
@@ -180,15 +180,15 @@ fn widgets() -> Box<dyn SetDisabled> {
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr) {
-                if let Some(ScrollMsg(value)) = mgr.try_pop_msg() {
+                if let Some(ScrollMsg(value)) = mgr.try_pop() {
                     if mgr.last_child() == Some(widget_index![self.sc]) {
                         let ratio = value as f32 / self.sc.max_value() as f32;
                         *mgr |= self.pg.set_value(ratio);
                         mgr.push(Item::Scroll(value))
                     }
-                } else if let Some(Item::Spinner(value)) = mgr.try_observe_msg() {
+                } else if let Some(Item::Spinner(value)) = mgr.try_observe() {
                     *mgr |= self.sd.set_value(*value);
-                } else if let Some(Item::Slider(value)) = mgr.try_observe_msg() {
+                } else if let Some(Item::Slider(value)) = mgr.try_observe() {
                     *mgr |= self.spin.set_value(*value);
                 }
             }
@@ -257,13 +257,13 @@ Demonstration of *as-you-type* formatting from **Markdown**.
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr) {
-                if let Some(MsgDirection) = mgr.try_pop_msg() {
+                if let Some(MsgDirection) = mgr.try_pop() {
                     self.dir = match self.dir {
                         Direction::Up => Direction::Right,
                         _ => Direction::Up,
                     };
                     *mgr |= Action::RESIZE;
-                } else if let Some(md) = mgr.try_pop_msg::<Markdown>() {
+                } else if let Some(md) = mgr.try_pop::<Markdown>() {
                     *mgr |= self.label.set_text(md);
                 }
             }
@@ -328,9 +328,9 @@ fn filter_list() -> Box<dyn SetDisabled> {
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr) {
-                if let Some(mode) = mgr.try_pop_msg() {
+                if let Some(mode) = mgr.try_pop() {
                     *mgr |= self.list.set_selection_mode(mode);
-                } else if let Some(msg) = mgr.try_pop_msg::<SelectionMsg<usize>>() {
+                } else if let Some(msg) = mgr.try_pop::<SelectionMsg<usize>>() {
                     println!("Selection message: {msg:?}");
                 }
             }
@@ -557,7 +557,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr) {
-                if let Some(msg) = mgr.try_pop_msg::<Menu>() {
+                if let Some(msg) = mgr.try_pop::<Menu>() {
                     match msg {
                         Menu::Theme(name) => {
                             println!("Theme: {name:?}");
@@ -574,7 +574,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             *mgr |= Action::EXIT;
                         }
                     }
-                } else if let Some(item) = mgr.try_pop_msg::<Item>() {
+                } else if let Some(item) = mgr.try_pop::<Item>() {
                     println!("Message: {item:?}");
                     match item {
                         Item::Theme(name) => mgr.adjust_theme(|theme| theme.set_scheme(name)),

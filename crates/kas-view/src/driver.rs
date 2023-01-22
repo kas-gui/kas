@@ -83,7 +83,7 @@ pub trait Driver<Item, Data: SharedData<Item = Item>>: Debug {
     /// Handle a message from a widget
     ///
     /// This method is called when a view widget returns with a message; it
-    /// may retrieve this message with [`EventMgr::try_pop_msg`].
+    /// may retrieve this message with [`EventMgr::try_pop`].
     ///
     /// There are three main ways of implementing this method:
     ///
@@ -247,7 +247,7 @@ impl<G: EditGuard + Clone, Data: SharedDataMut<Item = String>> Driver<String, Da
         widget.set_string(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
-        if let Some(item) = mgr.try_pop_msg() {
+        if let Some(item) = mgr.try_pop() {
             data.set(mgr, key, item);
         }
     }
@@ -311,7 +311,7 @@ impl<G: EditGuard + Clone, Data: SharedDataMut<Item = String>> Driver<String, Da
         widget.set_string(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
-        if let Some(item) = mgr.try_pop_msg() {
+        if let Some(item) = mgr.try_pop() {
             data.set(mgr, key, item);
         }
     }
@@ -365,7 +365,7 @@ impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for CheckButton {
         widget.set_bool(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
-        if let Some(state) = mgr.try_pop_msg() {
+        if let Some(state) = mgr.try_pop() {
             data.set(mgr, key, state);
         }
     }
@@ -391,7 +391,7 @@ impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for RadioBox {
         widget.set_bool(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
-        if let Some(state) = mgr.try_pop_msg() {
+        if let Some(state) = mgr.try_pop() {
             data.set(mgr, key, state);
         }
     }
@@ -420,7 +420,7 @@ impl<Data: SharedDataMut<Item = bool>> Driver<bool, Data> for RadioButton {
         widget.set_bool(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
-        if let Some(state) = mgr.try_pop_msg() {
+        if let Some(state) = mgr.try_pop() {
             data.set(mgr, key, state);
         }
     }
@@ -472,7 +472,7 @@ where
         widget.set_value(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
-        if let Some(state) = mgr.try_pop_msg() {
+        if let Some(state) = mgr.try_pop() {
             data.set(mgr, key, state);
         }
     }
@@ -511,7 +511,7 @@ where
         widget.set_value(item.into_owned())
     }
     fn on_message(&self, mgr: &mut EventMgr, _: &mut Self::Widget, data: &Data, key: &Data::Key) {
-        if let Some(state) = mgr.try_pop_msg() {
+        if let Some(state) = mgr.try_pop() {
             data.set(mgr, key, state);
         }
     }

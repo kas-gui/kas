@@ -177,13 +177,13 @@ impl_scope! {
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr) {
-            if let Some(IndexMsg(index)) = mgr.try_pop_msg() {
+            if let Some(IndexMsg(index)) = mgr.try_pop() {
                 *mgr |= self.set_active(index);
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id, true);
                 }
                 if let Some(ref f) = self.on_select {
-                    if let Some(msg) = mgr.try_pop_msg() {
+                    if let Some(msg) = mgr.try_pop() {
                         (f)(mgr, msg);
                     }
                 }

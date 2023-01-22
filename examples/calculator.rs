@@ -92,7 +92,7 @@ impl_scope! {
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr) {
-            if let Some(msg) = mgr.try_pop_msg::<Key>() {
+            if let Some(msg) = mgr.try_pop::<Key>() {
                 if self.calc.handle(msg) {
                     *mgr |= self.display.set_string(self.calc.display());
                 }

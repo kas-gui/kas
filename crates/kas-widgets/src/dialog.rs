@@ -110,7 +110,7 @@ impl_scope! {
 
     impl Widget for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr) {
-            if let Some(MessageBoxOk) = mgr.try_pop_msg() {
+            if let Some(MessageBoxOk) = mgr.try_pop() {
                 mgr.send_action(Action::CLOSE);
             }
         }
@@ -199,7 +199,7 @@ impl_scope! {
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr) {
-            if let Some(MsgClose(commit)) = mgr.try_pop_msg() {
+            if let Some(MsgClose(commit)) = mgr.try_pop() {
                 let _ = self.close(mgr, commit);
             }
         }

@@ -142,7 +142,7 @@ impl driver::Driver<Config, SharedRc<Config>> for EventConfig {
         data: &SharedRc<Config>,
         _: &(),
     ) {
-        if let Some(msg) = mgr.try_pop_msg() {
+        if let Some(msg) = mgr.try_pop() {
             let mut data = data.borrow_mut(mgr);
             match msg {
                 Msg::MenuDelay(v) => data.menu_delay_ms = v,

@@ -467,10 +467,10 @@ impl_scope! {
     }
     impl Widget for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr) {
-            if let Some(iter) = mgr.try_pop_msg() {
+            if let Some(iter) = mgr.try_pop() {
                 self.mbrot.iter = iter;
                 *mgr |= self.iters.set_string(format!("{iter}"));
-            } else if let Some(ViewUpdate) = mgr.try_pop_msg() {
+            } else if let Some(ViewUpdate) = mgr.try_pop() {
                 mgr.redraw(self.mbrot.id());
                 *mgr |= self.label.set_string(self.mbrot.loc());
             }

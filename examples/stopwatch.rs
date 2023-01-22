@@ -54,11 +54,11 @@ fn make_window() -> Box<dyn kas::Window> {
                 }
             }
             fn handle_message(&mut self, mgr: &mut EventMgr) {
-                if let Some(MsgReset) = mgr.try_pop_msg() {
+                if let Some(MsgReset) = mgr.try_pop() {
                     self.saved = Duration::default();
                     self.start = None;
                     *mgr |= self.display.set_str("0.000");
-                } else if let Some(MsgStart) = mgr.try_pop_msg() {
+                } else if let Some(MsgStart) = mgr.try_pop() {
                     if let Some(start) = self.start {
                         self.saved += Instant::now() - start;
                         self.start = None;

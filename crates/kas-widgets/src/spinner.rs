@@ -355,12 +355,12 @@ impl_scope! {
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr) {
-            if let Some(ValueMsg(value)) = mgr.try_pop_msg() {
+            if let Some(ValueMsg(value)) = mgr.try_pop() {
                 if let Some(ref f) = self.on_change {
                     f(mgr, value);
                 }
             }
-            if let Some(btn) = mgr.try_pop_msg::<SpinBtn>() {
+            if let Some(btn) = mgr.try_pop::<SpinBtn>() {
                 self.handle_btn(mgr, btn);
             }
         }

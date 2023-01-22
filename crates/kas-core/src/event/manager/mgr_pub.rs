@@ -528,8 +528,8 @@ impl<'a> EventMgr<'a> {
     /// The message is first type-erased by wrapping with [`Erased`],
     /// then pushed to the stack.
     ///
-    /// The message may be [popped](EventMgr::try_pop_msg) or
-    /// [observed](EventMgr::try_observe_msg) from [`Widget::handle_message`]
+    /// The message may be [popped](EventMgr::try_pop) or
+    /// [observed](EventMgr::try_observe) from [`Widget::handle_message`]
     /// by the widget itself, its parent, or any ancestor.
     pub fn push<M: Debug + 'static>(&mut self, msg: M) {
         self.push_erased(Erased::new(msg));
@@ -539,8 +539,8 @@ impl<'a> EventMgr<'a> {
     ///
     /// This is a lower-level variant of [`Self::push`].
     ///
-    /// The message may be [popped](EventMgr::try_pop_msg) or
-    /// [observed](EventMgr::try_observe_msg) from [`Widget::handle_message`]
+    /// The message may be [popped](EventMgr::try_pop) or
+    /// [observed](EventMgr::try_observe) from [`Widget::handle_message`]
     /// by the widget itself, its parent, or any ancestor.
     pub fn push_erased(&mut self, msg: Erased) {
         self.messages.push(msg);
@@ -617,7 +617,7 @@ impl<'a> EventMgr<'a> {
     /// Try popping the last message from the stack with the given type
     ///
     /// This method may be called from [`Widget::handle_message`].
-    pub fn try_pop_msg<M: Debug + 'static>(&mut self) -> Option<M> {
+    pub fn try_pop<M: Debug + 'static>(&mut self) -> Option<M> {
         if self.messages.last().map(|m| m.is::<M>()).unwrap_or(false) {
             self.messages
                 .pop()
@@ -633,7 +633,7 @@ impl<'a> EventMgr<'a> {
     /// Try observing the last message on the stack without popping
     ///
     /// This method may be called from [`Widget::handle_message`].
-    pub fn try_observe_msg<M: Debug + 'static>(&self) -> Option<&M> {
+    pub fn try_observe<M: Debug + 'static>(&self) -> Option<&M> {
         self.messages.last().and_then(|m| m.downcast_ref::<M>())
     }
 

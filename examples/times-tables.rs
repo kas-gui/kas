@@ -87,7 +87,7 @@ fn main() -> kas::shell::Result<()> {
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr) {
                 if mgr.last_child() == Some(widget_index![self.max]) {
-                    if let Some(max) = mgr.try_pop_msg::<usize>() {
+                    if let Some(max) = mgr.try_pop::<usize>() {
                         let data = self.table.data_mut();
                         if data.1 != max {
                             data.0 += 1;

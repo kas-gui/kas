@@ -66,7 +66,7 @@ impl_scope! {
                 direction: Direction::Up,
                 stack: Stack::new(),
                 tabs: Row::new().on_message(|mgr, index| {
-                    if let Some(MsgSelect) = mgr.try_pop_msg() {
+                    if let Some(MsgSelect) = mgr.try_pop() {
                         mgr.push(MsgSelectIndex(index));
                     }
                 }),
@@ -94,7 +94,7 @@ impl_scope! {
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr) {
-            if let Some(MsgSelectIndex(index)) = mgr.try_pop_msg() {
+            if let Some(MsgSelectIndex(index)) = mgr.try_pop() {
                 mgr.config_mgr(|mgr| self.set_active(mgr, index));
             }
         }

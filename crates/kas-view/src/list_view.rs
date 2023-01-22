@@ -806,7 +806,7 @@ impl_scope! {
                 key = self.press_target.clone().unwrap();
             }
 
-            if let Some(SelectMsg) = mgr.try_pop_msg() {
+            if let Some(SelectMsg) = mgr.try_pop() {
                 match self.sel_mode {
                     SelectionMode::None => (),
                     SelectionMode::Single => {

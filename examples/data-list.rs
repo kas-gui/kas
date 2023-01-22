@@ -119,13 +119,13 @@ fn main() -> kas::shell::Result<()> {
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr) {
                 if mgr.last_child() == Some(widget_index![self.edit]) {
-                    if let Some(n) = mgr.try_pop_msg::<usize>() {
+                    if let Some(n) = mgr.try_pop::<usize>() {
                         if n != self.n {
                             self.n = n;
                             mgr.push(Control::Set(n));
                         }
                     }
-                } else if let Some(msg) = mgr.try_pop_msg::<Button>() {
+                } else if let Some(msg) = mgr.try_pop::<Button>() {
                     let n = match msg {
                         Button::Decr => self.n.saturating_sub(1),
                         Button::Incr => self.n.saturating_add(1),
@@ -168,7 +168,7 @@ fn main() -> kas::shell::Result<()> {
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr) {
-                if let Some(control) = mgr.try_pop_msg() {
+                if let Some(control) = mgr.try_pop() {
                     match control {
                         Control::Set(len) => {
                             let active = self.active;
@@ -182,7 +182,7 @@ fn main() -> kas::shell::Result<()> {
                             *mgr |= self.list.set_direction(dir);
                         }
                     }
-                } else if let Some(msg) = mgr.try_pop_msg() {
+                } else if let Some(msg) = mgr.try_pop() {
                     match msg {
                         EntryMsg::Select(n) => {
                             self.active = n;

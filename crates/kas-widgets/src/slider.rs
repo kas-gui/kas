@@ -343,7 +343,7 @@ impl_scope! {
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr) {
-            match mgr.try_pop_msg() {
+            match mgr.try_pop() {
                 Some(GripMsg::PressStart) => mgr.set_nav_focus(self.id(), false),
                 Some(GripMsg::PressMove(pos)) => {
                     self.apply_grip_offset(mgr, pos);

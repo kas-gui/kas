@@ -38,7 +38,7 @@ fn main() -> kas::shell::Result<()> {
         }
         impl Widget for Self {
             fn handle_message(&mut self, mgr: &mut EventMgr) {
-                if let Some(msg) = mgr.try_pop_msg::<Message>() {
+                if let Some(msg) = mgr.try_pop::<Message>() {
                     match msg {
                         Message::Decr => {
                             mgr.config_mgr(|mgr| self.panes.pop(mgr));

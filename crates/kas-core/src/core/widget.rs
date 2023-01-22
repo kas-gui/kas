@@ -544,7 +544,7 @@ pub trait Widget: WidgetChildren + Layout {
     /// This is the secondary event handler (see [documentation](crate::event)).
     ///
     /// It is implied that the stack contains at least one message.
-    /// Use [`EventMgr::try_pop_msg`] and/or [`EventMgr::try_observe_msg`].
+    /// Use [`EventMgr::try_pop`] and/or [`EventMgr::try_observe`].
     ///
     /// [`EventMgr::last_child`] may be called to find the message's sender.
     /// This may return [`None`] (if no child was visited, which implies that
