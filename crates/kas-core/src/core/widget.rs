@@ -491,25 +491,9 @@ pub trait Widget: WidgetChildren + Layout {
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn pre_handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response;
 
-    /// Handle an event sent to this widget
+    /// Handle an [`Event`] sent to this widget
     ///
-    /// An [`Event`] is some form of user input, timer or notification.
-    ///
-    /// This is the primary event handler. It is called via tree traversal,
-    /// usually from the root, down to a target [`WidgetId`], then back up.
-    /// Other event handling methods may be involved:
-    ///
-    /// -   During downward traversal, [`Widget::steal_event`] is called on
-    ///     each node visited (including the root but not the target). If this
-    ///     method returns [`Response::Used`] then traversal does not proceed
-    ///     any further down the tree.
-    /// -   During upward traversal, if the scroll state is non-empty (see
-    ///     [`EventMgr::set_scroll`]), then [`Widget::handle_scroll`] is called.
-    /// -   During upward traversal, if the event was not used
-    ///     ([`Response::Unused`] return value), [`Widget::handle_unused`] is
-    ///     called.
-    /// -   During upward traversal, if the message stack is non-empty (see
-    ///     [`EventMgr::push`]), then [`Widget::handle_message`] is called.
+    /// This is the primary event handler (see [documentation](crate::event)).
     ///
     /// Default implementation of `handle_event`: do nothing; return
     /// [`Response::Unused`].
@@ -528,8 +512,7 @@ pub trait Widget: WidgetChildren + Layout {
 
     /// Potentially steal an event before it reaches a child
     ///
-    /// This is called during downward traversal (see [`Widget::handle_event`]).
-    /// If this returns [`Response::Used`], the event is not sent further.
+    /// This is an optional event handler (see [documentation](crate::event)).
     ///
     /// May cause a panic if this method returns [`Response::Unused`] but does
     /// affect `mgr` (e.g. by calling [`EventMgr::set_scroll`] or leaving a
@@ -545,6 +528,8 @@ pub trait Widget: WidgetChildren + Layout {
 
     /// Handle an event sent to child `index` but left unhandled
     ///
+    /// This is an optional event handler (see [documentation](crate::event)).
+    ///
     /// [`EventMgr::last_child`] may be called to find the original target,
     /// and should never return [`None`] (when called from this method).
     ///
@@ -556,11 +541,14 @@ pub trait Widget: WidgetChildren + Layout {
 
     /// Handler for messages from children/descendants
     ///
-    /// This method is called when a child leaves a message on the stack. *Some*
-    /// parent or ancestor widget should read this message.
+    /// This is the secondary event handler (see [documentation](crate::event)).
     ///
-    /// [`EventMgr::last_child`] may be called to find the message's sender,
-    /// and should only return [`None`] if the message was sent by self.
+    /// It is implied that the stack contains at least one message.
+    /// Use [`EventMgr::try_pop_msg`] and/or [`EventMgr::try_observe_msg`].
+    ///
+    /// [`EventMgr::last_child`] may be called to find the message's sender.
+    /// This may return [`None`] (if no child was visited, which implies that
+    /// the message was sent by `self`).
     ///
     /// The default implementation does nothing.
     #[inline]
@@ -570,9 +558,9 @@ pub trait Widget: WidgetChildren + Layout {
 
     /// Handler for scrolling
     ///
-    /// When a child calls [`EventMgr::set_scroll`] with a value other than
-    /// [`Scroll::None`], this method is called. (This method is not called
-    /// after [`Self::handle_event`] or other handlers called on self.)
+    /// When, during [event handling](crate::event), a widget which is a strict
+    /// descendant of `self` (i.e. not `self`) calls [`EventMgr::set_scroll`]
+    /// with a value other than [`Scroll::None`], this method is called.
     ///
     /// Note that [`Scroll::Rect`] values are in the child's coordinate space,
     /// and must be translated to the widget's own coordinate space by this
