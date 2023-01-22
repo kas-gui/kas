@@ -12,20 +12,48 @@ use std::io::Result;
 use std::path::Path;
 use tiny_skia::{Pixmap, Transform};
 
+#[derive(Clone, Default)]
+struct Inner {
+    tree: Option<usvg::Tree>,
+    pixmap: Option<Pixmap>,
+}
+
+impl Inner {
+    /// Get current pixmap size
+    fn size(&self) -> (u32, u32) {
+        if let Some(ref pm) = self.pixmap {
+            (pm.width(), pm.height())
+        } else {
+            (0, 0)
+        }
+    }
+
+    /// Resize and render
+    fn resize(&mut self, w: u32, h: u32) -> Option<((u32, u32), &[u8])> {
+        self.pixmap = Pixmap::new(w, h);
+        if let Some((tree, pm)) = self.tree.as_ref().zip(self.pixmap.as_mut()) {
+            let transform = Transform::identity();
+            resvg::render(tree, usvg::FitTo::Size(w, h), transform, pm.as_mut());
+            Some(((w, h), pm.data()))
+        } else {
+            None
+        }
+    }
+}
+
 impl_scope! {
     /// An SVG image loaded from a path
     ///
     /// May be default constructed (result is empty).
     #[cfg_attr(doc_cfg, doc(cfg(feature = "svg")))]
-    #[autoimpl(Debug ignore self.tree)]
+    #[autoimpl(Debug ignore self.inner)]
     #[impl_default]
     #[derive(Clone)]
     #[widget]
     pub struct Svg {
         core: widget_core!(),
-        tree: Option<usvg::Tree>,
+        inner: Inner,
         scaling: PixmapScaling,
-        pixmap: Option<Pixmap>,
         image: Option<ImageHandle>,
     }
 
@@ -71,12 +99,9 @@ impl_scope! {
                 image_href_resolver: Default::default(),
             };
 
-            self.tree = Some(usvg::Tree::from_data(data, &opts).unwrap());
-            self.scaling.size = self
-                .tree
-                .as_ref()
-                .map(|tree| LogicalSize::conv(tree.size.to_screen_size().dimensions()))
-                .unwrap_or(LogicalSize(128.0, 128.0));
+            let tree = usvg::Tree::from_data(data, &opts).unwrap();
+            self.scaling.size = LogicalSize::conv(tree.size.to_screen_size().dimensions());
+            self.inner.tree = Some(tree);
         }
 
         /// Load from a path
@@ -131,24 +156,15 @@ impl_scope! {
             self.core.rect = self.scaling.align_rect(rect, scale_factor);
             let size: (u32, u32) = self.core.rect.size.cast();
 
-            let pm_size = self.pixmap.as_ref().map(|pm| (pm.width(), pm.height()));
-            if pm_size.unwrap_or((0, 0)) != size {
+            if self.inner.size() != size {
                 if let Some(handle) = self.image.take() {
                     mgr.draw_shared().image_free(handle);
                 }
-                self.pixmap = Pixmap::new(size.0, size.1);
-                if let Some(tree) = self.tree.as_ref() {
-                    self.image = self.pixmap.as_mut().map(|pm| {
-                        let (w, h) = (pm.width(), pm.height());
-
-                        let transform = Transform::identity();
-                        resvg::render(tree, usvg::FitTo::Size(w, h), transform, pm.as_mut());
-
-                        let handle = mgr.draw_shared().image_alloc((w, h)).unwrap();
-                        mgr.draw_shared()
-                            .image_upload(&handle, pm.data(), ImageFormat::Rgba8);
-                        handle
-                    });
+                if let Some((size, data)) = self.inner.resize(size.0, size.1) {
+                    let handle = mgr.draw_shared().image_alloc(size).unwrap();
+                    mgr.draw_shared()
+                        .image_upload(&handle, data, ImageFormat::Rgba8);
+                    self.image = Some(handle);
                 }
             }
         }
