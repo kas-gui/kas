@@ -545,12 +545,19 @@ impl<'a> EventMgr<'a> {
             }
 
             if !disabled {
-                response |= widget.pre_handle_event(self, event)
+                response |= widget.pre_handle_event(self, event);
+
+                if self.has_msg() {
+                    widget.handle_message(self);
+                }
             }
 
             return response;
         } else {
             response = widget.steal_event(self, &id, &event);
+            if self.has_msg() {
+                widget.handle_message(self);
+            }
             if response.is_used() {
                 return response;
             } else if self.scroll != Scroll::None || !self.messages.is_empty() {
@@ -575,7 +582,8 @@ impl<'a> EventMgr<'a> {
 
             if matches!(response, Response::Unused) {
                 response = widget.handle_unused(self, event);
-            } else if self.has_msg() {
+            }
+            if self.has_msg() {
                 widget.handle_message(self);
             }
         } else {
@@ -609,6 +617,7 @@ impl<'a> EventMgr<'a> {
             }
         } else if id == widget.id_ref() {
             self.messages.push(msg);
+            widget.handle_message(self);
         } else {
             log::warn!(
                 "replay_recurse: Widget {} cannot find path to {id}",

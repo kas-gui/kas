@@ -84,9 +84,7 @@ impl_scope! {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(Command::DelBack) => {
-                    if self.calc.handle(Key::DelBack) {
-                        *mgr |= self.display.set_string(self.calc.display());
-                    }
+                    mgr.push(Key::DelBack);
                     Response::Used
                 }
                 _ => Response::Unused,

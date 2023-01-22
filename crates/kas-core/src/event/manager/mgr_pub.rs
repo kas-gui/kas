@@ -528,14 +528,20 @@ impl<'a> EventMgr<'a> {
     /// The message is first type-erased by wrapping with [`Erased`],
     /// then pushed to the stack.
     ///
-    /// See also [`EventMgr::try_observe_msg`], `EventMgr::try_pop_msg`].
+    /// The message may be [popped](EventMgr::try_pop_msg) or
+    /// [observed](EventMgr::try_observe_msg) from [`Widget::handle_message`]
+    /// by the widget itself, its parent, or any ancestor.
     pub fn push<M: Debug + 'static>(&mut self, msg: M) {
         self.push_erased(Erased::new(msg));
     }
 
     /// Push a type-erased message to the stack
     ///
-    /// See also [`EventMgr::try_observe_msg`], `EventMgr::try_pop_msg`].
+    /// This is a lower-level variant of [`Self::push`].
+    ///
+    /// The message may be [popped](EventMgr::try_pop_msg) or
+    /// [observed](EventMgr::try_observe_msg) from [`Widget::handle_message`]
+    /// by the widget itself, its parent, or any ancestor.
     pub fn push_erased(&mut self, msg: Erased) {
         self.messages.push(msg);
     }

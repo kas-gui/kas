@@ -715,23 +715,8 @@ impl_scope! {
                                 }
                             }
 
-                            match self.sel_mode {
-                                SelectionMode::None => (),
-                                SelectionMode::Single => {
-                                    mgr.redraw(self.id());
-                                    self.selection.clear();
-                                    self.selection.insert(key.clone());
-                                    mgr.push(SelectionMsg::Select(key.clone()));
-                                }
-                                SelectionMode::Multiple => {
-                                    mgr.redraw(self.id());
-                                    if self.selection.remove(key) {
-                                        mgr.push(SelectionMsg::Deselect(key.clone()));
-                                    } else {
-                                        self.selection.insert(key.clone());
-                                        mgr.push(SelectionMsg::Select(key.clone()));
-                                    }
-                                }
+                            if !matches!(self.sel_mode, SelectionMode::None) {
+                                mgr.push(SelectMsg);
                             }
                         }
                         return Response::Used;
@@ -836,14 +821,19 @@ impl_scope! {
         }
 
         fn handle_message(&mut self, mgr: &mut EventMgr) {
-            let index = mgr.last_child().expect("message not sent from self");
-            let w = &mut self.widgets[index];
-            let key = match w.key.clone() {
-                Some(k) => k,
-                None => return,
-            };
+            let key;
+            if let Some(index) = mgr.last_child() {
+                let w = &mut self.widgets[index];
+                key = match w.key.clone() {
+                    Some(k) => k,
+                    None => return,
+                };
 
-            self.driver.on_message(mgr, &mut w.widget, &self.data, &key);
+                self.driver.on_message(mgr, &mut w.widget, &self.data, &key);
+            } else {
+                // Message is from self
+                key = self.press_target.clone().unwrap();
+            }
 
             if let Some(SelectMsg) = mgr.try_pop_msg() {
                 match self.sel_mode {
