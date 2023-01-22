@@ -480,8 +480,10 @@ impl<'a> EventMgr<'a> {
     /// event-handling interactions: the ability to steal events and handle
     /// unused events, to handle messages and to react to scroll actions.
     ///
-    /// Messages may be left on the stack after this returns and scroll state
-    /// may be adjusted.
+    /// This method may be called from event handlers. It is implementation
+    /// defined whether the event is sent immediately or later, thus it may
+    /// or may not be observed by the caller that messages are left on the stack
+    /// and scroll state is adjusted.
     ///
     /// When calling this method, be aware that:
     ///
@@ -492,33 +494,19 @@ impl<'a> EventMgr<'a> {
     ///     (TODO: do we need another method to find this target?)
     /// -   Some events such as [`Event::PressMove`] contain embedded widget
     ///     identifiers which may affect handling of the event.
-    pub fn send(&mut self, widget: &mut dyn Widget, mut id: WidgetId, event: Event) -> Response {
-        log::trace!(target: "kas_core::event::manager", "send: id={id}: {event:?}");
-
-        // TODO(opt): we should be able to use binary search here
-        let mut disabled = false;
-        if !event.pass_when_disabled() {
-            for d in &self.disabled {
-                if d.is_ancestor_of(&id) {
-                    id = d.clone();
-                    disabled = true;
-                }
+    pub fn send(&mut self, widget: &mut dyn Widget, id: WidgetId, event: Event) {
+        if matches!(self.scroll, Scroll::None | Scroll::Scrolled) && self.messages.is_empty() {
+            // Safe to send immediately, except from steal_event when responding
+            // Unused (hence noted possible panic in that method)!
+            let scroll = std::mem::take(&mut self.scroll);
+            self.send_event(widget, id, event);
+            if self.scroll == Scroll::None {
+                self.scroll = scroll;
             }
-            if disabled {
-                log::trace!(target: "kas_core::event::manager", "target is disabled; sending to ancestor {id}");
-            }
+        } else {
+            // Possibly not safe: send later.
+            self.pending.push_back(Pending::Send(id, event));
         }
-
-        self.scroll = Scroll::None;
-        self.send_recurse(widget, id, disabled, event)
-    }
-
-    /// Replay a message as if it was pushed by `id`
-    pub(super) fn replay(&mut self, widget: &mut dyn Widget, id: WidgetId, msg: Erased) {
-        log::trace!(target: "kas_core::event::manager", "replay: id={id}: {msg:?}");
-
-        self.scroll = Scroll::None;
-        self.replay_recurse(widget, id, msg);
     }
 
     /// Push a message to the stack

@@ -528,9 +528,13 @@ pub trait Widget: WidgetChildren + Layout {
 
     /// Potentially steal an event before it reaches a child
     ///
-    /// This is called on each widget visited (excluding the target) while
-    /// sending an event.
+    /// This is called during downward traversal (see [`Widget::handle_event`]).
     /// If this returns [`Response::Used`], the event is not sent further.
+    ///
+    /// May cause a panic if this method returns [`Response::Unused`] but does
+    /// affect `mgr` (e.g. by calling [`EventMgr::set_scroll`] or leaving a
+    /// message on the stack, possibly from [`EventMgr::send`]).
+    /// This is considered a corner-case and not currently supported.
     ///
     /// Default implementation: return [`Response::Unused`].
     #[inline]

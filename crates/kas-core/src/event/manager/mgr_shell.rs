@@ -240,6 +240,7 @@ impl EventState {
                 }
                 Pending::LostCharFocus(id) => (id, Event::LostCharFocus),
                 Pending::LostSelFocus(id) => (id, Event::LostSelFocus),
+                Pending::Send(id, event) => (id, event),
             };
             mgr.send_event(widget, id, event);
         }

@@ -157,7 +157,8 @@ impl_scope! {
                                 return Response::Used;
                             }
                         } else if self.popup_id.is_some() && self.popup.is_ancestor_of(&id) {
-                            return mgr.send(self, id, Event::Command(Command::Activate));
+                            mgr.send(self, id, Event::Command(Command::Activate));
+                            return Response::Used;
                         }
                     }
                     if let Some(id) = self.popup_id {

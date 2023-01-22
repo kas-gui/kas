@@ -125,6 +125,7 @@ enum Pending {
     LostMouseHover(WidgetId),
     LostCharFocus(WidgetId),
     LostSelFocus(WidgetId),
+    Send(WidgetId, Event),
 }
 
 type AccelLayer = (bool, HashMap<VirtualKeyCode, WidgetId>);
@@ -390,9 +391,7 @@ impl<'a> DerefMut for EventMgr<'a> {
 
 impl<'a> Drop for EventMgr<'a> {
     fn drop(&mut self) {
-        for msg in self.messages.drain(..) {
-            log::warn!(target: "kas_core::event", "unhandled: {msg:?}");
-        }
+        self.drop_messages();
     }
 }
 
@@ -517,6 +516,12 @@ impl<'a> EventMgr<'a> {
         }
     }
 
+    fn drop_messages(&mut self) {
+        for msg in self.messages.drain(..) {
+            log::warn!(target: "kas_core::event::manager", "unhandled: {msg:?}");
+        }
+    }
+
     // Traverse widget tree by recursive call to a specific target
     //
     // If `disabled`, widget `id` does not receive the `event`. Widget `id` is
@@ -541,9 +546,18 @@ impl<'a> EventMgr<'a> {
             if !disabled {
                 response |= widget.pre_handle_event(self, event)
             }
-        } else if widget.steal_event(self, &id, &event) == Response::Used {
-            response = Response::Used;
-        } else if let Some(index) = widget.find_child_index(&id) {
+
+            return response;
+        } else {
+            response = widget.steal_event(self, &id, &event);
+            if response.is_used() {
+                return response;
+            } else if self.scroll != Scroll::None || !self.messages.is_empty() {
+                panic!("steal_event affected EventMgr and returned Unused");
+            }
+        }
+
+        if let Some(index) = widget.find_child_index(&id) {
             let translation = widget.translation();
             if let Some(w) = widget.get_child_mut(index) {
                 response = self.send_recurse(w, id, disabled, event.clone() + translation);
@@ -600,6 +614,17 @@ impl<'a> EventMgr<'a> {
         }
     }
 
+    /// Replay a message as if it was pushed by `id`
+    fn replay(&mut self, widget: &mut dyn Widget, id: WidgetId, msg: Erased) {
+        debug_assert!(self.scroll == Scroll::None);
+        debug_assert!(self.messages.is_empty());
+        log::trace!(target: "kas_core::event::manager", "replay: id={id}: {msg:?}");
+
+        self.replay_recurse(widget, id, msg);
+        self.drop_messages();
+        self.scroll = Scroll::None;
+    }
+
     // Traverse widget tree by recursive call, broadcasting
     #[inline]
     fn send_update(&mut self, widget: &mut dyn Widget, id: UpdateId, payload: u64) -> usize {
@@ -621,13 +646,44 @@ impl<'a> EventMgr<'a> {
 
         let mut count = 0;
         inner(self, widget, &mut count, id, payload);
+        if !self.messages.is_empty() {
+            log::error!(target: "kas_core::event::manager", "message(s) sent when handling Event::Update");
+            self.drop_messages();
+        }
+        self.scroll = Scroll::None;
         count
     }
 
     // Wrapper around Self::send; returns true when event is used
     #[inline]
     fn send_event(&mut self, widget: &mut dyn Widget, id: WidgetId, event: Event) -> bool {
-        self.send(widget, id, event) == Response::Used
+        let used = self.send_event_impl(widget, id, event);
+        self.drop_messages();
+        self.scroll = Scroll::None;
+        used
+    }
+
+    // Send an event; possibly leave messages on the stack
+    fn send_event_impl(&mut self, widget: &mut dyn Widget, mut id: WidgetId, event: Event) -> bool {
+        debug_assert!(self.scroll == Scroll::None);
+        debug_assert!(self.messages.is_empty());
+        log::trace!(target: "kas_core::event::manager", "send_event: id={id}: {event:?}");
+
+        // TODO(opt): we should be able to use binary search here
+        let mut disabled = false;
+        if !event.pass_when_disabled() {
+            for d in &self.disabled {
+                if d.is_ancestor_of(&id) {
+                    id = d.clone();
+                    disabled = true;
+                }
+            }
+            if disabled {
+                log::trace!(target: "kas_core::event::manager", "target is disabled; sending to ancestor {id}");
+            }
+        }
+
+        self.send_recurse(widget, id, disabled, event) == Response::Used
     }
 
     fn send_popup_first(&mut self, widget: &mut dyn Widget, id: Option<WidgetId>, event: Event) {
@@ -637,9 +693,8 @@ impl<'a> EventMgr<'a> {
             .map(|(wid, p, _)| (*wid, p.parent.clone()))
         {
             log::trace!("send_popup_first: parent={parent}: {event:?}");
-            match self.send(widget, parent, event.clone()) {
-                Response::Unused => (),
-                _ => return,
+            if self.send_event(widget, parent, event.clone()) {
+                return;
             }
             self.close_window(wid, false);
         }

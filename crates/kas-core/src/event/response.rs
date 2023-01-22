@@ -56,10 +56,11 @@ impl std::ops::BitOrAssign for Response {
 }
 
 /// Request to / notification of scrolling from a child
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
 #[must_use]
 pub enum Scroll {
     /// No scrolling
+    #[default]
     None,
     /// Child has scrolled; no further scrolling needed
     ///
