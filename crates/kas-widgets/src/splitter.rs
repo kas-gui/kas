@@ -246,7 +246,8 @@ impl_scope! {
             self.id_map.clear();
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
+        fn handle_message(&mut self, mgr: &mut EventMgr) {
+            let index = mgr.last_child().expect("message not sent from self");
             if (index & 1) == 1 {
                 if let Some(GripMsg::PressMove(offset)) = mgr.try_pop_msg() {
                     let n = index >> 1;

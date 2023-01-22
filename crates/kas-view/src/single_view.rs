@@ -152,7 +152,7 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+        fn handle_message(&mut self, mgr: &mut EventMgr) {
             self.driver
                 .on_message(mgr, &mut self.child, &self.data, &());
         }

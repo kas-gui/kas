@@ -50,7 +50,7 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+        fn handle_message(&mut self, mgr: &mut EventMgr) {
             if let Some(msg) = mgr.try_pop_msg() {
                 mgr.push((self.map)(msg));
             }

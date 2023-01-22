@@ -354,7 +354,7 @@ impl_scope! {
             Response::Used
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+        fn handle_message(&mut self, mgr: &mut EventMgr) {
             if let Some(ValueMsg(value)) = mgr.try_pop_msg() {
                 if let Some(ref f) = self.on_change {
                     f(mgr, value);

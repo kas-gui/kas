@@ -511,20 +511,15 @@ pub fn widget(mut args: WidgetArgs, scope: &mut Scope) -> Result<()> {
             fn handle_unused(
                 &mut self,
                 mgr: &mut ::kas::event::EventMgr,
-                index: usize,
                 event: ::kas::event::Event,
             ) -> ::kas::event::Response {
-                self.#inner.handle_unused(mgr, index, event)
+                self.#inner.handle_unused(mgr, event)
             }
         };
         let handle_message = quote! {
             #[inline]
-            fn handle_message(
-                &mut self,
-                mgr: &mut ::kas::event::EventMgr,
-                index: usize,
-            ) {
-                self.#inner.handle_message(mgr, index);
+            fn handle_message(&mut self, mgr: &mut ::kas::event::EventMgr) {
+                self.#inner.handle_message(mgr);
             }
         };
         let handle_scroll = quote! {

@@ -373,6 +373,7 @@ pub struct EventMgr<'a> {
     state: &'a mut EventState,
     shell: &'a mut dyn ShellWindow,
     messages: Vec<Erased>,
+    last_child: Option<usize>,
     scroll: Scroll,
     action: Action,
 }
@@ -561,6 +562,7 @@ impl<'a> EventMgr<'a> {
             let translation = widget.translation();
             if let Some(w) = widget.get_child_mut(index) {
                 response = self.send_recurse(w, id, disabled, event.clone() + translation);
+                self.last_child = Some(index);
                 if self.scroll != Scroll::None {
                     widget.handle_scroll(self, self.scroll);
                 }
@@ -572,9 +574,9 @@ impl<'a> EventMgr<'a> {
             }
 
             if matches!(response, Response::Unused) {
-                response = widget.handle_unused(self, index, event);
+                response = widget.handle_unused(self, event);
             } else if self.has_msg() {
-                widget.handle_message(self, index);
+                widget.handle_message(self);
             }
         } else {
             log::warn!(
@@ -591,6 +593,7 @@ impl<'a> EventMgr<'a> {
         if let Some(index) = widget.find_child_index(&id) {
             if let Some(w) = widget.get_child_mut(index) {
                 self.replay_recurse(w, id, msg);
+                self.last_child = Some(index);
                 if self.scroll != Scroll::None {
                     widget.handle_scroll(self, self.scroll);
                 }
@@ -602,7 +605,7 @@ impl<'a> EventMgr<'a> {
             }
 
             if self.has_msg() {
-                widget.handle_message(self, index);
+                widget.handle_message(self);
             }
         } else if id == widget.id_ref() {
             self.messages.push(msg);
@@ -617,11 +620,13 @@ impl<'a> EventMgr<'a> {
     /// Replay a message as if it was pushed by `id`
     fn replay(&mut self, widget: &mut dyn Widget, id: WidgetId, msg: Erased) {
         debug_assert!(self.scroll == Scroll::None);
+        debug_assert!(self.last_child.is_none());
         debug_assert!(self.messages.is_empty());
         log::trace!(target: "kas_core::event::manager", "replay: id={id}: {msg:?}");
 
         self.replay_recurse(widget, id, msg);
         self.drop_messages();
+        self.last_child = None;
         self.scroll = Scroll::None;
     }
 
@@ -659,6 +664,7 @@ impl<'a> EventMgr<'a> {
     fn send_event(&mut self, widget: &mut dyn Widget, id: WidgetId, event: Event) -> bool {
         let used = self.send_event_impl(widget, id, event);
         self.drop_messages();
+        self.last_child = None;
         self.scroll = Scroll::None;
         used
     }
@@ -666,6 +672,7 @@ impl<'a> EventMgr<'a> {
     // Send an event; possibly leave messages on the stack
     fn send_event_impl(&mut self, widget: &mut dyn Widget, mut id: WidgetId, event: Event) -> bool {
         debug_assert!(self.scroll == Scroll::None);
+        debug_assert!(self.last_child.is_none());
         debug_assert!(self.messages.is_empty());
         log::trace!(target: "kas_core::event::manager", "send_event: id={id}: {event:?}");
 

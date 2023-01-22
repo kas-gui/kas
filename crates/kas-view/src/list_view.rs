@@ -788,13 +788,14 @@ impl_scope! {
             r
         }
 
-        fn handle_unused(&mut self, mgr: &mut EventMgr, index: usize, event: Event) -> Response {
+        fn handle_unused(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             if let Event::PressStart { source, coord, .. } = event {
                 if source.is_primary() {
                     // We request a grab with our ID, hence the
                     // PressMove/PressEnd events are matched in handle_event().
                     mgr.grab_press_unique(self.id(), source, coord, None);
                     self.press_phase = PressPhase::Start(coord);
+                    let index = mgr.last_child().unwrap();
                     self.press_target = self.widgets[index].key.clone();
                     Response::Used
                 } else {
@@ -805,7 +806,8 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
+        fn handle_message(&mut self, mgr: &mut EventMgr) {
+            let index = mgr.last_child().expect("message not sent from self");
             let w = &mut self.widgets[index];
             let key = match w.key.clone() {
                 Some(k) => k,

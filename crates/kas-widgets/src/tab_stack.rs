@@ -93,7 +93,7 @@ impl_scope! {
             kas::util::nav_next(reverse, from, self.num_children())
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+        fn handle_message(&mut self, mgr: &mut EventMgr) {
             if let Some(MsgSelectIndex(index)) = mgr.try_pop_msg() {
                 mgr.config_mgr(|mgr| self.set_active(mgr, index));
             }

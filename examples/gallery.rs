@@ -99,7 +99,7 @@ fn widgets() -> Box<dyn SetDisabled> {
                 SingleView::new(SharedRc::new("Use button to edit →".to_string())),
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            fn handle_message(&mut self, mgr: &mut EventMgr) {
                 if let Some(MsgEdit) = mgr.try_pop_msg() {
                     let text = self.label.data().clone();
                     let window = dialog::TextEdit::new("Edit text", true, text);
@@ -179,9 +179,9 @@ fn widgets() -> Box<dyn SetDisabled> {
             #[widget] pu = popup_edit_box,
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
+            fn handle_message(&mut self, mgr: &mut EventMgr) {
                 if let Some(ScrollMsg(value)) = mgr.try_pop_msg() {
-                    if index == widget_index![self.sc] {
+                    if mgr.last_child() == Some(widget_index![self.sc]) {
                         let ratio = value as f32 / self.sc.max_value() as f32;
                         *mgr |= self.pg.set_value(ratio);
                         mgr.push(Item::Scroll(value))
@@ -256,7 +256,7 @@ Demonstration of *as-you-type* formatting from **Markdown**.
                 ScrollLabel::new(Markdown::new(doc).unwrap()),
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            fn handle_message(&mut self, mgr: &mut EventMgr) {
                 if let Some(MsgDirection) = mgr.try_pop_msg() {
                     self.dir = match self.dir {
                         Direction::Up => Direction::Right,
@@ -327,7 +327,7 @@ fn filter_list() -> Box<dyn SetDisabled> {
                 ScrollBars::new(MyListView::new(filtered))
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            fn handle_message(&mut self, mgr: &mut EventMgr) {
                 if let Some(mode) = mgr.try_pop_msg() {
                     *mgr |= self.list.set_selection_mode(mode);
                 } else if let Some(msg) = mgr.try_pop_msg::<SelectionMsg<usize>>() {
@@ -556,7 +556,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .with_title("Confi&g", config(shell.event_config().clone())),
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            fn handle_message(&mut self, mgr: &mut EventMgr) {
                 if let Some(msg) = mgr.try_pop_msg::<Menu>() {
                     match msg {
                         Menu::Theme(name) => {

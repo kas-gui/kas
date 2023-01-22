@@ -121,6 +121,7 @@ impl EventState {
             state: self,
             shell,
             messages: vec![],
+            last_child: None,
             scroll: Scroll::None,
             action: Action::empty(),
         };
@@ -143,6 +144,7 @@ impl EventState {
             state: self,
             shell,
             messages: vec![],
+            last_child: None,
             scroll: Scroll::None,
             action: Action::empty(),
         };

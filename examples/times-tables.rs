@@ -85,8 +85,8 @@ fn main() -> kas::shell::Result<()> {
             #[widget] table: ScrollBars<MatrixView<TableData, driver::NavView>> = table,
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
-                if index == widget_index![self.max] {
+            fn handle_message(&mut self, mgr: &mut EventMgr) {
+                if mgr.last_child() == Some(widget_index![self.max]) {
                     if let Some(max) = mgr.try_pop_msg::<usize>() {
                         let data = self.table.data_mut();
                         if data.1 != max {

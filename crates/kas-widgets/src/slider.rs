@@ -342,7 +342,7 @@ impl_scope! {
             Response::Used
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+        fn handle_message(&mut self, mgr: &mut EventMgr) {
             match mgr.try_pop_msg() {
                 Some(GripMsg::PressStart) => mgr.set_nav_focus(self.id(), false),
                 Some(GripMsg::PressMove(pos)) => {

@@ -545,10 +545,12 @@ pub trait Widget: WidgetChildren + Layout {
 
     /// Handle an event sent to child `index` but left unhandled
     ///
+    /// [`EventMgr::last_child`] may be called to find the original target,
+    /// and should never return [`None`] (when called from this method).
+    ///
     /// Default implementation: call [`Self::handle_event`] with `event`.
     #[inline]
-    fn handle_unused(&mut self, mgr: &mut EventMgr, index: usize, event: Event) -> Response {
-        let _ = index;
+    fn handle_unused(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
         self.handle_event(mgr, event)
     }
 
@@ -557,10 +559,13 @@ pub trait Widget: WidgetChildren + Layout {
     /// This method is called when a child leaves a message on the stack. *Some*
     /// parent or ancestor widget should read this message.
     ///
+    /// [`EventMgr::last_child`] may be called to find the message's sender,
+    /// and should only return [`None`] if the message was sent by self.
+    ///
     /// The default implementation does nothing.
     #[inline]
-    fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
-        let _ = (mgr, index);
+    fn handle_message(&mut self, mgr: &mut EventMgr) {
+        let _ = mgr;
     }
 
     /// Handler for scrolling
@@ -578,6 +583,9 @@ pub trait Widget: WidgetChildren + Layout {
     /// If the child is in an independent coordinate space, then this method
     /// should call `mgr.set_scroll(Scroll::None)` to avoid any reactions to
     /// child's scroll requests.
+    ///
+    /// [`EventMgr::last_child`] may be called to find the child responsible,
+    /// and should never return [`None`] (when called from this method).
     ///
     /// The default implementation does nothing.
     #[inline]

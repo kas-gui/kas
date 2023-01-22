@@ -472,6 +472,18 @@ impl EventState {
 
 /// Public API
 impl<'a> EventMgr<'a> {
+    /// Get the index of the last child visited
+    ///
+    /// This is only used when unwinding (traversing back up the widget tree),
+    /// and returns the index of the child last visited. E.g. when
+    /// [`Widget::handle_message`] is called, this method returns the index of
+    /// the child which submitted the message (or whose descendant did).
+    /// Otherwise this returns `None` (including when the widget itself is the
+    /// submitter of the message).
+    pub fn last_child(&self) -> Option<usize> {
+        self.last_child
+    }
+
     /// Send an event to a widget
     ///
     /// Sends `event` to widget `id`, where `widget` is either the target `id`
@@ -498,8 +510,10 @@ impl<'a> EventMgr<'a> {
         if matches!(self.scroll, Scroll::None | Scroll::Scrolled) && self.messages.is_empty() {
             // Safe to send immediately, except from steal_event when responding
             // Unused (hence noted possible panic in that method)!
+            let last_child = std::mem::take(&mut self.last_child);
             let scroll = std::mem::take(&mut self.scroll);
             self.send_event(widget, id, event);
+            self.last_child = last_child;
             if self.scroll == Scroll::None {
                 self.scroll = scroll;
             }

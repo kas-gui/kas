@@ -117,8 +117,8 @@ fn main() -> kas::shell::Result<()> {
             n: usize = 3,
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
-                if index == widget_index![self.edit] {
+            fn handle_message(&mut self, mgr: &mut EventMgr) {
+                if mgr.last_child() == Some(widget_index![self.edit]) {
                     if let Some(n) = mgr.try_pop_msg::<usize>() {
                         if n != self.n {
                             self.n = n;
@@ -167,7 +167,7 @@ fn main() -> kas::shell::Result<()> {
             active: usize = 0,
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
+            fn handle_message(&mut self, mgr: &mut EventMgr) {
                 if let Some(control) = mgr.try_pop_msg() {
                     match control {
                         Control::Set(len) => {
