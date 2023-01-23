@@ -573,13 +573,14 @@ impl<'a> EventMgr<'a> {
             // Unused (hence noted possible panic in that method)!
             let last_child = std::mem::take(&mut self.last_child);
             let scroll = std::mem::take(&mut self.scroll);
-            self.send_event(widget, id, event);
+            self.send_event_impl(widget, id, event);
             self.last_child = last_child;
             if self.scroll == Scroll::None {
                 self.scroll = scroll;
             }
         } else {
             // Possibly not safe: send later.
+            log::debug!("queing event for later sending");
             self.pending.push_back(Pending::Send(id, event));
         }
     }
