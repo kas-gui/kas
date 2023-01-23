@@ -211,6 +211,22 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         (action, resume)
     }
 
+    /// Post-draw updates
+    ///
+    /// Returns: time of next scheduled resume.
+    pub(super) fn post_draw(&mut self, shared: &mut SharedState<S, T>) -> Option<Instant> {
+        let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
+        let has_action = self
+            .ev_state
+            .post_draw(&mut tkw, self.widget.as_widget_mut());
+
+        if has_action {
+            self.queued_frame_time = Some(self.next_avail_frame_time);
+        }
+
+        self.next_resume()
+    }
+
     /// Handle an action (excludes handling of CLOSE and EXIT)
     pub(super) fn handle_action(&mut self, shared: &mut SharedState<S, T>, action: Action) {
         if action.contains(Action::RECONFIGURE) {
@@ -391,7 +407,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         Ok(())
     }
 
-    pub(super) fn next_resume(&self) -> Option<Instant> {
+    fn next_resume(&self) -> Option<Instant> {
         match (self.ev_state.next_resume(), self.queued_frame_time) {
             (Some(t1), Some(t2)) => Some(t1.min(t2)),
             (Some(t), None) => Some(t),

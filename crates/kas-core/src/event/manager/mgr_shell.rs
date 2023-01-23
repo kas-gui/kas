@@ -220,27 +220,9 @@ impl EventState {
             mgr.send_event(widget, id, event);
         }
 
-        {
-            // Poll futures last. This means that any newly pushed future should
-            // get polled from the same update() call.
-            let mut i = 0;
-            while i < mgr.state.fut_messages.len() {
-                let (_, fut) = &mut mgr.state.fut_messages[i];
-                let mut cx = std::task::Context::from_waker(mgr.shell.waker());
-                match fut.as_mut().poll(&mut cx) {
-                    Poll::Pending => {
-                        i += 1;
-                    }
-                    Poll::Ready(msg) => {
-                        let (id, _) = mgr.state.fut_messages.remove(i);
-
-                        // Replay message. This could push another future; if it
-                        // does we should poll it immediately to start its work.
-                        mgr.replay(widget, id, msg);
-                    }
-                }
-            }
-        }
+        // Poll futures last. This means that any newly pushed future should
+        // get polled from the same update() call.
+        mgr.poll_futures(widget);
 
         drop(mgr);
 
@@ -249,6 +231,30 @@ impl EventState {
         }
 
         std::mem::take(&mut self.action)
+    }
+
+    /// Update, after drawing
+    ///
+    /// Returns true if action is non-empty
+    #[inline]
+    pub(crate) fn post_draw(
+        &mut self,
+        shell: &mut dyn ShellWindow,
+        widget: &mut dyn Widget,
+    ) -> bool {
+        let mut mgr = EventMgr {
+            state: self,
+            shell,
+            messages: vec![],
+            last_child: None,
+            scroll: Scroll::None,
+        };
+
+        // Widget::draw may add futures; we should poll those now.
+        mgr.poll_futures(widget);
+
+        drop(mgr);
+        !self.action.is_empty()
     }
 }
 
@@ -287,6 +293,26 @@ impl<'a> EventMgr<'a> {
             "update_widgets: sent Event::Update ({id:?}) to {count} widgets in {}μs",
             start.elapsed().as_micros()
         );
+    }
+
+    fn poll_futures(&mut self, widget: &mut dyn Widget) {
+        let mut i = 0;
+        while i < self.state.fut_messages.len() {
+            let (_, fut) = &mut self.state.fut_messages[i];
+            let mut cx = std::task::Context::from_waker(self.shell.waker());
+            match fut.as_mut().poll(&mut cx) {
+                Poll::Pending => {
+                    i += 1;
+                }
+                Poll::Ready(msg) => {
+                    let (id, _) = self.state.fut_messages.remove(i);
+
+                    // Replay message. This could push another future; if it
+                    // does we should poll it immediately to start its work.
+                    self.replay(widget, id, msg);
+                }
+            }
+        }
     }
 
     /// Handle a winit `WindowEvent`.

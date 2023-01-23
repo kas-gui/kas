@@ -261,8 +261,8 @@ where
             RedrawEventsCleared => {
                 if matches!(control_flow, ControlFlow::Wait | ControlFlow::WaitUntil(_)) {
                     self.resumes.clear();
-                    for (window_id, window) in self.windows.iter() {
-                        if let Some(instant) = window.next_resume() {
+                    for (window_id, window) in self.windows.iter_mut() {
+                        if let Some(instant) = window.post_draw(&mut self.shared) {
                             self.resumes.push((instant, *window_id));
                         }
                     }
