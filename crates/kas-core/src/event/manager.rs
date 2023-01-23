@@ -173,7 +173,7 @@ pub struct EventState {
     popup_removed: SmallVec<[(WidgetId, WindowId); 16]>,
     time_updates: Vec<(Instant, WidgetId, u64)>,
     // Set of futures of messages together with id of sending widget
-    fut_messages: Vec<(WidgetId, Pin<Box<dyn Future<Output = Option<Erased>>>>)>,
+    fut_messages: Vec<(WidgetId, Pin<Box<dyn Future<Output = Erased>>>)>,
     // FIFO queue of events pending handling
     pending: VecDeque<Pending>,
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]

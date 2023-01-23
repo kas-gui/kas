@@ -216,8 +216,7 @@ impl EventState {
                 .fut_messages
                 .retain_mut(|(id, fut)| match fut.as_mut().poll(&mut cx) {
                     Poll::Pending => true,
-                    Poll::Ready(None) => false,
-                    Poll::Ready(Some(msg)) => {
+                    Poll::Ready(msg) => {
                         msgs.push((std::mem::take(id), msg));
                         false
                     }

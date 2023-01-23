@@ -554,10 +554,10 @@ impl<'a> EventMgr<'a> {
     // TODO: Can we identify the calling widget `id` via the context (EventMgr)?
     pub fn push_async<Fut, M>(&mut self, id: WidgetId, fut: Fut)
     where
-        Fut: IntoFuture<Output = Option<M>> + 'static,
+        Fut: IntoFuture<Output = M> + 'static,
         M: Debug + 'static,
     {
-        self.push_async_erased(id, async { fut.await.map(Erased::new) });
+        self.push_async_erased(id, async { Erased::new(fut.await) });
     }
 
     /// Push a type-erased message to the stack via a [`Future`]
@@ -565,11 +565,9 @@ impl<'a> EventMgr<'a> {
     /// Expects a future which, on completion, returns a message.
     /// This message is then pushed to the message stack as if it were pushed
     /// with [`Self::push_erased`] from widget `id`.
-    // TODO: Should we use Future<Output = Erased> or Output = Option<Erased>
-    // or Output = Vec<Erased> or Stream/AsyncIterator with Output = Erased?
     pub fn push_async_erased<Fut>(&mut self, id: WidgetId, fut: Fut)
     where
-        Fut: IntoFuture<Output = Option<Erased>> + 'static,
+        Fut: IntoFuture<Output = Erased> + 'static,
     {
         let fut = Box::pin(fut.into_future());
         self.fut_messages.push((id, fut));
@@ -602,7 +600,7 @@ impl<'a> EventMgr<'a> {
     #[cfg_attr(doc_cfg, doc(cfg(feature = "spawn")))]
     pub fn push_spawn<Fut, M>(&mut self, id: WidgetId, fut: Fut)
     where
-        Fut: IntoFuture<Output = Option<M>> + 'static,
+        Fut: IntoFuture<Output = M> + 'static,
         Fut::IntoFuture: Send,
         M: Debug + Send + 'static,
     {
