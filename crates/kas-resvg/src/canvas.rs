@@ -191,7 +191,7 @@ impl_scope! {
                     }
 
                     if let Some(handle) = self.image.as_ref() {
-                        ds.image_upload(&handle, pixmap.data(), ImageFormat::Rgba8);
+                        ds.image_upload(handle, pixmap.data(), ImageFormat::Rgba8);
                     }
                 });
 
