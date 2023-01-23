@@ -468,6 +468,67 @@ impl EventState {
         // Note: this is acted on by EventState::update
         self.hover_icon = icon;
     }
+
+    /// Push a message to the stack via a [`Future`]
+    ///
+    /// Expects a future which, on completion, returns a message.
+    /// This message is then pushed to the message stack as if it were pushed
+    /// with [`Self::push`] from widget `id`.
+    // TODO: Can we identify the calling widget `id` via the context (EventMgr)?
+    pub fn push_async<Fut, M>(&mut self, id: WidgetId, fut: Fut)
+    where
+        Fut: IntoFuture<Output = M> + 'static,
+        M: Debug + 'static,
+    {
+        self.push_async_erased(id, async { Erased::new(fut.await) });
+    }
+
+    /// Push a type-erased message to the stack via a [`Future`]
+    ///
+    /// Expects a future which, on completion, returns a message.
+    /// This message is then pushed to the message stack as if it were pushed
+    /// with [`Self::push_erased`] from widget `id`.
+    pub fn push_async_erased<Fut>(&mut self, id: WidgetId, fut: Fut)
+    where
+        Fut: IntoFuture<Output = Erased> + 'static,
+    {
+        let fut = Box::pin(fut.into_future());
+        self.fut_messages.push((id, fut));
+
+        // TODO: consider polling immediately. Code is easy, but, without an
+        // assertion that this is called from the context of widget `id` we
+        // risk unexpected behaviour!
+        /*
+        use std::task::{Context, Poll};
+
+        let mut cx = Context::from_waker(self.shell.waker());
+
+        match fut.as_mut().poll(&mut cx) {
+            Poll::Pending => self.fut_messages.push((id, fut)),
+            Poll::Ready(None) => (),
+            Poll::Ready(Some(msg)) => self.push_erased_msg(msg),
+        }
+        */
+    }
+
+    /// Spawn a task, run on a thread pool
+    ///
+    /// This method is similar to [`Self::push_async`], except that the future
+    /// is run on a worker thread (appropriate when significant CPU work is
+    /// required).
+    ///
+    /// Uses [`async-global-executor`].
+    /// See crate documentation for configuration.
+    #[cfg(feature = "spawn")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "spawn")))]
+    pub fn push_spawn<Fut, M>(&mut self, id: WidgetId, fut: Fut)
+    where
+        Fut: IntoFuture<Output = M> + 'static,
+        Fut::IntoFuture: Send,
+        M: Debug + Send + 'static,
+    {
+        self.push_async(id, async_global_executor::spawn(fut.into_future()));
+    }
 }
 
 /// Public API
@@ -544,67 +605,6 @@ impl<'a> EventMgr<'a> {
     /// by the widget itself, its parent, or any ancestor.
     pub fn push_erased(&mut self, msg: Erased) {
         self.messages.push(msg);
-    }
-
-    /// Push a message to the stack via a [`Future`]
-    ///
-    /// Expects a future which, on completion, returns a message.
-    /// This message is then pushed to the message stack as if it were pushed
-    /// with [`Self::push`] from widget `id`.
-    // TODO: Can we identify the calling widget `id` via the context (EventMgr)?
-    pub fn push_async<Fut, M>(&mut self, id: WidgetId, fut: Fut)
-    where
-        Fut: IntoFuture<Output = M> + 'static,
-        M: Debug + 'static,
-    {
-        self.push_async_erased(id, async { Erased::new(fut.await) });
-    }
-
-    /// Push a type-erased message to the stack via a [`Future`]
-    ///
-    /// Expects a future which, on completion, returns a message.
-    /// This message is then pushed to the message stack as if it were pushed
-    /// with [`Self::push_erased`] from widget `id`.
-    pub fn push_async_erased<Fut>(&mut self, id: WidgetId, fut: Fut)
-    where
-        Fut: IntoFuture<Output = Erased> + 'static,
-    {
-        let fut = Box::pin(fut.into_future());
-        self.fut_messages.push((id, fut));
-
-        // TODO: consider polling immediately. Code is easy, but, without an
-        // assertion that this is called from the context of widget `id` we
-        // risk unexpected behaviour!
-        /*
-        use std::task::{Context, Poll};
-
-        let mut cx = Context::from_waker(self.shell.waker());
-
-        match fut.as_mut().poll(&mut cx) {
-            Poll::Pending => self.fut_messages.push((id, fut)),
-            Poll::Ready(None) => (),
-            Poll::Ready(Some(msg)) => self.push_erased_msg(msg),
-        }
-        */
-    }
-
-    /// Spawn a task, run on a thread pool
-    ///
-    /// This method is similar to [`Self::push_async`], except that the future
-    /// is run on a worker thread (appropriate when significant CPU work is
-    /// required).
-    ///
-    /// Uses [`async-global-executor`].
-    /// See crate documentation for configuration.
-    #[cfg(feature = "spawn")]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "spawn")))]
-    pub fn push_spawn<Fut, M>(&mut self, id: WidgetId, fut: Fut)
-    where
-        Fut: IntoFuture<Output = M> + 'static,
-        Fut::IntoFuture: Send,
-        M: Debug + Send + 'static,
-    {
-        self.push_async(id, async_global_executor::spawn(fut.into_future()));
     }
 
     /// True if the message stack is non-empty
