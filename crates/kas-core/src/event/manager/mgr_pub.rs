@@ -474,6 +474,8 @@ impl EventState {
     /// Expects a future which, on completion, returns a message.
     /// This message is then pushed to the message stack as if it were pushed
     /// with [`Self::push`] from widget `id`.
+    ///
+    /// The future will be polled before the event loop sleeps.
     // TODO: Can we identify the calling widget `id` via the context (EventMgr)?
     pub fn push_async<Fut, M>(&mut self, id: WidgetId, fut: Fut)
     where
@@ -488,27 +490,14 @@ impl EventState {
     /// Expects a future which, on completion, returns a message.
     /// This message is then pushed to the message stack as if it were pushed
     /// with [`Self::push_erased`] from widget `id`.
+    ///
+    /// The future will be polled before the event loop sleeps.
     pub fn push_async_erased<Fut>(&mut self, id: WidgetId, fut: Fut)
     where
         Fut: IntoFuture<Output = Erased> + 'static,
     {
         let fut = Box::pin(fut.into_future());
         self.fut_messages.push((id, fut));
-
-        // TODO: consider polling immediately. Code is easy, but, without an
-        // assertion that this is called from the context of widget `id` we
-        // risk unexpected behaviour!
-        /*
-        use std::task::{Context, Poll};
-
-        let mut cx = Context::from_waker(self.shell.waker());
-
-        match fut.as_mut().poll(&mut cx) {
-            Poll::Pending => self.fut_messages.push((id, fut)),
-            Poll::Ready(None) => (),
-            Poll::Ready(Some(msg)) => self.push_erased_msg(msg),
-        }
-        */
     }
 
     /// Spawn a task, run on a thread pool
@@ -516,6 +505,8 @@ impl EventState {
     /// This method is similar to [`Self::push_async`], except that the future
     /// is run on a worker thread (appropriate when significant CPU work is
     /// required).
+    ///
+    /// The future will be spawned before the event loop sleeps.
     ///
     /// Uses [`async-global-executor`].
     /// See crate documentation for configuration.

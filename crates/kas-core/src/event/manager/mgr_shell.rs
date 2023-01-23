@@ -14,7 +14,7 @@ use crate::cast::traits::*;
 use crate::geom::{Coord, DVec2};
 use crate::model::SharedRc;
 use crate::shell::ShellWindow;
-use crate::{Action, Erased, Widget, WidgetId};
+use crate::{Action, Widget, WidgetId};
 
 // TODO: this should be configurable or derived from the system
 const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
@@ -206,27 +206,6 @@ impl EventState {
             }
         }
 
-        {
-            // Poll futures. Any wake causes poll of all futures.
-            // We "replay" messages from the viewpoint of the sending widget.
-            let mut msgs: Vec<(WidgetId, Erased)> = vec![];
-
-            let mut cx = std::task::Context::from_waker(mgr.shell.waker());
-            mgr.state
-                .fut_messages
-                .retain_mut(|(id, fut)| match fut.as_mut().poll(&mut cx) {
-                    Poll::Pending => true,
-                    Poll::Ready(msg) => {
-                        msgs.push((std::mem::take(id), msg));
-                        false
-                    }
-                });
-
-            for (id, msg) in msgs.drain(..) {
-                mgr.replay(widget, id, msg);
-            }
-        }
-
         // Warning: infinite loops are possible here if widgets always queue a
         // new pending event when evaluating one of these:
         while let Some(item) = mgr.pending.pop_front() {
@@ -244,6 +223,28 @@ impl EventState {
                 Pending::Send(id, event) => (id, event),
             };
             mgr.send_event(widget, id, event);
+        }
+
+        {
+            // Poll futures last. This means that any newly pushed future should
+            // get polled from the same update() call.
+            let mut i = 0;
+            while i < mgr.state.fut_messages.len() {
+                let (_, fut) = &mut mgr.state.fut_messages[i];
+                let mut cx = std::task::Context::from_waker(mgr.shell.waker());
+                match fut.as_mut().poll(&mut cx) {
+                    Poll::Pending => {
+                        i += 1;
+                    }
+                    Poll::Ready(msg) => {
+                        let (id, _) = mgr.state.fut_messages.remove(i);
+
+                        // Replay message. This could push another future; if it
+                        // does we should poll it immediately to start its work.
+                        mgr.replay(widget, id, msg);
+                    }
+                }
+            }
         }
 
         let action = mgr.action;
