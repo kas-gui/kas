@@ -420,7 +420,7 @@ fn canvas() -> Box<dyn SetDisabled> {
     Box::new(singleton! {
         #[widget{
             layout = column: [
-                Label::new("Animated canvas demo (CPU-rendered, async)."),
+                Label::new("Animated canvas demo (CPU-rendered, async). Note: scheduling is broken on X11."),
                 self.canvas,
             ];
         }]

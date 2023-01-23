@@ -175,12 +175,11 @@ impl_scope! {
         fn handle_message(&mut self, mgr: &mut EventMgr) {
             if let Some((mut program, mut pixmap)) = mgr.try_pop::<(P, Pixmap)>() {
                 debug_assert!(matches!(self.inner, State::Rendering));
-                let (w, h) = (pixmap.width(), pixmap.height());
-                let size = Size::conv((w, h));
+                let size = (pixmap.width(), pixmap.height());
 
                 mgr.draw_shared(|ds| {
                     if let Some(im_size) = self.image.as_ref().and_then(|h| ds.image_size(h)) {
-                        if im_size != size {
+                        if im_size != Size::conv(size) {
                             if let Some(handle) = self.image.take() {
                                 ds.image_free(handle);
                             }
@@ -188,7 +187,7 @@ impl_scope! {
                     }
 
                     if self.image.is_none() {
-                        self.image = ds.image_alloc((w, h)).ok();
+                        self.image = ds.image_alloc(size).ok();
                     }
 
                     if let Some(handle) = self.image.as_ref() {
@@ -200,10 +199,11 @@ impl_scope! {
                 let mut need_redraw = program.need_redraw();
                 mgr.redraw(self.id());
 
-                if self.rect().size != size {
+                let rect_size: (u32, u32) = self.rect().size.cast();
+                if rect_size != size {
                     // Possible if a redraw was in progress when set_rect was called
 
-                    pixmap = if let Some(px) = Pixmap::new(w, h) {
+                    pixmap = if let Some(px) = Pixmap::new(rect_size.0, rect_size.1) {
                         px
                     } else {
                         self.inner = State::Initial(program);
