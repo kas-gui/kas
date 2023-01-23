@@ -411,9 +411,9 @@ fn canvas() -> Box<dyn SetDisabled> {
             pixmap.fill_path(&path, &paint, FillRule::Winding, scale, None);
         }
 
-        fn do_redraw_animate(&mut self) -> (bool, bool) {
+        fn need_redraw(&mut self) -> bool {
             // Set false to disable animation
-            (true, true)
+            true
         }
     }
 

@@ -8,10 +8,14 @@
 use kas::draw::{ImageFormat, ImageHandle};
 use kas::layout::{LogicalSize, PixmapScaling};
 use kas::prelude::*;
+use std::future::Future;
 use tiny_skia::{Color, Pixmap};
 
 /// Draws to a [`Canvas`]'s [`Pixmap`]
-pub trait CanvasProgram: std::fmt::Debug + 'static {
+///
+/// Note: the value is sometimes moved between threads, hence [`Send`] bound.
+/// If the type is large it should be boxed.
+pub trait CanvasProgram: std::fmt::Debug + Send + 'static {
     /// Draw image
     ///
     /// This method should draw an image to the canvas. It is called when the
@@ -19,15 +23,53 @@ pub trait CanvasProgram: std::fmt::Debug + 'static {
     /// when requested by [`CanvasProgram::do_redraw_animate`].
     fn draw(&mut self, pixmap: &mut Pixmap);
 
-    /// On draw
+    /// This method is called after each draw completes. If it returns `true`
+    /// a redraw is scheduled.
     ///
-    /// This is called just before each time the [`Canvas`] widget is drawn,
-    /// and returns a tuple, `(redraw, animate)`:
+    /// TODO: how to animate with limited framerate?
     ///
-    /// -   if `redraw`, then [`Self::draw`] is called
-    /// -   if `animate`, then a new animation frame is requested after this one
-    fn do_redraw_animate(&mut self) -> (bool, bool) {
-        (false, false)
+    /// The default implementation returns `false`.
+    fn need_redraw(&mut self) -> bool {
+        false
+    }
+}
+
+async fn draw<P: CanvasProgram>(mut program: P, mut pixmap: Pixmap) -> (P, Pixmap) {
+    pixmap.fill(Color::TRANSPARENT);
+    program.draw(&mut pixmap);
+    (program, pixmap)
+}
+
+#[derive(Clone)]
+enum State<P: CanvasProgram> {
+    Initial(P),
+    Rendering,
+    Ready(P, Pixmap),
+}
+
+impl<P: CanvasProgram> State<P> {
+    /// Resize if required, redrawing on resize
+    ///
+    /// Returns a future to redraw. Does nothing if currently redrawing.
+    fn resize(&mut self, (w, h): (u32, u32)) -> Option<impl Future<Output = (P, Pixmap)>> {
+        let old_state = std::mem::replace(self, State::Rendering);
+        let (program, pixmap) = match old_state {
+            State::Ready(p, px) if (px.width(), px.height()) == (w, h) => {
+                *self = State::Ready(p, px);
+                return None;
+            }
+            State::Rendering => return None,
+            State::Initial(p) | State::Ready(p, _) => {
+                if let Some(px) = Pixmap::new(w, h) {
+                    (p, px)
+                } else {
+                    *self = State::Initial(p);
+                    return None;
+                }
+            }
+        };
+
+        Some(draw(program, pixmap))
     }
 }
 
@@ -46,15 +88,14 @@ impl_scope! {
     /// The canvas (re)creates the backing pixmap when the size is set and draws
     /// to the new pixmap immediately. If the canvas program is modified then
     /// [`Canvas::redraw`] must be called to update the pixmap.
-    #[derive(Clone, Debug)]
+    #[autoimpl(Debug ignore self.inner)]
+    #[derive(Clone)]
     #[widget]
     pub struct Canvas<P: CanvasProgram> {
         core: widget_core!(),
         scaling: PixmapScaling,
-        pixmap: Option<Pixmap>,
+        inner: State<P>,
         image: Option<ImageHandle>,
-        /// The program drawing to the canvas
-        pub program: P,
     }
 
     impl Self {
@@ -70,9 +111,8 @@ impl_scope! {
             Canvas {
                 core: Default::default(),
                 scaling,
-                pixmap: None,
+                inner: State::Initial(program),
                 image: None,
-                program,
             }
         }
 
@@ -107,21 +147,6 @@ impl_scope! {
             // NOTE: if only `aspect` is changed, REDRAW is enough
             Action::RESIZE
         }
-
-        /// Redraw immediately
-        ///
-        /// Other than this, the canvas is only drawn when the backing pixmap is
-        /// (re)created: on start and on resizing.
-        ///
-        /// This method does nothing before a backing pixmap has been created.
-        pub fn redraw(&mut self, mgr: &mut ConfigMgr) {
-            if let Some((pm, h)) = self.pixmap.as_mut().zip(self.image.as_ref()) {
-                pm.fill(Color::TRANSPARENT);
-                self.program.draw(pm);
-                mgr.draw_shared()
-                    .image_upload(h, pm.data(), ImageFormat::Rgba8);
-            }
-        }
     }
 
     impl Layout for Self {
@@ -132,36 +157,66 @@ impl_scope! {
         fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
             let scale_factor = mgr.size_mgr().scale_factor();
             self.core.rect = self.scaling.align_rect(rect, scale_factor);
-            let size: (u32, u32) = self.core.rect.size.cast();
+            let size = self.core.rect.size.cast();
 
-            let pm_size = self.pixmap.as_ref().map(|pm| (pm.width(), pm.height()));
-            if pm_size.unwrap_or((0, 0)) != size {
-                if let Some(handle) = self.image.take() {
-                    mgr.draw_shared().image_free(handle);
-                }
-                self.pixmap = Pixmap::new(size.0, size.1);
-                let program = &mut self.program;
-                self.image = self.pixmap.as_mut().map(|pm| {
-                    program.draw(pm);
-                    let (w, h) = (pm.width(), pm.height());
-                    let handle = mgr.draw_shared().image_alloc((w, h)).unwrap();
-                    mgr.draw_shared()
-                        .image_upload(&handle, pm.data(), ImageFormat::Rgba8);
-                    handle
-                });
+            if let Some(fut) = self.inner.resize(size) {
+                mgr.push_spawn(self.id(), fut);
             }
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
-            let (redraw, animate) = self.program.do_redraw_animate();
-            if redraw {
-                draw.config_mgr(|mgr| self.redraw(mgr));
-            }
-            if animate {
-                draw.draw_device().animate();
-            }
             if let Some(id) = self.image.as_ref().map(|h| h.id()) {
                 draw.image(self.rect(), id);
+            }
+        }
+    }
+
+    impl Widget for Self {
+        fn handle_message(&mut self, mgr: &mut EventMgr) {
+            if let Some((mut program, mut pixmap)) = mgr.try_pop::<(P, Pixmap)>() {
+                debug_assert!(matches!(self.inner, State::Rendering));
+                let (w, h) = (pixmap.width(), pixmap.height());
+                let size = Size::conv((w, h));
+
+                mgr.draw_shared(|ds| {
+                    if let Some(im_size) = self.image.as_ref().and_then(|h| ds.image_size(h)) {
+                        if im_size != size {
+                            if let Some(handle) = self.image.take() {
+                                ds.image_free(handle);
+                            }
+                        }
+                    }
+
+                    if self.image.is_none() {
+                        self.image = ds.image_alloc((w, h)).ok();
+                    }
+
+                    if let Some(handle) = self.image.as_ref() {
+                        ds.image_upload(&handle, pixmap.data(), ImageFormat::Rgba8);
+                    }
+                });
+
+                // API says we call this after every redraw:
+                let mut need_redraw = program.need_redraw();
+                mgr.redraw(self.id());
+
+                if self.rect().size != size {
+                    // Possible if a redraw was in progress when set_rect was called
+
+                    pixmap = if let Some(px) = Pixmap::new(w, h) {
+                        px
+                    } else {
+                        self.inner = State::Initial(program);
+                        return;
+                    };
+                    need_redraw = true;
+                }
+
+                if need_redraw {
+                    mgr.push_spawn(self.id(), draw(program, pixmap));
+                } else {
+                    self.inner = State::Ready(program, pixmap);
+                }
             }
         }
     }
