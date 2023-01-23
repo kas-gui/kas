@@ -7,7 +7,7 @@
 
 use smallvec::SmallVec;
 use std::collections::HashMap;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use winit::event::{Event, StartCause};
 use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
@@ -31,6 +31,8 @@ where
     shared: SharedState<S, T>,
     /// Timer resumes: (time, window index)
     resumes: Vec<(Instant, ww::WindowId)>,
+    /// Frame rate counter
+    frame_count: (Instant, u32),
 }
 
 impl<S: WindowSurface, T: Theme<S::Shared>> Loop<S, T>
@@ -47,6 +49,7 @@ where
             id_map,
             shared,
             resumes: vec![],
+            frame_count: (Instant::now(), 0),
         }
     }
 
@@ -244,6 +247,15 @@ where
                     if window.do_draw(&mut self.shared).is_err() {
                         *control_flow = ControlFlow::Poll;
                     }
+                }
+
+                const SECOND: Duration = Duration::from_secs(1);
+                self.frame_count.1 += 1;
+                let now = Instant::now();
+                if self.frame_count.0 + SECOND <= now {
+                    log::debug!("Frame rate: {} per second", self.frame_count.1);
+                    self.frame_count.0 = now;
+                    self.frame_count.1 = 0;
                 }
             }
             RedrawEventsCleared => {
