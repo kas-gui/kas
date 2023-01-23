@@ -23,10 +23,9 @@ pub trait CanvasProgram: std::fmt::Debug + Send + 'static {
     /// when requested by [`CanvasProgram::do_redraw_animate`].
     fn draw(&mut self, pixmap: &mut Pixmap);
 
-    /// This method is called after each draw completes. If it returns `true`
-    /// a redraw is scheduled.
-    ///
-    /// TODO: how to animate with limited framerate?
+    /// This method is called each time a frame is drawn. Note that since
+    /// redrawing is async and non-blocking, the result is expected to be at
+    /// least one frame late.
     ///
     /// The default implementation returns `false`.
     fn need_redraw(&mut self) -> bool {
@@ -48,6 +47,19 @@ enum State<P: CanvasProgram> {
 }
 
 impl<P: CanvasProgram> State<P> {
+    /// Redraw if requested
+    fn maybe_redraw(&mut self) -> Option<impl Future<Output = (P, Pixmap)>> {
+        if let State::Ready(ref mut p, _) = self {
+            if p.need_redraw() {
+                if let State::Ready(p, px) = std::mem::replace(self, State::Rendering) {
+                    return Some(draw(p, px));
+                }
+            }
+        }
+
+        None
+    }
+
     /// Resize if required, redrawing on resize
     ///
     /// Returns a future to redraw. Does nothing if currently redrawing.
@@ -165,6 +177,10 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
+            if let Some(fut) = self.inner.maybe_redraw() {
+                draw.ev_state().push_spawn(self.id(), fut);
+            }
+
             if let Some(id) = self.image.as_ref().map(|h| h.id()) {
                 draw.image(self.rect(), id);
             }
@@ -173,7 +189,7 @@ impl_scope! {
 
     impl Widget for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr) {
-            if let Some((mut program, mut pixmap)) = mgr.try_pop::<(P, Pixmap)>() {
+            if let Some((program, mut pixmap)) = mgr.try_pop::<(P, Pixmap)>() {
                 debug_assert!(matches!(self.inner, State::Rendering));
                 let size = (pixmap.width(), pixmap.height());
 
@@ -195,8 +211,6 @@ impl_scope! {
                     }
                 });
 
-                // API says we call this after every redraw:
-                let mut need_redraw = program.need_redraw();
                 mgr.redraw(self.id());
 
                 let rect_size: (u32, u32) = self.rect().size.cast();
@@ -209,10 +223,6 @@ impl_scope! {
                         self.inner = State::Initial(program);
                         return;
                     };
-                    need_redraw = true;
-                }
-
-                if need_redraw {
                     mgr.push_spawn(self.id(), draw(program, pixmap));
                 } else {
                     self.inner = State::Ready(program, pixmap);
