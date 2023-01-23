@@ -375,7 +375,6 @@ pub struct EventMgr<'a> {
     messages: Vec<Erased>,
     last_child: Option<usize>,
     scroll: Scroll,
-    action: Action,
 }
 
 impl<'a> Deref for EventMgr<'a> {

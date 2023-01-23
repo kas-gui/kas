@@ -123,12 +123,8 @@ impl EventState {
             messages: vec![],
             last_child: None,
             scroll: Scroll::None,
-            action: Action::empty(),
         };
         f(&mut mgr);
-        let action = mgr.action;
-        drop(mgr);
-        self.send_action(action);
     }
 
     /// Update, after receiving all events
@@ -146,7 +142,6 @@ impl EventState {
             messages: vec![],
             last_child: None,
             scroll: Scroll::None,
-            action: Action::empty(),
         };
 
         while let Some((parent, wid)) = mgr.popup_removed.pop() {
@@ -247,16 +242,13 @@ impl EventState {
             }
         }
 
-        let action = mgr.action;
         drop(mgr);
 
         if self.hover_icon != old_hover_icon && self.mouse_grab.is_none() {
             shell.set_cursor_icon(self.hover_icon);
         }
 
-        let action = action | self.action;
-        self.action = Action::empty();
-        action
+        std::mem::take(&mut self.action)
     }
 }
 
