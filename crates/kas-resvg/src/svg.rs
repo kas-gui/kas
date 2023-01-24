@@ -100,9 +100,10 @@ impl State {
             }
             State::Initial(svg) | State::Ready(svg, _) => {
                 if let Some(px) = Pixmap::new(w, h) {
+                    *self = State::Rendering(svg.clone());
                     return Some(draw(svg, px));
                 } else {
-                    *self = State::Rendering(svg);
+                    *self = State::Initial(svg);
                     return None;
                 }
             }
@@ -221,7 +222,7 @@ impl_scope! {
             let size: (u32, u32) = self.core.rect.size.cast();
 
             if let Some(fut) = self.inner.resize(size) {
-                mgr.ev_state().push_async(self.id(), fut);
+                mgr.ev_state().push_spawn(self.id(), fut);
             }
         }
 
