@@ -5,6 +5,7 @@
 
 //! Drawing API for `kas_wgpu`
 
+use futures_lite::future::block_on;
 use std::f32::consts::FRAC_PI_2;
 use wgpu::util::DeviceExt;
 
@@ -37,7 +38,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let instance = wgpu::Instance::new(options.backend());
         let adapter_options = options.adapter_options();
         let req = instance.request_adapter(&adapter_options);
-        let adapter = match futures::executor::block_on(req) {
+        let adapter = match block_on(req) {
             Some(a) => a,
             None => return Err(Error::Graphics(Box::new(NoAdapter))),
         };
@@ -46,8 +47,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let desc = CB::device_descriptor();
         let trace_path = options.wgpu_trace_path.as_deref();
         let req = adapter.request_device(&desc, trace_path);
-        let (device, queue) =
-            futures::executor::block_on(req).map_err(|e| Error::Graphics(Box::new(e)))?;
+        let (device, queue) = block_on(req).map_err(|e| Error::Graphics(Box::new(e)))?;
 
         let shaders = ShaderManager::new(&device);
 

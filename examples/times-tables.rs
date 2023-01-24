@@ -79,15 +79,15 @@ fn main() -> kas::shell::Result<()> {
             core: widget_core!(),
             #[widget] max: impl Widget + HasString = EditBox::new("12")
                 .on_afl(|mgr, text| match text.parse::<usize>() {
-                    Ok(n) => mgr.push_msg(n),
+                    Ok(n) => mgr.push(n),
                     Err(_) => (),
                 }),
             #[widget] table: ScrollBars<MatrixView<TableData, driver::NavView>> = table,
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
-                if index == widget_index![self.max] {
-                    if let Some(max) = mgr.try_pop_msg::<usize>() {
+            fn handle_message(&mut self, mgr: &mut EventMgr) {
+                if mgr.last_child() == Some(widget_index![self.max]) {
+                    if let Some(max) = mgr.try_pop::<usize>() {
                         let data = self.table.data_mut();
                         if data.1 != max {
                             data.0 += 1;

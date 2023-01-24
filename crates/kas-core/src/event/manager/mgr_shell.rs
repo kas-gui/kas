@@ -6,6 +6,7 @@
 //! Event manager — shell API
 
 use smallvec::SmallVec;
+use std::task::Poll;
 use std::time::{Duration, Instant};
 
 use super::*;
@@ -50,6 +51,7 @@ impl EventState {
             popups: Default::default(),
             popup_removed: Default::default(),
             time_updates: vec![],
+            fut_messages: vec![],
             pending: Default::default(),
             action: Action::empty(),
         }
@@ -85,17 +87,17 @@ impl EventState {
         });
 
         let hover = widget.find_id(self.last_mouse_coord);
-        self.with(shell, |mgr| mgr.set_hover(hover));
+        self.set_hover(hover);
     }
 
     /// Update the widgets under the cursor and touch events
-    pub(crate) fn region_moved(&mut self, shell: &mut dyn ShellWindow, widget: &mut dyn Widget) {
+    pub(crate) fn region_moved(&mut self, widget: &mut dyn Widget) {
         log::trace!(target: "kas_core::event::manager", "region_moved");
         // Note: redraw is already implied.
 
         // Update hovered widget
         let hover = widget.find_id(self.last_mouse_coord);
-        self.with(shell, |mgr| mgr.set_hover(hover));
+        self.set_hover(hover);
 
         for grab in self.touch_grab.iter_mut() {
             grab.cur_id = widget.find_id(grab.coord);
@@ -119,13 +121,10 @@ impl EventState {
             state: self,
             shell,
             messages: vec![],
+            last_child: None,
             scroll: Scroll::None,
-            action: Action::empty(),
         };
         f(&mut mgr);
-        let action = mgr.action;
-        drop(mgr);
-        self.send_action(action);
     }
 
     /// Update, after receiving all events
@@ -141,8 +140,8 @@ impl EventState {
             state: self,
             shell,
             messages: vec![],
+            last_child: None,
             scroll: Scroll::None,
-            action: Action::empty(),
         };
 
         while let Some((parent, wid)) = mgr.popup_removed.pop() {
@@ -216,20 +215,46 @@ impl EventState {
                 }
                 Pending::LostCharFocus(id) => (id, Event::LostCharFocus),
                 Pending::LostSelFocus(id) => (id, Event::LostSelFocus),
+                Pending::Send(id, event) => (id, event),
             };
             mgr.send_event(widget, id, event);
         }
 
-        let action = mgr.action;
+        // Poll futures last. This means that any newly pushed future should
+        // get polled from the same update() call.
+        mgr.poll_futures(widget);
+
         drop(mgr);
 
         if self.hover_icon != old_hover_icon && self.mouse_grab.is_none() {
             shell.set_cursor_icon(self.hover_icon);
         }
 
-        let action = action | self.action;
-        self.action = Action::empty();
-        action
+        std::mem::take(&mut self.action)
+    }
+
+    /// Update, after drawing
+    ///
+    /// Returns true if action is non-empty
+    #[inline]
+    pub(crate) fn post_draw(
+        &mut self,
+        shell: &mut dyn ShellWindow,
+        widget: &mut dyn Widget,
+    ) -> bool {
+        let mut mgr = EventMgr {
+            state: self,
+            shell,
+            messages: vec![],
+            last_child: None,
+            scroll: Scroll::None,
+        };
+
+        // Widget::draw may add futures; we should poll those now.
+        mgr.poll_futures(widget);
+
+        drop(mgr);
+        !self.action.is_empty()
     }
 }
 
@@ -262,12 +287,32 @@ impl<'a> EventMgr<'a> {
         }
 
         let start = Instant::now();
-        let count = self.send_all(widget, Event::Update { id, payload });
+        let count = self.send_update(widget, id, payload);
         log::debug!(
             target: "kas_core::event::manager",
             "update_widgets: sent Event::Update ({id:?}) to {count} widgets in {}μs",
             start.elapsed().as_micros()
         );
+    }
+
+    fn poll_futures(&mut self, widget: &mut dyn Widget) {
+        let mut i = 0;
+        while i < self.state.fut_messages.len() {
+            let (_, fut) = &mut self.state.fut_messages[i];
+            let mut cx = std::task::Context::from_waker(self.shell.waker());
+            match fut.as_mut().poll(&mut cx) {
+                Poll::Pending => {
+                    i += 1;
+                }
+                Poll::Ready(msg) => {
+                    let (id, _) = self.state.fut_messages.remove(i);
+
+                    // Replay message. This could push another future; if it
+                    // does we should poll it immediately to start its work.
+                    self.replay(widget, id, msg);
+                }
+            }
+        }
     }
 
     /// Handle a winit `WindowEvent`.

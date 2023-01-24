@@ -37,8 +37,8 @@ fn main() -> kas::shell::Result<()> {
             #[widget] panes: RowSplitter<EditField> = panes,
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-                if let Some(msg) = mgr.try_pop_msg::<Message>() {
+            fn handle_message(&mut self, mgr: &mut EventMgr) {
+                if let Some(msg) = mgr.try_pop::<Message>() {
                     match msg {
                         Message::Decr => {
                             mgr.config_mgr(|mgr| self.panes.pop(mgr));

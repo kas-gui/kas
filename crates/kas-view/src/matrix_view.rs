@@ -715,23 +715,8 @@ impl_scope! {
                                 }
                             }
 
-                            match self.sel_mode {
-                                SelectionMode::None => (),
-                                SelectionMode::Single => {
-                                    mgr.redraw(self.id());
-                                    self.selection.clear();
-                                    self.selection.insert(key.clone());
-                                    mgr.push_msg(SelectionMsg::Select(key.clone()));
-                                }
-                                SelectionMode::Multiple => {
-                                    mgr.redraw(self.id());
-                                    if self.selection.remove(key) {
-                                        mgr.push_msg(SelectionMsg::Deselect(key.clone()));
-                                    } else {
-                                        self.selection.insert(key.clone());
-                                        mgr.push_msg(SelectionMsg::Select(key.clone()));
-                                    }
-                                }
+                            if !matches!(self.sel_mode, SelectionMode::None) {
+                                mgr.push(SelectMsg);
                             }
                         }
                         return Response::Used;
@@ -817,13 +802,14 @@ impl_scope! {
             r
         }
 
-        fn handle_unused(&mut self, mgr: &mut EventMgr, index: usize, event: Event) -> Response {
+        fn handle_unused(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             if let Event::PressStart { source, coord, .. } = event {
                 if source.is_primary() {
                     // We request a grab with our ID, hence the
                     // PressMove/PressEnd events are matched in handle_event().
                     mgr.grab_press_unique(self.id(), source, coord, None);
                     self.press_phase = PressPhase::Start(coord);
+                    let index = mgr.last_child().unwrap();
                     self.press_target = self.widgets[index].key.clone();
                     Response::Used
                 } else {
@@ -834,31 +820,37 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
-            let w = &mut self.widgets[index];
-            let key = match w.key.clone() {
-                Some(k) => k,
-                None => return,
-            };
+        fn handle_message(&mut self, mgr: &mut EventMgr) {
+            let key;
+            if let Some(index) = mgr.last_child() {
+                let w = &mut self.widgets[index];
+                key = match w.key.clone() {
+                    Some(k) => k,
+                    None => return,
+                };
 
-            self.driver.on_message(mgr, &mut w.widget, &self.data, &key);
+                self.driver.on_message(mgr, &mut w.widget, &self.data, &key);
+            } else {
+                // Message is from self
+                key = self.press_target.clone().unwrap();
+            }
 
-            if let Some(SelectMsg) = mgr.try_pop_msg() {
+            if let Some(SelectMsg) = mgr.try_pop() {
                 match self.sel_mode {
                     SelectionMode::None => (),
                     SelectionMode::Single => {
                         mgr.redraw(self.id());
                         self.selection.clear();
                         self.selection.insert(key.clone());
-                        mgr.push_msg(SelectionMsg::Select(key));
+                        mgr.push(SelectionMsg::Select(key));
                     }
                     SelectionMode::Multiple => {
                         mgr.redraw(self.id());
                         if self.selection.remove(&key) {
-                            mgr.push_msg(SelectionMsg::Deselect(key));
+                            mgr.push(SelectionMsg::Deselect(key));
                         } else {
                             self.selection.insert(key.clone());
-                            mgr.push_msg(SelectionMsg::Select(key));
+                            mgr.push(SelectionMsg::Select(key));
                         }
                     }
                 }

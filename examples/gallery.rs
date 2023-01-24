@@ -72,7 +72,7 @@ fn widgets() -> Box<dyn SetDisabled> {
     struct Guard;
     impl EditGuard for Guard {
         fn activate(edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
-            mgr.push_msg(Item::Edit(edit.get_string()));
+            mgr.push(Item::Edit(edit.get_string()));
             Response::Used
         }
 
@@ -99,8 +99,8 @@ fn widgets() -> Box<dyn SetDisabled> {
                 SingleView::new(SharedRc::new("Use button to edit →".to_string())),
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-                if let Some(MsgEdit) = mgr.try_pop_msg() {
+            fn handle_message(&mut self, mgr: &mut EventMgr) {
+                if let Some(MsgEdit) = mgr.try_pop() {
                     let text = self.label.data().clone();
                     let window = dialog::TextEdit::new("Edit text", true, text);
                     mgr.add_window(Box::new(window));
@@ -154,21 +154,21 @@ fn widgets() -> Box<dyn SetDisabled> {
             ]),
             #[widget] cb = CheckButton::new("&Check me")
                 .with_state(true)
-                .on_toggle(|mgr, check| mgr.push_msg(Item::Check(check))),
+                .on_toggle(|mgr, check| mgr.push(Item::Check(check))),
             #[widget] rb = RadioButton::new("radio button &1", radio.clone())
-                .on_select(|mgr| mgr.push_msg(Item::Radio(1))),
+                .on_select(|mgr| mgr.push(Item::Radio(1))),
             #[widget] rb2 = RadioButton::new("radio button &2", radio)
                 .with_state(true)
-                .on_select(|mgr| mgr.push_msg(Item::Radio(2))),
+                .on_select(|mgr| mgr.push(Item::Radio(2))),
             #[widget] cbb = ComboBox::new_vec(vec![
                 MenuEntry::new("&One", Item::Combo(1)),
                 MenuEntry::new("T&wo", Item::Combo(2)),
                 MenuEntry::new("Th&ree", Item::Combo(3)),
             ]),
             #[widget] spin: Spinner<i32> = Spinner::new(0..=10, 1)
-                .on_change(|mgr, value| mgr.push_msg(Item::Spinner(value))),
+                .on_change(|mgr, value| mgr.push(Item::Spinner(value))),
             #[widget] sd: Slider<i32, Right> = Slider::new(0..=10, 1)
-                .on_move(|mgr, value| mgr.push_msg(Item::Slider(value))),
+                .on_move(|mgr, value| mgr.push(Item::Slider(value))),
             #[widget] sc: ScrollBar<Right> = ScrollBar::new().with_limits(100, 20),
             #[widget] pg: ProgressBar<Right> = ProgressBar::new(),
             #[widget] sv = img_rustacean.with_scaling(|s| {
@@ -179,16 +179,16 @@ fn widgets() -> Box<dyn SetDisabled> {
             #[widget] pu = popup_edit_box,
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
-                if let Some(ScrollMsg(value)) = mgr.try_pop_msg() {
-                    if index == widget_index![self.sc] {
+            fn handle_message(&mut self, mgr: &mut EventMgr) {
+                if let Some(ScrollMsg(value)) = mgr.try_pop() {
+                    if mgr.last_child() == Some(widget_index![self.sc]) {
                         let ratio = value as f32 / self.sc.max_value() as f32;
                         *mgr |= self.pg.set_value(ratio);
-                        mgr.push_msg(Item::Scroll(value))
+                        mgr.push(Item::Scroll(value))
                     }
-                } else if let Some(Item::Spinner(value)) = mgr.try_observe_msg() {
+                } else if let Some(Item::Spinner(value)) = mgr.try_observe() {
                     *mgr |= self.sd.set_value(*value);
-                } else if let Some(Item::Slider(value)) = mgr.try_observe_msg() {
+                } else if let Some(Item::Slider(value)) = mgr.try_observe() {
                     *mgr |= self.spin.set_value(*value);
                 }
             }
@@ -214,7 +214,7 @@ fn editor() -> Box<dyn SetDisabled> {
         fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
             let result = Markdown::new(edit.get_str());
             edit.set_error_state(result.is_err());
-            mgr.push_msg(result.unwrap_or_else(|err| Markdown::new(&format!("{err}")).unwrap()));
+            mgr.push(result.unwrap_or_else(|err| Markdown::new(&format!("{err}")).unwrap()));
         }
     }
 
@@ -256,14 +256,14 @@ Demonstration of *as-you-type* formatting from **Markdown**.
                 ScrollLabel::new(Markdown::new(doc).unwrap()),
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-                if let Some(MsgDirection) = mgr.try_pop_msg() {
+            fn handle_message(&mut self, mgr: &mut EventMgr) {
+                if let Some(MsgDirection) = mgr.try_pop() {
                     self.dir = match self.dir {
                         Direction::Up => Direction::Right,
                         _ => Direction::Up,
                     };
                     *mgr |= Action::RESIZE;
-                } else if let Some(md) = mgr.try_pop_msg::<Markdown>() {
+                } else if let Some(md) = mgr.try_pop::<Markdown>() {
                     *mgr |= self.label.set_text(md);
                 }
             }
@@ -327,10 +327,10 @@ fn filter_list() -> Box<dyn SetDisabled> {
                 ScrollBars::new(MyListView::new(filtered))
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-                if let Some(mode) = mgr.try_pop_msg() {
+            fn handle_message(&mut self, mgr: &mut EventMgr) {
+                if let Some(mode) = mgr.try_pop() {
                     *mgr |= self.list.set_selection_mode(mode);
-                } else if let Some(msg) = mgr.try_pop_msg::<SelectionMsg<usize>>() {
+                } else if let Some(msg) = mgr.try_pop::<SelectionMsg<usize>>() {
                     println!("Selection message: {msg:?}");
                 }
             }
@@ -411,18 +411,16 @@ fn canvas() -> Box<dyn SetDisabled> {
             pixmap.fill_path(&path, &paint, FillRule::Winding, scale, None);
         }
 
-        fn do_redraw_animate(&mut self) -> (bool, bool) {
+        fn need_redraw(&mut self) -> bool {
             // Set false to disable animation
-            (true, true)
+            true
         }
     }
 
     Box::new(singleton! {
         #[widget{
             layout = column: [
-                Label::new("Animated canvas demo
-This example uses kas_resvg::Canvas, which is CPU-rendered.
-Embedded GPU-rendered content is also possible (see separate Mandlebrot example)."),
+                Label::new("Animated canvas demo (CPU-rendered, async). Note: scheduling is broken on X11."),
                 self.canvas,
             ];
         }]
@@ -532,9 +530,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             })
             .separator()
-            .toggle("&Disabled", |mgr, state| {
-                mgr.push_msg(Menu::Disabled(state))
-            });
+            .toggle("&Disabled", |mgr, state| mgr.push(Menu::Disabled(state)));
         })
         .build();
 
@@ -558,8 +554,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .with_title("Confi&g", config(shell.event_config().clone())),
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-                if let Some(msg) = mgr.try_pop_msg::<Menu>() {
+            fn handle_message(&mut self, mgr: &mut EventMgr) {
+                if let Some(msg) = mgr.try_pop::<Menu>() {
                     match msg {
                         Menu::Theme(name) => {
                             println!("Theme: {name:?}");
@@ -576,7 +572,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             *mgr |= Action::EXIT;
                         }
                     }
-                } else if let Some(item) = mgr.try_pop_msg::<Item>() {
+                } else if let Some(item) = mgr.try_pop::<Item>() {
                     println!("Message: {item:?}");
                     match item {
                         Item::Theme(name) => mgr.adjust_theme(|theme| theme.set_scheme(name)),

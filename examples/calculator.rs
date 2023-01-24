@@ -84,17 +84,15 @@ impl_scope! {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(Command::DelBack) => {
-                    if self.calc.handle(Key::DelBack) {
-                        *mgr |= self.display.set_string(self.calc.display());
-                    }
+                    mgr.push(Key::DelBack);
                     Response::Used
                 }
                 _ => Response::Unused,
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-            if let Some(msg) = mgr.try_pop_msg::<Key>() {
+        fn handle_message(&mut self, mgr: &mut EventMgr) {
+            if let Some(msg) = mgr.try_pop::<Key>() {
                 if self.calc.handle(msg) {
                     *mgr |= self.display.set_string(self.calc.display());
                 }

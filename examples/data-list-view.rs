@@ -19,8 +19,8 @@ use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
 enum Control {
-    Set(usize),
-    Dir,
+    SetLen(usize),
+    Reverse,
     Update(String),
 }
 
@@ -128,12 +128,12 @@ impl ListData for MySharedData {
 struct ListEntryGuard;
 impl EditGuard for ListEntryGuard {
     fn activate(_edit: &mut EditField<Self>, mgr: &mut EventMgr) -> Response {
-        mgr.push_msg(EntryMsg::Select);
+        mgr.push(EntryMsg::Select);
         Response::Used
     }
 
     fn edit(edit: &mut EditField<Self>, mgr: &mut EventMgr) {
-        mgr.push_msg(EntryMsg::Update(edit.get_string()));
+        mgr.push(EntryMsg::Update(edit.get_string()));
     }
 }
 
@@ -170,7 +170,7 @@ impl Driver<(bool, String), MySharedData> for MyDriver {
             core: Default::default(),
             label: Label::new(String::default()),
             radio: RadioButton::new("display this entry", self.radio_group.clone())
-                .on_select(|mgr| mgr.push_msg(EntryMsg::Select)),
+                .on_select(|mgr| mgr.push(EntryMsg::Select)),
             edit: EditBox::new(String::default()).with_guard(ListEntryGuard),
         }
     }
@@ -195,7 +195,7 @@ impl Driver<(bool, String), MySharedData> for MyDriver {
         data: &MySharedData,
         key: &usize,
     ) {
-        if let Some(msg) = mgr.try_pop_msg() {
+        if let Some(msg) = mgr.try_pop() {
             let mut borrow = data.data.borrow_mut();
             borrow.ver += 1;
             match msg {
@@ -206,7 +206,7 @@ impl Driver<(bool, String), MySharedData> for MyDriver {
                     borrow.strings.insert(*key, text);
                 }
             }
-            mgr.push_msg(Control::Update(borrow.get(borrow.active)));
+            mgr.push(Control::Update(borrow.get(borrow.active)));
             mgr.update_all(0);
         }
     }
@@ -223,7 +223,7 @@ fn main() -> kas::shell::Result<()> {
                 TextButton::new_msg("Set", Button::Set),
                 TextButton::new_msg("−", Button::Decr),
                 TextButton::new_msg("+", Button::Incr),
-                TextButton::new_msg("↓↑", Control::Dir),
+                TextButton::new_msg("↓↑", Control::Reverse),
             ];
         }]
         #[derive(Debug)]
@@ -231,21 +231,21 @@ fn main() -> kas::shell::Result<()> {
             core: widget_core!(),
             #[widget] edit: EditBox<impl EditGuard> = EditBox::new("3")
                 .on_afl(|mgr, text| match text.parse::<usize>() {
-                    Ok(n) => mgr.push_msg(n),
+                    Ok(n) => mgr.push(n),
                     Err(_) => (),
                 }),
             n: usize = 3,
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
-                if index == widget_index![self.edit] {
-                    if let Some(n) = mgr.try_pop_msg::<usize>() {
+            fn handle_message(&mut self, mgr: &mut EventMgr) {
+                if mgr.last_child() == Some(widget_index![self.edit]) {
+                    if let Some(n) = mgr.try_pop::<usize>() {
                         if n != self.n {
                             self.n = n;
-                            mgr.push_msg(Control::Set(n))
+                            mgr.push(Control::SetLen(n))
                         }
                     }
-                } else if let Some(msg) = mgr.try_pop_msg::<Button>() {
+                } else if let Some(msg) = mgr.try_pop::<Button>() {
                     let n = match msg {
                         Button::Decr => self.n.saturating_sub(1),
                         Button::Incr => self.n.saturating_add(1),
@@ -253,7 +253,7 @@ fn main() -> kas::shell::Result<()> {
                     };
                     *mgr |= self.edit.set_string(n.to_string());
                     self.n = n;
-                    mgr.push_msg(Control::Set(n));
+                    mgr.push(Control::SetLen(n));
                 }
             }
         }
@@ -286,16 +286,16 @@ fn main() -> kas::shell::Result<()> {
                 ScrollBars::new(list).with_fixed_bars(false, true),
         }
         impl Widget for Self {
-            fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-                if let Some(control) = mgr.try_pop_msg::<Control>() {
+            fn handle_message(&mut self, mgr: &mut EventMgr) {
+                if let Some(control) = mgr.try_pop::<Control>() {
                     match control {
-                        Control::Set(len) => {
+                        Control::SetLen(len) => {
                             if let Some(text) = self.list.data_mut().set_len(len) {
                                 *mgr |= self.display.set_string(text);
                             }
                             mgr.update_all(0);
                         }
-                        Control::Dir => {
+                        Control::Reverse => {
                             let dir = self.list.direction().reversed();
                             *mgr |= self.list.set_direction(dir);
                         }

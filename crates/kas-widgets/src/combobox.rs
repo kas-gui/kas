@@ -157,7 +157,8 @@ impl_scope! {
                                 return Response::Used;
                             }
                         } else if self.popup_id.is_some() && self.popup.is_ancestor_of(&id) {
-                            return mgr.send(self, id, Event::Command(Command::Activate));
+                            mgr.send(self, id, Event::Command(Command::Activate));
+                            return Response::Used;
                         }
                     }
                     if let Some(id) = self.popup_id {
@@ -175,14 +176,14 @@ impl_scope! {
             }
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-            if let Some(IndexMsg(index)) = mgr.try_pop_msg() {
+        fn handle_message(&mut self, mgr: &mut EventMgr) {
+            if let Some(IndexMsg(index)) = mgr.try_pop() {
                 *mgr |= self.set_active(index);
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id, true);
                 }
                 if let Some(ref f) = self.on_select {
-                    if let Some(msg) = mgr.try_pop_msg() {
+                    if let Some(msg) = mgr.try_pop() {
                         (f)(mgr, msg);
                     }
                 }
@@ -242,7 +243,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
             popup: ComboPopup {
                 core: Default::default(),
                 inner: PopupFrame::new(
-                    Column::new_vec(entries).on_message(|mgr, index| mgr.push_msg(IndexMsg(index))),
+                    Column::new_vec(entries).on_message(|mgr, index| mgr.push(IndexMsg(index))),
                 ),
             },
             ..Default::default()

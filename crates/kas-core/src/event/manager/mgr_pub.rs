@@ -5,6 +5,7 @@
 
 //! Event manager — public API
 
+use std::future::IntoFuture;
 use std::time::{Duration, Instant};
 use std::u16;
 
@@ -13,7 +14,7 @@ use crate::cast::Conv;
 use crate::draw::DrawShared;
 use crate::geom::{Coord, Offset, Vec2};
 use crate::theme::{SizeMgr, ThemeControl};
-use crate::{Action, WidgetId, WindowId};
+use crate::{Action, Erased, WidgetId, WindowId};
 #[allow(unused)] use crate::{Layout, Widget}; // for doc-links
 
 impl<'a> std::ops::BitOrAssign<Action> for EventMgr<'a> {
@@ -70,6 +71,17 @@ impl EventState {
     #[inline]
     pub fn is_hovered(&self, w_id: &WidgetId) -> bool {
         self.mouse_grab.is_none() && *w_id == self.hover
+    }
+
+    /// Get whether widget `id` or any of its descendants are under the mouse cursor
+    #[inline]
+    pub fn is_hovered_recursive(&self, id: &WidgetId) -> bool {
+        self.mouse_grab.is_none()
+            && self
+                .hover
+                .as_ref()
+                .map(|h| id.is_ancestor_of(h))
+                .unwrap_or(false)
     }
 
     /// Check whether the given widget is visually depressed
@@ -456,10 +468,74 @@ impl EventState {
         // Note: this is acted on by EventState::update
         self.hover_icon = icon;
     }
+
+    /// Push a message to the stack via a [`Future`]
+    ///
+    /// Expects a future which, on completion, returns a message.
+    /// This message is then pushed to the message stack as if it were pushed
+    /// with [`Self::push`] from widget `id`.
+    ///
+    /// The future will be polled before the event loop sleeps.
+    // TODO: Can we identify the calling widget `id` via the context (EventMgr)?
+    pub fn push_async<Fut, M>(&mut self, id: WidgetId, fut: Fut)
+    where
+        Fut: IntoFuture<Output = M> + 'static,
+        M: Debug + 'static,
+    {
+        self.push_async_erased(id, async { Erased::new(fut.await) });
+    }
+
+    /// Push a type-erased message to the stack via a [`Future`]
+    ///
+    /// Expects a future which, on completion, returns a message.
+    /// This message is then pushed to the message stack as if it were pushed
+    /// with [`Self::push_erased`] from widget `id`.
+    ///
+    /// The future will be polled before the event loop sleeps.
+    pub fn push_async_erased<Fut>(&mut self, id: WidgetId, fut: Fut)
+    where
+        Fut: IntoFuture<Output = Erased> + 'static,
+    {
+        let fut = Box::pin(fut.into_future());
+        self.fut_messages.push((id, fut));
+    }
+
+    /// Spawn a task, run on a thread pool
+    ///
+    /// This method is similar to [`Self::push_async`], except that the future
+    /// is run on a worker thread (appropriate when significant CPU work is
+    /// required).
+    ///
+    /// The future will be spawned before the event loop sleeps.
+    ///
+    /// Uses [`async-global-executor`].
+    /// See crate documentation for configuration.
+    #[cfg(feature = "spawn")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "spawn")))]
+    pub fn push_spawn<Fut, M>(&mut self, id: WidgetId, fut: Fut)
+    where
+        Fut: IntoFuture<Output = M> + 'static,
+        Fut::IntoFuture: Send,
+        M: Debug + Send + 'static,
+    {
+        self.push_async(id, async_global_executor::spawn(fut.into_future()));
+    }
 }
 
 /// Public API
 impl<'a> EventMgr<'a> {
+    /// Get the index of the last child visited
+    ///
+    /// This is only used when unwinding (traversing back up the widget tree),
+    /// and returns the index of the child last visited. E.g. when
+    /// [`Widget::handle_message`] is called, this method returns the index of
+    /// the child which submitted the message (or whose descendant did).
+    /// Otherwise this returns `None` (including when the widget itself is the
+    /// submitter of the message).
+    pub fn last_child(&self) -> Option<usize> {
+        self.last_child
+    }
+
     /// Send an event to a widget
     ///
     /// Sends `event` to widget `id`, where `widget` is either the target `id`
@@ -468,8 +544,10 @@ impl<'a> EventMgr<'a> {
     /// event-handling interactions: the ability to steal events and handle
     /// unused events, to handle messages and to react to scroll actions.
     ///
-    /// Messages may be left on the stack after this returns and scroll state
-    /// may be adjusted.
+    /// This method may be called from event handlers. It is implementation
+    /// defined whether the event is sent immediately or later, thus it may
+    /// or may not be observed by the caller that messages are left on the stack
+    /// and scroll state is adjusted.
     ///
     /// When calling this method, be aware that:
     ///
@@ -480,35 +558,45 @@ impl<'a> EventMgr<'a> {
     ///     (TODO: do we need another method to find this target?)
     /// -   Some events such as [`Event::PressMove`] contain embedded widget
     ///     identifiers which may affect handling of the event.
-    pub fn send(&mut self, widget: &mut dyn Widget, mut id: WidgetId, event: Event) -> Response {
-        log::trace!(target: "kas_core::event::manager", "send: id={id}: {event:?}");
-
-        // TODO(opt): we should be able to use binary search here
-        let mut disabled = false;
-        if !event.pass_when_disabled() {
-            for d in &self.disabled {
-                if d.is_ancestor_of(&id) {
-                    id = d.clone();
-                    disabled = true;
-                }
+    pub fn send(&mut self, widget: &mut dyn Widget, id: WidgetId, event: Event) {
+        if matches!(self.scroll, Scroll::None | Scroll::Scrolled) && self.messages.is_empty() {
+            // Safe to send immediately, except from steal_event when responding
+            // Unused (hence noted possible panic in that method)!
+            let last_child = std::mem::take(&mut self.last_child);
+            let scroll = std::mem::take(&mut self.scroll);
+            self.send_event_impl(widget, id, event);
+            self.last_child = last_child;
+            if self.scroll == Scroll::None {
+                self.scroll = scroll;
             }
-            if disabled {
-                log::trace!(target: "kas_core::event::manager", "target is disabled; sending to ancestor {id}");
-            }
+        } else {
+            // Possibly not safe: send later.
+            log::debug!("queing event for later sending");
+            self.pending.push_back(Pending::Send(id, event));
         }
-
-        self.scroll = Scroll::None;
-        self.send_recurse(widget, id, disabled, event)
     }
 
     /// Push a message to the stack
-    pub fn push_msg<M: Debug + 'static>(&mut self, msg: M) {
-        self.push_boxed_msg(Box::new(msg));
+    ///
+    /// The message is first type-erased by wrapping with [`Erased`],
+    /// then pushed to the stack.
+    ///
+    /// The message may be [popped](EventMgr::try_pop) or
+    /// [observed](EventMgr::try_observe) from [`Widget::handle_message`]
+    /// by the widget itself, its parent, or any ancestor.
+    pub fn push<M: Debug + 'static>(&mut self, msg: M) {
+        self.push_erased(Erased::new(msg));
     }
 
-    /// Push a pre-boxed message to the stack
-    pub fn push_boxed_msg<M: Debug + 'static>(&mut self, msg: Box<M>) {
-        self.messages.push(Message::new(msg));
+    /// Push a type-erased message to the stack
+    ///
+    /// This is a lower-level variant of [`Self::push`].
+    ///
+    /// The message may be [popped](EventMgr::try_pop) or
+    /// [observed](EventMgr::try_observe) from [`Widget::handle_message`]
+    /// by the widget itself, its parent, or any ancestor.
+    pub fn push_erased(&mut self, msg: Erased) {
+        self.messages.push(msg);
     }
 
     /// True if the message stack is non-empty
@@ -517,21 +605,25 @@ impl<'a> EventMgr<'a> {
     }
 
     /// Try popping the last message from the stack with the given type
-    pub fn try_pop_msg<M: Debug + 'static>(&mut self) -> Option<M> {
-        self.try_pop_boxed_msg().map(|m| *m)
-    }
-
-    /// Try popping the last message from the stack with the given type
-    pub fn try_pop_boxed_msg<M: Debug + 'static>(&mut self) -> Option<Box<M>> {
+    ///
+    /// This method may be called from [`Widget::handle_message`].
+    pub fn try_pop<M: Debug + 'static>(&mut self) -> Option<M> {
         if self.messages.last().map(|m| m.is::<M>()).unwrap_or(false) {
-            self.messages.pop().unwrap().downcast::<M>().ok()
+            self.messages
+                .pop()
+                .unwrap()
+                .downcast::<M>()
+                .ok()
+                .map(|m| *m)
         } else {
             None
         }
     }
 
     /// Try observing the last message on the stack without popping
-    pub fn try_observe_msg<M: Debug + 'static>(&self) -> Option<&M> {
+    ///
+    /// This method may be called from [`Widget::handle_message`].
+    pub fn try_observe<M: Debug + 'static>(&self) -> Option<&M> {
         self.messages.last().and_then(|m| m.downcast_ref::<M>())
     }
 

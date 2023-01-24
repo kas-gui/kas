@@ -50,7 +50,7 @@ impl_scope! {
         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
             match event {
                 Event::Command(cmd) if cmd.is_activate() => {
-                    mgr.push_msg(SelectMsg);
+                    mgr.push(SelectMsg);
                     Response::Used
                 }
                 _ => Response::Unused,

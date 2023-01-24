@@ -116,7 +116,7 @@ impl<T: SpinnerValue> EditGuard for SpinnerGuard<T> {
             *mgr |= edit.set_string(edit.guard.value.to_string());
             edit.set_error_state(false);
         }
-        mgr.push_msg(ValueMsg(edit.guard.value));
+        mgr.push(ValueMsg(edit.guard.value));
         Response::Used
     }
 
@@ -132,7 +132,7 @@ impl<T: SpinnerValue> EditGuard for SpinnerGuard<T> {
             Ok(value) if edit.guard.range().contains(&value) => {
                 if value != edit.guard.value {
                     edit.guard.value = value;
-                    mgr.push_msg(ValueMsg(value));
+                    mgr.push(ValueMsg(value));
                 }
                 false
             }
@@ -354,13 +354,13 @@ impl_scope! {
             Response::Used
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-            if let Some(ValueMsg(value)) = mgr.try_pop_msg() {
+        fn handle_message(&mut self, mgr: &mut EventMgr) {
+            if let Some(ValueMsg(value)) = mgr.try_pop() {
                 if let Some(ref f) = self.on_change {
                     f(mgr, value);
                 }
             }
-            if let Some(btn) = mgr.try_pop_msg::<SpinBtn>() {
+            if let Some(btn) = mgr.try_pop::<SpinBtn>() {
                 self.handle_btn(mgr, btn);
             }
         }

@@ -392,7 +392,7 @@ pub trait Layout {
 ///
 ///         fn handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
 ///             event.on_activate(mgr, self.id(), |mgr| {
-///                 mgr.push_msg(self.message.clone());
+///                 mgr.push(self.message.clone());
 ///                 Response::Used
 ///             })
 ///         }
@@ -491,22 +491,12 @@ pub trait Widget: WidgetChildren + Layout {
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn pre_handle_event(&mut self, mgr: &mut EventMgr, event: Event) -> Response;
 
-    /// Handle an event sent to this widget
+    /// Handle an [`Event`] sent to this widget
     ///
-    /// An [`Event`] is some form of user input, timer or notification.
+    /// This is the primary event handler (see [documentation](crate::event)).
     ///
-    /// This is the primary event handler for a widget. Secondary handlers are:
-    ///
-    /// -   If this method returns [`Response::Unused`], then
-    ///     [`Widget::handle_unused`] is called on each parent until the event
-    ///     is used (or the root widget is reached)
-    /// -   If a message is left on the stack by [`EventMgr::push_msg`], then
-    ///     [`Widget::handle_message`] is called on each parent until the stack is
-    ///     empty (failing to empty the stack results in a warning in the log).
-    /// -   If any scroll state is set by [`EventMgr::set_scroll`], then
-    ///     [`Widget::handle_scroll`] is called for each parent
-    ///
-    /// Default implementation: do nothing; return [`Response::Unused`].
+    /// Default implementation of `handle_event`: do nothing; return
+    /// [`Response::Unused`].
     ///
     /// # Calling `handle_event`
     ///
@@ -522,9 +512,12 @@ pub trait Widget: WidgetChildren + Layout {
 
     /// Potentially steal an event before it reaches a child
     ///
-    /// This is called on each widget while sending an event, including when the
-    /// target is self.
-    /// If this returns [`Response::Used`], the event is not sent further.
+    /// This is an optional event handler (see [documentation](crate::event)).
+    ///
+    /// May cause a panic if this method returns [`Response::Unused`] but does
+    /// affect `mgr` (e.g. by calling [`EventMgr::set_scroll`] or leaving a
+    /// message on the stack, possibly from [`EventMgr::send`]).
+    /// This is considered a corner-case and not currently supported.
     ///
     /// Default implementation: return [`Response::Unused`].
     #[inline]
@@ -535,29 +528,39 @@ pub trait Widget: WidgetChildren + Layout {
 
     /// Handle an event sent to child `index` but left unhandled
     ///
+    /// This is an optional event handler (see [documentation](crate::event)).
+    ///
+    /// [`EventMgr::last_child`] may be called to find the original target,
+    /// and should never return [`None`] (when called from this method).
+    ///
     /// Default implementation: call [`Self::handle_event`] with `event`.
     #[inline]
-    fn handle_unused(&mut self, mgr: &mut EventMgr, index: usize, event: Event) -> Response {
-        let _ = index;
+    fn handle_unused(&mut self, mgr: &mut EventMgr, event: Event) -> Response {
         self.handle_event(mgr, event)
     }
 
     /// Handler for messages from children/descendants
     ///
-    /// This method is called when a child leaves a message on the stack. *Some*
-    /// parent or ancestor widget should read this message.
+    /// This is the secondary event handler (see [documentation](crate::event)).
+    ///
+    /// It is implied that the stack contains at least one message.
+    /// Use [`EventMgr::try_pop`] and/or [`EventMgr::try_observe`].
+    ///
+    /// [`EventMgr::last_child`] may be called to find the message's sender.
+    /// This may return [`None`] (if no child was visited, which implies that
+    /// the message was sent by `self`).
     ///
     /// The default implementation does nothing.
     #[inline]
-    fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
-        let _ = (mgr, index);
+    fn handle_message(&mut self, mgr: &mut EventMgr) {
+        let _ = mgr;
     }
 
     /// Handler for scrolling
     ///
-    /// When a child calls [`EventMgr::set_scroll`] with a value other than
-    /// [`Scroll::None`], this method is called. (This method is not called
-    /// after [`Self::handle_event`] or other handlers called on self.)
+    /// When, during [event handling](crate::event), a widget which is a strict
+    /// descendant of `self` (i.e. not `self`) calls [`EventMgr::set_scroll`]
+    /// with a value other than [`Scroll::None`], this method is called.
     ///
     /// Note that [`Scroll::Rect`] values are in the child's coordinate space,
     /// and must be translated to the widget's own coordinate space by this
@@ -568,6 +571,9 @@ pub trait Widget: WidgetChildren + Layout {
     /// If the child is in an independent coordinate space, then this method
     /// should call `mgr.set_scroll(Scroll::None)` to avoid any reactions to
     /// child's scroll requests.
+    ///
+    /// [`EventMgr::last_child`] may be called to find the child responsible,
+    /// and should never return [`None`] (when called from this method).
     ///
     /// The default implementation does nothing.
     #[inline]

@@ -114,8 +114,9 @@ impl_scope! {
     }
 
     impl Widget for Self {
-        fn handle_message(&mut self, mgr: &mut EventMgr, index: usize) {
+        fn handle_message(&mut self, mgr: &mut EventMgr) {
             if let Some(f) = self.on_message {
+                let index = mgr.last_child().expect("message not sent from self");
                 f(mgr, index);
             }
         }

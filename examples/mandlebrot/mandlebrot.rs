@@ -382,7 +382,7 @@ impl_scope! {
                             self.delta += self.alpha.complex_mul(delta);
                         }
                     }
-                    mgr.push_msg(ViewUpdate);
+                    mgr.push(ViewUpdate);
                 }
                 Event::Scroll(delta) => {
                     let factor = match delta {
@@ -390,7 +390,7 @@ impl_scope! {
                         event::ScrollDelta::PixelDelta(coord) => -0.01 * coord.1 as f64,
                     };
                     self.alpha = self.alpha * 2f64.powf(factor);
-                    mgr.push_msg(ViewUpdate);
+                    mgr.push(ViewUpdate);
                 }
                 Event::Pan { alpha, delta } => {
                     // Our full transform (from screen coordinates to world coordinates) is:
@@ -407,7 +407,7 @@ impl_scope! {
                         + (self.alpha - new_alpha).complex_mul(self.view_delta);
                     self.alpha = new_alpha;
 
-                    mgr.push_msg(ViewUpdate);
+                    mgr.push(ViewUpdate);
                 }
                 Event::PressStart { source, coord, .. } => {
                     mgr.grab_press(
@@ -452,7 +452,7 @@ impl_scope! {
         fn new() -> MandlebrotWindow {
             let slider = Slider::new(0..=256, 1)
                 .with_value(64)
-                .on_move(|mgr, iter| mgr.push_msg(iter));
+                .on_move(|mgr, iter| mgr.push(iter));
             let mbrot = Mandlebrot::new();
             MandlebrotWindow {
                 core: Default::default(),
@@ -466,11 +466,11 @@ impl_scope! {
         }
     }
     impl Widget for Self {
-        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-            if let Some(iter) = mgr.try_pop_msg() {
+        fn handle_message(&mut self, mgr: &mut EventMgr) {
+            if let Some(iter) = mgr.try_pop() {
                 self.mbrot.iter = iter;
                 *mgr |= self.iters.set_string(format!("{iter}"));
-            } else if let Some(ViewUpdate) = mgr.try_pop_msg() {
+            } else if let Some(ViewUpdate) = mgr.try_pop() {
                 mgr.redraw(self.mbrot.id());
                 *mgr |= self.label.set_string(self.mbrot.loc());
             }

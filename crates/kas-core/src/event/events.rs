@@ -169,13 +169,11 @@ pub enum Event {
     TimerUpdate(u64),
     /// Update triggerred via an [`UpdateId`]
     ///
-    /// This event is received by all widgets when [`EventMgr::update_all`]
-    /// is called.
-    ///
-    /// Note that this event is only received by [`Widget::handle_event`] and
-    /// not by [`Widget::steal_event`] or [`Widget::handle_unused`].
-    /// Messages and scroll actions will *not* be handled by parent's
-    /// [`Widget::handle_message`] or [`Widget::handle_scroll`] methods.
+    /// When [`EventMgr::update_all`] is called, this event is broadcast to all
+    /// widgets via depth-first traversal of the widget tree. As such,
+    /// [`Widget::steal_event`] and [`Widget::handle_unused`] are not called
+    /// with this `Event`, nor are [`Widget::handle_message`] or
+    /// [`Widget::handle_scroll`] called after a widget receives this `Event`.
     Update { id: UpdateId, payload: u64 },
     /// Notification that a popup has been destroyed
     ///

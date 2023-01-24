@@ -66,8 +66,8 @@ impl_scope! {
                 direction: Direction::Up,
                 stack: Stack::new(),
                 tabs: Row::new().on_message(|mgr, index| {
-                    if let Some(MsgSelect) = mgr.try_pop_msg() {
-                        mgr.push_msg(MsgSelectIndex(index));
+                    if let Some(MsgSelect) = mgr.try_pop() {
+                        mgr.push(MsgSelectIndex(index));
                     }
                 }),
             }
@@ -93,8 +93,8 @@ impl_scope! {
             kas::util::nav_next(reverse, from, self.num_children())
         }
 
-        fn handle_message(&mut self, mgr: &mut EventMgr, _: usize) {
-            if let Some(MsgSelectIndex(index)) = mgr.try_pop_msg() {
+        fn handle_message(&mut self, mgr: &mut EventMgr) {
+            if let Some(MsgSelectIndex(index)) = mgr.try_pop() {
                 mgr.config_mgr(|mgr| self.set_active(mgr, index));
             }
         }
@@ -203,7 +203,7 @@ impl<W: Widget> TabStack<W> {
     ///
     /// Does not configure or size child.
     pub fn with_title(self, title: impl Into<AccelString>, widget: W) -> Self {
-        self.with_tab(Tab::new_on(title, |mgr| mgr.push_msg(MsgSelect)), widget)
+        self.with_tab(Tab::new_on(title, |mgr| mgr.push(MsgSelect)), widget)
     }
 
     /// Append a page
