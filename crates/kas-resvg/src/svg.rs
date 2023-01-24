@@ -8,10 +8,15 @@
 use kas::draw::{ImageFormat, ImageHandle};
 use kas::layout::{LogicalSize, PixmapScaling};
 use kas::prelude::*;
+use std::future::Future;
 use std::io::Result;
 use std::path::Path;
 use tiny_skia::{Pixmap, Transform};
-use usvg::Tree;
+
+#[derive(Clone)]
+#[autoimpl(Debug ignore self.0)]
+#[autoimpl(Deref using self.0)]
+struct Tree(usvg::Tree);
 
 #[derive(Clone, Default)]
 enum State {
@@ -21,7 +26,7 @@ enum State {
     Ready(Tree, Pixmap),
 }
 
-fn draw(tree: Tree, mut pixmap: Pixmap) -> (Tree, Pixmap) {
+async fn draw(tree: Tree, mut pixmap: Pixmap) -> (Tree, Pixmap) {
     let (w, h) = (pixmap.width(), pixmap.height());
     let transform = Transform::identity();
     resvg::render(&tree, usvg::FitTo::Size(w, h), transform, pixmap.as_mut());
@@ -32,7 +37,7 @@ impl State {
     /// Resize if required, redrawing on resize
     ///
     /// Returns a future to redraw. Does nothing if currently redrawing.
-    fn resize(&mut self, (w, h): (u32, u32)) -> Option<&[u8]> {
+    fn resize(&mut self, (w, h): (u32, u32)) -> Option<impl Future<Output = (Tree, Pixmap)>> {
         let old_state = std::mem::replace(self, State::None);
         let (tree, pixmap) = match old_state {
             State::Ready(tree, px) if (px.width(), px.height()) == (w, h) => {
@@ -50,13 +55,7 @@ impl State {
             }
         };
 
-        let (tree, px) = draw(tree, pixmap);
-        *self = State::Ready(tree, px);
-        if let State::Ready(_, ref px) = self {
-            Some(px.data())
-        } else {
-            None // unreachable
-        }
+        Some(draw(tree, pixmap))
     }
 }
 
@@ -121,7 +120,7 @@ impl_scope! {
                 image_href_resolver: Default::default(),
             };
 
-            let tree = usvg::Tree::from_data(data, &opts).unwrap();
+            let tree = Tree(usvg::Tree::from_data(data, &opts).unwrap());
             self.scaling.size = LogicalSize::conv(tree.size.to_screen_size().dimensions());
             self.inner = match std::mem::take(&mut self.inner) {
                 State::Ready(_, px) => State::Ready(tree, px),
@@ -183,29 +182,42 @@ impl_scope! {
             self.core.rect = self.scaling.align_rect(rect, scale_factor);
             let size: (u32, u32) = self.core.rect.size.cast();
 
-            if let Some(data) = self.inner.resize(size) {
-                let ds = mgr.draw_shared();
-                if let Some(im_size) = self.image.as_ref().and_then(|h| ds.image_size(h)) {
-                    if im_size != Size::conv(size) {
-                        if let Some(handle) = self.image.take() {
-                            ds.image_free(handle);
-                        }
-                    }
-                }
-
-                if self.image.is_none() {
-                    self.image = ds.image_alloc(size).ok();
-                }
-
-                if let Some(handle) = self.image.as_ref() {
-                    ds.image_upload(handle, data, ImageFormat::Rgba8);
-                }
+            if let Some(fut) = self.inner.resize(size) {
+                mgr.ev_state().push_async(self.id(), fut);
             }
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
             if let Some(id) = self.image.as_ref().map(|h| h.id()) {
                 draw.image(self.rect(), id);
+            }
+        }
+    }
+
+    impl Widget for Self {
+        fn handle_message(&mut self, mgr: &mut EventMgr) {
+            if let Some((tree, pixmap)) = mgr.try_pop::<(Tree, Pixmap)>() {
+                let size = (pixmap.width(), pixmap.height());
+                mgr.draw_shared(|ds| {
+                    if let Some(im_size) = self.image.as_ref().and_then(|h| ds.image_size(h)) {
+                        if im_size != Size::conv(size) {
+                            if let Some(handle) = self.image.take() {
+                                ds.image_free(handle);
+                            }
+                        }
+                    }
+
+                    if self.image.is_none() {
+                        self.image = ds.image_alloc(size).ok();
+                    }
+
+                    if let Some(handle) = self.image.as_ref() {
+                        ds.image_upload(handle, pixmap.data(), ImageFormat::Rgba8);
+                    }
+                });
+
+                mgr.redraw(self.id());
+                self.inner = State::Ready(tree, pixmap);
             }
         }
     }
