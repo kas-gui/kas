@@ -13,6 +13,36 @@ use std::io::Result;
 use std::path::Path;
 use tiny_skia::{Pixmap, Transform};
 
+fn load(data: &[u8], resources_dir: Option<&Path>) -> Tree {
+    use once_cell::sync::Lazy;
+    static FONT_FAMILY: Lazy<String> = Lazy::new(|| {
+        let fonts_db = kas::text::fonts::fonts().read_db();
+        fonts_db.font_family_from_alias("SERIF").unwrap_or_default()
+    });
+
+    // Defaults are taken from usvg::Options::default(). Notes:
+    // - adjusting for screen scale factor is purely a property of
+    //   making the canvas larger and not important here
+    // - default_size: affected by screen scale factor later
+    // - dpi: according to css-values-3, 1in = 96px
+    // - font_size: units are (logical) px per em; 16px = 12pt
+    let opts = usvg::Options {
+        resources_dir: resources_dir.map(|path| path.to_owned()),
+        dpi: 96.0,
+        font_family: FONT_FAMILY.clone(),
+        font_size: 16.0, // units: "logical pixels" per Em
+        languages: vec!["en".to_string()],
+        shape_rendering: usvg::ShapeRendering::default(),
+        text_rendering: usvg::TextRendering::default(),
+        image_rendering: usvg::ImageRendering::default(),
+        keep_named_groups: false,
+        default_size: usvg::Size::new(100.0, 100.0).unwrap(),
+        image_href_resolver: Default::default(),
+    };
+
+    Tree(usvg::Tree::from_data(data, &opts).unwrap())
+}
+
 #[derive(Clone)]
 #[autoimpl(Debug ignore self.0)]
 #[autoimpl(Deref using self.0)]
@@ -97,30 +127,7 @@ impl_scope! {
         ///
         /// This sets [`PixmapScaling::size`] from the SVG.
         pub fn load(&mut self, data: &[u8], resources_dir: Option<&Path>) -> Action {
-            let fonts_db = kas::text::fonts::fonts().read_db();
-            let font_family = fonts_db.font_family_from_alias("SERIF").unwrap_or_default();
-
-            // Defaults are taken from usvg::Options::default(). Notes:
-            // - adjusting for screen scale factor is purely a property of
-            //   making the canvas larger and not important here
-            // - default_size: affected by screen scale factor later
-            // - dpi: according to css-values-3, 1in = 96px
-            // - font_size: units are (logical) px per em; 16px = 12pt
-            let opts = usvg::Options {
-                resources_dir: resources_dir.map(|path| path.to_owned()),
-                dpi: 96.0,
-                font_family,
-                font_size: 16.0, // units: "logical pixels" per Em
-                languages: vec!["en".to_string()],
-                shape_rendering: usvg::ShapeRendering::default(),
-                text_rendering: usvg::TextRendering::default(),
-                image_rendering: usvg::ImageRendering::default(),
-                keep_named_groups: false,
-                default_size: usvg::Size::new(100.0, 100.0).unwrap(),
-                image_href_resolver: Default::default(),
-            };
-
-            let tree = Tree(usvg::Tree::from_data(data, &opts).unwrap());
+            let tree = load(data, resources_dir);
             self.scaling.size = LogicalSize::conv(tree.size.to_screen_size().dimensions());
             self.inner = match std::mem::take(&mut self.inner) {
                 State::Ready(_, px) => State::Ready(tree, px),
