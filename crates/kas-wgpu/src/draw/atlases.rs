@@ -241,7 +241,14 @@ impl<I: bytemuck::Pod> Pipeline<I> {
     }
 
     pub fn deallocate(&mut self, atlas: u32, alloc: AllocId) {
-        self.atlases[usize::conv(atlas)].alloc.deallocate(alloc);
+        let index = usize::conv(atlas);
+        self.atlases[index].alloc.deallocate(alloc);
+
+        // Removing empty atlases is optional. We mostly do it because some are
+        // special size allocations that may never be reused.
+        if self.atlases[index].alloc.is_empty() {
+            self.atlases.remove(index);
+        }
     }
 
     /// Prepare textures
