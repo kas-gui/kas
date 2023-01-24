@@ -178,6 +178,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
         let mut atlas = 0;
         while atlas < self.atlases.len() {
             if let Some(alloc) = self.atlases[atlas].alloc.allocate(size2d) {
+                let tex_size = self.atlases[atlas].alloc.size().to_tuple();
                 return Ok((atlas.cast(), alloc, tex_size));
             }
             atlas += 1;
@@ -186,6 +187,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
         // New_aa are atlas allocators which haven't been assigned textures yet
         for new_aa in &mut self.new_aa {
             if let Some(alloc) = new_aa.allocate(size2d) {
+                let tex_size = new_aa.size().to_tuple();
                 return Ok((atlas.cast(), alloc, tex_size));
             }
             atlas += 1;
