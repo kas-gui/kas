@@ -11,32 +11,51 @@ use kas::prelude::*;
 use std::io::Result;
 use std::path::Path;
 use tiny_skia::{Pixmap, Transform};
+use usvg::Tree;
 
 #[derive(Clone, Default)]
-struct Inner {
-    tree: Option<usvg::Tree>,
-    pixmap: Option<Pixmap>,
+enum State {
+    #[default]
+    None,
+    Initial(Tree),
+    Ready(Tree, Pixmap),
 }
 
-impl Inner {
-    /// Get current pixmap size
-    fn size(&self) -> (u32, u32) {
-        if let Some(ref pm) = self.pixmap {
-            (pm.width(), pm.height())
-        } else {
-            (0, 0)
-        }
-    }
+fn draw(tree: Tree, mut pixmap: Pixmap) -> (Tree, Pixmap) {
+    let (w, h) = (pixmap.width(), pixmap.height());
+    let transform = Transform::identity();
+    resvg::render(&tree, usvg::FitTo::Size(w, h), transform, pixmap.as_mut());
+    (tree, pixmap)
+}
 
-    /// Resize and render
-    fn resize(&mut self, w: u32, h: u32) -> Option<((u32, u32), &[u8])> {
-        self.pixmap = Pixmap::new(w, h);
-        if let Some((tree, pm)) = self.tree.as_ref().zip(self.pixmap.as_mut()) {
-            let transform = Transform::identity();
-            resvg::render(tree, usvg::FitTo::Size(w, h), transform, pm.as_mut());
-            Some(((w, h), pm.data()))
+impl State {
+    /// Resize if required, redrawing on resize
+    ///
+    /// Returns a future to redraw. Does nothing if currently redrawing.
+    fn resize(&mut self, (w, h): (u32, u32)) -> Option<&[u8]> {
+        let old_state = std::mem::replace(self, State::None);
+        let (tree, pixmap) = match old_state {
+            State::Ready(tree, px) if (px.width(), px.height()) == (w, h) => {
+                *self = State::Ready(tree, px);
+                return None;
+            }
+            State::None => return None,
+            State::Initial(tree) | State::Ready(tree, _) => {
+                if let Some(px) = Pixmap::new(w, h) {
+                    (tree, px)
+                } else {
+                    *self = State::Initial(tree);
+                    return None;
+                }
+            }
+        };
+
+        let (tree, px) = draw(tree, pixmap);
+        *self = State::Ready(tree, px);
+        if let State::Ready(_, ref px) = self {
+            Some(px.data())
         } else {
-            None
+            None // unreachable
         }
     }
 }
@@ -52,7 +71,7 @@ impl_scope! {
     #[widget]
     pub struct Svg {
         core: widget_core!(),
-        inner: Inner,
+        inner: State,
         scaling: PixmapScaling,
         image: Option<ImageHandle>,
     }
@@ -61,21 +80,24 @@ impl_scope! {
         /// Construct from data
         pub fn new(data: &[u8]) -> Self {
             let mut svg = Svg::default();
-            svg.load(data, None);
+            let _ = svg.load(data, None);
             svg
         }
 
         /// Construct from a path
         pub fn new_path<P: AsRef<Path>>(path: P) -> Result<Self> {
             let mut svg = Svg::default();
-            svg.load_path(path)?;
+            let _ = svg.load_path(path)?;
             Ok(svg)
         }
 
         /// Load from `data`
         ///
+        /// Replaces existing data, but does not re-render until a resize
+        /// happens (hence returning [`Action::REZISE`]).
+        ///
         /// This sets [`PixmapScaling::size`] from the SVG.
-        pub fn load(&mut self, data: &[u8], resources_dir: Option<&Path>) {
+        pub fn load(&mut self, data: &[u8], resources_dir: Option<&Path>) -> Action {
             let fonts_db = kas::text::fonts::fonts().read_db();
             let font_family = fonts_db.font_family_from_alias("SERIF").unwrap_or_default();
 
@@ -101,15 +123,20 @@ impl_scope! {
 
             let tree = usvg::Tree::from_data(data, &opts).unwrap();
             self.scaling.size = LogicalSize::conv(tree.size.to_screen_size().dimensions());
-            self.inner.tree = Some(tree);
+            self.inner = match std::mem::take(&mut self.inner) {
+                State::Ready(_, px) => State::Ready(tree, px),
+                _ => State::Initial(tree),
+            };
+            Action::RESIZE
         }
 
         /// Load from a path
-        pub fn load_path<P: AsRef<Path>>(&mut self, path: P) -> Result<()> {
+        ///
+        /// This is a wrapper around [`Self::load`].
+        pub fn load_path<P: AsRef<Path>>(&mut self, path: P) -> Result<Action> {
             let data = std::fs::read(path.as_ref())?;
             let resources_dir = path.as_ref().parent();
-            self.load(&data, resources_dir);
-            Ok(())
+            Ok(self.load(&data, resources_dir))
         }
 
         /// Assign size
@@ -156,15 +183,22 @@ impl_scope! {
             self.core.rect = self.scaling.align_rect(rect, scale_factor);
             let size: (u32, u32) = self.core.rect.size.cast();
 
-            if self.inner.size() != size {
-                if let Some(handle) = self.image.take() {
-                    mgr.draw_shared().image_free(handle);
+            if let Some(data) = self.inner.resize(size) {
+                let ds = mgr.draw_shared();
+                if let Some(im_size) = self.image.as_ref().and_then(|h| ds.image_size(h)) {
+                    if im_size != Size::conv(size) {
+                        if let Some(handle) = self.image.take() {
+                            ds.image_free(handle);
+                        }
+                    }
                 }
-                if let Some((size, data)) = self.inner.resize(size.0, size.1) {
-                    let handle = mgr.draw_shared().image_alloc(size).unwrap();
-                    mgr.draw_shared()
-                        .image_upload(&handle, data, ImageFormat::Rgba8);
-                    self.image = Some(handle);
+
+                if self.image.is_none() {
+                    self.image = ds.image_alloc(size).ok();
+                }
+
+                if let Some(handle) = self.image.as_ref() {
+                    ds.image_upload(handle, data, ImageFormat::Rgba8);
                 }
             }
         }
