@@ -10,8 +10,10 @@ use kas::layout::{LogicalSize, PixmapScaling};
 use kas::prelude::*;
 use std::future::Future;
 use std::io::Result;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use tiny_skia::{Pixmap, Transform};
+use usvg::Tree;
 
 fn load(data: &[u8], resources_dir: Option<&Path>) -> Tree {
     use once_cell::sync::Lazy;
@@ -40,52 +42,72 @@ fn load(data: &[u8], resources_dir: Option<&Path>) -> Tree {
         image_href_resolver: Default::default(),
     };
 
-    Tree(usvg::Tree::from_data(data, &opts).unwrap())
+    usvg::Tree::from_data(data, &opts).unwrap()
 }
 
 #[derive(Clone)]
-#[autoimpl(Debug ignore self.0)]
-#[autoimpl(Deref using self.0)]
-struct Tree(usvg::Tree);
+enum Source {
+    Static(&'static [u8], Option<PathBuf>),
+    Heap(Arc<[u8]>, Option<PathBuf>),
+}
+impl std::fmt::Debug for Source {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Source::Static(_, path) => write!(f, "Source::Static(_, {path:?}"),
+            Source::Heap(_, path) => write!(f, "Source::Heap(_, {path:?}"),
+        }
+    }
+}
+impl Source {
+    fn tree(&self) -> Tree {
+        let (data, res_dir) = match self {
+            Source::Static(d, p) => (*d, p.as_ref()),
+            Source::Heap(d, p) => (&**d, p.as_ref()),
+        };
+        load(data, res_dir.map(|p| p.as_ref()))
+    }
+}
 
 #[derive(Clone, Default)]
 enum State {
     #[default]
     None,
-    Initial(Tree),
-    Ready(Tree, Pixmap),
+    Initial(Source),
+    Rendering(Source),
+    Ready(Source, Pixmap),
 }
 
-async fn draw(tree: Tree, mut pixmap: Pixmap) -> (Tree, Pixmap) {
+async fn draw(svg: Source, mut pixmap: Pixmap) -> Pixmap {
     let (w, h) = (pixmap.width(), pixmap.height());
+    let tree = svg.tree();
     let transform = Transform::identity();
     resvg::render(&tree, usvg::FitTo::Size(w, h), transform, pixmap.as_mut());
-    (tree, pixmap)
+    pixmap
 }
 
 impl State {
     /// Resize if required, redrawing on resize
     ///
     /// Returns a future to redraw. Does nothing if currently redrawing.
-    fn resize(&mut self, (w, h): (u32, u32)) -> Option<impl Future<Output = (Tree, Pixmap)>> {
+    fn resize(&mut self, (w, h): (u32, u32)) -> Option<impl Future<Output = Pixmap>> {
         let old_state = std::mem::replace(self, State::None);
-        let (tree, pixmap) = match old_state {
-            State::Ready(tree, px) if (px.width(), px.height()) == (w, h) => {
-                *self = State::Ready(tree, px);
+        match old_state {
+            State::None => (),
+            state @ State::Rendering(_) => *self = state,
+            State::Ready(svg, px) if (px.width(), px.height()) == (w, h) => {
+                *self = State::Ready(svg, px);
                 return None;
             }
-            State::None => return None,
-            State::Initial(tree) | State::Ready(tree, _) => {
+            State::Initial(svg) | State::Ready(svg, _) => {
                 if let Some(px) = Pixmap::new(w, h) {
-                    (tree, px)
+                    return Some(draw(svg, px));
                 } else {
-                    *self = State::Initial(tree);
+                    *self = State::Rendering(svg);
                     return None;
                 }
             }
-        };
-
-        Some(draw(tree, pixmap))
+        }
+        None
     }
 }
 
@@ -107,9 +129,10 @@ impl_scope! {
 
     impl Self {
         /// Construct from data
-        pub fn new(data: &[u8]) -> Self {
+        pub fn new(data: &'static [u8]) -> Self {
             let mut svg = Svg::default();
-            let _ = svg.load(data, None);
+            let source = Source::Static(data, None);
+            let _ = svg.load_source(source);
             svg
         }
 
@@ -126,12 +149,19 @@ impl_scope! {
         /// happens (hence returning [`Action::REZISE`]).
         ///
         /// This sets [`PixmapScaling::size`] from the SVG.
-        pub fn load(&mut self, data: &[u8], resources_dir: Option<&Path>) -> Action {
-            let tree = load(data, resources_dir);
+        pub fn load(&mut self, data: &'static [u8], resources_dir: Option<&Path>) -> Action {
+            let source = Source::Static(data, resources_dir.map(|p| p.to_owned()));
+            self.load_source(source)
+        }
+
+        fn load_source(&mut self, source: Source) -> Action {
+            // Set scaling size. TODO: this is useless if Self::with_size is called after.
+            let tree = source.tree();
             self.scaling.size = LogicalSize::conv(tree.size.to_screen_size().dimensions());
+
             self.inner = match std::mem::take(&mut self.inner) {
-                State::Ready(_, px) => State::Ready(tree, px),
-                _ => State::Initial(tree),
+                State::Ready(_, px) => State::Ready(source, px),
+                _ => State::Initial(source),
             };
             Action::RESIZE
         }
@@ -140,9 +170,10 @@ impl_scope! {
         ///
         /// This is a wrapper around [`Self::load`].
         pub fn load_path<P: AsRef<Path>>(&mut self, path: P) -> Result<Action> {
-            let data = std::fs::read(path.as_ref())?;
-            let resources_dir = path.as_ref().parent();
-            Ok(self.load(&data, resources_dir))
+            let buf = std::fs::read(path.as_ref())?;
+            let rd = path.as_ref().parent().map(|path| path.to_owned());
+            let source = Source::Heap(buf.into(), rd);
+            Ok(self.load_source(source))
         }
 
         /// Assign size
@@ -203,7 +234,7 @@ impl_scope! {
 
     impl Widget for Self {
         fn handle_message(&mut self, mgr: &mut EventMgr) {
-            if let Some((tree, pixmap)) = mgr.try_pop::<(Tree, Pixmap)>() {
+            if let Some(pixmap) = mgr.try_pop::<Pixmap>() {
                 let size = (pixmap.width(), pixmap.height());
                 mgr.draw_shared(|ds| {
                     if let Some(im_size) = self.image.as_ref().and_then(|h| ds.image_size(h)) {
@@ -224,7 +255,13 @@ impl_scope! {
                 });
 
                 mgr.redraw(self.id());
-                self.inner = State::Ready(tree, pixmap);
+                let inner = std::mem::replace(&mut self.inner, State::None);
+                self.inner = match inner {
+                    State::None => State::None,
+                    State::Initial(source) |
+                    State::Rendering(source) |
+                    State::Ready(source, _) => State::Ready(source, pixmap),
+                };
             }
         }
     }
