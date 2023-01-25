@@ -5,7 +5,9 @@
 
 //! Asynchronous event demo
 //!
-//! This is a copy-cat of Druid's async event example.
+//! This is a copy-cat of Druid's async event example, demonstrating usage of
+//! shell.create_proxy(). For a more integrated approach to async, see
+//! EventState::push_async() and push_spawn().
 
 use std::sync::{Arc, Mutex};
 use std::thread;
