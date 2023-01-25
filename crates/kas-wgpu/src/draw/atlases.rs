@@ -178,6 +178,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
         let mut atlas = 0;
         while atlas < self.atlases.len() {
             if let Some(alloc) = self.atlases[atlas].alloc.allocate(size2d) {
+                let tex_size = self.atlases[atlas].alloc.size().to_tuple();
                 return Ok((atlas.cast(), alloc, tex_size));
             }
             atlas += 1;
@@ -186,6 +187,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
         // New_aa are atlas allocators which haven't been assigned textures yet
         for new_aa in &mut self.new_aa {
             if let Some(alloc) = new_aa.allocate(size2d) {
+                let tex_size = new_aa.size().to_tuple();
                 return Ok((atlas.cast(), alloc, tex_size));
             }
             atlas += 1;
@@ -239,7 +241,14 @@ impl<I: bytemuck::Pod> Pipeline<I> {
     }
 
     pub fn deallocate(&mut self, atlas: u32, alloc: AllocId) {
-        self.atlases[usize::conv(atlas)].alloc.deallocate(alloc);
+        let index = usize::conv(atlas);
+        self.atlases[index].alloc.deallocate(alloc);
+
+        // Removing empty atlases is optional. We mostly do it because some are
+        // special size allocations that may never be reused.
+        if self.atlases[index].alloc.is_empty() {
+            self.atlases.remove(index);
+        }
     }
 
     /// Prepare textures

@@ -8,36 +8,116 @@
 use kas::draw::{ImageFormat, ImageHandle};
 use kas::layout::{LogicalSize, PixmapScaling};
 use kas::prelude::*;
-use std::io::Result;
-use std::path::Path;
+use std::future::Future;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use tiny_skia::{Pixmap, Transform};
+use usvg::Tree;
 
-#[derive(Clone, Default)]
-struct Inner {
-    tree: Option<usvg::Tree>,
-    pixmap: Option<Pixmap>,
+/// Load errors
+#[derive(thiserror::Error, Debug)]
+enum LoadError {
+    #[error("IO error")]
+    Io(#[from] std::io::Error),
+    #[error("SVG error")]
+    Svg(#[from] usvg::Error),
 }
 
-impl Inner {
-    /// Get current pixmap size
-    fn size(&self) -> (u32, u32) {
-        if let Some(ref pm) = self.pixmap {
-            (pm.width(), pm.height())
-        } else {
-            (0, 0)
+fn load(data: &[u8], resources_dir: Option<&Path>) -> Result<Tree, usvg::Error> {
+    use once_cell::sync::Lazy;
+    static FONT_FAMILY: Lazy<String> = Lazy::new(|| {
+        let fonts_db = kas::text::fonts::fonts().read_db();
+        fonts_db.font_family_from_alias("SERIF").unwrap_or_default()
+    });
+
+    // Defaults are taken from usvg::Options::default(). Notes:
+    // - adjusting for screen scale factor is purely a property of
+    //   making the canvas larger and not important here
+    // - default_size: affected by screen scale factor later
+    // - dpi: according to css-values-3, 1in = 96px
+    // - font_size: units are (logical) px per em; 16px = 12pt
+    let opts = usvg::Options {
+        resources_dir: resources_dir.map(|path| path.to_owned()),
+        dpi: 96.0,
+        font_family: FONT_FAMILY.clone(),
+        font_size: 16.0, // units: "logical pixels" per Em
+        languages: vec!["en".to_string()],
+        shape_rendering: usvg::ShapeRendering::default(),
+        text_rendering: usvg::TextRendering::default(),
+        image_rendering: usvg::ImageRendering::default(),
+        keep_named_groups: false,
+        default_size: usvg::Size::new(100.0, 100.0).unwrap(),
+        image_href_resolver: Default::default(),
+    };
+
+    usvg::Tree::from_data(data, &opts)
+}
+
+#[derive(Clone)]
+enum Source {
+    Static(&'static [u8], Option<PathBuf>),
+    Heap(Arc<[u8]>, Option<PathBuf>),
+}
+impl std::fmt::Debug for Source {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Source::Static(_, path) => write!(f, "Source::Static(_, {path:?}"),
+            Source::Heap(_, path) => write!(f, "Source::Heap(_, {path:?}"),
         }
     }
+}
+impl Source {
+    fn tree(&self) -> Result<Tree, usvg::Error> {
+        let (data, res_dir) = match self {
+            Source::Static(d, p) => (*d, p.as_ref()),
+            Source::Heap(d, p) => (&**d, p.as_ref()),
+        };
+        load(data, res_dir.map(|p| p.as_ref()))
+    }
+}
 
-    /// Resize and render
-    fn resize(&mut self, w: u32, h: u32) -> Option<((u32, u32), &[u8])> {
-        self.pixmap = Pixmap::new(w, h);
-        if let Some((tree, pm)) = self.tree.as_ref().zip(self.pixmap.as_mut()) {
-            let transform = Transform::identity();
-            resvg::render(tree, usvg::FitTo::Size(w, h), transform, pm.as_mut());
-            Some(((w, h), pm.data()))
-        } else {
-            None
+#[derive(Clone, Default)]
+enum State {
+    #[default]
+    None,
+    Initial(Source),
+    Rendering(Source),
+    Ready(Source, Pixmap),
+}
+
+async fn draw(svg: Source, mut pixmap: Pixmap) -> Pixmap {
+    let (w, h) = (pixmap.width(), pixmap.height());
+    if let Ok(tree) = svg.tree() {
+        let transform = Transform::identity();
+        resvg::render(&tree, usvg::FitTo::Size(w, h), transform, pixmap.as_mut());
+    }
+    pixmap
+}
+
+impl State {
+    /// Resize if required, redrawing on resize
+    ///
+    /// Returns a future to redraw. Does nothing if currently redrawing.
+    fn resize(&mut self, (w, h): (u32, u32)) -> Option<impl Future<Output = Pixmap>> {
+        let old_state = std::mem::replace(self, State::None);
+        match old_state {
+            State::None => (),
+            state @ State::Rendering(_) => *self = state,
+            State::Ready(svg, px) if (px.width(), px.height()) == (w, h) => {
+                *self = State::Ready(svg, px);
+                return None;
+            }
+            State::Initial(svg) | State::Ready(svg, _) => {
+                if let Some(px) = Pixmap::new(w, h) {
+                    *self = State::Rendering(svg.clone());
+                    return Some(draw(svg, px));
+                } else {
+                    *self = State::Initial(svg);
+                    return None;
+                }
+            }
         }
+        None
     }
 }
 
@@ -52,64 +132,68 @@ impl_scope! {
     #[widget]
     pub struct Svg {
         core: widget_core!(),
-        inner: Inner,
+        inner: State,
         scaling: PixmapScaling,
         image: Option<ImageHandle>,
     }
 
     impl Self {
         /// Construct from data
-        pub fn new(data: &[u8]) -> Self {
+        ///
+        /// Returns an error if the SVG fails to parse. If using this method
+        /// with [`include_bytes`] it is probably safe to unwrap.
+        pub fn new(data: &'static [u8]) -> Result<Self, impl std::error::Error> {
             let mut svg = Svg::default();
-            svg.load(data, None);
-            svg
+            let source = Source::Static(data, None);
+            svg.load_source(source).map(|_action| svg)
         }
 
         /// Construct from a path
-        pub fn new_path<P: AsRef<Path>>(path: P) -> Result<Self> {
+        pub fn new_path<P: AsRef<Path>>(path: P) -> Result<Self, impl std::error::Error> {
             let mut svg = Svg::default();
-            svg.load_path(path)?;
-            Ok(svg)
+            let _action = svg.load_path_(path.as_ref())?;
+            Result::<Self, LoadError>::Ok(svg)
         }
 
         /// Load from `data`
         ///
+        /// Replaces existing data, but does not re-render until a resize
+        /// happens (hence returning [`Action::RESIZE`]).
+        ///
         /// This sets [`PixmapScaling::size`] from the SVG.
-        pub fn load(&mut self, data: &[u8], resources_dir: Option<&Path>) {
-            let fonts_db = kas::text::fonts::fonts().read_db();
-            let font_family = fonts_db.font_family_from_alias("SERIF").unwrap_or_default();
+        pub fn load(&mut self, data: &'static [u8], resources_dir: Option<&Path>)
+            -> Result<Action, impl std::error::Error>
+        {
+            let source = Source::Static(data, resources_dir.map(|p| p.to_owned()));
+            self.load_source(source)
+        }
 
-            // Defaults are taken from usvg::Options::default(). Notes:
-            // - adjusting for screen scale factor is purely a property of
-            //   making the canvas larger and not important here
-            // - default_size: affected by screen scale factor later
-            // - dpi: according to css-values-3, 1in = 96px
-            // - font_size: units are (logical) px per em; 16px = 12pt
-            let opts = usvg::Options {
-                resources_dir: resources_dir.map(|path| path.to_owned()),
-                dpi: 96.0,
-                font_family,
-                font_size: 16.0, // units: "logical pixels" per Em
-                languages: vec!["en".to_string()],
-                shape_rendering: usvg::ShapeRendering::default(),
-                text_rendering: usvg::TextRendering::default(),
-                image_rendering: usvg::ImageRendering::default(),
-                keep_named_groups: false,
-                default_size: usvg::Size::new(100.0, 100.0).unwrap(),
-                image_href_resolver: Default::default(),
-            };
-
-            let tree = usvg::Tree::from_data(data, &opts).unwrap();
+        fn load_source(&mut self, source: Source) -> Result<Action, usvg::Error> {
+            // Set scaling size. TODO: this is useless if Self::with_size is called after.
+            let tree = source.tree()?;
             self.scaling.size = LogicalSize::conv(tree.size.to_screen_size().dimensions());
-            self.inner.tree = Some(tree);
+
+            self.inner = match std::mem::take(&mut self.inner) {
+                State::Ready(_, px) => State::Ready(source, px),
+                _ => State::Initial(source),
+            };
+            Ok(Action::RESIZE)
         }
 
         /// Load from a path
-        pub fn load_path<P: AsRef<Path>>(&mut self, path: P) -> Result<()> {
-            let data = std::fs::read(path.as_ref())?;
-            let resources_dir = path.as_ref().parent();
-            self.load(&data, resources_dir);
-            Ok(())
+        ///
+        /// This is a wrapper around [`Self::load`].
+        pub fn load_path<P: AsRef<Path>>(&mut self, path: P)
+            -> Result<Action, impl std::error::Error>
+        {
+            self.load_path_(path.as_ref())
+        }
+
+        fn load_path_(&mut self, path: &Path) -> Result<Action, LoadError> {
+            let buf = std::fs::read(path)?;
+            let rd = path.parent().map(|path| path.to_owned());
+            let source = Source::Heap(buf.into(), rd);
+            Ok(self.load_source(source)?)
         }
 
         /// Assign size
@@ -156,22 +240,48 @@ impl_scope! {
             self.core.rect = self.scaling.align_rect(rect, scale_factor);
             let size: (u32, u32) = self.core.rect.size.cast();
 
-            if self.inner.size() != size {
-                if let Some(handle) = self.image.take() {
-                    mgr.draw_shared().image_free(handle);
-                }
-                if let Some((size, data)) = self.inner.resize(size.0, size.1) {
-                    let handle = mgr.draw_shared().image_alloc(size).unwrap();
-                    mgr.draw_shared()
-                        .image_upload(&handle, data, ImageFormat::Rgba8);
-                    self.image = Some(handle);
-                }
+            if let Some(fut) = self.inner.resize(size) {
+                mgr.ev_state().push_spawn(self.id(), fut);
             }
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
             if let Some(id) = self.image.as_ref().map(|h| h.id()) {
                 draw.image(self.rect(), id);
+            }
+        }
+    }
+
+    impl Widget for Self {
+        fn handle_message(&mut self, mgr: &mut EventMgr) {
+            if let Some(pixmap) = mgr.try_pop::<Pixmap>() {
+                let size = (pixmap.width(), pixmap.height());
+                mgr.draw_shared(|ds| {
+                    if let Some(im_size) = self.image.as_ref().and_then(|h| ds.image_size(h)) {
+                        if im_size != Size::conv(size) {
+                            if let Some(handle) = self.image.take() {
+                                ds.image_free(handle);
+                            }
+                        }
+                    }
+
+                    if self.image.is_none() {
+                        self.image = ds.image_alloc(size).ok();
+                    }
+
+                    if let Some(handle) = self.image.as_ref() {
+                        ds.image_upload(handle, pixmap.data(), ImageFormat::Rgba8);
+                    }
+                });
+
+                mgr.redraw(self.id());
+                let inner = std::mem::replace(&mut self.inner, State::None);
+                self.inner = match inner {
+                    State::None => State::None,
+                    State::Initial(source) |
+                    State::Rendering(source) |
+                    State::Ready(source, _) => State::Ready(source, pixmap),
+                };
             }
         }
     }

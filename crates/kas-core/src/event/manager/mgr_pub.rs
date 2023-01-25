@@ -469,13 +469,17 @@ impl EventState {
         self.hover_icon = icon;
     }
 
-    /// Push a message to the stack via a [`Future`]
+    /// Asynchronously push a message to the stack via a [`Future`]
     ///
-    /// Expects a future which, on completion, returns a message.
-    /// This message is then pushed to the message stack as if it were pushed
-    /// with [`Self::push`] from widget `id`.
+    /// The future is polled after event handling and after drawing and is able
+    /// to wake the event loop. This future is executed on the main thread; for
+    /// high-CPU tasks use [`Self::push_spawn`] instead.
     ///
-    /// The future will be polled before the event loop sleeps.
+    /// The future must resolve to a message on completion. This message is
+    /// pushed to the message stack as if it were pushed with [`EventMgr::push`]
+    /// from widget `id`, allowing this widget or any ancestor to handle it in
+    /// [`Widget::handle_message`].
+    //
     // TODO: Can we identify the calling widget `id` via the context (EventMgr)?
     pub fn push_async<Fut, M>(&mut self, id: WidgetId, fut: Fut)
     where
@@ -485,13 +489,9 @@ impl EventState {
         self.push_async_erased(id, async { Erased::new(fut.await) });
     }
 
-    /// Push a type-erased message to the stack via a [`Future`]
+    /// Asynchronously push a type-erased message to the stack via a [`Future`]
     ///
-    /// Expects a future which, on completion, returns a message.
-    /// This message is then pushed to the message stack as if it were pushed
-    /// with [`Self::push_erased`] from widget `id`.
-    ///
-    /// The future will be polled before the event loop sleeps.
+    /// This is a low-level variant of [`Self::push_async`].
     pub fn push_async_erased<Fut>(&mut self, id: WidgetId, fut: Fut)
     where
         Fut: IntoFuture<Output = Erased> + 'static,
@@ -502,14 +502,14 @@ impl EventState {
 
     /// Spawn a task, run on a thread pool
     ///
-    /// This method is similar to [`Self::push_async`], except that the future
-    /// is run on a worker thread (appropriate when significant CPU work is
-    /// required).
+    /// The future is spawned to a thread-pool before the event-handling loop
+    /// sleeps, and is able to wake the loop on completion. Tasks involving
+    /// significant CPU work should use this method over [`Self::push_async`].
     ///
-    /// The future will be spawned before the event loop sleeps.
-    ///
-    /// Uses [`async-global-executor`].
-    /// See crate documentation for configuration.
+    /// This method is simply a wrapper around [`async_global_executor::spawn`]
+    /// and [`Self::push_async`]; if a different multi-threaded executor is
+    /// available, that may be used instead. See also [`async_global_executor`]
+    /// documentation of configuration.
     #[cfg(feature = "spawn")]
     #[cfg_attr(doc_cfg, doc(cfg(feature = "spawn")))]
     pub fn push_spawn<Fut, M>(&mut self, id: WidgetId, fut: Fut)
