@@ -19,8 +19,10 @@ pub trait CanvasProgram: std::fmt::Debug + Send + 'static {
     /// Draw image
     ///
     /// This method should draw an image to the canvas. It is called when the
-    /// pixmap is created and resized, when [`Canvas::redraw`] is called, and
-    /// when requested by [`CanvasProgram::do_redraw_animate`].
+    /// pixmap is created and resized and when requested by [`Self::need_redraw`].
+    ///
+    /// Note that [`Layout::draw`] does not call this method, but instead draws
+    /// from a copy of the `pixmap` (updated each time this method completes).
     fn draw(&mut self, pixmap: &mut Pixmap);
 
     /// This method is called each time a frame is drawn. Note that since
@@ -88,18 +90,13 @@ impl<P: CanvasProgram> State<P> {
 impl_scope! {
     /// A canvas widget over the `tiny-skia` library
     ///
+    /// The widget is essentially a cached image drawn from a [`Pixmap`]
+    /// controlled through an implementation of [`CanvasProgram`].
     /// Note that the `tiny-skia` API is re-exported as [`crate::tiny_skia`].
     ///
-    /// Canvas size is controlled by the sizing arguments passed to the constructor,
-    /// as well as the `stretch` factor and the display's scale factor `sf`.
-    /// Minimum size is `min_size * sf`. Ideal size is `ideal_size * sf` except that
-    /// if `fix_aspect` is true, then the ideal height is the one that preserves
-    /// aspect ratio for the given width. The canvas may also exceed the ideal size
-    /// if a [`Stretch`] factor greater than `None` is used.
-    ///
-    /// The canvas (re)creates the backing pixmap when the size is set and draws
-    /// to the new pixmap immediately. If the canvas program is modified then
-    /// [`Canvas::redraw`] must be called to update the pixmap.
+    /// By default, a `Canvas` has a minimum size of 128x128 pixels and a high
+    /// stretch factor (i.e. will greedily occupy extra space). To adjust this
+    /// call one of the sizing/scaling methods.
     #[autoimpl(Debug ignore self.inner)]
     #[derive(Clone)]
     #[widget]
