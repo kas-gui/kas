@@ -9,13 +9,21 @@ use kas::draw::{ImageFormat, ImageHandle};
 use kas::layout::{LogicalSize, PixmapScaling};
 use kas::prelude::*;
 use std::future::Future;
-use std::io::Result;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tiny_skia::{Pixmap, Transform};
 use usvg::Tree;
 
-fn load(data: &[u8], resources_dir: Option<&Path>) -> Tree {
+/// Load errors
+#[derive(thiserror::Error, Debug)]
+enum LoadError {
+    #[error("IO error")]
+    Io(#[from] std::io::Error),
+    #[error("SVG error")]
+    Svg(#[from] usvg::Error),
+}
+
+fn load(data: &[u8], resources_dir: Option<&Path>) -> Result<Tree, usvg::Error> {
     use once_cell::sync::Lazy;
     static FONT_FAMILY: Lazy<String> = Lazy::new(|| {
         let fonts_db = kas::text::fonts::fonts().read_db();
@@ -42,7 +50,7 @@ fn load(data: &[u8], resources_dir: Option<&Path>) -> Tree {
         image_href_resolver: Default::default(),
     };
 
-    usvg::Tree::from_data(data, &opts).unwrap()
+    usvg::Tree::from_data(data, &opts)
 }
 
 #[derive(Clone)]
@@ -59,7 +67,7 @@ impl std::fmt::Debug for Source {
     }
 }
 impl Source {
-    fn tree(&self) -> Tree {
+    fn tree(&self) -> Result<Tree, usvg::Error> {
         let (data, res_dir) = match self {
             Source::Static(d, p) => (*d, p.as_ref()),
             Source::Heap(d, p) => (&**d, p.as_ref()),
@@ -79,9 +87,10 @@ enum State {
 
 async fn draw(svg: Source, mut pixmap: Pixmap) -> Pixmap {
     let (w, h) = (pixmap.width(), pixmap.height());
-    let tree = svg.tree();
-    let transform = Transform::identity();
-    resvg::render(&tree, usvg::FitTo::Size(w, h), transform, pixmap.as_mut());
+    if let Ok(tree) = svg.tree() {
+        let transform = Transform::identity();
+        resvg::render(&tree, usvg::FitTo::Size(w, h), transform, pixmap.as_mut());
+    }
     pixmap
 }
 
@@ -130,51 +139,61 @@ impl_scope! {
 
     impl Self {
         /// Construct from data
-        pub fn new(data: &'static [u8]) -> Self {
+        ///
+        /// Returns an error if the SVG fails to parse. If using this method
+        /// with [`include_bytes`] it is probably safe to unwrap.
+        pub fn new(data: &'static [u8]) -> Result<Self, impl std::error::Error> {
             let mut svg = Svg::default();
             let source = Source::Static(data, None);
-            let _ = svg.load_source(source);
-            svg
+            svg.load_source(source).map(|_action| svg)
         }
 
         /// Construct from a path
-        pub fn new_path<P: AsRef<Path>>(path: P) -> Result<Self> {
+        pub fn new_path<P: AsRef<Path>>(path: P) -> Result<Self, impl std::error::Error> {
             let mut svg = Svg::default();
-            let _ = svg.load_path(path)?;
-            Ok(svg)
+            let _action = svg.load_path_(path.as_ref())?;
+            Result::<Self, LoadError>::Ok(svg)
         }
 
         /// Load from `data`
         ///
         /// Replaces existing data, but does not re-render until a resize
-        /// happens (hence returning [`Action::REZISE`]).
+        /// happens (hence returning [`Action::RESIZE`]).
         ///
         /// This sets [`PixmapScaling::size`] from the SVG.
-        pub fn load(&mut self, data: &'static [u8], resources_dir: Option<&Path>) -> Action {
+        pub fn load(&mut self, data: &'static [u8], resources_dir: Option<&Path>)
+            -> Result<Action, impl std::error::Error>
+        {
             let source = Source::Static(data, resources_dir.map(|p| p.to_owned()));
             self.load_source(source)
         }
 
-        fn load_source(&mut self, source: Source) -> Action {
+        fn load_source(&mut self, source: Source) -> Result<Action, usvg::Error> {
             // Set scaling size. TODO: this is useless if Self::with_size is called after.
-            let tree = source.tree();
+            let tree = source.tree()?;
             self.scaling.size = LogicalSize::conv(tree.size.to_screen_size().dimensions());
 
             self.inner = match std::mem::take(&mut self.inner) {
                 State::Ready(_, px) => State::Ready(source, px),
                 _ => State::Initial(source),
             };
-            Action::RESIZE
+            Ok(Action::RESIZE)
         }
 
         /// Load from a path
         ///
         /// This is a wrapper around [`Self::load`].
-        pub fn load_path<P: AsRef<Path>>(&mut self, path: P) -> Result<Action> {
-            let buf = std::fs::read(path.as_ref())?;
-            let rd = path.as_ref().parent().map(|path| path.to_owned());
+        pub fn load_path<P: AsRef<Path>>(&mut self, path: P)
+            -> Result<Action, impl std::error::Error>
+        {
+            self.load_path_(path.as_ref())
+        }
+
+        fn load_path_(&mut self, path: &Path) -> Result<Action, LoadError> {
+            let buf = std::fs::read(path)?;
+            let rd = path.parent().map(|path| path.to_owned());
             let source = Source::Heap(buf.into(), rd);
-            Ok(self.load_source(source))
+            Ok(self.load_source(source)?)
         }
 
         /// Assign size

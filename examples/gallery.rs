@@ -56,15 +56,17 @@ fn widgets() -> Box<dyn SetDisabled> {
     // A real app might use async loading of resources here (Svg permits loading
     // from a data slice; DrawShared allows allocation from data slice).
     let img_light = Svg::new(include_bytes!("../res/contrast-2-line.svg"))
+        .unwrap()
         .with_scaling(|scaling| scaling.margins = MarginStyle::Tiny);
     let img_dark = Svg::new(include_bytes!("../res/contrast-2-fill.svg"))
+        .unwrap()
         .with_scaling(|scaling| scaling.margins = MarginStyle::Tiny);
     const SVG_WARNING: &[u8] = include_bytes!("../res/error-warning-line.svg");
     let img_rustacean = match Svg::new_path("res/rustacean-flat-happy.svg") {
         Ok(svg) => svg,
         Err(e) => {
             println!("Failed to load res/rustacean-flat-happy.svg: {e}");
-            Svg::new(SVG_WARNING)
+            Svg::new(SVG_WARNING).unwrap()
         }
     };
 
