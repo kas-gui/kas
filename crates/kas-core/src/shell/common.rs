@@ -131,6 +131,11 @@ pub(crate) trait ShellWindow {
     /// windows, will receive an update.
     fn update_all(&mut self, id: UpdateId, payload: u64);
 
+    /// Enable window dragging for current click
+    ///
+    /// This calls `winit::window::Window::drag_window`. Errors are ignored.
+    fn drag_window(&self);
+
     /// Attempt to get clipboard contents
     ///
     /// In case of failure, paste actions will simply fail. The implementation

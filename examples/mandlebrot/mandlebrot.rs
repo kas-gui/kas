@@ -480,6 +480,10 @@ impl_scope! {
         fn title(&self) -> &str {
             "Mandlebrot"
         }
+
+        fn drag_anywhere(&self) -> bool {
+            false
+        }
     }
 }
 

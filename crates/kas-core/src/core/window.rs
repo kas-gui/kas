@@ -55,6 +55,18 @@ pub trait Window: Widget {
         (true, false)
     }
 
+    /// Whether to allow dragging the window from the background
+    ///
+    /// If true, then any unhandled click+drag in the window may be used to
+    /// drag the window. Probably more useful for small pop-ups than large
+    /// windows.
+    ///
+    /// Default: `true`.
+    #[inline]
+    fn drag_anywhere(&self) -> bool {
+        true
+    }
+
     /// Handle closure of self
     ///
     /// This allows for actions on destruction.

@@ -480,6 +480,12 @@ where
         self.shared.update_all(id, payload);
     }
 
+    fn drag_window(&self) {
+        if let Some(window) = self.window {
+            let _result = window.drag_window();
+        }
+    }
+
     #[inline]
     fn get_clipboard(&mut self) -> Option<String> {
         self.shared.get_clipboard()

@@ -494,7 +494,11 @@ impl<'a> EventMgr<'a> {
                         start_id: self.hover.clone(),
                         coord,
                     };
-                    self.send_popup_first(widget, self.hover.clone(), event);
+                    let used = self.send_popup_first(widget, self.hover.clone(), event);
+
+                    if !used && widget.drag_anywhere() {
+                        self.shell.drag_window();
+                    }
                 }
             }
             // TouchpadPressure { pressure: f32, stage: i64, },
