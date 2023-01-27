@@ -102,6 +102,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         let window = builder
             .with_title(widget.title())
             .with_window_icon(widget.icon())
+            .with_transparent(widget.transparent())
             .build(elwt)?;
 
         shared.init_clipboard(&window);

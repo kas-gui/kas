@@ -19,6 +19,7 @@ use kas::draw::{color, Draw, DrawRounded, PassType};
 use kas::geom::{Offset, Quad, Rect, Vec2};
 use kas::prelude::*;
 use kas::shell::ShellAssoc;
+use kas::theme::ThemeControl;
 
 type Theme = kas::theme::FlatTheme;
 type Shell = kas::shell::DefaultShell<Theme>;
@@ -166,11 +167,20 @@ impl_scope! {
         fn title(&self) -> &str {
             "Clock"
         }
+
+        fn transparent(&self) -> bool {
+            true
+        }
     }
 }
 
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    Shell::new(Theme::new())?.with(Clock::new())?.run()
+    let mut theme = Theme::new();
+    let mut cols = theme.get_colors().clone();
+    cols.background.a = 0.5;
+    let _ = theme.set_colors("transparent".to_string(), cols);
+
+    Shell::new(theme)?.with(Clock::new())?.run()
 }

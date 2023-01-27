@@ -33,7 +33,6 @@ pub trait Window: Widget {
     /// Get the window icon, if any
     ///
     /// Default: `None`
-    #[inline]
     fn icon(&self) -> Option<Icon> {
         None
     }
@@ -50,7 +49,6 @@ pub trait Window: Widget {
     /// windows.
     ///
     /// Default: `(true, false)`
-    #[inline]
     fn restrict_dimensions(&self) -> (bool, bool) {
         (true, false)
     }
@@ -62,9 +60,21 @@ pub trait Window: Widget {
     /// windows.
     ///
     /// Default: `true`.
-    #[inline]
     fn drag_anywhere(&self) -> bool {
         true
+    }
+
+    /// Whether the window supports transparency
+    ///
+    /// If true, painting with `alpha < 1.0` makes the background visible.
+    ///
+    /// Note: results may vary by platform. Current output does *not* use
+    /// pre-multiplied alpha which *some* platforms expect, thus pixels with
+    /// partial transparency may have incorrect appearance.
+    ///
+    /// Default: `false`.
+    fn transparent(&self) -> bool {
+        false
     }
 
     /// Handle closure of self
