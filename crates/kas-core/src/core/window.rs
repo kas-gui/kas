@@ -25,6 +25,17 @@ impl WindowId {
     }
 }
 
+/// Available decoration modes
+#[derive(PartialEq, Eq, Hash, Debug)]
+pub enum Decorations {
+    /// No decorations
+    None,
+    /// Server-side decorations
+    ///
+    /// Decorations are drawn by the window manager, if available.
+    Server,
+}
+
 /// Functionality required by a window
 pub trait Window: Widget {
     /// Get the window title
@@ -35,6 +46,21 @@ pub trait Window: Widget {
     /// Default: `None`
     fn icon(&self) -> Option<Icon> {
         None
+    }
+
+    /// Get the preference for window decorations
+    ///
+    /// "Windowing" platforms (i.e. not mobile or web) usually include a
+    /// title-bar, icons and potentially side borders. These are known as
+    /// **decorations**.
+    ///
+    /// This controls the *preferred* type of decorations on windowing
+    /// platforms. It is not always followed (e.g. Wayland does not support
+    /// server-side decorations by default).
+    ///
+    /// Default: [`Decorations::Server`].
+    fn decorations(&self) -> Decorations {
+        Decorations::Server
     }
 
     /// Whether to limit the maximum size of a window

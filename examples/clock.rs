@@ -172,6 +172,10 @@ impl_scope! {
             "Clock"
         }
 
+        fn decorations(&self) -> kas::Decorations {
+            kas::Decorations::None
+        }
+
         fn transparent(&self) -> bool {
             true
         }

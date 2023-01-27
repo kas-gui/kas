@@ -89,6 +89,11 @@ impl_scope! {
         }
 
         #[inline]
+        fn decorations(&self) -> crate::Decorations {
+            self.w.decorations()
+        }
+
+        #[inline]
         fn restrict_dimensions(&self) -> (bool, bool) {
             self.w.restrict_dimensions()
         }
