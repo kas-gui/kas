@@ -11,14 +11,13 @@ use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawMgr, SizeMgr};
 use crate::{Action, Layout, Widget, WidgetExt, WidgetId, Window, WindowId};
-use kas_macros::{autoimpl, impl_scope};
+use kas_macros::impl_scope;
 use smallvec::SmallVec;
 
 impl_scope! {
     /// A support layer around a window
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    #[autoimpl(Deref, DerefMut using self.w)]
     #[derive(Debug)]
     #[widget]
     pub struct RootWidget {
@@ -73,6 +72,35 @@ impl_scope! {
         fn handle_scroll(&mut self, mgr: &mut EventMgr, _: Scroll) {
             // Something was scrolled; update pop-up translations
             mgr.config_mgr(|mgr| self.resize_popups(mgr));
+        }
+    }
+
+    // Note: we do not simply Deref to self.w; that allows skipping our Layout
+    // and Widget methods.
+    impl Window for Self {
+        #[inline]
+        fn title(&self) -> &str {
+            self.w.title()
+        }
+
+        #[inline]
+        fn icon(&self) -> Option<crate::Icon> {
+            self.w.icon()
+        }
+
+        #[inline]
+        fn restrict_dimensions(&self) -> (bool, bool) {
+            self.w.restrict_dimensions()
+        }
+
+        #[inline]
+        fn drag_anywhere(&self) -> bool {
+            self.w.drag_anywhere()
+        }
+
+        #[inline]
+        fn handle_closure(&mut self, mgr: &mut EventMgr) {
+            self.w.handle_closure(mgr);
         }
     }
 }

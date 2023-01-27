@@ -13,7 +13,7 @@ use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
 use kas::theme::{DrawMgr, SizeMgr, ThemeControl, ThemeSize};
 use kas::theme::{Theme, Window as _};
-use kas::{Action, Layout, WidgetCore, WidgetExt, WindowId};
+use kas::{Action, Layout, WidgetCore, WidgetExt, Window as _, WindowId};
 use std::mem::take;
 use std::time::Instant;
 use winit::error::OsError;

@@ -14,7 +14,7 @@ use crate::cast::traits::*;
 use crate::geom::{Coord, DVec2};
 use crate::model::SharedRc;
 use crate::shell::ShellWindow;
-use crate::{Action, RootWidget, Widget, WidgetId};
+use crate::{Action, Layout, RootWidget, Widget, WidgetId, Window};
 
 // TODO: this should be configurable or derived from the system
 const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
