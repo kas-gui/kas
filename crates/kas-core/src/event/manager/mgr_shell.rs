@@ -14,7 +14,7 @@ use crate::cast::traits::*;
 use crate::geom::{Coord, DVec2};
 use crate::model::SharedRc;
 use crate::shell::ShellWindow;
-use crate::{Action, Widget, WidgetId};
+use crate::{Action, RootWidget, Widget, WidgetId};
 
 // TODO: this should be configurable or derived from the system
 const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
@@ -324,7 +324,7 @@ impl<'a> EventMgr<'a> {
     #[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
     pub(crate) fn handle_winit(
         &mut self,
-        widget: &mut dyn Widget,
+        widget: &mut RootWidget,
         event: winit::event::WindowEvent,
     ) {
         use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent::*};

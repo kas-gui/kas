@@ -173,9 +173,8 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
             }
             event => {
                 let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
-                let widget = self.widget.as_widget_mut();
                 self.ev_state.with(&mut tkw, |mgr| {
-                    mgr.handle_winit(widget, event);
+                    mgr.handle_winit(&mut self.widget, event);
                 });
 
                 if self.ev_state.action.contains(Action::RECONFIGURE) {
