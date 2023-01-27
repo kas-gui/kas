@@ -35,7 +35,10 @@ impl<C: CustomPipe> DrawPipe<C> {
         options: &Options,
         raster_config: &kas::theme::RasterConfig,
     ) -> Result<Self, Error> {
-        let instance = wgpu::Instance::new(options.backend());
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: options.backend(),
+            ..Default::default()
+        });
         let adapter_options = options.adapter_options();
         let req = instance.request_adapter(&adapter_options);
         let adapter = match block_on(req) {

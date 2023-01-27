@@ -198,7 +198,9 @@ pub trait WindowSurface {
         shared: &mut Self::Shared,
         size: Size,
         window: W,
-    ) -> Self;
+    ) -> Result<Self>
+    where
+        Self: Sized;
 
     /// Get current surface size
     fn size(&self) -> Size;

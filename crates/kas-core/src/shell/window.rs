@@ -16,7 +16,6 @@ use kas::theme::{Theme, Window as _};
 use kas::{Action, Layout, WidgetCore, WidgetExt, Window as _, WindowId};
 use std::mem::take;
 use std::time::Instant;
-use winit::error::OsError;
 use winit::event::WindowEvent;
 use winit::event_loop::EventLoopWindowTarget;
 use winit::window::WindowBuilder;
@@ -43,7 +42,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         elwt: &EventLoopWindowTarget<ProxyAction>,
         window_id: WindowId,
         widget: Box<dyn kas::Window>,
-    ) -> Result<Self, OsError> {
+    ) -> super::Result<Self> {
         let time = Instant::now();
 
         let mut widget = kas::RootWidget::new(widget);
@@ -114,7 +113,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
             solve_cache.invalidate_rule_cache();
         }
 
-        let surface = S::new(&mut shared.draw.draw, size, &window);
+        let surface = S::new(&mut shared.draw.draw, size, &window)?;
 
         let mut r = Window {
             widget,
