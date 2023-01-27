@@ -70,16 +70,8 @@ impl SimpleTheme {
     #[inline]
     #[must_use]
     pub fn with_colours(mut self, name: &str) -> Self {
-        if let Some(scheme) = self.config.get_color_scheme(name) {
-            self.config.set_active_scheme(name);
-            let _ = self.set_colors(scheme.into());
-        }
+        let _ = self.set_scheme(name);
         self
-    }
-
-    pub fn set_colors(&mut self, cols: ColorsLinear) -> Action {
-        self.cols = cols;
-        Action::REDRAW
     }
 }
 
@@ -105,8 +97,9 @@ where
 
     fn apply_config(&mut self, config: &Self::Config) -> Action {
         let mut action = self.config.apply_config(config);
-        if let Some(scheme) = self.config.get_active_scheme() {
-            action |= self.set_colors(scheme.into());
+        if let Some(cols) = self.config.get_active_scheme() {
+            self.cols = cols.into();
+            action |= Action::REDRAW;
         }
         action
     }
@@ -169,6 +162,10 @@ impl ThemeControl for SimpleTheme {
         Action::RESIZE | Action::THEME_UPDATE
     }
 
+    fn active_scheme(&self) -> &str {
+        self.config.active_scheme()
+    }
+
     fn list_schemes(&self) -> Vec<&str> {
         self.config
             .color_schemes_iter()
@@ -176,14 +173,20 @@ impl ThemeControl for SimpleTheme {
             .collect()
     }
 
-    fn set_scheme(&mut self, name: &str) -> Action {
-        if name != self.config.active_scheme() {
-            if let Some(scheme) = self.config.get_color_scheme(name) {
-                self.config.set_active_scheme(name);
-                return self.set_colors(scheme.into());
-            }
-        }
-        Action::empty()
+    fn get_scheme(&self, name: &str) -> Option<&super::ColorsSrgb> {
+        self.config
+            .color_schemes_iter()
+            .find_map(|item| (name == item.0).then_some(item.1))
+    }
+
+    fn get_colors(&self) -> &ColorsLinear {
+        &self.cols
+    }
+
+    fn set_colors(&mut self, name: String, cols: ColorsLinear) -> Action {
+        self.config.set_active_scheme(name);
+        self.cols = cols;
+        Action::REDRAW
     }
 }
 

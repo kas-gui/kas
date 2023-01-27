@@ -171,8 +171,34 @@ pub type ColorsSrgb = Colors<Rgba8Srgb>;
 /// [`Colors`] parameterised for graphics usage
 pub type ColorsLinear = Colors<Rgba>;
 
+impl From<&ColorsSrgb> for ColorsLinear {
+    fn from(col: &ColorsSrgb) -> Self {
+        Colors {
+            is_dark: col.is_dark,
+            background: col.background.into(),
+            frame: col.frame.into(),
+            accent: col.accent.into(),
+            accent_soft: col.accent_soft.into(),
+            nav_focus: col.nav_focus.into(),
+            edit_bg: col.edit_bg.into(),
+            edit_bg_disabled: col.edit_bg_disabled.into(),
+            edit_bg_error: col.edit_bg_error.into(),
+            text: col.text.into(),
+            text_invert: col.text_invert.into(),
+            text_disabled: col.text_disabled.into(),
+            text_sel_bg: col.text_sel_bg.into(),
+        }
+    }
+}
+
 impl From<ColorsSrgb> for ColorsLinear {
     fn from(col: ColorsSrgb) -> Self {
+        Colors::from(&col)
+    }
+}
+
+impl From<&ColorsLinear> for ColorsSrgb {
+    fn from(col: &ColorsLinear) -> Self {
         Colors {
             is_dark: col.is_dark,
             background: col.background.into(),
@@ -193,21 +219,7 @@ impl From<ColorsSrgb> for ColorsLinear {
 
 impl From<ColorsLinear> for ColorsSrgb {
     fn from(col: ColorsLinear) -> Self {
-        Colors {
-            is_dark: col.is_dark,
-            background: col.background.into(),
-            frame: col.frame.into(),
-            accent: col.accent.into(),
-            accent_soft: col.accent_soft.into(),
-            nav_focus: col.nav_focus.into(),
-            edit_bg: col.edit_bg.into(),
-            edit_bg_disabled: col.edit_bg_disabled.into(),
-            edit_bg_error: col.edit_bg_error.into(),
-            text: col.text.into(),
-            text_invert: col.text_invert.into(),
-            text_disabled: col.text_disabled.into(),
-            text_sel_bg: col.text_sel_bg.into(),
-        }
+        Colors::from(&col)
     }
 }
 

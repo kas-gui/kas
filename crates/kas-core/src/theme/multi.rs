@@ -150,12 +150,16 @@ impl<DS> ThemeControl for MultiTheme<DS> {
         action
     }
 
+    fn active_scheme(&self) -> &str {
+        self.themes[self.active].active_scheme()
+    }
+
     fn set_scheme(&mut self, scheme: &str) -> Action {
         // Slightly inefficient, but sufficient: update all
         // (Otherwise we would have to call set_scheme in set_theme too.)
         let mut action = Action::empty();
         for theme in &mut self.themes {
-            action = action.max(theme.set_scheme(scheme));
+            action |= theme.set_scheme(scheme);
         }
         action
     }
@@ -164,6 +168,22 @@ impl<DS> ThemeControl for MultiTheme<DS> {
         // We list only schemes of the active theme. Probably all themes should
         // have the same schemes anyway.
         self.themes[self.active].list_schemes()
+    }
+
+    fn get_scheme(&self, name: &str) -> Option<&super::ColorsSrgb> {
+        self.themes[self.active].get_scheme(name)
+    }
+
+    fn get_colors(&self) -> &ColorsLinear {
+        self.themes[self.active].get_colors()
+    }
+
+    fn set_colors(&mut self, name: String, cols: ColorsLinear) -> Action {
+        let mut action = Action::empty();
+        for theme in &mut self.themes {
+            action |= theme.set_colors(name.clone(), cols.clone());
+        }
+        action
     }
 
     fn set_theme(&mut self, theme: &str) -> Action {
