@@ -172,7 +172,9 @@ pub trait Theme<DS: DrawSharedImpl>: ThemeControl {
         cols: &'a ColorsLinear,
     ) -> Self::Draw<'a>;
 
-    /// Background colour
+    /// The window/scene clear color
+    ///
+    /// This is not used when the window is transparent.
     fn clear_color(&self) -> color::Rgba;
 }
 

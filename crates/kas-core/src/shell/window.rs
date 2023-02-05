@@ -7,7 +7,7 @@
 
 use super::{PendingAction, ProxyAction, SharedState, ShellWindow, WindowSurface};
 use kas::cast::Cast;
-use kas::draw::{AnimationState, DrawShared};
+use kas::draw::{color::Rgba, AnimationState, DrawShared};
 use kas::event::{ConfigMgr, CursorIcon, EventState, UpdateId};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
@@ -392,7 +392,11 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
             return Err(());
         }
 
-        let clear_color = shared.theme.clear_color();
+        let clear_color = if self.widget.transparent() {
+            Rgba::TRANSPARENT
+        } else {
+            shared.theme.clear_color()
+        };
         self.surface.present(&mut shared.draw.draw, clear_color);
 
         let text_dur_micros = take(&mut self.surface.common_mut().dur_text);

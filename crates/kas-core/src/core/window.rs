@@ -108,6 +108,8 @@ pub trait Window: Widget {
     /// Whether the window supports transparency
     ///
     /// If true, painting with `alpha < 1.0` makes the background visible.
+    /// Additionally, window draw targets are cleared to transparent. This does
+    /// not stop theme elements from drawing a solid background.
     ///
     /// Note: results may vary by platform. Current output does *not* use
     /// pre-multiplied alpha which *some* platforms expect, thus pixels with

@@ -21,7 +21,6 @@ use kas::draw::{Draw, DrawRounded};
 use kas::geom::{Offset, Quad, Rect, Vec2};
 use kas::prelude::*;
 use kas::shell::ShellAssoc;
-use kas::theme::ThemeControl;
 
 type Theme = kas::theme::FlatTheme;
 type Shell = kas::shell::DefaultShell<Theme>;
@@ -185,10 +184,6 @@ impl_scope! {
 fn main() -> kas::shell::Result<()> {
     env_logger::init();
 
-    let mut theme = Theme::new();
-    let mut cols = theme.get_colors().clone();
-    cols.background = Rgba::ga(0.0, 0.0);
-    let _ = theme.set_colors("transparent".to_string(), cols);
-
+    let theme = Theme::new();
     Shell::new(theme)?.with(Clock::new())?.run()
 }
