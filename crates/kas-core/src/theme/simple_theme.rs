@@ -238,6 +238,42 @@ where
             self.draw.rect(line, col);
         }
     }
+
+    fn draw_mark(&mut self, rect: Rect, style: MarkStyle, col: Rgba) {
+        match style {
+            MarkStyle::Point(dir) => {
+                let size = match dir.is_horizontal() {
+                    true => Size(self.w.dims.mark / 2, self.w.dims.mark),
+                    false => Size(self.w.dims.mark, self.w.dims.mark / 2),
+                };
+                let offset = Offset::conv((rect.size - size) / 2);
+                let q = Quad::conv(Rect::new(rect.pos + offset, size));
+
+                let (p1, p2, p3);
+                if dir.is_horizontal() {
+                    let (mut x1, mut x2) = (q.a.0, q.b.0);
+                    if dir.is_reversed() {
+                        std::mem::swap(&mut x1, &mut x2);
+                    }
+                    p1 = Vec2(x1, q.a.1);
+                    p2 = Vec2(x2, 0.5 * (q.a.1 + q.b.1));
+                    p3 = Vec2(x1, q.b.1);
+                } else {
+                    let (mut y1, mut y2) = (q.a.1, q.b.1);
+                    if dir.is_reversed() {
+                        std::mem::swap(&mut y1, &mut y2);
+                    }
+                    p1 = Vec2(q.a.0, y1);
+                    p2 = Vec2(0.5 * (q.a.0 + q.b.0), y2);
+                    p3 = Vec2(q.b.0, y1);
+                };
+
+                let f = 0.5 * self.w.dims.mark_line;
+                self.draw.rounded_line(p1, p2, f, col);
+                self.draw.rounded_line(p2, p3, f, col);
+            }
+        }
+    }
 }
 
 impl<'a, DS: DrawSharedImpl> ThemeDraw for DrawHandle<'a, DS>
@@ -464,45 +500,19 @@ where
     fn mark(&mut self, id: &WidgetId, rect: Rect, style: MarkStyle) {
         let col = if self.ev.is_disabled(id) {
             self.cols.text_disabled
-        } else if self.ev.is_hovered(id) {
-            self.cols.accent
         } else {
-            self.cols.text
+            let is_depressed = self.ev.is_depressed(id);
+            if self.ev.is_hovered(id) || is_depressed {
+                self.draw.rect(rect.cast(), self.cols.accent_soft);
+            }
+            if is_depressed {
+                self.cols.accent
+            } else {
+                self.cols.text
+            }
         };
 
-        match style {
-            MarkStyle::Point(dir) => {
-                let size = match dir.is_horizontal() {
-                    true => Size(self.w.dims.mark / 2, self.w.dims.mark),
-                    false => Size(self.w.dims.mark, self.w.dims.mark / 2),
-                };
-                let offset = Offset::conv((rect.size - size) / 2);
-                let q = Quad::conv(Rect::new(rect.pos + offset, size));
-
-                let (p1, p2, p3);
-                if dir.is_horizontal() {
-                    let (mut x1, mut x2) = (q.a.0, q.b.0);
-                    if dir.is_reversed() {
-                        std::mem::swap(&mut x1, &mut x2);
-                    }
-                    p1 = Vec2(x1, q.a.1);
-                    p2 = Vec2(x2, 0.5 * (q.a.1 + q.b.1));
-                    p3 = Vec2(x1, q.b.1);
-                } else {
-                    let (mut y1, mut y2) = (q.a.1, q.b.1);
-                    if dir.is_reversed() {
-                        std::mem::swap(&mut y1, &mut y2);
-                    }
-                    p1 = Vec2(q.a.0, y1);
-                    p2 = Vec2(0.5 * (q.a.0 + q.b.0), y2);
-                    p3 = Vec2(q.b.0, y1);
-                };
-
-                let f = 0.5 * self.w.dims.mark_line;
-                self.draw.rounded_line(p1, p2, f, col);
-                self.draw.rounded_line(p2, p3, f, col);
-            }
-        }
+        self.draw_mark(rect, style, col);
     }
 
     fn scroll_bar(
