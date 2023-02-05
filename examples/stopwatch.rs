@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use kas::class::HasString;
 use kas::event::{ConfigMgr, Event, EventMgr, Response};
 use kas::widgets::{Frame, Label, TextButton};
-use kas::{Widget, WidgetCore, WidgetExt, Window};
+use kas::{Decorations, Widget, WidgetCore, WidgetExt, Window};
 
 #[derive(Clone, Debug)]
 struct MsgReset;
@@ -71,6 +71,12 @@ fn make_window() -> Box<dyn kas::Window> {
         }
         impl Window for Self {
             fn title(&self) -> &str { "Stopwatch" }
+            fn decorations(&self) -> Decorations {
+                Decorations::Border
+            }
+            fn transparent(&self) -> bool {
+                true
+            }
             fn restrict_dimensions(&self) -> (bool, bool) {
                 (true, true)
             }

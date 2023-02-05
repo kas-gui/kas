@@ -88,6 +88,8 @@ pub enum FrameStyle {
     Button,
     /// Box used to contain editable text
     EditBox,
+    /// Window decoration (excludes top buttons)
+    Window,
 }
 
 /// Class of text drawn

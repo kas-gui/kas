@@ -272,7 +272,7 @@ where
     fn frame(&mut self, id: &WidgetId, rect: Rect, style: FrameStyle, bg: Background) {
         let outer = Quad::conv(rect);
         match style {
-            FrameStyle::Frame => {
+            FrameStyle::Frame | FrameStyle::Window => {
                 let inner = outer.shrink(self.w.dims.frame as f32);
                 self.draw.frame(outer, inner, self.cols.frame);
             }

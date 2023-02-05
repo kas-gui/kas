@@ -9,8 +9,8 @@ use crate::dir::Directional;
 use crate::event::{ConfigMgr, EventMgr, Scroll};
 use crate::geom::{Coord, Offset, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
-use crate::theme::{DrawMgr, SizeMgr};
-use crate::{Action, Layout, Widget, WidgetExt, WidgetId, Window, WindowId};
+use crate::theme::{DrawMgr, FrameStyle, SizeMgr};
+use crate::{Action, Decorations, Layout, Widget, WidgetExt, WidgetId, Window, WindowId};
 use kas_macros::impl_scope;
 use smallvec::SmallVec;
 
@@ -24,18 +24,31 @@ impl_scope! {
         core: widget_core!(),
         #[widget]
         w: Box<dyn Window>,
+        dec_offset: Offset,
+        dec_size: Size,
         popups: SmallVec<[(WindowId, kas::Popup, Offset); 16]>,
     }
 
     impl Layout for RootWidget {
         #[inline]
         fn size_rules(&mut self, size_mgr: SizeMgr, axis: AxisInfo) -> SizeRules {
-            self.w.size_rules(size_mgr, axis)
+            let inner = self.w.size_rules(size_mgr.re(), axis);
+            if matches!(self.w.decorations(), Decorations::Border | Decorations::Toolkit) {
+                let frame = size_mgr.frame(FrameStyle::Window, axis);
+                let (rules, offset, size) = frame.surround(inner);
+                self.dec_offset.set_component(axis, offset);
+                self.dec_size.set_component(axis, size);
+                rules
+            } else {
+                inner
+            }
         }
 
         #[inline]
-        fn set_rect(&mut self, mgr: &mut ConfigMgr, rect: Rect) {
+        fn set_rect(&mut self, mgr: &mut ConfigMgr, mut rect: Rect) {
             self.core.rect = rect;
+            rect.pos += self.dec_offset;
+            rect.size -= self.dec_size;
             self.w.set_rect(mgr, rect);
         }
 
@@ -56,6 +69,9 @@ impl_scope! {
         }
 
         fn draw(&mut self, mut draw: DrawMgr) {
+            if self.dec_size != Size::ZERO {
+                draw.frame(self.core.rect, FrameStyle::Window, Default::default());
+            }
             draw.recurse(&mut self.w);
             for (_, popup, translation) in &self.popups {
                 if let Some(widget) = self.w.find_widget_mut(&popup.id) {
@@ -121,6 +137,8 @@ impl RootWidget {
         RootWidget {
             core: Default::default(),
             w,
+            dec_offset: Default::default(),
+            dec_size: Default::default(),
             popups: Default::default(),
         }
     }

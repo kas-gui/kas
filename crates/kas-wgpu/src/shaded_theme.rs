@@ -307,6 +307,14 @@ where
                 let bg_col = self.cols.from_edit_bg(bg, state);
                 self.draw_edit_box(rect, bg_col, state.nav_focus());
             }
+            FrameStyle::Window => {
+                let outer = Quad::conv(rect);
+                let inner = outer.shrink(self.w.dims.frame as f32);
+                let col = self.cols.background;
+                self.draw
+                    .shaded_round_frame(outer, inner, NORMS_RAISED, col);
+                self.draw.rect(inner, col);
+            }
             style => self.as_flat().frame(id, rect, style, bg),
         }
     }
