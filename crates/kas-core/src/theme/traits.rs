@@ -40,7 +40,7 @@ pub trait ThemeControl {
     /// Set colors directly
     ///
     /// This may be used to provide a custom color scheme. The `name` is
-    /// compulsary (and returned by [`Self::get_active_scheme`]).
+    /// compulsary (and returned by [`Self::active_scheme`]).
     /// The `name` is also used when saving config, though the custom colors are
     /// not currently saved in this config.
     fn set_colors(&mut self, name: String, scheme: ColorsLinear) -> Action;

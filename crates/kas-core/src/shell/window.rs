@@ -512,6 +512,7 @@ where
         self.shared.platform
     }
 
+    #[cfg(features = "winit")]
     #[inline]
     fn winit_window(&self) -> Option<&winit::window::Window> {
         self.window

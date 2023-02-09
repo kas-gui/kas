@@ -37,10 +37,10 @@ jobs:
         run: cargo test --manifest-path crates/kas-resvg/Cargo.toml --all-features
       - name: Test kas-wgpu
         run: |
-          cargo test --manifest-path crates/kas-wgpu/Cargo.toml --no-default-features --features raster
-          cargo test --manifest-path crates/kas-wgpu/Cargo.toml --all-features
+          cargo test --manifest-path crates/kas-wgpu/Cargo.toml --no-default-features --features raster,kas/x11
+          cargo test --manifest-path crates/kas-wgpu/Cargo.toml --all-features --features kas/x11
       - name: Test kas-dylib
-        run: cargo test --manifest-path crates/kas-dylib/Cargo.toml --all-features
+        run: cargo test --manifest-path crates/kas-dylib/Cargo.toml --all-features --features kas-core/x11
       - name: Test kas
         run: cargo test --all-features
       - name: Test examples/mandlebrot
