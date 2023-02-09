@@ -148,8 +148,17 @@ impl_scope! {
         fn handle_message(&mut self, mgr: &mut EventMgr) {
             if let Some(msg) = mgr.try_pop() {
                 match msg {
-                    TitleBarButton::Minimize => todo!(),
-                    TitleBarButton::Maximize => todo!(),
+                    TitleBarButton::Minimize => {
+                        mgr.winit_window().map(|w| {
+                            // TODO: supported in winit 0.28:
+                            // let is_minimized = w.is_minimized().unwrap_or(false);
+                            let is_minimized = false;
+                            w.set_minimized(!is_minimized);
+                        });
+                    }
+                    TitleBarButton::Maximize => {
+                        mgr.winit_window().map(|w| w.set_maximized(!w.is_maximized()));
+                    }
                     TitleBarButton::Close => mgr.send_action(Action::CLOSE),
                 }
             }

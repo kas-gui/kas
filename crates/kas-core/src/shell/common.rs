@@ -161,6 +161,11 @@ pub(crate) trait ShellWindow {
     /// Set the mouse cursor
     fn set_cursor_icon(&mut self, icon: CursorIcon);
 
+    /// Directly access Winit Window
+    ///
+    /// This is a temporary API, allowing e.g. to minimize the window.
+    fn winit_window(&self) -> Option<&winit::window::Window>;
+
     /// Access a Waker
     fn waker(&self) -> &std::task::Waker;
 }

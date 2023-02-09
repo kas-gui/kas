@@ -521,6 +521,11 @@ where
     }
 
     #[inline]
+    fn winit_window(&self) -> Option<&winit::window::Window> {
+        self.window
+    }
+
+    #[inline]
     fn waker(&self) -> &std::task::Waker {
         &self.shared.waker
     }
