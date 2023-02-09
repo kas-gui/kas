@@ -18,7 +18,7 @@ mod common;
 
 pub(crate) use common::ShellWindow;
 #[cfg(feature = "winit")] pub use common::WindowSurface;
-pub use common::{Error, GraphicalShell, Result};
+pub use common::{Error, GraphicalShell, Platform, Result};
 #[cfg(feature = "winit")]
 pub use shell::{ClosedError, Proxy, Shell, ShellAssoc};
 #[cfg(feature = "winit")]

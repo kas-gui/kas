@@ -41,6 +41,138 @@ pub enum Error {
 /// A `Result` type representing `T` or [`enum@Error`]
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// Enumeration of platforms
+///
+/// Each option is compile-time enabled only if that platform is possible.
+/// Methods like [`Self::is_wayland`] are available on all platforms.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum Platform {
+    #[cfg(target_os = "android")]
+    Android,
+    #[cfg(target_os = "ios")]
+    IOS,
+    #[cfg(target_os = "macos")]
+    MacOS,
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
+    ))]
+    Wayland,
+    #[cfg(target_arch = "wasm32")]
+    Web,
+    #[cfg(target_os = "windows")]
+    Windows,
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "dragonfly",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd"
+    ))]
+    X11,
+}
+
+impl Platform {
+    /// True if the platform is Android
+    pub fn is_android(&self) -> bool {
+        cfg_if::cfg_if! {
+            if #[cfg(target_os = "android")] {
+                true
+            } else {
+                false
+            }
+        }
+    }
+
+    /// True if the platform is IOS
+    pub fn is_ios(&self) -> bool {
+        cfg_if::cfg_if! {
+            if #[cfg(target_os = "ios")] {
+                true
+            } else {
+                false
+            }
+        }
+    }
+
+    /// True if the platform is MacOS
+    pub fn is_macos(&self) -> bool {
+        cfg_if::cfg_if! {
+            if #[cfg(target_os = "macos")] {
+                true
+            } else {
+                false
+            }
+        }
+    }
+
+    /// True if the platform is Wayland
+    pub fn is_wayland(&self) -> bool {
+        cfg_if::cfg_if! {
+            if #[cfg(any(
+                target_os = "linux",
+                target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "netbsd",
+                target_os = "openbsd"
+            ))] {
+                match self {
+                    Platform::Wayland => true,
+                    _ => false,
+                }
+            } else {
+                false
+            }
+        }
+    }
+
+    /// True if the platform is Web
+    pub fn is_web(&self) -> bool {
+        cfg_if::cfg_if! {
+            if #[cfg(target_arch = "wasm32")] {
+                true
+            } else {
+                false
+            }
+        }
+    }
+
+    /// True if the platform is Windows
+    pub fn is_windows(&self) -> bool {
+        cfg_if::cfg_if! {
+            if #[cfg(target_os = "windows")] {
+                true
+            } else {
+                false
+            }
+        }
+    }
+
+    /// True if the platform is X11
+    pub fn is_x11(&self) -> bool {
+        cfg_if::cfg_if! {
+            if #[cfg(any(
+                target_os = "linux",
+                target_os = "dragonfly",
+                target_os = "freebsd",
+                target_os = "netbsd",
+                target_os = "openbsd"
+            ))] {
+                match self {
+                    Platform::X11 => true,
+                    _ => false,
+                }
+            } else {
+                false
+            }
+        }
+    }
+}
+
 /// API for the graphical implementation of a shell
 ///
 /// See also [`Shell`](super::Shell).
@@ -160,6 +292,9 @@ pub(crate) trait ShellWindow {
 
     /// Set the mouse cursor
     fn set_cursor_icon(&mut self, icon: CursorIcon);
+
+    /// Get the platform
+    fn platform(&self) -> Platform;
 
     /// Directly access Winit Window
     ///

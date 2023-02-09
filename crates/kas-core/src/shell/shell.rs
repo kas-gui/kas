@@ -5,7 +5,7 @@
 
 //! [`Shell`] and supporting elements
 
-use super::{GraphicalShell, ProxyAction, Result, SharedState, Window};
+use super::{GraphicalShell, Platform, ProxyAction, Result, SharedState, Window};
 use crate::config::Options;
 use crate::draw::{DrawImpl, DrawShared, DrawSharedImpl};
 use crate::event::{self, UpdateId};
@@ -199,6 +199,44 @@ where
 
 pub(super) struct PlatformWrapper<'a>(&'a EventLoop<ProxyAction>);
 impl<'a> PlatformWrapper<'a> {
+    /// Get platform
+    pub(super) fn platform(&self) -> Platform {
+        // Logic copied from winit::platform_impl module.
+
+        #[cfg(target_os = "windows")]
+        return Platform::Windows;
+
+        #[cfg(any(
+            target_os = "linux",
+            target_os = "dragonfly",
+            target_os = "freebsd",
+            target_os = "netbsd",
+            target_os = "openbsd"
+        ))]
+        {
+            use winit::platform::unix::EventLoopWindowTargetExtUnix;
+            return if self.0.is_wayland() {
+                Platform::Wayland
+            } else {
+                Platform::X11
+            };
+        }
+
+        #[cfg(target_os = "macos")]
+        return Platform::MacOS;
+
+        #[cfg(target_os = "android")]
+        return Platform::Android;
+
+        #[cfg(target_os = "ios")]
+        return Platform::IOS;
+
+        #[cfg(target_arch = "wasm32")]
+        return Platform::Web;
+
+        // Otherwise platform is unsupported!
+    }
+
     /// Guess scale factor of first window
     pub(super) fn guess_scale_factor(&self) -> f64 {
         if let Some(mon) = self.0.primary_monitor() {

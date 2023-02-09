@@ -5,7 +5,7 @@
 
 //! Window types
 
-use super::{PendingAction, ProxyAction, SharedState, ShellWindow, WindowSurface};
+use super::{PendingAction, Platform, ProxyAction, SharedState, ShellWindow, WindowSurface};
 use kas::cast::Cast;
 use kas::draw::{color::Rgba, AnimationState, DrawShared};
 use kas::event::{ConfigMgr, CursorIcon, EventState, UpdateId};
@@ -49,19 +49,7 @@ impl<S: WindowSurface, T: Theme<S::Shared>> Window<S, T> {
         let mut widget = kas::RootWidget::new(widget);
 
         // Wayland only supports windows constructed via logical size
-        #[allow(unused_assignments, unused_mut)]
-        let mut use_logical_size = false;
-        #[cfg(any(
-            target_os = "linux",
-            target_os = "dragonfly",
-            target_os = "freebsd",
-            target_os = "netbsd",
-            target_os = "openbsd"
-        ))]
-        {
-            use winit::platform::unix::EventLoopWindowTargetExtUnix;
-            use_logical_size = elwt.is_wayland();
-        }
+        let use_logical_size = shared.platform.is_wayland();
 
         let scale_factor = if use_logical_size {
             1.0
@@ -518,6 +506,10 @@ where
         if let Some(window) = self.window {
             window.set_cursor_icon(icon);
         }
+    }
+
+    fn platform(&self) -> Platform {
+        self.shared.platform
     }
 
     #[inline]
