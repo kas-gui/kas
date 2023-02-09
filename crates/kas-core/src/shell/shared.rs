@@ -48,11 +48,12 @@ where
         options: Options,
         config: SharedRc<kas::event::Config>,
     ) -> Result<Self, Error> {
-        let mut draw = kas::draw::SharedState::new(draw_shared);
+        let platform = pw.platform();
+        let mut draw = kas::draw::SharedState::new(draw_shared, platform);
         theme.init(&mut draw);
 
         Ok(SharedState {
-            platform: pw.platform(),
+            platform,
             #[cfg(feature = "clipboard")]
             clipboard: None,
             draw,
