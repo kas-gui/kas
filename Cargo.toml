@@ -23,7 +23,7 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 #########  meta / build features  #########
 
 # All recommended features for optimal experience
-default = ["minimal", "view", "yaml", "image", "resvg", "clipboard", "markdown", "shaping", "dark-light", "spawn"]
+default = ["minimal", "view", "yaml", "image", "resvg", "clipboard", "markdown", "shaping", "dark-light", "spawn", "wayland", "x11"]
 
 # Include only "required" features.
 #
@@ -103,6 +103,12 @@ spawn = ["kas-core/spawn"]
 macros_log = ["kas-core/macros_log"]
 
 winit = ["kas-core/winit"]
+
+# Support Wayland
+wayland = ["kas-core/wayland"]
+
+# Support X11
+x11 = ["kas-core/x11"]
 
 [dependencies]
 kas-core = { version = "0.12.1", path = "crates/kas-core" }

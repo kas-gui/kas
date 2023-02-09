@@ -55,6 +55,12 @@ macros_log = ["kas-macros/log"]
 # Enable winit support
 winit = ["dep:winit"]
 
+# Support Wayland
+wayland = ["winit?/wayland", "winit?/wayland-dlopen"]
+
+# Support X11
+x11 = ["winit?/x11"]
+
 # Enable serde integration (mainly config read/write)
 serde = ["dep:serde", "kas-text/serde", "winit?/serde"]
 
@@ -96,3 +102,4 @@ version = "0.5.0" # used in doc links
 # Provides translations for several winit types
 version = "0.27"
 optional = true
+default-features = false
